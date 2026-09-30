@@ -183,6 +183,52 @@ int main() {
         return 12;
     }
 
+    const auto ricky_subjects = ricky_information_subject_prompt();
+    if (!expect(ricky_subjects.title_text == "Like what?" &&
+                ricky_subjects.options[0] ==
+                    "Tell me about shaman magic." &&
+                ricky_subjects.options[1] ==
+                    "Tell me about the local area." &&
+                ricky_subjects.options[2] ==
+                    "Do you know of any Johnsons in the area?")) {
+        return 13;
+    }
+    const auto shaman_response = select_ricky_information_response(
+        RickyInformationSubject::shaman_magic);
+    if (!expect(shaman_response.action ==
+                    RickyInformationResponseAction::selected &&
+                shaman_response.page_count == 3U &&
+                shaman_response.more_after_page ==
+                    std::array<bool, 3>{{true, true, false}} &&
+                shaman_response.page_text[1] ==
+                    "<He shows you his Rat totem, a dingy block of wood.>" &&
+                shaman_response.returns_to_common_conversation)) {
+        return 14;
+    }
+    const auto local_response = select_ricky_information_response(
+        RickyInformationSubject::local_area);
+    if (!expect(local_response.page_count == 2U &&
+                local_response.more_after_page ==
+                    std::array<bool, 3>{{true, false, false}} &&
+                local_response.page_text[1] ==
+                    "Glow City sprung up when they ran out of room in the Rat's Nest.")) {
+        return 15;
+    }
+    const auto johnson_response = select_ricky_information_response(
+        RickyInformationSubject::johnson_gunderson);
+    if (!expect(johnson_response.page_count == 1U &&
+                !johnson_response.more_after_page[0] &&
+                johnson_response.page_text[0] ==
+                    "Yeah, sure.  Gunderson's a Johnson I've used when I needed some quick nuyen.")) {
+        return 16;
+    }
+    if (!expect(select_ricky_information_response(
+                    static_cast<RickyInformationSubject>(3U))
+                    .action == RickyInformationResponseAction::
+                                   subject_unavailable)) {
+        return 17;
+    }
+
     auto state = make_state();
     std::vector<int> callback_order;
     const RecruitedRunnerServiceCallbacks callbacks{
@@ -203,7 +249,7 @@ int main() {
                     0x3456U &&
                 state.roster.primary_record.bytes[0x8FU] == 0U &&
                 callback_order == std::vector<int>{0, 1})) {
-        return 13;
+        return 18;
     }
 
     state = make_state();
@@ -223,7 +269,7 @@ int main() {
                 state.roster.secondary_record.bytes[0x8FU] == 0xFFU &&
                 read_big_endian_word(state.roster.secondary_record, 0x04U) ==
                     0x789AU && callback_order == std::vector<int>{0, 1})) {
-        return 14;
+        return 19;
     }
 
     state = make_state();
@@ -234,7 +280,7 @@ int main() {
                 free_hire.charged_amount == 0U && state.funds == 1000U &&
                 state.permanent_fee == 0U &&
                 state.roster.primary_record.bytes[0x8FU] == 0xFFU)) {
-        return 15;
+        return 20;
     }
 
     state = make_state();
@@ -247,7 +293,7 @@ int main() {
                     RecruitedRunnerServicePrompt::insufficient_funds &&
                 state.funds == 249U && state.roster.primary_marker == 0xFFU &&
                 state.selected_entity.service_flags == 0x01U)) {
-        return 16;
+        return 21;
     }
 
     state = make_state();
@@ -255,12 +301,12 @@ int main() {
     state.roster.secondary_record.bytes[0x10U] = 0x01U;
     if (!expect(recruited_runner_service_availability(state.roster) ==
                 RecruitedRunnerServiceAvailability::roster_full)) {
-        return 17;
+        return 22;
     }
     state.roster.secondary_record.bytes[0x10U] = 0U;
     if (!expect(recruited_runner_service_availability(state.roster) ==
                 RecruitedRunnerServiceAvailability::available)) {
-        return 18;
+        return 23;
     }
 
     state = make_state(1U);
@@ -269,7 +315,7 @@ int main() {
     if (!expect(invalid.action ==
                     RecruitedRunnerServiceAction::invalid_runner_template &&
                 state.funds == 750U)) {
-        return 19;
+        return 24;
     }
 
     return 0;

@@ -1024,6 +1024,21 @@ duplicate handlers into one typed table, preserves idempotent flag setting,
 and carries both exact source paragraphs as host text data; it does not read
 `FFFC2A` or the ROM descriptor pointers at runtime.
 
+The Ricky descriptor chain is now converted beyond that first biography page.
+The `0x2401C` handler enters `0xFE848` with “I've lived in Glow City all my
+life.” and its `< MORE >` continuation at `0xFE85C`; that continuation returns
+the common conversation choices and command `0xFE878` for the concrete subject
+menu. The `0xFE878` descriptor is the “Like what?” prompt with exactly three
+subjects: shaman magic, the local area, and Johnsons in the area. Their source
+chains are distinct: shaman magic traverses `0xFE894 -> 0xFE8A8 -> 0xFE8BC`
+for three pages with `< MORE >` after the first two; local area traverses
+`0xFE8D8 -> 0xFE8EC` for two pages with one continuation; and the Gunderson
+Johnson response at `0xFE908` is one terminal page. The final page of each
+chain routes back through the common conversation commands. The native
+conversion exposes this as a typed subject prompt plus typed response pages,
+preserving page count, text, and continuation cadence without carrying the
+descriptor addresses into the runtime.
+
 ## 2026-09-30 Stoker motel source mapping
 
 The Stoker source mapping is now corrected rather than guessed. `0x1F65A`

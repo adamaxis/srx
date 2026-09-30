@@ -134,6 +134,8 @@ constexpr std::array<RecruitedRunnerInformationRecord,
          "When I heard strangers were entering our land for some unknown purpose, I went to the city to dig up some clues. It was there I met your brother. We became fast friends, and in the end, he was a blood brother."},
     }};
 
+constexpr std::string_view kMoreOptionText = "< MORE >";
+
 bool service_slot_is_active(const LiveRunnerRecord& record) {
     // BTST #0,FF0210/FF0310 reads the first byte of each record's +0x10
     // word.  Do not reinterpret this as the low bit of a host-endian word.
@@ -319,7 +321,51 @@ select_recruited_runner_information_prompt(
     result.information_flags = state.runner_information_flags;
     result.opening_text = record.opening_text;
     result.continuation_text = record.continuation_text;
-    result.more_option_text = "< MORE >";
+    result.more_option_text = kMoreOptionText;
+    return result;
+}
+
+RickyInformationSubjectPrompt ricky_information_subject_prompt() {
+    return {"Like what?",
+            {"Tell me about shaman magic.",
+             "Tell me about the local area.",
+             "Do you know of any Johnsons in the area?"}};
+}
+
+RickyInformationResponse select_ricky_information_response(
+    const RickyInformationSubject subject) {
+    RickyInformationResponse result{};
+    result.subject = subject;
+    result.returns_to_common_conversation = true;
+    switch (subject) {
+    case RickyInformationSubject::shaman_magic:
+        result.action = RickyInformationResponseAction::selected;
+        result.page_text = {
+            "Shaman get their powers from nature.",
+            "<He shows you his Rat totem, a dingy block of wood.>",
+            "Rat wants me to protect myself by looking for opportunities."};
+        result.more_after_page = {true, true, false};
+        result.page_count = 3U;
+        return result;
+    case RickyInformationSubject::local_area:
+        result.action = RickyInformationResponseAction::selected;
+        result.page_text = {
+            "The Rat's Nest is a haven for squatters and other transients.",
+            "Glow City sprung up when they ran out of room in the Rat's Nest.",
+            {}};
+        result.more_after_page = {true, false, false};
+        result.page_count = 2U;
+        return result;
+    case RickyInformationSubject::johnson_gunderson:
+        result.action = RickyInformationResponseAction::selected;
+        result.page_text = {
+            "Yeah, sure.  Gunderson's a Johnson I've used when I needed some quick nuyen.",
+            {},
+            {}};
+        result.more_after_page = {false, false, false};
+        result.page_count = 1U;
+        return result;
+    }
     return result;
 }
 

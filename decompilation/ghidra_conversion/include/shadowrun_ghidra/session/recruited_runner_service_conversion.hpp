@@ -131,6 +131,36 @@ struct RecruitedRunnerInformationPromptResult {
     std::string_view more_option_text;
 };
 
+enum class RickyInformationSubject {
+    shaman_magic,
+    local_area,
+    johnson_gunderson,
+};
+
+struct RickyInformationSubjectPrompt {
+    std::string_view title_text;
+    std::array<std::string_view, 3> options{};
+};
+
+enum class RickyInformationResponseAction {
+    selected,
+    subject_unavailable,
+};
+
+// ROM descriptors 0xFE878..0xFE90C. This is the concrete Ricky subject
+// menu reached after the first information page. The response pages retain
+// their source page count and MORE cadence before returning to the common
+// runner conversation choices.
+struct RickyInformationResponse {
+    RickyInformationResponseAction action =
+        RickyInformationResponseAction::subject_unavailable;
+    RickyInformationSubject subject = RickyInformationSubject::shaman_magic;
+    std::array<std::string_view, 3> page_text{};
+    std::array<bool, 3> more_after_page{};
+    std::size_t page_count = 0;
+    bool returns_to_common_conversation = false;
+};
+
 // The command handlers use the selected field entity at FFE128.  The entity's
 // +0x10 bit 0 is cleared after a successful hire, and its +0x04 position word
 // is copied into the selected live runner record.  These are named host fields
@@ -246,6 +276,13 @@ select_recruited_runner_conversation_prompt(
 RecruitedRunnerInformationPromptResult
 select_recruited_runner_information_prompt(
     RecruitedRunnerServiceState& state);
+
+// ROM data rooted at 0xFE878. The returned subject prompt is native text
+// data; it does not expose the source descriptor addresses.
+RickyInformationSubjectPrompt ricky_information_subject_prompt();
+
+RickyInformationResponse select_ricky_information_response(
+    RickyInformationSubject subject);
 
 // ROM 0x21318/0x21326/0x21332 plus the common body at 0x2133C.  This converts
 // the recruited-runner dialog's short-term, permanent, and free-permanent

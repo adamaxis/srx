@@ -156,7 +156,8 @@ The already-confirmed extraction families include:
   prompt at `0x211E8`, the ten-entry information-branch table at
   `0x2401C..0x2410C`, and the short-term single-run/permanent-hire command
   family at `0x21226` through `0x213CA`, with typed information flags,
-  two-page runner biography prompts, fee inputs,
+  runner biography prompts plus Ricky's concrete Glow City/Rat Nest/Johnson
+  subject tree at `0xFE848..0xFE90C`, fee inputs,
   primary/secondary roster-slot selection, active-entity handoff, and field
   animation/upload callbacks. The ten-entry fee schedule, source cost
   arithmetic, and title-only roster-full prompt are typed;
