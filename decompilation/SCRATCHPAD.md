@@ -141,6 +141,15 @@ sequence continuity beginning at `2`, and the source's final clear of the last
 sequence byte. The host receives typed built records and semantic source IDs;
 it does not look up those ROM addresses at runtime.
 
+The adjacent audio gates in `0x5D746` are now typed as
+`PreTitleAudioRequest`. Command `0x16` is requested through the `0x530D2`
+variant transaction path when `FFDD2A` is below six before decrement and again
+when it reaches zero after decrement. Command `0x5C` is requested through
+`0x530DE` while the post-decrement counter is above four. The latter service
+tests `FFFC08` and chooses the `0x53112` transaction or `0x530FE` command-queue
+service; that choice is retained as a host audio boundary rather than being
+flattened into an imprecise "service audio" callback.
+
 The display-service audit also corrected `0x1872`: its call to
 `0x5672C` is gated by the field display-service word `FFDFE8 == 0`, not by
 the one-shot `FFDD02`/display-ready latch set after a pending upload. The

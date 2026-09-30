@@ -187,8 +187,7 @@ bool has_pre_title_callbacks(const PreTitleSequenceCallbacks& callbacks) {
            static_cast<bool>(animation.publish_logo_strobe_palette) &&
            static_cast<bool>(animation.step_entity_color_words) &&
            static_cast<bool>(callbacks.write_horizontal_scroll_stream) &&
-           static_cast<bool>(callbacks.service_audio_variant) &&
-           static_cast<bool>(callbacks.service_audio) &&
+           static_cast<bool>(callbacks.publish_audio_request) &&
            static_cast<bool>(callbacks.sample_controller) &&
            static_cast<bool>(callbacks.step_palette_transition);
 }
@@ -432,17 +431,30 @@ PreTitleSequenceResult advance_pre_title_sequence_frame(
             ++state.sega_delay_cadence;
             if ((state.sega_delay_cadence & 1) == 0) {
                 if (state.logo_effect_counter < 6) {
-                    callbacks.service_audio_variant();
+                    callbacks.publish_audio_request(
+                        {PreTitleAudioServicePath::enabled_variant_transaction,
+                         PreTitleAudioTrigger::logo_effect_counter_below_six,
+                         0x0016U});
                 }
                 --state.logo_effect_counter;
                 if (state.logo_effect_counter >= 0) {
                     if (state.logo_effect_counter == 0) {
-                        callbacks.service_audio_variant();
+                        callbacks.publish_audio_request(
+                            {PreTitleAudioServicePath::
+                                 enabled_variant_transaction,
+                             PreTitleAudioTrigger::
+                                 logo_effect_counter_reached_zero,
+                             0x0016U});
                         state.logo_strobe_active = true;
                     }
                     --state.secondary_effect_counter;
                     if (state.logo_effect_counter > 4) {
-                        callbacks.service_audio();
+                        callbacks.publish_audio_request(
+                            {PreTitleAudioServicePath::
+                                 enabled_service_fc08_select,
+                             PreTitleAudioTrigger::
+                                 logo_effect_counter_above_four,
+                             0x005CU});
                     }
                 }
             }

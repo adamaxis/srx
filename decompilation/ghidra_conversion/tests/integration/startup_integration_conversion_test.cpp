@@ -110,11 +110,13 @@ StartupIntegrationCallbacks make_callbacks(
                             kPreTitleHorizontalScrollLines>&) {
             record(observations, "write_horizontal_scroll");
         };
-    callbacks.pre_title.service_audio_variant = [&observations] {
-        record(observations, "service_audio_variant");
-    };
-    callbacks.pre_title.service_audio = [&observations] {
-        record(observations, "service_audio");
+    callbacks.pre_title.publish_audio_request = [&observations](
+                                                    const PreTitleAudioRequest& request) {
+        record(observations,
+               request.service_path ==
+                       PreTitleAudioServicePath::enabled_variant_transaction
+                   ? "service_audio_variant_transaction"
+                   : "service_audio_fc08_select");
     };
     callbacks.pre_title.sample_controller = [&observations] {
         record(observations, "sample_controller");

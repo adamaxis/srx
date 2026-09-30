@@ -132,10 +132,15 @@ int main(int argc, char** argv) {
         [&horizontal_scroll_updates](const auto&) {
             ++horizontal_scroll_updates;
         };
-    startup_callbacks.pre_title.service_audio_variant =
-        [&audio_variant_calls] { ++audio_variant_calls; };
-    startup_callbacks.pre_title.service_audio =
-        [&audio_calls] { ++audio_calls; };
+    startup_callbacks.pre_title.publish_audio_request =
+        [&audio_variant_calls, &audio_calls](const PreTitleAudioRequest& request) {
+            if (request.service_path ==
+                PreTitleAudioServicePath::enabled_variant_transaction) {
+                ++audio_variant_calls;
+            } else {
+                ++audio_calls;
+            }
+        };
     startup_callbacks.pre_title.sample_controller =
         [&controller_samples] { ++controller_samples; };
     startup_callbacks.pre_title.step_palette_transition =

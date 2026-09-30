@@ -114,6 +114,28 @@ struct PreTitleSpriteBatch {
     std::vector<BuiltSpriteRecord> records;
 };
 
+enum class PreTitleAudioServicePath {
+    // 0x530D2: FFFC0A enables the direct 0x53112 transaction path.
+    enabled_variant_transaction,
+    // 0x530DE: FFFC0A enables service, then FFFC08 selects the direct
+    // 0x53112 transaction or the 0x530FE command-queue service.
+    enabled_service_fc08_select,
+};
+
+enum class PreTitleAudioTrigger {
+    logo_effect_counter_below_six,
+    logo_effect_counter_reached_zero,
+    logo_effect_counter_above_four,
+};
+
+struct PreTitleAudioRequest {
+    PreTitleAudioServicePath service_path =
+        PreTitleAudioServicePath::enabled_variant_transaction;
+    PreTitleAudioTrigger trigger =
+        PreTitleAudioTrigger::logo_effect_counter_below_six;
+    std::uint16_t command = 0;
+};
+
 // Direct child-call boundaries recovered from 0x5DA50. The zeroing is
 // performed by setup_pre_title_resources; callbacks expose semantic host
 // requests rather than VDP command words or ROM addresses.
@@ -147,8 +169,7 @@ struct PreTitleSequenceCallbacks {
     std::function<void(const std::array<std::uint16_t,
                                         kPreTitleHorizontalScrollLines>&)>
         write_horizontal_scroll_stream;
-    std::function<void()> service_audio_variant;
-    std::function<void()> service_audio;
+    std::function<void(const PreTitleAudioRequest&)> publish_audio_request;
     std::function<void()> sample_controller;
     std::function<void()> step_palette_transition;
 };

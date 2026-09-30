@@ -541,15 +541,21 @@ private:
             [this](const auto& scroll) {
                 horizontal_scroll_lines_ = scroll.size();
             };
-        startup_callbacks_.pre_title.service_audio_variant =
-            [this] {
-                ++audio_variant_ticks_;
-                note_presentation_boundary("pre_title.service_audio_variant");
-            };
-        startup_callbacks_.pre_title.service_audio =
-            [this] {
-                ++audio_ticks_;
-                note_presentation_boundary("pre_title.service_audio");
+        startup_callbacks_.pre_title.publish_audio_request =
+            [this](const PreTitleAudioRequest& request) {
+                pre_title_audio_requests_.push_back(request);
+                if (request.service_path ==
+                    PreTitleAudioServicePath::enabled_variant_transaction) {
+                    ++audio_variant_ticks_;
+                } else {
+                    ++audio_ticks_;
+                }
+                note_presentation_boundary(
+                    request.service_path ==
+                            PreTitleAudioServicePath::
+                                enabled_variant_transaction
+                        ? "pre_title.service_logo_effect_variant_audio"
+                        : "pre_title.service_logo_effect_audio");
             };
         startup_callbacks_.pre_title.sample_controller = [this] {
             note_presentation_boundary("pre_title.sample_controller");
@@ -1348,6 +1354,7 @@ private:
     std::uint8_t logo_strobe_phase_ = 0;
     std::array<std::uint16_t, 8> logo_strobe_palette_{};
     std::vector<BuiltSpriteRecord> pre_title_sprite_records_;
+    std::vector<PreTitleAudioRequest> pre_title_audio_requests_;
     JoshuaArchetypeChoice selected_archetype_ =
         JoshuaArchetypeChoice::samurai;
     StartOptionsChoice start_options_cursor_ = StartOptionsChoice::new_game;

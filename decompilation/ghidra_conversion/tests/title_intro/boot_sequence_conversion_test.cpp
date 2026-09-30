@@ -59,6 +59,9 @@ int main() {
     std::vector<PreTitleGridWriteRequest> grid_requests;
     std::vector<PreTitleLogoStrobePalette> strobe_palettes;
     std::vector<PreTitleSpriteBatch> sprite_batches;
+    std::vector<PreTitleAudioRequest> audio_requests;
+    std::size_t variant_audio_requests = 0;
+    std::size_t enabled_service_audio_requests = 0;
     bool resource_work_area_zeroed = false;
     std::size_t palette_fades = 0;
     PreTitleSequenceCallbacks pre_title_callbacks{};
@@ -107,8 +110,18 @@ int main() {
     pre_title_callbacks.animation.step_entity_color_words = [] {};
     pre_title_callbacks.write_horizontal_scroll_stream =
         [&hscroll_updates](const auto&) { ++hscroll_updates; };
-    pre_title_callbacks.service_audio_variant = [] {};
-    pre_title_callbacks.service_audio = [] {};
+    pre_title_callbacks.publish_audio_request =
+        [&audio_requests, &variant_audio_requests,
+         &enabled_service_audio_requests](
+            const PreTitleAudioRequest& request) {
+            audio_requests.push_back(request);
+            if (request.service_path ==
+                PreTitleAudioServicePath::enabled_variant_transaction) {
+                ++variant_audio_requests;
+            } else {
+                ++enabled_service_audio_requests;
+            }
+        };
     pre_title_callbacks.sample_controller = [] {};
     pre_title_callbacks.step_palette_transition = [] {};
     if (run_pre_title_sequence(pre_title, pre_title_callbacks) !=
@@ -117,6 +130,10 @@ int main() {
         pre_title.figure_x != 0x0119 || pre_title.figure_y != 0x0160 ||
         waits != 458U || sprite_builds != 932U || hscroll_updates != 337U ||
         cleared_sprite_sequences != 337U || sprite_batches.size() != sprite_builds ||
+        variant_audio_requests != 63U ||
+            enabled_service_audio_requests != 60U ||
+        audio_requests.size() !=
+            variant_audio_requests + enabled_service_audio_requests ||
         resource_stream_writes != 1U || !resource_work_area_zeroed ||
         palette_fades != 2U ||
         resource_events != std::vector<std::string>{
@@ -152,6 +169,24 @@ int main() {
         sprite_batches[1].first_sequence != 7U ||
         sprite_batches[1].records.size() != 5U) {
         return 2;
+    }
+    for (const auto& request : audio_requests) {
+        if (request.service_path ==
+                PreTitleAudioServicePath::enabled_variant_transaction &&
+            (request.command != 0x0016U ||
+             (request.trigger !=
+                  PreTitleAudioTrigger::logo_effect_counter_below_six &&
+              request.trigger !=
+                  PreTitleAudioTrigger::logo_effect_counter_reached_zero))) {
+            return 7;
+        }
+        if (request.service_path ==
+                PreTitleAudioServicePath::enabled_service_fc08_select &&
+            (request.command != 0x005CU ||
+             request.trigger !=
+                 PreTitleAudioTrigger::logo_effect_counter_above_four)) {
+            return 8;
+        }
     }
 
     PreTitleSequenceState phase_state{};

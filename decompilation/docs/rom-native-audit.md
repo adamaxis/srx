@@ -135,6 +135,19 @@ and `0xD8/0x120`, with attribute base `0x2000`. Sequence continuity and the
 post-child clear of the last sequence byte are explicit in the typed contract;
 the source table addresses are provenance only.
 
+### Pre-title audio gates: `0x5D746` -> `0x530D2` / `0x530DE`
+
+The source loop's audio calls are now one typed request boundary rather than
+two generic callbacks. Before decrementing `FFDD2A`, the loop requests command
+`0x16` through `0x530D2` when the counter is below six; after the decrement it
+requests the same command again when the counter reaches zero. While the
+post-decrement counter remains above four, it requests command `0x5C` through
+`0x530DE`. The conversion preserves the service distinction: `0x530D2` uses
+the enabled `0x53112` transaction path, while `0x530DE` tests `FFFC08` and
+selects either that transaction or the `0x530FE` command-queue service. The
+host audio implementation remains an explicit boundary; no Genesis bus or
+audio-firmware emulation is added to the pre-title runtime.
+
 The slot-availability audit also corrected a semantic narrowing in the typed
 conversion: `0x19C54 -> 0x19C5C` preserves the raw `FFFBCC` byte because the
 source callers use it as a numeric action/HUD value. A nonzero boolean is not
