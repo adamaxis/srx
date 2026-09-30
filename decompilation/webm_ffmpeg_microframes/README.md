@@ -1,11 +1,13 @@
-# WebM/ffmpeg microframe reference
+# Legacy WebM/ffmpeg microframe reference
 
-This is the one dedicated output directory for frame-level analysis of
-`screen-capture.webm`. Its PNGs and extracted reference audio are evidence for
-timing and choreography only. They are never copied into `assets/` and are not
-runtime game resources.
+This directory is retired for new visual analysis. The active source is
+`video analysis/long_gameplay_video.mp4`; its single persistent opening dump is
+`video analysis/long_gameplay_video_intro_ffmpeg_30fps_320x224/`.
 
-Use `tools/extract_webm_storyboard.py` for change-detected storyboard frames or
-`tools/extract_capture_10hz.ps1` for a regular ffmpeg sample. Windows-playable
-reference audio belongs here as `capture-audio.wav`, not in the native asset
-tree.
+The files below are retained as historical evidence for earlier work only.
+They are never copied into `assets/` and are not runtime game resources.
+
+The old extraction scripts and `capture-audio.wav` remain only to reproduce
+historical observations. Do not add new frames here or use this directory for
+new visual claims; Windows-playable reference audio for the active source is
+the paired `intro_audio.wav` in the new dump.

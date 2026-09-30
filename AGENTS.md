@@ -43,9 +43,12 @@ runtime machinery with explicit native state, assets, layouts, and systems.
 2. **Secondary:** Ghidra C under `decompilation/export/`. Cross-check
    only. Use it to understand behavior and validate the ROM trace; never copy
    it in as the native implementation.
-3. **Tertiary:** real-game visuals. `screen-capture.webm` and supplied images
-   are the visual sanity check and timing reference. Until an independent
-   reference is available, dump the native image and inspect it.
+3. **Tertiary:** real-game visuals. The current visual sanity check and timing
+   reference is `video analysis/long_gameplay_video.mp4` and its one-time
+   `video analysis/long_gameplay_video_intro_ffmpeg_30fps_320x224/` FFmpeg dump.
+   The older `screen-capture.webm`/`decompilation/webm_ffmpeg_microframes`
+   analysis is retired and is not a source for new visual claims. Until an
+   independent reference is available, dump the native image and inspect it.
 
 Source analysis must precede implementation, but source analysis does not mean
 source-shaped implementation. For each behavior, record the source-derived
