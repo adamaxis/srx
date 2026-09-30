@@ -123,6 +123,15 @@ all CRAM palette transitions or every queued VBlank upload is already a Qt
 renderer feature; those remain explicit presentation boundaries until their
 source inputs are connected.
 
+The same `0x5D8BA` trace now carries the palette data rather than only a
+phase label. The ROM table at `0x5DCE6` contains fifteen words; each phase
+selects eight consecutive words beginning at `phase * 2` bytes, and the
+source writes that window to the figure palette area at `0xFFD884`. The
+conversion publishes a typed `PreTitleLogoStrobePalette` with the phase and
+all eight words, and the Qt boundary retains that source-derived request
+while continuing to use the individually extracted strobe artwork for the
+host image.
+
 The display-service audit also corrected `0x1872`: its call to
 `0x5672C` is gated by the field display-service word `FFDFE8 == 0`, not by
 the one-shot `FFDD02`/display-ready latch set after a pending upload. The

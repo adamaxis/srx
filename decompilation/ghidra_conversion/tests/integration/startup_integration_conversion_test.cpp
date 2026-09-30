@@ -92,8 +92,8 @@ StartupIntegrationCallbacks make_callbacks(
     };
     callbacks.pre_title.animation.build_title_sprite_records =
         [&observations] { record(observations, "build_title_sprites"); };
-    callbacks.pre_title.animation.publish_logo_strobe_phase =
-        [&observations](const std::uint8_t) {
+    callbacks.pre_title.animation.publish_logo_strobe_palette =
+        [&observations](const PreTitleLogoStrobePalette&) {
             record(observations, "publish_logo_strobe");
         };
     callbacks.pre_title.animation.step_entity_color_words = [&observations] {

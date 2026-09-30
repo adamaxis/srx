@@ -509,11 +509,12 @@ private:
                 note_presentation_boundary(
                     "pre_title.build_title_sprite_records");
             };
-        startup_callbacks_.pre_title.animation.publish_logo_strobe_phase =
-            [this](const std::uint8_t phase) {
-                logo_strobe_phase_ = phase;
+        startup_callbacks_.pre_title.animation.publish_logo_strobe_palette =
+            [this](const PreTitleLogoStrobePalette& palette) {
+                logo_strobe_phase_ = palette.phase;
+                logo_strobe_palette_ = palette.color_words;
                 note_presentation_boundary(
-                    "pre_title.publish_logo_strobe_phase");
+                    "pre_title.publish_logo_strobe_palette");
             };
         startup_callbacks_.pre_title.animation.step_entity_color_words =
             [this] {
@@ -1336,6 +1337,7 @@ private:
     std::vector<std::uint16_t> opening_audio_commands_;
 
     std::uint8_t logo_strobe_phase_ = 0;
+    std::array<std::uint16_t, 8> logo_strobe_palette_{};
     JoshuaArchetypeChoice selected_archetype_ =
         JoshuaArchetypeChoice::samurai;
     StartOptionsChoice start_options_cursor_ = StartOptionsChoice::new_game;

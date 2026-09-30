@@ -7,6 +7,14 @@
 namespace shadowrun::ghidra_conversion {
 namespace {
 
+// ROM 0x5DCE6 contains fifteen words. 0x5D8BA selects an eight-word window
+// by advancing the source pointer one word for each of the eight phases.
+constexpr std::array<std::uint16_t, 15> kPreTitleLogoStrobeColorTable{
+    0x0080U, 0x0060U, 0x0040U, 0x0020U, 0x0000U,
+    0x0000U, 0x0000U, 0x0000U, 0x0080U, 0x0060U,
+    0x0040U, 0x0020U, 0x0000U, 0x0000U, 0x0000U,
+};
+
 void enter_stage(BootStartupState& state,
                  const BootStartupCallbacks& callbacks,
                  const BootStartupStage stage) {
@@ -36,7 +44,7 @@ bool has_pre_title_callbacks(const PreTitleSequenceCallbacks& callbacks) {
            static_cast<bool>(resources.reset_vdp_upload_state) &&
            static_cast<bool>(callbacks.wait_for_vblank) &&
            static_cast<bool>(animation.build_title_sprite_records) &&
-           static_cast<bool>(animation.publish_logo_strobe_phase) &&
+           static_cast<bool>(animation.publish_logo_strobe_palette) &&
            static_cast<bool>(animation.step_entity_color_words) &&
            static_cast<bool>(callbacks.write_horizontal_scroll_stream) &&
            static_cast<bool>(callbacks.service_audio_variant) &&
@@ -87,7 +95,12 @@ void advance_pre_title_logo_strobe(
         if (state.strobe_phase >= 8U) {
             state.strobe_phase = 0U;
         }
-        callbacks.animation.publish_logo_strobe_phase(state.strobe_phase);
+        PreTitleLogoStrobePalette palette{};
+        palette.phase = state.strobe_phase;
+        std::copy_n(kPreTitleLogoStrobeColorTable.begin() +
+                        static_cast<std::size_t>(state.strobe_phase),
+                    palette.color_words.size(), palette.color_words.begin());
+        callbacks.animation.publish_logo_strobe_palette(palette);
         state.dirty_flags = static_cast<std::uint8_t>(state.dirty_flags | 0x01U);
     } else if (state.strobe_countdown == 2) {
         callbacks.animation.step_entity_color_words();

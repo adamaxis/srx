@@ -56,6 +56,7 @@ int main() {
     std::size_t resource_stream_writes = 0;
     std::vector<std::string> resource_events;
     std::vector<PreTitleGridWriteRequest> grid_requests;
+    std::vector<PreTitleLogoStrobePalette> strobe_palettes;
     bool resource_work_area_zeroed = false;
     std::size_t palette_fades = 0;
     PreTitleSequenceCallbacks pre_title_callbacks{};
@@ -93,8 +94,10 @@ int main() {
     pre_title_callbacks.animation.build_title_sprite_records = [&sprite_builds] {
         ++sprite_builds;
     };
-    pre_title_callbacks.animation.publish_logo_strobe_phase =
-        [](const std::uint8_t) {};
+    pre_title_callbacks.animation.publish_logo_strobe_palette =
+        [&strobe_palettes](const PreTitleLogoStrobePalette& palette) {
+            strobe_palettes.push_back(palette);
+        };
     pre_title_callbacks.animation.step_entity_color_words = [] {};
     pre_title_callbacks.write_horizontal_scroll_stream =
         [&hscroll_updates](const auto&) { ++hscroll_updates; };
@@ -121,7 +124,12 @@ int main() {
         grid_requests[1].purpose != PreTitleGridPurpose::final_display ||
         grid_requests[1].transfer_block_count != 4U ||
         grid_requests[1].words_per_block != 16U ||
-        grid_requests[1].word_mask != 0x4000U) {
+        grid_requests[1].word_mask != 0x4000U || strobe_palettes.empty() ||
+        strobe_palettes.front().phase != 0U ||
+        strobe_palettes.front().color_words !=
+            std::array<std::uint16_t, 8>{
+                0x0080U, 0x0060U, 0x0040U, 0x0020U,
+                0x0000U, 0x0000U, 0x0000U, 0x0000U}) {
         return 2;
     }
 
@@ -155,6 +163,43 @@ int main() {
     advance_pre_title_logo_strobe(fade_state, fade_callbacks);
     if (fade_state.figure_color_fade_weight != 0U) {
         return 5;
+    }
+
+    const std::array<std::array<std::uint16_t, 8>, 8> expected_strobes{{
+        {0x0080U, 0x0060U, 0x0040U, 0x0020U,
+         0x0000U, 0x0000U, 0x0000U, 0x0000U},
+        {0x0060U, 0x0040U, 0x0020U, 0x0000U,
+         0x0000U, 0x0000U, 0x0000U, 0x0080U},
+        {0x0040U, 0x0020U, 0x0000U, 0x0000U,
+         0x0000U, 0x0000U, 0x0080U, 0x0060U},
+        {0x0020U, 0x0000U, 0x0000U, 0x0000U,
+         0x0000U, 0x0080U, 0x0060U, 0x0040U},
+        {0x0000U, 0x0000U, 0x0000U, 0x0000U,
+         0x0080U, 0x0060U, 0x0040U, 0x0020U},
+        {0x0000U, 0x0000U, 0x0000U, 0x0080U,
+         0x0060U, 0x0040U, 0x0020U, 0x0000U},
+        {0x0000U, 0x0000U, 0x0080U, 0x0060U,
+         0x0040U, 0x0020U, 0x0000U, 0x0000U},
+        {0x0000U, 0x0080U, 0x0060U, 0x0040U,
+         0x0020U, 0x0000U, 0x0000U, 0x0000U},
+    }};
+    for (std::size_t previous_phase = 0; previous_phase < 8U;
+         ++previous_phase) {
+        PreTitleSequenceState strobe_state{};
+        strobe_state.strobe_countdown = 0;
+        strobe_state.strobe_phase = static_cast<std::uint8_t>(previous_phase);
+        PreTitleLogoStrobePalette published{};
+        PreTitleSequenceCallbacks strobe_callbacks{};
+        strobe_callbacks.animation.publish_logo_strobe_palette =
+            [&published](const PreTitleLogoStrobePalette& palette) {
+                published = palette;
+            };
+        advance_pre_title_logo_strobe(strobe_state, strobe_callbacks);
+        const auto next_phase = (previous_phase + 1U) % 8U;
+        if (published.phase != next_phase ||
+            published.color_words != expected_strobes[next_phase]) {
+            return 6;
+        }
     }
 
     return 0;

@@ -122,8 +122,8 @@ int main(int argc, char** argv) {
     };
     startup_callbacks.pre_title.animation.build_title_sprite_records =
         [&sprite_builds] { ++sprite_builds; };
-    startup_callbacks.pre_title.animation.publish_logo_strobe_phase =
-        [&strobe_phase_updates](const std::uint8_t) {
+    startup_callbacks.pre_title.animation.publish_logo_strobe_palette =
+        [&strobe_phase_updates](const PreTitleLogoStrobePalette&) {
             ++strobe_phase_updates;
         };
     startup_callbacks.pre_title.animation.step_entity_color_words = [] {};

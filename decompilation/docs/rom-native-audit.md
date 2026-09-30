@@ -104,6 +104,13 @@ leaves, the raw-origin `0x5D57E` refresh list, the coordinator, and the three
 `partial` because the full visual hill still needs an independent Genesis
 capture and defended image dump.
 
+The adjacent `0x5D8BA` leaf is now source-traced through its palette data as
+well: after the five-tick countdown expires, phase `0..7` selects an
+eight-word sliding window from the fifteen words at `0x5DCE6`, and the host
+contract publishes those words as `PreTitleLogoStrobePalette`. This preserves
+the source's actual figure-color update while keeping the palette destination
+out of the native runtime.
+
 ### Pre-title transfer boundaries: `0x5DA50` / `0x5D886`
 
 The pre-title setup and final-display calls now expose the source transfer

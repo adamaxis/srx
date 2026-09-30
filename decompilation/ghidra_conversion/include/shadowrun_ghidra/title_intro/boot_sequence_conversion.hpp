@@ -85,6 +85,14 @@ struct PreTitleGridWriteRequest {
     std::uint16_t word_mask = 0;
 };
 
+struct PreTitleLogoStrobePalette {
+    std::uint8_t phase = 0;
+    // The eight words written by 0x5D8BA to the title figure's palette
+    // window. They are copied from the source table at 0x5DCE6 using the
+    // phase as a one-word sliding offset.
+    std::array<std::uint16_t, 8> color_words{};
+};
+
 // Direct child-call boundaries recovered from 0x5DA50. The zeroing is
 // performed by setup_pre_title_resources; callbacks expose semantic host
 // requests rather than VDP command words or ROM addresses.
@@ -105,7 +113,8 @@ struct PreTitleResourceCallbacks {
 // Direct child-call boundaries recovered from 0x5D938, 0x5D996, and 0x5D8BA.
 struct PreTitleAnimationCallbacks {
     std::function<void()> build_title_sprite_records;
-    std::function<void(std::uint8_t phase)> publish_logo_strobe_phase;
+    std::function<void(const PreTitleLogoStrobePalette&)>
+        publish_logo_strobe_palette;
     std::function<void()> step_entity_color_words;
 };
 
@@ -127,9 +136,9 @@ enum class PreTitleSequenceResult {
     callback_unresolved,
 };
 
-// ROM 0x5D8BA: update the five-tick logo strobe cadence and publish its
-// eight-phase palette selection. The actual palette table remains an asset /
-// presentation boundary.
+// ROM 0x5D8BA: update the five-tick logo strobe cadence and publish the
+// eight source palette words selected by its phase. The host receives typed
+// color data rather than the source CRAM address.
 void advance_pre_title_logo_strobe(
     PreTitleSequenceState& state,
     const PreTitleSequenceCallbacks& callbacks);
