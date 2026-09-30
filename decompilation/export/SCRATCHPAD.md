@@ -937,6 +937,23 @@ selected pointer is advanced by eight bytes and built with `D6=0x6000`; the
 host resolver now contains the extracted five-entry table data instead of
 collapsing these into one generic title sprite.
 
+The 0x1BB6A advance_title_noise_effect audit corrected four source-boundary
+errors in the prior conversion. When FFF0A1 bit 2 is clear, the routine
+decrements FFE0CA; expiry sets that bit, reloads 0x3C, and returns without
+drawing. Otherwise it decrements the active countdown; expiry clears bits 2 and
+0, attaches behavior descriptor E, clears FFE0D6, sets FFE0F4 to one, and
+refreshes the menu selection. For an active non-expiry tick whose countdown
+low three bits are at least four, it first builds the inline records at
+0x1DAE0 and 0x1DAEA at (0x158,0xFC) and (0xE7,0xFC), then still enters the
+common row.
+
+The common row starts D1 at 0xD8, adds 0x10 before each of seven builds, uses
+D2=0xEC and D6=0x2000, and selects one of the inline streams at 0x1DAB8,
+0x1DAC2, 0x1DACC, or 0x1DAD6 from a local D4 copy of FFE0CE. The source
+consumes those streams directly; they are not pointer-table entries and do not
+receive a synthetic +8 payload offset. The host state therefore keeps the PRNG
+word unchanged while typed builder requests expose the actual seven x positions
+and source record tokens.
 The `0x1BA6E advance_title_burst_animation` pass now uses the actual four-entry
 pointer table at ROM `0x1D970`: [`0x1D980, 0x1D9BA, 0x1D9E4, 0x1DA26`]. The
 source advances the selected pointer by eight bytes before the attribute-offset

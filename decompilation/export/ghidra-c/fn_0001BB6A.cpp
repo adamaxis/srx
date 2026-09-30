@@ -7,6 +7,11 @@
 //   0x00001378 build_title_sprite_records
 //   0x0001A09C refresh_menu_selection_after_clear
 //   0x0001B680 attach_behavior_descriptor_e
+// Inline sprite-record streams consumed directly by 0x00001378:
+//   0x001DAB8, 0x001DAC2, 0x001DACC, 0x001DAD6
+//   0x001DAE0, 0x001DAEA
+// The common row starts at x=0xD8, adds 0x10 before each of seven builds,
+// uses y=0xEC and D6=0x2000, and rotates a local D4 copy of FFE0CE.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -36,10 +41,16 @@ void advance_title_noise_effect(void)
       return;
     }
     if (3 < (DAT_00ffe0ca & 7)) {
+      // Paired top sprites: 0x1DAE0 at (0x158,0xFC), then 0x1DAEA
+      // at (0xE7,0xFC), both with D6=0x2000. The common seven-sprite
+      // row below still runs after these two builds.
       build_title_sprite_records();
       build_title_sprite_records();
     }
   }
+  // A negative inactive countdown returns above without entering this row.
+  // Otherwise D4 is a working copy of FFE0CE; the source table selected by
+  // its rotations is passed directly to the builder, with no +8 adjustment.
   sVar1 = 6;
   do {
     build_title_sprite_records();

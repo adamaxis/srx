@@ -26,7 +26,9 @@ struct TitleNoiseEffectCallbacks {
     std::function<void()> attach_behavior_descriptor_e;
     std::function<void()> refresh_menu_selection_after_clear;
     std::function<std::optional<std::uint16_t>()> advance_source_prng;
-    // Resolve one source sprite pointer and its +8 payload.
+    // The source passes each of these inline sprite-record streams directly
+    // to build_title_sprite_records; this callback is a host-data boundary,
+    // not a pointer-table lookup.
     std::function<std::optional<std::uint32_t>(
         std::uint32_t source_table_token)>
         resolve_sprite_data;
@@ -41,10 +43,19 @@ enum class TitleNoiseEffectAction {
     sprite_data_unresolved,
 };
 
-// ROM 0x1BB6A: advance the title noise/effect branch selected by FFF0A1 bit
-// 2. The active branch emits paired sprites after a seven-step countdown;
-// the inactive branch arms that flag at expiry, otherwise advances the source
-// PRNG and emits seven sprites selected by two rotated low bits per pass.
+// Typed extraction of the six inline sprite-record streams used by ROM
+// 0x1BB6A. Unlike pointer-table callers elsewhere in the title effects, the
+// source A2 values at 0x1DAB8/0x1DAC2/0x1DACC/0x1DAD6/0x1DAE0/0x1DAEA
+// already point at the records consumed by build_title_sprite_records.
+std::optional<std::uint32_t> resolve_title_noise_effect_sprite_data(
+    std::uint32_t source_table_token);
+
+// ROM 0x1BB6A: advance the Matrix-noise title effect selected by FFF0A1 bit
+// 2. The active branch optionally emits the paired top sprites, then always
+// runs the seven-position noise row; the inactive branch arms that flag at
+// expiry, otherwise advances the source PRNG and runs the same row. The row
+// rotates a local D4 copy through the source carry branches and advances x by
+// 0x10 before each build.
 TitleNoiseEffectAction advance_title_noise_effect(
     TitleNoiseEffectState& state,
     const TitleNoiseEffectCallbacks& callbacks);
