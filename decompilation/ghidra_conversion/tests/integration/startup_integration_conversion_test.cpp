@@ -79,7 +79,7 @@ StartupIntegrationCallbacks make_callbacks(
         [&observations] { record(observations, "decode_source_stream"); };
     callbacks.pre_title.resources.advance_title_palette_fade =
         [&observations] { record(observations, "title_palette_fade"); };
-    callbacks.pre_title.resources.write_vdp_grid = [&observations] {
+    callbacks.pre_title.resources.write_pre_title_grid = [&observations](const auto&) {
         record(observations, "write_vdp_grid");
     };
     callbacks.pre_title.resources.reset_vdp_upload_state = [&observations] {

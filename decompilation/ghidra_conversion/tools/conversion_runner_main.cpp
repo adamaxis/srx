@@ -111,7 +111,8 @@ int main(int argc, char** argv) {
         [] {};
     startup_callbacks.pre_title.resources.advance_title_palette_fade =
         [&palette_steps] { ++palette_steps; };
-    startup_callbacks.pre_title.resources.write_vdp_grid = [] {};
+    startup_callbacks.pre_title.resources.write_pre_title_grid =
+        [](const auto&) {};
     startup_callbacks.pre_title.resources.reset_vdp_upload_state = [] {};
     startup_callbacks.pre_title.wait_for_vblank = [&startup_state] {
         wait_for_vblank(startup_state.frame,

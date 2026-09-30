@@ -55,6 +55,7 @@ int main() {
     std::size_t hscroll_updates = 0;
     std::size_t resource_stream_writes = 0;
     std::vector<std::string> resource_events;
+    std::vector<PreTitleGridWriteRequest> grid_requests;
     bool resource_work_area_zeroed = false;
     std::size_t palette_fades = 0;
     PreTitleSequenceCallbacks pre_title_callbacks{};
@@ -80,8 +81,10 @@ int main() {
         [&resource_events] { resource_events.emplace_back("decode-upload"); };
     pre_title_callbacks.resources.advance_title_palette_fade =
         [&palette_fades] { ++palette_fades; };
-    pre_title_callbacks.resources.write_vdp_grid = [&resource_events] {
+    pre_title_callbacks.resources.write_pre_title_grid =
+        [&resource_events, &grid_requests](const auto& request) {
         resource_events.emplace_back("write-grid");
+        grid_requests.push_back(request);
     };
     pre_title_callbacks.resources.reset_vdp_upload_state = [&resource_events] {
         resource_events.emplace_back("reset-upload");
@@ -109,7 +112,16 @@ int main() {
         resource_events != std::vector<std::string>{
             "clear-a", "clear-b", "prepare-title", "refresh-field",
             "decode-upload", "write-grid", "clear-a", "clear-b",
-            "reset-upload", "write-grid"}) {
+            "reset-upload", "write-grid"} ||
+        grid_requests.size() != 2U ||
+        grid_requests[0].purpose != PreTitleGridPurpose::resource_setup ||
+        grid_requests[0].transfer_block_count != 3U ||
+        grid_requests[0].words_per_block != 12U ||
+        grid_requests[0].word_mask != 0U ||
+        grid_requests[1].purpose != PreTitleGridPurpose::final_display ||
+        grid_requests[1].transfer_block_count != 4U ||
+        grid_requests[1].words_per_block != 16U ||
+        grid_requests[1].word_mask != 0x4000U) {
         return 2;
     }
 

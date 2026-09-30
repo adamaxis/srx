@@ -490,9 +490,13 @@ private:
                 note_presentation_boundary(
                     "pre_title.advance_title_palette_fade");
             };
-        startup_callbacks_.pre_title.resources.write_vdp_grid = [this] {
-            note_presentation_boundary("pre_title.write_vdp_grid");
-        };
+        startup_callbacks_.pre_title.resources.write_pre_title_grid =
+            [this](const PreTitleGridWriteRequest& request) {
+                note_presentation_boundary(
+                    request.purpose == PreTitleGridPurpose::resource_setup
+                        ? "pre_title.write_resource_grid"
+                        : "pre_title.write_final_grid");
+            };
         startup_callbacks_.pre_title.resources.reset_vdp_upload_state =
             [this] {
                 note_presentation_boundary(

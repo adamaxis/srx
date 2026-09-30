@@ -71,9 +71,23 @@ struct PreTitleSequenceState {
     std::array<std::uint16_t, kPreTitleHorizontalScrollLines> horizontal_scroll{};
 };
 
+enum class PreTitleGridPurpose {
+    resource_setup,
+    final_display,
+};
+
+struct PreTitleGridWriteRequest {
+    PreTitleGridPurpose purpose = PreTitleGridPurpose::resource_setup;
+    // These are the source 0x1232 loop counts after translating DBF values to
+    // ordinary counts: D1 transfer blocks and D7+1 words per block.
+    std::uint16_t transfer_block_count = 0;
+    std::uint16_t words_per_block = 0;
+    std::uint16_t word_mask = 0;
+};
+
 // Direct child-call boundaries recovered from 0x5DA50. The zeroing is
-// performed by setup_pre_title_resources; the callback represents the source
-// write-word-stream operation without exposing a VDP or ROM address.
+// performed by setup_pre_title_resources; callbacks expose semantic host
+// requests rather than VDP command words or ROM addresses.
 struct PreTitleResourceCallbacks {
     std::function<void()> clear_plane_a;
     std::function<void()> clear_plane_b;
@@ -84,7 +98,7 @@ struct PreTitleResourceCallbacks {
     std::function<void()> refresh_field_resource_streams;
     std::function<void()> decode_and_upload_source_stream;
     std::function<void()> advance_title_palette_fade;
-    std::function<void()> write_vdp_grid;
+    std::function<void(const PreTitleGridWriteRequest&)> write_pre_title_grid;
     std::function<void()> reset_vdp_upload_state;
 };
 

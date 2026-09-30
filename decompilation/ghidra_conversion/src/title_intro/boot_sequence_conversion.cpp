@@ -32,7 +32,7 @@ bool has_pre_title_callbacks(const PreTitleSequenceCallbacks& callbacks) {
            static_cast<bool>(resources.refresh_field_resource_streams) &&
            static_cast<bool>(resources.decode_and_upload_source_stream) &&
            static_cast<bool>(resources.advance_title_palette_fade) &&
-           static_cast<bool>(resources.write_vdp_grid) &&
+           static_cast<bool>(resources.write_pre_title_grid) &&
            static_cast<bool>(resources.reset_vdp_upload_state) &&
            static_cast<bool>(callbacks.wait_for_vblank) &&
            static_cast<bool>(animation.build_title_sprite_records) &&
@@ -144,7 +144,8 @@ void setup_pre_title_resources(
     callbacks.decode_and_upload_source_stream();
     state.dirty_flags = static_cast<std::uint8_t>(state.dirty_flags | 0x0DU);
     callbacks.advance_title_palette_fade();
-    callbacks.write_vdp_grid();
+    callbacks.write_pre_title_grid(
+        {PreTitleGridPurpose::resource_setup, 3U, 12U, 0U});
 }
 
 void finalize_pre_title_display(
@@ -154,7 +155,8 @@ void finalize_pre_title_display(
     callbacks.clear_plane_a();
     callbacks.clear_plane_b();
     callbacks.reset_vdp_upload_state();
-    callbacks.write_vdp_grid();
+    callbacks.write_pre_title_grid(
+        {PreTitleGridPurpose::final_display, 4U, 16U, 0x4000U});
     callbacks.advance_title_palette_fade();
 }
 

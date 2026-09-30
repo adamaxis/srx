@@ -104,6 +104,18 @@ leaves, the raw-origin `0x5D57E` refresh list, the coordinator, and the three
 `partial` because the full visual hill still needs an independent Genesis
 capture and defended image dump.
 
+### Pre-title transfer boundaries: `0x5DA50` / `0x5D886`
+
+The pre-title setup and final-display calls now expose the source transfer
+semantics without importing Genesis VDP state into the host runtime. `0x5DA50`
+keeps its clear, resource-preparation, workspace-clear, stream, dirty-bit,
+palette, and grid order, then publishes a `resource_setup` request for three
+transfer blocks of twelve words with no word mask. `0x5D886` keeps the two plane
+clears and upload-state reset, then publishes a `final_display` request for
+four blocks of sixteen words with source mask `0x4000` before the palette fade.
+The Qt boundary names those two host operations separately; neither callback
+receives a ROM pointer, VDP command word, or Genesis memory address.
+
 The slot-availability audit also corrected a semantic narrowing in the typed
 conversion: `0x19C54 -> 0x19C5C` preserves the raw `FFFBCC` byte because the
 source callers use it as a numeric action/HUD value. A nonzero boolean is not
