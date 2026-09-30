@@ -8,7 +8,7 @@ namespace shadowrun::ghidra_conversion {
 enum class FieldExitResourceProfile {
     scene_zero_submode_three,
     scene_one_submode_one,
-    scene_two_submode_two,
+    stoker_motel,
     scene_three_submode_one,
     scene_four_submode_zero,
     scene_four_submode_zero_negative_variant,
@@ -22,9 +22,9 @@ enum class FieldExitPromptAsset {
     scene_one_submode_one_positive,
     scene_one_submode_one_negative,
     scene_one_submode_one_flagged,
-    scene_two_submode_two_default,
-    scene_two_submode_two_positive,
-    scene_two_submode_two_negative,
+    stoker_motel_arrival,
+    stoker_motel_package_question,
+    stoker_motel_package_handoff,
     scene_three_submode_one_default,
     scene_three_submode_one_positive,
     scene_three_submode_one_negative,
@@ -65,10 +65,13 @@ enum class FieldExitPromptAction {
 };
 
 // ROM 0x1F65A: select the field-exit prompt/resource pair for the current
-// scene/submode and alternate-result marker, then run the exit services. A
-// matched route publishes the source's D6=-1 result; a negative FFF10D marker
-// enters the specifically identified Hotel Options menu first. The source's
-// FFFC1E bits 13 and 30 are modeled as ordinary world flags.
+// scene/submode and alternate-result marker, then run the exit services. The
+// scene-2/submode-2 route is the Stoker's Coffin Motel interaction: its
+// source records at 0xF4AA0/0xF4AF4/0xF4AEC are exposed as arrival,
+// package-question, and package-handoff prompt identities. A matched route
+// publishes the source's D6=-1 result; a negative FFF10D marker enters the
+// specifically identified Hotel Options menu first. The source's FFFC1E bits
+// 13 and 30 are modeled as ordinary world flags.
 FieldExitPromptAction select_field_exit_prompt(
     std::uint8_t scene_id,
     std::uint8_t submode,

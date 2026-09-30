@@ -915,6 +915,27 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+## 2026-09-30 Stoker motel source mapping
+
+The Stoker source mapping is now corrected rather than guessed. `0x1F65A`
+selects scene `2`/submode `2` with exit marker `0x14`; its prompt records are:
+
+- `0xF4AA0` (`alternate_result == 0`): title `0x1167EB`, the `<MORE>` page
+  marker `0x0FE5BF`, and terminal command `0xE9`. Its next prompt record at
+  `0xF4AB4` is the manager greeting (`0x116962`) with the captured “place to
+  crash” and “talk later” choices.
+- `0xF4AF4` (`alternate_result > 0`): `0x112765`, “Do you have the package,
+  breeder?” and its terminal sentinel.
+- `0xF4AEC` (`alternate_result < 0`): `0x1168A3`, Stoker's one-good-eye
+  package handoff and its terminal sentinel.
+
+The typed field-exit conversion now calls these
+`stoker_motel_arrival`, `stoker_motel_package_question`, and
+`stoker_motel_package_handoff`, and calls the shared profile `stoker_motel`.
+This fixes the provenance without claiming that the nested command handlers,
+portrait resource, payment mutation, or return-to-field transition are
+already converted.
+
 ## 2026-09-30 field-interaction source correction
 
 The old ledger entry that called `0x20E48` the Stoker dialog was not supported

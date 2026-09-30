@@ -55,17 +55,17 @@ FieldExitPromptAction select_field_exit_prompt(
                                                  state.world_flags);
     } else if (scene_id == 2U && submode == 2U) {
         selection.resource_profile =
-            FieldExitResourceProfile::scene_two_submode_two;
+            FieldExitResourceProfile::stoker_motel;
         selection.exit_marker = 0x14U;
         if (alternate_result > 0) {
             selection.prompt_asset =
-                FieldExitPromptAsset::scene_two_submode_two_positive;
+                FieldExitPromptAsset::stoker_motel_package_question;
         } else if (alternate_result < 0) {
             selection.prompt_asset =
-                FieldExitPromptAsset::scene_two_submode_two_negative;
+                FieldExitPromptAsset::stoker_motel_package_handoff;
         } else {
             selection.prompt_asset =
-                FieldExitPromptAsset::scene_two_submode_two_default;
+                FieldExitPromptAsset::stoker_motel_arrival;
         }
     } else if (scene_id == 3U && submode == 1U) {
         selection.resource_profile =

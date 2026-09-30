@@ -50,6 +50,28 @@ int main() {
         return 3;
     }
 
+    if (expect(select_field_exit_prompt(2U, 2U, 0, state, callbacks) ==
+                   FieldExitPromptAction::prompt_presented &&
+               observed.resource_profile ==
+                   FieldExitResourceProfile::stoker_motel &&
+               observed.prompt_asset ==
+                   FieldExitPromptAsset::stoker_motel_arrival &&
+               observed.exit_marker == 0x14U) != 0) {
+        return 8;
+    }
+    if (expect(select_field_exit_prompt(2U, 2U, 1, state, callbacks) ==
+                   FieldExitPromptAction::prompt_presented &&
+               observed.prompt_asset ==
+                   FieldExitPromptAsset::stoker_motel_package_question) != 0) {
+        return 9;
+    }
+    if (expect(select_field_exit_prompt(2U, 2U, -1, state, callbacks) ==
+                   FieldExitPromptAction::prompt_presented &&
+               observed.prompt_asset ==
+                   FieldExitPromptAsset::stoker_motel_package_handoff) != 0) {
+        return 10;
+    }
+
     if (expect(select_field_exit_prompt(4U, 0U, -1, state, callbacks) ==
                    FieldExitPromptAction::prompt_presented &&
                observed.resource_profile ==
@@ -86,7 +108,7 @@ int main() {
 
     if (expect(select_field_exit_prompt(9U, 9U, 0, state, callbacks) ==
                    FieldExitPromptAction::no_matching_scene &&
-               service_calls == 4) != 0) {
+               service_calls == 7) != 0) {
         return 7;
     }
 
