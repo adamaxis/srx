@@ -68,6 +68,29 @@ row-level report as context instead of being misreported as fall-through.
 These are remaining conversion-evidence sweeps, not permission to invent a
 replacement.
 
+### Pre-title world-scene effect slice: `0x5D260` / `0x5D3E6` / `0x5D416` / `0x5D55C`
+
+The title-intro conversion now owns the concrete phase leaves that the
+generated catalog previously described only as generic intro contracts:
+
+- `0x5D260` clears and seeds the typed world-scene frame state.
+- `0x5D3E6` sets the selected entity's secondary-effect flag before the two
+  child behavior calls, preserving their source order.
+- `0x5D416` dispatches phase `0x14` special-effect audio/spawn, the
+  `0x16/0x20/0x21/0x23` transition metadata block, the five backward origin
+  phases, the seven forward audio phases, and the default metadata block.
+  Every handled phase publishes source dirty bits `0`, `2`, and `3`.
+- `0x5D55C` advances the shared cadence counter and wraps its eight-position
+  effect frame.
+
+The host contract uses named audio cues, metadata-source enums, scene-origin
+fields, and callbacks; it does not retain the source VDP command words or ROM
+addresses. The three timer leaves already present in the same title-intro
+module remain separately tested. The enclosing `0x5D29C` state machine,
+`0x5D57E` sprite-record refresh boundary, and `0x5D6BC` allocator/template
+path are still open audit items and are not being claimed as converted by this
+slice.
+
 The slot-availability audit also corrected a semantic narrowing in the typed
 conversion: `0x19C54 -> 0x19C5C` preserves the raw `FFFBCC` byte because the
 source callers use it as a numeric action/HUD value. A nonzero boolean is not

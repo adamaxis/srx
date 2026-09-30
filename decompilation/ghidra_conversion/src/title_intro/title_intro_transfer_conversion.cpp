@@ -30,6 +30,73 @@ void reset_world_frame_service_state(WorldFrameServiceState& state) {
     state.words[0x12] = 0x00B4U;
 }
 
+WorldSceneEffectPhaseResult advance_world_scene_effect_phase(
+    WorldFrameServiceState& state,
+    const WorldSceneEffectPhaseCallbacks& callbacks) {
+    const auto phase = static_cast<std::int16_t>(state.words[0x12]);
+    if (phase > 0x32) {
+        return {};
+    }
+
+    WorldSceneEffectPhaseAction action =
+        WorldSceneEffectPhaseAction::load_default_resource_metadata;
+    if (phase == 0x14) {
+        action = WorldSceneEffectPhaseAction::play_special_effect_audio;
+        if (callbacks.play_audio) {
+            callbacks.play_audio(WorldSceneEffectAudioCue::special_effect);
+        }
+        if (callbacks.spawn_special_effect) {
+            callbacks.spawn_special_effect();
+        }
+    } else if (phase == 0x16 || phase == 0x20 || phase == 0x21 ||
+               phase == 0x23) {
+        action = WorldSceneEffectPhaseAction::load_transition_resource_metadata;
+        if (callbacks.copy_resource_metadata) {
+            callbacks.copy_resource_metadata(
+                WorldSceneEffectMetadataSource::transition_blank_resource);
+        }
+    } else if (phase == 0x18 || phase == 0x1A || phase == 0x1D ||
+               phase == 0x24 || phase == 0x27) {
+        action = WorldSceneEffectPhaseAction::shift_scene_origin_backward;
+        state.scene_origin_x = static_cast<std::int16_t>(
+            state.scene_origin_x - 8);
+        state.scene_origin_y = static_cast<std::int16_t>(
+            state.scene_origin_y - 8);
+    } else if (phase == 0x19 || phase == 0x1B || phase == 0x1E ||
+               phase == 0x25 || phase == 0x26 || phase == 0x28 ||
+               phase == 0x29) {
+        action = WorldSceneEffectPhaseAction::play_scene_transition_audio;
+        if (callbacks.play_audio) {
+            callbacks.play_audio(WorldSceneEffectAudioCue::scene_transition);
+        }
+        state.scene_origin_x = static_cast<std::int16_t>(
+            state.scene_origin_x + 8);
+        state.scene_origin_y = static_cast<std::int16_t>(
+            state.scene_origin_y + 8);
+    } else {
+        if (callbacks.copy_resource_metadata) {
+            callbacks.copy_resource_metadata(
+                WorldSceneEffectMetadataSource::default_mode_resource);
+        }
+    }
+
+    state.dirty_flags = static_cast<std::uint8_t>(state.dirty_flags | 0x0DU);
+    return {action, state.dirty_flags};
+}
+
+void spawn_world_scene_secondary_effect(
+    WorldSceneSecondaryEffectState& state,
+    const WorldSceneSecondaryEffectCallbacks& callbacks) {
+    state.behavior_flags = static_cast<std::uint8_t>(
+        state.behavior_flags | 0x01U);
+    if (callbacks.apply_entity_secondary_effect) {
+        callbacks.apply_entity_secondary_effect();
+    }
+    if (callbacks.prepare_auxiliary_behavior) {
+        callbacks.prepare_auxiliary_behavior();
+    }
+}
+
 namespace {
 
 void tick_world_scene_effect_timer(
@@ -81,6 +148,11 @@ WorldSceneEffectSpriteBuild advance_world_scene_effect_timer_a(
         frame < kWorldSceneEffectTimerALists.size()
             ? kWorldSceneEffectTimerALists[frame]
             : 0U);
+}
+
+void advance_world_scene_effect_frame(WorldFrameServiceState& state) {
+    tick_world_scene_effect_timer(state.words[1], state.words[0x0C], 0x0A,
+                                  8U);
 }
 
 WorldSceneEffectSpriteBuild advance_world_scene_effect_timer_b(
