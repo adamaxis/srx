@@ -1078,10 +1078,11 @@ primary slot (`FF1584`, stage `FF158D`) on the right path, clears
 `FFE0D6`/`FFE05E`, and services the menu.
 
 `0x1CA12` is now `advance_world_effect_motion`. It finalizes when the
-decremented `FFE070` word is negative; otherwise it advances the `FFE072`
-phase, selects the `0x1CA8C`/`0x1CAAC` source entry according to the sign of
-`FFE06C`, subtracts `0x1A` from `FFE068`, and builds at the shifted position
-with attributes `0x2000`.
+decremented `FFE070` word is negative; otherwise it advances `FFE072`, selects
+the exact byte from `0x1CA8C`, applies the ROM's +5 source-index adjustment
+only for nonnegative `FFE06C`, and resolves one of the nine direct streams at
+`0x1CAAC`. It then adds `FFE06C` to fixed-point X, subtracts `0x1A` from
+fixed-point Y, shifts both by four, and builds with attributes `0x2000`.
 
 The record helpers behind the adjacent title/world path are now typed as
 `0x1D048` `advance_world_effect_record` and `0x1D0DE`

@@ -17,8 +17,9 @@ struct WorldEffectMotionState {
 };
 
 struct WorldEffectMotionCallbacks {
-    // ROM 0x1CA8C selects one of the source pointer-table entries at 0x1CAAC;
-    // nonnegative horizontal motion adds five to that source index.
+    // ROM 0x1CA8C selects one of the direct source streams at 0x1CAAC;
+    // nonnegative horizontal motion adds five to that source index. When
+    // absent, the exact extracted table is used.
     std::function<std::optional<std::uint32_t>(
         std::uint16_t phase, bool reverse_table)>
         resolve_sprite_data;
@@ -35,6 +36,12 @@ enum class WorldEffectMotionAction {
     finalized,
     sprite_data_unresolved,
 };
+
+// Typed extraction of the 32-byte phase table at 0x1CA8C and the nine direct
+// sprite streams at 0x1CAAC. `horizontal_motion_is_negative` selects the
+// source branch before the ROM's +5 index adjustment.
+std::optional<std::uint32_t> resolve_world_effect_motion_sprite_data(
+    std::uint16_t phase, bool horizontal_motion_is_negative);
 
 // ROM 0x1CA12: advance the direction-dependent world-effect motion, subtract
 // the source y offset, build the selected sprite, and finalize through the

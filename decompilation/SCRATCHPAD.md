@@ -1542,8 +1542,10 @@ sequence, pending-buffer decrement, and reset world origin as typed native
 state and callbacks.
 
 `0x1CA12` is now `advance_world_effect_motion`, preserving the negative-
-countdown finalizer, direction-dependent source-table callback, fixed Y
-subtraction, shifted sprite placement, and menu-service boundary.
+countdown finalizer, the exact 32-byte `0x1CA8C` phase table, nine direct
+`0x1CAAC` sprite streams, direction-dependent +5 source indexing, fixed-point
+X/Y update, and 0x2000 sprite-build boundary in typed state. The normal path
+no longer needs a source resolver callback.
 
 `0x1D048` is now `advance_world_effect_record`: it models the mixed world-
 effect record's lifetime/frame timers, `0x15E56` easing lookup, fixed-point
