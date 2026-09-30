@@ -32,8 +32,9 @@ struct TitleSweepSpriteBuild {
 };
 
 struct TitleSweepAnimationCallbacks {
-    // ROM 0x1C6D4 selects a pointer-table entry at 0x1C6BC, a signed x
-    // offset, and the next byte delay for the 32-phase sweep.
+    // ROM 0x1C6D4 selects a direct sprite stream from the six-entry pointer
+    // table at 0x1C6BC, a signed x offset, and the next byte delay for the
+    // 32-phase sweep. When absent, the exact extracted table is used.
     std::function<std::optional<TitleSweepFrame>(
         std::uint16_t phase)>
         resolve_frame;
@@ -48,6 +49,12 @@ enum class TitleSweepAnimationAction {
     finalized,
     frame_unresolved,
 };
+
+// Typed extraction of ROM 0x1C6BC/0x1C6D4. The returned sprite-data token is
+// the direct inline stream selected by the frame record; it is not a runtime
+// ROM pointer lookup.
+std::optional<TitleSweepFrame> resolve_title_sweep_frame(
+    std::uint16_t phase);
 
 // ROM 0x1C61C: advance the delayed 32-phase sweep. Each active phase emits
 // the same source sprite at base_x +/- signed offset; phase 0x20 clears the

@@ -1042,7 +1042,17 @@ The adjacent title profile pair is now typed. `0x1BEBA` copies the source profil
 
 `0x1BCE8` is now `advance_title_profile_motion`. The conversion separates the 13-frame profile phase selected from the `0x1BE4E` records from the later 60-step movement path. The movement path preserves the source `0x15E56` easing lookup, signed fixed-point scaling, `0x1BE3E` four-frame sprite selection, the `0x0F` secondary countdown, and the two finalization entry points that clear `FFE058`/`FFE0D6` and conditionally publish `FFE0F4` before the menu refresh boundary.
 
-`0x1C61C` is now `advance_title_sweep_animation`. It decrements the record's byte delay, advances through the 32 entries at `0x1C6D4`, resolves the sprite pointer from `0x1C6BC`, and emits the same sprite at `base_x + offset` and `base_x - offset` with attributes `0x6000`. Source bit 3 suppresses the pair without suppressing timing; phase `0x20` clears bits 0 and 3, attaches behavior B, clears `FFE0D6`, and returns through the menu/title boundary.
+`0x1C61C` is now `advance_title_sweep_animation`. It decrements the record's
+byte delay, advances through the 32 four-byte records at `0x1C6D4`, resolves
+one of the six direct sprite streams at `0x1C6BC`, and emits the same stream at
+`base_x + signed_offset` and `base_x - signed_offset` with attributes `0x6000`.
+The typed conversion now contains every source index, signed offset, and low
+delay byte instead of requiring a resolver for the normal path. Source bit 3
+suppresses the pair without suppressing timing; phase `0x20` clears bits 0 and
+3, attaches behavior B, clears `FFE0D6`, and returns through menu-selection
+code four. The source reads the low byte immediately after the 32-entry table
+before that terminal branch; the conversion preserves the resulting `-1`
+delay as state without treating code bytes as runtime data.
 
 The paired title-layer path at `0x1C3FA`/`0x1C506` is now typed. The outer
 routine updates the secondary (+0x08 descriptor) phase first and the primary
