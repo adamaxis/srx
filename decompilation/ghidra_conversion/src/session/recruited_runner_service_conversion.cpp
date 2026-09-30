@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstddef>
+#include <optional>
 
 namespace shadowrun::ghidra_conversion {
 namespace {
@@ -11,6 +12,7 @@ constexpr std::size_t kSourcePositionYOffset = 0x04U;
 constexpr std::uint8_t kServiceActiveBit = 0x01U;
 constexpr std::uint8_t kPermanentPopulationByte = 0xFFU;
 constexpr std::uint8_t kStarkTemplateIndex = 9U;
+constexpr std::size_t kGenericConversationRunnerCount = 9U;
 
 struct RecruitedRunnerServiceFeeBase {
     std::uint16_t short_term = 0;
@@ -47,6 +49,25 @@ std::uint32_t divide_unsigned_word(const std::uint32_t value,
     // DIVU.W leaves the quotient in the low word. The source immediately
     // clears the high word with ANDI.L #$FFFF, so expose that result directly.
     return (value / divisor) & 0xFFFFU;
+}
+
+std::optional<RecruitedRunnerConversationRunner> generic_conversation_runner(
+    const std::size_t index) {
+    constexpr std::array<RecruitedRunnerConversationRunner,
+                         kGenericConversationRunnerCount>
+        kRunners{{RecruitedRunnerConversationRunner::ricky,
+                  RecruitedRunnerConversationRunner::winston_marrs,
+                  RecruitedRunnerConversationRunner::trent,
+                  RecruitedRunnerConversationRunner::petr_uvehr,
+                  RecruitedRunnerConversationRunner::walking_bear,
+                  RecruitedRunnerConversationRunner::phantom,
+                  RecruitedRunnerConversationRunner::two_fists,
+                  RecruitedRunnerConversationRunner::freya,
+                  RecruitedRunnerConversationRunner::rianna}};
+    if (index >= kRunners.size()) {
+        return std::nullopt;
+    }
+    return kRunners[index];
 }
 
 bool service_slot_is_active(const LiveRunnerRecord& record) {
@@ -171,6 +192,44 @@ prepare_recruited_runner_service_offer(
     state.permanent_fee = result.permanent_fee;
     result.action =
         RecruitedRunnerServiceOfferPreparationAction::prepared;
+    return result;
+}
+
+RecruitedRunnerConversationPromptResult
+select_recruited_runner_conversation_prompt(
+    const RecruitedRunnerServiceState& state) {
+    RecruitedRunnerConversationPromptResult result{};
+    const auto runner_index = static_cast<std::size_t>(
+        state.selected_runner_template_index);
+    if (runner_index == kStarkTemplateIndex) {
+        result.action =
+            RecruitedRunnerConversationAction::story_runner_special_case;
+        result.runner = RecruitedRunnerConversationRunner::stark;
+        return result;
+    }
+
+    const auto runner = generic_conversation_runner(runner_index);
+    if (!runner.has_value()) {
+        result.action =
+            RecruitedRunnerConversationAction::runner_index_unavailable;
+        return result;
+    }
+    if (runner_index >= state.service_progress_counters.size()) {
+        result.action =
+            RecruitedRunnerConversationAction::progress_counter_unavailable;
+        result.runner = *runner;
+        return result;
+    }
+
+    result.action = RecruitedRunnerConversationAction::selected;
+    result.runner = *runner;
+    const auto signed_progress = static_cast<std::int8_t>(
+        state.service_progress_counters[runner_index]);
+    if (signed_progress > 0) {
+        result.tone = RecruitedRunnerConversationTone::receptive;
+    } else if (signed_progress < 0) {
+        result.tone = RecruitedRunnerConversationTone::hostile;
+    }
     return result;
 }
 

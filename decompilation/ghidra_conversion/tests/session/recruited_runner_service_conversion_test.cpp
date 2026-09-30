@@ -79,6 +79,41 @@ int main() {
         return 3;
     }
 
+    offer_state.roster.primary_record.bytes[0x10U] = 0U;
+    offer_state.roster.secondary_record.bytes[0x10U] = 0U;
+    offer_state.selected_runner_template_index = 0U;
+    offer_state.service_progress_counters[0U] = 0U;
+    const auto neutral_prompt =
+        select_recruited_runner_conversation_prompt(offer_state);
+    if (!expect(neutral_prompt.action ==
+                    RecruitedRunnerConversationAction::selected &&
+                neutral_prompt.runner ==
+                    RecruitedRunnerConversationRunner::ricky &&
+                neutral_prompt.tone ==
+                    RecruitedRunnerConversationTone::neutral &&
+                neutral_prompt.options[1] ==
+                    RecruitedRunnerConversationOption::ask_to_hire_runner)) {
+        return 4;
+    }
+    offer_state.service_progress_counters[0U] = 1U;
+    if (!expect(select_recruited_runner_conversation_prompt(offer_state).tone ==
+                RecruitedRunnerConversationTone::receptive)) {
+        return 5;
+    }
+    offer_state.service_progress_counters[0U] = 0xFFU;
+    if (!expect(select_recruited_runner_conversation_prompt(offer_state).tone ==
+                RecruitedRunnerConversationTone::hostile)) {
+        return 6;
+    }
+    offer_state.selected_runner_template_index = 9U;
+    const auto stark_prompt =
+        select_recruited_runner_conversation_prompt(offer_state);
+    if (!expect(stark_prompt.action ==
+                    RecruitedRunnerConversationAction::story_runner_special_case &&
+                stark_prompt.runner == RecruitedRunnerConversationRunner::stark)) {
+        return 7;
+    }
+
     auto state = make_state();
     std::vector<int> callback_order;
     const RecruitedRunnerServiceCallbacks callbacks{
@@ -99,7 +134,7 @@ int main() {
                     0x3456U &&
                 state.roster.primary_record.bytes[0x8FU] == 0U &&
                 callback_order == std::vector<int>{0, 1})) {
-        return 4;
+        return 8;
     }
 
     state = make_state();
@@ -119,7 +154,7 @@ int main() {
                 state.roster.secondary_record.bytes[0x8FU] == 0xFFU &&
                 read_big_endian_word(state.roster.secondary_record, 0x04U) ==
                     0x789AU && callback_order == std::vector<int>{0, 1})) {
-        return 5;
+        return 9;
     }
 
     state = make_state();
@@ -130,7 +165,7 @@ int main() {
                 free_hire.charged_amount == 0U && state.funds == 1000U &&
                 state.permanent_fee == 0U &&
                 state.roster.primary_record.bytes[0x8FU] == 0xFFU)) {
-        return 6;
+        return 10;
     }
 
     state = make_state();
@@ -143,7 +178,7 @@ int main() {
                     RecruitedRunnerServicePrompt::insufficient_funds &&
                 state.funds == 249U && state.roster.primary_marker == 0xFFU &&
                 state.selected_entity.service_flags == 0x01U)) {
-        return 7;
+        return 11;
     }
 
     state = make_state();
@@ -151,12 +186,12 @@ int main() {
     state.roster.secondary_record.bytes[0x10U] = 0x01U;
     if (!expect(recruited_runner_service_availability(state.roster) ==
                 RecruitedRunnerServiceAvailability::roster_full)) {
-        return 8;
+        return 12;
     }
     state.roster.secondary_record.bytes[0x10U] = 0U;
     if (!expect(recruited_runner_service_availability(state.roster) ==
                 RecruitedRunnerServiceAvailability::available)) {
-        return 9;
+        return 13;
     }
 
     state = make_state(1U);
@@ -165,7 +200,7 @@ int main() {
     if (!expect(invalid.action ==
                     RecruitedRunnerServiceAction::invalid_runner_template &&
                 state.funds == 750U)) {
-        return 10;
+        return 14;
     }
 
     return 0;

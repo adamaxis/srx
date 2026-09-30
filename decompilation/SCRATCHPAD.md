@@ -999,6 +999,18 @@ descriptor: the first pointer selects `0xFFAFF`, “Looks like you already got
 your hands full, pal.”, and the next longword is the no-option sentinel. The
 native preparation result exposes this as `roster_full`.
 
+The adjacent command-table entry `0x211E8` is the recruited-runner
+conversation opener, not generic dialogue bookkeeping. It multiplies the
+selected runner index by 12 into the pointer table at `0xFE6E0`, tests the
+signed byte at `FFFC12 + index`, and chooses the neutral (`0`), receptive
+(`>0`), or hostile (`<0`) response triple. The nine indexed triples are Ricky,
+Winston Marrs, Trent, Petr Uvehr, Walking Bear, Phantom, Two Fists, Freya,
+and Rianna. Every selected prompt presents the concrete information, hire,
+and leave choices. The bytes immediately after the nine triples begin a
+separate root descriptor at `0xFE74C`; treating that as a tenth triple would
+return option strings as prompt bases, so index 9/Stark is exposed as an
+explicit story-specific boundary in the conversion.
+
 ## 2026-09-30 Stoker motel source mapping
 
 The Stoker source mapping is now corrected rather than guessed. `0x1F65A`

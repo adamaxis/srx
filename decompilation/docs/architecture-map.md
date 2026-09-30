@@ -152,8 +152,9 @@ The already-confirmed extraction families include:
   the field-mode and entity dispatch pointers;
 - save/roster compact records and the projections used by `0x59172` through
   `0x598B0`;
-- recruited-runner service state: the short-term single-run and permanent-hire
-  command family at `0x21226` through `0x213CA`, with typed fee inputs,
+- recruited-runner conversation/service state: the runner-specific opening
+  prompt at `0x211E8` and the short-term single-run/permanent-hire command
+  family at `0x21226` through `0x213CA`, with typed fee inputs,
   primary/secondary roster-slot selection, active-entity handoff, and field
   animation/upload callbacks. The ten-entry fee schedule, source cost
   arithmetic, and title-only roster-full prompt are typed;

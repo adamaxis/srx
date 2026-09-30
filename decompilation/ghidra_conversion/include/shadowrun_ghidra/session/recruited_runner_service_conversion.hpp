@@ -2,6 +2,7 @@
 
 #include "shadowrun_ghidra/session/runner_roster_conversion.hpp"
 
+#include <array>
 #include <cstdint>
 #include <functional>
 #include <vector>
@@ -44,6 +45,52 @@ enum class RecruitedRunnerServiceAction {
     invalid_runner_template,
     selected_entity_missing,
     runner_record_source_unavailable,
+};
+
+enum class RecruitedRunnerConversationRunner {
+    ricky,
+    winston_marrs,
+    trent,
+    petr_uvehr,
+    walking_bear,
+    phantom,
+    two_fists,
+    freya,
+    rianna,
+    stark,
+};
+
+enum class RecruitedRunnerConversationTone {
+    neutral,
+    receptive,
+    hostile,
+};
+
+enum class RecruitedRunnerConversationOption {
+    ask_for_information,
+    ask_to_hire_runner,
+    leave_conversation,
+};
+
+enum class RecruitedRunnerConversationAction {
+    selected,
+    story_runner_special_case,
+    runner_index_unavailable,
+    progress_counter_unavailable,
+};
+
+struct RecruitedRunnerConversationPromptResult {
+    RecruitedRunnerConversationAction action =
+        RecruitedRunnerConversationAction::runner_index_unavailable;
+    RecruitedRunnerConversationRunner runner =
+        RecruitedRunnerConversationRunner::ricky;
+    RecruitedRunnerConversationTone tone =
+        RecruitedRunnerConversationTone::neutral;
+    std::array<RecruitedRunnerConversationOption, 3> options{{
+        RecruitedRunnerConversationOption::ask_for_information,
+        RecruitedRunnerConversationOption::ask_to_hire_runner,
+        RecruitedRunnerConversationOption::leave_conversation,
+    }};
 };
 
 // The command handlers use the selected field entity at FFE128.  The entity's
@@ -141,6 +188,15 @@ RecruitedRunnerServiceOfferPreparationResult
 prepare_recruited_runner_service_offer(
     RecruitedRunnerServiceState& state,
     const RecruitedRunnerServiceCostModifiers& modifiers);
+
+// ROM 0x211E8 (mode-command table entry 0x04). The nine indexed triples at
+// 0xFE6E0 select the runner-specific opening response by the signed byte in
+// FFFC12 + selected runner index: zero, positive, or negative. The bytes
+// immediately after that table are a separate special root, not a tenth
+// triple; index 9 therefore remains an explicit Stark/story boundary here.
+RecruitedRunnerConversationPromptResult
+select_recruited_runner_conversation_prompt(
+    const RecruitedRunnerServiceState& state);
 
 // ROM 0x21318/0x21326/0x21332 plus the common body at 0x2133C.  This converts
 // the recruited-runner dialog's short-term, permanent, and free-permanent

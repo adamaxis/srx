@@ -356,6 +356,8 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00020E92L, "write_electromagnetic_lock_choice_grid");
         names.put(0x00020EC2L, "prepare_building_security_terminal_prompt");
         names.put(0x00021616L, "prepare_electromagnetic_lock_resolution");
+        names.put(0x000211E8L,
+                  "select_recruited_runner_conversation_prompt");
         names.put(0x00021226L, "prepare_recruited_runner_service_offer");
         names.put(0x00021318L,
                   "resolve_recruited_runner_free_permanent_hire");
@@ -1042,6 +1044,9 @@ public class ExportShadowrun extends GhidraScript {
         ensureReviewedInlineFunction(
             program, 0x00021616L, 0x00021628L,
             "prepare_electromagnetic_lock_resolution");
+        ensureReviewedInlineFunction(
+            program, 0x000211E8L, 0x00021226L,
+            "select_recruited_runner_conversation_prompt");
         ensureReviewedInlineFunction(
             program, 0x00021226L, 0x00021318L,
             "prepare_recruited_runner_service_offer");
