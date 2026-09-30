@@ -5,6 +5,7 @@
 #include "shadowrun_ghidra/world/post_intro_mode_conversion.hpp"
 #include "shadowrun_ghidra/rendering/display_service_batch_conversion.hpp"
 #include "field_scene_runtime.hpp"
+#include "genesis_image_compositor.hpp"
 
 #include <QApplication>
 #include <QColor>
@@ -25,6 +26,7 @@
 #include <filesystem>
 #include <iostream>
 #include <map>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -35,6 +37,7 @@ namespace {
 
 using namespace shadowrun::ghidra_conversion;
 using namespace shadowrun::ghidra_conversion::integration;
+using namespace shadowrun::ghidra_conversion::qt_runtime;
 
 constexpr int kSceneWidth = 320;
 constexpr int kSceneHeight = 224;
@@ -50,12 +53,22 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
             std::cout
                 << "usage: shadowrun_ghidra_conversion_qt"
                    " [--assets <decompilation/assets>] [--field-smoke]"
-                   " [--field-smoke-move-right] [--intro-to-field-smoke]\n";
+                   " [--field-smoke-move-right] [--field-dump <file>]"
+                   " [--boot-dump-frame <frame> <file>]"
+                   " [--intro-to-field-smoke]\n";
             return {};
         }
         if (argument == "--field-smoke" ||
             argument == "--field-smoke-move-right" ||
             argument == "--intro-to-field-smoke") {
+            continue;
+        }
+        if (argument == "--field-dump" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--boot-dump-frame" && index + 2 < argc) {
+            index += 2;
             continue;
         }
         throw std::invalid_argument("unknown or incomplete argument: " +
@@ -160,6 +173,38 @@ public:
         host_frame_timer_.start();
         setWindowTitle(phase_title(state_.phase));
 
+    }
+
+    int dump_boot_frame(const std::uint32_t target_frame,
+                        const std::filesystem::path& output_path) {
+        host_frame_timer_.stop();
+        for (std::uint32_t frame = 0; frame < target_frame; ++frame) {
+            if (state_.phase != StartupIntegrationPhase::pre_title) {
+                std::cerr << "boot dump: source frame passed title handoff\n";
+                return 3;
+            }
+            advance_one_source_frame();
+        }
+        if (state_.phase != StartupIntegrationPhase::pre_title) {
+            std::cerr << "boot dump: source frame passed title handoff\n";
+            return 3;
+        }
+
+        QImage scene(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        scene.fill(Qt::black);
+        QPainter painter(&scene);
+        draw_boot_scene(painter);
+        painter.end();
+        if (!scene.save(QString::fromStdWString(output_path.wstring()))) {
+            std::cerr << "boot dump: could not write "
+                      << output_path.string() << '\n';
+            return 3;
+        }
+        std::cout << "boot_dump=written frame=" << target_frame
+                  << " stage="
+                  << static_cast<int>(state_.pre_title.presentation_stage)
+                  << " path=" << output_path.string() << '\n';
+        return 0;
     }
 
     int run_intro_to_field_smoke() {
@@ -785,23 +830,8 @@ private:
         QImage image(QString::fromStdWString(record->absolute_path.wstring()));
         if (!image.isNull()) {
             image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
-            if (alias == "title.logo" || alias == "title.text" ||
-                alias == "menu.startup.cursor" ||
-                alias.rfind("menu.field.runner.portrait.", 0) == 0 ||
-                alias.rfind("title.sprite.", 0) == 0 ||
-                alias.rfind("intro.sprites.", 0) == 0 ||
-                alias.rfind("intro.background.patch.", 0) == 0 ||
-                alias == "intro.aircraft.plane.a") {
-                for (int y = 0; y < image.height(); ++y) {
-                    for (int x = 0; x < image.width(); ++x) {
-                        auto pixel = image.pixelColor(x, y);
-                        if (pixel.red() == 0 && pixel.green() == 0 &&
-                            pixel.blue() == 0) {
-                            pixel.setAlpha(0);
-                            image.setPixelColor(x, y, pixel);
-                        }
-                    }
-                }
+            if (genesis_alias_uses_sprite_transparency(alias)) {
+                make_genesis_sprite_color_zero_transparent(image);
             }
             draw_asset_cache_.emplace(
                 alias, std::move(image));
@@ -885,10 +915,13 @@ private:
 
         const auto* record = state_.asset_catalog.catalog.find("boot.guy");
         const auto image = draw_asset_cache_.find("boot.guy");
-        if (record != nullptr && image != draw_asset_cache_.end()) {
+        if (record != nullptr && image != draw_asset_cache_.end() &&
+            state_.pre_title.figure_color_fade_weight != 0U) {
             const auto y = static_cast<int>(state_.pre_title.figure_y) -
                            0xD0 + record->origin_y;
-            painter.drawImage(record->origin_x, y, image->second);
+            const auto figure = scale_genesis_image_rgb(
+                image->second, state_.pre_title.figure_color_fade_weight);
+            painter.drawImage(record->origin_x, y, figure);
         }
     }
 
@@ -1300,12 +1333,17 @@ int main(int argc, char** argv) {
         bool field_smoke = false;
         bool field_smoke_move_right = false;
         bool intro_to_field_smoke = false;
+        std::optional<std::filesystem::path> field_dump_path;
+        std::optional<std::uint32_t> boot_dump_frame;
+        std::optional<std::filesystem::path> boot_dump_path;
         for (int index = 1; index < argc; ++index) {
             if (std::string(argv[index]) == "--help") {
                 std::cout
                     << "usage: shadowrun_ghidra_conversion_qt"
                        " [--assets <decompilation/assets>] [--field-smoke]"
-                       " [--field-smoke-move-right] [--intro-to-field-smoke]\n";
+                       " [--field-smoke-move-right] [--field-dump <file>]"
+                       " [--boot-dump-frame <frame> <file>]"
+                       " [--intro-to-field-smoke]\n";
                 return 0;
             }
             if (std::string(argv[index]) == "--field-smoke") {
@@ -1317,6 +1355,17 @@ int main(int argc, char** argv) {
             }
             if (std::string(argv[index]) == "--intro-to-field-smoke") {
                 intro_to_field_smoke = true;
+            }
+            if (std::string(argv[index]) == "--field-dump" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_dump_path = std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--boot-dump-frame" &&
+                index + 2 < argc) {
+                boot_dump_frame = static_cast<std::uint32_t>(
+                    std::stoul(argv[++index]));
+                boot_dump_path = std::filesystem::path(argv[++index]);
             }
         }
         const auto asset_root = find_asset_root(argc, argv);
@@ -1372,6 +1421,13 @@ int main(int argc, char** argv) {
             QPainter painter(&scene);
             field_scene.paint(painter);
             painter.end();
+            if (field_dump_path.has_value() &&
+                !scene.save(QString::fromStdWString(
+                    field_dump_path->wstring()))) {
+                std::cerr << "field smoke: could not write "
+                          << field_dump_path->string() << '\n';
+                return 3;
+            }
             if (count_playfield_lit(scene) < 100) {
                 std::cerr << "field smoke: playfield buried under opaque HUD\n";
                 return 3;
@@ -1388,6 +1444,9 @@ int main(int argc, char** argv) {
             return 0;
         }
         GhidraConversionWindow window(asset_root);
+        if (boot_dump_frame.has_value() && boot_dump_path.has_value()) {
+            return window.dump_boot_frame(*boot_dump_frame, *boot_dump_path);
+        }
         if (intro_to_field_smoke) {
             return window.run_intro_to_field_smoke();
         }

@@ -130,5 +130,20 @@ int main() {
         return 3;
     }
 
+    PreTitleSequenceState fade_state{};
+    fade_state.strobe_countdown = 3;
+    fade_state.figure_color_fade_weight = 16U;
+    PreTitleSequenceCallbacks fade_callbacks{};
+    fade_callbacks.animation.step_entity_color_words = [] {};
+    advance_pre_title_logo_strobe(fade_state, fade_callbacks);
+    if (fade_state.figure_color_fade_weight != 8U) {
+        return 4;
+    }
+    fade_state.strobe_countdown = 3;
+    advance_pre_title_logo_strobe(fade_state, fade_callbacks);
+    if (fade_state.figure_color_fade_weight != 0U) {
+        return 5;
+    }
+
     return 0;
 }

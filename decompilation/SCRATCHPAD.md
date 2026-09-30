@@ -22,6 +22,27 @@ The architecture target is recorded in
 world, entities/effects, menus, intro choreography, renderer, audio service,
 and persistence, with extraction and Ghidra kept outside the runtime.
 
+### Qt conversion presentation audit: 2026-09-30
+
+The separate `ghidra_conversion/qt_runtime` now has a source-derived image
+compositor policy instead of applying one transparency rule to every BMP.
+Genesis color zero is transparent for extracted SAT/object sprites, including
+the `0x5DA20/0x5DA38` Sega lightning lists and the `0x5D8BA` logo-strobe
+records. The field HUD is different: `0x334C`/`0x39F2` supplies a six-tile,
+48-pixel right-hand chrome column. The extracted 320x224 layer keeps that
+`x=272..319` column opaque while leaving color-zero pixels over the playfield
+transparent; punching black out of the whole bitmap was the cause of the Qt
+sidebar showing the map through it.
+
+The pre-title conversion now carries the figure palette fade performed by
+`0x5D8BA -> 0x5B2E2`: on the source `DF90 == 2` cadence, the typed figure
+fade weight drops by the equivalent eight host units and Qt scales RGB while
+preserving sprite alpha. `--boot-dump-frame` and `--field-dump` write the
+source-sized composed frames for inspection. This pass does not claim that
+all CRAM palette transitions or every queued VBlank upload is already a Qt
+renderer feature; those remain explicit presentation boundaries until their
+source inputs are connected.
+
 Input: `C:\Github\shadowrun\Shadow Run (U) [!].bin`
 
 Working copy: `input/shadowrun_genesis_us.bin`

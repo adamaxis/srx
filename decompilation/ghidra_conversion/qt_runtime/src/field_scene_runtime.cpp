@@ -9,6 +9,7 @@
 #include "shadowrun_ghidra/field/field_scene_entry_conversion.hpp"
 #include "shadowrun_ghidra/field/field_entity_render_batch_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
+#include "genesis_image_compositor.hpp"
 
 #include <QPainter>
 #include <QColor>
@@ -47,21 +48,6 @@ std::array<std::uint8_t, 4> field_sample_state_from_result(
         static_cast<std::uint8_t>(packed_state >> 16U),
         static_cast<std::uint8_t>(packed_state >> 8U),
         static_cast<std::uint8_t>(packed_state)};
-}
-
-void punch_color_zero(QImage& image) {
-    // Genesis color index 0 is transparent. Direct BMPs keep that RGB, so
-    // restore host alpha here instead of stamping an opaque black plane.
-    for (int y = 0; y < image.height(); ++y) {
-        for (int x = 0; x < image.width(); ++x) {
-            auto pixel = image.pixelColor(x, y);
-            if (pixel.red() == 0 && pixel.green() == 0 &&
-                pixel.blue() == 0) {
-                pixel.setAlpha(0);
-                image.setPixelColor(x, y, pixel);
-            }
-        }
-    }
 }
 
 } // namespace
@@ -267,7 +253,7 @@ bool FieldSceneRuntime::load_sprite_image(
     }
     origin_x = record->origin_x;
     origin_y = record->origin_y;
-    punch_color_zero(destination);
+    make_genesis_sprite_color_zero_transparent(destination);
     return true;
 }
 
@@ -723,7 +709,11 @@ bool FieldSceneRuntime::bootstrap(
         source_boundary("field.bootstrap.direct_assets_missing");
         return false;
     }
-    punch_color_zero(field_hud_);
+    // The extracted HUD record is a plane-sized image: color zero is a hole
+    // over the 272px playfield, but the source six-tile chrome column at
+    // x=272..319 is an opaque panel.  Applying sprite transparency to the
+    // whole bitmap makes that sidebar transparent over the map.
+    make_field_hud_layer_transparent_outside_chrome(field_hud_);
     for (std::size_t direction = 0;
          direction < field_entity_idle_images_.size(); ++direction) {
         const auto alias = std::string(kFieldEntityIdleAliasPrefix) +

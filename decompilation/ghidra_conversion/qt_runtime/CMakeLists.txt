@@ -7,6 +7,7 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets)
 add_executable(shadowrun_ghidra_conversion_qt
     src/ghidra_conversion_qt_main.cpp
     src/field_scene_runtime.cpp
+    src/genesis_image_compositor.cpp
 )
 target_include_directories(shadowrun_ghidra_conversion_qt
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
@@ -19,6 +20,17 @@ target_link_libraries(shadowrun_ghidra_conversion_qt
         shadowrun_ghidra_conversion_runtime
         Qt6::Widgets
 )
+
+add_executable(shadowrun_ghidra_genesis_image_compositor_test
+    tests/genesis_image_compositor_test.cpp
+    src/genesis_image_compositor.cpp
+)
+target_include_directories(shadowrun_ghidra_genesis_image_compositor_test
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_link_libraries(shadowrun_ghidra_genesis_image_compositor_test
+    PRIVATE Qt6::Gui)
+add_test(NAME shadowrun_ghidra_genesis_image_compositor
+         COMMAND shadowrun_ghidra_genesis_image_compositor_test)
 
 if (WIN32)
     find_program(SHADOWRUN_GHIDRA_QT_WINDEPLOYQT

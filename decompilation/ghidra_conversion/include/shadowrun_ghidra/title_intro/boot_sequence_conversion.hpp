@@ -58,6 +58,10 @@ struct PreTitleSequenceState {
     std::uint16_t sega_lightning_phase = 0;
     std::uint16_t sega_shock_frames = 0;
     std::uint16_t fasa_hold_frames = 0;
+    // 0x5D8BA calls 0x5B2E2 on DF90 == 2 while the logo strobe is active.
+    // The callee steps the fifteen figure palette words toward black; the
+    // host renderer uses this equivalent RGB weight for the extracted guy.
+    std::uint16_t figure_color_fade_weight = 256U;
 
     std::uint32_t random_state = 0;
     std::int16_t frame_counter = 0;

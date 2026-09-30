@@ -121,6 +121,10 @@ C:/msys64/ucrt64/bin/cmake.exe --build --preset ghidra-conversion-qt-debug
 build-ghidra-conversion-qt-debug/shadowrun_ghidra_conversion_qt.exe --assets ../assets
 # Directly exercise the converted field-entry bridge without opening a window.
 build-ghidra-conversion-qt-debug/shadowrun_ghidra_conversion_qt.exe --field-smoke --assets ../assets
+# Write the source-sized field frame for visual inspection.
+build-ghidra-conversion-qt-debug/shadowrun_ghidra_conversion_qt.exe --field-dump field.bmp --assets ../assets
+# Write a pre-title frame at a specific converted source-frame boundary.
+build-ghidra-conversion-qt-debug/shadowrun_ghidra_conversion_qt.exe --boot-dump-frame 200 boot-200.bmp --assets ../assets
 ```
 
 Release:
@@ -160,7 +164,10 @@ replace unresolved source behavior with a native-port implementation. Dynamic
 runner records, event-driven field transitions, walking animation, and
 save-slot restoration are still incomplete conversion boundaries.
 `--field-smoke` loads the direct catalog, runs the converted field bootstrap,
-and paints one 320x224 host frame without writing an artifact.
+and paints one 320x224 host frame without writing an artifact. `--field-dump`
+uses the same path but writes that 320x224 frame. `--boot-dump-frame` advances
+the source pre-title loop to the requested VBlank boundary and writes the
+composed Sega/guy/lightning/FASA frame without entering the Qt event loop.
 `--field-smoke-move-right` additionally submits one held right D-pad sample
 and reports the resulting typed field position. These smoke commands are
 deliberately not registered as CTest tests.

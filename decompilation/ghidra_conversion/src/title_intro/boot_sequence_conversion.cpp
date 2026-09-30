@@ -91,6 +91,15 @@ void advance_pre_title_logo_strobe(
         state.dirty_flags = static_cast<std::uint8_t>(state.dirty_flags | 0x01U);
     } else if (state.strobe_countdown == 2) {
         callbacks.animation.step_entity_color_words();
+        // 0x5B2E2 decrements each active figure CRAM component by one
+        // Genesis step. Fifteen extracted words share the same visible
+        // bounded fade, so keep that presentation weight in typed state.
+        if (state.figure_color_fade_weight > 8U) {
+            state.figure_color_fade_weight = static_cast<std::uint16_t>(
+                state.figure_color_fade_weight - 8U);
+        } else {
+            state.figure_color_fade_weight = 0U;
+        }
     }
 }
 
@@ -205,6 +214,7 @@ PreTitleSequenceResult begin_pre_title_sequence(
     state.sega_lightning_phase = 0;
     state.sega_shock_frames = 0;
     state.fasa_hold_frames = 0;
+    state.figure_color_fade_weight = 256U;
     return PreTitleSequenceResult::source_complete;
 }
 
