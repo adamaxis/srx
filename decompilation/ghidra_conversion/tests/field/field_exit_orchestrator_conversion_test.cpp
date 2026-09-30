@@ -18,9 +18,8 @@ int main() {
     FieldExitOrchestratorState state{0U, true, 7};
     const FieldExitOrchestratorCallbacks callbacks{
         [&] { order.push_back(0); },
-        [&](FieldExitOrchestratorState&) {
+        [&] {
             order.push_back(1);
-            return false;
         },
         [&](FieldExitOrchestratorState&) {
             order.push_back(2);
@@ -48,7 +47,7 @@ int main() {
             return false;
         }};
     if (expect(run_field_exit_orchestrator(state, callbacks) ==
-                   FieldExitOrchestratorAction::completed &&
+                   FieldExitOrchestratorAction::aborted_during_scene_route &&
                order == std::vector<int>{1, 2, 3, 4, 5, 6, 7} &&
                !state.prompt_display_prepared && state.service_marker == 0 &&
                state.caller_exit_status == -1) != 0) {
@@ -68,9 +67,8 @@ int main() {
     const auto abort_action = run_field_exit_orchestrator(
         state,
         { {},
-          [&](FieldExitOrchestratorState&) {
+          [&] {
               order.push_back(1);
-              return false;
           },
           [&](FieldExitOrchestratorState&) {
               order.push_back(2);

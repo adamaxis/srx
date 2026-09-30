@@ -1657,6 +1657,13 @@ only on the same paths as the ROM. The original A0/A5 resource pointers are
 represented by host-facing route/profile identifiers; the source addresses
 remain provenance only in the Ghidra export.
 
+The `0x1F5CA` coordinator now names its first child correctly as
+`select_mode_entry_resource` (`0x20634`), which runs before the source clears
+`D6` and `FFF0CC`; it is not an abortable generic world-exit callback. The
+coordinator now tests the typed caller `D6` after world effects, indexed title
+services, and each of the four scene-route children, matching the ROM's
+early-return gates.
+
 The `0x20634` selector is now `select_mode_entry_resource`. It maps the
 source's seven exact scene/submode cases into five typed host resource
 profiles, preserves the scene-5 any-submode case, and intentionally leaves

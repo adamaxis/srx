@@ -22,21 +22,22 @@ FieldExitOrchestratorAction run_field_exit_orchestrator(
         return FieldExitOrchestratorAction::graphics_service_routed;
     }
 
-    if (run_stage(callbacks.prepare_world_exit, state)) {
-        state.service_marker = 0;
-        return FieldExitOrchestratorAction::aborted_after_world_exit;
+    if (callbacks.select_mode_entry_resource) {
+        callbacks.select_mode_entry_resource();
     }
     state.prompt_display_prepared = false;
     state.caller_exit_status = 0;
     state.service_marker = 0;
 
     if (run_stage(callbacks.dispatch_world_effect, state) ||
+        state.caller_exit_status < 0 ||
         static_cast<std::int8_t>(state.service_marker) < 0) {
         state.service_marker = 0;
         return FieldExitOrchestratorAction::aborted_after_world_effect;
     }
 
     if (run_stage(callbacks.run_indexed_title_services, state) ||
+        state.caller_exit_status < 0 ||
         static_cast<std::int8_t>(state.service_marker) < 0) {
         state.service_marker = 0;
         return FieldExitOrchestratorAction::aborted_after_indexed_services;
@@ -49,7 +50,7 @@ FieldExitOrchestratorAction run_field_exit_orchestrator(
         callbacks.finalize_field_mode_exit,
     };
     for (const auto& route : routes) {
-        if (run_stage(route, state)) {
+        if (run_stage(route, state) || state.caller_exit_status < 0) {
             state.service_marker = 0;
             return FieldExitOrchestratorAction::aborted_during_scene_route;
         }

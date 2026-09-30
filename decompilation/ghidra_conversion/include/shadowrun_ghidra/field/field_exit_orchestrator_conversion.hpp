@@ -20,7 +20,9 @@ using FieldExitOrchestratorStage =
 
 struct FieldExitOrchestratorCallbacks {
     std::function<void()> route_to_graphics_service;
-    FieldExitOrchestratorStage prepare_world_exit;
+    // ROM 0x20634 runs before D6/FFF0CC are cleared. It selects the typed
+    // mode-entry resource and is not an abortable world-exit stage.
+    std::function<void()> select_mode_entry_resource;
     FieldExitOrchestratorStage dispatch_world_effect;
     FieldExitOrchestratorStage run_indexed_title_services;
     FieldExitOrchestratorStage select_field_exit_prompt;
@@ -31,17 +33,16 @@ struct FieldExitOrchestratorCallbacks {
 
 enum class FieldExitOrchestratorAction {
     graphics_service_routed,
-    aborted_after_world_exit,
     aborted_after_world_effect,
     aborted_after_indexed_services,
     aborted_during_scene_route,
     completed,
 };
 
-// ROM 0x1F5CA: gate controller-owned graphics handling, clear the transient
-// prompt/service markers, run world/title services, and invoke the four
-// scene-specific exit policies in order until one reports the source D6<0
-// abort condition.
+// ROM 0x1F5CA: gate controller-owned graphics handling, select the mode-entry
+// resource, clear the transient prompt/service markers, run world/title
+// services, and invoke the four scene-specific exit policies in order until
+// one reports the source D6<0 abort condition.
 FieldExitOrchestratorAction run_field_exit_orchestrator(
     FieldExitOrchestratorState& state,
     const FieldExitOrchestratorCallbacks& callbacks);
