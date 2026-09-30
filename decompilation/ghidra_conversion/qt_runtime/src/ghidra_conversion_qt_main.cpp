@@ -55,6 +55,7 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
                    " [--assets <decompilation/assets>] [--field-smoke]"
                    " [--field-smoke-move-right] [--field-dump <file>]"
                    " [--boot-dump-frame <frame> <file>]"
+                   " [--startup-dump <stage> <selection> <frame> <file>]"
                    " [--intro-to-field-smoke]\n";
             return {};
         }
@@ -69,6 +70,10 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
         }
         if (argument == "--boot-dump-frame" && index + 2 < argc) {
             index += 2;
+            continue;
+        }
+        if (argument == "--startup-dump" && index + 4 < argc) {
+            index += 4;
             continue;
         }
         throw std::invalid_argument("unknown or incomplete argument: " +
@@ -222,6 +227,91 @@ public:
         return 0;
     }
 
+    // Deterministic visual-audit entry point. The phase transitions and
+    // opening frames are still driven by the converted source contracts;
+    // this only exposes their existing Qt presentation as an image dump.
+    int dump_startup_scene(const std::string_view scene_name,
+                           const std::uint32_t selection,
+                           const std::uint32_t target_frame,
+                           const std::filesystem::path& output_path) {
+        host_frame_timer_.stop();
+        if (selection > 2U) {
+            std::cerr << "startup dump: selection must be 0, 1, or 2\n";
+            return 3;
+        }
+        if (scene_name != "start_options" && scene_name != "archetype" &&
+            scene_name != "opening") {
+            std::cerr << "startup dump: unknown stage " << scene_name
+                      << " (expected start_options, archetype, or opening)\n";
+            return 3;
+        }
+
+        constexpr std::uint32_t kMaxSetupFrames = 10000U;
+        std::uint32_t setup_frames = 0U;
+        while (state_.phase == StartupIntegrationPhase::pre_title) {
+            if (setup_frames++ >= kMaxSetupFrames) {
+                std::cerr << "startup dump: boot did not reach title\n";
+                return 3;
+            }
+            advance_one_source_frame();
+        }
+        if (state_.phase != StartupIntegrationPhase::title_ready) {
+            std::cerr << "startup dump: phase after boot="
+                      << startup_integration_phase_name(state_.phase) << '\n';
+            return 3;
+        }
+
+        while (state_.phase == StartupIntegrationPhase::title_ready) {
+            pending_title_controller_word_ = static_cast<std::uint16_t>(
+                static_cast<std::uint16_t>(kStartupMenuA) << 8U);
+            if (setup_frames++ >= kMaxSetupFrames) {
+                std::cerr << "startup dump: title did not accept Start\n";
+                return 3;
+            }
+            advance_one_source_frame();
+        }
+        if (state_.phase != StartupIntegrationPhase::start_options) {
+            std::cerr << "startup dump: phase after title="
+                      << startup_integration_phase_name(state_.phase) << '\n';
+            return 3;
+        }
+
+        if (scene_name == "start_options") {
+            return write_startup_dump_image(
+                scene_name, selection, target_frame, output_path);
+        }
+
+        advance_startup_integration(state_, kStartupMenuA, startup_callbacks_);
+        if (state_.phase != StartupIntegrationPhase::joshua_archetype) {
+            std::cerr << "startup dump: New Game did not reach archetype menu\n";
+            return 3;
+        }
+        for (std::uint32_t index = 0U; index < selection; ++index) {
+            advance_startup_integration(
+                state_, kStartupMenuDown, startup_callbacks_);
+        }
+        if (scene_name == "archetype") {
+            return write_startup_dump_image(
+                scene_name, selection, target_frame, output_path);
+        }
+
+        advance_startup_integration(state_, kStartupMenuA, startup_callbacks_);
+        if (state_.phase != StartupIntegrationPhase::opening_intro) {
+            std::cerr << "startup dump: archetype did not start opening\n";
+            return 3;
+        }
+        for (std::uint32_t frame = 0U; frame < target_frame; ++frame) {
+            if (state_.phase != StartupIntegrationPhase::opening_intro) {
+                std::cerr << "startup dump: opening ended before frame "
+                          << target_frame << '\n';
+                return 3;
+            }
+            advance_one_source_frame();
+        }
+        return write_startup_dump_image(
+            scene_name, selection, target_frame, output_path);
+    }
+
     int run_intro_to_field_smoke() {
         host_frame_timer_.stop();
         constexpr int kMaxFrames = 8000;
@@ -313,38 +403,7 @@ public:
 
 protected:
     void paintEvent(QPaintEvent*) override {
-        // Genesis rebuilds the visible frame during vblank. The host has no
-        // SAT/VDP, so each tick composites into an opaque 320x224 buffer and
-        // replaces the widget pixels. SourceOver onto WA_OpaquePaintEvent
-        // would keep previous widget pixels in any alpha hole.
-        QImage scene(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
-        scene.fill(Qt::black);
-
-        QPainter scene_painter(&scene);
-        if (state_.phase == StartupIntegrationPhase::pre_title) {
-            draw_boot_scene(scene_painter);
-        } else if (state_.phase == StartupIntegrationPhase::start_options ||
-            state_.phase == StartupIntegrationPhase::save_load ||
-            state_.phase == StartupIntegrationPhase::joshua_archetype) {
-            draw_alias(scene_painter, "menu.startup.background");
-            draw_menu_overlay(scene_painter);
-        } else if (state_.phase == StartupIntegrationPhase::opening_intro) {
-            draw_opening_scene(scene_painter);
-        } else if (state_.phase == StartupIntegrationPhase::field_ready) {
-            if (field_scene_runtime_.ready()) {
-                field_scene_runtime_.paint(scene_painter);
-            } else {
-                draw_alias(scene_painter, "menu.startup.background");
-                draw_conversion_boundary_error(scene_painter);
-            }
-        } else if (state_.phase == StartupIntegrationPhase::failed) {
-            draw_alias(scene_painter, "menu.startup.background");
-            draw_conversion_boundary_error(scene_painter);
-        } else {
-            draw_title(scene_painter);
-        }
-        scene_painter.end();
-
+        const auto scene = render_scene();
         QPainter painter(this);
         painter.setCompositionMode(QPainter::CompositionMode_Source);
         painter.setRenderHint(QPainter::SmoothPixmapTransform, false);
@@ -448,6 +507,58 @@ protected:
     }
 
 private:
+    QImage render_scene() {
+        // Genesis rebuilds the visible frame during vblank. The host has no
+        // SAT/VDP, so each tick composites into an opaque 320x224 buffer and
+        // replaces the widget pixels. SourceOver onto WA_OpaquePaintEvent
+        // would keep previous widget pixels in any alpha hole.
+        QImage scene(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        scene.fill(Qt::black);
+
+        QPainter scene_painter(&scene);
+        if (state_.phase == StartupIntegrationPhase::pre_title) {
+            draw_boot_scene(scene_painter);
+        } else if (state_.phase == StartupIntegrationPhase::start_options ||
+                   state_.phase == StartupIntegrationPhase::save_load ||
+                   state_.phase == StartupIntegrationPhase::joshua_archetype) {
+            draw_alias(scene_painter, "menu.startup.background");
+            draw_menu_overlay(scene_painter);
+        } else if (state_.phase == StartupIntegrationPhase::opening_intro) {
+            draw_opening_scene(scene_painter);
+        } else if (state_.phase == StartupIntegrationPhase::field_ready) {
+            if (field_scene_runtime_.ready()) {
+                field_scene_runtime_.paint(scene_painter);
+            } else {
+                draw_alias(scene_painter, "menu.startup.background");
+                draw_conversion_boundary_error(scene_painter);
+            }
+        } else if (state_.phase == StartupIntegrationPhase::failed) {
+            draw_alias(scene_painter, "menu.startup.background");
+            draw_conversion_boundary_error(scene_painter);
+        } else {
+            draw_title(scene_painter);
+        }
+        scene_painter.end();
+        return scene;
+    }
+
+    int write_startup_dump_image(
+        const std::string_view scene_name, const std::uint32_t selection,
+        const std::uint32_t target_frame,
+        const std::filesystem::path& output_path) {
+        const auto scene = render_scene();
+        if (!scene.save(QString::fromStdWString(output_path.wstring()))) {
+            std::cerr << "startup dump: could not write "
+                      << output_path.string() << '\n';
+            return 3;
+        }
+        std::cout << "startup_dump=written stage=" << scene_name
+                  << " selection=" << selection
+                  << " frame=" << target_frame
+                  << " path=" << output_path.string() << '\n';
+        return 0;
+    }
+
     void configure_startup_callbacks() {
         startup_callbacks_.initialize_display = [this] {
             display_initialized_ = true;
@@ -691,9 +802,13 @@ private:
         startup_callbacks_.opening_intro.service_audio = [this] {
             note_presentation_boundary("opening.service_audio");
         };
-        startup_callbacks_.opening_intro.step_palette_transition = [this] {
+        startup_callbacks_.opening_intro.fade_palette_to_black = [this] {
             ++palette_transition_steps_;
-            note_presentation_boundary("opening.step_palette_transition");
+            note_presentation_boundary("opening.fade_palette_to_black");
+        };
+        startup_callbacks_.opening_intro.advance_palette_fade = [this] {
+            ++palette_fade_steps_;
+            note_presentation_boundary("opening.advance_palette_fade");
         };
         startup_callbacks_.opening_intro.enter_post_intro_mode = [this] {
             note_presentation_boundary("opening.enter_post_intro_mode");
@@ -723,6 +838,27 @@ private:
             };
         startup_callbacks_.opening_intro.render_text =
             [this](const OpeningIntroTextRequest& request) {
+                if (opening_intro_text_asset(request.text_asset) ==
+                    OpeningIntroTextAsset::blank) {
+                    constexpr std::uint16_t kOpeningPlaneBase = 0x2000U;
+                    if (request.destination_word >= kOpeningPlaneBase) {
+                        const auto row = static_cast<std::uint16_t>(
+                            (request.destination_word - kOpeningPlaneBase) /
+                            0x80U);
+                        opening_text_.erase(
+                            std::remove_if(
+                                opening_text_.begin(), opening_text_.end(),
+                                [row](const OpeningIntroTextRequest& current) {
+                                    return current.destination_word >=
+                                               kOpeningPlaneBase &&
+                                           (current.destination_word -
+                                            kOpeningPlaneBase) /
+                                                   0x80U == row;
+                                }),
+                            opening_text_.end());
+                    }
+                    return;
+                }
                 const auto existing = std::find_if(
                     opening_text_.begin(), opening_text_.end(),
                     [&request](const OpeningIntroTextRequest& current) {
@@ -1063,7 +1199,7 @@ private:
                            plan.cursor_width, plan.cursor_height);
         if (state_.opening_intro.post_intro_caption_visible) {
             draw_startup_text(painter, plan.caption_x, plan.caption_y,
-                              plan.caption);
+                              plan.caption, source_text_color(0U));
         }
     }
 
@@ -1124,6 +1260,17 @@ private:
 
     void draw_opening_text(
         QPainter& painter, const OpeningIntroTextRequest& request) const {
+        // The wilderness resource set is installed after the source fades
+        // the previous Seattle palette to black. The ROM still writes the
+        // date/place/team records at 0x5AE9E, but the independent capture
+        // shows that palette bank 1 (the 0xA000 text writes) is not visible
+        // in this scene; only the 0xE000 warning/ambush bank survives. Keep
+        // the source writes in the conversion state and apply this host
+        // presentation rule at draw time instead of deleting source calls.
+        if (opening_scene_ == OpeningIntroScene::wilderness &&
+            (request.palette_flags & 0x6000U) == 0x2000U) {
+            return;
+        }
         const auto text_asset = opening_intro_text_asset(request.text_asset);
         const auto text = opening_intro_text(text_asset);
         constexpr std::uint16_t kPlaneBase = 0x2000U;
@@ -1134,7 +1281,8 @@ private:
             request.destination_word - kPlaneBase);
         const auto x = static_cast<int>(((offset % 0x80U) / 2U) * 8U);
         const auto y = static_cast<int>((offset / 0x80U) * 8U);
-        draw_startup_text(painter, x, y, text);
+        draw_startup_text(painter, x, y, text,
+                          source_text_color(request.palette_flags));
     }
 
     void draw_title_logo(QPainter& painter) const {
@@ -1277,7 +1425,7 @@ private:
         for (const auto& line : lines) {
             draw_startup_text(painter, x,
                               startup_menu_line_y(plane_vram, line.row),
-                              line.text);
+                              line.text, source_text_color(0U));
         }
     }
 
@@ -1310,8 +1458,19 @@ private:
         }
     }
 
+    QColor source_text_color(const std::uint16_t palette_flags) const {
+        // The converted requests retain the ROM's 0xA000/0xE000 palette
+        // attributes for provenance. The host presents visible extracted
+        // glyph masks in the source's bright-green text color; scene-specific
+        // palette-bank visibility is handled by draw_opening_text rather than
+        // recreating CRAM or a Genesis palette service in the runtime.
+        (void)palette_flags;
+        return QColor(0x00, 0xFF, 0x00);
+    }
+
     void draw_startup_text(QPainter& painter, const int x, const int y,
-                           const std::string_view text) const {
+                           const std::string_view text,
+                           const QColor& color) const {
         const auto image = draw_asset_cache_.find("menu.startup.font");
         if (image == draw_asset_cache_.end() || image->second.width() < 8 ||
             image->second.height() < 8) {
@@ -1328,8 +1487,29 @@ private:
             const auto source_x = (glyph % 16) * 8;
             const auto source_y = (glyph / 16) * 8;
             if (source_y + 8 <= image->second.height()) {
-                painter.drawImage(cursor, y, image->second, source_x,
-                                  source_y, 8, 8);
+                QImage tinted_glyph(8, 8, QImage::Format_ARGB32_Premultiplied);
+                tinted_glyph.fill(Qt::transparent);
+                for (int glyph_y = 0; glyph_y < 8; ++glyph_y) {
+                    for (int glyph_x = 0; glyph_x < 8; ++glyph_x) {
+                        const auto source_pixel = image->second.pixelColor(
+                            source_x + glyph_x, source_y + glyph_y);
+                        const auto coverage = std::max(
+                            {source_pixel.red(), source_pixel.green(),
+                             source_pixel.blue()});
+                        if (source_pixel.alpha() == 0 || coverage == 0) {
+                            continue;
+                        }
+                        const auto alpha = static_cast<int>(
+                            (static_cast<std::uint32_t>(source_pixel.alpha()) *
+                             static_cast<std::uint32_t>(coverage)) /
+                            255U);
+                        tinted_glyph.setPixelColor(
+                            glyph_x, glyph_y,
+                            QColor(color.red(), color.green(), color.blue(),
+                                   alpha));
+                    }
+                }
+                painter.drawImage(cursor, y, tinted_glyph);
             }
             cursor += 8;
         }
@@ -1407,6 +1587,10 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_dump_path;
         std::optional<std::uint32_t> boot_dump_frame;
         std::optional<std::filesystem::path> boot_dump_path;
+        std::optional<std::string> startup_dump_stage;
+        std::optional<std::uint32_t> startup_dump_selection;
+        std::optional<std::uint32_t> startup_dump_frame;
+        std::optional<std::filesystem::path> startup_dump_path;
         for (int index = 1; index < argc; ++index) {
             if (std::string(argv[index]) == "--help") {
                 std::cout
@@ -1414,6 +1598,7 @@ int main(int argc, char** argv) {
                        " [--assets <decompilation/assets>] [--field-smoke]"
                        " [--field-smoke-move-right] [--field-dump <file>]"
                        " [--boot-dump-frame <frame> <file>]"
+                       " [--startup-dump <stage> <selection> <frame> <file>]"
                        " [--intro-to-field-smoke]\n";
                 return 0;
             }
@@ -1437,6 +1622,15 @@ int main(int argc, char** argv) {
                 boot_dump_frame = static_cast<std::uint32_t>(
                     std::stoul(argv[++index]));
                 boot_dump_path = std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--startup-dump" &&
+                index + 4 < argc) {
+                startup_dump_stage = std::string(argv[++index]);
+                startup_dump_selection = static_cast<std::uint32_t>(
+                    std::stoul(argv[++index]));
+                startup_dump_frame = static_cast<std::uint32_t>(
+                    std::stoul(argv[++index]));
+                startup_dump_path = std::filesystem::path(argv[++index]);
             }
         }
         const auto asset_root = find_asset_root(argc, argv);
@@ -1515,6 +1709,13 @@ int main(int argc, char** argv) {
             return 0;
         }
         GhidraConversionWindow window(asset_root);
+        if (startup_dump_stage.has_value() &&
+            startup_dump_selection.has_value() &&
+            startup_dump_frame.has_value() && startup_dump_path.has_value()) {
+            return window.dump_startup_scene(
+                *startup_dump_stage, *startup_dump_selection,
+                *startup_dump_frame, *startup_dump_path);
+        }
         if (boot_dump_frame.has_value() && boot_dump_path.has_value()) {
             return window.dump_boot_frame(*boot_dump_frame, *boot_dump_path);
         }

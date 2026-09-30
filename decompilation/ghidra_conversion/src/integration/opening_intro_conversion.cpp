@@ -121,15 +121,15 @@ void emit_schedule_action(const std::uint32_t action_id,
         source_boundary(callbacks, "0x5B378.install_aircraft_scene");
         break;
     case 0x5AE9EU:
-        // 0x5ADF0 points here after the first stage-2 delay. The target is a
-        // compact source text routine containing the remaining Seattle/team
-        // records in this exact destination order.
+        // 0x5ADF0 points here after the first stage-2 delay. The ROM routine
+        // at 0x5AE9E writes two wilderness-event lines, then rewrites the
+        // Seattle/team records in this exact destination order. These are
+        // distinct source records; do not collapse them into one generic
+        // story block or duplicate the date line.
         source_boundary(callbacks, "0x5AE9E.render_stage2_story_records");
-        emit_text(callbacks, OpeningIntroTextAsset::team_wilderness, 0x2186U,
+        emit_text(callbacks, OpeningIntroTextAsset::without_warning, 0x2186U,
                   0xE000U);
-        emit_text(callbacks, OpeningIntroTextAsset::without_warning, 0x2286U,
-                  0xE000U);
-        emit_text(callbacks, OpeningIntroTextAsset::ambushed, 0x2386U,
+        emit_text(callbacks, OpeningIntroTextAsset::ambushed, 0x2286U,
                   0xE000U);
         emit_text(callbacks, OpeningIntroTextAsset::time, 0x210EU, 0xA000U);
         emit_text(callbacks, OpeningIntroTextAsset::place, 0x2210U, 0xA000U);
@@ -137,7 +137,7 @@ void emit_schedule_action(const std::uint32_t action_id,
                   0xA000U);
         emit_text(callbacks, OpeningIntroTextAsset::team_runners, 0x2384U,
                   0xA000U);
-        emit_text(callbacks, OpeningIntroTextAsset::team_wilderness, 0x2484U,
+        emit_text(callbacks, OpeningIntroTextAsset::team_wilderness, 0x2404U,
                   0xA000U);
         break;
     default:
@@ -175,7 +175,7 @@ void render_stage2_story_text(const OpeningIntroCallbacks& callbacks) {
     // routines own the destination words; this adapter only supplies the
     // extracted source records.
     render_title_intro_scroll_text_batch(
-        opening_intro_text_handle(OpeningIntroTextAsset::time),
+        opening_intro_text_handle(OpeningIntroTextAsset::blank),
         [&callbacks](const auto& request) { emit_title_intro_text(callbacks, request); });
 
     render_title_intro_late_text_batch(
@@ -361,8 +361,7 @@ OpeningIntroTextAsset opening_intro_text_asset(const std::uint32_t handle) {
         return OpeningIntroTextAsset::time;
     }
     const auto value = handle & 0xFFU;
-    if (value >= static_cast<std::uint32_t>(OpeningIntroTextAsset::redmond) +
-                     1U) {
+    if (value > static_cast<std::uint32_t>(OpeningIntroTextAsset::blank)) {
         return OpeningIntroTextAsset::time;
     }
     return static_cast<OpeningIntroTextAsset>(value);
@@ -414,6 +413,8 @@ std::string_view opening_intro_text(const OpeningIntroTextAsset asset) {
         return "Stoker's Coffin Motel, located";
     case OpeningIntroTextAsset::redmond:
         return "in the Redmond Barrens.";
+    case OpeningIntroTextAsset::blank:
+        return {};
     }
     return {};
 }
@@ -682,6 +683,9 @@ void begin_stage2(OpeningIntroState& state,
     }
     source_boundary(callbacks, "0x59D7C.begin_stage2");
 
+    // 0x59D9C -> 0x1406: prepare_title_resources first fades the current
+    // palette toward black before the wilderness resources replace it.
+    invoke(callbacks.fade_palette_to_black);
     invoke(callbacks.clear_presentation);
     source_boundary(callbacks, "0x59D7C.load_title_font");
     state.schedule = {};
@@ -712,7 +716,9 @@ void begin_stage2(OpeningIntroState& state,
             emit_schedule_action(action_id, callbacks);
         });
     render_scene();
-    invoke(callbacks.step_palette_transition);
+    // 0x59E0E: reveal the wilderness target palette after the initial scene
+    // records have been installed.
+    invoke(callbacks.advance_palette_fade);
     state.stage2_first_loop_frame = 0;
     set_stage(state, callbacks, OpeningIntroStage::stage2_first_loop);
 }
@@ -882,6 +888,8 @@ void begin_orchestrator(OpeningIntroState& state,
         callbacks.service_audio_command(0x12U);
     }
     source_boundary(callbacks, "0x5AA96.begin_trivid_orchestrator");
+    // 0x5AA96 -> 0x1406: begin the tri-vid resource set from black.
+    invoke(callbacks.fade_palette_to_black);
     invoke(callbacks.clear_presentation);
     source_boundary(callbacks, "0x5AA96.reset_upload_and_clear_planes");
     source_boundary(callbacks, "0x5AA96.decode_trivid_source_streams");
@@ -917,7 +925,8 @@ void begin_orchestrator(OpeningIntroState& state,
     callbacks.wait_for_vblank();
     ++state.source_frame;
     emit_stage_stream(callbacks, {});
-    invoke(callbacks.step_palette_transition);
+    // 0x5AB4E: reveal the tri-vid target palette after its first vblank.
+    invoke(callbacks.advance_palette_fade);
     callbacks.sample_controller();
     state.orchestrator_loop_frame = 0;
     set_stage(state, callbacks, OpeningIntroStage::orchestrator_loop);
@@ -953,6 +962,9 @@ void begin_stage_loop(OpeningIntroState& state,
     set_stage(state, callbacks, OpeningIntroStage::stage_loop_entry);
     set_scene(state, callbacks, OpeningIntroScene::airport);
     source_boundary(callbacks, "0x5AD1A.begin_airport_stage");
+    // 0x5AD26 -> 0x1406: prepare_title_resources fades the previous scene
+    // toward black before the airport resources are installed.
+    invoke(callbacks.fade_palette_to_black);
     invoke(callbacks.clear_presentation);
     source_boundary(callbacks, "0x5AD1A.prepare_airport_resources");
     state.stage_loop = {};
@@ -1075,6 +1087,8 @@ OpeningIntroStartResult begin_opening_intro(
                                    ? 0
                                    : plan.opening_schedule.front().delay_frames;
     state.schedule.dirty_flags = 0x0DU;
+    // 0x5AF62 -> 0x1406: the first title resource set starts from black.
+    invoke(callbacks.fade_palette_to_black);
     invoke(callbacks.clear_presentation);
     source_boundary(callbacks, "0x5AF62.clear_display_buffer");
     source_boundary(callbacks, "0x5AF62.prepare_title_resources");
@@ -1130,7 +1144,6 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
         begin_source_frame(state, callbacks);
         sample_and_latch(callbacks);
         advance_stage2_scene_frame(state, plan, callbacks);
-        invoke(callbacks.step_palette_transition);
         if (state.stage2_first_loop_frame++ >= 0x00A0U) {
             reset_stage2_animation(state, callbacks);
             callbacks.sample_controller();
@@ -1211,7 +1224,7 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
         advance_stage_loop_frame(state, plan, callbacks);
         if (state.stage_loop_frame++ >= kTitleIntroStageLoopLastFrame) {
             source_boundary(callbacks, "0x59CDE.clear_intro_stop_marker");
-            invoke(callbacks.step_palette_transition);
+            invoke(callbacks.fade_palette_to_black);
             source_boundary(callbacks, "0x59CF0.publish_post_intro_mode");
             begin_post_intro(state, callbacks);
         }
@@ -1223,7 +1236,7 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
         ++state.post_intro_frame;
         if (state.post_intro_frame >= kPostIntroCabTotalFrames) {
             callbacks.sample_controller();
-            invoke(callbacks.step_palette_transition);
+            invoke(callbacks.fade_palette_to_black);
             invoke(callbacks.prepare_mode_entry);
             set_stage(state, callbacks, OpeningIntroStage::complete);
             return OpeningIntroAdvanceResult::source_complete;

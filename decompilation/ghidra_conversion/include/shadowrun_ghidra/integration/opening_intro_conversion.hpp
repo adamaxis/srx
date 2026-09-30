@@ -96,8 +96,10 @@ OpeningIntroOutlinePlan opening_intro_seattle_outline_plan(
     std::uint8_t phase);
 
 // The text records are the source strings at 0x5B7D8..0x5BA4C, represented as
-// typed host records. The Qt frontend uses these records with the extracted
-// source font; no runtime ROM text decoder is involved.
+// typed host records. The blank record at 0x5B7B2 is kept separately because
+// 0x5AE3A writes it across five rows to clear the previous story page. The Qt
+// frontend uses these records with the extracted source font; no runtime ROM
+// text decoder is involved.
 enum class OpeningIntroTextAsset : std::uint8_t {
     time,
     place,
@@ -121,6 +123,7 @@ enum class OpeningIntroTextAsset : std::uint8_t {
     transaction,
     motel,
     redmond,
+    blank,
 };
 
 constexpr std::uint32_t kOpeningIntroTextHandleTag = 0xB6000000U;
@@ -224,7 +227,13 @@ struct OpeningIntroCallbacks {
     std::function<void()> prepare_mode_entry;
     std::function<void(std::uint16_t)> service_audio_command;
     std::function<void()> service_audio;
-    std::function<void()> step_palette_transition;
+    // 0x131C: prepare_title_resources drives the current palette toward
+    // black before a new title resource set is installed. This is a source
+    // presentation boundary, not a host palette implementation.
+    std::function<void()> fade_palette_to_black;
+    // 0x12F6: after the new target palette is copied, advance the current
+    // palette toward that target for the source's initial reveal.
+    std::function<void()> advance_palette_fade;
     std::function<void()> enter_post_intro_mode;
 
     // Host presentation boundaries. These consume direct assets and never

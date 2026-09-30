@@ -24,6 +24,7 @@ struct Observations {
     JoshuaArchetypeChoice initialized_archetype =
         JoshuaArchetypeChoice::samurai;
     std::vector<OpeningIntroSpriteGroup> opening_sprite_groups;
+    std::vector<OpeningIntroTextRequest> opening_text_requests;
 };
 
 void record(Observations& observations, const char* callback) {
@@ -225,8 +226,11 @@ StartupIntegrationCallbacks make_callbacks(
     callbacks.opening_intro.service_audio = [&observations] {
         record(observations, "opening_service_audio");
     };
-    callbacks.opening_intro.step_palette_transition = [&observations] {
-        record(observations, "opening_step_palette_transition");
+    callbacks.opening_intro.fade_palette_to_black = [&observations] {
+        record(observations, "opening_fade_palette_to_black");
+    };
+    callbacks.opening_intro.advance_palette_fade = [&observations] {
+        record(observations, "opening_advance_palette_fade");
     };
     callbacks.opening_intro.enter_post_intro_mode = [&observations] {
         record(observations, "opening_enter_post_intro_mode");
@@ -246,6 +250,10 @@ StartupIntegrationCallbacks make_callbacks(
             observations.opening_sprite_groups.push_back(
                 opening_intro_sprite_group(request.sprite_descriptor));
         };
+    callbacks.opening_intro.render_text =
+        [&observations](const OpeningIntroTextRequest& request) {
+            observations.opening_text_requests.push_back(request);
+        };
     callbacks.opening_intro.source_boundary = [&observations](
                                                   const std::string_view boundary) {
         observations.callbacks.emplace_back(boundary);
@@ -262,6 +270,28 @@ StartupIntegrationCallbacks make_callbacks(
 bool has_event(const StartupIntegrationState& state, const char* event) {
     return std::find(state.event_log.begin(), state.event_log.end(), event) !=
            state.event_log.end();
+}
+
+bool has_opening_text(const Observations& observations,
+                      const OpeningIntroTextAsset asset,
+                      const std::uint16_t destination,
+                      const std::uint16_t palette_flags) {
+    return std::any_of(
+        observations.opening_text_requests.begin(),
+        observations.opening_text_requests.end(),
+        [asset, destination, palette_flags](
+            const OpeningIntroTextRequest& request) {
+            return opening_intro_text_asset(request.text_asset) == asset &&
+                   request.destination_word == destination &&
+                   request.palette_flags == palette_flags;
+        });
+}
+
+std::size_t count_callback(const Observations& observations,
+                           const char* callback) {
+    return static_cast<std::size_t>(std::count(
+        observations.callbacks.begin(), observations.callbacks.end(),
+        std::string(callback)));
 }
 
 } // namespace
@@ -570,6 +600,62 @@ int main() {
         new_game_state.opening_intro.post_intro_mode != 2U ||
         new_game_state.opening_intro.post_intro_phase != 4U) {
         return 13;
+    }
+    // The 0x131C/0x12F6 split is a source behavior boundary: resource-set
+    // changes fade the previous scene to black, while only the initial
+    // wilderness and tri-vid reveals advance toward a new target palette.
+    // This must not regress into one transition callback on every frame.
+    if (count_callback(new_game_observations,
+                       "opening_fade_palette_to_black") != 6U ||
+        count_callback(new_game_observations,
+                       "opening_advance_palette_fade") != 2U) {
+        return 19;
+    }
+
+    // 0x5AE9E is a concrete source record writer, not a generic story label.
+    // Keep the two wilderness lines and all five rewritten Seattle/team rows
+    // at their ROM destinations; the Qt host decides scene visibility without
+    // deleting these converted source requests.
+    if (!has_opening_text(new_game_observations,
+                          OpeningIntroTextAsset::without_warning, 0x2186U,
+                          0xE000U) ||
+        !has_opening_text(new_game_observations,
+                          OpeningIntroTextAsset::ambushed, 0x2286U,
+                          0xE000U) ||
+        !has_opening_text(new_game_observations, OpeningIntroTextAsset::time,
+                          0x210EU, 0xA000U) ||
+        !has_opening_text(new_game_observations, OpeningIntroTextAsset::place,
+                          0x2210U, 0xA000U) ||
+        !has_opening_text(new_game_observations,
+                          OpeningIntroTextAsset::team_cover, 0x2304U,
+                          0xA000U) ||
+        !has_opening_text(new_game_observations,
+                          OpeningIntroTextAsset::team_runners, 0x2384U,
+                          0xA000U) ||
+        !has_opening_text(new_game_observations,
+                          OpeningIntroTextAsset::team_wilderness, 0x2404U,
+                          0xA000U)) {
+        return 20;
+    }
+    for (const auto destination : {0x2106U, 0x2186U, 0x2206U, 0x2286U,
+                                   0x2306U}) {
+        if (!has_opening_text(new_game_observations,
+                              OpeningIntroTextAsset::blank, destination,
+                              0xA000U)) {
+            return 21;
+        }
+    }
+    if (!has_opening_text(new_game_observations,
+                          OpeningIntroTextAsset::massacre, 0x2106U,
+                          0xE000U) ||
+        !has_opening_text(new_game_observations,
+                          OpeningIntroTextAsset::captured, 0x2206U,
+                          0xE000U) ||
+        !has_opening_text(new_game_observations,
+                          OpeningIntroTextAsset::slain, 0x2306U,
+                          0xE000U) ||
+        !opening_intro_text(OpeningIntroTextAsset::blank).empty()) {
+        return 22;
     }
     const auto has_sprite_family =
         [&new_game_observations](const OpeningIntroSpriteFamily family) {

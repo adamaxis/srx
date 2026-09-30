@@ -10,24 +10,25 @@ timing, and the transitions that the current conversion must explain.
 
 Source: `video analysis/long_gameplay_video.mp4`.
 
-The opening boot dump is in
-`video analysis/long_gameplay_video_intro_ffmpeg_30fps_320x224/`. The additional
-sections are in
+All persistent frame/audio evidence is in the single base folder
 `video analysis/long_gameplay_video_early_sections_ffmpeg_30fps_320x224/`.
+Section 01 is the boot/title folder inside that base; sections 02-07 continue
+the same source timeline.
 The source is 30 fps; section frame `N` maps to source time
 `section_start + N/30`. Every section has a same-length WAV so a sound cue can
 be checked against the visible transition without re-extracting anything.
 
-The capture is visibly a longplay rather than a clean emulator oracle: it has
-a creator overlay at the beginning and includes pauses/input choices. Timing
-below is therefore a source-video anchor, not a replacement for the ROM's
-VBlank counters.
+The capture is visibly a longplay rather than a clean emulator oracle: the red
+text at the beginning is the uploader's video overlay, not a game asset, and
+the capture includes pauses/input choices. Timing below is therefore a
+source-video anchor, not a replacement for the ROM's VBlank counters.
 
 ## Section index and hand observations
 
 ### 01. Boot, logos, and title handoff — 00:00-00:56
 
-Evidence folder: `video analysis/long_gameplay_video_intro_ffmpeg_30fps_320x224/`.
+Evidence folder:
+`video analysis/long_gameplay_video_early_sections_ffmpeg_30fps_320x224/section_01_boot_title_0000-0056/`.
 
 Observed sequence:
 
@@ -302,6 +303,41 @@ generic action callback.
 | Package/signature and named NPC conversations | field interaction/entity/dialog records | Generic interaction callbacks are insufficient. Resolve NPC identity, text page, option cursor, package/credstick state, and return mode from the source records before implementing new visuals. |
 | Runner item sheet and `Medkit` target flow | `0x11740`, `0x12168`, `0x1253E`, first-aid/inventory conversion modules | Converted action branches exist but have no defended visual hill for this captured route. The item-detail and first-aid states need separate typed presentation requests. |
 | Letter/Holopix/hospital pages | dialog/text catalogs and field return | This is a multi-page text state, not one screen. Identify the source text records and page transitions, then compare the typed catalog to each observed page. |
+
+## Opening palette/text verification pass
+
+The uploader's red logo/text at the beginning of the capture is excluded from
+the asset inventory and from all visual comparisons. It is not a Genesis
+screen element.
+
+The source and host dump were compared at the wilderness transition using the
+numbered frames in section 02 and the deterministic Qt command
+`shadowrun_ghidra_conversion_qt.exe --startup-dump opening 2 <frame> <bmp>`.
+The comparison exposed two conversion/presentation errors:
+
+- The ROM's `0x5AE9E` writer had been misread. It writes `without_warning` at
+  `0x2186`, `ambushed` at `0x2286`, and then rewrites the five Seattle/team
+  records at `0x210E`, `0x2210`, `0x2304`, `0x2384`, and `0x2404`.
+- The converted callback treated `0x131C` (fade the current palette to black
+  while installing a new resource set) and `0x12F6` (advance the new palette
+  toward its target) as one per-frame transition. They are now separate source
+  boundaries. The Qt host clears presentation state at the resource boundary,
+  reveals the new scene, and does not simulate Genesis CRAM.
+
+The source's `0x5AE3A` blank record is represented as a typed `blank` text
+asset and removes the five prior story rows before the new `massacre`,
+`captured`, and `slain` records are drawn. The source still emits the A000
+Seattle/team writes during the wilderness pass; the Qt presentation filters
+that bank in the wilderness scene because the independent capture shows those
+rows invisible there. This preserves the converted writes while matching the
+observed layer result instead of deleting source behavior.
+
+The integration test now records and checks these exact text handles,
+destination words, palette attributes, blank-row writes, and the six
+fade-to-black/two target-fade callback split. The native dump is evidence for
+the correction, not a visual golden; the opening hill remains partial until
+the ROM trace, typed host state, regression test, and independent visual
+comparison are all closed together.
 
 ## Immediate audit queue
 

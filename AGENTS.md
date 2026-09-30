@@ -45,7 +45,8 @@ runtime machinery with explicit native state, assets, layouts, and systems.
    it in as the native implementation.
 3. **Tertiary:** real-game visuals. The current visual sanity check and timing
    reference is `video analysis/long_gameplay_video.mp4` and its one-time
-   `video analysis/long_gameplay_video_intro_ffmpeg_30fps_320x224/` FFmpeg dump.
+   `video analysis/long_gameplay_video_early_sections_ffmpeg_30fps_320x224/`
+   FFmpeg dump, which contains the numbered analysis sections.
    The older `screen-capture.webm`/`decompilation/webm_ffmpeg_microframes`
    analysis is retired and is not a source for new visual claims. Until an
    independent reference is available, dump the native image and inspect it.
