@@ -928,6 +928,15 @@ calls `0x1B5A6 reset_word_stream_area`; it does not clear the four jitter words
 in this routine. The typed action now distinguishes updated, completed, and
 PRNG-unresolved outcomes.
 
+The adjacent `0x1B364 advance_title_figure_animation` pass retains four
+independent sprite boundaries. It advances the support-layer service, updates
+the five-phase counter, and submits two `0x780` records from `0x1DAF4` and
+`0x1DB08` at `(0xF8,0xE4)` and `(0x148,0xE4)`, followed by two `0x7C0` records
+from `0xEA490` and `0xEA4A4` at `(0xE2,0x114)` and `(0x15E,0x114)`. Every
+selected pointer is advanced by eight bytes and built with `D6=0x6000`; the
+host resolver now contains the extracted five-entry table data instead of
+collapsing these into one generic title sprite.
+
 `0x1AB6E advance_primary_world_effect_overlay` calls `0x563CC` when the
 primary effect has not yet crossed its threshold. The call is not merely an
 intro transition: `0x563CC` obtains a trial count from the `0x19BF6`

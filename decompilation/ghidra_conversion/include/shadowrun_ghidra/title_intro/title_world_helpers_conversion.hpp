@@ -78,6 +78,11 @@ struct TitleFigureAnimationCallbacks {
     std::function<void(const TitleFigureSpriteBuild&)> build_sprite;
 };
 
+// Typed extraction of the four five-entry pointer tables used by 0x1B364.
+// The source advances each selected pointer by eight bytes before building.
+std::optional<std::uint32_t> resolve_title_figure_sprite_data(
+    std::uint32_t source_table_token, std::uint16_t phase);
+
 enum class TitleFigureAnimationAction {
     rendered,
     sprite_data_unresolved,

@@ -11,6 +11,15 @@ constexpr std::array<std::uint32_t, 12> kMatrixTransitionSpriteData{
     0x0001DB6AU, 0x0001DB6AU, 0x0001DB6AU, 0x0001DB6AU,
     0x0001DB6AU, 0x0001DB88U, 0x0001DB7EU, 0x0001DB74U};
 
+constexpr std::array<std::uint32_t, 5> kTitleFigureLeftUpper{
+    0x000E9EFCU, 0x000EA050U, 0x000EA194U, 0x000EA308U, 0x000EA43CU};
+constexpr std::array<std::uint32_t, 5> kTitleFigureRightUpper{
+    0x000E9F26U, 0x000EA072U, 0x000EA1BEU, 0x000EA332U, 0x000EA466U};
+constexpr std::array<std::uint32_t, 5> kTitleFigureLeftLower{
+    0x000EA578U, 0x000EA65CU, 0x000EA720U, 0x000EA7F4U, 0x000EA8E8U};
+constexpr std::array<std::uint32_t, 5> kTitleFigureRightLower{
+    0x000EA59AU, 0x000EA67EU, 0x000EA74AU, 0x000EA81EU, 0x000EA90AU};
+
 bool decrement_word_until_negative(std::uint16_t& value) {
     value = static_cast<std::uint16_t>(value - 1U);
     return (value & 0x8000U) != 0U;
@@ -47,15 +56,16 @@ bool render_figure_sprite(
     const std::uint16_t y,
     const TitleFigureAnimationCallbacks& callbacks,
     const bool append) {
+    if (append && callbacks.append_sprite_record) {
+        callbacks.append_sprite_record(sprite_key);
+    }
     const auto token = callbacks.resolve_sprite_data
                            ? callbacks.resolve_sprite_data(source_table_token,
                                                             phase)
-                           : std::nullopt;
+                           : resolve_title_figure_sprite_data(source_table_token,
+                                                               phase);
     if (!token.has_value()) {
         return false;
-    }
-    if (append && callbacks.append_sprite_record) {
-        callbacks.append_sprite_record(sprite_key);
     }
     if (callbacks.build_sprite) {
         callbacks.build_sprite(TitleFigureSpriteBuild{
@@ -110,6 +120,31 @@ std::optional<std::uint32_t> resolve_matrix_transition_sprite_data(
         return std::nullopt;
     }
     return kMatrixTransitionSpriteData[stage];
+}
+
+std::optional<std::uint32_t> resolve_title_figure_sprite_data(
+    const std::uint32_t source_table_token, const std::uint16_t phase) {
+    const std::array<std::uint32_t, 5>* table = nullptr;
+    switch (source_table_token) {
+    case 0x0001DAF4U:
+        table = &kTitleFigureLeftUpper;
+        break;
+    case 0x0001DB08U:
+        table = &kTitleFigureRightUpper;
+        break;
+    case 0x000EA490U:
+        table = &kTitleFigureLeftLower;
+        break;
+    case 0x000EA4A4U:
+        table = &kTitleFigureRightLower;
+        break;
+    default:
+        return std::nullopt;
+    }
+    if (phase >= table->size()) {
+        return std::nullopt;
+    }
+    return (*table)[phase] + 8U;
 }
 
 MatrixProgramTransitionAction advance_matrix_program_transition(

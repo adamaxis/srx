@@ -52,21 +52,36 @@ int main() {
     int support = 0;
     int figure_appends = 0;
     int figure_builds = 0;
+    std::vector<TitleFigureSpriteBuild> figure_requests;
     TitleFigureAnimationCallbacks figure_callbacks{};
     figure_callbacks.advance_support_animation = [&] { ++support; };
-    figure_callbacks.resolve_sprite_data =
-        [](const std::uint32_t table, const std::uint16_t phase)
-        -> std::optional<std::uint32_t> { return table + phase; };
     figure_callbacks.append_sprite_record =
         [&](const std::uint16_t key) {
             figure_appends += (key == 0x780U || key == 0x7C0U) ? 1 : 100;
         };
     figure_callbacks.build_sprite =
-        [&](const TitleFigureSpriteBuild&) { ++figure_builds; };
+        [&](const TitleFigureSpriteBuild& request) {
+            figure_requests.push_back(request);
+            ++figure_builds;
+        };
     if (advance_title_figure_animation(figure, figure_callbacks) !=
             TitleFigureAnimationAction::rendered ||
         figure.phase != 1U || support != 1 || figure_appends != 2 ||
-        figure_builds != 4) {
+        figure_builds != 4 || figure_requests.size() != 4U ||
+        figure_requests[0].source_table_token != 0x1DAF4U ||
+        figure_requests[0].sprite_key != 0x780U ||
+        figure_requests[0].x != 0xF8U || figure_requests[0].y != 0xE4U ||
+        figure_requests[0].sprite_data_token != 0xEA058U ||
+        figure_requests[1].source_table_token != 0x1DB08U ||
+        figure_requests[1].x != 0x148U ||
+        figure_requests[1].sprite_data_token != 0xEA07AU ||
+        figure_requests[2].source_table_token != 0xEA490U ||
+        figure_requests[2].sprite_key != 0x7C0U ||
+        figure_requests[2].x != 0xE2U || figure_requests[2].y != 0x114U ||
+        figure_requests[2].sprite_data_token != 0xEA664U ||
+        figure_requests[3].source_table_token != 0xEA4A4U ||
+        figure_requests[3].x != 0x15EU ||
+        figure_requests[3].sprite_data_token != 0xEA686U) {
         return 3;
     }
 
