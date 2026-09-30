@@ -193,12 +193,22 @@ struct WorldEffectMotionSeedState {
 };
 
 struct TitleJitterState {
-    std::uint16_t frame = 0;
+    std::uint16_t frame = 0;            // FFE086
+    std::uint16_t scene_complete = 0;   // FFE084
     std::array<std::int16_t, 4> bounds{};
-    std::uint32_t dirty_flags = 0;
+    std::uint8_t dirty_flags = 0;       // FFEF14
 };
 
-bool advance_title_jitter(
+enum class TitleJitterAction {
+    updated,
+    completed,
+    prng_unresolved,
+};
+
+// ROM 0x1B302: run the 0x3C-frame title jitter stream, clear FFE084 at the
+// terminal frame, and leave the four FFCB40 words to the word-stream reset
+// boundary rather than inventing a second clear here.
+TitleJitterAction advance_title_jitter(
     TitleJitterState& state,
     const std::function<std::uint16_t()>& next_random_word,
     const std::function<void()>& write_word_stream,

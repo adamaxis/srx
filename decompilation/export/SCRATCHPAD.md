@@ -920,6 +920,14 @@ return through `0x1A908`. The typed conversion now records the source table,
 stage, resource position, selected sprite data, and builder arguments instead
 of reducing the call to an opaque stage callback.
 
+The `0x1B302 advance_title_jitter` pass also corrected a host-only clear. The
+ROM increments `FFE086`, runs exactly `0x58` PRNG samples into the four-word
+`FFCB40` jitter prefix, then enters `0x1B56E` to write the full word stream and
+set FFEF14 bits 2 and 3. At the `0x3C` terminal count it clears `FFE084` and
+calls `0x1B5A6 reset_word_stream_area`; it does not clear the four jitter words
+in this routine. The typed action now distinguishes updated, completed, and
+PRNG-unresolved outcomes.
+
 `0x1AB6E advance_primary_world_effect_overlay` calls `0x563CC` when the
 primary effect has not yet crossed its threshold. The call is not merely an
 intro transition: `0x563CC` obtains a trial count from the `0x19BF6`

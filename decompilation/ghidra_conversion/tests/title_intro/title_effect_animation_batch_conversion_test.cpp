@@ -252,15 +252,26 @@ int main() {
 
     TitleJitterState jitter{};
     int random_calls = 0;
+    jitter.scene_complete = 1U;
     assert(advance_title_jitter(jitter, [&] {
                ++random_calls;
                return static_cast<std::uint16_t>(0x0101);
            },
-           [&] { ++service; }, [&] { ++clear; }));
-    assert(random_calls == 0x58 && (jitter.dirty_flags & 0x0C) != 0U);
+           [&] { ++service; }, [&] { ++clear; }) ==
+           TitleJitterAction::updated);
+    assert(random_calls == 0x58 && jitter.scene_complete == 1U &&
+           (jitter.dirty_flags & 0x0C) != 0U);
+    jitter.bounds[0] = 42;
     jitter.frame = 0x3B;
-    assert(!advance_title_jitter(jitter, [] { return static_cast<std::uint16_t>(0); },
-                                 {}, [&] { ++clear; }));
+    assert(advance_title_jitter(
+               jitter, [] { return static_cast<std::uint16_t>(0); }, {},
+               [&] { ++clear; }) == TitleJitterAction::completed);
+    assert(jitter.scene_complete == 0U && jitter.frame == 0x3CU &&
+           jitter.bounds[0] == 42 && (jitter.dirty_flags & 0x0C) != 0U);
+    jitter.frame = 0;
+    const auto random_unresolved = advance_title_jitter(jitter, {}, {}, {});
+    assert(random_unresolved == TitleJitterAction::prng_unresolved &&
+           jitter.frame == 1U);
 
     int handler = 0;
     assert(dispatch_title_phase_handler(0, {[&] { ++handler; }}, [&] { ++service; }));

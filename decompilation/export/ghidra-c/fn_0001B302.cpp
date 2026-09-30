@@ -9,6 +9,12 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
+// FFE086 is the 0x3C-frame counter and FFE084 is the separate scene-complete
+// marker. The terminal branch clears FFE084 and calls 0x1B5A6; it does not
+// clear the FFCB40 jitter words directly. The normal branch accumulates 0x58
+// PRNG samples into the four FFCB40 words, writes the word stream, and then
+// sets FFEF14 bits 2 and 3.
+
 void advance_title_jitter(void)
 
 {

@@ -220,17 +220,21 @@ TitlePhaseCycleAction advance_title_phase_cycle(
     return TitlePhaseCycleAction::rendered;
 }
 
-bool advance_title_jitter(
+TitleJitterAction advance_title_jitter(
     TitleJitterState& state,
     const std::function<std::uint16_t()>& next_random_word,
     const std::function<void()>& write_word_stream,
     const std::function<void()>& reset_word_stream) {
     ++state.frame;
-    if (state.frame >= 0x3CU || !next_random_word) {
-        state.frame = 0;
-        state.bounds.fill(0);
+    if (state.frame >= 0x3CU) {
+        state.scene_complete = 0U;
         call_once(reset_word_stream);
-        return false;
+        state.dirty_flags = static_cast<std::uint8_t>(
+            state.dirty_flags | 0x0CU);
+        return TitleJitterAction::completed;
+    }
+    if (!next_random_word) {
+        return TitleJitterAction::prng_unresolved;
     }
     for (int iteration = 0; iteration < 0x58; ++iteration) {
         const auto random_word = next_random_word();
@@ -247,9 +251,10 @@ bool advance_title_jitter(
         state.bounds[2] = static_cast<std::int16_t>(state.bounds[2] + delta_y);
         state.bounds[3] = static_cast<std::int16_t>(state.bounds[3] + delta_y);
     }
-    state.dirty_flags |= 0x0CU;
     call_once(write_word_stream);
-    return true;
+    state.dirty_flags = static_cast<std::uint8_t>(
+        state.dirty_flags | 0x0CU);
+    return TitleJitterAction::updated;
 }
 
 bool dispatch_title_phase_handler(
