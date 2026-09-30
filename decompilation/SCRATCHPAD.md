@@ -1634,8 +1634,10 @@ the exact four-row table at 0x1C5FC/0x1C604/0x1C60C/0x1C614; its row uses
 signed `FFE169 - 1` before the source `& 3`, so timer zero selects row three.
 
 `0x1C866` is now `advance_title_effect_motion`: its four-tick frame cadence,
-mode/position source-table boundary, twelve-frame completion, and correct
-`0x1C288`/`0x1C28E` source reset are captured in a separate typed module.
+exact twelve-entry `0x1C926`/`0x1C956` source tables, mode/position boundary,
+twelve-frame completion, and correct `0x1C288` secondary-slot versus `0x1C28E`
+primary-slot reset are captured in a separate typed module. The conversion
+does not require a resolver for the normal source path.
 
 `0x1BCE8` is now `advance_title_profile_motion`. It carries the typed profile
 phase, movement countdown/easing boundary, moving X/Y state, secondary phase,

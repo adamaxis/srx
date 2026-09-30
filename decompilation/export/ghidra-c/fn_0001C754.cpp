@@ -13,6 +13,11 @@
 
 // Native conversion: shadowrun_ghidra::advance_title_world_interaction_service
 // keeps the source behavior-descriptor and controller-input gates typed.
+// ROM trace: FFE084 takes the 0x1B5FC completion path, which initializes the
+// shared record and installs 0x1C2A8/0x1C2AE. Otherwise record bit 0 blocks
+// the service; descriptor 0x1C36A gates 0x1CB20, descriptor 0x1C350 gates
+// 0x1CAD4, and only their stage-5 fallthrough reaches the controller mask
+// (FFDD22 bits 0x40/0x10/0x20), FFE076 < 3, and FFE082 == 0 gate for 0x19976.
 void advance_title_world_interaction_service(void)
 
 {

@@ -1068,11 +1068,14 @@ eight. The focused regression covers the layer order, all four extracted
 offset rows, and the timer-zero signed wrap to row three.
 
 `0x1C866` is now `advance_title_effect_motion`. It decrements `FFE066` at a
-four-tick cadence, advances twelve frames, resolves the sprite source from the
-mode/position split between `0x1C926` and `0x1C956`, and builds at the current
-`FFE060`/`FFE062` position with attributes `0x2000`. At frame twelve it
-installs `0x1C288` or `0x1C28E` into the correct record slot based on the
-`0x120` position boundary, clears `FFE0D6`/`FFE05E`, and services the menu.
+four-tick cadence, advances twelve frames, and resolves the direct sprite
+stream from the exact 12-entry table at `0x1C926` or `0x1C956`. The table
+choice preserves the ROM's nonzero `FFE0E2` versus `FFE060 >= 0x120` split;
+each selected stream is built at the current `FFE060`/`FFE062` position with
+attributes `0x2000`. At frame twelve it installs `0x1C288` into the secondary
+record slot (`FF1588`, stage `FF158C`) on the left path or `0x1C28E` into the
+primary slot (`FF1584`, stage `FF158D`) on the right path, clears
+`FFE0D6`/`FFE05E`, and services the menu.
 
 `0x1CA12` is now `advance_world_effect_motion`. It finalizes when the
 decremented `FFE070` word is negative; otherwise it advances the `FFE072`
