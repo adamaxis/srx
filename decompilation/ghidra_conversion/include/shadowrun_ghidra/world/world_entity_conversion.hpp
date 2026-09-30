@@ -12,14 +12,26 @@
 namespace shadowrun::ghidra_conversion {
 
 struct WorldFrameState {
-    bool audio_pending = false;
-    bool world_dirty = false;
+    // ROM FFE172: the audio command service is requested for this frame.
+    bool audio_command_frame_pending = false;
+    // ROM FFDF8A: the field/world refresh record remains pending until the
+    // terrain-copy-suppressed branch consumes it.
+    bool field_refresh_pending = false;
+    // ROM FFDCA0: a live effect record must be restored before refresh.
     bool effect_record_active = false;
+    // ROM FFE191: a pending world-effect transition is consumed in refresh.
     bool effect_transition_pending = false;
-    bool terrain_copy_pending = false;
-    bool terrain_mode_active = false;
-    bool compressed_entity_data_pending = false;
-    std::uint8_t scene_state = 0;
+    // ROM FFE171: nonzero suppresses the terrain copy and consumes the
+    // FFDF8A refresh record; zero takes the copy path and leaves refresh set.
+    bool terrain_copy_suppression_pending = false;
+    // ROM FFDF40 == 2: process the queued terrain work entries.
+    bool terrain_work_mode_active = false;
+    // ROM FFDE22 bit 0: decode the pending entity source stream.
+    bool entity_source_stream_decode_pending = false;
+    // ROM FFE186: world-scene service state/mode.
+    std::uint8_t world_scene_state = 0;
+    // ROM FFE16F: cleared whenever the FFDF8A refresh branch runs.
+    bool world_effect_event_lock = false;
 };
 
 struct WorldFrameCallbacks {
@@ -40,6 +52,9 @@ struct WorldFrameCallbacks {
     std::function<void()> dispatch_entity_actions;
     std::function<void()> decode_entity_data;
     std::function<void()> mark_entities_for_render;
+    // ROM 0x02900: after decoding, both source cursors are republished at
+    // the decoded stream base before the render-slot pass.
+    std::function<void()> reset_decoded_entity_stream_cursors;
 };
 
 // ROM 0x02900: one world/entity frame-service pass in source order.

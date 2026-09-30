@@ -808,6 +808,16 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The `0x02900` world-frame conversion now matches the source refresh-latch
+semantics: the FFDF8A field refresh remains pending after the normal terrain
+copy, and is cleared only when the FFE171 suppressed-copy branch consumes it.
+The typed state also clears the FFE16F world-effect event lock at the start of
+that refresh branch and explicitly models the FFDE22 entity-stream decode
+followed by republishing both decoded-stream cursors before render marking.
+The focused world-entity test verifies the complete callback order and both
+refresh-latch branches; the function remains partial because its resource and
+render callbacks are still host integration boundaries.
+
 ### Terrain collision probe audit
 
 The terrain probe family is now source-traced in the conversion project rather

@@ -2608,3 +2608,29 @@ phase range is `0..0x19`; a post-increment value of `0x1A` resets to zero.
 Secondary and background wrap at four phases. The conversion and regression
 tests now retain these exact table identities, origins, branch gates, and
 phase boundaries.
+
+## World-frame service audit: 0x02900
+
+The direct Ghidra export confirms that `0x02900` is the field/world frame
+service coordinator, not a generic entity tick. It first consumes the
+`FFE172` audio-command-frame request. When `FFDF8A` is set it restores the
+active effect record, clears `FFE16F`, consumes the `FFE191` world-effect
+transition request, clears effect/entity-pending/scene-pending records,
+finalizes the pending entity template, conditionally calls `0x5D260` while
+`FFE186 != 3`, and then chooses between terrain-layer copy (`FFE171 == 0`)
+and the branch that clears both `FFE171` and `FFDF8A`. `FFDF40 == 2` then
+selects the terrain-work-entry pass.
+
+The unconditional tail is also behaviorally significant: collision-map
+rebuild, scene-resource load when `FFE186 > 1`, transition-word clear,
+entity-table population, and action-candidate dispatch happen in that order.
+If bit 0 of `FFDE22` is set, `0x1610` decodes the source stream and both
+`FFDDDE` and `FFDDE6` are republished at the decoded stream base before
+`0x5B7E` marks entity slots for rendering. The typed conversion preserves
+those side effects without exposing ROM addresses or source pointers to the
+runtime.
+
+The old conversion incorrectly cleared the refresh record before the terrain
+branch and omitted the two decoded-stream cursor publications. The current
+`WorldFrameState` names those source decisions explicitly and the focused
+test covers both terrain branches and the decode/cursor-reset/render order.

@@ -7,6 +7,7 @@ using namespace shadowrun::ghidra_conversion;
 
 int main() {
     WorldFrameState world{true, true, true, true, false, true, true, 2};
+    world.world_effect_event_lock = true;
     std::vector<int> events;
     const WorldFrameCallbacks callbacks{
         [&] { events.push_back(1); }, [&] { events.push_back(2); },
@@ -18,11 +19,26 @@ int main() {
         [&] { events.push_back(13); }, [&] { events.push_back(14); },
         [&] { events.push_back(15); }, [&] { events.push_back(16); },
         [&] { events.push_back(17); }};
-    run_world_frame_services(world, callbacks);
-    if (world.audio_pending || world.world_dirty || world.effect_transition_pending ||
-        world.compressed_entity_data_pending || events.size() != 17 ||
-        events[0] != 1 || events[1] != 2 || events.back() != 17) {
+    WorldFrameCallbacks source_callbacks = callbacks;
+    source_callbacks.reset_decoded_entity_stream_cursors =
+        [&] { events.push_back(18); };
+    run_world_frame_services(world, source_callbacks);
+    if (world.audio_command_frame_pending || !world.field_refresh_pending ||
+        world.world_effect_event_lock || world.effect_transition_pending ||
+        world.entity_source_stream_decode_pending || events.size() != 18 ||
+        events[0] != 1 || events[1] != 2 || events[16] != 18 ||
+        events[17] != 17) {
         return 1;
+    }
+
+    // The alternate source branch consumes FFE171 and then clears FFDF8A.
+    world = {};
+    world.field_refresh_pending = true;
+    world.terrain_copy_suppression_pending = true;
+    run_world_frame_services(world, {});
+    if (world.field_refresh_pending ||
+        world.terrain_copy_suppression_pending) {
+        return 2;
     }
 
     std::array<EntityFrameRecord, 16> entities{};
@@ -32,7 +48,7 @@ int main() {
         {}, {}, {}, [&](EntityFrameRecord&) {}, {}, {}, {}, {}, {},
         [&](EntityFrameRecord&) { ++expanded; }, {}, {}, {}});
     if (expanded != 1) {
-        return 2;
+        return 3;
     }
 
     EffectAnimationState animation{0, 0, 1, 0, true};
@@ -41,7 +57,7 @@ int main() {
         advance_effect_animation(animation, {}, {}, [&] { ++builds; });
     }
     if (animation.active || builds == 0) {
-        return 3;
+        return 4;
     }
 
     JitterEffectState jitter{};
@@ -53,10 +69,10 @@ int main() {
         return state;
     }, {}, [&] { ++jitter_builds; });
     if (jitter_builds != 1) {
-        return 4;
+        return 5;
     }
     if (!set_sprite_descriptor_carry()) {
-        return 5;
+        return 6;
     }
 
     if (select_projected_entity_sprite_source(0) != 0x00005F78U ||
@@ -65,7 +81,7 @@ int main() {
         select_projected_entity_sprite_source(0x65) != 0x0001D47CU ||
         select_projected_entity_sprite_source(-0x4000) != 0x00005F82U ||
         select_projected_entity_sprite_source(-1) != 0x00005FA0U) {
-        return 6;
+        return 7;
     }
 
     std::array<ProjectedEntitySpriteSlot, 10> slots{};
@@ -82,7 +98,7 @@ int main() {
         sprites[0].attributes != 0x47F2U || sprites[1].y != 0x84 ||
         sprites[1].x != 0x94 || sprites[1].size != 0U ||
         sprites[1].sequence != 1U || sprites[1].attributes != 0x45B2U) {
-        return 7;
+        return 8;
     }
 
     EntityEffectTimerState timer{};
@@ -97,7 +113,7 @@ int main() {
         timer, effect_slots, collision, 0x0080U, 0x0080U, 0U);
     if (timer.countdown != -1 || effect_slots[2] != 0 ||
         !effect_sprites.empty() || collision[10] != 1) {
-        return 8;
+        return 9;
     }
 
     timer = {};
@@ -114,7 +130,7 @@ int main() {
         effect_sprites[0].attributes != 0x2000U ||
         effect_sprites[1].y != 0x38 || effect_sprites[1].x != 0x88 ||
         effect_sprites[1].sequence != 1U) {
-        return 9;
+        return 10;
     }
 
     EffectAnimationSpriteState anim{};
@@ -126,7 +142,7 @@ int main() {
     auto anim_sprites = advance_effect_animation(anim, anim_slots, 0U);
     if (anim.animation.active || anim_slots[4] != 0 ||
         (anim.entity_flags & 0x40U) != 0 || !anim_sprites.empty()) {
-        return 10;
+        return 11;
     }
     anim = {};
     anim.animation = {1, 0, 3, 0, true};
@@ -137,7 +153,7 @@ int main() {
         anim_sprites.size() != 1U || anim_sprites[0].y != 0x81 ||
         anim_sprites[0].x != 0x71 || anim_sprites[0].size != 5U ||
         anim_sprites[0].attributes != 0x2000U) {
-        return 11;
+        return 12;
     }
 
     EffectAnimationVariantState variant{};
@@ -145,7 +161,7 @@ int main() {
     auto variant_sprites = advance_effect_animation_variant(variant, 0U);
     if (variant.animation.active || variant.auxiliary != 0 ||
         !variant_sprites.empty()) {
-        return 12;
+        return 13;
     }
     variant = {};
     variant.animation = {1, 0, 4, 0, true};
@@ -156,13 +172,13 @@ int main() {
         variant_sprites[0].y != 0x7A || variant_sprites[0].x != 0x7D ||
         variant_sprites[0].size != 15U ||
         variant_sprites[0].attributes != 0x6000U) {
-        return 13;
+        return 14;
     }
     variant.animation = {1, 4, 4, 0, true};
     variant.jitter_bit = 1;
     variant_sprites = advance_effect_animation_variant(variant, 0U);
     if (variant_sprites[0].y != 0x7C || variant_sprites[0].x != 0x7D) {
-        return 14;
+        return 15;
     }
 
     JitterEffectSpriteState jitter_sprite{};
@@ -171,7 +187,7 @@ int main() {
     auto jitter_sprites = advance_jitter_effect(jitter_sprite, 0U);
     if (jitter_sprite.animation.active || jitter_sprite.auxiliary != 0 ||
         !jitter_sprites.empty()) {
-        return 15;
+        return 16;
     }
     jitter_sprite = {};
     jitter_sprite.animation = {1, 0, 3, 0, true};
@@ -182,14 +198,14 @@ int main() {
         jitter_sprites[0].y != 0x85 || jitter_sprites[0].x != 0x82 ||
         jitter_sprites[0].size != 1U ||
         jitter_sprites[0].attributes != 0x6000U) {
-        return 16;
+        return 17;
     }
     jitter_sprite.animation = {1, 1, 3, 0, true};
     jitter_sprite.random_word = 0x1000U;
     jitter_sprites = advance_jitter_effect(jitter_sprite, 0U);
     if (jitter_sprites[0].y != 0x82 || jitter_sprites[0].x != 0x7D ||
         jitter_sprites[0].size != 5U) {
-        return 17;
+        return 18;
     }
     jitter_sprite = {};
     jitter_sprite.animation = {0, 2, 3, 0, true};
@@ -202,7 +218,7 @@ int main() {
         jitter_sprite.animation.countdown != 5 ||
         jitter_sprite.offset_x != -6 || jitter_sprite.offset_y != -6 ||
         jitter_sprites[0].y != 0x7F || jitter_sprites[0].x != 0x7C) {
-        return 18;
+        return 19;
     }
 
     EffectVariantRecord self{};
@@ -213,7 +229,7 @@ int main() {
     auto scan = run_effect_variant_a(self, neighbors, auxiliary, shared, 0U);
     if (scan.result != EffectVariantScanResult::gated || shared.gate != 1 ||
         !scan.sprites.empty()) {
-        return 19;
+        return 20;
     }
     self.spawn.auxiliary = 0x0D;
     self.spawn.countdown = 1;
@@ -225,7 +241,7 @@ int main() {
     if (scan.result != EffectVariantScanResult::jitter_live ||
         shared.gate != -1 || shared.delay != 0 || scan.sprites.size() != 1U ||
         scan.sprites[0].y != 0x85 || scan.sprites[0].x != 0x82) {
-        return 20;
+        return 21;
     }
     self.spawn.auxiliary = 0;
     self.spawn.countdown = 1;
@@ -241,7 +257,7 @@ int main() {
         scan.cloned_index != 1U || neighbors[1].spawn.auxiliary != 0x0D ||
         neighbors[1].spawn.countdown != 5 || neighbors[1].spawn.slot != 3 ||
         shared.phase_gate != 4) {
-        return 21;
+        return 22;
     }
     neighbors = {};
     neighbors[0].kind = 9;
@@ -253,14 +269,14 @@ int main() {
     if (scan.result != EffectVariantScanResult::expired ||
         shared.slots[3] != 0 || shared.cleanup.transient_flags[0] != 0 ||
         shared.cleanup.masked_flags[0] != 0xFDU) {
-        return 22;
+        return 23;
     }
     shared.delay = 0;
     scan = run_effect_variant_a(self, neighbors, auxiliary, shared, 0U);
     if (scan.result != EffectVariantScanResult::auxiliary_cloned ||
         shared.gate != 0x1E || auxiliary.spawn.auxiliary != 0x0D ||
         auxiliary.spawn.script != 0xD800U) {
-        return 23;
+        return 24;
     }
 
     self = {};
@@ -277,7 +293,7 @@ int main() {
         scan.sprites.size() != 1U || scan.sprites[0].y != 0x7A ||
         scan.sprites[0].x != 0x7D || scan.sprites[0].size != 15U ||
         scan.sprites[0].attributes != 0x6000U) {
-        return 24;
+        return 25;
     }
     self.spawn.auxiliary = 0;
     self.spawn.countdown = 1;
@@ -290,7 +306,7 @@ int main() {
     if (scan.result != EffectVariantScanResult::child_cloned ||
         scan.cloned_index != 2U || neighbors[2].spawn.auxiliary != 6 ||
         neighbors[2].spawn.script != 0xABU) {
-        return 25;
+        return 26;
     }
     neighbors = {};
     neighbors[0].kind = 9;
@@ -301,13 +317,13 @@ int main() {
     scan = run_effect_variant_b(self, neighbors, auxiliary, shared, 0U);
     if (scan.result != EffectVariantScanResult::expired ||
         shared.slots[4] != 0 || shared.cleanup.masked_flags[0] != 0xFEU) {
-        return 26;
+        return 27;
     }
     shared.delay = 0;
     scan = run_effect_variant_b(self, neighbors, auxiliary, shared, 0U);
     if (scan.result != EffectVariantScanResult::auxiliary_cloned ||
         shared.gate != 0x1E || auxiliary.spawn.auxiliary != 6) {
-        return 27;
+        return 28;
     }
 
     EntityAnimationEffectState anim_effect{};
@@ -319,7 +335,7 @@ int main() {
         anim_effect_sprites[0].y != 0x7A || anim_effect_sprites[0].x != 0x78 ||
         anim_effect_sprites[0].size != 14U ||
         anim_effect_sprites[0].attributes != 0x4580U) {
-        return 28;
+        return 29;
     }
     anim_effect.countdown = 0;
     anim_effect.phase = 3;
@@ -330,7 +346,7 @@ int main() {
         anim_effect_sprites[0].y != 0x4C || anim_effect_sprites[0].x != 0x58 ||
         anim_effect_sprites[1].y != 0xA3 || anim_effect_sprites[1].x != 0x58 ||
         anim_effect_sprites[1].sequence != 1U) {
-        return 29;
+        return 30;
     }
     EntityAnimationEffectState delayed{};
     delayed.countdown = 1;
@@ -341,7 +357,7 @@ int main() {
         delayed_sprites[0].y != 0x7C || delayed_sprites[0].x != 0x84 ||
         delayed_sprites[0].size != 13U ||
         delayed_sprites[0].attributes != 0x245FU) {
-        return 30;
+        return 31;
     }
 
     EntityEffectSpawnState spawned{};
@@ -354,7 +370,7 @@ int main() {
         spawned.countdown != 0x190U || spawned.world_x != 0x1100U ||
         spawned.world_y != 0x1B00U || spawned.collision_base != 0x348U ||
         spawn_map[0x348] != 0x7E || spawned.saved_tiles[0] != 0xAA) {
-        return 31;
+        return 32;
     }
     spawn_slots.fill(1);
     spawned.active = 0;

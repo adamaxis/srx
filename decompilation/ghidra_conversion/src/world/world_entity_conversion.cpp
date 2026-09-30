@@ -17,15 +17,15 @@ void call_once(const std::function<void()>& callback) {
 
 void run_world_frame_services(WorldFrameState& state,
                               const WorldFrameCallbacks& callbacks) {
-    if (state.audio_pending) {
-        state.audio_pending = false;
+    if (state.audio_command_frame_pending) {
+        state.audio_command_frame_pending = false;
         call_once(callbacks.service_audio);
     }
-    if (state.world_dirty) {
+    if (state.field_refresh_pending) {
         if (state.effect_record_active) {
             call_once(callbacks.reset_effect_record);
         }
-        state.world_dirty = false;
+        state.world_effect_event_lock = false;
         if (state.effect_transition_pending) {
             state.effect_transition_pending = false;
             call_once(callbacks.begin_effect_transition);
@@ -34,28 +34,30 @@ void run_world_frame_services(WorldFrameState& state,
         call_once(callbacks.clear_entity_effects);
         call_once(callbacks.clear_scene_pending);
         call_once(callbacks.finalize_entity_templates);
-        if (state.scene_state != 3U) {
+        if (state.world_scene_state != 3U) {
             call_once(callbacks.service_scene_effect);
         }
-        if (!state.terrain_copy_pending) {
+        if (!state.terrain_copy_suppression_pending) {
             call_once(callbacks.copy_terrain_layers);
         } else {
-            state.terrain_copy_pending = false;
+            state.terrain_copy_suppression_pending = false;
+            state.field_refresh_pending = false;
         }
-        if (state.terrain_mode_active) {
+        if (state.terrain_work_mode_active) {
             call_once(callbacks.process_terrain_entries);
         }
     }
     call_once(callbacks.rebuild_collision_map);
-    if (state.scene_state > 1U) {
+    if (state.world_scene_state > 1U) {
         call_once(callbacks.load_scene_resources);
     }
     call_once(callbacks.clear_scene_transitions);
     call_once(callbacks.populate_entities);
     call_once(callbacks.dispatch_entity_actions);
-    if (state.compressed_entity_data_pending) {
-        state.compressed_entity_data_pending = false;
+    if (state.entity_source_stream_decode_pending) {
+        state.entity_source_stream_decode_pending = false;
         call_once(callbacks.decode_entity_data);
+        call_once(callbacks.reset_decoded_entity_stream_cursors);
     }
     call_once(callbacks.mark_entities_for_render);
 }
