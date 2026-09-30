@@ -357,6 +357,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00021616L, "prepare_electromagnetic_lock_resolution");
         names.put(0x000213CAL, "resolve_stoker_debt_collection_command");
         names.put(0x000213E2L, "resolve_stoker_jump_house_referral_command");
+        names.put(0x000213FAL, "resolve_stoker_motel_debt_payment");
         names.put(0x000249C4L, "resolve_stoker_motel_arrival_command");
         names.put(0x00021458L, "resolve_stoker_motel_room_payment");
         names.put(0x0005670EL, "refresh_mode_palette_data");
@@ -1042,6 +1043,9 @@ public class ExportShadowrun extends GhidraScript {
         ensureReviewedInlineFunction(
             program, 0x000213E2L, 0x000213FAL,
             "resolve_stoker_jump_house_referral_command");
+        ensureReviewedInlineFunction(
+            program, 0x000213FAL, 0x00021458L,
+            "resolve_stoker_motel_debt_payment");
         ensureReviewedInlineFunction(
             program, 0x00021458L, 0x0002148AL,
             "resolve_stoker_motel_room_payment");

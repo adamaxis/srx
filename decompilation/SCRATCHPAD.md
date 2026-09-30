@@ -948,6 +948,25 @@ commands and two named prompt identities. The flags are retained as typed
 story/referral state, and the source pointers remain provenance in this note
 only. The conversion does not treat either branch as a generic menu callback.
 
+## Stoker motel debt payment: 0x213FA
+
+The complete mode-command table correction exposed command `0x05`, which the
+debt question at `0xF4E8C` dispatches to `0x213FA`. The ROM compares the nuyen
+balance at `FFFBFE` with `0xFA` (250). Insufficient funds branch to `0x213E2`,
+so the typed conversion reuses the named Jump House referral command and its
+`FFFC27` flag update.
+
+The paid path subtracts `0xFA`, calls `0x2196C`, adds `0x1F4` back, increments
+the three runner source bytes at `FF018D`, `FF028D`, and `FF038D` through
+`0x59C34`, sets `FF018F` bit 7, and sets `FFFC30` bits 0 through 4. The
+`0x2196C` helper reloads the pending marker from `FFDD64`; it does not use the
+prompt command value `0x05`. The conversion therefore carries that marker as
+an explicit typed input instead of inventing a Stoker-specific effect bit. It
+returns `0xF487C`, whose first text record begins `The creds roll off your
+stick...` and continues through Michael's package contents and letter
+sequence. `resolve_stoker_motel_debt_payment` now exposes those exact
+mutations as typed state; it does not emulate the source memory addresses.
+
 ## 2026-09-30 Stoker motel source mapping
 
 The Stoker source mapping is now corrected rather than guessed. `0x1F65A`

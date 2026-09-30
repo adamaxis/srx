@@ -95,6 +95,7 @@ file(GLOB SHADOWRUN_MODULE_FIELD_INTERACTION_ACTIONS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_inventory_action_detail_render_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_equipment_upgrade_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/stoker_motel_arrival_command_conversion.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/field/stoker_motel_debt_payment_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/stoker_motel_followup_commands_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/stoker_motel_room_payment_conversion.cpp"
 )
