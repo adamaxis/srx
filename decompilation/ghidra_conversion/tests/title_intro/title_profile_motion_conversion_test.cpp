@@ -31,11 +31,12 @@ int main() {
     callbacks.build_sprite = [&](const TitleProfileMotionSpriteBuild& sprite) {
         if (sprite.moving_sprite) {
             if (sprite.x != 0x134U || sprite.y != 0x0FFU ||
-                sprite.phase != 0U) {
+                sprite.phase != 0U || sprite.sprite_data_token != 0x5678U) {
                 builds += 100;
             }
         } else if (sprite.x != 0x102U || sprite.y != 0x1FDU ||
-                   sprite.phase != 1U || sprite.sprite_data_token != 0U) {
+                   sprite.phase != 1U ||
+                   sprite.sprite_data_token != 0x1234U) {
             builds += 100;
         }
         ++builds;
@@ -59,6 +60,22 @@ int main() {
         finish.motion_mode != 0U || finish.transition_state != 0U ||
         finish.completion_state != 1U || refreshed != 1) {
         return 2;
+    }
+
+    const auto phase_zero = resolve_title_profile_phase_sprite(0U);
+    const auto phase_five = resolve_title_profile_phase_sprite(5U);
+    const auto moving_three = resolve_title_profile_moving_sprite_data(3U);
+    if (!phase_zero.has_value() || phase_zero->source_table_token != 0x1D74AU ||
+        phase_zero->offset_x != 0 || phase_zero->offset_y != -48 ||
+        !phase_five.has_value() || phase_five->offset_x != 20 ||
+        !moving_three.has_value() || *moving_three != 0x1D768U ||
+        resolve_title_profile_phase_sprite(13U).has_value() ||
+        resolve_title_profile_moving_sprite_data(4U).has_value() ||
+        resolve_title_profile_movement_easing(1U) != 1607 ||
+        resolve_title_profile_movement_easing(43U) != 0 ||
+        resolve_title_profile_movement_easing(44U) != -3211 ||
+        resolve_title_profile_movement_easing(60U).has_value()) {
+        return 3;
     }
     return 0;
 }

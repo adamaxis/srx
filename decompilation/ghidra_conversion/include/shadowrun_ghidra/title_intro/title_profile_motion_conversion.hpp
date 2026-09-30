@@ -39,11 +39,12 @@ struct TitleProfileMotionSpriteBuild {
 };
 
 struct TitleProfileMotionCallbacks {
-    // ROM 0x1BE4E selects a sprite pointer plus signed x/y offsets for the
-    // 13-frame profile phase. ROM 0x1BE3E supplies the four moving frames.
+    // ROM 0x1BE4E selects one of the four inline profile sprite streams at
+    // 0x1BE3E and supplies signed x/y offsets for the 13 profile phases.
     std::function<std::optional<TitleProfileMotionSprite>(
         std::uint16_t phase)>
         resolve_profile_sprite;
+    // ROM 0x1BE3E supplies the four inline moving-frame sprite streams.
     std::function<std::optional<std::uint32_t>(
         std::uint16_t phase)>
         resolve_moving_sprite;
@@ -53,6 +54,19 @@ struct TitleProfileMotionCallbacks {
     std::function<void(const TitleProfileMotionSpriteBuild&)> build_sprite;
     std::function<void()> refresh_menu_selection_or_prepare;
 };
+
+// Typed extraction of the 13 profile-phase records at ROM 0x1BE4E and the
+// four inline sprite streams selected through ROM 0x1BE3E.
+std::optional<TitleProfileMotionSprite> resolve_title_profile_phase_sprite(
+    std::uint16_t phase);
+std::optional<std::uint32_t> resolve_title_profile_moving_sprite_data(
+    std::uint16_t phase);
+
+// ROM 0x15E56 is indexed by ((elapsed_step * 3) & 0xFE), not by a packed
+// host array stride. The extracted host table preserves those 60 source
+// samples for the movement easing.
+std::optional<std::int16_t> resolve_title_profile_movement_easing(
+    std::uint16_t elapsed_step);
 
 enum class TitleProfileMotionAction {
     updated,

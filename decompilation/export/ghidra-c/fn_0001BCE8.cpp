@@ -5,6 +5,14 @@
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
 //   0x0001A106 refresh_menu_selection_or_prepare
+// Profile phase table at 0x001BE4E contains thirteen records:
+//   pointer index 0, x offsets 0/4/8/C/10/14/14/14/14/14/14/14/14,
+//   y offset -0x30. The pointer table at 0x001BE3E resolves index 0 to
+//   0x001D74A; the moving phase table resolves phases 0..3 to
+//   0x001D74A/0x001D754/0x001D75E/0x001D768.
+// Movement easing indexes ROM 0x0015E56 at ((elapsed * 3) & 0xFE),
+// multiplies the signed sample by 0x58, shifts left six, and subtracts
+// the resulting high word from 0x1340.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */

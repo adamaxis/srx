@@ -983,6 +983,19 @@ After that service, FFE050 selects one of four build-data pointers from
 Unresolved handler or sprite-table indexes remain explicit conversion outcomes
 rather than being silently mapped to a generic sprite.
 
+The 0x1BCE8 advance_title_profile_motion audit now carries the actual source
+records instead of treating profile sprites as an unresolved generic callback.
+The thirteen phase records at 0x1BE4E all select pointer-table entry zero from
+0x1BE3E, use signed y offset -0x30, and move x through 0/4/8/0xC/0x10/0x14
+before holding that offset for the remaining phases. The four moving frames
+resolve to inline streams 0x1D74A, 0x1D754, 0x1D75E, and 0x1D768.
+
+The movement branch indexes the 60 source samples at 0x15E56 with
+((elapsed_step * 3) & 0xFE), multiplies the signed word by 0x58, shifts the
+32-bit product left six, and subtracts its high word from 0x1340. The typed
+host resolver preserves those signed samples and the profile build now carries
+the selected inline stream as its sprite-data token rather than zero.
+
 `0x1AB6E advance_primary_world_effect_overlay` calls `0x563CC` when the
 primary effect has not yet crossed its threshold. The call is not merely an
 intro transition: `0x563CC` obtains a trial count from the `0x19BF6`
