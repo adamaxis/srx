@@ -936,6 +936,17 @@ This fixes the provenance without claiming that the nested command handlers,
 portrait resource, payment mutation, or return-to-field transition are
 already converted.
 
+The first nested Stoker command is now source-traced as well. The initial
+`0xF4AA0` record's command `0xE9` indexes the prompt dispatch table at
+`0x12CCB4`, which resolves to ROM `0x249C4`. That handler samples a bound of
+100 through `0x0D3A` and compares the result with `0x50`: values `0..79`
+return the manager greeting record at `0xF4AB4`; values `80..99` install the
+effect sequence at `0x1D6E2A`, call `0x1E1FC`, and return the ambush text at
+`0xF4ACC` only when that effect reports nonzero. A zero effect result returns
+to the manager greeting. The C++ conversion exposes this as
+`resolve_stoker_motel_arrival_command`; random sampling and effect forwarding
+are typed callbacks, not ROM-address runtime lookups.
+
 ## 2026-09-30 field-interaction source correction
 
 The old ledger entry that called `0x20E48` the Stoker dialog was not supported
