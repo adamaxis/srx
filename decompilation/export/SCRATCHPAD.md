@@ -910,6 +910,16 @@ sprite record, and calls the attribute-offset builder with `(D1,D2,D6,D4) =
 (0x10D,0x12E,0x2000,0x6E0)`. The host request exposes the table, phase,
 resolved data token, key, placement, and builder flags as typed fields.
 
+The adjacent `0x1B282 advance_matrix_program_transition` now exposes its
+other sprite boundary as well. For stages `0..0x0B`, the ROM selects the
+twelve-entry pointer table at `0x1DB1C`, passes `FFE0D8` as D1, `0x147` as D2,
+and `0x2000` as D6 to `build_title_sprite_records`. Stage 6 still clears the
+selected Matrix slot and refreshes the program grid; stage `0x0C` and later
+refresh the mode glyph, clear the pending request, redraw the HUD rows, and
+return through `0x1A908`. The typed conversion now records the source table,
+stage, resource position, selected sprite data, and builder arguments instead
+of reducing the call to an opaque stage callback.
+
 `0x1AB6E advance_primary_world_effect_overlay` calls `0x563CC` when the
 primary effect has not yet crossed its threshold. The call is not merely an
 intro transition: `0x563CC` obtains a trial count from the `0x19BF6`

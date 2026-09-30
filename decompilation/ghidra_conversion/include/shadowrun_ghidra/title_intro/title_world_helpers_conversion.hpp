@@ -17,6 +17,7 @@ struct MatrixProgramTransitionState {
 };
 
 struct MatrixTransitionSpriteBuild {
+    std::uint32_t source_table_token = 0x0001DB1CU;
     std::uint16_t stage = 0;
     std::uint16_t resource_token = 0;
     std::uint16_t position_y = 0x0147U;
@@ -30,10 +31,16 @@ struct MatrixProgramTransitionCallbacks {
     std::function<void()> refresh_mode_glyph;
     std::function<void()> render_menu_rows;
     std::function<void()> initialize_world_effect_mode;
-    std::function<std::optional<std::uint32_t>(std::uint16_t stage)>
+    std::function<std::optional<std::uint32_t>(
+        std::uint32_t source_table_token, std::uint16_t stage)>
         resolve_sprite_data;
     std::function<void(const MatrixTransitionSpriteBuild&)> build_sprite;
 };
+
+// Typed extraction of the twelve pointer entries at ROM 0x1DB1C.  The
+// transition reaches this table only for stages 0..0x0B.
+std::optional<std::uint32_t> resolve_matrix_transition_sprite_data(
+    std::uint16_t stage);
 
 enum class MatrixProgramTransitionAction {
     rendered,

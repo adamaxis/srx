@@ -6,6 +6,11 @@
 namespace shadowrun::ghidra_conversion {
 namespace {
 
+constexpr std::array<std::uint32_t, 12> kMatrixTransitionSpriteData{
+    0x0001DB4CU, 0x0001DB56U, 0x0001DB60U, 0x0001DB6AU,
+    0x0001DB6AU, 0x0001DB6AU, 0x0001DB6AU, 0x0001DB6AU,
+    0x0001DB6AU, 0x0001DB88U, 0x0001DB7EU, 0x0001DB74U};
+
 bool decrement_word_until_negative(std::uint16_t& value) {
     value = static_cast<std::uint16_t>(value - 1U);
     return (value & 0x8000U) != 0U;
@@ -15,14 +20,21 @@ bool render_matrix_transition_sprite(
     MatrixProgramTransitionState& state,
     const MatrixProgramTransitionCallbacks& callbacks) {
     const auto token = callbacks.resolve_sprite_data
-                           ? callbacks.resolve_sprite_data(state.stage)
-                           : std::nullopt;
+                           ? callbacks.resolve_sprite_data(
+                                 0x0001DB1CU, state.stage)
+                           : resolve_matrix_transition_sprite_data(
+                                 state.stage);
     if (!token.has_value()) {
         return false;
     }
     if (callbacks.build_sprite) {
         callbacks.build_sprite(MatrixTransitionSpriteBuild{
-            state.stage, state.resource_token, 0x0147U, 0x2000U, *token});
+            0x0001DB1CU,
+            state.stage,
+            state.resource_token,
+            0x0147U,
+            0x2000U,
+            *token});
     }
     return true;
 }
@@ -91,6 +103,14 @@ bool update_noise_wave(std::vector<std::int16_t>& wave,
 }
 
 } // namespace
+
+std::optional<std::uint32_t> resolve_matrix_transition_sprite_data(
+    const std::uint16_t stage) {
+    if (stage >= kMatrixTransitionSpriteData.size()) {
+        return std::nullopt;
+    }
+    return kMatrixTransitionSpriteData[stage];
+}
 
 MatrixProgramTransitionAction advance_matrix_program_transition(
     MatrixProgramTransitionState& state,

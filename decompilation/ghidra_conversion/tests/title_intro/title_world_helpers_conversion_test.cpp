@@ -20,14 +20,19 @@ int main() {
         clears += slot == 3U ? 1 : 100;
     };
     matrix_callbacks.refresh_program_grid = [&] { ++grids; };
-    matrix_callbacks.resolve_sprite_data =
-        [](const std::uint16_t stage) -> std::optional<std::uint32_t> {
-        return 0x1DB1CU + stage;
+    MatrixTransitionSpriteBuild first_build{};
+    matrix_callbacks.build_sprite =
+        [&](const MatrixTransitionSpriteBuild& build) {
+        first_build = build;
     };
     if (advance_matrix_program_transition(matrix, matrix_callbacks) !=
             MatrixProgramTransitionAction::rendered ||
         matrix.stage != 6U || matrix.frame_countdown != 0x0CU || clears != 1 ||
-        grids != 1) {
+        grids != 1 || first_build.source_table_token != 0x1DB1CU ||
+        first_build.stage != 6U || first_build.resource_token != 0x42U ||
+        first_build.position_y != 0x147U ||
+        first_build.build_flags != 0x2000U ||
+        first_build.sprite_data_token != 0x1DB6AU) {
         return 1;
     }
     matrix.stage = 0x0BU;

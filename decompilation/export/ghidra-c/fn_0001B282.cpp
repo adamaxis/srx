@@ -13,6 +13,14 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
+// Source sprite boundary at 0x1B2DC:
+//   * stage selects the twelve-entry pointer table at 0x1DB1C;
+//   * D1 is FFE0D8, D2 is 0x147, and D6 is 0x2000;
+//   * the selected table pointer is passed directly to
+//     build_title_sprite_records.
+// The typed host request exposes these fields and uses the extracted table
+// when no host override is supplied.
+
 void advance_matrix_program_transition(void)
 
 {
