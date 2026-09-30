@@ -1,5 +1,6 @@
 #include "shadowrun_ghidra/title_intro/title_world_helpers_conversion.hpp"
 
+#include <cassert>
 #include <cstdint>
 #include <optional>
 #include <vector>
@@ -161,8 +162,43 @@ int main() {
     noise_callbacks.reset_word_stream_area = [&] { ++finished; };
     if (advance_title_noise_stream(finish, noise_callbacks) !=
             TitleNoiseAction::finalized ||
-        (finish.record_flags & 0x04U) != 0U || finished != 2) {
+        (finish.record_flags & 0x04U) != 0U || finish.dirty_flags != 0x0CU ||
+        finished != 2) {
         return 7;
     }
+
+    // FFE16A is a signed source byte for the second limit-table lookup. A
+    // malformed negative index is unresolved rather than being reinterpreted
+    // as a large unsigned frame count and silently clamped to limit 2.
+    TitleNoiseState malformed_noise{};
+    malformed_noise.frame_countdown = 1U;
+    malformed_noise.remaining_frames = -1;
+    malformed_noise.cb42_wave.assign(0xB0U, 0);
+    malformed_noise.cb40_wave.assign(0xC9U, 0);
+    int malformed_random_calls = 0;
+    TitleNoiseCallbacks malformed_callbacks{};
+    malformed_callbacks.advance_source_prng = [&]()
+        -> std::optional<std::uint16_t> {
+        ++malformed_random_calls;
+        return 0U;
+    };
+    assert(advance_title_noise_stream(malformed_noise, malformed_callbacks) ==
+               TitleNoiseAction::waveform_unresolved &&
+           malformed_random_calls == 2);
+
+    // The source uses word arithmetic for each waveform sample. A positive
+    // 0x7FFF sample wraps to 0x8000 before the signed difference test.
+    TitleNoiseState wrapped_noise{};
+    wrapped_noise.frame_countdown = 1U;
+    wrapped_noise.remaining_frames = 0;
+    wrapped_noise.cb42_wave.assign(0xB0U, 0);
+    wrapped_noise.cb40_wave.assign(0xC9U, 0);
+    wrapped_noise.cb42_wave[0] = 0x7FFF;
+    TitleNoiseCallbacks wrapped_callbacks{};
+    wrapped_callbacks.advance_source_prng = []()
+        -> std::optional<std::uint16_t> { return 0U; };
+    assert(advance_title_noise_stream(wrapped_noise, wrapped_callbacks) ==
+               TitleNoiseAction::updated &&
+           wrapped_noise.cb42_wave[0] == static_cast<std::int16_t>(0x8000));
     return 0;
 }

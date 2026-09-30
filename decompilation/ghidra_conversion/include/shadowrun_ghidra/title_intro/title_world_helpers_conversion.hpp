@@ -138,7 +138,7 @@ TitleBurstAnimationAction advance_title_burst_animation(
 struct TitleNoiseState {
     std::uint16_t frame_countdown = 0; // FFE0E8
     std::uint16_t frame_reload = 0;    // FFE0E6
-    std::uint8_t remaining_frames = 0; // FF16A
+    std::int8_t remaining_frames = 0;  // FFE16A, source byte semantics
     std::uint8_t record_flags = 0;     // behavior record +0x12
     std::uint8_t dirty_flags = 0;      // FFEF14
     std::vector<std::int16_t> cb42_wave;

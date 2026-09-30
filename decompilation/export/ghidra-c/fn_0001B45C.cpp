@@ -8,6 +8,12 @@
 //   0x00019F78 finalize_menu_slot_code_six
 //   0x0001B5A6 reset_word_stream_area
 
+// FFE16A is consumed as a signed byte for the first limit index (+1) and the
+// second lookup (clamped only when the signed value is >= 3). The first wave
+// advances FF CB42 by four bytes for 0xB0 words; the second advances FF CB40
+// by four bytes for 0xC9 words. Both use the rotated sign stream from two
+// PRNG words, then 0x1B56E writes the full stream and sets FFEF14 bits 2/3.
+
 
 void advance_title_noise_stream(void)
 

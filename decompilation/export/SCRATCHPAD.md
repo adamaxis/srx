@@ -937,6 +937,17 @@ selected pointer is advanced by eight bytes and built with `D6=0x6000`; the
 host resolver now contains the extracted five-entry table data instead of
 collapsing these into one generic title sprite.
 
+The `0x1B45C advance_title_noise_stream` audit preserves the source byte
+semantics that matter to the waveform. `FFE16A` is decremented as a byte; the
+first limit lookup uses its signed value plus one, while the second lookup
+clamps only signed values `>= 3` to table index 2. The conversion updates 176
+two-word-stride entries from `FFCB42` and 201 from `FFCB40`, using the rotated
+sign stream from two PRNG words per wave, then delegates the full upload to
+the `0x1B56E` word-stream boundary. A malformed signed table index is reported
+as unresolved rather than silently becoming an unsigned frame count.
+Each waveform sample also wraps as a 16-bit word before the signed difference
+comparison, including the `0x7FFF` to `0x8000` transition.
+
 `0x1AB6E advance_primary_world_effect_overlay` calls `0x563CC` when the
 primary effect has not yet crossed its threshold. The call is not merely an
 intro transition: `0x563CC` obtains a trial count from the `0x19BF6`

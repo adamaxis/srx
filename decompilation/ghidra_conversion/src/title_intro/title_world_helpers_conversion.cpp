@@ -77,11 +77,11 @@ bool render_figure_sprite(
 constexpr std::array<std::int16_t, 10> kNoiseLimits{
     0, 1, 2, 4, 6, 8, 16, 32, 64, 128};
 
-std::optional<std::int16_t> noise_limit(const std::uint8_t index) {
-    if (index >= kNoiseLimits.size()) {
+std::optional<std::int16_t> noise_limit(const std::int16_t index) {
+    if (index < 0 || index >= static_cast<std::int16_t>(kNoiseLimits.size())) {
         return std::nullopt;
     }
-    return kNoiseLimits[index];
+    return kNoiseLimits[static_cast<std::size_t>(index)];
 }
 
 bool update_noise_wave(std::vector<std::int16_t>& wave,
@@ -91,22 +91,28 @@ bool update_noise_wave(std::vector<std::int16_t>& wave,
     if (wave.size() < expected_count) {
         return false;
     }
-    std::int32_t prior_value = 0;
+    std::int16_t prior_value = 0;
     for (std::size_t index = 0; index < expected_count; ++index) {
         const bool carry = (random_bits & 0x80000000U) != 0U;
         random_bits = (random_bits << 1U) | (carry ? 1U : 0U);
-        auto next_value = static_cast<std::int32_t>(wave[index]) +
-                          (carry ? -1 : 1);
-        auto difference = prior_value - next_value;
+        auto next_value = static_cast<std::int16_t>(static_cast<std::uint16_t>(
+            static_cast<std::int32_t>(wave[index]) + (carry ? -1 : 1)));
+        const auto difference = static_cast<std::int16_t>(
+            static_cast<std::uint16_t>(static_cast<std::int32_t>(prior_value) -
+                                       next_value));
         if (difference < 0) {
-            if (limit <= -difference) {
-                --next_value;
+            const auto magnitude = static_cast<std::int16_t>(
+                static_cast<std::uint16_t>(-
+                    static_cast<std::int32_t>(difference)));
+            if (limit <= magnitude) {
+                next_value = static_cast<std::int16_t>(
+                    static_cast<std::uint16_t>(next_value - 1));
             }
         } else if (limit <= difference) {
-            ++next_value;
+            next_value = static_cast<std::int16_t>(
+                static_cast<std::uint16_t>(next_value + 1));
         }
-        wave[index] = static_cast<std::int16_t>(
-            static_cast<std::uint16_t>(next_value));
+        wave[index] = next_value;
         prior_value = next_value;
     }
     return true;
@@ -248,8 +254,8 @@ TitleNoiseAction advance_title_noise_stream(
     const TitleNoiseCallbacks& callbacks) {
     if (decrement_word_until_negative(state.frame_countdown)) {
         state.frame_countdown = state.frame_reload;
-        state.remaining_frames = static_cast<std::uint8_t>(
-            state.remaining_frames - 1U);
+        state.remaining_frames = static_cast<std::int8_t>(
+            state.remaining_frames - 1);
         if (state.remaining_frames == 0U) {
             state.record_flags = static_cast<std::uint8_t>(
                 state.record_flags & ~0x04U);
@@ -259,6 +265,8 @@ TitleNoiseAction advance_title_noise_stream(
             if (callbacks.reset_word_stream_area) {
                 callbacks.reset_word_stream_area();
             }
+            state.dirty_flags = static_cast<std::uint8_t>(
+                state.dirty_flags | 0x0CU);
             return TitleNoiseAction::finalized;
         }
     }
@@ -273,15 +281,22 @@ TitleNoiseAction advance_title_noise_stream(
     }
     auto random_bits = (static_cast<std::uint32_t>(*first_random) << 16U) |
                        *second_random;
-    const auto first_limit = noise_limit(static_cast<std::uint8_t>(
-        state.remaining_frames + 1U));
+    const auto first_limit = noise_limit(static_cast<std::int16_t>(
+        state.remaining_frames) + 1);
     if (!first_limit ||
         !update_noise_wave(state.cb42_wave, 0xB0U, *first_limit, random_bits)) {
         return TitleNoiseAction::waveform_unresolved;
     }
 
-    const auto second_limit = kNoiseLimits[
-        std::min<std::uint8_t>(state.remaining_frames, 2U)];
+    auto second_limit_index = static_cast<std::int16_t>(
+        state.remaining_frames);
+    if (second_limit_index >= 3) {
+        second_limit_index = 2;
+    }
+    const auto second_limit = noise_limit(second_limit_index);
+    if (!second_limit) {
+        return TitleNoiseAction::waveform_unresolved;
+    }
     const auto third_random = callbacks.advance_source_prng();
     const auto fourth_random = callbacks.advance_source_prng();
     if (!third_random.has_value() || !fourth_random.has_value()) {
@@ -289,7 +304,8 @@ TitleNoiseAction advance_title_noise_stream(
     }
     random_bits = (static_cast<std::uint32_t>(*third_random) << 16U) |
                   *fourth_random;
-    if (!update_noise_wave(state.cb40_wave, 0xC9U, second_limit, random_bits)) {
+    if (!update_noise_wave(state.cb40_wave, 0xC9U, *second_limit,
+                           random_bits)) {
         return TitleNoiseAction::waveform_unresolved;
     }
     if (callbacks.write_word_stream) {
