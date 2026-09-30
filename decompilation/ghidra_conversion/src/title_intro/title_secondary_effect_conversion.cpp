@@ -8,8 +8,10 @@ bool decrement_byte_until_negative(std::uint8_t& value) {
     return (value & 0x80U) != 0U;
 }
 
-std::optional<std::uint32_t> source_table_for(const std::uint8_t variant,
-                                               const std::uint8_t phase) {
+} // namespace
+
+std::optional<std::uint32_t> resolve_title_secondary_effect_source_table(
+    const std::uint8_t variant, const std::uint8_t phase) {
     if (phase >= 3U) {
         return std::nullopt;
     }
@@ -21,6 +23,8 @@ std::optional<std::uint32_t> source_table_for(const std::uint8_t variant,
     const auto source_group = variant == 0U ? 0U : variant == 1U ? 1U : 2U;
     return kSources[source_group][phase];
 }
+
+namespace {
 
 std::uint16_t to_screen_coordinate(const std::int16_t fixed_point) {
     return static_cast<std::uint16_t>(
@@ -102,8 +106,14 @@ TitleSecondaryEffectAction advance_title_secondary_effect_service(
         }
     }
 
-    const auto source_table = source_table_for(state.source_variant,
-                                                state.animation_phase);
+    // ROM 0x1CDFE/0x1CE04 moves the fixed-point record before the first
+    // build. The host conversion must publish those post-motion coordinates,
+    // not the coordinates from the previous tick.
+    state.position_x = static_cast<std::int16_t>(state.position_x - 0x0008);
+    state.position_y = static_cast<std::int16_t>(state.position_y - 0x000E);
+
+    const auto source_table = resolve_title_secondary_effect_source_table(
+        state.source_variant, state.animation_phase);
     if (!source_table.has_value() || !callbacks.resolve_sprite_asset) {
         return TitleSecondaryEffectAction::sprite_asset_unresolved;
     }
@@ -134,22 +144,20 @@ TitleSecondaryEffectAction advance_title_secondary_effect_service(
         }
     }
 
-    if (state.source_variant != 0U) {
-        if (state.source_variant != 1U) {
-            state.expanded_sprites.alternate_motion = state.alternate_motion;
-            state.expanded_sprites.source_table_token = *source_table;
-            state.expanded_sprites.build_flags = 0x2000U;
-            advance_title_effect_sprites(
-                state.expanded_sprites,
-                TitleEffectSpritesCallbacks{
-                    [&](const std::uint32_t, const std::uint16_t x,
-                        const std::uint16_t y, const std::uint16_t flags) {
-                        build_sprite(*source_table, *sprite_asset,
-                                     static_cast<std::int16_t>(x),
-                                     static_cast<std::int16_t>(y), callbacks);
-                        (void)flags;
-                    }});
-        }
+    if (state.source_variant > 1U) {
+        state.expanded_sprites.alternate_motion = state.alternate_motion;
+        state.expanded_sprites.source_table_token = *source_table;
+        state.expanded_sprites.build_flags = 0x2000U;
+        advance_title_effect_sprites(
+            state.expanded_sprites,
+            TitleEffectSpritesCallbacks{
+                [&](const std::uint32_t, const std::uint16_t x,
+                    const std::uint16_t y, const std::uint16_t flags) {
+                    build_sprite(*source_table, *sprite_asset,
+                                 static_cast<std::int16_t>(x),
+                                 static_cast<std::int16_t>(y), callbacks);
+                    (void)flags;
+                }});
         advance_paired_positions(state, *source_table, *sprite_asset,
                                  callbacks);
     }

@@ -14,6 +14,13 @@
 // Native conversion: shadowrun_ghidra::advance_title_secondary_effect_service
 // models this as the three-phase secondary title/world effect selected by
 // FF1592 bit 0x40; ROM pointers remain extraction provenance only.
+// ROM trace: the active record decrements lifetime/frame/phase bytes, selects
+// 0x1D158 for variant 0, 0x1D140 for variant 1, or 0x1D14C otherwise, then
+// subtracts 8 from X and 0x0E from Y before the 0x2000 build. Expiry still
+// builds that final moved sprite before clearing FF1592 bit 6 and returning
+// through 0x19F18. Variant 0/1 seed the paired/expanded position records at
+// frame-delay zero; only variant 2 advances the six expanded sprites and the
+// paired positions.
 void advance_title_secondary_effect_service(void)
 
 {

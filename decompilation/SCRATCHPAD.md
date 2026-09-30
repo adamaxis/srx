@@ -1566,6 +1566,13 @@ initialization, spawn offsets, and the pending-transition Y adjustment.
 record tick, record-owned six-slot circular sprite work area, seven-build
 wrapped draw pass, and completion/menu transition.
 
+`0x1CD5A` is now `advance_title_secondary_effect_service`, with the exact
+`0x1D158`/`0x1D140`/`0x1D14C` variant tables, lifetime/frame/phase timers,
+source `-8/-0x0E` motion before the main build, paired/six-sprite seeding, and
+the menu progression finalizer represented in typed state. The source variant
+1 path only seeds the expanded records; the six expanded positions and paired
+positions advance only after the frame timer changes the record to variant 2.
+
 `0x1D280` is now `initialize_world_sequence`; its fixed sequence/source
 tokens, row range, destination, and initial counters feed the already-typed
 sentinel-bounded `0x1D2E6` advance routine.

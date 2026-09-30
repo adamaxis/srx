@@ -16,6 +16,14 @@ bool expect(const bool condition) {
 } // namespace
 
 int main() {
+    if (resolve_title_secondary_effect_source_table(0U, 0U) != 0x1D906U ||
+        resolve_title_secondary_effect_source_table(1U, 2U) != 0x1D948U ||
+        resolve_title_secondary_effect_source_table(2U, 1U) != 0x1D95CU ||
+        resolve_title_secondary_effect_source_table(7U, 0U) != 0x1D952U ||
+        resolve_title_secondary_effect_source_table(0U, 3U).has_value()) {
+        return 1;
+    }
+
     TitleSecondaryEffectState state{};
     state.active = true;
     state.phase_delay = 2U;
@@ -42,9 +50,9 @@ int main() {
                     TitleSecondaryEffectAction::rendered &&
                 builds.size() == 1U && builds[0].source_table_token ==
                     0x1D906U && builds[0].sprite_asset_token == 0x11D906U &&
-                builds[0].x == 0x14U && builds[0].y == 0x102U &&
+                builds[0].x == 0x13U && builds[0].y == 0x101U &&
                 state.animation_phase == 0U && state.phase_delay == 1U)) {
-        return 1;
+        return 2;
     }
 
     state.frame_delay = 1U;
@@ -59,7 +67,7 @@ int main() {
                 state.paired_positions[0].x == state.position_x &&
                 state.paired_positions[1].y == state.position_y &&
                 builds.size() == 1U)) {
-        return 2;
+        return 3;
     }
 
     state.source_variant = 1U;
@@ -73,7 +81,7 @@ int main() {
     if (!expect(advance_title_secondary_effect_service(state, callbacks) ==
                     TitleSecondaryEffectAction::rendered &&
                 state.source_variant == 2U && builds.size() == 9U)) {
-        return 3;
+        return 4;
     }
 
     state.active = true;
@@ -91,7 +99,7 @@ int main() {
                 state.burst_countdown == 0x0AU &&
                 (state.title_service_flags & 0x40U) == 0U &&
                 state.transition_state == 0U && progressed == 1U)) {
-        return 4;
+        return 5;
     }
 
     state.active = true;
@@ -102,7 +110,7 @@ int main() {
     };
     if (!expect(advance_title_secondary_effect_service(state, callbacks) ==
                 TitleSecondaryEffectAction::sprite_asset_unresolved)) {
-        return 5;
+        return 6;
     }
     return 0;
 }

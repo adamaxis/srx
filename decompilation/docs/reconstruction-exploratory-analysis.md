@@ -1107,6 +1107,14 @@ shifted coordinates, then draws seven wrapped entries beginning after the
 selected slot with attributes `0x6000`. Expiry clears `FFE0D6` and returns
 through the menu-selection variant boundary.
 
+`0x1CD5A` is now `advance_title_secondary_effect_service`. It selects the
+direct `0x1D158`/`0x1D140`/`0x1D14C` stream table, advances the three source
+timers, applies the record's `-8/-0x0E` fixed-point motion before the main
+`0x2000` build, and preserves the final moved build on expiry. Variant 0 and
+variant 1 seed the paired/expanded position records at their source frame
+boundaries; only variant 2 calls the six-position and paired-position motion
+helpers before returning to menu progression.
+
 `0x1D280` is now `initialize_world_sequence`, paired with the existing typed
 `advance_world_sequence` implementation. It seeds the source table token
 `0x1D428`, source buffer token `0xDA038`, destination `0x811B`, row range

@@ -57,6 +57,12 @@ enum class TitleSecondaryEffectAction {
     sprite_asset_unresolved,
 };
 
+// ROM 0x1D140/0x1D14C/0x1D158: select the direct three-phase source stream
+// for a secondary-effect variant. Variant 0 uses 0x1D158, variant 1 uses
+// 0x1D140, and every other variant uses 0x1D14C.
+std::optional<std::uint32_t> resolve_title_secondary_effect_source_table(
+    std::uint8_t source_variant, std::uint8_t animation_phase);
+
 // ROM 0x1CD5A: advance the secondary title/world effect selected by
 // FF1592 bit 0x40. This owns the effect's three timers, source-variant and
 // phase selection, current sprite build, paired-position seeding, and the

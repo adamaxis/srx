@@ -4,6 +4,9 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001CF36 build_title_sprites
+//
+// ROM trace: update the first paired position by (+9,-0x1A), the second by
+// (-0x0E,-0x0E), and submit both through the shared 0x1CF36 builder.
 
 
 void advance_title_effect_position(void)

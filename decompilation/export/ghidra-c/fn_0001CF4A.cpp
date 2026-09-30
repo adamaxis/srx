@@ -4,6 +4,11 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001CF36 build_title_sprites
+//
+// ROM trace: six expanded positions receive (+9,+9,-0x1A,-0x1A,-8,-8) X
+// updates. Non-alternate motion applies Y deltas (-0x36,+0x1A) to the
+// alternating entries; alternate motion applies (-0x18,-4). All six are then
+// submitted through 0x1CF36 in source order.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
