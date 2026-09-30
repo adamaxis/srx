@@ -933,6 +933,20 @@ prompt identities, the remaining funds, and the caller-visible Hotel Options
 consequence without carrying a ROM address or emulated register into the host
 runtime. Exact-cost and insufficient-funds tests cover the source branch.
 
+## Stoker motel follow-up commands: 0x213CA and 0x213E2
+
+The prompt dispatch table sends command `0x30` to `0x213CA`. That routine
+sets bit 1 of the long story word at `FFFC30`, returns `0xF4E8C`, and therefore
+opens the source text beginning `So, you're Michael's brother, eh?`. Command
+`0x31` enters `0x213E2`; it sets bit 0 of the byte field at `FFFC27`, returns
+`0xF5AB0`, and opens the source Jump House referral beginning `Hey, if you
+need nuyen head up the street to the Jump House.`
+
+These are now one typed Stoker follow-up conversion boundary with two named
+commands and two named prompt identities. The flags are retained as typed
+story/referral state, and the source pointers remain provenance in this note
+only. The conversion does not treat either branch as a generic menu callback.
+
 ## 2026-09-30 Stoker motel source mapping
 
 The Stoker source mapping is now corrected rather than guessed. `0x1F65A`
