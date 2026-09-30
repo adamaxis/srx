@@ -2402,6 +2402,14 @@ selects the eight-nibble mask cadence, and emits masked host tile writes.
 `make_vdp_transfer_command` and the source word store are callbacks; no VDP
 register or source buffer address is part of the native routine.
 
+The adjacent `0x1D1F4` title/world reveal service now preserves the source's
+per-iteration mask call. Its 71 active writes each sample a source offset,
+select mask bank 5 through `0x1D3F4`, read the corresponding decoded
+longword, and publish the masked host write. The nine mask banks from
+`0x0F1C5E` are represented as typed source data with their leading count bytes
+preserved as vector lengths; this corrected the previous frame-constant-mask
+conversion.
+
 The `0x1F830` field-mode exit policy is now `prepare_field_mode_exit`. It
 recognizes the four supported scene/submode routes, selects menu modes 11, 8,
 9, and 10, preserves the guarded `(0,0)` world-state mutation paths including

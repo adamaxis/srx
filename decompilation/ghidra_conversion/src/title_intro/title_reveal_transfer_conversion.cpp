@@ -32,7 +32,6 @@ TitleRevealTransferAction advance_title_reveal_transfer_service(
         return TitleRevealTransferAction::transfer_dependency_unavailable;
     }
 
-    const auto mask = callbacks.expand_mask(5U);
     // D6 starts at 0x46 and DBF executes the body 0x47 times.
     for (std::size_t iteration = 0; iteration < 0x47U; ++iteration) {
         const auto random_word = callbacks.sample_random(state.random_bound);
@@ -40,6 +39,10 @@ TitleRevealTransferAction advance_title_reveal_transfer_service(
             random_word & 0xFFFCU);
         const auto destination_address = static_cast<std::uint16_t>(
             state.destination_base + random_word);
+        // ROM 0x1D266 calls 0x1D3F4 for every DBF iteration. The expander
+        // performs its own bounded PRNG sample from mask bank 5; it is not a
+        // frame-constant mask.
+        const auto mask = callbacks.expand_mask(5U);
         const auto source_word = callbacks.read_source_longword(
             state.source_buffer_token, source_offset);
         if (!source_word.has_value()) {

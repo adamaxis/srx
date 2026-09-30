@@ -2057,9 +2057,17 @@ sequences to host assets; it does not perform ROM/VDP lookups at runtime.
 world routine. It progressively reveals the title/world resource by writing
 `0x47` masked longwords per active frame. The random source index is bounded by
 `FFE006`, aligned to an even four-byte source offset, and added to the
-`FFDF76` destination base. The mask is the source `0x1D3F4` expansion with
-selector `5`; the host conversion emits each result as a
-`TitleRevealWordWrite` record rather than recreating a VDP command/data port.
+`FFDF76` destination base. Each iteration then calls `0x1D3F4` with selector
+`5`; that expander samples a fresh pattern from the nine-bank table at
+`0x0F1C5E`, so the mask is not constant across the frame. The host conversion
+emits each result as a `TitleRevealWordWrite` record rather than recreating a
+VDP command/data port.
+
+The exact bank data is now represented by
+`source_random_nibble_mask_banks()`. Its vector lengths preserve the source
+count bytes (`1, 8, 28, 56, 70, 56, 28, 8, 1`), and
+`expand_random_nibble_mask()` passes that count to the bounded random callback
+before expanding the selected pattern into eight 0x0F/0x00 nibbles.
 
 When `FFE008` crosses below zero, the service clears behavior-record flag
 `+0x12` bit `0x10`, refreshes the source block once, and then follows the

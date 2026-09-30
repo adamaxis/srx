@@ -25,7 +25,23 @@ int main() {
                             stage, [&](const WorldSequenceEntry&) { ++calls; });
     assert(calls == 3 && countdown == 0 && stage == 1);
 
-    assert(expand_random_nibble_mask({{0, 0x80}}, 0, 0, {}) == 0xF0000000U);
+    const auto& mask_banks = source_random_nibble_mask_banks();
+    assert(mask_banks.size() == 9U && mask_banks[0].size() == 1U &&
+           mask_banks[1].size() == 8U && mask_banks[2].size() == 28U &&
+           mask_banks[3].size() == 56U && mask_banks[4].size() == 70U &&
+           mask_banks[5].size() == 56U && mask_banks[6].size() == 28U &&
+           mask_banks[7].size() == 8U && mask_banks[8].size() == 1U);
+    bool saw_bank_one_bound = false;
+    assert(expand_random_nibble_mask(
+               mask_banks, 1U, [&](const std::uint16_t bound) {
+                   saw_bank_one_bound = bound == 8U;
+                   return static_cast<std::uint16_t>(7U);
+               }) == 0xF0000000U &&
+           saw_bank_one_bound);
+    assert(expand_random_nibble_mask(
+               mask_banks, 0U, [&](const std::uint16_t bound) {
+                   return static_cast<std::uint16_t>(bound == 1U ? 0U : 1U);
+               }) == 0U);
     std::vector<EntityServiceRecord> service_records(10);
     service_records[0].route_flags = 0xFF;
     service_records[0].animation_flags = 0xFF;

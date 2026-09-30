@@ -5,6 +5,10 @@
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
 
+// The source table at 0x0F1C5E contains nine pointers. Each pointed-to bank
+// begins with its selectable-count byte; 0x1D3F4 samples in that count-sized
+// range, rotates the selected pattern through carry, and expands its eight
+// bits to eight 0x0F/0x00 nibbles.
 
 uint expand_random_nibble_mask(void)
 

@@ -15,6 +15,9 @@
 // Native conversion: shadowrun_ghidra::advance_title_reveal_transfer_service
 // represents the reveal writes as typed host records and keeps the world/menu
 // handoff explicit; it does not carry VDP commands into the native runtime.
+// The ROM calls expand_random_nibble_mask inside the 0x47-iteration loop, so
+// each reveal longword receives a fresh mask-bank PRNG sample. It is not one
+// mask reused for the entire frame.
 void advance_title_reveal_transfer_service(void)
 
 {

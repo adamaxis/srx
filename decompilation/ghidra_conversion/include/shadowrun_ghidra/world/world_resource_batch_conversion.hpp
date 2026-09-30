@@ -39,11 +39,18 @@ void advance_world_sequence(
     std::int16_t& stage,
     const std::function<void(const WorldSequenceEntry&)>& process_entry);
 
+// ROM 0x0001D3F4 reads the nine-bank pointer table at 0x0F1C5E. Each host
+// bank contains the bytes after the source bank's leading count byte; the
+// count is therefore represented by the vector length. The source samples a
+// bounded index using that count, rotates the selected byte through carry,
+// and emits one 0x0F/0x00 nibble for each of its eight bits.
+const std::vector<std::vector<std::uint8_t>>&
+source_random_nibble_mask_banks();
+
 std::uint32_t expand_random_nibble_mask(
     const std::vector<std::vector<std::uint8_t>>& pattern_banks,
     std::size_t bank,
-    std::uint16_t random_index,
-    const std::function<std::uint16_t()>& sample_random);
+    const std::function<std::uint16_t(std::uint16_t bound)>& sample_random);
 
 struct EntityServiceRecord {
     std::uint32_t pair_a2 = 0; // +0xA2
