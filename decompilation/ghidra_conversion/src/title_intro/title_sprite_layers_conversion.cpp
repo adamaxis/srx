@@ -1,7 +1,22 @@
 #include "shadowrun_ghidra/title_intro/title_sprite_layers_conversion.hpp"
 
+#include <array>
+
 namespace shadowrun::ghidra_conversion {
 namespace {
+
+// ROM 0x1C5EC points at these four-word tables:
+//   0x1C5FC: 003C 0000 0000 0000
+//   0x1C604: 003C 00C4 0000 0000
+//   0x1C60C: 003C 00C4 0078 0000
+//   0x1C614: 003C 00C4 0078 0088
+constexpr std::array<std::array<std::int16_t, 4>, 4>
+    kTitleStatusOverlayOffsets{{
+        {{0x003C, 0x0000, 0x0000, 0x0000}},
+        {{0x003C, 0x00C4, 0x0000, 0x0000}},
+        {{0x003C, 0x00C4, 0x0078, 0x0000}},
+        {{0x003C, 0x00C4, 0x0078, 0x0088}},
+    }};
 
 bool decrement_byte_until_negative(std::int8_t& value) {
     value = static_cast<std::int8_t>(value - 1);
@@ -20,6 +35,15 @@ TitleSpriteLayerAction build_base_sprite(
 
 } // namespace
 
+std::optional<std::int16_t> resolve_title_status_overlay_offset(
+    const std::uint16_t effect_frame, const std::uint16_t selector) {
+    if (effect_frame >= kTitleStatusOverlayOffsets.size() ||
+        selector >= kTitleStatusOverlayOffsets[effect_frame].size()) {
+        return std::nullopt;
+    }
+    return kTitleStatusOverlayOffsets[effect_frame][selector];
+}
+
 TitleSpriteLayerAction render_title_sprite_layers(
     TitleSpriteLayerState& state,
     const TitleSpriteLayerSources& sources,
@@ -33,14 +57,23 @@ TitleSpriteLayerAction render_title_sprite_layers(
 
     std::optional<std::int16_t> overlay_offset;
     if ((state.record_flags & 0x02U) != 0U) {
-        const auto effect_frame =
-            static_cast<std::uint16_t>(state.effect_timer > 3U
-                                           ? 3U
-                                           : state.effect_timer);
+        // 68000 source: move.b FFE169,D0; ext.w; subq.w #1,D0; clamp
+        // positive values >=4 to 3; andi.w #3,D0. A zero timer therefore
+        // selects table row 3 after the signed underflow, rather than row 0.
+        auto effect_frame = static_cast<std::int16_t>(
+                                static_cast<std::int8_t>(state.effect_timer)) -
+                            1;
+        if (effect_frame >= 4) {
+            effect_frame = 3;
+        }
+        effect_frame = static_cast<std::int16_t>(effect_frame & 0x0003);
         overlay_offset = callbacks.resolve_status_overlay_offset
                              ? callbacks.resolve_status_overlay_offset(
-                                   effect_frame, state.profile_selector & 3U)
-                             : std::nullopt;
+                                   static_cast<std::uint16_t>(effect_frame),
+                                   state.profile_selector & 3U)
+                             : resolve_title_status_overlay_offset(
+                                   static_cast<std::uint16_t>(effect_frame),
+                                   state.profile_selector & 3U);
         if (!overlay_offset.has_value()) {
             return TitleSpriteLayerAction::overlay_unresolved;
         }
@@ -103,8 +136,11 @@ TitleSpriteLayerAction advance_title_sprite_layers(
         if (!first.has_value() || !second.has_value()) {
             return TitleSpriteLayerAction::sprite_source_unresolved;
         }
-        sources.first_source_token = *second;
-        sources.second_source_token = *first;
+        // A2 is selected from the primary (+0x04) descriptor and A4 from the
+        // secondary (+0x08) descriptor. The previous conversion had these
+        // assignments reversed, which swapped the two composed title layers.
+        sources.first_source_token = *first;
+        sources.second_source_token = *second;
     }
     return render_title_sprite_layers(state, sources, callbacks);
 }

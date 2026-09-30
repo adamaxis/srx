@@ -1626,7 +1626,12 @@ The paired layer entries `0x1C3FA`/`0x1C506` are now separated into
 `advance_title_sprite_layers` and `render_title_sprite_layers`. Their phase
 timers, alternate source pointers, two base sprites, optional status overlays,
 and late double-build gate are represented without retaining Genesis pointer
-arithmetic in runtime code.
+arithmetic in runtime code. The source audit corrected the dynamic source
+order: the +0x08 secondary descriptor advances first, the +0x04 primary
+descriptor advances second, and the resulting primary pointer is A2/the first
+layer while the secondary pointer is A4/the second layer. The overlay data is
+the exact four-row table at 0x1C5FC/0x1C604/0x1C60C/0x1C614; its row uses
+signed `FFE169 - 1` before the source `& 3`, so timer zero selects row three.
 
 `0x1C866` is now `advance_title_effect_motion`: its four-tick frame cadence,
 mode/position source-table boundary, twelve-frame completion, and correct

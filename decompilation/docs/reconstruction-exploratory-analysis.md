@@ -1045,11 +1045,17 @@ The adjacent title profile pair is now typed. `0x1BEBA` copies the source profil
 `0x1C61C` is now `advance_title_sweep_animation`. It decrements the record's byte delay, advances through the 32 entries at `0x1C6D4`, resolves the sprite pointer from `0x1C6BC`, and emits the same sprite at `base_x + offset` and `base_x - offset` with attributes `0x6000`. Source bit 3 suppresses the pair without suppressing timing; phase `0x20` clears bits 0 and 3, attaches behavior B, clears `FFE0D6`, and returns through the menu/title boundary.
 
 The paired title-layer path at `0x1C3FA`/`0x1C506` is now typed. The outer
-routine updates the two source phase/delay pairs or selects fixed sources
-`0x1D428`/`0x1D452`; the renderer emits both layers at the record position,
-optionally applies the four-way status offset table at `0x1C5EC` to both
-layers, and invokes the source double-build gate only when `FFE084` is nonzero
-and the low selector nibble is at least eight.
+routine updates the secondary (+0x08 descriptor) phase first and the primary
+(+0x04 descriptor) phase second, then renders the primary pointer as A2/the
+first layer and the secondary pointer as A4/the second layer; the alternate
+path uses fixed sources `0x1D428`/`0x1D452`. The renderer emits both layers at
+the record position and optionally applies the four direct status-offset rows
+at `0x1C5FC`, `0x1C604`, `0x1C60C`, and `0x1C614` to both layers. Its effect row
+is the source signed `FFE169 - 1`, clamped only above three and then masked by
+three, while its column is `FFDF88 & 3`. It invokes the source double-build
+gate only when `FFE084` is nonzero and the low selector nibble is at least
+eight. The focused regression covers the layer order, all four extracted
+offset rows, and the timer-zero signed wrap to row three.
 
 `0x1C866` is now `advance_title_effect_motion`. It decrements `FFE066` at a
 four-tick cadence, advances twelve frames, resolves the sprite source from the

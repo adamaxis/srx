@@ -42,7 +42,9 @@ struct TitleSpriteLayerCallbacks {
     std::function<std::optional<std::uint32_t>(
         std::int8_t phase)>
         resolve_second_source;
-    // ROM 0x1C5EC supplies one of four four-word status-overlay tables.
+    // ROM 0x1C5EC supplies one of four four-word status-overlay tables. The
+    // source first sign-extends FFE169, subtracts one, clamps only positive
+    // values above three, then masks to the four table choices.
     std::function<std::optional<std::int16_t>(
         std::uint16_t effect_frame, std::uint16_t selector)>
         resolve_status_overlay_offset;
@@ -56,6 +58,13 @@ enum class TitleSpriteLayerAction {
     sprite_source_unresolved,
     overlay_unresolved,
 };
+
+// ROM 0x1C5EC/0x1C614: resolve the signed horizontal offset for one title
+// profile/status overlay. The four rows are the four countdown-frame tables;
+// the four columns are FFDF88 & 3. This is host data extracted from ROM, not a
+// runtime address lookup.
+std::optional<std::int16_t> resolve_title_status_overlay_offset(
+    std::uint16_t effect_frame, std::uint16_t selector);
 
 // ROM 0x1C506: render the two selected title sources, optional status
 // overlays, and the source's late double-build gate.

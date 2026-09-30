@@ -5,6 +5,14 @@
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
 //   0x0001A570 build_title_sprites_twice
+//
+// ROM trace: 0x1C506 first builds A2 at FF1580(+0x0E/+0x10), then, when
+// record bit 1 is set, selects one of the four direct tables pointed to by
+// 0x1C5EC. The selected row is (signed FFE169 - 1), clamped only at 4, then
+// masked with 3; the column is (FFDF88 & 3). A nonzero signed word is added
+// to the base X and causes a second build. A4 is then built with the same
+// overlay rule. The late 0x1A570 call is gated by FFE084 != 0 and
+// (FFDF88 & 0xF) >= 8.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
