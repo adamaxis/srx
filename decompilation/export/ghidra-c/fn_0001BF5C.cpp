@@ -4,6 +4,8 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
+// Copies the fixed seven-word profile beginning at ROM 0x001C10A into the
+// live profile destination and sets FFEF14 bit 0.
 
 
 void copy_title_profile(void)

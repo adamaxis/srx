@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -11,6 +12,7 @@ struct TitleProfileTransitionState {
     std::uint16_t countdown = 0;         // FFE00C
     std::uint8_t behavior_flags = 0;    // FF1592
     std::uint32_t dirty_flags = 0;      // FFEF14
+    std::array<std::uint16_t, 7> profile_destination_words{}; // FFD880
 };
 
 struct TitleProfileTransitionSpriteBuild {
@@ -23,12 +25,21 @@ struct TitleProfileTransitionSpriteBuild {
 };
 
 struct TitleProfileTransitionCallbacks {
-    // ROM 0x1BF5C copies the selected seven-word title profile.
+    // ROM 0x1BEBA copies a seven-word window selected by FFDF88 & 7 from
+    // 0x1C10A before it advances the transition countdown.
+    std::function<std::optional<std::array<std::uint16_t, 7>>(
+        std::uint16_t profile_selector)>
+        resolve_profile_words;
+    std::function<void(const std::array<std::uint16_t, 7>&)>
+        publish_profile_destination;
+    // ROM 0x1BF5C copies the fixed seven-word profile at 0x1C10A when the
+    // transition expires.
     std::function<void()> copy_title_profile;
     std::function<void()> attach_behavior_descriptor_b;
     std::function<void()> run_menu_slot_service;
     std::function<void()> initialize_world_effect_mode;
-    // Resolve ROM 0x1C136's four-entry sprite table and its +8 payload.
+    // Resolve ROM 0x1C136's four-entry table. Its entries are direct inline
+    // sprite-record streams, not pointers requiring a synthetic +8 offset.
     std::function<std::optional<std::uint32_t>(
         std::uint32_t source_table_token, std::uint16_t phase)>
         resolve_sprite_data;
@@ -36,10 +47,20 @@ struct TitleProfileTransitionCallbacks {
 };
 
 enum class TitleProfileTransitionAction {
+    profile_data_unresolved,
     rendered,
     finalized,
     sprite_data_unresolved,
 };
+
+// Typed extraction of the eight seven-word windows selected by FFDF88 & 7
+// from ROM 0x1C10A.
+std::optional<std::array<std::uint16_t, 7>>
+resolve_title_profile_words(std::uint16_t profile_selector);
+
+// ROM 0x1C136 contains four direct inline sprite-record streams.
+std::optional<std::uint32_t>
+resolve_title_profile_transition_sprite_data(std::uint16_t phase);
 
 // ROM 0x1BEBA: copy the selected profile words into the source destination,
 // advance the transition countdown, render the two profile sprites, or run
@@ -58,12 +79,19 @@ struct ProfileCopyTimerCallbacks {
     std::function<std::optional<std::int16_t>(std::int8_t timing_value)>
         resolve_reload_countdown;
     // ROM 0x17C3C returns the indexed FFFB30 profile-copy eligibility value
-    // after sign extension and a logical four-bit shift.
-    std::function<std::optional<std::uint16_t>()> read_copy_eligibility;
+    // as a signed result; 0x1BF7A uses BLE, so zero and negative results
+    // suppress the copy.
+    std::function<std::optional<std::int16_t>()> read_copy_eligibility;
     // ROM 0x1C012 copies seven words from 0x1C022 plus the signed byte offset.
     std::function<void(std::int32_t signed_byte_offset)> copy_profile_words;
     std::function<void()> mark_profile_dirty;
 };
+
+// ROM 0x1BFFC contains the reload countdown values indexed by the signed
+// current-record timing byte. Negative indexes remain an unresolved source
+// boundary rather than being wrapped into an unrelated table.
+std::optional<std::int16_t> resolve_title_profile_reload_countdown(
+    std::int8_t timing_value);
 
 enum class ProfileCopyTimerAction {
     waiting,

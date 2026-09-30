@@ -5,6 +5,12 @@
 // Calls recovered from direct call instructions:
 //   0x00017C3C read_menu_entry_profile_eligibility
 //   0x0001C012 copy_seven_words
+// Reload table at ROM 0x001BFFC for timing indexes 0..10:
+//   [0x00F0, 0x00D2, 0x00B4, 0x0078, 0x005A, 0x002D,
+//    0x001E, 0x0014, 0x000A, 0x0008, 0x0005]
+// The eligibility result is tested with BLE; zero and negative results skip
+// the copy. Positive results use (countdown + 8) * 2 as the source byte
+// offset into the profile source records.
 
 
 void advance_profile_copy_timer(void)

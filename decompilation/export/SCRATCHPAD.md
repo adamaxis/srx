@@ -996,6 +996,21 @@ The movement branch indexes the 60 source samples at 0x15E56 with
 host resolver preserves those signed samples and the profile build now carries
 the selected inline stream as its sprite-data token rather than zero.
 
+The 0x1BEBA advance_title_profile_transition audit now copies the source
+profile window on every tick before advancing the countdown. FFDF88 & 7 selects
+one of eight overlapping seven-word windows beginning at 0x1C10A; the selected
+words are typed in the transition state and exposed to the host publication
+boundary. On expiry, 0x1BF5C still copies the fixed base window at 0x1C10A,
+then the source clears behavior bit 7, attaches descriptor B, runs the menu
+slot service, and initializes the world-effect mode.
+
+The paired transition sprites use the four direct streams selected by 0x1C136:
+0x1D8C6, 0x1D8D0, 0x1D8DA, and 0x1D8E4. The prior table-plus-eight fallback
+was not source-faithful. The adjacent 0x1BF7A timer now carries the exact
+0x1BFFC reload values and models the BLE eligibility gate, so zero or negative
+eligibility skips the seven-word copy instead of being treated as an unsigned
+positive result.
+
 `0x1AB6E advance_primary_world_effect_overlay` calls `0x563CC` when the
 primary effect has not yet crossed its threshold. The call is not merely an
 intro transition: `0x563CC` obtains a trial count from the `0x19BF6`

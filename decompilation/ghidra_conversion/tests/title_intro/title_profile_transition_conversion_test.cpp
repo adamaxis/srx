@@ -6,18 +6,16 @@ int main() {
     using namespace shadowrun::ghidra_conversion;
 
     TitleProfileTransitionState transition{};
+    transition.profile_selector = 2U;
     transition.countdown = 1U;
     transition.behavior_flags = 0xFFU;
     int builds = 0;
     TitleProfileTransitionCallbacks transition_callbacks{};
-    transition_callbacks.resolve_sprite_data =
-        [](const std::uint32_t table, const std::uint16_t phase)
-        -> std::optional<std::uint32_t> { return table + phase + 8U; };
     transition_callbacks.build_sprite =
         [&](const TitleProfileTransitionSpriteBuild& build) {
             if (build.source_table_token != 0x1C136U || build.phase != 0U ||
                 build.y != 0xEEU || build.build_flags != 0x2000U ||
-                build.sprite_data_token != 0x1C13EU ||
+                build.sprite_data_token != 0x1D8C6U ||
                 (build.x != 0x15EU && build.x != 0xE0U)) {
                 builds += 100;
             } else {
@@ -27,7 +25,8 @@ int main() {
     if (advance_title_profile_transition(transition, transition_callbacks) !=
             TitleProfileTransitionAction::rendered ||
         transition.countdown != 0U || transition.dirty_flags != 1U ||
-        builds != 2) {
+        transition.profile_destination_words[0] != 0x0444U ||
+        transition.profile_destination_words[6] != 0x0222U || builds != 2) {
         return 1;
     }
 
@@ -39,7 +38,10 @@ int main() {
     transition_callbacks.initialize_world_effect_mode = [&] { ++finalized; };
     if (advance_title_profile_transition(transition, transition_callbacks) !=
             TitleProfileTransitionAction::finalized ||
-        (transition.behavior_flags & 0x80U) != 0U || finalized != 4) {
+        (transition.behavior_flags & 0x80U) != 0U ||
+        transition.profile_destination_words[0] != 0x0000U ||
+        transition.profile_destination_words[6] != 0x0EEEU ||
+        finalized != 4) {
         return 2;
     }
 
@@ -61,7 +63,7 @@ int main() {
     int copied = 0;
     int dirty = 0;
     timer_callbacks.read_copy_eligibility =
-        [] { return std::optional<std::uint16_t>(1U); };
+        [] { return std::optional<std::int16_t>(1); };
     timer_callbacks.copy_profile_words = [&](const std::int32_t offset) {
         copied += offset == 14 ? 1 : 100;
     };
@@ -70,6 +72,23 @@ int main() {
             ProfileCopyTimerAction::copied || copied != 1 || dirty != 1 ||
         timer.countdown != -1) {
         return 4;
+    }
+    timer.countdown = 0;
+    timer_callbacks.read_copy_eligibility =
+        [] { return std::optional<std::int16_t>(-1); };
+    if (advance_profile_copy_timer(timer, timer_callbacks) !=
+        ProfileCopyTimerAction::copy_ineligible || dirty != 1) {
+        return 5;
+    }
+    if (!resolve_title_profile_words(7U).has_value() ||
+        resolve_title_profile_words(8U).has_value() ||
+        resolve_title_profile_transition_sprite_data(0U) != 0x1D8C6U ||
+        resolve_title_profile_transition_sprite_data(3U) != 0x1D8E4U ||
+        resolve_title_profile_transition_sprite_data(4U).has_value() ||
+        resolve_title_profile_reload_countdown(0) != 0x00F0 ||
+        resolve_title_profile_reload_countdown(10) != 0x0005 ||
+        resolve_title_profile_reload_countdown(-1).has_value()) {
+        return 6;
     }
     return 0;
 }

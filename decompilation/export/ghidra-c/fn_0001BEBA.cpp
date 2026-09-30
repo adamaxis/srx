@@ -8,6 +8,10 @@
 //   0x0001A908 initialize_world_effect_mode
 //   0x0001B612 attach_behavior_descriptor_b
 //   0x0001BF5C copy_title_profile
+// The entry copy selects one of eight overlapping seven-word windows from
+// 0x001C10A using (FFDF88 & 7) * 2 and publishes FFEF14 bit 0.
+// The transition sprite table at 0x001C136 resolves directly to
+// 0x001D8C6/0x001D8D0/0x001D8DA/0x001D8E4; no +8 payload adjustment is used.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
