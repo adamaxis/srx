@@ -33,7 +33,12 @@ constexpr uint32_t kGenesisIoStart = 0xA10000;
 constexpr uint32_t kVdpData = 0xC00000;
 constexpr uint32_t kVdpControl = 0xC00004;
 constexpr uint32_t kIndirectDispatchTable = 0x12CCB4;
-constexpr size_t kIndirectDispatchCount = 32;
+// 0x1F3C4 dispatches every command below 0xFA through this table.  The
+// earlier analysis treated only the first 32 entries as code, which omitted
+// source command 0x30/0x31 (Stoker's debt and Jump House branches) and 0xE9
+// (the Stoker arrival branch).  0xFA..0xFF are terminal command values and
+// belong to the adjacent data, not this dispatch table.
+constexpr size_t kIndirectDispatchCount = 0xFA;
 constexpr uint32_t kRoutineSelectTable = 0xF3DC6;
 constexpr size_t kRoutineSelectCount = 22;
 constexpr uint32_t kStateRoutinePairTable = 0xF3E1E;
@@ -558,10 +563,11 @@ private:
     }
 
     void seed_verified_indirect_tables() {
-        // At 0x1F580 the ROM loads this fixed table, indexes it by a bounded
-        // state value, and executes the selected longword as JSR (A0). Seed
-        // these targets so they are analyzed as code without treating every
-        // arbitrary ROM-looking longword as a function pointer.
+        // At 0x1F580 the prompt loop loads this fixed command table,
+        // indexes it by a command below 0xFA, and executes the selected
+        // longword as JSR (A0). Seed the complete 0x00..0xF9 target run so
+        // source handlers are not silently omitted while avoiding arbitrary
+        // ROM-looking longwords outside the reviewed table.
         for (size_t index = 0; index < kIndirectDispatchCount; ++index) {
             const uint32_t address = rom_.u32(
                 kIndirectDispatchTable + static_cast<uint32_t>(index * 4));

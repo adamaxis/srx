@@ -1272,6 +1272,20 @@
 0x00002A82	unary-op	; size=6 opcode=0x4239 flow=fallthrough
 0x00002A88	unary-op	; size=6 opcode=0x4279 flow=fallthrough
 0x00002A8E	JMP	; size=6 opcode=0x4EF9 flow=branch
+0x00002A94	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00002A9A	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x00002AA4	MOVE	; size=8 opcode=0x33FC flow=fallthrough
+0x00002AAC	unary-op	; size=6 opcode=0x4279 flow=fallthrough
+0x00002AB2	MOVE	; size=8 opcode=0x33FC flow=fallthrough
+0x00002ABA	unary-op	; size=6 opcode=0x4279 flow=fallthrough
+0x00002AC0	MOVE	; size=8 opcode=0x33FC flow=fallthrough
+0x00002AC8	MOVE	; size=8 opcode=0x33FC flow=fallthrough
+0x00002AD0	MOVE	; size=8 opcode=0x33FC flow=fallthrough
+0x00002AD8	RTS	; size=2 opcode=0x4E75 flow=return
+0x00002AFA	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00002B00	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x00002B0A	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x00002B0E	JMP	; size=6 opcode=0x4EF9 flow=branch
 0x00002B34	unary-op	; size=6 opcode=0x4AB9 flow=fallthrough
 0x00002B3A	Bcc[6] 0x002B78	; size=4 opcode=0x6600 flow=conditional
 0x00002B3E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
@@ -11924,6 +11938,11 @@
 0x0001F13A	unary-op	; size=2 opcode=0x4246 flow=fallthrough
 0x0001F13C	MOVE	; size=8 opcode=0x13FC flow=fallthrough
 0x0001F144	RTS	; size=2 opcode=0x4E75 flow=return
+0x0001F1E0	ADDQ/SUBQ	; size=6 opcode=0x5239 flow=fallthrough
+0x0001F1E6	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x0001F1EE	Bcc[11] 0x01F1FA	; size=4 opcode=0x6B00 flow=conditional
+0x0001F1F2	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x0001F1FA	RTS	; size=2 opcode=0x4E75 flow=return
 0x0001F1FC	unary-op	; size=6 opcode=0x4A79 flow=fallthrough
 0x0001F202	Bcc[7] 0x01F20E	; size=4 opcode=0x6700 flow=conditional
 0x0001F206	immediate-bit-op	; size=8 opcode=0x08F9 flow=fallthrough
@@ -13204,6 +13223,11 @@
 0x000213C0	RTS	; size=2 opcode=0x4E75 flow=return
 0x000213C2	LEA	; size=6 opcode=0x41F9 flow=fallthrough
 0x000213C8	RTS	; size=2 opcode=0x4E75 flow=return
+0x000213CA	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x000213D0	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x000213D4	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x000213DA	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000213E0	RTS	; size=2 opcode=0x4E75 flow=return
 0x000213E2	MOVE	; size=6 opcode=0x1239 flow=fallthrough
 0x000213E8	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
 0x000213EC	MOVE	; size=6 opcode=0x13C1 flow=fallthrough
@@ -13289,6 +13313,21 @@
 0x0002155E	JSR	; size=6 opcode=0x4EB9 flow=call
 0x00021564	LEA	; size=6 opcode=0x41F9 flow=fallthrough
 0x0002156A	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002156C	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00021574	Bcc[6] 0x0215A4	; size=4 opcode=0x6600 flow=conditional
+0x00021578	MOVE	; size=6 opcode=0x3039 flow=fallthrough
+0x0002157E	unary-op	; size=2 opcode=0x4247 flow=fallthrough
+0x00021580	MOVE	; size=6 opcode=0x1E39 flow=fallthrough
+0x00021586	immediate-op	; size=4 opcode=0x0C47 flow=fallthrough
+0x0002158A	Bcc[10] 0x021592	; size=4 opcode=0x6A00 flow=conditional
+0x0002158E	ADDQ/SUBQ	; size=2 opcode=0x5247 flow=fallthrough
+0x00021590	bit-op	; size=2 opcode=0x0FC0 flow=fallthrough
+0x00021592	immediate-bit-op	; size=4 opcode=0x08C0 flow=fallthrough
+0x00021596	MOVE	; size=6 opcode=0x33C0 flow=fallthrough
+0x0002159C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000215A2	RTS	; size=2 opcode=0x4E75 flow=return
+0x000215A4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000215AA	RTS	; size=2 opcode=0x4E75 flow=return
 0x000215AC	MOVE	; size=6 opcode=0x3639 flow=fallthrough
 0x000215B2	immediate-bit-op	; size=4 opcode=0x0883 flow=fallthrough
 0x000215B6	MOVE	; size=6 opcode=0x33C3 flow=fallthrough
@@ -13479,6 +13518,2806 @@
 0x00021992	MOVE	; size=10 opcode=0x23FC flow=fallthrough
 0x0002199C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
 0x000219A2	RTS	; size=2 opcode=0x4E75 flow=return
+0x000219A4	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x000219AA	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x000219AE	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000219B4	RTS	; size=2 opcode=0x4E75 flow=return
+0x000219B6	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x000219BC	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x000219C0	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000219C6	RTS	; size=2 opcode=0x4E75 flow=return
+0x000219C8	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x000219CE	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x000219D2	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000219D8	RTS	; size=2 opcode=0x4E75 flow=return
+0x000219DA	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x000219E2	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000219E8	RTS	; size=2 opcode=0x4E75 flow=return
+0x000219EA	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x000219F2	Bcc[6] 0x0219FE	; size=4 opcode=0x6600 flow=conditional
+0x000219F6	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000219FC	RTS	; size=2 opcode=0x4E75 flow=return
+0x000219FE	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x00021A06	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021A0C	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021A0E	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x00021A16	Bcc[6] 0x021A22	; size=4 opcode=0x6600 flow=conditional
+0x00021A1A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021A20	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021A22	immediate-bit-op	; size=8 opcode=0x08B9 flow=fallthrough
+0x00021A2A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021A30	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021A32	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x00021A3A	Bcc[7] 0x021A46	; size=4 opcode=0x6700 flow=conditional
+0x00021A3E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021A44	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021A46	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021A4C	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021A4E	arithmetic-op	; size=6 opcode=0xB2B9 flow=fallthrough
+0x00021A54	Bcc[14] 0x021A64	; size=4 opcode=0x6E00 flow=conditional
+0x00021A58	arithmetic-op	; size=6 opcode=0x93B9 flow=fallthrough
+0x00021A5E	MOVE	; size=2 opcode=0x2049 flow=fallthrough
+0x00021A60	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00021A64	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021A66	MOVEQ	; size=2 opcode=0x7264 flow=fallthrough
+0x00021A68	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021A6E	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00021A74	BSR 0x021A4E	; size=2 opcode=0x61D8 flow=call
+0x00021A76	Bcc[14] 0x021A82	; size=4 opcode=0x6E00 flow=conditional
+0x00021A7A	immediate-bit-op	; size=8 opcode=0x08F9 flow=fallthrough
+0x00021A82	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021A84	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x00021A8C	Bcc[7] 0x021ADE	; size=4 opcode=0x6700 flow=conditional
+0x00021A90	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00021A96	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00021A9A	Bcc[7] 0x021AAE	; size=4 opcode=0x6700 flow=conditional
+0x00021A9E	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00021AA2	Bcc[6] 0x021AAE	; size=4 opcode=0x6600 flow=conditional
+0x00021AA6	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021AAC	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021AAE	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00021AB2	Bcc[7] 0x021AC6	; size=4 opcode=0x6700 flow=conditional
+0x00021AB6	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00021ABA	Bcc[6] 0x021AC6	; size=4 opcode=0x6600 flow=conditional
+0x00021ABE	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021AC4	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021AC6	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00021ACA	Bcc[7] 0x021AD6	; size=4 opcode=0x6700 flow=conditional
+0x00021ACE	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021AD4	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021AD6	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021ADC	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021ADE	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021AE4	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021AE6	immediate-op	; size=10 opcode=0x0CB9 flow=fallthrough
+0x00021AF0	Bcc[10] 0x021AFC	; size=4 opcode=0x6A00 flow=conditional
+0x00021AF4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021AFA	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021AFC	immediate-op	; size=10 opcode=0x04B9 flow=fallthrough
+0x00021B06	immediate-bit-op	; size=8 opcode=0x08F9 flow=fallthrough
+0x00021B0E	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00021B14	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00021B18	Bcc[7] 0x021B2C	; size=4 opcode=0x6700 flow=conditional
+0x00021B1C	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00021B20	Bcc[6] 0x021B2C	; size=4 opcode=0x6600 flow=conditional
+0x00021B24	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021B2A	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021B2C	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00021B30	Bcc[7] 0x021B52	; size=4 opcode=0x6700 flow=conditional
+0x00021B34	MOVE	; size=6 opcode=0x2E39 flow=fallthrough
+0x00021B3A	immediate-bit-op	; size=4 opcode=0x0807 flow=fallthrough
+0x00021B3E	Bcc[6] 0x021B52	; size=4 opcode=0x6600 flow=conditional
+0x00021B42	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00021B46	Bcc[6] 0x021B52	; size=4 opcode=0x6600 flow=conditional
+0x00021B4A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021B50	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021B52	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00021B56	Bcc[7] 0x021B62	; size=4 opcode=0x6700 flow=conditional
+0x00021B5A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021B60	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021B62	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021B68	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021B6A	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00021B70	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00021B74	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00021B7A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021B80	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021B82	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00021B88	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00021B8C	Bcc[7] 0x021BD4	; size=4 opcode=0x6700 flow=conditional
+0x00021B90	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00021B94	Bcc[6] 0x021BDC	; size=4 opcode=0x6600 flow=conditional
+0x00021B98	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00021B9C	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00021BA2	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x00021BA6	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00021BAC	immediate-bit-op	; size=8 opcode=0x08F9 flow=fallthrough
+0x00021BB4	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00021BBA	immediate-bit-op	; size=4 opcode=0x0881 flow=fallthrough
+0x00021BBE	immediate-bit-op	; size=4 opcode=0x0881 flow=fallthrough
+0x00021BC2	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00021BC6	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00021BCC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021BD2	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021BD4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021BDA	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021BDC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021BE2	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021BE4	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00021BEA	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00021BF0	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x00021BF4	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00021BFA	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00021C00	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x00021C04	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021C0A	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021C0C	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00021C12	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021C18	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00021C1E	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00021C22	Bcc[14] 0x021C36	; size=4 opcode=0x6E00 flow=conditional
+0x00021C26	MOVE	; size=6 opcode=0x2039 flow=fallthrough
+0x00021C2C	immediate-bit-op	; size=4 opcode=0x08C0 flow=fallthrough
+0x00021C30	MOVE	; size=6 opcode=0x23C0 flow=fallthrough
+0x00021C36	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021C38	BSR 0x022874	; size=4 opcode=0x6100 flow=call
+0x00021C3C	unary-op	; size=2 opcode=0x4A46 flow=fallthrough
+0x00021C3E	Bcc[10] 0x021C4A	; size=4 opcode=0x6A00 flow=conditional
+0x00021C42	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021C48	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021C4A	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00021C50	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021C56	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00021C5C	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00021C60	Bcc[14] 0x021C70	; size=4 opcode=0x6E00 flow=conditional
+0x00021C64	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x00021C6A	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x00021C70	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021C72	BSR 0x022874	; size=4 opcode=0x6100 flow=call
+0x00021C76	unary-op	; size=2 opcode=0x4A46 flow=fallthrough
+0x00021C78	Bcc[10] 0x021C84	; size=4 opcode=0x6A00 flow=conditional
+0x00021C7C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021C82	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021C84	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00021C8A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021C90	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00021C96	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00021C9A	Bcc[14] 0x021CA8	; size=4 opcode=0x6E00 flow=conditional
+0x00021C9E	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x00021CA4	unary-op	; size=4 opcode=0x4233 flow=fallthrough
+0x00021CA8	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021CAA	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00021CB0	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00021CB4	Bcc[7] 0x021CDC	; size=4 opcode=0x6700 flow=conditional
+0x00021CB8	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00021CBC	Bcc[6] 0x021CC8	; size=4 opcode=0x6600 flow=conditional
+0x00021CC0	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021CC6	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021CC8	MOVE	; size=6 opcode=0x2039 flow=fallthrough
+0x00021CCE	immediate-bit-op	; size=4 opcode=0x0800 flow=fallthrough
+0x00021CD2	Bcc[6] 0x021CC0	; size=2 opcode=0x66EC flow=conditional
+0x00021CD4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021CDA	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021CDC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021CE2	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021CE4	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00021CEA	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00021CEE	Bcc[6] 0x021CFA	; size=4 opcode=0x6600 flow=conditional
+0x00021CF2	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021CF8	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021CFA	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00021D00	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x00021D04	MOVE	; size=6 opcode=0x2039 flow=fallthrough
+0x00021D0A	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00021D10	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00021D14	Bcc[7] 0x021D98	; size=4 opcode=0x6700 flow=conditional
+0x00021D18	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00021D1C	Bcc[7] 0x021D90	; size=4 opcode=0x6700 flow=conditional
+0x00021D20	immediate-bit-op	; size=4 opcode=0x0800 flow=fallthrough
+0x00021D24	Bcc[6] 0x021D60	; size=4 opcode=0x6600 flow=conditional
+0x00021D28	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00021D2C	Bcc[7] 0x021D58	; size=4 opcode=0x6700 flow=conditional
+0x00021D30	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00021D34	Bcc[7] 0x021D50	; size=4 opcode=0x6700 flow=conditional
+0x00021D38	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00021D3C	Bcc[7] 0x021D48	; size=4 opcode=0x6700 flow=conditional
+0x00021D40	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021D46	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021D48	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021D4E	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021D50	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021D56	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021D58	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021D5E	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021D60	immediate-bit-op	; size=4 opcode=0x0880 flow=fallthrough
+0x00021D64	MOVE	; size=6 opcode=0x23C0 flow=fallthrough
+0x00021D6A	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x00021D6E	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00021D74	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00021D7A	immediate-bit-op	; size=4 opcode=0x0881 flow=fallthrough
+0x00021D7E	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00021D82	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00021D88	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021D8E	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021D90	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021D96	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021D98	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x00021DA0	Bcc[7] 0x021DB4	; size=4 opcode=0x6700 flow=conditional
+0x00021DA4	immediate-bit-op	; size=8 opcode=0x08B9 flow=fallthrough
+0x00021DAC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021DB2	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021DB4	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00021DBA	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00021DBE	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00021DC4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021DCA	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021DCC	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00021DD2	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00021DD6	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00021DDC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021DE2	immediate-bit-op	; size=8 opcode=0x08F9 flow=fallthrough
+0x00021DEA	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021DEC	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00021DF2	immediate-bit-op	; size=4 opcode=0x0881 flow=fallthrough
+0x00021DF6	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00021DFA	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00021E00	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021E06	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021E08	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x00021E0C	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00021E12	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00021E18	immediate-bit-op	; size=4 opcode=0x0881 flow=fallthrough
+0x00021E1C	immediate-bit-op	; size=4 opcode=0x0881 flow=fallthrough
+0x00021E20	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00021E26	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00021E2C	immediate-bit-op	; size=4 opcode=0x0881 flow=fallthrough
+0x00021E30	immediate-bit-op	; size=4 opcode=0x0881 flow=fallthrough
+0x00021E34	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00021E38	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00021E3E	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00021E44	immediate-bit-op	; size=4 opcode=0x0881 flow=fallthrough
+0x00021E48	immediate-bit-op	; size=4 opcode=0x0881 flow=fallthrough
+0x00021E4C	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00021E52	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021E58	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x00021E62	BRA 0x02196C	; size=4 opcode=0x6000 flow=branch
+0x00021E66	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00021E6C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021E72	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00021E78	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00021E7C	Bcc[14] 0x021E8A	; size=4 opcode=0x6E00 flow=conditional
+0x00021E80	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x00021E84	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00021E8A	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021E8C	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00021E92	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x00021E96	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021E9C	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021E9E	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00021EA4	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x00021EA8	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021EAE	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021EB0	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00021EB6	immediate-bit-op	; size=4 opcode=0x0881 flow=fallthrough
+0x00021EBA	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00021EBE	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00021EC2	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00021EC8	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021ECE	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021ED0	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00021ED6	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00021EDA	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00021EE0	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021EE6	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021EE8	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x00021EF0	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021EF6	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021EF8	MOVE	; size=6 opcode=0x2639 flow=fallthrough
+0x00021EFE	immediate-bit-op	; size=4 opcode=0x08C3 flow=fallthrough
+0x00021F02	MOVE	; size=6 opcode=0x23C3 flow=fallthrough
+0x00021F08	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00021F0E	immediate-bit-op	; size=4 opcode=0x0881 flow=fallthrough
+0x00021F12	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00021F18	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021F1E	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021F20	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00021F26	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x00021F2A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021F30	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021F32	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00021F38	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00021F3C	Bcc[6] 0x021F58	; size=4 opcode=0x6600 flow=conditional
+0x00021F40	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00021F46	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00021F4A	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00021F50	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021F56	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021F58	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x00021F62	BSR 0x02196C	; size=4 opcode=0x6100 flow=call
+0x00021F66	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021F6C	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021F6E	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00021F74	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x00021F78	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021F7E	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021F80	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00021F86	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00021F8A	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00021F90	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x00021F98	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x00021FA0	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00021FA6	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00021FAC	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x00021FB0	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021FB6	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021FB8	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00021FBE	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00021FC4	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x00021FC8	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021FCE	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021FD0	MOVE	; size=6 opcode=0x2639 flow=fallthrough
+0x00021FD6	immediate-bit-op	; size=4 opcode=0x08C3 flow=fallthrough
+0x00021FDA	MOVE	; size=6 opcode=0x23C3 flow=fallthrough
+0x00021FE0	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00021FE6	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x00021FEA	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00021FF0	RTS	; size=2 opcode=0x4E75 flow=return
+0x00021FF2	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00021FF8	immediate-bit-op	; size=4 opcode=0x0881 flow=fallthrough
+0x00021FFC	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00022000	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00022006	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x0002200C	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x00022010	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022016	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022018	MOVE	; size=6 opcode=0x2A39 flow=fallthrough
+0x0002201E	immediate-bit-op	; size=4 opcode=0x0805 flow=fallthrough
+0x00022022	Bcc[6] 0x02203E	; size=4 opcode=0x6600 flow=conditional
+0x00022026	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x0002202C	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00022030	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00022036	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002203C	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002203E	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x00022048	BSR 0x02196C	; size=4 opcode=0x6100 flow=call
+0x0002204C	immediate-bit-op	; size=4 opcode=0x0805 flow=fallthrough
+0x00022050	Bcc[6] 0x02205C	; size=4 opcode=0x6600 flow=conditional
+0x00022054	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002205A	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002205C	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x00022066	BSR 0x02196C	; size=4 opcode=0x6100 flow=call
+0x0002206A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022070	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022072	MOVE	; size=6 opcode=0x2039 flow=fallthrough
+0x00022078	immediate-bit-op	; size=4 opcode=0x0800 flow=fallthrough
+0x0002207C	Bcc[6] 0x0220A6	; size=4 opcode=0x6600 flow=conditional
+0x00022080	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00022086	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x0002208A	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00022090	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x0002209A	BSR 0x02196C	; size=4 opcode=0x6100 flow=call
+0x0002209E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000220A4	RTS	; size=2 opcode=0x4E75 flow=return
+0x000220A6	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x000220AC	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x000220B0	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x000220B6	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x000220C0	BSR 0x02196C	; size=4 opcode=0x6100 flow=call
+0x000220C4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000220CA	RTS	; size=2 opcode=0x4E75 flow=return
+0x000220CC	MOVE	; size=6 opcode=0x2039 flow=fallthrough
+0x000220D2	immediate-bit-op	; size=4 opcode=0x0800 flow=fallthrough
+0x000220D6	Bcc[6] 0x0220E2	; size=4 opcode=0x6600 flow=conditional
+0x000220DA	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000220E0	RTS	; size=2 opcode=0x4E75 flow=return
+0x000220E2	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000220E8	RTS	; size=2 opcode=0x4E75 flow=return
+0x000220EA	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x000220F0	immediate-bit-op	; size=4 opcode=0x0881 flow=fallthrough
+0x000220F4	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x000220F8	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x000220FE	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00022104	MOVE	; size=2 opcode=0x201F flow=fallthrough
+0x00022106	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022108	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002210E	MOVE	; size=2 opcode=0x201F flow=fallthrough
+0x00022110	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022112	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00022118	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x0002211C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022122	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022124	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x0002212A	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x0002212E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022134	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022136	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x0002213C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022142	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022148	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x0002214C	Bcc[14] 0x022160	; size=4 opcode=0x6E00 flow=conditional
+0x00022150	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00022156	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x0002215A	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00022160	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022162	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022168	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002216E	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022174	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022178	Bcc[14] 0x02218C	; size=4 opcode=0x6E00 flow=conditional
+0x0002217C	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00022182	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00022186	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x0002218C	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002218E	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022194	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002219A	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x000221A0	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x000221A4	Bcc[14] 0x0221B8	; size=4 opcode=0x6E00 flow=conditional
+0x000221A8	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x000221AE	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x000221B2	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x000221B8	RTS	; size=2 opcode=0x4E75 flow=return
+0x000221BA	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x000221C0	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000221C6	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x000221CC	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x000221D0	Bcc[14] 0x0221E4	; size=4 opcode=0x6E00 flow=conditional
+0x000221D4	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x000221DA	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x000221DE	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x000221E4	RTS	; size=2 opcode=0x4E75 flow=return
+0x000221E6	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x000221EC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000221F2	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x000221F8	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x000221FC	Bcc[14] 0x022210	; size=4 opcode=0x6E00 flow=conditional
+0x00022200	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00022206	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x0002220A	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00022210	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022212	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022218	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002221E	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022224	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022228	Bcc[14] 0x02223C	; size=4 opcode=0x6E00 flow=conditional
+0x0002222C	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00022232	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00022236	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x0002223C	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002223E	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00022242	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00022248	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x0002224C	Bcc[11] 0x02226E	; size=4 opcode=0x6B00 flow=conditional
+0x00022250	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00022256	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x0002225A	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00022260	unary-op	; size=2 opcode=0x4A40 flow=fallthrough
+0x00022262	Bcc[7] 0x02226E	; size=4 opcode=0x6700 flow=conditional
+0x00022266	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002226C	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002226E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022274	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022276	MOVEQ	; size=2 opcode=0x7219 flow=fallthrough
+0x00022278	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002227E	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022284	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022288	Bcc[14] 0x022294	; size=4 opcode=0x6E00 flow=conditional
+0x0002228C	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x00022294	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022296	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x0002229E	Bcc[10] 0x0222AA	; size=4 opcode=0x6A00 flow=conditional
+0x000222A2	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000222A8	RTS	; size=2 opcode=0x4E75 flow=return
+0x000222AA	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x000222B2	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000222B8	RTS	; size=2 opcode=0x4E75 flow=return
+0x000222BA	MOVEQ	; size=2 opcode=0x7264 flow=fallthrough
+0x000222BC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000222C2	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x000222C8	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x000222CC	Bcc[14] 0x0222D8	; size=4 opcode=0x6E00 flow=conditional
+0x000222D0	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x000222D8	RTS	; size=2 opcode=0x4E75 flow=return
+0x000222DA	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x000222E2	Bcc[11] 0x0222F6	; size=4 opcode=0x6B00 flow=conditional
+0x000222E6	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x000222EE	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000222F4	RTS	; size=2 opcode=0x4E75 flow=return
+0x000222F6	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x000222FC	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00022300	Bcc[7] 0x022314	; size=4 opcode=0x6700 flow=conditional
+0x00022304	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x0002230C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022312	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022314	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x0002231C	Bcc[7] 0x022354	; size=4 opcode=0x6700 flow=conditional
+0x00022320	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00022328	Bcc[7] 0x022344	; size=4 opcode=0x6700 flow=conditional
+0x0002232C	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x00022334	Bcc[7] 0x022354	; size=4 opcode=0x6700 flow=conditional
+0x00022338	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00022340	Bcc[6] 0x022354	; size=4 opcode=0x6600 flow=conditional
+0x00022344	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x0002234C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022352	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022354	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002235A	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002235C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022362	MOVE	; size=6 opcode=0x20FC flow=fallthrough
+0x00022368	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x0002236E	unary-op	; size=4 opcode=0x42A8 flow=fallthrough
+0x00022372	unary-op	; size=4 opcode=0x42A8 flow=fallthrough
+0x00022376	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x0002237C	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00022380	Bcc[7] 0x0223EE	; size=4 opcode=0x6700 flow=conditional
+0x00022384	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00022388	Bcc[6] 0x0223B2	; size=4 opcode=0x6600 flow=conditional
+0x0002238C	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00022390	Bcc[6] 0x0223CC	; size=4 opcode=0x6600 flow=conditional
+0x00022394	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x0002239E	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x000223A4	MOVE	; size=8 opcode=0x217C flow=fallthrough
+0x000223AC	ADDQ/SUBQ	; size=2 opcode=0x5888 flow=fallthrough
+0x000223AE	BRA 0x0223CC	; size=4 opcode=0x6000 flow=branch
+0x000223B2	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x000223BC	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x000223C2	MOVE	; size=8 opcode=0x217C flow=fallthrough
+0x000223CA	ADDQ/SUBQ	; size=2 opcode=0x5888 flow=fallthrough
+0x000223CC	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x000223D0	Bcc[6] 0x0223EE	; size=4 opcode=0x6600 flow=conditional
+0x000223D4	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x000223DE	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x000223E4	MOVE	; size=8 opcode=0x217C flow=fallthrough
+0x000223EC	ADDQ/SUBQ	; size=2 opcode=0x5888 flow=fallthrough
+0x000223EE	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x000223F2	Bcc[6] 0x022432	; size=4 opcode=0x6600 flow=conditional
+0x000223F6	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x000223FA	Bcc[6] 0x022432	; size=4 opcode=0x6600 flow=conditional
+0x000223FE	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00022402	Bcc[6] 0x022432	; size=4 opcode=0x6600 flow=conditional
+0x00022406	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x0002240C	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00022410	Bcc[6] 0x022432	; size=4 opcode=0x6600 flow=conditional
+0x00022414	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x0002241A	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x0002241E	Bcc[6] 0x022432	; size=4 opcode=0x6600 flow=conditional
+0x00022422	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00022426	Bcc[6] 0x022432	; size=4 opcode=0x6600 flow=conditional
+0x0002242A	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x0002242E	Bcc[7] 0x02244A	; size=4 opcode=0x6700 flow=conditional
+0x00022432	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x0002243C	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x00022442	MOVE	; size=8 opcode=0x217C flow=fallthrough
+0x0002244A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022450	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022452	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x0002245A	Bcc[11] 0x0224AC	; size=4 opcode=0x6B00 flow=conditional
+0x0002245E	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x00022466	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x0002246C	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00022470	Bcc[7] 0x0224A2	; size=4 opcode=0x6700 flow=conditional
+0x00022474	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00022478	Bcc[6] 0x0224A2	; size=4 opcode=0x6600 flow=conditional
+0x0002247C	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x00022486	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x0002248C	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x00022490	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022496	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x0002249E	unary-op	; size=2 opcode=0x4246 flow=fallthrough
+0x000224A0	RTS	; size=2 opcode=0x4E75 flow=return
+0x000224A2	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000224A8	unary-op	; size=2 opcode=0x4246 flow=fallthrough
+0x000224AA	RTS	; size=2 opcode=0x4E75 flow=return
+0x000224AC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000224B2	RTS	; size=2 opcode=0x4E75 flow=return
+0x000224B4	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x000224BA	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000224C0	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x000224C6	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x000224CA	Bcc[14] 0x022510	; size=4 opcode=0x6E00 flow=conditional
+0x000224CE	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x000224D6	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x000224DC	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x000224E0	Bcc[7] 0x022510	; size=4 opcode=0x6700 flow=conditional
+0x000224E4	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x000224E8	Bcc[6] 0x022510	; size=4 opcode=0x6600 flow=conditional
+0x000224EC	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x000224F6	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x000224FC	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x00022500	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022506	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x0002250E	unary-op	; size=2 opcode=0x4246 flow=fallthrough
+0x00022510	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022512	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022518	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002251E	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022524	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022528	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002252A	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022530	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022536	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x0002253C	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022540	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022542	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x0002254A	Bcc[11] 0x022556	; size=4 opcode=0x6B00 flow=conditional
+0x0002254E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022554	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022556	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x0002255C	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00022560	Bcc[6] 0x02254E	; size=2 opcode=0x66EC flow=conditional
+0x00022562	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022568	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002256A	immediate-op	; size=10 opcode=0x0CB9 flow=fallthrough
+0x00022574	Bcc[10] 0x022580	; size=4 opcode=0x6A00 flow=conditional
+0x00022578	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002257E	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022580	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00022588	Bcc[11] 0x022594	; size=4 opcode=0x6B00 flow=conditional
+0x0002258C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022592	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022594	MOVE	; size=6 opcode=0x2039 flow=fallthrough
+0x0002259A	immediate-bit-op	; size=4 opcode=0x08C0 flow=fallthrough
+0x0002259E	MOVE	; size=6 opcode=0x23C0 flow=fallthrough
+0x000225A4	immediate-op	; size=10 opcode=0x04B9 flow=fallthrough
+0x000225AE	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000225B4	RTS	; size=2 opcode=0x4E75 flow=return
+0x000225B6	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x000225BE	Bcc[10] 0x0225CA	; size=4 opcode=0x6A00 flow=conditional
+0x000225C2	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000225C8	RTS	; size=2 opcode=0x4E75 flow=return
+0x000225CA	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000225D0	RTS	; size=2 opcode=0x4E75 flow=return
+0x000225D2	MOVEQ	; size=2 opcode=0x724B flow=fallthrough
+0x000225D4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000225DA	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x000225E0	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x000225E4	Bcc[14] 0x022646	; size=4 opcode=0x6E00 flow=conditional
+0x000225E8	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x000225F0	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x000225F6	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x000225FA	Bcc[7] 0x022646	; size=4 opcode=0x6700 flow=conditional
+0x000225FE	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00022602	Bcc[6] 0x022646	; size=4 opcode=0x6600 flow=conditional
+0x00022606	MOVE	; size=6 opcode=0x2C39 flow=fallthrough
+0x0002260C	immediate-bit-op	; size=4 opcode=0x0806 flow=fallthrough
+0x00022610	Bcc[6] 0x022622	; size=4 opcode=0x6600 flow=conditional
+0x00022614	MOVE	; size=6 opcode=0x2C39 flow=fallthrough
+0x0002261A	immediate-bit-op	; size=4 opcode=0x0806 flow=fallthrough
+0x0002261E	Bcc[7] 0x022646	; size=4 opcode=0x6700 flow=conditional
+0x00022622	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x0002262C	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00022632	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x00022636	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002263C	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x00022644	unary-op	; size=2 opcode=0x4286 flow=fallthrough
+0x00022646	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022648	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x0002264E	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00022652	Bcc[6] 0x02265E	; size=4 opcode=0x6600 flow=conditional
+0x00022656	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002265C	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002265E	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00022664	immediate-bit-op	; size=4 opcode=0x0881 flow=fallthrough
+0x00022668	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x0002266C	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00022672	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x0002267C	BSR 0x02196C	; size=4 opcode=0x6100 flow=call
+0x00022680	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022686	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022688	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x0002268E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022694	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x0002269A	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x0002269E	RTS	; size=2 opcode=0x4E75 flow=return
+0x000226A0	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x000226A8	Bcc[10] 0x0226C2	; size=4 opcode=0x6A00 flow=conditional
+0x000226AC	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x000226B2	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x000226B6	Bcc[6] 0x0226C2	; size=4 opcode=0x6600 flow=conditional
+0x000226BA	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000226C0	RTS	; size=2 opcode=0x4E75 flow=return
+0x000226C2	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000226C8	RTS	; size=2 opcode=0x4E75 flow=return
+0x000226CA	unary-op	; size=6 opcode=0x4A39 flow=fallthrough
+0x000226D0	Bcc[7] 0x0226E8	; size=4 opcode=0x6700 flow=conditional
+0x000226D4	Bcc[11] 0x0226E0	; size=4 opcode=0x6B00 flow=conditional
+0x000226D8	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000226DE	RTS	; size=2 opcode=0x4E75 flow=return
+0x000226E0	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000226E6	RTS	; size=2 opcode=0x4E75 flow=return
+0x000226E8	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x000226EE	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x000226F2	Bcc[7] 0x02271A	; size=4 opcode=0x6700 flow=conditional
+0x000226F6	immediate-bit-op	; size=4 opcode=0x0881 flow=fallthrough
+0x000226FA	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00022700	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x00022708	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x0002270E	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x00022712	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022718	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002271A	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00022720	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00022724	Bcc[7] 0x022742	; size=4 opcode=0x6700 flow=conditional
+0x00022728	immediate-bit-op	; size=4 opcode=0x0881 flow=fallthrough
+0x0002272C	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00022732	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x0002273A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022740	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022742	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022748	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002274A	MOVE	; size=6 opcode=0x2079 flow=fallthrough
+0x00022750	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00022756	unary-op	; size=2 opcode=0x4247 flow=fallthrough
+0x00022758	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002275E	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00022764	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x00022768	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002276E	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00022776	Bcc[10] 0x0227A8	; size=4 opcode=0x6A00 flow=conditional
+0x0002277A	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00022780	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x00022784	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002278A	unary-op	; size=2 opcode=0x4A40 flow=fallthrough
+0x0002278C	Bcc[7] 0x0227A8	; size=4 opcode=0x6700 flow=conditional
+0x00022790	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00022796	unary-op	; size=6 opcode=0x4239 flow=fallthrough
+0x0002279C	MOVE	; size=4 opcode=0x3C3C flow=fallthrough
+0x000227A0	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000227A6	RTS	; size=2 opcode=0x4E75 flow=return
+0x000227A8	unary-op	; size=2 opcode=0x4286 flow=fallthrough
+0x000227AA	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x000227B2	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000227B8	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x000227C0	Bcc[10] 0x0227CA	; size=4 opcode=0x6A00 flow=conditional
+0x000227C4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000227CA	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x000227D0	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x000227D4	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x000227DA	RTS	; size=2 opcode=0x4E75 flow=return
+0x000227DC	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x000227E4	Bcc[10] 0x0227F0	; size=4 opcode=0x6A00 flow=conditional
+0x000227E8	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000227EE	RTS	; size=2 opcode=0x4E75 flow=return
+0x000227F0	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000227F6	RTS	; size=2 opcode=0x4E75 flow=return
+0x000227F8	unary-op	; size=2 opcode=0x4281 flow=fallthrough
+0x000227FA	MOVE	; size=6 opcode=0x1239 flow=fallthrough
+0x00022800	unary-op	; size=6 opcode=0x4239 flow=fallthrough
+0x00022806	MUL/DIV	; size=4 opcode=0xC2FC flow=fallthrough
+0x0002280A	arithmetic-op	; size=6 opcode=0xB2B9 flow=fallthrough
+0x00022810	Bcc[15] 0x022830	; size=4 opcode=0x6F00 flow=conditional
+0x00022814	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x0002281A	Bcc[6] 0x022826	; size=4 opcode=0x6600 flow=conditional
+0x0002281E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022824	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022826	unary-op	; size=6 opcode=0x42B9 flow=fallthrough
+0x0002282C	BRA 0x022836	; size=4 opcode=0x6000 flow=branch
+0x00022830	arithmetic-op	; size=6 opcode=0x93B9 flow=fallthrough
+0x00022836	MOVE	; size=2 opcode=0x2F01 flow=fallthrough
+0x00022838	BSR 0x01F5A8	; size=4 opcode=0x6100 flow=call
+0x0002283C	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022842	MOVE	; size=6 opcode=0x247C flow=fallthrough
+0x00022848	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x0002284C	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00022852	MOVE	; size=2 opcode=0x221F flow=fallthrough
+0x00022854	MOVE	; size=6 opcode=0x247C flow=fallthrough
+0x0002285A	MOVE	; size=4 opcode=0x343C flow=fallthrough
+0x0002285E	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00022864	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002286A	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x00022872	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022874	MOVE	; size=6 opcode=0x2679 flow=fallthrough
+0x0002287A	SUBA/CMPA/ADDA	; size=6 opcode=0xD7FC flow=fallthrough
+0x00022880	MOVE	; size=4 opcode=0x3C3C flow=fallthrough
+0x00022884	MOVE	; size=4 opcode=0x3E3C flow=fallthrough
+0x00022888	unary-op	; size=4 opcode=0x4A33 flow=fallthrough
+0x0002288C	Bcc[6] 0x022892	; size=4 opcode=0x6600 flow=conditional
+0x00022890	MOVE	; size=2 opcode=0x3C07 flow=fallthrough
+0x00022892	DBcc 0x022888	; size=4 opcode=0x51CF flow=conditional
+0x00022896	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022898	BSR 0x022874	; size=2 opcode=0x61DA flow=call
+0x0002289A	unary-op	; size=2 opcode=0x4A46 flow=fallthrough
+0x0002289C	Bcc[10] 0x0228A8	; size=4 opcode=0x6A00 flow=conditional
+0x000228A0	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000228A6	RTS	; size=2 opcode=0x4E75 flow=return
+0x000228A8	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x000228AE	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000228B4	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x000228BA	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x000228BE	Bcc[14] 0x0228CE	; size=4 opcode=0x6E00 flow=conditional
+0x000228C2	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x000228C8	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x000228CE	RTS	; size=2 opcode=0x4E75 flow=return
+0x000228D0	BSR 0x022874	; size=2 opcode=0x61A2 flow=call
+0x000228D2	unary-op	; size=2 opcode=0x4A46 flow=fallthrough
+0x000228D4	Bcc[10] 0x0228E0	; size=4 opcode=0x6A00 flow=conditional
+0x000228D8	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000228DE	RTS	; size=2 opcode=0x4E75 flow=return
+0x000228E0	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x000228E6	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000228EC	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x000228F2	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x000228F6	Bcc[14] 0x022906	; size=4 opcode=0x6E00 flow=conditional
+0x000228FA	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x00022900	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x00022906	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022908	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x0002290E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022914	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x0002291A	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x0002291E	Bcc[14] 0x022932	; size=4 opcode=0x6E00 flow=conditional
+0x00022922	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00022928	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x0002292C	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00022932	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022934	BSR 0x022874	; size=4 opcode=0x6100 flow=call
+0x00022938	unary-op	; size=2 opcode=0x4A46 flow=fallthrough
+0x0002293A	Bcc[10] 0x022946	; size=4 opcode=0x6A00 flow=conditional
+0x0002293E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022944	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022946	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x0002294C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022952	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022958	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x0002295C	Bcc[14] 0x02296C	; size=4 opcode=0x6E00 flow=conditional
+0x00022960	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x00022966	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x0002296C	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002296E	BSR 0x022874	; size=4 opcode=0x6100 flow=call
+0x00022972	unary-op	; size=2 opcode=0x4A46 flow=fallthrough
+0x00022974	Bcc[10] 0x022980	; size=4 opcode=0x6A00 flow=conditional
+0x00022978	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002297E	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022980	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022986	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002298C	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022992	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022996	Bcc[14] 0x0229A6	; size=4 opcode=0x6E00 flow=conditional
+0x0002299A	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x000229A0	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x000229A6	RTS	; size=2 opcode=0x4E75 flow=return
+0x000229A8	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x000229AE	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000229B4	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x000229BA	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x000229BE	Bcc[14] 0x0229D2	; size=4 opcode=0x6E00 flow=conditional
+0x000229C2	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x000229C8	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x000229CC	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x000229D2	RTS	; size=2 opcode=0x4E75 flow=return
+0x000229D4	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x000229DA	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000229E0	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x000229E6	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x000229EA	Bcc[14] 0x0229F8	; size=4 opcode=0x6E00 flow=conditional
+0x000229EE	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x000229F2	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000229F8	RTS	; size=2 opcode=0x4E75 flow=return
+0x000229FA	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022A00	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022A06	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022A0C	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022A10	Bcc[14] 0x022A1A	; size=4 opcode=0x6E00 flow=conditional
+0x00022A14	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00022A1A	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022A1C	BSR 0x022874	; size=4 opcode=0x6100 flow=call
+0x00022A20	unary-op	; size=2 opcode=0x4A46 flow=fallthrough
+0x00022A22	Bcc[10] 0x022A2E	; size=4 opcode=0x6A00 flow=conditional
+0x00022A26	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022A2C	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022A2E	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022A34	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022A3A	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022A40	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022A44	Bcc[14] 0x022A52	; size=4 opcode=0x6E00 flow=conditional
+0x00022A48	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x00022A4E	unary-op	; size=4 opcode=0x4233 flow=fallthrough
+0x00022A52	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022A54	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022A5A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022A60	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022A66	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022A6A	Bcc[14] 0x022A9C	; size=4 opcode=0x6E00 flow=conditional
+0x00022A6E	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022A74	MOVE	; size=6 opcode=0x137C flow=fallthrough
+0x00022A7A	MOVE	; size=4 opcode=0x12BC flow=fallthrough
+0x00022A7E	MOVE	; size=6 opcode=0x137C flow=fallthrough
+0x00022A84	MOVE	; size=6 opcode=0x337C flow=fallthrough
+0x00022A8A	MOVE	; size=6 opcode=0x337C flow=fallthrough
+0x00022A90	MOVE	; size=6 opcode=0x137C flow=fallthrough
+0x00022A96	MOVE	; size=6 opcode=0x137C flow=fallthrough
+0x00022A9C	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022A9E	immediate-op	; size=10 opcode=0x0CB9 flow=fallthrough
+0x00022AA8	Bcc[10] 0x022AB4	; size=4 opcode=0x6A00 flow=conditional
+0x00022AAC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022AB2	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022AB4	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00022ABA	MOVE	; size=4 opcode=0x3E3C flow=fallthrough
+0x00022ABE	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00022AC2	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00022AC8	arithmetic-op	; size=2 opcode=0xBC41 flow=fallthrough
+0x00022ACA	Bcc[10] 0x022AD6	; size=4 opcode=0x6A00 flow=conditional
+0x00022ACE	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022AD4	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022AD6	immediate-op	; size=10 opcode=0x04B9 flow=fallthrough
+0x00022AE0	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022AE6	MOVE	; size=6 opcode=0x137C flow=fallthrough
+0x00022AEC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022AF2	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022AF4	immediate-op	; size=10 opcode=0x0CB9 flow=fallthrough
+0x00022AFE	Bcc[10] 0x022B0A	; size=4 opcode=0x6A00 flow=conditional
+0x00022B02	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022B08	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022B0A	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00022B10	MOVE	; size=4 opcode=0x3E3C flow=fallthrough
+0x00022B14	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00022B18	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00022B1E	arithmetic-op	; size=2 opcode=0xBC41 flow=fallthrough
+0x00022B20	Bcc[10] 0x022B2C	; size=4 opcode=0x6A00 flow=conditional
+0x00022B24	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022B2A	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022B2C	immediate-op	; size=10 opcode=0x04B9 flow=fallthrough
+0x00022B36	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022B3C	MOVE	; size=6 opcode=0x137C flow=fallthrough
+0x00022B42	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022B48	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022B4A	immediate-op	; size=10 opcode=0x0CB9 flow=fallthrough
+0x00022B54	Bcc[10] 0x022B60	; size=4 opcode=0x6A00 flow=conditional
+0x00022B58	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022B5E	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022B60	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00022B66	MOVE	; size=4 opcode=0x3E3C flow=fallthrough
+0x00022B6A	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00022B6E	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00022B74	arithmetic-op	; size=2 opcode=0xBC41 flow=fallthrough
+0x00022B76	Bcc[10] 0x022B82	; size=4 opcode=0x6A00 flow=conditional
+0x00022B7A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022B80	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022B82	immediate-op	; size=10 opcode=0x04B9 flow=fallthrough
+0x00022B8C	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022B92	MOVE	; size=6 opcode=0x137C flow=fallthrough
+0x00022B98	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022B9E	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022BA0	immediate-op	; size=10 opcode=0x0CB9 flow=fallthrough
+0x00022BAA	Bcc[10] 0x022BB6	; size=4 opcode=0x6A00 flow=conditional
+0x00022BAE	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022BB4	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022BB6	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00022BBC	MOVE	; size=4 opcode=0x3E3C flow=fallthrough
+0x00022BC0	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00022BC4	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00022BCA	arithmetic-op	; size=2 opcode=0xBC41 flow=fallthrough
+0x00022BCC	Bcc[10] 0x022BD8	; size=4 opcode=0x6A00 flow=conditional
+0x00022BD0	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022BD6	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022BD8	immediate-op	; size=10 opcode=0x04B9 flow=fallthrough
+0x00022BE2	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022BE8	MOVE	; size=6 opcode=0x137C flow=fallthrough
+0x00022BEE	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022BF4	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022BF6	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022BFC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022C02	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022C08	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022C0C	Bcc[14] 0x022C20	; size=4 opcode=0x6E00 flow=conditional
+0x00022C10	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00022C16	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00022C1A	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00022C20	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022C22	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022C28	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022C2E	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022C34	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022C38	Bcc[14] 0x022C44	; size=4 opcode=0x6E00 flow=conditional
+0x00022C3C	immediate-bit-op	; size=8 opcode=0x08F9 flow=fallthrough
+0x00022C44	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022C46	MOVE	; size=6 opcode=0x2679 flow=fallthrough
+0x00022C4C	immediate-op	; size=6 opcode=0x0C2B flow=fallthrough
+0x00022C52	Bcc[11] 0x022C5E	; size=4 opcode=0x6B00 flow=conditional
+0x00022C56	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022C5C	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022C5E	BSR 0x022874	; size=4 opcode=0x6100 flow=call
+0x00022C62	unary-op	; size=2 opcode=0x4A46 flow=fallthrough
+0x00022C64	Bcc[10] 0x022C70	; size=4 opcode=0x6A00 flow=conditional
+0x00022C68	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022C6E	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022C70	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022C76	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022C7C	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022C82	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022C86	Bcc[14] 0x022C96	; size=4 opcode=0x6E00 flow=conditional
+0x00022C8A	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x00022C90	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x00022C96	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022C98	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x00022CA0	Bcc[7] 0x022CAC	; size=4 opcode=0x6700 flow=conditional
+0x00022CA4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022CAA	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022CAC	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00022CB4	Bcc[10] 0x022CC0	; size=4 opcode=0x6A00 flow=conditional
+0x00022CB8	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022CBE	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022CC0	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022CC6	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022CC8	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00022CCE	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00022CD2	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00022CD8	immediate-bit-op	; size=8 opcode=0x08F9 flow=fallthrough
+0x00022CE0	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022CE6	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022CE8	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x00022CF0	Bcc[7] 0x022CFC	; size=4 opcode=0x6700 flow=conditional
+0x00022CF4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022CFA	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022CFC	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00022D04	Bcc[10] 0x022D10	; size=4 opcode=0x6A00 flow=conditional
+0x00022D08	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022D0E	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022D10	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022D16	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022D18	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00022D1E	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00022D22	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00022D28	immediate-bit-op	; size=8 opcode=0x08F9 flow=fallthrough
+0x00022D30	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022D36	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022D38	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022D3E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022D44	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022D4A	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022D4E	Bcc[14] 0x022D58	; size=4 opcode=0x6E00 flow=conditional
+0x00022D52	unary-op	; size=6 opcode=0x4239 flow=fallthrough
+0x00022D58	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022D5A	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022D60	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022D66	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022D6C	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022D70	Bcc[14] 0x022D84	; size=4 opcode=0x6E00 flow=conditional
+0x00022D74	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00022D7A	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00022D7E	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00022D84	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022D86	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022D8C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022D92	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022D98	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022D9C	Bcc[14] 0x022DB0	; size=4 opcode=0x6E00 flow=conditional
+0x00022DA0	MOVE	; size=6 opcode=0x2039 flow=fallthrough
+0x00022DA6	immediate-bit-op	; size=4 opcode=0x08C0 flow=fallthrough
+0x00022DAA	MOVE	; size=6 opcode=0x23C0 flow=fallthrough
+0x00022DB0	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022DB2	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022DB8	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022DBE	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022DC4	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022DC8	Bcc[14] 0x022DDC	; size=4 opcode=0x6E00 flow=conditional
+0x00022DCC	MOVE	; size=6 opcode=0x2039 flow=fallthrough
+0x00022DD2	immediate-bit-op	; size=4 opcode=0x08C0 flow=fallthrough
+0x00022DD6	MOVE	; size=6 opcode=0x23C0 flow=fallthrough
+0x00022DDC	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022DDE	BSR 0x022874	; size=4 opcode=0x6100 flow=call
+0x00022DE2	unary-op	; size=2 opcode=0x4A46 flow=fallthrough
+0x00022DE4	Bcc[10] 0x022DF0	; size=4 opcode=0x6A00 flow=conditional
+0x00022DE8	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022DEE	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022DF0	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022DF6	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022DFC	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022E02	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022E06	Bcc[14] 0x022E16	; size=4 opcode=0x6E00 flow=conditional
+0x00022E0A	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x00022E10	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x00022E16	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022E18	BSR 0x022874	; size=4 opcode=0x6100 flow=call
+0x00022E1C	unary-op	; size=2 opcode=0x4A46 flow=fallthrough
+0x00022E1E	Bcc[10] 0x022E2A	; size=4 opcode=0x6A00 flow=conditional
+0x00022E22	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022E28	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022E2A	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022E30	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022E36	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022E3C	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022E40	Bcc[14] 0x022E50	; size=4 opcode=0x6E00 flow=conditional
+0x00022E44	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x00022E4A	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x00022E50	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022E52	BSR 0x022874	; size=4 opcode=0x6100 flow=call
+0x00022E56	unary-op	; size=2 opcode=0x4A46 flow=fallthrough
+0x00022E58	Bcc[10] 0x022E64	; size=4 opcode=0x6A00 flow=conditional
+0x00022E5C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022E62	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022E64	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022E6A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022E70	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022E76	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022E7A	Bcc[14] 0x022E8A	; size=4 opcode=0x6E00 flow=conditional
+0x00022E7E	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x00022E84	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x00022E8A	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022E8C	BSR 0x022874	; size=4 opcode=0x6100 flow=call
+0x00022E90	unary-op	; size=2 opcode=0x4A46 flow=fallthrough
+0x00022E92	Bcc[10] 0x022E9E	; size=4 opcode=0x6A00 flow=conditional
+0x00022E96	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022E9C	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022E9E	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022EA4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022EAA	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022EB0	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022EB4	Bcc[14] 0x022EC4	; size=4 opcode=0x6E00 flow=conditional
+0x00022EB8	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x00022EBE	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x00022EC4	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022EC6	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022ECC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022ED2	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022ED8	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022EDC	Bcc[14] 0x022EE6	; size=4 opcode=0x6E00 flow=conditional
+0x00022EE0	unary-op	; size=6 opcode=0x4239 flow=fallthrough
+0x00022EE6	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022EE8	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022EEE	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022EF4	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022EFA	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022EFE	Bcc[14] 0x022F12	; size=4 opcode=0x6E00 flow=conditional
+0x00022F02	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00022F08	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00022F0C	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00022F12	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022F14	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022F1A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022F20	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022F26	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022F2A	Bcc[14] 0x022F3E	; size=4 opcode=0x6E00 flow=conditional
+0x00022F2E	MOVE	; size=6 opcode=0x2039 flow=fallthrough
+0x00022F34	immediate-bit-op	; size=4 opcode=0x08C0 flow=fallthrough
+0x00022F38	MOVE	; size=6 opcode=0x23C0 flow=fallthrough
+0x00022F3E	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022F40	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022F46	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022F4C	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022F52	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022F56	Bcc[14] 0x022F62	; size=4 opcode=0x6E00 flow=conditional
+0x00022F5A	immediate-bit-op	; size=8 opcode=0x08F9 flow=fallthrough
+0x00022F62	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022F64	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00022F6A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022F70	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00022F76	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00022F7A	Bcc[14] 0x022F8E	; size=4 opcode=0x6E00 flow=conditional
+0x00022F7E	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00022F84	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00022F88	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00022F8E	RTS	; size=2 opcode=0x4E75 flow=return
+0x00022F90	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00022F96	MOVE	; size=6 opcode=0x20FC flow=fallthrough
+0x00022F9C	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x00022FA2	MOVE	; size=8 opcode=0x217C flow=fallthrough
+0x00022FAA	ADDQ/SUBQ	; size=2 opcode=0x5888 flow=fallthrough
+0x00022FAC	unary-op	; size=2 opcode=0x4290 flow=fallthrough
+0x00022FAE	unary-op	; size=4 opcode=0x42A8 flow=fallthrough
+0x00022FB2	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00022FB8	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00022FBC	Bcc[7] 0x022FD4	; size=4 opcode=0x6700 flow=conditional
+0x00022FC0	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x00022FC6	MOVE	; size=8 opcode=0x217C flow=fallthrough
+0x00022FCE	ADDQ/SUBQ	; size=2 opcode=0x5888 flow=fallthrough
+0x00022FD0	BRA 0x022FF0	; size=4 opcode=0x6000 flow=branch
+0x00022FD4	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x00022FDC	Bcc[7] 0x022FF0	; size=4 opcode=0x6700 flow=conditional
+0x00022FE0	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x00022FE6	MOVE	; size=8 opcode=0x217C flow=fallthrough
+0x00022FEE	ADDQ/SUBQ	; size=2 opcode=0x5888 flow=fallthrough
+0x00022FF0	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00022FF4	Bcc[7] 0x023006	; size=4 opcode=0x6700 flow=conditional
+0x00022FF8	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x00022FFE	MOVE	; size=8 opcode=0x217C flow=fallthrough
+0x00023006	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002300C	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002300E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023014	MOVE	; size=6 opcode=0x20FC flow=fallthrough
+0x0002301A	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x00023020	MOVE	; size=8 opcode=0x217C flow=fallthrough
+0x00023028	unary-op	; size=4 opcode=0x42A8 flow=fallthrough
+0x0002302C	unary-op	; size=4 opcode=0x42A8 flow=fallthrough
+0x00023030	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00023036	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x0002303A	Bcc[7] 0x023060	; size=4 opcode=0x6700 flow=conditional
+0x0002303E	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00023042	Bcc[6] 0x023060	; size=4 opcode=0x6600 flow=conditional
+0x00023046	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x00023050	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x00023056	MOVE	; size=8 opcode=0x217C flow=fallthrough
+0x0002305E	ADDQ/SUBQ	; size=2 opcode=0x5888 flow=fallthrough
+0x00023060	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00023064	Bcc[6] 0x023070	; size=4 opcode=0x6600 flow=conditional
+0x00023068	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x0002306C	Bcc[7] 0x02308A	; size=4 opcode=0x6700 flow=conditional
+0x00023070	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x0002307A	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x00023080	MOVE	; size=8 opcode=0x217C flow=fallthrough
+0x00023088	ADDQ/SUBQ	; size=2 opcode=0x5888 flow=fallthrough
+0x0002308A	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x0002308E	Bcc[6] 0x0230CE	; size=4 opcode=0x6600 flow=conditional
+0x00023092	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00023096	Bcc[6] 0x0230CE	; size=4 opcode=0x6600 flow=conditional
+0x0002309A	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x0002309E	Bcc[6] 0x0230CE	; size=4 opcode=0x6600 flow=conditional
+0x000230A2	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x000230A8	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x000230AC	Bcc[6] 0x0230CE	; size=4 opcode=0x6600 flow=conditional
+0x000230B0	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x000230B6	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x000230BA	Bcc[6] 0x0230CE	; size=4 opcode=0x6600 flow=conditional
+0x000230BE	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x000230C2	Bcc[6] 0x0230CE	; size=4 opcode=0x6600 flow=conditional
+0x000230C6	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x000230CA	Bcc[7] 0x0230E6	; size=4 opcode=0x6700 flow=conditional
+0x000230CE	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x000230D8	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x000230DE	MOVE	; size=8 opcode=0x217C flow=fallthrough
+0x000230E6	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000230EC	RTS	; size=2 opcode=0x4E75 flow=return
+0x000230EE	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x000230F4	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x000230F8	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x000230FE	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023104	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023106	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002310C	MOVE	; size=6 opcode=0x20FC flow=fallthrough
+0x00023112	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x00023118	MOVE	; size=8 opcode=0x217C flow=fallthrough
+0x00023120	unary-op	; size=4 opcode=0x42A8 flow=fallthrough
+0x00023124	unary-op	; size=4 opcode=0x42A8 flow=fallthrough
+0x00023128	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x00023130	Bcc[7] 0x02314E	; size=4 opcode=0x6700 flow=conditional
+0x00023134	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x0002313E	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x00023144	MOVE	; size=8 opcode=0x217C flow=fallthrough
+0x0002314C	ADDQ/SUBQ	; size=2 opcode=0x5888 flow=fallthrough
+0x0002314E	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x00023156	Bcc[7] 0x023172	; size=4 opcode=0x6700 flow=conditional
+0x0002315A	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x00023164	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x0002316A	MOVE	; size=8 opcode=0x217C flow=fallthrough
+0x00023172	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023178	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002317A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023180	MOVE	; size=6 opcode=0x20FC flow=fallthrough
+0x00023186	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x0002318C	MOVE	; size=8 opcode=0x217C flow=fallthrough
+0x00023194	unary-op	; size=4 opcode=0x42A8 flow=fallthrough
+0x00023198	unary-op	; size=4 opcode=0x42A8 flow=fallthrough
+0x0002319C	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x000231A4	Bcc[7] 0x0231C2	; size=4 opcode=0x6700 flow=conditional
+0x000231A8	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x000231B2	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x000231B8	MOVE	; size=8 opcode=0x217C flow=fallthrough
+0x000231C0	ADDQ/SUBQ	; size=2 opcode=0x5888 flow=fallthrough
+0x000231C2	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x000231C8	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x000231CC	Bcc[7] 0x0231F2	; size=4 opcode=0x6700 flow=conditional
+0x000231D0	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x000231D4	Bcc[6] 0x0231F2	; size=4 opcode=0x6600 flow=conditional
+0x000231D8	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x000231E2	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x000231E8	MOVE	; size=8 opcode=0x217C flow=fallthrough
+0x000231F0	ADDQ/SUBQ	; size=2 opcode=0x5888 flow=fallthrough
+0x000231F2	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x000231F6	Bcc[7] 0x02321A	; size=4 opcode=0x6700 flow=conditional
+0x000231FA	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x000231FE	Bcc[6] 0x02321A	; size=4 opcode=0x6600 flow=conditional
+0x00023202	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x0002320C	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x00023212	MOVE	; size=8 opcode=0x217C flow=fallthrough
+0x0002321A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023220	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023222	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00023228	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x0002322C	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00023232	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023238	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002323A	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00023240	immediate-bit-op	; size=4 opcode=0x0881 flow=fallthrough
+0x00023244	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00023248	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x0002324E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023254	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023256	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002325C	MOVE	; size=6 opcode=0x20FC flow=fallthrough
+0x00023262	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x00023268	MOVE	; size=8 opcode=0x217C flow=fallthrough
+0x00023270	unary-op	; size=4 opcode=0x42A8 flow=fallthrough
+0x00023274	unary-op	; size=4 opcode=0x42A8 flow=fallthrough
+0x00023278	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x0002327E	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00023282	Bcc[7] 0x0232A8	; size=4 opcode=0x6700 flow=conditional
+0x00023286	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x0002328A	Bcc[6] 0x0232A8	; size=4 opcode=0x6600 flow=conditional
+0x0002328E	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x00023298	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x0002329E	MOVE	; size=8 opcode=0x217C flow=fallthrough
+0x000232A6	ADDQ/SUBQ	; size=2 opcode=0x5888 flow=fallthrough
+0x000232A8	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x000232AC	Bcc[6] 0x0232B8	; size=4 opcode=0x6600 flow=conditional
+0x000232B0	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x000232B4	Bcc[7] 0x0232D2	; size=4 opcode=0x6700 flow=conditional
+0x000232B8	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x000232C2	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x000232C8	MOVE	; size=8 opcode=0x217C flow=fallthrough
+0x000232D0	ADDQ/SUBQ	; size=2 opcode=0x5888 flow=fallthrough
+0x000232D2	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x000232D6	Bcc[6] 0x0232EA	; size=4 opcode=0x6600 flow=conditional
+0x000232DA	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x000232DE	Bcc[6] 0x0232EA	; size=4 opcode=0x6600 flow=conditional
+0x000232E2	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x000232E6	Bcc[7] 0x023302	; size=4 opcode=0x6700 flow=conditional
+0x000232EA	MOVE	; size=10 opcode=0x23FC flow=fallthrough
+0x000232F4	MOVE	; size=6 opcode=0x20BC flow=fallthrough
+0x000232FA	MOVE	; size=8 opcode=0x217C flow=fallthrough
+0x00023302	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023308	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002330A	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00023310	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00023314	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x0002331A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023320	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023322	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00023328	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x0002332C	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00023332	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023338	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002333A	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00023342	Bcc[15] 0x0238C8	; size=4 opcode=0x6F00 flow=conditional
+0x00023346	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x0002334C	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00023350	Bcc[6] 0x0238C8	; size=4 opcode=0x6600 flow=conditional
+0x00023354	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x0002335C	Bcc[11] 0x023380	; size=4 opcode=0x6B00 flow=conditional
+0x00023360	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00023368	Bcc[11] 0x023376	; size=4 opcode=0x6B00 flow=conditional
+0x0002336C	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00023372	BRA 0x023386	; size=4 opcode=0x6000 flow=branch
+0x00023376	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x0002337C	BRA 0x023386	; size=4 opcode=0x6000 flow=branch
+0x00023380	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00023386	unary-op	; size=2 opcode=0x4240 flow=fallthrough
+0x00023388	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002338E	unary-op	; size=2 opcode=0x4A40 flow=fallthrough
+0x00023390	Bcc[7] 0x0238C8	; size=4 opcode=0x6700 flow=conditional
+0x00023394	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x0002339A	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x0002339E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000233A4	RTS	; size=2 opcode=0x4E75 flow=return
+0x000233A6	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x000233AE	Bcc[15] 0x024AA8	; size=4 opcode=0x6F00 flow=conditional
+0x000233B2	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x000233B8	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x000233BC	Bcc[6] 0x024AA8	; size=4 opcode=0x6600 flow=conditional
+0x000233C0	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x000233C8	Bcc[11] 0x0233EC	; size=4 opcode=0x6B00 flow=conditional
+0x000233CC	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x000233D4	Bcc[11] 0x0233E2	; size=4 opcode=0x6B00 flow=conditional
+0x000233D8	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x000233DE	BRA 0x0233F2	; size=4 opcode=0x6000 flow=branch
+0x000233E2	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x000233E8	BRA 0x0233F2	; size=4 opcode=0x6000 flow=branch
+0x000233EC	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x000233F2	unary-op	; size=2 opcode=0x4240 flow=fallthrough
+0x000233F4	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000233FA	unary-op	; size=2 opcode=0x4A40 flow=fallthrough
+0x000233FC	Bcc[7] 0x0238C8	; size=4 opcode=0x6700 flow=conditional
+0x00023400	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00023406	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x0002340A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023410	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023412	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00023418	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x0002341C	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023422	unary-op	; size=2 opcode=0x4A40 flow=fallthrough
+0x00023424	Bcc[7] 0x02344A	; size=4 opcode=0x6700 flow=conditional
+0x00023428	ADDQ/SUBQ	; size=6 opcode=0x5439 flow=fallthrough
+0x0002342E	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00023436	Bcc[11] 0x023442	; size=4 opcode=0x6B00 flow=conditional
+0x0002343A	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x00023442	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023448	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002344A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023450	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023452	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x0002345A	Bcc[7] 0x023482	; size=4 opcode=0x6700 flow=conditional
+0x0002345E	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00023462	arithmetic-op	; size=6 opcode=0x9239 flow=fallthrough
+0x00023468	MUL/DIV	; size=4 opcode=0xC2FC flow=fallthrough
+0x0002346C	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023472	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00023476	Bcc[11] 0x023482	; size=4 opcode=0x6B00 flow=conditional
+0x0002347A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023480	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023482	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00023486	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002348C	arithmetic-op	; size=6 opcode=0x9039 flow=fallthrough
+0x00023492	arithmetic-op	; size=6 opcode=0xB039 flow=fallthrough
+0x00023498	Bcc[14] 0x0234B4	; size=4 opcode=0x6E00 flow=conditional
+0x0002349C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000234A2	ADDQ/SUBQ	; size=6 opcode=0x5339 flow=fallthrough
+0x000234A8	Bcc[10] 0x0234B2	; size=4 opcode=0x6A00 flow=conditional
+0x000234AC	unary-op	; size=6 opcode=0x4239 flow=fallthrough
+0x000234B2	RTS	; size=2 opcode=0x4E75 flow=return
+0x000234B4	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x000234BC	Bcc[11] 0x0234C8	; size=4 opcode=0x6B00 flow=conditional
+0x000234C0	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000234C6	RTS	; size=2 opcode=0x4E75 flow=return
+0x000234C8	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000234CE	MOVE	; size=4 opcode=0x3E3C flow=fallthrough
+0x000234D2	immediate-bit-op	; size=6 opcode=0x0828 flow=fallthrough
+0x000234D8	Bcc[7] 0x02353A	; size=4 opcode=0x6700 flow=conditional
+0x000234DC	MOVE	; size=4 opcode=0x3C3C flow=fallthrough
+0x000234E0	immediate-op	; size=6 opcode=0x0C30 flow=fallthrough
+0x000234E6	Bcc[7] 0x023542	; size=4 opcode=0x6700 flow=conditional
+0x000234EA	immediate-op	; size=6 opcode=0x0C30 flow=fallthrough
+0x000234F0	Bcc[7] 0x023542	; size=4 opcode=0x6700 flow=conditional
+0x000234F4	immediate-op	; size=6 opcode=0x0C30 flow=fallthrough
+0x000234FA	Bcc[7] 0x023542	; size=4 opcode=0x6700 flow=conditional
+0x000234FE	immediate-op	; size=6 opcode=0x0C30 flow=fallthrough
+0x00023504	Bcc[7] 0x023542	; size=4 opcode=0x6700 flow=conditional
+0x00023508	immediate-op	; size=6 opcode=0x0C30 flow=fallthrough
+0x0002350E	Bcc[7] 0x023542	; size=4 opcode=0x6700 flow=conditional
+0x00023512	immediate-op	; size=6 opcode=0x0C30 flow=fallthrough
+0x00023518	Bcc[7] 0x023542	; size=4 opcode=0x6700 flow=conditional
+0x0002351C	immediate-op	; size=6 opcode=0x0C30 flow=fallthrough
+0x00023522	Bcc[7] 0x023542	; size=4 opcode=0x6700 flow=conditional
+0x00023526	immediate-op	; size=6 opcode=0x0C30 flow=fallthrough
+0x0002352C	Bcc[7] 0x023542	; size=4 opcode=0x6700 flow=conditional
+0x00023530	DBcc 0x0234E0	; size=4 opcode=0x51CE flow=conditional
+0x00023534	SUBA/CMPA/ADDA	; size=6 opcode=0xD1FC flow=fallthrough
+0x0002353A	DBcc 0x0234D2	; size=4 opcode=0x51CF flow=conditional
+0x0002353E	BRA 0x02349C	; size=4 opcode=0x6000 flow=branch
+0x00023542	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023548	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002354A	MOVE	; size=6 opcode=0x2039 flow=fallthrough
+0x00023550	immediate-bit-op	; size=4 opcode=0x0800 flow=fallthrough
+0x00023554	Bcc[7] 0x023560	; size=4 opcode=0x6700 flow=conditional
+0x00023558	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002355E	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023560	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00023564	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002356A	arithmetic-op	; size=6 opcode=0xB079 flow=fallthrough
+0x00023570	Bcc[14] 0x0235A4	; size=4 opcode=0x6E00 flow=conditional
+0x00023574	immediate-op	; size=10 opcode=0x0CB9 flow=fallthrough
+0x0002357E	Bcc[11] 0x0235A4	; size=4 opcode=0x6B00 flow=conditional
+0x00023582	immediate-op	; size=10 opcode=0x04B9 flow=fallthrough
+0x0002358C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023592	ADDQ/SUBQ	; size=6 opcode=0x5339 flow=fallthrough
+0x00023598	Bcc[10] 0x0235A2	; size=4 opcode=0x6A00 flow=conditional
+0x0002359C	unary-op	; size=6 opcode=0x4239 flow=fallthrough
+0x000235A2	RTS	; size=2 opcode=0x4E75 flow=return
+0x000235A4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000235AA	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x000235B0	MOVE	; size=4 opcode=0x3E3C flow=fallthrough
+0x000235B4	MOVE	; size=4 opcode=0x3C3C flow=fallthrough
+0x000235B8	immediate-op	; size=6 opcode=0x0C31 flow=fallthrough
+0x000235BE	Bcc[7] 0x023608	; size=4 opcode=0x6700 flow=conditional
+0x000235C2	immediate-op	; size=6 opcode=0x0C31 flow=fallthrough
+0x000235C8	Bcc[7] 0x023608	; size=4 opcode=0x6700 flow=conditional
+0x000235CC	immediate-op	; size=6 opcode=0x0C31 flow=fallthrough
+0x000235D2	Bcc[7] 0x023608	; size=4 opcode=0x6700 flow=conditional
+0x000235D6	immediate-op	; size=6 opcode=0x0C31 flow=fallthrough
+0x000235DC	Bcc[7] 0x023608	; size=4 opcode=0x6700 flow=conditional
+0x000235E0	immediate-op	; size=6 opcode=0x0C31 flow=fallthrough
+0x000235E6	Bcc[7] 0x023608	; size=4 opcode=0x6700 flow=conditional
+0x000235EA	immediate-op	; size=6 opcode=0x0C31 flow=fallthrough
+0x000235F0	Bcc[7] 0x023608	; size=4 opcode=0x6700 flow=conditional
+0x000235F4	immediate-op	; size=6 opcode=0x0C31 flow=fallthrough
+0x000235FA	Bcc[7] 0x023608	; size=4 opcode=0x6700 flow=conditional
+0x000235FE	immediate-op	; size=6 opcode=0x0C31 flow=fallthrough
+0x00023604	Bcc[6] 0x023610	; size=4 opcode=0x6600 flow=conditional
+0x00023608	unary-op	; size=4 opcode=0x4231 flow=fallthrough
+0x0002360C	unary-op	; size=4 opcode=0x4231 flow=fallthrough
+0x00023610	DBcc 0x0235B8	; size=4 opcode=0x51CE flow=conditional
+0x00023614	unary-op	; size=4 opcode=0x4229 flow=fallthrough
+0x00023618	unary-op	; size=4 opcode=0x4229 flow=fallthrough
+0x0002361C	MOVE	; size=6 opcode=0x137C flow=fallthrough
+0x00023622	SUBA/CMPA/ADDA	; size=6 opcode=0xD3FC flow=fallthrough
+0x00023628	DBcc 0x0235B4	; size=4 opcode=0x51CF flow=conditional
+0x0002362C	unary-op	; size=2 opcode=0x4287 flow=fallthrough
+0x0002362E	MOVE	; size=6 opcode=0x1E39 flow=fallthrough
+0x00023634	unary-op	; size=6 opcode=0x4239 flow=fallthrough
+0x0002363A	ADDQ/SUBQ	; size=2 opcode=0x5447 flow=fallthrough
+0x0002363C	MUL/DIV	; size=4 opcode=0xCEFC flow=fallthrough
+0x00023640	arithmetic-op	; size=6 opcode=0xBEB9 flow=fallthrough
+0x00023646	Bcc[14] 0x023668	; size=4 opcode=0x6E00 flow=conditional
+0x0002364A	arithmetic-op	; size=6 opcode=0x9FB9 flow=fallthrough
+0x00023650	MOVE	; size=6 opcode=0x2039 flow=fallthrough
+0x00023656	immediate-bit-op	; size=4 opcode=0x0800 flow=fallthrough
+0x0002365A	Bcc[7] 0x02366C	; size=4 opcode=0x6700 flow=conditional
+0x0002365E	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023664	BRA 0x02366C	; size=4 opcode=0x6000 flow=branch
+0x00023668	arithmetic-op	; size=2 opcode=0xE28F flow=fallthrough
+0x0002366A	Bcc[6] 0x023640	; size=2 opcode=0x66D4 flow=conditional
+0x0002366C	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023672	MOVE	; size=2 opcode=0x2248 flow=fallthrough
+0x00023674	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x0002367C	Bcc[6] 0x0236C8	; size=4 opcode=0x6600 flow=conditional
+0x00023680	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x00023688	Bcc[7] 0x02370E	; size=4 opcode=0x6700 flow=conditional
+0x0002368C	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023692	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023698	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002369E	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x000236A4	MOVE	; size=2 opcode=0x2251 flow=fallthrough
+0x000236A6	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x000236AA	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000236B0	MOVE	; size=2 opcode=0x2248 flow=fallthrough
+0x000236B2	MOVE	; size=2 opcode=0x2251 flow=fallthrough
+0x000236B4	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000236BA	MOVE	; size=4 opcode=0x1ABC flow=fallthrough
+0x000236BE	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000236C4	BRA 0x02370E	; size=4 opcode=0x6000 flow=branch
+0x000236C8	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x000236D0	Bcc[6] 0x0236F8	; size=4 opcode=0x6600 flow=conditional
+0x000236D4	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x000236DC	Bcc[7] 0x02370E	; size=4 opcode=0x6700 flow=conditional
+0x000236E0	MOVE	; size=6 opcode=0x2039 flow=fallthrough
+0x000236E6	immediate-bit-op	; size=4 opcode=0x0880 flow=fallthrough
+0x000236EA	MOVE	; size=6 opcode=0x23C0 flow=fallthrough
+0x000236F0	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000236F6	BRA 0x023698	; size=2 opcode=0x60A0 flow=branch
+0x000236F8	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00023700	Bcc[6] 0x02370E	; size=4 opcode=0x6600 flow=conditional
+0x00023704	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x0002370C	Bcc[6] 0x0236E0	; size=2 opcode=0x66D2 flow=conditional
+0x0002370E	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023710	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023716	BRA 0x0235AA	; size=4 opcode=0x6000 flow=branch
+0x0002371A	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x0002371E	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023724	arithmetic-op	; size=6 opcode=0xB079 flow=fallthrough
+0x0002372A	Bcc[14] 0x023746	; size=4 opcode=0x6E00 flow=conditional
+0x0002372E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023734	ADDQ/SUBQ	; size=6 opcode=0x5339 flow=fallthrough
+0x0002373A	Bcc[10] 0x023744	; size=4 opcode=0x6A00 flow=conditional
+0x0002373E	unary-op	; size=6 opcode=0x4239 flow=fallthrough
+0x00023744	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023746	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002374C	BRA 0x0235AA	; size=4 opcode=0x6000 flow=branch
+0x00023750	unary-op	; size=6 opcode=0x4239 flow=fallthrough
+0x00023756	unary-op	; size=2 opcode=0x4280 flow=fallthrough
+0x00023758	unary-op	; size=2 opcode=0x4286 flow=fallthrough
+0x0002375A	LEA	; size=6 opcode=0x47F9 flow=fallthrough
+0x00023760	MOVE	; size=4 opcode=0x3E3C flow=fallthrough
+0x00023764	immediate-bit-op	; size=6 opcode=0x082B flow=fallthrough
+0x0002376A	Bcc[7] 0x023774	; size=4 opcode=0x6700 flow=conditional
+0x0002376E	arithmetic-op	; size=4 opcode=0xDC2B flow=fallthrough
+0x00023772	ADDQ/SUBQ	; size=2 opcode=0x5200 flow=fallthrough
+0x00023774	SUBA/CMPA/ADDA	; size=6 opcode=0xD7FC flow=fallthrough
+0x0002377A	DBcc 0x023764	; size=4 opcode=0x51CF flow=conditional
+0x0002377E	MUL/DIV	; size=2 opcode=0x8CC0 flow=fallthrough
+0x00023780	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023782	ADDQ/SUBQ	; size=6 opcode=0x5239 flow=fallthrough
+0x00023788	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00023790	Bcc[11] 0x02379C	; size=4 opcode=0x6B00 flow=conditional
+0x00023794	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x0002379C	BSR 0x023750	; size=2 opcode=0x61B2 flow=call
+0x0002379E	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x000237A2	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x000237AA	Bcc[6] 0x0237B0	; size=4 opcode=0x6600 flow=conditional
+0x000237AE	ADDQ/SUBQ	; size=2 opcode=0x5244 flow=fallthrough
+0x000237B0	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x000237B8	Bcc[6] 0x0237BE	; size=4 opcode=0x6600 flow=conditional
+0x000237BC	ADDQ/SUBQ	; size=2 opcode=0x5444 flow=fallthrough
+0x000237BE	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000237C4	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x000237CC	Bcc[10] 0x02380A	; size=4 opcode=0x6A00 flow=conditional
+0x000237D0	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x000237D8	Bcc[10] 0x0237EC	; size=4 opcode=0x6A00 flow=conditional
+0x000237DC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000237E2	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x000237E8	BRA 0x0237F8	; size=4 opcode=0x6000 flow=branch
+0x000237EC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000237F2	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x000237F8	MOVE	; size=2 opcode=0x2F08 flow=fallthrough
+0x000237FA	unary-op	; size=2 opcode=0x4240 flow=fallthrough
+0x000237FC	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023802	MOVE	; size=2 opcode=0x205F flow=fallthrough
+0x00023804	unary-op	; size=2 opcode=0x4A40 flow=fallthrough
+0x00023806	Bcc[6] 0x023810	; size=4 opcode=0x6600 flow=conditional
+0x0002380A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023810	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023812	unary-op	; size=2 opcode=0x4286 flow=fallthrough
+0x00023814	MOVE	; size=6 opcode=0x1C39 flow=fallthrough
+0x0002381A	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x0002381E	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023824	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x0002382C	Bcc[11] 0x023846	; size=4 opcode=0x6B00 flow=conditional
+0x00023830	Bcc[7] 0x023856	; size=4 opcode=0x6700 flow=conditional
+0x00023834	immediate-op	; size=10 opcode=0x06B9 flow=fallthrough
+0x0002383E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023844	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023846	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x0002384C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023852	BRA 0x023862	; size=4 opcode=0x6000 flow=branch
+0x00023856	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x0002385C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023862	MOVE	; size=2 opcode=0x2F08 flow=fallthrough
+0x00023864	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x00023868	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002386E	MOVE	; size=2 opcode=0x205F flow=fallthrough
+0x00023870	unary-op	; size=2 opcode=0x4A40 flow=fallthrough
+0x00023872	Bcc[7] 0x023834	; size=2 opcode=0x67C0 flow=conditional
+0x00023874	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023876	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x0002387E	Bcc[7] 0x023892	; size=4 opcode=0x6700 flow=conditional
+0x00023882	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00023888	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002388E	BRA 0x0238AA	; size=4 opcode=0x6000 flow=branch
+0x00023892	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x0002389A	Bcc[7] 0x0238C0	; size=4 opcode=0x6700 flow=conditional
+0x0002389E	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x000238A4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000238AA	MOVE	; size=2 opcode=0x2F08 flow=fallthrough
+0x000238AC	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x000238B0	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000238B6	MOVE	; size=2 opcode=0x205F flow=fallthrough
+0x000238B8	unary-op	; size=2 opcode=0x4A40 flow=fallthrough
+0x000238BA	Bcc[7] 0x0238C8	; size=4 opcode=0x6700 flow=conditional
+0x000238BE	RTS	; size=2 opcode=0x4E75 flow=return
+0x000238C0	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000238C6	RTS	; size=2 opcode=0x4E75 flow=return
+0x000238C8	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x000238CC	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000238D2	arithmetic-op	; size=2 opcode=0xE548 flow=fallthrough
+0x000238D4	LEA	; size=6 opcode=0x47F9 flow=fallthrough
+0x000238DA	MOVE	; size=4 opcode=0x2A73 flow=fallthrough
+0x000238DE	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x000238E2	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000238E8	RTS	; size=2 opcode=0x4E75 flow=return
+0x000238EA	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x000238EE	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000238F4	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x000238F8	Bcc[10] 0x023904	; size=4 opcode=0x6A00 flow=conditional
+0x000238FC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023902	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023904	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x0002390A	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x0002390E	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023914	unary-op	; size=2 opcode=0x4A40 flow=fallthrough
+0x00023916	Bcc[7] 0x0238FC	; size=2 opcode=0x67E4 flow=conditional
+0x00023918	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002391E	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023920	unary-op	; size=2 opcode=0x4286 flow=fallthrough
+0x00023922	MOVE	; size=6 opcode=0x1C39 flow=fallthrough
+0x00023928	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x0002392C	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023932	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x0002393A	Bcc[11] 0x02394A	; size=4 opcode=0x6B00 flow=conditional
+0x0002393E	Bcc[7] 0x02395C	; size=4 opcode=0x6700 flow=conditional
+0x00023942	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023948	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002394A	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00023950	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x00023954	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002395A	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002395C	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00023962	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x00023966	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002396C	unary-op	; size=2 opcode=0x4A40 flow=fallthrough
+0x0002396E	Bcc[7] 0x023942	; size=2 opcode=0x67D2 flow=conditional
+0x00023970	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023976	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023978	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x0002397C	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023982	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00023986	Bcc[11] 0x0239A4	; size=4 opcode=0x6B00 flow=conditional
+0x0002398A	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x0002398E	Bcc[11] 0x0239AC	; size=4 opcode=0x6B00 flow=conditional
+0x00023992	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00023998	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x0002399C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000239A2	RTS	; size=2 opcode=0x4E75 flow=return
+0x000239A4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000239AA	RTS	; size=2 opcode=0x4E75 flow=return
+0x000239AC	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x000239B2	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x000239B6	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000239BC	unary-op	; size=2 opcode=0x4A40 flow=fallthrough
+0x000239BE	Bcc[7] 0x0239A4	; size=2 opcode=0x67E4 flow=conditional
+0x000239C0	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000239C6	RTS	; size=2 opcode=0x4E75 flow=return
+0x000239C8	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x000239CC	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000239D2	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x000239D6	Bcc[11] 0x0239E2	; size=4 opcode=0x6B00 flow=conditional
+0x000239DA	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000239E0	RTS	; size=2 opcode=0x4E75 flow=return
+0x000239E2	unary-op	; size=2 opcode=0x4286 flow=fallthrough
+0x000239E4	MOVE	; size=6 opcode=0x1C39 flow=fallthrough
+0x000239EA	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x000239EE	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000239F4	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x000239FC	Bcc[11] 0x023A18	; size=4 opcode=0x6B00 flow=conditional
+0x00023A00	Bcc[7] 0x023A0E	; size=4 opcode=0x6700 flow=conditional
+0x00023A04	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00023A0A	BRA 0x023A1E	; size=4 opcode=0x6000 flow=branch
+0x00023A0E	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00023A14	BRA 0x023A1E	; size=4 opcode=0x6000 flow=branch
+0x00023A18	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00023A1E	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00023A24	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00023A28	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023A2E	MOVE	; size=4 opcode=0x1ABC flow=fallthrough
+0x00023A32	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023A38	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023A3A	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00023A40	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x00023A44	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023A4A	unary-op	; size=2 opcode=0x4A40 flow=fallthrough
+0x00023A4C	Bcc[7] 0x023A84	; size=4 opcode=0x6700 flow=conditional
+0x00023A50	ADDQ/SUBQ	; size=6 opcode=0x5439 flow=fallthrough
+0x00023A56	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00023A5E	Bcc[11] 0x023A6A	; size=4 opcode=0x6B00 flow=conditional
+0x00023A62	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x00023A6A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023A70	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023A72	immediate-op	; size=10 opcode=0x06B9 flow=fallthrough
+0x00023A7C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023A82	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023A84	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023A8A	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023A8C	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00023A92	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x00023A96	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023A9C	unary-op	; size=2 opcode=0x4A40 flow=fallthrough
+0x00023A9E	Bcc[7] 0x023A84	; size=2 opcode=0x67E4 flow=conditional
+0x00023AA0	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023AA6	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023AA8	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00023AAC	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023AB2	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00023AB6	Bcc[11] 0x023AC2	; size=4 opcode=0x6B00 flow=conditional
+0x00023ABA	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023AC0	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023AC2	unary-op	; size=2 opcode=0x4286 flow=fallthrough
+0x00023AC4	MOVE	; size=6 opcode=0x1C39 flow=fallthrough
+0x00023ACA	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x00023ACE	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023AD4	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00023ADC	Bcc[11] 0x023AEA	; size=4 opcode=0x6B00 flow=conditional
+0x00023AE0	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00023AE6	BRA 0x023AF0	; size=4 opcode=0x6000 flow=branch
+0x00023AEA	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00023AF0	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00023AF6	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00023AFA	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023B00	MOVE	; size=4 opcode=0x1ABC flow=fallthrough
+0x00023B04	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023B0A	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023B0C	unary-op	; size=2 opcode=0x4286 flow=fallthrough
+0x00023B0E	MOVE	; size=6 opcode=0x1C39 flow=fallthrough
+0x00023B14	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x00023B18	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023B1E	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00023B26	Bcc[10] 0x023B48	; size=4 opcode=0x6A00 flow=conditional
+0x00023B2A	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00023B30	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x00023B34	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023B3A	unary-op	; size=2 opcode=0x4A40 flow=fallthrough
+0x00023B3C	Bcc[7] 0x023B48	; size=4 opcode=0x6700 flow=conditional
+0x00023B40	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023B46	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023B48	immediate-op	; size=10 opcode=0x06B9 flow=fallthrough
+0x00023B52	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023B58	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023B5A	unary-op	; size=2 opcode=0x4286 flow=fallthrough
+0x00023B5C	MOVE	; size=6 opcode=0x1C39 flow=fallthrough
+0x00023B62	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x00023B66	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023B6C	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00023B74	Bcc[10] 0x023B80	; size=4 opcode=0x6A00 flow=conditional
+0x00023B78	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023B7E	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023B80	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023B86	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023B88	unary-op	; size=2 opcode=0x4286 flow=fallthrough
+0x00023B8A	MOVE	; size=6 opcode=0x1C39 flow=fallthrough
+0x00023B90	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x00023B94	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023B9A	unary-op	; size=6 opcode=0x4A39 flow=fallthrough
+0x00023BA0	Bcc[7] 0x023BAC	; size=4 opcode=0x6700 flow=conditional
+0x00023BA4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023BAA	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023BAC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023BB2	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023BB4	unary-op	; size=2 opcode=0x4286 flow=fallthrough
+0x00023BB6	MOVE	; size=6 opcode=0x1C39 flow=fallthrough
+0x00023BBC	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x00023BC0	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023BC6	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00023BCA	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023BD0	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00023BD4	Bcc[11] 0x023BF2	; size=4 opcode=0x6B00 flow=conditional
+0x00023BD8	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023BDE	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00023BE6	Bcc[11] 0x023C1C	; size=4 opcode=0x6B00 flow=conditional
+0x00023BEA	Bcc[7] 0x023C12	; size=4 opcode=0x6700 flow=conditional
+0x00023BEE	BRA 0x023C08	; size=4 opcode=0x6000 flow=branch
+0x00023BF2	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023BF8	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00023C00	Bcc[7] 0x023C12	; size=4 opcode=0x6700 flow=conditional
+0x00023C04	Bcc[14] 0x023C1C	; size=4 opcode=0x6E00 flow=conditional
+0x00023C08	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00023C0E	BRA 0x023C22	; size=4 opcode=0x6000 flow=branch
+0x00023C12	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00023C18	BRA 0x023C22	; size=4 opcode=0x6000 flow=branch
+0x00023C1C	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00023C22	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00023C28	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00023C2C	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023C32	MOVE	; size=4 opcode=0x1ABC flow=fallthrough
+0x00023C36	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023C38	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00023C3C	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023C42	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00023C46	Bcc[11] 0x023CE0	; size=4 opcode=0x6B00 flow=conditional
+0x00023C4A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023C50	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023C52	unary-op	; size=2 opcode=0x4286 flow=fallthrough
+0x00023C54	MOVE	; size=6 opcode=0x1C39 flow=fallthrough
+0x00023C5A	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x00023C5E	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023C64	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00023C6C	Bcc[11] 0x023C86	; size=4 opcode=0x6B00 flow=conditional
+0x00023C70	Bcc[7] 0x023C96	; size=4 opcode=0x6700 flow=conditional
+0x00023C74	immediate-op	; size=10 opcode=0x06B9 flow=fallthrough
+0x00023C7E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023C84	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023C86	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023C8C	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00023C92	BRA 0x023CA2	; size=4 opcode=0x6000 flow=branch
+0x00023C96	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023C9C	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00023CA2	MOVE	; size=2 opcode=0x2F08 flow=fallthrough
+0x00023CA4	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x00023CA8	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023CAE	MOVE	; size=2 opcode=0x205F flow=fallthrough
+0x00023CB0	unary-op	; size=2 opcode=0x4A40 flow=fallthrough
+0x00023CB2	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023CB4	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00023CB8	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023CBE	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00023CC2	Bcc[11] 0x023CCE	; size=4 opcode=0x6B00 flow=conditional
+0x00023CC6	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023CCC	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023CCE	immediate-op	; size=10 opcode=0x06B9 flow=fallthrough
+0x00023CD8	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023CDE	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023CE0	immediate-op	; size=10 opcode=0x06B9 flow=fallthrough
+0x00023CEA	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023CF0	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023CF2	immediate-op	; size=10 opcode=0x06B9 flow=fallthrough
+0x00023CFC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023D02	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023D04	MOVE	; size=6 opcode=0x2E39 flow=fallthrough
+0x00023D0A	arithmetic-op	; size=6 opcode=0xDFB9 flow=fallthrough
+0x00023D10	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023D16	MOVE	; size=6 opcode=0x3039 flow=fallthrough
+0x00023D1C	MUL/DIV	; size=4 opcode=0xC0FC flow=fallthrough
+0x00023D20	MOVE	; size=6 opcode=0x11BC flow=fallthrough
+0x00023D26	unary-op	; size=4 opcode=0x4230 flow=fallthrough
+0x00023D2A	unary-op	; size=4 opcode=0x4230 flow=fallthrough
+0x00023D2E	BRA 0x023D4E	; size=4 opcode=0x6000 flow=branch
+0x00023D32	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x00023D3A	Bcc[6] 0x023D46	; size=4 opcode=0x6600 flow=conditional
+0x00023D3E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023D44	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023D46	MOVE	; size=8 opcode=0x33FC flow=fallthrough
+0x00023D4E	ADDQ/SUBQ	; size=6 opcode=0x5379 flow=fallthrough
+0x00023D54	Bcc[10] 0x023D66	; size=4 opcode=0x6A00 flow=conditional
+0x00023D58	unary-op	; size=6 opcode=0x4279 flow=fallthrough
+0x00023D5E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023D64	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023D66	BSR 0x01F5A8	; size=4 opcode=0x6100 flow=call
+0x00023D6A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023D70	MOVE	; size=6 opcode=0x3039 flow=fallthrough
+0x00023D76	MUL/DIV	; size=4 opcode=0xC0FC flow=fallthrough
+0x00023D7A	unary-op	; size=2 opcode=0x4284 flow=fallthrough
+0x00023D7C	MOVE	; size=4 opcode=0x1830 flow=fallthrough
+0x00023D80	Bcc[11] 0x023D4E	; size=2 opcode=0x6BCC flow=conditional
+0x00023D82	unary-op	; size=2 opcode=0x4286 flow=fallthrough
+0x00023D84	MOVE	; size=4 opcode=0x1C30 flow=fallthrough
+0x00023D88	unary-op	; size=2 opcode=0x4287 flow=fallthrough
+0x00023D8A	MOVE	; size=4 opcode=0x1E30 flow=fallthrough
+0x00023D8E	Bcc[11] 0x023DB4	; size=4 opcode=0x6B00 flow=conditional
+0x00023D92	Bcc[6] 0x023DD0	; size=4 opcode=0x6600 flow=conditional
+0x00023D96	MOVE	; size=6 opcode=0x11BC flow=fallthrough
+0x00023D9C	unary-op	; size=4 opcode=0x4230 flow=fallthrough
+0x00023DA0	unary-op	; size=4 opcode=0x4230 flow=fallthrough
+0x00023DA4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023DAA	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00023DB0	BRA 0x023DE8	; size=4 opcode=0x6000 flow=branch
+0x00023DB4	MOVE	; size=6 opcode=0x23C8 flow=fallthrough
+0x00023DBA	MOVE	; size=6 opcode=0x23C0 flow=fallthrough
+0x00023DC0	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023DC6	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00023DCC	BRA 0x023DE8	; size=4 opcode=0x6000 flow=branch
+0x00023DD0	MOVE	; size=6 opcode=0x23C8 flow=fallthrough
+0x00023DD6	MOVE	; size=6 opcode=0x23C0 flow=fallthrough
+0x00023DDC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023DE2	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00023DE8	MOVE	; size=6 opcode=0x247C flow=fallthrough
+0x00023DEE	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00023DF2	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023DF8	MUL/DIV	; size=4 opcode=0xC8FC flow=fallthrough
+0x00023DFC	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00023E02	SUBA/CMPA/ADDA	; size=2 opcode=0xD3C4 flow=fallthrough
+0x00023E04	MOVE	; size=6 opcode=0x247C flow=fallthrough
+0x00023E0A	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00023E0E	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023E14	unary-op	; size=2 opcode=0x4A07 flow=fallthrough
+0x00023E16	Bcc[15] 0x023E38	; size=4 opcode=0x6F00 flow=conditional
+0x00023E1A	MUL/DIV	; size=4 opcode=0xCCFC flow=fallthrough
+0x00023E1E	MUL/DIV	; size=2 opcode=0xCEC6 flow=fallthrough
+0x00023E20	MOVE	; size=6 opcode=0x23C7 flow=fallthrough
+0x00023E26	MOVE	; size=2 opcode=0x2207 flow=fallthrough
+0x00023E28	MOVE	; size=6 opcode=0x247C flow=fallthrough
+0x00023E2E	MOVE	; size=4 opcode=0x343C flow=fallthrough
+0x00023E32	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00023E38	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x00023E40	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023E42	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00023E48	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023E4E	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00023E54	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00023E58	Bcc[14] 0x023E74	; size=4 opcode=0x6E00 flow=conditional
+0x00023E5C	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00023E62	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00023E66	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00023E6C	immediate-bit-op	; size=8 opcode=0x08F9 flow=fallthrough
+0x00023E74	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023E76	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00023E7C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023E82	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00023E88	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00023E8C	Bcc[14] 0x023EA0	; size=4 opcode=0x6E00 flow=conditional
+0x00023E90	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00023E96	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00023E9A	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00023EA0	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023EA2	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00023EA8	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023EAE	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00023EB4	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00023EB8	Bcc[14] 0x023ED4	; size=4 opcode=0x6E00 flow=conditional
+0x00023EBC	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00023EC2	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00023EC6	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00023ECC	immediate-bit-op	; size=8 opcode=0x08F9 flow=fallthrough
+0x00023ED4	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023ED6	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00023EDC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023EE2	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00023EE8	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00023EEC	Bcc[14] 0x023F00	; size=4 opcode=0x6E00 flow=conditional
+0x00023EF0	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00023EF6	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00023EFA	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00023F00	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023F02	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00023F08	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023F0E	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00023F14	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00023F18	Bcc[14] 0x023F34	; size=4 opcode=0x6E00 flow=conditional
+0x00023F1C	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00023F22	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00023F26	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00023F2C	immediate-bit-op	; size=8 opcode=0x08F9 flow=fallthrough
+0x00023F34	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023F36	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00023F3C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023F42	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00023F48	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00023F4C	Bcc[14] 0x023F60	; size=4 opcode=0x6E00 flow=conditional
+0x00023F50	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00023F56	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00023F5A	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00023F60	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023F62	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00023F68	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023F6E	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00023F74	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00023F78	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023F7A	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00023F82	Bcc[10] 0x023F9C	; size=4 opcode=0x6A00 flow=conditional
+0x00023F86	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00023F8C	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00023F90	Bcc[6] 0x023F9C	; size=4 opcode=0x6600 flow=conditional
+0x00023F94	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023F9A	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023F9C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023FA2	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023FA4	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00023FAA	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00023FAE	Bcc[7] 0x023FBA	; size=4 opcode=0x6700 flow=conditional
+0x00023FB2	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023FB8	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023FBA	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00023FBE	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00023FC4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023FCA	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023FCC	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00023FD2	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00023FD6	Bcc[7] 0x023FE2	; size=4 opcode=0x6700 flow=conditional
+0x00023FDA	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023FE0	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023FE2	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00023FE6	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00023FEC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00023FF2	RTS	; size=2 opcode=0x4E75 flow=return
+0x00023FF4	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00023FFA	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00023FFE	Bcc[7] 0x02400A	; size=4 opcode=0x6700 flow=conditional
+0x00024002	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024008	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002400A	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x0002400E	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00024014	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002401A	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002401C	MOVE	; size=6 opcode=0x3039 flow=fallthrough
+0x00024022	immediate-bit-op	; size=4 opcode=0x08C0 flow=fallthrough
+0x00024026	MOVE	; size=6 opcode=0x33C0 flow=fallthrough
+0x0002402C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024032	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024034	MOVE	; size=6 opcode=0x3039 flow=fallthrough
+0x0002403A	immediate-bit-op	; size=4 opcode=0x08C0 flow=fallthrough
+0x0002403E	MOVE	; size=6 opcode=0x33C0 flow=fallthrough
+0x00024044	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002404A	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002404C	MOVE	; size=6 opcode=0x3039 flow=fallthrough
+0x00024052	immediate-bit-op	; size=4 opcode=0x08C0 flow=fallthrough
+0x00024056	MOVE	; size=6 opcode=0x33C0 flow=fallthrough
+0x0002405C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024062	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024064	MOVE	; size=6 opcode=0x3039 flow=fallthrough
+0x0002406A	immediate-bit-op	; size=4 opcode=0x08C0 flow=fallthrough
+0x0002406E	MOVE	; size=6 opcode=0x33C0 flow=fallthrough
+0x00024074	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002407A	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002407C	MOVE	; size=6 opcode=0x3039 flow=fallthrough
+0x00024082	immediate-bit-op	; size=4 opcode=0x08C0 flow=fallthrough
+0x00024086	MOVE	; size=6 opcode=0x33C0 flow=fallthrough
+0x0002408C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024092	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024094	MOVE	; size=6 opcode=0x3039 flow=fallthrough
+0x0002409A	immediate-bit-op	; size=4 opcode=0x08C0 flow=fallthrough
+0x0002409E	MOVE	; size=6 opcode=0x33C0 flow=fallthrough
+0x000240A4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000240AA	RTS	; size=2 opcode=0x4E75 flow=return
+0x000240AC	MOVE	; size=6 opcode=0x3039 flow=fallthrough
+0x000240B2	immediate-bit-op	; size=4 opcode=0x08C0 flow=fallthrough
+0x000240B6	MOVE	; size=6 opcode=0x33C0 flow=fallthrough
+0x000240BC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000240C2	RTS	; size=2 opcode=0x4E75 flow=return
+0x000240C4	MOVE	; size=6 opcode=0x3039 flow=fallthrough
+0x000240CA	immediate-bit-op	; size=4 opcode=0x08C0 flow=fallthrough
+0x000240CE	MOVE	; size=6 opcode=0x33C0 flow=fallthrough
+0x000240D4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000240DA	RTS	; size=2 opcode=0x4E75 flow=return
+0x000240DC	MOVE	; size=6 opcode=0x3039 flow=fallthrough
+0x000240E2	immediate-bit-op	; size=4 opcode=0x08C0 flow=fallthrough
+0x000240E6	MOVE	; size=6 opcode=0x33C0 flow=fallthrough
+0x000240EC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000240F2	RTS	; size=2 opcode=0x4E75 flow=return
+0x000240F4	MOVE	; size=6 opcode=0x3039 flow=fallthrough
+0x000240FA	immediate-bit-op	; size=4 opcode=0x08C0 flow=fallthrough
+0x000240FE	MOVE	; size=6 opcode=0x33C0 flow=fallthrough
+0x00024104	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002410A	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002410C	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00024112	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024118	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x0002411E	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00024122	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024124	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x0002412A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024130	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00024136	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x0002413A	Bcc[14] 0x024150	; size=4 opcode=0x6E00 flow=conditional
+0x0002413E	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00024146	Bcc[10] 0x024150	; size=4 opcode=0x6A00 flow=conditional
+0x0002414A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024150	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024152	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00024158	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002415E	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00024164	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00024168	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002416A	BSR 0x024252	; size=4 opcode=0x6100 flow=call
+0x0002416E	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00024176	Bcc[11] 0x02418E	; size=4 opcode=0x6B00 flow=conditional
+0x0002417A	Bcc[7] 0x02419C	; size=4 opcode=0x6700 flow=conditional
+0x0002417E	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x00024186	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002418C	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002418E	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024194	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002419A	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002419C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000241A2	RTS	; size=2 opcode=0x4E75 flow=return
+0x000241A4	BSR 0x024252	; size=4 opcode=0x6100 flow=call
+0x000241A8	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x000241B0	Bcc[11] 0x024220	; size=4 opcode=0x6B00 flow=conditional
+0x000241B4	Bcc[7] 0x02422E	; size=4 opcode=0x6700 flow=conditional
+0x000241B8	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x000241C0	Bcc[11] 0x02423C	; size=4 opcode=0x6B00 flow=conditional
+0x000241C4	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000241CA	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x000241D2	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x000241D8	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x000241DE	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x000241E2	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000241E8	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x000241EE	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x000241F2	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000241F8	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x000241FE	MOVE	; size=6 opcode=0x3839 flow=fallthrough
+0x00024204	arithmetic-op	; size=2 opcode=0xE54C flow=fallthrough
+0x00024206	MOVE	; size=4 opcode=0x2271 flow=fallthrough
+0x0002420A	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x0002420E	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024214	MOVE	; size=4 opcode=0x1ABC flow=fallthrough
+0x00024218	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002421E	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024220	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024226	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002422C	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002422E	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024234	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002423A	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002423C	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024242	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x0002424A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024250	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024252	unary-op	; size=2 opcode=0x4286 flow=fallthrough
+0x00024254	MOVE	; size=6 opcode=0x1C39 flow=fallthrough
+0x0002425A	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x00024262	Bcc[7] 0x024276	; size=4 opcode=0x6700 flow=conditional
+0x00024266	arithmetic-op	; size=6 opcode=0xBC39 flow=fallthrough
+0x0002426C	Bcc[10] 0x024276	; size=4 opcode=0x6A00 flow=conditional
+0x00024270	MOVE	; size=6 opcode=0x1C39 flow=fallthrough
+0x00024276	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x0002427E	Bcc[7] 0x024292	; size=4 opcode=0x6700 flow=conditional
+0x00024282	arithmetic-op	; size=6 opcode=0xBC39 flow=fallthrough
+0x00024288	Bcc[10] 0x024292	; size=4 opcode=0x6A00 flow=conditional
+0x0002428C	MOVE	; size=6 opcode=0x1C39 flow=fallthrough
+0x00024292	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x00024296	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002429C	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002429E	unary-op	; size=2 opcode=0x4286 flow=fallthrough
+0x000242A0	MOVE	; size=6 opcode=0x1C39 flow=fallthrough
+0x000242A6	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x000242AA	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000242B0	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x000242B8	Bcc[11] 0x0242C4	; size=4 opcode=0x6B00 flow=conditional
+0x000242BC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000242C2	RTS	; size=2 opcode=0x4E75 flow=return
+0x000242C4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000242CA	RTS	; size=2 opcode=0x4E75 flow=return
+0x000242FA	MOVE	; size=6 opcode=0x2039 flow=fallthrough
+0x00024300	immediate-bit-op	; size=4 opcode=0x0800 flow=fallthrough
+0x00024304	Bcc[7] 0x02432A	; size=4 opcode=0x6700 flow=conditional
+0x00024308	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x0002430C	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024312	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00024316	Bcc[11] 0x024322	; size=4 opcode=0x6B00 flow=conditional
+0x0002431A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024320	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024322	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024328	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002432A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024330	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024332	MOVE	; size=6 opcode=0x2039 flow=fallthrough
+0x00024338	immediate-bit-op	; size=4 opcode=0x0800 flow=fallthrough
+0x0002433C	Bcc[7] 0x02438A	; size=4 opcode=0x6700 flow=conditional
+0x00024340	unary-op	; size=2 opcode=0x4286 flow=fallthrough
+0x00024342	MOVE	; size=6 opcode=0x1C39 flow=fallthrough
+0x00024348	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x0002434C	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024352	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x0002435A	Bcc[10] 0x024382	; size=4 opcode=0x6A00 flow=conditional
+0x0002435E	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00024364	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x00024368	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002436E	unary-op	; size=2 opcode=0x4A40 flow=fallthrough
+0x00024370	Bcc[7] 0x024382	; size=4 opcode=0x6700 flow=conditional
+0x00024374	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002437A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024380	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024382	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024388	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002438A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024390	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024392	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00024396	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002439C	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x000243A0	Bcc[11] 0x0243AC	; size=4 opcode=0x6B00 flow=conditional
+0x000243A4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000243AA	RTS	; size=2 opcode=0x4E75 flow=return
+0x000243AC	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x000243B2	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x000243B6	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000243BC	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000243C2	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000243C8	RTS	; size=2 opcode=0x4E75 flow=return
+0x000243CA	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x000243CE	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000243D4	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x000243D8	Bcc[11] 0x0243E4	; size=4 opcode=0x6B00 flow=conditional
+0x000243DC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000243E2	RTS	; size=2 opcode=0x4E75 flow=return
+0x000243E4	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x000243EA	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x000243EE	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000243F4	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000243FA	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024400	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024402	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00024408	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x0002440C	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024412	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024418	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002441A	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00024420	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x00024424	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002442A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024430	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024432	unary-op	; size=2 opcode=0x4286 flow=fallthrough
+0x00024434	MOVE	; size=6 opcode=0x1C39 flow=fallthrough
+0x0002443A	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x0002443E	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024444	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x0002444C	Bcc[11] 0x024464	; size=4 opcode=0x6B00 flow=conditional
+0x00024450	Bcc[7] 0x02445C	; size=4 opcode=0x6700 flow=conditional
+0x00024454	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002445A	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002445C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024462	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024464	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x0002446A	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x0002446E	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024474	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002447A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024480	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024482	unary-op	; size=2 opcode=0x4286 flow=fallthrough
+0x00024484	MOVE	; size=6 opcode=0x1C39 flow=fallthrough
+0x0002448A	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x0002448E	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024494	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x0002449C	Bcc[11] 0x0244B4	; size=4 opcode=0x6B00 flow=conditional
+0x000244A0	Bcc[7] 0x0244AC	; size=4 opcode=0x6700 flow=conditional
+0x000244A4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000244AA	RTS	; size=2 opcode=0x4E75 flow=return
+0x000244AC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000244B2	RTS	; size=2 opcode=0x4E75 flow=return
+0x000244B4	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x000244BA	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x000244BE	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000244C4	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000244CA	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000244D0	RTS	; size=2 opcode=0x4E75 flow=return
+0x000244D2	BSR 0x023750	; size=4 opcode=0x6100 flow=call
+0x000244D6	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x000244DA	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x000244E2	Bcc[7] 0x0244E8	; size=4 opcode=0x6700 flow=conditional
+0x000244E6	ADDQ/SUBQ	; size=2 opcode=0x5244 flow=fallthrough
+0x000244E8	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x000244F0	Bcc[7] 0x0244F6	; size=4 opcode=0x6700 flow=conditional
+0x000244F4	ADDQ/SUBQ	; size=2 opcode=0x5244 flow=fallthrough
+0x000244F6	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000244FC	unary-op	; size=6 opcode=0x4A39 flow=fallthrough
+0x00024502	Bcc[7] 0x02450E	; size=4 opcode=0x6700 flow=conditional
+0x00024506	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002450C	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002450E	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024514	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002451A	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002451C	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00024520	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024526	MOVE	; size=6 opcode=0x2639 flow=fallthrough
+0x0002452C	immediate-bit-op	; size=4 opcode=0x0803 flow=fallthrough
+0x00024530	Bcc[7] 0x02454C	; size=4 opcode=0x6700 flow=conditional
+0x00024534	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00024538	Bcc[11] 0x02455A	; size=4 opcode=0x6B00 flow=conditional
+0x0002453C	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00024540	Bcc[11] 0x024562	; size=4 opcode=0x6B00 flow=conditional
+0x00024544	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002454A	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002454C	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00024550	Bcc[11] 0x024562	; size=4 opcode=0x6B00 flow=conditional
+0x00024554	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00024558	Bcc[10] 0x024544	; size=2 opcode=0x6AEA flow=conditional
+0x0002455A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024560	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024562	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00024568	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x0002456C	Bcc[7] 0x024544	; size=2 opcode=0x67D6 flow=conditional
+0x0002456E	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00024572	Bcc[6] 0x024544	; size=2 opcode=0x66D0 flow=conditional
+0x00024574	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002457A	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002457C	MOVE	; size=6 opcode=0x2039 flow=fallthrough
+0x00024582	immediate-bit-op	; size=4 opcode=0x0800 flow=fallthrough
+0x00024586	Bcc[7] 0x024592	; size=4 opcode=0x6700 flow=conditional
+0x0002458A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024590	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024592	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00024596	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002459C	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x000245A0	Bcc[11] 0x02458A	; size=2 opcode=0x6BE8 flow=conditional
+0x000245A2	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000245A8	RTS	; size=2 opcode=0x4E75 flow=return
+0x000245AA	BSR 0x023750	; size=4 opcode=0x6100 flow=call
+0x000245AE	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x000245B2	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x000245BA	Bcc[7] 0x0245C0	; size=4 opcode=0x6700 flow=conditional
+0x000245BE	ADDQ/SUBQ	; size=2 opcode=0x5244 flow=fallthrough
+0x000245C0	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x000245C8	Bcc[7] 0x0245CE	; size=4 opcode=0x6700 flow=conditional
+0x000245CC	ADDQ/SUBQ	; size=2 opcode=0x5244 flow=fallthrough
+0x000245CE	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000245D4	unary-op	; size=6 opcode=0x4A39 flow=fallthrough
+0x000245DA	Bcc[7] 0x0245E6	; size=4 opcode=0x6700 flow=conditional
+0x000245DE	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000245E4	RTS	; size=2 opcode=0x4E75 flow=return
+0x000245E6	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000245EC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000245F2	RTS	; size=2 opcode=0x4E75 flow=return
+0x000245F4	BSR 0x023750	; size=4 opcode=0x6100 flow=call
+0x000245F8	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x000245FC	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024602	unary-op	; size=6 opcode=0x4A39 flow=fallthrough
+0x00024608	Bcc[7] 0x024614	; size=4 opcode=0x6700 flow=conditional
+0x0002460C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024612	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024614	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002461A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024620	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024622	MOVE	; size=6 opcode=0x2039 flow=fallthrough
+0x00024628	immediate-bit-op	; size=4 opcode=0x0800 flow=fallthrough
+0x0002462C	Bcc[7] 0x02465A	; size=4 opcode=0x6700 flow=conditional
+0x00024630	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00024634	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002463A	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x0002463E	Bcc[11] 0x02465A	; size=4 opcode=0x6B00 flow=conditional
+0x00024642	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00024646	Bcc[11] 0x024652	; size=4 opcode=0x6B00 flow=conditional
+0x0002464A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024650	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024652	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024658	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002465A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024660	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024662	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024668	BRA 0x0235AA	; size=4 opcode=0x6000 flow=branch
+0x0002466C	BSR 0x023750	; size=4 opcode=0x6100 flow=call
+0x00024670	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x00024674	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002467A	unary-op	; size=6 opcode=0x4A39 flow=fallthrough
+0x00024680	Bcc[6] 0x02468C	; size=4 opcode=0x6600 flow=conditional
+0x00024684	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002468A	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002468C	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00024692	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x00024696	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002469C	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000246A2	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000246A8	RTS	; size=2 opcode=0x4E75 flow=return
+0x000246AA	MOVE	; size=6 opcode=0x2039 flow=fallthrough
+0x000246B0	immediate-bit-op	; size=4 opcode=0x0800 flow=fallthrough
+0x000246B4	Bcc[7] 0x0246C0	; size=4 opcode=0x6700 flow=conditional
+0x000246B8	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000246BE	RTS	; size=2 opcode=0x4E75 flow=return
+0x000246C0	BSR 0x023750	; size=4 opcode=0x6100 flow=call
+0x000246C4	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x000246C8	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000246CE	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x000246D6	Bcc[11] 0x0246EE	; size=4 opcode=0x6B00 flow=conditional
+0x000246DA	Bcc[7] 0x0246E6	; size=4 opcode=0x6700 flow=conditional
+0x000246DE	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000246E4	RTS	; size=2 opcode=0x4E75 flow=return
+0x000246E6	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000246EC	RTS	; size=2 opcode=0x4E75 flow=return
+0x000246EE	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000246F4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000246FA	RTS	; size=2 opcode=0x4E75 flow=return
+0x000246FC	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00024700	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024706	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x0002470A	Bcc[11] 0x024716	; size=4 opcode=0x6B00 flow=conditional
+0x0002470E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024714	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024716	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002471C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024722	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024724	unary-op	; size=2 opcode=0x4286 flow=fallthrough
+0x00024726	MOVE	; size=6 opcode=0x1C39 flow=fallthrough
+0x0002472C	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x00024730	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024736	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x0002473E	Bcc[11] 0x02478C	; size=4 opcode=0x6B00 flow=conditional
+0x00024742	Bcc[7] 0x024784	; size=4 opcode=0x6700 flow=conditional
+0x00024746	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x0002474C	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00024752	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00024756	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002475C	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00024762	MOVE	; size=6 opcode=0x3839 flow=fallthrough
+0x00024768	arithmetic-op	; size=2 opcode=0xE54C flow=fallthrough
+0x0002476A	MOVE	; size=4 opcode=0x2271 flow=fallthrough
+0x0002476E	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00024772	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024778	MOVE	; size=4 opcode=0x1ABC flow=fallthrough
+0x0002477C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024782	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024784	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002478A	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002478C	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00024792	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00024798	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x0002479C	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000247A2	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x000247A6	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000247AC	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x000247B0	Bcc[11] 0x0247C4	; size=4 opcode=0x6B00 flow=conditional
+0x000247B4	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x000247BA	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x000247BE	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000247C4	MOVE	; size=4 opcode=0x1ABC flow=fallthrough
+0x000247C8	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000247CE	RTS	; size=2 opcode=0x4E75 flow=return
+0x000247D0	unary-op	; size=2 opcode=0x4286 flow=fallthrough
+0x000247D2	MOVE	; size=6 opcode=0x1C39 flow=fallthrough
+0x000247D8	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x000247DC	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000247E2	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x000247EA	Bcc[11] 0x024838	; size=4 opcode=0x6B00 flow=conditional
+0x000247EE	Bcc[7] 0x024830	; size=4 opcode=0x6700 flow=conditional
+0x000247F2	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x000247F8	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x000247FE	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00024802	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024808	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x0002480E	MOVE	; size=6 opcode=0x3839 flow=fallthrough
+0x00024814	arithmetic-op	; size=2 opcode=0xE54C flow=fallthrough
+0x00024816	MOVE	; size=4 opcode=0x2271 flow=fallthrough
+0x0002481A	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x0002481E	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024824	MOVE	; size=4 opcode=0x1ABC flow=fallthrough
+0x00024828	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002482E	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024830	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024836	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024838	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002483E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024844	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024846	BSR 0x023750	; size=4 opcode=0x6100 flow=call
+0x0002484A	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x0002484E	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024854	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x0002485C	Bcc[11] 0x02488C	; size=4 opcode=0x6B00 flow=conditional
+0x00024860	Bcc[7] 0x02487E	; size=4 opcode=0x6700 flow=conditional
+0x00024864	ADDQ/SUBQ	; size=6 opcode=0x5439 flow=fallthrough
+0x0002486A	ADDQ/SUBQ	; size=6 opcode=0x5439 flow=fallthrough
+0x00024870	ADDQ/SUBQ	; size=6 opcode=0x5439 flow=fallthrough
+0x00024876	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002487C	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002487E	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024884	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002488A	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002488C	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024892	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024898	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002489A	unary-op	; size=2 opcode=0x4286 flow=fallthrough
+0x0002489C	MOVE	; size=6 opcode=0x1C39 flow=fallthrough
+0x000248A2	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x000248A6	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000248AC	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x000248B4	Bcc[11] 0x02490A	; size=4 opcode=0x6B00 flow=conditional
+0x000248B8	Bcc[7] 0x024902	; size=4 opcode=0x6700 flow=conditional
+0x000248BC	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x000248C2	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x000248C8	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x000248CC	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000248D2	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x000248D8	MOVE	; size=6 opcode=0x3839 flow=fallthrough
+0x000248DE	arithmetic-op	; size=2 opcode=0xE54C flow=fallthrough
+0x000248E0	MOVE	; size=4 opcode=0x2271 flow=fallthrough
+0x000248E4	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x000248E8	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000248EE	MOVE	; size=4 opcode=0x1ABC flow=fallthrough
+0x000248F2	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x000248FA	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024900	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024902	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024908	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002490A	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024910	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024916	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024918	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x0002491E	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x00024922	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024928	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002492E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024934	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024936	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x0002493C	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x00024940	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024946	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0002494C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024952	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024954	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002495A	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x00024962	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024964	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x0002496A	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x0002496E	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x00024974	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0002497A	RTS	; size=2 opcode=0x4E75 flow=return
+0x0002497C	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00024982	immediate-bit-op	; size=4 opcode=0x0881 flow=fallthrough
+0x00024986	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x0002498C	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00024992	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x00024996	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x0002499C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000249A2	RTS	; size=2 opcode=0x4E75 flow=return
+0x000249A4	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x000249AA	immediate-bit-op	; size=4 opcode=0x0881 flow=fallthrough
+0x000249AE	immediate-bit-op	; size=4 opcode=0x0881 flow=fallthrough
+0x000249B2	immediate-bit-op	; size=4 opcode=0x08C1 flow=fallthrough
+0x000249B6	MOVE	; size=6 opcode=0x23C1 flow=fallthrough
+0x000249BC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000249C2	RTS	; size=2 opcode=0x4E75 flow=return
+0x000249C4	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x000249C8	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000249CE	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x000249D2	Bcc[10] 0x0249DE	; size=4 opcode=0x6A00 flow=conditional
+0x000249D6	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000249DC	RTS	; size=2 opcode=0x4E75 flow=return
+0x000249DE	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x000249E4	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x000249E8	JSR	; size=6 opcode=0x4EB9 flow=call
+0x000249EE	unary-op	; size=2 opcode=0x4A40 flow=fallthrough
+0x000249F0	Bcc[7] 0x0249D6	; size=2 opcode=0x67E4 flow=conditional
+0x000249F2	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x000249F8	RTS	; size=2 opcode=0x4E75 flow=return
+0x000249FA	immediate-bit-op	; size=8 opcode=0x0839 flow=fallthrough
+0x00024A02	Bcc[7] 0x024A16	; size=4 opcode=0x6700 flow=conditional
+0x00024A06	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x00024A0E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024A14	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024A16	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024A1C	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024A1E	BSR 0x022874	; size=4 opcode=0x6100 flow=call
+0x00024A22	unary-op	; size=2 opcode=0x4A46 flow=fallthrough
+0x00024A24	Bcc[10] 0x024A30	; size=4 opcode=0x6A00 flow=conditional
+0x00024A28	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024A2E	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024A30	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00024A36	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024A3C	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00024A42	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00024A46	Bcc[14] 0x024A54	; size=4 opcode=0x6E00 flow=conditional
+0x00024A4A	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x00024A50	unary-op	; size=4 opcode=0x4233 flow=fallthrough
+0x00024A54	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024A56	MOVE	; size=6 opcode=0x2679 flow=fallthrough
+0x00024A5C	immediate-op	; size=6 opcode=0x0C2B flow=fallthrough
+0x00024A62	Bcc[11] 0x024A6E	; size=4 opcode=0x6B00 flow=conditional
+0x00024A66	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024A6C	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024A6E	BSR 0x022874	; size=4 opcode=0x6100 flow=call
+0x00024A72	unary-op	; size=2 opcode=0x4A46 flow=fallthrough
+0x00024A74	Bcc[10] 0x024A80	; size=4 opcode=0x6A00 flow=conditional
+0x00024A78	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024A7E	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024A80	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00024A86	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024A8C	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00024A92	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00024A96	Bcc[14] 0x024AA6	; size=4 opcode=0x6E00 flow=conditional
+0x00024A9A	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x00024AA0	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x00024AA6	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024AA8	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00024AAC	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024AB2	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00024AB6	Bcc[11] 0x024AEC	; size=4 opcode=0x6B00 flow=conditional
+0x00024ABA	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00024ABE	Bcc[11] 0x024AFC	; size=4 opcode=0x6B00 flow=conditional
+0x00024AC2	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00024AC6	Bcc[11] 0x024B0C	; size=4 opcode=0x6B00 flow=conditional
+0x00024ACA	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00024ACE	Bcc[11] 0x024B1C	; size=4 opcode=0x6B00 flow=conditional
+0x00024AD2	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00024AD8	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x00024ADC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024AE2	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00024AE8	BRA 0x024B4A	; size=4 opcode=0x6000 flow=branch
+0x00024AEC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024AF2	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00024AF8	BRA 0x024B4A	; size=4 opcode=0x6000 flow=branch
+0x00024AFC	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024B02	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00024B08	BRA 0x024B4A	; size=4 opcode=0x6000 flow=branch
+0x00024B0C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024B12	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00024B18	BRA 0x024B4A	; size=4 opcode=0x6000 flow=branch
+0x00024B1C	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00024B22	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x00024B26	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024B2C	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00024B30	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024B36	Bcc[7] 0x024B44	; size=4 opcode=0x6700 flow=conditional
+0x00024B3A	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00024B40	BRA 0x024B4A	; size=4 opcode=0x6000 flow=branch
+0x00024B44	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00024B4A	MOVE	; size=2 opcode=0x2F08 flow=fallthrough
+0x00024B4C	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x00024B50	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024B56	MOVE	; size=2 opcode=0x205F flow=fallthrough
+0x00024B58	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024B5A	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00024B5E	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024B64	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00024B68	Bcc[11] 0x024B9C	; size=4 opcode=0x6B00 flow=conditional
+0x00024B6C	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00024B70	Bcc[11] 0x024BAA	; size=4 opcode=0x6B00 flow=conditional
+0x00024B74	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00024B78	Bcc[11] 0x024BB8	; size=4 opcode=0x6B00 flow=conditional
+0x00024B7C	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00024B80	Bcc[11] 0x024BC6	; size=4 opcode=0x6B00 flow=conditional
+0x00024B84	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00024B8A	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x00024B8E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024B94	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x00024B98	BRA 0x024BDA	; size=4 opcode=0x6000 flow=branch
+0x00024B9C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024BA2	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x00024BA6	BRA 0x024BDA	; size=4 opcode=0x6000 flow=branch
+0x00024BAA	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024BB0	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x00024BB4	BRA 0x024BDA	; size=4 opcode=0x6000 flow=branch
+0x00024BB8	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024BBE	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x00024BC2	BRA 0x024BDA	; size=4 opcode=0x6000 flow=branch
+0x00024BC6	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00024BCC	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x00024BD0	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024BD6	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x00024BDA	BSR 0x023750	; size=4 opcode=0x6100 flow=call
+0x00024BDE	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024BE4	unary-op	; size=6 opcode=0x4A39 flow=fallthrough
+0x00024BEA	Bcc[7] 0x024AA8	; size=4 opcode=0x6700 flow=conditional
+0x00024BEE	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024BF0	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00024BF4	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024BFA	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00024BFE	Bcc[11] 0x024AA8	; size=4 opcode=0x6B00 flow=conditional
+0x00024C02	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00024C06	Bcc[11] 0x024C22	; size=4 opcode=0x6B00 flow=conditional
+0x00024C0A	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024C10	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00024C16	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x00024C1A	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024C20	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024C22	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00024C28	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x00024C2C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024C32	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024C34	MOVE	; size=6 opcode=0x3039 flow=fallthrough
+0x00024C3A	immediate-bit-op	; size=4 opcode=0x08C0 flow=fallthrough
+0x00024C3E	MOVE	; size=6 opcode=0x33C0 flow=fallthrough
+0x00024C44	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024C4A	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024C4C	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00024C50	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024C56	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00024C5A	Bcc[11] 0x024C70	; size=4 opcode=0x6B00 flow=conditional
+0x00024C5E	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00024C64	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x00024C68	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024C6E	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024C70	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00024C76	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x00024C7A	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024C80	unary-op	; size=2 opcode=0x4A40 flow=fallthrough
+0x00024C82	Bcc[7] 0x024C8E	; size=4 opcode=0x6700 flow=conditional
+0x00024C86	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024C8C	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024C8E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024C94	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024C96	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x00024C9A	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024CA0	immediate-op	; size=4 opcode=0x0C40 flow=fallthrough
+0x00024CA4	Bcc[11] 0x024CBA	; size=4 opcode=0x6B00 flow=conditional
+0x00024CA8	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x00024CAE	BSR 0x01F292	; size=4 opcode=0x6100 flow=call
+0x00024CB2	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024CB8	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024CBA	BSR 0x022874	; size=4 opcode=0x6100 flow=call
+0x00024CBE	unary-op	; size=2 opcode=0x4A46 flow=fallthrough
+0x00024CC0	Bcc[10] 0x024CCC	; size=4 opcode=0x6A00 flow=conditional
+0x00024CC4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024CCA	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024CCC	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00024CD2	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024CD8	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00024CDE	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00024CE2	Bcc[14] 0x024CF2	; size=4 opcode=0x6E00 flow=conditional
+0x00024CE6	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x00024CEC	MOVE	; size=6 opcode=0x17BC flow=fallthrough
+0x00024CF2	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024CF4	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x00024CFA	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x00024CFE	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024D04	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024D0A	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024D0C	unary-op	; size=6 opcode=0x4239 flow=fallthrough
+0x00024D12	unary-op	; size=2 opcode=0x4286 flow=fallthrough
+0x00024D14	LEA	; size=6 opcode=0x47F9 flow=fallthrough
+0x00024D1A	MOVE	; size=4 opcode=0x3E3C flow=fallthrough
+0x00024D1E	immediate-bit-op	; size=6 opcode=0x082B flow=fallthrough
+0x00024D24	Bcc[7] 0x024D3C	; size=4 opcode=0x6700 flow=conditional
+0x00024D28	MOVE	; size=4 opcode=0x1C2B flow=fallthrough
+0x00024D2C	arithmetic-op	; size=6 opcode=0xBC39 flow=fallthrough
+0x00024D32	Bcc[11] 0x024D3C	; size=4 opcode=0x6B00 flow=conditional
+0x00024D36	MOVE	; size=6 opcode=0x13C6 flow=fallthrough
+0x00024D3C	SUBA/CMPA/ADDA	; size=6 opcode=0xD7FC flow=fallthrough
+0x00024D42	DBcc 0x024D1E	; size=4 opcode=0x51CF flow=conditional
+0x00024D46	MOVE	; size=6 opcode=0x1C39 flow=fallthrough
+0x00024D4C	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x00024D50	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024D56	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00024D5E	Bcc[7] 0x024D6E	; size=4 opcode=0x6700 flow=conditional
+0x00024D62	Bcc[14] 0x024D80	; size=4 opcode=0x6E00 flow=conditional
+0x00024D66	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024D6C	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024D6E	immediate-op	; size=10 opcode=0x06B9 flow=fallthrough
+0x00024D78	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024D7E	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024D80	immediate-op	; size=8 opcode=0x0C39 flow=fallthrough
+0x00024D88	Bcc[6] 0x024D6E	; size=2 opcode=0x66E4 flow=conditional
+0x00024D8A	immediate-op	; size=10 opcode=0x06B9 flow=fallthrough
+0x00024D94	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024D9A	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024D9C	MOVEQ	; size=2 opcode=0x724B flow=fallthrough
+0x00024D9E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024DA4	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00024DAA	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00024DAE	Bcc[14] 0x024DBC	; size=4 opcode=0x6E00 flow=conditional
+0x00024DB2	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x00024DB6	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024DBC	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024DBE	MOVE	; size=6 opcode=0x223C flow=fallthrough
+0x00024DC4	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024DCA	LEA	; size=6 opcode=0x43F9 flow=fallthrough
+0x00024DD0	BSR 0x021A4E	; size=4 opcode=0x6100 flow=call
+0x00024DD4	Bcc[14] 0x024DDE	; size=4 opcode=0x6E00 flow=conditional
+0x00024DD8	JSR	; size=6 opcode=0x4EB9 flow=call
+0x00024DDE	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024DE0	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00024DE6	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00024DEA	Bcc[7] 0x024DF6	; size=4 opcode=0x6700 flow=conditional
+0x00024DEE	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024DF4	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024DF6	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024DFC	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024DFE	MOVE	; size=6 opcode=0x2239 flow=fallthrough
+0x00024E04	immediate-bit-op	; size=4 opcode=0x0801 flow=fallthrough
+0x00024E08	Bcc[7] 0x024E14	; size=4 opcode=0x6700 flow=conditional
+0x00024E0C	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024E12	RTS	; size=2 opcode=0x4E75 flow=return
+0x00024E14	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x00024E1A	RTS	; size=2 opcode=0x4E75 flow=return
 0x00026938	LEA	; size=6 opcode=0x43F9 flow=fallthrough
 0x0002693E	LEA	; size=6 opcode=0x41F9 flow=fallthrough
 0x00026944	MOVE	; size=4 opcode=0x3C3C flow=fallthrough
@@ -18356,6 +21195,54 @@
 0x0005BAC2	RTS	; size=2 opcode=0x4E75 flow=return
 0x0005C8C6	MOVEM	; size=4 opcode=0x48E7 flow=fallthrough
 0x0005C8CA		; size=2 opcode=0x40E7 flow=fallthrough
+0x0005D130	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0005D136	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x0005D13A	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0005D140	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x0005D144	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0005D14A	MOVE	; size=8 opcode=0x33FC flow=fallthrough
+0x0005D152	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x0005D158	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x0005D15E	BSR 0x05D1F6	; size=4 opcode=0x6100 flow=call
+0x0005D162	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0005D168	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x0005D170	RTS	; size=2 opcode=0x4E75 flow=return
+0x0005D172	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0005D178	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x0005D17C	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0005D182	MOVE	; size=4 opcode=0x303C flow=fallthrough
+0x0005D186	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0005D18C	MOVE	; size=8 opcode=0x33FC flow=fallthrough
+0x0005D194	LEA	; size=6 opcode=0x4BF9 flow=fallthrough
+0x0005D19A	LEA	; size=6 opcode=0x4DF9 flow=fallthrough
+0x0005D1A0	BSR 0x05D1F6	; size=4 opcode=0x6100 flow=call
+0x0005D1A4	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0005D1AA	MOVE	; size=8 opcode=0x13FC flow=fallthrough
+0x0005D1B2	RTS	; size=2 opcode=0x4E75 flow=return
+0x0005D1F6	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0005D1FC	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0005D202	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0005D208	LEA	; size=6 opcode=0x41F9 flow=fallthrough
+0x0005D20E	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0005D214	MOVE	; size=2 opcode=0x2215 flow=fallthrough
+0x0005D216	Bcc[11] 0x05D23C	; size=4 opcode=0x6B00 flow=conditional
+0x0005D21A	MOVE	; size=2 opcode=0x225D flow=fallthrough
+0x0005D21C	MOVE	; size=4 opcode=0x347C flow=fallthrough
+0x0005D220	MOVE	; size=4 opcode=0x323C flow=fallthrough
+0x0005D224	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0005D22A	MOVE	; size=2 opcode=0x2F0D flow=fallthrough
+0x0005D22C	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0005D232	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0005D238	MOVE	; size=2 opcode=0x2A5F flow=fallthrough
+0x0005D23A	BRA 0x05D214	; size=2 opcode=0x60D8 flow=branch
+0x0005D23C	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0005D242	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0005D248	RTS	; size=2 opcode=0x4E75 flow=return
+0x0005D24A	MOVE	; size=4 opcode=0x383C flow=fallthrough
+0x0005D24E	MOVE	; size=6 opcode=0x3239 flow=fallthrough
+0x0005D254	MOVE	; size=4 opcode=0x3E3C flow=fallthrough
+0x0005D258	JSR	; size=6 opcode=0x4EB9 flow=call
+0x0005D25E	RTS	; size=2 opcode=0x4E75 flow=return
 0x0005D260	LEA	; size=6 opcode=0x41F9 flow=fallthrough
 0x0005D266	MOVE	; size=4 opcode=0x3E3C flow=fallthrough
 0x0005D26A	unary-op	; size=2 opcode=0x4298 flow=fallthrough

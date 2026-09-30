@@ -164,11 +164,11 @@ Analysis: standalone C++17 direct analyzer, 68000 big-endian, image base
 `0x000000`. The retained Ghidra project is a cross-check, not the port.
 
 The initial direct-call result was 332 discovered function entries and 6,342
-decoded instructions. After manually seeding the four reviewed fixed dispatch
-tables and correcting immediate bit-op widths, the regenerated result is 717
-entries and 18,803 instructions. The
-important limitation is intentional: this still is not a claim that every
-runtime callback or indirect dispatch target has been recovered.
+decoded instructions. After correcting immediate bit-op widths and expanding
+the complete `0x00..0xF9` mode-command dispatch table, the regenerated result
+is 948 entries and 21,690 instructions. This closes the previously omitted
+`0x30`/`0x31`/`0xE9` dispatch targets, but is not a claim that every other
+indirect callback or data-driven behavior has been manually understood.
 
 The C++ translation currently has typed boot, runtime, session, palette,
 object-list, and packed-data layers. `GenesisMemoryBus` supplies a headless
@@ -794,7 +794,8 @@ not a final name.
   region selector/header field, and 19-word VDP configuration table anchors.
 - `analysis/indirect_control_flow.tsv` records register-indirect `JSR/JMP`
   sites whose targets cannot be recovered from the instruction alone.
-- Fixed indirect tables recovered so far are `12CCB4` (32 entries, `0x1F580`),
+- Fixed indirect tables recovered so far are `12CCB4` (250 entries, `0x1F580`,
+  commands `0x00..0xF9`),
   `F3DC6` (22 entries, `0x1E69C`), `F3E1E` (ten primary/optional-secondary
   pairs, `0x214B0`/`0x214CE`), and `490A` (15 entity handlers, `0x46F6`).
   Their targets are seeded by the analyzer but remain table/index labeled until
@@ -964,9 +965,11 @@ selects scene `2`/submode `2` with exit marker `0x14`; its prompt records are:
 The typed field-exit conversion now calls these
 `stoker_motel_arrival`, `stoker_motel_package_question`, and
 `stoker_motel_package_handoff`, and calls the shared profile `stoker_motel`.
-This fixes the provenance without claiming that the nested command handlers,
-portrait resource, payment mutation, or return-to-field transition are
-already converted.
+The nested command handlers are no longer all unknown: `0x249C4` is the
+arrival/ambush branch, `0x213CA` and `0x213E2` publish the debt and Jump House
+follow-up states, and `0x21458` applies the room payment. Portrait resource,
+the remaining package command chain, and return-to-field transition remain
+open.
 
 The first nested Stoker command is now source-traced as well. The initial
 `0xF4AA0` record's command `0xE9` indexes the prompt dispatch table at

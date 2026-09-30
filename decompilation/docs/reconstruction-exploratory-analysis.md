@@ -853,9 +853,9 @@ screen.
 
 ### Field interaction and story dispatch
 
-Field actions do not directly select an arbitrary destination. The native
-dispatch writes an event/state value to `0x1F580`; that value indexes the
-source transition table at `0x12CCB4`. A second state-pair table at `0xF3E1E`
+Field actions do not directly select an arbitrary destination. The source
+dispatch writes a command/state value to `0x1F580`; that value indexes the
+250-entry mode-command table at `0x12CCB4` (commands `0x00..0xF9`). A second state-pair table at `0xF3E1E`
 selects the routine through `0xF3DC6`. The portable implementation must retain
 both levels: the field produces the source event, then the transition table
 chooses the destination/routine and its presentation.

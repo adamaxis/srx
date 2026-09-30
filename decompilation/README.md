@@ -18,9 +18,10 @@ path, follows direct calls and branches, records absolute hardware references,
 and searches for ROM pointer-table runs and printable strings.
 
 The single Ghidra export is retained in `export/` with its adjacent
-`export/SCRATCHPAD.md` as a source-analysis reference only. It found 722
-function entries and produced a C-like result for each one, but those files are
-not the C++ port and are not treated as authoritative runtime source.
+`export/SCRATCHPAD.md` as a source-analysis reference only. The checked-in
+export currently records 911 function entries and produces a C-like result for
+each one, but those files are not the C++ port and are not treated as
+authoritative runtime source.
 
 The direct C++ analyzer writes these reports to `analysis/`:
 
@@ -714,19 +715,19 @@ palette-indexed.
   transitional ROM/RAM/I/O verification space and records VDP port writes;
   native code uses `ScreenWriter`/`InputState` instead of requiring that bus.
 - The initial vector/direct pass reached 332 function entries and 6,342 decoded
-  instructions. Correcting immediate bit-op widths and following the reviewed
-  dispatch paths now yields 717 direct-analysis entries and 18,803 decoded
-  instructions. The retained Ghidra cross-check still finds additional likely
-  indirect-dispatch functions; those are being recovered from tables rather
-  than copied into the C++ port by name.
+  instructions. Correcting immediate bit-op widths and seeding all 250 entries
+  of the `0x12CCB4` mode-command table now yields 948 direct-analysis entries
+  and 21,690 decoded instructions. The retained Ghidra cross-check remains a
+  separate source reference; its generated C is not copied into the port by
+  name.
 - Reviewed indirect tables at `0x12CCB4`, `0xF3DC6`, `0xF3E1E`, and `0x490A`
   are represented in `rom_layout.hpp`; the direct analyzer seeds their code
   targets and labels them by table/index. The C++ port now executes the
   reviewed `0x490A` no-op, ordinary emitter, and wrapper subset through
   `0x557E`, `0x56DE`, `0x52BE`, `0x521E`, `0x508A`, `0x4FE2`, `0x5152`,
   `0x4CDE`, and `0x4D54`, while reporting the remaining handlers explicitly.
-  The current regenerated analysis is 717 function entries and 18,803
-  decoded instructions.
+  The current regenerated analysis is 948 function entries and 21,690 decoded
+  instructions.
 
 ## What remains for the C++ reconstruction
 
