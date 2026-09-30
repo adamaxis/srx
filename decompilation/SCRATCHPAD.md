@@ -994,9 +994,10 @@ the selected runner's `FFFC12` progress byte plus one, and combines the
 `FF017A`/`FF018B`/`FF018C` source bytes with the source's byte-sized wrap,
 logical shift, unsigned divisions, and fee deductions. The two calculated
 values publish the short-term and permanent fees consumed by the dispatch
-family. Its both-slots-full return at `0xFF988` is raw text rather than a
-normal prompt descriptor, so it still needs a caller-level trace before it can
-be represented as a native prompt.
+family. Its both-slots-full return at `0xFF988` is a title-only prompt
+descriptor: the first pointer selects `0xFFAFF`, “Looks like you already got
+your hands full, pal.”, and the next longword is the no-option sentinel. The
+native preparation result exposes this as `roster_full`.
 
 ## 2026-09-30 Stoker motel source mapping
 

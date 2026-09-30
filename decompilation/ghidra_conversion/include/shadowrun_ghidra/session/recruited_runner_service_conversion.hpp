@@ -33,6 +33,7 @@ enum class RecruitedRunnerServiceOfferPreparationAction {
 enum class RecruitedRunnerServicePrompt {
     none,
     insufficient_funds,
+    roster_full,
     generic_runner_followup,
     stark_avenging_michael_followup,
 };
@@ -98,6 +99,7 @@ struct RecruitedRunnerServiceCostModifiers {
 struct RecruitedRunnerServiceOfferPreparationResult {
     RecruitedRunnerServiceOfferPreparationAction action =
         RecruitedRunnerServiceOfferPreparationAction::runner_index_unavailable;
+    RecruitedRunnerServicePrompt prompt = RecruitedRunnerServicePrompt::none;
     std::uint8_t progress_multiplier = 0;
     std::uint32_t short_term_fee = 0;
     std::uint32_t permanent_fee = 0;
@@ -125,9 +127,8 @@ struct RecruitedRunnerServiceResult {
 };
 
 // ROM 0x21226 tests the service-active bit in both live recruited-runner
-// records before presenting the offer.  The returned full state is kept
-// separate because the source's no-capacity return at 0xFF988 is not a normal
-// prompt descriptor and still needs a direct caller trace.
+// records before presenting the offer. The no-capacity descriptor at 0xFF988
+// has a title but no selectable options, and is returned as roster_full.
 RecruitedRunnerServiceAvailability recruited_runner_service_availability(
     const RunnerRosterState& roster);
 

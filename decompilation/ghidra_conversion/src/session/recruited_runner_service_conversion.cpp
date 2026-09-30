@@ -102,11 +102,13 @@ prepare_recruited_runner_service_offer(
 
     if (recruited_runner_service_availability(state.roster) ==
         RecruitedRunnerServiceAvailability::roster_full) {
-        // The source returns A0 = FF988 here. That value is raw text rather
-        // than a normal prompt descriptor, so keep the semantic result while
-        // the caller-level text path remains separately audited.
+        // The source returns A0 = FF988 here. Its first longword points to
+        // FFAFF ("Looks like you already got your hands full, pal.") and its
+        // next longword is the no-option sentinel, so this is a real
+        // title-only prompt rather than an opaque text pointer.
         result.action =
             RecruitedRunnerServiceOfferPreparationAction::roster_full;
+        result.prompt = RecruitedRunnerServicePrompt::roster_full;
         return result;
     }
 

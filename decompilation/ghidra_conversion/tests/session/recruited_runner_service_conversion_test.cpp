@@ -74,7 +74,8 @@ int main() {
     const auto full_offer = prepare_recruited_runner_service_offer(
         offer_state, RecruitedRunnerServiceCostModifiers{});
     if (!expect(full_offer.action ==
-                RecruitedRunnerServiceOfferPreparationAction::roster_full)) {
+                    RecruitedRunnerServiceOfferPreparationAction::roster_full &&
+                full_offer.prompt == RecruitedRunnerServicePrompt::roster_full)) {
         return 3;
     }
 
