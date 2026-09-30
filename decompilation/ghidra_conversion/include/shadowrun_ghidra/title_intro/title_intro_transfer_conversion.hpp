@@ -5,6 +5,7 @@
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <optional>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -158,6 +159,72 @@ constexpr std::array<std::uint32_t, 40> kWorldSceneEffectTimerCLists{
 // ROM 0x5D65A: +0x20 reload 4, +0x1E wrap 0..0x27, D2+0x30 D1+0x12.
 WorldSceneEffectSpriteBuild advance_world_scene_effect_timer_c(
     WorldFrameServiceState& state);
+
+struct WorldSceneEffectEntitySlot {
+    // Source entity record fields used by the six-slot scan and the
+    // secondary-effect handoff: +0x10, +0x11, +0x4C, and +0x9C.
+    std::uint8_t record_flags = 0;
+    std::uint8_t behavior_flags = 0;
+    std::uint8_t secondary_effect_trigger = 0;
+    std::uint8_t secondary_effect_phase = 0;
+};
+
+struct WorldSceneEntityEffectRuntimeState {
+    std::uint8_t scene_mode = 0; // FFE186
+    std::array<WorldSceneEffectEntitySlot, 6> candidate_entities{};
+    WorldSceneEffectEntitySlot auxiliary_entity{}; // fixed FF0400 record
+    bool terminal_auxiliary_marker = false;
+};
+
+struct WorldSceneEntityEffectCallbacks {
+    // ROM 0x5A56: project the scene entity before any sprite-table timer leaf.
+    std::function<void()> project_entity_screen_position;
+    // ROM 0x1378: each timer leaf builds one sprite record in source order.
+    std::function<void(const WorldSceneEffectSpriteBuild&)> publish_sprite;
+    // ROM 0x5D57E: rebuild the remaining scene-effect sprite records.
+    std::function<void()> refresh_world_scene_effect_sprites;
+    // ROM 0x5D408: stage-zero phase dispatch.
+    WorldSceneEffectPhaseCallbacks phase_callbacks;
+    // ROM 0x5BA66: resource-index installation after the initial wait.
+    std::function<void()> install_scene_resource_index_entries;
+    // ROM 0x1E2E0: terminal world-activity handoff.
+    std::function<void()> begin_world_activity_if_idle;
+    // The fixed FF0400 record receives three setup bytes before the final
+    // secondary-effect call. Their concrete meaning remains a separate record
+    // audit, so the write is an explicit typed boundary here.
+    std::function<void()> prepare_terminal_auxiliary_entity;
+    // Child calls reached through ROM 0x5D3E6, bound to the selected record.
+    std::function<void(WorldSceneEffectEntitySlot&)>
+        apply_entity_secondary_effect;
+    std::function<void(WorldSceneEffectEntitySlot&)>
+        prepare_entity_auxiliary_behavior;
+};
+
+enum class WorldSceneEntityEffectAction {
+    no_change,
+    advanced_resource_phase,
+    entered_active_resource_stage,
+    rendered_active_effect,
+    selected_existing_entity_effect,
+    spawned_terminal_auxiliary_effect,
+    completed_world_activity,
+    entered_final_effect_stage,
+};
+
+struct WorldSceneEntityEffectResult {
+    WorldSceneEntityEffectAction action =
+        WorldSceneEntityEffectAction::no_change;
+    std::optional<std::size_t> selected_entity_index;
+};
+
+// ROM 0x5D29C: coordinate the staged world-scene effect. The caller supplies
+// typed presentation/entity/resource callbacks for the leaves at 0x5A56,
+// 0x1378, 0x5D57E, 0x5BA66, 0x1E2E0, and 0x5D3E6; no indirect record pointer
+// or Genesis address is retained by the host implementation.
+WorldSceneEntityEffectResult advance_world_scene_entity_effect(
+    WorldFrameServiceState& frame_state,
+    WorldSceneEntityEffectRuntimeState& runtime_state,
+    const WorldSceneEntityEffectCallbacks& callbacks);
 
 constexpr std::array<SpriteSourceRecord, 2> kTitleIntroSceneEntitySource{{
     {6, -15, 4, 0x04F6U},

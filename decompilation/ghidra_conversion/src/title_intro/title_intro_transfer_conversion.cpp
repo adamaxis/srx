@@ -179,6 +179,160 @@ WorldSceneEffectSpriteBuild advance_world_scene_effect_timer_c(
             : 0U);
 }
 
+namespace {
+
+void publish_world_scene_effect_sprite(
+    const WorldSceneEffectSpriteBuild& sprite,
+    const WorldSceneEntityEffectCallbacks& callbacks) {
+    if (callbacks.publish_sprite) {
+        callbacks.publish_sprite(sprite);
+    }
+}
+
+void spawn_world_scene_secondary_effect_for_slot(
+    WorldSceneEffectEntitySlot& slot,
+    const WorldSceneEntityEffectCallbacks& callbacks) {
+    // This is the record-level part of 0x5D3E6. Keep the callback order
+    // identical to spawn_world_scene_secondary_effect(), while exposing the
+    // selected slot rather than an emulated A1 register.
+    slot.behavior_flags = static_cast<std::uint8_t>(
+        slot.behavior_flags | 0x01U);
+    if (callbacks.apply_entity_secondary_effect) {
+        callbacks.apply_entity_secondary_effect(slot);
+    }
+    if (callbacks.prepare_entity_auxiliary_behavior) {
+        callbacks.prepare_entity_auxiliary_behavior(slot);
+    }
+}
+
+} // namespace
+
+WorldSceneEntityEffectResult advance_world_scene_entity_effect(
+    WorldFrameServiceState& frame_state,
+    WorldSceneEntityEffectRuntimeState& runtime_state,
+    const WorldSceneEntityEffectCallbacks& callbacks) {
+    if (runtime_state.scene_mode != 2U && runtime_state.scene_mode != 3U) {
+        return {};
+    }
+
+    const auto stage = static_cast<std::int16_t>(frame_state.words[0x11]);
+    if (stage < 0) {
+        return {};
+    }
+
+    if (stage == 2) {
+        if (callbacks.project_entity_screen_position) {
+            callbacks.project_entity_screen_position();
+        }
+        advance_world_scene_effect_frame(frame_state);
+        publish_world_scene_effect_sprite(
+            advance_world_scene_effect_timer_c(frame_state), callbacks);
+        publish_world_scene_effect_sprite(
+            advance_world_scene_effect_timer_b(frame_state), callbacks);
+        publish_world_scene_effect_sprite(
+            advance_world_scene_effect_timer_a(frame_state), callbacks);
+        if (callbacks.refresh_world_scene_effect_sprites) {
+            callbacks.refresh_world_scene_effect_sprites();
+        }
+
+        if (frame_state.words[0x0C] != 3U) {
+            return {WorldSceneEntityEffectAction::rendered_active_effect,
+                    std::nullopt};
+        }
+
+        for (std::size_t index = 0;
+             index < runtime_state.candidate_entities.size(); ++index) {
+            auto& entity = runtime_state.candidate_entities[index];
+            if ((entity.record_flags & 0x01U) == 0U ||
+                (entity.record_flags & 0x10U) != 0U ||
+                (entity.record_flags & 0x40U) != 0U ||
+                entity.secondary_effect_trigger == 0U) {
+                continue;
+            }
+            spawn_world_scene_secondary_effect_for_slot(entity, callbacks);
+            return {WorldSceneEntityEffectAction::
+                        selected_existing_entity_effect,
+                    index};
+        }
+
+        auto scene_timer = static_cast<std::int16_t>(
+            frame_state.words[0x12]);
+        --scene_timer;
+        frame_state.words[0x12] = static_cast<std::uint16_t>(scene_timer);
+        if (scene_timer < 0) {
+            if (callbacks.begin_world_activity_if_idle) {
+                callbacks.begin_world_activity_if_idle();
+            }
+            return {WorldSceneEntityEffectAction::completed_world_activity,
+                    std::nullopt};
+        }
+
+        runtime_state.terminal_auxiliary_marker = true;
+        if (callbacks.prepare_terminal_auxiliary_entity) {
+            callbacks.prepare_terminal_auxiliary_entity();
+        }
+        spawn_world_scene_secondary_effect_for_slot(
+            runtime_state.auxiliary_entity, callbacks);
+        runtime_state.auxiliary_entity.secondary_effect_trigger = 4U;
+        runtime_state.auxiliary_entity.secondary_effect_phase = 4U;
+        runtime_state.auxiliary_entity.record_flags = 0x21U;
+        return {WorldSceneEntityEffectAction::
+                    spawned_terminal_auxiliary_effect,
+                std::nullopt};
+    }
+
+    if (stage == 0) {
+        auto scene_timer = static_cast<std::int16_t>(
+            frame_state.words[0x12]);
+        --scene_timer;
+        frame_state.words[0x12] = static_cast<std::uint16_t>(scene_timer);
+        if (scene_timer >= 0) {
+            advance_world_scene_effect_phase(frame_state,
+                                             callbacks.phase_callbacks);
+            return {WorldSceneEntityEffectAction::advanced_resource_phase,
+                    std::nullopt};
+        }
+
+        if (callbacks.install_scene_resource_index_entries) {
+            callbacks.install_scene_resource_index_entries();
+        }
+        frame_state.words[0x11] = 1U;
+        frame_state.words[0x12] = 0x0100U;
+        return {WorldSceneEntityEffectAction::
+                    entered_active_resource_stage,
+                std::nullopt};
+    }
+
+    const auto origin_y = static_cast<std::int16_t>(frame_state.words[2]);
+    if (origin_y < 0 || frame_state.words[2] < 0x0248U) {
+        frame_state.words[2] = static_cast<std::uint16_t>(
+            frame_state.words[2] + 8U);
+    }
+    if (callbacks.project_entity_screen_position) {
+        callbacks.project_entity_screen_position();
+    }
+    advance_world_scene_effect_frame(frame_state);
+    publish_world_scene_effect_sprite(
+        advance_world_scene_effect_timer_b(frame_state), callbacks);
+    publish_world_scene_effect_sprite(
+        advance_world_scene_effect_timer_a(frame_state), callbacks);
+    if (callbacks.refresh_world_scene_effect_sprites) {
+        callbacks.refresh_world_scene_effect_sprites();
+    }
+
+    auto scene_timer = static_cast<std::int16_t>(frame_state.words[0x12]);
+    --scene_timer;
+    frame_state.words[0x12] = static_cast<std::uint16_t>(scene_timer);
+    if (scene_timer < 0) {
+        frame_state.words[0x11] = 2U;
+        frame_state.words[0x12] = 0x0028U;
+        return {WorldSceneEntityEffectAction::entered_final_effect_stage,
+                std::nullopt};
+    }
+    return {WorldSceneEntityEffectAction::rendered_active_effect,
+            std::nullopt};
+}
+
 std::vector<BuiltSpriteRecord> render_title_intro_scene_entities(
     const std::int16_t y_offset,
     const std::int16_t x_offset,

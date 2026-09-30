@@ -186,5 +186,155 @@ int main() {
         entities[1].attributes != 0x24F8U) {
         return 17;
     }
+
+    WorldFrameServiceState coordinator_frame{};
+    reset_world_frame_service_state(coordinator_frame);
+    WorldSceneEntityEffectRuntimeState coordinator_runtime{};
+    WorldSceneEntityEffectCallbacks coordinator_callbacks{};
+    std::vector<int> coordinator_order;
+    std::vector<WorldSceneEffectPhaseAction> phase_actions;
+    std::vector<WorldSceneEffectSpriteBuild> published_sprites;
+    coordinator_callbacks.project_entity_screen_position =
+        [&coordinator_order] { coordinator_order.push_back(1); };
+    coordinator_callbacks.publish_sprite =
+        [&coordinator_order, &published_sprites](const auto& sprite) {
+            coordinator_order.push_back(2);
+            published_sprites.push_back(sprite);
+        };
+    coordinator_callbacks.refresh_world_scene_effect_sprites =
+        [&coordinator_order] { coordinator_order.push_back(3); };
+    coordinator_callbacks.phase_callbacks.copy_resource_metadata =
+        [&phase_actions](const WorldSceneEffectMetadataSource) {
+            phase_actions.push_back(
+                WorldSceneEffectPhaseAction::load_default_resource_metadata);
+        };
+    coordinator_callbacks.install_scene_resource_index_entries =
+        [&coordinator_order] { coordinator_order.push_back(4); };
+    coordinator_callbacks.begin_world_activity_if_idle =
+        [&coordinator_order] { coordinator_order.push_back(5); };
+    coordinator_callbacks.prepare_terminal_auxiliary_entity =
+        [&coordinator_order] { coordinator_order.push_back(6); };
+    coordinator_callbacks.apply_entity_secondary_effect =
+        [&coordinator_order](WorldSceneEffectEntitySlot&) {
+            coordinator_order.push_back(7);
+        };
+    coordinator_callbacks.prepare_entity_auxiliary_behavior =
+        [&coordinator_order](WorldSceneEffectEntitySlot&) {
+            coordinator_order.push_back(8);
+        };
+
+    coordinator_runtime.scene_mode = 1U;
+    auto coordinator_result = advance_world_scene_entity_effect(
+        coordinator_frame, coordinator_runtime, coordinator_callbacks);
+    if (coordinator_result.action !=
+            WorldSceneEntityEffectAction::no_change ||
+        !coordinator_order.empty()) {
+        return 18;
+    }
+
+    coordinator_runtime.scene_mode = 2U;
+    coordinator_frame.words[0x11] = 0xFFFFU;
+    coordinator_result = advance_world_scene_entity_effect(
+        coordinator_frame, coordinator_runtime, coordinator_callbacks);
+    if (coordinator_result.action !=
+            WorldSceneEntityEffectAction::no_change) {
+        return 19;
+    }
+
+    coordinator_order.clear();
+    coordinator_frame.words[0x11] = 0U;
+    coordinator_frame.words[0x12] = 1U;
+    coordinator_result = advance_world_scene_entity_effect(
+        coordinator_frame, coordinator_runtime, coordinator_callbacks);
+    if (coordinator_result.action !=
+            WorldSceneEntityEffectAction::advanced_resource_phase ||
+        coordinator_frame.words[0x12] != 0U || phase_actions.size() != 1U) {
+        return 20;
+    }
+    coordinator_frame.words[0x12] = 0U;
+    coordinator_result = advance_world_scene_entity_effect(
+        coordinator_frame, coordinator_runtime, coordinator_callbacks);
+    if (coordinator_result.action !=
+            WorldSceneEntityEffectAction::entered_active_resource_stage ||
+        coordinator_frame.words[0x11] != 1U ||
+        coordinator_frame.words[0x12] != 0x0100U ||
+        coordinator_order != std::vector<int>{4}) {
+        return 21;
+    }
+
+    coordinator_order.clear();
+    coordinator_frame.words[2] = 0x0240U;
+    coordinator_frame.words[1] = 0U;
+    coordinator_frame.words[0x0C] = 7U;
+    coordinator_frame.words[0x12] = 0U;
+    published_sprites.clear();
+    coordinator_result = advance_world_scene_entity_effect(
+        coordinator_frame, coordinator_runtime, coordinator_callbacks);
+    if (coordinator_result.action !=
+            WorldSceneEntityEffectAction::entered_final_effect_stage ||
+        coordinator_frame.words[2] != 0x0248U ||
+        coordinator_frame.words[0x11] != 2U ||
+        coordinator_frame.words[0x12] != 0x0028U ||
+        published_sprites.size() != 2U ||
+        coordinator_order != std::vector<int>{1, 2, 2, 3}) {
+        return 22;
+    }
+
+    coordinator_order.clear();
+    coordinator_frame.words[1] = 0x000AU;
+    coordinator_frame.words[0x0C] = 0U;
+    coordinator_result = advance_world_scene_entity_effect(
+        coordinator_frame, coordinator_runtime, coordinator_callbacks);
+    if (coordinator_result.action !=
+            WorldSceneEntityEffectAction::rendered_active_effect ||
+        coordinator_order != std::vector<int>{1, 2, 2, 2, 3}) {
+        return 23;
+    }
+
+    coordinator_order.clear();
+    coordinator_frame.words[1] = 0U;
+    coordinator_frame.words[0x0C] = 2U;
+    coordinator_runtime.candidate_entities[2].record_flags = 0x01U;
+    coordinator_runtime.candidate_entities[2].secondary_effect_trigger = 7U;
+    coordinator_result = advance_world_scene_entity_effect(
+        coordinator_frame, coordinator_runtime, coordinator_callbacks);
+    if (coordinator_result.action !=
+            WorldSceneEntityEffectAction::selected_existing_entity_effect ||
+        !coordinator_result.selected_entity_index.has_value() ||
+        coordinator_result.selected_entity_index.value() != 2U ||
+        coordinator_runtime.candidate_entities[2].behavior_flags != 0x01U ||
+        coordinator_order != std::vector<int>{1, 2, 2, 2, 3, 7, 8}) {
+        return 24;
+    }
+
+    coordinator_runtime.candidate_entities[2] = {};
+    coordinator_order.clear();
+    coordinator_frame.words[1] = 0U;
+    coordinator_frame.words[0x0C] = 2U;
+    coordinator_frame.words[0x12] = 1U;
+    coordinator_result = advance_world_scene_entity_effect(
+        coordinator_frame, coordinator_runtime, coordinator_callbacks);
+    if (coordinator_result.action !=
+            WorldSceneEntityEffectAction::spawned_terminal_auxiliary_effect ||
+        !coordinator_runtime.terminal_auxiliary_marker ||
+        coordinator_runtime.auxiliary_entity.behavior_flags != 0x01U ||
+        coordinator_runtime.auxiliary_entity.secondary_effect_trigger != 4U ||
+        coordinator_runtime.auxiliary_entity.secondary_effect_phase != 4U ||
+        coordinator_runtime.auxiliary_entity.record_flags != 0x21U ||
+        coordinator_order != std::vector<int>{1, 2, 2, 2, 3, 6, 7, 8}) {
+        return 25;
+    }
+
+    coordinator_order.clear();
+    coordinator_frame.words[1] = 0U;
+    coordinator_frame.words[0x0C] = 2U;
+    coordinator_frame.words[0x12] = 0U;
+    coordinator_result = advance_world_scene_entity_effect(
+        coordinator_frame, coordinator_runtime, coordinator_callbacks);
+    if (coordinator_result.action !=
+            WorldSceneEntityEffectAction::completed_world_activity ||
+        coordinator_order != std::vector<int>{1, 2, 2, 2, 3, 5}) {
+        return 26;
+    }
     return 0;
 }

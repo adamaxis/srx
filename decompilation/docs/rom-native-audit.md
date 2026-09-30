@@ -68,7 +68,7 @@ row-level report as context instead of being misreported as fall-through.
 These are remaining conversion-evidence sweeps, not permission to invent a
 replacement.
 
-### Pre-title world-scene effect slice: `0x5D260` / `0x5D3E6` / `0x5D416` / `0x5D55C`
+### Pre-title world-scene effect slice: `0x5D260` / `0x5D29C` / `0x5D3E6` / `0x5D416` / `0x5D55C`
 
 The title-intro conversion now owns the concrete phase leaves that the
 generated catalog previously described only as generic intro contracts:
@@ -82,14 +82,19 @@ generated catalog previously described only as generic intro contracts:
   Every handled phase publishes source dirty bits `0`, `2`, and `3`.
 - `0x5D55C` advances the shared cadence counter and wraps its eight-position
   effect frame.
+- `0x5D29C` now owns the enclosing coordinator: it gates scene modes `2/3`,
+  waits through stage `0`, enters the staged resource pass, publishes the
+  stage-one B/A records and stage-two C/B/A records in ROM order, scans the
+  six candidate entity slots when the shared frame reaches `3`, and either
+  selects an existing effect, installs the fixed auxiliary effect, or hands
+  control back to world activity when its timer expires.
 
 The host contract uses named audio cues, metadata-source enums, scene-origin
 fields, and callbacks; it does not retain the source VDP command words or ROM
-addresses. The three timer leaves already present in the same title-intro
-module remain separately tested. The enclosing `0x5D29C` state machine,
-`0x5D57E` sprite-record refresh boundary, and `0x5D6BC` allocator/template
-path are still open audit items and are not being claimed as converted by this
-slice.
+addresses. The three timer leaves and the coordinator are separately tested.
+`0x5D57E` sprite-record refresh and `0x5D6BC` allocator/template behavior
+remain explicit callback boundaries and are not being claimed as converted by
+this slice.
 
 The slot-availability audit also corrected a semantic narrowing in the typed
 conversion: `0x19C54 -> 0x19C5C` preserves the raw `FFFBCC` byte because the
