@@ -19,17 +19,16 @@ void prepare_field_resources(
 }
 
 void prepare_field_viewports(
+    const FieldViewportPreparationState& state,
     const FieldViewportPreparationCallbacks& callbacks) {
-    if (callbacks.prepare_scene_resources) {
-        callbacks.prepare_scene_resources();
+    if (callbacks.prepare_title_resources) {
+        callbacks.prepare_title_resources();
     }
-    if (callbacks.refresh_mode_state) {
-        callbacks.refresh_mode_state();
+    if (callbacks.copy_mode_selection_state_table) {
+        callbacks.copy_mode_selection_state_table();
     }
-    if (callbacks.special_effects_enabled &&
-        callbacks.special_effects_enabled() &&
-        callbacks.service_special_effects) {
-        callbacks.service_special_effects();
+    if (state.field_mode == 2U && callbacks.upload_mode_word_block) {
+        callbacks.upload_mode_word_block();
     }
     if (callbacks.render_normal_viewport) {
         callbacks.render_normal_viewport();

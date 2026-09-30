@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <functional>
 
 namespace shadowrun::ghidra_conversion {
@@ -15,18 +16,27 @@ struct FieldResourcePreparationCallbacks {
 void prepare_field_resources(
     const FieldResourcePreparationCallbacks& callbacks);
 
+struct FieldViewportPreparationState {
+    // ROM FFDF40: only field mode 2 submits the extra mode word block.
+    std::uint16_t field_mode = 0;
+};
+
 struct FieldViewportPreparationCallbacks {
-    std::function<void()> prepare_scene_resources;
-    std::function<void()> refresh_mode_state;
-    std::function<bool()> special_effects_enabled;
-    std::function<void()> service_special_effects;
+    // ROM 0x1406: shared title/field resource preparation.
+    std::function<void()> prepare_title_resources;
+    // ROM 0x566C2: copy the 24-word mode-selection state table.
+    std::function<void()> copy_mode_selection_state_table;
+    // ROM 0x16AFA: upload the mode-specific word block when FFDF40 == 2.
+    std::function<void()> upload_mode_word_block;
     std::function<void()> render_normal_viewport;
     std::function<void()> render_alternate_viewport;
 };
 
-// ROM 0x2C6C: prepare the scene, service the optional mode branch, and submit
-// both viewport variants. Rendering remains an explicit host boundary.
+// ROM 0x2C6C: prepare title resources, copy the mode-selection table, upload
+// the mode word block only for field mode 2, then submit normal and alternate
+// viewport variants. Rendering remains an explicit host boundary.
 void prepare_field_viewports(
+    const FieldViewportPreparationState& state,
     const FieldViewportPreparationCallbacks& callbacks);
 
 // ROM 0x33AA: one field-grid draw boundary.

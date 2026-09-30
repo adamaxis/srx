@@ -108,14 +108,13 @@ FieldSessionBootstrapCallbacks make_callbacks(Observations& observations) {
     callbacks.apply_scene_profile_selection = [&observations] {
         record(observations, "scene.select");
     };
-    callbacks.field_viewports.prepare_scene_resources = [&observations] {
+    callbacks.field_viewports.prepare_title_resources = [&observations] {
         record(observations, "viewport.resources");
     };
-    callbacks.field_viewports.refresh_mode_state = [&observations] {
+    callbacks.field_viewports.copy_mode_selection_state_table = [&observations] {
         record(observations, "viewport.mode");
     };
-    callbacks.field_viewports.special_effects_enabled = [] { return false; };
-    callbacks.field_viewports.service_special_effects = [&observations] {
+    callbacks.field_viewports.upload_mode_word_block = [&observations] {
         record(observations, "viewport.effects");
     };
     callbacks.field_viewports.render_normal_viewport = [&observations] {

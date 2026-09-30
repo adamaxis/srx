@@ -33,10 +33,9 @@ bool has_field_resource_callbacks(
 
 bool has_field_viewport_callbacks(
     const FieldViewportPreparationCallbacks& callbacks) {
-    return static_cast<bool>(callbacks.prepare_scene_resources) &&
-           static_cast<bool>(callbacks.refresh_mode_state) &&
-           static_cast<bool>(callbacks.special_effects_enabled) &&
-           static_cast<bool>(callbacks.service_special_effects) &&
+    return static_cast<bool>(callbacks.prepare_title_resources) &&
+           static_cast<bool>(callbacks.copy_mode_selection_state_table) &&
+           static_cast<bool>(callbacks.upload_mode_word_block) &&
            static_cast<bool>(callbacks.render_normal_viewport) &&
            static_cast<bool>(callbacks.render_alternate_viewport);
 }
@@ -172,8 +171,10 @@ FieldSessionBootstrapResult bootstrap_field_session(
         callbacks.run_world_frame_services;
     scene_entry_callbacks.apply_scene_profile_selection =
         callbacks.apply_scene_profile_selection;
-    scene_entry_callbacks.prepare_field_viewports = [&callbacks] {
-        prepare_field_viewports(callbacks.field_viewports);
+    scene_entry_callbacks.prepare_field_viewports = [&callbacks, &state] {
+        prepare_field_viewports(
+            FieldViewportPreparationState{state.field_resource_mode},
+            callbacks.field_viewports);
     };
     scene_entry_callbacks.upload_scene_profile_block =
         callbacks.upload_scene_profile_block;

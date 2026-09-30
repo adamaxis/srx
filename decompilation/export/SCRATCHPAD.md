@@ -2634,3 +2634,14 @@ The old conversion incorrectly cleared the refresh record before the terrain
 branch and omitted the two decoded-stream cursor publications. The current
 `WorldFrameState` names those source decisions explicitly and the focused
 test covers both terrain branches and the decode/cursor-reset/render order.
+
+## Field viewport preparation audit: 0x02C6C
+
+The direct source path is `0x1406 prepare_title_resources`,
+`0x566C2 copy_mode_selection_state_table`, an `FFDF40 == 2` test into
+`0x16AFA upload_mode_word_block`, then `0x2C92 render_normal_field_viewport`
+and `0x2CB2 render_alternate_field_viewport`. The old conversion described
+this as an optional special-effects service and let the host query decide
+whether the mode block ran; that was not the ROM condition. The typed
+conversion now carries the field mode explicitly and tests mode 2 against a
+non-2 mode while preserving the five-call source order.

@@ -15,9 +15,9 @@ int main() {
     }
 
     order.clear();
-    prepare_field_viewports({[&order] { order.push_back(1); },
+    prepare_field_viewports({2U},
+                            {[&order] { order.push_back(1); },
                              [&order] { order.push_back(2); },
-                             [] { return true; },
                              [&order] { order.push_back(3); },
                              [&order] { order.push_back(4); },
                              [&order] { order.push_back(5); }});
@@ -26,9 +26,9 @@ int main() {
     }
 
     order.clear();
-    prepare_field_viewports({[&order] { order.push_back(1); },
+    prepare_field_viewports({1U},
+                            {[&order] { order.push_back(1); },
                              [&order] { order.push_back(2); },
-                             [] { return false; },
                              [&order] { order.push_back(3); },
                              [&order] { order.push_back(4); },
                              [&order] { order.push_back(5); }});

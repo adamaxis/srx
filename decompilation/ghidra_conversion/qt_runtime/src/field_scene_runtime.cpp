@@ -447,17 +447,14 @@ void FieldSceneRuntime::configure_callbacks() {
                 scene_profile[kSceneProfileEntityPositionWord + 4U],
                 scene_profile[kSceneProfileEntityPositionWord + 5U]}});
     };
-    callbacks_.field_viewports.prepare_scene_resources = [this] {
-        source_boundary("field.viewport.prepare_scene_resources");
+    callbacks_.field_viewports.prepare_title_resources = [this] {
+        source_boundary("field.viewport.prepare_title_resources");
     };
-    callbacks_.field_viewports.refresh_mode_state = [this] {
-        source_boundary("field.viewport.refresh_mode_state");
+    callbacks_.field_viewports.copy_mode_selection_state_table = [this] {
+        source_boundary("field.viewport.copy_mode_selection_state_table");
     };
-    callbacks_.field_viewports.special_effects_enabled = [] {
-        return false;
-    };
-    callbacks_.field_viewports.service_special_effects = [this] {
-        source_boundary("field.viewport.service_special_effects");
+    callbacks_.field_viewports.upload_mode_word_block = [this] {
+        source_boundary("field.viewport.upload_mode_word_block");
     };
     callbacks_.field_viewports.render_normal_viewport = [this] {
         // ROM 0x2C92 clears FFE100 before drawing the normal viewport.

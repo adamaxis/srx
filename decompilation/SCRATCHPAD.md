@@ -2228,10 +2228,11 @@ asset-sequence upload, animation refresh, and font loading are named host
 callbacks in source order. It does not reintroduce the original VDP upload
 state machine.
 
-The field viewport wrapper at `0x2C6C` now records the scene preparation,
-mode-state refresh, conditional special-effects service, and both viewport
-submissions as typed callbacks. The source's mode flag is represented as a
-boolean host query rather than a raw global address.
+The field viewport wrapper at `0x2C6C` now records the shared `0x1406`
+title-resource preparation, the `0x566C2` 24-word mode-selection table copy,
+the `0x16AFA` mode-word upload only when the typed field mode is `2`, and both
+viewport submissions as typed callbacks. The old generic special-effects
+query was wrong: the source branch is a direct `FFDF40 == 2` test.
 
 The thin `0x33AA` field-grid wrapper is now a named host presentation
 boundary. It invokes one grid draw callback and does not expose the source VDP
