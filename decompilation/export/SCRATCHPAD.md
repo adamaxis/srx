@@ -2755,6 +2755,12 @@ used low-byte values (`0x0001`, `0x0002`, `0x0040`, and `0x0080`), so it could
 not respond to the event word produced by the converted `0x195C` sampler.
 `ModeActionInput` now names the source edges and the focused test drives the
 high-byte values through cursor, primary-action, mode-action, and Matrix paths.
+The same audit corrected the action gate: the loop consumes the typed result of
+`0x55F44`, compares/adds the active runner `+0x88` byte, normalizes an all-zero
+word to one, applies compact `+0x05` with source byte arithmetic and BLE
+flags, and only then calls `0x0DBA` with that full-word trial count and compact
+`+0x06` difficulty. `+0x05` is therefore represented as an action-gate value,
+not as a generic option count.
 
 ## Field viewport preparation audit: 0x02C6C
 

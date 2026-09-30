@@ -56,11 +56,12 @@ int main() {
     std::vector<std::uint16_t> inputs{0x0100U, 0x4000U, 0x8000U};
     std::size_t input_index = 0;
     int outer_redraws = 0;
+    bool gate_values_verified = false;
     ModeActionState state{};
 
     const auto result = run_mode_action_loop(
         state,
-        ModeActionRecord{3, 2, 0x08U, false, 2},
+        ModeActionRecord{3, 2, 6, 0x08U, false, 2},
         {
             [&](std::uint16_t value) { controls.push_back(value); },
             [&] { order.emplace_back("reset"); },
@@ -84,8 +85,15 @@ int main() {
             [&] { order.emplace_back("vblank"); },
             [&] { order.emplace_back("latch"); },
             [&] { return inputs[input_index++]; },
-            [&] { order.emplace_back("action"); },
-            [&] { return ModeActionGateInputs{4, 2}; },
+            [&] {
+                order.emplace_back("action");
+                return ModeActionGateInputs{4, 2};
+            },
+            [&](const std::uint16_t trial_count,
+                const std::uint8_t difficulty) {
+                gate_values_verified = trial_count == 5U && difficulty == 6U;
+                return std::int8_t{2};
+            },
             [&] { order.emplace_back("repeat"); },
             [&] { order.emplace_back("wait"); },
             [&](std::int8_t kind, std::int8_t cursor) {
@@ -102,7 +110,7 @@ int main() {
 
     if (!expect(result && state.display_result == 0 && state.hud_abort < 0 &&
                 state.mode_flags == 0x48U && state.mode_random_count == 1U &&
-                outer_redraws == 3 &&
+                outer_redraws == 3 && gate_values_verified &&
                 controls == std::vector<std::uint16_t>({0x8B00U, 0x8134U, 0x8174U,
                                                         0x8134U, 0x8174U, 0x8134U,
                                                         0x8174U, 0x8134U, 0x8174U}) &&
@@ -122,7 +130,7 @@ int main() {
     std::size_t action_input_index = 0;
     const auto action_result = run_mode_action_loop(
         action_state,
-        ModeActionRecord{7, 5, 0x02U, false, 4},
+        ModeActionRecord{7, 5, 8, 0x02U, false, 4},
         {
             {}, {}, {}, {}, {}, {}, {}, {},
             [&](ModeActionState& current) {
@@ -131,8 +139,13 @@ int main() {
             },
             {}, {}, {}, {}, {},
             [&] { return action_inputs[action_input_index++]; },
-            [&] { action_order.emplace_back("action"); },
-            [&] { return ModeActionGateInputs{9, 3}; },
+            [&] {
+                action_order.emplace_back("action");
+                return ModeActionGateInputs{9, 3};
+            },
+            [&](const std::uint16_t, const std::uint8_t) {
+                return std::int8_t{3};
+            },
             [&] { action_order.emplace_back("repeat"); },
             [&] { action_order.emplace_back("wait"); },
             [&](std::int8_t kind, std::int8_t cursor) {

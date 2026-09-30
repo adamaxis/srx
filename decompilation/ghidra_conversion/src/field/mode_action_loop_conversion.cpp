@@ -2,10 +2,21 @@
 
 #include "shadowrun_ghidra/core/selection_conversion.hpp"
 
-#include <algorithm>
-
 namespace shadowrun::ghidra_conversion {
 namespace {
+
+bool source_subtract_byte_is_nonpositive(const std::uint8_t minuend,
+                                         const std::uint8_t subtrahend,
+                                         const std::uint8_t result) {
+    // 0x54662 performs SUB.B and branches with BLE. Preserve the source
+    // N/Z/V decision instead of treating the wrapped byte as a C++ integer.
+    const bool negative = (result & 0x80U) != 0U;
+    const bool zero = result == 0U;
+    const bool overflow =
+        (((minuend ^ subtrahend) & 0x80U) != 0U) &&
+        (((minuend ^ result) & 0x80U) != 0U);
+    return zero || (negative != overflow);
+}
 
 template <typename Callback, typename... Args>
 void call_if_present(const Callback& callback, Args&&... args) {
@@ -157,21 +168,51 @@ bool run_mode_action_loop(ModeActionState& state,
                 static_cast<std::uint16_t>(ModeActionInput::alternate_confirm) |
                 static_cast<std::uint16_t>(ModeActionInput::mode_action);
             if ((input & action_edges) != 0U) {
-                call_if_present(callbacks.run_action_preamble);
-                const auto gate = callbacks.read_action_gate_inputs
-                                      ? callbacks.read_action_gate_inputs()
+                const auto gate = callbacks.calculate_mode_action_gate_inputs
+                                      ? callbacks.calculate_mode_action_gate_inputs()
                                       : ModeActionGateInputs{};
-                const auto normalized_action_bound =
-                    std::max(1, static_cast<int>(gate.action_bound) - 1);
-                const auto record_option_limit = static_cast<int>(record.option_count) - 1;
-                if (normalized_action_bound <= record_option_limit ||
-                    gate.thresholded_random_rolls < 1) {
+                auto trial_count = gate.calculated_runner_action_delay;
+                const auto active_delay = static_cast<std::uint16_t>(
+                    gate.active_runner_action_delay);
+                // 0x548BE..0x548C6: CMP.W D6,D7 / BPL, then ADD.W D7,D6.
+                if (active_delay >= trial_count) {
+                    trial_count = active_delay;
+                }
+                trial_count = static_cast<std::uint16_t>(
+                    trial_count + active_delay);
+                if (trial_count == 0U) {
+                    trial_count = 1U;
+                }
+
+                // The compact +0x05 byte is decremented first, then SUB.B
+                // changes only D6's low byte. BLE observes the byte flags;
+                // the resulting full word is the 0x0DBA trial count.
+                const auto compact_gate = static_cast<std::uint8_t>(
+                    record.action_gate_value - 1U);
+                const auto delay_low = static_cast<std::uint8_t>(trial_count);
+                const auto gated_low = static_cast<std::uint8_t>(
+                    delay_low - compact_gate);
+                trial_count = static_cast<std::uint16_t>(
+                    (trial_count & 0xFF00U) | gated_low);
+                if (source_subtract_byte_is_nonpositive(
+                        delay_low, compact_gate, gated_low)) {
                     call_if_present(callbacks.write_repeated_grid);
                     call_if_present(callbacks.render_encoded_text);
                     call_if_present(callbacks.wait_for_controller_event);
                 } else {
-                    call_if_present(callbacks.dispatch_mode_action,
-                                    record.kind, state.cursor);
+                    const auto thresholded_rolls =
+                        callbacks.count_mode_action_rolls
+                            ? callbacks.count_mode_action_rolls(
+                                  trial_count, record.action_difficulty)
+                            : std::int8_t{0};
+                    if (thresholded_rolls > 0) {
+                        call_if_present(callbacks.dispatch_mode_action,
+                                        record.kind, state.cursor);
+                    } else {
+                        call_if_present(callbacks.write_repeated_grid);
+                        call_if_present(callbacks.render_encoded_text);
+                        call_if_present(callbacks.wait_for_controller_event);
+                    }
                 }
                 state.mode_random_count = static_cast<std::uint8_t>(
                     state.mode_random_count + 1U);

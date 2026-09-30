@@ -1529,6 +1529,13 @@ Matrix callbacks. The indirect handler table indexed by record kind and cursor
 remains an explicit unresolved callback; no fake generic action implementation
 was inserted.
 
+The action gate is now source-ordered as well. The typed callback supplies the
+`0x55F44` delay result and active runner `+0x88`; the conversion performs the
+`CMP.W`/`ADD.W`, zero-to-one normalization, compact `+0x05` byte decrement and
+`SUB.B` flag test, then calls the typed `0x0DBA` boundary with the resulting
+full-word trial count and compact `+0x06` difficulty. It no longer treats
+`+0x05` as a generic option count or compares it to a fabricated action bound.
+
 The adjacent leaves are now named by proven behavior: `0x54A28` is
 `render_mode_status_summary`, `0x54A8E` is `advance_random_mode_event`,
 `0x532A8` is `fill_mode_auxiliary_sentinel`, `0x549E4` is

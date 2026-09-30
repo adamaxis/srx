@@ -21,9 +21,12 @@ enum class ModeActionInput : std::uint16_t {
 
 struct ModeActionRecord {
     // The selected FF1100 + 0x00 byte chooses the indirect action family and
-    // +0x05 is the action-gate boundary used by 0x54662.
+    // +0x05 is the compact action-gate value used by 0x54662.
     std::int8_t kind = 0;
-    std::int8_t option_count = 0;
+    std::uint8_t action_gate_value = 0;
+    // The compact +0x06 byte is the threshold passed to 0x0DBA after the
+    // source action-delay gate succeeds.
+    std::uint8_t action_difficulty = 0;
     std::uint8_t flags = 0;
     bool clears_auxiliary_menu_state = false;
     // The separate 0x1664D8 mode table + 0x04 byte bounds the visible cursor.
@@ -42,10 +45,10 @@ struct ModeActionState {
 };
 
 struct ModeActionGateInputs {
-    // The source uses (FFFC04 + 0x88) - 1, with zero normalized to one.
-    std::uint8_t action_bound = 1;
-    // Result of 0x0DBA after the action preamble.
-    std::int8_t thresholded_random_rolls = 0;
+    // Result of 0x55F44 with D1 cleared by the 0x54662 caller.
+    std::uint16_t calculated_runner_action_delay = 0;
+    // Active live-runner record +0x88, loaded into D7 by 0x54662.
+    std::uint8_t active_runner_action_delay = 0;
 };
 
 struct ModeActionLoopCallbacks {
@@ -71,8 +74,13 @@ struct ModeActionLoopCallbacks {
     std::function<void()> wait_for_vblank;
     std::function<void()> latch_controller_events;
     std::function<std::uint16_t()> sample_controller_input;
-    std::function<void()> run_action_preamble;
-    std::function<ModeActionGateInputs()> read_action_gate_inputs;
+    // 0x54662 calls 0x55F44, then reads the active runner's +0x88 delay byte.
+    // The callback may use the typed 0x55F44 conversion and live runner model.
+    std::function<ModeActionGateInputs()> calculate_mode_action_gate_inputs;
+    // 0x0DBA receives the post-gate trial count and compact +0x06 difficulty.
+    std::function<std::int8_t(std::uint16_t trial_count,
+                              std::uint8_t difficulty)>
+        count_mode_action_rolls;
     std::function<void()> write_repeated_grid;
     std::function<void()> wait_for_controller_event;
 
