@@ -1144,6 +1144,14 @@ scene and pending eight-word profile, and returns the source carry result.
 The exit orchestrator and world-scene initialization remain explicit pending
 boundaries until their live record sets are mapped.
 
+The direct `0x1F5CA` trace begins with `0x20634 select_mode_entry_resource`,
+then clears `FFF10C`, `D6`, and `FFF0CC` before dispatching the world effect
+and indexed title services. It tests both the caller D6 word and the signed
+`FFF0CC` marker after those services and after each of the four scene-route
+children. The native coordinator now exposes the pre-clear resource selection
+as a distinct callback and honors those typed D6 abort gates; it does not
+pretend that the first child is a generic world-exit routine.
+
 The non-carry path clears `FFE18B` after the exit orchestrator and consumes its
 caller-visible `D6` result at `0x09B2`. A nonzero result resets the six runner
 transition words at `0x012E/0x0134`, `0x022E/0x0234`, and `0x032E/0x0334`,
