@@ -1331,6 +1331,14 @@ The native names are `run_hotel_options_menu()`,
 `prepare_hotel_options_display()`, and `run_hotel_checkout_prompt()`. Their
 source-specific tests are in `tests/menus/hotel_options_menu_conversion_test.cpp`.
 
+The field-exit caller at `0x1F65A` reaches this Hotel menu only after
+`0x1F246` leaves `FFF10D` negative; it then publishes `D6=-1`. A normal
+matched scene route also publishes `D6=-1`. The native field-exit selector
+keeps that caller status typed and reports an unresolved action if the Hotel
+callback is not connected. The adjacent `0x1F830` policy similarly enters the
+Hospital Options menu at `0xC928` when its post-service `FFF0D5` marker is
+nonzero; it is not a generic display refresh.
+
 ## Reviewed function map
 
 The native owner names below are the target C++ vocabulary. A `partial` entry

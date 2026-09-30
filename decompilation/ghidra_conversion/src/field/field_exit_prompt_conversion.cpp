@@ -110,11 +110,14 @@ FieldExitPromptAction select_field_exit_prompt(
         callbacks.run_mode_exit_services(selection, state);
     }
     if (static_cast<std::int8_t>(state.exit_marker) < 0) {
-        if (callbacks.refresh_mode_display) {
-            callbacks.refresh_mode_display();
+        if (!callbacks.run_hotel_options_menu) {
+            return FieldExitPromptAction::hotel_options_menu_unresolved;
         }
-        return FieldExitPromptAction::prompt_presented_and_display_refreshed;
+        callbacks.run_hotel_options_menu();
+        state.caller_exit_status = -1;
+        return FieldExitPromptAction::hotel_options_menu_entered;
     }
+    state.caller_exit_status = -1;
     return FieldExitPromptAction::prompt_presented;
 }
 

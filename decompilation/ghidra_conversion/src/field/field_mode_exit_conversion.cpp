@@ -53,11 +53,13 @@ FieldModeExitAction prepare_field_mode_exit(
     }
     if (state.alternate_result != 0) {
         state.alternate_result = 0;
-        if (callbacks.refresh_mode_display) {
-            callbacks.refresh_mode_display();
+        if (!callbacks.run_hospital_options_menu) {
+            return FieldModeExitAction::hospital_options_menu_unresolved;
         }
-        return FieldModeExitAction::services_completed_and_display_refreshed;
+        callbacks.run_hospital_options_menu();
+        return FieldModeExitAction::hospital_options_menu_entered;
     }
+    state.caller_exit_status = -1;
     return FieldModeExitAction::services_completed;
 }
 

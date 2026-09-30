@@ -16,13 +16,13 @@ int main() {
     FieldExitPromptState state{};
     FieldExitPromptSelection observed{};
     int service_calls = 0;
-    int refresh_calls = 0;
+    int hotel_menu_calls = 0;
     const FieldExitPromptCallbacks callbacks{
         [&](FieldExitPromptSelection& selection, FieldExitPromptState&) {
             observed = selection;
             ++service_calls;
         },
-        [&] { ++refresh_calls; }};
+        [&] { ++hotel_menu_calls; }};
 
     if (expect(select_field_exit_prompt(0U, 3U, 0, state, callbacks) ==
                    FieldExitPromptAction::prompt_presented &&
@@ -31,7 +31,7 @@ int main() {
                observed.prompt_asset ==
                    FieldExitPromptAsset::scene_zero_submode_three_default &&
                state.exit_marker == 0x4BU && service_calls == 1 &&
-               refresh_calls == 0) != 0) {
+               hotel_menu_calls == 0 && state.caller_exit_status == -1) != 0) {
         return 1;
     }
 
@@ -59,22 +59,35 @@ int main() {
         return 4;
     }
 
-    const auto refresh_action = select_field_exit_prompt(
+    state.caller_exit_status = 0;
+    const auto hotel_action = select_field_exit_prompt(
         2U, 2U, 1, state,
         { [&](FieldExitPromptSelection&, FieldExitPromptState& callback_state) {
               callback_state.exit_marker = 0x80U;
           },
-          [&] { ++refresh_calls; } });
-    if (expect(refresh_action ==
-                   FieldExitPromptAction::prompt_presented_and_display_refreshed &&
-               refresh_calls == 1) != 0) {
+          [&] { ++hotel_menu_calls; } });
+    if (expect(hotel_action == FieldExitPromptAction::hotel_options_menu_entered &&
+               hotel_menu_calls == 1 && state.caller_exit_status == -1) != 0) {
         return 5;
+    }
+
+    state.caller_exit_status = 0;
+    const auto unresolved_hotel_action = select_field_exit_prompt(
+        2U, 2U, 1, state,
+        { [&](FieldExitPromptSelection&, FieldExitPromptState& callback_state) {
+              callback_state.exit_marker = 0x80U;
+          },
+          {} });
+    if (expect(unresolved_hotel_action ==
+                   FieldExitPromptAction::hotel_options_menu_unresolved &&
+               state.caller_exit_status == 0) != 0) {
+        return 6;
     }
 
     if (expect(select_field_exit_prompt(9U, 9U, 0, state, callbacks) ==
                    FieldExitPromptAction::no_matching_scene &&
                service_calls == 4) != 0) {
-        return 6;
+        return 7;
     }
 
     return 0;

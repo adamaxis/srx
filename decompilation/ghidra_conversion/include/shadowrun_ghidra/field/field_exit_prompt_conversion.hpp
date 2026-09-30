@@ -36,6 +36,7 @@ enum class FieldExitPromptAsset {
 struct FieldExitPromptState {
     std::uint8_t exit_marker = 0;
     std::uint32_t world_flags = 0;
+    std::int16_t caller_exit_status = 0; // D6
 };
 
 struct FieldExitPromptSelection {
@@ -51,18 +52,23 @@ struct FieldExitPromptCallbacks {
     // the coordinator binds them to the host resource/alias system.
     std::function<void(FieldExitPromptSelection&, FieldExitPromptState&)>
         run_mode_exit_services;
-    std::function<void()> refresh_mode_display;
+    // ROM 0xCF38: the negative FFF10D path enters Hotel Options before the
+    // source publishes D6=-1 to the field-exit orchestrator.
+    std::function<void()> run_hotel_options_menu;
 };
 
 enum class FieldExitPromptAction {
     no_matching_scene,
     prompt_presented,
-    prompt_presented_and_display_refreshed,
+    hotel_options_menu_entered,
+    hotel_options_menu_unresolved,
 };
 
 // ROM 0x1F65A: select the field-exit prompt/resource pair for the current
-// scene/submode and alternate-result marker, then run the exit services. The
-// source's FFFC1E bits 13 and 30 are modeled as ordinary world flags.
+// scene/submode and alternate-result marker, then run the exit services. A
+// matched route publishes the source's D6=-1 result; a negative FFF10D marker
+// enters the specifically identified Hotel Options menu first. The source's
+// FFFC1E bits 13 and 30 are modeled as ordinary world flags.
 FieldExitPromptAction select_field_exit_prompt(
     std::uint8_t scene_id,
     std::uint8_t submode,

@@ -2519,7 +2519,18 @@ It recognizes the five source scene/submode pairs `(0,3)`, `(1,1)`, `(2,2)`,
 `(3,1)`, and `(4,0)`, selects symbolic prompt/profile aliases for default,
 positive, and negative result variants, preserves the `(1,1)` world-flag
 override, and preserves the negative `(4,0)` resource-profile change. The
-exit-service and post-service display refresh remain explicit callbacks.
+exit-service remains an explicit callback. After that service the source tests
+`FFF10D`: a negative marker enters the specifically identified `0xCF38` Hotel
+Options menu, while every completed route publishes `D6=-1` to
+`0x1F5CA`. The native conversion now exposes both the Hotel callback and the
+caller-visible status; an unbound Hotel callback is reported as unresolved
+instead of being mislabeled as a display refresh.
+
+The adjacent `0x1F830` policy has the same source distinction. Its nonzero
+post-service `FFF0D5` path enters the Hospital Options menu at `0xC928`; it
+does not merely refresh the mode display. Its zero-result path publishes
+`D6=-1`, and the native conversion now exposes the Hospital callback and an
+explicit unresolved action when that source boundary is not connected.
 
 The `0x1D33A` world-sequence renderer is now
 `render_world_sequence_tile_rows`. It walks the source's 32-row window for

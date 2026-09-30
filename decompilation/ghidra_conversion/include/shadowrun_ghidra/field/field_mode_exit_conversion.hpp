@@ -17,6 +17,7 @@ struct FieldModeExitState {
     std::uint32_t service_flags = 0; // FFFC22
     std::uint16_t service_options = 0; // FFFC2A
     std::uint32_t effect_marker = 0; // FFDD64
+    std::int16_t caller_exit_status = 0; // D6
 };
 
 struct FieldModeExitCallbacks {
@@ -25,18 +26,20 @@ struct FieldModeExitCallbacks {
     // services the selected mode, just as the source coordinator changes
     // FFF0D5 before returning.
     std::function<void(FieldModeExitState&)> run_mode_exit_services;
-    std::function<void()> refresh_mode_display;
+    // ROM 0xC928: the nonzero post-service marker enters Hospital Options.
+    std::function<void()> run_hospital_options_menu;
 };
 
 enum class FieldModeExitAction {
     no_matching_route,
     services_completed,
-    services_completed_and_display_refreshed,
+    hospital_options_menu_entered,
+    hospital_options_menu_unresolved,
 };
 
 // ROM 0x1F830: choose the mode-exit route, apply its guarded field-state
 // mutations, clear the alternate-result marker before the service call, and
-// refresh the mode display if the service returns a nonzero result marker.
+// enter Hospital Options if that service returns a nonzero result marker.
 FieldModeExitAction prepare_field_mode_exit(
     FieldModeExitState& state,
     const FieldModeExitCallbacks& callbacks);
