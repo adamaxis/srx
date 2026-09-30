@@ -62,6 +62,15 @@
 // Native conversion: shadowrun_ghidra::run_world_effect_scene_loop preserves
 // this routine's scene-owned state transitions and callback order without
 // carrying VDP registers, ROM pointers, or 68000 control flow into runtime.
+//
+// Source-specific boundaries corrected in the typed host conversion:
+//   * 0x19788 is advance_matrix_program_loading, not a generic world-menu
+//     service;
+//   * 0x1CCDC and 0x1CC24 are called unconditionally at 0x1B10E/0x1B112;
+//   * FFF0B1 is tested with BMI after 0x1A370 but with BNE in the field
+//     refresh branch, so the host preserves the signed status byte;
+//   * the prologue preserves external FFF0A1/FFE0DE inputs and FFEF14 dirty
+//     bits because the ROM does not clear them.
 void run_world_effect_scene_loop(void)
 
 {

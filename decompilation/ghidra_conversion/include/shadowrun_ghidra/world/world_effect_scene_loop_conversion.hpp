@@ -37,13 +37,11 @@ struct WorldEffectSceneLoopState {
     bool world_effect_motion_active = false; // FFE06E
     bool matrix_transition_active = false; // FFE0DE
     bool title_animation_active = false;   // FFE0D4
-    bool persistent_title_effect_active = false; // source persistent title gate
-    bool persistent_world_effect_active = false; // source persistent world gate
 
     std::uint16_t controller_events = 0; // FFDD22
     bool footer_blocked = false;          // FFFBCA != 0
     bool current_runner_footer_visible = false; // *(FFFC04+0x4C) != 0
-    bool hud_abort = false;               // FFF0B1 < 0
+    std::int8_t hud_status = 0;           // FFF0B1; signed branch source
     bool frame_presented = false;         // FFDD02 / presentation boundary
     std::uint8_t dirty_flags = 0;         // FFEF14 bit 1 from this driver
 };
@@ -78,7 +76,7 @@ struct WorldEffectSceneLoopCallbacks {
     std::function<void()> finish_title_fade;
 
     // Main active-scene services through 0x1A370.
-    std::function<void()> advance_world_menu_service; // 0x19788
+    std::function<void()> advance_matrix_program_loading; // 0x19788
     std::function<void()> advance_title_world_interaction_service; // 0x1C754
     std::function<void()> handle_menu_directional_input; // 0x19432
     std::function<void()> advance_world_effect_controller; // 0x1A370

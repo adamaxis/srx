@@ -30,8 +30,7 @@ int main() {
     one_frame.world_effect_motion_active = true;
     one_frame.matrix_transition_active = true;
     one_frame.title_animation_active = true;
-    one_frame.persistent_title_effect_active = true;
-    one_frame.persistent_world_effect_active = true;
+    one_frame.dirty_flags = 0x04U;
 
     std::vector<std::string> order;
     WorldEffectSceneLoopCallbacks callbacks{};
@@ -50,7 +49,7 @@ int main() {
     };
     callbacks.advance_menu_random_glitch =
         [&] { order.emplace_back("glitch"); };
-    callbacks.advance_world_menu_service =
+    callbacks.advance_matrix_program_loading =
         [&] { order.emplace_back("world-menu"); };
     callbacks.advance_title_world_interaction_service =
         [&] { order.emplace_back("title-resource"); };
@@ -69,8 +68,6 @@ int main() {
             one_frame.world_effect_motion_active = true;
             one_frame.matrix_transition_active = true;
             one_frame.title_animation_active = true;
-            one_frame.persistent_title_effect_active = true;
-            one_frame.persistent_world_effect_active = true;
             one_frame.title_service_flags = 0x77U;
         };
     callbacks.advance_profile_copy_timer =
@@ -129,7 +126,7 @@ int main() {
                 one_frame_result.frames_executed == 1U &&
                 one_frame.work_x == 0x0120U && one_frame.work_y == 0x00D0U &&
                 one_frame.audio_track == 3U && one_frame.frame_presented &&
-                one_frame.dirty_flags == 0x02U &&
+                one_frame.dirty_flags == 0x06U &&
                 order.front() == "reset" && order[1] == "upload" &&
                 order[2] == "mode-init" && order[3] == "descriptor" &&
                 order[4] == "vblank" && order[5] == "latch" &&
@@ -216,6 +213,60 @@ int main() {
                 refresh_audio == std::vector<std::uint16_t>{0x0004U,
                                                              0x0003U})) {
         return 4;
+    }
+
+    // The scene prologue does not clear the external noise flag, the matrix
+    // transition request, or the existing dirty-byte bits. It also calls the
+    // two persistent services unconditionally; those services own their
+    // internal source-state gates.
+    WorldEffectSceneLoopState preserved{};
+    preserved.noise_effect_active = true;
+    preserved.matrix_transition_active = true;
+    preserved.dirty_flags = 0x04U;
+    int preserved_noise = 0;
+    int preserved_matrix = 0;
+    int persistent_title = 0;
+    int persistent_world = 0;
+    WorldEffectSceneLoopCallbacks preserved_callbacks{};
+    preserved_callbacks.advance_title_noise_effect = [&] { ++preserved_noise; };
+    preserved_callbacks.advance_matrix_program_transition =
+        [&] { ++preserved_matrix; };
+    preserved_callbacks.update_persistent_title_effect =
+        [&] { ++persistent_title; };
+    preserved_callbacks.advance_persistent_world_effect =
+        [&] { ++persistent_world; };
+    const auto preserved_result =
+        run_world_effect_scene_loop(preserved, preserved_callbacks, 1U);
+    if (!expect(preserved_result.reason ==
+                    WorldEffectSceneExitReason::frame_budget_exhausted &&
+                preserved_noise == 1 && preserved_matrix == 1 &&
+                persistent_title == 1 && persistent_world == 1 &&
+                preserved.dirty_flags == 0x06U)) {
+        return 5;
+    }
+
+    // The field-refresh branch tests FFF0B1 with BNE, so a positive status
+    // aborts even though the main active-scene branch uses BMI.
+    WorldEffectSceneLoopState positive_hud_status{};
+    positive_hud_status.hud_status = 1;
+    int positive_refresh_calls = 0;
+    WorldEffectSceneLoopCallbacks positive_callbacks{};
+    positive_callbacks.sample_controller_input = [] {
+        return std::uint16_t{0x8000U};
+    };
+    positive_callbacks.run_matrix_loop = [] {};
+    positive_callbacks.refresh_field_resource_streams = [&] {
+        ++positive_refresh_calls;
+        return true;
+    };
+    const auto positive_result =
+        run_world_effect_scene_loop(positive_hud_status, positive_callbacks,
+                                    1U);
+    if (!expect(positive_result.reason ==
+                    WorldEffectSceneExitReason::hud_abort &&
+                positive_result.frames_executed == 1U &&
+                positive_refresh_calls == 1)) {
+        return 6;
     }
 
     return 0;

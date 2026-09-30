@@ -2438,6 +2438,23 @@ The mode-6 completion call at `0x1A770` is now named for its actual callee,
 reported as a generic “finish mode” hook. These changes are conversion/source
 audit work only; the sprite builder remains a host asset/presentation boundary.
 
+## World/title scene-loop audit: 0x1ADE6
+
+The scene driver comparison found that the central loop had been hiding
+several source boundaries. The call at `0x19788` is
+`advance_matrix_program_loading`, not a generic world-menu service. The
+persistent title/world services at `0x1CCDC` and `0x1CC24` are called on every
+non-world-sequence presentation tick; their own routines inspect their source
+state. The scene loop must not invent outer “persistent active” gates.
+
+`FFF0B1` has two different source tests: the main active-scene path uses
+`BMI` immediately after `0x1A370`, while the field-refresh path uses `BNE` at
+`0x1B16A`. The host now carries the signed status byte and applies those two
+conditions independently. The prologue also preserves the external
+`FFF0A1` noise flag, `FFE0DE` Matrix-transition request, and existing `FFEF14`
+dirty bits because the ROM does not clear them there. It continues to clear
+the scene-owned title/world latches in the exact source order.
+
 ## World-effect animation/overlay audit: 0x1AA40..0x1AD42
 
 The direct listing exposed a branch distinction that the first typed pass had

@@ -1217,6 +1217,20 @@ Finally, mode 6 of `0x1A5A0` calls the existing `0x5668C`
 `advance_menu_selection_service_and_refresh` service before clearing the
 world-effect mode. That boundary is now named accordingly in the conversion.
 
+### World/title scene-loop correction: 0x1ADE6
+
+The scene-loop source order now names `0x19788` as
+`advance_matrix_program_loading`. The two persistent-effect callees at
+`0x1CCDC` and `0x1CC24` are unconditional in the ROM, so the conversion no
+longer places them behind invented outer activity flags.
+
+The source uses different conditions for the shared `FFF0B1` status byte:
+`BMI` after the world-effect controller and `BNE` during the field refresh.
+The typed state retains the signed byte so a positive field-refresh status is
+not silently treated as clear. The prologue also leaves the external
+`FFF0A1` noise bit, `FFE0DE` Matrix-transition request, and pre-existing
+`FFEF14` dirty bits intact, matching the writes actually present in the ROM.
+
 ### World-effect animation/overlay branch correction: 0x1AA40..0x1AD42
 
 The ROM uses `FFE0F2`, not the combined predicate `FFE0F2 == 0 &&

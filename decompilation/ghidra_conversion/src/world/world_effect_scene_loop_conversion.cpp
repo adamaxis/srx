@@ -36,17 +36,12 @@ WorldEffectSceneLoopResult run_world_effect_scene_loop(
     state.title_service_flags = 0U;
     state.world_effect_mode = 0U;
     state.burst_active = false;
-    state.noise_effect_active = false;
     state.profile_transition_active = false;
     state.profile_motion_active = false;
     state.title_effect_motion_active = false;
     state.world_effect_motion_active = false;
-    state.matrix_transition_active = false;
     state.title_animation_active = false;
-    state.persistent_title_effect_active = false;
-    state.persistent_world_effect_active = false;
     state.frame_presented = false;
-    state.dirty_flags = 0U;
 
     call_if_present(callbacks.reset_word_stream_area);
     call_if_present(callbacks.upload_decoded_source_stream);
@@ -110,11 +105,11 @@ WorldEffectSceneLoopResult run_world_effect_scene_loop(
                 state.scene_completion_aux = 0U;
             }
 
-            call_if_present(callbacks.advance_world_menu_service);
+            call_if_present(callbacks.advance_matrix_program_loading);
             call_if_present(callbacks.advance_title_world_interaction_service);
             call_if_present(callbacks.handle_menu_directional_input);
             call_if_present(callbacks.advance_world_effect_controller);
-            if (state.hud_abort) {
+            if (state.hud_status < 0) {
                 return result(WorldEffectSceneExitReason::hud_abort, frames);
             }
 
@@ -190,12 +185,10 @@ WorldEffectSceneLoopResult run_world_effect_scene_loop(
             if (state.matrix_transition_active) {
                 call_if_present(callbacks.advance_matrix_program_transition);
             }
-            if (state.persistent_title_effect_active) {
-                call_if_present(callbacks.update_persistent_title_effect);
-            }
-            if (state.persistent_world_effect_active) {
-                call_if_present(callbacks.advance_persistent_world_effect);
-            }
+            // ROM 0x1B10E and 0x1B112 call these services unconditionally;
+            // their own source state decides whether any work is emitted.
+            call_if_present(callbacks.update_persistent_title_effect);
+            call_if_present(callbacks.advance_persistent_world_effect);
         }
 
         if (!state.exit_requested) {
@@ -218,7 +211,9 @@ WorldEffectSceneLoopResult run_world_effect_scene_loop(
                     WorldEffectSceneExitReason::resource_refresh_stopped,
                     frames + 1U);
             }
-            if (state.hud_abort) {
+            // The field-refresh branch uses BNE, unlike the main branch's
+            // BMI. Preserve the signed source byte so both tests are exact.
+            if (state.hud_status != 0) {
                 return result(WorldEffectSceneExitReason::hud_abort,
                               frames + 1U);
             }
