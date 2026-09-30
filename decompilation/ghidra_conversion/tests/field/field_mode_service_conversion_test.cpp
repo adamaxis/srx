@@ -16,7 +16,7 @@ int main() {
     FieldModeServiceState state{2U, 11U, 0U, 0, 0, 0};
     FieldModeServiceSelection observed{};
     int services = 0;
-    int intro = 0;
+    int field_mode_services = 0;
     std::int8_t callback_service_result = 0;
     const FieldModeServiceCallbacks callbacks{
         [&](FieldModeServiceSelection& selection, FieldModeServiceState& callback_state) {
@@ -29,16 +29,16 @@ int main() {
                 callback_state.service_result = callback_service_result;
             }
         },
-        [&](FieldModeServiceState&) { ++intro; }};
+        [&](FieldModeServiceState&) { ++field_mode_services; }};
 
     if (expect(select_field_mode_service(state, callbacks) ==
-                   FieldModeServiceAction::intro_stage_started &&
+                   FieldModeServiceAction::field_mode_service_dispatched &&
                observed.profile ==
                    FieldModeServiceProfile::scene_two_submode_eleven &&
                observed.prompt_variant ==
                    FieldModeServicePromptVariant::default_prompt &&
                state.menu_mode == 1U && state.menu_result == -1 && services == 1 &&
-               intro == 1) != 0) {
+               field_mode_services == 1 && state.caller_exit_status == -1) != 0) {
         return 1;
     }
 
@@ -46,12 +46,13 @@ int main() {
     state.submode = 4U;
     state.alternate_result = 1;
     if (expect(select_field_mode_service(state, callbacks) ==
-                   FieldModeServiceAction::service_only &&
+                   FieldModeServiceAction::mode_exit_services_completed &&
                observed.profile ==
                    FieldModeServiceProfile::scene_five_submode_four &&
                observed.prompt_variant ==
                    FieldModeServicePromptVariant::positive_result_prompt &&
-               state.menu_mode == 6U && state.menu_result == 2 && intro == 1) != 0) {
+               state.menu_mode == 6U && state.menu_result == 2 &&
+               field_mode_services == 1 && state.caller_exit_status == -1) != 0) {
         return 2;
     }
 
@@ -60,19 +61,22 @@ int main() {
     state.alternate_result = 0;
     callback_service_result = 1;
     if (expect(select_field_mode_service(state, callbacks) ==
-                   FieldModeServiceAction::intro_stage_started &&
-               state.menu_mode == 2U && state.menu_result == 2 && intro == 2) != 0) {
+                   FieldModeServiceAction::field_mode_service_dispatched &&
+               state.menu_mode == 2U && state.menu_result == 2 &&
+               field_mode_services == 2 && state.caller_exit_status == -1) != 0) {
         return 3;
     }
     callback_service_result = -1;
     if (expect(select_field_mode_service(state, callbacks) ==
-                   FieldModeServiceAction::service_only &&
-               state.menu_result == -1 && intro == 2) != 0) {
+                   FieldModeServiceAction::field_mode_service_dispatched &&
+               state.menu_result == -1 && field_mode_services == 3 &&
+               state.caller_exit_status == -1) != 0) {
         return 4;
     }
     callback_service_result = 0;
     if (expect(select_field_mode_service(state, callbacks) ==
-                   FieldModeServiceAction::service_only && intro == 2) != 0) {
+                   FieldModeServiceAction::mode_exit_services_completed &&
+               field_mode_services == 3 && state.caller_exit_status == -1) != 0) {
         return 5;
     }
 
@@ -81,8 +85,9 @@ int main() {
     state.alternate_result = 0;
     callback_service_result = 1;
     if (expect(select_field_mode_service(state, callbacks) ==
-                   FieldModeServiceAction::intro_stage_started &&
-               state.menu_mode == 3U && state.menu_result == 2 && intro == 3) != 0) {
+                   FieldModeServiceAction::field_mode_service_dispatched &&
+               state.menu_mode == 3U && state.menu_result == 0 &&
+               field_mode_services == 4 && state.caller_exit_status == -1) != 0) {
         return 6;
     }
 

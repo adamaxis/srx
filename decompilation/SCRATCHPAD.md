@@ -1640,8 +1640,11 @@ arithmetic; extracted assets and transfer presentation are callbacks.
 The `0x1FA78` mode-service selector is now `select_field_mode_service`. It
 models the seven scene/submode routes, their menu mode/result fields, signed
 alternate prompt variants, and the special `FFF112` service-result handshake
-used by `(1,5)` and `(4,3)`. Default routes enter the intro-stage callback;
-nonzero alternate-result routes perform service only, matching the source.
+used by `(1,5)` and `(4,3)`. Its default branches dispatch the specifically
+identified `0x56AC0 run_field_mode_service` boundary, and both positive and
+negative nonzero `FFF112` results can reach that service. The `(4,3)` menu
+fields are written only after a nonzero service result, matching the ROM;
+every completed route publishes `D6=-1`.
 
 The `0x1FD80` fallback is now `finalize_field_mode_exit`. It is a typed
 scene/submode policy rather than a pointer walk: it covers the scene 6/7/9

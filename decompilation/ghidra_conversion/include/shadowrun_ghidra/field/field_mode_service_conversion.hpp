@@ -29,6 +29,7 @@ struct FieldModeServiceState {
     std::int8_t menu_result = 0; // FFF0B7
     std::int8_t alternate_result = 0; // FFF0D5
     std::int8_t service_result = 0; // FFF112
+    std::int16_t caller_exit_status = 0; // D6
 };
 
 struct FieldModeServiceSelection {
@@ -43,18 +44,23 @@ struct FieldModeServiceSelection {
 struct FieldModeServiceCallbacks {
     std::function<void(FieldModeServiceSelection&, FieldModeServiceState&)>
         run_mode_exit_services;
-    std::function<void(FieldModeServiceState&)> run_intro_stage;
+    // ROM 0x56AC0: the default route dispatches the field-mode service after
+    // 0x1F246 has prepared the selected mode.
+    std::function<void(FieldModeServiceState&)> run_field_mode_service;
 };
 
 enum class FieldModeServiceAction {
     no_matching_route,
-    service_only,
-    intro_stage_started,
+    mode_exit_services_unresolved,
+    mode_exit_services_completed,
+    field_mode_service_unresolved,
+    field_mode_service_dispatched,
 };
 
 // ROM 0x1FA78: select a mode-service profile and prompt variant, preserve
-// menu result fields, and route the source's service-result handshake before
-// optionally entering the intro-stage boundary.
+// the source menu fields, route the FFF112 service-result handshake, and
+// dispatch the named 0x56AC0 field-mode service where the ROM does so. Every
+// completed source route publishes D6=-1 to the caller.
 FieldModeServiceAction select_field_mode_service(
     FieldModeServiceState& state,
     const FieldModeServiceCallbacks& callbacks);
