@@ -915,6 +915,37 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+## 2026-09-30 field-interaction source correction
+
+The old ledger entry that called `0x20E48` the Stoker dialog was not supported
+by the ROM. The direct bytes in the previously unowned gap are now manually
+decoded and recorded here so the next canonical Ghidra export can recover the
+same function boundaries:
+
+- `0x20E48` sets `FFF10C` to `FF`, tests `FFE17F`, and branches to `0x20E7A`
+  when the interaction is not suppressed. The suppressed path sets `FFE16E`
+  to `FF`, selects the alternate interaction descriptor at `0xF4874`, the
+  resource callback at `0x21616`, and the shared `0x122078` resource profile,
+  then enters `0x1F246`.
+- `0x20E7A` is the ordinary branch: it selects the prompt descriptor at
+  `0x11CCCE`, the choice-grid callback at `0x20E92`, and the same shared
+  resource profile before entering `0x1F246`.
+- `0x20E92` reads `FFE16E - 2`, routes values below two to `0x20EC2`, and
+  writes one of four event-specific rows from the source table at `0x121DDC`
+  through `0x1232` with the source destination/mask parameters.
+- `0x20EC2` selects the descriptor at `0x11CD62`, clears `FFF10C`, sets
+  `FFF0B5` to `FF`, and tail-enters `0x1F246`. The descriptor begins with
+  “You are facing a building Security Terminal.”
+
+The fixed descriptor at `0x11CCCE` begins with “You are facing a sturdy door
+held closed by an electro-magnetic lock.” The four source event values are
+therefore a maglock-door interaction family, not a Stoker-motel text family.
+The extracted Stoker strings at `0x1167EB..0x116A79` remain a real visual
+observation from the longplay but are not yet connected to a ROM event or
+portrait descriptor. `ghidra_conversion/field_interaction_continuation_conversion`
+contains the typed conversion of these four source boundaries without ROM
+address lookups in host state; the Qt runtime does not consume this module yet.
+
 The `0x02900` world-frame conversion now matches the source refresh-latch
 semantics: the FFDF8A field refresh remains pending after the normal terrain
 copy, and is cleared only when the FFE171 suppressed-copy branch consumes it.

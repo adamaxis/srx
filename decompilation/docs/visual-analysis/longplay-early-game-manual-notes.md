@@ -96,10 +96,12 @@ of the section is the first sustained field/interior view with Joshua's HUD
 on the right.
 
 This is not generic dialogue. The visible portrait, text source, option rows,
-and return-to-field behavior identify a named Stoker interaction. The status
-ledger still lists `0x20E48` as a partial Stoker-dialog boundary in the old
-native-port layer; the conversion needs to lift that behavior into the shared
-dialog system instead of leaving it as a bespoke `NativePortShell` call.
+and return-to-field behavior identify a named Stoker interaction. A source
+audit corrected the old attribution: `0x20E48` selects the electromagnetic-lock
+door prompt at `0x11CCCE`, while `0x20EC2` selects the building Security
+Terminal prompt at `0x11CD62`. Neither is the Stoker motel text. The Stoker
+text records and their event/portrait descriptor still need to be traced from
+the ROM; the old `NativePortShell` tuple is not conversion evidence.
 
 ### 04. Facility/corridor movement and NPC/package dialogue — 03:58-06:30
 
@@ -298,7 +300,7 @@ generic action callback.
 | --- | --- | --- |
 | New Game, two downward moves, Gator Shaman selected | `0x59092`, `0x59248`, `0x42B0`; `startup_menu_conversion.cpp`, `startup_integration_conversion.cpp` | Choice names and three typed records exist. Existing integration coverage follows Decker; add/defend the captured Shaman route and its portrait/record binding. |
 | Seattle -> wilderness -> ambush -> tri-vid -> airport/cab/map | `0x59C5E` chain; `OpeningIntroScene`; `opening_intro_conversion.cpp` | Visual order agrees with the typed scene families and source text records. Need independent frame/dump assertions for layer placement and fade/clear behavior; do not promote the longplay itself to a golden. |
-| Stoker portrait, A/B/C menu, `<MORE>`, return to field | `0x20E48` and shared dialog/menu boundaries | The video identifies a real named dialog state. Current ledger still calls the Stoker path partial/native-port-owned; lift it into a typed shared dialog model. |
+| Stoker portrait, A/B/C menu, `<MORE>`, return to field | Unresolved Stoker event/portrait/text descriptor; shared dialog/menu boundaries | The video identifies a real named dialog state, but the previous `0x20E48` attribution was wrong. Find the ROM descriptor before implementing the scene; do not reuse the native-port tuple. |
 | Field map plus 48-pixel right HUD | `0x334C`/`0x39F2`, `0x110EC`, field scene controller | The opaque sidebar rule is visibly required. Recheck Qt screenshots at field/dialog return and defend the HUD compositing hill independently. |
 | Package/signature and named NPC conversations | field interaction/entity/dialog records | Generic interaction callbacks are insufficient. Resolve NPC identity, text page, option cursor, package/credstick state, and return mode from the source records before implementing new visuals. |
 | Runner item sheet and `Medkit` target flow | `0x11740`, `0x12168`, `0x1253E`, first-aid/inventory conversion modules | Converted action branches exist but have no defended visual hill for this captured route. The item-detail and first-aid states need separate typed presentation requests. |
@@ -343,10 +345,10 @@ comparison are all closed together.
 
 1. Add a source-backed integration route for the captured Gator Shaman choice;
    verify the selected archetype record, portrait alias, and opening state.
-2. Trace the named Stoker/Jump House dialog records and replace the remaining
-   `NativePortShell::open_stoker_motel_dialog` boundary with shared typed dialog
-   state. Do not invent text if the source record is not found; return to ROM
-   conversion and report the omission.
+2. Trace the named Stoker/Jump House dialog records and their event/portrait
+   descriptor. The old `NativePortShell::open_stoker_motel_dialog` tuple is
+   explicitly not a source mapping. Do not invent text if the source record is
+   not found; return to ROM conversion and report the omission.
 3. Use the section frames to annotate field/HUD/dialog boundaries and compare
    them against the Qt output, especially the opaque sidebar and full-width
    dialog panel.

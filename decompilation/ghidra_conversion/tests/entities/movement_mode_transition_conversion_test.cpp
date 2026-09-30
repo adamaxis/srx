@@ -178,7 +178,7 @@ int main() {
                state.activity_selection == 3U &&
                state.activity_source_word == 0xCAFEU &&
                result.continuation ==
-                   MovementModeTransitionContinuation::field_dialogue_event);
+                   MovementModeTransitionContinuation::maglock_door_interaction);
     }
 
     {
@@ -191,7 +191,7 @@ int main() {
                    EntityMovementModeTransitionResultKind::
                        building_reaction_started &&
                result.continuation ==
-                   MovementModeTransitionContinuation::building_reaction_event);
+                   MovementModeTransitionContinuation::building_security_terminal);
     }
 
     {

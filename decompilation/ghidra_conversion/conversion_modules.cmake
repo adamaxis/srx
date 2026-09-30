@@ -98,6 +98,7 @@ file(GLOB SHADOWRUN_MODULE_FIELD_INTERACTION_ACTIONS CONFIGURE_DEPENDS
 file(GLOB SHADOWRUN_MODULE_FIELD_PRESENTATION_SERVICES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_entity_render_batch_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_hud_conversion.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_interaction_continuation_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_menu_state_batch_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/mode_display_reset_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/mode_prompt_prepare_conversion.cpp"

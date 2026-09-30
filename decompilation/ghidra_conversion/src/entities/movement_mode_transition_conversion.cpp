@@ -184,7 +184,7 @@ advance_entity_movement_and_mode_transition(
         !state.terrain_event_suppressed) {
         state.activity_source_word = state.world_activity_source_word;
         const auto result = begin_idle(
-            MovementModeTransitionContinuation::field_dialogue_event,
+            MovementModeTransitionContinuation::maglock_door_interaction,
             EntityMovementModeTransitionResultKind::field_dialogue_started);
         // ROM 0xB994 stores the event byte left in D0 by 0x1E2E0. The other
         // begin-activity branches return without touching FFE16E.
@@ -197,7 +197,7 @@ advance_entity_movement_and_mode_transition(
 
     if (event_code == 0x18U) {
         return begin_idle(
-            MovementModeTransitionContinuation::building_reaction_event,
+            MovementModeTransitionContinuation::building_security_terminal,
             EntityMovementModeTransitionResultKind::building_reaction_started);
     }
 

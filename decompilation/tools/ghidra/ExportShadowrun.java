@@ -350,6 +350,11 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00010952L, "reset_mode_display_buffers");
         names.put(0x0001F3C4L, "run_mode_text_prompt");
         names.put(0x0001F5A8L, "prepare_mode_text_prompt");
+        names.put(0x00020E48L, "prepare_field_interaction_prompt");
+        names.put(0x00020E7AL, "prepare_electromagnetic_lock_prompt");
+        names.put(0x00020E92L, "write_electromagnetic_lock_choice_grid");
+        names.put(0x00020EC2L, "prepare_building_security_terminal_prompt");
+        names.put(0x00021616L, "prepare_electromagnetic_lock_resolution");
         names.put(0x0005670EL, "refresh_mode_palette_data");
         names.put(0x000134D2L, "run_post_intro_mode");
         names.put(0x00013726L, "render_mode_selection");
@@ -1007,6 +1012,23 @@ public class ExportShadowrun extends GhidraScript {
                                      "resolve_title_world_action_selection");
         ensureReviewedInlineFunction(program, 0x00056050L, 0x000560AAL,
                                      "resolve_title_world_action_marker");
+
+        // Ghidra leaves this event-continuation island outside the function
+        // graph even though the movement routine installs all four entries
+        // as indirect activity callbacks.  Keep the one canonical export
+        // complete by recovering the ROM-contiguous leaf boundaries here.
+        ensureReviewedInlineFunction(program, 0x00020E48L, 0x00020E7AL,
+                                     "prepare_field_interaction_prompt");
+        ensureReviewedInlineFunction(program, 0x00020E7AL, 0x00020E92L,
+                                     "prepare_electromagnetic_lock_prompt");
+        ensureReviewedInlineFunction(program, 0x00020E92L, 0x00020EC2L,
+                                     "write_electromagnetic_lock_choice_grid");
+        ensureReviewedInlineFunction(
+            program, 0x00020EC2L, 0x00020EDEL,
+            "prepare_building_security_terminal_prompt");
+        ensureReviewedInlineFunction(
+            program, 0x00021616L, 0x00021628L,
+            "prepare_electromagnetic_lock_resolution");
     }
 
     private static void applyReviewedNames(Program program) throws Exception {

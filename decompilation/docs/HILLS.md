@@ -18,7 +18,7 @@ composites do not count.
 | 3 Startup | Airport helicopter overlays | `0x5B08E` / `0x5B100` / `0x5B1B6` | defended | `shadowrun_native_port` | `visual-regression/intro-hill/intro-3000.bmp`, `intro-3400.bmp` |
 | 3 Startup | Cab destination zoom | `0x13726` / `0xD4464` / `0xD4536` | defended | `shadowrun_native_port` | `visual-regression/cab-hill/cab-map-0.bmp` through `cab-map-89.bmp` |
 | 4 Field | Walk / collide | `0x075E` / `0x03084` scene load / `0xE7C8` / `0x3BAC` | partial | `shadowrun_native_port` | `--scene field` (272px playfield, 0x334C 6-tile HUD column) |
-| 5 Dialog | Motel doorway | mode 2 `C0`/event 0 → `0x14` + `0x20E48` | partial | `shadowrun_native_port` motel tuple | `--scene field` after C0; shared 0xC3E6 panel |
+| 5 Dialog | Field electromagnetic-lock / Security Terminal prompts | mode-2 field event table → `0x20E48` / `0x20EC2` | partial | `shadowrun_ghidra_field_interaction_continuation_test` (source plan only) | Qt prompt dump pending |
 | 6 Menu | Command overview pixels | `0x10F50` | partial (same-source composite, not a golden) | `shadowrun_menu_visual_regression` | command-menu actual BMP |
 | 6 Menu | Magic | `0xFBA6` | partial | `shadowrun_native_port` magic open | Magical Defense C0DA 0xC89C0 |
 | later | Matrix | `0x1817E` | pending | — | — |

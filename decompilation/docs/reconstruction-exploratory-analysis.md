@@ -885,12 +885,14 @@ source event and destination row is rejected. The working worksheet must record
 the source coordinates, collision tile, event value, table row, destination,
 entry coordinates, and return transition for every tested building.
 
-The reviewed mode-2 event-0 tuple is now wired through the native state machine:
-the raw `0xC0` cell selects destination mode `0x14`, and the port enters a
-source-text dialogue state using the callback/text resources at `0x20E48` and
-`0x1167EB..0x116A79`. The dialogue can be advanced and returns to the loaded
-motel map. This is intentionally a scoped Stoker slice; it does not claim that
-the other building callbacks, NPC records, or reverse exits are complete.
+The earlier native-port note incorrectly attributed the Stoker motel text
+(`0x1167EB..0x116A79`) to `0x20E48`. The ROM bytes at `0x20E48..0x20EDD`
+instead select the electromagnetic-lock doorway descriptor at `0x11CCCE`,
+the four event-specific choice grids written by `0x20E92`, and the building
+Security Terminal descriptor at `0x11CD62` through `0x20EC2`. The converted
+field-interaction continuation now records those typed prompt/resource plans;
+the Stoker/Jump House text remains a separate unresolved source-trace task.
+No native-port dialog behavior is being used as proof for this conversion.
 
 ### Shops and equipment
 

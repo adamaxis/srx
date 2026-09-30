@@ -26,8 +26,8 @@ enum class MovementModeTransitionContinuation {
     event_28_world_activity, // source continuation 0x58DB2
     event_27_world_activity, // source continuation 0x53D5A
     projected_terrain_event, // source continuation 0x20C90
-    field_dialogue_event, // source continuation 0x20E48
-    building_reaction_event, // source continuation 0x20EC2
+    maglock_door_interaction, // source continuation 0x20E48
+    building_security_terminal, // source continuation 0x20EC2
     event_25_world_activity, // source continuation 0x53EFA
     field_mode_exit_finalizer, // native boundary for source 0x0C64C
 };
