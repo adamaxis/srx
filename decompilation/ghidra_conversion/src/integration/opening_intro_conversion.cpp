@@ -285,10 +285,10 @@ std::string opening_intro_sprite_alias_prefix(
         return "intro.sprites.trivid.right.0.";
     case OpeningIntroSpriteFamily::trivid_timed:
         return "intro.sprites.trivid.timed." + variant + ".";
-    case OpeningIntroSpriteFamily::trivid_overlay:
-        return "intro.sprites.trivid.overlay." + variant + ".";
-    case OpeningIntroSpriteFamily::trivid_final_overlay:
-        return "intro.sprites.trivid.final.overlay." + variant + ".";
+    case OpeningIntroSpriteFamily::wilderness_overlay:
+        return "intro.sprites.wilderness.overlay." + variant + ".";
+    case OpeningIntroSpriteFamily::wilderness_final_overlay:
+        return "intro.sprites.wilderness.final.overlay." + variant + ".";
     case OpeningIntroSpriteFamily::ambush_actor:
         return "intro.sprites.ambush.actor." + variant + ".";
     case OpeningIntroSpriteFamily::ambush_muzzle:
@@ -608,20 +608,20 @@ const OpeningIntroSourcePlan& opening_intro_source_plan() {
                 dx[index], dy[index], delay[index]};
         }
 
-        // 0x5A080 selects six compressed 0x1728 name-table streams. The
-        // offline importer turns each into a transparent, independently
-        // named tri-vid overlay; the conversion retains only the source
-        // cadence and host descriptor.
+        // 0x5A080 selects six compressed 0x1728 wilderness name-table
+        // streams. The offline importer turns each into a transparent,
+        // independently named wilderness overlay; the conversion retains
+        // only the source cadence and host descriptor.
         result.overlay_phases = {{
-            {sprite(OpeningIntroSpriteFamily::trivid_overlay, 0), 0x000CU},
-            {sprite(OpeningIntroSpriteFamily::trivid_overlay, 1), 0x000CU},
-            {sprite(OpeningIntroSpriteFamily::trivid_overlay, 2), 0x000CU},
-            {sprite(OpeningIntroSpriteFamily::trivid_overlay, 3), 0x0018U},
-            {sprite(OpeningIntroSpriteFamily::trivid_overlay, 4), 0x0018U},
-            {sprite(OpeningIntroSpriteFamily::trivid_overlay, 5), 0x000CU},
+            {sprite(OpeningIntroSpriteFamily::wilderness_overlay, 0), 0x000CU},
+            {sprite(OpeningIntroSpriteFamily::wilderness_overlay, 1), 0x000CU},
+            {sprite(OpeningIntroSpriteFamily::wilderness_overlay, 2), 0x000CU},
+            {sprite(OpeningIntroSpriteFamily::wilderness_overlay, 3), 0x0018U},
+            {sprite(OpeningIntroSpriteFamily::wilderness_overlay, 4), 0x0018U},
+            {sprite(OpeningIntroSpriteFamily::wilderness_overlay, 5), 0x000CU},
         }};
         result.final_overlay_descriptor =
-            sprite(OpeningIntroSpriteFamily::trivid_final_overlay, 0);
+            sprite(OpeningIntroSpriteFamily::wilderness_final_overlay, 0);
 
         result.orchestrator_assets.text_assets = {
             opening_intro_text_handle(OpeningIntroTextAsset::tri_vid_recovered),

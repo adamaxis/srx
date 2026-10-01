@@ -134,7 +134,7 @@ std::vector<ResourceManifestEntry> read_resource_manifest(
         const auto fields = split_manifest_line(line);
         if (fields.size() != 5U || fields[0].empty() || fields[1].empty() ||
             (fields[2] != "image" && fields[2] != "audio" &&
-             fields[2] != "state")) {
+             fields[2] != "state" && fields[2] != "text")) {
             throw std::runtime_error("invalid direct resource manifest row: " +
                                      line);
         }
@@ -388,6 +388,18 @@ native::NativePortAssets read_native_asset_directory(const std::string& root) {
     // runtime.
     for (const auto& entry : manifest_entries) {
         if (entry.kind == "state") {
+            continue;
+        }
+        if (entry.kind == "text") {
+            // Text/data records are direct resources for the conversion-side
+            // catalog. The legacy NativePortAssets structure has no text
+            // store, so validate their manifest path here and leave loading
+            // to the typed consumer that owns the record.
+            if (!std::filesystem::is_regular_file(
+                    asset_root / entry.relative_path)) {
+                throw std::runtime_error("cannot load direct text resource " +
+                                         (asset_root / entry.relative_path).string());
+            }
             continue;
         }
         const auto path = asset_root / entry.relative_path;

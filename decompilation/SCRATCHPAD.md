@@ -2704,9 +2704,20 @@ The missing tri-vid resources were traced rather than approximated. ROM table
 `intro.sprites.trivid.timed.*` images. Table `0x5A080` contains six compressed
 17-by-16 name-table overlays at destination `0x600`, and the final stream at
 `0x1E2E3E` is a 20-by-13 overlay at destination `0x786`; these are emitted as
-`trivid.overlay.*` and `trivid.final.overlay.*` assets with source-plane origins.
+`wilderness.overlay.*` and `wilderness.final.overlay.*` assets with source-plane origins.
 The Qt conversion draws those direct assets at their catalog origins. It does
 not decode a Genesis name table at runtime or replay a bitmap flipbook.
+
+The resource audit then corrected the pattern-set ownership of the `0x5A080`
+and `0x1E2E3E` streams. They run during the wilderness/ambush loop, so they
+must be decoded with the wilderness `0x1406` pattern uploads, not the tri-vid
+pattern set. The old interpretation produced a tiled tri-vid mosaic over the
+left ambusher at the source-equivalent stage-two frame. Regeneration now emits
+`wilderness-overlay-*` and `wilderness-final-overlay-*` assets, and the Qt
+conversion selects them by a named wilderness family. A deterministic Qt dump
+at source frame 800 now shows the ambush/projectile composition without that
+mosaic; the hill remains partial because actor-clear/fill and independent
+Genesis visual defense are still open.
 
 The conversion startup integration test now drives the source-sized opening
 until the `field_ready` handoff and asserts that the timed, six-overlay, and

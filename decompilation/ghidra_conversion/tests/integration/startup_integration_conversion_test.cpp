@@ -555,8 +555,8 @@ int main() {
     }
 
     for (const auto* alias : {"intro.sprites.trivid.timed.0.0",
-                              "intro.sprites.trivid.overlay.0.0",
-                              "intro.sprites.trivid.final.overlay.0.0"}) {
+                              "intro.sprites.wilderness.overlay.0.0",
+                              "intro.sprites.wilderness.final.overlay.0.0"}) {
         if (new_game_state.asset_catalog.catalog.find(alias) == nullptr) {
             return 14;
         }
@@ -567,8 +567,8 @@ int main() {
         return record != nullptr && record->origin_x == x && record->origin_y == y;
     };
     if (!expect_origin("intro.sprites.trivid.timed.0.0", 120, 128) ||
-        !expect_origin("intro.sprites.trivid.overlay.0.0", 4, 96) ||
-        !expect_origin("intro.sprites.trivid.final.overlay.0.0", 24, 120)) {
+        !expect_origin("intro.sprites.wilderness.overlay.0.0", 8, 99) ||
+        !expect_origin("intro.sprites.wilderness.final.overlay.0.0", 24, 120)) {
         return 10;
     }
 
@@ -667,8 +667,8 @@ int main() {
                 });
         };
     if (!has_sprite_family(OpeningIntroSpriteFamily::trivid_timed) ||
-        !has_sprite_family(OpeningIntroSpriteFamily::trivid_overlay) ||
-        !has_sprite_family(OpeningIntroSpriteFamily::trivid_final_overlay) ||
+        !has_sprite_family(OpeningIntroSpriteFamily::wilderness_overlay) ||
+        !has_sprite_family(OpeningIntroSpriteFamily::wilderness_final_overlay) ||
         !has_sprite_family(OpeningIntroSpriteFamily::ambush_actor) ||
         !has_sprite_family(OpeningIntroSpriteFamily::ambush_body) ||
         !has_sprite_family(OpeningIntroSpriteFamily::helicopter) ||

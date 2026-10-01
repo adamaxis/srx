@@ -65,6 +65,8 @@ int main() {
         std::size_t image_count = 0;
         std::size_t audio_count = 0;
         std::size_t state_count = 0;
+        std::size_t text_count = 0;
+        bool native_state_seen = false;
         while (std::getline(manifest, line)) {
             if (line.empty() || line.front() == '#') {
                 continue;
@@ -95,15 +97,24 @@ int main() {
                         "audio alias resolved to the wrong path: " + alias);
                 ++audio_count;
             } else if (kind == "state") {
-                require(alias == "state", "unexpected state alias");
+                if (alias == "state") {
+                    native_state_seen = true;
+                }
                 ++state_count;
+            } else if (kind == "text") {
+                require(alias == "menu.field.text",
+                        "unexpected text resource alias");
+                ++text_count;
             } else {
                 throw std::runtime_error("unknown manifest resource kind: " +
                                          kind);
             }
         }
 
-        require(state_count == 1U, "resources.tsv must contain one state row");
+        require(native_state_seen && state_count != 0U,
+                "resources.tsv must contain a native state row");
+        require(text_count == 1U,
+                "resources.tsv must contain one conversion text row");
         require(image_count == assets.resources.size(),
                 "manifest image rows and loaded resources differ");
         require(audio_count == 65U,

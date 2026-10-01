@@ -122,6 +122,8 @@ int main() {
     }
     if (row_count == 0U ||
         listed.find("intro/background-0.bmp") == listed.end() ||
+        listed.find("intro/sprites/wilderness-overlay-0-0.bmp") ==
+            listed.end() ||
         listed.find("intro/sprites/ambush-michael-0-0.bmp") == listed.end() ||
         listed.find("title/circuit-background-0.bmp") == listed.end() ||
         listed.find("field/maps/mode-55.bmp") == listed.end() ||

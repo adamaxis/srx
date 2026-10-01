@@ -5989,9 +5989,10 @@ decode_genesis_intro_sprite_resources_impl(
 
     // 0x59F8E's six-entry overlay table feeds the same 0x1728 stream writer
     // with a 17x16 name-table patch at $0600. Decode each stream offline
-    // against the tri-vid pattern set and retain the source-plane origin in
+    // against the wilderness pattern set and retain the source-plane origin in
     // the transparent image; the Qt conversion never interprets these bytes.
-    const auto add_overlay = [&](const std::string& role,
+    const auto add_overlay = [&](const GenesisBootPatternData& scene,
+                                 const std::string& role,
                                  const std::size_t table,
                                  const std::size_t table_index,
                                  const std::size_t source,
@@ -6006,7 +6007,7 @@ decode_genesis_intro_sprite_resources_impl(
         resource.source_offset = source;
         resource.attr_or = 0x4000U;
         resource.image = make_transparent_title_layer();
-        blit_genesis_1728_name_table(rom, trivid, resource.image, source,
+        blit_genesis_1728_name_table(rom, scene, resource.image, source,
                                      columns, rows, destination, 0U, 0x4000U,
                                      true);
         resources.push_back(std::move(resource));
@@ -6014,14 +6015,14 @@ decode_genesis_intro_sprite_resources_impl(
     for (std::size_t index = 0; index < 6U; ++index) {
         const auto source = static_cast<std::size_t>(read_rom_u32(
             rom, 0x5A080U + index * 6U,
-            "Genesis tri-vid overlay pointer table is truncated"));
-        add_overlay("trivid-overlay", 0x5A080U, index, source, 17U, 16U,
-                    0x0600U);
+            "Genesis wilderness overlay pointer table is truncated"));
+        add_overlay(wilderness, "wilderness-overlay", 0x5A080U, index, source,
+                    17U, 16U, 0x0600U);
     }
     // 0x59FAE's terminal overlay is a 20x13 stream at $0786, distinct from
     // the six repeating overlays above.
-    add_overlay("trivid-final-overlay", 0x1E2E3EU, 0, 0x1E2E3EU, 20U, 13U,
-                0x0786U);
+    add_overlay(wilderness, "wilderness-final-overlay", 0x1E2E3EU, 0,
+                0x1E2E3EU, 20U, 13U, 0x0786U);
 
     // These tables are the exact 0x5Axxx pointer selections used by the
     // ambush loop: actor, muzzle, flash, body/death, three projectile paths,

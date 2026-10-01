@@ -1215,14 +1215,13 @@ private:
         if (prefix.empty()) {
             return;
         }
-
         // Name-table overlays and wilderness map patches are already
         // extracted in their source-plane positions, unlike SAT entries
         // whose origin is relative to $80. The resource importer crops them
         // individually but preserves that source origin in resources.tsv.
         if (group.family == OpeningIntroSpriteFamily::background_patch ||
-            group.family == OpeningIntroSpriteFamily::trivid_overlay ||
-            group.family == OpeningIntroSpriteFamily::trivid_final_overlay) {
+            group.family == OpeningIntroSpriteFamily::wilderness_overlay ||
+            group.family == OpeningIntroSpriteFamily::wilderness_final_overlay) {
             for (const auto& record : state_.asset_catalog.catalog.records) {
                 if (record.alias.rfind(prefix, 0) != 0) {
                     continue;
@@ -1285,7 +1284,16 @@ private:
         const auto offset = static_cast<std::uint16_t>(
             request.destination_word - kPlaneBase);
         const auto x = static_cast<int>(((offset % 0x80U) / 2U) * 8U);
-        const auto y = static_cast<int>((offset / 0x80U) * 8U);
+        auto y = static_cast<int>((offset / 0x80U) * 8U);
+        if (opening_scene_ == OpeningIntroScene::airport) {
+            // The final airport captions are written to Plane B while the
+            // source scrolls FFDD0E from 0 to 0x78. The background follows
+            // that same VScroll in draw_opening_scene(); leaving the text at
+            // its unscrolled name-table row produces the visible overlap
+            // between the spending and landing captions in the host view.
+            y -= static_cast<int>(
+                state_.opening_intro.stage_loop.scroll.fade_counter);
+        }
         draw_startup_text(painter, x, y, text,
                           source_text_color(request.palette_flags));
     }

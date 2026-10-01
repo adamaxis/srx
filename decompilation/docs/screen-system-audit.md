@@ -101,7 +101,7 @@ stage DBF counters: Seattle hold `0x3C` then lines 0/1/2-4, wilderness from
 Sea-Tac at `0x956`; the sequence ends at `0xB37`.
 
 Native status: source text, 0x5AF62/0x59D7C/0x5AA96/0x5AD1A stage switch,
-skip, direct per-frame SAT choreography, source-positioned tri-vid overlays,
+skip, direct per-frame SAT choreography, source-positioned wilderness map overlays,
 camera pan, and the airport/cab layers are implemented in the separate Ghidra
 conversion Qt target. Independent Genesis visual comparison, source audio
 playback, and the remaining fill/palette presentation leaves are not yet
