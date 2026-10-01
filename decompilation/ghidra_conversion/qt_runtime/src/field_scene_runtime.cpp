@@ -12,6 +12,7 @@
 #include "shadowrun_ghidra/field/field_entity_render_batch_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
 #include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
+#include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "genesis_image_compositor.hpp"
 
 #include <QPainter>
@@ -54,6 +55,10 @@ constexpr std::string_view kCommandOverviewStatusAliasPrefix =
     "menu.field.status.bar.";
 constexpr std::string_view kCommandOverviewSelectedCellAliasPrefix =
     "menu.field.selected.cell.";
+constexpr std::string_view kCommandOverviewActionBackgroundAlias =
+    "menu.field.action.background";
+constexpr std::string_view kCommandOverviewActionFocusAliasPrefix =
+    "menu.field.action.focus.";
 constexpr std::string_view kCommandOverviewDamageBarAliasPrefix =
     "menu.field.damage.bar.";
 constexpr std::string_view kCommandOverviewDrainBarAliasPrefix =
@@ -64,6 +69,14 @@ constexpr std::string_view kCommandOverviewAttackBarAliasPrefix =
     "menu.field.attack.bar.";
 constexpr std::string_view kCommandOverviewDefenseBarAliasPrefix =
     "menu.field.defense.bar.";
+// ROM 0x117A0 writes the 15x2 action row at the same lower command-panel
+// origin used by the five command tabs.  0x117A4 overlays one 2x2 focus
+// block at each of the four action-button centers.
+constexpr int kCommandOverviewActionBackgroundX = 120;
+constexpr int kCommandOverviewActionBackgroundY = 184;
+constexpr std::array<int, 4> kCommandOverviewActionFocusX{{128, 152, 176,
+                                                             200}};
+constexpr int kCommandOverviewActionFocusY = 184;
 // FFDE08 is profile word 33. The 48-word block starts at FFDDC6.
 constexpr std::size_t kSceneProfileEntityPositionWord = 33U;
 
@@ -449,6 +462,8 @@ bool FieldSceneRuntime::load_command_overview_assets(
                     command_overview_background_) ||
         !load_image(catalog, kCommandOverviewInventoryBoxesAlias,
                     command_overview_inventory_boxes_) ||
+        !load_image(catalog, kCommandOverviewActionBackgroundAlias,
+                    command_overview_action_background_) ||
         !load_image(catalog, "menu.field.font", command_overview_font_)) {
         return false;
     }
@@ -487,6 +502,20 @@ bool FieldSceneRuntime::load_command_overview_assets(
         if (!load_sprite(std::string(kCommandOverviewSelectedCellAliasPrefix) +
                              std::to_string(index),
                          command_overview_selected_cells_[index])) {
+            return false;
+        }
+    }
+    for (std::size_t index = 0;
+         index < command_overview_action_focus_.size(); ++index) {
+        // This is a source name-table block, not a transparent SAT sprite.
+        // The extractor preserves color-zero pixels as opaque because the
+        // Genesis writes the complete 16x16 action focus block over the
+        // action row.  Keep that composition when presenting the direct
+        // host image.
+        if (!load_image(catalog,
+                        std::string(kCommandOverviewActionFocusAliasPrefix) +
+                            std::to_string(index),
+                        command_overview_action_focus_[index])) {
             return false;
         }
     }
@@ -986,6 +1015,13 @@ void FieldSceneRuntime::open_command_overview() {
         return;
     }
 
+    command_overview_inventory_action_ = InventoryActionMenuState{};
+    command_overview_selected_inventory_item_.reset();
+    command_overview_discard_confirmation_ = MenuConfirmationState{};
+    command_overview_action_message_.clear();
+    command_overview_inventory_action_active_ = false;
+    command_overview_discard_confirmation_active_ = false;
+
     const auto command_asset_available = [this](const std::string_view alias) {
         if (alias == "menu.field.command_overview.background") {
             // The converted source preparation names the tile block; the
@@ -1014,6 +1050,259 @@ void FieldSceneRuntime::open_command_overview() {
          [](const CommandOverviewActionRefreshResult&) {}});
     refresh_command_overview_combat_bars();
     refresh_command_overview_item_detail();
+}
+
+void FieldSceneRuntime::refresh_field_hud_runner_slot() {
+    if (field_hud_slots_.empty()) {
+        return;
+    }
+    auto& slot = field_hud_slots_[0];
+    slot.flags_byte = static_cast<std::uint8_t>(
+        field_active_runner_record_.flags >> 8U);
+    slot.equipped_inventory_slot =
+        field_active_runner_record_.equipped_inventory_slot;
+    slot.equipped_item_code = field_active_runner_record_.equipped_item_code;
+    slot.ammo_rounds = field_active_runner_record_.ammo_rounds;
+}
+
+void FieldSceneRuntime::begin_command_overview_inventory_action() {
+    const auto& view = command_overview_.view();
+    if (view.source_state.primary_page >= 2U) {
+        source_boundary("field.command_overview.inventory_action.invalid_route");
+        return;
+    }
+
+    command_overview_inventory_action_ = InventoryActionMenuState{};
+    command_overview_inventory_action_.column =
+        view.source_state.primary_page;
+    command_overview_inventory_action_.row =
+        view.source_state.secondary_page;
+    const auto result = advance_inventory_action_loop(
+        field_active_runner_record_, command_overview_inventory_action_,
+        InventoryActionInput{false, false, true, false, false});
+    if (result.event == InventoryActionEvent::opened && result.item.has_value()) {
+        command_overview_selected_inventory_item_ = result.item;
+        command_overview_inventory_action_active_ = true;
+        source_boundary("field.command_overview.inventory_action.opened");
+        return;
+    }
+    if (result.event == InventoryActionEvent::empty_cell) {
+        source_boundary("field.command_overview.inventory_action.empty_cell");
+    } else {
+        source_boundary("field.command_overview.inventory_action.not_opened");
+    }
+    command_overview_inventory_action_active_ = false;
+    command_overview_selected_inventory_item_.reset();
+}
+
+void FieldSceneRuntime::dispatch_command_overview_inventory_action(
+    const InventoryActionResult& result) {
+    if (!result.item.has_value() || !result.choice.has_value()) {
+        source_boundary("field.command_overview.inventory_action.missing_dispatch");
+        command_overview_inventory_action_active_ = false;
+        command_overview_selected_inventory_item_.reset();
+        return;
+    }
+
+    command_overview_selected_inventory_item_ = result.item;
+    const auto choice = *result.choice;
+    if (choice == InventoryActionChoice::equip_or_use) {
+        const auto branch = result.branch.value_or(
+            classify_selected_item(result.item->item_code, true));
+        if (branch == SelectedItemBranch::weapon_or_gear ||
+            branch == SelectedItemBranch::armor) {
+            const auto item_factor = [](const std::uint8_t item_code) {
+                const auto* definition = find_us_item_definition(item_code);
+                return definition == nullptr ? std::uint8_t{0}
+                                             : definition->source_combat_factor;
+            };
+            const auto mutation = toggle_selected_equipment(
+                field_active_runner_record_, *result.item,
+                item_factor(field_active_runner_record_.equipped_item_code),
+                item_factor(result.item->item_code));
+            if (mutation == EquipmentMutation::invalid_selection ||
+                mutation == EquipmentMutation::rejected_item_action) {
+                source_boundary(
+                    "field.command_overview.inventory_action.equipment_rejected");
+            } else {
+                source_boundary(
+                    "field.command_overview.inventory_action.equipment_mutated");
+                refresh_field_hud_runner_slot();
+                refresh_command_overview_combat_bars();
+                refresh_command_overview_item_detail();
+            }
+        } else if (branch == SelectedItemBranch::first_aid) {
+            // 0x12298/0x1253E owns target selection and the typed First Aid
+            // effect. The common item loop is connected, but this active
+            // record has not yet been given the party-target list it needs.
+            source_boundary(
+                "field.command_overview.inventory_action.first_aid_pending");
+        } else if (branch == SelectedItemBranch::automatic_use) {
+            source_boundary(
+                "field.command_overview.inventory_action.automatic_use_pending");
+        } else {
+            source_boundary(
+                "field.command_overview.inventory_action.item_action_pending");
+        }
+        command_overview_inventory_action_active_ = false;
+        command_overview_selected_inventory_item_.reset();
+        return;
+    }
+
+    if (choice == InventoryActionChoice::discard) {
+        if (!can_discard_selected_item(*result.item)) {
+            command_overview_action_message_ =
+                field_menu_text_.action_cannot_discard;
+            command_overview_inventory_action_active_ = true;
+            source_boundary(
+                "field.command_overview.inventory_action.discard_rejected");
+            return;
+        }
+        // ROM 0x12634 enters the source two-choice prompt before 0x1275C
+        // clears possession. The converted MenuConfirmationState is retained
+        // as typed host state; this is advanced one source frame at a time in
+        // the Qt loop instead of blocking the event loop.
+        command_overview_discard_confirmation_ = MenuConfirmationState{};
+        command_overview_discard_confirmation_active_ = true;
+        command_overview_inventory_action_active_ = true;
+        source_boundary(
+            "field.command_overview.inventory_action.discard_confirmation_opened");
+        return;
+    }
+
+    if (choice == InventoryActionChoice::trade) {
+        if (!can_trade_selected_item(result.item->item_code)) {
+            command_overview_action_message_ = field_menu_text_.action_cannot_trade;
+            command_overview_inventory_action_active_ = true;
+            source_boundary(
+                "field.command_overview.inventory_action.trade_rejected");
+            return;
+        }
+        // The source 0x12836 roster scan and 0x129FE transfer are converted,
+        // but the Qt field session currently exposes Joshua alone. Do not
+        // fabricate a recipient; leave this as an explicit source boundary.
+        source_boundary(
+            "field.command_overview.inventory_action.trade_recipient_pending");
+        command_overview_inventory_action_active_ = false;
+        command_overview_selected_inventory_item_.reset();
+        return;
+    }
+
+    command_overview_inventory_action_active_ = false;
+    command_overview_selected_inventory_item_.reset();
+}
+
+void FieldSceneRuntime::advance_command_overview_discard_confirmation(
+    const std::uint16_t controller_events) {
+    if (((controller_events & 0x0400U) != 0U ||
+         (controller_events & 0x0800U) != 0U) &&
+        (controller_events & 0x0C00U) != 0x0C00U) {
+        // ROM 0x12704 calls the shared Yes/No writer for either horizontal
+        // edge; the source toggles its binary choice rather than assigning a
+        // direction-specific value. The prompt starts on No.
+        command_overview_discard_confirmation_.selected_option =
+            command_overview_discard_confirmation_.selected_option == 0U ? 1U
+                                                                          : 0U;
+        source_boundary(
+            command_overview_discard_confirmation_.selected_option == 0U
+                ? "field.command_overview.discard_confirmation.select_yes"
+                : "field.command_overview.discard_confirmation.select_no");
+        return;
+    }
+    if ((controller_events & 0x1000U) != 0U ||
+        (controller_events & 0x8000U) != 0U) {
+        command_overview_discard_confirmation_active_ = false;
+        command_overview_inventory_action_active_ = false;
+        command_overview_selected_inventory_item_.reset();
+        source_boundary(
+            "field.command_overview.discard_confirmation.cancelled");
+        return;
+    }
+    if ((controller_events & 0x4000U) == 0U) {
+        return;
+    }
+
+    const auto selected = command_overview_selected_inventory_item_;
+    command_overview_discard_confirmation_active_ = false;
+    command_overview_inventory_action_active_ = false;
+    command_overview_selected_inventory_item_.reset();
+    if (!selected.has_value()) {
+        source_boundary(
+            "field.command_overview.discard_confirmation.missing_selection");
+        return;
+    }
+    if (command_overview_discard_confirmation_.selected_option == 0U) {
+        const auto mutation = discard_selected_item(
+            field_active_runner_record_, *selected);
+        if (mutation == EquipmentMutation::discarded) {
+            refresh_field_hud_runner_slot();
+            refresh_command_overview_combat_bars();
+            refresh_command_overview_item_detail();
+            source_boundary(
+                "field.command_overview.inventory_action.discarded");
+        } else {
+            source_boundary(
+                "field.command_overview.inventory_action.discard_failed");
+        }
+    } else {
+        source_boundary(
+            "field.command_overview.discard_confirmation.selected_no");
+    }
+}
+
+void FieldSceneRuntime::advance_command_overview_inventory_action(
+    const std::uint16_t controller_events) {
+    if (command_overview_discard_confirmation_active_) {
+        advance_command_overview_discard_confirmation(controller_events);
+        return;
+    }
+    if (!command_overview_action_message_.empty()) {
+        if ((controller_events & 0x1000U) != 0U ||
+            (controller_events & 0x4000U) != 0U ||
+            (controller_events & 0x8000U) != 0U) {
+            command_overview_action_message_.clear();
+            command_overview_inventory_action_active_ = false;
+            command_overview_selected_inventory_item_.reset();
+            source_boundary(
+                "field.command_overview.inventory_action.message_acknowledged");
+        }
+        return;
+    }
+    if (!command_overview_inventory_action_active_) {
+        return;
+    }
+
+    const InventoryActionInput input{
+        (controller_events & 0x0400U) != 0U,
+        (controller_events & 0x0800U) != 0U,
+        (controller_events & 0x4000U) != 0U,
+        (controller_events & 0x1000U) != 0U,
+        (controller_events & 0x8000U) != 0U};
+    const auto result = advance_inventory_action_loop(
+        field_active_runner_record_, command_overview_inventory_action_, input);
+    switch (result.event) {
+    case InventoryActionEvent::action_moved:
+        source_boundary(
+            "field.command_overview.inventory_action.selector_moved");
+        break;
+    case InventoryActionEvent::closed:
+        command_overview_inventory_action_active_ = false;
+        command_overview_selected_inventory_item_.reset();
+        source_boundary("field.command_overview.inventory_action.returned");
+        break;
+    case InventoryActionEvent::empty_cell:
+        command_overview_inventory_action_active_ = false;
+        command_overview_selected_inventory_item_.reset();
+        source_boundary(
+            "field.command_overview.inventory_action.empty_cell_after_open");
+        break;
+    case InventoryActionEvent::dispatched:
+        dispatch_command_overview_inventory_action(result);
+        break;
+    case InventoryActionEvent::opened:
+    case InventoryActionEvent::no_change:
+        break;
+    }
 }
 
 bool FieldSceneRuntime::bootstrap(
@@ -1086,6 +1375,12 @@ bool FieldSceneRuntime::bootstrap(
     command_overview_resource_variant_ = ResourceVariantState{};
     command_overview_combat_bars_ = EquipmentCombatBarResult{};
     command_overview_item_detail_ = ItemActionDetailResult{};
+    command_overview_inventory_action_ = InventoryActionMenuState{};
+    command_overview_selected_inventory_item_.reset();
+    command_overview_discard_confirmation_ = MenuConfirmationState{};
+    command_overview_action_message_.clear();
+    command_overview_inventory_action_active_ = false;
+    command_overview_discard_confirmation_active_ = false;
     field_joshua_archetype_selection_ = 0U;
     field_hud_slots_ = {};
     field_entity_animation_ = {};
@@ -1652,6 +1947,13 @@ void FieldSceneRuntime::advance_frame() {
             field_controller_latch_state_);
         ::shadowrun::ghidra_conversion::sample_controller_input(
             field_controller_sample_state_, field_controller_port_byte_);
+        if (command_overview_inventory_action_active_) {
+            advance_command_overview_inventory_action(
+                field_controller_sample_state_.events);
+            refresh_command_overview_combat_bars();
+            refresh_command_overview_item_detail();
+            return;
+        }
         const auto was_open = command_overview_.open();
         command_overview_.advance(field_controller_sample_state_.events);
         if (was_open && !command_overview_.open()) {
@@ -1664,6 +1966,22 @@ void FieldSceneRuntime::advance_frame() {
             state_.display_service_word = 0U;
             field_runtime_state_.display_service_word = 0U;
             source_boundary("field.command_overview.returned_to_field");
+            command_overview_inventory_action_ = InventoryActionMenuState{};
+            command_overview_selected_inventory_item_.reset();
+            command_overview_discard_confirmation_ = MenuConfirmationState{};
+            command_overview_action_message_.clear();
+            command_overview_inventory_action_active_ = false;
+            command_overview_discard_confirmation_active_ = false;
+        } else if (command_overview_.take_action_dispatch_pending()) {
+            if (command_overview_.view().source_state.primary_page < 2U) {
+                begin_command_overview_inventory_action();
+            } else {
+                // The converted command bridge has identified the remaining
+                // action route, but its handler still needs a source-verified
+                // native target (Magic, Pocket Secretary, or entity action).
+                source_boundary(
+                    "field.command_overview.non_inventory_action_pending");
+            }
         }
         refresh_command_overview_combat_bars();
         refresh_command_overview_item_detail();
@@ -2160,13 +2478,54 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         const auto y = 112 + static_cast<int>(
                               view.source_state.secondary_page * 24U);
         painter.drawImage(x, y, command_overview_cursor_);
-    } else if (view.source_state.primary_page <= 6U) {
+    }
+    if (!command_overview_inventory_action_active_ &&
+        view.source_state.primary_page >= 2U &&
+        view.source_state.primary_page <= 6U) {
         const auto focus_index = static_cast<std::size_t>(
             view.source_state.primary_page - 2U);
         painter.drawImage(128 + static_cast<int>(focus_index * 24U), 184,
                           command_overview_focus_[focus_index]);
     }
-    if (view.source_state.primary_page < field_menu_text_.command_labels.size()) {
+    if (command_overview_inventory_action_active_) {
+        painter.drawImage(kCommandOverviewActionBackgroundX,
+                          kCommandOverviewActionBackgroundY,
+                          command_overview_action_background_);
+        const auto action_selector =
+            command_overview_inventory_action_.action_selector;
+        if (action_selector >= 2U && action_selector <= 5U) {
+            const auto focus_index = static_cast<std::size_t>(action_selector -
+                                                                2U);
+            painter.drawImage(kCommandOverviewActionFocusX[focus_index],
+                              kCommandOverviewActionFocusY,
+                              command_overview_action_focus_[focus_index]);
+        }
+        if (command_overview_discard_confirmation_active_) {
+            draw_command_overview_text(
+                painter, 112, 176, field_menu_text_.action_discard_prompt);
+            if (command_overview_selected_inventory_item_.has_value() &&
+                field_active_runner_record_.equipped_inventory_slot >= 0 &&
+                static_cast<std::size_t>(
+                    field_active_runner_record_.equipped_inventory_slot) ==
+                    command_overview_selected_inventory_item_->slot) {
+                draw_command_overview_text(
+                    painter, 112, 184,
+                    field_menu_text_.action_item_equipped_prefix);
+                draw_command_overview_text(
+                    painter, 112, 192,
+                    field_menu_text_.action_item_equipped_suffix);
+            }
+            draw_command_overview_text(
+                painter, 112, 200,
+                command_overview_discard_confirmation_.selected_option == 0U
+                    ? field_menu_text_.action_choice_yes
+                    : field_menu_text_.action_choice_no);
+        } else if (!command_overview_action_message_.empty()) {
+            draw_command_overview_text(
+                painter, 112, 200, command_overview_action_message_);
+        }
+    } else if (view.source_state.primary_page <
+               field_menu_text_.command_labels.size()) {
         draw_command_overview_text(
             painter, 112, 200,
             field_menu_text_.command_labels[view.source_state.primary_page]);

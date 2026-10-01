@@ -29,6 +29,13 @@ metric.no-armor	No Armor
 metric.weapons	Wpns
 metric.guns	Guns
 metric.power	Power
+action.item-equipped.prefix	This item is
+action.item-equipped.suffix	"  equipped"
+action.discard-prompt	Discard item?
+action.cannot-discard	Cannot discard
+action.cannot-trade	Cannot trade magic items!
+action.choice-no	No
+action.choice-yes	Yes
 power.0	Meager
 power.1	Minor
 power.2	Very Low

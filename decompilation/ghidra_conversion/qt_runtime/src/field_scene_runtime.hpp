@@ -25,6 +25,8 @@
 #include "shadowrun_ghidra/integration/field_session_bootstrap_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
 #include "shadowrun_ghidra/menus/equipment_combat_bar_conversion.hpp"
+#include "shadowrun_ghidra/menus/inventory_action_conversion.hpp"
+#include "shadowrun_ghidra/menus/menu_confirmation_conversion.hpp"
 #include "shadowrun_ghidra/session/runner_switch_conversion.hpp"
 #include "shadowrun_ghidra/session/runner_record_access_conversion.hpp"
 #include "shadowrun_ghidra/integration/startup_integration_conversion.hpp"
@@ -84,6 +86,25 @@ public:
     const FieldCommandOverviewView& command_overview_view() const noexcept {
         return command_overview_.view();
     }
+    const RunnerRecordFields& active_runner_record() const noexcept {
+        return field_active_runner_record_;
+    }
+    const EquipmentCombatBarResult& command_overview_combat_bars() const
+        noexcept {
+        return command_overview_combat_bars_;
+    }
+    bool inventory_action_open() const noexcept {
+        return command_overview_inventory_action_active_;
+    }
+    std::uint8_t inventory_action_selection() const noexcept {
+        return command_overview_inventory_action_.action_selector;
+    }
+    bool discard_confirmation_open() const noexcept {
+        return command_overview_discard_confirmation_active_;
+    }
+    bool discard_confirmation_yes() const noexcept {
+        return command_overview_discard_confirmation_.selected_option == 0U;
+    }
 
     bool ready() const noexcept { return ready_; }
     bool field_entity_visible() const noexcept {
@@ -133,6 +154,14 @@ private:
                                     std::string_view text) const;
     void refresh_command_overview_combat_bars();
     void refresh_command_overview_item_detail();
+    void refresh_field_hud_runner_slot();
+    void advance_command_overview_inventory_action(
+        std::uint16_t controller_events);
+    void begin_command_overview_inventory_action();
+    void dispatch_command_overview_inventory_action(
+        const InventoryActionResult& result);
+    void advance_command_overview_discard_confirmation(
+        std::uint16_t controller_events);
     void open_command_overview();
     bool load_command_overview_assets(const ConversionAssetCatalog& catalog);
     bool load_field_hud_overlays(const ConversionAssetCatalog& catalog);
@@ -173,6 +202,8 @@ private:
     std::array<QImage, 5> command_overview_focus_{};
     std::array<QImage, 5> command_overview_status_bars_{};
     std::array<QImage, 2> command_overview_selected_cells_{};
+    QImage command_overview_action_background_;
+    std::array<QImage, 4> command_overview_action_focus_{};
     std::array<std::array<QImage, 2>, 50> command_overview_inventory_icons_{};
     std::array<QImage, 50> command_overview_item_details_{};
     std::array<QImage, 14> command_overview_damage_bars_{};
@@ -183,6 +214,13 @@ private:
     ResourceVariantState command_overview_resource_variant_{};
     EquipmentCombatBarResult command_overview_combat_bars_{};
     ItemActionDetailResult command_overview_item_detail_{};
+    InventoryActionMenuState command_overview_inventory_action_{};
+    std::optional<SelectedInventoryItem>
+        command_overview_selected_inventory_item_;
+    MenuConfirmationState command_overview_discard_confirmation_{};
+    std::string command_overview_action_message_;
+    bool command_overview_inventory_action_active_ = false;
+    bool command_overview_discard_confirmation_active_ = false;
     std::array<QImage, kFieldHudSlotCount> field_hud_faces_{};
     std::array<QImage, kFieldHudSlotCount> field_hud_items_{};
     std::array<QImage, kFieldHudSlotCount> field_hud_unarmed_items_{};

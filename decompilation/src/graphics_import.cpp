@@ -522,6 +522,35 @@ GenesisFieldMenuLabels read_genesis_field_menu_labels(
             "Genesis Power field-menu label is truncated")};
 }
 
+GenesisFieldMenuActionText read_genesis_field_menu_action_text(
+    const std::vector<std::uint8_t>& rom) {
+    // 0xD1CBB is the two-line equipped-item notice, followed by the
+    // 0xD1CD3 discard question.  0xD1FFA begins the protected-discard text;
+    // the next source record at 0xD2015 is the protected-trade message.
+    return {
+        read_genesis_fixed_text(
+            rom, 0xD1CBBU, 0x0CU,
+            "Genesis equipped-item prefix is truncated"),
+        read_genesis_padded_text(
+            rom, 0xD1CC8U, 0x0AU,
+            "Genesis equipped-item suffix is truncated"),
+        read_genesis_fixed_text(
+            rom, 0xD1CD3U, 0x0DU,
+            "Genesis discard prompt is truncated"),
+        read_genesis_fixed_text(
+            rom, 0xD1FFAU, 0x0EU,
+            "Genesis cannot-discard text is truncated"),
+        read_genesis_fixed_text(
+            rom, 0xD2015U, 0x19U,
+            "Genesis cannot-trade text is truncated"),
+        read_genesis_fixed_text(
+            rom, 0xD1EC6U, 0x10U,
+            "Genesis no-choice text is truncated"),
+        read_genesis_fixed_text(
+            rom, 0xD1EB4U, 0x10U,
+            "Genesis yes-choice text is truncated")};
+}
+
 std::vector<std::string> read_genesis_dialogue_segments(
     const std::vector<std::uint8_t>& rom, const std::size_t source_offset) {
     if (source_offset >= rom.size()) {

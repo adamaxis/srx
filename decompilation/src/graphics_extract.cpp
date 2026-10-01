@@ -164,6 +164,15 @@ void write_field_menu_text_catalog(
     emit("metric.weapons", field_labels.weapons);
     emit("metric.guns", field_labels.guns);
     emit("metric.power", field_labels.power);
+    const auto action_text =
+        shadowrun::graphics::read_genesis_field_menu_action_text(rom);
+    emit("action.item-equipped.prefix", action_text.item_equipped_prefix);
+    emit("action.item-equipped.suffix", action_text.item_equipped_suffix);
+    emit("action.discard-prompt", action_text.discard_prompt);
+    emit("action.cannot-discard", action_text.cannot_discard);
+    emit("action.cannot-trade", action_text.cannot_trade);
+    emit("action.choice-no", action_text.choice_no);
+    emit("action.choice-yes", action_text.choice_yes);
     for (std::size_t index = 0; index < assets.field_menu_power_labels.size();
          ++index) {
         emit("power." + std::to_string(index),

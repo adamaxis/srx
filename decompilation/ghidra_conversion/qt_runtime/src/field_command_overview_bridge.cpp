@@ -121,11 +121,16 @@ void FieldCommandOverviewBridge::refresh_view() {
                    : 0U;
     };
     action_callbacks.render_item_action_details = [this] {
-        view_.action_dispatch_pending = true;
+        // 0x12A8C renders the currently selected item's detail panel during
+        // every page refresh.  That render is not an A/B dispatch edge; the
+        // source loop only enters the item-action subroutine after its
+        // controller branch below sets action_dispatch_pending.
         source_boundary("field.command_overview.item_details_pending");
     };
     action_callbacks.service_entity_action_menu = [this] {
-        view_.action_dispatch_pending = true;
+        // This callback records the source's entity-action refresh.  It is
+        // likewise presentation work, not permission to open the action
+        // subloop without a new controller edge.
         source_boundary("field.command_overview.entity_action_pending");
     };
     action_callbacks.prepare_menu_dialog = [this] {

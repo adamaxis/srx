@@ -101,6 +101,13 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     bool weapons_found = false;
     bool guns_found = false;
     bool power_metric_found = false;
+    bool action_item_equipped_prefix_found = false;
+    bool action_item_equipped_suffix_found = false;
+    bool action_discard_prompt_found = false;
+    bool action_cannot_discard_found = false;
+    bool action_cannot_trade_found = false;
+    bool action_choice_no_found = false;
+    bool action_choice_yes_found = false;
     std::string line;
     std::size_t line_number = 0;
     bool header_seen = false;
@@ -219,7 +226,26 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                         weapons_found) ||
             parse_named("metric.guns", result.catalog.guns_label, guns_found) ||
             parse_named("metric.power", result.catalog.power_label,
-                        power_metric_found)) {
+                        power_metric_found) ||
+            parse_named("action.item-equipped.prefix",
+                        result.catalog.action_item_equipped_prefix,
+                        action_item_equipped_prefix_found) ||
+            parse_named("action.item-equipped.suffix",
+                        result.catalog.action_item_equipped_suffix,
+                        action_item_equipped_suffix_found) ||
+            parse_named("action.discard-prompt",
+                        result.catalog.action_discard_prompt,
+                        action_discard_prompt_found) ||
+            parse_named("action.cannot-discard",
+                        result.catalog.action_cannot_discard,
+                        action_cannot_discard_found) ||
+            parse_named("action.cannot-trade",
+                        result.catalog.action_cannot_trade,
+                        action_cannot_trade_found) ||
+            parse_named("action.choice-no", result.catalog.action_choice_no,
+                        action_choice_no_found) ||
+            parse_named("action.choice-yes", result.catalog.action_choice_yes,
+                        action_choice_yes_found)) {
             continue;
         }
         if (parse_indexed_key(key, "power.", index) &&
@@ -309,6 +335,15 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     require_named("metric.weapons", weapons_found);
     require_named("metric.guns", guns_found);
     require_named("metric.power", power_metric_found);
+    require_named("action.item-equipped.prefix",
+                  action_item_equipped_prefix_found);
+    require_named("action.item-equipped.suffix",
+                  action_item_equipped_suffix_found);
+    require_named("action.discard-prompt", action_discard_prompt_found);
+    require_named("action.cannot-discard", action_cannot_discard_found);
+    require_named("action.cannot-trade", action_cannot_trade_found);
+    require_named("action.choice-no", action_choice_no_found);
+    require_named("action.choice-yes", action_choice_yes_found);
     add_missing_entries(power_found, "power.", result.errors);
     for (std::size_t armor = 0; armor < armor_found.size(); ++armor) {
         for (std::size_t row = 0; row < armor_found[armor].size(); ++row) {

@@ -210,6 +210,22 @@ struct GenesisFieldMenuLabels {
 GenesisFieldMenuLabels read_genesis_field_menu_labels(
     const std::vector<std::uint8_t>& rom);
 
+// ROM 0x12634/0x127B0 supply the inventory action feedback strings.  Extract
+// the individual source lines once so the host command screen can preserve
+// the discard confirmation without carrying a Genesis text-table address.
+struct GenesisFieldMenuActionText {
+    std::string item_equipped_prefix;
+    std::string item_equipped_suffix;
+    std::string discard_prompt;
+    std::string cannot_discard;
+    std::string cannot_trade;
+    std::string choice_no;
+    std::string choice_yes;
+};
+
+GenesisFieldMenuActionText read_genesis_field_menu_action_text(
+    const std::vector<std::uint8_t>& rom);
+
 // Field/dialogue text records use printable bytes, 0x80-0xFE segment
 // separators, and 0xFF record termination. Extract the complete segments so
 // the host catalog can preserve source page boundaries instead of flattening

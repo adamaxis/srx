@@ -36,6 +36,13 @@ int main() {
         text.catalog.weapons_label != "Wpns" ||
         text.catalog.guns_label != "Guns" ||
         text.catalog.power_label != "Power" ||
+        text.catalog.action_item_equipped_prefix != "This item is" ||
+        text.catalog.action_item_equipped_suffix != "  equipped" ||
+        text.catalog.action_discard_prompt != "Discard item?" ||
+        text.catalog.action_cannot_discard != "Cannot discard" ||
+        text.catalog.action_cannot_trade != "Cannot trade magic items!" ||
+        text.catalog.action_choice_no != "No" ||
+        text.catalog.action_choice_yes != "Yes" ||
         text.catalog.armor_labels[1][0] != "   Armor    " ||
         text.catalog.armor_labels[1][1] != "  Clothing  " ||
         text.catalog.power_labels[0].empty() ||

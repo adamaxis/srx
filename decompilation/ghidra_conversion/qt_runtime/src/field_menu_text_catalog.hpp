@@ -44,6 +44,15 @@ struct FieldMenuTextCatalog {
     std::string weapons_label;
     std::string guns_label;
     std::string power_label;
+    // ROM 0x12634/0x127B0 source text used by the inventory discard branch.
+    // These are extracted catalog values, not UI-authored replacements.
+    std::string action_item_equipped_prefix;
+    std::string action_item_equipped_suffix;
+    std::string action_discard_prompt;
+    std::string action_cannot_discard;
+    std::string action_cannot_trade;
+    std::string action_choice_no;
+    std::string action_choice_yes;
     std::array<std::string, kFieldMenuItemNameCount> item_names{};
     std::array<std::string, kFieldMenuItemNameCount> item_categories{};
 };

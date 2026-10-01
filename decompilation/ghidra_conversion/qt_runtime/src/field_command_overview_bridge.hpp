@@ -58,6 +58,16 @@ public:
     bool open() const noexcept { return view_.open; }
     const FieldCommandOverviewView& view() const noexcept { return view_; }
 
+    // The converted overview loop reports the A/B action edge through a
+    // typed view flag.  Detail refreshes are presentation work and do not set
+    // this flag.  The host consumes the edge once before entering the
+    // corresponding converted sub-loop.
+    bool take_action_dispatch_pending() noexcept {
+        const bool pending = view_.action_dispatch_pending;
+        view_.action_dispatch_pending = false;
+        return pending;
+    }
+
 private:
     bool asset_available(std::string_view alias) const;
     void source_boundary(std::string_view boundary) const;

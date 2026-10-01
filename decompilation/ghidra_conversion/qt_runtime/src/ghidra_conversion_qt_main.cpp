@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/core/timing_conversion.hpp"
+#include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/integration/startup_integration_conversion.hpp"
 #include "shadowrun_ghidra/title_intro/title_loop_conversion.hpp"
 #include "shadowrun_ghidra/title_intro/title_setup_conversion.hpp"
@@ -56,6 +57,7 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
                    " [--assets <decompilation/assets>] [--field-smoke]"
                    " [--field-smoke-move-right] [--field-dump <file>]"
                    " [--field-command-dump <file>]"
+                   " [--field-action-dump <output-dir>]"
                    " [--field-command-reopen-smoke]"
                    " [--field-dialogue-dump <prompt> <file>]"
                    " [--boot-dump-frame <frame> <file>]"
@@ -79,6 +81,10 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
             continue;
         }
         if (argument == "--field-command-dump" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-action-dump" && index + 1 < argc) {
             ++index;
             continue;
         }
@@ -2039,6 +2045,7 @@ int main(int argc, char** argv) {
         bool intro_to_field_smoke = false;
         std::optional<std::filesystem::path> field_dump_path;
         std::optional<std::filesystem::path> field_command_dump_path;
+        std::optional<std::filesystem::path> field_action_dump_path;
         std::optional<std::string> field_dialogue_dump_prompt;
         std::optional<std::filesystem::path> field_dialogue_dump_path;
         std::optional<std::uint32_t> boot_dump_frame;
@@ -2055,6 +2062,7 @@ int main(int argc, char** argv) {
                        " [--assets <decompilation/assets>] [--field-smoke]"
                        " [--field-smoke-move-right] [--field-dump <file>]"
                        " [--field-command-dump <file>]"
+                       " [--field-action-dump <output-dir>]"
                        " [--field-command-reopen-smoke]"
                        " [--field-dialogue-dump <prompt> <file>]"
                        " [--boot-dump-frame <frame> <file>]"
@@ -2086,6 +2094,12 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_command_dump_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-action-dump" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_action_dump_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-dialogue-dump" &&
@@ -2244,6 +2258,335 @@ int main(int argc, char** argv) {
                           << static_cast<int>(field_scene.command_overview_view()
                                                    .source_state.primary_page)
                           << "\n";
+                return 0;
+            }
+            if (field_action_dump_path.has_value()) {
+                std::filesystem::create_directories(*field_action_dump_path);
+                const auto render_scene = [&] {
+                    QImage action_scene(kSceneWidth, kSceneHeight,
+                                        QImage::Format_RGB32);
+                    action_scene.fill(Qt::black);
+                    QPainter action_painter(&action_scene);
+                    field_scene.paint(action_painter);
+                    action_painter.end();
+                    return action_scene;
+                };
+                const auto save_scene = [&](const std::string_view name,
+                                            const QImage& scene) {
+                    return scene.save(QString::fromStdWString(
+                        ((*field_action_dump_path) /
+                         (std::string(name) + ".bmp"))
+                            .wstring()));
+                };
+                const auto write_scene = [&](const std::string_view name) {
+                    return save_scene(name, render_scene());
+                };
+                const auto press = [&](const std::uint8_t port_byte) {
+                    field_scene.set_controller_port_byte(port_byte);
+                    field_scene.advance_frame();
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                };
+                const auto same_image = [](const QImage& left,
+                                           const QImage& right) {
+                    if (left.size() != right.size() ||
+                        left.format() != right.format()) {
+                        return false;
+                    }
+                    for (int y = 0; y < left.height(); ++y) {
+                        for (int x = 0; x < left.width(); ++x) {
+                            if (left.pixel(x, y) != right.pixel(x, y)) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                };
+                const auto region_matches = [](const QImage& scene,
+                                               const QImage& asset,
+                                               const int origin_x,
+                                               const int origin_y) {
+                    if (asset.isNull() || origin_x < 0 || origin_y < 0 ||
+                        origin_x + asset.width() > scene.width() ||
+                        origin_y + asset.height() > scene.height()) {
+                        return false;
+                    }
+                    for (int y = 0; y < asset.height(); ++y) {
+                        for (int x = 0; x < asset.width(); ++x) {
+                            if (scene.pixel(origin_x + x, origin_y + y) !=
+                                asset.pixel(x, y)) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                };
+                const auto direct_asset = [&](const std::string& name) {
+                    return QImage(QString::fromStdWString(
+                        (asset_root / "menu" / "field" / name).wstring()));
+                };
+                const auto item_factor = [](const std::uint8_t item_code) {
+                    const auto* definition =
+                        find_us_item_definition(item_code);
+                    return definition == nullptr
+                               ? std::uint8_t{0}
+                               : definition->source_combat_factor;
+                };
+                const auto same_equipment_state =
+                    [](const RunnerRecordFields& left,
+                       const RunnerRecordFields& right,
+                       const std::size_t slot) {
+                        return left.equipped_inventory_slot ==
+                                   right.equipped_inventory_slot &&
+                               left.equipped_item_code ==
+                                   right.equipped_item_code &&
+                               left.equipped_armor_index ==
+                                   right.equipped_armor_index &&
+                               left.ammo_rounds == right.ammo_rounds &&
+                               left.inventory_item_codes[slot] ==
+                                   right.inventory_item_codes[slot] &&
+                               left.inventory_phase_bytes[slot] ==
+                                   right.inventory_phase_bytes[slot];
+                    };
+
+                const auto& initial_record = field_scene.active_runner_record();
+                if (initial_record.inventory_item_codes[0] == 0U) {
+                    std::cerr << "field action dump: source inventory cell "
+                                 "0 is empty\n";
+                    return 3;
+                }
+                const auto focus_equip = direct_asset("action-focus-0.bmp");
+                const auto focus_cancel = direct_asset("action-focus-3.bmp");
+                if (focus_equip.isNull() || focus_cancel.isNull()) {
+                    std::cerr << "field action dump: direct action focus "
+                                 "asset is missing\n";
+                    return 3;
+                }
+
+                if (!field_scene.open_command_overview_for_dump()) {
+                    std::cerr << "field action dump: command overview did "
+                                 "not open\n";
+                    return 3;
+                }
+                // The converted command loop starts on the Pocket Secretary
+                // page (selector 6).  The source d-pad priority moves left
+                // through the seven command pages to the first inventory
+                // column before the action subloop is entered.
+                for (int move = 0;
+                     move < 7 &&
+                     field_scene.command_overview_view().source_state
+                             .primary_page != 0U;
+                     ++move) {
+                    press(0x04U);
+                }
+                if (field_scene.command_overview_view().source_state
+                        .primary_page != 0U) {
+                    std::cerr << "field action dump: inventory column did "
+                                 "not become selected selector="
+                              << static_cast<int>(field_scene
+                                                      .command_overview_view()
+                                                      .source_state.primary_page)
+                              << "\n";
+                    return 3;
+                }
+                press(0x40U);
+                if (!field_scene.inventory_action_open() ||
+                    field_scene.inventory_action_selection() != 2U) {
+                    std::cerr << "field action dump: inventory action did "
+                                 "not open selector="
+                              << static_cast<int>(field_scene
+                                                      .command_overview_view()
+                                                      .source_state.primary_page)
+                              << " row="
+                              << static_cast<int>(field_scene
+                                                      .command_overview_view()
+                                                      .source_state.secondary_page)
+                              << " action_open="
+                              << (field_scene.inventory_action_open() ? 1 : 0)
+                              << " action_selector="
+                              << static_cast<int>(field_scene
+                                                      .inventory_action_selection())
+                              << "\n";
+                    return 3;
+                }
+                const auto action_open_scene = render_scene();
+                if (!region_matches(action_open_scene, focus_equip, 128, 184) ||
+                    !save_scene("00_inventory_action_equip",
+                                action_open_scene)) {
+                    std::cerr << "field action dump: could not write open "
+                                 "scene or action focus is misplaced\n";
+                    return 3;
+                }
+
+                // Selection is a cyclic source selector: Left from Equip
+                // wraps to Cancel, and Right from Cancel wraps back.  Check
+                // both the typed state and the exact direct focus placement.
+                press(0x04U);
+                if (field_scene.inventory_action_selection() != 5U) {
+                    std::cerr << "field action dump: left selection did not "
+                                 "wrap to cancel\n";
+                    return 3;
+                }
+                const auto action_cancel_scene = render_scene();
+                if (!region_matches(action_cancel_scene, focus_cancel, 200,
+                                    184) ||
+                    !save_scene("01_inventory_action_cancel",
+                                action_cancel_scene)) {
+                    std::cerr << "field action dump: cancel focus is "
+                                 "misplaced\n";
+                    return 3;
+                }
+
+                press(0x08U);
+                if (field_scene.inventory_action_selection() != 2U) {
+                    std::cerr << "field action dump: right selection did not "
+                                 "wrap to equip\n";
+                    return 3;
+                }
+                const auto action_reselected_scene = render_scene();
+                if (!region_matches(action_reselected_scene, focus_equip, 128,
+                                    184) ||
+                    !same_image(action_open_scene, action_reselected_scene) ||
+                    !save_scene("02_inventory_action_reselected",
+                                action_reselected_scene)) {
+                    std::cerr << "field action dump: re-selection did not "
+                                 "restore the source frame\n";
+                    return 3;
+                }
+
+                const auto item_before_cancel =
+                    field_scene.active_runner_record().inventory_item_codes[0];
+                press(0x10U);
+                if (field_scene.inventory_action_open() ||
+                    !field_scene.command_overview_open() ||
+                    field_scene.active_runner_record().inventory_item_codes[0] !=
+                        item_before_cancel ||
+                    !write_scene("03_inventory_action_unselected")) {
+                    std::cerr << "field action dump: B did not un-select "
+                                 "without mutating the item\n";
+                    return 3;
+                }
+
+                press(0x40U);
+                if (!field_scene.inventory_action_open() ||
+                    field_scene.inventory_action_selection() != 2U ||
+                    !write_scene("04_inventory_action_reselected")) {
+                    std::cerr << "field action dump: item could not be "
+                                 "re-selected after cancel\n";
+                    return 3;
+                }
+
+                const auto before_equip = field_scene.active_runner_record();
+                const auto selected = read_selected_inventory_item(
+                    before_equip, 0U, 0U);
+                if (!selected.has_value()) {
+                    std::cerr << "field action dump: selected source item "
+                                 "disappeared before equip\n";
+                    return 3;
+                }
+                auto expected_after_equip = before_equip;
+                const auto selected_branch = classify_selected_item(
+                    selected->item_code, true);
+                const auto expected_mutation =
+                    toggle_selected_equipment(
+                        expected_after_equip, *selected,
+                        item_factor(before_equip.equipped_item_code),
+                        item_factor(selected->item_code));
+                press(0x40U);
+                const auto& after_equip = field_scene.active_runner_record();
+                if ((selected_branch == SelectedItemBranch::weapon_or_gear ||
+                     selected_branch == SelectedItemBranch::armor) &&
+                    (expected_mutation == EquipmentMutation::invalid_selection ||
+                     expected_mutation == EquipmentMutation::rejected_item_action ||
+                     !same_equipment_state(after_equip,
+                                            expected_after_equip,
+                                            selected->slot))) {
+                    std::cerr << "field action dump: equip mutation diverged "
+                                 "from converted typed result\n";
+                    return 3;
+                }
+                if (!field_scene.command_overview_open() ||
+                    field_scene.inventory_action_open() ||
+                    !save_scene("05_inventory_after_equip", render_scene())) {
+                    std::cerr << "field action dump: equip action did not "
+                                 "return to the command overview\n";
+                    return 3;
+                }
+
+                // Page two exposes the attack/defense bars. Their indices are
+                // source-derived typed math; verify that the rendered regions
+                // use the direct assets selected by those values.
+                press(0x08U);
+                press(0x08U);
+                if (field_scene.command_overview_view().source_state
+                        .primary_page != 2U) {
+                    std::cerr << "field action dump: combat page did not open\n";
+                    return 3;
+                }
+                const auto combat_scene = render_scene();
+                const auto& bars = field_scene.command_overview_combat_bars();
+                const auto attack_asset = direct_asset(
+                    "attack-bar-" + std::to_string(bars.attack_bar) + ".bmp");
+                const auto defense_asset = direct_asset(
+                    "defense-bar-" + std::to_string(bars.defense_bar) + ".bmp");
+                if (!bars.attack_written || !bars.defense_written ||
+                    !region_matches(combat_scene, attack_asset, 144, 104) ||
+                    !region_matches(combat_scene, defense_asset, 144, 112) ||
+                    !save_scene("06_combat_bars_after_equip", combat_scene)) {
+                    std::cerr << "field action dump: typed combat math did not "
+                                 "select the rendered bar assets\n";
+                    return 3;
+                }
+
+                press(0x04U);
+                press(0x04U);
+                if (field_scene.command_overview_view().source_state
+                        .primary_page != 0U) {
+                    std::cerr << "field action dump: inventory page did not "
+                                 "re-open after combat verification\n";
+                    return 3;
+                }
+                press(0x40U);
+                if (!field_scene.inventory_action_open() ||
+                    field_scene.inventory_action_selection() != 2U) {
+                    std::cerr << "field action dump: action row did not "
+                                 "re-open after page traversal\n";
+                    return 3;
+                }
+                press(0x08U);
+                if (field_scene.inventory_action_selection() != 3U) {
+                    std::cerr << "field action dump: discard selector did not "
+                                 "move from equip\n";
+                    return 3;
+                }
+                press(0x40U);
+                if (!field_scene.discard_confirmation_open() ||
+                    !write_scene("07_discard_confirmation_no")) {
+                    std::cerr << "field action dump: discard confirmation "
+                                 "did not open\n";
+                    return 3;
+                }
+
+                press(0x08U);
+                if (!field_scene.discard_confirmation_yes() ||
+                    !write_scene("08_discard_confirmation_yes")) {
+                    std::cerr << "field action dump: confirmation did not "
+                                 "toggle to yes\n";
+                    return 3;
+                }
+                press(0x40U);
+                if (field_scene.inventory_action_open() ||
+                    field_scene.discard_confirmation_open() ||
+                    field_scene.active_runner_record().inventory_item_codes[0] !=
+                        0U ||
+                    !write_scene("09_inventory_after_discard")) {
+                    std::cerr << "field action dump: discard did not close "
+                                 "the converted action loop and clear the "
+                                 "source cell\n";
+                    return 3;
+                }
+                std::cout << "field_action_dump=written path="
+                          << field_action_dump_path->string() << "\n";
                 return 0;
             }
             QImage scene(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
