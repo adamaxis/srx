@@ -1,6 +1,7 @@
 #include "dialogue_panel.hpp"
 
 #include <algorithm>
+#include <array>
 #include <type_traits>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
@@ -10,6 +11,79 @@ using integration::RecruitedRunnerConversationCommand;
 using integration::RecruitedRunnerConversationScreen;
 using integration::RecruitedRunnerConversationView;
 
+DialoguePanelCommand map_runner_command(
+    const RecruitedRunnerConversationCommand command) {
+    switch (command) {
+    case RecruitedRunnerConversationCommand::ask_for_information:
+        return DialoguePanelCommand::runner_ask_for_information;
+    case RecruitedRunnerConversationCommand::ask_to_hire_runner:
+        return DialoguePanelCommand::runner_ask_to_hire;
+    case RecruitedRunnerConversationCommand::leave_conversation:
+        return DialoguePanelCommand::runner_leave_conversation;
+    case RecruitedRunnerConversationCommand::continue_page:
+        return DialoguePanelCommand::runner_continue_page;
+    case RecruitedRunnerConversationCommand::back_to_common_prompt:
+        return DialoguePanelCommand::runner_back_to_common_prompt;
+    case RecruitedRunnerConversationCommand::select_first_subject:
+        return DialoguePanelCommand::runner_select_first_subject;
+    case RecruitedRunnerConversationCommand::select_second_subject:
+        return DialoguePanelCommand::runner_select_second_subject;
+    case RecruitedRunnerConversationCommand::select_third_subject:
+        return DialoguePanelCommand::runner_select_third_subject;
+    case RecruitedRunnerConversationCommand::pay_short_term_run:
+        return DialoguePanelCommand::runner_pay_short_term_run;
+    case RecruitedRunnerConversationCommand::pay_permanent_hire:
+        return DialoguePanelCommand::runner_pay_permanent_hire;
+    case RecruitedRunnerConversationCommand::accept_free_permanent_hire:
+        return DialoguePanelCommand::runner_accept_free_permanent_hire;
+    }
+    return DialoguePanelCommand::runner_leave_conversation;
+}
+
+DialoguePanelOptionRole map_stoker_role(
+    const StokerMotelPromptOptionRole role) {
+    switch (role) {
+    case StokerMotelPromptOptionRole::continue_arrival:
+        return DialoguePanelOptionRole::field_continue;
+    case StokerMotelPromptOptionRole::rent_room:
+        return DialoguePanelOptionRole::field_rent_room;
+    case StokerMotelPromptOptionRole::leave_motel:
+        return DialoguePanelOptionRole::field_leave_motel;
+    case StokerMotelPromptOptionRole::pay_room:
+        return DialoguePanelOptionRole::field_pay_room;
+    case StokerMotelPromptOptionRole::collect_package:
+        return DialoguePanelOptionRole::field_collect_package;
+    case StokerMotelPromptOptionRole::pay_michael_debt:
+        return DialoguePanelOptionRole::field_pay_debt;
+    case StokerMotelPromptOptionRole::ask_jump_house:
+        return DialoguePanelOptionRole::field_jump_house;
+    }
+    return DialoguePanelOptionRole::field_continue;
+}
+
+DialoguePanelCommand map_stoker_command(
+    const StokerMotelPromptCommand command) {
+    switch (command) {
+    case StokerMotelPromptCommand::resolve_arrival:
+        return DialoguePanelCommand::stoker_resolve_arrival;
+    case StokerMotelPromptCommand::open_room_offer:
+        return DialoguePanelCommand::stoker_open_room_offer;
+    case StokerMotelPromptCommand::open_leave_notice:
+        return DialoguePanelCommand::stoker_open_leave_notice;
+    case StokerMotelPromptCommand::pay_room:
+        return DialoguePanelCommand::stoker_pay_room;
+    case StokerMotelPromptCommand::open_debt_question:
+        return DialoguePanelCommand::stoker_open_debt_question;
+    case StokerMotelPromptCommand::pay_michael_debt:
+        return DialoguePanelCommand::stoker_pay_michael_debt;
+    case StokerMotelPromptCommand::open_jump_house_referral:
+        return DialoguePanelCommand::stoker_open_jump_house_referral;
+    case StokerMotelPromptCommand::source_boundary:
+        return DialoguePanelCommand::stoker_source_boundary;
+    }
+    return DialoguePanelCommand::stoker_source_boundary;
+}
+
 void copy_text_stream(DialoguePanelView& view,
                       const RecruitedRunnerInformationTextStream& stream) {
     view.text_segments = stream.segments;
@@ -18,11 +92,48 @@ void copy_text_stream(DialoguePanelView& view,
 
 void add_option(DialoguePanelView& view, const DialoguePanelOptionRole role,
                 const std::string_view source_label,
-                const RecruitedRunnerConversationCommand command) {
+                const DialoguePanelCommand command) {
     if (view.option_count >= view.options.size()) {
         return;
     }
     view.options[view.option_count++] = {role, source_label, command};
+}
+
+void mark_missing_text(DialoguePanelView& view, const std::string_view alias) {
+    view.source_complete = false;
+    view.source_boundary_reason = alias.empty()
+                                     ? "dialogue text alias is empty"
+                                     : "dialogue text alias is missing";
+}
+
+void copy_text_alias_stream(DialoguePanelView& view,
+                            const std::string_view text,
+                            const DialogueTextResolver& resolve_text) {
+    const auto resolved = resolve_text ? resolve_text(text) : std::string_view{};
+    if (resolved.empty()) {
+        mark_missing_text(view, text);
+        return;
+    }
+    std::size_t start = 0U;
+    while (start <= resolved.size() &&
+           view.text_segment_count < view.text_segments.size()) {
+        const auto separator = resolved.find('|', start);
+        const auto end = separator == std::string_view::npos
+                             ? resolved.size()
+                             : separator;
+        view.text_segments[view.text_segment_count++] =
+            resolved.substr(start, end - start);
+        if (separator == std::string_view::npos) {
+            break;
+        }
+        start = separator + 1U;
+    }
+    if (start < resolved.size() &&
+        view.text_segment_count == view.text_segments.size()) {
+        view.source_complete = false;
+        view.source_boundary_reason =
+            "dialogue text stream exceeds the shared four-segment panel";
+    }
 }
 
 void add_common_options(DialoguePanelView& view) {
@@ -30,11 +141,11 @@ void add_common_options(DialoguePanelView& view) {
     // common prompt's text records are traced. This prevents an invented
     // English label from becoming a false visual reference.
     add_option(view, DialoguePanelOptionRole::information, {},
-               RecruitedRunnerConversationCommand::ask_for_information);
+               DialoguePanelCommand::runner_ask_for_information);
     add_option(view, DialoguePanelOptionRole::hire_runner, {},
-               RecruitedRunnerConversationCommand::ask_to_hire_runner);
+               DialoguePanelCommand::runner_ask_to_hire);
     add_option(view, DialoguePanelOptionRole::leave_conversation, {},
-               RecruitedRunnerConversationCommand::leave_conversation);
+               DialoguePanelCommand::runner_leave_conversation);
 }
 
 template <typename SubjectPrompt>
@@ -46,10 +157,10 @@ void add_subject_options(DialoguePanelView& view,
         DialoguePanelOptionRole::information_subject,
         DialoguePanelOptionRole::information_subject,
         DialoguePanelOptionRole::information_subject};
-    constexpr std::array<RecruitedRunnerConversationCommand, 3> kCommands{
-        RecruitedRunnerConversationCommand::select_first_subject,
-        RecruitedRunnerConversationCommand::select_second_subject,
-        RecruitedRunnerConversationCommand::select_third_subject};
+    constexpr std::array<DialoguePanelCommand, 3> kCommands{
+        DialoguePanelCommand::runner_select_first_subject,
+        DialoguePanelCommand::runner_select_second_subject,
+        DialoguePanelCommand::runner_select_third_subject};
     for (std::size_t index = 0; index < subject_prompt.options.size();
          ++index) {
         add_option(view, kRoles[index], subject_prompt.options[index],
@@ -180,11 +291,14 @@ DialoguePanelView make_dialogue_panel_view(
             return view;
         }
         add_option(view, DialoguePanelOptionRole::short_term_run, {},
-                   RecruitedRunnerConversationCommand::pay_short_term_run);
+                   map_runner_command(
+                       RecruitedRunnerConversationCommand::pay_short_term_run));
         add_option(view, DialoguePanelOptionRole::permanent_hire, {},
-                   RecruitedRunnerConversationCommand::pay_permanent_hire);
+                   map_runner_command(
+                       RecruitedRunnerConversationCommand::pay_permanent_hire));
         add_option(view, DialoguePanelOptionRole::free_permanent_hire, {},
-                   RecruitedRunnerConversationCommand::accept_free_permanent_hire);
+                   map_runner_command(RecruitedRunnerConversationCommand::
+                                          accept_free_permanent_hire));
         return view;
 
     case RecruitedRunnerConversationScreen::service_result:
@@ -208,13 +322,61 @@ DialoguePanelView make_dialogue_panel_view(
     return view;
 }
 
-std::optional<integration::RecruitedRunnerConversationCommand>
+DialoguePanelView make_dialogue_panel_view(
+    const StokerMotelPromptView& source_view,
+    const DialogueTextResolver& resolve_text) {
+    DialoguePanelView view{};
+    view.open = true;
+    view.actor_kind = DialoguePanelActorKind::field_npc;
+    view.actor_name = "Stoker";
+    view.portrait_alias = "dialogue.portraits.stoker.motel";
+    view.kind = source_view.source_complete
+                    ? DialoguePanelKind::field_npc_prompt
+                    : DialoguePanelKind::source_boundary;
+    copy_text_alias_stream(view, source_view.title_alias, resolve_text);
+    if (!view.source_complete) {
+        view.kind = DialoguePanelKind::source_boundary;
+        view.source_boundary_reason = source_view.source_boundary_reason.empty()
+                                          ? view.source_boundary_reason
+                                          : source_view.source_boundary_reason;
+    }
+
+    for (std::size_t index = 0U; index < source_view.option_count; ++index) {
+        const auto& option = source_view.options[index];
+        const auto label = resolve_text ? resolve_text(option.text_alias)
+                                        : std::string_view{};
+        if (label.empty()) {
+            mark_missing_text(view, option.text_alias);
+        }
+        add_option(view, map_stoker_role(option.role), label,
+                   map_stoker_command(option.command));
+    }
+    view.has_more = source_view.has_more;
+    view.returns_to_field = source_view.returns_to_field;
+    if (source_view.has_more && view.option_count != 0U) {
+        view.continuation_label = view.options[0].source_label;
+    }
+    if (!source_view.source_complete) {
+        view.source_complete = false;
+        if (view.source_boundary_reason.empty()) {
+            view.source_boundary_reason = source_view.source_boundary_reason;
+        }
+    }
+    return view;
+}
+
+std::optional<DialoguePanelCommand>
 dialogue_panel_option_command(const DialoguePanelView& view,
                               const std::size_t option_index) {
     if (!view.open || option_index >= view.option_count) {
         return std::nullopt;
     }
     return view.options[option_index].command;
+}
+
+std::optional<DialoguePanelCommand> dialogue_panel_command(
+    const DialoguePanelView& view, const std::size_t option_index) {
+    return dialogue_panel_option_command(view, option_index);
 }
 
 std::string_view dialogue_panel_portrait_alias(

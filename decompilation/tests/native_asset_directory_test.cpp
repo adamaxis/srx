@@ -102,7 +102,8 @@ int main() {
                 }
                 ++state_count;
             } else if (kind == "text") {
-                require(alias == "menu.field.text",
+                require(alias == "menu.field.text" ||
+                            alias == "dialogue.stoker.motel",
                         "unexpected text resource alias");
                 ++text_count;
             } else {
@@ -113,8 +114,8 @@ int main() {
 
         require(native_state_seen && state_count != 0U,
                 "resources.tsv must contain a native state row");
-        require(text_count == 1U,
-                "resources.tsv must contain one conversion text row");
+        require(text_count == 2U,
+                "resources.tsv must contain the field and dialogue text rows");
         require(image_count == assets.resources.size(),
                 "manifest image rows and loaded resources differ");
         require(audio_count == 65U,

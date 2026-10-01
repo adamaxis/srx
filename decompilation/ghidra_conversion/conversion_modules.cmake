@@ -98,6 +98,7 @@ file(GLOB SHADOWRUN_MODULE_FIELD_INTERACTION_ACTIONS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/stoker_motel_arrival_command_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/stoker_motel_debt_payment_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/stoker_motel_followup_commands_conversion.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/field/stoker_motel_prompt_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/stoker_motel_room_payment_conversion.cpp"
 )
 file(GLOB SHADOWRUN_MODULE_FIELD_PRESENTATION_SERVICES CONFIGURE_DEPENDS

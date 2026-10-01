@@ -191,6 +191,62 @@ void write_field_menu_text_catalog(
     }
 }
 
+void write_stoker_motel_dialogue_catalog(
+    const std::vector<std::uint8_t>& rom,
+    const std::filesystem::path& root) {
+    const auto path = root / "dialogue" / "stoker-motel.tsv";
+    std::filesystem::create_directories(path.parent_path());
+    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    if (!output) {
+        throw std::runtime_error("cannot create Stoker dialogue catalog: " +
+                                 path.string());
+    }
+    output << "key\ttext\n";
+
+    // These are the source text pointers consumed by the variable-length
+    // prompt records at 0xF4AA0..0xF4B2C. The source uses 0x80-family bytes
+    // between wrapped segments and 0xFF between records; joining segments
+    // with a visible pipe keeps the page boundaries in a two-column host
+    // catalog without embedding Genesis text encoding in the runtime.
+    const std::array<std::pair<const char*, std::size_t>, 18> records{{
+        {"stoker.motel.arrival.title", 0x1167EBU},
+        {"stoker.motel.arrival.more", 0x0FE5BFU},
+        {"stoker.motel.manager.title", 0x116962U},
+        {"stoker.motel.option.crash", 0x103A17U},
+        {"stoker.motel.option.leave", 0x104FEBU},
+        {"stoker.motel.street-ambush.title", 0x1168FCU},
+        {"stoker.motel.room.title", 0x1169B8U},
+        {"stoker.motel.option.pay", 0x103A7AU},
+        {"stoker.motel.package-handoff.title", 0x1168A3U},
+        {"stoker.motel.package-question.title", 0x112765U},
+        {"stoker.motel.option.package", 0x103A55U},
+        {"stoker.motel.option.debt-payment", 0x103B93U},
+        {"stoker.motel.option.jump-house", 0x103BBFU},
+        {"stoker.motel.leave.title", 0x0F4134U},
+        {"stoker.motel.debt.title", 0x1169E9U},
+        {"stoker.motel.room.paid.title", 0x0F4241U},
+        {"stoker.motel.room.insufficient.title", 0x0F42C1U},
+        {"stoker.motel.jump-house.title", 0x0F41A1U},
+    }};
+    for (const auto& [key, source_offset] : records) {
+        const auto segments =
+            shadowrun::graphics::read_genesis_dialogue_segments(
+                rom, source_offset);
+        if (segments.empty()) {
+            throw std::runtime_error("empty Stoker dialogue text: " +
+                                     std::string(key));
+        }
+        output << key << '\t';
+        for (std::size_t index = 0; index < segments.size(); ++index) {
+            if (index != 0U) {
+                output << '|';
+            }
+            output << segments[index];
+        }
+        output << '\n';
+    }
+}
+
 struct DecodedSourceByteStream {
     std::vector<std::uint8_t> bytes;
     std::size_t source_end = 0;
@@ -721,7 +777,10 @@ void write_asset_readme(const std::filesystem::path& root) {
               "`menu/field/text.tsv` and exposed through the `menu.field.text` "
               "manifest alias. Item art is grouped under items/weapons, "
               "items/first-aid, items/miscellaneous, items/magic, and items/armor. "
-              "Field dialogue portraits are grouped under dialogue/portraits. "
+              "Field dialogue portraits are grouped under dialogue/portraits; "
+              "source-backed Stoker prompt text is in "
+              "`dialogue/stoker-motel.tsv` under the `dialogue.stoker.motel` "
+              "alias. "
               "Separately traced cinematic resources belong under movies/<scene>; "
               "they must not be mixed into intro or field assets.\n\n"
            << "Audio is emitted here only as complete Windows-playable lossless "
@@ -894,6 +953,8 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
     };
     emit_generated_resource_row(
         "menu.field.text", "menu/field/text.tsv", "text");
+    emit_generated_resource_row(
+        "dialogue.stoker.motel", "dialogue/stoker-motel.tsv", "text");
     std::string line;
     std::getline(catalog, line);
     while (std::getline(catalog, line)) {
@@ -948,6 +1009,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     std::size_t blank = 0;
     const auto assets = shadowrun::graphics::decode_genesis_native_assets(rom);
     write_field_menu_text_catalog(rom, root, assets);
+    write_stoker_motel_dialogue_catalog(rom, root);
     const auto write = [&](const std::string& name,
                            const shadowrun::native::NativeImage& image,
                            const std::string& kind,

@@ -1,0 +1,19 @@
+key	text
+stoker.motel.arrival.title	<The battered sign reads Stoker's Coffin Motel.|Motels like these are cheap, each room only large enough to fit a small bed.|Dumps like these tend to attract the dregs of humanity.>
+stoker.motel.arrival.more	          < MORE >
+stoker.motel.manager.title	<The manager yawns.>|I won't bore you with the welcome speech.|So whadda' ya' want?
+stoker.motel.option.crash	Just looking for a place to crash.
+stoker.motel.option.leave	I'll talk to you later, chum.
+stoker.motel.street-ambush.title	<Some of those dregs leap from the shadows.|You are forced back into the street where they attack!!>
+stoker.motel.room.title	I got a room for 20$, up front.|You interested?
+stoker.motel.option.pay	Easy money, chummer.  I'll pay.
+stoker.motel.package-handoff.title	<Stoker squints at you with his one good eye.>|Here's the package.  Don't slot this up!
+stoker.motel.package-question.title	Do you have the package, breeder?|Or have you lost it?|<He grabs the package from you, checks it, and begrudingly pays for your service.>
+stoker.motel.option.package	I'm here to pick up Michael's stuff.
+stoker.motel.option.debt-payment	Small change.  Slot this cred and I'm gone.
+stoker.motel.option.jump-house	250$?!!  How much could he have stored in one of those rooms?!
+stoker.motel.leave.title	I'll be seeing you, chum.
+stoker.motel.debt.title	So, you're Michael's brother, eh?|Your bro' skipped on paying his bill and I'm holding his stuff 'til I get the back rent.|Lets make a deal.|You pay up the 250$ he owes and I'll fork over his stash.
+stoker.motel.room.paid.title	Hope you brought your own towels.|I've been cleaned out this month.|Enjoy your stay.
+stoker.motel.room.insufficient.title	Your stick seems to be low on creds.|I'm sorry, but we can only board paying customers.
+stoker.motel.jump-house.title	Hey, if you need nuyen head up the street to the Jump House.|Gunderson is always looking for runners.|You'll find him in a booth towards the back of the bar.

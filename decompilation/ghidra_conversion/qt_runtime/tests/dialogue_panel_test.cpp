@@ -1,4 +1,5 @@
 #include "dialogue_panel.hpp"
+#include "dialogue_text_catalog.hpp"
 
 #include <cstdint>
 #include <string_view>
@@ -44,7 +45,7 @@ int main() {
                 DialoguePanelOptionRole::leave_conversation) ||
         !expect(!dialogue_panel_option_command(panel, 3U).has_value()) ||
         !expect(dialogue_panel_option_command(panel, 1U).value() ==
-                RecruitedRunnerConversationCommand::ask_to_hire_runner)) {
+                DialoguePanelCommand::runner_ask_to_hire)) {
         return 1;
     }
 
@@ -81,7 +82,7 @@ int main() {
         !expect(panel.options[0].source_label ==
                 "Tell me about shaman magic.") ||
         !expect(dialogue_panel_option_command(panel, 2U).value() ==
-                RecruitedRunnerConversationCommand::select_third_subject)) {
+                DialoguePanelCommand::runner_select_third_subject)) {
         return 4;
     }
 
@@ -135,6 +136,54 @@ int main() {
                     FieldExitResourceProfile::scene_zero_submode_three)
                     .empty())) {
         return 8;
+    }
+
+    const auto loaded_assets = load_conversion_asset_catalog(
+        SHADOWRUN_GHIDRA_ASSET_ROOT);
+    if (!expect(loaded_assets.complete())) {
+        return 9;
+    }
+    const auto dialogue = load_dialogue_text_catalog(
+        loaded_assets.catalog, "dialogue.stoker.motel");
+    if (!expect(dialogue.complete())) {
+        return 10;
+    }
+    const DialogueTextResolver resolve_text = [&dialogue](
+                                                  const std::string_view key) {
+        const auto* value = dialogue.catalog.find(key);
+        return value == nullptr ? std::string_view{} : std::string_view(*value);
+    };
+    const auto stoker_source = make_stoker_motel_prompt(
+        StokerMotelPromptId::arrival);
+    const auto stoker_panel = make_dialogue_panel_view(stoker_source,
+                                                       resolve_text);
+    if (!expect(stoker_panel.open) ||
+        !expect(stoker_panel.actor_kind == DialoguePanelActorKind::field_npc) ||
+        !expect(stoker_panel.actor_name == "Stoker") ||
+        !expect(stoker_panel.portrait_alias ==
+                "dialogue.portraits.stoker.motel") ||
+        !expect(stoker_panel.kind == DialoguePanelKind::field_npc_prompt) ||
+        !expect(stoker_panel.text_segment_count == 3U) ||
+        !expect(stoker_panel.text_segments[0].find("Stoker's Coffin Motel") !=
+                std::string_view::npos) ||
+        !expect(stoker_panel.has_more) ||
+        !expect(stoker_panel.continuation_label.find("< MORE >") !=
+                std::string_view::npos) ||
+        !expect(dialogue_panel_option_command(stoker_panel, 0U).value() ==
+                DialoguePanelCommand::stoker_resolve_arrival)) {
+        return 11;
+    }
+
+    const auto stoker_package = make_dialogue_panel_view(
+        make_stoker_motel_prompt(
+            StokerMotelPromptId::manager_greeting_with_package),
+        resolve_text);
+    if (!expect(stoker_package.option_count == 3U) ||
+        !expect(stoker_package.options[2].source_label ==
+                "I'm here to pick up Michael's stuff.") ||
+        !expect(dialogue_panel_option_command(stoker_package, 2U).value() ==
+                DialoguePanelCommand::stoker_open_debt_question)) {
+        return 12;
     }
 
     return 0;

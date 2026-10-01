@@ -11,6 +11,7 @@ add_executable(shadowrun_ghidra_conversion_qt
     src/field_command_overview_bridge.cpp
     src/genesis_image_compositor.cpp
     src/dialogue_panel.cpp
+    src/dialogue_text_catalog.cpp
 )
 target_include_directories(shadowrun_ghidra_conversion_qt
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
@@ -66,9 +67,12 @@ add_test(NAME shadowrun_ghidra_field_menu_text_catalog
 add_executable(shadowrun_ghidra_dialogue_panel_test
     tests/dialogue_panel_test.cpp
     src/dialogue_panel.cpp
+    src/dialogue_text_catalog.cpp
 )
 target_include_directories(shadowrun_ghidra_dialogue_panel_test
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_compile_definitions(shadowrun_ghidra_dialogue_panel_test PRIVATE
+    SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets")
 target_link_libraries(shadowrun_ghidra_dialogue_panel_test
     PRIVATE shadowrun_ghidra_conversion_runtime)
 add_test(NAME shadowrun_ghidra_dialogue_panel

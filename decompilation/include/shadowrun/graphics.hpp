@@ -210,6 +210,13 @@ struct GenesisFieldMenuLabels {
 GenesisFieldMenuLabels read_genesis_field_menu_labels(
     const std::vector<std::uint8_t>& rom);
 
+// Field/dialogue text records use printable bytes, 0x80-0xFE segment
+// separators, and 0xFF record termination. Extract the complete segments so
+// the host catalog can preserve source page boundaries instead of flattening
+// every NPC line into one guessed string.
+std::vector<std::string> read_genesis_dialogue_segments(
+    const std::vector<std::uint8_t>& rom, std::size_t source_offset);
+
 // ROM 0x11950 indexes this pointer table with the active record's +0x90
 // bitfield. Convert the FF-terminated Genesis strings into host text so the
 // native cyberware view has no ROM dependency at runtime.

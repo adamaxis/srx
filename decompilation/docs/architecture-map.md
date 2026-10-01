@@ -261,9 +261,28 @@ The first field actor binding is the Stoker's Coffin Motel profile selected by
 `0x1F65A`. Its profile table at `0x121FA0` points to the `0x1287C6` pattern
 stream and `0x122420` 7x9 portrait stream; the offline importer emits the
 single direct asset `dialogue.portraits.stoker.motel` (56x72 host pixels).
-The portrait is now source-tested, but the Stoker prompt text records and full
-field return transition remain partial. No other field-exit profile is allowed
-to borrow that portrait alias.
+The portrait is now source-tested. No other field-exit profile is allowed to
+borrow that portrait alias.
+
+The Stoker prompt records at `0xF4AA0..0xF4B2C` are represented by the typed
+`StokerMotelPromptView` graph in
+`ghidra_conversion/src/field/stoker_motel_prompt_conversion.cpp`. The graph
+preserves the source's title/option/command boundaries, including sentinel
+pages and the unresolved debt/package continuation. The offline graphics
+importer emits the source text streams as the direct asset
+`dialogue.stoker.motel` (`assets/dialogue/stoker-motel.tsv`); the Qt adapter
+resolves those aliases and projects Stoker through this same panel rather than
+creating an NPC-specific dialogue widget. Its semantic commands are returned
+to the owning conversion controller, so the panel carries no ROM addresses or
+Genesis command bytes.
+
+The remaining boundary is integration: `0x249C4`'s random arrival branch,
+field event dispatch, exact panel layout/placement, the room-payment return to
+Hotel Options, and the full debt/package continuation still need source traces
+and independent Qt image dumps. This panel projection therefore remains
+`partial` in the hill ledger until those behaviors are connected and defended.
+No other field-exit profile is allowed to borrow Stoker's portrait or text
+aliases.
 
 ## 2. Gameplay subsystems
 

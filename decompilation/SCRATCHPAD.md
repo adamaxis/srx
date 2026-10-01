@@ -36,15 +36,62 @@ only in the offline graphics extractor and emits
 with 891 extracted, 5 empty, and 0 missing graphics resources.
 
 The separate Qt conversion target now has one
-`qt_runtime/dialogue_panel.*` projection over the converted runner
-conversation graph. It carries actor identity, source text segments, page and
-`< MORE >` state, subject/payment commands, fees, return state, and explicit
-source-boundary reasons. It deliberately leaves common prompt labels and
-untraced runner portraits unbound; it does not invent a Stoker text table or
-duplicate the converted dispatch state. `shadowrun_ghidra_dialogue_panel` and
-the ROM-backed `shadowrun_graphics` test pass. The live field interaction still
-needs the Stoker prompt text records, panel shell layout, event trigger, and
-full return transition before this hill can be defended with a Qt image dump.
+`qt_runtime/dialogue_panel.*` projection over the converted runner and field
+NPC conversation graphs. It carries actor identity, source text segments, page
+and `< MORE >` state, subject/payment commands, fees, return state, and
+explicit source-boundary reasons. It deliberately leaves common prompt labels
+and untraced runner portraits unbound; it does not duplicate converted
+dispatch state. `shadowrun_ghidra_dialogue_panel` and the ROM-backed
+`shadowrun_graphics` test pass. The Stoker prompt records and direct text
+catalog are now source-bound; the live field trigger, panel layout, and full
+return transition remain open before this hill can be defended with a Qt image
+dump.
+
+### Stoker prompt-record and direct-text pass: 2026-10-01
+
+The common mode-text routine at `0x1F3C4` is a variable-length prompt reader,
+not a fixed three-string structure. It reads a title pointer, up to three
+visible option pointers, and then consumes the command records that follow the
+present options. A `FFFFFFFF` option pointer is the source sentinel for a
+page with no visible choice; it is not an empty text asset. The Stoker records
+now traced are:
+
+```text
+F4AA0  arrival title -> <MORE> -> resolve-arrival branch
+F4AB4  manager greeting -> crash / leave -> room-offer or leave notice
+F4ACC  street ambush sentinel page
+F4AD4  room offer -> pay / leave -> paid-room or insufficient-funds page
+F4AEC  package handoff sentinel page
+F4AF4  package question sentinel page
+F4AFC  arrival title -> <MORE> -> F4B10
+F4B10  manager + package -> crash / leave / collect-package
+F4B2C  leave notice sentinel page
+```
+
+The debt question at `0xF4E8C` adds the source options for paying Michael or
+asking about the Jump House. Commands `0x213CA`, `0x213E2`, `0x213FA`, and
+`0x21458` now have their typed panel targets and known state mutations
+documented; the post-debt package sequence remains an explicit source
+boundary. The `0x249C4` arrival branch is also recorded as a real random
+choice: ordinary rolls select `F4AB4`, while the rare effect-qualified path
+selects `F4ACC`.
+
+The offline importer reads each source text stream with its 0x80-family page
+separators intact and emits one direct catalog,
+`assets/dialogue/stoker-motel.tsv`, under `dialogue.stoker.motel`. The Qt
+conversion resolves those aliases through `DialogueTextCatalog` and projects
+the typed `StokerMotelPromptView` through the same `dialogue_panel.*` contract
+used by recruited runners. The panel carries field-NPC identity, Stoker's
+portrait alias, options, `<MORE>` state, field return state, and an explicit
+`stoker_source_boundary` command when conversion is incomplete. No ROM pointer
+or Genesis command number is stored in the runtime panel.
+
+This is source-bound conversion coverage, not a defended hill. The next work
+is the field event trigger and screen layout, independent Qt image dumps for
+the Stoker pages, the random arrival effect integration, the room-payment
+return to Hotel Options, and the complete debt/package continuation. If a
+needed label or transition cannot be found, it is a conversion-audit failure,
+not permission to invent a new runtime routine.
 
 ### Field scene initialization audit: 2026-09-30
 

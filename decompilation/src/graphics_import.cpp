@@ -522,6 +522,38 @@ GenesisFieldMenuLabels read_genesis_field_menu_labels(
             "Genesis Power field-menu label is truncated")};
 }
 
+std::vector<std::string> read_genesis_dialogue_segments(
+    const std::vector<std::uint8_t>& rom, const std::size_t source_offset) {
+    if (source_offset >= rom.size()) {
+        throw std::out_of_range("Genesis dialogue text starts outside ROM");
+    }
+
+    std::vector<std::string> result;
+    std::string segment;
+    for (std::size_t offset = source_offset; offset < rom.size(); ++offset) {
+        const auto byte = rom[offset];
+        if (byte == 0xFFU) {
+            if (!segment.empty()) {
+                result.push_back(std::move(segment));
+            }
+            return result;
+        }
+        if ((byte & 0x80U) != 0U) {
+            if (!segment.empty()) {
+                result.push_back(std::move(segment));
+                segment.clear();
+            }
+            continue;
+        }
+        if (byte < 0x20U || byte > 0x7EU) {
+            throw std::runtime_error(
+                "Genesis dialogue text contains an unsupported byte");
+        }
+        segment.push_back(static_cast<char>(byte));
+    }
+    throw std::out_of_range("Genesis dialogue text has no terminator");
+}
+
 static void fill_grayscale_entity_assets(native::NativePortAssets& assets);
 
 GenesisFieldEntityTemplate read_genesis_field_entity_template(

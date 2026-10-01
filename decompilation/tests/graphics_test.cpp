@@ -78,6 +78,22 @@ int main() {
         [](const auto& pixel) { return pixel.alpha != 0U; });
     assert(stoker_opaque > 500U);
 
+    const auto stoker_arrival_text =
+        read_genesis_dialogue_segments(rom, 0x1167EBU);
+    assert((stoker_arrival_text ==
+            std::vector<std::string>{
+                "<The battered sign reads Stoker's Coffin Motel.",
+                "Motels like these are cheap, each room only large enough to fit a small bed.",
+                "Dumps like these tend to attract the dregs of humanity.>"}));
+    const auto stoker_more_text =
+        read_genesis_dialogue_segments(rom, 0x0FE5BFU);
+    assert(stoker_more_text.size() == 1U &&
+           stoker_more_text[0].find("< MORE >") != std::string::npos);
+    const auto stoker_package_option =
+        read_genesis_dialogue_segments(rom, 0x103A55U);
+    assert((stoker_package_option ==
+            std::vector<std::string>{"I'm here to pick up Michael's stuff."}));
+
     const auto field_tile = decode_genesis_tile(
         rom.data() + 0x166B82, 32);
     assert(field_tile.pixels[0] == 0);
