@@ -417,6 +417,13 @@ int main() {
             {static_cast<std::int8_t>(0xFF), 1, -1}) != 0x2000U) {
         return 25;
     }
+    if (use_command_overview_alternate_icon_palette({0U, 3U, 0}) ||
+        !use_command_overview_alternate_icon_palette({6U, 2U, -1}) ||
+        !use_command_overview_alternate_icon_palette({14U, 1U, 0}) ||
+        use_command_overview_alternate_icon_palette({5U, 1U, -1}) ||
+        !use_command_overview_alternate_icon_palette({6U, 1U, -1})) {
+        return 58;
+    }
 
     CommandOverviewActionRefreshState action_state{3U, 2U, 0U, false, 0x01U};
     std::vector<int> action_order;

@@ -456,6 +456,21 @@ native::NativeImage read_native_image(std::istream& input) {
 
 } // namespace
 
+std::array<std::string, 7> read_genesis_command_overview_labels(
+    const std::vector<std::uint8_t>& rom) {
+    std::array<std::string, 7> result{};
+    result[0] = read_genesis_menu_text(
+        rom, 0xD1D28U, 0x12U,
+        "Genesis command-overview Inventory label is truncated");
+    result[1] = result[0];
+    for (std::size_t selector = 2U; selector < result.size(); ++selector) {
+        result[selector] = read_genesis_menu_text(
+            rom, 0xD1D3AU + (selector - 2U) * 0x12U, 0x12U,
+            "Genesis command-overview label is truncated");
+    }
+    return result;
+}
+
 static void fill_grayscale_entity_assets(native::NativePortAssets& assets);
 
 GenesisFieldEntityTemplate read_genesis_field_entity_template(

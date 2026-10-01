@@ -163,9 +163,12 @@ geometry, the typed-record-derived overview fields, inventory boxes/icons/art,
 source command-tab focus blocks, selected-cell equipment overlays, and the
 source-derived status strip are presented at their reviewed positions. The
 diagnostic `--field-command-dump` exercises that same Start edge and writes the
-resulting 320x224 frame. The command-label table is still an explicit resource
-gap, and Clips, Attributes, Cyberware, Magic, and Pocket Secretary still need
-their source handlers connected; this hill is therefore partial, not defended.
+resulting 320x224 frame. The command, archetype, runner, status, and item text
+catalog is now extracted from the reviewed ROM tables into the direct
+`menu.field.text` resource and rendered with the extracted menu font. Clips,
+Attributes, Cyberware, Magic, and Pocket Secretary still need their source
+handlers and action-detail resources connected; this hill is therefore
+partial, not defended.
 The negative `+0x56` special attack branch and the field combat consumers of
 these values remain explicitly incomplete.
 

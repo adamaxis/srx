@@ -165,6 +165,26 @@ std::uint16_t select_hud_glyph_attribute_flags(
                : 0x6000U;
 }
 
+bool use_command_overview_alternate_icon_palette(
+    const HudGlyphAttributeInput& input) {
+    // This is the source 0x3602 branch expressed as a typed predicate. It is
+    // intentionally separate from the glyph attribute word: the host uses
+    // the result to choose one of two extracted icon variants.
+    if (input.action_code == 0) {
+        return false;
+    }
+    if (input.class_code >= 2) {
+        return true;
+    }
+    if (input.equipped_slot >= 0) {
+        return input.action_code < 15;
+    }
+    if (input.action_code < 6) {
+        return false;
+    }
+    return true;
+}
+
 namespace {
 
 constexpr std::array<std::uint32_t, 50> kInventoryGlyphSources{{

@@ -198,6 +198,12 @@ struct HudGlyphAttributeInput {
 std::uint16_t select_hud_glyph_attribute_flags(
     const HudGlyphAttributeInput& input);
 
+// ROM 0x3602 chooses the alternate command-overview inventory icon table
+// from the same three live-record bytes. The Qt host selects between the two
+// already-extracted icon files from this source-derived result.
+bool use_command_overview_alternate_icon_palette(
+    const HudGlyphAttributeInput& input);
+
 struct InventoryGlyphSlot {
     // Byte at *FFFC04 + 0x66 + i. Zero selects the empty glyph at 0x34F8.
     std::uint8_t item_code = 0;

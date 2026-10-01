@@ -76,6 +76,10 @@ int main() {
     assert(field_tile.pixels[3] == 0x0C);
     assert(field_tile.pixels[8] == 0x0D);
     assert(field_tile.pixels[9] == 0x0D);
+    const auto command_labels = read_genesis_command_overview_labels(rom);
+    assert((command_labels == std::array<std::string, 7>{
+        "Inventory", "Inventory", "Clips", "Attributes/Skills",
+        "Cyberware", "Magic", "Pocket Secretary"}));
     const auto entity_template =
         read_genesis_field_entity_template(rom);
     assert(entity_template.record_offset == 0x7291A);

@@ -98,6 +98,59 @@ void write_host_record(const std::vector<std::uint8_t>& bytes,
     }
 }
 
+void write_field_menu_text_catalog(
+    const std::vector<std::uint8_t>& rom,
+    const std::filesystem::path& root,
+    const shadowrun::native::NativePortAssets& assets) {
+    const auto path = root / "menu" / "field" / "text.tsv";
+    std::filesystem::create_directories(path.parent_path());
+    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    if (!output) {
+        throw std::runtime_error("cannot create field menu text catalog: " +
+                                 path.string());
+    }
+    output << "key\ttext\n";
+    const auto emit = [&output](const std::string& key,
+                                const std::string& text) {
+        if (text.find_first_of("\t\r\n") != std::string::npos) {
+            throw std::runtime_error(
+                "field menu text contains a TSV control character: " + key);
+        }
+        // Keep an empty source string visible in the generated resource
+        // instead of emitting a trailing tab that is easy to lose in a
+        // review or trim accidentally. The runtime maps this token back to
+        // the exact empty source value.
+        output << key << '\t' << (text.empty() ? "\"\"" : text) << '\n';
+    };
+
+    const auto command_labels =
+        shadowrun::graphics::read_genesis_command_overview_labels(rom);
+    for (std::size_t index = 0; index < command_labels.size(); ++index) {
+        emit("command." + std::to_string(index), command_labels[index]);
+    }
+    for (std::size_t index = 0; index < assets.intro.archetypes.size();
+         ++index) {
+        emit("archetype." + std::to_string(index),
+             assets.intro.archetypes[index]);
+    }
+    for (std::size_t index = 0; index < assets.field_menu_runner_names.size();
+         ++index) {
+        emit("runner." + std::to_string(index),
+             assets.field_menu_runner_names[index]);
+    }
+    for (std::size_t index = 0; index < assets.field_menu_status_names.size();
+         ++index) {
+        emit("status." + std::to_string(index),
+             assets.field_menu_status_names[index]);
+    }
+    for (std::size_t index = 0; index < assets.inventory_items.size(); ++index) {
+        emit("item." + std::to_string(index + 1U),
+             assets.inventory_items[index].name);
+        emit("item-category." + std::to_string(index + 1U),
+             assets.inventory_items[index].category);
+    }
+}
+
 struct DecodedSourceByteStream {
     std::vector<std::uint8_t> bytes;
     std::size_t source_end = 0;
@@ -584,13 +637,17 @@ void write_asset_readme(const std::filesystem::path& root) {
     readme << "# Direct Shadowrun assets\n\n"
            << "Generated from the US Genesis ROM by "
               "shadowrun_graphics_extract --all-assets.\n\n"
-           << "The native runtime consumes these individually named BMPs and "
-              "native/state.bin and resources.tsv directly. This tree deliberately contains "
+           << "The native and Ghidra-conversion runtimes consume these "
+              "individually named BMPs, direct text records, native/state.bin, "
+              "and resources.tsv directly. This tree deliberately contains "
               "semantic folders: menu, intro, field, and item categories. "
               "Static intro plates and independently extracted intro sprites "
               "remain separate; "
               "it does not contain full-screen flipbook samples or an aggregate "
-              "serializer. Item art is grouped under items/weapons, "
+              "serializer. The field command overview's ROM-derived command, "
+              "archetype, runner, status, and item strings are kept in "
+              "`menu/field/text.tsv` and exposed through the `menu.field.text` "
+              "manifest alias. Item art is grouped under items/weapons, "
               "items/first-aid, items/miscellaneous, items/magic, and items/armor. "
               "Separately traced cinematic resources belong under movies/<scene>; "
               "they must not be mixed into intro or field assets.\n\n"
@@ -750,6 +807,20 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
     emit_generated_state_row(
         "records.field.mode.2.event.table",
         "records/field/mode-2-event-table.bin");
+    const auto emit_generated_resource_row = [&output, &aliases, &root](
+                                                const char* alias,
+                                                const char* relative,
+                                                const char* kind) {
+        if (!std::filesystem::is_regular_file(root / relative)) {
+            throw std::runtime_error("generated runtime resource is missing: " +
+                                     std::string(relative));
+        }
+        if (aliases.insert(alias).second) {
+            output << alias << '\t' << relative << '\t' << kind << "\t0\t0\n";
+        }
+    };
+    emit_generated_resource_row(
+        "menu.field.text", "menu/field/text.tsv", "text");
     std::string line;
     std::getline(catalog, line);
     while (std::getline(catalog, line)) {
@@ -803,6 +874,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     std::size_t missing = 0;
     std::size_t blank = 0;
     const auto assets = shadowrun::graphics::decode_genesis_native_assets(rom);
+    write_field_menu_text_catalog(rom, root, assets);
     const auto write = [&](const std::string& name,
                            const shadowrun::native::NativeImage& image,
                            const std::string& kind,

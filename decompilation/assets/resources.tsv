@@ -19,6 +19,7 @@ records.field.entity.movement.direction.table	records/field/entity-movement-dire
 records.field.entity.controller.heading.table	records/field/entity-controller-heading-table.bin	state	0	0
 records.field.entity.movement.route.table	records/field/entity-movement-route-table.bin	state	0	0
 records.field.entity.collision.probe.offset.banks	records/field/entity-collision-probe-offset-banks.bin	state	0	0
+menu.field.text	menu/field/text.tsv	text	0	0
 title.background	title/background.bmp	image	0	0
 title.circuit.background.0	title/circuit-background-0.bmp	image	0	0
 title.circuit.background.1	title/circuit-background-1.bmp	image	0	0

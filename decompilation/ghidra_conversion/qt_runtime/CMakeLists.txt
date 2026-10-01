@@ -7,6 +7,7 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets)
 add_executable(shadowrun_ghidra_conversion_qt
     src/ghidra_conversion_qt_main.cpp
     src/field_scene_runtime.cpp
+    src/field_menu_text_catalog.cpp
     src/field_command_overview_bridge.cpp
     src/genesis_image_compositor.cpp
 )
@@ -47,6 +48,19 @@ target_link_libraries(shadowrun_ghidra_field_command_overview_bridge_test
     PRIVATE shadowrun_ghidra_conversion_runtime)
 add_test(NAME shadowrun_ghidra_field_command_overview_bridge
          COMMAND shadowrun_ghidra_field_command_overview_bridge_test)
+
+add_executable(shadowrun_ghidra_field_menu_text_catalog_test
+    tests/field_menu_text_catalog_test.cpp
+    src/field_menu_text_catalog.cpp
+)
+target_include_directories(shadowrun_ghidra_field_menu_text_catalog_test
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_compile_definitions(shadowrun_ghidra_field_menu_text_catalog_test PRIVATE
+    SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets")
+target_link_libraries(shadowrun_ghidra_field_menu_text_catalog_test
+    PRIVATE shadowrun_ghidra_conversion_runtime)
+add_test(NAME shadowrun_ghidra_field_menu_text_catalog
+         COMMAND shadowrun_ghidra_field_menu_text_catalog_test)
 
 if (WIN32)
     find_program(SHADOWRUN_GHIDRA_QT_WINDEPLOYQT

@@ -78,6 +78,15 @@ std::string command_overview_item_alias(const std::uint8_t item_code,
            std::to_string(palette_variant);
 }
 
+bool command_overview_uses_alternate_icon_palette(
+    const RunnerRecordFields& record) {
+    return use_command_overview_alternate_icon_palette(
+        HudGlyphAttributeInput{
+            static_cast<std::int8_t>(record.equipped_item_code),
+            static_cast<std::int8_t>(record.archetype_index),
+            record.equipped_inventory_slot});
+}
+
 std::array<std::uint8_t, 4> field_sample_state_from_result(
     const std::uint32_t packed_state) {
     return {
@@ -338,7 +347,8 @@ bool FieldSceneRuntime::load_command_overview_assets(
     if (!load_image(catalog, kCommandOverviewBackgroundAlias,
                     command_overview_background_) ||
         !load_image(catalog, kCommandOverviewInventoryBoxesAlias,
-                    command_overview_inventory_boxes_)) {
+                    command_overview_inventory_boxes_) ||
+        !load_image(catalog, "menu.field.font", command_overview_font_)) {
         return false;
     }
 
@@ -927,6 +937,7 @@ bool FieldSceneRuntime::bootstrap(
     field_camera_alignment_ready_ = false;
     command_overview_.close();
     field_active_runner_record_ = RunnerRecordFields{};
+    field_menu_text_ = FieldMenuTextCatalog{};
     field_joshua_archetype_selection_ = 0U;
     field_hud_slots_ = {};
     field_entity_animation_ = {};
@@ -971,6 +982,17 @@ bool FieldSceneRuntime::bootstrap(
         field_hud_slots_[0].equipped_item_code = record.equipped_item_code;
         field_hud_slots_[0].ammo_rounds = record.ammo_rounds;
     }
+
+    const auto menu_text = load_field_menu_text_catalog(
+        startup_state.asset_catalog.catalog);
+    if (!menu_text.complete()) {
+        failure_ = menu_text.errors.empty()
+                       ? "field menu text catalog is incomplete"
+                       : menu_text.errors.front();
+        source_boundary("field.bootstrap.menu_text_missing");
+        return false;
+    }
+    field_menu_text_ = menu_text.catalog;
 
     if (!load_image(startup_state.asset_catalog.catalog,
                     kInitialFieldMapAlias, field_map_) ||
@@ -1548,6 +1570,53 @@ void FieldSceneRuntime::paint_field_hud_overlays(QPainter& painter) const {
     }
 }
 
+void FieldSceneRuntime::draw_command_overview_text(
+    QPainter& painter, const int x, const int y,
+    const std::string_view text) const {
+    if (command_overview_font_.isNull() || command_overview_font_.width() < 8 ||
+        command_overview_font_.height() < 8) {
+        return;
+    }
+    auto cursor = x;
+    for (const auto character : text) {
+        const auto code = static_cast<unsigned char>(character);
+        if (code < 0x20U || code > 0x7FU) {
+            cursor += 8;
+            continue;
+        }
+        const auto glyph = static_cast<int>(code - 0x20U);
+        const auto source_x = (glyph % 16) * 8;
+        const auto source_y = (glyph / 16) * 8;
+        if (source_x + 8 > command_overview_font_.width() ||
+            source_y + 8 > command_overview_font_.height()) {
+            cursor += 8;
+            continue;
+        }
+        QImage tinted_glyph(8, 8, QImage::Format_ARGB32_Premultiplied);
+        tinted_glyph.fill(Qt::transparent);
+        for (int glyph_y = 0; glyph_y < 8; ++glyph_y) {
+            for (int glyph_x = 0; glyph_x < 8; ++glyph_x) {
+                const auto source_pixel = command_overview_font_.pixelColor(
+                    source_x + glyph_x, source_y + glyph_y);
+                const auto coverage = std::max(
+                    {source_pixel.red(), source_pixel.green(),
+                     source_pixel.blue()});
+                if (source_pixel.alpha() == 0 || coverage == 0) {
+                    continue;
+                }
+                const auto alpha = static_cast<int>(
+                    (static_cast<std::uint32_t>(source_pixel.alpha()) *
+                     static_cast<std::uint32_t>(coverage)) /
+                    255U);
+                tinted_glyph.setPixelColor(
+                    glyph_x, glyph_y, QColor(0, 255, 0, alpha));
+            }
+        }
+        painter.drawImage(cursor, y, tinted_glyph);
+        cursor += 8;
+    }
+}
+
 void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     painter.fillRect(0, 0, 320, 224, Qt::black);
     if (!command_overview_.open()) {
@@ -1569,11 +1638,67 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             command_overview_portraits_[field_joshua_archetype_selection_]);
     }
 
+    draw_command_overview_text(painter, 128, 8,
+                               field_menu_text_.runner_names[0]);
+
     // 0x11928/0x11AE4 places the five-state posture bar at CAAC (176,168).
     const auto posture = std::min<std::size_t>(
         field_active_runner_record_.posture,
         command_overview_status_bars_.size() - 1U);
     painter.drawImage(176, 168, command_overview_status_bars_[posture]);
+    draw_command_overview_text(painter, 136, 176,
+                               field_menu_text_.status_names[posture]);
+
+    const auto& view = command_overview_.view();
+    if (view.source_state.primary_page >= 2U) {
+        std::string archetype;
+        switch (field_active_runner_record_.archetype_index) {
+        case 1U:
+            archetype = field_menu_text_.archetype_names[2] + " " +
+                        field_menu_text_.archetype_names[3];
+            break;
+        case 2U:
+            archetype = field_menu_text_.archetype_names[0];
+            break;
+        case 3U:
+            archetype = field_menu_text_.archetype_names[1];
+            break;
+        default:
+            break;
+        }
+        if (!archetype.empty()) {
+            draw_command_overview_text(painter, 128, 24, archetype);
+        }
+        draw_command_overview_text(painter, 128, 40, "Physical");
+        draw_command_overview_text(painter, 128, 48, "Mental");
+        draw_command_overview_text(
+            painter, 208, 40,
+            std::to_string(std::min<unsigned>(
+                100U, static_cast<unsigned>(
+                          field_active_runner_record_.delay_meter) * 10U)) +
+                "%");
+        draw_command_overview_text(
+            painter, 208, 48,
+            std::to_string(std::min<unsigned>(
+                100U, static_cast<unsigned>(
+                          field_active_runner_record_.behavior_meter) * 10U)) +
+                "%");
+    } else {
+        const auto slot = view.source_state.secondary_page * 2U +
+                          view.source_state.primary_page;
+        if (slot < field_active_runner_record_.inventory_item_codes.size()) {
+            const auto item_code =
+                field_active_runner_record_.inventory_item_codes[slot];
+            if (item_code >= 1U && item_code <= field_menu_text_.item_names.size()) {
+                draw_command_overview_text(
+                    painter, 128, 64,
+                    field_menu_text_.item_names[item_code - 1U]);
+                draw_command_overview_text(
+                    painter, 128, 72,
+                    field_menu_text_.item_categories[item_code - 1U]);
+            }
+        }
+    }
 
     // The source inventory is an 8-cell, two-column/four-row grid. Direct
     // item aliases are already palette-decoded; no Genesis VRAM or palette
@@ -1582,6 +1707,10 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         {{16, 120}}, {{56, 120}}, {{16, 144}}, {{56, 144}},
         {{16, 168}}, {{56, 168}}, {{16, 192}}, {{56, 192}},
     }};
+    const auto icon_variant = command_overview_uses_alternate_icon_palette(
+                                  field_active_runner_record_)
+                                  ? 1U
+                                  : 0U;
     for (std::size_t slot = 0;
          slot < field_active_runner_record_.inventory_item_codes.size();
          ++slot) {
@@ -1590,7 +1719,8 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         if (item_code == 0U || item_code > 50U) {
             continue;
         }
-        const auto& icon = command_overview_inventory_icons_[item_code - 1U][0];
+        const auto& icon =
+            command_overview_inventory_icons_[item_code - 1U][icon_variant];
         painter.drawImage(kInventoryIconPositions[slot][0],
                           kInventoryIconPositions[slot][1], icon);
     }
@@ -1623,7 +1753,6 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         }
     }
 
-    const auto& view = command_overview_.view();
     if (view.source_state.primary_page < 2U) {
         const auto x = 8 + static_cast<int>(
                               view.source_state.primary_page * 40U);
@@ -1635,6 +1764,11 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             view.source_state.primary_page - 2U);
         painter.drawImage(128 + static_cast<int>(focus_index * 24U), 184,
                           command_overview_focus_[focus_index]);
+    }
+    if (view.source_state.primary_page < field_menu_text_.command_labels.size()) {
+        draw_command_overview_text(
+            painter, 112, 200,
+            field_menu_text_.command_labels[view.source_state.primary_page]);
     }
 }
 

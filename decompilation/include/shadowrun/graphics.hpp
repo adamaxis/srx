@@ -169,6 +169,13 @@ std::vector<GenesisFieldEntityTemplate> read_genesis_recruited_roster(
 std::array<native::NativeInventoryItem, native::kNativeInventoryItemCount>
 read_genesis_inventory_catalog(const std::vector<std::uint8_t>& rom);
 
+// ROM 0x1170C supplies the command-overview table at 0xD1D3A while selectors
+// zero and one fall back to the Inventory record at 0xD1D28. Extract the
+// seven selector-visible labels as ordinary host text for the direct runtime
+// resource catalog; the conversion runtime never reads these ROM offsets.
+std::array<std::string, 7> read_genesis_command_overview_labels(
+    const std::vector<std::uint8_t>& rom);
+
 // ROM 0x11950 indexes this pointer table with the active record's +0x90
 // bitfield. Convert the FF-terminated Genesis strings into host text so the
 // native cyberware view has no ROM dependency at runtime.

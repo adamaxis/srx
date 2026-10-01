@@ -35,6 +35,7 @@
 #include <QImage>
 
 #include "field_command_overview_bridge.hpp"
+#include "field_menu_text_catalog.hpp"
 
 #include <array>
 #include <cstddef>
@@ -114,6 +115,8 @@ private:
     void paint_field_entity(QPainter& painter) const;
     void paint_field_hud_overlays(QPainter& painter) const;
     void paint_command_overview(QPainter& painter) const;
+    void draw_command_overview_text(QPainter& painter, int x, int y,
+                                    std::string_view text) const;
     void open_command_overview();
     bool load_command_overview_assets(const ConversionAssetCatalog& catalog);
     bool load_field_hud_overlays(const ConversionAssetCatalog& catalog);
@@ -146,7 +149,9 @@ private:
     QImage field_hud_;
     QImage command_overview_background_;
     QImage command_overview_inventory_boxes_;
+    QImage command_overview_font_;
     QImage command_overview_cursor_;
+    FieldMenuTextCatalog field_menu_text_{};
     std::array<QImage, 3> command_overview_portraits_{};
     std::array<QImage, 5> command_overview_focus_{};
     std::array<QImage, 5> command_overview_status_bars_{};
