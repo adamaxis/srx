@@ -608,9 +608,18 @@ source code draws the clip rows at `0x11B58`, then dispatches the selected row
 through the action branches at `0x11CCA`, `0x11DD2`, and `0x11FDE`.
 `0x12062` is the empty-clip gate. A row with no usable clip reaches the source
 error/result path; it must not silently refill, disappear, or become an
-equipped weapon. The exact item-specific effects and message timing remain
-`PENDING` until the branch writes and the corresponding message tables have
-been traced together.
+equipped weapon.
+
+The separate Qt conversion runtime now paints the complete source four-entry
+action row over the command-row location, including its trailing blank, so the
+ordinary five-button row cannot leak through under a Clips focus sprite.
+Executable QA walks every selector entry and wraparound, checks
+deselection/reselection without record mutation, compares the surrounding
+portrait/inventory/status shell while moving, and verifies reload confirmation
+and the `0x26` load increment. The converted reload path gates non-clip items,
+consumes one clip, clamps loaded ammunition to the extracted item capacity, and
+emits the source `Rock & Roll, chummers!!` result. Recruited-recipient trade
+presentation and an independent visual golden remain open.
 
 ### Attributes and skills: `0xD01C`
 

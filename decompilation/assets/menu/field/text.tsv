@@ -36,6 +36,30 @@ action.cannot-discard	Cannot discard
 action.cannot-trade	Cannot trade magic items!
 action.choice-no	No
 action.choice-yes	Yes
+clips.0	Reload
+clips.1	Trade
+clips.2	Distribute
+clips.3	Cancel
+clips.trade.0	Increase Clips
+clips.trade.1	Decrease Clips
+clips.trade.2	Trade Clips
+clips.trade.3	Change Recipient
+clips.title	"    CLIPS"
+clips.separator	"   [\\\\\\"
+clips.counter	"  Clips"
+clips.reload.0	You still have
+clips.reload.1	"  ammo left."
+clips.reload.2	"   Reload?"
+clips.success.0	Rock & Roll,
+clips.success.1	" chummers!!"
+clips.out-of-ammo.0	"  is out of"
+clips.out-of-ammo.1	" ammo clips!"
+clips.item-no-clips.0	This item
+clips.item-no-clips.1	" does not"
+clips.item-no-clips.2	use clips!!
+clips.no-party.0	" You have no"
+clips.no-party.1	party members
+clips.no-party.2	to trade with.
 power.0	Meager
 power.1	Minor
 power.2	Very Low

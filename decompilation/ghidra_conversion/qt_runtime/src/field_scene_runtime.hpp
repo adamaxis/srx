@@ -40,6 +40,7 @@
 #include <QImage>
 
 #include "field_command_overview_bridge.hpp"
+#include "field_clips_menu_runtime.hpp"
 #include "field_dialogue_runtime.hpp"
 #include "field_menu_text_catalog.hpp"
 
@@ -105,6 +106,21 @@ public:
     bool discard_confirmation_yes() const noexcept {
         return command_overview_discard_confirmation_.selected_option == 0U;
     }
+    bool clips_menu_open() const noexcept {
+        return command_overview_clips_.is_open();
+    }
+    std::uint8_t clips_menu_selection() const noexcept {
+        return command_overview_clips_.selection();
+    }
+    bool clips_reload_confirmation_open() const noexcept {
+        return command_overview_clips_.reload_confirmation_open();
+    }
+    bool clips_reload_confirmation_yes() const noexcept {
+        return command_overview_clips_.reload_confirmation_yes();
+    }
+    ClipsMenuMessage clips_menu_message() const noexcept {
+        return command_overview_clips_.message();
+    }
 
     bool ready() const noexcept { return ready_; }
     bool field_entity_visible() const noexcept {
@@ -150,6 +166,7 @@ private:
     void paint_field_entity(QPainter& painter) const;
     void paint_field_hud_overlays(QPainter& painter) const;
     void paint_command_overview(QPainter& painter) const;
+    void paint_command_overview_clips(QPainter& painter) const;
     void draw_command_overview_text(QPainter& painter, int x, int y,
                                     std::string_view text) const;
     void refresh_command_overview_combat_bars();
@@ -157,7 +174,9 @@ private:
     void refresh_field_hud_runner_slot();
     void advance_command_overview_inventory_action(
         std::uint16_t controller_events);
+    void advance_command_overview_clips(std::uint16_t controller_events);
     void begin_command_overview_inventory_action();
+    void begin_command_overview_clips();
     void dispatch_command_overview_inventory_action(
         const InventoryActionResult& result);
     void advance_command_overview_discard_confirmation(
@@ -204,6 +223,8 @@ private:
     std::array<QImage, 2> command_overview_selected_cells_{};
     QImage command_overview_action_background_;
     std::array<QImage, 4> command_overview_action_focus_{};
+    std::array<QImage, 4> command_overview_clips_focus_{};
+    std::array<QImage, 4> command_overview_clips_trade_focus_{};
     std::array<std::array<QImage, 2>, 50> command_overview_inventory_icons_{};
     std::array<QImage, 50> command_overview_item_details_{};
     std::array<QImage, 14> command_overview_damage_bars_{};
@@ -218,6 +239,7 @@ private:
     std::optional<SelectedInventoryItem>
         command_overview_selected_inventory_item_;
     MenuConfirmationState command_overview_discard_confirmation_{};
+    FieldClipsMenuRuntime command_overview_clips_{};
     std::string command_overview_action_message_;
     bool command_overview_inventory_action_active_ = false;
     bool command_overview_discard_confirmation_active_ = false;

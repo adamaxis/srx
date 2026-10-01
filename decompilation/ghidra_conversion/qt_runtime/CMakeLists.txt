@@ -7,6 +7,7 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets)
 add_executable(shadowrun_ghidra_conversion_qt
     src/ghidra_conversion_qt_main.cpp
     src/field_scene_runtime.cpp
+    src/field_clips_menu_runtime.cpp
     src/field_menu_text_catalog.cpp
     src/field_command_overview_bridge.cpp
     src/genesis_image_compositor.cpp
@@ -44,6 +45,14 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_action_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_action_qa PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+add_test(NAME shadowrun_ghidra_conversion_qt_field_clips_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-clips-dump
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-clips-qa")
+set_tests_properties(shadowrun_ghidra_conversion_qt_field_clips_qa PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Keep the source-state and arithmetic contract in the same CTest suite as
 # the executable walk. The Qt QA test proves wiring/pixels; this leaf test
 # proves selector wrap, cancellation, equipment/ammo math, discard gates, and
@@ -55,6 +64,17 @@ target_link_libraries(shadowrun_ghidra_inventory_action_conversion_test
     PRIVATE shadowrun_ghidra_conversion_runtime)
 add_test(NAME shadowrun_ghidra_inventory_action_conversion
          COMMAND shadowrun_ghidra_inventory_action_conversion_test)
+
+add_executable(shadowrun_ghidra_field_clips_menu_runtime_test
+    tests/field_clips_menu_runtime_test.cpp
+    src/field_clips_menu_runtime.cpp
+)
+target_include_directories(shadowrun_ghidra_field_clips_menu_runtime_test
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_link_libraries(shadowrun_ghidra_field_clips_menu_runtime_test
+    PRIVATE shadowrun_ghidra_conversion_runtime)
+add_test(NAME shadowrun_ghidra_field_clips_menu_runtime
+         COMMAND shadowrun_ghidra_field_clips_menu_runtime_test)
 
 add_executable(shadowrun_ghidra_genesis_image_compositor_test
     tests/genesis_image_compositor_test.cpp

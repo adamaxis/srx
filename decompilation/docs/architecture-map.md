@@ -379,8 +379,21 @@ source-derived positions. The normal equipment-detail seam passes the typed
 into that presentation, so the item art, phase-value tiles, Damage/Power,
 Wpns/Guns, and Atk/Def rows are not recomputed by Qt. The label catalog is
 generated offline at the ROM text-table boundary as `menu.field.text`; the
-handlers and action-detail data for Clips, Attributes, Cyberware, Magic, and
-Pocket Secretary remain explicit conversion work.
+action-detail data for Attributes, Cyberware, Magic, and Pocket Secretary
+remain explicit conversion work. The top-level Clips branch is now connected
+through a separate `FieldClipsMenuRuntime`: its four-entry selector,
+reload-confirmation state, typed ammunition mutation, and source row
+replacement are presented by `FieldSceneRuntime` without adding a second
+menu state machine. The nested recruited-recipient trade presentation remains
+an explicit boundary until roster records are connected.
+
+The Clips branch also establishes the menu verification shape for later
+panels. Selection movement is tested across every entry and the wrap edge,
+deselection/reselection is tested without record mutation, and a frame-shell
+comparison ignores only the source action row and its changing caption. This
+catches a focus sprite painted over a stale five-button row, or a selector
+transition that accidentally changes the portrait, inventory, status bars, or
+other surrounding panel state.
 
 ### IntroDirector
 

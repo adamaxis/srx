@@ -226,6 +226,26 @@ struct GenesisFieldMenuActionText {
 GenesisFieldMenuActionText read_genesis_field_menu_action_text(
     const std::vector<std::uint8_t>& rom);
 
+// ROM 0x11B58/0x11E7E select the four-entry Clips rows at 0xD1DDC and
+// 0xD1E24.  The Clips screen also uses these source text records for its
+// title, counter label, reload prompt, and feedback lines.  Extract them once
+// for the host catalog; the Qt runtime never retains these ROM offsets.
+struct GenesisFieldMenuClipsText {
+    std::array<std::string, 4> commands;
+    std::array<std::string, 4> trade_commands;
+    std::string title;
+    std::string separator;
+    std::string counter_label;
+    std::array<std::string, 3> reload_prompt;
+    std::array<std::string, 2> reload_success;
+    std::array<std::string, 2> out_of_ammo;
+    std::array<std::string, 3> item_does_not_use_clips;
+    std::array<std::string, 3> no_party_members;
+};
+
+GenesisFieldMenuClipsText read_genesis_field_menu_clips_text(
+    const std::vector<std::uint8_t>& rom);
+
 // Field/dialogue text records use printable bytes, 0x80-0xFE segment
 // separators, and 0xFF record termination. Extract the complete segments so
 // the host catalog can preserve source page boundaries instead of flattening

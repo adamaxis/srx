@@ -43,6 +43,19 @@ int main() {
         text.catalog.action_cannot_trade != "Cannot trade magic items!" ||
         text.catalog.action_choice_no != "No" ||
         text.catalog.action_choice_yes != "Yes" ||
+        text.catalog.clips_commands[0] != "Reload" ||
+        text.catalog.clips_commands[2] != "Distribute" ||
+        text.catalog.clips_trade_commands[3] != "Change Recipient" ||
+        text.catalog.clips_title != "    CLIPS" ||
+        text.catalog.clips_separator !=
+            std::string("   [") + std::string(6U, static_cast<char>(92)) ||
+        text.catalog.clips_counter_label != "  Clips" ||
+        text.catalog.clips_reload_prompt[2] != "   Reload?" ||
+        text.catalog.clips_reload_success[1] != " chummers!!" ||
+        text.catalog.clips_out_of_ammo[1] != " ammo clips!" ||
+        text.catalog.clips_item_no_clips[1] != " does not" ||
+        text.catalog.clips_no_party[0] != " You have no" ||
+        text.catalog.clips_no_party[2] != "to trade with." ||
         text.catalog.armor_labels[1][0] != "   Armor    " ||
         text.catalog.armor_labels[1][1] != "  Clothing  " ||
         text.catalog.power_labels[0].empty() ||

@@ -1,5 +1,6 @@
 #include "shadowrun_ghidra/core/timing_conversion.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
+#include "shadowrun_ghidra/menus/clips_menu_conversion.hpp"
 #include "shadowrun_ghidra/integration/startup_integration_conversion.hpp"
 #include "shadowrun_ghidra/title_intro/title_loop_conversion.hpp"
 #include "shadowrun_ghidra/title_intro/title_setup_conversion.hpp"
@@ -58,6 +59,7 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
                    " [--field-smoke-move-right] [--field-dump <file>]"
                    " [--field-command-dump <file>]"
                    " [--field-action-dump <output-dir>]"
+                   " [--field-clips-dump <output-dir>]"
                    " [--field-command-reopen-smoke]"
                    " [--field-dialogue-dump <prompt> <file>]"
                    " [--boot-dump-frame <frame> <file>]"
@@ -85,6 +87,10 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
             continue;
         }
         if (argument == "--field-action-dump" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-clips-dump" && index + 1 < argc) {
             ++index;
             continue;
         }
@@ -2046,6 +2052,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_dump_path;
         std::optional<std::filesystem::path> field_command_dump_path;
         std::optional<std::filesystem::path> field_action_dump_path;
+        std::optional<std::filesystem::path> field_clips_dump_path;
         std::optional<std::string> field_dialogue_dump_prompt;
         std::optional<std::filesystem::path> field_dialogue_dump_path;
         std::optional<std::uint32_t> boot_dump_frame;
@@ -2063,6 +2070,7 @@ int main(int argc, char** argv) {
                        " [--field-smoke-move-right] [--field-dump <file>]"
                        " [--field-command-dump <file>]"
                        " [--field-action-dump <output-dir>]"
+                       " [--field-clips-dump <output-dir>]"
                        " [--field-command-reopen-smoke]"
                        " [--field-dialogue-dump <prompt> <file>]"
                        " [--boot-dump-frame <frame> <file>]"
@@ -2100,6 +2108,12 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_action_dump_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-clips-dump" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_clips_dump_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-dialogue-dump" &&
@@ -2587,6 +2601,299 @@ int main(int argc, char** argv) {
                 }
                 std::cout << "field_action_dump=written path="
                           << field_action_dump_path->string() << "\n";
+                return 0;
+            }
+            if (field_clips_dump_path.has_value()) {
+                std::filesystem::create_directories(*field_clips_dump_path);
+                const auto render_scene = [&] {
+                    QImage clips_scene(kSceneWidth, kSceneHeight,
+                                       QImage::Format_RGB32);
+                    clips_scene.fill(Qt::black);
+                    QPainter clips_painter(&clips_scene);
+                    field_scene.paint(clips_painter);
+                    clips_painter.end();
+                    return clips_scene;
+                };
+                const auto save_scene = [&](const std::string_view name,
+                                            const QImage& scene) {
+                    return scene.save(QString::fromStdWString(
+                        ((*field_clips_dump_path) /
+                         (std::string(name) + ".bmp"))
+                            .wstring()));
+                };
+                const auto write_scene = [&](const std::string_view name) {
+                    return save_scene(name, render_scene());
+                };
+                const auto press = [&](const std::uint8_t port_byte) {
+                    field_scene.set_controller_port_byte(port_byte);
+                    field_scene.advance_frame();
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                };
+                const auto region_matches = [](const QImage& scene,
+                                               const QImage& asset,
+                                               const int origin_x,
+                                               const int origin_y) {
+                    if (asset.isNull() || origin_x < 0 || origin_y < 0 ||
+                        origin_x + asset.width() > scene.width() ||
+                        origin_y + asset.height() > scene.height()) {
+                        return false;
+                    }
+                    for (int y = 0; y < asset.height(); ++y) {
+                        for (int x = 0; x < asset.width(); ++x) {
+                            if (scene.pixel(origin_x + x, origin_y + y) !=
+                                asset.pixel(x, y)) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                };
+                const auto direct_asset = [&](const std::string& name) {
+                    return QImage(QString::fromStdWString(
+                        (asset_root / "menu" / "field" / name).wstring()));
+                };
+                const auto same_clip_record =
+                    [](const RunnerRecordFields& left,
+                       const RunnerRecordFields& right) {
+                        return left.ammo_clips == right.ammo_clips &&
+                               left.ammo_rounds == right.ammo_rounds &&
+                               left.equipped_inventory_slot ==
+                                   right.equipped_inventory_slot &&
+                               left.equipped_item_code ==
+                                   right.equipped_item_code;
+                    };
+                const auto clips_row_matches =
+                    [&](const QImage& scene, const QImage& focus,
+                        const std::size_t focus_index) {
+                        const auto background = direct_asset(
+                            "action-background.bmp");
+                        if (background.isNull() || focus.isNull() ||
+                            focus_index >= 4U) {
+                            return false;
+                        }
+                        auto expected = background.convertToFormat(
+                            QImage::Format_RGB32);
+                        QPainter expected_painter(&expected);
+                        expected_painter.drawImage(
+                            8 + static_cast<int>(focus_index * 24U), 0,
+                            focus);
+                        expected_painter.end();
+                        return region_matches(scene, expected, 120, 184);
+                    };
+                const auto clips_shell_matches =
+                    [](const QImage& expected, const QImage& actual) {
+                        if (expected.size() != actual.size()) {
+                            return false;
+                        }
+                        // Selection changes only the source action row and
+                        // the command caption. Every other pixel in the
+                        // Clips frame (portrait, inventory cells, status
+                        // bars, title, counter, and surrounding shell) must
+                        // remain stable while the selector moves.
+                        for (int y = 0; y < expected.height(); ++y) {
+                            for (int x = 0; x < expected.width(); ++x) {
+                                const auto in_action_row =
+                                    x >= 120 && x < 240 && y >= 184 &&
+                                    y < 200;
+                                const auto in_command_caption =
+                                    x >= 104 && x < 264 && y >= 200 &&
+                                    y < 208;
+                                if (in_action_row || in_command_caption) {
+                                    continue;
+                                }
+                                if (expected.pixel(x, y) != actual.pixel(x, y)) {
+                                    return false;
+                                }
+                            }
+                        }
+                        return true;
+                    };
+
+                const auto clips_focus = std::array<QImage, 4>{
+                    direct_asset("clips-focus-0.bmp"),
+                    direct_asset("clips-focus-1.bmp"),
+                    direct_asset("clips-focus-2.bmp"),
+                    direct_asset("clips-focus-3.bmp")};
+                for (const auto& focus : clips_focus) {
+                    if (focus.isNull()) {
+                        std::cerr << "field clips dump: direct Clips focus "
+                                     "asset is missing\n";
+                        return 3;
+                    }
+                }
+                const auto initial_record = field_scene.active_runner_record();
+                if (!field_scene.open_command_overview_for_dump()) {
+                    std::cerr << "field clips dump: command overview did not "
+                                 "open\n";
+                    return 3;
+                }
+                for (int move = 0;
+                     move < 7 &&
+                     field_scene.command_overview_view().source_state
+                             .primary_page != 2U;
+                     ++move) {
+                    press(0x04U);
+                }
+                if (field_scene.command_overview_view().source_state
+                        .primary_page != 2U) {
+                    std::cerr << "field clips dump: Clips command selector "
+                                 "did not become selected\n";
+                    return 3;
+                }
+                press(0x40U);
+                if (!field_scene.clips_menu_open() ||
+                    field_scene.clips_menu_selection() != 2U) {
+                    std::cerr << "field clips dump: four-entry Clips menu "
+                                 "did not open\n";
+                    return 3;
+                }
+                const auto initial_clips_scene = render_scene();
+                if (!clips_row_matches(initial_clips_scene, clips_focus[0], 0U) ||
+                    !save_scene("00_clips_reload_selected",
+                                initial_clips_scene)) {
+                    std::cerr << "field clips dump: Clips row did not replace "
+                                 "the five-button command row\n";
+                    return 3;
+                }
+
+                // Walk every source selector entry, including the 5 -> 2
+                // wrap, and verify the corresponding source focus block.
+                for (std::size_t index = 1U; index < clips_focus.size();
+                     ++index) {
+                    press(0x08U);
+                    const auto expected_selector = static_cast<std::uint8_t>(
+                        index == 3U ? 5U : 2U + index);
+                    if (field_scene.clips_menu_selection() !=
+                        expected_selector) {
+                        std::cerr << "field clips dump: selector movement "
+                                     "diverged at index "
+                                  << index << "\n";
+                        return 3;
+                    }
+                    const auto scene = render_scene();
+                    if (!clips_row_matches(scene, clips_focus[index], index) ||
+                        !clips_shell_matches(initial_clips_scene, scene) ||
+                        !save_scene("0" + std::to_string(index) +
+                                        "_clips_selection_" +
+                                        std::to_string(expected_selector),
+                                    scene)) {
+                        std::cerr << "field clips dump: selected focus block "
+                                     "was misplaced at index "
+                                  << index << "\n";
+                        return 3;
+                    }
+                }
+                press(0x08U);
+                if (field_scene.clips_menu_selection() != 2U) {
+                    std::cerr << "field clips dump: selector did not wrap "
+                                 "from Cancel to Reload\n";
+                    return 3;
+                }
+                const auto reselected_scene = render_scene();
+                if (!clips_row_matches(reselected_scene, clips_focus[0], 0U) ||
+                    !clips_shell_matches(initial_clips_scene,
+                                         reselected_scene) ||
+                    !save_scene("04_clips_reselected", reselected_scene)) {
+                    std::cerr << "field clips dump: re-selection did not "
+                                 "restore the four-button frame\n";
+                    return 3;
+                }
+
+                // B leaves the Clips selector without mutating the typed
+                // runner record. A can then enter the same four-entry loop
+                // again from the parent command page.
+                press(0x10U);
+                if (field_scene.clips_menu_open() ||
+                    !field_scene.command_overview_open() ||
+                    !same_clip_record(field_scene.active_runner_record(),
+                                      initial_record) ||
+                    !write_scene("05_clips_unselected")) {
+                    std::cerr << "field clips dump: B did not unselect Clips "
+                                 "without mutation\n";
+                    return 3;
+                }
+                press(0x40U);
+                if (!field_scene.clips_menu_open() ||
+                    field_scene.clips_menu_selection() != 2U ||
+                    !write_scene("06_clips_reopened")) {
+                    std::cerr << "field clips dump: Clips could not be "
+                                 "re-selected after B\n";
+                    return 3;
+                }
+
+                // Exercise the converted reload gate and arithmetic against
+                // the live startup record. This branch deliberately adapts
+                // to the source record (confirmation, direct reload, or a
+                // source gate message) instead of inventing test inventory.
+                const auto before_reload = field_scene.active_runner_record();
+                const auto* item = find_us_item_definition(
+                    before_reload.equipped_item_code);
+                const auto capacity = item == nullptr
+                                          ? std::uint8_t{0}
+                                          : item->source_combat_factor;
+                auto expected_reload = before_reload;
+                const auto expected_result = reload_one_clip(
+                    expected_reload, capacity, false);
+                press(0x40U);
+                if (expected_result == ReloadResult::confirmation_required) {
+                    if (!field_scene.clips_reload_confirmation_open() ||
+                        !write_scene("07_clips_reload_confirmation_no")) {
+                        std::cerr << "field clips dump: reload confirmation "
+                                     "did not open\n";
+                        return 3;
+                    }
+                    press(0x08U);
+                    if (!field_scene.clips_reload_confirmation_yes() ||
+                        !write_scene("08_clips_reload_confirmation_yes")) {
+                        std::cerr << "field clips dump: reload confirmation "
+                                     "did not select Yes\n";
+                        return 3;
+                    }
+                    auto expected_confirmed = before_reload;
+                    const auto confirmed_result = reload_one_clip(
+                        expected_confirmed, capacity, true);
+                    press(0x40U);
+                    if (confirmed_result != ReloadResult::reloaded ||
+                        !same_clip_record(field_scene.active_runner_record(),
+                                          expected_confirmed) ||
+                        !write_scene("09_clips_after_reload")) {
+                        std::cerr << "field clips dump: confirmed reload did "
+                                     "not match converted arithmetic\n";
+                        return 3;
+                    }
+                } else if (expected_result == ReloadResult::reloaded) {
+                    if (!same_clip_record(field_scene.active_runner_record(),
+                                          expected_reload) ||
+                        !write_scene("07_clips_after_reload")) {
+                        std::cerr << "field clips dump: direct reload did not "
+                                     "match converted arithmetic\n";
+                        return 3;
+                    }
+                } else {
+                    if (!same_clip_record(field_scene.active_runner_record(),
+                                          before_reload) ||
+                        field_scene.clips_menu_message() ==
+                            ClipsMenuMessage::none ||
+                        !write_scene("07_clips_reload_gate_message")) {
+                        std::cerr << "field clips dump: reload gate did not "
+                                     "produce a source message\n";
+                        return 3;
+                    }
+                    press(0x10U);
+                }
+                if (field_scene.clips_menu_message() != ClipsMenuMessage::none) {
+                    press(0x10U);
+                }
+                press(0x10U);
+                if (field_scene.clips_menu_open() ||
+                    !field_scene.command_overview_open()) {
+                    std::cerr << "field clips dump: Clips did not return to "
+                                 "the command overview\n";
+                    return 3;
+                }
+                std::cout << "field_clips_dump=written path="
+                          << field_clips_dump_path->string() << "\n";
                 return 0;
             }
             QImage scene(kSceneWidth, kSceneHeight, QImage::Format_RGB32);

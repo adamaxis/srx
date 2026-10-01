@@ -13,6 +13,7 @@
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
 #include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
+#include "shadowrun_ghidra/menus/clips_menu_conversion.hpp"
 #include "genesis_image_compositor.hpp"
 
 #include <QPainter>
@@ -59,6 +60,10 @@ constexpr std::string_view kCommandOverviewActionBackgroundAlias =
     "menu.field.action.background";
 constexpr std::string_view kCommandOverviewActionFocusAliasPrefix =
     "menu.field.action.focus.";
+constexpr std::string_view kCommandOverviewClipsFocusAliasPrefix =
+    "menu.field.clips.focus.";
+constexpr std::string_view kCommandOverviewClipsTradeFocusAliasPrefix =
+    "menu.field.clips.trade.focus.";
 constexpr std::string_view kCommandOverviewDamageBarAliasPrefix =
     "menu.field.damage.bar.";
 constexpr std::string_view kCommandOverviewDrainBarAliasPrefix =
@@ -77,6 +82,15 @@ constexpr int kCommandOverviewActionBackgroundY = 184;
 constexpr std::array<int, 4> kCommandOverviewActionFocusX{{128, 152, 176,
                                                              200}};
 constexpr int kCommandOverviewActionFocusY = 184;
+// 0x11B58 and 0x11E7E use the same lower four-button row origin as the
+// inventory action loop, but select from their own four-entry focus tables.
+// Painting this opaque 120x16 row is intentional: it replaces the five
+// command-tab blocks in the base panel, including the unused fifth position.
+constexpr int kCommandOverviewClipsBackgroundX = 120;
+constexpr int kCommandOverviewClipsBackgroundY = 184;
+constexpr std::array<int, 4> kCommandOverviewClipsFocusX{{128, 152, 176,
+                                                            200}};
+constexpr int kCommandOverviewClipsFocusY = 184;
 // FFDE08 is profile word 33. The 48-word block starts at FFDDC6.
 constexpr std::size_t kSceneProfileEntityPositionWord = 33U;
 
@@ -516,6 +530,22 @@ bool FieldSceneRuntime::load_command_overview_assets(
                         std::string(kCommandOverviewActionFocusAliasPrefix) +
                             std::to_string(index),
                         command_overview_action_focus_[index])) {
+            return false;
+        }
+    }
+    for (std::size_t index = 0;
+         index < command_overview_clips_focus_.size(); ++index) {
+        // 0x11B58 passes CD43A to the same complete 2x2 name-table writer.
+        // These are opaque source blocks, not transparent host highlights.
+        if (!load_image(catalog,
+                        std::string(kCommandOverviewClipsFocusAliasPrefix) +
+                            std::to_string(index),
+                        command_overview_clips_focus_[index]) ||
+            !load_image(
+                catalog,
+                std::string(kCommandOverviewClipsTradeFocusAliasPrefix) +
+                    std::to_string(index),
+                command_overview_clips_trade_focus_[index])) {
             return false;
         }
     }
@@ -1021,6 +1051,7 @@ void FieldSceneRuntime::open_command_overview() {
     command_overview_action_message_.clear();
     command_overview_inventory_action_active_ = false;
     command_overview_discard_confirmation_active_ = false;
+    command_overview_clips_.close();
 
     const auto command_asset_available = [this](const std::string_view alias) {
         if (alias == "menu.field.command_overview.background") {
@@ -1093,6 +1124,82 @@ void FieldSceneRuntime::begin_command_overview_inventory_action() {
     }
     command_overview_inventory_action_active_ = false;
     command_overview_selected_inventory_item_.reset();
+}
+
+void FieldSceneRuntime::begin_command_overview_clips() {
+    if (!command_overview_.open() ||
+        command_overview_.view().source_state.primary_page != 2U) {
+        source_boundary("field.command_overview.clips.invalid_route");
+        return;
+    }
+    command_overview_clips_.open();
+    source_boundary("field.command_overview.clips.opened");
+}
+
+void FieldSceneRuntime::advance_command_overview_clips(
+    const std::uint16_t controller_events) {
+    const auto* item = find_us_item_definition(
+        field_active_runner_record_.equipped_item_code);
+    const auto capacity = item == nullptr ? std::uint8_t{0}
+                                           : item->source_combat_factor;
+    const auto event = command_overview_clips_.advance(
+        controller_events, field_active_runner_record_, capacity);
+    switch (event) {
+    case ClipsMenuEvent::selection_moved:
+        source_boundary("field.command_overview.clips.selector_moved");
+        break;
+    case ClipsMenuEvent::confirmation_opened:
+        source_boundary(
+            "field.command_overview.clips.reload_confirmation_opened");
+        break;
+    case ClipsMenuEvent::confirmation_toggled:
+        source_boundary(
+            command_overview_clips_.reload_confirmation_yes()
+                ? "field.command_overview.clips.reload_confirmation_yes"
+                : "field.command_overview.clips.reload_confirmation_no");
+        break;
+    case ClipsMenuEvent::reloaded:
+        refresh_field_hud_runner_slot();
+        refresh_command_overview_combat_bars();
+        source_boundary("field.command_overview.clips.reloaded");
+        break;
+    case ClipsMenuEvent::message_shown:
+        switch (command_overview_clips_.message()) {
+        case ClipsMenuMessage::out_of_ammo:
+            source_boundary("field.command_overview.clips.out_of_ammo");
+            break;
+        case ClipsMenuMessage::item_does_not_use_clips:
+            source_boundary(
+                "field.command_overview.clips.item_does_not_use_clips");
+            break;
+        case ClipsMenuMessage::no_party_members:
+            source_boundary("field.command_overview.clips.no_party_members");
+            break;
+        case ClipsMenuMessage::reload_success:
+        case ClipsMenuMessage::none:
+            source_boundary("field.command_overview.clips.message_shown");
+            break;
+        }
+        break;
+    case ClipsMenuEvent::message_acknowledged:
+        source_boundary("field.command_overview.clips.message_acknowledged");
+        break;
+    case ClipsMenuEvent::closed:
+        // `closed` also describes leaving the nested reload prompt. The
+        // runtime remains on the parent Clips screen unless the top-level
+        // selector itself was cancelled.
+        if (!command_overview_clips_.is_open()) {
+            source_boundary("field.command_overview.clips.returned");
+        } else {
+            source_boundary(
+                "field.command_overview.clips.reload_confirmation_closed");
+        }
+        break;
+    case ClipsMenuEvent::no_change:
+        break;
+    }
+    refresh_field_hud_runner_slot();
+    refresh_command_overview_combat_bars();
 }
 
 void FieldSceneRuntime::dispatch_command_overview_inventory_action(
@@ -1381,6 +1488,7 @@ bool FieldSceneRuntime::bootstrap(
     command_overview_action_message_.clear();
     command_overview_inventory_action_active_ = false;
     command_overview_discard_confirmation_active_ = false;
+    command_overview_clips_.close();
     field_joshua_archetype_selection_ = 0U;
     field_hud_slots_ = {};
     field_entity_animation_ = {};
@@ -1947,6 +2055,11 @@ void FieldSceneRuntime::advance_frame() {
             field_controller_latch_state_);
         ::shadowrun::ghidra_conversion::sample_controller_input(
             field_controller_sample_state_, field_controller_port_byte_);
+        if (command_overview_clips_.is_open()) {
+            advance_command_overview_clips(
+                field_controller_sample_state_.events);
+            return;
+        }
         if (command_overview_inventory_action_active_) {
             advance_command_overview_inventory_action(
                 field_controller_sample_state_.events);
@@ -1972,9 +2085,13 @@ void FieldSceneRuntime::advance_frame() {
             command_overview_action_message_.clear();
             command_overview_inventory_action_active_ = false;
             command_overview_discard_confirmation_active_ = false;
+            command_overview_clips_.close();
         } else if (command_overview_.take_action_dispatch_pending()) {
             if (command_overview_.view().source_state.primary_page < 2U) {
                 begin_command_overview_inventory_action();
+            } else if (command_overview_.view().source_state.primary_page ==
+                       2U) {
+                begin_command_overview_clips();
             } else {
                 // The converted command bridge has identified the remaining
                 // action route, but its handler still needs a source-verified
@@ -2186,6 +2303,81 @@ void FieldSceneRuntime::refresh_command_overview_item_detail() {
         input, us_item_catalog(), command_overview_resource_variant_);
 }
 
+void FieldSceneRuntime::paint_command_overview_clips(
+    QPainter& painter) const {
+    // ROM 0x11B58/0x11E7E clears the center command plane through the shared
+    // menu-grid writer. Preserve the runner/inventory/status shell around it,
+    // but do not let the higher-mode Attributes/Skills rows leak through.
+    painter.fillRect(96, 16, 168, 144, Qt::black);
+
+    draw_command_overview_text(painter, 136, 40,
+                               field_menu_text_.clips_title);
+    draw_command_overview_text(painter, 136, 48,
+                               field_menu_text_.clips_separator);
+
+    const auto draw_lines = [this, &painter](const auto& lines,
+                                              const int x,
+                                              const int y) {
+        for (std::size_t index = 0; index < lines.size(); ++index) {
+            draw_command_overview_text(
+                painter, x, y + static_cast<int>(index * 8U), lines[index]);
+        }
+    };
+
+    // This opaque source row replaces all five ordinary command-tab cells.
+    // It contains the four action positions plus the source trailing blank
+    // cell, so the Clips screen cannot accidentally retain Pocket Secretary.
+    painter.drawImage(kCommandOverviewClipsBackgroundX,
+                      kCommandOverviewClipsBackgroundY,
+                      command_overview_action_background_);
+
+    if (command_overview_clips_.reload_confirmation_open()) {
+        draw_lines(field_menu_text_.clips_reload_prompt, 120, 72);
+        draw_command_overview_text(
+            painter, 112, 200,
+            command_overview_clips_.reload_confirmation_yes()
+                ? field_menu_text_.action_choice_yes
+                : field_menu_text_.action_choice_no);
+        return;
+    }
+
+    switch (command_overview_clips_.message()) {
+    case ClipsMenuMessage::out_of_ammo:
+        draw_command_overview_text(painter, 112, 80,
+                                   field_menu_text_.runner_names[0]);
+        draw_lines(field_menu_text_.clips_out_of_ammo, 112, 88);
+        return;
+    case ClipsMenuMessage::item_does_not_use_clips:
+        draw_lines(field_menu_text_.clips_item_no_clips, 136, 80);
+        return;
+    case ClipsMenuMessage::reload_success:
+        draw_lines(field_menu_text_.clips_reload_success, 112, 80);
+        return;
+    case ClipsMenuMessage::no_party_members:
+        draw_lines(field_menu_text_.clips_no_party, 120, 72);
+        return;
+    case ClipsMenuMessage::none:
+        break;
+    }
+
+    draw_command_overview_text(painter, 136, 72,
+                               field_menu_text_.clips_counter_label);
+    draw_command_overview_text(
+        painter, 208, 72,
+        std::to_string(field_active_runner_record_.ammo_clips));
+    const auto selection = command_overview_clips_.selection();
+    if (selection >= static_cast<std::uint8_t>(ClipsCommand::reload) &&
+        selection <= static_cast<std::uint8_t>(ClipsCommand::cancel)) {
+        const auto focus_index = static_cast<std::size_t>(selection - 2U);
+        painter.drawImage(kCommandOverviewClipsFocusX[focus_index],
+                          kCommandOverviewClipsFocusY,
+                          command_overview_clips_focus_[focus_index]);
+        draw_command_overview_text(
+            painter, 112, 200,
+            field_menu_text_.clips_commands[focus_index]);
+    }
+}
+
 void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     painter.fillRect(0, 0, 320, 224, Qt::black);
     if (!command_overview_.open()) {
@@ -2343,7 +2535,8 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     };
 
     const auto& view = command_overview_.view();
-    if (view.source_state.primary_page >= 2U) {
+    if (view.source_state.primary_page >= 2U &&
+        !command_overview_clips_.is_open()) {
         std::string archetype;
         switch (field_active_runner_record_.archetype_index) {
         case 1U:
@@ -2401,7 +2594,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     command_overview_combat_bars_.defense_bar]);
         }
         draw_armor_summary();
-    } else {
+    } else if (!command_overview_clips_.is_open()) {
         const auto slot = view.source_state.secondary_page * 2U +
                           view.source_state.primary_page;
         if (slot < field_active_runner_record_.inventory_item_codes.size()) {
@@ -2479,7 +2672,9 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                               view.source_state.secondary_page * 24U);
         painter.drawImage(x, y, command_overview_cursor_);
     }
-    if (!command_overview_inventory_action_active_ &&
+    if (command_overview_clips_.is_open()) {
+        paint_command_overview_clips(painter);
+    } else if (!command_overview_inventory_action_active_ &&
         view.source_state.primary_page >= 2U &&
         view.source_state.primary_page <= 6U) {
         const auto focus_index = static_cast<std::size_t>(
@@ -2524,7 +2719,8 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             draw_command_overview_text(
                 painter, 112, 200, command_overview_action_message_);
         }
-    } else if (view.source_state.primary_page <
+    } else if (!command_overview_clips_.is_open() &&
+               view.source_state.primary_page <
                field_menu_text_.command_labels.size()) {
         draw_command_overview_text(
             painter, 112, 200,

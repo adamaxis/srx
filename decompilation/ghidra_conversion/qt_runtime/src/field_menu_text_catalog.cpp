@@ -90,6 +90,13 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::array<bool, kFieldMenuItemDetailLabelCount> item_detail_found{};
     std::array<bool, kFieldMenuItemNameCount> item_found{};
     std::array<bool, kFieldMenuItemNameCount> item_category_found{};
+    std::array<bool, kFieldMenuClipsCommandCount> clips_found{};
+    std::array<bool, kFieldMenuClipsCommandCount> clips_trade_found{};
+    std::array<bool, 3> clips_reload_found{};
+    std::array<bool, 2> clips_success_found{};
+    std::array<bool, 2> clips_out_of_ammo_found{};
+    std::array<bool, 3> clips_item_no_clips_found{};
+    std::array<bool, 3> clips_no_party_found{};
     bool physical_found = false;
     bool mental_found = false;
     bool attack_found = false;
@@ -108,6 +115,9 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     bool action_cannot_trade_found = false;
     bool action_choice_no_found = false;
     bool action_choice_yes_found = false;
+    bool clips_title_found = false;
+    bool clips_separator_found = false;
+    bool clips_counter_found = false;
     std::string line;
     std::size_t line_number = 0;
     bool header_seen = false;
@@ -191,6 +201,28 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             }
             continue;
         }
+        if (parse_indexed_key(key, "clips.trade.", index) &&
+            index < result.catalog.clips_trade_commands.size()) {
+            if (clips_trade_found[index]) {
+                result.errors.emplace_back("duplicate field menu text row: " +
+                                          key);
+            } else {
+                clips_trade_found[index] = true;
+                result.catalog.clips_trade_commands[index] = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "clips.", index) &&
+            index < result.catalog.clips_commands.size()) {
+            if (clips_found[index]) {
+                result.errors.emplace_back("duplicate field menu text row: " +
+                                          key);
+            } else {
+                clips_found[index] = true;
+                result.catalog.clips_commands[index] = value;
+            }
+            continue;
+        }
         const auto parse_named = [&](const char* expected,
                                      std::string& destination,
                                      bool& found) {
@@ -245,7 +277,68 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             parse_named("action.choice-no", result.catalog.action_choice_no,
                         action_choice_no_found) ||
             parse_named("action.choice-yes", result.catalog.action_choice_yes,
-                        action_choice_yes_found)) {
+                        action_choice_yes_found) ||
+            parse_named("clips.title", result.catalog.clips_title,
+                        clips_title_found) ||
+            parse_named("clips.separator", result.catalog.clips_separator,
+                        clips_separator_found) ||
+            parse_named("clips.counter", result.catalog.clips_counter_label,
+                        clips_counter_found)) {
+            continue;
+        }
+        if (parse_indexed_key(key, "clips.reload.", index) &&
+            index < result.catalog.clips_reload_prompt.size()) {
+            if (clips_reload_found[index]) {
+                result.errors.emplace_back("duplicate field menu text row: " +
+                                          key);
+            } else {
+                clips_reload_found[index] = true;
+                result.catalog.clips_reload_prompt[index] = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "clips.success.", index) &&
+            index < result.catalog.clips_reload_success.size()) {
+            if (clips_success_found[index]) {
+                result.errors.emplace_back("duplicate field menu text row: " +
+                                          key);
+            } else {
+                clips_success_found[index] = true;
+                result.catalog.clips_reload_success[index] = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "clips.out-of-ammo.", index) &&
+            index < result.catalog.clips_out_of_ammo.size()) {
+            if (clips_out_of_ammo_found[index]) {
+                result.errors.emplace_back("duplicate field menu text row: " +
+                                          key);
+            } else {
+                clips_out_of_ammo_found[index] = true;
+                result.catalog.clips_out_of_ammo[index] = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "clips.item-no-clips.", index) &&
+            index < result.catalog.clips_item_no_clips.size()) {
+            if (clips_item_no_clips_found[index]) {
+                result.errors.emplace_back("duplicate field menu text row: " +
+                                          key);
+            } else {
+                clips_item_no_clips_found[index] = true;
+                result.catalog.clips_item_no_clips[index] = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "clips.no-party.", index) &&
+            index < result.catalog.clips_no_party.size()) {
+            if (clips_no_party_found[index]) {
+                result.errors.emplace_back("duplicate field menu text row: " +
+                                          key);
+            } else {
+                clips_no_party_found[index] = true;
+                result.catalog.clips_no_party[index] = value;
+            }
             continue;
         }
         if (parse_indexed_key(key, "power.", index) &&
@@ -318,6 +411,8 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     add_missing_entries(archetype_found, "archetype.", result.errors);
     add_missing_entries(runner_found, "runner.", result.errors);
     add_missing_entries(status_found, "status.", result.errors);
+    add_missing_entries(clips_found, "clips.", result.errors);
+    add_missing_entries(clips_trade_found, "clips.trade.", result.errors);
     const auto require_named = [&result](const char* key, const bool found) {
         if (!found) {
             result.errors.emplace_back(
@@ -344,6 +439,17 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     require_named("action.cannot-trade", action_cannot_trade_found);
     require_named("action.choice-no", action_choice_no_found);
     require_named("action.choice-yes", action_choice_yes_found);
+    require_named("clips.title", clips_title_found);
+    require_named("clips.separator", clips_separator_found);
+    require_named("clips.counter", clips_counter_found);
+    add_missing_entries(clips_reload_found, "clips.reload.", result.errors);
+    add_missing_entries(clips_success_found, "clips.success.", result.errors);
+    add_missing_entries(clips_out_of_ammo_found, "clips.out-of-ammo.",
+                       result.errors);
+    add_missing_entries(clips_item_no_clips_found, "clips.item-no-clips.",
+                       result.errors);
+    add_missing_entries(clips_no_party_found, "clips.no-party.",
+                       result.errors);
     add_missing_entries(power_found, "power.", result.errors);
     for (std::size_t armor = 0; armor < armor_found.size(); ++armor) {
         for (std::size_t row = 0; row < armor_found[armor].size(); ++row) {

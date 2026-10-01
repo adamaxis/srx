@@ -21,6 +21,7 @@ inline constexpr std::size_t kFieldMenuArmorCount = 7U;
 inline constexpr std::size_t kFieldMenuArmorRowCount = 2U;
 inline constexpr std::size_t kFieldMenuItemDetailLabelCount = 3U;
 inline constexpr std::size_t kFieldMenuItemNameCount = 50U;
+inline constexpr std::size_t kFieldMenuClipsCommandCount = 4U;
 
 struct FieldMenuTextCatalog {
     std::array<std::string, kCommandOverviewLabelCount> command_labels{};
@@ -53,6 +54,16 @@ struct FieldMenuTextCatalog {
     std::string action_cannot_trade;
     std::string action_choice_no;
     std::string action_choice_yes;
+    std::array<std::string, kFieldMenuClipsCommandCount> clips_commands{};
+    std::array<std::string, kFieldMenuClipsCommandCount> clips_trade_commands{};
+    std::string clips_title;
+    std::string clips_separator;
+    std::string clips_counter_label;
+    std::array<std::string, 3> clips_reload_prompt{};
+    std::array<std::string, 2> clips_reload_success{};
+    std::array<std::string, 2> clips_out_of_ammo{};
+    std::array<std::string, 3> clips_item_no_clips{};
+    std::array<std::string, 3> clips_no_party{};
     std::array<std::string, kFieldMenuItemNameCount> item_names{};
     std::array<std::string, kFieldMenuItemNameCount> item_categories{};
 };

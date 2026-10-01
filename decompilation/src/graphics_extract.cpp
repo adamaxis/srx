@@ -173,6 +173,41 @@ void write_field_menu_text_catalog(
     emit("action.cannot-trade", action_text.cannot_trade);
     emit("action.choice-no", action_text.choice_no);
     emit("action.choice-yes", action_text.choice_yes);
+    const auto clips_text =
+        shadowrun::graphics::read_genesis_field_menu_clips_text(rom);
+    for (std::size_t index = 0; index < clips_text.commands.size(); ++index) {
+        emit("clips." + std::to_string(index), clips_text.commands[index]);
+        emit("clips.trade." + std::to_string(index),
+             clips_text.trade_commands[index]);
+    }
+    emit("clips.title", clips_text.title);
+    emit("clips.separator", clips_text.separator);
+    emit("clips.counter", clips_text.counter_label);
+    for (std::size_t index = 0; index < clips_text.reload_prompt.size();
+         ++index) {
+        emit("clips.reload." + std::to_string(index),
+             clips_text.reload_prompt[index]);
+    }
+    for (std::size_t index = 0; index < clips_text.reload_success.size();
+         ++index) {
+        emit("clips.success." + std::to_string(index),
+             clips_text.reload_success[index]);
+    }
+    for (std::size_t index = 0; index < clips_text.out_of_ammo.size();
+         ++index) {
+        emit("clips.out-of-ammo." + std::to_string(index),
+             clips_text.out_of_ammo[index]);
+    }
+    for (std::size_t index = 0;
+         index < clips_text.item_does_not_use_clips.size(); ++index) {
+        emit("clips.item-no-clips." + std::to_string(index),
+             clips_text.item_does_not_use_clips[index]);
+    }
+    for (std::size_t index = 0; index < clips_text.no_party_members.size();
+         ++index) {
+        emit("clips.no-party." + std::to_string(index),
+             clips_text.no_party_members[index]);
+    }
     for (std::size_t index = 0; index < assets.field_menu_power_labels.size();
          ++index) {
         emit("power." + std::to_string(index),

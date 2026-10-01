@@ -258,14 +258,21 @@ non-clip-using items through `D1B40` (`This item does not use clips!!`).
 
 Native status: selector bounds, source labels, extracted ammunition fields,
 action gates, exact reviewed error text, and the native transition are
-implemented. The nested Trade loop follows `D1E24`/`0x1209A`/`0x120E4` for
-quantity wrapping, recipient changes, and `Exchange complete`; the positive
-top-level Distribute average follows `0x11FDE`/`0x12014` with the source
-remainder-bit rule. Reload now follows `0x11CCA`/`0x11D86`/`0x36FC`: it gates
-non-clip items, asks for confirmation when ammunition remains, consumes one
-clip, clamps loaded ammunition to the extracted item capacity, and emits the
-source `Rock & Roll, chummers!!` result. Final source-authentic panel art
-remains separate work.
+implemented in the separate Qt conversion runtime. The Clips screen replaces
+the complete five-button command row with the ROM's four-entry row plus its
+trailing blank; it is not a transparent focus overlay on the ordinary command
+tabs. Executable QA walks Reload -> Trade -> Distribute -> Cancel, verifies
+the 5 -> 2 wrap, deselection/reselection, the stable surrounding shell, and
+the reload arithmetic. The nested Trade loop follows
+`D1E24`/`0x1209A`/`0x120E4` for quantity wrapping, recipient changes, and
+`Exchange complete`; the positive top-level Distribute average follows
+`0x11FDE`/`0x12014` with the source remainder-bit rule. Reload follows
+`0x11CCA`/`0x11D86`/`0x36FC`: it gates non-clip items, asks for
+confirmation when ammunition remains, consumes one clip, clamps loaded
+ammunition to the extracted item capacity, and emits the source
+`Rock & Roll, chummers!!` result. The top-level screen is connected; the
+recruited-recipient trade presentation and an independent visual golden
+remain open.
 
 ### Attributes/Skills (`0xD01C`)
 

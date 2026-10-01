@@ -551,6 +551,79 @@ GenesisFieldMenuActionText read_genesis_field_menu_action_text(
             "Genesis yes-choice text is truncated")};
 }
 
+GenesisFieldMenuClipsText read_genesis_field_menu_clips_text(
+    const std::vector<std::uint8_t>& rom) {
+    GenesisFieldMenuClipsText result{};
+    // 0x11B58 supplies the D1DDC table to the four-entry Clips selector.
+    for (std::size_t index = 0; index < result.commands.size(); ++index) {
+        result.commands[index] = read_genesis_menu_text(
+            rom, 0xD1DDCU + index * 0x12U, 0x12U,
+            "Genesis Clips command text is truncated");
+    }
+    // 0x11E7E replaces that table with D1E24 for the nested trade loop.
+    for (std::size_t index = 0; index < result.trade_commands.size(); ++index) {
+        result.trade_commands[index] = read_genesis_menu_text(
+            rom, 0xD1E24U + index * 0x12U, 0x12U,
+            "Genesis Clips trade command text is truncated");
+    }
+
+    result.title = read_genesis_padded_text(
+        rom, 0xD1AE0U, 0x0AU,
+        "Genesis Clips title text is truncated");
+    result.separator = read_genesis_padded_text(
+        rom, 0xD1AEAU, 0x0BU,
+        "Genesis Clips separator text is truncated");
+    result.counter_label = read_genesis_padded_text(
+        rom, 0xD1AF7U, 0x08U,
+        "Genesis Clips counter label is truncated");
+
+    result.reload_prompt = {
+        read_genesis_padded_text(
+            rom, 0xD1AFFU, 0x0FU,
+            "Genesis Clips reload prompt line one is truncated"),
+        read_genesis_padded_text(
+            rom, 0xD1B0EU, 0x0DU,
+            "Genesis Clips reload prompt line two is truncated"),
+        read_genesis_padded_text(
+            rom, 0xD1B1CU, 0x0BU,
+            "Genesis Clips reload prompt line three is truncated")};
+    result.reload_success = {
+        read_genesis_padded_text(
+            rom, 0xD1B27U, 0x0EU,
+            "Genesis Clips reload success line one is truncated"),
+        read_genesis_padded_text(
+            rom, 0xD1B34U, 0x0BU,
+            "Genesis Clips reload success line two is truncated")};
+    result.out_of_ammo = {
+        read_genesis_padded_text(
+            rom, 0xD1AC7U, 0x0CU,
+            "Genesis Clips out-of-ammo line one is truncated"),
+        read_genesis_padded_text(
+            rom, 0xD1AD3U, 0x0DU,
+            "Genesis Clips out-of-ammo line two is truncated")};
+    result.item_does_not_use_clips = {
+        read_genesis_padded_text(
+            rom, 0xD1B41U, 0x0AU,
+            "Genesis Clips item gate line one is truncated"),
+        read_genesis_padded_text(
+            rom, 0xD1B4BU, 0x0AU,
+            "Genesis Clips item gate line two is truncated"),
+        read_genesis_padded_text(
+            rom, 0xD1B55U, 0x0CU,
+            "Genesis Clips item gate line three is truncated")};
+    result.no_party_members = {
+        read_genesis_padded_text(
+            rom, 0xD1B8AU, 0x0CU,
+            "Genesis Clips no-party line one is truncated"),
+        read_genesis_padded_text(
+            rom, 0xD1B97U, 0x0DU,
+            "Genesis Clips no-party line two is truncated"),
+        read_genesis_padded_text(
+            rom, 0xD1BA5U, 0x0EU,
+            "Genesis Clips no-party line three is truncated")};
+    return result;
+}
+
 std::vector<std::string> read_genesis_dialogue_segments(
     const std::vector<std::uint8_t>& rom, const std::size_t source_offset) {
     if (source_offset >= rom.size()) {
