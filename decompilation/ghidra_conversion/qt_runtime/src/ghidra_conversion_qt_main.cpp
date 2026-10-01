@@ -55,6 +55,7 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
                    " [--assets <decompilation/assets>] [--field-smoke]"
                    " [--field-smoke-move-right] [--field-dump <file>]"
                    " [--field-command-dump <file>]"
+                   " [--field-dialogue-dump <prompt> <file>]"
                    " [--boot-dump-frame <frame> <file>]"
                    " [--startup-dump <stage> <selection> <frame> <file>]"
                    " [--intro-to-field-smoke]\n";
@@ -71,6 +72,10 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
         }
         if (argument == "--field-command-dump" && index + 1 < argc) {
             ++index;
+            continue;
+        }
+        if (argument == "--field-dialogue-dump" && index + 2 < argc) {
+            index += 2;
             continue;
         }
         if (argument == "--boot-dump-frame" && index + 2 < argc) {
@@ -93,6 +98,47 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
         }
     }
     return {};
+}
+
+std::optional<StokerMotelPromptId> parse_stoker_dialogue_prompt(
+    const std::string_view name) {
+    if (name == "arrival") {
+        return StokerMotelPromptId::arrival;
+    }
+    if (name == "manager") {
+        return StokerMotelPromptId::manager_greeting;
+    }
+    if (name == "manager-package") {
+        return StokerMotelPromptId::manager_greeting_with_package;
+    }
+    if (name == "room") {
+        return StokerMotelPromptId::room_offer;
+    }
+    if (name == "debt") {
+        return StokerMotelPromptId::debt_question;
+    }
+    if (name == "leave") {
+        return StokerMotelPromptId::leave_notice;
+    }
+    if (name == "package-question") {
+        return StokerMotelPromptId::package_question;
+    }
+    if (name == "package-handoff") {
+        return StokerMotelPromptId::package_handoff;
+    }
+    if (name == "paid") {
+        return StokerMotelPromptId::room_paid;
+    }
+    if (name == "insufficient") {
+        return StokerMotelPromptId::room_insufficient;
+    }
+    if (name == "jump-house") {
+        return StokerMotelPromptId::jump_house_referral;
+    }
+    if (name == "ambush") {
+        return StokerMotelPromptId::street_ambush;
+    }
+    return std::nullopt;
 }
 
 std::uint8_t sampled_menu_byte(const int key) {
@@ -1710,6 +1756,8 @@ int main(int argc, char** argv) {
         bool intro_to_field_smoke = false;
         std::optional<std::filesystem::path> field_dump_path;
         std::optional<std::filesystem::path> field_command_dump_path;
+        std::optional<std::string> field_dialogue_dump_prompt;
+        std::optional<std::filesystem::path> field_dialogue_dump_path;
         std::optional<std::uint32_t> boot_dump_frame;
         std::optional<std::filesystem::path> boot_dump_path;
         std::optional<std::string> startup_dump_stage;
@@ -1723,6 +1771,7 @@ int main(int argc, char** argv) {
                        " [--assets <decompilation/assets>] [--field-smoke]"
                        " [--field-smoke-move-right] [--field-dump <file>]"
                        " [--field-command-dump <file>]"
+                       " [--field-dialogue-dump <prompt> <file>]"
                        " [--boot-dump-frame <frame> <file>]"
                        " [--startup-dump <stage> <selection> <frame> <file>]"
                        " [--intro-to-field-smoke]\n";
@@ -1747,6 +1796,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_command_dump_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-dialogue-dump" &&
+                index + 2 < argc) {
+                field_smoke = true;
+                field_dialogue_dump_prompt = std::string(argv[++index]);
+                field_dialogue_dump_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--boot-dump-frame" &&
@@ -1812,6 +1868,36 @@ int main(int argc, char** argv) {
             if (field_smoke_move_right) {
                 field_scene.set_controller_nibble(0x08U);
                 field_scene.advance_frame();
+            }
+            if (field_dialogue_dump_prompt.has_value() &&
+                field_dialogue_dump_path.has_value()) {
+                const auto prompt = parse_stoker_dialogue_prompt(
+                    *field_dialogue_dump_prompt);
+                if (!prompt.has_value()) {
+                    std::cerr << "field dialogue dump: unknown Stoker prompt '"
+                              << *field_dialogue_dump_prompt << "'\n";
+                    return 3;
+                }
+                if (!field_scene.open_stoker_dialogue_for_dump(*prompt)) {
+                    std::cerr << "field dialogue dump: prompt did not open\n";
+                    return 3;
+                }
+                QImage dialogue_scene(kSceneWidth, kSceneHeight,
+                                      QImage::Format_RGB32);
+                dialogue_scene.fill(Qt::black);
+                QPainter dialogue_painter(&dialogue_scene);
+                field_scene.paint(dialogue_painter);
+                dialogue_painter.end();
+                if (!dialogue_scene.save(QString::fromStdWString(
+                        field_dialogue_dump_path->wstring()))) {
+                    std::cerr << "field dialogue dump: could not write "
+                              << field_dialogue_dump_path->string() << '\n';
+                    return 3;
+                }
+                std::cout << "field_dialogue_dump=written prompt="
+                          << *field_dialogue_dump_prompt << " path="
+                          << field_dialogue_dump_path->string() << "\n";
+                return 0;
             }
             if (field_command_dump_path.has_value()) {
                 if (!field_scene.open_command_overview_for_dump()) {

@@ -12,6 +12,7 @@ add_executable(shadowrun_ghidra_conversion_qt
     src/genesis_image_compositor.cpp
     src/dialogue_panel.cpp
     src/dialogue_text_catalog.cpp
+    src/field_dialogue_runtime.cpp
 )
 target_include_directories(shadowrun_ghidra_conversion_qt
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
@@ -77,6 +78,26 @@ target_link_libraries(shadowrun_ghidra_dialogue_panel_test
     PRIVATE shadowrun_ghidra_conversion_runtime)
 add_test(NAME shadowrun_ghidra_dialogue_panel
          COMMAND shadowrun_ghidra_dialogue_panel_test)
+
+add_executable(shadowrun_ghidra_field_dialogue_runtime_test
+    tests/field_dialogue_runtime_test.cpp
+    src/field_dialogue_runtime.cpp
+    src/dialogue_panel.cpp
+    src/dialogue_text_catalog.cpp
+    src/genesis_image_compositor.cpp
+)
+target_include_directories(shadowrun_ghidra_field_dialogue_runtime_test
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+set_target_properties(shadowrun_ghidra_field_dialogue_runtime_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
+target_compile_definitions(shadowrun_ghidra_field_dialogue_runtime_test PRIVATE
+    SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets")
+target_link_libraries(shadowrun_ghidra_field_dialogue_runtime_test
+    PRIVATE shadowrun_ghidra_conversion_runtime Qt6::Gui)
+add_test(NAME shadowrun_ghidra_field_dialogue_runtime
+         COMMAND shadowrun_ghidra_field_dialogue_runtime_test)
 
 if (WIN32)
     find_program(SHADOWRUN_GHIDRA_QT_WINDEPLOYQT

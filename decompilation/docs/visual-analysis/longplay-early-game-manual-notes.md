@@ -100,8 +100,11 @@ and return-to-field behavior identify a named Stoker interaction. A source
 audit corrected the old attribution: `0x20E48` selects the electromagnetic-lock
 door prompt at `0x11CCCE`, while `0x20EC2` selects the building Security
 Terminal prompt at `0x11CD62`. Neither is the Stoker motel text. The Stoker
-text records and their event/portrait descriptor still need to be traced from
-the ROM; the old `NativePortShell` tuple is not conversion evidence.
+records are now traced through `0x1F65A` and the `0xF4AA0..0xF4B2C` prompt
+table; the direct text catalog and 56x72 portrait are projected through the
+common Qt dialogue panel. The old `NativePortShell` tuple remains excluded
+from source evidence. The live field event trigger and exact source tile
+placement are still open.
 
 ### 04. Facility/corridor movement and NPC/package dialogue — 03:58-06:30
 
@@ -300,7 +303,7 @@ generic action callback.
 | --- | --- | --- |
 | New Game, two downward moves, Gator Shaman selected | `0x59092`, `0x59248`, `0x42B0`; `startup_menu_conversion.cpp`, `startup_integration_conversion.cpp` | Choice names and three typed records exist. Existing integration coverage follows Decker; add/defend the captured Shaman route and its portrait/record binding. |
 | Seattle -> wilderness -> ambush -> tri-vid -> airport/cab/map | `0x59C5E` chain; `OpeningIntroScene`; `opening_intro_conversion.cpp` | Visual order agrees with the typed scene families and source text records. Need independent frame/dump assertions for layer placement and fade/clear behavior; do not promote the longplay itself to a golden. |
-| Stoker portrait, A/B/C menu, `<MORE>`, return to field | `0x1F65A` scene 2/submode 2; profile `0x121FA0` -> pattern `0x1287C6` / portrait `0x122420`; prompt records `0xF4AA0`, `0xF4AF4`, `0xF4AEC`; commands `0x213CA`, `0x213E2`, `0x213FA`, `0x21458` | The top-level Stoker prompt selection is source-identified as arrival/package-question/package-handoff. The portrait is now extracted as one 56x72 direct asset and the common dialogue-panel adapter is tested against converted page/choice state. Room payment has its exact success/insufficient-funds behavior; the debt/Jump House follow-up commands publish their source flags; and command `0x05` models the 250-nuyen payment, FFDD64-selected effect marker, runner-source increments, feature flag, story bits, and Michael package sequence. The Stoker prompt text records, panel shell, remaining package command chain, and complete return transition remain open; `0x20E48` remains the separate maglock doorway family. |
+| Stoker portrait, A/B/C menu, `<MORE>`, return to field | `0x1F65A` scene 2/submode 2; profile `0x121FA0` -> pattern `0x1287C6` / portrait `0x122420`; prompt records `0xF4AA0`, `0xF4AF4`, `0xF4AEC`; `0x1F246`/`0x1F3C4`; commands `0x213CA`, `0x213E2`, `0x213FA`, `0x21458` | The top-level Stoker prompt selection is source-identified as arrival/package-question/package-handoff. The portrait is extracted as one 56x72 direct asset, the text catalog is direct, and `field_dialogue_runtime` exercises the common panel with source A/B/C priority and title-only return pages. The diagnostic `--field-dialogue-dump manager <bmp>` now produces a native panel after converted field bootstrap. Room payment, random arrival, debt/package continuation, real field trigger, exact source tile placement, and an independent visual golden remain open; `0x20E48` remains the separate maglock doorway family. |
 | Field map plus 48-pixel right HUD | `0x334C`/`0x39F2`, `0x110EC`, field scene controller | The opaque sidebar rule is visibly required. Recheck Qt screenshots at field/dialog return and defend the HUD compositing hill independently. |
 | Package/signature and named NPC conversations | field interaction/entity/dialog records | Generic interaction callbacks are insufficient. Resolve NPC identity, text page, option cursor, package/credstick state, and return mode from the source records before implementing new visuals. |
 | Runner item sheet and `Medkit` target flow | `0x11740`, `0x12168`, `0x1253E`, first-aid/inventory conversion modules | Converted action branches exist but have no defended visual hill for this captured route. The item-detail and first-aid states need separate typed presentation requests. |
@@ -345,14 +348,15 @@ comparison are all closed together.
 
 1. Add a source-backed integration route for the captured Gator Shaman choice;
    verify the selected archetype record, portrait alias, and opening state.
-2. Trace the named Stoker/Jump House dialog text records and their event
-   descriptor. The portrait stream is now source-bound, but the old
-   `NativePortShell::open_stoker_motel_dialog` tuple is explicitly not a
-   source mapping. Do not invent text if the source record is not found;
-   return to ROM conversion and report the omission.
+2. Trace the named Stoker/Jump House event descriptor and connect the actual
+   field interaction dispatcher. The prompt records, portrait stream, direct
+   text catalog, and common panel are now source-bound; the old
+   `NativePortShell::open_stoker_motel_dialog` tuple remains excluded. Do not
+   invent a trigger or follow-up if the ROM path is not found; return to the
+   conversion audit and report the omission.
 3. Use the section frames to annotate field/HUD/dialog boundaries and compare
    them against the Qt output, especially the opaque sidebar and full-width
-   dialog panel.
+   dialogue panel. The new dump is a diagnostic, not a golden.
 4. Map the `Medkit` target flow and the letter/Holopix pages to source text,
    action, and return-state entries. Keep inventory, first aid, dialog, and
    field state separate.

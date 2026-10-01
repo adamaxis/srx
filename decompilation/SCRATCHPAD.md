@@ -1240,6 +1240,44 @@ to the manager greeting. The C++ conversion exposes this as
 `resolve_stoker_motel_arrival_command`; random sampling and effect forwarding
 are typed callbacks, not ROM-address runtime lookups.
 
+## 2026-10-01 Stoker prompt runtime seam
+
+The prompt records now have a separate Qt composition owner rather than being
+left as a conversion-only data test. The source call chain is recorded as:
+
+```text
+0x1F5CA run_field_exit_orchestrator
+  -> 0x1F65A select_field_exit_prompt
+      -> 0x1F246 run_mode_exit_services
+          -> 0x1F292 prepare_mode_exit_resources
+          -> 0x1F3C4 run_mode_text_prompt
+              -> 0x1F5A8 prepare_mode_text_prompt
+              -> 0x0D94 wait_for_controller_event (sentinel pages)
+              -> 0x12CCB4 mode-command dispatch table
+```
+
+`0x1F3C4` tests the source A/B/C event bits in that order. The host adapter
+`qt_runtime/field_dialogue_runtime.*` preserves that priority and cycles one
+controller event at a time; it does not block the Qt event loop or recreate a
+Genesis controller/VDP. A title-only Stoker record has no fourth choice: any
+button edge closes the page and returns to field, matching the source wait
+path. Proven manager-to-room, manager-to-leave, and sentinel return pages are
+now connected through the common `DialoguePanelView`.
+
+The field coordinator now owns one callback seam for
+`run_field_exit_orchestrator`. Scene `2`/submode `2` binds the selected Stoker
+resource profile to the direct text catalog and 56x72 portrait. Other selected
+profiles stop at a named source boundary rather than borrowing Stoker assets;
+the random arrival branch (`0x249C4`), room payment continuation, debt/package
+continuation, and the remaining field trigger are still deliberately open.
+
+`--field-dialogue-dump manager <file>` is a diagnostic image dump of the same
+typed graph after field bootstrap. It is not a synthetic full-screen playback
+asset and is not a visual hill defense. The panel geometry is a native Qt
+presentation of the two repeated source menu-grid writes and the lower choice
+grid, guided by the independent 320x224 longplay capture; exact source tile
+placement and an independent golden CTest remain open.
+
 ## 2026-09-30 field-interaction source correction
 
 The old ledger entry that called `0x20E48` the Stoker dialog was not supported

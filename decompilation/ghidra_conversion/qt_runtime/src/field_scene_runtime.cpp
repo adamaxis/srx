@@ -5,6 +5,8 @@
 #include "shadowrun_ghidra/audio/audio_command_batch_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_coordinate_conversion.hpp"
 #include "shadowrun_ghidra/field/field_mode_scene_runtime_preparation_conversion.hpp"
+#include "shadowrun_ghidra/field/field_exit_orchestrator_conversion.hpp"
+#include "shadowrun_ghidra/field/field_exit_prompt_conversion.hpp"
 #include "shadowrun_ghidra/field/field_resource_sequence_conversion.hpp"
 #include "shadowrun_ghidra/field/field_scene_entry_conversion.hpp"
 #include "shadowrun_ghidra/field/field_entity_render_batch_conversion.hpp"
@@ -129,7 +131,10 @@ std::array<std::uint8_t, 4> field_sample_state_from_result(
 
 FieldSceneRuntime::FieldSceneRuntime(
     std::function<void(std::string_view)> source_boundary)
-    : source_boundary_callback_(std::move(source_boundary)) {
+    : source_boundary_callback_(std::move(source_boundary)),
+      field_dialogue_([this](const std::string_view boundary) {
+          this->source_boundary(boundary);
+      }) {
     configure_callbacks();
 }
 
@@ -213,6 +218,73 @@ void FieldSceneRuntime::run_field_mode_exit_transition() {
          [this] { source_boundary("field.mode_exit.initialize_profile_a"); },
          [this] { source_boundary("field.mode_exit.initialize_profile_b"); }});
     field_action_counter_ = field_mode_exit_transition_state_.action_counter;
+}
+
+bool FieldSceneRuntime::run_field_exit_orchestrator(
+    integration::FieldRuntimeCoordinatorState& runtime_state) {
+    FieldExitOrchestratorState orchestrator_state{};
+    // FF0110 is a graphics-owned gate in the ROM. The field controller has no
+    // equivalent host flag yet, so leave it clear rather than treating a
+    // controller button as a guessed graphics route.
+    orchestrator_state.controller_flags = 0U;
+    orchestrator_state.prompt_display_prepared = false;
+
+    FieldExitOrchestratorCallbacks callbacks{};
+    callbacks.select_mode_entry_resource = [this] {
+        source_boundary("field.exit.select_mode_entry_resource");
+    };
+    callbacks.select_field_exit_prompt =
+        [this, &runtime_state](FieldExitOrchestratorState& state) {
+            FieldExitPromptState prompt_state{};
+            prompt_state.world_flags = field_exit_world_flags_;
+            const auto action = select_field_exit_prompt(
+                static_cast<std::uint8_t>(runtime_state.scene_id),
+                runtime_state.field_mode, field_exit_alternate_result_,
+                prompt_state,
+                {[this](FieldExitPromptSelection& selection,
+                       FieldExitPromptState&) {
+                     // 0x1F246/0x1F3C4 is blocking on the Genesis but is a
+                     // normal host state transition here. The panel owns the
+                     // subsequent controller edges without re-entering field
+                     // movement or inventing a second dialogue machine.
+                     (void)field_dialogue_.open_field_exit_prompt(selection);
+                 },
+                 [this] {
+                     source_boundary("field.exit.hotel_options_unresolved");
+                 }});
+            state.caller_exit_status = prompt_state.caller_exit_status;
+            if (action == FieldExitPromptAction::no_matching_scene) {
+                source_boundary("field.exit.prompt_scene_unmatched");
+            }
+            return false;
+        };
+
+    // The remaining routes are deliberately explicit until their resource
+    // selectors are connected. Returning true stops the converted
+    // orchestrator at the same typed boundary instead of silently allowing a
+    // scene transition with no source-backed presentation.
+    callbacks.prepare_field_mode_exit = [this](FieldExitOrchestratorState& state) {
+        source_boundary("field.exit.prepare_mode_exit_unresolved");
+        state.caller_exit_status = -1;
+        return true;
+    };
+    callbacks.select_field_mode_service = [this](FieldExitOrchestratorState& state) {
+        source_boundary("field.exit.mode_service_unresolved");
+        state.caller_exit_status = -1;
+        return true;
+    };
+    callbacks.finalize_field_mode_exit = [this](FieldExitOrchestratorState& state) {
+        source_boundary("field.exit.finalize_mode_exit_unresolved");
+        state.caller_exit_status = -1;
+        return true;
+    };
+
+    const auto action = ::shadowrun::ghidra_conversion::
+        run_field_exit_orchestrator(orchestrator_state, callbacks);
+    if (action == FieldExitOrchestratorAction::graphics_service_routed) {
+        source_boundary("field.exit.graphics_service_unresolved");
+    }
+    return orchestrator_state.caller_exit_status != 0;
 }
 
 bool FieldSceneRuntime::project_field_world_interaction() {
@@ -799,6 +871,10 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         }
         return carry;
     };
+    field_runtime_callbacks_.run_field_exit_orchestrator =
+        [this](integration::FieldRuntimeCoordinatorState& runtime) {
+            return run_field_exit_orchestrator(runtime);
+        };
     field_runtime_callbacks_.latch_controller_events = [this] {
         source_boundary("field.runtime.latch_controller_events");
         field_controller_latch_state_.events =
@@ -992,6 +1068,8 @@ bool FieldSceneRuntime::bootstrap(
     field_terrain_sample_state_ = {};
     field_action_counter_ = 0U;
     field_entity_behavior_flags_ = 0U;
+    field_exit_alternate_result_ = 0;
+    field_exit_world_flags_ = 0U;
     field_entity_selection_state_ = RunnerSwitchState{};
     field_runner_refresh_state_ = FieldRunnerRefreshState{};
     field_mode_exit_transition_state_ = FieldModeExitTransitionState{};
@@ -1002,6 +1080,7 @@ bool FieldSceneRuntime::bootstrap(
     field_camera_follow_ = {};
     field_camera_alignment_ready_ = false;
     command_overview_.close();
+    field_dialogue_.close();
     field_active_runner_record_ = RunnerRecordFields{};
     field_menu_text_ = FieldMenuTextCatalog{};
     command_overview_resource_variant_ = ResourceVariantState{};
@@ -1062,6 +1141,12 @@ bool FieldSceneRuntime::bootstrap(
         return false;
     }
     field_menu_text_ = menu_text.catalog;
+
+    // Dialogue is optional during initial field bootstrap because the player
+    // does not start inside an NPC prompt. Load it once here so the later
+    // 0x1F65A callback can bind direct assets without rebuilding a catalog on
+    // every prompt or reaching back into the ROM.
+    (void)field_dialogue_.load_assets(startup_state.asset_catalog.catalog);
 
     if (!load_image(startup_state.asset_catalog.catalog,
                     kInitialFieldMapAlias, field_map_) ||
@@ -1535,6 +1620,24 @@ void FieldSceneRuntime::update_source_field_camera() {
 
 void FieldSceneRuntime::advance_frame() {
     if (!ready_) {
+        return;
+    }
+    if (field_dialogue_.open()) {
+        // The source prompt loop waits for a high-byte controller edge. The
+        // host keeps that loop non-blocking and suspends field movement while
+        // the common dialogue panel owns the current prompt.
+        field_controller_latch_state_.events =
+            field_controller_sample_state_.events;
+        field_controller_latch_state_.extra_events = 0U;
+        (void)::shadowrun::ghidra_conversion::latch_controller_events(
+            field_controller_latch_state_);
+        ::shadowrun::ghidra_conversion::sample_controller_input(
+            field_controller_sample_state_, field_controller_port_byte_);
+        const auto result = field_dialogue_.advance_controller_events(
+            field_controller_sample_state_.events);
+        if (result == FieldDialogueAdvanceResult::returned_to_field) {
+            source_boundary("field.dialogue.returned_to_field");
+        }
         return;
     }
     if (command_overview_.open()) {
@@ -2065,6 +2168,10 @@ void FieldSceneRuntime::paint(QPainter& painter) const {
     }
     if (command_overview_.open()) {
         paint_command_overview(painter);
+        return;
+    }
+    if (field_dialogue_.open()) {
+        field_dialogue_.paint(painter);
         return;
     }
 

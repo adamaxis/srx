@@ -277,10 +277,16 @@ to the owning conversion controller, so the panel carries no ROM addresses or
 Genesis command bytes.
 
 The remaining boundary is integration: `0x249C4`'s random arrival branch,
-field event dispatch, exact panel layout/placement, the room-payment return to
-Hotel Options, and the full debt/package continuation still need source traces
-and independent Qt image dumps. This panel projection therefore remains
-`partial` in the hill ledger until those behaviors are connected and defended.
+field event dispatch, exact source tile placement, the room-payment return to
+Hotel Options, and the full debt/package continuation still need source
+traces and independent Qt image dumps. The separate
+`qt_runtime/field_dialogue_runtime.*` seam now connects the converted field
+exit orchestrator to the shared panel without duplicating field state or
+putting ROM pointers in the runtime. Its controller path preserves the
+source A/B/C priority and title-only wait semantics. The diagnostic
+`--field-dialogue-dump` path exercises this typed projection, but the hill
+remains `partial` until a real field trigger and independent visual defense
+exist.
 No other field-exit profile is allowed to borrow Stoker's portrait or text
 aliases.
 

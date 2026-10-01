@@ -18,6 +18,8 @@
 #include "shadowrun_ghidra/entities/movement_mode_transition_conversion.hpp"
 #include "shadowrun_ghidra/field/terrain_probe_conversion.hpp"
 #include "shadowrun_ghidra/field/field_mode_exit_transition_finalizer_conversion.hpp"
+#include "shadowrun_ghidra/field/field_exit_orchestrator_conversion.hpp"
+#include "shadowrun_ghidra/field/field_exit_prompt_conversion.hpp"
 #include "shadowrun_ghidra/field/field_runner_state_asset_refresh_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_runtime_coordinator_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_bootstrap_conversion.hpp"
@@ -36,6 +38,7 @@
 #include <QImage>
 
 #include "field_command_overview_bridge.hpp"
+#include "field_dialogue_runtime.hpp"
 #include "field_menu_text_catalog.hpp"
 
 #include <array>
@@ -70,6 +73,14 @@ public:
     bool command_overview_open() const noexcept {
         return command_overview_.open();
     }
+    bool dialogue_open() const noexcept { return field_dialogue_.open(); }
+    const DialoguePanelView& dialogue_panel() const noexcept {
+        return field_dialogue_.panel();
+    }
+    bool open_stoker_dialogue_for_dump(
+        StokerMotelPromptId prompt) {
+        return field_dialogue_.open_stoker_prompt_for_dump(prompt);
+    }
     const FieldCommandOverviewView& command_overview_view() const noexcept {
         return command_overview_.view();
     }
@@ -94,6 +105,8 @@ private:
     void refresh_field_runner_state_and_assets();
     void handle_field_mode_action_event();
     void run_field_mode_exit_transition();
+    bool run_field_exit_orchestrator(
+        integration::FieldRuntimeCoordinatorState& runtime_state);
     bool project_field_world_interaction();
     void update_source_field_camera();
     void apply_field_entity_animation(bool walking);
@@ -146,6 +159,7 @@ private:
     WorldFrameLogicCallbacks world_frame_logic_callbacks_;
     FieldViewportState viewport_state_;
     FieldCommandOverviewBridge command_overview_;
+    FieldDialogueRuntime field_dialogue_;
     RunnerRecordFields field_active_runner_record_{};
     std::size_t field_joshua_archetype_selection_ = 0U;
     QImage field_map_;
@@ -232,6 +246,8 @@ private:
     // 0xC7F8 scene-runtime dispatcher.
     std::uint8_t field_action_counter_ = 0;
     std::uint8_t field_entity_behavior_flags_ = 0;
+    std::int8_t field_exit_alternate_result_ = 0;
+    std::uint32_t field_exit_world_flags_ = 0;
     FieldEntityPresentation field_entity_{};
     std::string failure_;
     bool ready_ = false;
