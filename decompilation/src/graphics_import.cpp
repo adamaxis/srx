@@ -567,6 +567,28 @@ GenesisFieldMenuClipsText read_genesis_field_menu_clips_text(
             "Genesis Clips trade command text is truncated");
     }
 
+    // 0x11E34 renders D1B61 as three source lines: Trade / clips to / ????;
+    // 0x11FD4 renders D1B78 as the two-line completion message.  These are
+    // distinct from the selector tables and must remain individually named in
+    // the host catalog rather than being reconstructed by the Qt presenter.
+    result.trade_prompt = {
+        read_genesis_padded_text(
+            rom, 0xD1B61U, 0x05U,
+            "Genesis Clips trade prompt line one is truncated"),
+        read_genesis_padded_text(
+            rom, 0xD1B67U, 0x08U,
+            "Genesis Clips trade prompt line two is truncated"),
+        read_genesis_padded_text(
+            rom, 0xD1B71U, 0x06U,
+            "Genesis Clips trade prompt line three is truncated")};
+    result.exchange_complete = {
+        read_genesis_padded_text(
+            rom, 0xD1B78U, 0x08U,
+            "Genesis Clips exchange line one is truncated"),
+        read_genesis_padded_text(
+            rom, 0xD1B81U, 0x08U,
+            "Genesis Clips exchange line two is truncated")};
+
     result.title = read_genesis_padded_text(
         rom, 0xD1AE0U, 0x0AU,
         "Genesis Clips title text is truncated");

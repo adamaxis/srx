@@ -1065,17 +1065,17 @@ void FieldSceneRuntime::open_command_overview() {
         return false;
     };
     const CommandOverviewInput input{
-        static_cast<std::uint8_t>(field_active_runner_record_.flags & 0xFFU),
-        static_cast<std::int8_t>(field_active_runner_record_.archetype_index)};
+        static_cast<std::uint8_t>(active_runner_record().flags & 0xFFU),
+        static_cast<std::int8_t>(active_runner_record().archetype_index)};
     const CommandOverviewPreparationInput preparation_input{};
     const CommandOverviewHudPanelInput hud_panel_input{
-        field_active_runner_record_.record_type,
-        field_active_runner_record_.command_overview_panel_parameter};
+        active_runner_record().record_type,
+        active_runner_record().command_overview_panel_parameter};
     command_overview_.begin(
         input, preparation_input, hud_panel_input,
         {[this](const std::string_view boundary) { source_boundary(boundary); },
          command_asset_available,
-         [this] { return field_active_runner_record_.equipped_item_code; },
+         [this] { return active_runner_record().equipped_item_code; },
          [](const CommandOverviewPreparationResult&) {},
          [](const CommandOverviewHudPanelPlan&) {},
          [](const CommandOverviewActionRefreshResult&) {}});
@@ -1089,11 +1089,23 @@ void FieldSceneRuntime::refresh_field_hud_runner_slot() {
     }
     auto& slot = field_hud_slots_[0];
     slot.flags_byte = static_cast<std::uint8_t>(
-        field_active_runner_record_.flags >> 8U);
+        active_runner_record().flags >> 8U);
     slot.equipped_inventory_slot =
-        field_active_runner_record_.equipped_inventory_slot;
-    slot.equipped_item_code = field_active_runner_record_.equipped_item_code;
-    slot.ammo_rounds = field_active_runner_record_.ammo_rounds;
+        active_runner_record().equipped_inventory_slot;
+    slot.equipped_item_code = active_runner_record().equipped_item_code;
+    slot.ammo_rounds = active_runner_record().ammo_rounds;
+}
+
+void FieldSceneRuntime::initialize_field_party_roster(
+    const integration::StartupIntegrationState& startup_state) {
+    const auto source = field_party_roster_.initialize(startup_state);
+    if (source == FieldPartyRosterRuntime::Source::unavailable) {
+        source_boundary("field.bootstrap.party_records_missing");
+    } else if (source == FieldPartyRosterRuntime::Source::restored_save) {
+        source_boundary("field.bootstrap.party_records.restored_save");
+    } else {
+        source_boundary("field.bootstrap.party_records.new_game");
+    }
 }
 
 void FieldSceneRuntime::begin_command_overview_inventory_action() {
@@ -1109,7 +1121,7 @@ void FieldSceneRuntime::begin_command_overview_inventory_action() {
     command_overview_inventory_action_.row =
         view.source_state.secondary_page;
     const auto result = advance_inventory_action_loop(
-        field_active_runner_record_, command_overview_inventory_action_,
+        active_runner_record(), command_overview_inventory_action_,
         InventoryActionInput{false, false, true, false, false});
     if (result.event == InventoryActionEvent::opened && result.item.has_value()) {
         command_overview_selected_inventory_item_ = result.item;
@@ -1139,11 +1151,12 @@ void FieldSceneRuntime::begin_command_overview_clips() {
 void FieldSceneRuntime::advance_command_overview_clips(
     const std::uint16_t controller_events) {
     const auto* item = find_us_item_definition(
-        field_active_runner_record_.equipped_item_code);
+        active_runner_record().equipped_item_code);
     const auto capacity = item == nullptr ? std::uint8_t{0}
                                            : item->source_combat_factor;
     const auto event = command_overview_clips_.advance(
-        controller_events, field_active_runner_record_, capacity);
+        controller_events, field_party_roster_.records(),
+        field_party_roster_.active_slot(), capacity);
     switch (event) {
     case ClipsMenuEvent::selection_moved:
         source_boundary("field.command_overview.clips.selector_moved");
@@ -1163,6 +1176,43 @@ void FieldSceneRuntime::advance_command_overview_clips(
         refresh_command_overview_combat_bars();
         source_boundary("field.command_overview.clips.reloaded");
         break;
+    case ClipsMenuEvent::trade_opened:
+        source_boundary("field.command_overview.clips.trade.opened");
+        if (command_overview_clips_.trade_recipient_record() >=
+                field_menu_text_.runner_names.size() ||
+            field_menu_text_.runner_names[
+                command_overview_clips_.trade_recipient_record()]
+                .empty()) {
+            source_boundary(
+                "field.command_overview.clips.trade.recipient_name_missing");
+        }
+        break;
+    case ClipsMenuEvent::trade_selection_moved:
+        source_boundary(
+            "field.command_overview.clips.trade.selector_moved");
+        break;
+    case ClipsMenuEvent::trade_quantity_changed:
+        source_boundary(
+            "field.command_overview.clips.trade.quantity_changed");
+        break;
+    case ClipsMenuEvent::trade_recipient_changed:
+        source_boundary(
+            "field.command_overview.clips.trade.recipient_changed");
+        break;
+    case ClipsMenuEvent::trade_transferred:
+        refresh_field_hud_runner_slot();
+        refresh_command_overview_combat_bars();
+        source_boundary(
+            "field.command_overview.clips.trade.transferred");
+        break;
+    case ClipsMenuEvent::trade_closed:
+        source_boundary("field.command_overview.clips.trade.closed");
+        break;
+    case ClipsMenuEvent::distributed:
+        refresh_field_hud_runner_slot();
+        refresh_command_overview_combat_bars();
+        source_boundary("field.command_overview.clips.distributed");
+        break;
     case ClipsMenuEvent::message_shown:
         switch (command_overview_clips_.message()) {
         case ClipsMenuMessage::out_of_ammo:
@@ -1176,6 +1226,7 @@ void FieldSceneRuntime::advance_command_overview_clips(
             source_boundary("field.command_overview.clips.no_party_members");
             break;
         case ClipsMenuMessage::reload_success:
+        case ClipsMenuMessage::exchange_complete:
         case ClipsMenuMessage::none:
             source_boundary("field.command_overview.clips.message_shown");
             break;
@@ -1224,8 +1275,8 @@ void FieldSceneRuntime::dispatch_command_overview_inventory_action(
                                              : definition->source_combat_factor;
             };
             const auto mutation = toggle_selected_equipment(
-                field_active_runner_record_, *result.item,
-                item_factor(field_active_runner_record_.equipped_item_code),
+                active_runner_record(), *result.item,
+                item_factor(active_runner_record().equipped_item_code),
                 item_factor(result.item->item_code));
             if (mutation == EquipmentMutation::invalid_selection ||
                 mutation == EquipmentMutation::rejected_item_action) {
@@ -1340,7 +1391,7 @@ void FieldSceneRuntime::advance_command_overview_discard_confirmation(
     }
     if (command_overview_discard_confirmation_.selected_option == 0U) {
         const auto mutation = discard_selected_item(
-            field_active_runner_record_, *selected);
+            active_runner_record(), *selected);
         if (mutation == EquipmentMutation::discarded) {
             refresh_field_hud_runner_slot();
             refresh_command_overview_combat_bars();
@@ -1386,7 +1437,7 @@ void FieldSceneRuntime::advance_command_overview_inventory_action(
         (controller_events & 0x1000U) != 0U,
         (controller_events & 0x8000U) != 0U};
     const auto result = advance_inventory_action_loop(
-        field_active_runner_record_, command_overview_inventory_action_, input);
+        active_runner_record(), command_overview_inventory_action_, input);
     switch (result.event) {
     case InventoryActionEvent::action_moved:
         source_boundary(
@@ -1477,7 +1528,7 @@ bool FieldSceneRuntime::bootstrap(
     field_camera_alignment_ready_ = false;
     command_overview_.close();
     field_dialogue_.close();
-    field_active_runner_record_ = RunnerRecordFields{};
+    field_party_roster_.clear();
     field_menu_text_ = FieldMenuTextCatalog{};
     command_overview_resource_variant_ = ResourceVariantState{};
     command_overview_combat_bars_ = EquipmentCombatBarResult{};
@@ -1506,16 +1557,15 @@ bool FieldSceneRuntime::bootstrap(
         integration::make_initial_mode2_field_scene_input(assets);
 
     field_entity_ = FieldEntityPresentation{};
-    field_entity_.active = startup_state.joshua_selection.has_value();
+    initialize_field_party_roster(startup_state);
+    field_entity_.active = field_party_roster_.available();
     field_entity_.world_position =
         input_.field_scene.source_metadata.initial_field_records[0];
     if (field_entity_.active) {
-        field_active_runner_record_ =
-            startup_state.joshua_selection->typed_live_joshua_record;
         field_joshua_archetype_selection_ = static_cast<std::size_t>(
             startup_state.joshua_archetype.selected);
         field_entity_.projection.sprite_offset_y =
-            startup_state.joshua_selection->typed_live_joshua_record
+            active_runner_record()
                 .projection_word_08;
     }
     // ROM 0x44BC installs behavior byte 0x05 in a field entity before the
@@ -2244,7 +2294,7 @@ void FieldSceneRuntime::refresh_command_overview_combat_bars() {
         return;
     }
 
-    const auto& record = field_active_runner_record_;
+    const auto& record = active_runner_record();
     EquipmentCombatInput input{};
     input.attributes = record.attributes;
     // The source combat adapter names the sparse +0x81..+0x8C window. The
@@ -2283,21 +2333,21 @@ void FieldSceneRuntime::refresh_command_overview_item_detail() {
     const auto slot =
         command_overview_.view().source_state.secondary_page * 2U +
         command_overview_.view().source_state.primary_page;
-    if (slot >= field_active_runner_record_.inventory_item_codes.size()) {
+    if (slot >= active_runner_record().inventory_item_codes.size()) {
         return;
     }
     ItemActionDetailInput input{};
-    input.item_code = field_active_runner_record_.inventory_item_codes[slot];
+    input.item_code = active_runner_record().inventory_item_codes[slot];
     for (std::size_t index = 0;
-         index < field_active_runner_record_.inventory_phase_bytes.size();
+         index < active_runner_record().inventory_phase_bytes.size();
          ++index) {
         input.phase_bytes[index] =
-            field_active_runner_record_.inventory_phase_bytes[index];
+            active_runner_record().inventory_phase_bytes[index];
     }
     // The ninth byte in the source phase span is active record +0x76, the
     // one-based armor ordinal. Preserve it as typed data for 0x12A8C's
     // item-detail value selection.
-    input.phase_bytes[8] = field_active_runner_record_.equipped_armor_index;
+    input.phase_bytes[8] = active_runner_record().equipped_armor_index;
     input.phase_slot = 8U;
     command_overview_item_detail_ = render_item_action_details(
         input, us_item_catalog(), command_overview_resource_variant_);
@@ -2341,6 +2391,41 @@ void FieldSceneRuntime::paint_command_overview_clips(
         return;
     }
 
+    if (command_overview_clips_.trade_open()) {
+        // ROM 0x11E34 renders the source trade prompt, then 0x1209A updates
+        // the recipient name when the nested selector moves. The current
+        // catalog deliberately retains the source ???? placeholder because
+        // runner-name extraction is a separate unresolved record boundary.
+        draw_command_overview_text(painter, 144, 72,
+                                   field_menu_text_.clips_trade_prompt[0]);
+        draw_command_overview_text(painter, 144, 80,
+                                   field_menu_text_.clips_trade_prompt[1]);
+        const auto recipient = command_overview_clips_.trade_recipient_record();
+        if (recipient < field_menu_text_.runner_names.size() &&
+            !field_menu_text_.runner_names[recipient].empty()) {
+            draw_command_overview_text(
+                painter, 120, 88, field_menu_text_.runner_names[recipient]);
+        } else {
+            draw_command_overview_text(painter, 120, 88,
+                                       field_menu_text_.clips_trade_prompt[2]);
+        }
+        draw_command_overview_text(
+            painter, 200, 72,
+            std::to_string(command_overview_clips_.trade_quantity()));
+        const auto selection = command_overview_clips_.trade_selection();
+        if (selection >= static_cast<std::uint8_t>(ClipsCommand::reload) &&
+            selection <= static_cast<std::uint8_t>(ClipsCommand::cancel)) {
+            const auto focus_index = static_cast<std::size_t>(selection - 2U);
+            painter.drawImage(kCommandOverviewClipsFocusX[focus_index],
+                              kCommandOverviewClipsFocusY,
+                              command_overview_clips_trade_focus_[focus_index]);
+            draw_command_overview_text(
+                painter, 112, 200,
+                field_menu_text_.clips_trade_commands[focus_index]);
+        }
+        return;
+    }
+
     switch (command_overview_clips_.message()) {
     case ClipsMenuMessage::out_of_ammo:
         draw_command_overview_text(painter, 112, 80,
@@ -2353,6 +2438,9 @@ void FieldSceneRuntime::paint_command_overview_clips(
     case ClipsMenuMessage::reload_success:
         draw_lines(field_menu_text_.clips_reload_success, 112, 80);
         return;
+    case ClipsMenuMessage::exchange_complete:
+        draw_lines(field_menu_text_.clips_exchange_complete, 112, 80);
+        return;
     case ClipsMenuMessage::no_party_members:
         draw_lines(field_menu_text_.clips_no_party, 120, 72);
         return;
@@ -2364,7 +2452,7 @@ void FieldSceneRuntime::paint_command_overview_clips(
                                field_menu_text_.clips_counter_label);
     draw_command_overview_text(
         painter, 208, 72,
-        std::to_string(field_active_runner_record_.ammo_clips));
+        std::to_string(active_runner_record().ammo_clips));
     const auto selection = command_overview_clips_.selection();
     if (selection >= static_cast<std::uint8_t>(ClipsCommand::reload) &&
         selection <= static_cast<std::uint8_t>(ClipsCommand::cancel)) {
@@ -2404,7 +2492,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
 
     // 0x11928/0x11AE4 places the five-state posture bar at CAAC (176,168).
     const auto posture = std::min<std::size_t>(
-        field_active_runner_record_.posture,
+        active_runner_record().posture,
         command_overview_status_bars_.size() - 1U);
     painter.drawImage(176, 168, command_overview_status_bars_[posture]);
     draw_command_overview_text(painter, 136, 176,
@@ -2455,7 +2543,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             // Wpns/Guns detail bars.
             if (item_code >= 0x2CU && item_code <= 0x32U) {
                 const auto* armor = find_us_armor_definition(
-                    field_active_runner_record_.equipped_armor_index);
+                    active_runner_record().equipped_armor_index);
                 if (armor != nullptr) {
                     draw_command_overview_text(painter, 112, 80,
                                                 field_menu_text_.weapons_label);
@@ -2494,7 +2582,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             draw_command_overview_text(
                 painter, 112, 48,
                 field_menu_text_.item_detail_labels[*label_index]);
-            const auto phase = field_active_runner_record_
+            const auto phase = active_runner_record()
                                    .inventory_phase_bytes[*selected_slot];
             if (phase < command_overview_detail_values_.size()) {
                 painter.drawImage(120, 56,
@@ -2502,7 +2590,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             }
         };
     const auto draw_armor_summary = [this, &painter] {
-        const auto armor_index = field_active_runner_record_.equipped_armor_index;
+        const auto armor_index = active_runner_record().equipped_armor_index;
         if (armor_index != 0U && armor_index <= field_menu_text_.armor_labels.size()) {
             const auto& armor = field_menu_text_.armor_labels[armor_index - 1U];
             for (std::size_t row = 0; row < armor.size(); ++row) {
@@ -2538,7 +2626,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     if (view.source_state.primary_page >= 2U &&
         !command_overview_clips_.is_open()) {
         std::string archetype;
-        switch (field_active_runner_record_.archetype_index) {
+        switch (active_runner_record().archetype_index) {
         case 1U:
             archetype = field_menu_text_.archetype_names[2] + " " +
                         field_menu_text_.archetype_names[3];
@@ -2563,15 +2651,15 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             painter, 208, 40,
             std::to_string(std::min<unsigned>(
                 100U, static_cast<unsigned>(
-                          field_active_runner_record_.delay_meter) * 10U)) +
+                          active_runner_record().delay_meter) * 10U)) +
                 "%");
         draw_command_overview_text(
             painter, 208, 48,
             std::to_string(std::min<unsigned>(
                 100U, static_cast<unsigned>(
-                          field_active_runner_record_.behavior_meter) * 10U)) +
+                          active_runner_record().behavior_meter) * 10U)) +
                 "%");
-        draw_item_detail_rows(field_active_runner_record_.equipped_item_code,
+        draw_item_detail_rows(active_runner_record().equipped_item_code,
                               std::nullopt, false);
         draw_command_overview_text(painter, 112, 104,
                                    field_menu_text_.attack_label);
@@ -2597,9 +2685,9 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     } else if (!command_overview_clips_.is_open()) {
         const auto slot = view.source_state.secondary_page * 2U +
                           view.source_state.primary_page;
-        if (slot < field_active_runner_record_.inventory_item_codes.size()) {
+        if (slot < active_runner_record().inventory_item_codes.size()) {
             const auto item_code =
-                field_active_runner_record_.inventory_item_codes[slot];
+                active_runner_record().inventory_item_codes[slot];
             if (item_code >= 1U && item_code <= field_menu_text_.item_names.size()) {
                 draw_command_overview_text(
                     painter, 128, 64,
@@ -2620,13 +2708,13 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         {{16, 168}}, {{56, 168}}, {{16, 192}}, {{56, 192}},
     }};
     const auto icon_variant = command_overview_uses_alternate_icon_palette(
-                                  field_active_runner_record_)
+                                  active_runner_record())
                                   ? 1U
                                   : 0U;
     for (std::size_t slot = 0;
-         slot < field_active_runner_record_.inventory_item_codes.size();
+         slot < active_runner_record().inventory_item_codes.size();
          ++slot) {
-        const auto item_code = field_active_runner_record_.inventory_item_codes[
+        const auto item_code = active_runner_record().inventory_item_codes[
             slot];
         if (item_code == 0U || item_code > 50U) {
             continue;
@@ -2647,17 +2735,17 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             112 + static_cast<int>((slot / 2U) * 24U),
             command_overview_selected_cells_[overlay]);
     };
-    if (field_active_runner_record_.equipped_inventory_slot >= 0) {
+    if (active_runner_record().equipped_inventory_slot >= 0) {
         draw_equipment_border(static_cast<std::size_t>(
-            field_active_runner_record_.equipped_inventory_slot));
+            active_runner_record().equipped_inventory_slot));
     }
-    if (field_active_runner_record_.equipped_armor_index != 0U) {
+    if (active_runner_record().equipped_armor_index != 0U) {
         const auto armor_code = static_cast<std::uint8_t>(
-            0x2BU + field_active_runner_record_.equipped_armor_index);
+            0x2BU + active_runner_record().equipped_armor_index);
         for (std::size_t slot = 0;
-             slot < field_active_runner_record_.inventory_item_codes.size();
+             slot < active_runner_record().inventory_item_codes.size();
              ++slot) {
-            if (field_active_runner_record_.inventory_item_codes[slot] ==
+            if (active_runner_record().inventory_item_codes[slot] ==
                 armor_code) {
                 draw_equipment_border(slot);
                 break;
@@ -2699,9 +2787,9 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             draw_command_overview_text(
                 painter, 112, 176, field_menu_text_.action_discard_prompt);
             if (command_overview_selected_inventory_item_.has_value() &&
-                field_active_runner_record_.equipped_inventory_slot >= 0 &&
+                active_runner_record().equipped_inventory_slot >= 0 &&
                 static_cast<std::size_t>(
-                    field_active_runner_record_.equipped_inventory_slot) ==
+                    active_runner_record().equipped_inventory_slot) ==
                     command_overview_selected_inventory_item_->slot) {
                 draw_command_overview_text(
                     painter, 112, 184,

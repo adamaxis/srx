@@ -44,6 +44,11 @@ clips.trade.0	Increase Clips
 clips.trade.1	Decrease Clips
 clips.trade.2	Trade Clips
 clips.trade.3	Change Recipient
+clips.trade-prompt.0	Trade
+clips.trade-prompt.1	clips to
+clips.trade-prompt.2	"  ????"
+clips.exchange-complete.0	Exchange
+clips.exchange-complete.1	complete
 clips.title	"    CLIPS"
 clips.separator	"   [\\\\\\"
 clips.counter	"  Clips"

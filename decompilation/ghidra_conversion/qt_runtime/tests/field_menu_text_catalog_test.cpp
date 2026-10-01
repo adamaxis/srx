@@ -16,6 +16,9 @@ int main() {
             loaded.catalog);
     if (!text.complete()) {
         std::cerr << "field menu text catalog is incomplete\n";
+        for (const auto& error : text.errors) {
+            std::cerr << error << '\n';
+        }
         return 2;
     }
     using namespace shadowrun::ghidra_conversion::qt_runtime;
@@ -46,6 +49,11 @@ int main() {
         text.catalog.clips_commands[0] != "Reload" ||
         text.catalog.clips_commands[2] != "Distribute" ||
         text.catalog.clips_trade_commands[3] != "Change Recipient" ||
+         text.catalog.clips_trade_prompt[0] != "Trade" ||
+         text.catalog.clips_trade_prompt[1] != "clips to" ||
+         text.catalog.clips_trade_prompt[2] != "  ????" ||
+         text.catalog.clips_exchange_complete[0] != "Exchange" ||
+         text.catalog.clips_exchange_complete[1] != "complete" ||
         text.catalog.clips_title != "    CLIPS" ||
         text.catalog.clips_separator !=
             std::string("   [") + std::string(6U, static_cast<char>(92)) ||

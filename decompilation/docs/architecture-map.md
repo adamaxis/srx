@@ -384,8 +384,13 @@ remain explicit conversion work. The top-level Clips branch is now connected
 through a separate `FieldClipsMenuRuntime`: its four-entry selector,
 reload-confirmation state, typed ammunition mutation, and source row
 replacement are presented by `FieldSceneRuntime` without adding a second
-menu state machine. The nested recruited-recipient trade presentation remains
-an explicit boundary until roster records are connected.
+menu state machine. The nested recruited-recipient trade path consumes the
+same typed `FieldPartyRosterRuntime` records that the field scene uses:
+`0x11DD2` recipient filtering, `0x1209A` recipient cycling, quantity
+wrap/clamp, transfer arithmetic, and the `0x11FDE` distribution branch are
+connected through converted routines. The direct catalog still exposes the
+source `????` prompt where runner-name records have not been extracted, and
+loaded-save field composition remains an explicit boundary.
 
 The Clips branch also establishes the menu verification shape for later
 panels. Selection movement is tested across every entry and the wrap edge,
@@ -393,7 +398,10 @@ deselection/reselection is tested without record mutation, and a frame-shell
 comparison ignores only the source action row and its changing caption. This
 catches a focus sprite painted over a stale five-button row, or a selector
 transition that accidentally changes the portrait, inventory, status bars, or
-other surrounding panel state.
+other surrounding panel state. The party-roster test additionally checks
+new-game Joshua projection, signed save-marker activation, active-slot
+selection, and typed clip transfer without allowing the Qt presenter to
+fabricate a local party array.
 
 ### IntroDirector
 

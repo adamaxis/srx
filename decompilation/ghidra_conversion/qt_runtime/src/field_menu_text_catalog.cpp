@@ -92,6 +92,8 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::array<bool, kFieldMenuItemNameCount> item_category_found{};
     std::array<bool, kFieldMenuClipsCommandCount> clips_found{};
     std::array<bool, kFieldMenuClipsCommandCount> clips_trade_found{};
+    std::array<bool, 3> clips_trade_prompt_found{};
+    std::array<bool, 2> clips_exchange_complete_found{};
     std::array<bool, 3> clips_reload_found{};
     std::array<bool, 2> clips_success_found{};
     std::array<bool, 2> clips_out_of_ammo_found{};
@@ -209,6 +211,28 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             } else {
                 clips_trade_found[index] = true;
                 result.catalog.clips_trade_commands[index] = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "clips.trade-prompt.", index) &&
+            index < result.catalog.clips_trade_prompt.size()) {
+            if (clips_trade_prompt_found[index]) {
+                result.errors.emplace_back("duplicate field menu text row: " +
+                                          key);
+            } else {
+                clips_trade_prompt_found[index] = true;
+                result.catalog.clips_trade_prompt[index] = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "clips.exchange-complete.", index) &&
+            index < result.catalog.clips_exchange_complete.size()) {
+            if (clips_exchange_complete_found[index]) {
+                result.errors.emplace_back("duplicate field menu text row: " +
+                                          key);
+            } else {
+                clips_exchange_complete_found[index] = true;
+                result.catalog.clips_exchange_complete[index] = value;
             }
             continue;
         }
@@ -413,6 +437,10 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     add_missing_entries(status_found, "status.", result.errors);
     add_missing_entries(clips_found, "clips.", result.errors);
     add_missing_entries(clips_trade_found, "clips.trade.", result.errors);
+    add_missing_entries(clips_trade_prompt_found, "clips.trade-prompt.",
+                        result.errors);
+    add_missing_entries(clips_exchange_complete_found,
+                        "clips.exchange-complete.", result.errors);
     const auto require_named = [&result](const char* key, const bool found) {
         if (!found) {
             result.errors.emplace_back(

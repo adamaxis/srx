@@ -41,6 +41,7 @@
 
 #include "field_command_overview_bridge.hpp"
 #include "field_clips_menu_runtime.hpp"
+#include "field_party_roster_runtime.hpp"
 #include "field_dialogue_runtime.hpp"
 #include "field_menu_text_catalog.hpp"
 
@@ -87,8 +88,11 @@ public:
     const FieldCommandOverviewView& command_overview_view() const noexcept {
         return command_overview_.view();
     }
+    RunnerRecordFields& active_runner_record() noexcept {
+        return field_party_roster_.active_record();
+    }
     const RunnerRecordFields& active_runner_record() const noexcept {
-        return field_active_runner_record_;
+        return field_party_roster_.active_record();
     }
     const EquipmentCombatBarResult& command_overview_combat_bars() const
         noexcept {
@@ -172,6 +176,8 @@ private:
     void refresh_command_overview_combat_bars();
     void refresh_command_overview_item_detail();
     void refresh_field_hud_runner_slot();
+    void initialize_field_party_roster(
+        const integration::StartupIntegrationState& startup_state);
     void advance_command_overview_inventory_action(
         std::uint16_t controller_events);
     void advance_command_overview_clips(std::uint16_t controller_events);
@@ -208,7 +214,7 @@ private:
     FieldViewportState viewport_state_;
     FieldCommandOverviewBridge command_overview_;
     FieldDialogueRuntime field_dialogue_;
-    RunnerRecordFields field_active_runner_record_{};
+    FieldPartyRosterRuntime field_party_roster_{};
     std::size_t field_joshua_archetype_selection_ = 0U;
     QImage field_map_;
     QImage field_hud_;

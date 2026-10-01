@@ -2,8 +2,6 @@
 
 #include "shadowrun_ghidra/menus/clips_menu_conversion.hpp"
 
-#include <array>
-
 namespace shadowrun::ghidra_conversion::qt_runtime {
 namespace {
 
@@ -46,6 +44,7 @@ void FieldClipsMenuRuntime::open() noexcept {
     reload_confirmation_yes_ = false;
     selection_ = static_cast<std::uint8_t>(ClipsCommand::reload);
     message_ = ClipsMenuMessage::none;
+    trade_state_ = ClipTradeState{};
 }
 
 void FieldClipsMenuRuntime::close() noexcept {
@@ -54,6 +53,7 @@ void FieldClipsMenuRuntime::close() noexcept {
     reload_confirmation_yes_ = false;
     selection_ = static_cast<std::uint8_t>(ClipsCommand::reload);
     message_ = ClipsMenuMessage::none;
+    trade_state_ = ClipTradeState{};
 }
 
 ClipsMenuEvent FieldClipsMenuRuntime::show_message(
@@ -64,11 +64,43 @@ ClipsMenuEvent FieldClipsMenuRuntime::show_message(
 
 ClipsMenuEvent FieldClipsMenuRuntime::advance(
     const std::uint16_t controller_events,
-    RunnerRecordFields& active_record,
+    std::array<RunnerRecordFields, 3>& records,
+    const std::size_t active_record,
     const std::uint8_t capacity) {
     if (!open_) {
         return ClipsMenuEvent::no_change;
     }
+
+    if (trade_state_.active) {
+        const ClipTradeInput input{
+            (controller_events & kLeft) != 0U,
+            (controller_events & kRight) != 0U,
+            (controller_events & kA) != 0U,
+            (controller_events & kB) != 0U,
+            (controller_events & kStart) != 0U};
+        const auto trade_event =
+            advance_clip_trade(records, active_record, trade_state_, input);
+        switch (trade_event) {
+        case ClipTradeEvent::command_moved:
+            return ClipsMenuEvent::trade_selection_moved;
+        case ClipTradeEvent::quantity_changed:
+            return ClipsMenuEvent::trade_quantity_changed;
+        case ClipTradeEvent::recipient_changed:
+            return ClipsMenuEvent::trade_recipient_changed;
+        case ClipTradeEvent::transferred:
+            message_ = ClipsMenuMessage::exchange_complete;
+            return ClipsMenuEvent::trade_transferred;
+        case ClipTradeEvent::closed:
+            return ClipsMenuEvent::trade_closed;
+        case ClipTradeEvent::no_change:
+            return ClipsMenuEvent::no_change;
+        }
+    }
+
+    if (active_record >= records.size()) {
+        return ClipsMenuEvent::no_change;
+    }
+    auto& active = records[active_record];
 
     // The converted source feedback branch waits for a controller edge
     // before restoring the Clips row. Keep the message state separate from
@@ -97,8 +129,8 @@ ClipsMenuEvent FieldClipsMenuRuntime::advance(
             return ClipsMenuEvent::no_change;
         }
         reload_confirmation_open_ = false;
-        const auto result = reload_one_clip(
-            active_record, capacity, reload_confirmation_yes_);
+        const auto result = reload_one_clip(active, capacity,
+                                            reload_confirmation_yes_);
         reload_confirmation_yes_ = false;
         if (result == ReloadResult::reloaded) {
             message_ = ClipsMenuMessage::reload_success;
@@ -135,7 +167,7 @@ ClipsMenuEvent FieldClipsMenuRuntime::advance(
     // condition: Trade and Distribute also stop on an empty +0x4F clip count.
     // Keep the source gate in the converted Clips module instead of allowing
     // the host adapter to fabricate a zero-quantity trade.
-    const auto gate = gate_clips_command(active_record, command);
+    const auto gate = gate_clips_command(active, command);
     const auto gate_message = message_for_clips_gate(gate);
     if (gate_message != ClipsMenuMessage::none) {
         return show_message(gate_message);
@@ -143,7 +175,7 @@ ClipsMenuEvent FieldClipsMenuRuntime::advance(
 
     switch (command) {
     case ClipsCommand::reload: {
-        const auto result = reload_one_clip(active_record, capacity, false);
+        const auto result = reload_one_clip(active, capacity, false);
         if (result == ReloadResult::confirmation_required) {
             reload_confirmation_open_ = true;
             reload_confirmation_yes_ = false;
@@ -159,24 +191,15 @@ ClipsMenuEvent FieldClipsMenuRuntime::advance(
                    : show_message(message);
     }
     case ClipsCommand::trade: {
-        // The current Qt field session has Joshua only. Ask the converted
-        // recipient filter rather than inventing a recipient; the source
-        // result is the same no-party branch until recruited records are
-        // connected to this session.
-        std::array<RunnerRecordFields, 3> records{};
-        records[0] = active_record;
-        records[0].flags |= 0x01U;
-        ClipTradeState trade{};
-        return open_clip_trade(records, 0U, trade)
-                   ? ClipsMenuEvent::no_change
-                   : show_message(ClipsMenuMessage::no_party_members);
+        if (open_clip_trade(records, active_record, trade_state_)) {
+            return ClipsMenuEvent::trade_opened;
+        }
+        return show_message(ClipsMenuMessage::no_party_members);
     }
     case ClipsCommand::distribute: {
-        std::array<RunnerRecordFields, 3> records{};
-        records[0] = active_record;
-        records[0].flags |= 0x01U;
         return distribute_clips(records) == DistributionResult::distributed
-                   ? ClipsMenuEvent::no_change
+                   ? (message_ = ClipsMenuMessage::exchange_complete,
+                      ClipsMenuEvent::distributed)
                    : show_message(ClipsMenuMessage::no_party_members);
     }
     case ClipsCommand::cancel:

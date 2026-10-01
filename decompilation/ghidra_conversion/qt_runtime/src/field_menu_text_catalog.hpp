@@ -56,6 +56,8 @@ struct FieldMenuTextCatalog {
     std::string action_choice_yes;
     std::array<std::string, kFieldMenuClipsCommandCount> clips_commands{};
     std::array<std::string, kFieldMenuClipsCommandCount> clips_trade_commands{};
+    std::array<std::string, 3> clips_trade_prompt{};
+    std::array<std::string, 2> clips_exchange_complete{};
     std::string clips_title;
     std::string clips_separator;
     std::string clips_counter_label;

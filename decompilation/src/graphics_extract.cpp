@@ -180,6 +180,16 @@ void write_field_menu_text_catalog(
         emit("clips.trade." + std::to_string(index),
              clips_text.trade_commands[index]);
     }
+    for (std::size_t index = 0; index < clips_text.trade_prompt.size();
+         ++index) {
+        emit("clips.trade-prompt." + std::to_string(index),
+             clips_text.trade_prompt[index]);
+    }
+    for (std::size_t index = 0; index < clips_text.exchange_complete.size();
+         ++index) {
+        emit("clips.exchange-complete." + std::to_string(index),
+             clips_text.exchange_complete[index]);
+    }
     emit("clips.title", clips_text.title);
     emit("clips.separator", clips_text.separator);
     emit("clips.counter", clips_text.counter_label);

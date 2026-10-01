@@ -2,6 +2,7 @@
 
 #include "shadowrun_ghidra/menus/clips_menu_conversion.hpp"
 
+#include <array>
 #include <iostream>
 
 using namespace shadowrun::ghidra_conversion;
@@ -20,7 +21,12 @@ bool expect(const bool condition, const char* message) {
 ClipsMenuEvent advance(FieldClipsMenuRuntime& menu,
                        RunnerRecordFields& record,
                        const std::uint16_t events) {
-    return menu.advance(events, record, 30U);
+    std::array<RunnerRecordFields, 3> records{};
+    records[0] = record;
+    records[0].flags = static_cast<std::uint16_t>(records[0].flags | 0x01U);
+    const auto result = menu.advance(events, records, 0U, 30U);
+    record = records[0];
+    return result;
 }
 
 } // namespace
@@ -156,6 +162,48 @@ int main() {
                     !menu.is_open(),
                 "Clips runtime did not close on B")) {
         return 4;
+    }
+
+    // A real recruited record is required before the converted nested trade
+    // routine can open. Exercise the complete selector/quantity/transfer path
+    // with typed party records; the live new-game session correctly has only
+    // Joshua and therefore remains on the source no-party branch above.
+    FieldClipsMenuRuntime trade_menu;
+    std::array<RunnerRecordFields, 3> party{};
+    party[0] = record;
+    party[0].flags = static_cast<std::uint16_t>(party[0].flags | 0x01U);
+    party[0].ammo_clips = 4U;
+    party[1].flags = 0x01U;
+    party[1].ammo_clips = 1U;
+    trade_menu.open();
+    if (!expect(trade_menu.advance(0x0800U, party, 0U, 30U) ==
+                    ClipsMenuEvent::selection_moved &&
+                    trade_menu.selection() == 3U,
+                "Clips trade test did not select Trade") ||
+        !expect(trade_menu.advance(0x4000U, party, 0U, 30U) ==
+                    ClipsMenuEvent::trade_opened &&
+                    trade_menu.trade_open() &&
+                    trade_menu.trade_quantity() == 4U &&
+                    trade_menu.trade_recipient_record() == 1U,
+                "Clips trade did not open from the converted recipient list") ||
+        !expect(trade_menu.advance(0x0800U, party, 0U, 30U) ==
+                    ClipsMenuEvent::trade_selection_moved &&
+                    trade_menu.trade_selection() == 3U,
+                "Clips nested trade did not move to Decrease") ||
+        !expect(trade_menu.advance(0x0800U, party, 0U, 30U) ==
+                    ClipsMenuEvent::trade_selection_moved &&
+                    trade_menu.trade_selection() == 4U,
+                "Clips nested trade did not move to Trade Clips") ||
+        !expect(trade_menu.advance(0x4000U, party, 0U, 30U) ==
+                    ClipsMenuEvent::trade_transferred &&
+                    !trade_menu.trade_open() &&
+                    trade_menu.message() == ClipsMenuMessage::exchange_complete &&
+                    party[0].ammo_clips == 0U && party[1].ammo_clips == 5U,
+                "Clips nested trade did not apply the converted transfer") ||
+        !expect(trade_menu.advance(0x1000U, party, 0U, 30U) ==
+                    ClipsMenuEvent::message_acknowledged,
+                "Clips exchange completion did not acknowledge")) {
+        return 6;
     }
     return 0;
 }

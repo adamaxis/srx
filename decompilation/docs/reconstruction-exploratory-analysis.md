@@ -618,8 +618,13 @@ deselection/reselection without record mutation, compares the surrounding
 portrait/inventory/status shell while moving, and verifies reload confirmation
 and the `0x26` load increment. The converted reload path gates non-clip items,
 consumes one clip, clamps loaded ammunition to the extracted item capacity, and
-emits the source `Rock & Roll, chummers!!` result. Recruited-recipient trade
-presentation and an independent visual golden remain open.
+emits the source `Rock & Roll, chummers!!` result. The nested trade path now
+uses the same typed three-slot party roster as the field scene: source-record
+exclusion, active/hidden recipient filtering, recipient cycling, quantity
+wrap, transfer arithmetic, and the source completion message are tested.
+Runner-name extraction remains open, so the source `????` placeholder is
+preserved rather than replaced with invented names; an independent visual
+golden also remains open.
 
 ### Attributes and skills: `0xD01C`
 

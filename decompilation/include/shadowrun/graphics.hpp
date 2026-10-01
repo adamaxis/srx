@@ -233,6 +233,12 @@ GenesisFieldMenuActionText read_genesis_field_menu_action_text(
 struct GenesisFieldMenuClipsText {
     std::array<std::string, 4> commands;
     std::array<std::string, 4> trade_commands;
+    // 0x11E34 renders the three source lines used while a recipient trade is
+    // active.  Keep the placeholder question marks as source text; the
+    // recipient-name writer is a separate runtime record consumer.
+    std::array<std::string, 3> trade_prompt;
+    // 0x11FD4 renders these lines after a successful trade/distribution.
+    std::array<std::string, 2> exchange_complete;
     std::string title;
     std::string separator;
     std::string counter_label;

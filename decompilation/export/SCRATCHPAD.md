@@ -361,6 +361,24 @@ touch fields with confirmed consumers; the remaining bytes stay opaque.
 | `0x12CEE` `update_equipment_combat_bars` | selects the equipped item/cyberware branch used for attack/defense bars |
 | `0x597EE` / `0x598B0` | projects confirmed live-record fields to and from compact save records |
 
+The nested Clips path is now traced as game behavior rather than a generic
+selector. `0x11DD2` starts with the three field-record slots, excludes the
+active record, rejects records whose `+0x10` bit 1 is set, and retains only
+records whose active bit 0 is set; it writes a `-1` sentinel when the scan
+finds no recipient before entering the source no-party message at
+`0xD1B8A`. `0x11E34` renders the three-line `Trade` / `clips to` /
+`????` prompt from `0xD1B61`, renders the active record's `+0x4F` clip
+count, and enters the nested command rows at `0x11E7E` from `0xD1E24`.
+The nested loop at `0x1209A..0x120E4` cycles the eligible recipient list and
+renders the recipient-dependent number/text state; it is represented by
+`FieldClipsMenuRuntime` over the typed `FieldPartyRosterRuntime` records.
+`0x11FDE`/`0x12014` counts active records, computes quotient/remainder
+distribution from the summed `+0x4F` values, and applies the source bit-1
+remainder rule. `0x11FD4` supplies the two-line `Exchange` / `complete`
+message from `0xD1B78`. Runner-name bytes are not fabricated: the current
+direct catalog exposes the source `????` placeholder until the corresponding
+record/name resource is traced.
+
 The concrete field-consuming operations are in the separate
 `shadowrun_ghidra_runner_record_operations` library:
 
