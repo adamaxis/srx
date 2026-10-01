@@ -116,11 +116,19 @@ void write_field_menu_text_catalog(
             throw std::runtime_error(
                 "field menu text contains a TSV control character: " + key);
         }
-        // Keep an empty source string visible in the generated resource
-        // instead of emitting a trailing tab that is easy to lose in a
-        // review or trim accidentally. The runtime maps this token back to
-        // the exact empty source value.
-        output << key << '\t' << (text.empty() ? "\"\"" : text) << '\n';
+        // Keep empty and fixed-width source strings explicit. Armor records
+        // intentionally carry leading/trailing spaces for their Genesis text
+        // cells; quoting those values preserves the source layout without
+        // creating trailing whitespace in the generated TSV.
+        const auto padded = !text.empty() &&
+                            (text.front() == ' ' || text.back() == ' ');
+        output << key << '\t';
+        if (text.empty() || padded) {
+            output << '"' << text << '"';
+        } else {
+            output << text;
+        }
+        output << '\n';
     };
 
     const auto command_labels =
@@ -142,6 +150,38 @@ void write_field_menu_text_catalog(
          ++index) {
         emit("status." + std::to_string(index),
              assets.field_menu_status_names[index]);
+    }
+    const auto field_labels =
+        shadowrun::graphics::read_genesis_field_menu_labels(rom);
+    emit("metric.physical", field_labels.physical);
+    emit("metric.mental", field_labels.mental);
+    emit("metric.attack", field_labels.attack);
+    emit("metric.defense", field_labels.defense);
+    emit("metric.damage", field_labels.damage);
+    emit("metric.drain", field_labels.drain);
+    emit("metric.none", field_labels.none);
+    emit("metric.no-armor", field_labels.no_armor);
+    emit("metric.weapons", field_labels.weapons);
+    emit("metric.guns", field_labels.guns);
+    emit("metric.power", field_labels.power);
+    for (std::size_t index = 0; index < assets.field_menu_power_labels.size();
+         ++index) {
+        emit("power." + std::to_string(index),
+             assets.field_menu_power_labels[index]);
+    }
+    for (std::size_t armor = 0; armor < assets.field_menu_armor_labels.size();
+         ++armor) {
+        for (std::size_t row = 0;
+             row < assets.field_menu_armor_labels[armor].size(); ++row) {
+            emit("armor." + std::to_string(armor) + "." +
+                     std::to_string(row),
+                 assets.field_menu_armor_labels[armor][row]);
+        }
+    }
+    const auto item_detail_labels =
+        shadowrun::graphics::read_genesis_field_menu_item_detail_labels(rom);
+    for (std::size_t index = 0; index < item_detail_labels.size(); ++index) {
+        emit("item-detail." + std::to_string(index), item_detail_labels[index]);
     }
     for (std::size_t index = 0; index < assets.inventory_items.size(); ++index) {
         emit("item." + std::to_string(index + 1U),
@@ -645,7 +685,8 @@ void write_asset_readme(const std::filesystem::path& root) {
               "remain separate; "
               "it does not contain full-screen flipbook samples or an aggregate "
               "serializer. The field command overview's ROM-derived command, "
-              "archetype, runner, status, and item strings are kept in "
+              "archetype, runner, status, power, armor, item-detail, and "
+              "item strings are kept in "
               "`menu/field/text.tsv` and exposed through the `menu.field.text` "
               "manifest alias. Item art is grouped under items/weapons, "
               "items/first-aid, items/miscellaneous, items/magic, and items/armor. "

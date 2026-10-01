@@ -471,6 +471,57 @@ std::array<std::string, 7> read_genesis_command_overview_labels(
     return result;
 }
 
+std::array<std::string, 3> read_genesis_field_menu_item_detail_labels(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::array<std::size_t, 3> kOffsets{{0xD29C4U, 0xD29CAU,
+                                                   0xD29D0U}};
+    std::array<std::string, 3> result{};
+    for (std::size_t index = 0; index < result.size(); ++index) {
+        result[index] = read_genesis_menu_text(
+            rom, kOffsets[index], 0x06U,
+            "Genesis item-detail label is truncated");
+    }
+    return result;
+}
+
+GenesisFieldMenuLabels read_genesis_field_menu_labels(
+    const std::vector<std::uint8_t>& rom) {
+    return {
+        read_genesis_menu_text(
+            rom, 0xD198CU, 0x08U,
+            "Genesis Physical field-menu label is truncated"),
+        read_genesis_menu_text(
+            rom, 0xD199AU, 0x06U,
+            "Genesis Mental field-menu label is truncated"),
+        read_genesis_menu_text(
+            rom, 0xD19A8U, 0x03U,
+            "Genesis Atk field-menu label is truncated"),
+        read_genesis_menu_text(
+            rom, 0xD19ACU, 0x03U,
+            "Genesis Def field-menu label is truncated"),
+        read_genesis_menu_text(
+            rom, 0xD19B0U, 0x06U,
+            "Genesis Damage field-menu label is truncated"),
+        read_genesis_menu_text(
+            rom, 0xD19B7U, 0x05U,
+            "Genesis Drain field-menu label is truncated"),
+        read_genesis_menu_text(
+            rom, 0xD19BEU, 0x04U,
+            "Genesis None field-menu label is truncated"),
+        read_genesis_menu_text(
+            rom, 0xD1F45U, 0x08U,
+            "Genesis No Armor field-menu label is truncated"),
+        read_genesis_menu_text(
+            rom, 0xD1F4EU, 0x04U,
+            "Genesis Wpns field-menu label is truncated"),
+        read_genesis_menu_text(
+            rom, 0xD1F53U, 0x04U,
+            "Genesis Guns field-menu label is truncated"),
+        read_genesis_menu_text(
+            rom, 0xD1F58U, 0x05U,
+            "Genesis Power field-menu label is truncated")};
+}
+
 static void fill_grayscale_entity_assets(native::NativePortAssets& assets);
 
 GenesisFieldEntityTemplate read_genesis_field_entity_template(

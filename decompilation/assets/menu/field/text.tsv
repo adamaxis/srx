@@ -18,6 +18,47 @@ status.1	Med. Defense
 status.2	Neutral
 status.3	Med. Offense
 status.4	Full Offense
+metric.physical	Physical
+metric.mental	Mental
+metric.attack	Atk
+metric.defense	Def
+metric.damage	Damage
+metric.drain	Drain
+metric.none	None
+metric.no-armor	No Armor
+metric.weapons	Wpns
+metric.guns	Guns
+metric.power	Power
+power.0	Meager
+power.1	Minor
+power.2	Very Low
+power.3	Low
+power.4	Very Light
+power.5	Light
+power.6	Medium
+power.7	Medium High
+power.8	High
+power.9	Brutal
+power.10	Severe
+power.11	Massive
+power.12	Incredible!
+armor.0.0	""
+armor.0.1	" Armor Vest "
+armor.1.0	"   Armor    "
+armor.1.1	"  Clothing  "
+armor.2.0	"   Armor    "
+armor.2.1	"   Jacket   "
+armor.3.0	"    Vest    "
+armor.3.1	"  w/Plates  "
+armor.4.0	"   Lined    "
+armor.4.1	"   Duster   "
+armor.5.0	"   Light    "
+armor.5.1	Combat Armor
+armor.6.0	"   Heavy    "
+armor.6.1	Combat Armor
+item-detail.0	ammo
+item-detail.1	uses
+item-detail.2	rtng
 item.1	Streetline
 item-category.1	Special
 item.2	Model 101T

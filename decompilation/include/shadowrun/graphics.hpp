@@ -176,6 +176,32 @@ read_genesis_inventory_catalog(const std::vector<std::uint8_t>& rom);
 std::array<std::string, 7> read_genesis_command_overview_labels(
     const std::vector<std::uint8_t>& rom);
 
+// ROM 0x12B8E selects the three item-detail label records at 0xD29C4,
+// 0xD29CA, and 0xD29D0. Extract them once for the host item-detail catalog;
+// the runtime does not carry the source text-table offsets.
+std::array<std::string, 3> read_genesis_field_menu_item_detail_labels(
+    const std::vector<std::uint8_t>& rom);
+
+// ROM 0x111E8/0x12CEE and the field armor/detail branches use these fixed
+// presentation records. Extract them once so the native menu consumes the
+// exact source labels without retaining Genesis text-table addresses.
+struct GenesisFieldMenuLabels {
+    std::string physical;
+    std::string mental;
+    std::string attack;
+    std::string defense;
+    std::string damage;
+    std::string drain;
+    std::string none;
+    std::string no_armor;
+    std::string weapons;
+    std::string guns;
+    std::string power;
+};
+
+GenesisFieldMenuLabels read_genesis_field_menu_labels(
+    const std::vector<std::uint8_t>& rom);
+
 // ROM 0x11950 indexes this pointer table with the active record's +0x90
 // bitfield. Convert the FF-terminated Genesis strings into host text so the
 // native cyberware view has no ROM dependency at runtime.

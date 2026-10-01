@@ -80,6 +80,22 @@ int main() {
     assert((command_labels == std::array<std::string, 7>{
         "Inventory", "Inventory", "Clips", "Attributes/Skills",
         "Cyberware", "Magic", "Pocket Secretary"}));
+    const auto item_detail_labels =
+        read_genesis_field_menu_item_detail_labels(rom);
+    assert((item_detail_labels ==
+            std::array<std::string, 3>{"ammo", "uses", "rtng"}));
+    const auto field_labels = read_genesis_field_menu_labels(rom);
+    assert(field_labels.physical == "Physical");
+    assert(field_labels.mental == "Mental");
+    assert(field_labels.attack == "Atk");
+    assert(field_labels.defense == "Def");
+    assert(field_labels.damage == "Damage");
+    assert(field_labels.drain == "Drain");
+    assert(field_labels.none == "None");
+    assert(field_labels.no_armor == "No Armor");
+    assert(field_labels.weapons == "Wpns");
+    assert(field_labels.guns == "Guns");
+    assert(field_labels.power == "Power");
     const auto entity_template =
         read_genesis_field_entity_template(rom);
     assert(entity_template.record_offset == 0x7291A);

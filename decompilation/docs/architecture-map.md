@@ -316,10 +316,13 @@ the command-panel `+0x2C` value), preserves the source d-pad/A/B/mode priority,
 and suspends field movement while the source command loop owns frames. The Qt
 layer paints the extracted shell, source text catalog, portrait, status strip,
 inventory icons, equipment overlays, cursor, and command focus blocks at the
-source-derived positions. The label catalog is generated offline at the ROM
-text-table boundary as `menu.field.text`; the handlers and action-detail data
-for Clips, Attributes, Cyberware, Magic, and Pocket Secretary remain explicit
-conversion work.
+source-derived positions. The normal equipment-detail seam passes the typed
+`EquipmentCombatBarResult` and `ItemActionDetailResult` from converted code
+into that presentation, so the item art, phase-value tiles, Damage/Power,
+Wpns/Guns, and Atk/Def rows are not recomputed by Qt. The label catalog is
+generated offline at the ROM text-table boundary as `menu.field.text`; the
+handlers and action-detail data for Clips, Attributes, Cyberware, Magic, and
+Pocket Secretary remain explicit conversion work.
 
 ### IntroDirector
 

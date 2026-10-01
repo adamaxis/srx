@@ -24,6 +24,21 @@ int main() {
         text.catalog.archetype_names[2] != "Gator" ||
         text.catalog.archetype_names[3] != "Shaman" ||
         text.catalog.runner_names[0] != "Joshua" ||
+        text.catalog.item_detail_labels[0] != "ammo" ||
+        text.catalog.item_detail_labels[1] != "uses" ||
+        text.catalog.item_detail_labels[2] != "rtng" ||
+        text.catalog.physical_label != "Physical" ||
+        text.catalog.mental_label != "Mental" ||
+        text.catalog.attack_label != "Atk" ||
+        text.catalog.defense_label != "Def" ||
+        text.catalog.damage_label != "Damage" ||
+        text.catalog.no_armor_label != "No Armor" ||
+        text.catalog.weapons_label != "Wpns" ||
+        text.catalog.guns_label != "Guns" ||
+        text.catalog.power_label != "Power" ||
+        text.catalog.armor_labels[1][0] != "   Armor    " ||
+        text.catalog.armor_labels[1][1] != "  Clothing  " ||
+        text.catalog.power_labels[0].empty() ||
         !text.catalog.runner_names[1].empty() ||
         !text.catalog.item_categories[15].empty()) {
         std::cerr << "field menu text catalog does not match source labels\n";

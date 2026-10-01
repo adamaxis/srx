@@ -9,6 +9,7 @@
 #include "shadowrun_ghidra/field/field_scene_entry_conversion.hpp"
 #include "shadowrun_ghidra/field/field_entity_render_batch_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
+#include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
 #include "genesis_image_compositor.hpp"
 
 #include <QPainter>
@@ -51,6 +52,16 @@ constexpr std::string_view kCommandOverviewStatusAliasPrefix =
     "menu.field.status.bar.";
 constexpr std::string_view kCommandOverviewSelectedCellAliasPrefix =
     "menu.field.selected.cell.";
+constexpr std::string_view kCommandOverviewDamageBarAliasPrefix =
+    "menu.field.damage.bar.";
+constexpr std::string_view kCommandOverviewDrainBarAliasPrefix =
+    "menu.field.drain.bar.";
+constexpr std::string_view kCommandOverviewDetailValueAliasPrefix =
+    "menu.field.detail.value.";
+constexpr std::string_view kCommandOverviewAttackBarAliasPrefix =
+    "menu.field.attack.bar.";
+constexpr std::string_view kCommandOverviewDefenseBarAliasPrefix =
+    "menu.field.defense.bar.";
 // FFDE08 is profile word 33. The 48-word block starts at FFDDC6.
 constexpr std::size_t kSceneProfileEntityPositionWord = 33U;
 
@@ -76,6 +87,24 @@ std::string command_overview_item_alias(const std::uint8_t item_code,
                                  : std::to_string(item_code);
     return "items." + category + ".icons.item." + item_number + "." +
            std::to_string(palette_variant);
+}
+
+std::string command_overview_item_detail_alias(
+    const std::uint8_t item_code) {
+    auto alias = command_overview_item_alias(item_code, 0U);
+    const auto marker = alias.find(".icons.item.");
+    if (marker == std::string::npos) {
+        return {};
+    }
+    alias.replace(marker, std::string(".icons.item.").size(), ".detail.item.");
+    // The detail catalog has one source image per item.  Only the inventory
+    // icon table is palette-variant; do not carry the icon builder's `.0`
+    // suffix into the direct detail alias.
+    const auto palette_separator = alias.rfind('.');
+    if (palette_separator != std::string::npos) {
+        alias.erase(palette_separator);
+    }
+    return alias;
 }
 
 bool command_overview_uses_alternate_icon_palette(
@@ -403,6 +432,41 @@ bool FieldSceneRuntime::load_command_overview_assets(
                                              [palette])) {
                 return false;
             }
+        }
+        if (!load_sprite(command_overview_item_detail_alias(
+                             static_cast<std::uint8_t>(item)),
+                         command_overview_item_details_[item - 1U])) {
+            return false;
+        }
+    }
+    for (std::size_t index = 0; index < command_overview_damage_bars_.size();
+         ++index) {
+        if (!load_sprite(std::string(kCommandOverviewDamageBarAliasPrefix) +
+                             std::to_string(index),
+                         command_overview_damage_bars_[index]) ||
+            !load_sprite(std::string(kCommandOverviewDrainBarAliasPrefix) +
+                             std::to_string(index),
+                         command_overview_drain_bars_[index])) {
+            return false;
+        }
+    }
+    for (std::size_t index = 0;
+         index < command_overview_detail_values_.size(); ++index) {
+        if (!load_sprite(std::string(kCommandOverviewDetailValueAliasPrefix) +
+                             std::to_string(index),
+                         command_overview_detail_values_[index])) {
+            return false;
+        }
+    }
+    for (std::size_t index = 0; index < command_overview_attack_bars_.size();
+         ++index) {
+        if (!load_sprite(std::string(kCommandOverviewAttackBarAliasPrefix) +
+                             std::to_string(index),
+                         command_overview_attack_bars_[index]) ||
+            !load_sprite(std::string(kCommandOverviewDefenseBarAliasPrefix) +
+                             std::to_string(index),
+                         command_overview_defense_bars_[index])) {
+            return false;
         }
     }
     return true;
@@ -872,6 +936,8 @@ void FieldSceneRuntime::open_command_overview() {
          [](const CommandOverviewPreparationResult&) {},
          [](const CommandOverviewHudPanelPlan&) {},
          [](const CommandOverviewActionRefreshResult&) {}});
+    refresh_command_overview_combat_bars();
+    refresh_command_overview_item_detail();
 }
 
 bool FieldSceneRuntime::bootstrap(
@@ -938,6 +1004,9 @@ bool FieldSceneRuntime::bootstrap(
     command_overview_.close();
     field_active_runner_record_ = RunnerRecordFields{};
     field_menu_text_ = FieldMenuTextCatalog{};
+    command_overview_resource_variant_ = ResourceVariantState{};
+    command_overview_combat_bars_ = EquipmentCombatBarResult{};
+    command_overview_item_detail_ = ItemActionDetailResult{};
     field_joshua_archetype_selection_ = 0U;
     field_hud_slots_ = {};
     field_entity_animation_ = {};
@@ -1481,6 +1550,8 @@ void FieldSceneRuntime::advance_frame() {
         ::shadowrun::ghidra_conversion::sample_controller_input(
             field_controller_sample_state_, field_controller_port_byte_);
         command_overview_.advance(field_controller_sample_state_.events);
+        refresh_command_overview_combat_bars();
+        refresh_command_overview_item_detail();
         return;
     }
     field_runtime_state_.field_activity_lock = state_.field_lock != 0U;
@@ -1617,6 +1688,71 @@ void FieldSceneRuntime::draw_command_overview_text(
     }
 }
 
+void FieldSceneRuntime::refresh_command_overview_combat_bars() {
+    if (!command_overview_.open()) {
+        command_overview_combat_bars_ = EquipmentCombatBarResult{};
+        return;
+    }
+
+    const auto& record = field_active_runner_record_;
+    EquipmentCombatInput input{};
+    input.attributes = record.attributes;
+    // The source combat adapter names the sparse +0x81..+0x8C window. The
+    // live-record projection stores +0x80..+0x85 and +0x87..+0x8C as the
+    // typed skill array, with +0x86 retained in auxiliary[1].
+    input.skills = {record.skills[1],  record.skills[2], record.skills[3],
+                    record.skills[4],  record.skills[5], record.auxiliary[1],
+                    record.skills[6],  record.skills[7], record.skills[8],
+                    record.skills[9],  record.skills[10], record.skills[11]};
+    input.inventory_item_codes = record.inventory_item_codes;
+    input.inventory_phase_bytes = record.inventory_phase_bytes;
+    input.display_state = record.equipped_inventory_slot;
+    input.active_item_code = record.equipped_item_code;
+    input.posture = record.posture;
+    // The command overview's source selector is outside the eight-cell item
+    // grid. This keeps the normal higher-mode defense branch from treating a
+    // highlighted possession cell as an action lookup.
+    input.selected_inventory_slot =
+        static_cast<std::uint8_t>(record.inventory_item_codes.size());
+    input.cyberware_flags = record.cyberware_flags;
+    input.action_flags = static_cast<std::uint8_t>(record.flags & 0xFFU);
+    // ROM 0x12CEE's ordinary command-overview caller is in the higher-mode
+    // branch. It uses +0x56/+0x57 directly for the attack strip and still
+    // performs the typed defense calculation below it.
+    input.source_mode = 2U;
+    command_overview_combat_bars_ = compute_equipment_combat_bars(input);
+}
+
+void FieldSceneRuntime::refresh_command_overview_item_detail() {
+    command_overview_item_detail_ = ItemActionDetailResult{};
+    if (!command_overview_.open() ||
+        command_overview_.view().source_state.primary_page >= 2U) {
+        return;
+    }
+
+    const auto slot =
+        command_overview_.view().source_state.secondary_page * 2U +
+        command_overview_.view().source_state.primary_page;
+    if (slot >= field_active_runner_record_.inventory_item_codes.size()) {
+        return;
+    }
+    ItemActionDetailInput input{};
+    input.item_code = field_active_runner_record_.inventory_item_codes[slot];
+    for (std::size_t index = 0;
+         index < field_active_runner_record_.inventory_phase_bytes.size();
+         ++index) {
+        input.phase_bytes[index] =
+            field_active_runner_record_.inventory_phase_bytes[index];
+    }
+    // The ninth byte in the source phase span is active record +0x76, the
+    // one-based armor ordinal. Preserve it as typed data for 0x12A8C's
+    // item-detail value selection.
+    input.phase_bytes[8] = field_active_runner_record_.equipped_armor_index;
+    input.phase_slot = 8U;
+    command_overview_item_detail_ = render_item_action_details(
+        input, us_item_catalog(), command_overview_resource_variant_);
+}
+
 void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     painter.fillRect(0, 0, 320, 224, Qt::black);
     if (!command_overview_.open()) {
@@ -1649,6 +1785,130 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     draw_command_overview_text(painter, 136, 176,
                                field_menu_text_.status_names[posture]);
 
+    const auto draw_item_detail_rows =
+        [this, &painter](const std::uint8_t item_code,
+                         const std::optional<std::size_t> selected_slot,
+                         const bool include_art) {
+            if (item_code == 0U || item_code > us_item_catalog().size()) {
+                return;
+            }
+            const auto* item = find_us_item_definition(item_code);
+            if (item == nullptr) {
+                return;
+            }
+            if (include_art && selected_slot.has_value() &&
+                command_overview_item_detail_.returned_item_code == item_code &&
+                command_overview_item_detail_.item_art_written) {
+                painter.drawImage(144, 24,
+                                  command_overview_item_details_[item_code - 1U]);
+            }
+
+            // ROM 0x12E9E uses the item record's +0x25/+0x26 only for the
+            // weapon detail rows. The typed catalog retains those bytes under
+            // their action/detail names; no host damage statistic is derived.
+            if (item_code < 0x10U) {
+                const auto damage_index = static_cast<std::size_t>(
+                    static_cast<std::uint8_t>(item->signed_detail_asset_index));
+                if (damage_index < command_overview_damage_bars_.size()) {
+                    draw_command_overview_text(painter, 112, 80,
+                                                field_menu_text_.damage_label);
+                    painter.drawImage(168, 80,
+                                      command_overview_damage_bars_[damage_index]);
+                }
+                if (item->detail_selector != 0U &&
+                    item->detail_selector <= field_menu_text_.power_labels.size()) {
+                    draw_command_overview_text(painter, 112, 88,
+                                                field_menu_text_.power_label);
+                    draw_command_overview_text(
+                        painter, 168, 88,
+                        field_menu_text_.power_labels[item->detail_selector - 1U]);
+                }
+            }
+
+            // ROM 0x115F2 routes armor through the typed D4D50 row instead of
+            // the weapon Damage/Power path. Its +0x26/+0x25 values select the
+            // Wpns/Guns detail bars.
+            if (item_code >= 0x2CU && item_code <= 0x32U) {
+                const auto* armor = find_us_armor_definition(
+                    field_active_runner_record_.equipped_armor_index);
+                if (armor != nullptr) {
+                    draw_command_overview_text(painter, 112, 80,
+                                                field_menu_text_.weapons_label);
+                    if (armor->secondary_modifier <
+                        command_overview_damage_bars_.size()) {
+                        painter.drawImage(
+                            168, 80,
+                            command_overview_damage_bars_[armor->secondary_modifier]);
+                    }
+                    draw_command_overview_text(painter, 112, 88,
+                                                field_menu_text_.guns_label);
+                    if (armor->primary_modifier <
+                        command_overview_drain_bars_.size()) {
+                        painter.drawImage(
+                            168, 88,
+                            command_overview_drain_bars_[armor->primary_modifier]);
+                    }
+                }
+            }
+
+            if (!include_art || !selected_slot.has_value()) {
+                return;
+            }
+            std::optional<std::size_t> label_index;
+            if (item_code < 0x0DU) {
+                label_index = 0U;
+            } else if (item_code < 0x14U) {
+                label_index = 1U;
+            } else if (item_code == 0x14U ||
+                       (item_code >= 0x18U && item_code < 0x29U)) {
+                label_index = 2U;
+            }
+            if (!label_index.has_value()) {
+                return;
+            }
+            draw_command_overview_text(
+                painter, 112, 48,
+                field_menu_text_.item_detail_labels[*label_index]);
+            const auto phase = field_active_runner_record_
+                                   .inventory_phase_bytes[*selected_slot];
+            if (phase < command_overview_detail_values_.size()) {
+                painter.drawImage(120, 56,
+                                  command_overview_detail_values_[phase]);
+            }
+        };
+    const auto draw_armor_summary = [this, &painter] {
+        const auto armor_index = field_active_runner_record_.equipped_armor_index;
+        if (armor_index != 0U && armor_index <= field_menu_text_.armor_labels.size()) {
+            const auto& armor = field_menu_text_.armor_labels[armor_index - 1U];
+            for (std::size_t row = 0; row < armor.size(); ++row) {
+                if (!armor[row].empty()) {
+                    draw_command_overview_text(
+                        painter, 128, 128 + static_cast<int>(row * 8U),
+                        armor[row]);
+                }
+            }
+        } else {
+            draw_command_overview_text(painter, 152, 136,
+                                       field_menu_text_.no_armor_label);
+        }
+        draw_command_overview_text(painter, 136, 144,
+                                   field_menu_text_.weapons_label);
+        draw_command_overview_text(painter, 136, 152,
+                                   field_menu_text_.guns_label);
+        const auto* armor = find_us_armor_definition(armor_index);
+        if (armor == nullptr) {
+            return;
+        }
+        if (armor->secondary_modifier < command_overview_damage_bars_.size()) {
+            painter.drawImage(176, 144,
+                              command_overview_damage_bars_[armor->secondary_modifier]);
+        }
+        if (armor->primary_modifier < command_overview_drain_bars_.size()) {
+            painter.drawImage(176, 152,
+                              command_overview_drain_bars_[armor->primary_modifier]);
+        }
+    };
+
     const auto& view = command_overview_.view();
     if (view.source_state.primary_page >= 2U) {
         std::string archetype;
@@ -1669,8 +1929,10 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         if (!archetype.empty()) {
             draw_command_overview_text(painter, 128, 24, archetype);
         }
-        draw_command_overview_text(painter, 128, 40, "Physical");
-        draw_command_overview_text(painter, 128, 48, "Mental");
+        draw_command_overview_text(painter, 128, 40,
+                                   field_menu_text_.physical_label);
+        draw_command_overview_text(painter, 128, 48,
+                                   field_menu_text_.mental_label);
         draw_command_overview_text(
             painter, 208, 40,
             std::to_string(std::min<unsigned>(
@@ -1683,6 +1945,29 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 100U, static_cast<unsigned>(
                           field_active_runner_record_.behavior_meter) * 10U)) +
                 "%");
+        draw_item_detail_rows(field_active_runner_record_.equipped_item_code,
+                              std::nullopt, false);
+        draw_command_overview_text(painter, 112, 104,
+                                   field_menu_text_.attack_label);
+        draw_command_overview_text(painter, 112, 112,
+                                   field_menu_text_.defense_label);
+        if (command_overview_combat_bars_.attack_written &&
+            command_overview_combat_bars_.attack_bar <
+                command_overview_attack_bars_.size()) {
+            painter.drawImage(
+                144, 104,
+                command_overview_attack_bars_[
+                    command_overview_combat_bars_.attack_bar]);
+        }
+        if (command_overview_combat_bars_.defense_written &&
+            command_overview_combat_bars_.defense_bar <
+                command_overview_defense_bars_.size()) {
+            painter.drawImage(
+                144, 112,
+                command_overview_defense_bars_[
+                    command_overview_combat_bars_.defense_bar]);
+        }
+        draw_armor_summary();
     } else {
         const auto slot = view.source_state.secondary_page * 2U +
                           view.source_state.primary_page;
@@ -1696,6 +1981,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 draw_command_overview_text(
                     painter, 128, 72,
                     field_menu_text_.item_categories[item_code - 1U]);
+                draw_item_detail_rows(item_code, slot, true);
             }
         }
     }

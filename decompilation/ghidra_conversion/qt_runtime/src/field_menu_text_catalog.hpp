@@ -16,6 +16,10 @@ inline constexpr std::size_t kCommandOverviewLabelCount = 7U;
 inline constexpr std::size_t kFieldMenuArchetypeNameCount = 4U;
 inline constexpr std::size_t kFieldMenuRunnerNameCount = 3U;
 inline constexpr std::size_t kFieldMenuStatusNameCount = 5U;
+inline constexpr std::size_t kFieldMenuPowerLabelCount = 13U;
+inline constexpr std::size_t kFieldMenuArmorCount = 7U;
+inline constexpr std::size_t kFieldMenuArmorRowCount = 2U;
+inline constexpr std::size_t kFieldMenuItemDetailLabelCount = 3U;
 inline constexpr std::size_t kFieldMenuItemNameCount = 50U;
 
 struct FieldMenuTextCatalog {
@@ -23,6 +27,23 @@ struct FieldMenuTextCatalog {
     std::array<std::string, kFieldMenuArchetypeNameCount> archetype_names{};
     std::array<std::string, kFieldMenuRunnerNameCount> runner_names{};
     std::array<std::string, kFieldMenuStatusNameCount> status_names{};
+    std::array<std::string, kFieldMenuPowerLabelCount> power_labels{};
+    std::array<std::array<std::string, kFieldMenuArmorRowCount>,
+               kFieldMenuArmorCount>
+        armor_labels{};
+    std::array<std::string, kFieldMenuItemDetailLabelCount>
+        item_detail_labels{};
+    std::string physical_label;
+    std::string mental_label;
+    std::string attack_label;
+    std::string defense_label;
+    std::string damage_label;
+    std::string drain_label;
+    std::string none_label;
+    std::string no_armor_label;
+    std::string weapons_label;
+    std::string guns_label;
+    std::string power_label;
     std::array<std::string, kFieldMenuItemNameCount> item_names{};
     std::array<std::string, kFieldMenuItemNameCount> item_categories{};
 };

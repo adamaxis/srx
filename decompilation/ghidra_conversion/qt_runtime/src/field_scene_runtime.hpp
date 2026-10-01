@@ -22,6 +22,7 @@
 #include "shadowrun_ghidra/integration/field_runtime_coordinator_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_bootstrap_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
+#include "shadowrun_ghidra/menus/equipment_combat_bar_conversion.hpp"
 #include "shadowrun_ghidra/session/runner_switch_conversion.hpp"
 #include "shadowrun_ghidra/session/runner_record_access_conversion.hpp"
 #include "shadowrun_ghidra/integration/startup_integration_conversion.hpp"
@@ -117,6 +118,8 @@ private:
     void paint_command_overview(QPainter& painter) const;
     void draw_command_overview_text(QPainter& painter, int x, int y,
                                     std::string_view text) const;
+    void refresh_command_overview_combat_bars();
+    void refresh_command_overview_item_detail();
     void open_command_overview();
     bool load_command_overview_assets(const ConversionAssetCatalog& catalog);
     bool load_field_hud_overlays(const ConversionAssetCatalog& catalog);
@@ -157,6 +160,15 @@ private:
     std::array<QImage, 5> command_overview_status_bars_{};
     std::array<QImage, 2> command_overview_selected_cells_{};
     std::array<std::array<QImage, 2>, 50> command_overview_inventory_icons_{};
+    std::array<QImage, 50> command_overview_item_details_{};
+    std::array<QImage, 14> command_overview_damage_bars_{};
+    std::array<QImage, 14> command_overview_drain_bars_{};
+    std::array<QImage, 256> command_overview_detail_values_{};
+    std::array<QImage, 23> command_overview_attack_bars_{};
+    std::array<QImage, 23> command_overview_defense_bars_{};
+    ResourceVariantState command_overview_resource_variant_{};
+    EquipmentCombatBarResult command_overview_combat_bars_{};
+    ItemActionDetailResult command_overview_item_detail_{};
     std::array<QImage, kFieldHudSlotCount> field_hud_faces_{};
     std::array<QImage, kFieldHudSlotCount> field_hud_items_{};
     std::array<QImage, kFieldHudSlotCount> field_hud_unarmed_items_{};
