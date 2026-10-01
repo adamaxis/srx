@@ -28,7 +28,10 @@
 namespace shadowrun::ghidra_conversion::qt_runtime {
 namespace {
 
-constexpr std::string_view kInitialFieldMapAlias = "field.maps.mode.0";
+// The game loop seeds FFDDC4 with scene 2 before 0x03084. The converted
+// profile/table and direct map must therefore start on mode 2; mode 0 is the
+// separate pointer-table row at 0x0D5456, not the opening field.
+constexpr std::string_view kInitialFieldMapAlias = "field.maps.mode.2";
 constexpr std::string_view kFieldHudAlias = "field.hud.background";
 constexpr std::string_view kFieldHudFaceAliasPrefix = "field.hud.face.";
 constexpr std::string_view kFieldHudItemAliasPrefix = "field.hud.item.";

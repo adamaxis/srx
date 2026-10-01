@@ -41,10 +41,9 @@ FieldSessionBootstrapInput make_input() {
         kFieldModeSelectionStateWordCount, 0U);
     input.field_mode_selection_state_source.front() = 0x1234U;
     input.field_mode_selection_state_source.back() = 0x5678U;
-    input.field_scene.normal_profile[0] = 0x0100U;
-    input.field_scene.normal_profile[1] = 0x0200U;
-    input.field_scene.alternate_profile[0] = 0x0300U;
-    input.field_scene.alternate_profile[1] = 0x0400U;
+    input.field_scene.scene_profiles[6][0] = 0x0300U;
+    input.field_scene.scene_profiles[6][1] = 0x0400U;
+    input.field_scene.scene_profile_table_available = true;
     input.field_scene.scene_reference = 6U;
     input.field_scene.terrain_stream = {0xCA, 0xFE, 0xBA, 0xBE};
     input.field_scene.layer_a.resize(kFieldTerrainLayerWordCount, 0x11U);

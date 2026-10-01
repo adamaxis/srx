@@ -2905,33 +2905,30 @@ inputs for `bootstrap_field_session`; the downstream field scene, entity, and
 world callbacks remain separate conversion boundaries and are not implied to be
 complete by the extraction test.
 
-The same field-scene boundary now has its two 48-word profile records. The
-`0x03084`/`0x03074` preparation path indexes the pointer table at `0x3232`;
-entry zero points to the normal profile at `0x0D5456`, and entry one points to
-the alternate profile at `0x17D5C4`. The offline importer emits their exact
-96-byte big-endian records as
-`records/field/scene-profile-normal.bin` and
-`records/field/scene-profile-alternate.bin`, with aliases
-`records.field.scene.profile.normal` and
-`records.field.scene.profile.alternate`. The conversion loader decodes them
-into fixed typed 48-word arrays for `FieldSceneBufferInput`; it does not make
-the Qt runtime read the pointer table or ROM addresses.
+The same field-scene boundary now has the complete 56-row profile table. The
+`0x03084`/`0x03074` preparation path preserves `FFDDC4` after calling
+`0x3032`, then indexes the pointer table at `0x3232` directly; `0x3032` only
+publishes the alternate-profile classifier in `FFFC0E` for scene IDs `6..9`
+and `0x2C..0x31`. Entry zero points to `0x0D5456`, entry one to `0x17D5C4`,
+and the opening field's entry two points to `0x172C80`. The offline importer
+resolves all 56 pointers once and emits their exact 96-byte big-endian rows as
+`records/field/scene-profiles.bin`, exposed through the single alias
+`records.field.scene.profiles`. The conversion loader selects by typed scene
+ID; it does not make the Qt runtime read the pointer table or ROM addresses.
 
-The mode-2 normal profile's terrain pointers were then followed. The source
-copies `0xE10` words from `0x186EDC` into the first work layer and `0xE10`
-words from `0x187CEC` into the second; the importer now preserves those exact
-big-endian word streams as `mode-2-terrain-layer-a.bin` and
-`mode-2-terrain-layer-b.bin`, exposed through
-`records.field.mode.2.terrain.layer.a` and
-`records.field.mode.2.terrain.layer.b`. The same profile's odd pointer
-`0x188AFD` is the separate flagged source stream copied to `FFDE22` and later
-passed to `decode_source_byte_stream`. The offline implementation now follows
-the actual `0x01610` DBF counts, 0x7FF distance mask, overlap-copy behavior,
-and command lengths; it consumes `0x188AFC..0x18A677` and produces exactly
-`0x3500` bytes. That decoded host stream is emitted as
-`records/field/mode-2-terrain-stream.bin` and loaded through
-`records.field.mode.2.terrain.stream`; no runtime decoder or ROM address is
-needed.
+The opening field is scene 2, not the row-0 profile. Its source copies
+`0xE10` words from `0x16D9A2` into the first work layer and `0xE10` words from
+`0x16ED52` into the second. Its flagged source stream begins at aligned source
+`0x170102`; the offline implementation follows the actual `0x01610` DBF
+counts, 0x7FF distance mask, overlap-copy behavior, and command lengths and
+produces exactly `0x4F40` bytes. Those direct host records are emitted as
+`mode-2-terrain-layer-a.bin`, `mode-2-terrain-layer-b.bin`, and
+`mode-2-terrain-stream.bin`, exposed through
+`records.field.mode.2.terrain.layer.a`,
+`records.field.mode.2.terrain.layer.b`, and
+`records.field.mode.2.terrain.stream`. Row-0 collision/event records remain
+separate source data for later scene-entry work; no runtime decoder or ROM
+address is needed.
 
 The `0x13726` mode-selection renderer is now
 `render_mode_selection_panels`. It preserves the four source panel passes,

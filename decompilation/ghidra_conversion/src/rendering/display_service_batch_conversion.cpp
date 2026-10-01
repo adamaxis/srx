@@ -80,12 +80,17 @@ bool prepare_field_scene_buffers(
     }
     // ROM 0x03084 calls 0x3032 with the scene reference in D0. This is a
     // converted classification routine, not a presentation callback.
+    if (!input.scene_profile_table_available ||
+        input.scene_reference >= kFieldSceneProfileCount) {
+        state = FieldSceneBuffers{};
+        return false;
+    }
     const bool alternate = scene_uses_alternate_profile(
         static_cast<std::int16_t>(input.scene_reference));
     state.scene_mode = alternate ? 1U : 0U;
     state.field_resource_mode = static_cast<std::uint8_t>(input.scene_reference);
     state.scene_reference = input.scene_reference;
-    state.profile = alternate ? input.alternate_profile : input.normal_profile;
+    state.profile = input.scene_profiles[input.scene_reference];
     // ROM 0x030AE copies the two words at FFDDDE into FFDE22. In the typed
     // 48-word profile, those are words 12/13 -> 46/47.
     state.profile[46] = state.profile[12];

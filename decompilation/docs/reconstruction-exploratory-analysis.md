@@ -414,8 +414,11 @@ mode/event descriptors remain authoritative for collisions and transitions.
 ### Movement and collision
 
 The main field loop at `0x075E` updates the field state and calls the
-movement/reaction chain. The `0x03074 -> 0x03084 -> 0x0313A` path loads the
-selected scene descriptor and terrain layers before that loop runs. The
+movement/reaction chain. The `0x03074 -> 0x03084 -> 0x0313A` path preserves
+the scene id while loading the selected row from the complete `0x3232` profile
+table and then copies that row's terrain layers before the loop runs.
+`0x3032` only classifies a subset of scene ids for `FFFC0E`; it does not
+replace the profile-table index. The
 relevant pieces are:
 
 | Source | Responsibility |

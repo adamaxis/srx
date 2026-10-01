@@ -26,7 +26,11 @@ constexpr std::size_t kFieldSceneProfileByteCount =
 constexpr std::size_t kFieldSessionTerrainLayerWordCount = 0xE10U;
 constexpr std::size_t kFieldSessionTerrainLayerByteCount =
     kFieldSessionTerrainLayerWordCount * sizeof(std::uint16_t);
-constexpr std::size_t kFieldSessionTerrainStreamByteCount = 0x3500U;
+// Scene 2's profile points at the 0x170102 compressed resource. Its DBF
+// header expands to 0x4F40 bytes; the old 0x3500 size belonged to the row-0
+// profile's 0x188AFC stream and was another symptom of selecting the wrong
+// scene record.
+constexpr std::size_t kFieldSessionTerrainStreamByteCount = 0x4F40U;
 constexpr std::size_t kFieldMapDescriptorByteCount = 0x58U;
 constexpr std::size_t kFieldMode0TerrainCollisionRectangleCount = 65U;
 constexpr std::size_t kFieldMode0TerrainCollisionRectangleByteCount =
@@ -84,25 +88,23 @@ struct FieldSessionSourceAssets {
     std::vector<std::uint8_t> action_selection_profile_source;
     // ROM 0x14C1F4, copied by 0x26938.
     std::vector<std::uint16_t> field_mode_selection_state_source;
-    // ROM 0x0D5456, first pointer-table profile at 0x3232.
-    std::array<std::uint16_t, kFieldSceneProfileWordCount>
-        normal_scene_profile_source{};
-    // ROM 0x17D5C4, second pointer-table profile at 0x3232.
-    std::array<std::uint16_t, kFieldSceneProfileWordCount>
-        alternate_scene_profile_source{};
-    // ROM 0x186EDC/0x187CEC, copied by 0x0313A as the initial mode-2
-    // terrain work layers. The flagged 0x188AFD source stream is represented
-    // separately below after its 0x01610 source-history contract is verified.
+    // ROM 0x3232: the selected scene id indexes all 56 copied 48-word
+    // profiles. The importer resolves the pointers once and stores the
+    // complete table as one direct host record; runtime code never follows
+    // the ROM pointer table.
+    FieldSceneProfileTable scene_profile_table_source{};
+    // ROM 0x16D9A2/0x16ED52, copied by 0x0313A for scene 2. The flagged
+    // 0x170103 source stream is represented separately below after its
+    // 0x01610 source-history contract is verified.
     std::vector<std::uint16_t> mode2_terrain_layer_a_source;
     std::vector<std::uint16_t> mode2_terrain_layer_b_source;
-    // Offline result of ROM 0x01610 applied to the flagged mode-2 source
-    // stream at 0x188AFC; this is direct host data, not a runtime decoder
+    // Offline result of ROM 0x01610 applied to the flagged scene-2 source
+    // stream at 0x170102; this is direct host data, not a runtime decoder
     // input or a ROM address token.
     std::vector<std::uint8_t> mode2_terrain_stream_source;
-    // The normal profile is the map-index-0 descriptor selected by the
-    // startup field-mode path. Its pointed-to collision/event records are
-    // kept separately below; the mode-2 map descriptor remains a distinct
-    // direct record.
+    // The row-0 descriptor and its pointed-to collision/event records remain
+    // available for later scene-entry work. Scene 2 has its own descriptor
+    // and is the opening field selected by make_initial_mode2_field_scene_input.
     FieldMapSourceDescriptor mode0_descriptor{};
     std::vector<TerrainCollisionRectangle>
         mode0_terrain_collision_rectangles;

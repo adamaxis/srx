@@ -96,8 +96,11 @@ struct FieldSceneBuffers {
 };
 
 struct FieldSceneBufferInput {
-    std::array<std::uint16_t, 48> normal_profile{};
-    std::array<std::uint16_t, 48> alternate_profile{};
+    // ROM 0x03084 preserves FFDDC4 in D0 after the 0x3032 classifier and
+    // indexes the complete pointer table at 0x3232. The classifier only
+    // publishes FFFC0E; it does not select between two profiles.
+    FieldSceneProfileTable scene_profiles{};
+    bool scene_profile_table_available = false;
     std::uint16_t scene_reference = 0;
     std::vector<std::uint8_t> terrain_stream;
     std::vector<std::uint16_t> layer_a;

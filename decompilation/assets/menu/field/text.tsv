@@ -37,12 +37,12 @@ action.cannot-trade	Cannot trade magic items!
 action.choice-no	No
 action.choice-yes	Yes
 clips.0	Reload
-clips.1	Trade
-clips.2	Distribute
-clips.3	Cancel
 clips.trade.0	Increase Clips
+clips.1	Trade
 clips.trade.1	Decrease Clips
+clips.2	Distribute
 clips.trade.2	Trade Clips
+clips.3	Cancel
 clips.trade.3	Change Recipient
 clips.trade-prompt.0	Trade
 clips.trade-prompt.1	clips to

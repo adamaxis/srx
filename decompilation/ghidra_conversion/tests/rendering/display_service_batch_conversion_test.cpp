@@ -47,16 +47,12 @@ int main() {
 
     FieldSceneBuffers scene{};
     FieldSceneBufferInput scene_input{};
-    scene_input.normal_profile[0] = 0x0100;
-    scene_input.normal_profile[1] = 0x0200;
-    scene_input.normal_profile[12] = 0x1234;
-    scene_input.normal_profile[13] = 0x5678;
-    scene_input.normal_profile[3] = 12;
-    scene_input.alternate_profile[0] = 0x0300;
-    scene_input.alternate_profile[1] = 0x0400;
-    scene_input.alternate_profile[12] = 0x9ABC;
-    scene_input.alternate_profile[13] = 0xDEF0;
-    scene_input.alternate_profile[3] = 34;
+    scene_input.scene_profiles[0x2CU][0] = 0x0300;
+    scene_input.scene_profiles[0x2CU][1] = 0x0400;
+    scene_input.scene_profiles[0x2CU][12] = 0x9ABC;
+    scene_input.scene_profiles[0x2CU][13] = 0xDEF0;
+    scene_input.scene_profiles[0x2CU][3] = 34;
+    scene_input.scene_profile_table_available = true;
     scene_input.scene_reference = 0x2C;
     scene_input.terrain_stream = {0x12, 0x34, 0x56, 0x78};
     scene_input.pending_position_available = true;
@@ -88,8 +84,9 @@ int main() {
 
     FieldSceneBuffers normal_scene{};
     FieldSceneBufferInput normal_input{};
-    normal_input.normal_profile[0] = 0x1200;
-    normal_input.normal_profile[1] = 0x2300;
+    normal_input.scene_profiles[2][0] = 0x1200;
+    normal_input.scene_profiles[2][1] = 0x2300;
+    normal_input.scene_profile_table_available = true;
     normal_input.scene_reference = 2;
     normal_input.pending_position_available = true;
     normal_input.pending_position_in_use = true;

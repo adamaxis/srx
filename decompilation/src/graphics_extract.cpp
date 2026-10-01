@@ -412,18 +412,33 @@ void extract_field_session_record_assets(
                      0x166AD8U, 5U * 0x22U);
     write_rom_record(rom, root, "records/field/mode-selection-state.bin",
                      0x14C1F4U, 0x17U * sizeof(std::uint16_t));
-    // The field-scene preparation routine selects one of these two 48-word
-    // profiles through the pointer table at ROM 0x3232. They are source
-    // records, not Genesis name-table data; the conversion layer interprets
-    // the big-endian words as a typed scene profile.
-    write_rom_record(rom, root, "records/field/scene-profile-normal.bin",
-                     0x0D5456U, 48U * sizeof(std::uint16_t));
-    write_rom_record(rom, root, "records/field/scene-profile-alternate.bin",
-                     0x17D5C4U, 48U * sizeof(std::uint16_t));
-    // The normal profile at 0x0D5456 is the map-index-0 descriptor consumed
-    // by the startup field-mode path. Its descriptor bytes are already in
-    // scene-profile-normal.bin; these are the records reached through its
-    // terrain/event pointers.
+    // 0x03084 preserves FFDDC4 in D0 after the 0x3032 classifier and indexes
+    // all 56 entries at 0x3232. Materialize the complete 48-word rows once
+    // so the conversion runtime can select a scene by typed id without
+    // carrying a ROM pointer table.
+    std::vector<std::uint8_t> scene_profiles;
+    scene_profiles.reserve(shadowrun::rom::kFieldModeCount * 0x60U);
+    for (std::uint16_t scene_id = 0;
+         scene_id < shadowrun::rom::kFieldModeCount; ++scene_id) {
+        const auto table_entry =
+            0x3232U + static_cast<std::size_t>(scene_id) * 4U;
+        const auto profile_offset = static_cast<std::size_t>(
+            read_big_endian_long(rom, table_entry));
+        if (profile_offset > rom.size() ||
+            rom.size() - profile_offset < 0x60U) {
+            throw std::runtime_error(
+                "field scene profile row exceeds input image");
+        }
+        scene_profiles.insert(
+            scene_profiles.end(),
+            rom.begin() + static_cast<std::ptrdiff_t>(profile_offset),
+            rom.begin() +
+                static_cast<std::ptrdiff_t>(profile_offset + 0x60U));
+    }
+    write_host_record(scene_profiles, root,
+                      "records/field/scene-profiles.bin");
+    // Row 0 remains a separate direct descriptor for later scene-entry work;
+    // scene 2 is the opening field and has its own descriptor below.
     write_rom_record(
         rom, root, "records/field/mode-0-terrain-collision-rectangles.bin",
         0x0D55DEU, 65U * 10U);
@@ -499,18 +514,17 @@ void extract_field_session_record_assets(
     }
     write_host_record(movement_route_table, root,
                       "records/field/entity-movement-route-table.bin");
-    // Field mode 2 selects the normal scene profile, whose map descriptor row
-    // is 0. That profile points at two fixed terrain word arrays. The source
-    // copies exactly 0xE10 words from each pointer during field-scene
-    // preparation; preserve those reads as direct host records.
+    // Field mode 2 selects pointer-table row 2. Its profile points at the
+    // two fixed terrain work layers and the flagged source stream below. The
+    // source copies exactly 0xE10 words from each pointer during
+    // field-scene preparation; preserve those reads as direct host records.
     write_rom_record(rom, root, "records/field/mode-2-terrain-layer-a.bin",
-                     0x186EDCU, 0xE10U * sizeof(std::uint16_t));
+                     0x16D9A2U, 0xE10U * sizeof(std::uint16_t));
     write_rom_record(rom, root, "records/field/mode-2-terrain-layer-b.bin",
-                     0x187CECU, 0xE10U * sizeof(std::uint16_t));
+                     0x16ED52U, 0xE10U * sizeof(std::uint16_t));
     const auto mode2_stream =
-        decode_source_byte_stream_record(rom, 0x188AFCU);
-    if (mode2_stream.source_end != 0x18A678U ||
-        mode2_stream.bytes.size() != 0x3500U) {
+        decode_source_byte_stream_record(rom, 0x170102U);
+    if (mode2_stream.bytes.size() != 0x4F40U) {
         throw std::runtime_error("mode-2 terrain stream boundary changed");
     }
     write_host_record(mode2_stream.bytes, root,
@@ -852,12 +866,17 @@ void write_asset_readme(const std::filesystem::path& root) {
               "intentional: the native player must not guess a repeat boundary "
               "from an\n"
               "internal channel restart.\n\n"
-           << "Field startup records remain individually named under "
-              "`records/field/`. The map-index-0 startup collision/event "
-              "records and the separate map-index-2 descriptor/collision/event "
-              "records are direct source records; the conversion loader "
-              "interprets each into typed field state and host collision maps "
-              "without making the runtime read ROM addresses. The source "
+           << "Startup/session records are imported separately under "
+              "`records/startup/` by `shadowrun_ghidra_startup_record_extract` "
+              "and listed in `resources.tsv`. Field startup records remain "
+              "individually named under `records/field/`; the complete 56-row "
+              "scene profile table is `records/field/scene-profiles.bin`, and "
+              "scene 2 owns the opening field terrain records. The map-index-0 "
+              "startup collision/event records and the separate map-index-2 "
+              "descriptor/collision/event records are direct source records; "
+              "the conversion loader interprets each into typed field state "
+              "and host collision maps without making the runtime read ROM "
+              "addresses. The source "
                "movement vector table at `0xC002` is likewise one named direct "
                "record consumed as typed directional offsets by the conversion "
                "layer. The `0xBD34` collision-probe offset banks are kept as "
@@ -952,11 +971,8 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
         "records.field.mode.selection.state",
         "records/field/mode-selection-state.bin");
     emit_generated_state_row(
-        "records.field.scene.profile.normal",
-        "records/field/scene-profile-normal.bin");
-    emit_generated_state_row(
-        "records.field.scene.profile.alternate",
-        "records/field/scene-profile-alternate.bin");
+        "records.field.scene.profiles",
+        "records/field/scene-profiles.bin");
     emit_generated_state_row(
         "records.field.mode.0.terrain.collision.rectangles",
         "records/field/mode-0-terrain-collision-rectangles.bin");
@@ -993,6 +1009,26 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
     emit_generated_state_row(
         "records.field.mode.2.event.table",
         "records/field/mode-2-event-table.bin");
+    // Startup/session records are extracted by the separate conversion-side
+    // record tool, but once present they must remain first-class manifest rows
+    // even if --all-assets is rerun from the native graphics importer.
+    const auto emit_optional_state_row = [&output, &aliases, &root](
+                                             const char* alias,
+                                             const char* relative) {
+        if (std::filesystem::is_regular_file(root / relative) &&
+            aliases.insert(alias).second) {
+            output << alias << '\t' << relative << "\tstate\t0\t0\n";
+        }
+    };
+    emit_optional_state_row(
+        "records.startup.joshua.archetypes",
+        "records/startup/joshua-archetypes.bin");
+    emit_optional_state_row(
+        "records.startup.recruited.runners",
+        "records/startup/recruited-runner-records.bin");
+    emit_optional_state_row(
+        "records.startup.save.roster.header",
+        "records/startup/save-roster-header.bin");
     const auto emit_generated_resource_row = [&output, &aliases, &root](
                                                 const char* alias,
                                                 const char* relative,

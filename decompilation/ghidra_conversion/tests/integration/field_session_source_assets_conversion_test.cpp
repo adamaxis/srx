@@ -37,34 +37,40 @@ int main() {
         mode_state[2] != 0x0064U || mode_state.back() != 0x0000U) {
         return 4;
     }
-    const auto& normal_profile = source.assets->normal_scene_profile_source;
+    const auto& scene_profiles = source.assets->scene_profile_table_source;
+    const auto& normal_profile = scene_profiles[0];
     if (normal_profile[0] != 0x0A00U || normal_profile[1] != 0x0280U ||
         normal_profile[4] != 0x6700U || normal_profile[15] != 0x7CECU ||
         normal_profile.back() != 0x1215U) {
         return 5;
     }
-    const auto& alternate_profile =
-        source.assets->alternate_scene_profile_source;
+    const auto& alternate_profile = scene_profiles[1];
     if (alternate_profile[0] != 0x4080U || alternate_profile[1] != 0x4C80U ||
         alternate_profile[4] != 0x5300U || alternate_profile[15] != 0xAD3AU ||
         alternate_profile.back() != 0x1A0DU) {
         return 6;
     }
+    if (scene_profiles[2][0] != 0x3400U ||
+        scene_profiles[2][1] != 0x2280U ||
+        scene_profiles[2][33] != 0x3CE0U ||
+        scene_profiles[2][34] != 0x2D00U) {
+        return 18;
+    }
     const auto& terrain_a = source.assets->mode2_terrain_layer_a_source;
     const auto& terrain_b = source.assets->mode2_terrain_layer_b_source;
     if (terrain_a.size() != kFieldSessionTerrainLayerWordCount ||
         terrain_b.size() != kFieldSessionTerrainLayerWordCount ||
-        terrain_a.front() != 0x0013U || terrain_a[0x708U] != 0x013BU ||
-        terrain_a.back() != 0x013BU || terrain_b.front() != 0x013BU ||
-        terrain_b[0x708U] != 0x34FFU || terrain_b.back() != 0x8664U) {
+        terrain_a.front() != 0x0000U || terrain_a[0x708U] != 0x01A2U ||
+        terrain_a.back() != 0x021FU || terrain_b.front() != 0x020EU ||
+        terrain_b[0x708U] != 0x020EU || terrain_b.back() != 0xA133U) {
         return 7;
     }
     const auto& terrain_stream = source.assets->mode2_terrain_stream_source;
     if (terrain_stream.size() != kFieldSessionTerrainStreamByteCount ||
-        terrain_stream[0] != 0x02U || terrain_stream[1] != 0x4CU ||
-        terrain_stream[2] != 0x02U || terrain_stream[3] != 0x4DU ||
-        terrain_stream[terrain_stream.size() - 2U] != 0x04U ||
-        terrain_stream.back() != 0x65U) {
+        terrain_stream[0] != 0x02U || terrain_stream[1] != 0x01U ||
+        terrain_stream[2] != 0x02U || terrain_stream[3] != 0x02U ||
+        terrain_stream[terrain_stream.size() - 2U] != 0x02U ||
+        terrain_stream.back() != 0x62U) {
         return 8;
     }
     const auto& descriptor = source.assets->mode2_descriptor;
@@ -199,20 +205,19 @@ int main() {
     const auto scene_input =
         make_initial_mode2_field_scene_input(*source.assets);
     if (scene_input.scene_reference != 2U ||
-        scene_input.normal_profile != source.assets->normal_scene_profile_source ||
-        scene_input.alternate_profile !=
-            source.assets->alternate_scene_profile_source ||
+        !scene_input.scene_profile_table_available ||
+        scene_input.scene_profiles != source.assets->scene_profile_table_source ||
         scene_input.layer_a != source.assets->mode2_terrain_layer_a_source ||
         scene_input.layer_b != source.assets->mode2_terrain_layer_b_source ||
         scene_input.terrain_stream != source.assets->mode2_terrain_stream_source ||
         !scene_input.source_metadata.available ||
-        scene_input.source_metadata.initial_camera_x_fixed != 0x0A00U ||
-        scene_input.source_metadata.initial_field_records[0].x != 0x1310U ||
-        scene_input.source_metadata.initial_field_records[0].y != 0x0980U ||
+        scene_input.source_metadata.initial_camera_x_fixed != 0x3400U ||
+        scene_input.source_metadata.initial_field_records[0].x != 0x3CE0U ||
+        scene_input.source_metadata.initial_field_records[0].y != 0x2D00U ||
         scene_input.source_metadata.terrain_collision_rectangles.size() !=
-            kFieldMode0TerrainCollisionRectangleCount ||
-        scene_input.source_metadata.terrain_collision_map[0U] != 0x7FU ||
-        scene_input.source_metadata.event_mode_table[0] != 0x15U) {
+            kFieldMode2TerrainCollisionRectangleCount ||
+        scene_input.source_metadata.terrain_collision_map[97U] != 0x7FU ||
+        scene_input.source_metadata.event_mode_table[0] != 0x14U) {
         return 11;
     }
     return 0;

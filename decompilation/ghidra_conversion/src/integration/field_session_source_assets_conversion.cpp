@@ -12,10 +12,8 @@ constexpr const char* kActionProfilesAlias =
     "records.field.action.selection.profiles";
 constexpr const char* kModeSelectionAlias =
     "records.field.mode.selection.state";
-constexpr const char* kNormalSceneProfileAlias =
-    "records.field.scene.profile.normal";
-constexpr const char* kAlternateSceneProfileAlias =
-    "records.field.scene.profile.alternate";
+constexpr const char* kSceneProfileTableAlias =
+    "records.field.scene.profiles";
 constexpr const char* kMode0TerrainCollisionRectanglesAlias =
     "records.field.mode.0.terrain.collision.rectangles";
 constexpr const char* kMode0EventTableAlias =
@@ -225,11 +223,9 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
         catalog, kModeSelectionAlias,
         kFieldSessionModeSelectionWordCount * sizeof(std::uint16_t),
         result.errors);
-    const auto normal_profile = read_record_bytes(
-        catalog, kNormalSceneProfileAlias, kFieldSceneProfileByteCount,
-        result.errors);
-    const auto alternate_profile = read_record_bytes(
-        catalog, kAlternateSceneProfileAlias, kFieldSceneProfileByteCount,
+    const auto scene_profiles = read_record_bytes(
+        catalog, kSceneProfileTableAlias,
+        kFieldSceneProfileCount * kFieldSceneProfileByteCount,
         result.errors);
     const auto mode0_collision_rectangles = read_record_bytes(
         catalog, kMode0TerrainCollisionRectanglesAlias,
@@ -268,7 +264,7 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
         catalog, kMode2EventTableAlias, kFieldMapEventTableByteCount,
         result.errors);
     if (!action_profiles.has_value() || !mode_selection.has_value() ||
-        !normal_profile.has_value() || !alternate_profile.has_value() ||
+        !scene_profiles.has_value() ||
         !mode0_collision_rectangles.has_value() ||
         !mode0_event_table.has_value() ||
         !movement_direction_table.has_value() ||
@@ -291,11 +287,24 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
         assets.field_mode_selection_state_source.push_back(
             read_big_endian_word(*mode_selection, offset));
     }
-    assets.normal_scene_profile_source = decode_scene_profile(*normal_profile);
-    assets.alternate_scene_profile_source =
-        decode_scene_profile(*alternate_profile);
+    for (std::size_t scene_id = 0; scene_id < kFieldSceneProfileCount;
+         ++scene_id) {
+        const auto offset = scene_id * kFieldSceneProfileByteCount;
+        const std::vector<std::uint8_t> profile_bytes(
+            scene_profiles->begin() +
+                static_cast<std::ptrdiff_t>(offset),
+            scene_profiles->begin() + static_cast<std::ptrdiff_t>(
+                offset + kFieldSceneProfileByteCount));
+        assets.scene_profile_table_source[scene_id] =
+            decode_scene_profile(profile_bytes);
+    }
     assets.mode0_descriptor =
-        decode_field_map_descriptor(*normal_profile, *mode0_event_table);
+        decode_field_map_descriptor(
+            std::vector<std::uint8_t>(
+                scene_profiles->begin(),
+                scene_profiles->begin() +
+                    static_cast<std::ptrdiff_t>(kFieldSceneProfileByteCount)),
+            *mode0_event_table);
     assets.mode0_terrain_collision_rectangles =
         decode_field_terrain_collision_rectangles(
             *mode0_collision_rectangles,
@@ -341,36 +350,36 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
 FieldSceneBufferInput make_initial_mode2_field_scene_input(
     const FieldSessionSourceAssets& assets) {
     FieldSceneBufferInput input;
-    input.normal_profile = assets.normal_scene_profile_source;
-    input.alternate_profile = assets.alternate_scene_profile_source;
+    input.scene_profiles = assets.scene_profile_table_source;
+    input.scene_profile_table_available = true;
     input.scene_reference = 2U;
     input.terrain_stream = assets.mode2_terrain_stream_source;
     input.layer_a = assets.mode2_terrain_layer_a_source;
     input.layer_b = assets.mode2_terrain_layer_b_source;
     input.source_metadata.available = true;
-    // Field mode 2 enters the normal scene profile, whose pointer-table row
-    // is map index 0. The separate mode-2 descriptor is a different map
-    // record and must not be projected onto this startup scene.
+    // The game loop writes FFDDC4=2 before 0x03084. That routine preserves
+    // the scene id and indexes pointer-table row 2; the mode-2 descriptor is
+    // therefore the startup scene's own metadata, not the row-0 profile.
     input.source_metadata.initial_camera_x_fixed =
-        assets.mode0_descriptor.initial_camera_x_fixed;
+        assets.mode2_descriptor.initial_camera_x_fixed;
     input.source_metadata.initial_camera_y_fixed =
-        assets.mode0_descriptor.initial_camera_y_fixed;
+        assets.mode2_descriptor.initial_camera_y_fixed;
     input.source_metadata.initial_field_records =
-        assets.mode0_descriptor.initial_field_records;
+        assets.mode2_descriptor.initial_field_records;
     input.source_metadata.terrain_x_exclusive_upper =
-        assets.mode0_descriptor.terrain_x_exclusive_upper;
+        assets.mode2_descriptor.terrain_x_exclusive_upper;
     input.source_metadata.terrain_y_exclusive_upper =
-        assets.mode0_descriptor.terrain_y_exclusive_upper;
+        assets.mode2_descriptor.terrain_y_exclusive_upper;
     input.source_metadata.terrain_x_inclusive_lower =
-        assets.mode0_descriptor.terrain_x_inclusive_lower;
+        assets.mode2_descriptor.terrain_x_inclusive_lower;
     input.source_metadata.terrain_y_inclusive_lower =
-        assets.mode0_descriptor.terrain_y_inclusive_lower;
+        assets.mode2_descriptor.terrain_y_inclusive_lower;
     input.source_metadata.event_mode_table =
-        assets.mode0_descriptor.event_mode_table;
+        assets.mode2_descriptor.event_mode_table;
     input.source_metadata.terrain_collision_rectangles =
-        assets.mode0_terrain_collision_rectangles;
+        assets.mode2_terrain_collision_rectangles;
     input.source_metadata.terrain_collision_map =
-        assets.mode0_terrain_collision_map;
+        assets.mode2_terrain_collision_map;
     return input;
 }
 

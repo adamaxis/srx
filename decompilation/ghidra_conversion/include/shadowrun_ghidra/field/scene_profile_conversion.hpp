@@ -14,6 +14,10 @@ bool scene_uses_alternate_profile(std::int16_t scene_id);
 
 constexpr std::size_t kFieldSceneProfileWordCount = 48;
 constexpr std::size_t kFieldSceneProfileCount = 56;
+using FieldSceneProfileWords =
+    std::array<std::uint16_t, kFieldSceneProfileWordCount>;
+using FieldSceneProfileTable =
+    std::array<FieldSceneProfileWords, kFieldSceneProfileCount>;
 
 // ROM 0x3232: one long per scene id 0..0x37.
 constexpr std::array<std::uint32_t, kFieldSceneProfileCount>
