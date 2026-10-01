@@ -1179,9 +1179,9 @@ void FieldSceneRuntime::advance_command_overview_clips(
     case ClipsMenuEvent::trade_opened:
         source_boundary("field.command_overview.clips.trade.opened");
         if (command_overview_clips_.trade_recipient_record() >=
-                field_menu_text_.runner_names.size() ||
-            field_menu_text_.runner_names[
-                command_overview_clips_.trade_recipient_record()]
+                FieldPartyRosterRuntime::kSlotCount ||
+            field_party_roster_
+                .name(command_overview_clips_.trade_recipient_record())
                 .empty()) {
             source_boundary(
                 "field.command_overview.clips.trade.recipient_name_missing");
@@ -2393,18 +2393,18 @@ void FieldSceneRuntime::paint_command_overview_clips(
 
     if (command_overview_clips_.trade_open()) {
         // ROM 0x11E34 renders the source trade prompt, then 0x1209A updates
-        // the recipient name when the nested selector moves. The current
-        // catalog deliberately retains the source ???? placeholder because
-        // runner-name extraction is a separate unresolved record boundary.
+        // the recipient name when the nested selector moves. The source
+        // D1B71 ???? text is retained only as the fallback for a record whose
+        // projected +0x58 name field is empty.
         draw_command_overview_text(painter, 144, 72,
                                    field_menu_text_.clips_trade_prompt[0]);
         draw_command_overview_text(painter, 144, 80,
                                    field_menu_text_.clips_trade_prompt[1]);
         const auto recipient = command_overview_clips_.trade_recipient_record();
-        if (recipient < field_menu_text_.runner_names.size() &&
-            !field_menu_text_.runner_names[recipient].empty()) {
+        if (recipient < FieldPartyRosterRuntime::kSlotCount &&
+            !field_party_roster_.name(recipient).empty()) {
             draw_command_overview_text(
-                painter, 120, 88, field_menu_text_.runner_names[recipient]);
+                painter, 120, 88, field_party_roster_.name(recipient));
         } else {
             draw_command_overview_text(painter, 120, 88,
                                        field_menu_text_.clips_trade_prompt[2]);
@@ -2428,8 +2428,11 @@ void FieldSceneRuntime::paint_command_overview_clips(
 
     switch (command_overview_clips_.message()) {
     case ClipsMenuMessage::out_of_ammo:
-        draw_command_overview_text(painter, 112, 80,
-                                   field_menu_text_.runner_names[0]);
+        draw_command_overview_text(
+            painter, 112, 80,
+            field_party_roster_.name(0U).empty()
+                ? field_menu_text_.runner_names[0]
+                : field_party_roster_.name(0U));
         draw_lines(field_menu_text_.clips_out_of_ammo, 112, 88);
         return;
     case ClipsMenuMessage::item_does_not_use_clips:
@@ -2487,8 +2490,11 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             command_overview_portraits_[field_joshua_archetype_selection_]);
     }
 
-    draw_command_overview_text(painter, 128, 8,
-                               field_menu_text_.runner_names[0]);
+    draw_command_overview_text(
+        painter, 128, 8,
+        field_party_roster_.name(field_party_roster_.active_slot()).empty()
+            ? field_menu_text_.runner_names[0]
+            : field_party_roster_.name(field_party_roster_.active_slot()));
 
     // 0x11928/0x11AE4 places the five-state posture bar at CAAC (176,168).
     const auto posture = std::min<std::size_t>(

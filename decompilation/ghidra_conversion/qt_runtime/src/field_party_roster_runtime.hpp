@@ -5,6 +5,7 @@
 
 #include <array>
 #include <cstddef>
+#include <string>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
@@ -39,6 +40,11 @@ public:
         return slot < active_slots_.size() && active_slots_[slot];
     }
 
+    const std::string& name(std::size_t slot) const noexcept {
+        static const std::string kEmptyName;
+        return slot < names_.size() ? names_[slot] : kEmptyName;
+    }
+
     std::array<RunnerRecordFields, kSlotCount>& records() noexcept {
         return records_;
     }
@@ -54,9 +60,12 @@ public:
     }
 
 private:
+    static std::string read_runner_name(
+        const LiveRunnerRecord& record);
     static void mark_slot_active(RunnerRecordFields& record) noexcept;
 
     std::array<RunnerRecordFields, kSlotCount> records_{};
+    std::array<std::string, kSlotCount> names_{};
     std::array<bool, kSlotCount> active_slots_{};
     std::size_t active_slot_ = 0U;
     Source source_ = Source::unavailable;

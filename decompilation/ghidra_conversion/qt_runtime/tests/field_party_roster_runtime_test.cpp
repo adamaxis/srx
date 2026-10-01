@@ -20,6 +20,11 @@ bool expect(const bool condition, const char* message) {
 int main() {
     integration::StartupIntegrationState new_game{};
     new_game.joshua_selection.emplace();
+    const std::string joshua_name = "Joshua";
+    for (std::size_t index = 0; index < joshua_name.size(); ++index) {
+        new_game.joshua_selection->live_joshua_record[0x58U + index] =
+            static_cast<std::uint8_t>(joshua_name[index]);
+    }
     new_game.joshua_selection->typed_live_joshua_record.ammo_clips = 3U;
 
     FieldPartyRosterRuntime roster;
@@ -30,7 +35,8 @@ int main() {
                     !roster.slot_active(1U) && !roster.slot_active(2U),
                 "new-game roster activated an invented recruited slot") ||
         !expect((roster.active_record().flags & 0x01U) != 0U &&
-                    roster.active_record().ammo_clips == 3U,
+                    roster.active_record().ammo_clips == 3U &&
+                    roster.name(0U) == "Joshua",
                 "new-game roster did not publish Joshua as active")) {
         return 1;
     }
@@ -39,6 +45,16 @@ int main() {
     loaded.restored_field_state.emplace();
     loaded.restored_field_state->roster.primary_marker = 1U;
     loaded.restored_field_state->roster.secondary_marker = 0xFFU;
+    const std::string ricky_name = "Ricky";
+    for (std::size_t index = 0; index < ricky_name.size(); ++index) {
+        loaded.restored_field_state->roster.primary_record.bytes[0x58U + index] =
+            static_cast<std::uint8_t>(ricky_name[index]);
+    }
+    const std::string winston_name = "Winston Marrs";
+    for (std::size_t index = 0; index < winston_name.size(); ++index) {
+        loaded.restored_field_state->roster.default_record.bytes[0x58U + index] =
+            static_cast<std::uint8_t>(winston_name[index]);
+    }
     loaded.restored_field_state->roster.default_record.bytes[0x4FU] = 2U;
     loaded.restored_field_state->roster.primary_record.bytes[0x4FU] = 7U;
     loaded.restored_field_state->active_runner_slot = 1U;
@@ -49,7 +65,9 @@ int main() {
                     !roster.slot_active(2U) && roster.active_slot() == 1U,
                 "save roster markers did not control active slots") ||
         !expect(roster.records()[0].ammo_clips == 2U &&
-                    roster.records()[1].ammo_clips == 7U,
+                    roster.records()[1].ammo_clips == 7U &&
+                    roster.name(0U) == "Winston Marrs" &&
+                    roster.name(1U) == "Ricky",
                 "save roster records were not projected into typed fields")) {
         return 2;
     }

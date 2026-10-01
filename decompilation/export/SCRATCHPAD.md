@@ -375,9 +375,10 @@ renders the recipient-dependent number/text state; it is represented by
 `0x11FDE`/`0x12014` counts active records, computes quotient/remainder
 distribution from the summed `+0x4F` values, and applies the source bit-1
 remainder rule. `0x11FD4` supplies the two-line `Exchange` / `complete`
-message from `0xD1B78`. Runner-name bytes are not fabricated: the current
-direct catalog exposes the source `????` placeholder until the corresponding
-record/name resource is traced.
+message from `0xD1B78`. The nested presenter now reads the selected
+recipient's source name from live-record `+0x58..+0x65`, the same span copied
+by the compact-save projection; the `D1B71` `????` text remains only as a
+fallback when a record lacks that source name.
 
 The concrete field-consuming operations are in the separate
 `shadowrun_ghidra_runner_record_operations` library:

@@ -388,9 +388,10 @@ menu state machine. The nested recruited-recipient trade path consumes the
 same typed `FieldPartyRosterRuntime` records that the field scene uses:
 `0x11DD2` recipient filtering, `0x1209A` recipient cycling, quantity
 wrap/clamp, transfer arithmetic, and the `0x11FDE` distribution branch are
-connected through converted routines. The direct catalog still exposes the
-source `????` prompt where runner-name records have not been extracted, and
-loaded-save field composition remains an explicit boundary.
+connected through converted routines. The selected runner's display name comes
+from the typed live-record `+0x58..+0x65` field; the direct `D1B71`
+`????` text is only the source fallback for a missing name. Loaded-save
+field composition remains an explicit boundary.
 
 The Clips branch also establishes the menu verification shape for later
 panels. Selection movement is tested across every entry and the wrap edge,

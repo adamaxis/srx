@@ -621,10 +621,10 @@ consumes one clip, clamps loaded ammunition to the extracted item capacity, and
 emits the source `Rock & Roll, chummers!!` result. The nested trade path now
 uses the same typed three-slot party roster as the field scene: source-record
 exclusion, active/hidden recipient filtering, recipient cycling, quantity
-wrap, transfer arithmetic, and the source completion message are tested.
-Runner-name extraction remains open, so the source `????` placeholder is
-preserved rather than replaced with invented names; an independent visual
-golden also remains open.
+wrap, transfer arithmetic, the source completion message, and the selected
+recipient's live-record `+0x58` name are tested. The source `????` prompt is
+retained only as the fallback for an absent name; an independent visual golden
+also remains open.
 
 ### Attributes and skills: `0xD01C`
 
