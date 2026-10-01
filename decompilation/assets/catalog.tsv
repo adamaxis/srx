@@ -248,6 +248,7 @@ intro/background-patch-1.bmp	background	152	128	104	96	table=0x5a1d2 index=1 spr
 intro/background-patch-2.bmp	background	152	128	104	96	table=0x5a1d2 index=2 sprite=0 source=0x1e2f6c attr=0x0	extracted
 intro/background-patch-3.bmp	background	152	128	104	96	table=0x5a1d2 index=3 sprite=0 source=0x1e2eba attr=0x0	extracted
 intro/cab-map.bmp	background	0	0	320	224	0x134D2/0xD2A2E	extracted
+dialogue/portraits/stoker-motel.bmp	sprite	0	0	56	72	0x1F65A/0x121FA0/0x1287C6/0x122420	extracted
 field/hud/background.bmp	background	0	0	320	224	0x334C/0x39F2	extracted
 field/hud/face-0.bmp	sprite	0	0	32	32	0x3404[0]	extracted
 field/hud/face-1.bmp	sprite	0	0	32	32	0x3404[1]	extracted

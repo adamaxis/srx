@@ -22,6 +22,30 @@ The architecture target is recorded in
 world, entities/effects, menus, intro choreography, renderer, audio service,
 and persistence, with extraction and Ghidra kept outside the runtime.
 
+### Dialogue panel and Stoker portrait pass: 2026-10-01
+
+The 0x1F65A/0x1F292 trace was pushed through the actual resource pointers
+rather than a guessed or composited portrait. Profile 0 at 0x121FA0 supplies
+the 0x121CFC palette, 0x1287C6 compressed pattern stream, and 0x122420
+portrait stream. The 0x1728 writer uses DBF count-plus-one descriptors; the
+Stoker stream fills seven columns by nine rows and applies the 0x6000 palette
+attributes. `decode_genesis_field_dialogue_portrait()` now performs that work
+only in the offline graphics extractor and emits
+`dialogue/portraits/stoker-motel.bmp`, aliased as
+`dialogue.portraits.stoker.motel`. The generated direct-assets pass completed
+with 891 extracted, 5 empty, and 0 missing graphics resources.
+
+The separate Qt conversion target now has one
+`qt_runtime/dialogue_panel.*` projection over the converted runner
+conversation graph. It carries actor identity, source text segments, page and
+`< MORE >` state, subject/payment commands, fees, return state, and explicit
+source-boundary reasons. It deliberately leaves common prompt labels and
+untraced runner portraits unbound; it does not invent a Stoker text table or
+duplicate the converted dispatch state. `shadowrun_ghidra_dialogue_panel` and
+the ROM-backed `shadowrun_graphics` test pass. The live field interaction still
+needs the Stoker prompt text records, panel shell layout, event trigger, and
+full return transition before this hill can be defended with a Qt image dump.
+
 ### Field scene initialization audit: 2026-09-30
 
 The `0x2F32` conversion is now tied to the actual field-entry behavior rather

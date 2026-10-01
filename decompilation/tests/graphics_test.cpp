@@ -68,6 +68,16 @@ int main() {
     assert(atlas.pixels[4].alpha == 0);
 
     const auto rom = read_rom();
+    const auto stoker_portrait = decode_genesis_field_dialogue_portrait(rom, 0U);
+    assert(stoker_portrait.width == 56 && stoker_portrait.height == 72);
+    assert(stoker_portrait.pixels.size() ==
+           static_cast<std::size_t>(stoker_portrait.width) *
+               stoker_portrait.height);
+    const auto stoker_opaque = std::count_if(
+        stoker_portrait.pixels.begin(), stoker_portrait.pixels.end(),
+        [](const auto& pixel) { return pixel.alpha != 0U; });
+    assert(stoker_opaque > 500U);
+
     const auto field_tile = decode_genesis_tile(
         rom.data() + 0x166B82, 32);
     assert(field_tile.pixels[0] == 0);

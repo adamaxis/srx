@@ -721,6 +721,7 @@ void write_asset_readme(const std::filesystem::path& root) {
               "`menu/field/text.tsv` and exposed through the `menu.field.text` "
               "manifest alias. Item art is grouped under items/weapons, "
               "items/first-aid, items/miscellaneous, items/magic, and items/armor. "
+              "Field dialogue portraits are grouped under dialogue/portraits. "
               "Separately traced cinematic resources belong under movies/<scene>; "
               "they must not be mixed into intro or field assets.\n\n"
            << "Audio is emitted here only as complete Windows-playable lossless "
@@ -1018,6 +1019,16 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     }
     write("intro/cab-map.bmp", assets.cab_map, "background", "0x134D2/0xD2A2E",
           false);
+
+    // 0x1F65A selects profile 0 for Stoker's Coffin Motel. The portrait is
+    // written by the shared 7x9 resource stream at 0x122420 after its
+    // profile-specific pattern upload at 0x1287C6. Keep this as one direct
+    // sprite asset; the Qt conversion owns only its screen placement.
+    write_catalog_asset(
+        root, "dialogue/portraits/stoker-motel.bmp",
+        shadowrun::graphics::decode_genesis_field_dialogue_portrait(rom, 0U),
+        "sprite", "0x1F65A/0x121FA0/0x1287C6/0x122420", false, manifest,
+        written, missing, blank);
 
     // Field HUD and menu source layers.
     write("field/hud/background.bmp", assets.field_hud, "background",

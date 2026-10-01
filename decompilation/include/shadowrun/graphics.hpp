@@ -293,6 +293,13 @@ IndexedTile decode_genesis_tile(const std::uint8_t* source,
 std::vector<std::uint8_t> decode_genesis_resource_stream(
     const std::vector<std::uint8_t>& rom, std::size_t source_offset);
 
+// ROM 0x1F65A / 0x1F292: decode one field-dialogue resource profile's
+// portrait stream into a host image. The resource stream and the 7x9
+// portrait writer are offline extraction inputs; no VDP/name-table state is
+// retained by the native or Ghidra-conversion runtimes.
+RgbaImage decode_genesis_field_dialogue_portrait(
+    const std::vector<std::uint8_t>& rom, std::size_t profile_index);
+
 std::array<native::Rgba8, 16> read_genesis_palette(
     const std::vector<std::uint8_t>& rom, std::size_t byte_offset);
 

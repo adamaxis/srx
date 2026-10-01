@@ -1744,6 +1744,163 @@ std::vector<std::uint8_t> decode_genesis_resource_stream(
                                                      state);
 }
 
+// Declared here because the dialogue portrait importer is kept beside the
+// source stream it consumes, while the general 0x1530 upload helper remains
+// with the other VRAM writers below.
+std::vector<std::uint8_t> decode_genesis_1530_vram(
+    const std::vector<std::uint8_t>& rom, std::size_t source_offset,
+    std::size_t target_offset);
+
+RgbaImage decode_genesis_field_dialogue_portrait(
+    const std::vector<std::uint8_t>& rom, const std::size_t profile_index) {
+    // 0x1F65A selects one of the nine three-pointer mode profiles. The
+    // Stoker's Coffin Motel route uses profile 0 at 0x121FA0. The first
+    // pointer is its 16-word palette bank, the second is the 0x1530 pattern
+    // stream, and the third is the common 0x1728-style 7x9 portrait stream.
+    constexpr std::size_t kProfileTable = 0x121FA0U;
+    constexpr std::size_t kProfileStride = 12U;
+    constexpr std::size_t kProfileCount = 9U;
+    constexpr std::size_t kPatternVramOffset = 0x57A0U;
+    constexpr std::size_t kPortraitColumns = 7U;
+    constexpr std::size_t kPortraitRows = 9U;
+    constexpr std::size_t kPortraitTileCount =
+        kPortraitColumns * kPortraitRows;
+    constexpr std::uint16_t kPortraitPaletteAttributes = 0x6000U;
+
+    if (profile_index >= kProfileCount) {
+        throw std::out_of_range("field dialogue profile is out of range");
+    }
+    const auto profile = kProfileTable + profile_index * kProfileStride;
+    const auto palette_offset = static_cast<std::size_t>(read_rom_u32(
+        rom, profile, "field dialogue profile palette pointer is truncated"));
+    const auto pattern_stream = static_cast<std::size_t>(read_rom_u32(
+        rom, profile + 4U,
+        "field dialogue profile pattern pointer is truncated"));
+    const auto portrait_stream = static_cast<std::size_t>(read_rom_u32(
+        rom, profile + 8U,
+        "field dialogue profile portrait pointer is truncated"));
+
+    // 0x1287C6 is the source's compressed pattern upload to tile 0x2BD.
+    // The renderer only consumes the resulting host pixels; the VDP upload
+    // is reproduced here solely as an offline import step.
+    const auto pattern_vram =
+        decode_genesis_1530_vram(rom, pattern_stream, kPatternVramOffset);
+
+    std::array<native::Rgba8, 16> palette{};
+    for (std::size_t index = 0; index < palette.size(); ++index) {
+        palette[index] = decode_genesis_cram_word(
+            read_rom_u16(rom, palette_offset + index * 2U,
+                         "field dialogue profile palette is truncated"),
+            index == 0U);
+    }
+
+    const auto read_stream_byte = [&rom, &portrait_stream](std::size_t& cursor) {
+        if (cursor >= rom.size()) {
+            throw std::out_of_range("field dialogue portrait stream is truncated");
+        }
+        return rom[cursor++];
+    };
+    const auto read_stream_word = [&read_stream_byte](std::size_t& cursor) {
+        const auto high = read_stream_byte(cursor);
+        const auto low = read_stream_byte(cursor);
+        return static_cast<std::uint16_t>(
+            (static_cast<std::uint16_t>(high) << 8U) | low);
+    };
+
+    if (portrait_stream > rom.size() ||
+        rom.size() - portrait_stream < 2U) {
+        throw std::out_of_range("field dialogue portrait header is truncated");
+    }
+    std::size_t cursor = portrait_stream;
+    const auto tile_base = read_stream_word(cursor);
+    std::array<std::uint16_t, kPortraitTileCount> tile_words{};
+    std::size_t tile_count = 0U;
+    const auto emit_tile = [&tile_words, &tile_count](const std::uint16_t value) {
+        if (tile_count < tile_words.size()) {
+            tile_words[tile_count++] = static_cast<std::uint16_t>(
+                value | kPortraitPaletteAttributes);
+        }
+    };
+
+    // ROM 0x1728 is a compact row writer. Values below 0xC1 advance the
+    // source tile by -1/0/+1; values above it repeat one tile delta. The
+    // source supplies D3=0, D5=7, D7=6, and D1=8 here: exactly 7x9 tiles.
+    while (tile_count < tile_words.size()) {
+        const auto descriptor = read_stream_byte(cursor);
+        if (descriptor == 0U) {
+            break;
+        }
+        // The source uses a DBF-style byte counter. A descriptor value of
+        // zero therefore still emits once; the low five bits encode
+        // count-minus-one, not the final tile count.
+        const auto repeat_count =
+            static_cast<std::size_t>(descriptor & 0x1FU) + 1U;
+        if (descriptor > 0xC0U) {
+            const auto delta = (descriptor & 0x20U) != 0U
+                                   ? read_stream_word(cursor)
+                                   : static_cast<std::uint16_t>(
+                                         read_stream_byte(cursor));
+            for (std::size_t index = 0; index < repeat_count; ++index) {
+                emit_tile(static_cast<std::uint16_t>(tile_base + delta));
+            }
+            continue;
+        }
+
+        const auto step = descriptor < 0x40U
+                              ? -1
+                              : descriptor < 0x80U ? 0 : 1;
+        auto delta = (descriptor & 0x20U) != 0U
+                         ? read_stream_word(cursor)
+                         : static_cast<std::uint16_t>(
+                               read_stream_byte(cursor));
+        for (std::size_t index = 0; index < repeat_count; ++index) {
+            emit_tile(static_cast<std::uint16_t>(tile_base + delta));
+            delta = static_cast<std::uint16_t>(delta + step);
+        }
+    }
+    if (tile_count != tile_words.size()) {
+        throw std::runtime_error(
+            "field dialogue portrait stream did not fill its 7x9 writer");
+    }
+
+    RgbaImage image{
+        static_cast<std::uint16_t>(kPortraitColumns * 8U),
+        static_cast<std::uint16_t>(kPortraitRows * 8U),
+        std::vector<native::Rgba8>(kPortraitTileCount * 64U,
+                                   native::Rgba8{0, 0, 0, 0}),
+    };
+    for (std::size_t tile = 0; tile < tile_words.size(); ++tile) {
+        const auto word = tile_words[tile];
+        const auto tile_index = static_cast<std::size_t>(word & 0x07FFU);
+        const auto pattern_offset = tile_index * 32U;
+        if (pattern_offset > pattern_vram.size() ||
+            pattern_vram.size() - pattern_offset < 32U) {
+            throw std::out_of_range(
+                "field dialogue portrait tile is outside its pattern stream");
+        }
+        const auto horizontal_flip = (word & 0x0800U) != 0U;
+        const auto vertical_flip = (word & 0x1000U) != 0U;
+        const auto tile_x = (tile % kPortraitColumns) * 8U;
+        const auto tile_y = (tile / kPortraitColumns) * 8U;
+        for (std::size_t y = 0; y < 8U; ++y) {
+            for (std::size_t x = 0; x < 8U; ++x) {
+                const auto source_x = horizontal_flip ? 7U - x : x;
+                const auto source_y = vertical_flip ? 7U - y : y;
+                const auto packed = pattern_vram[
+                    pattern_offset + source_y * 4U + source_x / 2U];
+                const auto color_index = (source_x & 1U) == 0U
+                                             ? packed >> 4U
+                                             : packed & 0x0FU;
+                auto color = palette[color_index];
+                color.alpha = color_index == 0U ? 0U : 255U;
+                image.pixels[(tile_y + y) * image.width + tile_x + x] =
+                    color;
+            }
+        }
+    }
+    return image;
+}
+
 void write_genesis_1530_vram_with_state(
     const std::vector<std::uint8_t>& rom, std::size_t source_offset,
     std::size_t target_offset, std::vector<std::uint8_t>& vram,

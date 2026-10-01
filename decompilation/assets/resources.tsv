@@ -269,6 +269,7 @@ intro.background.patch.1	intro/background-patch-1.bmp	image	152	128
 intro.background.patch.2	intro/background-patch-2.bmp	image	152	128
 intro.background.patch.3	intro/background-patch-3.bmp	image	152	128
 intro.cab.map	intro/cab-map.bmp	image	0	0
+dialogue.portraits.stoker.motel	dialogue/portraits/stoker-motel.bmp	image	0	0
 field.hud.background	field/hud/background.bmp	image	0	0
 field.hud.face.0	field/hud/face-0.bmp	image	0	0
 field.hud.face.1	field/hud/face-1.bmp	image	0	0

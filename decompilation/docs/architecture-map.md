@@ -232,6 +232,39 @@ Pocket-Secretary record consumer explicit. This is the architecture work that
 turns leaf conversions into a usable system boundary without importing a ROM
 command table into the runtime.
 
+### Shared dialogue panel boundary
+
+The NPC-facing panel is one presentation component, not one source file per
+conversation. `qt_runtime/dialogue_panel.*` projects the converted result into
+one typed shape:
+
+```text
+ConversationController result
+  -> actor identity (source name)
+  -> optional source-bound portrait alias
+  -> text segments / page cursor
+  -> subject or payment options
+  -> < MORE > / return-to-conversation state
+  -> explicit source boundary when a record family is still missing
+```
+
+The adapter handles the common prompt, information pages, subject choices,
+multi-page responses, service offers/results, and unresolved branches through
+the same panel contract. It does not dispatch input or invent labels: input
+continues through `dispatch_recruited_runner_conversation()`, and common
+choice labels remain empty until their ROM text records are traced. This keeps
+the panel reusable for Stoker, runner conversations, package/letter pages,
+and other NPCs while leaving NPC-specific text and flags in source-derived
+records.
+
+The first field actor binding is the Stoker's Coffin Motel profile selected by
+`0x1F65A`. Its profile table at `0x121FA0` points to the `0x1287C6` pattern
+stream and `0x122420` 7x9 portrait stream; the offline importer emits the
+single direct asset `dialogue.portraits.stoker.motel` (56x72 host pixels).
+The portrait is now source-tested, but the Stoker prompt text records and full
+field return transition remain partial. No other field-exit profile is allowed
+to borrow that portrait alias.
+
 ## 2. Gameplay subsystems
 
 ### FieldWorld
