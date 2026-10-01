@@ -916,6 +916,43 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+## Opening wilderness map layers: 0x5B4A8 / 0x5A0B2 / 0x5A252
+
+The 30-fps longplay comparison exposed that the opening's three ambush figures
+were not one background bitmap. The ROM entry at `0x5B4A8` installs three
+independent `0x1728` name-table blocks at source destinations `0x0600`,
+`0x0826`, and `0x03B8`, with source streams `0x1E2B67`, `0x1E2EBB`, and
+`0x1E2FC3`. The first block is opaque; the later two use source color-zero as
+the replacement-layer transparency rule. The graphics importer now decodes
+those streams with the wilderness `0x1406` pattern set into the individually
+named aliases:
+
+```text
+intro.sprites.ambush.map.left.0.0
+intro.sprites.ambush.map.center.1.0
+intro.sprites.ambush.map.right.2.0
+```
+
+`intro/background-1.bmp` is now only the opaque black stage plate. The
+converted `run_title_intro_stage2` emits the three typed descriptors, and the
+Qt adapter retains them as persistent source-region layers instead of
+rebuilding a frame flipbook. Transient SAT records remain transient and are
+drawn afterward.
+
+The existing `0x5A0B2` and `0x5A252` typed color-word services now own the
+source fade state for the two affected map groups. The host presentation reads
+those typed words and scales the affected image RGB; it does not emulate CRAM
+or read a ROM/RAM address. The persistent terminal callback clears the right
+map region at the source fill boundary, matching the longplay massacre frame
+where the center/right figures disappear while the left figure remains.
+
+The integration test verifies the three source families, aliases, and catalog
+origins. The Qt compositor test verifies that map/overlay writes replace their
+source region while ordinary ambush SATs retain color-zero transparency. The
+opening hill remains partial: the conversion and deterministic Qt dump now
+cover the separate layer lifetime, but the complete opening still needs a
+dedicated defended visual CTest over the longplay checkpoints.
+
 ## Stoker motel room payment: 0x21458
 
 The direct ROM listing identifies `0x21458` as dispatch-table command `0x06`

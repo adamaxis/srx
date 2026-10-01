@@ -538,6 +538,12 @@ int main() {
         opening_plan.stage_timed_phases[1].sprite_descriptor);
     const auto timed_phase_2 = opening_intro_sprite_group(
         opening_plan.stage_timed_phases[2].sprite_descriptor);
+    const auto wilderness_map_left = opening_intro_sprite_group(
+        opening_plan.wilderness_map_descriptors[0]);
+    const auto wilderness_map_center = opening_intro_sprite_group(
+        opening_plan.wilderness_map_descriptors[1]);
+    const auto wilderness_map_right = opening_intro_sprite_group(
+        opening_plan.wilderness_map_descriptors[2]);
     if (opening_plan.stage_timed_phases.size() != 3U ||
         timed_phase_0.family != OpeningIntroSpriteFamily::trivid_timed ||
         timed_phase_0.variant != 0U || timed_phase_1.variant != 1U ||
@@ -550,11 +556,20 @@ int main() {
         opening_plan.stage_timed_phases[2].y != 0x0145U ||
         opening_plan.stage_timed_phases[0].delay_frames != 6U ||
         opening_plan.stage_timed_phases[1].delay_frames != 6U ||
-        opening_plan.stage_timed_phases[2].delay_frames != 6U) {
+        opening_plan.stage_timed_phases[2].delay_frames != 6U ||
+        wilderness_map_left.family !=
+            OpeningIntroSpriteFamily::wilderness_map_left ||
+        wilderness_map_center.family !=
+            OpeningIntroSpriteFamily::wilderness_map_center ||
+        wilderness_map_right.family !=
+            OpeningIntroSpriteFamily::wilderness_map_right) {
         return 9;
     }
 
     for (const auto* alias : {"intro.sprites.trivid.timed.0.0",
+                              "intro.sprites.ambush.map.left.0.0",
+                              "intro.sprites.ambush.map.center.1.0",
+                              "intro.sprites.ambush.map.right.2.0",
                               "intro.sprites.wilderness.overlay.0.0",
                               "intro.sprites.wilderness.final.overlay.0.0"}) {
         if (new_game_state.asset_catalog.catalog.find(alias) == nullptr) {
@@ -567,7 +582,10 @@ int main() {
         return record != nullptr && record->origin_x == x && record->origin_y == y;
     };
     if (!expect_origin("intro.sprites.trivid.timed.0.0", 120, 128) ||
-        !expect_origin("intro.sprites.wilderness.overlay.0.0", 8, 99) ||
+        !expect_origin("intro.sprites.ambush.map.left.0.0", 0, 96) ||
+        !expect_origin("intro.sprites.ambush.map.center.1.0", 152, 128) ||
+        !expect_origin("intro.sprites.ambush.map.right.2.0", 224, 56) ||
+        !expect_origin("intro.sprites.wilderness.overlay.0.0", 0, 96) ||
         !expect_origin("intro.sprites.wilderness.final.overlay.0.0", 24, 120)) {
         return 10;
     }
@@ -667,6 +685,9 @@ int main() {
                 });
         };
     if (!has_sprite_family(OpeningIntroSpriteFamily::trivid_timed) ||
+        !has_sprite_family(OpeningIntroSpriteFamily::wilderness_map_left) ||
+        !has_sprite_family(OpeningIntroSpriteFamily::wilderness_map_center) ||
+        !has_sprite_family(OpeningIntroSpriteFamily::wilderness_map_right) ||
         !has_sprite_family(OpeningIntroSpriteFamily::wilderness_overlay) ||
         !has_sprite_family(OpeningIntroSpriteFamily::wilderness_final_overlay) ||
         !has_sprite_family(OpeningIntroSpriteFamily::ambush_actor) ||

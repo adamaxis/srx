@@ -66,6 +66,15 @@ void make_field_hud_layer_transparent_outside_chrome(QImage& image) {
 
 bool genesis_alias_uses_sprite_transparency(
     const std::string_view alias) noexcept {
+    // These are opaque source name-table writes. Their black tile-zero cells
+    // replace what was previously in the same Plane-A region; treating them
+    // as SAT sprites would reveal stale actors underneath the map update.
+    if (alias.rfind("intro.sprites.ambush.map.", 0) == 0 ||
+        alias.rfind("intro.sprites.wilderness.overlay.", 0) == 0 ||
+        alias.rfind("intro.sprites.wilderness.final.overlay.", 0) == 0 ||
+        alias.rfind("intro.background.patch.", 0) == 0) {
+        return false;
+    }
     return alias == "boot.guy" || alias == "boot.fasa" ||
            alias.rfind("boot.sega.lightning.", 0) == 0 ||
            alias.rfind("boot.sega.strobe.", 0) == 0 ||
@@ -74,7 +83,6 @@ bool genesis_alias_uses_sprite_transparency(
            alias.rfind("menu.field.runner.portrait.", 0) == 0 ||
            alias.rfind("title.sprite.", 0) == 0 ||
            alias.rfind("intro.sprites.", 0) == 0 ||
-           alias.rfind("intro.background.patch.", 0) == 0 ||
            alias == "intro.aircraft.plane.a";
 }
 

@@ -45,6 +45,9 @@ enum class OpeningIntroSpriteFamily : std::uint8_t {
     aircraft_movement,
     aircraft_plane_a,
     background_patch,
+    wilderness_map_left,
+    wilderness_map_center,
+    wilderness_map_right,
 };
 
 struct OpeningIntroSpriteGroup {
@@ -187,6 +190,10 @@ struct OpeningIntroSourcePlan {
     std::array<TitleIntroOverlayPhase, kTitleIntroOverlayPhaseCount>
         overlay_phases{};
     std::uint32_t final_overlay_descriptor = 0;
+    // 0x5B4A8's three initial Plane-A name-table blocks. These remain
+    // separate source layers; the runtime never consumes a composite
+    // wilderness background plate.
+    std::array<std::uint32_t, 3> wilderness_map_descriptors{};
     std::array<TitleIntroSequencePhase, kTitleIntroSequencePhaseCount>
         sequence_phases{};
     std::array<TitleIntroPersistentPhase, kTitleIntroPersistentPhaseCount>
@@ -243,6 +250,10 @@ struct OpeningIntroCallbacks {
     std::function<void(OpeningIntroStage)> stage_changed;
     std::function<void(OpeningIntroScene)> scene_changed;
     std::function<void(const OpeningIntroSpriteRequest&)> draw_sprite;
+    // ROM 0x5A252/0x5A0B2 fill the right initial map block at $03B8/$3B8
+    // after the terminal fade sequence. This is a source map clear, not a
+    // missing sprite asset.
+    std::function<void()> clear_wilderness_right_map;
     std::function<void(const OpeningIntroTextRequest&)> render_text;
     std::function<void(std::string_view)> source_boundary;
     std::function<bool()> stop_requested;
@@ -274,6 +285,10 @@ struct OpeningIntroState {
     TitleIntroOverlayState overlay{};
     TitleIntroSequenceState sequence{};
     TitleIntroPersistentSequenceState persistent{};
+    // 0x5A0B2 fades entity 0's palette line and 0x5A252 fades entity 1's
+    // palette line. Keeping these typed source words in the integration state
+    // lets a host presentation reproduce the fade without recreating CRAM.
+    TitleIntroEntityColorState entity_colors{};
     TitleIntroMotionState motion{};
     TitleIntroDualSpriteState dual{};
     TitleIntroTimedSpriteState timed{};

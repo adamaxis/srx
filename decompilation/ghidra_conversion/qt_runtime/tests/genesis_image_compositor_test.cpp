@@ -46,7 +46,16 @@ int main() {
                 "boot lightning must use sprite transparency") ||
         !expect(!genesis_alias_uses_sprite_transparency(
                     "boot.sega.background"),
-                "boot background must remain a full plane")) {
+                "boot background must remain a full plane") ||
+        !expect(!genesis_alias_uses_sprite_transparency(
+                    "intro.sprites.ambush.map.center.1.0"),
+                "wilderness map writes must replace their source region") ||
+        !expect(!genesis_alias_uses_sprite_transparency(
+                    "intro.sprites.wilderness.overlay.0.0"),
+                "wilderness overlay writes must replace their source region") ||
+        !expect(genesis_alias_uses_sprite_transparency(
+                    "intro.sprites.ambush.actor.0.0"),
+                "ambush SAT actors must remain color-zero transparent")) {
         return 1;
     }
 

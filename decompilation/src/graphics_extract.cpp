@@ -472,6 +472,30 @@ CroppedAsset crop_transparent_bounds(
     return result;
 }
 
+CroppedAsset crop_source_region(
+    const shadowrun::graphics::RgbaImage& source, const std::int32_t origin_x,
+    const std::int32_t origin_y, const std::uint16_t width,
+    const std::uint16_t height) {
+    if (width == 0U || height == 0U || origin_x < 0 || origin_y < 0 ||
+        origin_x + width > source.width || origin_y + height > source.height) {
+        throw std::invalid_argument("source asset region exceeds image");
+    }
+    CroppedAsset result;
+    result.origin_x = origin_x;
+    result.origin_y = origin_y;
+    result.image.width = width;
+    result.image.height = height;
+    result.image.pixels.resize(static_cast<std::size_t>(width) * height);
+    for (std::int32_t y = 0; y < height; ++y) {
+        for (std::int32_t x = 0; x < width; ++x) {
+            result.image.pixels[static_cast<std::size_t>(y) * width + x] =
+                source.pixels[static_cast<std::size_t>(origin_y + y) *
+                                  source.width + origin_x + x];
+        }
+    }
+    return result;
+}
+
 void write_scene_asset(const std::filesystem::path& root,
                        const std::string& relative_name,
                        const shadowrun::graphics::RgbaImage& source,
@@ -609,7 +633,11 @@ void write_catalog_asset(const std::filesystem::path& root,
                          const std::string& kind,
                          const std::string& provenance, bool crop,
                          std::ofstream& manifest, std::size_t& written,
-                         std::size_t& missing, std::size_t& blank) {
+                         std::size_t& missing, std::size_t& blank,
+                         const std::int32_t source_origin_x = 0,
+                         const std::int32_t source_origin_y = 0,
+                         const std::uint16_t source_width = 0,
+                         const std::uint16_t source_height = 0) {
     if (image.width == 0U || image.height == 0U || image.pixels.empty()) {
         ++missing;
         manifest << relative_name << '\t' << kind
@@ -618,7 +646,10 @@ void write_catalog_asset(const std::filesystem::path& root,
     }
     auto status = "extracted";
     CroppedAsset asset;
-    if (crop) {
+    if (source_width != 0U && source_height != 0U) {
+        asset = crop_source_region(image, source_origin_x, source_origin_y,
+                                   source_width, source_height);
+    } else if (crop) {
         try {
             asset = crop_transparent_bounds(image);
         } catch (const std::runtime_error& error) {
@@ -970,7 +1001,9 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                       std::to_string(resource.sprite_index) + ".bmp",
             resource.image, "sprite",
             format_resource_source(resource),
-            true, manifest, written, missing, blank);
+            true, manifest, written, missing, blank, resource.source_origin_x,
+            resource.source_origin_y, resource.source_width,
+            resource.source_height);
     }
     const auto intro_patches =
         shadowrun::graphics::decode_genesis_intro_ambush_background_resources(

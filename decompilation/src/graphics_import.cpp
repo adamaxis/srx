@@ -5905,9 +5905,15 @@ std::array<RgbaImage, native::kNativeIntroStageCount>
 decode_genesis_intro_backgrounds_impl(const std::vector<std::uint8_t>& rom) {
     std::array<RgbaImage, native::kNativeIntroStageCount> backgrounds{};
     backgrounds[0] = decode_genesis_1406_scene(rom, 0x5B574U);
-    // The actor used during the wilderness pan is a separate SAT resource;
-    // do not bake it into the reusable background plate.
-    backgrounds[1] = decode_genesis_1406_scene(rom, 0x5B4A8U);
+    // 0x5B4A8's three Plane-A blocks are the initial ambush actor plates, not
+    // scenery. They are exported separately by
+    // decode_genesis_intro_sprite_resources; the reusable stage background is
+    // therefore an opaque black plate, matching the source scene around those
+    // independently updated regions.
+    backgrounds[1] = make_transparent_title_layer();
+    for (auto& pixel : backgrounds[1].pixels) {
+        pixel = {0, 0, 0, 255};
+    }
     backgrounds[2] = decode_genesis_intro_trivid_impl(rom, false);
     backgrounds[3] = decode_genesis_1406_scene(rom, 0x5B528U, nullptr, 0x78,
                                                 0, false, true);
@@ -5987,10 +5993,61 @@ decode_genesis_intro_sprite_resources_impl(
     // layer can select the exact six-frame phase without a composite frame.
     add_table(trivid, "trivid-timed", 0x5AD02U, 3, 8, 0x2000U);
 
+    // 0x5B4A8 installs three independent 0x1728 name-table blocks before the
+    // ambush loop begins. They are moving actor plates in the source scene,
+    // not one static background bitmap. Keep each source block as its own
+    // opaque, individually named host layer so later 0x5Axxx map writes can
+    // replace or clear the exact region they own.
+    constexpr std::array<const char*, 3> kInitialMapRoles{{
+        "ambush-map-left", "ambush-map-center", "ambush-map-right"}};
+    constexpr std::array<std::size_t, 3> kInitialMapOffsets{{
+        0x5B4D4U, 0x5B4E2U, 0x5B4F0U}};
+    for (std::size_t index = 0; index < kInitialMapRoles.size(); ++index) {
+        const auto table_entry = kInitialMapOffsets[index];
+        const auto source = static_cast<std::size_t>(read_rom_u32(
+            rom, table_entry,
+            "Genesis wilderness initial map table is truncated"));
+        const auto destination = read_rom_u32(
+            rom, table_entry + 4U,
+            "Genesis wilderness initial map table is truncated");
+        const auto columns = static_cast<std::size_t>(read_rom_u16(
+            rom, table_entry + 8U,
+            "Genesis wilderness initial map table is truncated")) + 1U;
+        const auto rows = static_cast<std::size_t>(read_rom_u16(
+            rom, table_entry + 10U,
+            "Genesis wilderness initial map table is truncated")) + 1U;
+        const auto attr = read_rom_u16(
+            rom, table_entry + 12U,
+            "Genesis wilderness initial map table is truncated");
+
+        GenesisGraphicsResource resource;
+        resource.role = kInitialMapRoles[index];
+        resource.table_offset = 0x5B4D4U;
+        resource.table_index = index;
+        resource.source_offset = source;
+        resource.attr_or = attr;
+        resource.source_origin_x = static_cast<std::int32_t>(
+            ((destination % 0x80U) / 2U) * 8U);
+        resource.source_origin_y = static_cast<std::int32_t>(
+            (destination / 0x80U) * 8U);
+        resource.source_width = static_cast<std::uint16_t>(columns * 8U);
+        resource.source_height = static_cast<std::uint16_t>(rows * 8U);
+        resource.image = make_transparent_title_layer();
+        // 0x1406 makes the first authored block opaque and layers the two
+        // later blocks with source color-zero transparency. Preserve that
+        // per-block behavior in the host resources rather than flattening
+        // the three map writes back into one bitmap.
+        const auto transparent_zero = index != 0U;
+        blit_genesis_1728_name_table(
+            rom, wilderness, resource.image, source & ~1U, columns, rows,
+            destination, 0U, attr, transparent_zero, 0, true);
+        resources.push_back(std::move(resource));
+    }
+
     // 0x59F8E's six-entry overlay table feeds the same 0x1728 stream writer
     // with a 17x16 name-table patch at $0600. Decode each stream offline
     // against the wilderness pattern set and retain the source-plane origin in
-    // the transparent image; the Qt conversion never interprets these bytes.
+    // the opaque crop; the Qt conversion never interprets these bytes.
     const auto add_overlay = [&](const GenesisBootPatternData& scene,
                                  const std::string& role,
                                  const std::size_t table,
@@ -6009,7 +6066,7 @@ decode_genesis_intro_sprite_resources_impl(
         resource.image = make_transparent_title_layer();
         blit_genesis_1728_name_table(rom, scene, resource.image, source,
                                      columns, rows, destination, 0U, 0x4000U,
-                                     true);
+                                     false);
         resources.push_back(std::move(resource));
     };
     for (std::size_t index = 0; index < 6U; ++index) {

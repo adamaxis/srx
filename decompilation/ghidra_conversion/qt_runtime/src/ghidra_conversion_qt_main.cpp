@@ -820,6 +820,12 @@ private:
         };
         startup_callbacks_.opening_intro.clear_presentation = [this] {
             opening_sprites_.clear();
+            opening_wilderness_map_left_.reset();
+            opening_wilderness_map_center_.reset();
+            opening_wilderness_map_right_.reset();
+            opening_wilderness_overlay_.reset();
+            opening_wilderness_patch_.reset();
+            opening_wilderness_final_overlay_.reset();
             opening_text_.clear();
             note_presentation_boundary("opening.clear_presentation");
         };
@@ -834,13 +840,49 @@ private:
         startup_callbacks_.opening_intro.scene_changed =
             [this](const OpeningIntroScene scene) {
                 opening_scene_ = scene;
+                opening_wilderness_overlay_.reset();
+                opening_wilderness_map_left_.reset();
+                opening_wilderness_map_center_.reset();
+                opening_wilderness_map_right_.reset();
+                opening_wilderness_patch_.reset();
+                opening_wilderness_final_overlay_.reset();
                 opening_text_.clear();
                 note_presentation_boundary("opening.scene_changed");
             };
         startup_callbacks_.opening_intro.draw_sprite =
             [this](const OpeningIntroSpriteRequest& request) {
-                opening_sprites_.push_back(request);
+                // These families are source name-table writes. Their pixels
+                // persist until another write replaces the same region; a
+                // host vblank must not reduce them to one-frame sprites.
+                switch (opening_intro_sprite_group(request.sprite_descriptor)
+                            .family) {
+                case OpeningIntroSpriteFamily::wilderness_map_left:
+                    opening_wilderness_map_left_ = request;
+                    return;
+                case OpeningIntroSpriteFamily::wilderness_map_center:
+                    opening_wilderness_map_center_ = request;
+                    return;
+                case OpeningIntroSpriteFamily::wilderness_map_right:
+                    opening_wilderness_map_right_ = request;
+                    return;
+                case OpeningIntroSpriteFamily::wilderness_overlay:
+                    opening_wilderness_overlay_ = request;
+                    return;
+                case OpeningIntroSpriteFamily::background_patch:
+                    opening_wilderness_patch_ = request;
+                    return;
+                case OpeningIntroSpriteFamily::wilderness_final_overlay:
+                    opening_wilderness_final_overlay_ = request;
+                    return;
+                default:
+                    opening_sprites_.push_back(request);
+                    return;
+                }
             };
+        startup_callbacks_.opening_intro.clear_wilderness_right_map = [this] {
+            opening_wilderness_map_right_.reset();
+            note_presentation_boundary("opening.clear_wilderness_right_map");
+        };
         startup_callbacks_.opening_intro.render_text =
             [this](const OpeningIntroTextRequest& request) {
                 if (opening_intro_text_asset(request.text_asset) ==
@@ -1170,6 +1212,35 @@ private:
             break;
         }
 
+        // The ROM's wilderness animation streams update three persistent
+        // name-table regions. The callback above records the latest typed
+        // request for each region; redraw those source layers before the
+        // one-vblank SAT requests below. This removes the composite actors
+        // from the base plate at the same points where the Genesis map write
+        // replaced them, without introducing a runtime frame flipbook.
+        if (opening_scene_ == OpeningIntroScene::wilderness) {
+            if (opening_wilderness_map_left_) {
+                draw_opening_sprite(painter, *opening_wilderness_map_left_);
+            }
+            if (opening_wilderness_map_center_) {
+                draw_opening_sprite(
+                    painter, *opening_wilderness_map_center_);
+            }
+            if (opening_wilderness_map_right_) {
+                draw_opening_sprite(painter, *opening_wilderness_map_right_);
+            }
+            if (opening_wilderness_overlay_) {
+                draw_opening_sprite(painter, *opening_wilderness_overlay_);
+            }
+            if (opening_wilderness_patch_) {
+                draw_opening_sprite(painter, *opening_wilderness_patch_);
+            }
+            if (opening_wilderness_final_overlay_) {
+                draw_opening_sprite(
+                    painter, *opening_wilderness_final_overlay_);
+            }
+        }
+
         for (const auto& request : opening_sprites_) {
             draw_opening_sprite(painter, request);
         }
@@ -1219,17 +1290,37 @@ private:
         // extracted in their source-plane positions, unlike SAT entries
         // whose origin is relative to $80. The resource importer crops them
         // individually but preserves that source origin in resources.tsv.
-        if (group.family == OpeningIntroSpriteFamily::background_patch ||
+        if (group.family == OpeningIntroSpriteFamily::wilderness_map_left ||
+            group.family == OpeningIntroSpriteFamily::wilderness_map_center ||
+            group.family == OpeningIntroSpriteFamily::wilderness_map_right ||
+            group.family == OpeningIntroSpriteFamily::background_patch ||
             group.family == OpeningIntroSpriteFamily::wilderness_overlay ||
             group.family == OpeningIntroSpriteFamily::wilderness_final_overlay) {
+            const auto palette_fade_weight = [&]() -> std::uint16_t {
+                if (group.family ==
+                        OpeningIntroSpriteFamily::wilderness_map_center ||
+                    group.family == OpeningIntroSpriteFamily::background_patch) {
+                    return opening_entity_palette_fade_weight(0U);
+                }
+                if (group.family ==
+                    OpeningIntroSpriteFamily::wilderness_map_right) {
+                    return opening_entity_palette_fade_weight(1U);
+                }
+                return 255U;
+            }();
             for (const auto& record : state_.asset_catalog.catalog.records) {
                 if (record.alias.rfind(prefix, 0) != 0) {
                     continue;
                 }
                 const auto image = draw_asset_cache_.find(record.alias);
                 if (image != draw_asset_cache_.end()) {
+                    const auto layer = palette_fade_weight == 255U
+                                           ? image->second
+                                           : scale_genesis_image_rgb(
+                                                 image->second,
+                                                 palette_fade_weight);
                     painter.drawImage(record.origin_x, record.origin_y,
-                                      image->second);
+                                      layer);
                 }
             }
             return;
@@ -1260,6 +1351,19 @@ private:
                 request.x, request.y, record.origin_x, record.origin_y);
             painter.drawImage(point.x, point.y, image->second);
         }
+    }
+
+    std::uint16_t opening_entity_palette_fade_weight(
+        const std::size_t entity_index) const {
+        if (entity_index >= state_.opening_intro.entity_colors.words.size()) {
+            return 255U;
+        }
+        const auto word = state_.opening_intro.entity_colors.words[entity_index][0];
+        const auto red = static_cast<std::uint16_t>((word >> 9U) & 0x07U);
+        const auto green = static_cast<std::uint16_t>((word >> 5U) & 0x07U);
+        const auto blue = static_cast<std::uint16_t>((word >> 1U) & 0x07U);
+        const auto level = std::min({red, green, blue});
+        return static_cast<std::uint16_t>(level * 255U / 7U);
     }
 
     void draw_opening_text(
@@ -1541,6 +1645,13 @@ private:
     OpeningIntroScene opening_scene_ = OpeningIntroScene::seattle;
     OpeningIntroStage opening_stage_ = OpeningIntroStage::not_started;
     std::vector<OpeningIntroSpriteRequest> opening_sprites_;
+    std::optional<OpeningIntroSpriteRequest> opening_wilderness_map_left_;
+    std::optional<OpeningIntroSpriteRequest> opening_wilderness_map_center_;
+    std::optional<OpeningIntroSpriteRequest> opening_wilderness_map_right_;
+    std::optional<OpeningIntroSpriteRequest> opening_wilderness_overlay_;
+    std::optional<OpeningIntroSpriteRequest> opening_wilderness_patch_;
+    std::optional<OpeningIntroSpriteRequest>
+        opening_wilderness_final_overlay_;
     std::vector<OpeningIntroTextRequest> opening_text_;
     std::vector<std::uint16_t> opening_audio_commands_;
 

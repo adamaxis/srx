@@ -36,6 +36,14 @@ struct GenesisGraphicsResource {
     std::size_t sprite_index = 0;
     std::size_t source_offset = 0;
     std::uint16_t attr_or = 0;
+    // Optional source-region bounds for map-backed resources. These preserve
+    // transparent cells owned by the ROM write while still allowing the
+    // offline extractor to emit a compact host image instead of a 320x224
+    // plate. Zero width/height means ordinary visible-bounds cropping.
+    std::int32_t source_origin_x = 0;
+    std::int32_t source_origin_y = 0;
+    std::uint16_t source_width = 0;
+    std::uint16_t source_height = 0;
     RgbaImage image;
 };
 

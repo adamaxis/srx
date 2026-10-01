@@ -313,6 +313,12 @@ std::string opening_intro_sprite_alias_prefix(
         return "intro.aircraft.plane.a";
     case OpeningIntroSpriteFamily::background_patch:
         return "intro.background.patch." + variant;
+    case OpeningIntroSpriteFamily::wilderness_map_left:
+        return "intro.sprites.ambush.map.left.0.";
+    case OpeningIntroSpriteFamily::wilderness_map_center:
+        return "intro.sprites.ambush.map.center.1.";
+    case OpeningIntroSpriteFamily::wilderness_map_right:
+        return "intro.sprites.ambush.map.right.2.";
     case OpeningIntroSpriteFamily::unavailable:
         break;
     }
@@ -609,9 +615,9 @@ const OpeningIntroSourcePlan& opening_intro_source_plan() {
         }
 
         // 0x5A080 selects six compressed 0x1728 wilderness name-table
-        // streams. The offline importer turns each into a transparent,
-        // independently named wilderness overlay; the conversion retains
-        // only the source cadence and host descriptor.
+        // streams. The offline importer turns each into an independently
+        // named source-region replacement; the conversion retains only the
+        // source cadence and host descriptor.
         result.overlay_phases = {{
             {sprite(OpeningIntroSpriteFamily::wilderness_overlay, 0), 0x000CU},
             {sprite(OpeningIntroSpriteFamily::wilderness_overlay, 1), 0x000CU},
@@ -622,6 +628,11 @@ const OpeningIntroSourcePlan& opening_intro_source_plan() {
         }};
         result.final_overlay_descriptor =
             sprite(OpeningIntroSpriteFamily::wilderness_final_overlay, 0);
+        result.wilderness_map_descriptors = {{
+            sprite(OpeningIntroSpriteFamily::wilderness_map_left, 0),
+            sprite(OpeningIntroSpriteFamily::wilderness_map_center, 1),
+            sprite(OpeningIntroSpriteFamily::wilderness_map_right, 2),
+        }};
 
         result.orchestrator_assets.text_assets = {
             opening_intro_text_handle(OpeningIntroTextAsset::tri_vid_recovered),
@@ -688,6 +699,13 @@ void begin_stage2(OpeningIntroState& state,
     invoke(callbacks.fade_palette_to_black);
     invoke(callbacks.clear_presentation);
     source_boundary(callbacks, "0x59D7C.load_title_font");
+    // 0x1406 installs the three authored Plane-A blocks at 0x0600, 0x0826,
+    // and 0x03B8. They remain separate host layers so later map patches and
+    // the terminal clear address the same source regions.
+    for (const auto descriptor : plan.wilderness_map_descriptors) {
+        emit_sprite(callbacks, descriptor, 0U, 0U, 0U);
+    }
+    source_boundary(callbacks, "0x59D9C.install_wilderness_map_layers");
     state.schedule = {};
     state.schedule.current_entry = 0;
     state.schedule.countdown = plan.stage2_schedule.empty()
@@ -699,6 +717,11 @@ void begin_stage2(OpeningIntroState& state,
     state.stage2.y_offset = -0x0020;
     state.stage2.x_phase = 0x0138;
     state.stage2.y_phase = 0x00F1;
+    // Before either ambush fade starts, the two animated map palette lines
+    // are at full source brightness. The later 0x5A0B2/0x5A252 leaves mutate
+    // these same typed words through the existing color-step conversion.
+    set_title_intro_entity_color_words(state.entity_colors, 0U, 0x0EEEU);
+    set_title_intro_entity_color_words(state.entity_colors, 1U, 0x0EEEU);
     source_boundary(callbacks, "0x59D7C.prepare_title_resources");
 
     const auto render_scene = [&callbacks, &state] {
@@ -773,11 +796,14 @@ void advance_animation_services(OpeningIntroState& state,
                      callbacks.service_audio_command(event);
                  }
              },
-             [&callbacks](const std::uint16_t, const std::uint16_t) {
+             [&state, &callbacks](const std::uint16_t, const std::uint16_t) {
+                 set_title_intro_entity_color_words(
+                     state.entity_colors, 1U, 0x0EEEU);
                  source_boundary(callbacks,
                                  "0x5A2D0.persistent_stage_four_transition");
              },
-             [&callbacks] {
+             [&state, &callbacks] {
+                 step_title_intro_entity_color_words(state.entity_colors, 1U);
                  source_boundary(callbacks,
                                  "0x5A328.persistent_repeated_stage");
              },
@@ -787,6 +813,9 @@ void advance_animation_services(OpeningIntroState& state,
                  begin_title_intro_timed_sprites(state.timed, x, y);
              },
              [&callbacks](const auto&) {
+                 if (callbacks.clear_wilderness_right_map) {
+                     callbacks.clear_wilderness_right_map();
+                 }
                  source_boundary(callbacks,
                                  "0x5A350.persistent_final_overlay");
              },
@@ -1180,10 +1209,13 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
             {[&callbacks](const auto& request) {
                  emit_sequence_stream(callbacks, request);
              },
-             [&callbacks](const std::uint16_t, const std::uint16_t) {
+             [&state, &callbacks](const std::uint16_t, const std::uint16_t) {
+                 set_title_intro_entity_color_words(
+                     state.entity_colors, 0U, 0x0EEEU);
                  source_boundary(callbacks, "0x5A124.sequence_stage_four_transition");
              },
-             [&callbacks] {
+             [&state, &callbacks] {
+                 step_title_intro_entity_color_words(state.entity_colors, 0U);
                  source_boundary(callbacks, "0x5A16E.sequence_repeated_stage");
              },
              [&state, &callbacks](const std::uint16_t x, const std::uint16_t y) {
@@ -1191,6 +1223,9 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
                  begin_title_intro_timed_sprites(state.timed, x, y);
              },
              [&callbacks](const auto&) {
+                 if (callbacks.clear_wilderness_right_map) {
+                     callbacks.clear_wilderness_right_map();
+                 }
                  source_boundary(callbacks, "0x5A1BE.sequence_final_overlay");
              },
              [&callbacks](const std::uint16_t event) {
