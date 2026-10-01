@@ -1652,7 +1652,19 @@ void FieldSceneRuntime::advance_frame() {
             field_controller_latch_state_);
         ::shadowrun::ghidra_conversion::sample_controller_input(
             field_controller_sample_state_, field_controller_port_byte_);
+        const auto was_open = command_overview_.open();
         command_overview_.advance(field_controller_sample_state_.events);
+        if (was_open && !command_overview_.open()) {
+            // The source command loop returns through the field coordinator's
+            // display-service tail before the next field pass. The converted
+            // coordinator publishes FFDFE8=FFFF while dispatching Start, so
+            // the host must publish the corresponding completion here; if it
+            // remains set, the coordinator's 0x0AEA guard permanently blocks
+            // all later Start edges and the menu can only open once.
+            state_.display_service_word = 0U;
+            field_runtime_state_.display_service_word = 0U;
+            source_boundary("field.command_overview.returned_to_field");
+        }
         refresh_command_overview_combat_bars();
         refresh_command_overview_item_detail();
         return;

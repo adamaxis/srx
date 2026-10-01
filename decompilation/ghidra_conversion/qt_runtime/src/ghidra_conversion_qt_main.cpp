@@ -24,6 +24,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <optional>
@@ -55,15 +56,22 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
                    " [--assets <decompilation/assets>] [--field-smoke]"
                    " [--field-smoke-move-right] [--field-dump <file>]"
                    " [--field-command-dump <file>]"
+                   " [--field-command-reopen-smoke]"
                    " [--field-dialogue-dump <prompt> <file>]"
                    " [--boot-dump-frame <frame> <file>]"
                    " [--startup-dump <stage> <selection> <frame> <file>]"
+                   " [--startup-qa <output-dir>]"
                    " [--intro-to-field-smoke]\n";
             return {};
         }
         if (argument == "--field-smoke" ||
             argument == "--field-smoke-move-right" ||
+            argument == "--field-command-reopen-smoke" ||
             argument == "--intro-to-field-smoke") {
+            continue;
+        }
+        if (argument == "--startup-qa" && index + 1 < argc) {
+            ++index;
             continue;
         }
         if (argument == "--field-dump" && index + 1 < argc) {
@@ -449,6 +457,276 @@ public:
                   << " entity_visible="
                   << (field_scene_runtime_.field_entity_visible() ? 1 : 0)
                   << " opening_frames=" << frames << '\n';
+        return 0;
+    }
+
+    int run_startup_qa(const std::filesystem::path& output_directory) {
+        host_frame_timer_.stop();
+        std::filesystem::create_directories(output_directory);
+        std::ofstream trace(output_directory / "startup-qa.tsv");
+        if (!trace) {
+            std::cerr << "startup qa: could not open trace in "
+                      << output_directory.string() << '\n';
+            return 3;
+        }
+        trace << "label\tphase\tboot_frame\topening_frame\tstage\tscene\n";
+
+        const auto write_snapshot = [&](const std::string& name) {
+            const auto path = output_directory / (name + ".bmp");
+            const auto scene = render_scene();
+            if (!scene.save(QString::fromStdWString(path.wstring()))) {
+                std::cerr << "startup qa: could not write " << path.string()
+                          << '\n';
+                return false;
+            }
+            return true;
+        };
+        const auto record = [&](const std::string& label) {
+            trace << label << '\t'
+                  << startup_integration_phase_name(state_.phase) << '\t'
+                  << state_.frame.frame_count << '\t'
+                  << state_.opening_intro.source_frame << '\t'
+                  << opening_intro_stage_name(opening_stage_) << '\t'
+                  << opening_intro_scene_name(opening_scene_) << '\n';
+        };
+        const auto fail = [&](const std::string_view message) {
+            std::cerr << "startup qa: " << message << '\n';
+            return 3;
+        };
+
+        record("boot.initial");
+        if (!write_snapshot("00_boot_initial")) {
+            return 3;
+        }
+
+        constexpr int kMaxFrames = 10000;
+        int frames = 0;
+        const auto pump = [&] {
+            if (frames >= kMaxFrames) {
+                return false;
+            }
+            advance_one_source_frame();
+            ++frames;
+            return true;
+        };
+
+        while (state_.phase == StartupIntegrationPhase::pre_title) {
+            if (!pump()) {
+                return fail("boot did not reach title");
+            }
+        }
+        if (state_.phase != StartupIntegrationPhase::title_ready) {
+            return fail("boot reached an unexpected phase");
+        }
+        record("title.ready");
+        if (!write_snapshot("01_title_ready")) {
+            return 3;
+        }
+
+        // The source title loop is interactive, but its complete logo/text
+        // presentation is time-driven. Capture the progression before
+        // pressing Start so the QA walk cannot accidentally validate only the
+        // first black/circuit frame seen by the old smoke path.
+        constexpr std::array<int, 4> kTitleCheckpoints{300, 900, 1500,
+                                                        3000};
+        int title_frame = 0;
+        for (const auto checkpoint : kTitleCheckpoints) {
+            while (title_frame < checkpoint &&
+                   state_.phase == StartupIntegrationPhase::title_ready) {
+                if (!pump()) {
+                    return fail("title presentation did not advance");
+                }
+                ++title_frame;
+            }
+            if (state_.phase != StartupIntegrationPhase::title_ready) {
+                return fail("title presentation left title-ready early");
+            }
+            record("title.checkpoint." + std::to_string(checkpoint));
+            if (!write_snapshot("title_" + std::to_string(checkpoint))) {
+                return 3;
+            }
+        }
+
+        while (state_.phase == StartupIntegrationPhase::title_ready) {
+            pending_title_controller_word_ = static_cast<std::uint16_t>(
+                static_cast<std::uint16_t>(kStartupMenuA) << 8U);
+            if (!pump()) {
+                return fail("title did not accept Start");
+            }
+        }
+        if (state_.phase != StartupIntegrationPhase::start_options) {
+            return fail("title did not enter Start Options");
+        }
+        record("menu.start_options.new_game");
+        if (!write_snapshot("02_start_options_new_game")) {
+            return 3;
+        }
+
+        // Exercise the Load Game branch and its source-visible empty-slot
+        // message before starting New Game. This is the path the old smoke
+        // test skipped entirely.
+        advance_startup_integration(
+            state_, kStartupMenuDown, startup_callbacks_);
+        if (state_.phase != StartupIntegrationPhase::start_options ||
+            state_.start_options.selected != StartOptionsChoice::load_game) {
+            return fail("Start Options did not select Load Game");
+        }
+        record("menu.start_options.load_game");
+        if (!write_snapshot("03_start_options_load_game")) {
+            return 3;
+        }
+        advance_startup_integration(state_, kStartupMenuA, startup_callbacks_);
+        if (state_.phase != StartupIntegrationPhase::save_load) {
+            return fail("Load Game did not enter Save/Load");
+        }
+        record("menu.save_load.slot_one");
+        if (!write_snapshot("04_save_load_slot_one")) {
+            return 3;
+        }
+        advance_startup_integration(state_, kStartupMenuA, startup_callbacks_);
+        if (state_.phase != StartupIntegrationPhase::save_load ||
+            state_.save_load.message != SaveLoadMessage::no_save_data) {
+            return fail("empty Save/Load slot did not publish no-save message");
+        }
+        record("menu.save_load.no_save_message");
+        if (!write_snapshot("05_save_load_no_save_message")) {
+            return 3;
+        }
+        advance_startup_integration(state_, kStartupMenuA, startup_callbacks_);
+        if (state_.phase != StartupIntegrationPhase::start_options) {
+            return fail("no-save message did not return to Start Options");
+        }
+        record("menu.start_options.returned_from_load");
+        if (!write_snapshot("06_start_options_returned_from_load")) {
+            return 3;
+        }
+
+        advance_startup_integration(state_, kStartupMenuA, startup_callbacks_);
+        if (state_.phase != StartupIntegrationPhase::joshua_archetype) {
+            return fail("New Game did not enter archetype selection");
+        }
+        record("menu.archetype.samurai");
+        if (!write_snapshot("07_archetype_samurai")) {
+            return 3;
+        }
+        advance_startup_integration(
+            state_, kStartupMenuDown, startup_callbacks_);
+        if (state_.joshua_archetype.selected !=
+            JoshuaArchetypeChoice::decker) {
+            return fail("archetype selector did not reach Decker");
+        }
+        record("menu.archetype.decker");
+        if (!write_snapshot("08_archetype_decker")) {
+            return 3;
+        }
+        advance_startup_integration(
+            state_, kStartupMenuDown, startup_callbacks_);
+        if (state_.joshua_archetype.selected !=
+            JoshuaArchetypeChoice::gator_shaman) {
+            return fail("archetype selector did not reach Gator Shaman");
+        }
+        record("menu.archetype.gator_shaman");
+        if (!write_snapshot("09_archetype_gator_shaman")) {
+            return 3;
+        }
+        advance_startup_integration(state_, kStartupMenuA, startup_callbacks_);
+        if (state_.phase != StartupIntegrationPhase::opening_intro) {
+            return fail("Gator Shaman did not start opening intro");
+        }
+        record("opening.initial");
+        if (!write_snapshot("10_opening_initial")) {
+            return 3;
+        }
+
+        constexpr std::array<std::uint32_t, 10> kOpeningCheckpoints{
+            300U, 600U, 900U, 1200U, 1500U,
+            1800U, 2100U, 2400U, 2700U, 3000U};
+        std::size_t next_checkpoint = 0U;
+        auto previous_stage = opening_stage_;
+        auto previous_scene = opening_scene_;
+        while (state_.phase == StartupIntegrationPhase::opening_intro) {
+            if (!pump()) {
+                return fail("opening did not complete");
+            }
+            const auto opening_frame = state_.opening_intro.source_frame;
+            if (next_checkpoint < kOpeningCheckpoints.size() &&
+                opening_frame == kOpeningCheckpoints[next_checkpoint]) {
+                const auto label = "opening.checkpoint." +
+                                   std::to_string(opening_frame);
+                record(label);
+                if (!write_snapshot("opening_" +
+                                    std::to_string(opening_frame))) {
+                    return 3;
+                }
+                ++next_checkpoint;
+            }
+            if (opening_stage_ != previous_stage ||
+                opening_scene_ != previous_scene) {
+                const auto label =
+                    "opening.transition." + std::to_string(opening_frame);
+                record(label);
+                const auto name =
+                    "opening_transition_" + std::to_string(opening_frame) +
+                    "_" + opening_intro_stage_name(opening_stage_) + "_" +
+                    opening_intro_scene_name(opening_scene_);
+                if (!write_snapshot(name)) {
+                    return 3;
+                }
+                previous_stage = opening_stage_;
+                previous_scene = opening_scene_;
+            }
+        }
+        if (state_.phase != StartupIntegrationPhase::field_ready ||
+            !field_scene_runtime_.ready()) {
+            return fail("opening did not publish a ready field session");
+        }
+        record("field.ready");
+        if (!write_snapshot("99_field_ready")) {
+            return 3;
+        }
+
+        // The command overview must be a re-enterable field service, not a
+        // one-shot presentation. Drive the same typed controller path as the
+        // Qt window and retain both open frames as QA artifacts.
+        if (!field_scene_runtime_.open_command_overview_for_dump()) {
+            return fail("first field command overview open failed");
+        }
+        record("field.command_overview.open_1");
+        if (!write_snapshot("100_field_command_open_1")) {
+            return 3;
+        }
+        field_scene_runtime_.set_controller_port_byte(0U);
+        field_scene_runtime_.advance_frame();
+        field_scene_runtime_.set_controller_port_byte(0x80U);
+        field_scene_runtime_.advance_frame();
+        if (field_scene_runtime_.command_overview_open()) {
+            return fail("field command overview did not close on Start");
+        }
+        record("field.command_overview.returned_to_field");
+        if (!write_snapshot("101_field_after_command_close")) {
+            return 3;
+        }
+        field_scene_runtime_.set_controller_port_byte(0U);
+        field_scene_runtime_.advance_frame();
+        if (!field_scene_runtime_.open_command_overview_for_dump()) {
+            return fail("second field command overview open failed");
+        }
+        record("field.command_overview.open_2");
+        if (!write_snapshot("102_field_command_open_2")) {
+            return 3;
+        }
+
+        std::ofstream events(output_directory / "event-log.txt");
+        for (const auto& event : state_.event_log) {
+            events << event << '\n';
+        }
+        std::ofstream boundaries(output_directory / "presentation-boundaries.log");
+        for (const auto& boundary : presentation_boundaries_) {
+            boundaries << boundary << '\n';
+        }
+        std::cout << "startup_qa=passed output="
+                  << output_directory.string() << " opening_frames="
+                  << state_.opening_intro.source_frame << '\n';
         return 0;
     }
 
@@ -1569,7 +1847,11 @@ private:
             "menu.field.runner.portrait." + std::to_string(portrait_index);
         const auto portrait = draw_asset_cache_.find(portrait_alias);
         if (portrait != draw_asset_cache_.end()) {
-            painter.drawImage(80, 56, portrait->second);
+            // 0x592C2 -> 0x1F38A uploads the selected 80-word portrait
+            // resource at the source's x/y tile origin (8,8), i.e. the
+            // 64,64 host pixel position. The old 80,56 placement was a
+            // visual guess and shifted every archetype portrait.
+            painter.drawImage(64, 64, portrait->second);
         }
         draw_startup_layout(painter, kJoshuaArchetypePlaneVram,
                             kJoshuaArchetypeLayout);
@@ -1753,6 +2035,7 @@ int main(int argc, char** argv) {
     try {
         bool field_smoke = false;
         bool field_smoke_move_right = false;
+        bool field_command_reopen_smoke = false;
         bool intro_to_field_smoke = false;
         std::optional<std::filesystem::path> field_dump_path;
         std::optional<std::filesystem::path> field_command_dump_path;
@@ -1764,6 +2047,7 @@ int main(int argc, char** argv) {
         std::optional<std::uint32_t> startup_dump_selection;
         std::optional<std::uint32_t> startup_dump_frame;
         std::optional<std::filesystem::path> startup_dump_path;
+        std::optional<std::filesystem::path> startup_qa_path;
         for (int index = 1; index < argc; ++index) {
             if (std::string(argv[index]) == "--help") {
                 std::cout
@@ -1771,9 +2055,11 @@ int main(int argc, char** argv) {
                        " [--assets <decompilation/assets>] [--field-smoke]"
                        " [--field-smoke-move-right] [--field-dump <file>]"
                        " [--field-command-dump <file>]"
+                       " [--field-command-reopen-smoke]"
                        " [--field-dialogue-dump <prompt> <file>]"
                        " [--boot-dump-frame <frame> <file>]"
                        " [--startup-dump <stage> <selection> <frame> <file>]"
+                       " [--startup-qa <output-dir>]"
                        " [--intro-to-field-smoke]\n";
                 return 0;
             }
@@ -1783,6 +2069,10 @@ int main(int argc, char** argv) {
             if (std::string(argv[index]) == "--field-smoke-move-right") {
                 field_smoke = true;
                 field_smoke_move_right = true;
+            }
+            if (std::string(argv[index]) == "--field-command-reopen-smoke") {
+                field_smoke = true;
+                field_command_reopen_smoke = true;
             }
             if (std::string(argv[index]) == "--intro-to-field-smoke") {
                 intro_to_field_smoke = true;
@@ -1819,6 +2109,10 @@ int main(int argc, char** argv) {
                 startup_dump_frame = static_cast<std::uint32_t>(
                     std::stoul(argv[++index]));
                 startup_dump_path = std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--startup-qa" &&
+                index + 1 < argc) {
+                startup_qa_path = std::filesystem::path(argv[++index]);
             }
         }
         const auto asset_root = find_asset_root(argc, argv);
@@ -1868,6 +2162,33 @@ int main(int argc, char** argv) {
             if (field_smoke_move_right) {
                 field_scene.set_controller_nibble(0x08U);
                 field_scene.advance_frame();
+            }
+            if (field_command_reopen_smoke) {
+                if (!field_scene.open_command_overview_for_dump()) {
+                    std::cerr << "field command reopen smoke: first open failed\n";
+                    return 3;
+                }
+
+                // The source command loop exits on a newly pressed Start
+                // edge. Release the first synthetic Start, press it again,
+                // and verify that the converted coordinator returns to the
+                // field before dispatching the second open.
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0x80U);
+                field_scene.advance_frame();
+                if (field_scene.command_overview_open()) {
+                    std::cerr << "field command reopen smoke: close failed\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                if (!field_scene.open_command_overview_for_dump()) {
+                    std::cerr << "field command reopen smoke: second open failed\n";
+                    return 3;
+                }
+                std::cout << "field_command_reopen=passed\n";
+                return 0;
             }
             if (field_dialogue_dump_prompt.has_value() &&
                 field_dialogue_dump_path.has_value()) {
@@ -1953,6 +2274,9 @@ int main(int argc, char** argv) {
             return 0;
         }
         GhidraConversionWindow window(asset_root);
+        if (startup_qa_path.has_value()) {
+            return window.run_startup_qa(*startup_qa_path);
+        }
         if (startup_dump_stage.has_value() &&
             startup_dump_selection.has_value() &&
             startup_dump_frame.has_value() && startup_dump_path.has_value()) {

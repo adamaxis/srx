@@ -26,6 +26,16 @@ target_link_libraries(shadowrun_ghidra_conversion_qt
         Qt6::Widgets
 )
 
+# One end-to-end startup/field QA walk. The executable writes its visual
+# checkpoints outside the asset tree so this remains a verification artifact,
+# not a runtime resource or another generated asset pile.
+add_test(NAME shadowrun_ghidra_conversion_qt_startup_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --startup-qa "${CMAKE_CURRENT_BINARY_DIR}/startup-qa")
+set_tests_properties(shadowrun_ghidra_conversion_qt_startup_qa PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 add_executable(shadowrun_ghidra_genesis_image_compositor_test
     tests/genesis_image_compositor_test.cpp
     src/genesis_image_compositor.cpp
