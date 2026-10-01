@@ -204,6 +204,7 @@ struct RecruitedRunnerServiceState {
     std::uint32_t permanent_fee = 0;     // FFEF36
     std::uint8_t selected_runner_template_index = 0; // FFF0AE
     std::uint16_t runner_information_flags = 0; // FFFC2A
+    std::uint32_t story_flags = 0;              // FFFC2C
 
     RunnerRosterState roster{};
     std::vector<RunnerRosterTemplate> templates;
@@ -329,6 +330,47 @@ WinstonInformationSubjectPrompt winston_information_subject_prompt();
 
 WinstonInformationResponse select_winston_information_response(
     WinstonInformationSubject subject);
+
+enum class TrentInformationSubject {
+    mages,
+    contacts,
+    johnsons,
+};
+
+struct TrentInformationSubjectPrompt {
+    std::string_view title_text;
+    std::array<std::string_view, 3> options{};
+};
+
+enum class TrentInformationResponseAction {
+    selected,
+    subject_unavailable,
+};
+
+// ROM descriptors 0xFEC94..0xFECE0. The contacts command is different from
+// the two descriptor-only branches: command 0xE5 enters 0x24964, which sets
+// FFFC2C bit 12 before returning the Jefferson response descriptor at
+// 0xFECC4. The native result keeps that persistent flag in typed session
+// state; the separate Pocket Secretary record consumer remains an explicit
+// boundary until its source writer is traced.
+struct TrentInformationResponse {
+    TrentInformationResponseAction action =
+        TrentInformationResponseAction::subject_unavailable;
+    TrentInformationSubject subject = TrentInformationSubject::mages;
+    std::array<RecruitedRunnerInformationTextStream, 2> pages{};
+    std::array<bool, 2> more_after_page{};
+    std::size_t page_count = 0;
+    bool returns_to_common_conversation = false;
+};
+
+// ROM data rooted at 0xFEC78. The prompt and response streams are native
+// text data; source pointers and the command-table index do not enter the
+// runtime.
+TrentInformationSubjectPrompt trent_information_subject_prompt();
+
+TrentInformationResponse select_trent_information_response(
+    TrentInformationSubject subject,
+    RecruitedRunnerServiceState& state);
 
 // ROM 0x21318/0x21326/0x21332 plus the common body at 0x2133C.  This converts
 // the recruited-runner dialog's short-term, permanent, and free-permanent

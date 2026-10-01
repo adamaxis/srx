@@ -380,6 +380,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x000240DCL, "open_rianna_heartbane_information");
         names.put(0x000240F4L,
                   "open_stark_amerindian_heritage_information");
+        names.put(0x00024964L, "record_trent_jefferson_contact");
         names.put(0x000213CAL, "resolve_stoker_debt_collection_command");
         names.put(0x000213E2L, "resolve_stoker_jump_house_referral_command");
         names.put(0x000213FAL, "resolve_stoker_motel_debt_payment");
@@ -1104,6 +1105,9 @@ public class ExportShadowrun extends GhidraScript {
         ensureReviewedInlineFunction(
             program, 0x000240F4L, 0x0002410CL,
             "open_stark_amerindian_heritage_information");
+        ensureReviewedInlineFunction(
+            program, 0x00024964L, 0x0002497CL,
+            "record_trent_jefferson_contact");
         ensureReviewedInlineFunction(
             program, 0x000249C4L, 0x000249FCL,
             "resolve_stoker_motel_arrival_command");

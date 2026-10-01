@@ -1063,6 +1063,41 @@ All three terminal paths return through the common conversation choices. The
 native conversion names those topics and retains the exact subject-specific
 text/cadence rather than treating command `0xBD` as generic dialogue.
 
+Trent's subject branch is now source-traced as well. The continuation at
+`0xFEC5C` routes to `0xFEC78`, titled `Yes, like what?`, with exactly three
+choices: mages (`0xFEC94`), contacts (`0xE5`), and local Johnsons
+(`0xFECE0`). The mages response starts at `0x100C92`, then uses `< MORE >`
+to reach `0xFECA8`/`0x100D62`; the first and second pages contain `2/1`
+segments. The Johnson response at `0xFECE0` starts at `0x100EB2` and is one
+terminal `3`-segment page.
+
+The contacts choice is not another descriptor pointer. The mode table maps
+`0xE5` to `0x24964`, whose direct ROM body is:
+
+```text
+MOVE.W  FFFC2C,D1
+BSET    #12,D1
+MOVE.W  D1,FFFC2C
+LEA     0xFECC4,A0
+RTS
+```
+
+`0xFECC4` points at `0x100DBE`, the complete three-segment Jefferson-contact
+response. The conversion therefore mutates typed story flag `FFFC2C` bit 12
+and returns that response. The text says the name is placed in the Pocket
+Secretary, but the record consumer/writer has not yet been source-traced; it
+remains an explicit boundary rather than an invented contact database.
+
+This pass also adds the first real conversation integration seam at
+`ghidra_conversion/integration/recruited_runner_conversation_conversion.*`.
+It owns the host conversation cursor and routes common prompt -> information
+pages -> Ricky/Winston/Trent subject menus -> response pages, or common prompt
+-> service offer -> typed payment. Petr, Walking Bear, Phantom, Two Fists,
+Freya, Rianna, and the separate Stark story root stop at an explicit source
+boundary. This is intentional architecture: the converted leaf modules stay
+source-auditable, while one central controller composes them without importing
+Genesis command dispatch or RAM addresses into the host runtime.
+
 ## 2026-09-30 Stoker motel source mapping
 
 The Stoker source mapping is now corrected rather than guessed. `0x1F65A`

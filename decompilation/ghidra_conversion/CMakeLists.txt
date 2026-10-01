@@ -26,6 +26,7 @@ add_library(shadowrun_ghidra_conversion_runtime STATIC
     src/integration/field_session_source_assets_conversion.cpp
     src/integration/field_runtime_coordinator_conversion.cpp
     src/integration/opening_intro_conversion.cpp
+    src/integration/recruited_runner_conversation_conversion.cpp
     src/integration/startup_integration_conversion.cpp
 )
 target_include_directories(shadowrun_ghidra_conversion_runtime PUBLIC
@@ -81,6 +82,7 @@ if (NOT SHADOWRUN_GHIDRA_QT_FRONTEND)
            test_name STREQUAL "field_session_bootstrap" OR
            test_name STREQUAL "field_runtime_coordinator" OR
            test_name STREQUAL "field_session_source_assets" OR
+           test_name STREQUAL "recruited_runner_conversation" OR
            test_name STREQUAL "startup_integration")
             target_link_libraries(${test_target}
                 PRIVATE shadowrun_ghidra_conversion_runtime)

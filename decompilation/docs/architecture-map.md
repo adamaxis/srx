@@ -25,6 +25,7 @@ NativeGameController ---- InputState / FrameClock
         |        +--> RunnerRoster / CharacterRecords
         |        +--> RulesDatabase / ExtractedGameData (read-only)
         |        +--> FieldWorld (area map, terrain, collision, entities)
+        |        +--> ConversationController (runner dialogue/service graph)
         |        +--> MenuSystem (command focus, inventory, equipment, dialogs)
         |        +--> IntroDirector (sprite choreography and timed text)
         |        +--> AudioService (complete Windows-playable tracks/effects)
@@ -157,8 +158,10 @@ The already-confirmed extraction families include:
   `0x2401C..0x2410C`, and the short-term single-run/permanent-hire command
   family at `0x21226` through `0x213CA`, with typed information flags,
   runner biography prompts plus Ricky's concrete Glow City/Rat Nest/Johnson
-  subject tree at `0xFE848..0xFE90C` and Winston's Halloweeners/Lone Star/troll
-  subject tree at `0xFEA8C..0xFEAF4`, fee inputs,
+  subject tree at `0xFE848..0xFE90C`, Winston's Halloweeners/Lone Star/troll
+  subject tree at `0xFEA8C..0xFEAF4`, and Trent's mages/contacts/Johnsons
+  subject tree at `0xFEC78..0xFECE0` including the `0x24964` Jefferson-contact
+  flag mutation, fee inputs,
   primary/secondary roster-slot selection, active-entity handoff, and field
   animation/upload callbacks. The ten-entry fee schedule, source cost
   arithmetic, and title-only roster-full prompt are typed;
@@ -199,6 +202,35 @@ function. Existing evidence identifies fields such as `+0x10` flags,
 `+0x56/+0x57` equipment, `+0x66..+0x6D` possession, `+0x76` armor, and
 `+0x77..+0x9D` attributes/status. Native types should grow around these
 confirmed meanings instead of reproducing a byte-addressed RAM struct.
+
+### ConversationController and source-complete service graph
+
+The runner dialogue is now an explicit integration boundary rather than a
+collection of unrelated information functions:
+
+```text
+ConversationController
+  -> common runner prompt (0x211E8)
+  -> information opener / knowledge flag (0x2401C..0x2410C)
+  -> source-complete subject graph
+       Ricky  -> Glow City / Rat Nest / Gunderson
+       Winston -> Halloweeners / Lone Star / troll origin
+       Trent  -> mages / Jefferson contact / local Johnson
+  -> hire offer preparation (0x21226)
+  -> typed payment and roster-slot mutation (0x21318..0x21332)
+  -> presenter-facing text/page result
+```
+
+`integration/recruited_runner_conversation_conversion.*` owns the cursor and
+routes typed commands between these already converted domain boundaries. It
+does not render Qt controls or duplicate `GameSession` state. The remaining
+runner subject families intentionally stop at a named
+`source_boundary` until their ROM descriptor chains are converted; that is a
+conversion-audit work item, not a placeholder screen. Trent's contacts route
+also exposes the proven `FFFC2C` story-flag mutation while leaving the
+Pocket-Secretary record consumer explicit. This is the architecture work that
+turns leaf conversions into a usable system boundary without importing a ROM
+command table into the runtime.
 
 ## 2. Gameplay subsystems
 

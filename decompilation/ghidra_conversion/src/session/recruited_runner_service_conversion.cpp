@@ -336,6 +336,34 @@ constexpr RecruitedRunnerInformationTextStream
           "<His grip tightens on his pistol.>"}},
         4U};
 
+constexpr RecruitedRunnerInformationTextStream kTrentMagesPageOne{
+    {{"Mages use arcane magic.  Shaman require a totem, and are forced to adhere to the laws of nature.",
+      "Mages have no such limitations.  We use our intellect to call upon the astral plane, and bend it to our will.",
+      {},
+      {}}},
+    2U};
+constexpr RecruitedRunnerInformationTextStream kTrentMagesPageTwo{
+    {{"When I get some more experience, you'll see some serious casting come from my fingers, man!",
+      {},
+      {},
+      {}}},
+    1U};
+constexpr RecruitedRunnerInformationTextStream kTrentJeffersonContactPage{
+    {{"I've got the number of an old professor of mine, Jefferson is his name.",
+      "Most folk'll only sell names to you, but the prof's always willing to talk with new people without the influence of money.",
+      "<He places the name in your Pocket Secretary.>",
+      {}}},
+    3U};
+constexpr RecruitedRunnerInformationTextStream kTrentJohnsonPage{
+    {{"Yeah, I know of a local Johnson.",
+      "Goes by the name of Vigore.",
+      "I occasionally see him over in the Rat's Nest, but he does his work out of the Wanderer in Puyallup Barrens.",
+      {}}},
+    3U};
+
+constexpr std::uint32_t kTrentJeffersonContactStoryFlag =
+    std::uint32_t{1U} << 12U;
+
 bool service_slot_is_active(const LiveRunnerRecord& record) {
     // BTST #0,FF0210/FF0310 reads the first byte of each record's +0x10
     // word.  Do not reinterpret this as the low bit of a host-endian word.
@@ -593,6 +621,48 @@ WinstonInformationResponse select_winston_information_response(
                         kWinstonTrollOriginPageTwo};
         result.more_after_page = {true, false};
         result.page_count = 2U;
+        return result;
+    }
+    return result;
+}
+
+TrentInformationSubjectPrompt trent_information_subject_prompt() {
+    return {"Yes, like what?",
+            {"I'd like to hear about mages.",
+             "I'm looking for some contacts.",
+             "Do you know of any Johnsons in the area?"}};
+}
+
+TrentInformationResponse select_trent_information_response(
+    const TrentInformationSubject subject,
+    RecruitedRunnerServiceState& state) {
+    TrentInformationResponse result{};
+    result.subject = subject;
+    result.returns_to_common_conversation = true;
+    switch (subject) {
+    case TrentInformationSubject::mages:
+        result.action = TrentInformationResponseAction::selected;
+        result.pages = {kTrentMagesPageOne, kTrentMagesPageTwo};
+        result.more_after_page = {true, false};
+        result.page_count = 2U;
+        return result;
+    case TrentInformationSubject::contacts:
+        // ROM 0x24964: MOVE.W FFFC2C,D1; BSET #12,D1; MOVE.W D1,FFFC2C;
+        // LEA 0xFECC4,A0; RTS. The text at 0x100DBE describes the
+        // Jefferson contact. The source later exposes the name through the
+        // Pocket Secretary path; this function converts the proven flag
+        // mutation and leaves that downstream record consumer explicit.
+        state.story_flags |= kTrentJeffersonContactStoryFlag;
+        result.action = TrentInformationResponseAction::selected;
+        result.pages = {kTrentJeffersonContactPage, {}};
+        result.more_after_page = {false, false};
+        result.page_count = 1U;
+        return result;
+    case TrentInformationSubject::johnsons:
+        result.action = TrentInformationResponseAction::selected;
+        result.pages = {kTrentJohnsonPage, {}};
+        result.more_after_page = {false, false};
+        result.page_count = 1U;
         return result;
     }
     return result;

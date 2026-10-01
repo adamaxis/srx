@@ -306,6 +306,55 @@ int main() {
         return 29;
     }
 
+    const auto trent_subjects = trent_information_subject_prompt();
+    if (!expect(trent_subjects.title_text == "Yes, like what?" &&
+                trent_subjects.options[0] ==
+                    "I'd like to hear about mages." &&
+                trent_subjects.options[1] ==
+                    "I'm looking for some contacts." &&
+                trent_subjects.options[2] ==
+                    "Do you know of any Johnsons in the area?")) {
+        return 30;
+    }
+    const auto trent_mages = select_trent_information_response(
+        TrentInformationSubject::mages, offer_state);
+    if (!expect(trent_mages.action == TrentInformationResponseAction::selected &&
+                trent_mages.page_count == 2U &&
+                trent_mages.more_after_page ==
+                    std::array<bool, 2>{{true, false}} &&
+                trent_mages.pages[0].segment_count == 2U &&
+                trent_mages.pages[0].segments[1] ==
+                    "Mages have no such limitations.  We use our intellect to call upon the astral plane, and bend it to our will." &&
+                trent_mages.pages[1].segment_count == 1U &&
+                trent_mages.returns_to_common_conversation)) {
+        return 31;
+    }
+    offer_state.story_flags = 0U;
+    const auto trent_contacts = select_trent_information_response(
+        TrentInformationSubject::contacts, offer_state);
+    if (!expect(trent_contacts.action == TrentInformationResponseAction::selected &&
+                trent_contacts.page_count == 1U &&
+                trent_contacts.pages[0].segment_count == 3U &&
+                trent_contacts.pages[0].segments[2] ==
+                    "<He places the name in your Pocket Secretary.>" &&
+                offer_state.story_flags == (std::uint32_t{1U} << 12U))) {
+        return 32;
+    }
+    const auto trent_johnsons = select_trent_information_response(
+        TrentInformationSubject::johnsons, offer_state);
+    if (!expect(trent_johnsons.page_count == 1U &&
+                trent_johnsons.pages[0].segment_count == 3U &&
+                trent_johnsons.pages[0].segments[2] ==
+                    "I occasionally see him over in the Rat's Nest, but he does his work out of the Wanderer in Puyallup Barrens.")) {
+        return 33;
+    }
+    if (!expect(select_trent_information_response(
+                    static_cast<TrentInformationSubject>(3U), offer_state)
+                    .action == TrentInformationResponseAction::
+                                   subject_unavailable)) {
+        return 34;
+    }
+
     auto state = make_state();
     std::vector<int> callback_order;
     const RecruitedRunnerServiceCallbacks callbacks{
