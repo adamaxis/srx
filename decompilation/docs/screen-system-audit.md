@@ -156,13 +156,18 @@ writes it at x coordinates `128, 152, 176, 200, 224`, row `184`. That focus
 surface is distinct from the lower selected-command label and from the
 inventory cursor.
 
-Native status: source background geometry, record-derived overview fields,
-inventory boxes/icons/art, source command-tab focus blocks, selected-cell
-equipment overlays, source-derived attack and defense strips for the normal
-equipped-item branch, and command selector state are implemented. Magic and
-Pocket Secretary are still only their selected labels; their source handlers
-need a dedicated audit. The negative `+0x56` special attack branch and the
-field combat consumers of these values remain explicitly incomplete.
+Native status: the separate Ghidra-conversion Qt runtime now enters this state
+through the converted field-coordinator Start edge and keeps the converted
+command selector/cursor state in a non-blocking host bridge. Source background
+geometry, the typed-record-derived overview fields, inventory boxes/icons/art,
+source command-tab focus blocks, selected-cell equipment overlays, and the
+source-derived status strip are presented at their reviewed positions. The
+diagnostic `--field-command-dump` exercises that same Start edge and writes the
+resulting 320x224 frame. The command-label table is still an explicit resource
+gap, and Clips, Attributes, Cyberware, Magic, and Pocket Secretary still need
+their source handlers connected; this hill is therefore partial, not defended.
+The negative `+0x56` special attack branch and the field combat consumers of
+these values remain explicitly incomplete.
 
 ### Inventory (`0x11506`, `0x11564`, `0x11592`, `0x11678`, `0x12148`)
 

@@ -38,8 +38,45 @@ constexpr std::string_view kFieldHudAmmoCounterAliasPrefix =
 constexpr std::string_view kFieldEntityIdleAliasPrefix = "field.entities.idle.";
 constexpr std::string_view kFieldEntityWalkAliasPrefix = "field.entities.walk.";
 constexpr int kGenesisSpriteOrigin = 0x80;
+constexpr std::string_view kCommandOverviewBackgroundAlias =
+    "menu.field.background";
+constexpr std::string_view kCommandOverviewInventoryBoxesAlias =
+    "menu.field.inventory.boxes";
+constexpr std::string_view kCommandOverviewCursorAlias = "menu.field.cursor";
+constexpr std::string_view kCommandOverviewPortraitAliasPrefix =
+    "menu.field.runner.portrait.";
+constexpr std::string_view kCommandOverviewFocusAliasPrefix =
+    "menu.field.command.focus.";
+constexpr std::string_view kCommandOverviewStatusAliasPrefix =
+    "menu.field.status.bar.";
+constexpr std::string_view kCommandOverviewSelectedCellAliasPrefix =
+    "menu.field.selected.cell.";
 // FFDE08 is profile word 33. The 48-word block starts at FFDDC6.
 constexpr std::size_t kSceneProfileEntityPositionWord = 33U;
+
+std::string command_overview_item_alias(const std::uint8_t item_code,
+                                        const std::uint8_t palette_variant) {
+    if (item_code == 0U || item_code > 50U) {
+        return {};
+    }
+    std::string category;
+    if (item_code <= 15U) {
+        category = "weapons";
+    } else if (item_code <= 18U) {
+        category = "first.aid";
+    } else if (item_code <= 22U) {
+        category = "miscellaneous";
+    } else if (item_code <= 43U) {
+        category = "magic";
+    } else {
+        category = "armor";
+    }
+    const auto item_number = item_code < 10U
+                                 ? "0" + std::to_string(item_code)
+                                 : std::to_string(item_code);
+    return "items." + category + ".icons.item." + item_number + "." +
+           std::to_string(palette_variant);
+}
 
 std::array<std::uint8_t, 4> field_sample_state_from_result(
     const std::uint32_t packed_state) {
@@ -291,6 +328,71 @@ bool FieldSceneRuntime::load_field_hud_overlays(
         if (!load_sprite_image(catalog, alias, field_hud_ammo_counters_[ammo],
                                origin_x, origin_y)) {
             return false;
+        }
+    }
+    return true;
+}
+
+bool FieldSceneRuntime::load_command_overview_assets(
+    const ConversionAssetCatalog& catalog) {
+    if (!load_image(catalog, kCommandOverviewBackgroundAlias,
+                    command_overview_background_) ||
+        !load_image(catalog, kCommandOverviewInventoryBoxesAlias,
+                    command_overview_inventory_boxes_)) {
+        return false;
+    }
+
+    const auto load_sprite = [this, &catalog](const std::string& alias,
+                                               QImage& image) {
+        if (!load_image(catalog, alias, image)) {
+            return false;
+        }
+        make_genesis_sprite_color_zero_transparent(image);
+        return true;
+    };
+    for (std::size_t index = 0; index < command_overview_portraits_.size();
+         ++index) {
+        if (!load_sprite(std::string(kCommandOverviewPortraitAliasPrefix) +
+                             std::to_string(index),
+                         command_overview_portraits_[index])) {
+            return false;
+        }
+    }
+    for (std::size_t index = 0; index < command_overview_focus_.size();
+         ++index) {
+        if (!load_sprite(std::string(kCommandOverviewFocusAliasPrefix) +
+                             std::to_string(index),
+                         command_overview_focus_[index])) {
+            return false;
+        }
+        if (!load_sprite(std::string(kCommandOverviewStatusAliasPrefix) +
+                             std::to_string(index),
+                         command_overview_status_bars_[index])) {
+            return false;
+        }
+    }
+    for (std::size_t index = 0; index < command_overview_selected_cells_.size();
+         ++index) {
+        if (!load_sprite(std::string(kCommandOverviewSelectedCellAliasPrefix) +
+                             std::to_string(index),
+                         command_overview_selected_cells_[index])) {
+            return false;
+        }
+    }
+    if (!load_sprite(std::string(kCommandOverviewCursorAlias),
+                     command_overview_cursor_)) {
+        return false;
+    }
+
+    for (std::size_t item = 1U; item <= 50U; ++item) {
+        for (std::size_t palette = 0U; palette < 2U; ++palette) {
+            const auto alias = command_overview_item_alias(
+                static_cast<std::uint8_t>(item),
+                static_cast<std::uint8_t>(palette));
+            if (!load_sprite(alias, command_overview_inventory_icons_[item - 1U]
+                                             [palette])) {
+                return false;
+            }
         }
     }
     return true;
@@ -677,7 +779,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             (void)command;
         };
     field_runtime_callbacks_.run_command_overview = [this] {
-        source_boundary("field.runtime.command_overview");
+        open_command_overview();
     };
     field_runtime_callbacks_.service_audio_tick = [this] {
         source_boundary("field.runtime.command_audio_tick");
@@ -689,6 +791,14 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         source_boundary("field.runtime.restart_field_session");
     };
     field_runtime_callbacks_.advance_field_scene_transition = [this] {
+        if (command_overview_.open()) {
+            // The source routine returns from the blocking command loop before
+            // the field transition leaf can run. The Qt bridge keeps that
+            // ordering explicit while the menu owns the next host frames.
+            source_boundary(
+                "field.runtime.scene_transition_suspended_for_command_overview");
+            return;
+        }
         source_boundary("field.runtime.advance_scene_transition");
     };
 
@@ -719,6 +829,39 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
     world_frame_logic_callbacks_.resolve_nearby_effects = [this] {
         source_boundary("field.world_logic.resolve_nearby_effects");
     };
+}
+
+void FieldSceneRuntime::open_command_overview() {
+    if (!ready_ || command_overview_.open()) {
+        return;
+    }
+
+    const auto command_asset_available = [this](const std::string_view alias) {
+        if (alias == "menu.field.command_overview.background") {
+            // The converted source preparation names the tile block; the
+            // native host presents its already extracted full command shell.
+            return !command_overview_background_.isNull();
+        }
+        if (alias == "menu.field.cursor") {
+            return !command_overview_cursor_.isNull();
+        }
+        return false;
+    };
+    const CommandOverviewInput input{
+        static_cast<std::uint8_t>(field_active_runner_record_.flags & 0xFFU),
+        static_cast<std::int8_t>(field_active_runner_record_.archetype_index)};
+    const CommandOverviewPreparationInput preparation_input{};
+    const CommandOverviewHudPanelInput hud_panel_input{
+        field_active_runner_record_.record_type,
+        field_active_runner_record_.command_overview_panel_parameter};
+    command_overview_.begin(
+        input, preparation_input, hud_panel_input,
+        {[this](const std::string_view boundary) { source_boundary(boundary); },
+         command_asset_available,
+         [this] { return field_active_runner_record_.equipped_item_code; },
+         [](const CommandOverviewPreparationResult&) {},
+         [](const CommandOverviewHudPanelPlan&) {},
+         [](const CommandOverviewActionRefreshResult&) {}});
 }
 
 bool FieldSceneRuntime::bootstrap(
@@ -782,6 +925,9 @@ bool FieldSceneRuntime::bootstrap(
     field_pending_scene_profile_.reset();
     field_camera_follow_ = {};
     field_camera_alignment_ready_ = false;
+    command_overview_.close();
+    field_active_runner_record_ = RunnerRecordFields{};
+    field_joshua_archetype_selection_ = 0U;
     field_hud_slots_ = {};
     field_entity_animation_ = {};
     field_entity_animation_.increment = kFieldEntityAnimationPeriod;
@@ -802,6 +948,10 @@ bool FieldSceneRuntime::bootstrap(
     field_entity_.world_position =
         input_.field_scene.source_metadata.initial_field_records[0];
     if (field_entity_.active) {
+        field_active_runner_record_ =
+            startup_state.joshua_selection->typed_live_joshua_record;
+        field_joshua_archetype_selection_ = static_cast<std::size_t>(
+            startup_state.joshua_archetype.selected);
         field_entity_.projection.sprite_offset_y =
             startup_state.joshua_selection->typed_live_joshua_record
                 .projection_word_08;
@@ -826,7 +976,8 @@ bool FieldSceneRuntime::bootstrap(
                     kInitialFieldMapAlias, field_map_) ||
         !load_image(startup_state.asset_catalog.catalog, kFieldHudAlias,
                     field_hud_) ||
-        !load_field_hud_overlays(startup_state.asset_catalog.catalog)) {
+        !load_field_hud_overlays(startup_state.asset_catalog.catalog) ||
+        !load_command_overview_assets(startup_state.asset_catalog.catalog)) {
         source_boundary("field.bootstrap.direct_assets_missing");
         return false;
     }
@@ -1295,6 +1446,21 @@ void FieldSceneRuntime::advance_frame() {
     if (!ready_) {
         return;
     }
+    if (command_overview_.open()) {
+        // This is the non-blocking host form of the source command loop's
+        // wait/latch/sample sequence. Field movement and world services stay
+        // suspended until Start returns from the overview.
+        source_boundary("field.command_overview.wait_for_vblank");
+        field_controller_latch_state_.events =
+            field_controller_sample_state_.events;
+        field_controller_latch_state_.extra_events = 0U;
+        (void)::shadowrun::ghidra_conversion::latch_controller_events(
+            field_controller_latch_state_);
+        ::shadowrun::ghidra_conversion::sample_controller_input(
+            field_controller_sample_state_, field_controller_port_byte_);
+        command_overview_.advance(field_controller_sample_state_.events);
+        return;
+    }
     field_runtime_state_.field_activity_lock = state_.field_lock != 0U;
     field_runtime_state_.world_activity_countdown =
         world_frame_logic_state_.activity_countdown;
@@ -1313,6 +1479,20 @@ void FieldSceneRuntime::advance_frame() {
     if (result == integration::FieldRuntimeFrameResult::callback_unresolved) {
         source_boundary("field.runtime.callback_unresolved");
     }
+}
+
+bool FieldSceneRuntime::open_command_overview_for_dump() {
+    if (!ready_) {
+        return false;
+    }
+    // Exercise the same converted field-coordinator Start path used by the
+    // window rather than directly toggling the presentation state.
+    set_controller_port_byte(static_cast<std::uint8_t>(
+        field_controller_port_byte_ | 0x80U));
+    advance_frame();
+    set_controller_port_byte(static_cast<std::uint8_t>(
+        field_controller_port_byte_ & static_cast<std::uint8_t>(~0x80U)));
+    return command_overview_.open();
 }
 
 void FieldSceneRuntime::paint_field_entity(QPainter& painter) const {
@@ -1368,9 +1548,103 @@ void FieldSceneRuntime::paint_field_hud_overlays(QPainter& painter) const {
     }
 }
 
+void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
+    painter.fillRect(0, 0, 320, 224, Qt::black);
+    if (!command_overview_.open()) {
+        return;
+    }
+
+    painter.drawImage(0, 0, command_overview_background_);
+    painter.drawImage(0, 0, command_overview_inventory_boxes_);
+
+    // ROM 0x110BC writes the active runner's 8x10 portrait at E104, which is
+    // the fixed 16,16 host location. The source template selection, rather
+    // than the field slot number, chooses Joshua's portrait.
+    if (field_joshua_archetype_selection_ <
+            command_overview_portraits_.size() &&
+        !command_overview_portraits_[field_joshua_archetype_selection_]
+             .isNull()) {
+        painter.drawImage(
+            16, 16,
+            command_overview_portraits_[field_joshua_archetype_selection_]);
+    }
+
+    // 0x11928/0x11AE4 places the five-state posture bar at CAAC (176,168).
+    const auto posture = std::min<std::size_t>(
+        field_active_runner_record_.posture,
+        command_overview_status_bars_.size() - 1U);
+    painter.drawImage(176, 168, command_overview_status_bars_[posture]);
+
+    // The source inventory is an 8-cell, two-column/four-row grid. Direct
+    // item aliases are already palette-decoded; no Genesis VRAM or palette
+    // operation is reproduced here.
+    constexpr std::array<std::array<int, 2>, 8> kInventoryIconPositions{{
+        {{16, 120}}, {{56, 120}}, {{16, 144}}, {{56, 144}},
+        {{16, 168}}, {{56, 168}}, {{16, 192}}, {{56, 192}},
+    }};
+    for (std::size_t slot = 0;
+         slot < field_active_runner_record_.inventory_item_codes.size();
+         ++slot) {
+        const auto item_code = field_active_runner_record_.inventory_item_codes[
+            slot];
+        if (item_code == 0U || item_code > 50U) {
+            continue;
+        }
+        const auto& icon = command_overview_inventory_icons_[item_code - 1U][0];
+        painter.drawImage(kInventoryIconPositions[slot][0],
+                          kInventoryIconPositions[slot][1], icon);
+    }
+
+    const auto draw_equipment_border = [this, &painter](const std::size_t slot) {
+        if (slot >= command_overview_selected_cells_.size() * 4U) {
+            return;
+        }
+        const auto overlay = ((slot / 2U) & 1U) == 0U ? 0U : 1U;
+        painter.drawImage(
+            8 + static_cast<int>((slot % 2U) * 40U),
+            112 + static_cast<int>((slot / 2U) * 24U),
+            command_overview_selected_cells_[overlay]);
+    };
+    if (field_active_runner_record_.equipped_inventory_slot >= 0) {
+        draw_equipment_border(static_cast<std::size_t>(
+            field_active_runner_record_.equipped_inventory_slot));
+    }
+    if (field_active_runner_record_.equipped_armor_index != 0U) {
+        const auto armor_code = static_cast<std::uint8_t>(
+            0x2BU + field_active_runner_record_.equipped_armor_index);
+        for (std::size_t slot = 0;
+             slot < field_active_runner_record_.inventory_item_codes.size();
+             ++slot) {
+            if (field_active_runner_record_.inventory_item_codes[slot] ==
+                armor_code) {
+                draw_equipment_border(slot);
+                break;
+            }
+        }
+    }
+
+    const auto& view = command_overview_.view();
+    if (view.source_state.primary_page < 2U) {
+        const auto x = 8 + static_cast<int>(
+                              view.source_state.primary_page * 40U);
+        const auto y = 112 + static_cast<int>(
+                              view.source_state.secondary_page * 24U);
+        painter.drawImage(x, y, command_overview_cursor_);
+    } else if (view.source_state.primary_page <= 6U) {
+        const auto focus_index = static_cast<std::size_t>(
+            view.source_state.primary_page - 2U);
+        painter.drawImage(128 + static_cast<int>(focus_index * 24U), 184,
+                          command_overview_focus_[focus_index]);
+    }
+}
+
 void FieldSceneRuntime::paint(QPainter& painter) const {
     painter.fillRect(0, 0, 320, 224, Qt::black);
     if (!ready_ || field_map_.isNull()) {
+        return;
+    }
+    if (command_overview_.open()) {
+        paint_command_overview(painter);
         return;
     }
 

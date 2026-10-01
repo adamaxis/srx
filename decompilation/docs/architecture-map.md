@@ -300,6 +300,26 @@ bounds, action dispatch, mutations, and exit path remain in this native
 controller. The current source groups around `0x10D30..0x12EAE`,
 `0x17..0x19`, and `0x1F3C4` are menu services, not hundreds of screens.
 
+The first conversion-to-Qt seam is now explicit for the field command
+overview:
+
+```text
+FieldRuntimeCoordinator (converted Start edge)
+    -> FieldCommandOverviewBridge (non-blocking host frame adapter)
+        -> menu_service_sequence_conversion (source selector/panel/cursor)
+            -> FieldSceneRuntime (typed presentation state and direct assets)
+```
+
+The bridge owns no ROM image and does not create a second menu state machine.
+It enters selector `6`, passes the live runner's typed record fields (including
+the command-panel `+0x2C` value), preserves the source d-pad/A/B/mode priority,
+and suspends field movement while the source command loop owns frames. The Qt
+layer paints the extracted shell, portrait, status strip, inventory icons,
+equipment overlays, cursor, and command focus blocks at the source-derived
+positions. The command-label table and the handlers for Clips, Attributes,
+Cyberware, Magic, and Pocket Secretary remain explicit conversion work; a
+blank text region is not treated as a completed menu.
+
 ### IntroDirector
 
 The intro is a timed composition of independently extracted sprites, text,

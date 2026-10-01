@@ -28,6 +28,10 @@ struct RunnerRecordFields {
     std::uint16_t timing_accumulator = 0;
     std::uint16_t timing_threshold = 0;
     std::uint16_t state_index = 0;
+    // ROM 0x110BC reads active record +0x2C as the command-overview panel
+    // parameter. This is a presentation field, not an address or a VRAM
+    // handle, so expose it with the other confirmed live-record values.
+    std::uint16_t command_overview_panel_parameter = 0;
     std::uint16_t record_type = 0;
 
     std::uint8_t race_index = 0;

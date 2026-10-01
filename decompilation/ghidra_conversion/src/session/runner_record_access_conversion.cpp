@@ -45,6 +45,7 @@ RunnerRecordFields read_runner_record_fields(const LiveRunnerRecord& record) {
     fields.timing_accumulator = read_be16(record, 0x1AU);
     fields.timing_threshold = read_be16(record, 0x1CU);
     fields.state_index = read_be16(record, 0x1EU);
+    fields.command_overview_panel_parameter = read_be16(record, 0x2CU);
     fields.record_type = read_be16(record, 0x3EU);
 
     fields.race_index = record.bytes[0x00U];
@@ -95,6 +96,8 @@ void write_runner_record_fields(const RunnerRecordFields& fields,
     write_be16(destination, 0x1AU, fields.timing_accumulator);
     write_be16(destination, 0x1CU, fields.timing_threshold);
     write_be16(destination, 0x1EU, fields.state_index);
+    write_be16(destination, 0x2CU,
+               fields.command_overview_panel_parameter);
     write_be16(destination, 0x3EU, fields.record_type);
 
     destination.bytes[0x00U] = fields.race_index;

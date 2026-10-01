@@ -54,6 +54,7 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
                 << "usage: shadowrun_ghidra_conversion_qt"
                    " [--assets <decompilation/assets>] [--field-smoke]"
                    " [--field-smoke-move-right] [--field-dump <file>]"
+                   " [--field-command-dump <file>]"
                    " [--boot-dump-frame <frame> <file>]"
                    " [--startup-dump <stage> <selection> <frame> <file>]"
                    " [--intro-to-field-smoke]\n";
@@ -65,6 +66,10 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
             continue;
         }
         if (argument == "--field-dump" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-command-dump" && index + 1 < argc) {
             ++index;
             continue;
         }
@@ -1585,6 +1590,7 @@ int main(int argc, char** argv) {
         bool field_smoke_move_right = false;
         bool intro_to_field_smoke = false;
         std::optional<std::filesystem::path> field_dump_path;
+        std::optional<std::filesystem::path> field_command_dump_path;
         std::optional<std::uint32_t> boot_dump_frame;
         std::optional<std::filesystem::path> boot_dump_path;
         std::optional<std::string> startup_dump_stage;
@@ -1597,6 +1603,7 @@ int main(int argc, char** argv) {
                     << "usage: shadowrun_ghidra_conversion_qt"
                        " [--assets <decompilation/assets>] [--field-smoke]"
                        " [--field-smoke-move-right] [--field-dump <file>]"
+                       " [--field-command-dump <file>]"
                        " [--boot-dump-frame <frame> <file>]"
                        " [--startup-dump <stage> <selection> <frame> <file>]"
                        " [--intro-to-field-smoke]\n";
@@ -1616,6 +1623,12 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_dump_path = std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-command-dump" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_command_dump_path =
+                    std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--boot-dump-frame" &&
                 index + 2 < argc) {
@@ -1680,6 +1693,32 @@ int main(int argc, char** argv) {
             if (field_smoke_move_right) {
                 field_scene.set_controller_nibble(0x08U);
                 field_scene.advance_frame();
+            }
+            if (field_command_dump_path.has_value()) {
+                if (!field_scene.open_command_overview_for_dump()) {
+                    std::cerr << "field command dump: command overview did "
+                                 "not open\n";
+                    return 3;
+                }
+                QImage command_scene(kSceneWidth, kSceneHeight,
+                                     QImage::Format_RGB32);
+                command_scene.fill(Qt::black);
+                QPainter command_painter(&command_scene);
+                field_scene.paint(command_painter);
+                command_painter.end();
+                if (!command_scene.save(QString::fromStdWString(
+                        field_command_dump_path->wstring()))) {
+                    std::cerr << "field command dump: could not write "
+                              << field_command_dump_path->string() << '\n';
+                    return 3;
+                }
+                std::cout << "field_command_dump=written path="
+                          << field_command_dump_path->string()
+                          << " selector="
+                          << static_cast<int>(field_scene.command_overview_view()
+                                                   .source_state.primary_page)
+                          << "\n";
+                return 0;
             }
             QImage scene(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
             scene.fill(Qt::black);

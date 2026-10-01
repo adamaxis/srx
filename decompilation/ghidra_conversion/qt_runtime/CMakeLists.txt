@@ -7,6 +7,7 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets)
 add_executable(shadowrun_ghidra_conversion_qt
     src/ghidra_conversion_qt_main.cpp
     src/field_scene_runtime.cpp
+    src/field_command_overview_bridge.cpp
     src/genesis_image_compositor.cpp
 )
 target_include_directories(shadowrun_ghidra_conversion_qt
@@ -27,10 +28,25 @@ add_executable(shadowrun_ghidra_genesis_image_compositor_test
 )
 target_include_directories(shadowrun_ghidra_genesis_image_compositor_test
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+set_target_properties(shadowrun_ghidra_genesis_image_compositor_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
 target_link_libraries(shadowrun_ghidra_genesis_image_compositor_test
     PRIVATE Qt6::Gui)
 add_test(NAME shadowrun_ghidra_genesis_image_compositor
          COMMAND shadowrun_ghidra_genesis_image_compositor_test)
+
+add_executable(shadowrun_ghidra_field_command_overview_bridge_test
+    tests/field_command_overview_bridge_test.cpp
+    src/field_command_overview_bridge.cpp
+)
+target_include_directories(shadowrun_ghidra_field_command_overview_bridge_test
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_link_libraries(shadowrun_ghidra_field_command_overview_bridge_test
+    PRIVATE shadowrun_ghidra_conversion_runtime)
+add_test(NAME shadowrun_ghidra_field_command_overview_bridge
+         COMMAND shadowrun_ghidra_field_command_overview_bridge_test)
 
 if (WIN32)
     find_program(SHADOWRUN_GHIDRA_QT_WINDEPLOYQT

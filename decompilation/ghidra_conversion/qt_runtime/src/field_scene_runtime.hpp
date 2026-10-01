@@ -23,6 +23,7 @@
 #include "shadowrun_ghidra/integration/field_session_bootstrap_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
 #include "shadowrun_ghidra/session/runner_switch_conversion.hpp"
+#include "shadowrun_ghidra/session/runner_record_access_conversion.hpp"
 #include "shadowrun_ghidra/integration/startup_integration_conversion.hpp"
 #include "shadowrun_ghidra/menus/menu_transfer_batch_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_table_conversion.hpp"
@@ -33,7 +34,10 @@
 
 #include <QImage>
 
+#include "field_command_overview_bridge.hpp"
+
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -59,6 +63,14 @@ public:
     void set_controller_nibble(std::uint8_t dpad_nibble) noexcept;
     void set_controller_port_byte(std::uint8_t port_byte) noexcept;
     void paint(QPainter& painter) const;
+    bool open_command_overview_for_dump();
+
+    bool command_overview_open() const noexcept {
+        return command_overview_.open();
+    }
+    const FieldCommandOverviewView& command_overview_view() const noexcept {
+        return command_overview_.view();
+    }
 
     bool ready() const noexcept { return ready_; }
     bool field_entity_visible() const noexcept {
@@ -101,6 +113,9 @@ private:
                            int& origin_y);
     void paint_field_entity(QPainter& painter) const;
     void paint_field_hud_overlays(QPainter& painter) const;
+    void paint_command_overview(QPainter& painter) const;
+    void open_command_overview();
+    bool load_command_overview_assets(const ConversionAssetCatalog& catalog);
     bool load_field_hud_overlays(const ConversionAssetCatalog& catalog);
 
     struct FieldEntityPresentation {
@@ -124,8 +139,19 @@ private:
     WorldFrameLogicState world_frame_logic_state_;
     WorldFrameLogicCallbacks world_frame_logic_callbacks_;
     FieldViewportState viewport_state_;
+    FieldCommandOverviewBridge command_overview_;
+    RunnerRecordFields field_active_runner_record_{};
+    std::size_t field_joshua_archetype_selection_ = 0U;
     QImage field_map_;
     QImage field_hud_;
+    QImage command_overview_background_;
+    QImage command_overview_inventory_boxes_;
+    QImage command_overview_cursor_;
+    std::array<QImage, 3> command_overview_portraits_{};
+    std::array<QImage, 5> command_overview_focus_{};
+    std::array<QImage, 5> command_overview_status_bars_{};
+    std::array<QImage, 2> command_overview_selected_cells_{};
+    std::array<std::array<QImage, 2>, 50> command_overview_inventory_icons_{};
     std::array<QImage, kFieldHudSlotCount> field_hud_faces_{};
     std::array<QImage, kFieldHudSlotCount> field_hud_items_{};
     std::array<QImage, kFieldHudSlotCount> field_hud_unarmed_items_{};
