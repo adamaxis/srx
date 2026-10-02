@@ -22,14 +22,6 @@ void clear_black_pixel(QImage& image, const int x, const int y) {
 
 } // namespace
 
-void make_genesis_sprite_color_zero_transparent(QImage& image) {
-    for (int y = 0; y < image.height(); ++y) {
-        for (int x = 0; x < image.width(); ++x) {
-            clear_black_pixel(image, x, y);
-        }
-    }
-}
-
 QImage scale_genesis_image_rgb(const QImage& image,
                                const std::uint16_t weight,
                                const std::uint16_t maximum) {
@@ -56,34 +48,26 @@ QImage scale_genesis_image_rgb(const QImage& image,
 }
 
 void make_field_hud_layer_transparent_outside_chrome(QImage& image) {
+    // The extracted HUD plane bakes its color-zero cells as alpha 0
+    // everywhere, including the six-tile chrome column at x=272. On the
+    // Genesis the chrome's black panel cells are the VDP backdrop showing
+    // through the transparent plane, so on the host the chrome column must
+    // be opaque over the map while the 272px playfield stays transparent.
     constexpr int kFieldHudChromeX = 320 - (6 * 8);
     for (int y = 0; y < image.height(); ++y) {
-        for (int x = 0; x < image.width() && x < kFieldHudChromeX; ++x) {
-            clear_black_pixel(image, x, y);
+        for (int x = 0; x < image.width(); ++x) {
+            auto pixel = image.pixelColor(x, y);
+            if (!is_black(pixel)) {
+                continue;
+            }
+            if (x >= kFieldHudChromeX) {
+                pixel.setAlpha(255);
+            } else {
+                pixel.setAlpha(0);
+            }
+            image.setPixelColor(x, y, pixel);
         }
     }
-}
-
-bool genesis_alias_uses_sprite_transparency(
-    const std::string_view alias) noexcept {
-    // These are opaque source name-table writes. Their black tile-zero cells
-    // replace what was previously in the same Plane-A region; treating them
-    // as SAT sprites would reveal stale actors underneath the map update.
-    if (alias.rfind("intro.sprites.ambush.map.", 0) == 0 ||
-        alias.rfind("intro.sprites.wilderness.overlay.", 0) == 0 ||
-        alias.rfind("intro.sprites.wilderness.final.overlay.", 0) == 0 ||
-        alias.rfind("intro.background.patch.", 0) == 0) {
-        return false;
-    }
-    return alias == "boot.guy" || alias == "boot.fasa" ||
-           alias.rfind("boot.sega.lightning.", 0) == 0 ||
-           alias.rfind("boot.sega.strobe.", 0) == 0 ||
-           alias == "title.logo" || alias == "title.text" ||
-           alias == "menu.startup.cursor" ||
-           alias.rfind("menu.field.runner.portrait.", 0) == 0 ||
-           alias.rfind("title.sprite.", 0) == 0 ||
-           alias.rfind("intro.sprites.", 0) == 0 ||
-           alias == "intro.aircraft.plane.a";
 }
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime

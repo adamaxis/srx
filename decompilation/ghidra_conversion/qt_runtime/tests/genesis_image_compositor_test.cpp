@@ -20,17 +20,10 @@ bool expect(const bool condition, const char* message) {
 int main() {
     using namespace shadowrun::ghidra_conversion::qt_runtime;
 
-    QImage sprite(2, 1, QImage::Format_ARGB32_Premultiplied);
-    sprite.fill(Qt::black);
-    sprite.setPixelColor(1, 0, QColor(20, 30, 40));
-    make_genesis_sprite_color_zero_transparent(sprite);
-    if (!expect(sprite.pixelColor(0, 0).alpha() == 0,
-                "sprite color zero must be transparent") ||
-        !expect(sprite.pixelColor(1, 0).alpha() == 255,
-                "sprite color must remain opaque")) {
-        return 1;
-    }
-
+    // Extracted sprites carry their baked color-zero alpha through the V4
+    // BMP alpha mask, so the runtime must keep opaque black pixels. The
+    // black-wipe helper and the alias transparency gate are gone; this test
+    // only covers the surviving compositor utilities.
     QImage hud(320, 224, QImage::Format_ARGB32_Premultiplied);
     hud.fill(Qt::black);
     make_field_hud_layer_transparent_outside_chrome(hud);
@@ -38,24 +31,6 @@ int main() {
                 "field playfield color zero must be transparent") ||
         !expect(hud.pixelColor(280, 100).alpha() == 255,
                 "field six-tile chrome must remain opaque")) {
-        return 1;
-    }
-
-    if (!expect(genesis_alias_uses_sprite_transparency(
-                    "boot.sega.lightning.0"),
-                "boot lightning must use sprite transparency") ||
-        !expect(!genesis_alias_uses_sprite_transparency(
-                    "boot.sega.background"),
-                "boot background must remain a full plane") ||
-        !expect(!genesis_alias_uses_sprite_transparency(
-                    "intro.sprites.ambush.map.center.1.0"),
-                "wilderness map writes must replace their source region") ||
-        !expect(!genesis_alias_uses_sprite_transparency(
-                    "intro.sprites.wilderness.overlay.0.0"),
-                "wilderness overlay writes must replace their source region") ||
-        !expect(genesis_alias_uses_sprite_transparency(
-                    "intro.sprites.ambush.actor.0.0"),
-                "ambush SAT actors must remain color-zero transparent")) {
         return 1;
     }
 

@@ -89,7 +89,8 @@ bool FieldDialogueRuntime::load_assets(const ConversionAssetCatalog& assets) {
         return false;
     }
 
-    make_genesis_sprite_color_zero_transparent(portrait_);
+    // The portrait's color-zero alpha arrives through the V4 BMP alpha
+    // mask; wiping black pixels would erase the sprite's outline.
     assets_loaded_ = true;
     return true;
 }

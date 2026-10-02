@@ -938,7 +938,11 @@ void write_bmp32(const std::string& path, const RgbaImage& image) {
     }
     const auto row_bytes = static_cast<std::uint32_t>(image.width) * 4U;
     const auto pixel_bytes = row_bytes * image.height;
-    const auto file_offset = 14U + 40U;
+    // BITMAPV4HEADER (108 bytes). Qt's BMP loader ignores the fourth pixel
+    // byte of a plain 40-byte 32bpp BMP and rejects the 56-byte V3 form; it
+    // honors the alpha mask carried by the V4 extension. The native reader
+    // reads the fourth byte directly and skips the extension fields.
+    const auto file_offset = 14U + 108U;
     std::ofstream output(path, std::ios::binary);
     if (!output) {
         throw std::runtime_error("cannot open BMP output: " + path);
@@ -949,7 +953,7 @@ void write_bmp32(const std::string& path, const RgbaImage& image) {
     write_u16(output, 0);
     write_u16(output, 0);
     write_u32(output, file_offset);
-    write_u32(output, 40);
+    write_u32(output, 108);
     write_u32(output, image.width);
     write_u32(output, image.height);
     write_u16(output, 1);
@@ -960,6 +964,14 @@ void write_bmp32(const std::string& path, const RgbaImage& image) {
     write_u32(output, 2835);
     write_u32(output, 0);
     write_u32(output, 0);
+    write_u32(output, 0x00FF0000U); // red mask
+    write_u32(output, 0x0000FF00U); // green mask
+    write_u32(output, 0x000000FFU); // blue mask
+    write_u32(output, 0xFF000000U); // alpha mask
+    output.write("RGB ", 4);         // CSType
+    for (unsigned extra = 0; extra < 12U; ++extra) {
+        write_u32(output, 0);        // endpoints, gamma, and profile fields
+    }
 
     for (std::size_t row = image.height; row-- > 0;) {
         for (std::size_t column = 0; column < image.width; ++column) {
@@ -1026,7 +1038,7 @@ RgbaImage read_bmp32(const std::string& path) {
     (void)read_u32("BMP format is truncated");
     if (width == 0U || raw_height == 0U || width > 8192U ||
         raw_height > 8192U || planes != 1U || bits != 32U ||
-        compression != 0U) {
+        (compression != 0U && compression != 3U)) {
         throw std::runtime_error("unsupported BMP format");
     }
     if (header_size > 40U) {
