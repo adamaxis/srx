@@ -54,6 +54,28 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_clips_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_clips_qa PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# The plain command route is its own QA entry because it is the shared shell
+# consumed by the inventory, posture, clips, cyberware, and status pages. A
+# test that only enters a nested action can miss a broken base layer.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_command_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-command-dump
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-command-qa.bmp")
+set_tests_properties(shadowrun_ghidra_conversion_qt_field_command_qa PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
+# All three Joshua archetypes must reach the field HUD with their own
+# extracted face/bar/item families. A single-default dump cannot prove that
+# Decker or Gator/Shaman propagation works.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_hud_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-hud-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-hud-qa")
+set_tests_properties(shadowrun_ghidra_conversion_qt_field_hud_qa PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Keep the source-state and arithmetic contract in the same CTest suite as
 # the executable walk. The Qt QA test proves wiring/pixels; this leaf test
 # proves selector wrap, cancellation, equipment/ammo math, discard gates, and
@@ -102,6 +124,16 @@ target_link_libraries(shadowrun_ghidra_genesis_image_compositor_test
     PRIVATE Qt6::Gui)
 add_test(NAME shadowrun_ghidra_genesis_image_compositor
          COMMAND shadowrun_ghidra_genesis_image_compositor_test)
+
+add_executable(shadowrun_ghidra_bmp_alpha_load_test
+    tests/bmp_alpha_load_test.cpp
+)
+target_compile_definitions(shadowrun_ghidra_bmp_alpha_load_test PRIVATE
+    SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets")
+target_link_libraries(shadowrun_ghidra_bmp_alpha_load_test
+    PRIVATE Qt6::Gui)
+add_test(NAME shadowrun_ghidra_bmp_alpha_load
+         COMMAND shadowrun_ghidra_bmp_alpha_load_test)
 
 add_executable(shadowrun_ghidra_field_command_overview_bridge_test
     tests/field_command_overview_bridge_test.cpp

@@ -58,6 +58,12 @@ struct FieldHudSlotState {
     std::int8_t equipped_inventory_slot = 0;
     std::uint8_t equipped_item_code = 0;
     std::uint8_t ammo_rounds = 0;
+    // 0x3404 uploads the portrait, bar, and item tile families from the
+    // slot's own live record (+0x50/+0x54 portrait selector, +0x57 active
+    // item). The extracted per-record sprite families are indexed by the
+    // record that produced them, so the slot carries that index instead of
+    // baking one face/bar/item set per slot number.
+    std::uint8_t asset_family_index = 0;
 };
 
 // ROM 0x35D4/0x35F0/0x36FC/0x3674: emit the nametable-backed overlays for

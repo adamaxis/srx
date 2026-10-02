@@ -430,7 +430,9 @@ bool FieldSceneRuntime::load_sprite_image(
     }
     origin_x = record->origin_x;
     origin_y = record->origin_y;
-    make_genesis_sprite_color_zero_transparent(destination);
+    // The extraction bakes color-zero as alpha 0 and loads it through the
+    // V4 BMP alpha mask. Re-deriving transparency from black pixels here
+    // would punch holes in the sprites' black outlines.
     return true;
 }
 
@@ -484,13 +486,15 @@ bool FieldSceneRuntime::load_command_overview_assets(
         !load_image(catalog, "menu.field.font", command_overview_font_)) {
         return false;
     }
-
+    // The source inventory-box writer changes only the box outline cells;
+    // its extracted plane-sized bitmap carries color-zero as alpha 0. The
+    // host already has the opaque command shell underneath, so preserve that
+    // shell instead of letting the overlay's black canvas erase it.
     const auto load_sprite = [this, &catalog](const std::string& alias,
                                                QImage& image) {
         if (!load_image(catalog, alias, image)) {
             return false;
         }
-        make_genesis_sprite_color_zero_transparent(image);
         return true;
     };
     for (std::size_t index = 0; index < command_overview_portraits_.size();
@@ -865,8 +869,13 @@ void FieldSceneRuntime::configure_callbacks() {
                 return;
             }
             advance_entity_animation_accumulator(field_entity_animation_);
+            // The 0xC0B2 walking lists carry an 0x8008 marker, an 0x0200
+            // auxiliary increment, and eight frame pointers. Mirrored
+            // direction pairs share lists, but the typed state keeps one
+            // frame sequence per heading slot.
             const EntitySpriteDescriptorList walk_list{
-                static_cast<std::int16_t>(0x8002), 0x0300U, {0U, 1U}};
+                static_cast<std::int16_t>(0x8008), 0x0200U,
+                {0U, 1U, 2U, 3U, 4U, 5U, 6U, 7U}};
             EntitySpriteDescriptorState descriptor{
                 kFieldEntityKind,
                 field_entity_animation_selector_,
@@ -1606,6 +1615,10 @@ bool FieldSceneRuntime::bootstrap(
             record.equipped_inventory_slot;
         field_hud_slots_[0].equipped_item_code = record.equipped_item_code;
         field_hud_slots_[0].ammo_rounds = record.ammo_rounds;
+        // The extracted face/bar/item families follow the archetype record
+        // that produced them, not the field slot number.
+        field_hud_slots_[0].asset_family_index = static_cast<std::uint8_t>(
+            field_joshua_archetype_selection_);
     }
 
     const auto menu_text = load_field_menu_text_catalog(
@@ -1652,19 +1665,36 @@ bool FieldSceneRuntime::bootstrap(
             source_boundary("field.bootstrap.entity_assets_missing");
             return false;
         }
-        for (std::size_t frame = 0; frame < kFieldWalkAnimationFrameCount;
-             ++frame) {
+        // Load consecutive extracted frames until the catalog stops naming
+        // them; every direction must carry at least one walking frame.
+        std::size_t loaded_frames = 0;
+        for (;;) {
             const auto walk_alias =
                 std::string(kFieldEntityWalkAliasPrefix) +
-                std::to_string(direction) + "." + std::to_string(frame);
+                std::to_string(direction) + "." +
+                std::to_string(loaded_frames);
+            if (startup_state.asset_catalog.catalog.find(walk_alias) ==
+                nullptr) {
+                break;
+            }
+            QImage walk_image;
+            int walk_origin_x = 0;
+            int walk_origin_y = 0;
             if (!load_sprite_image(
                     startup_state.asset_catalog.catalog, walk_alias,
-                    field_entity_walk_images_[direction][frame],
-                    field_entity_walk_origin_x_[direction][frame],
-                    field_entity_walk_origin_y_[direction][frame])) {
+                    walk_image, walk_origin_x, walk_origin_y)) {
                 source_boundary("field.bootstrap.entity_assets_missing");
                 return false;
             }
+            field_entity_walk_images_[direction].push_back(
+                std::move(walk_image));
+            field_entity_walk_origin_x_[direction].push_back(walk_origin_x);
+            field_entity_walk_origin_y_[direction].push_back(walk_origin_y);
+            ++loaded_frames;
+        }
+        if (loaded_frames == 0) {
+            source_boundary("field.bootstrap.entity_assets_missing");
+            return false;
         }
     }
 
@@ -1935,6 +1965,13 @@ std::int16_t FieldSceneRuntime::evaluate_field_collision(
 
 void FieldSceneRuntime::advance_field_movement() {
     if (!ready_ || !field_entity_.active || field_controller_nibble_ == 0U) {
+        // The source keeps the walking pose only while a direction is held.
+        // When the controller goes idle, the heading animation returns to
+        // the directional idle list instead of looping the walk cycle while
+        // the runner stands still.
+        if (field_entity_walking_) {
+            apply_field_entity_animation(false);
+        }
         return;
     }
 
@@ -2222,6 +2259,25 @@ bool FieldSceneRuntime::open_command_overview_for_dump() {
     return command_overview_.open();
 }
 
+bool FieldSceneRuntime::seek_command_overview_page(const std::uint8_t page) {
+    if (!command_overview_.open() || page > 6U) {
+        return false;
+    }
+    // The converted primary-page advance wraps the seven-page selector, so
+    // a d-pad left edge moves one page toward zero. Port byte bit 2 is the
+    // left direction in the sampled controller word (0x0400 in the expanded
+    // events consumed by the bridge).
+    const auto current = command_overview_.view().source_state.primary_page;
+    const auto steps = (current + 7U - page) % 7U;
+    for (std::uint8_t step = 0; step < steps; ++step) {
+        set_controller_port_byte(0x04U);
+        advance_frame();
+        set_controller_port_byte(0U);
+        advance_frame();
+    }
+    return command_overview_.view().source_state.primary_page == page;
+}
+
 void FieldSceneRuntime::paint_field_entity(QPainter& painter) const {
     if (!field_entity_.active || !field_entity_.visible) {
         return;
@@ -2229,8 +2285,11 @@ void FieldSceneRuntime::paint_field_entity(QPainter& painter) const {
     const auto direction = static_cast<std::size_t>(
         field_entity_.direction % field_entity_idle_images_.size());
     const auto walking = field_entity_walking_;
-    const auto frame = bound_field_walk_animation_frame(
-        field_entity_animation_.frame);
+    const auto walk_frames = field_entity_walk_images_[direction].size();
+    const auto frame = walk_frames == 0
+        ? 0U
+        : bound_field_walk_animation_frame(field_entity_animation_.frame) %
+              walk_frames;
     const auto& image =
         walking ? field_entity_walk_images_[direction][frame]
                 : field_entity_idle_images_[direction];
@@ -2252,17 +2311,29 @@ void FieldSceneRuntime::paint_field_hud_overlays(QPainter& painter) const {
         -> const QImage* {
         switch (overlay.kind) {
         case FieldHudOverlayKind::portrait:
-            return &field_hud_faces_[overlay.slot];
+            return overlay.asset_index < field_hud_faces_.size()
+                ? &field_hud_faces_[overlay.asset_index]
+                : nullptr;
         case FieldHudOverlayKind::physical_bar:
-            return &field_hud_vertical_counters_[overlay.slot];
+            return overlay.asset_index < field_hud_vertical_counters_.size()
+                ? &field_hud_vertical_counters_[overlay.asset_index]
+                : nullptr;
         case FieldHudOverlayKind::mental_bar:
-            return &field_hud_horizontal_counters_[overlay.slot];
+            return overlay.asset_index < field_hud_horizontal_counters_.size()
+                ? &field_hud_horizontal_counters_[overlay.asset_index]
+                : nullptr;
         case FieldHudOverlayKind::item:
-            return &field_hud_items_[overlay.slot];
+            return overlay.asset_index < field_hud_items_.size()
+                ? &field_hud_items_[overlay.asset_index]
+                : nullptr;
         case FieldHudOverlayKind::unarmed_item:
-            return &field_hud_unarmed_items_[overlay.slot];
+            return overlay.asset_index < field_hud_unarmed_items_.size()
+                ? &field_hud_unarmed_items_[overlay.asset_index]
+                : nullptr;
         case FieldHudOverlayKind::ammo:
-            return &field_hud_ammo_counters_[overlay.asset_index];
+            return overlay.asset_index < field_hud_ammo_counters_.size()
+                ? &field_hud_ammo_counters_[overlay.asset_index]
+                : nullptr;
         }
         return nullptr;
     };
@@ -2794,10 +2865,15 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     }
 
     if (view.source_state.primary_page < 2U) {
-        const auto x = 8 + static_cast<int>(
-                              view.source_state.primary_page * 40U);
-        const auto y = 112 + static_cast<int>(
-                              view.source_state.secondary_page * 24U);
+        // ROM 0x11592 builds the cursor SAT entry from the 0xD29F6 list:
+        // x = FFF0D0*0x28 + 0x008C, y = FFF0D1*0x18 + 0x00F4. The Genesis
+        // SAT origin adds 0x80 on both axes, so the screen position is
+        // (primary*40 + 12, secondary*24 + 116). The 24x32 bracket sprite
+        // frames the 40x24 inventory cell's icon from those offsets.
+        const auto x = 12 + static_cast<int>(
+                               view.source_state.primary_page * 40U);
+        const auto y = 116 + static_cast<int>(
+                               view.source_state.secondary_page * 24U);
         painter.drawImage(x, y, command_overview_cursor_);
     }
     if (command_overview_clips_.is_open()) {

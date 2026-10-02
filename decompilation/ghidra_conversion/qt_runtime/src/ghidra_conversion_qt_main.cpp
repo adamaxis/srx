@@ -17,6 +17,7 @@
 #include <QFont>
 #include <QPainter>
 #include <QPaintEvent>
+#include <QPoint>
 #include <QString>
 #include <QTimer>
 #include <QWidget>
@@ -27,6 +28,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <initializer_list>
 #include <iostream>
 #include <map>
 #include <optional>
@@ -58,8 +60,11 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
                    " [--assets <decompilation/assets>] [--field-smoke]"
                    " [--field-smoke-move-right] [--field-dump <file>]"
                    " [--field-command-dump <file>]"
+                       " [--field-command-page <0..6>]"
                    " [--field-action-dump <output-dir>]"
                    " [--field-clips-dump <output-dir>]"
+                   " [--field-archetype <samurai|decker|gator>]"
+                   " [--field-hud-qa <output-dir>]"
                    " [--field-command-reopen-smoke]"
                    " [--field-dialogue-dump <prompt> <file>]"
                    " [--boot-dump-frame <frame> <file>]"
@@ -91,6 +96,18 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
             continue;
         }
         if (argument == "--field-clips-dump" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-archetype" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-command-page" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-hud-qa" && index + 1 < argc) {
             ++index;
             continue;
         }
@@ -157,6 +174,20 @@ std::optional<StokerMotelPromptId> parse_stoker_dialogue_prompt(
     }
     if (name == "ambush") {
         return StokerMotelPromptId::street_ambush;
+    }
+    return std::nullopt;
+}
+
+std::optional<std::uint8_t> parse_field_archetype(
+    const std::string_view name) {
+    if (name == "0" || name == "samurai") {
+        return 0U;
+    }
+    if (name == "1" || name == "decker") {
+        return 1U;
+    }
+    if (name == "2" || name == "gator" || name == "gator_shaman") {
+        return 2U;
     }
     return std::nullopt;
 }
@@ -228,6 +259,74 @@ int count_playfield_lit(const QImage& scene) {
         }
     }
     return lit;
+}
+
+bool source_shell_pixels_survive(const QImage& scene, const QImage& shell,
+                                 const std::initializer_list<QPoint>& points) {
+    if (shell.isNull() || scene.size() != shell.size()) {
+        return false;
+    }
+    for (const auto& point : points) {
+        if (!scene.rect().contains(point) ||
+            scene.pixel(point) != shell.pixel(point)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool field_command_shell_survives(const QImage& scene,
+                                  const std::filesystem::path& asset_root) {
+    const QImage shell(QString::fromStdWString(
+        (asset_root / "menu" / "field" / "background.bmp").wstring()));
+    return source_shell_pixels_survive(
+        scene, shell,
+        {QPoint(10, 10), QPoint(100, 0), QPoint(120, 0),
+         QPoint(10, 100), QPoint(300, 10), QPoint(300, 220)});
+}
+
+bool field_hud_chrome_survives(const QImage& scene,
+                               const std::filesystem::path& asset_root) {
+    const QImage shell(QString::fromStdWString(
+        (asset_root / "field" / "hud" / "background.bmp").wstring()));
+    return source_shell_pixels_survive(
+        scene, shell,
+        {QPoint(272, 0), QPoint(300, 0), QPoint(319, 0),
+         QPoint(319, 32), QPoint(319, 80), QPoint(319, 160),
+         QPoint(272, 223), QPoint(300, 223), QPoint(319, 223)});
+}
+
+bool field_hud_face_family_survives(const QImage& scene,
+                                    const std::filesystem::path& asset_root,
+                                    const std::size_t archetype_index) {
+    // Every opaque pixel of the archetype's extracted 4x4 face family must
+    // appear verbatim at 0x35D4's slot-0 stamp location (F1C6 -> 280,24).
+    // Transparent family pixels may show the shell behind them. This is a
+    // regression check against silently reusing the default archetype's
+    // portrait, not a substitute for independent visual review.
+    const QImage face(QString::fromStdWString(
+        (asset_root / "field" / "hud" /
+         ("face-" + std::to_string(archetype_index) + ".bmp")).wstring()));
+    if (face.isNull() || face.size() != QSize(32, 32)) {
+        return false;
+    }
+    constexpr int kFaceX = 280;
+    constexpr int kFaceY = 24;
+    int opaque = 0;
+    for (int y = 0; y < 32; ++y) {
+        for (int x = 0; x < 32; ++x) {
+            const auto source = face.pixelColor(x, y);
+            if (source.alpha() == 0) {
+                continue;
+            }
+            ++opaque;
+            const auto scene_pixel = scene.pixelColor(kFaceX + x, kFaceY + y);
+            if (scene_pixel != source) {
+                return false;
+            }
+        }
+    }
+    return opaque > 64;
 }
 
 class GhidraConversionWindow final : public QWidget {
@@ -458,6 +557,10 @@ public:
             std::cerr << "intro-to-field: playfield buried under opaque HUD\n";
             return 3;
         }
+        if (!field_hud_chrome_survives(scene, asset_root_)) {
+            std::cerr << "intro-to-field: field HUD chrome was not preserved\n";
+            return 3;
+        }
         const auto& buffers = field_scene_runtime_.state().field_scene_buffers;
         std::cout << "intro_to_field=ready scene_reference="
                   << buffers.scene_reference << " camera="
@@ -486,6 +589,23 @@ public:
         const auto write_snapshot = [&](const std::string& name) {
             const auto path = output_directory / (name + ".bmp");
             const auto scene = render_scene();
+            const auto is_startup_menu =
+                state_.phase == StartupIntegrationPhase::start_options ||
+                state_.phase == StartupIntegrationPhase::save_load ||
+                state_.phase == StartupIntegrationPhase::joshua_archetype;
+            if (is_startup_menu && !startup_shell_survives(scene)) {
+                std::cerr << "startup qa: startup bezel/decal layer was "
+                             "not preserved for "
+                          << name << '\n';
+                return false;
+            }
+            if (state_.phase == StartupIntegrationPhase::field_ready &&
+                !field_hud_chrome_survives(scene, asset_root_)) {
+                std::cerr << "startup qa: field HUD chrome was not preserved "
+                             "for "
+                          << name << '\n';
+                return false;
+            }
             if (!scene.save(QString::fromStdWString(path.wstring()))) {
                 std::cerr << "startup qa: could not write " << path.string()
                           << '\n';
@@ -848,6 +968,18 @@ protected:
     }
 
 private:
+    bool startup_shell_survives(const QImage& scene) const {
+        const auto shell = draw_asset_cache_.find("menu.startup.background");
+        if (shell == draw_asset_cache_.end()) {
+            return false;
+        }
+        return source_shell_pixels_survive(
+            scene, shell->second,
+            {QPoint(30, 30), QPoint(45, 20), QPoint(250, 20),
+             QPoint(36, 100), QPoint(282, 100), QPoint(30, 190),
+             QPoint(250, 190)});
+    }
+
     QImage render_scene() {
         // Genesis rebuilds the visible frame during vblank. The host has no
         // SAT/VDP, so each tick composites into an opaque 320x224 buffer and
@@ -888,6 +1020,15 @@ private:
         const std::uint32_t target_frame,
         const std::filesystem::path& output_path) {
         const auto scene = render_scene();
+        const auto is_startup_menu =
+            state_.phase == StartupIntegrationPhase::start_options ||
+            state_.phase == StartupIntegrationPhase::save_load ||
+            state_.phase == StartupIntegrationPhase::joshua_archetype;
+        if (is_startup_menu && !startup_shell_survives(scene)) {
+            std::cerr << "startup dump: startup bezel/decal layer was not "
+                         "preserved\n";
+            return 3;
+        }
         if (!scene.save(QString::fromStdWString(output_path.wstring()))) {
             std::cerr << "startup dump: could not write "
                       << output_path.string() << '\n';
@@ -1415,10 +1556,9 @@ private:
         }
         QImage image(QString::fromStdWString(record->absolute_path.wstring()));
         if (!image.isNull()) {
+            // Extracted sprites carry their baked color-zero alpha through
+            // the V4 BMP alpha mask; no black-pixel wipe is applied.
             image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
-            if (genesis_alias_uses_sprite_transparency(alias)) {
-                make_genesis_sprite_color_zero_transparent(image);
-            }
             draw_asset_cache_.emplace(
                 alias, std::move(image));
         }
@@ -1542,9 +1682,18 @@ private:
                        0x78 - static_cast<int>(
                                   opening.stage_loop.scroll.fade_counter));
             break;
-        case OpeningIntroScene::cab_map:
-            draw_alias(painter, "intro.cab.map");
+        case OpeningIntroScene::cab_map: {
+            // The 26x17 map plate's plane origin is (16,16); the source
+            // window (32,32) lands at the video's (62,30), so the plate
+            // draws at screen (46,14) one-to-one. No selection outline is
+            // baked into this background.
+            const auto map = draw_asset_cache_.find("intro.cab.map");
+            if (map != draw_asset_cache_.end()) {
+                painter.drawImage(46, 14, map->second);
+            }
             draw_cab_mode_selection(painter);
+            break;
+        }
             break;
         }
 
@@ -1607,8 +1756,46 @@ private:
         const auto plan = cab_mode_selection_plan(
             state_.opening_intro.post_intro_mode,
             state_.opening_intro.post_intro_phase);
-        draw_intro_outline(painter, plan.cursor_x, plan.cursor_y,
-                           plan.cursor_width, plan.cursor_height);
+        // 0x13726 stamps the 0xD4446 border around the selected destination
+        // in plane space. The plane-to-screen offset for the cab plate is
+        // (+30,-2); plan widths already include the three-tile border.
+        constexpr int kCabPlaneToScreenX = 30;
+        constexpr int kCabPlaneToScreenY = -2;
+        const auto tile = [this](const std::string_view name) -> const QImage* {
+            const auto found = draw_asset_cache_.find(
+                std::string("intro.cab.cursor.") + std::string(name));
+            return found == draw_asset_cache_.end() ? nullptr
+                                                    : &found->second;
+        };
+        const auto x = plan.cursor_x + kCabPlaneToScreenX;
+        const auto y = plan.cursor_y + kCabPlaneToScreenY;
+        const auto width = plan.cursor_width;
+        const auto height = plan.cursor_height;
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+        constexpr int kTile = 8;
+        const auto draw_at = [&painter](const QImage* image, const int px,
+                                        const int py) {
+            if (image != nullptr) {
+                painter.drawImage(px, py, *image);
+            }
+        };
+        draw_at(tile("top-left"), x, y);
+        draw_at(tile("top-right"), x + width - kTile, y);
+        draw_at(tile("bottom-left"), x, y + height - kTile);
+        draw_at(tile("bottom-right"), x + width - kTile,
+                y + height - kTile);
+        for (int edge = x + kTile; edge <= x + width - 2 * kTile;
+             edge += kTile) {
+            draw_at(tile("top-middle"), edge, y);
+            draw_at(tile("bottom-middle"), edge, y + height - kTile);
+        }
+        for (int edge = y + kTile; edge <= y + height - 2 * kTile;
+             edge += kTile) {
+            draw_at(tile("left"), x, edge);
+            draw_at(tile("right"), x + width - kTile, edge);
+        }
         if (state_.opening_intro.post_intro_caption_visible) {
             draw_startup_text(painter, plan.caption_x, plan.caption_y,
                               plan.caption, source_text_color(0U));
@@ -1670,7 +1857,15 @@ private:
             if (image != draw_asset_cache_.end()) {
                 const auto point = opening_intro_aircraft_plane_draw_point(
                     state_.opening_intro.stage_loop.scroll.x_offset);
-                painter.drawImage(point.x, point.y, image->second);
+                // The cropped plate records its color-zero margin in the
+                // catalog origin; the nametable-based draw point is the
+                // plane origin, so the margin must be restored.
+                const auto* record =
+                    state_.asset_catalog.catalog.find(std::string(prefix));
+                painter.drawImage(
+                    point.x + (record == nullptr ? 0 : record->origin_x),
+                    point.y + (record == nullptr ? 0 : record->origin_y),
+                    image->second);
             }
             return;
         }
@@ -1803,13 +1998,11 @@ private:
 
     void draw_menu_metadata_grid(QPainter& painter) const {
         // 0xC3E6 → 0x11C0: D7+1 columns by D1+1 rows at $C186 (24,24).
-        const auto panel = write_menu_grid_with_metadata();
-        painter.fillRect(
-            startup_menu_vram_x(static_cast<std::uint16_t>(panel.destination)),
-            startup_menu_vram_y(static_cast<std::uint16_t>(panel.destination)),
-            static_cast<int>(panel.width) * kStartupMenuTilePixels,
-            static_cast<int>(panel.height) * kStartupMenuTilePixels,
-            Qt::black);
+        // The host starts each frame from the extracted startup background,
+        // so there is no stale name-table surface to clear here.  Filling the
+        // source grid rectangle would erase the bezel/decal layer that the
+        // ROM's background planes leave visible around the menu text.
+        (void)write_menu_grid_with_metadata();
     }
 
     void draw_menu_overlay(QPainter& painter) const {
@@ -2050,9 +2243,12 @@ int main(int argc, char** argv) {
         bool field_command_reopen_smoke = false;
         bool intro_to_field_smoke = false;
         std::optional<std::filesystem::path> field_dump_path;
+        std::optional<std::filesystem::path> field_hud_qa_path;
         std::optional<std::filesystem::path> field_command_dump_path;
+        std::optional<std::uint8_t> field_command_page;
         std::optional<std::filesystem::path> field_action_dump_path;
         std::optional<std::filesystem::path> field_clips_dump_path;
+        std::optional<std::string> field_archetype_name;
         std::optional<std::string> field_dialogue_dump_prompt;
         std::optional<std::filesystem::path> field_dialogue_dump_path;
         std::optional<std::uint32_t> boot_dump_frame;
@@ -2069,8 +2265,11 @@ int main(int argc, char** argv) {
                        " [--assets <decompilation/assets>] [--field-smoke]"
                        " [--field-smoke-move-right] [--field-dump <file>]"
                        " [--field-command-dump <file>]"
+                       " [--field-command-page <0..6>]"
                        " [--field-action-dump <output-dir>]"
                        " [--field-clips-dump <output-dir>]"
+                       " [--field-archetype <samurai|decker|gator>]"
+                       " [--field-hud-qa <output-dir>]"
                        " [--field-command-reopen-smoke]"
                        " [--field-dialogue-dump <prompt> <file>]"
                        " [--boot-dump-frame <frame> <file>]"
@@ -2116,6 +2315,22 @@ int main(int argc, char** argv) {
                 field_clips_dump_path =
                     std::filesystem::path(argv[++index]);
             }
+            if (std::string(argv[index]) == "--field-archetype" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_archetype_name = std::string(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-hud-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_hud_qa_path = std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-command-page" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_command_page = static_cast<std::uint8_t>(
+                    std::stoul(argv[++index]));
+            }
             if (std::string(argv[index]) == "--field-dialogue-dump" &&
                 index + 2 < argc) {
                 field_smoke = true;
@@ -2152,34 +2367,64 @@ int main(int argc, char** argv) {
 
         QApplication application(argc, argv);
         if (field_smoke) {
+            // The real startup route records the player's choice in the
+            // Joshua menu state before the field handoff. The dump route
+            // injects the same selection through both typed channels so the
+            // field bootstrap has exactly one archetype source of truth.
+            const auto build_smoke_state =
+                [&](const std::uint8_t archetype_index,
+                    StartupIntegrationState& state, std::string& error) {
+                state.asset_catalog =
+                    load_conversion_asset_catalog(asset_root);
+                if (!state.asset_catalog.complete()) {
+                    error = "field smoke: direct asset catalog is incomplete";
+                    return false;
+                }
+                const auto source = load_field_session_source_assets(
+                    state.asset_catalog.catalog);
+                if (!source.complete()) {
+                    error = "field smoke: source records are incomplete";
+                    return false;
+                }
+                state.field_session_source_assets = *source.assets;
+                const auto startup_records = load_startup_record_assets(
+                    state.asset_catalog.catalog);
+                if (!startup_records.complete()) {
+                    error = "field smoke: startup records are incomplete";
+                    return false;
+                }
+                state.startup_records = *startup_records.assets;
+                const std::vector<JoshuaArchetypeTemplate> joshua_templates(
+                    state.startup_records->joshua_archetypes.begin(),
+                    state.startup_records->joshua_archetypes.end());
+                state.joshua_selection =
+                    initialize_joshua_archetype_selection(archetype_index,
+                                                          joshua_templates);
+                if (!state.joshua_selection.has_value()) {
+                    error =
+                        "field smoke: Joshua source record is unavailable";
+                    return false;
+                }
+                state.joshua_archetype.selected =
+                    static_cast<JoshuaArchetypeChoice>(archetype_index);
+                return true;
+            };
+            std::uint8_t field_archetype = 0U;
+            if (field_archetype_name.has_value()) {
+                const auto parsed = parse_field_archetype(*field_archetype_name);
+                if (!parsed.has_value()) {
+                    std::cerr << "field smoke: unknown archetype '"
+                              << *field_archetype_name
+                              << "' (expected samurai, decker, or gator)\n";
+                    return 3;
+                }
+                field_archetype = *parsed;
+            }
             StartupIntegrationState smoke_state;
-            smoke_state.asset_catalog =
-                load_conversion_asset_catalog(asset_root);
-            if (!smoke_state.asset_catalog.complete()) {
-                std::cerr << "field smoke: direct asset catalog is incomplete\n";
-                return 3;
-            }
-            const auto source = load_field_session_source_assets(
-                smoke_state.asset_catalog.catalog);
-            if (!source.complete()) {
-                std::cerr << "field smoke: source records are incomplete\n";
-                return 3;
-            }
-            smoke_state.field_session_source_assets = *source.assets;
-            const auto startup_records = load_startup_record_assets(
-                smoke_state.asset_catalog.catalog);
-            if (!startup_records.complete()) {
-                std::cerr << "field smoke: startup records are incomplete\n";
-                return 3;
-            }
-            smoke_state.startup_records = *startup_records.assets;
-            const std::vector<JoshuaArchetypeTemplate> joshua_templates(
-                smoke_state.startup_records->joshua_archetypes.begin(),
-                smoke_state.startup_records->joshua_archetypes.end());
-            smoke_state.joshua_selection =
-                initialize_joshua_archetype_selection(0U, joshua_templates);
-            if (!smoke_state.joshua_selection.has_value()) {
-                std::cerr << "field smoke: Joshua source record is unavailable\n";
+            std::string smoke_state_error;
+            if (!build_smoke_state(field_archetype, smoke_state,
+                                   smoke_state_error)) {
+                std::cerr << smoke_state_error << '\n';
                 return 3;
             }
             qt_runtime::FieldSceneRuntime field_scene([](const auto&) {});
@@ -2254,12 +2499,24 @@ int main(int argc, char** argv) {
                                  "not open\n";
                     return 3;
                 }
+                if (field_command_page.has_value() &&
+                    !field_scene.seek_command_overview_page(
+                        *field_command_page)) {
+                    std::cerr << "field command dump: could not reach page "
+                              << static_cast<int>(*field_command_page) << '\n';
+                    return 3;
+                }
                 QImage command_scene(kSceneWidth, kSceneHeight,
                                      QImage::Format_RGB32);
                 command_scene.fill(Qt::black);
                 QPainter command_painter(&command_scene);
                 field_scene.paint(command_painter);
                 command_painter.end();
+                if (!field_command_shell_survives(command_scene, asset_root)) {
+                    std::cerr << "field command dump: source command shell "
+                                 "was not preserved around the overlays\n";
+                    return 3;
+                }
                 if (!command_scene.save(QString::fromStdWString(
                         field_command_dump_path->wstring()))) {
                     std::cerr << "field command dump: could not write "
@@ -2287,6 +2544,12 @@ int main(int argc, char** argv) {
                 };
                 const auto save_scene = [&](const std::string_view name,
                                             const QImage& scene) {
+                    if (!field_command_shell_survives(scene, asset_root)) {
+                        std::cerr << "field action dump: command shell was "
+                                     "not preserved for "
+                                  << name << "\n";
+                        return false;
+                    }
                     return scene.save(QString::fromStdWString(
                         ((*field_action_dump_path) /
                          (std::string(name) + ".bmp"))
@@ -2616,6 +2879,12 @@ int main(int argc, char** argv) {
                 };
                 const auto save_scene = [&](const std::string_view name,
                                             const QImage& scene) {
+                    if (!field_command_shell_survives(scene, asset_root)) {
+                        std::cerr << "field clips dump: command shell was "
+                                     "not preserved for "
+                                  << name << "\n";
+                        return false;
+                    }
                     return scene.save(QString::fromStdWString(
                         ((*field_clips_dump_path) /
                          (std::string(name) + ".bmp"))
@@ -2896,6 +3165,72 @@ int main(int argc, char** argv) {
                           << field_clips_dump_path->string() << "\n";
                 return 0;
             }
+            if (field_hud_qa_path.has_value()) {
+                std::filesystem::create_directories(*field_hud_qa_path);
+                std::array<QImage, 3> dumps{};
+                constexpr std::array<std::string_view, 3> kArchetypeNames{
+                    "samurai", "decker", "gator"};
+                for (std::uint8_t archetype = 0; archetype < 3U;
+                     ++archetype) {
+                    StartupIntegrationState hud_state;
+                    std::string hud_state_error;
+                    if (!build_smoke_state(archetype, hud_state,
+                                           hud_state_error)) {
+                        std::cerr << hud_state_error << '\n';
+                        return 3;
+                    }
+                    qt_runtime::FieldSceneRuntime hud_scene(
+                        [](const auto&) {});
+                    if (!hud_scene.bootstrap(hud_state)) {
+                        std::cerr << "field HUD QA: " << hud_scene.failure()
+                                  << '\n';
+                        return 3;
+                    }
+                    QImage hud_frame(kSceneWidth, kSceneHeight,
+                                     QImage::Format_RGB32);
+                    hud_frame.fill(Qt::black);
+                    QPainter hud_painter(&hud_frame);
+                    hud_scene.paint(hud_painter);
+                    hud_painter.end();
+                    if (!field_hud_chrome_survives(hud_frame, asset_root)) {
+                        std::cerr << "field HUD QA: archetype "
+                                  << static_cast<int>(archetype)
+                                  << " lost the HUD chrome\n";
+                        return 3;
+                    }
+                    if (!field_hud_face_family_survives(
+                            hud_frame, asset_root, archetype)) {
+                        std::cerr << "field HUD QA: archetype "
+                                  << static_cast<int>(archetype)
+                                  << " rendered the wrong face family\n";
+                        return 3;
+                    }
+                    const auto path = *field_hud_qa_path /
+                                      (std::string("field-hud-") +
+                                       std::string(kArchetypeNames[archetype]) +
+                                       ".bmp");
+                    if (!hud_frame.save(QString::fromStdWString(
+                            path.wstring()))) {
+                        std::cerr << "field HUD QA: could not write "
+                                  << path.string() << '\n';
+                        return 3;
+                    }
+                    dumps[archetype] = std::move(hud_frame);
+                }
+                for (std::size_t a = 0; a < dumps.size(); ++a) {
+                    for (std::size_t b = a + 1U; b < dumps.size(); ++b) {
+                        if (dumps[a] == dumps[b]) {
+                            std::cerr << "field HUD QA: archetypes " << a
+                                      << " and " << b
+                                      << " produced identical frames\n";
+                            return 3;
+                        }
+                    }
+                }
+                std::cout << "field_hud_qa=passed path="
+                          << field_hud_qa_path->string() << "\n";
+                return 0;
+            }
             QImage scene(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
             scene.fill(Qt::black);
             QPainter painter(&scene);
@@ -2910,6 +3245,17 @@ int main(int argc, char** argv) {
             }
             if (count_playfield_lit(scene) < 100) {
                 std::cerr << "field smoke: playfield buried under opaque HUD\n";
+                return 3;
+            }
+            if (!field_hud_chrome_survives(scene, asset_root)) {
+                std::cerr << "field smoke: field HUD chrome was not preserved\n";
+                return 3;
+            }
+            if (field_archetype_name.has_value() &&
+                !field_hud_face_family_survives(scene, asset_root,
+                                                field_archetype)) {
+                std::cerr << "field smoke: HUD face family does not match "
+                             "the selected archetype\n";
                 return 3;
             }
             const auto& buffers = field_scene.state().field_scene_buffers;

@@ -36,23 +36,27 @@ std::vector<FieldHudOverlay> compose_field_hud_overlays(
         if (!slot_is_active(slots[slot])) {
             continue;
         }
+        // Portrait, bars, and item art are per-record uploads in 0x3404, so
+        // all four use the slot's record family. The ammo counter below is
+        // the one overlay selected by live value instead.
+        const auto family = slots[slot].asset_family_index;
         overlays.push_back(make_overlay(FieldHudOverlayKind::portrait, slot,
                                         slot_vram(kFieldHudPortraitVram, slot),
-                                        slot));
+                                        family));
         overlays.push_back(
             make_overlay(FieldHudOverlayKind::physical_bar, slot,
-                         slot_vram(kFieldHudPhysicalBarVram, slot), slot));
+                         slot_vram(kFieldHudPhysicalBarVram, slot), family));
         overlays.push_back(
             make_overlay(FieldHudOverlayKind::mental_bar, slot,
-                         slot_vram(kFieldHudMentalBarVram, slot), slot));
+                         slot_vram(kFieldHudMentalBarVram, slot), family));
         if (slot_is_armed(slots[slot])) {
             overlays.push_back(
                 make_overlay(FieldHudOverlayKind::item, slot,
-                             slot_vram(kFieldHudItemVram, slot), slot));
+                             slot_vram(kFieldHudItemVram, slot), family));
         } else {
             overlays.push_back(
                 make_overlay(FieldHudOverlayKind::unarmed_item, slot,
-                             slot_vram(kFieldHudItemVram, slot), slot));
+                             slot_vram(kFieldHudItemVram, slot), family));
         }
         if (slots[slot].ammo_rounds < kFieldHudAmmoCounterCount) {
             overlays.push_back(make_overlay(

@@ -138,6 +138,28 @@ int main() {
         return 9;
     }
 
+    // The portrait, bars, and item art are per-record uploads in 0x3404, so
+    // all four follow the slot's asset family. The ammo counter stays
+    // value-indexed.
+    joshua[0].equipped_inventory_slot = 0;
+    joshua[0].equipped_item_code = 1U;
+    joshua[0].ammo_rounds = 18U;
+    joshua[0].asset_family_index = 2U;
+    const auto family = compose_field_hud_overlays(joshua);
+    if (!expect(family.size() == 5U &&
+                family[0].kind == FieldHudOverlayKind::portrait &&
+                family[0].asset_index == 2U &&
+                family[1].kind == FieldHudOverlayKind::physical_bar &&
+                family[1].asset_index == 2U &&
+                family[2].kind == FieldHudOverlayKind::mental_bar &&
+                family[2].asset_index == 2U &&
+                family[3].kind == FieldHudOverlayKind::item &&
+                family[3].asset_index == 2U &&
+                family[4].kind == FieldHudOverlayKind::ammo &&
+                family[4].asset_index == 18U)) {
+        return 40;
+    }
+
     std::array<FieldHudSlotState, kFieldHudSlotCount> companion{};
     companion[1].flags_byte = 0x01U;
     companion[1].ammo_rounds = 4U;
