@@ -1263,6 +1263,28 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     }
     write("intro/cab-map.bmp", assets.cab_map, "background", "0x134D2/0xD2A2E",
           false);
+    // The cab selection outline is the 0xD4446 eight-tile border stamped by
+    // 0x13726; it is a live composition per destination, not part of the
+    // map background.
+    {
+        const auto cursor_tiles =
+            shadowrun::graphics::decode_genesis_cab_cursor_tiles(rom);
+        constexpr std::array<std::string_view, 8> kCursorNames{{
+            "top-left", "top-middle", "top-right", "left", "right",
+            "bottom-left", "bottom-middle", "bottom-right"}};
+        for (std::size_t index = 0; index < cursor_tiles.tiles.size();
+             ++index) {
+            const auto& tile = cursor_tiles.tiles[index];
+            // Keep the full 8x8 tile cell; the border compositor places
+            // these on the 8-pixel grid and a cropped sliver would carry an
+            // origin the grid drawing does not apply.
+            write_frame("intro/cab/cursor-" +
+                            std::string(kCursorNames[index]) + ".bmp",
+                        shadowrun::native::NativeEntityFrame{
+                            tile.width, tile.height, tile.pixels},
+                        "sprite", "0xD4446/0x13726", false);
+        }
+    }
 
     // 0x1F65A selects profile 0 for Stoker's Coffin Motel. The portrait is
     // written by the shared 7x9 resource stream at 0x122420 after its

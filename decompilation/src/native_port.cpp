@@ -249,14 +249,10 @@ constexpr std::array<CabMapCursorState, 5> kCabRedmondCursor{{
     {0x0216U, 0x0CU, 0x08U}, {0x0322U, 0x06U, 0x05U},
     {0x03AEU, 0x00U, 0x00U}}};
 constexpr std::uint64_t kCabCursorPhaseFrames = 6;
-constexpr std::int32_t kCabSourceMapX = 32;
-constexpr std::int32_t kCabSourceMapY = 32;
-constexpr std::int32_t kCabTargetMapX = 62;
-constexpr std::int32_t kCabTargetMapY = 30;
-constexpr std::int32_t kCabSourceMapWidth = 208;
-constexpr std::int32_t kCabSourceMapHeight = 136;
-constexpr std::int32_t kCabTargetMapWidth = 166;
-constexpr std::int32_t kCabTargetMapHeight = 130;
+// The cab plate's plane window (32,32) lands at the capture's (62,30), so
+// plane coordinates shift by (+30,-2) at the host's one-to-one tile scale.
+constexpr std::int32_t kCabPlaneToScreenX = 30;
+constexpr std::int32_t kCabPlaneToScreenY = -2;
 
 void draw_cab_cursor(ScreenWriter& screen, const CabMapCursorState& state) {
     // D4464 positions are VDP name-table addresses relative to $C000.  The
@@ -266,26 +262,17 @@ void draw_cab_cursor(ScreenWriter& screen, const CabMapCursorState& state) {
     const auto source_x = static_cast<std::int32_t>(
         ((relative % 0x80U) / 2U) * 8U);
     const auto source_y = static_cast<std::int32_t>((relative / 0x80U) * 8U);
+    // 0x13726's border spans inner + three tiles (both edges plus the
+    // corner columns). The plane-to-screen offset for the cab plate is
+    // (+30,-2) at one-to-one tile scale.
     const auto source_width =
-        static_cast<std::int32_t>(state.width_tiles + 2U) * 8;
+        static_cast<std::int32_t>(state.width_tiles + 3U) * 8;
     const auto source_height =
-        static_cast<std::int32_t>(state.height_tiles + 2U) * 8;
-    const auto to_target_x = [](std::int32_t value) {
-        return kCabTargetMapX +
-            ((value - kCabSourceMapX) * kCabTargetMapWidth) /
-                kCabSourceMapWidth;
-    };
-    const auto to_target_y = [](std::int32_t value) {
-        return kCabTargetMapY +
-            ((value - kCabSourceMapY) * kCabTargetMapHeight) /
-                kCabSourceMapHeight;
-    };
-    const auto left = to_target_x(source_x);
-    const auto top = to_target_y(source_y);
-    const auto right = to_target_x(source_x + source_width);
-    const auto bottom = to_target_y(source_y + source_height);
-    const auto width = std::max<std::int32_t>(right - left, 4);
-    const auto height = std::max<std::int32_t>(bottom - top, 4);
+        static_cast<std::int32_t>(state.height_tiles + 3U) * 8;
+    const auto left = source_x + kCabPlaneToScreenX;
+    const auto top = source_y + kCabPlaneToScreenY;
+    const auto width = source_width;
+    const auto height = source_height;
     // The cursor tiles in D4446 are a pale, two-tone outline. Preserve that
     // visual hierarchy at the host presentation scale while the map itself
     // remains the extracted ROM art.
@@ -4624,12 +4611,12 @@ void NativePortShell::render(ScreenWriter& screen) const {
         return;
     } else if (scene_ == NativeScene::CabMap) {
         screen.clear({0x00, 0x00, 0x00, 0xFF});
-        // ROM 0x134D2's map plate is already extracted in the supplied
-        // capture-space geometry. The source writes the Downtown label at
-        // VDP $EA10; the same 0.8/0.956 presentation transform used by the
-        // map places its first source space at host (88,152).
+        // ROM 0x134D2's 26x17 map plate is extracted one-to-one with its
+        // plane origin (16,16); that lands at screen (46,14). The selection
+        // outline is a separate 0xD4446 border composition, never baked
+        // into the map art.
         if (!cab_map_.pixels.empty()) {
-            screen.blit_rgba(0, 0, cab_map_.width, cab_map_.height,
+            screen.blit_rgba(46, 14, cab_map_.width, cab_map_.height,
                              cab_map_.pixels);
         }
         // 0x13726 does not jump directly to the terminal cursor. It walks
