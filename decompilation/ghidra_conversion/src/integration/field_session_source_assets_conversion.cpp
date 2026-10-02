@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <fstream>
+#include <iomanip>
+#include <sstream>
 #include <stdexcept>
 #include <utility>
 
@@ -14,10 +16,6 @@ constexpr const char* kModeSelectionAlias =
     "records.field.mode.selection.state";
 constexpr const char* kSceneProfileTableAlias =
     "records.field.scene.profiles";
-constexpr const char* kMode0TerrainCollisionRectanglesAlias =
-    "records.field.mode.0.terrain.collision.rectangles";
-constexpr const char* kMode0EventTableAlias =
-    "records.field.mode.0.event.table";
 constexpr const char* kFieldMovementDirectionTableAlias =
     "records.field.entity.movement.direction.table";
 constexpr const char* kFieldCollisionProbeOffsetBanksAlias =
@@ -26,18 +24,16 @@ constexpr const char* kFieldControllerHeadingTableAlias =
     "records.field.entity.controller.heading.table";
 constexpr const char* kFieldMovementRouteTableAlias =
     "records.field.entity.movement.route.table";
-constexpr const char* kMode2TerrainLayerAAlias =
-    "records.field.mode.2.terrain.layer.a";
-constexpr const char* kMode2TerrainLayerBAlias =
-    "records.field.mode.2.terrain.layer.b";
-constexpr const char* kMode2TerrainStreamAlias =
-    "records.field.mode.2.terrain.stream";
-constexpr const char* kMode2DescriptorAlias =
-    "records.field.mode.2.descriptor";
-constexpr const char* kMode2TerrainCollisionRectanglesAlias =
-    "records.field.mode.2.terrain.collision.rectangles";
-constexpr const char* kMode2EventTableAlias =
-    "records.field.mode.2.event.table";
+constexpr const char* kFieldSceneResourceAliasPrefix =
+    "records.field.scenes.scene.";
+
+std::string field_scene_resource_alias(const std::size_t scene_id,
+                                       const char* suffix) {
+    std::ostringstream alias;
+    alias << kFieldSceneResourceAliasPrefix << std::setfill('0')
+          << std::setw(2) << scene_id << '.' << suffix;
+    return alias.str();
+}
 
 std::optional<std::vector<std::uint8_t>> read_record_bytes(
     const ConversionAssetCatalog& catalog, const char* alias,
@@ -76,6 +72,73 @@ std::optional<std::vector<std::uint8_t>> read_record_bytes(
     return bytes;
 }
 
+std::optional<std::vector<std::uint8_t>> read_optional_record_bytes(
+    const ConversionAssetCatalog& catalog, const std::string& alias,
+    const std::size_t expected_size, std::vector<std::string>& errors) {
+    const auto* record = catalog.find(alias);
+    if (record == nullptr) {
+        return std::nullopt;
+    }
+    if (record->kind != "state") {
+        errors.emplace_back(
+            std::string("field-scene optional record is not state data: ") +
+            alias);
+        return std::nullopt;
+    }
+    if (record->byte_size != expected_size) {
+        errors.emplace_back(
+            std::string("field-scene optional record has wrong size: ") +
+            alias);
+        return std::nullopt;
+    }
+    std::ifstream input(record->absolute_path, std::ios::binary);
+    if (!input) {
+        errors.emplace_back(
+            std::string("cannot open field-scene optional record: ") + alias);
+        return std::nullopt;
+    }
+    std::vector<std::uint8_t> bytes(expected_size);
+    input.read(reinterpret_cast<char*>(bytes.data()),
+               static_cast<std::streamsize>(bytes.size()));
+    if (!input || input.gcount() != static_cast<std::streamsize>(bytes.size())) {
+        errors.emplace_back(
+            std::string("cannot read field-scene optional record: ") + alias);
+        return std::nullopt;
+    }
+    return bytes;
+}
+
+std::optional<std::vector<std::uint8_t>> read_variable_record_bytes(
+    const ConversionAssetCatalog& catalog, const std::string& alias,
+    std::vector<std::string>& errors) {
+    const auto* record = catalog.find(alias);
+    if (record == nullptr) {
+        errors.emplace_back(std::string("missing field-scene source record: ") +
+                            alias);
+        return std::nullopt;
+    }
+    if (record->kind != "state" || record->byte_size == 0U) {
+        errors.emplace_back(
+            std::string("field-scene source record is invalid: ") + alias);
+        return std::nullopt;
+    }
+    std::ifstream input(record->absolute_path, std::ios::binary);
+    if (!input) {
+        errors.emplace_back(std::string("cannot open field-scene source record: ") +
+                            alias);
+        return std::nullopt;
+    }
+    std::vector<std::uint8_t> bytes(record->byte_size);
+    input.read(reinterpret_cast<char*>(bytes.data()),
+               static_cast<std::streamsize>(bytes.size()));
+    if (!input || input.gcount() != static_cast<std::streamsize>(bytes.size())) {
+        errors.emplace_back(std::string("cannot read field-scene source record: ") +
+                            alias);
+        return std::nullopt;
+    }
+    return bytes;
+}
+
 std::uint16_t read_big_endian_word(const std::vector<std::uint8_t>& bytes,
                                    const std::size_t offset) {
     return static_cast<std::uint16_t>(
@@ -94,7 +157,7 @@ decode_scene_profile(const std::vector<std::uint8_t>& bytes) {
 
 FieldMapSourceDescriptor decode_field_map_descriptor(
     const std::vector<std::uint8_t>& descriptor_bytes,
-    const std::vector<std::uint8_t>& event_table_bytes) {
+    const std::optional<std::vector<std::uint8_t>>& event_table_bytes) {
     FieldMapSourceDescriptor descriptor;
     descriptor.initial_camera_x_fixed =
         read_big_endian_word(descriptor_bytes, 0x00U);
@@ -117,8 +180,11 @@ FieldMapSourceDescriptor decode_field_map_descriptor(
         read_big_endian_word(descriptor_bytes, 0x10U);
     descriptor.terrain_y_inclusive_lower =
         read_big_endian_word(descriptor_bytes, 0x12U);
-    std::copy(event_table_bytes.begin(), event_table_bytes.end(),
-              descriptor.event_mode_table.begin());
+    if (event_table_bytes.has_value()) {
+        descriptor.event_table_available = true;
+        std::copy(event_table_bytes->begin(), event_table_bytes->end(),
+                  descriptor.event_mode_table.begin());
+    }
     return descriptor;
 }
 
@@ -227,12 +293,6 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
         catalog, kSceneProfileTableAlias,
         kFieldSceneProfileCount * kFieldSceneProfileByteCount,
         result.errors);
-    const auto mode0_collision_rectangles = read_record_bytes(
-        catalog, kMode0TerrainCollisionRectanglesAlias,
-        kFieldMode0TerrainCollisionRectangleByteCount, result.errors);
-    const auto mode0_event_table = read_record_bytes(
-        catalog, kMode0EventTableAlias, kFieldMapEventTableByteCount,
-        result.errors);
     const auto movement_direction_table = read_record_bytes(
         catalog, kFieldMovementDirectionTableAlias,
         kFieldMovementDirectionTableByteCount, result.errors);
@@ -245,36 +305,12 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
     const auto movement_route_table = read_record_bytes(
         catalog, kFieldMovementRouteTableAlias, kFieldMovementRouteByteCount,
         result.errors);
-    const auto terrain_layer_a = read_record_bytes(
-        catalog, kMode2TerrainLayerAAlias, kFieldSessionTerrainLayerByteCount,
-        result.errors);
-    const auto terrain_layer_b = read_record_bytes(
-        catalog, kMode2TerrainLayerBAlias, kFieldSessionTerrainLayerByteCount,
-        result.errors);
-    const auto terrain_stream = read_record_bytes(
-        catalog, kMode2TerrainStreamAlias, kFieldSessionTerrainStreamByteCount,
-        result.errors);
-    const auto mode2_descriptor = read_record_bytes(
-        catalog, kMode2DescriptorAlias, kFieldMapDescriptorByteCount,
-        result.errors);
-    const auto mode2_collision_rectangles = read_record_bytes(
-        catalog, kMode2TerrainCollisionRectanglesAlias,
-        kFieldMode2TerrainCollisionRectangleByteCount, result.errors);
-    const auto mode2_event_table = read_record_bytes(
-        catalog, kMode2EventTableAlias, kFieldMapEventTableByteCount,
-        result.errors);
     if (!action_profiles.has_value() || !mode_selection.has_value() ||
         !scene_profiles.has_value() ||
-        !mode0_collision_rectangles.has_value() ||
-        !mode0_event_table.has_value() ||
         !movement_direction_table.has_value() ||
         !collision_probe_offset_banks.has_value() ||
         !controller_heading_table.has_value() ||
-        !movement_route_table.has_value() ||
-        !terrain_layer_a.has_value() || !terrain_layer_b.has_value() ||
-        !terrain_stream.has_value() || !mode2_descriptor.has_value() ||
-        !mode2_collision_rectangles.has_value() ||
-        !mode2_event_table.has_value()) {
+        !movement_route_table.has_value()) {
         return result;
     }
 
@@ -298,21 +334,7 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
         assets.scene_profile_table_source[scene_id] =
             decode_scene_profile(profile_bytes);
     }
-    assets.mode0_descriptor =
-        decode_field_map_descriptor(
-            std::vector<std::uint8_t>(
-                scene_profiles->begin(),
-                scene_profiles->begin() +
-                    static_cast<std::ptrdiff_t>(kFieldSceneProfileByteCount)),
-            *mode0_event_table);
-    assets.mode0_terrain_collision_rectangles =
-        decode_field_terrain_collision_rectangles(
-            *mode0_collision_rectangles,
-            kFieldMode0TerrainCollisionRectangleCount);
     bool rebuild_requested = true;
-    rebuild_terrain_collision_map(
-        assets.mode0_terrain_collision_map, rebuild_requested,
-        assets.mode0_terrain_collision_rectangles, [](auto&) {});
     assets.field_movement_direction_offsets =
         decode_field_movement_direction_offsets(*movement_direction_table);
     assets.field_collision_probe_offset_banks =
@@ -321,66 +343,127 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
         decode_field_controller_heading_table(*controller_heading_table);
     assets.field_movement_routes =
         decode_field_movement_routes(*movement_route_table);
-    assets.mode2_terrain_layer_a_source.reserve(
-        kFieldSessionTerrainLayerWordCount);
-    assets.mode2_terrain_layer_b_source.reserve(
-        kFieldSessionTerrainLayerWordCount);
-    for (std::size_t offset = 0; offset < terrain_layer_a->size();
-         offset += sizeof(std::uint16_t)) {
-        assets.mode2_terrain_layer_a_source.push_back(
-            read_big_endian_word(*terrain_layer_a, offset));
-        assets.mode2_terrain_layer_b_source.push_back(
-            read_big_endian_word(*terrain_layer_b, offset));
+    for (std::size_t scene_id = 0; scene_id < kFieldSceneProfileCount;
+         ++scene_id) {
+        const auto layer_a = read_record_bytes(
+            catalog,
+            field_scene_resource_alias(scene_id, "terrain.layer.a").c_str(),
+            kFieldSessionTerrainLayerByteCount, result.errors);
+        const auto layer_b = read_record_bytes(
+            catalog,
+            field_scene_resource_alias(scene_id, "terrain.layer.b").c_str(),
+            kFieldSessionTerrainLayerByteCount, result.errors);
+        const auto terrain_stream = read_variable_record_bytes(
+            catalog, field_scene_resource_alias(scene_id, "terrain.stream"),
+            result.errors);
+        const auto descriptor = read_record_bytes(
+            catalog,
+            field_scene_resource_alias(scene_id, "descriptor").c_str(),
+            kFieldMapDescriptorByteCount, result.errors);
+        const auto collision_rectangles = read_variable_record_bytes(
+            catalog,
+            field_scene_resource_alias(scene_id,
+                                       "terrain.collision.rectangles"),
+            result.errors);
+        const auto event_table = read_optional_record_bytes(
+            catalog, field_scene_resource_alias(scene_id, "event.table"),
+            kFieldMapEventTableByteCount, result.errors);
+        if (!layer_a.has_value() || !layer_b.has_value() ||
+            !terrain_stream.has_value() || !descriptor.has_value() ||
+            !collision_rectangles.has_value()) {
+            continue;
+        }
+        if (collision_rectangles->size() == 0U ||
+            collision_rectangles->size() % 10U != 0U) {
+            result.errors.emplace_back(
+                "field-scene collision record stream is not record-aligned: " +
+                std::to_string(scene_id));
+            continue;
+        }
+
+        FieldSceneSourceRecord scene;
+        scene.scene_reference = static_cast<std::uint16_t>(scene_id);
+        scene.terrain_layer_a_source.reserve(
+            kFieldSessionTerrainLayerWordCount);
+        scene.terrain_layer_b_source.reserve(
+            kFieldSessionTerrainLayerWordCount);
+        for (std::size_t offset = 0; offset < layer_a->size();
+             offset += sizeof(std::uint16_t)) {
+            scene.terrain_layer_a_source.push_back(
+                read_big_endian_word(*layer_a, offset));
+            scene.terrain_layer_b_source.push_back(
+                read_big_endian_word(*layer_b, offset));
+        }
+        scene.terrain_stream_source = *terrain_stream;
+        scene.descriptor = decode_field_map_descriptor(*descriptor, event_table);
+        scene.terrain_collision_rectangles =
+            decode_field_terrain_collision_rectangles(
+                *collision_rectangles, collision_rectangles->size() / 10U);
+        rebuild_requested = true;
+        rebuild_terrain_collision_map(
+            scene.terrain_collision_map, rebuild_requested,
+            scene.terrain_collision_rectangles, [](auto&) {});
+        assets.field_scene_resources[scene_id] = std::move(scene);
     }
-    assets.mode2_terrain_stream_source = *terrain_stream;
-    assets.mode2_descriptor =
-        decode_field_map_descriptor(*mode2_descriptor, *mode2_event_table);
-    assets.mode2_terrain_collision_rectangles =
-        decode_field_terrain_collision_rectangles(
-            *mode2_collision_rectangles,
-            kFieldMode2TerrainCollisionRectangleCount);
-    rebuild_requested = true;
-    rebuild_terrain_collision_map(
-        assets.mode2_terrain_collision_map, rebuild_requested,
-        assets.mode2_terrain_collision_rectangles, [](auto&) {});
+    for (std::size_t scene_id = 0; scene_id < kFieldSceneProfileCount;
+         ++scene_id) {
+        if (!assets.field_scene_resources[scene_id].has_value()) {
+            result.errors.emplace_back(
+                "field-scene resource set is incomplete at scene " +
+                std::to_string(scene_id));
+        }
+    }
+    if (!result.errors.empty()) {
+        return result;
+    }
     result.assets = std::move(assets);
     return result;
 }
 
-FieldSceneBufferInput make_initial_mode2_field_scene_input(
-    const FieldSessionSourceAssets& assets) {
+std::optional<FieldSceneBufferInput> make_field_scene_input(
+    const FieldSessionSourceAssets& assets,
+    const std::uint16_t scene_reference) {
+    if (scene_reference >= kFieldSceneProfileCount ||
+        !assets.field_scene_resources[scene_reference].has_value()) {
+        return std::nullopt;
+    }
+    const auto& scene = *assets.field_scene_resources[scene_reference];
     FieldSceneBufferInput input;
     input.scene_profiles = assets.scene_profile_table_source;
     input.scene_profile_table_available = true;
-    input.scene_reference = 2U;
-    input.terrain_stream = assets.mode2_terrain_stream_source;
-    input.layer_a = assets.mode2_terrain_layer_a_source;
-    input.layer_b = assets.mode2_terrain_layer_b_source;
+    input.scene_reference = scene_reference;
+    input.terrain_stream = scene.terrain_stream_source;
+    input.layer_a = scene.terrain_layer_a_source;
+    input.layer_b = scene.terrain_layer_b_source;
     input.source_metadata.available = true;
-    // The game loop writes FFDDC4=2 before 0x03084. That routine preserves
-    // the scene id and indexes pointer-table row 2; the mode-2 descriptor is
-    // therefore the startup scene's own metadata, not the row-0 profile.
     input.source_metadata.initial_camera_x_fixed =
-        assets.mode2_descriptor.initial_camera_x_fixed;
+        scene.descriptor.initial_camera_x_fixed;
     input.source_metadata.initial_camera_y_fixed =
-        assets.mode2_descriptor.initial_camera_y_fixed;
+        scene.descriptor.initial_camera_y_fixed;
     input.source_metadata.initial_field_records =
-        assets.mode2_descriptor.initial_field_records;
+        scene.descriptor.initial_field_records;
     input.source_metadata.terrain_x_exclusive_upper =
-        assets.mode2_descriptor.terrain_x_exclusive_upper;
+        scene.descriptor.terrain_x_exclusive_upper;
     input.source_metadata.terrain_y_exclusive_upper =
-        assets.mode2_descriptor.terrain_y_exclusive_upper;
+        scene.descriptor.terrain_y_exclusive_upper;
     input.source_metadata.terrain_x_inclusive_lower =
-        assets.mode2_descriptor.terrain_x_inclusive_lower;
+        scene.descriptor.terrain_x_inclusive_lower;
     input.source_metadata.terrain_y_inclusive_lower =
-        assets.mode2_descriptor.terrain_y_inclusive_lower;
-    input.source_metadata.event_mode_table =
-        assets.mode2_descriptor.event_mode_table;
+        scene.descriptor.terrain_y_inclusive_lower;
+    input.source_metadata.event_table_available =
+        scene.descriptor.event_table_available;
+    input.source_metadata.event_mode_table = scene.descriptor.event_mode_table;
     input.source_metadata.terrain_collision_rectangles =
-        assets.mode2_terrain_collision_rectangles;
+        scene.terrain_collision_rectangles;
     input.source_metadata.terrain_collision_map =
-        assets.mode2_terrain_collision_map;
+        scene.terrain_collision_map;
     return input;
+}
+
+FieldSceneBufferInput make_initial_mode2_field_scene_input(
+    const FieldSessionSourceAssets& assets) {
+    const auto input = make_field_scene_input(assets, 2U);
+    return input.has_value() ? *input : FieldSceneBufferInput{};
 }
 
 } // namespace shadowrun::ghidra_conversion::integration

@@ -30,14 +30,14 @@ constexpr std::size_t kFieldSessionTerrainLayerByteCount =
 // header expands to 0x4F40 bytes; the old 0x3500 size belonged to the row-0
 // profile's 0x188AFC stream and was another symptom of selecting the wrong
 // scene record.
-constexpr std::size_t kFieldSessionTerrainStreamByteCount = 0x4F40U;
+constexpr std::size_t kScene2TerrainStreamByteCount = 0x4F40U;
 constexpr std::size_t kFieldMapDescriptorByteCount = 0x58U;
-constexpr std::size_t kFieldMode0TerrainCollisionRectangleCount = 65U;
-constexpr std::size_t kFieldMode0TerrainCollisionRectangleByteCount =
-    kFieldMode0TerrainCollisionRectangleCount * 10U;
-constexpr std::size_t kFieldMode2TerrainCollisionRectangleCount = 101U;
-constexpr std::size_t kFieldMode2TerrainCollisionRectangleByteCount =
-    kFieldMode2TerrainCollisionRectangleCount * 10U;
+constexpr std::size_t kScene0TerrainCollisionRectangleCount = 65U;
+constexpr std::size_t kScene0TerrainCollisionRectangleByteCount =
+    kScene0TerrainCollisionRectangleCount * 10U;
+constexpr std::size_t kScene2TerrainCollisionRectangleCount = 101U;
+constexpr std::size_t kScene2TerrainCollisionRectangleByteCount =
+    kScene2TerrainCollisionRectangleCount * 10U;
 constexpr std::size_t kFieldMapEventTableByteCount = 32U;
 constexpr std::size_t kFieldMovementDirectionCount = 8U;
 constexpr std::size_t kFieldMovementDirectionTableByteCount =
@@ -76,9 +76,24 @@ struct FieldMapSourceDescriptor {
     std::uint16_t terrain_y_exclusive_upper = 0;
     std::uint16_t terrain_x_inclusive_lower = 0;
     std::uint16_t terrain_y_inclusive_lower = 0;
-    // Copied from the descriptor's event-table pointer.
+    // Copied from the descriptor's event-table pointer when the scene has one.
+    bool event_table_available = false;
     std::array<std::uint8_t, kFieldMapEventTableByteCount>
         event_mode_table{};
+};
+
+struct FieldSceneSourceRecord {
+    // One complete scene-row resource set selected by ROM 0x3232. All source
+    // pointers have been resolved by the offline importer; the conversion
+    // runtime receives only typed host records and direct byte/word vectors.
+    std::uint16_t scene_reference = 0;
+    std::vector<std::uint16_t> terrain_layer_a_source;
+    std::vector<std::uint16_t> terrain_layer_b_source;
+    std::vector<std::uint8_t> terrain_stream_source;
+    FieldMapSourceDescriptor descriptor{};
+    std::vector<TerrainCollisionRectangle>
+        terrain_collision_rectangles;
+    std::array<std::uint8_t, 0x1000> terrain_collision_map{};
 };
 
 // Direct source records extracted from the US ROM. These are host-owned
@@ -93,22 +108,11 @@ struct FieldSessionSourceAssets {
     // complete table as one direct host record; runtime code never follows
     // the ROM pointer table.
     FieldSceneProfileTable scene_profile_table_source{};
-    // ROM 0x16D9A2/0x16ED52, copied by 0x0313A for scene 2. The flagged
-    // 0x170103 source stream is represented separately below after its
-    // 0x01610 source-history contract is verified.
-    std::vector<std::uint16_t> mode2_terrain_layer_a_source;
-    std::vector<std::uint16_t> mode2_terrain_layer_b_source;
-    // Offline result of ROM 0x01610 applied to the flagged scene-2 source
-    // stream at 0x170102; this is direct host data, not a runtime decoder
-    // input or a ROM address token.
-    std::vector<std::uint8_t> mode2_terrain_stream_source;
-    // The row-0 descriptor and its pointed-to collision/event records remain
-    // available for later scene-entry work. Scene 2 has its own descriptor
-    // and is the opening field selected by make_initial_mode2_field_scene_input.
-    FieldMapSourceDescriptor mode0_descriptor{};
-    std::vector<TerrainCollisionRectangle>
-        mode0_terrain_collision_rectangles;
-    std::array<std::uint8_t, 0x1000> mode0_terrain_collision_map{};
+    // One entry for every row in ROM 0x3232. Missing entries are retained as
+    // explicit optionals so a partial extraction cannot silently become a
+    // fabricated field scene.
+    std::array<std::optional<FieldSceneSourceRecord>, kFieldSceneProfileCount>
+        field_scene_resources{};
     // ROM 0x0C002, the eight signed fixed-point direction vectors consumed by
     // the converted 0x0BABC/0x0B77E movement probe path.
     std::array<MovementOffset, kFieldMovementDirectionCount>
@@ -125,15 +129,6 @@ struct FieldSessionSourceAssets {
     // indexes followed by two big-endian fallback direction slots.
     std::array<FieldMovementRouteSourceRecord, kFieldMovementRouteCount>
         field_movement_routes{};
-    // ROM 0x172C80, interpreted as the distinct map-index-2 metadata record.
-    FieldMapSourceDescriptor mode2_descriptor{};
-    // ROM 0x172DAA, five-word records consumed by the terrain-map builder.
-    std::vector<TerrainCollisionRectangle>
-        mode2_terrain_collision_rectangles;
-    // Host projection of the same source rectangles through the converted
-    // ROM 0xEE10 rasterization contract. This is derived conversion state,
-    // not another extracted asset.
-    std::array<std::uint8_t, 0x1000> mode2_terrain_collision_map{};
 };
 
 struct FieldSessionSourceAssetLoadResult {
@@ -150,9 +145,15 @@ struct FieldSessionSourceAssetLoadResult {
 FieldSessionSourceAssetLoadResult load_field_session_source_assets(
     const ConversionAssetCatalog& catalog);
 
-// Build the initial mode-2 field-scene input from already-loaded direct
-// records. This is the conversion seam used by the separate Qt composition
-// layer; it does not consult the ROM or reconstruct a source address table.
+// Build a selected field-scene input from already-loaded direct records. This
+// is the conversion seam used by the separate Qt composition layer; it does
+// not consult the ROM or reconstruct a source address table.
+std::optional<FieldSceneBufferInput> make_field_scene_input(
+    const FieldSessionSourceAssets& assets, std::uint16_t scene_reference);
+
+// Compatibility-named convenience for the ROM's opening scene (row 2). An
+// incomplete source catalog returns an empty input; the bootstrap's normal
+// validation then reports source_data_missing rather than inventing records.
 FieldSceneBufferInput make_initial_mode2_field_scene_input(
     const FieldSessionSourceAssets& assets);
 

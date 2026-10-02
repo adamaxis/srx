@@ -142,14 +142,11 @@ contracts. On the New Game path, `field_ready` now invokes the separate
 `qt_runtime/src/field_scene_runtime.cpp` composition adapter. That adapter
 feeds the extracted action/mode/profile/descriptor/collision/event/terrain
 records into the converted field-session bootstrap and paints the direct
-field map/HUD assets. The startup field mode is `2`, while its normal
-profile's `0x186EDC/0x187CEC` resources are descriptor row `0`, so the
-initial host map is `field.maps.mode.0`; this is not a fallback to
-`field.maps.mode.2`. The startup scene now uses the row-0 descriptor fields
-and its own collision/event records. The separate row-2 descriptor and its
-101 collision records are also loaded as direct conversion inputs for later
-map selection; neither is silently substituted for the startup scene. The Qt
-field bridge now also accepts held arrow keys as the source D-pad nibble,
+field map/HUD assets. The startup scene is scene `2`, so the adapter selects
+`field.maps.mode.2` and the matching `records.field.scenes.scene.02.*` source
+records. A loaded save selects its restored `FFDDC4` scene id through the same
+typed scene-resource table instead of rejecting every non-2 save or silently
+substituting row 0. The Qt field bridge now also accepts held arrow keys as the source D-pad nibble,
 loads the extracted `0x19D2` heading table and `0x0C002` movement vectors,
 and drives the converted heading-slew, terrain-probe, directional-probe, and
 movement-step functions. A right-input smoke pass advances the selected

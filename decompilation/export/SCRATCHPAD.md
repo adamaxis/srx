@@ -139,28 +139,30 @@ conversion keeps the row-2 descriptor camera (`0x3400/0x2280`) separate from
 the currently selected row-0 scene-profile descriptor (`0x0A00/0x0280`)
 instead of forcing one into the other.
 
-The offline extractor writes the three direct records under
-`assets/records/field/` with aliases
-`records.field.mode.2.descriptor`,
-`records.field.mode.2.terrain.collision.rectangles`, and
-`records.field.mode.2.event.table`. The conversion loader decodes them into
-`FieldSceneSourceMetadata`, including the typed rectangle list and the host
-collision-map projection. This metadata is now carried through
-`FieldSceneBufferInput`/`FieldSceneBuffers`. The current field-mode-2 startup
-input intentionally carries the row-0 descriptor from
-`scene-profile-normal.bin` plus its 65 records at `0x0D55DE` and event table at
-`0x0D54B2`; the row-2 data remains available for a later map-selection path.
-Movement probes and dynamic entity presentation remain the next source-backed
-consumers rather than being guessed in the Qt bridge.
+The offline extractor writes a complete direct resource set for every row in
+the `0x3232` scene table under
+`assets/records/field/scenes/scene-00` through `scene-55`, with stable aliases
+in `resources.tsv` and an audit index at `records/field/scenes/index.tsv`.
+Each scene has its fixed terrain layers, exact raw-table or expanded
+compressed metatile bytes, descriptor, collision records through the source
+sentinel, and an event table only when its descriptor supplies one. The
+conversion loader requires all 56 sets and decodes the selected set into
+`FieldSceneSourceMetadata`, including the typed rectangle list and host
+collision-map projection. This metadata is carried through
+`FieldSceneBufferInput`/`FieldSceneBuffers`; New Game selects scene 2 and a
+loaded save selects its restored `FFDDC4` scene id. The old row-0/mode-2
+substitution is no longer part of the Qt bridge. Movement probes and dynamic
+entity presentation remain the next source-backed consumers rather than being
+guessed in the Qt bridge.
 
-The startup distinction is explicit in the conversion source. The normal
-profile selected by `0x03084` is the first pointer-table row at `0x3232`, and
-its descriptor fields are `0x0A00/0x0280` camera, bounds `0x0770/0x03BC`, and
-initial runner positions `0x1310/0x0980`, `0x1220/0x08C0`, and
-`0x1400/0x08C0`. Its collision records are the 65 records at `0x0D55DE`,
-terminated by the sentinel at `0x0D5868`; its 32-byte event table is at
-`0x0D54B2`. These records are separate direct assets, not a second copy of
-the 48-word normal profile.
+The startup distinction is explicit in the conversion source. The opening
+scene id is `2`, whose descriptor fields are `0x3400/0x2280`, bounds
+`0x0754/0x0518`, and initial runner positions `0x3CE0/0x2D00`,
+`0x3BA0/0x2D00`, and `0x3DA0/0x2D00`; its 101 collision records begin at
+`0x172DAA` and its event table is at `0x172CDC`. Row 0 remains a separate
+scene resource (`0x0D5456`, 65 collision records at `0x0D55DE`, event table at
+`0x0D54B2`) and is no longer substituted into the opening scene. A save’s
+`FFDDC4` scene id selects the corresponding extracted row and map alias.
 
 ## Field movement direction table
 

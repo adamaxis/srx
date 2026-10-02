@@ -941,7 +941,7 @@ void write_bmp32(const std::string& path, const RgbaImage& image) {
     const auto file_offset = 14U + 40U;
     std::ofstream output(path, std::ios::binary);
     if (!output) {
-        throw std::runtime_error("cannot open BMP output");
+        throw std::runtime_error("cannot open BMP output: " + path);
     }
     output.put('B');
     output.put('M');

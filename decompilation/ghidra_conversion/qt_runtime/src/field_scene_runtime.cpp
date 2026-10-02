@@ -28,10 +28,10 @@
 namespace shadowrun::ghidra_conversion::qt_runtime {
 namespace {
 
-// The game loop seeds FFDDC4 with scene 2 before 0x03084. The converted
-// profile/table and direct map must therefore start on mode 2; mode 0 is the
-// separate pointer-table row at 0x0D5456, not the opening field.
-constexpr std::string_view kInitialFieldMapAlias = "field.maps.mode.2";
+// The game loop seeds FFDDC4 with scene 2 before 0x03084. Loaded saves replace
+// that scene reference with the saved row; both paths use the same typed scene
+// resource selection below.
+constexpr std::uint16_t kInitialFieldSceneReference = 2U;
 constexpr std::string_view kFieldHudAlias = "field.hud.background";
 constexpr std::string_view kFieldHudFaceAliasPrefix = "field.hud.face.";
 constexpr std::string_view kFieldHudItemAliasPrefix = "field.hud.item.";
@@ -1484,16 +1484,18 @@ bool FieldSceneRuntime::bootstrap(
         startup_state.restored_field_state.has_value()
             ? &*startup_state.restored_field_state
             : nullptr;
-    if (restored_field_state != nullptr &&
-        restored_field_state->world_mode != 2U) {
-        failure_ =
-            "loaded-save scene resources are not extracted for world mode " +
-            std::to_string(restored_field_state->world_mode);
-        source_boundary("field.bootstrap.loaded_save_scene_resources_missing");
+    const auto& assets = *startup_state.field_session_source_assets;
+    const auto scene_reference = restored_field_state != nullptr
+                                     ? restored_field_state->world_mode
+                                     : kInitialFieldSceneReference;
+    const auto scene_input = integration::make_field_scene_input(
+        assets, scene_reference);
+    if (!scene_input.has_value()) {
+        failure_ = "field scene resources are not extracted for scene " +
+                   std::to_string(scene_reference);
+        source_boundary("field.bootstrap.field_scene_resources_missing");
         return false;
     }
-
-    const auto& assets = *startup_state.field_session_source_assets;
     field_movement_direction_offsets_ = assets.field_movement_direction_offsets;
     field_collision_probe_offset_banks_ =
         assets.field_collision_probe_offset_banks;
@@ -1563,8 +1565,7 @@ bool FieldSceneRuntime::bootstrap(
         assets.action_selection_profile_source;
     input_.field_mode_selection_state_source =
         assets.field_mode_selection_state_source;
-    input_.field_scene =
-        integration::make_initial_mode2_field_scene_input(assets);
+    input_.field_scene = *scene_input;
     if (restored_field_state != nullptr) {
         std::array<SceneRunnerPosition, 3> restored_positions{};
         for (std::size_t index = 0; index < restored_positions.size();
@@ -1624,8 +1625,10 @@ bool FieldSceneRuntime::bootstrap(
     // every prompt or reaching back into the ROM.
     (void)field_dialogue_.load_assets(startup_state.asset_catalog.catalog);
 
-    if (!load_image(startup_state.asset_catalog.catalog,
-                    kInitialFieldMapAlias, field_map_) ||
+    const auto field_map_alias =
+        std::string("field.maps.mode.") + std::to_string(scene_reference);
+    if (!load_image(startup_state.asset_catalog.catalog, field_map_alias,
+                    field_map_) ||
         !load_image(startup_state.asset_catalog.catalog, kFieldHudAlias,
                     field_hud_) ||
         !load_field_hud_overlays(startup_state.asset_catalog.catalog) ||

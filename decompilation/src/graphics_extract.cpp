@@ -401,6 +401,79 @@ DecodedSourceByteStream decode_source_byte_stream_record(
     return result;
 }
 
+std::vector<std::uint8_t> read_field_scene_metatile_record(
+    const std::vector<std::uint8_t>& rom,
+    const shadowrun::graphics::GenesisFieldModeResources& resources) {
+    if (resources.metatile_encoding ==
+        shadowrun::graphics::GenesisMetatileEncoding::CompressedResource) {
+        // The source pointer is an offline extraction input. The native
+        // runtime receives the expanded bytes and never runs 0x01610.
+        return decode_source_byte_stream_record(
+                   rom, resources.metatile_stream_offset)
+            .bytes;
+    }
+
+    const auto map_entry_count = static_cast<std::size_t>(
+        resources.tilemap_width) * resources.tilemap_height;
+    std::size_t required_metatile_count = 0U;
+    const auto scan_tilemap = [&](const std::size_t tilemap_offset) {
+        if (tilemap_offset > rom.size() ||
+            map_entry_count > (rom.size() - tilemap_offset) / 2U) {
+            throw std::runtime_error(
+                "field scene tilemap exceeds input image");
+        }
+        for (std::size_t entry = 0; entry < map_entry_count; ++entry) {
+            const auto name_word = read_big_endian_word(
+                rom, tilemap_offset + entry * sizeof(std::uint16_t));
+            required_metatile_count = std::max(
+                required_metatile_count,
+                static_cast<std::size_t>(name_word) + 1U);
+        }
+    };
+    scan_tilemap(resources.primary_tilemap_offset);
+    scan_tilemap(resources.secondary_tilemap_offset);
+
+    const auto byte_count = required_metatile_count * 32U;
+    if (resources.metatile_stream_offset > rom.size() ||
+        byte_count > rom.size() - resources.metatile_stream_offset) {
+        throw std::runtime_error(
+            "field scene raw metatile table exceeds input image");
+    }
+    return std::vector<std::uint8_t>(
+        rom.begin() + static_cast<std::ptrdiff_t>(
+                          resources.metatile_stream_offset),
+        rom.begin() + static_cast<std::ptrdiff_t>(
+                          resources.metatile_stream_offset + byte_count));
+}
+
+std::vector<std::uint8_t> read_field_scene_collision_records(
+    const std::vector<std::uint8_t>& rom,
+    const shadowrun::graphics::GenesisFieldModeResources& resources) {
+    std::vector<std::uint8_t> records;
+    auto cursor = resources.terrain_record_offset;
+    for (;;) {
+        const auto x_start = read_big_endian_word(rom, cursor);
+        if ((x_start & 0x8000U) != 0U) {
+            return records;
+        }
+        if (cursor > rom.size() || rom.size() - cursor < 10U) {
+            throw std::runtime_error(
+                "field scene terrain collision record is truncated");
+        }
+        records.insert(records.end(),
+                       rom.begin() + static_cast<std::ptrdiff_t>(cursor),
+                       rom.begin() + static_cast<std::ptrdiff_t>(cursor + 10U));
+        cursor += 10U;
+    }
+}
+
+std::string field_scene_record_directory(const std::uint16_t scene_id) {
+    std::ostringstream result;
+    result << "records/field/scenes/scene-" << std::setfill('0')
+           << std::setw(2) << scene_id;
+    return result.str();
+}
+
 void extract_field_session_record_assets(
     const std::vector<std::uint8_t>& rom,
     const std::filesystem::path& root) {
@@ -437,13 +510,6 @@ void extract_field_session_record_assets(
     }
     write_host_record(scene_profiles, root,
                       "records/field/scene-profiles.bin");
-    // Row 0 remains a separate direct descriptor for later scene-entry work;
-    // scene 2 is the opening field and has its own descriptor below.
-    write_rom_record(
-        rom, root, "records/field/mode-0-terrain-collision-rectangles.bin",
-        0x0D55DEU, 65U * 10U);
-    write_rom_record(rom, root, "records/field/mode-0-event-table.bin",
-                     0x0D54B2U, 32U);
     // ROM 0x0BABC loads the eight signed fixed-point movement vectors from
     // 0x0C002 before 0x0B77E probes the candidate position. Keep this as one
     // direct source record; the conversion loader owns its typed pairs.
@@ -514,37 +580,62 @@ void extract_field_session_record_assets(
     }
     write_host_record(movement_route_table, root,
                       "records/field/entity-movement-route-table.bin");
-    // Field mode 2 selects pointer-table row 2. Its profile points at the
-    // two fixed terrain work layers and the flagged source stream below. The
-    // source copies exactly 0xE10 words from each pointer during
-    // field-scene preparation; preserve those reads as direct host records.
-    write_rom_record(rom, root, "records/field/mode-2-terrain-layer-a.bin",
-                     0x16D9A2U, 0xE10U * sizeof(std::uint16_t));
-    write_rom_record(rom, root, "records/field/mode-2-terrain-layer-b.bin",
-                     0x16ED52U, 0xE10U * sizeof(std::uint16_t));
-    const auto mode2_stream =
-        decode_source_byte_stream_record(rom, 0x170102U);
-    if (mode2_stream.bytes.size() != 0x4F40U) {
-        throw std::runtime_error("mode-2 terrain stream boundary changed");
+    // 0x03084/0x0313A can select every row in the 0x3232 scene table. Keep
+    // the complete direct resource set available to the conversion layer:
+    // fixed terrain work buffers, offline-expanded metatile bytes, the map
+    // descriptor, collision records through the source sentinel, and the
+    // optional event table. The runtime consumes these files by scene id and
+    // never follows the source pointers or decodes 0x01610.
+    std::filesystem::create_directories(root / "records/field/scenes");
+    std::ofstream scene_index(
+        root / "records/field/scenes/index.tsv", std::ios::binary);
+    if (!scene_index) {
+        throw std::runtime_error("cannot create field scene resource index");
     }
-    write_host_record(mode2_stream.bytes, root,
-                      "records/field/mode-2-terrain-stream.bin");
-    // This is the separate map-index-2 descriptor. Its initial camera/runner
-    // state, terrain bounds, and source pointers are useful to later map
-    // selection, but must not be substituted for the row-0 startup profile.
-    // The pointers themselves remain extraction provenance; the conversion
-    // layer receives the pointed-to records as separate host assets below.
-    write_rom_record(rom, root, "records/field/mode-2-descriptor.bin",
-                     0x172C80U, 0x58U);
-    // ROM 0xEE10 consumes five-word collision records until the 0x8000
-    // sentinel. Mode 2 has 101 records followed by that sentinel at
-    // 0x17319C, so retain the complete source table including no terminator
-    // byte in the record stream itself.
-    write_rom_record(
-        rom, root, "records/field/mode-2-terrain-collision-rectangles.bin",
-        0x172DAAU, 101U * 10U);
-    write_rom_record(rom, root, "records/field/mode-2-event-table.bin",
-                     0x172CDCU, 32U);
+    scene_index
+        << "scene_id\trecord_offset\tmetatile_stream\tmetatile_encoding"
+           "\tlayer_a\tlayer_b\tterrain_stream\tdescriptor"
+           "\tcollision_rectangles\tevent_table\n";
+    for (std::uint16_t scene_id = 0;
+         scene_id < shadowrun::rom::kFieldModeCount; ++scene_id) {
+        const auto resources =
+            shadowrun::graphics::read_genesis_field_mode_resources(rom, scene_id);
+        const auto directory = field_scene_record_directory(scene_id);
+        const auto layer_byte_count =
+            0xE10U * sizeof(std::uint16_t);
+        const auto layer_a = directory + "/terrain-layer-a.bin";
+        const auto layer_b = directory + "/terrain-layer-b.bin";
+        const auto terrain_stream = directory + "/terrain-stream.bin";
+        const auto descriptor = directory + "/descriptor.bin";
+        const auto collision = directory + "/terrain-collision-rectangles.bin";
+        const auto event = directory + "/event-table.bin";
+        write_rom_record(rom, root, layer_a,
+                         resources.primary_tilemap_offset, layer_byte_count);
+        write_rom_record(rom, root, layer_b,
+                         resources.secondary_tilemap_offset, layer_byte_count);
+        write_host_record(read_field_scene_metatile_record(rom, resources),
+                          root, terrain_stream);
+        write_rom_record(rom, root, descriptor, resources.record_offset, 0x58U);
+        write_host_record(read_field_scene_collision_records(rom, resources),
+                          root, collision);
+        if (resources.event_table_offset != 0U) {
+            write_rom_record(rom, root, event, resources.event_table_offset, 32U);
+        }
+        scene_index << scene_id << "\t0x" << std::uppercase << std::hex
+                    << resources.record_offset << "\t0x"
+                    << resources.metatile_stream_offset << "\t"
+                    << (resources.metatile_encoding ==
+                                shadowrun::graphics::GenesisMetatileEncoding::
+                                    RawNameWords
+                            ? "raw-name-words"
+                            : "compressed-resource")
+                    << std::dec << "\t" << layer_a << "\t" << layer_b << "\t"
+                    << terrain_stream << "\t" << descriptor << "\t" << collision;
+        if (resources.event_table_offset != 0U) {
+            scene_index << "\t" << event;
+        }
+        scene_index << '\n';
+    }
 }
 
 struct CroppedAsset {
@@ -867,16 +958,17 @@ void write_asset_readme(const std::filesystem::path& root) {
               "from an\n"
               "internal channel restart.\n\n"
            << "Startup/session records are imported separately under "
-              "`records/startup/` by `shadowrun_ghidra_startup_record_extract` "
-              "and listed in `resources.tsv`. Field startup records remain "
-              "individually named under `records/field/`; the complete 56-row "
-              "scene profile table is `records/field/scene-profiles.bin`, and "
-              "scene 2 owns the opening field terrain records. The map-index-0 "
-              "startup collision/event records and the separate map-index-2 "
-              "descriptor/collision/event records are direct source records; "
-              "the conversion loader interprets each into typed field state "
-              "and host collision maps without making the runtime read ROM "
-              "addresses. The source "
+               "`records/startup/` by `shadowrun_ghidra_startup_record_extract` "
+               "and listed in `resources.tsv`. Field startup records remain "
+               "individually named under `records/field/`; the complete 56-row "
+               "scene profile table is `records/field/scene-profiles.bin`, and "
+               "the complete field resource set is grouped under "
+               "`records/field/scenes/scene-00` through `scene-55`. Each scene "
+               "has its fixed terrain layers, offline-expanded metatile bytes, "
+               "descriptor, collision records, and optional event table listed "
+               "by a stable alias in `resources.tsv`. The conversion loader "
+               "interprets each into typed field state and host collision maps "
+               "without making the runtime read ROM addresses. The source "
                "movement vector table at `0xC002` is likewise one named direct "
                "record consumed as typed directional offsets by the conversion "
                "layer. The `0xBD34` collision-probe offset banks are kept as "
@@ -919,8 +1011,12 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
                 }
                 start = end + 1U;
             }
+            const auto legacy_field_scene_record =
+                fields.size() == 5U &&
+                (fields[0].rfind("records.field.mode.0.", 0U) == 0U ||
+                 fields[0].rfind("records.field.mode.2.", 0U) == 0U);
             if (fields.size() == 5U && fields[0] != "state" &&
-                fields[2] != "image" &&
+                fields[2] != "image" && !legacy_field_scene_record &&
                 std::filesystem::is_regular_file(root / fields[1])) {
                 if (fields[2] == "state") {
                     preserved_state_rows.push_back(prior_line);
@@ -954,8 +1050,8 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
     };
     emit_preserved_rows(preserved_state_rows);
     const auto emit_generated_state_row = [&output, &aliases, &root](
-                                              const char* alias,
-                                              const char* relative) {
+                                              const std::string& alias,
+                                              const std::string& relative) {
         if (!std::filesystem::is_regular_file(root / relative)) {
             throw std::runtime_error("generated source record is missing: " +
                                      std::string(relative));
@@ -974,12 +1070,6 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
         "records.field.scene.profiles",
         "records/field/scene-profiles.bin");
     emit_generated_state_row(
-        "records.field.mode.0.terrain.collision.rectangles",
-        "records/field/mode-0-terrain-collision-rectangles.bin");
-    emit_generated_state_row(
-        "records.field.mode.0.event.table",
-        "records/field/mode-0-event-table.bin");
-    emit_generated_state_row(
         "records.field.entity.movement.direction.table",
         "records/field/entity-movement-direction-table.bin");
     emit_generated_state_row(
@@ -988,27 +1078,29 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
     emit_generated_state_row(
         "records.field.entity.controller.heading.table",
         "records/field/entity-controller-heading-table.bin");
-      emit_generated_state_row(
-          "records.field.entity.movement.route.table",
-          "records/field/entity-movement-route-table.bin");
     emit_generated_state_row(
-        "records.field.mode.2.terrain.layer.a",
-        "records/field/mode-2-terrain-layer-a.bin");
-    emit_generated_state_row(
-        "records.field.mode.2.terrain.layer.b",
-        "records/field/mode-2-terrain-layer-b.bin");
-    emit_generated_state_row(
-        "records.field.mode.2.terrain.stream",
-        "records/field/mode-2-terrain-stream.bin");
-    emit_generated_state_row(
-        "records.field.mode.2.descriptor",
-        "records/field/mode-2-descriptor.bin");
-    emit_generated_state_row(
-        "records.field.mode.2.terrain.collision.rectangles",
-        "records/field/mode-2-terrain-collision-rectangles.bin");
-    emit_generated_state_row(
-        "records.field.mode.2.event.table",
-        "records/field/mode-2-event-table.bin");
+        "records.field.entity.movement.route.table",
+        "records/field/entity-movement-route-table.bin");
+    for (std::uint16_t scene_id = 0;
+         scene_id < shadowrun::rom::kFieldModeCount; ++scene_id) {
+        const auto directory = field_scene_record_directory(scene_id);
+        const auto emit_scene_record = [&](const std::string& suffix) {
+            const auto relative = directory + "/" + suffix + ".bin";
+            emit_generated_state_row(
+                shadowrun::resources::alias_for_path(relative), relative);
+        };
+        emit_scene_record("terrain-layer-a");
+        emit_scene_record("terrain-layer-b");
+        emit_scene_record("terrain-stream");
+        emit_scene_record("descriptor");
+        emit_scene_record("terrain-collision-rectangles");
+        const auto event_relative = directory + "/event-table.bin";
+        if (std::filesystem::is_regular_file(root / event_relative)) {
+            emit_generated_state_row(
+                shadowrun::resources::alias_for_path(event_relative),
+                event_relative);
+        }
+    }
     // Startup/session records are extracted by the separate conversion-side
     // record tool, but once present they must remain first-class manifest rows
     // even if --all-assets is rerun from the native graphics importer.

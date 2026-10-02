@@ -2618,11 +2618,9 @@ position pairs after its initial `0x03074` preparation; the typed bootstrap
 then performs `0x028C2` before entering the same 31-frame warm-up. The saved
 camera is aligned to the source `0x80` boundary, and the saved runner pairs
 replace the startup profile's default live positions. The Qt composition layer
-currently accepts that re-entry only for scene 2, because only scene 2's
-terrain layers, decoded stream, descriptor, collision records, and event
-table have been extracted for the field runtime. Other saved scene IDs remain
-an explicit missing-resource boundary rather than being rendered with scene 2
-data.
+selects the matching direct resource set for every extracted scene row, so it
+does not render a non-2 save with scene-2 data. An invalid or incomplete scene
+catalog remains an explicit missing-resource boundary.
 
 The startup menu trace is now also separate from the native port in
 `ghidra_conversion/menus/startup_menu_conversion`. `0x59092` is explicitly
@@ -2933,14 +2931,15 @@ The opening field is scene 2, not the row-0 profile. Its source copies
 `0x16ED52` into the second. Its flagged source stream begins at aligned source
 `0x170102`; the offline implementation follows the actual `0x01610` DBF
 counts, 0x7FF distance mask, overlap-copy behavior, and command lengths and
-produces exactly `0x4F40` bytes. Those direct host records are emitted as
-`mode-2-terrain-layer-a.bin`, `mode-2-terrain-layer-b.bin`, and
-`mode-2-terrain-stream.bin`, exposed through
-`records.field.mode.2.terrain.layer.a`,
-`records.field.mode.2.terrain.layer.b`, and
-`records.field.mode.2.terrain.stream`. Row-0 collision/event records remain
-separate source data for later scene-entry work; no runtime decoder or ROM
-address is needed.
+produces exactly `0x4F40` bytes. The importer now applies the same proven
+boundary rules to every row in the `0x3232` scene table: each scene gets its
+fixed terrain layers, exact raw-table or expanded compressed metatile bytes,
+descriptor, collision records through the ROM sentinel, and an event table
+only when the descriptor supplies one. These direct records live under
+`records/field/scenes/scene-00` through `scene-55`, with an extraction audit
+index at `records/field/scenes/index.tsv` and stable aliases such as
+`records.field.scenes.scene.02.terrain.stream`. No source decoder, pointer
+table, or ROM address enters the runtime.
 
 The `0x13726` mode-selection renderer is now
 `render_mode_selection_panels`. It preserves the four source panel passes,

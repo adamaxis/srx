@@ -57,11 +57,11 @@ void service_display_frame_wrapper(DisplayServiceState& state,
 void write_alternating_word_pair_wrapper(
     const std::function<void()>& write_pair);
 
-// Host-owned interpretation of the mode-2 records that sit beside the
-// selected scene profile. The descriptor/event values and the collision
-// rectangles are direct source data; the rasterized map is the converted
-// 0xEE10 result. Keeping them together makes the field-scene handoff explicit
-// without carrying ROM pointers into the runtime.
+// Host-owned interpretation of the direct records that sit beside the
+// selected scene profile. The descriptor/event values and collision rectangles
+// are direct source data; the rasterized map is the converted 0xEE10 result.
+// Keeping them together makes the field-scene handoff explicit without
+// carrying ROM pointers into the runtime.
 struct FieldSceneSourceMetadata {
     bool available = false;
     std::uint16_t initial_camera_x_fixed = 0;
@@ -71,6 +71,7 @@ struct FieldSceneSourceMetadata {
     std::uint16_t terrain_y_exclusive_upper = 0;
     std::uint16_t terrain_x_inclusive_lower = 0;
     std::uint16_t terrain_y_inclusive_lower = 0;
+    bool event_table_available = false;
     std::array<std::uint8_t, 32> event_mode_table{};
     std::vector<TerrainCollisionRectangle> terrain_collision_rectangles;
     std::array<std::uint8_t, 0x1000> terrain_collision_map{};
