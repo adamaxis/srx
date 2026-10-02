@@ -13,6 +13,7 @@
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -36,6 +37,17 @@ enum class FieldSessionBootstrapResult {
 const char* field_session_bootstrap_phase_name(
     FieldSessionBootstrapPhase phase);
 
+// ROM 0x594E0 restores these live field values after the first 0x03074
+// preparation, then 0x028C2 re-enters the already prepared scene. This is
+// separate from the 0x03084 pending-position selector because the save path
+// writes the live runner records directly.
+struct RestoredFieldSceneInput {
+    std::uint16_t scene_reference = 0;
+    std::uint16_t camera_x = 0;
+    std::uint16_t camera_y = 0;
+    std::array<SceneRunnerPosition, 3> runner_positions{};
+};
+
 struct FieldSessionBootstrapInput {
     // ROM 0x566A2 / source table 0x166AD8: five 0x22-byte action-profile
     // rows used by field actions and entity behavior.
@@ -46,6 +58,9 @@ struct FieldSessionBootstrapInput {
     // Source-derived scene profiles and the two decoded terrain layers used
     // by the 0x03074 -> 0x0313A field-scene preparation path.
     FieldSceneBufferInput field_scene;
+    // Optional 0x594E0 -> 0x028C2 loaded-save re-entry. The field_scene
+    // resources must already correspond to scene_reference.
+    std::optional<RestoredFieldSceneInput> restored_field_scene;
 };
 
 struct FieldSessionBootstrapCallbacks {

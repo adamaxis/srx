@@ -358,6 +358,14 @@ The save data includes the source record fields copied by `0x597EE`/`0x598B0`,
 field/mode words, party records, and a checksum block. Native SRAM must use
 that source structure; a host-only “slot exists” boolean is not valid.
 
+The converted field bootstrap now preserves the successful-load continuation:
+after `0x594E0` restores the saved scene/camera/live-runner records, it runs
+the source `0x028C2` re-entry before the 31-frame field warm-up. The current Qt
+composition accepts this only when the saved scene is mode 2, whose direct
+terrain and scene records are available. A different saved scene reports a
+missing source-resource boundary until its own layer/stream/descriptor records
+are extracted; it is never silently shown with mode-2 terrain.
+
 ### Archetype: `0x59248` and `0x42B0`
 
 The selector bound is `0..2`. The visible choices are:

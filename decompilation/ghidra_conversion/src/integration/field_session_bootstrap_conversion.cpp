@@ -179,6 +179,34 @@ FieldSessionBootstrapResult bootstrap_field_session(
         return fail(state, callbacks,
                     FieldSessionBootstrapResult::source_data_missing);
     }
+
+    if (input.restored_field_scene.has_value()) {
+        const auto& restored = *input.restored_field_scene;
+        // 0x594E0 writes FFDDC4 after its 0x03074 call. Do not draw a
+        // different area's resources merely because the save names another
+        // scene; that resource set has to be supplied by the caller first.
+        if (restored.scene_reference >= kFieldSceneProfileCount ||
+            restored.scene_reference != input.field_scene.scene_reference) {
+            return fail(state, callbacks,
+                        FieldSessionBootstrapResult::source_data_missing);
+        }
+
+        // The saved camera and live runner positions are followed by
+        // 0x028C2, which aligns the camera to the source 0x80 boundary. They
+        // do not pass through the pending-position consume in 0x03084.
+        state.field_scene_buffers.scene_reference =
+            restored.scene_reference;
+        state.field_scene_buffers.camera_x = restored.camera_x;
+        state.field_scene_buffers.camera_y = restored.camera_y;
+        state.field_scene_buffers.source_metadata.initial_field_records =
+            restored.runner_positions;
+        state.field_scene_entry.camera_x = restored.camera_x;
+        state.field_scene_entry.camera_y = restored.camera_y;
+        reinitialize_field_scene_entry(state.field_scene_entry,
+                                       scene_entry_callbacks);
+        state.field_scene_buffers.camera_x = state.field_scene_entry.camera_x;
+        state.field_scene_buffers.camera_y = state.field_scene_entry.camera_y;
+    }
     state.field_scene_entry_complete = true;
 
     set_phase(state, callbacks, FieldSessionBootstrapPhase::warmup);

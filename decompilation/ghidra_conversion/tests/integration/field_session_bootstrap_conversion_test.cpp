@@ -232,6 +232,40 @@ int main() {
                 FieldSessionBootstrapPhase::warmup,
                 FieldSessionBootstrapPhase::field_ready}));
 
+    // Loaded-save entry restores the camera and live runner records after
+    // the first scene preparation, then performs the source 0x028C2 re-entry
+    // before the same 31-frame warm-up.
+    auto restored_input = input;
+    restored_input.restored_field_scene = RestoredFieldSceneInput{
+        6U,
+        0x1234U,
+        0x5678U,
+        {{{0x2345U, 0x3456U}, {0x4567U, 0x5678U}, {0x6789U, 0x789AU}}}};
+    Observations restored_observations;
+    auto restored_callbacks = make_callbacks(restored_observations);
+    FieldSessionBootstrapState restored_state;
+    assert(bootstrap_field_session(restored_input, restored_state,
+                                   restored_callbacks) ==
+           FieldSessionBootstrapResult::field_ready);
+    assert(restored_state.field_scene_buffers.scene_reference == 6U &&
+           restored_state.field_scene_buffers.camera_x == 0x1200U &&
+           restored_state.field_scene_buffers.camera_y == 0x5700U &&
+           restored_state.field_scene_buffers.source_metadata
+                   .initial_field_records[0]
+                   .x == 0x2345U &&
+           restored_state.field_scene_buffers.source_metadata
+                   .initial_field_records[0]
+                   .y == 0x3456U &&
+           restored_observations.camera_calls == 31U);
+
+    auto mismatched_restore = restored_input;
+    mismatched_restore.restored_field_scene->scene_reference = 2U;
+    FieldSessionBootstrapState mismatched_state;
+    assert(bootstrap_field_session(mismatched_restore, mismatched_state,
+                                   restored_callbacks) ==
+           FieldSessionBootstrapResult::source_data_missing);
+    assert(mismatched_state.phase == FieldSessionBootstrapPhase::failed);
+
     auto incomplete_input = input;
     incomplete_input.field_mode_selection_state_source.resize(2U);
     FieldSessionBootstrapState incomplete_state;

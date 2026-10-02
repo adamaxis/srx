@@ -2612,6 +2612,18 @@ profile enum. A pending `FFFC3C` effect is exposed through the separate
 world-effect callback. The conversion has no dependency on the emulator or
 native runtime; only the two still-independent source leaves remain callbacks.
 
+The separate field bootstrap now also models the post-restore source order.
+`0x594E0` restores the saved scene word, camera pair, and three live runner
+position pairs after its initial `0x03074` preparation; the typed bootstrap
+then performs `0x028C2` before entering the same 31-frame warm-up. The saved
+camera is aligned to the source `0x80` boundary, and the saved runner pairs
+replace the startup profile's default live positions. The Qt composition layer
+currently accepts that re-entry only for scene 2, because only scene 2's
+terrain layers, decoded stream, descriptor, collision records, and event
+table have been extracted for the field runtime. Other saved scene IDs remain
+an explicit missing-resource boundary rather than being rendered with scene 2
+data.
+
 The startup menu trace is now also separate from the native port in
 `ghidra_conversion/menus/startup_menu_conversion`. `0x59092` is explicitly
 the New Game / Load Game selector, `0x59172` is the two-slot Save Slot 1 /

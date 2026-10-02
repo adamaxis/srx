@@ -1474,15 +1474,22 @@ bool FieldSceneRuntime::bootstrap(
     world_frame_state_ = WorldFrameState{};
     viewport_state_ = FieldViewportState{};
 
-    if (startup_state.restored_field_state.has_value()) {
-        failure_ =
-            "loaded-save field scene composition remains a source boundary";
-        source_boundary("field.bootstrap.loaded_save_unresolved");
-        return false;
-    }
     if (!startup_state.field_session_source_assets.has_value()) {
         failure_ = "field-session source records are unavailable";
         source_boundary("field.bootstrap.source_records_missing");
+        return false;
+    }
+
+    const auto* restored_field_state =
+        startup_state.restored_field_state.has_value()
+            ? &*startup_state.restored_field_state
+            : nullptr;
+    if (restored_field_state != nullptr &&
+        restored_field_state->world_mode != 2U) {
+        failure_ =
+            "loaded-save scene resources are not extracted for world mode " +
+            std::to_string(restored_field_state->world_mode);
+        source_boundary("field.bootstrap.loaded_save_scene_resources_missing");
         return false;
     }
 
@@ -1558,6 +1565,20 @@ bool FieldSceneRuntime::bootstrap(
         assets.field_mode_selection_state_source;
     input_.field_scene =
         integration::make_initial_mode2_field_scene_input(assets);
+    if (restored_field_state != nullptr) {
+        std::array<SceneRunnerPosition, 3> restored_positions{};
+        for (std::size_t index = 0; index < restored_positions.size();
+             ++index) {
+            restored_positions[index] = SceneRunnerPosition{
+                restored_field_state->runner_positions[index].x,
+                restored_field_state->runner_positions[index].y};
+        }
+        input_.restored_field_scene = integration::RestoredFieldSceneInput{
+            restored_field_state->world_mode,
+            restored_field_state->camera_x,
+            restored_field_state->camera_y,
+            restored_positions};
+    }
 
     field_entity_ = FieldEntityPresentation{};
     initialize_field_party_roster(startup_state);
@@ -1576,9 +1597,8 @@ bool FieldSceneRuntime::bootstrap(
     // field-buffer preparation can invoke 0xC7F8.
     field_entity_behavior_flags_ = field_entity_.active ? 0x05U : 0U;
     initialize_field_entity_selection_state();
-    if (startup_state.joshua_selection.has_value()) {
-        const auto& record =
-            startup_state.joshua_selection->typed_live_joshua_record;
+    if (field_entity_.active) {
+        const auto& record = active_runner_record();
         field_hud_slots_[0].flags_byte =
             static_cast<std::uint8_t>(record.flags >> 8U);
         field_hud_slots_[0].equipped_inventory_slot =
@@ -1653,6 +1673,14 @@ bool FieldSceneRuntime::bootstrap(
                        state_.phase);
         source_boundary("field.bootstrap.incomplete");
         return false;
+    }
+
+    if (restored_field_state != nullptr) {
+        // The restore path's live runner positions are separate from the
+        // startup profile defaults. The conversion bootstrap publishes them
+        // in typed scene metadata; the presenter consumes that state here.
+        field_entity_.world_position =
+            state_.field_scene_buffers.source_metadata.initial_field_records[0];
     }
 
     field_movement_state_.position_x = field_entity_.world_position.x;
