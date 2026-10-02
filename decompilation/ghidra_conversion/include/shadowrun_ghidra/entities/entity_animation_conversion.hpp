@@ -39,16 +39,24 @@ constexpr std::array<std::uint32_t, 16> kEntityKindStateTables{{
     0x00006DC8U}};
 constexpr std::uint16_t kFieldEntityKind = 0x0003U;
 
-// ROM 0xC052 idle and 0xC072 walk. Direction is the 0-7 heading slot.
+// The kind-3 state block at 0x6378 is a pointer table addressed by the
+// record's +0x16 byte offset. The 0-7 heading slots resolve to these
+// families (0xB39A/0xB3FE/0xAFF2/0xB330 write the offset):
+//   0x00..0x1C idle (positive-marker static lists)
+//   0x40..0x5C attack pose (0xC042 table, weapon-timed one-frame hold)
+//   0x60..0x7C hurt (0xC072 table, 0x8002 two-frame lists)
+//   0x82..0x9E unarmed delayed-action pose (0xC082 table, one frame)
+//   0xA0..0xBC thrown/effect (0xC092 table, 0x8003 descriptors)
+//   0xE8..0x104 walking (0xC0B2 table, 0x8008 eight-frame lists)
 constexpr std::array<std::uint16_t, 8> kFieldIdleAnimationSelectors{{
     0x0000U, 0x0004U, 0x0008U, 0x000CU, 0x0010U, 0x0014U, 0x0018U, 0x001CU}};
 constexpr std::array<std::uint16_t, 8> kFieldWalkAnimationSelectors{{
-    0x0060U, 0x0064U, 0x0068U, 0x006CU, 0x0070U, 0x0074U, 0x0078U, 0x007CU}};
-// ROM 0x600E copies the walking list's auxiliary word (0x0300 at the 0x8002
-// lists) into record +0x18. Template +0x1C is 0x1000.
-constexpr std::int16_t kFieldWalkAnimationIncrement = 0x0300;
+    0x00E8U, 0x00ECU, 0x00F0U, 0x00F4U, 0x00F8U, 0x00FCU, 0x0100U, 0x0104U}};
+// ROM 0x600E copies the selected list's auxiliary word into record +0x18;
+// the walking lists carry 0x0200. Template +0x1C is the 0x1000 threshold.
+constexpr std::int16_t kFieldWalkAnimationIncrement = 0x0200;
 constexpr std::int16_t kFieldEntityAnimationPeriod = 0x1000;
-constexpr std::uint16_t kFieldWalkAnimationFrameCount = 2U;
+constexpr std::uint16_t kFieldWalkAnimationFrameCount = 8U;
 
 std::uint16_t select_field_entity_animation_selector(std::uint8_t direction,
                                                      bool walking);

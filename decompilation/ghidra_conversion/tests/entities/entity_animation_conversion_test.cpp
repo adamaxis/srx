@@ -53,22 +53,25 @@ int main() {
 
     if (!expect(select_field_entity_animation_selector(0, false) == 0x0000U &&
                 select_field_entity_animation_selector(4, false) == 0x0010U &&
-                select_field_entity_animation_selector(0, true) == 0x0060U &&
-                select_field_entity_animation_selector(2, true) == 0x0068U &&
-                select_field_entity_animation_selector(7, true) == 0x007CU &&
+                select_field_entity_animation_selector(0, true) == 0x00E8U &&
+                select_field_entity_animation_selector(2, true) == 0x00F0U &&
+                select_field_entity_animation_selector(7, true) == 0x0104U &&
                 entity_kind_state_table(kFieldEntityKind) == 0x00006378U &&
                 entity_kind_state_table(0x000DU) == 0x00006BB8U)) {
         return 7;
     }
     if (!expect(bound_field_walk_animation_frame(0) == 0U &&
                 bound_field_walk_animation_frame(1) == 1U &&
-                bound_field_walk_animation_frame(2) == 1U)) {
+                bound_field_walk_animation_frame(7) == 7U &&
+                bound_field_walk_animation_frame(8) == 7U)) {
         return 8;
     }
 
+    // The 0xC0B2 walking lists use the 0x0200 increment against the 0x1000
+    // period, so the frame advances once every eight host ticks.
     EntityAnimationState walk{0U, 0, kFieldWalkAnimationIncrement,
                               kFieldEntityAnimationPeriod, false};
-    for (int tick = 0; tick < 5; ++tick) {
+    for (int tick = 0; tick < 7; ++tick) {
         advance_entity_animation_accumulator(walk);
     }
     if (!expect(walk.frame == 0U && !walk.redraw_requested)) {
@@ -81,13 +84,15 @@ int main() {
     }
 
     const EntitySpriteDescriptorList walk_list{
-        static_cast<std::int16_t>(0x8002), 0x0300U, {0x1000U, 0x1004U}};
+        static_cast<std::int16_t>(0x8008), 0x0200U,
+        {0x1000U, 0x1004U, 0x1008U, 0x100CU, 0x1010U, 0x1014U, 0x1018U,
+         0x101CU}};
     EntitySpriteDescriptorState descriptor{
-        0x0003U, 0x0060U, 0x01U, 0U, 0U, 0x0010U, 0U};
+        0x0003U, 0x00E8U, 0x01U, 0U, 0U, 0x0010U, 0U};
     if (!expect(advance_entity_sprite_descriptor(
                     descriptor, walk_list, 0x8002U) &&
                 descriptor.frame == 0U &&
-                descriptor.increment == 0x0300U &&
+                descriptor.increment == 0x0200U &&
                 (descriptor.selector & 0x8000U) == 0U &&
                 (descriptor.flags & 0x01U) == 0U &&
                 descriptor.descriptor == 0x1000U)) {
@@ -95,13 +100,13 @@ int main() {
     }
 
     descriptor = EntitySpriteDescriptorState{
-        0x0003U, 0x0060U, 0x01U, 2U, 0U, 0x0010U, 0U};
+        0x0003U, 0x00E8U, 0x01U, 8U, 0U, 0x0010U, 0U};
     if (!expect(advance_entity_sprite_descriptor(
                     descriptor, walk_list, 0x8002U) &&
-                descriptor.frame == 1U &&
-                descriptor.increment == 0x0300U &&
+                descriptor.frame == 7U &&
+                descriptor.increment == 0x0200U &&
                 (descriptor.selector & 0x8000U) != 0U &&
-                descriptor.descriptor == 0x1004U)) {
+                descriptor.descriptor == 0x101CU)) {
         return 12;
     }
 
@@ -144,7 +149,7 @@ int main() {
     }
 
     descriptor = EntitySpriteDescriptorState{
-        0x0003U, 0x0060U, 0U, 0U, 0U, 0U, 0U};
+        0x0003U, 0x00E8U, 0U, 0U, 0U, 0U, 0U};
     if (!expect(!advance_entity_sprite_descriptor(
                      descriptor, walk_list, 0x8002U) &&
                 (descriptor.flags & 0x01U) == 0U &&

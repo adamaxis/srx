@@ -492,34 +492,78 @@ int main() {
     const auto field_entity_animations =
         decode_genesis_field_entity_animation_sequences(rom);
     assert(field_entity_animations.size() == 8);
+    // The hurt table behind 0xC072 and the attack table behind 0xC042 stay
+    // reachable through the explicit offset parameters so the walking
+    // extraction can be proven distinct from both instead of merely
+    // asserting metadata.
+    const auto hurt_animations = decode_genesis_field_entity_animation_sequences(
+        rom, 0x7291A, 0x62AC, 0xC072, 0x3EDC, 0x172D8A, 8);
+    assert(hurt_animations.size() == 8);
+    const auto attack_animations =
+        decode_genesis_field_entity_animation_sequences(
+            rom, 0x7291A, 0x62AC, 0xC042, 0x3EDC, 0x172D8A, 8);
+    assert(attack_animations.size() == 8);
     for (std::size_t index = 0; index < field_entity_animations.size();
          ++index) {
         const auto& animation = field_entity_animations[index];
+        // ROM 0xB330/0xAFF2 select the walking lists through the 0xC0B2
+        // table (0xE8 + 4*index): an 0x8008 marker, auxiliary 0x0200, and
+        // eight descriptor pointers. The hurt lists behind 0xC072 are
+        // 0x60 + 4*index with an 0x8002 two-frame marker.
         assert(animation.state_selector ==
-               static_cast<std::uint16_t>(0x60U + index * 4U));
-        assert(animation.state_marker == 0x8002);
-        assert(animation.state_auxiliary_word == 0x0300);
+               static_cast<std::uint16_t>(0xE8U + index * 4U));
+        assert(animation.state_marker == 0x8008);
+        assert(animation.state_auxiliary_word == 0x0200);
         assert(animation.source_timing_value == 0x76F0);
         assert(animation.timing_multiplier == 0x0010);
-        assert(animation.frames.size() == 2);
+        assert(animation.frames.size() == 8);
         for (const auto& frame : animation.frames) {
             assert(frame.width != 0 && frame.height != 0);
             assert(frame.pixels.size() ==
                    static_cast<std::size_t>(frame.width) * frame.height);
         }
-        bool walking_frames_differ = false;
-        for (std::size_t pixel = 0;
-             pixel < animation.frames[0].pixels.size() &&
-             pixel < animation.frames[1].pixels.size(); ++pixel) {
-            const auto& left = animation.frames[0].pixels[pixel];
-            const auto& right = animation.frames[1].pixels[pixel];
-            if (left.red != right.red || left.green != right.green ||
-                left.blue != right.blue || left.alpha != right.alpha) {
-                walking_frames_differ = true;
+        // The walking cycle must contain more than one distinct pose or the
+        // runner would slide without a stride.
+        const auto pixels_differ = [](const auto& left, const auto& right) {
+            if (left.pixels.size() != right.pixels.size()) {
+                return true;
+            }
+            for (std::size_t pixel = 0; pixel < left.pixels.size(); ++pixel) {
+                const auto& a = left.pixels[pixel];
+                const auto& b = right.pixels[pixel];
+                if (a.red != b.red || a.green != b.green ||
+                    a.blue != b.blue || a.alpha != b.alpha) {
+                    return true;
+                }
+            }
+            return false;
+        };
+        bool walking_has_distinct_frames = false;
+        for (std::size_t frame = 1; frame < animation.frames.size();
+             ++frame) {
+            if (pixels_differ(animation.frames[0], animation.frames[frame])) {
+                walking_has_distinct_frames = true;
                 break;
             }
         }
-        assert(walking_frames_differ);
+        assert(walking_has_distinct_frames);
+        // 0xAFF2's +0x4C behavior path selects the 0x60 + 4*index hurt
+        // lists; the extracted walking frames must not be that pose, or the
+        // runner raises his arms whenever he moves.
+        assert(hurt_animations[index].frames.size() == 2);
+        for (const auto& walking_frame : animation.frames) {
+            assert(pixels_differ(walking_frame,
+                                 hurt_animations[index].frames[0]));
+            assert(pixels_differ(walking_frame,
+                                 hurt_animations[index].frames[1]));
+        }
+        // 0xB39A's weapon-timed attack pose (0xC042) is a different held
+        // frame; walking must not show the shooting pose.
+        assert(attack_animations[index].frames.size() == 1);
+        for (const auto& walking_frame : animation.frames) {
+            assert(pixels_differ(walking_frame,
+                                 attack_animations[index].frames[0]));
+        }
     }
 
     auto native_assets = decode_genesis_native_assets(rom);

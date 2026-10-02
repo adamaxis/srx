@@ -2210,6 +2210,15 @@ RgbaImage decode_genesis_field_menu_layer(
                   0x200U, "Genesis field menu status patterns are truncated");
     std::copy_n(rom.begin() + 0xCF134U, 0x200U,
                 pattern_vram.begin() + 0x5A80U);
+    // 0x10F50's 0x11048 helper uploads the remaining command tab patterns:
+    // the resource stream at C8BB6 -> VRAM 5C80 (0x1530 decode), the item
+    // icon tiles CF97C -> 7D20 (0x1E00 bytes), and the tab glyph tiles
+    // D21BC -> 9B20 (0x420 bytes). The six bottom command tabs reference
+    // those tile ranges; leaving them zero-filled renders the tab labels as
+    // blank boxes.
+    write_genesis_1530_vram(rom, 0xC8BB6U, 0x5C80U, pattern_vram);
+    write_genesis_f5c_vram(rom, 0xCF97CU, 0x7D20U, 0x1E00U, pattern_vram);
+    write_genesis_f5c_vram(rom, 0xD21BCU, 0x9B20U, 0x420U, pattern_vram);
 
     std::array<std::uint16_t, kNameTableColumns * kNameTableRows>
         name_table{};
@@ -3838,18 +3847,17 @@ RgbaImage decode_genesis_entity_frame(
     }
     const auto source = static_cast<std::size_t>(read32(
         descriptor_offset + 2U, "Genesis entity frame source is truncated"));
-    const auto length = static_cast<std::size_t>(read16(
-        descriptor_offset + 6U, "Genesis entity frame length is truncated"));
+    // Descriptor +8/+0xA are the signed screen offsets consumed by 0x3EFE,
+    // +0xC packs the tile grid ((columns-1) << 2 | (rows-1)), and the +6
+    // word is a parameter of the 0x3E86 nibble-expansion path (stored into
+    // record +0x28 by 0x60FA), not the byte length. Treating +6 as a length
+    // rejected the 0x8003-list effect frames whose +6 holds a VRAM word.
     const auto dimensions = read16(
         descriptor_offset + 0x0CU,
         "Genesis entity frame dimensions are truncated");
     const auto columns = static_cast<std::size_t>((dimensions >> 2U) + 1U);
     const auto rows = static_cast<std::size_t>((dimensions & 3U) + 1U);
-    const auto expected_length = columns * rows * 32U;
-    if (length != expected_length) {
-        throw std::runtime_error(
-            "Genesis entity frame length does not match its dimensions");
-    }
+    const auto length = columns * rows * 32U;
     if (source > rom.size() || length > rom.size() - source) {
         throw std::out_of_range("Genesis entity frame source is truncated");
     }
@@ -4144,19 +4152,18 @@ decode_genesis_field_entity_animation_sequences(
                 "Genesis field walking animation frame count is invalid");
         }
 
-        // The reviewed kind-3 lists are laid out as:
-        //   0x8002, auxiliary word, descriptor pointer[0..1].
+        // The kind-3 walking lists are laid out as:
+        //   0x8008 marker, auxiliary word, descriptor pointer[0..7].
         // This is distinct from the positive-marker lists handled by the
         // legacy single-frame decoder above.
         animation.state_auxiliary_word = read16(
             state_list + 2U,
             "Genesis field animation auxiliary word is truncated");
         animation.source_timing_value = source_timing_value;
-        // ROM 0x600E selects the walking cadence in the live record: the
-        // source routine writes 0x0010 to +0x18 and 0x1C remains the 0x1000
-        // threshold consumed by 0x5FDC. The 0x0300 word at state_list+2 is
-        // list metadata, not the animation clock; treating it as the
-        // multiplier made the native walker advance the wrong state.
+        // ROM 0x600E copies the selected list's auxiliary word (0x0200 for
+        // the walking lists) into record +0x18; +0x1C remains the 0x1000
+        // threshold consumed by 0x5FDC. The typed conversion reads the
+        // auxiliary word as the frame increment.
         animation.timing_multiplier = 0x0010U;
         animation.frames.reserve(frame_count);
         for (std::size_t frame = 0; frame < frame_count; ++frame) {
@@ -6205,12 +6212,15 @@ RgbaImage decode_genesis_intro_aircraft_plane_a_impl(
     // 0x5AD1A's first map is the 27x8 vehicle layer at Plane A $074A. Render
     // that map at a normalized origin here; NativePort restores the source
     // $074A origin (x=296, y=112) and applies DD08 on every source pass.
+    // The vehicle plane's color-zero cells are Plane-A holes over the sky
+    // background, so the extraction bakes them transparent instead of
+    // leaving a 216x64 opaque plate over the airport scene.
     GenesisBootPatternData scene;
     (void)decode_genesis_1406_scene(rom, 0x5B528U, &scene, 0, 0, false,
                                     false, true);
     auto image = make_transparent_title_layer();
     blit_genesis_1728_name_table(rom, scene, image, 0x1E87BAU, 27U, 8U,
-                                 0U, 0U, 0x2000U, false, 0, true, 0);
+                                 0U, 0U, 0x2000U, true, 0, true, 0);
     return image;
 }
 
@@ -6603,122 +6613,54 @@ RgbaImage decode_genesis_cab_map(const std::vector<std::uint8_t>& rom) {
     }
     blit_genesis_1728_name_table(rom, scene, source_image, 0xD4298U, 26U,
                                  17U, 0x2208U, 0x2000U, 0, false);
-
-    // 0x134D2 enters 0x13726 with FFE18B set during this opening path, so
-    // FFF09C is forced to four and D445D[4] selects record zero. The visible
-    // settled selection is the record's terminal zero-size outline slot
-    // (D4464+8, D4536+8); reproduce its source tile list from D4446 rather
-    // than drawing a host rectangle over the map.
-    const auto draw_cursor_tile = [&](std::uint16_t address,
-                                      std::uint16_t word) {
-        const auto relative = static_cast<std::uint16_t>(
-            address - 0xC000U);
-        const auto tile_x = static_cast<std::int32_t>((relative % 0x80U) / 2U);
-        const auto tile_y = static_cast<std::int32_t>(relative / 0x80U);
-        const auto tile_attributes = word;
-        blit_genesis_tile(
-            source_image, scene,
-            static_cast<std::size_t>(tile_attributes & 0x07FFU),
-            static_cast<std::size_t>((tile_attributes >> 13U) & 0x03U),
-            (tile_attributes & 0x0800U) != 0,
-            (tile_attributes & 0x1000U) != 0, tile_x * 8, tile_y * 8, true);
-    };
-    const auto position = read_rom_u16(
-        rom, 0xD4464U + 4U * 2U,
-        "Genesis cab cursor record is truncated");
-    const auto width = static_cast<unsigned>(rom[0xD4536U + 8U]);
-    const auto height = static_cast<unsigned>(rom[0xD4536U + 9U]);
-    const auto base = static_cast<std::uint16_t>(0xC208U + position);
-    auto cursor_source = 0xD4446U;
-        const auto top_left = read_rom_u16(
-            rom, cursor_source, "Genesis cab cursor tile list is truncated");
-        cursor_source += 2U;
-        draw_cursor_tile(base, top_left);
-        const auto top_middle = read_rom_u16(
-            rom, cursor_source, "Genesis cab cursor tile list is truncated");
-        cursor_source += 2U;
-        for (unsigned count = 0; count <= width; ++count) {
-            draw_cursor_tile(static_cast<std::uint16_t>(
-                                 base + 2U * (count + 1U)),
-                             top_middle);
-        }
-        const auto top_right = read_rom_u16(
-            rom, cursor_source, "Genesis cab cursor tile list is truncated");
-        cursor_source += 2U;
-        draw_cursor_tile(static_cast<std::uint16_t>(
-                             base + 2U * (width + 2U)),
-                         top_right);
-
-        const auto left = read_rom_u16(
-            rom, cursor_source, "Genesis cab cursor tile list is truncated");
-        cursor_source += 2U;
-        for (unsigned count = 0; count <= height + 1U; ++count) {
-            draw_cursor_tile(static_cast<std::uint16_t>(
-                                 base + 0x80U * (count + 1U)),
-                             left);
-        }
-        const auto right = read_rom_u16(
-            rom, cursor_source, "Genesis cab cursor tile list is truncated");
-        cursor_source += 2U;
-        for (unsigned count = 0; count <= height + 1U; ++count) {
-            draw_cursor_tile(static_cast<std::uint16_t>(
-                                 base + 0x80U * (count + 1U) +
-                                     2U * (width + 2U)),
-                             right);
-        }
-
-        const auto bottom_left = read_rom_u16(
-            rom, cursor_source, "Genesis cab cursor tile list is truncated");
-        cursor_source += 2U;
-        draw_cursor_tile(static_cast<std::uint16_t>(
-                             base + 0x80U * (height + 2U)),
-                         bottom_left);
-        const auto bottom_middle = read_rom_u16(
-            rom, cursor_source, "Genesis cab cursor tile list is truncated");
-        cursor_source += 2U;
-        for (unsigned count = 0; count <= width; ++count) {
-            draw_cursor_tile(static_cast<std::uint16_t>(
-                                 base + 0x80U * (height + 2U) +
-                                     2U * (count + 1U)),
-                             bottom_middle);
-        }
-        const auto bottom_right = read_rom_u16(
-            rom, cursor_source, "Genesis cab cursor tile list is truncated");
-        cursor_source += 2U;
-        draw_cursor_tile(static_cast<std::uint16_t>(
-                             base + 0x80U * (height + 2U) +
-                                 2U * (width + 2U)),
-                         bottom_right);
-
-    // The supplied gameplay capture presents this 208x136 VDP plate in the
-    // 166x130 viewport at (62,30). Keep the source-derived tile decode above
-    // intact and bake only that capture-space presentation transform here.
-    constexpr std::int32_t kSourceX = 32;
-    constexpr std::int32_t kSourceY = 32;
-    constexpr std::int32_t kTargetX = 62;
-    constexpr std::int32_t kTargetY = 30;
-    constexpr std::int32_t kSourceWidth = 208;
-    constexpr std::int32_t kSourceHeight = 136;
-    constexpr std::int32_t kTargetWidth = 166;
-    constexpr std::int32_t kTargetHeight = 130;
-    auto image = make_transparent_title_layer();
-    for (auto& pixel : image.pixels) {
-        pixel = {0, 0, 0, 255};
-    }
-    for (std::int32_t y = 0; y < kTargetHeight; ++y) {
-        const auto source_y = kSourceY +
-            (y * kSourceHeight) / kTargetHeight;
-        for (std::int32_t x = 0; x < kTargetWidth; ++x) {
-            const auto source_x = kSourceX +
-                (x * kSourceWidth) / kTargetWidth;
-            image.pixels[static_cast<std::size_t>(kTargetY + y) * image.width +
-                         static_cast<std::size_t>(kTargetX + x)] =
-                source_image.pixels[static_cast<std::size_t>(source_y) *
+    // The 26x17 plate is the whole map resource. The selection outline is a
+    // separate name-table border (0xD4446 tile list) composed per selected
+    // destination by 0x13726; it is extracted as eight named cursor tiles
+    // and never baked into this background.
+    constexpr std::int32_t kPlateX = 16;
+    constexpr std::int32_t kPlateY = 16;
+    constexpr std::uint16_t kPlateWidth = 26U * 8U;
+    constexpr std::uint16_t kPlateHeight = 17U * 8U;
+    RgbaImage image{
+        kPlateWidth, kPlateHeight,
+        std::vector<native::Rgba8>(
+            static_cast<std::size_t>(kPlateWidth) * kPlateHeight,
+            native::Rgba8{0, 0, 0, 255})};
+    for (std::uint16_t y = 0; y < kPlateHeight; ++y) {
+        for (std::uint16_t x = 0; x < kPlateWidth; ++x) {
+            image.pixels[static_cast<std::size_t>(y) * image.width + x] =
+                source_image.pixels[static_cast<std::size_t>(kPlateY + y) *
                                         source_image.width +
-                                    static_cast<std::size_t>(source_x)];
+                                    (kPlateX + x)];
         }
     }
     return image;
+}
+
+GenesisCabCursorTiles decode_genesis_cab_cursor_tiles(
+    const std::vector<std::uint8_t>& rom) {
+    // 0x13726 stamps the selection outline from the eight-word tile list at
+    // 0xD4446: top-left, top-middle, top-right, left, right, bottom-left,
+    // bottom-middle, bottom-right. The map's own pattern/palette pair draws
+    // them, so they stay 8x8 host sprites with the same palette line.
+    GenesisBootPatternData scene{
+        decode_genesis_1530_vram(rom, 0xD2A2EU, 0x6420U),
+        read_genesis_palette_set(rom, 0x5B732U),
+    };
+    GenesisCabCursorTiles result;
+    for (std::size_t index = 0; index < result.tiles.size(); ++index) {
+        const auto word = read_rom_u16(
+            rom, 0xD4446U + index * 2U,
+            "Genesis cab cursor tile list is truncated");
+        RgbaImage tile{
+            8U, 8U, std::vector<native::Rgba8>(64U, native::Rgba8{0, 0, 0, 0})};
+        blit_genesis_tile(
+            tile, scene, static_cast<std::size_t>(word & 0x07FFU),
+            static_cast<std::size_t>((word >> 13U) & 0x03U),
+            (word & 0x0800U) != 0, (word & 0x1000U) != 0, 0, 0, true);
+        result.tiles[index] = std::move(tile);
+    }
+    return result;
 }
 
 RgbaImage decode_genesis_pocket_secretary_background(

@@ -475,15 +475,20 @@ struct GenesisFieldEntityAnimation {
     std::vector<RgbaImage> frames;
 };
 
-// Extract the complete kind-3 field walking table selected by ROM 0xAFF2's
-// 0xC072 entries. The native runtime consumes the resulting transparent RGBA
-// frame sequences and does not retain ROM pointers, VDP state, or palettes.
+// Extract the complete kind-3 field walking table selected by ROM 0xB330's
+// 0xC0B2 entries (0xE8..0x104), the mode-5 field-motion behavior lists.
+// The sibling tables are kept distinct: 0xC042 is the weapon-timed attack
+// pose (0xB39A), 0xC072 the hurt/stagger two-frame lists (0xAFF2's +0x4C
+// path), 0xC082 the unarmed delayed-action pose, and 0xC092 the thrown/
+// effect lists whose 0x8003 descriptors are a different frame record form.
+// The native runtime consumes the resulting transparent RGBA frame sequences
+// and does not retain ROM pointers, VDP state, or palettes.
 std::vector<GenesisFieldEntityAnimation>
 decode_genesis_field_entity_animation_sequences(
     const std::vector<std::uint8_t>& rom,
     std::size_t entity_record_offset = 0x7291A,
     std::size_t entity_state_pointer_table_offset = 0x62AC,
-    std::size_t animation_frame_table_offset = 0xC072,
+    std::size_t animation_frame_table_offset = 0xC0B2,
     std::size_t nibble_table_offset = 0x3EDC,
     std::size_t palette_offset = 0x172D8A,
     std::size_t state_count = 8);
@@ -631,9 +636,22 @@ decode_genesis_intro_ambush_frames(const std::vector<std::uint8_t>& rom);
 
 // ROM 0x134D2's cab transition uploads the shared map patterns from 0xD2A2E
 // to VRAM $6420 and expands the 0xD4298 0x1728 stream into a 26x17 name
-// table. The extraction returns the resulting 320x224 map plate; the native
-// runtime owns the destination text/cadence separately.
+// table. The extraction returns that plate cropped to its 208x136 tile
+// geometry with no selection outline baked in; the outline is the separate
+// 0xD4446 border below and the host owns destination text/cadence.
 RgbaImage decode_genesis_cab_map(const std::vector<std::uint8_t>& rom);
+
+struct GenesisCabCursorTiles {
+    // 0xD4446 order: top-left, top-middle, top-right, left, right,
+    // bottom-left, bottom-middle, bottom-right.
+    std::array<RgbaImage, 8> tiles{};
+};
+
+// ROM 0x13726 stamps the cab selection outline from the eight-word tile
+// list at 0xD4446. Each tile is extracted as its own 8x8 host sprite so the
+// border can be composed at any destination's width and height.
+GenesisCabCursorTiles decode_genesis_cab_cursor_tiles(
+    const std::vector<std::uint8_t>& rom);
 
 // Reconstruct the field command screen's plane-B base from the exact 0x1232
 // writers called by ROM 0x10F50. This is host RGBA output, not a Genesis
