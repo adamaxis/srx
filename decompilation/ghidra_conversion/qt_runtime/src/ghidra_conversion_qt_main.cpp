@@ -7,6 +7,7 @@
 #include "shadowrun_ghidra/world/post_intro_mode_conversion.hpp"
 #include "shadowrun_ghidra/rendering/display_service_batch_conversion.hpp"
 #include "field_scene_runtime.hpp"
+#include "audio_playback.hpp"
 #include "genesis_image_compositor.hpp"
 
 #include <QApplication>
@@ -108,6 +109,10 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
             continue;
         }
         if (argument == "--field-hud-qa" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-secretary-dump" && index + 1 < argc) {
             ++index;
             continue;
         }
@@ -341,7 +346,14 @@ public:
           asset_root_(std::move(asset_root)),
           field_scene_runtime_([this](const std::string_view boundary) {
               note_presentation_boundary(boundary);
-          }) {
+          }),
+          audio_playback_(
+              [this](const std::string_view alias) -> std::filesystem::path {
+                  const auto* record =
+                      state_.asset_catalog.catalog.find(std::string(alias));
+                  return record == nullptr ? std::filesystem::path{}
+                                           : record->absolute_path;
+              }) {
         setWindowTitle(QStringLiteral("Shadowrun - Ghidra Conversion Qt"));
         setFixedSize(kSceneWidth * kSceneScale, kSceneHeight * kSceneScale);
         setFocusPolicy(Qt::StrongFocus);
@@ -1383,6 +1395,7 @@ private:
         startup_callbacks_.opening_intro.service_audio_command =
             [this](const std::uint16_t command) {
                 opening_audio_commands_.push_back(command);
+                audio_playback_.play_event(command);
                 note_presentation_boundary("opening.service_audio_command");
             };
         startup_callbacks_.opening_intro.service_audio = [this] {
@@ -2291,6 +2304,7 @@ private:
         opening_wilderness_final_overlay_;
     std::vector<OpeningIntroTextRequest> opening_text_;
     std::vector<std::uint16_t> opening_audio_commands_;
+    AudioPlaybackService audio_playback_;
 
     std::uint8_t logo_strobe_phase_ = 0;
     std::array<std::uint16_t, 8> logo_strobe_palette_{};
@@ -2350,6 +2364,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_hud_qa_path;
         std::optional<std::filesystem::path> field_command_dump_path;
         std::optional<std::uint8_t> field_command_page;
+        std::optional<std::filesystem::path> field_secretary_dump_path;
         std::optional<std::filesystem::path> field_action_dump_path;
         std::optional<std::filesystem::path> field_clips_dump_path;
         std::optional<std::string> field_archetype_name;
@@ -2438,6 +2453,12 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_command_page = static_cast<std::uint8_t>(
                     std::stoul(argv[++index]));
+            }
+            if (std::string(argv[index]) == "--field-secretary-dump" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_secretary_dump_path =
+                    std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-dialogue-dump" &&
                 index + 2 < argc) {
@@ -2648,6 +2669,49 @@ int main(int argc, char** argv) {
                           << static_cast<int>(field_scene.command_overview_view()
                                                    .source_state.primary_page)
                           << "\n";
+                return 0;
+            }
+            if (field_secretary_dump_path.has_value()) {
+                if (!field_scene.open_command_overview_for_dump()) {
+                    std::cerr << "field secretary dump: command overview "
+                                 "did not open\n";
+                    return 3;
+                }
+                if (!field_scene.seek_command_overview_page(6U)) {
+                    std::cerr << "field secretary dump: could not reach "
+                                 "page 6\n";
+                    return 3;
+                }
+                // Press A on the Pocket Secretary tab: port bit 6 is the
+                // A button in the sampled controller word (0x4000 in the
+                // expanded events consumed by the command loop).
+                field_scene.set_controller_port_byte(0x40U);
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                if (!field_scene.pocket_secretary_open()) {
+                    std::cerr << "field secretary dump: Pocket Secretary "
+                                 "did not open\n";
+                    return 3;
+                }
+                QImage secretary_scene(kSceneWidth, kSceneHeight,
+                                       QImage::Format_RGB32);
+                secretary_scene.fill(Qt::black);
+                QPainter secretary_painter(&secretary_scene);
+                field_scene.paint(secretary_painter);
+                secretary_painter.end();
+                if (!secretary_scene.save(QString::fromStdWString(
+                        field_secretary_dump_path->wstring()))) {
+                    std::cerr << "field secretary dump: could not write "
+                              << field_secretary_dump_path->string() << '\n';
+                    return 3;
+                }
+                std::cout << "field_secretary_dump=written path="
+                          << field_secretary_dump_path->string()
+                          << " selection="
+                          << static_cast<int>(
+                                 field_scene.pocket_secretary_selection())
+                          << '\n';
                 return 0;
             }
             if (field_action_dump_path.has_value()) {

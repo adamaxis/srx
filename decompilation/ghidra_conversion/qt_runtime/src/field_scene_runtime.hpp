@@ -1,6 +1,7 @@
 #pragma once
 
 #include "shadowrun_ghidra/core/controller_wait_conversion.hpp"
+#include "shadowrun_ghidra/menus/pocket_secretary_menu_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_coordinate_conversion.hpp"
 #include "shadowrun_ghidra/entities/collision_state_conversion.hpp"
 #include "shadowrun_ghidra/entities/collision_probe_conversion.hpp"
@@ -130,6 +131,12 @@ public:
     // Navigate the converted command loop to a specific primary page so QA
     // dumps can exercise pages other than the entry selector (6).
     bool seek_command_overview_page(std::uint8_t page);
+    bool pocket_secretary_open() const noexcept {
+        return pocket_secretary_.open;
+    }
+    std::uint8_t pocket_secretary_selection() const noexcept {
+        return pocket_secretary_.selection;
+    }
     bool field_entity_visible() const noexcept {
         return field_entity_.visible;
     }
@@ -186,6 +193,7 @@ private:
     void advance_command_overview_clips(std::uint16_t controller_events);
     void begin_command_overview_inventory_action();
     void begin_command_overview_clips();
+    void begin_pocket_secretary();
     void dispatch_command_overview_inventory_action(
         const InventoryActionResult& result);
     void advance_command_overview_discard_confirmation(
@@ -259,6 +267,8 @@ private:
     std::array<QImage, kFieldHudSlotCount> field_hud_horizontal_counters_{};
     std::array<QImage, kFieldHudAmmoCounterCount> field_hud_ammo_counters_{};
     std::array<FieldHudSlotState, kFieldHudSlotCount> field_hud_slots_{};
+    PocketSecretaryMenuState pocket_secretary_{};
+    QImage pocket_secretary_background_;
     std::array<QImage, 8> field_entity_idle_images_{};
     std::array<int, 8> field_entity_idle_origin_x_{};
     std::array<int, 8> field_entity_idle_origin_y_{};

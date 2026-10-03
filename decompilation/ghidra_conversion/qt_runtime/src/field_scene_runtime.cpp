@@ -483,7 +483,9 @@ bool FieldSceneRuntime::load_command_overview_assets(
                     command_overview_inventory_boxes_) ||
         !load_image(catalog, kCommandOverviewActionBackgroundAlias,
                     command_overview_action_background_) ||
-        !load_image(catalog, "menu.field.font", command_overview_font_)) {
+        !load_image(catalog, "menu.field.font", command_overview_font_) ||
+        !load_image(catalog, "menu.pocket.secretary.background",
+                    pocket_secretary_background_)) {
         return false;
     }
     // The source inventory-box writer changes only the box outline cells;
@@ -1148,6 +1150,23 @@ void FieldSceneRuntime::begin_command_overview_inventory_action() {
     }
     command_overview_inventory_action_active_ = false;
     command_overview_selected_inventory_item_.reset();
+}
+
+void FieldSceneRuntime::begin_pocket_secretary() {
+    if (!command_overview_.open()) {
+        return;
+    }
+    // ROM 0xC2A6 with FFF101 selecting the five-entry field variant. The
+    // six-entry extended form is a different caller; the field command
+    // route uses this one until the video identifies the extended case.
+    initialize_pocket_secretary_menu(
+        pocket_secretary_, false,
+        {[this] { source_boundary("field.pocket_secretary.transfer_menu_assets"); },
+         [this] { source_boundary("field.pocket_secretary.render_menu_grid"); },
+         [this] { source_boundary("field.pocket_secretary.render_menu_text"); },
+         [this] { source_boundary("field.pocket_secretary.render_menu_numbers"); },
+         {}, {}});
+    source_boundary("field.pocket_secretary.opened");
 }
 
 void FieldSceneRuntime::begin_command_overview_clips() {
@@ -2181,6 +2200,37 @@ void FieldSceneRuntime::advance_frame() {
                 field_controller_sample_state_.events);
             return;
         }
+        if (pocket_secretary_.open) {
+            const auto event = apply_pocket_secretary_input(
+                pocket_secretary_, field_controller_sample_state_.events,
+                {[this] {
+                     source_boundary(
+                         "field.pocket_secretary.transfer_menu_assets");
+                 },
+                 [this] {
+                     source_boundary("field.pocket_secretary.render_menu_grid");
+                 },
+                 [this] {
+                     source_boundary("field.pocket_secretary.render_menu_text");
+                 },
+                 [this] {
+                     source_boundary(
+                         "field.pocket_secretary.render_menu_numbers");
+                 },
+                 [this](const std::uint8_t selection) {
+                     source_boundary("field.pocket_secretary.handler");
+                     (void)selection;
+                     return true;
+                 },
+                 [this] {
+                     source_boundary("field.pocket_secretary.mode_action");
+                 }});
+            if (event == PocketSecretaryMenuEvent::exited) {
+                pocket_secretary_.open = false;
+                source_boundary("field.pocket_secretary.exited");
+            }
+            return;
+        }
         if (command_overview_inventory_action_active_) {
             advance_command_overview_inventory_action(
                 field_controller_sample_state_.events);
@@ -2207,16 +2257,20 @@ void FieldSceneRuntime::advance_frame() {
             command_overview_inventory_action_active_ = false;
             command_overview_discard_confirmation_active_ = false;
             command_overview_clips_.close();
+            pocket_secretary_.open = false;
         } else if (command_overview_.take_action_dispatch_pending()) {
             if (command_overview_.view().source_state.primary_page < 2U) {
                 begin_command_overview_inventory_action();
             } else if (command_overview_.view().source_state.primary_page ==
                        2U) {
                 begin_command_overview_clips();
+            } else if (command_overview_.view().source_state.primary_page ==
+                       6U) {
+                begin_pocket_secretary();
             } else {
                 // The converted command bridge has identified the remaining
                 // action route, but its handler still needs a source-verified
-                // native target (Magic, Pocket Secretary, or entity action).
+                // native target (Magic, Cyberware, Attributes/Skills).
                 source_boundary(
                     "field.command_overview.non_inventory_action_pending");
             }
@@ -2577,6 +2631,13 @@ void FieldSceneRuntime::paint_command_overview_clips(
 void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     painter.fillRect(0, 0, 320, 224, Qt::black);
     if (!command_overview_.open()) {
+        return;
+    }
+    if (pocket_secretary_.open) {
+        // The Pocket Secretary is its own full-screen 0xC2A6 composition.
+        // The FFF0DC-driven row text and selection cursor remain on the
+        // visual audit ledger until their source geometry is derived.
+        painter.drawImage(0, 0, pocket_secretary_background_);
         return;
     }
 

@@ -1,4 +1,4 @@
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Multimedia)
 
 # This is the runnable Qt host for the converted source contracts. It is a
 # child of ghidra_conversion, not a target in the native-port CMake project.
@@ -15,6 +15,7 @@ add_executable(shadowrun_ghidra_conversion_qt
     src/dialogue_panel.cpp
     src/dialogue_text_catalog.cpp
     src/field_dialogue_runtime.cpp
+    src/audio_playback.cpp
 )
 target_include_directories(shadowrun_ghidra_conversion_qt
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
@@ -26,6 +27,7 @@ target_link_libraries(shadowrun_ghidra_conversion_qt
     PRIVATE
         shadowrun_ghidra_conversion_runtime
         Qt6::Widgets
+        Qt6::Multimedia
 )
 
 # One end-to-end startup/field QA walk. The executable writes its visual
@@ -75,6 +77,16 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_hud_qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-hud-qa")
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_hud_qa PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
+# The Pocket Secretary route must open from the command overview's sixth
+# tab and render its own full-screen composition.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_secretary_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-secretary-dump
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-secretary-qa.bmp")
+set_tests_properties(shadowrun_ghidra_conversion_qt_field_secretary_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Keep the source-state and arithmetic contract in the same CTest suite as
 # the executable walk. The Qt QA test proves wiring/pixels; this leaf test
