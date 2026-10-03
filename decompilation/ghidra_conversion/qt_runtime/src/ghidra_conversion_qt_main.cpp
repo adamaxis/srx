@@ -123,6 +123,10 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
             index += 4;
             continue;
         }
+        if (argument == "--opening-dump-range" && index + 4 < argc) {
+            index += 4;
+            continue;
+        }
         throw std::invalid_argument("unknown or incomplete argument: " +
                                     argument);
     }
@@ -400,22 +404,12 @@ public:
     // Deterministic visual-audit entry point. The phase transitions and
     // opening frames are still driven by the converted source contracts;
     // this only exposes their existing Qt presentation as an image dump.
-    int dump_startup_scene(const std::string_view scene_name,
-                           const std::uint32_t selection,
-                           const std::uint32_t target_frame,
-                           const std::filesystem::path& output_path) {
+    int prepare_opening_dump(const std::uint32_t selection) {
         host_frame_timer_.stop();
         if (selection > 2U) {
             std::cerr << "startup dump: selection must be 0, 1, or 2\n";
             return 3;
         }
-        if (scene_name != "start_options" && scene_name != "archetype" &&
-            scene_name != "opening") {
-            std::cerr << "startup dump: unknown stage " << scene_name
-                      << " (expected start_options, archetype, or opening)\n";
-            return 3;
-        }
-
         constexpr std::uint32_t kMaxSetupFrames = 10000U;
         std::uint32_t setup_frames = 0U;
         while (state_.phase == StartupIntegrationPhase::pre_title) {
@@ -446,11 +440,6 @@ public:
             return 3;
         }
 
-        if (scene_name == "start_options") {
-            return write_startup_dump_image(
-                scene_name, selection, target_frame, output_path);
-        }
-
         advance_startup_integration(state_, kStartupMenuA, startup_callbacks_);
         if (state_.phase != StartupIntegrationPhase::joshua_archetype) {
             std::cerr << "startup dump: New Game did not reach archetype menu\n";
@@ -460,14 +449,88 @@ public:
             advance_startup_integration(
                 state_, kStartupMenuDown, startup_callbacks_);
         }
-        if (scene_name == "archetype") {
-            return write_startup_dump_image(
-                scene_name, selection, target_frame, output_path);
-        }
-
         advance_startup_integration(state_, kStartupMenuA, startup_callbacks_);
         if (state_.phase != StartupIntegrationPhase::opening_intro) {
             std::cerr << "startup dump: archetype did not start opening\n";
+            return 3;
+        }
+        return 0;
+    }
+
+    int prepare_startup_menu_dump(const std::uint32_t selection) {
+        host_frame_timer_.stop();
+        if (selection > 2U) {
+            std::cerr << "startup dump: selection must be 0, 1, or 2\n";
+            return 3;
+        }
+        constexpr std::uint32_t kMaxSetupFrames = 10000U;
+        std::uint32_t setup_frames = 0U;
+        while (state_.phase == StartupIntegrationPhase::pre_title) {
+            if (setup_frames++ >= kMaxSetupFrames) {
+                std::cerr << "startup dump: boot did not reach title\n";
+                return 3;
+            }
+            advance_one_source_frame();
+        }
+        if (state_.phase != StartupIntegrationPhase::title_ready) {
+            std::cerr << "startup dump: phase after boot="
+                      << startup_integration_phase_name(state_.phase) << '\n';
+            return 3;
+        }
+        while (state_.phase == StartupIntegrationPhase::title_ready) {
+            pending_title_controller_word_ = static_cast<std::uint16_t>(
+                static_cast<std::uint16_t>(kStartupMenuA) << 8U);
+            if (setup_frames++ >= kMaxSetupFrames) {
+                std::cerr << "startup dump: title did not accept Start\n";
+                return 3;
+            }
+            advance_one_source_frame();
+        }
+        if (state_.phase != StartupIntegrationPhase::start_options) {
+            std::cerr << "startup dump: phase after title="
+                      << startup_integration_phase_name(state_.phase) << '\n';
+            return 3;
+        }
+        if (selection == 0U) {
+            return 0;
+        }
+        advance_startup_integration(state_, kStartupMenuA, startup_callbacks_);
+        if (state_.phase != StartupIntegrationPhase::joshua_archetype) {
+            std::cerr << "startup dump: New Game did not reach archetype menu\n";
+            return 3;
+        }
+        for (std::uint32_t index = 0U; index + 1U < selection; ++index) {
+            advance_startup_integration(
+                state_, kStartupMenuDown, startup_callbacks_);
+        }
+        return 0;
+    }
+
+    int dump_startup_scene(const std::string_view scene_name,
+                           const std::uint32_t selection,
+                           const std::uint32_t target_frame,
+                           const std::filesystem::path& output_path) {
+        if (scene_name != "start_options" && scene_name != "archetype" &&
+            scene_name != "opening") {
+            std::cerr << "startup dump: unknown stage " << scene_name
+                      << " (expected start_options, archetype, or opening)\n";
+            return 3;
+        }
+        if (scene_name == "start_options") {
+            if (prepare_startup_menu_dump(0U) != 0) {
+                return 3;
+            }
+            return write_startup_dump_image(
+                scene_name, selection, target_frame, output_path);
+        }
+        if (scene_name == "archetype") {
+            if (prepare_startup_menu_dump(selection + 1U) != 0) {
+                return 3;
+            }
+            return write_startup_dump_image(
+                scene_name, selection, target_frame, output_path);
+        }
+        if (prepare_opening_dump(selection) != 0) {
             return 3;
         }
         for (std::uint32_t frame = 0U; frame < target_frame; ++frame) {
@@ -480,6 +543,40 @@ public:
         }
         return write_startup_dump_image(
             scene_name, selection, target_frame, output_path);
+    }
+
+    // Render every opening frame from start to end-1 into one directory so
+    // the conversion can be compared frame-by-frame against the 30fps
+    // longplay dump instead of one frame at a time.
+    int dump_opening_range(const std::uint32_t selection,
+                           const std::uint32_t start, const std::uint32_t end,
+                           const std::filesystem::path& output_directory) {
+        if (prepare_opening_dump(selection) != 0) {
+            return 3;
+        }
+        std::filesystem::create_directories(output_directory);
+        for (std::uint32_t frame = 0U; frame < end; ++frame) {
+            if (state_.phase != StartupIntegrationPhase::opening_intro) {
+                std::cerr << "startup range dump: opening ended at frame "
+                          << frame << '\n';
+                return 3;
+            }
+            if (frame >= start) {
+                const auto scene = render_scene();
+                const auto path = output_directory /
+                                  ("frame-" + std::to_string(frame) + ".bmp");
+                if (!scene.save(QString::fromStdWString(path.wstring()))) {
+                    std::cerr << "startup range dump: could not write "
+                              << path.string() << '\n';
+                    return 3;
+                }
+            }
+            advance_one_source_frame();
+        }
+        std::cout << "startup_range_dump=complete selection=" << selection
+                  << " frames=" << start << '-' << end << " path="
+                  << output_directory.string() << '\n';
+        return 0;
     }
 
     int run_intro_to_field_smoke() {
@@ -2258,6 +2355,10 @@ int main(int argc, char** argv) {
         std::optional<std::uint32_t> startup_dump_frame;
         std::optional<std::filesystem::path> startup_dump_path;
         std::optional<std::filesystem::path> startup_qa_path;
+        std::optional<std::uint32_t> opening_dump_selection;
+        std::optional<std::uint32_t> opening_dump_start;
+        std::optional<std::uint32_t> opening_dump_end;
+        std::optional<std::filesystem::path> opening_dump_directory;
         for (int index = 1; index < argc; ++index) {
             if (std::string(argv[index]) == "--help") {
                 std::cout
@@ -2356,6 +2457,17 @@ int main(int argc, char** argv) {
             if (std::string(argv[index]) == "--startup-qa" &&
                 index + 1 < argc) {
                 startup_qa_path = std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--opening-dump-range" &&
+                index + 4 < argc) {
+                opening_dump_selection = static_cast<std::uint32_t>(
+                    std::stoul(argv[++index]));
+                opening_dump_start = static_cast<std::uint32_t>(
+                    std::stoul(argv[++index]));
+                opening_dump_end = static_cast<std::uint32_t>(
+                    std::stoul(argv[++index]));
+                opening_dump_directory =
+                    std::filesystem::path(argv[++index]);
             }
         }
         const auto asset_root = find_asset_root(argc, argv);
@@ -3279,6 +3391,13 @@ int main(int argc, char** argv) {
             return window.dump_startup_scene(
                 *startup_dump_stage, *startup_dump_selection,
                 *startup_dump_frame, *startup_dump_path);
+        }
+        if (opening_dump_selection.has_value() &&
+            opening_dump_start.has_value() && opening_dump_end.has_value() &&
+            opening_dump_directory.has_value()) {
+            return window.dump_opening_range(
+                *opening_dump_selection, *opening_dump_start,
+                *opening_dump_end, *opening_dump_directory);
         }
         if (boot_dump_frame.has_value() && boot_dump_path.has_value()) {
             return window.dump_boot_frame(*boot_dump_frame, *boot_dump_path);
