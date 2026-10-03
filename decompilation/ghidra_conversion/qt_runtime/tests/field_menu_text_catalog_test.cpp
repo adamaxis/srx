@@ -35,6 +35,12 @@ int main() {
         text.catalog.command_labels[6] != "Pocket Secretary" ||
         text.catalog.archetype_names[2] != "Gator" ||
         text.catalog.archetype_names[3] != "Shaman" ||
+        text.catalog.race_names !=
+            std::array<std::string, kFieldMenuRaceNameCount>{
+                "Human", "  Elf", "Dwarf", "  Orc", "Troll"} ||
+        text.catalog.class_names !=
+            std::array<std::string, kFieldMenuClassNameCount>{
+                "Mage   ", "Shaman ", "Samurai", "Decker "} ||
         text.catalog.runner_names[0] != "Joshua" ||
         text.catalog.item_detail_labels[0] != "ammo" ||
         text.catalog.item_detail_labels[1] != "uses" ||

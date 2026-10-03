@@ -8,6 +8,12 @@
 
 namespace shadowrun::ghidra_conversion {
 
+// ROM 0x59D7C starts D7 at 0x01F0 and tests for 0x0164 after each loop body.
+// The equivalent zero-based elapsed index in the host's ascending state is
+// therefore 0x01F0 - 0x0164, not the literal countdown value.
+constexpr std::uint16_t kTitleIntroStage2StoryTextElapsedFrameIndex =
+    0x01F0U - 0x0164U;
+
 struct TitleIntroStage2State {
     std::uint16_t current_frame = 0;
     std::uint16_t animation_start_frame = 0;

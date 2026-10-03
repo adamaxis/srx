@@ -50,7 +50,8 @@ TitleIntroStageLoopStopReason run_title_intro_stage_loop(
         if (callbacks.latch_controller_events) {
             callbacks.latch_controller_events();
         }
-        if (state.loop_frame == kTitleIntroStageFinalTextFrame &&
+        if (state.loop_frame ==
+                kTitleIntroStageFinalTextElapsedFrameIndex &&
             callbacks.render_final_text) {
             callbacks.render_final_text();
         }

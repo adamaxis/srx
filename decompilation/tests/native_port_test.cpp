@@ -21,6 +21,50 @@ shadowrun::native::NativePortAssets native_assets_from_rom(
     return shadowrun::graphics::decode_genesis_native_assets(rom);
 }
 
+bool cab_cursor_tile_matches(const shadowrun::native::SoftwareScreen& actual,
+                             const std::int32_t x, const std::int32_t y,
+                             const shadowrun::graphics::RgbaImage& tile) {
+    using shadowrun::native::Rgba8;
+    using shadowrun::native::SoftwareScreen;
+    SoftwareScreen expected;
+    expected.clear(Rgba8{0, 0, 0, 0xFF});
+    expected.blit_rgba(x, y, tile.width, tile.height, tile.pixels);
+    std::size_t visible_pixels = 0;
+    for (std::int32_t tile_y = 0; tile_y < tile.height; ++tile_y) {
+        for (std::int32_t tile_x = 0; tile_x < tile.width; ++tile_x) {
+            const auto& pixel = tile.pixels[
+                static_cast<std::size_t>(tile_y) * tile.width + tile_x];
+            if (pixel.alpha == 0U) {
+                continue;
+            }
+            ++visible_pixels;
+            if (actual.pixel(x + tile_x, y + tile_y) !=
+                expected.pixel(x + tile_x, y + tile_y)) {
+                return false;
+            }
+        }
+    }
+    return visible_pixels != 0U;
+}
+
+bool thin_gold_inventory_selector_matches(
+    const shadowrun::native::SoftwareScreen& actual,
+    const std::int32_t left, const std::int32_t top) {
+    constexpr std::uint32_t kSelectorGold = 0x00C4BE27U;
+    constexpr std::int32_t kWidth = 28;
+    constexpr std::int32_t kHeight = 20;
+    for (std::int32_t y = 0; y < kHeight; ++y) {
+        for (std::int32_t x = 0; x < kWidth; ++x) {
+            const bool edge = x == 0 || x == kWidth - 1 ||
+                              y == 0 || y == kHeight - 1;
+            if ((actual.pixel(left + x, top + y) == kSelectorGold) != edge) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 void enter_field_from_start(shadowrun::native::NativePortShell& shell) {
     using namespace shadowrun::native;
     shell.finish_boot();
@@ -251,6 +295,8 @@ int main() {
     // must both reach the framebuffer. After the city settles, the late
     // 0x5B1B6 SAT movement must still change pixels; the old $150 cutoff
     // rendered a static skyline through this part of the ROM loop.
+    const auto extracted_cab_cursor =
+        shadowrun::graphics::decode_genesis_cab_cursor_tiles(rom);
     NativePortShell intro_shell("SHADOWRUN", native_assets_from_rom(rom));
     enter_intro_from_start(intro_shell);
     while (intro_shell.intro_frame() < 1614U) {
@@ -320,6 +366,8 @@ int main() {
     assert(intro_shell.scene() == NativeScene::CabMap);
     SoftwareScreen downtown_map;
     intro_shell.render(downtown_map);
+    assert(cab_cursor_tile_matches(downtown_map, 32, 32,
+                                   extracted_cab_cursor.tiles[0]));
     for (std::size_t frame = 0; frame < 5U * 6U; ++frame) {
         intro_shell.update(InputState{});
     }
@@ -335,6 +383,15 @@ int main() {
         }
     }
     assert(cab_destination_delta > 200U);
+    for (std::size_t frame = 0; frame < 5U * 6U; ++frame) {
+        intro_shell.update(InputState{});
+    }
+    SoftwareScreen redmond_map_final;
+    intro_shell.render(redmond_map_final);
+    // The final Redmond outline uses D4464 position 0x03AE relative to
+    // Plane-A base 0xC208: (216,88) on the host frame, with no map offset.
+    assert(cab_cursor_tile_matches(redmond_map_final, 216, 88,
+                                   extracted_cab_cursor.tiles[0]));
 
     rom_shell.update(InputState{button_mask(Button::Start),
                                 button_mask(Button::Start)});
@@ -582,6 +639,12 @@ int main() {
     assert(equipment_shell.field_menu_selection() == 0);
     press_menu_direction(equipment_shell, Button::Down);
     assert(equipment_shell.field_menu_row() == 1);
+    SoftwareScreen inventory_selector_screen;
+    equipment_shell.render(inventory_selector_screen);
+    // The selected Scatter cell has a continuous one-pixel warm-gold outline
+    // inset two pixels from the cell. It has no segmented or interior marks.
+    assert(thin_gold_inventory_selector_matches(
+        inventory_selector_screen, 14, 142));
     equipment_shell.update(InputState{button_mask(Button::A),
                                       button_mask(Button::A)});
     assert(equipment_shell.field_menu_action_active());

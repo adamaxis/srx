@@ -15,6 +15,7 @@
 #include <unordered_map>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 
 namespace shadowrun::graphics {
@@ -562,6 +563,20 @@ native::NativePortAssets read_native_asset_directory(const std::string& root) {
     assets.intro_aircraft_plane_a = load("intro/aircraft-plane-a.bmp");
     assets.intro_trivid_background = load("intro/trivid-background.bmp");
     assets.cab_map = load("intro/cab-map.bmp");
+    constexpr std::array<std::string_view, 8> kCabCursorTilePaths{{
+        "intro/cab/cursor-top-left.bmp",
+        "intro/cab/cursor-top-middle.bmp",
+        "intro/cab/cursor-top-right.bmp",
+        "intro/cab/cursor-left.bmp",
+        "intro/cab/cursor-right.bmp",
+        "intro/cab/cursor-bottom-left.bmp",
+        "intro/cab/cursor-bottom-middle.bmp",
+        "intro/cab/cursor-bottom-right.bmp",
+    }};
+    for (std::size_t index = 0; index < kCabCursorTilePaths.size(); ++index) {
+        assets.cab_cursor_tiles[index] =
+            load(std::string(kCabCursorTilePaths[index]));
+    }
 
     assets.field_hud = load("field/hud/background.bmp");
     for (std::size_t index = 0; index < assets.field_hud_faces.size(); ++index) {

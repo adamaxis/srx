@@ -295,7 +295,7 @@ bool field_command_shell_survives(const QImage& scene,
     return source_shell_pixels_survive(
         scene, shell,
         {QPoint(10, 10), QPoint(100, 0), QPoint(120, 0),
-         QPoint(10, 100), QPoint(300, 10), QPoint(300, 220)});
+         QPoint(10, 100)});
 }
 
 bool field_command_shell_survives(
@@ -306,7 +306,64 @@ bool field_command_shell_survives(
     return source_shell_pixels_survive(
         scene, shell,
         {QPoint(10, 10), QPoint(100, 0), QPoint(120, 0),
-         QPoint(10, 100), QPoint(300, 10), QPoint(300, 220)});
+         QPoint(10, 100)});
+}
+
+bool field_inventory_selector_survives(const QImage& scene,
+                                       const std::uint8_t primary,
+                                       const std::uint8_t secondary) {
+    constexpr int kSpriteXOrigin = 12;
+    constexpr int kSpriteYOrigin = 116;
+    constexpr int kCellWidth = 40;
+    constexpr int kCellHeight = 24;
+    constexpr int kOutlineInset = 2;
+    constexpr int kOutlineWidth = 28;
+    constexpr int kOutlineHeight = 20;
+    const QColor gold(196, 190, 39);
+    const auto x = kSpriteXOrigin + static_cast<int>(primary) * kCellWidth +
+                   kOutlineInset;
+    const auto y = kSpriteYOrigin + static_cast<int>(secondary) * kCellHeight +
+                   kOutlineInset;
+    if (x < 0 || y < 0 || x + kOutlineWidth > scene.width() ||
+        y + kOutlineHeight > scene.height()) {
+        return false;
+    }
+
+    // The selected-item marker is a single-pixel rectangle. Requiring every
+    // edge and rejecting gold inside it catches the old crossed-segment art.
+    for (int offset = 0; offset < kOutlineWidth; ++offset) {
+        if (scene.pixelColor(x + offset, y) != gold ||
+            scene.pixelColor(x + offset, y + kOutlineHeight - 1) != gold) {
+            return false;
+        }
+    }
+    for (int offset = 0; offset < kOutlineHeight; ++offset) {
+        if (scene.pixelColor(x, y + offset) != gold ||
+            scene.pixelColor(x + kOutlineWidth - 1, y + offset) != gold) {
+            return false;
+        }
+    }
+    for (int inner_y = y + 1; inner_y < y + kOutlineHeight - 1; ++inner_y) {
+        for (int inner_x = x + 1; inner_x < x + kOutlineWidth - 1;
+             ++inner_x) {
+            if (scene.pixelColor(inner_x, inner_y) == gold) {
+                return false;
+            }
+        }
+    }
+
+    // A populated item remains visible inside the focus frame; the 24x16
+    // glyph in this QA record has opaque dark ink at more than its outline.
+    int item_ink_pixels = 0;
+    for (int item_y = y + 2; item_y < y + 18; ++item_y) {
+        for (int item_x = x + 2; item_x < x + 26; ++item_x) {
+            const auto pixel = scene.pixelColor(item_x, item_y);
+            if (pixel.red() < 48 && pixel.green() < 48 && pixel.blue() < 48) {
+                ++item_ink_pixels;
+            }
+        }
+    }
+    return item_ink_pixels >= 8;
 }
 
 bool field_hud_chrome_survives(const QImage& scene,
@@ -715,11 +772,48 @@ public:
                       << output_directory.string() << '\n';
             return 3;
         }
-        trace << "label\tphase\tboot_frame\topening_frame\tstage\tscene\n";
+        trace << "label\tphase\tboot_frame\topening_frame\tstage\tscene"
+                 "\tpalette_weight\n";
 
         const auto write_snapshot = [&](const std::string& name) {
             const auto path = output_directory / (name + ".bmp");
             const auto scene = render_scene();
+            if (state_.phase == StartupIntegrationPhase::opening_intro &&
+                state_.opening_intro.seattle_outline_frame != 0U &&
+                state_.opening_intro.stage == OpeningIntroStage::schedule &&
+                opening_scene_ == OpeningIntroScene::seattle) {
+                const auto phase = static_cast<std::uint8_t>(std::min<
+                    std::uint16_t>(
+                        (state_.opening_intro.seattle_outline_frame - 1U) /
+                            2U,
+                        4U));
+                const auto outline =
+                    opening_intro_seattle_outline_plan(phase);
+                const auto bottom_midpoint =
+                    QPoint(outline.x + outline.width / 2,
+                           outline.y + outline.height - 1);
+                if (scene.pixelColor(bottom_midpoint) !=
+                    QColor(0xE0, 0xBB, 0x4C)) {
+                    std::cerr
+                        << "startup qa: Seattle focus box was not a fine "
+                           "amber outline in phase "
+                        << static_cast<unsigned>(phase) << '\n';
+                    return false;
+                }
+            }
+            if (state_.phase == StartupIntegrationPhase::opening_intro &&
+                state_.opening_intro.scene_palette_weight == 0U) {
+                for (int y = 0; y < scene.height(); ++y) {
+                    for (int x = 0; x < scene.width(); ++x) {
+                        if (scene.pixelColor(x, y) != QColor(Qt::black)) {
+                            std::cerr
+                                << "startup qa: zero-weight scene palette "
+                                   "did not render black\n";
+                            return false;
+                        }
+                    }
+                }
+            }
             const auto is_startup_menu =
                 state_.phase == StartupIntegrationPhase::start_options ||
                 state_.phase == StartupIntegrationPhase::save_load ||
@@ -737,6 +831,78 @@ public:
                           << name << '\n';
                 return false;
             }
+            if (state_.phase == StartupIntegrationPhase::opening_intro &&
+                state_.opening_intro.scene == OpeningIntroScene::cab_map &&
+                state_.opening_intro.post_intro_mode == 2U &&
+                state_.opening_intro.post_intro_caption_visible) {
+                const auto caption = cab_mode_selection_plan(
+                    state_.opening_intro.post_intro_mode,
+                    state_.opening_intro.post_intro_phase);
+                const auto font = draw_asset_cache_.find("menu.startup.font");
+                constexpr int kRedmondLeadingSpaces = 2;
+                constexpr char kRedmondFirstLetter = 'R';
+                const auto glyph = static_cast<int>(
+                    static_cast<unsigned char>(kRedmondFirstLetter) - 0x20U);
+                const auto glyph_x = (glyph % 16) * 8;
+                const auto glyph_y = (glyph / 16) * 8;
+                bool first_letter_is_white = false;
+                if (font != draw_asset_cache_.end()) {
+                    for (int y = 0; y < 8; ++y) {
+                        for (int x = 0; x < 8; ++x) {
+                            const auto source = font->second.pixelColor(
+                                glyph_x + x, glyph_y + y);
+                            const auto coverage = std::max(
+                                {source.red(), source.green(), source.blue()});
+                            if (source.alpha() == 0 || coverage == 0) {
+                                continue;
+                            }
+                            const auto pixel = scene.pixelColor(
+                                caption.caption_x +
+                                    kRedmondLeadingSpaces * 8 + x,
+                                caption.caption_y + y);
+                            if (pixel.red() < 200 || pixel.green() < 200 ||
+                                pixel.blue() < 200) {
+                                std::cerr << "startup qa: Redmond cab caption "
+                                             "was not rendered white\n";
+                                return false;
+                            }
+                            first_letter_is_white = true;
+                        }
+                    }
+                }
+                if (!first_letter_is_white) {
+                    std::cerr << "startup qa: Redmond cab caption glyph was "
+                                 "not found\n";
+                    return false;
+                }
+                const auto cursor =
+                    draw_asset_cache_.find("intro.cab.cursor.top-left");
+                int cursor_ink_matches = 0;
+                if (cursor != draw_asset_cache_.end()) {
+                    for (int y = 0; y < cursor->second.height(); ++y) {
+                        for (int x = 0; x < cursor->second.width(); ++x) {
+                            const auto source =
+                                cursor->second.pixelColor(x, y);
+                            if (source.alpha() == 0 ||
+                                (source.red() == 0 && source.green() == 0 &&
+                                 source.blue() == 0)) {
+                                continue;
+                            }
+                            const auto pixel = scene.pixelColor(
+                                caption.cursor_x + x,
+                                caption.cursor_y + y);
+                            if (pixel == source) {
+                                ++cursor_ink_matches;
+                            }
+                        }
+                    }
+                }
+                if (cursor_ink_matches < 8) {
+                    std::cerr << "startup qa: cab cursor top-left tile did "
+                                 "not render at its ROM Plane-A position\n";
+                    return false;
+                }
+            }
             if (!scene.save(QString::fromStdWString(path.wstring()))) {
                 std::cerr << "startup qa: could not write " << path.string()
                           << '\n';
@@ -750,7 +916,10 @@ public:
                   << state_.frame.frame_count << '\t'
                   << state_.opening_intro.source_frame << '\t'
                   << opening_intro_stage_name(opening_stage_) << '\t'
-                  << opening_intro_scene_name(opening_scene_) << '\n';
+                  << opening_intro_scene_name(opening_scene_) << '\t'
+                  << static_cast<unsigned>(
+                         state_.opening_intro.scene_palette_weight)
+                  << '\n';
         };
         const auto fail = [&](const std::string_view message) {
             std::cerr << "startup qa: " << message << '\n';
@@ -901,9 +1070,10 @@ public:
             return 3;
         }
 
-        constexpr std::array<std::uint32_t, 10> kOpeningCheckpoints{
-            300U, 600U, 900U, 1200U, 1500U,
-            1800U, 2100U, 2400U, 2700U, 3000U};
+        constexpr std::array<std::uint32_t, 23> kOpeningCheckpoints{
+            300U, 600U, 604U, 606U, 608U, 610U, 612U, 614U,
+            620U, 628U, 630U, 648U, 654U, 662U, 682U, 900U,
+            1200U, 1500U, 1800U, 2100U, 2400U, 2700U, 3000U};
         std::size_t next_checkpoint = 0U;
         auto previous_stage = opening_stage_;
         auto previous_scene = opening_scene_;
@@ -1143,6 +1313,11 @@ private:
             draw_title(scene_painter);
         }
         scene_painter.end();
+        if (state_.phase == StartupIntegrationPhase::opening_intro &&
+            state_.opening_intro.scene_palette_weight != 255U) {
+            return scale_genesis_image_rgb(
+                scene, state_.opening_intro.scene_palette_weight);
+        }
         return scene;
     }
 
@@ -1868,15 +2043,17 @@ private:
 
     void draw_intro_outline(QPainter& painter, const int x, const int y,
                             const int width, const int height) const {
-        const QColor outline(0xF0, 0xF0, 0xF0);
-        constexpr int kTile = 8;
+        // The source tile stream in 0x5B378 presents a fine amber focus box.
+        // Drawing whole tile-width bars turned it into a thick white frame.
+        constexpr int kLine = 1;
+        const QColor outline(0xE0, 0xBB, 0x4C);
         if (width <= 0 || height <= 0) {
             return;
         }
-        painter.fillRect(x, y, width, kTile, outline);
-        painter.fillRect(x, y + height - kTile, width, kTile, outline);
-        painter.fillRect(x, y, kTile, height, outline);
-        painter.fillRect(x + width - kTile, y, kTile, height, outline);
+        painter.fillRect(x, y, width, kLine, outline);
+        painter.fillRect(x, y + height - kLine, width, kLine, outline);
+        painter.fillRect(x, y, kLine, height, outline);
+        painter.fillRect(x + width - kLine, y, kLine, height, outline);
     }
 
     void draw_intro_outline(QPainter& painter,
@@ -1888,19 +2065,17 @@ private:
         const auto plan = cab_mode_selection_plan(
             state_.opening_intro.post_intro_mode,
             state_.opening_intro.post_intro_phase);
-        // 0x13726 stamps the 0xD4446 border around the selected destination
-        // in plane space. The plane-to-screen offset for the cab plate is
-        // (+30,-2); plan widths already include the three-tile border.
-        constexpr int kCabPlaneToScreenX = 30;
-        constexpr int kCabPlaneToScreenY = -2;
+        // 0x13726 stamps the 0xD4446 border at its 0xD445D Plane-A position.
+        // That plan is already in video coordinates; the cab map is a
+        // separate Plane-B asset and must not contribute its crop offset.
         const auto tile = [this](const std::string_view name) -> const QImage* {
             const auto found = draw_asset_cache_.find(
                 std::string("intro.cab.cursor.") + std::string(name));
             return found == draw_asset_cache_.end() ? nullptr
                                                     : &found->second;
         };
-        const auto x = plan.cursor_x + kCabPlaneToScreenX;
-        const auto y = plan.cursor_y + kCabPlaneToScreenY;
+        const auto x = plan.cursor_x;
+        const auto y = plan.cursor_y;
         const auto width = plan.cursor_width;
         const auto height = plan.cursor_height;
         if (width <= 0 || height <= 0) {
@@ -1930,7 +2105,7 @@ private:
         }
         if (state_.opening_intro.post_intro_caption_visible) {
             draw_startup_text(painter, plan.caption_x, plan.caption_y,
-                              plan.caption, source_text_color(0U));
+                              plan.caption, QColor(Qt::white));
         }
     }
 
@@ -2708,6 +2883,39 @@ int main(int argc, char** argv) {
                                  "was not preserved around the overlays\n";
                     return 3;
                 }
+                const auto hud_chrome_present =
+                    field_hud_chrome_survives(command_scene, asset_root);
+                const auto hud_face_present = field_hud_face_family_survives(
+                    command_scene, asset_root, field_archetype);
+                if (!hud_chrome_present || !hud_face_present) {
+                    std::cerr << "field command dump: persistent field HUD "
+                                 "was not preserved above the command plane "
+                              << "(chrome=" << hud_chrome_present
+                              << ", face=" << hud_face_present << ")\n";
+                    return 3;
+                }
+                if (field_command_page.has_value() &&
+                    *field_command_page < 2U) {
+                    const auto& selection =
+                        field_scene.command_overview_view().source_state;
+                    const auto selected_slot =
+                        static_cast<std::size_t>(selection.secondary_page) *
+                            2U +
+                        selection.primary_page;
+                    const auto& items =
+                        field_scene.active_runner_record().inventory_item_codes;
+                    if (selection.primary_page != *field_command_page ||
+                        selected_slot >= items.size() ||
+                        items[selected_slot] == 0U ||
+                        !field_inventory_selector_survives(
+                            command_scene, selection.primary_page,
+                            selection.secondary_page)) {
+                        std::cerr
+                            << "field command dump: selected inventory item "
+                               "did not retain its one-pixel gold outline\n";
+                        return 3;
+                    }
+                }
                 if (!command_scene.save(QString::fromStdWString(
                         field_command_dump_path->wstring()))) {
                     std::cerr << "field command dump: could not write "
@@ -3059,10 +3267,13 @@ int main(int argc, char** argv) {
                 }
                 const auto action_open_scene = render_scene();
                 if (!region_matches(action_open_scene, focus_equip, 128, 184) ||
+                    !field_inventory_selector_survives(action_open_scene, 0U,
+                                                       0U) ||
                     !save_scene("00_inventory_action_equip",
                                 action_open_scene)) {
                     std::cerr << "field action dump: could not write open "
-                                 "scene or action focus is misplaced\n";
+                                 "scene, action focus, or item selector is "
+                                 "misplaced\n";
                     return 3;
                 }
 

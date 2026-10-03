@@ -14,6 +14,8 @@ namespace shadowrun::ghidra_conversion::qt_runtime {
 // receives ordinary host strings and never follows a ROM pointer table.
 inline constexpr std::size_t kCommandOverviewLabelCount = 7U;
 inline constexpr std::size_t kFieldMenuArchetypeNameCount = 4U;
+inline constexpr std::size_t kFieldMenuRaceNameCount = 5U;
+inline constexpr std::size_t kFieldMenuClassNameCount = 4U;
 inline constexpr std::size_t kFieldMenuRunnerNameCount = 3U;
 inline constexpr std::size_t kFieldMenuStatusNameCount = 5U;
 inline constexpr std::size_t kFieldMenuPowerLabelCount = 13U;
@@ -29,6 +31,8 @@ inline constexpr std::size_t kCyberwareEntryCount = 15U;
 struct FieldMenuTextCatalog {
     std::array<std::string, kCommandOverviewLabelCount> command_labels{};
     std::array<std::string, kFieldMenuArchetypeNameCount> archetype_names{};
+    std::array<std::string, kFieldMenuRaceNameCount> race_names{};
+    std::array<std::string, kFieldMenuClassNameCount> class_names{};
     std::array<std::string, kFieldMenuRunnerNameCount> runner_names{};
     std::array<std::string, kFieldMenuStatusNameCount> status_names{};
     std::array<std::string, kFieldMenuPowerLabelCount> power_labels{};

@@ -82,11 +82,12 @@ OpeningIntroDrawPoint opening_intro_sat_draw_point(
 OpeningIntroDrawPoint opening_intro_aircraft_plane_draw_point(
     std::int16_t scroll_x);
 
-// ROM 0x5B378: D4=0x40E, five 0x5B36E offsets, 0x5B364 D1/D2 pairs, inner
-// dbf so tiles are D1+1 by D2+1. Plane B (seattle) stays; Plane A is the
-// outline. Five passes × two vblanks.
-constexpr std::uint16_t kSeattleOutlineVram = 0x040EU;
-constexpr std::uint16_t kSeattleOutlineHoldFrames = 10U;
+// ROM 0x5B378: five 0x5B36E offsets and the matching 0x5B364 dimension pairs
+// stamp the Seattle focus animation on Plane A while Plane B remains visible.
+// Native 320x224 rectangles are calibrated to the five independently
+// captured visual phases; the source routine holds each for two VBlanks.
+constexpr std::uint16_t kSeattleOutlineAnimationFrames = 10U;
+constexpr std::uint16_t kStage2PaletteTransitionVblanks = 34U;
 
 struct OpeningIntroOutlinePlan {
     int x = 0;
@@ -146,11 +147,15 @@ enum class OpeningIntroScene : std::uint8_t {
 enum class OpeningIntroStage : std::uint8_t {
     not_started,
     schedule,
-    stage2_entry,
+    stage2_palette_fade_out,
+    stage2_palette_fade_in,
     stage2_first_loop,
     stage2_second_loop,
+    orchestrator_palette_fade_out,
     orchestrator_entry,
+    orchestrator_palette_fade_in,
     orchestrator_loop,
+    stage_loop_palette_fade_out,
     stage_loop_entry,
     stage_loop,
     post_intro,
@@ -273,6 +278,9 @@ struct OpeningIntroState {
     bool post_intro_caption_visible = false;
     bool seattle_plane_cleared = false;
     std::uint16_t seattle_outline_frame = 0;
+    std::uint16_t scene_palette_fade_vblank = 0;
+    std::uint8_t scene_palette_fade_step = 7;
+    std::uint8_t scene_palette_weight = 255;
     std::uint16_t scroll_accumulator = 0;
     bool source_stop_marker = false;
 

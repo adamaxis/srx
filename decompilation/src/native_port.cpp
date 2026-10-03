@@ -249,39 +249,47 @@ constexpr std::array<CabMapCursorState, 5> kCabRedmondCursor{{
     {0x0216U, 0x0CU, 0x08U}, {0x0322U, 0x06U, 0x05U},
     {0x03AEU, 0x00U, 0x00U}}};
 constexpr std::uint64_t kCabCursorPhaseFrames = 6;
-// The cab plate's plane window (32,32) lands at the capture's (62,30), so
-// plane coordinates shift by (+30,-2) at the host's one-to-one tile scale.
-constexpr std::int32_t kCabPlaneToScreenX = 30;
-constexpr std::int32_t kCabPlaneToScreenY = -2;
-
-void draw_cab_cursor(ScreenWriter& screen, const CabMapCursorState& state) {
+void draw_cab_cursor(
+    ScreenWriter& screen, const CabMapCursorState& state,
+    const std::array<NativeImage, 8>& tiles) {
     // D4464 positions are VDP name-table addresses relative to $C000.  The
-    // decoder uses the same $C208 base as 0x13726's D4 register.
+    // decoder uses the same $C208 Plane-A base as 0x13726's D4 register.
+    // These positions are already video coordinates; do not apply the
+    // independent Plane-B cab-map crop offset.
     const auto relative = static_cast<std::uint32_t>(0x0208U) +
         static_cast<std::uint32_t>(state.position);
-    const auto source_x = static_cast<std::int32_t>(
+    const auto left = static_cast<std::int32_t>(
         ((relative % 0x80U) / 2U) * 8U);
-    const auto source_y = static_cast<std::int32_t>((relative / 0x80U) * 8U);
-    // 0x13726's border spans inner + three tiles (both edges plus the
-    // corner columns). The plane-to-screen offset for the cab plate is
-    // (+30,-2) at one-to-one tile scale.
+    const auto top =
+        static_cast<std::int32_t>((relative / 0x80U) * 8U);
     const auto source_width =
         static_cast<std::int32_t>(state.width_tiles + 3U) * 8;
     const auto source_height =
         static_cast<std::int32_t>(state.height_tiles + 3U) * 8;
-    const auto left = source_x + kCabPlaneToScreenX;
-    const auto top = source_y + kCabPlaneToScreenY;
-    const auto width = source_width;
-    const auto height = source_height;
-    // The cursor tiles in D4446 are a pale, two-tone outline. Preserve that
-    // visual hierarchy at the host presentation scale while the map itself
-    // remains the extracted ROM art.
-    screen.fill_rect(left, top, width, 2, {0xF0, 0xF0, 0xF0, 0xFF});
-    screen.fill_rect(left, top + height - 2, width, 2,
-                     {0xA8, 0xB8, 0xC0, 0xFF});
-    screen.fill_rect(left, top, 2, height, {0xF0, 0xF0, 0xF0, 0xFF});
-    screen.fill_rect(left + width - 2, top, 2, height,
-                     {0xA8, 0xB8, 0xC0, 0xFF});
+    constexpr std::int32_t kTileSize = 8;
+    const auto draw_tile = [&screen, &tiles](const std::size_t index,
+                                             const std::int32_t x,
+                                             const std::int32_t y) {
+        const auto& tile = tiles[index];
+        if (!tile.pixels.empty()) {
+            screen.blit_rgba(x, y, tile.width, tile.height, tile.pixels);
+        }
+    };
+    draw_tile(0U, left, top);
+    draw_tile(2U, left + source_width - kTileSize, top);
+    draw_tile(5U, left, top + source_height - kTileSize);
+    draw_tile(7U, left + source_width - kTileSize,
+              top + source_height - kTileSize);
+    for (auto x = left + kTileSize;
+         x <= left + source_width - 2 * kTileSize; x += kTileSize) {
+        draw_tile(1U, x, top);
+        draw_tile(6U, x, top + source_height - kTileSize);
+    }
+    for (auto y = top + kTileSize;
+         y <= top + source_height - 2 * kTileSize; y += kTileSize) {
+        draw_tile(3U, left, y);
+        draw_tile(4U, left + source_width - kTileSize, y);
+    }
 }
 // ROM 0x5A62 accepts VDP X values strictly below 0x1AE. After removing the
 // 0x80 sprite origin, this is the last host pixel at which the record remains
@@ -807,6 +815,7 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     field_hud_ammo_counters_ = std::move(assets.field_hud_ammo_counters);
     pocket_secretary_background_ = std::move(assets.pocket_secretary_background);
     cab_map_ = std::move(assets.cab_map);
+    cab_cursor_tiles_ = std::move(assets.cab_cursor_tiles);
     if (!boot_background_.pixels.empty()) {
         scene_ = NativeScene::Bootstrap;
     }
@@ -4634,7 +4643,7 @@ void NativePortShell::render(ScreenWriter& screen) const {
         const auto& cursor = cab_frame_ < 5U * kCabCursorPhaseFrames
             ? kCabDowntownCursor[cursor_phase]
             : kCabRedmondCursor[cursor_phase];
-        draw_cab_cursor(screen, cursor);
+        draw_cab_cursor(screen, cursor, cab_cursor_tiles_);
         // 0x13726 ultimately calls C0DA with the startup character table
         // (C1320) and its source text is rendered as the pale map caption,
         // not with the green command-menu palette.  The two native atlases
@@ -5149,20 +5158,31 @@ void NativePortShell::render(ScreenWriter& screen) const {
                                      icon.width, icon.height, icon.pixels);
                 }
             }
-            // 0x11592 emits the source 3x4-tile selector at the same 0x28/0x18
-            // strides used by the cursor bytes. Do not redraw it as a host
-            // rectangle: its gaps, palette, and corner treatment are visible
-            // in the original menu.
+            // 0x11592 positions the selected inventory cell at 0x28/0x18
+            // strides. Independent menu frames show a one-pixel warm-gold
+            // outline inset from that footprint; drawing the raw SAT sprite
+            // adds segmented internal marks that are absent in the game.
             if (field_menu_selection_ < 2U) {
-                const auto x = 8 + static_cast<std::int32_t>(
+                const auto x = 12 + static_cast<std::int32_t>(
                     field_menu_selection_ * 40U);
-                const auto y = 112 + static_cast<std::int32_t>(
+                const auto y = 116 + static_cast<std::int32_t>(
                     field_menu_row_ * 24U);
-                if (!field_menu_cursor_.pixels.empty()) {
-                    screen.blit_rgba(x, y, field_menu_cursor_.width,
-                                     field_menu_cursor_.height,
-                                     field_menu_cursor_.pixels);
-                }
+                constexpr std::int32_t kOutlineInset = 2;
+                constexpr std::int32_t kOutlineWidth = 28;
+                constexpr std::int32_t kOutlineHeight = 20;
+                constexpr Rgba8 kSelectorGold{0xC4, 0xBE, 0x27, 0xFF};
+                screen.fill_rect(x + kOutlineInset,
+                                 y + kOutlineInset,
+                                 kOutlineWidth, 1, kSelectorGold);
+                screen.fill_rect(x + kOutlineInset,
+                                 y + kOutlineInset + kOutlineHeight - 1,
+                                 kOutlineWidth, 1, kSelectorGold);
+                screen.fill_rect(x + kOutlineInset,
+                                 y + kOutlineInset, 1,
+                                 kOutlineHeight, kSelectorGold);
+                screen.fill_rect(x + kOutlineInset + kOutlineWidth - 1,
+                                 y + kOutlineInset, 1,
+                                 kOutlineHeight, kSelectorGold);
             }
             if (field_menu_selection_ < 2U) {
                 draw_item_detail(selected_code, true);

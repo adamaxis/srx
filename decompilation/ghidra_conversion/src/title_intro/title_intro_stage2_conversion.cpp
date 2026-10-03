@@ -144,7 +144,8 @@ TitleIntroStage2StopReason run_title_intro_stage2(
         if (callbacks.advance_ambush) {
             callbacks.advance_ambush();
         }
-        if (state.second_loop_frame == 0x0164U) {
+        if (state.second_loop_frame ==
+            kTitleIntroStage2StoryTextElapsedFrameIndex) {
             if (callbacks.render_scroll_text) {
                 callbacks.render_scroll_text();
             }

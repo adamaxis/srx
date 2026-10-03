@@ -67,6 +67,16 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_command_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_command_qa PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+add_test(NAME shadowrun_ghidra_conversion_qt_inventory_selector_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-command-dump
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-inventory-selector-qa.bmp"
+                 --field-archetype gator
+                 --field-command-page 1)
+set_tests_properties(shadowrun_ghidra_conversion_qt_inventory_selector_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # All three Joshua archetypes must reach the field HUD with their own
 # extracted face/bar/item families. A single-default dump cannot prove that
 # Decker or Gator/Shaman propagation works.

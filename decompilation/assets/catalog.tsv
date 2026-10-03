@@ -366,7 +366,7 @@ menu/field/clips-trade-focus-1.bmp	sprite	0	0	16	16	0x11E7E[1]	extracted
 menu/field/clips-trade-focus-2.bmp	sprite	0	0	16	16	0x11E7E[2]	extracted
 menu/field/clips-trade-focus-3.bmp	sprite	0	0	16	16	0x11E7E[3]	extracted
 menu/field/posture-focus.bmp	sprite	0	0	48	8	0x119CE	extracted
-menu/field/cursor.bmp	sprite	0	0	24	32	0x11592	extracted
+menu/field/cursor.bmp	sprite	0	0	32	24	0x11592	extracted
 items/weapons/detail/item-01.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=1]	extracted
 items/weapons/detail/item-02.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=2]	extracted
 items/weapons/detail/item-03.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=3]	extracted

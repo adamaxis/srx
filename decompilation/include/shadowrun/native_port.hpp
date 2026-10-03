@@ -589,9 +589,9 @@ struct NativePortAssets {
     // ROM 0x119CE writes the six-tile posture focus strip at CA9E when the
     // status/posture selector owns input.
     NativeImage field_menu_posture_focus;
-    // ROM 0x11592 emits the 3x4-tile selector sprite from D29F6. It is kept
-    // as a transparent host image and positioned from the same 0x28/0x18
-    // selector strides as the source routine.
+    // Offline extraction of ROM 0x11592's 4x3-tile SAT cursor from D29F6.
+    // The inventory screen uses a one-pixel gold outline based on the
+    // independently reviewed selected-cell appearance.
     NativeImage field_menu_cursor;
     // ROM 0x12A8C writes the selected item's 9x5 artwork from the item
     // record's +0x1E table to Plane A at C1A4.
@@ -631,9 +631,10 @@ struct NativePortAssets {
         intro_wilderness_pan_frames{};
     std::array<NativeImage, kNativeIntroAmbushFrameCount>
         intro_ambush_frames{};
-    // ROM 0x134D2's 0xD2A2E/0xD4298 cab plate, including the source
-    // district selector outline in its capture-space presentation.
+    // ROM 0x134D2's 0xD2A2E/0xD4298 cab plate and the separately extracted
+    // 0xD4446 eight-tile destination cursor.
     NativeImage cab_map;
+    std::array<NativeImage, 8> cab_cursor_tiles{};
     NativeImage field_map;
     std::vector<NativeEntityFrame> entity_frames;
     // Baked luminance copies of the color walk/idle frames. Extract stores
@@ -1353,6 +1354,7 @@ private:
     NativeImage startup_font_{};
     NativeImage startup_cursor_{};
     NativeImage cab_map_{};
+    std::array<NativeImage, 8> cab_cursor_tiles_{};
     std::array<NativeImage, 3> field_menu_runner_portraits_{};
     std::array<NativeImage, 2> field_menu_selected_cells_{};
     std::array<NativeImage, 5> field_menu_command_focus_{};

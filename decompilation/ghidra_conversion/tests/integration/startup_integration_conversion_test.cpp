@@ -17,6 +17,14 @@ using namespace shadowrun::ghidra_conversion;
 using namespace shadowrun::ghidra_conversion::integration;
 
 struct Observations {
+    struct OpeningTextTimelineEntry {
+        OpeningIntroTextRequest request;
+        std::uint32_t source_frame = 0;
+        OpeningIntroStage stage = OpeningIntroStage::schedule;
+        std::uint16_t stage2_second_loop_frame = 0;
+        std::uint16_t stage_loop_frame = 0;
+    };
+
     std::vector<std::string> callbacks;
     std::vector<StartupIntegrationPhase> phases;
     std::size_t field_ready_count = 0;
@@ -25,7 +33,42 @@ struct Observations {
         JoshuaArchetypeChoice::samurai;
     std::vector<OpeningIntroSpriteGroup> opening_sprite_groups;
     std::vector<OpeningIntroTextRequest> opening_text_requests;
+    std::vector<OpeningTextTimelineEntry> opening_text_timeline;
 };
+
+struct PaletteFadeSnapshot {
+    OpeningIntroStage stage = OpeningIntroStage::not_started;
+    OpeningIntroScene scene = OpeningIntroScene::seattle;
+    std::uint16_t vblank = 0;
+    std::uint8_t step = 0;
+    std::uint8_t weight = 0;
+};
+
+bool palette_fade_matches_source_steps(
+    const std::vector<PaletteFadeSnapshot>& snapshots,
+    const OpeningIntroStage stage, const OpeningIntroScene scene,
+    const bool to_black) {
+    std::size_t count = 0U;
+    for (const auto& snapshot : snapshots) {
+        if (snapshot.stage != stage) {
+            continue;
+        }
+        const auto vblank = static_cast<std::uint16_t>(count);
+        const auto steps_applied = static_cast<std::uint8_t>(
+            std::min<std::size_t>(vblank / 2U, 7U));
+        const auto expected_step = static_cast<std::uint8_t>(
+            to_black ? 7U - steps_applied : steps_applied);
+        const auto expected_weight = static_cast<std::uint8_t>(
+            static_cast<std::uint16_t>(expected_step) * 255U / 7U);
+        if (snapshot.scene != scene || snapshot.vblank != vblank ||
+            snapshot.step != expected_step ||
+            snapshot.weight != expected_weight) {
+            return false;
+        }
+        ++count;
+    }
+    return count == kStage2PaletteTransitionVblanks;
+}
 
 void record(Observations& observations, const char* callback) {
     observations.callbacks.emplace_back(callback);
@@ -251,8 +294,13 @@ StartupIntegrationCallbacks make_callbacks(
                 opening_intro_sprite_group(request.sprite_descriptor));
         };
     callbacks.opening_intro.render_text =
-        [&observations](const OpeningIntroTextRequest& request) {
+        [&state, &observations](const OpeningIntroTextRequest& request) {
             observations.opening_text_requests.push_back(request);
+            observations.opening_text_timeline.push_back(
+                {request, state.opening_intro.source_frame,
+                 state.opening_intro.stage,
+                 state.opening_intro.stage2_second_loop_frame,
+                 state.opening_intro.stage_loop_frame});
         };
     callbacks.opening_intro.source_boundary = [&observations](
                                                   const std::string_view boundary) {
@@ -285,6 +333,21 @@ bool has_opening_text(const Observations& observations,
                    request.destination_word == destination &&
                    request.palette_flags == palette_flags;
         });
+}
+
+std::size_t count_opening_text(const Observations& observations,
+                               const OpeningIntroTextAsset asset,
+                               const std::uint16_t destination,
+                               const std::uint16_t palette_flags) {
+    return static_cast<std::size_t>(std::count_if(
+        observations.opening_text_requests.begin(),
+        observations.opening_text_requests.end(),
+        [asset, destination, palette_flags](
+            const OpeningIntroTextRequest& request) {
+            return opening_intro_text_asset(request.text_asset) == asset &&
+                   request.destination_word == destination &&
+                   request.palette_flags == palette_flags;
+        }));
 }
 
 std::size_t count_callback(const Observations& observations,
@@ -455,6 +518,16 @@ int main() {
         return 11;
     }
 
+    const auto& opening_schedule = opening_intro_source_plan().opening_schedule;
+    if (opening_schedule.size() != 5U ||
+        opening_schedule[3].delay_frames != 0x00F0U ||
+        opening_schedule[3].action_id != 0x5B378U ||
+        opening_schedule[4].delay_frames != 0x000FU ||
+        opening_schedule[4].action_id != 0x49A0U ||
+        kStage2PaletteTransitionVblanks != 34U) {
+        return 25;
+    }
+
     StartupIntegrationState new_game_state{};
     Observations new_game_observations;
     const auto new_game_callbacks =
@@ -594,9 +667,22 @@ int main() {
     // must not silently jump from the archetype menu to a synthetic field
     // screen or stop after the first title/tri-vid boundary.
     bool opening_completed = false;
+    std::vector<PaletteFadeSnapshot> palette_fade_snapshots;
     for (std::size_t frame = 0; frame < 5000U; ++frame) {
         const auto event = advance_startup_integration(
             new_game_state, 0U, new_game_callbacks);
+        const auto& intro = new_game_state.opening_intro;
+        if (intro.stage == OpeningIntroStage::stage2_palette_fade_out ||
+            intro.stage == OpeningIntroStage::stage2_palette_fade_in ||
+            intro.stage == OpeningIntroStage::orchestrator_palette_fade_out ||
+            intro.stage == OpeningIntroStage::orchestrator_palette_fade_in ||
+            intro.stage == OpeningIntroStage::stage_loop_palette_fade_out) {
+            palette_fade_snapshots.push_back(
+                {intro.stage, intro.scene,
+                 intro.scene_palette_fade_vblank,
+                 intro.scene_palette_fade_step,
+                 intro.scene_palette_weight});
+        }
         if (event == StartupIntegrationEvent::field_ready) {
             opening_completed = true;
             break;
@@ -619,6 +705,14 @@ int main() {
         new_game_state.opening_intro.post_intro_phase != 4U) {
         return 13;
     }
+    if (new_game_state.opening_intro.scene_palette_fade_vblank !=
+            kStage2PaletteTransitionVblanks ||
+        new_game_state.opening_intro.scene_palette_fade_step != 7U ||
+        new_game_state.opening_intro.scene_palette_weight != 255U ||
+        count_callback(new_game_observations,
+                       "0x49A0.seattle_focus_hold_complete") != 1U) {
+        return 26;
+    }
     // The 0x131C/0x12F6 split is a source behavior boundary: resource-set
     // changes fade the previous scene to black, while only the initial
     // wilderness and tri-vid reveals advance toward a new target palette.
@@ -628,6 +722,28 @@ int main() {
         count_callback(new_game_observations,
                        "opening_advance_palette_fade") != 2U) {
         return 19;
+    }
+    if (!palette_fade_matches_source_steps(
+            palette_fade_snapshots,
+            OpeningIntroStage::stage2_palette_fade_out,
+            OpeningIntroScene::seattle, true) ||
+        !palette_fade_matches_source_steps(
+            palette_fade_snapshots,
+            OpeningIntroStage::stage2_palette_fade_in,
+            OpeningIntroScene::wilderness, false) ||
+        !palette_fade_matches_source_steps(
+            palette_fade_snapshots,
+            OpeningIntroStage::orchestrator_palette_fade_out,
+            OpeningIntroScene::wilderness, true) ||
+        !palette_fade_matches_source_steps(
+            palette_fade_snapshots,
+            OpeningIntroStage::orchestrator_palette_fade_in,
+            OpeningIntroScene::trivid, false) ||
+        !palette_fade_matches_source_steps(
+            palette_fade_snapshots,
+            OpeningIntroStage::stage_loop_palette_fade_out,
+            OpeningIntroScene::trivid, true)) {
+        return 27;
     }
 
     // 0x5AE9E is a concrete source record writer, not a generic story label.
@@ -655,6 +771,20 @@ int main() {
                           0xA000U)) {
         return 20;
     }
+    // The opening schedule's 0x5AEEE entry writes both the cover and runner
+    // lines before the later 0x5AE9E wilderness-story refresh writes them
+    // again. Counting requests distinguishes the two source transitions.
+    if (count_opening_text(new_game_observations,
+                           OpeningIntroTextAsset::team_cover, 0x2304U,
+                           0xA000U) < 2U ||
+        count_opening_text(new_game_observations,
+                           OpeningIntroTextAsset::team_runners, 0x2384U,
+                           0xA000U) < 2U ||
+        count_opening_text(new_game_observations,
+                           OpeningIntroTextAsset::team_wilderness, 0x2404U,
+                           0xA000U) < 2U) {
+        return 23;
+    }
     for (const auto destination : {0x2106U, 0x2186U, 0x2206U, 0x2286U,
                                    0x2306U}) {
         if (!has_opening_text(new_game_observations,
@@ -674,6 +804,66 @@ int main() {
                           0xE000U) ||
         !opening_intro_text(OpeningIntroTextAsset::blank).empty()) {
         return 22;
+    }
+    const auto massacre_transition = std::find_if(
+        new_game_observations.opening_text_timeline.begin(),
+        new_game_observations.opening_text_timeline.end(),
+        [](const Observations::OpeningTextTimelineEntry& entry) {
+            return opening_intro_text_asset(entry.request.text_asset) ==
+                       OpeningIntroTextAsset::massacre &&
+                   entry.request.destination_word == 0x2106U;
+        });
+    if (massacre_transition ==
+            new_game_observations.opening_text_timeline.end() ||
+        massacre_transition->stage != OpeningIntroStage::stage2_second_loop ||
+        massacre_transition->stage2_second_loop_frame !=
+            kTitleIntroStage2StoryTextElapsedFrameIndex) {
+        return 27;
+    }
+    const auto landing_transition_at_rom_count = std::any_of(
+        new_game_observations.opening_text_timeline.begin(),
+        new_game_observations.opening_text_timeline.end(),
+        [](const Observations::OpeningTextTimelineEntry& entry) {
+            return opening_intro_text_asset(entry.request.text_asset) ==
+                       OpeningIntroTextAsset::landing &&
+                   entry.stage == OpeningIntroStage::stage_loop &&
+                   entry.stage_loop_frame ==
+                       kTitleIntroStageFinalTextElapsedFrameIndex;
+        });
+    const auto landing_text_event_count = std::count_if(
+        new_game_observations.opening_text_timeline.begin(),
+        new_game_observations.opening_text_timeline.end(),
+        [](const Observations::OpeningTextTimelineEntry& entry) {
+            return opening_intro_text_asset(entry.request.text_asset) ==
+                   OpeningIntroTextAsset::landing;
+        });
+    constexpr std::array<std::uint16_t, 3> kCenterTextRows{{
+        0x2186U, 0x2286U, 0x2386U}};
+    std::array<bool, kCenterTextRows.size()> center_rows_cleared{};
+    for (const auto& entry : new_game_observations.opening_text_timeline) {
+        if (entry.stage != OpeningIntroStage::stage_loop ||
+            opening_intro_text_asset(entry.request.text_asset) !=
+                OpeningIntroTextAsset::blank ||
+            entry.stage_loop_frame != 0x00D7U) {
+            continue;
+        }
+        const auto row = std::find(kCenterTextRows.begin(),
+                                   kCenterTextRows.end(),
+                                   entry.request.destination_word);
+        if (row != kCenterTextRows.end()) {
+            center_rows_cleared[static_cast<std::size_t>(
+                row - kCenterTextRows.begin())] = true;
+        }
+    }
+    if (!landing_transition_at_rom_count) {
+        return 28;
+    }
+    if (landing_text_event_count != 1U) {
+        return 29;
+    }
+    if (!std::all_of(center_rows_cleared.begin(), center_rows_cleared.end(),
+                     [](const bool cleared) { return cleared; })) {
+        return 30;
     }
     const auto has_sprite_family =
         [&new_game_observations](const OpeningIntroSpriteFamily family) {
@@ -698,7 +888,7 @@ int main() {
     }
     if (!new_game_state.opening_intro.seattle_plane_cleared ||
         new_game_state.opening_intro.seattle_outline_frame !=
-            kSeattleOutlineHoldFrames) {
+            kSeattleOutlineAnimationFrames) {
         return 16;
     }
 
@@ -706,13 +896,27 @@ int main() {
     const auto heli = opening_intro_sat_draw_point(0x01FCU, 0x00EFU, 40, 124);
     const auto plane = opening_intro_aircraft_plane_draw_point(0);
     const auto plane_scrolled = opening_intro_aircraft_plane_draw_point(-0x40);
-    const auto outline = opening_intro_seattle_outline_plan(0);
+    constexpr std::array<std::array<int, 4>, 5> kExpectedOutlineFrames{{
+        {{57, 70, 193, 127}},
+        {{75, 92, 154, 105}},
+        {{98, 116, 116, 81}},
+        {{123, 132, 66, 57}},
+        {{139, 147, 19, 17}},
+    }};
     if (actor.x != 190 || actor.y != 98 || heli.x != 292 || heli.y != 107 ||
         plane.x != 0x128 || plane.y != 0x70 ||
-        plane_scrolled.x != 0x128 - 0x40 || plane_scrolled.y != 0x70 ||
-        outline.x != 56 || outline.y != 64 || outline.width != 192 ||
-        outline.height != 120) {
+        plane_scrolled.x != 0x128 - 0x40 || plane_scrolled.y != 0x70) {
         return 17;
+    }
+    for (std::size_t phase = 0; phase < kExpectedOutlineFrames.size();
+         ++phase) {
+        const auto outline = opening_intro_seattle_outline_plan(
+            static_cast<std::uint8_t>(phase));
+        const auto& expected = kExpectedOutlineFrames[phase];
+        if (outline.x != expected[0] || outline.y != expected[1] ||
+            outline.width != expected[2] || outline.height != expected[3]) {
+            return 24;
+        }
     }
 
     return 0;

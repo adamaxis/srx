@@ -99,8 +99,9 @@ void sample_and_latch(const OpeningIntroCallbacks& callbacks) {
 
 void emit_schedule_action(const std::uint32_t action_id,
                           const OpeningIntroCallbacks& callbacks) {
-    // These are the four entries of 0x5ADD0. The IDs remain provenance
-    // tokens at this boundary; the host never calls a ROM address.
+    // These source action IDs are provenance tokens at this boundary; the
+    // host never calls a ROM address. The 0x49A0 callback completes the
+    // delayed Seattle hold record in the same typed schedule.
     switch (action_id) {
     case 0x5AEC6U:
         source_boundary(callbacks, "0x5AEC6.render_time_record");
@@ -111,14 +112,25 @@ void emit_schedule_action(const std::uint32_t action_id,
         emit_text(callbacks, OpeningIntroTextAsset::place, 0x2210U, 0xA000U);
         break;
     case 0x5AEEEU:
-        source_boundary(callbacks, "0x5AEEE.render_team_record");
+        // The ROM entry continues through 0x5AF02 and 0x5AF16 after the
+        // cover row, writing all three team-story rows before its final jump.
+        source_boundary(callbacks, "0x5AEEE.render_team_records");
         emit_text(callbacks, OpeningIntroTextAsset::team_cover, 0x2304U,
+                  0xA000U);
+        emit_text(callbacks, OpeningIntroTextAsset::team_runners, 0x2384U,
+                  0xA000U);
+        emit_text(callbacks, OpeningIntroTextAsset::team_wilderness, 0x2404U,
                   0xA000U);
         break;
     case 0x5B378U:
         // 0x5B378 jsr 0xFFE clears Plane A, then stamps 0x1DF468 at
         // D4=0x40E through five 0x5B36E offsets. Plane B seattle stays.
-        source_boundary(callbacks, "0x5B378.install_aircraft_scene");
+        source_boundary(callbacks, "0x5B378.stamp_seattle_focus_outline");
+        break;
+    case 0x49A0U:
+        // The 0x5ADD0 schedule keeps the final focus frame for 0x000F ticks,
+        // then calls this source RTS before the terminal zero-delay record.
+        source_boundary(callbacks, "0x49A0.seattle_focus_hold_complete");
         break;
     case 0x5AE9EU:
         // 0x5ADF0 points here after the first stage-2 delay. The ROM routine
@@ -201,6 +213,15 @@ void render_stage_loop_final_text(const OpeningIntroCallbacks& callbacks) {
          opening_intro_text_handle(OpeningIntroTextAsset::transaction),
          opening_intro_text_handle(OpeningIntroTextAsset::motel),
          opening_intro_text_handle(OpeningIntroTextAsset::redmond)},
+        [&callbacks](const auto& request) { emit_title_intro_text(callbacks, request); });
+}
+
+void clear_stage_loop_center_text(const OpeningIntroCallbacks& callbacks) {
+    // ROM 0x5B056 calls 0x5AA1E at DD08 == -0x1B0. That batch writes the
+    // blank source record (0x5B7B2) over the three middle-story rows; it does
+    // not install the later landing paragraph rendered at loop index 0x348.
+    render_title_intro_center_text_batch(
+        opening_intro_text_handle(OpeningIntroTextAsset::blank),
         [&callbacks](const auto& request) { emit_title_intro_text(callbacks, request); });
 }
 
@@ -341,20 +362,21 @@ OpeningIntroDrawPoint opening_intro_aircraft_plane_draw_point(
 
 OpeningIntroOutlinePlan opening_intro_seattle_outline_plan(
     const std::uint8_t phase) {
-    constexpr std::array<std::uint16_t, 5> kOffsets{
-        {0x0000U, 0x0184U, 0x030AU, 0x0410U, 0x0514U}};
-    constexpr std::array<std::uint8_t, 5> kD1{
-        {0x17U, 0x11U, 0x0CU, 0x06U, 0x00U}};
-    constexpr std::array<std::uint8_t, 5> kD2{
-        {0x0EU, 0x0BU, 0x08U, 0x05U, 0x00U}};
-    const auto index = static_cast<std::size_t>(
-        phase < kOffsets.size() ? phase : kOffsets.size() - 1U);
-    const auto vram = static_cast<std::uint16_t>(
-        kSeattleOutlineVram + kOffsets[index]);
-    return {static_cast<int>(((vram % 0x80U) / 2U) * 8U),
-            static_cast<int>((vram / 0x80U) * 8U),
-            static_cast<int>(kD1[index] + 1U) * 8,
-            static_cast<int>(kD2[index] + 1U) * 8};
+    // ROM 0x5B378 consumes the five 0x5B36E offsets with the matching size
+    // pairs at 0x5B364. Those are Plane-A transfer parameters, not host pixel
+    // bounds. The native presentation uses the visible boxes from the
+    // independent Seattle sequence (section 02 frames 409-413) as the five
+    // authored 320x224 animation states.
+    constexpr std::array<OpeningIntroOutlinePlan, 5> kVisibleFrames{{
+        {57, 70, 193, 127},
+        {75, 92, 154, 105},
+        {98, 116, 116, 81},
+        {123, 132, 66, 57},
+        {139, 147, 19, 17},
+    }};
+    const auto index = static_cast<std::size_t>(std::min<std::uint8_t>(
+        phase, static_cast<std::uint8_t>(kVisibleFrames.size() - 1U)));
+    return kVisibleFrames[index];
 }
 
 std::uint32_t opening_intro_text_handle(const OpeningIntroTextAsset asset) {
@@ -431,16 +453,24 @@ const char* opening_intro_stage_name(const OpeningIntroStage stage) {
         return "not_started";
     case OpeningIntroStage::schedule:
         return "schedule";
-    case OpeningIntroStage::stage2_entry:
-        return "stage2_entry";
+    case OpeningIntroStage::stage2_palette_fade_out:
+        return "stage2_palette_fade_out";
+    case OpeningIntroStage::stage2_palette_fade_in:
+        return "stage2_palette_fade_in";
     case OpeningIntroStage::stage2_first_loop:
         return "stage2_first_loop";
     case OpeningIntroStage::stage2_second_loop:
         return "stage2_second_loop";
+    case OpeningIntroStage::orchestrator_palette_fade_out:
+        return "orchestrator_palette_fade_out";
     case OpeningIntroStage::orchestrator_entry:
         return "orchestrator_entry";
+    case OpeningIntroStage::orchestrator_palette_fade_in:
+        return "orchestrator_palette_fade_in";
     case OpeningIntroStage::orchestrator_loop:
         return "orchestrator_loop";
+    case OpeningIntroStage::stage_loop_palette_fade_out:
+        return "stage_loop_palette_fade_out";
     case OpeningIntroStage::stage_loop_entry:
         return "stage_loop_entry";
     case OpeningIntroStage::stage_loop:
@@ -479,13 +509,15 @@ const OpeningIntroSourcePlan& opening_intro_source_plan() {
             return opening_intro_sprite_handle(family, variant);
         };
 
-        // 0x5ADD0: the four timed records that establish the date, place,
-        // team, then hand the screen to 0x5B378.
+        // 0x5ADD0: timed date/place/team records, the five-pass Seattle
+        // focus box, then a 0x000F-tick hold completed by the source RTS at
+        // 0x49A0 before the schedule's zero-delay terminal record.
         result.opening_schedule = {
             {0x003CU, action(0x5AEC6U)},
             {0x0078U, action(0x5AEDAU)},
             {0x00B4U, action(0x5AEEEU)},
             {0x00F0U, action(0x5B378U)},
+            {0x000FU, action(0x49A0U)},
         };
         result.stage2_schedule = {{0x0001U, action(0x5AE9EU)}};
 
@@ -684,24 +716,54 @@ void emit_final_sprite(const OpeningIntroCallbacks& callbacks,
 }
 
 void begin_stage2(OpeningIntroState& state,
-                  const OpeningIntroSourcePlan& plan,
                   const OpeningIntroCallbacks& callbacks) {
-    set_stage(state, callbacks, OpeningIntroStage::stage2_entry);
-    set_scene(state, callbacks, OpeningIntroScene::wilderness);
+    set_stage(state, callbacks, OpeningIntroStage::stage2_palette_fade_out);
     invoke(callbacks.prepare_mode_entry);
     if (callbacks.service_audio_command) {
         callbacks.service_audio_command(0x11U);
     }
     source_boundary(callbacks, "0x59D7C.begin_stage2");
-
-    // 0x59D9C -> 0x1406: prepare_title_resources first fades the current
-    // palette toward black before the wilderness resources replace it.
     invoke(callbacks.fade_palette_to_black);
+    state.scene_palette_fade_vblank = 0U;
+    state.scene_palette_fade_step = 7U;
+    state.scene_palette_weight = 255U;
+}
+
+bool advance_scene_palette_fade(OpeningIntroState& state,
+                                const bool to_black) {
+    if (state.scene_palette_fade_vblank <
+        kStage2PaletteTransitionVblanks) {
+        ++state.scene_palette_fade_vblank;
+        if ((state.scene_palette_fade_vblank & 1U) == 0U) {
+            if (to_black) {
+                if (state.scene_palette_fade_step > 0U) {
+                    --state.scene_palette_fade_step;
+                }
+            } else if (state.scene_palette_fade_step < 7U) {
+                ++state.scene_palette_fade_step;
+            }
+            state.scene_palette_weight = static_cast<std::uint8_t>(
+                static_cast<std::uint16_t>(state.scene_palette_fade_step) *
+                255U / 7U);
+        }
+    }
+    if (state.scene_palette_fade_vblank <
+        kStage2PaletteTransitionVblanks) {
+        return false;
+    }
+    state.scene_palette_fade_step = to_black ? 0U : 7U;
+    state.scene_palette_weight = to_black ? 0U : 255U;
+    return true;
+}
+
+void install_stage2_scene(OpeningIntroState& state,
+                          const OpeningIntroSourcePlan& plan,
+                          const OpeningIntroCallbacks& callbacks) {
+    set_scene(state, callbacks, OpeningIntroScene::wilderness);
+    // 0x1406 clears the old planes only after its 17 x two-VBlank palette
+    // fade has completed, then installs the new resource and target palette.
     invoke(callbacks.clear_presentation);
     source_boundary(callbacks, "0x59D7C.load_title_font");
-    // 0x1406 installs the three authored Plane-A blocks at 0x0600, 0x0826,
-    // and 0x03B8. They remain separate host layers so later map patches and
-    // the terminal clear address the same source regions.
     for (const auto descriptor : plan.wilderness_map_descriptors) {
         emit_sprite(callbacks, descriptor, 0U, 0U, 0U);
     }
@@ -717,33 +779,29 @@ void begin_stage2(OpeningIntroState& state,
     state.stage2.y_offset = -0x0020;
     state.stage2.x_phase = 0x0138;
     state.stage2.y_phase = 0x00F1;
-    // Before either ambush fade starts, the two animated map palette lines
-    // are at full source brightness. The later 0x5A0B2/0x5A252 leaves mutate
-    // these same typed words through the existing color-step conversion.
     set_title_intro_entity_color_words(state.entity_colors, 0U, 0x0EEEU);
     set_title_intro_entity_color_words(state.entity_colors, 1U, 0x0EEEU);
     source_boundary(callbacks, "0x59D7C.prepare_title_resources");
 
-    const auto render_scene = [&callbacks, &state] {
-        emit_sprite(callbacks,
-                    opening_intro_sprite_handle(
-                        OpeningIntroSpriteFamily::ambush_actor, 0),
-                    static_cast<std::uint16_t>(state.stage2.x_phase),
-                    static_cast<std::uint16_t>(state.stage2.y_phase),
-                    0x2000U);
-        source_boundary(callbacks, "0x5A37C.render_wilderness_actor");
-    };
     advance_title_intro_schedule(
         state.schedule, plan.stage2_schedule,
         [&callbacks](const std::uint32_t action_id) {
             emit_schedule_action(action_id, callbacks);
         });
-    render_scene();
-    // 0x59E0E: reveal the wilderness target palette after the initial scene
-    // records have been installed.
+    emit_sprite(callbacks,
+                opening_intro_sprite_handle(
+                    OpeningIntroSpriteFamily::ambush_actor, 0),
+                static_cast<std::uint16_t>(state.stage2.x_phase),
+                static_cast<std::uint16_t>(state.stage2.y_phase), 0x2000U);
+    source_boundary(callbacks, "0x5A37C.render_wilderness_actor");
+    // 0x12F6 advances toward the newly installed target palette. The native
+    // state exposes its 34 VBlank wait steps so the scene fades in visibly.
     invoke(callbacks.advance_palette_fade);
     state.stage2_first_loop_frame = 0;
-    set_stage(state, callbacks, OpeningIntroStage::stage2_first_loop);
+    state.scene_palette_fade_vblank = 0U;
+    state.scene_palette_fade_step = 0U;
+    state.scene_palette_weight = 0U;
+    set_stage(state, callbacks, OpeningIntroStage::stage2_palette_fade_in);
 }
 
 void reset_stage2_animation(OpeningIntroState& state,
@@ -907,18 +965,11 @@ void advance_stage2_scene_frame(OpeningIntroState& state,
     source_boundary(callbacks, "0x5A37C.render_wilderness_actor");
 }
 
-void begin_orchestrator(OpeningIntroState& state,
-                        const OpeningIntroSourcePlan& plan,
-                        const OpeningIntroCallbacks& callbacks) {
+void install_orchestrator(OpeningIntroState& state,
+                          const OpeningIntroSourcePlan& plan,
+                          const OpeningIntroCallbacks& callbacks) {
     set_stage(state, callbacks, OpeningIntroStage::orchestrator_entry);
     set_scene(state, callbacks, OpeningIntroScene::trivid);
-    invoke(callbacks.prepare_mode_entry);
-    if (callbacks.service_audio_command) {
-        callbacks.service_audio_command(0x12U);
-    }
-    source_boundary(callbacks, "0x5AA96.begin_trivid_orchestrator");
-    // 0x5AA96 -> 0x1406: begin the tri-vid resource set from black.
-    invoke(callbacks.fade_palette_to_black);
     invoke(callbacks.clear_presentation);
     source_boundary(callbacks, "0x5AA96.reset_upload_and_clear_planes");
     source_boundary(callbacks, "0x5AA96.decode_trivid_source_streams");
@@ -956,9 +1007,29 @@ void begin_orchestrator(OpeningIntroState& state,
     emit_stage_stream(callbacks, {});
     // 0x5AB4E: reveal the tri-vid target palette after its first vblank.
     invoke(callbacks.advance_palette_fade);
-    callbacks.sample_controller();
-    state.orchestrator_loop_frame = 0;
-    set_stage(state, callbacks, OpeningIntroStage::orchestrator_loop);
+    state.scene_palette_fade_vblank = 0U;
+    state.scene_palette_fade_step = 0U;
+    state.scene_palette_weight = 0U;
+    set_stage(state, callbacks,
+              OpeningIntroStage::orchestrator_palette_fade_in);
+}
+
+void begin_orchestrator(OpeningIntroState& state,
+                        const OpeningIntroCallbacks& callbacks) {
+    set_stage(state, callbacks,
+              OpeningIntroStage::orchestrator_palette_fade_out);
+    invoke(callbacks.prepare_mode_entry);
+    if (callbacks.service_audio_command) {
+        callbacks.service_audio_command(0x12U);
+    }
+    source_boundary(callbacks, "0x5AA96.begin_trivid_orchestrator");
+    // ROM 0x5AA96 enters through 0x1406 -> 0x131C: seventeen palette steps,
+    // with two VBlanks between steps. Hold the wilderness layer while its
+    // typed scene weight falls to black, then install the tri-vid resources.
+    invoke(callbacks.fade_palette_to_black);
+    state.scene_palette_fade_vblank = 0U;
+    state.scene_palette_fade_step = 7U;
+    state.scene_palette_weight = 255U;
 }
 
 void advance_orchestrator_frame(OpeningIntroState& state,
@@ -985,18 +1056,17 @@ void advance_orchestrator_frame(OpeningIntroState& state,
         });
 }
 
-void begin_stage_loop(OpeningIntroState& state,
-                      const OpeningIntroSourcePlan& plan,
-                      const OpeningIntroCallbacks& callbacks) {
+void install_stage_loop(OpeningIntroState& state,
+                        const OpeningIntroSourcePlan& plan,
+                        const OpeningIntroCallbacks& callbacks) {
     set_stage(state, callbacks, OpeningIntroStage::stage_loop_entry);
     set_scene(state, callbacks, OpeningIntroScene::airport);
-    source_boundary(callbacks, "0x5AD1A.begin_airport_stage");
-    // 0x5AD26 -> 0x1406: prepare_title_resources fades the previous scene
-    // toward black before the airport resources are installed.
-    invoke(callbacks.fade_palette_to_black);
     invoke(callbacks.clear_presentation);
     source_boundary(callbacks, "0x5AD1A.prepare_airport_resources");
     state.stage_loop = {};
+    // DD08 is shared across the intro stages. Preserve its final typed value
+    // from stage 2; 0x5AD1A resets only the one-shot fill flag.
+    state.stage_loop.scroll.x_offset = state.stage2.x_offset;
     state.stage_loop.current_frame =
         static_cast<std::uint16_t>(state.source_frame);
     state.stage_loop.animation_start_frame =
@@ -1024,7 +1094,25 @@ void begin_stage_loop(OpeningIntroState& state,
     source_boundary(callbacks, "0x5AD4A.restore_airport_scene_records");
     callbacks.sample_controller();
     state.stage_loop_frame = 0;
+    // The airport resource set is installed only after the source fade has
+    // completed. Its first host frame uses the newly installed target colors.
+    state.scene_palette_fade_vblank = kStage2PaletteTransitionVblanks;
+    state.scene_palette_fade_step = 7U;
+    state.scene_palette_weight = 255U;
     set_stage(state, callbacks, OpeningIntroStage::stage_loop);
+}
+
+void begin_stage_loop(OpeningIntroState& state,
+                      const OpeningIntroCallbacks& callbacks) {
+    set_stage(state, callbacks,
+              OpeningIntroStage::stage_loop_palette_fade_out);
+    source_boundary(callbacks, "0x5AD1A.begin_airport_stage");
+    // ROM 0x5AD26 -> 0x1406 -> 0x131C fades the cockpit palette to black
+    // before the airport assets replace it.
+    invoke(callbacks.fade_palette_to_black);
+    state.scene_palette_fade_vblank = 0U;
+    state.scene_palette_fade_step = 7U;
+    state.scene_palette_weight = 255U;
 }
 
 void advance_stage_loop_frame(OpeningIntroState& state,
@@ -1032,7 +1120,8 @@ void advance_stage_loop_frame(OpeningIntroState& state,
                               const OpeningIntroCallbacks& callbacks) {
     begin_source_frame(state, callbacks);
     sample_and_latch(callbacks);
-    if (state.stage_loop_frame == kTitleIntroStageFinalTextFrame) {
+    if (state.stage_loop_frame ==
+        kTitleIntroStageFinalTextElapsedFrameIndex) {
         render_stage_loop_final_text(callbacks);
     }
     state.stage_loop.current_frame =
@@ -1048,7 +1137,7 @@ void advance_stage_loop_frame(OpeningIntroState& state,
         [&callbacks](const auto& request) { emit_scroll_fill(callbacks, request); });
     advance_title_intro_scroll_fade(
         state.stage_loop.scroll,
-        [&callbacks] { render_stage_loop_final_text(callbacks); });
+        [&callbacks] { clear_stage_loop_center_text(callbacks); });
     // 0x5B100 reads the same DD08 horizontal scroll word advanced by
     // 0x5B00A. Keep the converted leaf's typed pulse state on that source
     // value instead of leaving the helicopter fixed at its entry position.
@@ -1148,24 +1237,50 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
     }
 
     switch (state.stage) {
-    case OpeningIntroStage::schedule:
+    case OpeningIntroStage::schedule: {
         begin_source_frame(state, callbacks);
         sample_and_latch(callbacks);
-        if (advance_title_intro_schedule(
-                state.schedule, plan.opening_schedule,
-                [&state, &callbacks](const std::uint32_t action_id) {
-                    emit_schedule_action(action_id, callbacks);
-                    if (action_id == 0x5B378U) {
-                        state.seattle_plane_cleared = true;
-                    }
-                })) {
-            // 0x5B378's outer dbf from 4 plus two vblanks per pass is ten
-            // frames of Plane-A outline over the still-live seattle plate.
-            if (state.seattle_outline_frame < kSeattleOutlineHoldFrames) {
-                ++state.seattle_outline_frame;
-            } else {
-                begin_stage2(state, plan, callbacks);
-            }
+        const auto schedule_complete = advance_title_intro_schedule(
+            state.schedule, plan.opening_schedule,
+            [&state, &callbacks](const std::uint32_t action_id) {
+                emit_schedule_action(action_id, callbacks);
+                if (action_id == 0x5B378U) {
+                    state.seattle_plane_cleared = true;
+                }
+            });
+        // 0x5B378's outer DBF from four holds its five visual passes for two
+        // VBlanks each. The following 0x000F/0x49A0 schedule record keeps the
+        // final small box on screen before the palette transition begins.
+        if (state.seattle_plane_cleared &&
+            state.seattle_outline_frame < kSeattleOutlineAnimationFrames) {
+            ++state.seattle_outline_frame;
+        }
+        if (schedule_complete &&
+            state.seattle_outline_frame >= kSeattleOutlineAnimationFrames) {
+            begin_stage2(state, callbacks);
+        }
+        return OpeningIntroAdvanceResult::frame_advanced;
+    }
+
+    case OpeningIntroStage::stage2_palette_fade_out:
+        begin_source_frame(state, callbacks);
+        sample_and_latch(callbacks);
+        if (advance_scene_palette_fade(state, true)) {
+            install_stage2_scene(state, plan, callbacks);
+        }
+        return OpeningIntroAdvanceResult::frame_advanced;
+
+    case OpeningIntroStage::stage2_palette_fade_in:
+        begin_source_frame(state, callbacks);
+        sample_and_latch(callbacks);
+        emit_sprite(callbacks,
+                    opening_intro_sprite_handle(
+                        OpeningIntroSpriteFamily::ambush_actor, 0),
+                    static_cast<std::uint16_t>(state.stage2.x_phase),
+                    static_cast<std::uint16_t>(state.stage2.y_phase),
+                    0x2000U);
+        if (advance_scene_palette_fade(state, false)) {
+            set_stage(state, callbacks, OpeningIntroStage::stage2_first_loop);
         }
         return OpeningIntroAdvanceResult::frame_advanced;
 
@@ -1240,18 +1355,45 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
                 emit_schedule_action(action_id, callbacks);
             });
         advance_animation_services(state, plan, callbacks);
-        if (state.stage2_second_loop_frame == 0x0164U) {
+        if (state.stage2_second_loop_frame ==
+            kTitleIntroStage2StoryTextElapsedFrameIndex) {
             render_stage2_story_text(callbacks);
         }
         if (state.stage2_second_loop_frame++ >= 0x01F0U) {
-            begin_orchestrator(state, plan, callbacks);
+            begin_orchestrator(state, callbacks);
+        }
+        return OpeningIntroAdvanceResult::frame_advanced;
+
+    case OpeningIntroStage::orchestrator_palette_fade_out:
+        begin_source_frame(state, callbacks);
+        sample_and_latch(callbacks);
+        if (advance_scene_palette_fade(state, true)) {
+            install_orchestrator(state, plan, callbacks);
+        }
+        return OpeningIntroAdvanceResult::frame_advanced;
+
+    case OpeningIntroStage::orchestrator_palette_fade_in:
+        begin_source_frame(state, callbacks);
+        sample_and_latch(callbacks);
+        if (advance_scene_palette_fade(state, false)) {
+            callbacks.sample_controller();
+            state.orchestrator_loop_frame = 0;
+            set_stage(state, callbacks, OpeningIntroStage::orchestrator_loop);
         }
         return OpeningIntroAdvanceResult::frame_advanced;
 
     case OpeningIntroStage::orchestrator_loop:
         advance_orchestrator_frame(state, plan, callbacks);
         if (state.orchestrator_loop_frame++ >= 0x0114U) {
-            begin_stage_loop(state, plan, callbacks);
+            begin_stage_loop(state, callbacks);
+        }
+        return OpeningIntroAdvanceResult::frame_advanced;
+
+    case OpeningIntroStage::stage_loop_palette_fade_out:
+        begin_source_frame(state, callbacks);
+        sample_and_latch(callbacks);
+        if (advance_scene_palette_fade(state, true)) {
+            install_stage_loop(state, plan, callbacks);
         }
         return OpeningIntroAdvanceResult::frame_advanced;
 
@@ -1279,7 +1421,6 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
         sync_post_intro_cab(state);
         return OpeningIntroAdvanceResult::frame_advanced;
 
-    case OpeningIntroStage::stage2_entry:
     case OpeningIntroStage::orchestrator_entry:
     case OpeningIntroStage::stage_loop_entry:
         return OpeningIntroAdvanceResult::callback_unresolved;

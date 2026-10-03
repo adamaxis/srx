@@ -21,6 +21,7 @@ int main() {
     state.scroll.x_offset = -0x190;
     std::uint32_t frame_waits = 0;
     std::uint32_t final_text_calls = 0;
+    std::uint16_t final_text_frame = 0xFFFFU;
     std::uint32_t middle_text_calls = 0;
     std::uint32_t fill_calls = 0;
     std::uint32_t transition_text_calls = 0;
@@ -31,7 +32,10 @@ int main() {
         ++state.current_frame;
     };
     callbacks.render_middle_text = [&] { ++middle_text_calls; };
-    callbacks.render_final_text = [&] { ++final_text_calls; };
+    callbacks.render_final_text = [&] {
+        final_text_frame = state.loop_frame;
+        ++final_text_calls;
+    };
     callbacks.fill_transition_tiles = [&](const auto&) { ++fill_calls; };
     callbacks.render_transition_text = [&] { ++transition_text_calls; };
     callbacks.draw_sprite = [&](const auto&) { ++sprite_calls; };
@@ -41,6 +45,7 @@ int main() {
         frame_waits != 0x529U || middle_text_calls != 1U ||
         final_text_calls != 1U || fill_calls != 1U ||
         transition_text_calls != 1U || sprite_calls == 0U ||
+        final_text_frame != kTitleIntroStageFinalTextElapsedFrameIndex ||
         state.loop_frame != 0x529U) {
         return 1;
     }

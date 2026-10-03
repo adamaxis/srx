@@ -9,7 +9,11 @@
 namespace shadowrun::ghidra_conversion {
 
 constexpr std::uint16_t kTitleIntroStageLoopLastFrame = 0x0528U;
-constexpr std::uint16_t kTitleIntroStageFinalTextFrame = 0x01E0U;
+constexpr std::uint16_t kTitleIntroStageFinalTextCountdownValue = 0x01E0U;
+// ROM 0x5AD1A compares its descending D7 value to 0x01E0. The host tracks
+// elapsed frames upward, so this event occurs at 0x0528 - 0x01E0 = 0x0348.
+constexpr std::uint16_t kTitleIntroStageFinalTextElapsedFrameIndex =
+    kTitleIntroStageLoopLastFrame - kTitleIntroStageFinalTextCountdownValue;
 
 struct TitleIntroStageLoopState {
     std::uint16_t current_frame = 0;

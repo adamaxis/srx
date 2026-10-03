@@ -106,6 +106,14 @@ int main() {
     assert((command_labels == std::array<std::string, 7>{
         "Inventory", "Inventory", "Clips", "Attributes/Skills",
         "Cyberware", "Magic", "Pocket Secretary"}));
+    const auto command_names = read_genesis_command_overview_names(rom);
+    assert((command_names.races == std::array<std::string, 5>{
+        "Human", "  Elf", "Dwarf", "  Orc", "Troll"}));
+    assert((command_names.classes == std::array<std::string, 4>{
+        "Mage   ", "Shaman ", "Samurai", "Decker "}));
+    const auto command_cursor = decode_genesis_field_menu_cursor(rom);
+    assert(command_cursor.width == 32U);
+    assert(command_cursor.height == 24U);
     const auto item_detail_labels =
         read_genesis_field_menu_item_detail_labels(rom);
     assert((item_detail_labels ==

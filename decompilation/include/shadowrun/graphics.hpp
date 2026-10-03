@@ -184,6 +184,17 @@ read_genesis_inventory_catalog(const std::vector<std::uint8_t>& rom);
 std::array<std::string, 7> read_genesis_command_overview_labels(
     const std::vector<std::uint8_t>& rom);
 
+struct GenesisCommandOverviewNames {
+    std::array<std::string, 5> races{};
+    std::array<std::string, 4> classes{};
+};
+
+// ROM 0x111E8 indexes the live record's +0x9A race and +0x9B class bytes
+// into the fixed-width text tables at D19C7 (6-byte rows) and D19E5
+// (8-byte rows), then writes them separately at C1A0 and C1AC.
+GenesisCommandOverviewNames read_genesis_command_overview_names(
+    const std::vector<std::uint8_t>& rom);
+
 // ROM 0x12B8E selects the three item-detail label records at 0xD29C4,
 // 0xD29CA, and 0xD29D0. Extract them once for the host item-detail catalog;
 // the runtime does not carry the source text-table offsets.

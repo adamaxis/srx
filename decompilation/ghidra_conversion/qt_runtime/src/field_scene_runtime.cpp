@@ -2929,23 +2929,16 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     const auto& view = command_overview_.view();
     if (view.source_state.primary_page >= 2U &&
         !command_overview_clips_.is_open()) {
-        std::string archetype;
-        switch (active_runner_record().archetype_index) {
-        case 1U:
-            archetype = field_menu_text_.archetype_names[2] + " " +
-                        field_menu_text_.archetype_names[3];
-            break;
-        case 2U:
-            archetype = field_menu_text_.archetype_names[0];
-            break;
-        case 3U:
-            archetype = field_menu_text_.archetype_names[1];
-            break;
-        default:
-            break;
+        const auto race = active_runner_record().species_index;
+        const auto character_class = active_runner_record().archetype_index;
+        if (race < field_menu_text_.race_names.size()) {
+            draw_command_overview_text(
+                painter, 128, 24, field_menu_text_.race_names[race]);
         }
-        if (!archetype.empty()) {
-            draw_command_overview_text(painter, 128, 24, archetype);
+        if (character_class < field_menu_text_.class_names.size()) {
+            draw_command_overview_text(
+                painter, 176, 24,
+                field_menu_text_.class_names[character_class]);
         }
         draw_command_overview_text(painter, 128, 40,
                                    field_menu_text_.physical_label);
@@ -3004,31 +2997,10 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         }
     }
 
-    // The source inventory is an 8-cell, two-column/four-row grid. Direct
-    // item aliases are already palette-decoded; no Genesis VRAM or palette
-    // operation is reproduced here.
-    constexpr std::array<std::array<int, 2>, 8> kInventoryIconPositions{{
-        {{16, 120}}, {{56, 120}}, {{16, 144}}, {{56, 144}},
-        {{16, 168}}, {{56, 168}}, {{16, 192}}, {{56, 192}},
-    }};
-    const auto icon_variant = command_overview_uses_alternate_icon_palette(
-                                  active_runner_record())
-                                  ? 1U
-                                  : 0U;
-    for (std::size_t slot = 0;
-         slot < active_runner_record().inventory_item_codes.size();
-         ++slot) {
-        const auto item_code = active_runner_record().inventory_item_codes[
-            slot];
-        if (item_code == 0U || item_code > 50U) {
-            continue;
-        }
-        const auto& icon =
-            command_overview_inventory_icons_[item_code - 1U][icon_variant];
-        painter.drawImage(kInventoryIconPositions[slot][0],
-                          kInventoryIconPositions[slot][1], icon);
-    }
-
+    // The equipment-cell blocks are opaque name-table records installed by
+    // 0x11624 before the inventory item glyph rows. Paint them under the
+    // direct item sprites so the selected/equipped frame cannot erase its
+    // icon.
     const auto draw_equipment_border = [this, &painter](const std::size_t slot) {
         if (slot >= command_overview_selected_cells_.size() * 4U) {
             return;
@@ -3057,17 +3029,59 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         }
     }
 
+    // The source inventory is an 8-cell, two-column/four-row grid. Direct
+    // item aliases are already palette-decoded; no Genesis VRAM or palette
+    // operation is reproduced here.
+    constexpr std::array<std::array<int, 2>, 8> kInventoryIconPositions{{
+        {{16, 120}}, {{56, 120}}, {{16, 144}}, {{56, 144}},
+        {{16, 168}}, {{56, 168}}, {{16, 192}}, {{56, 192}},
+    }};
+    const auto icon_variant = command_overview_uses_alternate_icon_palette(
+                                  active_runner_record())
+                                  ? 1U
+                                  : 0U;
+    for (std::size_t slot = 0;
+         slot < active_runner_record().inventory_item_codes.size();
+         ++slot) {
+        const auto item_code = active_runner_record().inventory_item_codes[
+            slot];
+        if (item_code == 0U || item_code > 50U) {
+            continue;
+        }
+        const auto& icon =
+            command_overview_inventory_icons_[item_code - 1U][icon_variant];
+        painter.drawImage(kInventoryIconPositions[slot][0],
+                          kInventoryIconPositions[slot][1], icon);
+    }
+
     if (view.source_state.primary_page < 2U) {
         // ROM 0x11592 builds the cursor SAT entry from the 0xD29F6 list:
         // x = FFF0D0*0x28 + 0x008C, y = FFF0D1*0x18 + 0x00F4. The Genesis
         // SAT origin adds 0x80 on both axes, so the screen position is
-        // (primary*40 + 12, secondary*24 + 116). The 24x32 bracket sprite
-        // frames the 40x24 inventory cell's icon from those offsets.
+        // (primary*40 + 12, secondary*24 + 116). Independent inventory
+        // frames show a one-pixel warm-gold outline inset two pixels from
+        // that sprite footprint; drawing the extracted sprite pattern
+        // directly adds internal lines absent from the game capture. The
+        // color below samples the repeated medkit outline in section 06
+        // frames 2580, 2610, and 2640.
         const auto x = 12 + static_cast<int>(
                                view.source_state.primary_page * 40U);
         const auto y = 116 + static_cast<int>(
                                view.source_state.secondary_page * 24U);
-        painter.drawImage(x, y, command_overview_cursor_);
+        constexpr int kOutlineInset = 2;
+        constexpr int kOutlineWidth = 28;
+        constexpr int kOutlineHeight = 20;
+        const QColor selector_color(196, 190, 39);
+        painter.fillRect(x + kOutlineInset, y + kOutlineInset,
+                         kOutlineWidth, 1, selector_color);
+        painter.fillRect(x + kOutlineInset,
+                         y + kOutlineInset + kOutlineHeight - 1,
+                         kOutlineWidth, 1, selector_color);
+        painter.fillRect(x + kOutlineInset, y + kOutlineInset, 1,
+                         kOutlineHeight, selector_color);
+        painter.fillRect(x + kOutlineInset + kOutlineWidth - 1,
+                         y + kOutlineInset, 1, kOutlineHeight,
+                         selector_color);
     }
     if (command_overview_clips_.is_open()) {
         paint_command_overview_clips(painter);
@@ -3132,6 +3146,14 @@ void FieldSceneRuntime::paint(QPainter& painter) const {
     }
     if (command_overview_.open()) {
         paint_command_overview(painter);
+        // The field command loop updates its menu plane without replacing
+        // the field's right-hand HUD plane. Preserve the current runner face,
+        // item, and counters above the command panel. Pocket Secretary is a
+        // separate full-screen composition and owns its own backdrop.
+        if (!pocket_secretary_.open) {
+            painter.drawImage(0, 0, field_hud_);
+            paint_field_hud_overlays(painter);
+        }
         return;
     }
     if (field_dialogue_.open()) {

@@ -81,6 +81,8 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
 
     std::array<bool, kCommandOverviewLabelCount> command_found{};
     std::array<bool, kFieldMenuArchetypeNameCount> archetype_found{};
+    std::array<bool, kFieldMenuRaceNameCount> race_found{};
+    std::array<bool, kFieldMenuClassNameCount> class_found{};
     std::array<bool, kFieldMenuRunnerNameCount> runner_found{};
     std::array<bool, kFieldMenuStatusNameCount> status_found{};
     std::array<bool, kAttributeSkillLabelCount> attribute_skill_found{};
@@ -193,6 +195,28 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             } else {
                 archetype_found[index] = true;
                 result.catalog.archetype_names[index] = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "race.", index) &&
+            index < result.catalog.race_names.size()) {
+            if (race_found[index]) {
+                result.errors.emplace_back("duplicate field menu text row: " +
+                                          key);
+            } else {
+                race_found[index] = true;
+                result.catalog.race_names[index] = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "class.", index) &&
+            index < result.catalog.class_names.size()) {
+            if (class_found[index]) {
+                result.errors.emplace_back("duplicate field menu text row: " +
+                                          key);
+            } else {
+                class_found[index] = true;
+                result.catalog.class_names[index] = value;
             }
             continue;
         }
@@ -473,6 +497,8 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     }
     add_missing_entries(command_found, "command.", result.errors);
     add_missing_entries(archetype_found, "archetype.", result.errors);
+    add_missing_entries(race_found, "race.", result.errors);
+    add_missing_entries(class_found, "class.", result.errors);
     add_missing_entries(runner_found, "runner.", result.errors);
     add_missing_entries(status_found, "status.", result.errors);
     add_missing_entries(attribute_skill_found, "attribute.skill.",

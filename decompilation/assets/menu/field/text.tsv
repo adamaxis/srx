@@ -6,6 +6,15 @@ command.3	Attributes/Skills
 command.4	Cyberware
 command.5	Magic
 command.6	Pocket Secretary
+race.0	Human
+race.1	"  Elf"
+race.2	Dwarf
+race.3	"  Orc"
+race.4	Troll
+class.0	"Mage   "
+class.1	"Shaman "
+class.2	Samurai
+class.3	"Decker "
 attribute.skill.0	Body
 attribute.skill.1	Quickness
 attribute.skill.2	Strength

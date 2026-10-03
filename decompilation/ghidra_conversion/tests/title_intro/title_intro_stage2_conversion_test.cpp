@@ -16,6 +16,7 @@ int main() {
     std::uint32_t scene_draws = 0;
     std::uint32_t scroll_text = 0;
     std::uint32_t late_text = 0;
+    std::uint16_t story_text_frame = 0xFFFFU;
     TitleIntroStage2Callbacks callbacks{};
     callbacks.render_scene_entities = [&] { ++scene_draws; };
     callbacks.run_scheduled_action = [&](std::uint32_t id) {
@@ -39,7 +40,10 @@ int main() {
     callbacks.reset_linear_sweep_a = [&] { resets.push_back(8); };
     callbacks.reset_linear_sweep_b = [&] { resets.push_back(9); };
     callbacks.reset_final_projection = [&] { resets.push_back(10); };
-    callbacks.render_scroll_text = [&] { ++scroll_text; };
+    callbacks.render_scroll_text = [&] {
+        story_text_frame = state.second_loop_frame;
+        ++scroll_text;
+    };
     callbacks.render_late_text = [&] { ++late_text; };
 
     if (run_title_intro_stage2(state, schedule, entries, callbacks) !=
@@ -50,6 +54,7 @@ int main() {
         state.x_phase != 0x0178U || state.y_phase != 0x00D1U ||
         actions.size() != 2U || resets.size() != 10U || scene_draws == 0U ||
         scroll_text != 1U || late_text != 1U ||
+        story_text_frame != kTitleIntroStage2StoryTextElapsedFrameIndex ||
         state.animation_start_frame == 0U) {
         return 1;
     }

@@ -511,6 +511,22 @@ std::array<std::string, 7> read_genesis_command_overview_labels(
     return result;
 }
 
+GenesisCommandOverviewNames read_genesis_command_overview_names(
+    const std::vector<std::uint8_t>& rom) {
+    GenesisCommandOverviewNames result;
+    for (std::size_t index = 0; index < result.races.size(); ++index) {
+        result.races[index] = read_genesis_padded_text(
+            rom, 0xD19C7U + index * 6U, 6U,
+            "Genesis command-overview race name is truncated");
+    }
+    for (std::size_t index = 0; index < result.classes.size(); ++index) {
+        result.classes[index] = read_genesis_padded_text(
+            rom, 0xD19E5U + index * 8U, 8U,
+            "Genesis command-overview class name is truncated");
+    }
+    return result;
+}
+
 std::array<std::string, 3> read_genesis_field_menu_item_detail_labels(
     const std::vector<std::uint8_t>& rom) {
     constexpr std::array<std::size_t, 3> kOffsets{{0xD29C4U, 0xD29CAU,
@@ -1171,6 +1187,12 @@ native::NativePortAssets decode_genesis_native_assets(
     const auto cab_map = decode_genesis_cab_map(rom);
     assets.cab_map = {
         cab_map.width, cab_map.height, std::move(cab_map.pixels)};
+    const auto cab_cursor_tiles = decode_genesis_cab_cursor_tiles(rom);
+    for (std::size_t index = 0; index < cab_cursor_tiles.tiles.size(); ++index) {
+        const auto& tile = cab_cursor_tiles.tiles[index];
+        assets.cab_cursor_tiles[index] = {
+            tile.width, tile.height, tile.pixels};
+    }
     const auto field_hud = decode_genesis_field_hud(rom);
     assets.field_hud = {
         field_hud.width, field_hud.height, field_hud.pixels};
@@ -3089,10 +3111,13 @@ RgbaImage decode_genesis_field_menu_cursor(
         "Genesis command-screen cursor tile is truncated");
     const auto size_link = static_cast<std::uint16_t>(
         static_cast<std::uint16_t>(source_size & 0x00FFU) << 8U | 0x0002U);
+    // Genesis SAT size bits store width in bits 10-11 and height in bits
+    // 8-9. ROM record 0xD29F6 carries size 0x0E, so this selector is 4x3
+    // tiles (32x24 pixels), not 3x4.
     const auto width_tiles = static_cast<std::size_t>(
-        ((size_link >> 8U) & 0x03U) + 1U);
-    const auto height_tiles = static_cast<std::size_t>(
         ((size_link >> 10U) & 0x03U) + 1U);
+    const auto height_tiles = static_cast<std::size_t>(
+        ((size_link >> 8U) & 0x03U) + 1U);
     const auto palette = read_genesis_command_palette_set(rom);
     RgbaImage image{
         static_cast<std::uint16_t>(width_tiles * 8U),
