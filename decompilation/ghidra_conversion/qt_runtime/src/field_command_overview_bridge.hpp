@@ -68,6 +68,16 @@ public:
         return pending;
     }
 
+    // The typed secondary advance arms FFF115 (-1) when the source enters
+    // the 0x119CE posture adjustment dialog. The host consumes that edge
+    // once and opens its non-blocking posture loop.
+    bool take_action_dialog() noexcept {
+        const bool armed = state_.action_dialog_gate < 0;
+        state_.action_dialog_gate = 0;
+        view_.action_dialog_pending = false;
+        return armed;
+    }
+
 private:
     bool asset_available(std::string_view alias) const;
     void source_boundary(std::string_view boundary) const;

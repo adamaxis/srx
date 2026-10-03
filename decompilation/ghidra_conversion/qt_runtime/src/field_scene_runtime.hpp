@@ -29,6 +29,7 @@
 #include "shadowrun_ghidra/menus/inventory_action_conversion.hpp"
 #include "shadowrun_ghidra/menus/menu_confirmation_conversion.hpp"
 #include "shadowrun_ghidra/session/runner_switch_conversion.hpp"
+#include "shadowrun_ghidra/session/runner_record_operations_conversion.hpp"
 #include "shadowrun_ghidra/session/runner_record_access_conversion.hpp"
 #include "shadowrun_ghidra/integration/startup_integration_conversion.hpp"
 #include "shadowrun_ghidra/menus/menu_transfer_batch_conversion.hpp"
@@ -137,6 +138,15 @@ public:
     std::uint8_t pocket_secretary_selection() const noexcept {
         return pocket_secretary_.selection;
     }
+    bool posture_dialog_open() const noexcept {
+        return posture_dialog_active_;
+    }
+    std::uint8_t posture_dialog_value() const noexcept {
+        return active_runner_record().posture;
+    }
+    // Presentation seam for QA dumps: enter the 0x119CE posture adjustment
+    // dialog the way the converted command loop arms it.
+    void open_posture_dialog_for_dump() noexcept { posture_dialog_active_ = true; }
     bool field_entity_visible() const noexcept {
         return field_entity_.visible;
     }
@@ -270,6 +280,8 @@ private:
     PocketSecretaryMenuState pocket_secretary_{};
     QImage pocket_secretary_background_;
     QImage command_overview_attributes_background_;
+    QImage posture_focus_;
+    bool posture_dialog_active_ = false;
     std::array<QImage, 8> field_entity_idle_images_{};
     std::array<int, 8> field_entity_idle_origin_x_{};
     std::array<int, 8> field_entity_idle_origin_y_{};

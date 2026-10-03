@@ -116,6 +116,10 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
             ++index;
             continue;
         }
+        if (argument == "--field-posture-dump" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
         if (argument == "--field-dialogue-dump" && index + 2 < argc) {
             index += 2;
             continue;
@@ -2376,6 +2380,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_command_dump_path;
         std::optional<std::uint8_t> field_command_page;
         std::optional<std::filesystem::path> field_secretary_dump_path;
+        std::optional<std::filesystem::path> field_posture_dump_path;
         std::optional<std::filesystem::path> field_action_dump_path;
         std::optional<std::filesystem::path> field_clips_dump_path;
         std::optional<std::string> field_archetype_name;
@@ -2469,6 +2474,12 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_secretary_dump_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-posture-dump" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_posture_dump_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-dialogue-dump" &&
@@ -2731,6 +2742,41 @@ int main(int argc, char** argv) {
                           << " selection="
                           << static_cast<int>(
                                  field_scene.pocket_secretary_selection())
+                          << '\n';
+                return 0;
+            }
+            if (field_posture_dump_path.has_value()) {
+                if (!field_scene.open_command_overview_for_dump()) {
+                    std::cerr << "field posture dump: command overview "
+                                 "did not open\n";
+                    return 3;
+                }
+                field_scene.open_posture_dialog_for_dump();
+                // Port bit 3 is Down; the 0x119CE dialog raises the posture
+                // on each Down edge and 0x11AE4 clamps at four.
+                for (int press = 0; press < 2; ++press) {
+                    field_scene.set_controller_port_byte(0x08U);
+                    field_scene.advance_frame();
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                }
+                QImage posture_scene(kSceneWidth, kSceneHeight,
+                                     QImage::Format_RGB32);
+                posture_scene.fill(Qt::black);
+                QPainter posture_painter(&posture_scene);
+                field_scene.paint(posture_painter);
+                posture_painter.end();
+                if (!posture_scene.save(QString::fromStdWString(
+                        field_posture_dump_path->wstring()))) {
+                    std::cerr << "field posture dump: could not write "
+                              << field_posture_dump_path->string() << '\n';
+                    return 3;
+                }
+                std::cout << "field_posture_dump=written path="
+                          << field_posture_dump_path->string()
+                          << " posture="
+                          << static_cast<int>(
+                                 field_scene.posture_dialog_value())
                           << '\n';
                 return 0;
             }

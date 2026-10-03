@@ -88,6 +88,16 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_secretary_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_secretary_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# The 0x119CE posture dialog must raise/lower the typed posture with the
+# source clamp and keep the command shell underneath.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_posture_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-posture-dump
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-posture-qa.bmp")
+set_tests_properties(shadowrun_ghidra_conversion_qt_field_posture_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Keep the source-state and arithmetic contract in the same CTest suite as
 # the executable walk. The Qt QA test proves wiring/pixels; this leaf test
 # proves selector wrap, cancellation, equipment/ammo math, discard gates, and

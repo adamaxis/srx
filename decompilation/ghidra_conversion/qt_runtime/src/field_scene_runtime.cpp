@@ -487,7 +487,8 @@ bool FieldSceneRuntime::load_command_overview_assets(
         !load_image(catalog, "menu.pocket.secretary.background",
                     pocket_secretary_background_) ||
         !load_image(catalog, "menu.field.attributes.background",
-                    command_overview_attributes_background_)) {
+                    command_overview_attributes_background_) ||
+        !load_image(catalog, "menu.field.posture.focus", posture_focus_)) {
         return false;
     }
     // The source inventory-box writer changes only the box outline cells;
@@ -2202,6 +2203,30 @@ void FieldSceneRuntime::advance_frame() {
                 field_controller_sample_state_.events);
             return;
         }
+        if (command_overview_.take_action_dialog()) {
+            // 0x11506 armed the 0x119CE posture adjustment dialog. Its
+            // non-blocking host form mirrors the source loop: Down raises,
+            // Left lowers, Start exits, and 0x11AE4 clamps to 0..4.
+            posture_dialog_active_ = true;
+            source_boundary("field.posture.dialog_opened");
+        }
+        if (posture_dialog_active_) {
+            const auto events = field_controller_sample_state_.events;
+            if ((events & 0x0800U) != 0U) {
+                adjust_runner_posture(active_runner_record(), 1);
+                refresh_command_overview_combat_bars();
+                source_boundary("field.posture.dialog.raised");
+            } else if ((events & 0x0400U) != 0U) {
+                adjust_runner_posture(active_runner_record(), -1);
+                refresh_command_overview_combat_bars();
+                source_boundary("field.posture.dialog.lowered");
+            } else if ((events & 0x8000U) != 0U) {
+                posture_dialog_active_ = false;
+                refresh_command_overview_combat_bars();
+                source_boundary("field.posture.dialog.closed");
+            }
+            return;
+        }
         if (pocket_secretary_.open) {
             const auto event = apply_pocket_secretary_input(
                 pocket_secretary_, field_controller_sample_state_.events,
@@ -2260,6 +2285,7 @@ void FieldSceneRuntime::advance_frame() {
             command_overview_discard_confirmation_active_ = false;
             command_overview_clips_.close();
             pocket_secretary_.open = false;
+            posture_dialog_active_ = false;
         } else if (command_overview_.take_action_dispatch_pending()) {
             if (command_overview_.view().source_state.primary_page < 2U) {
                 begin_command_overview_inventory_action();
@@ -2710,6 +2736,11 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     painter.drawImage(176, 168, command_overview_status_bars_[posture]);
     draw_command_overview_text(painter, 136, 176,
                                field_menu_text_.status_names[posture]);
+    if (posture_dialog_active_) {
+        // 0x119CE's dialog highlights the posture row while the source
+        // loop accepts the raise/lower edges.
+        painter.drawImage(176, 168, posture_focus_);
+    }
 
     const auto draw_item_detail_rows =
         [this, &painter](const std::uint8_t item_code,
