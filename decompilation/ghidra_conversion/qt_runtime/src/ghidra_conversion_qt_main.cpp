@@ -2374,11 +2374,13 @@ int main(int argc, char** argv) {
         bool field_smoke = false;
         bool field_smoke_move_right = false;
         bool field_command_reopen_smoke = false;
+        bool field_cyberware_empty_qa = false;
         bool intro_to_field_smoke = false;
         std::optional<std::filesystem::path> field_dump_path;
         std::optional<std::filesystem::path> field_hud_qa_path;
         std::optional<std::filesystem::path> field_command_dump_path;
         std::optional<std::uint8_t> field_command_page;
+        std::optional<std::filesystem::path> field_cyberware_dump_path;
         std::optional<std::filesystem::path> field_secretary_dump_path;
         std::optional<std::filesystem::path> field_posture_dump_path;
         std::optional<std::filesystem::path> field_action_dump_path;
@@ -2405,6 +2407,8 @@ int main(int argc, char** argv) {
                        " [--field-smoke-move-right] [--field-dump <file>]"
                        " [--field-command-dump <file>]"
                        " [--field-command-page <0..6>]"
+                       " [--field-cyberware-dump <file>]"
+                       " [--field-cyberware-empty-qa]"
                        " [--field-action-dump <output-dir>]"
                        " [--field-clips-dump <output-dir>]"
                        " [--field-archetype <samurai|decker|gator>]"
@@ -2453,6 +2457,16 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_clips_dump_path =
                     std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-cyberware-dump" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_cyberware_dump_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-cyberware-empty-qa") {
+                field_smoke = true;
+                field_cyberware_empty_qa = true;
             }
             if (std::string(argv[index]) == "--field-archetype" &&
                 index + 1 < argc) {
@@ -2519,6 +2533,12 @@ int main(int argc, char** argv) {
                 opening_dump_directory =
                     std::filesystem::path(argv[++index]);
             }
+        }
+        if (field_cyberware_empty_qa &&
+            !field_cyberware_dump_path.has_value()) {
+            std::cerr << "field Cyberware empty QA requires "
+                         "--field-cyberware-dump <file>\n";
+            return 2;
         }
         const auto asset_root = find_asset_root(argc, argv);
         if (asset_root.empty()) {
@@ -2700,6 +2720,108 @@ int main(int argc, char** argv) {
                           << static_cast<int>(field_scene.command_overview_view()
                                                    .source_state.primary_page)
                           << "\n";
+                return 0;
+            }
+            if (field_cyberware_dump_path.has_value()) {
+                if (field_cyberware_empty_qa) {
+                    // Diagnostic fixture for the source zero-word branch;
+                    // production field records continue to come from the
+                    // normal startup/session bootstrap.
+                    field_scene.active_runner_record().cyberware_flags = 0U;
+                }
+                if (!field_scene.open_command_overview_for_dump() ||
+                    !field_scene.seek_command_overview_page(4U)) {
+                    std::cerr << "field Cyberware dump: command route did "
+                                 "not reach page 4\n";
+                    return 3;
+                }
+                // The converted command loop dispatches A on page 4 to the
+                // ROM 0x11950 Cyberware view.
+                field_scene.set_controller_port_byte(0x40U);
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                if (!field_scene.cyberware_menu_open()) {
+                    std::cerr << "field Cyberware dump: A did not open the "
+                                 "Cyberware view\n";
+                    return 3;
+                }
+
+                const auto flags =
+                    field_scene.active_runner_record().cyberware_flags;
+                std::vector<std::uint8_t> expected_rows;
+                for (std::uint8_t bit = 0U; bit < 15U; ++bit) {
+                    if ((flags & (std::uint16_t{1U} << bit)) != 0U) {
+                        expected_rows.push_back(bit);
+                    }
+                }
+                const auto& cyberware = field_scene.cyberware_menu_model();
+                if (cyberware.shows_no_cyberware_message != (flags == 0U) ||
+                    cyberware.installed_row_indices != expected_rows) {
+                    std::cerr << "field Cyberware dump: +0x90 rows do not "
+                                 "match the active record\n";
+                    return 3;
+                }
+
+                QImage cyberware_scene(kSceneWidth, kSceneHeight,
+                                       QImage::Format_RGB32);
+                cyberware_scene.fill(Qt::black);
+                QPainter cyberware_painter(&cyberware_scene);
+                field_scene.paint(cyberware_painter);
+                cyberware_painter.end();
+                const auto has_ink = [&cyberware_scene](
+                                         const int left, const int top,
+                                         const int right, const int bottom) {
+                    for (int y = top; y < bottom; ++y) {
+                        for (int x = left; x < right; ++x) {
+                            if ((cyberware_scene.pixel(x, y) & 0x00FFFFFFU) !=
+                                0U) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                };
+                if (!has_ink(136, 24, 256, 32) ||
+                    !has_ink(136, 32, 256, 40) ||
+                    (cyberware.shows_no_cyberware_message &&
+                     !has_ink(160, 48, 208, 56)) ||
+                    (!cyberware.shows_no_cyberware_message &&
+                     !expected_rows.empty() &&
+                     !has_ink(112, 48, 264, 56))) {
+                    std::cerr << "field Cyberware dump: source text is not "
+                                 "visible at its traced destination\n";
+                    return 3;
+                }
+                const auto parent = field_cyberware_dump_path->parent_path();
+                if (!parent.empty()) {
+                    std::filesystem::create_directories(parent);
+                }
+                if (!cyberware_scene.save(QString::fromStdWString(
+                        field_cyberware_dump_path->wstring()))) {
+                    std::cerr << "field Cyberware dump: could not write "
+                              << field_cyberware_dump_path->string() << '\n';
+                    return 3;
+                }
+
+                // ROM 0x11950 waits for one event before restoring the shared
+                // row. A directional event must close only this subview.
+                field_scene.set_controller_port_byte(0x04U);
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                if (field_scene.cyberware_menu_open() ||
+                    !field_scene.command_overview_open() ||
+                    field_scene.command_overview_view().source_state
+                            .primary_page != 4U) {
+                    std::cerr << "field Cyberware dump: return event did not "
+                                 "restore command page 4\n";
+                    return 3;
+                }
+                std::cout << "field_cyberware_dump=written path="
+                          << field_cyberware_dump_path->string()
+                          << " flags=0x" << std::hex << flags << std::dec
+                          << " visible_rows=" << expected_rows.size() << '\n';
                 return 0;
             }
             if (field_secretary_dump_path.has_value()) {

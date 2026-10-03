@@ -473,6 +473,29 @@ std::array<std::string, 20> read_genesis_attribute_skill_labels(
     return result;
 }
 
+GenesisCyberwareText read_genesis_cyberware_text(
+    const std::vector<std::uint8_t>& rom) {
+    GenesisCyberwareText result;
+    // 0xC0DA treats 0x80 as a row advance for the title's second line. Keep
+    // that break and the leading spaces used to place its glyphs.
+    result.title = read_genesis_multiline_text(
+        rom, 0xD2054U, 0x16U, "Genesis cyberware title is truncated");
+    result.empty_message = read_genesis_menu_text(
+        rom, 0xD206BU, 0x16U, "Genesis cyberware empty message is truncated");
+    constexpr std::array<std::size_t, 15> kEntrySources{{
+        0xD20AEU, 0xD20BBU, 0xD20C9U, 0xD20D8U, 0xD20E4U,
+        0xD20F2U, 0xD2104U, 0xD2116U, 0xD2128U, 0xD213AU,
+        0xD214CU, 0xD215EU, 0xD2170U, 0xD2182U, 0xD2194U,
+    }};
+    for (std::size_t index = 0; index < result.entries.size(); ++index) {
+        // The row strings' leading spaces are source layout within the cell.
+        result.entries[index] = read_genesis_padded_text(
+            rom, kEntrySources[index], 0x12U,
+            "Genesis cyberware entry is truncated");
+    }
+    return result;
+}
+
 std::array<std::string, 7> read_genesis_command_overview_labels(
     const std::vector<std::uint8_t>& rom) {
     std::array<std::string, 7> result{};

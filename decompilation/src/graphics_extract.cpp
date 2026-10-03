@@ -143,6 +143,24 @@ void write_field_menu_text_catalog(
         emit("attribute.skill." + std::to_string(index),
              attribute_skill_labels[index]);
     }
+    const auto cyberware_text =
+        shadowrun::graphics::read_genesis_cyberware_text(rom);
+    const auto title_break = cyberware_text.title.find('\n');
+    if (title_break == std::string::npos ||
+        cyberware_text.title.find('\n', title_break + 1U) !=
+            std::string::npos) {
+        throw std::runtime_error(
+            "field menu Cyberware title must contain exactly two source lines");
+    }
+    emit("cyberware.title.0", cyberware_text.title.substr(0, title_break));
+    emit("cyberware.title.1",
+         cyberware_text.title.substr(title_break + 1U));
+    emit("cyberware.empty", cyberware_text.empty_message);
+    for (std::size_t index = 0; index < cyberware_text.entries.size();
+         ++index) {
+        emit("cyberware.entry." + std::to_string(index),
+             cyberware_text.entries[index]);
+    }
     for (std::size_t index = 0; index < assets.intro.archetypes.size();
          ++index) {
         emit("archetype." + std::to_string(index),

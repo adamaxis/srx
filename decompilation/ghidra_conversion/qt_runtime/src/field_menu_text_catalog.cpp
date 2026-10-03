@@ -84,6 +84,8 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::array<bool, kFieldMenuRunnerNameCount> runner_found{};
     std::array<bool, kFieldMenuStatusNameCount> status_found{};
     std::array<bool, kAttributeSkillLabelCount> attribute_skill_found{};
+    std::array<bool, kCyberwareTitleLineCount> cyberware_title_found{};
+    std::array<bool, kCyberwareEntryCount> cyberware_entry_found{};
     std::array<bool, kFieldMenuPowerLabelCount> power_found{};
     std::array<std::array<bool, kFieldMenuArmorRowCount>,
                kFieldMenuArmorCount>
@@ -121,6 +123,7 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     bool clips_title_found = false;
     bool clips_separator_found = false;
     bool clips_counter_found = false;
+    bool cyberware_empty_found = false;
     std::string line;
     std::size_t line_number = 0;
     bool header_seen = false;
@@ -212,6 +215,28 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             } else {
                 attribute_skill_found[index] = true;
                 result.catalog.attribute_skill_labels[index] = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "cyberware.title.", index) &&
+            index < result.catalog.cyberware_title_lines.size()) {
+            if (cyberware_title_found[index]) {
+                result.errors.emplace_back("duplicate field menu text row: " +
+                                          key);
+            } else {
+                cyberware_title_found[index] = true;
+                result.catalog.cyberware_title_lines[index] = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "cyberware.entry.", index) &&
+            index < result.catalog.cyberware_entries.size()) {
+            if (cyberware_entry_found[index]) {
+                result.errors.emplace_back("duplicate field menu text row: " +
+                                          key);
+            } else {
+                cyberware_entry_found[index] = true;
+                result.catalog.cyberware_entries[index] = value;
             }
             continue;
         }
@@ -319,7 +344,10 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             parse_named("clips.separator", result.catalog.clips_separator,
                         clips_separator_found) ||
             parse_named("clips.counter", result.catalog.clips_counter_label,
-                        clips_counter_found)) {
+                        clips_counter_found) ||
+            parse_named("cyberware.empty",
+                        result.catalog.cyberware_empty_message,
+                        cyberware_empty_found)) {
             continue;
         }
         if (parse_indexed_key(key, "clips.reload.", index) &&
@@ -449,6 +477,10 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     add_missing_entries(status_found, "status.", result.errors);
     add_missing_entries(attribute_skill_found, "attribute.skill.",
                         result.errors);
+    add_missing_entries(cyberware_title_found, "cyberware.title.",
+                        result.errors);
+    add_missing_entries(cyberware_entry_found, "cyberware.entry.",
+                        result.errors);
     add_missing_entries(clips_found, "clips.", result.errors);
     add_missing_entries(clips_trade_found, "clips.trade.", result.errors);
     add_missing_entries(clips_trade_prompt_found, "clips.trade-prompt.",
@@ -484,6 +516,7 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     require_named("clips.title", clips_title_found);
     require_named("clips.separator", clips_separator_found);
     require_named("clips.counter", clips_counter_found);
+    require_named("cyberware.empty", cyberware_empty_found);
     add_missing_entries(clips_reload_found, "clips.reload.", result.errors);
     add_missing_entries(clips_success_found, "clips.success.", result.errors);
     add_missing_entries(clips_out_of_ammo_found, "clips.out-of-ammo.",

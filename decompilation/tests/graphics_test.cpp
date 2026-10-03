@@ -181,6 +181,19 @@ int main() {
     assert(cyberware_catalog[1] == "CyberEyes");
     assert(cyberware_catalog[2] == "Hand Razors");
     assert(cyberware_catalog[14] == "Wired Reflexes(3)");
+    const auto cyberware_text = read_genesis_cyberware_text(rom);
+    assert(cyberware_text.title ==
+           std::string(" CYBERWARE\n[") + std::string(10U, '\\'));
+    assert(cyberware_text.empty_message == "NONE");
+    assert((cyberware_text.entries ==
+            std::array<std::string, 15>{
+                "    Datajack", "    CyberEyes", "   Hand Razors",
+                "      Spurs", "    Smartlink", "Muscle Replace(1)",
+                "Muscle Replace(2)", "Muscle Replace(3)",
+                "Muscle Replace(4)", "Dermal Plating(1)",
+                "Dermal Plating(2)", "Dermal Plating(3)",
+                "Wired Reflexes(1)", "Wired Reflexes(2)",
+                "Wired Reflexes(3)"}));
     const auto attribute_skill_catalog =
         read_genesis_attribute_skill_catalog(rom);
     assert(attribute_skill_catalog.size() == 20);

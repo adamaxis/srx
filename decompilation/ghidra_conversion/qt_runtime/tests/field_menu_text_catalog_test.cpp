@@ -22,6 +22,15 @@ int main() {
         return 2;
     }
     using namespace shadowrun::ghidra_conversion::qt_runtime;
+    const std::array<std::string, kCyberwareEntryCount>
+        expected_cyberware_entries{{
+            "    Datajack", "    CyberEyes", "   Hand Razors",
+            "      Spurs", "    Smartlink", "Muscle Replace(1)",
+            "Muscle Replace(2)", "Muscle Replace(3)",
+            "Muscle Replace(4)", "Dermal Plating(1)",
+            "Dermal Plating(2)", "Dermal Plating(3)",
+            "Wired Reflexes(1)", "Wired Reflexes(2)",
+            "Wired Reflexes(3)"}};
     if (text.catalog.command_labels[0] != "Inventory" ||
         text.catalog.command_labels[6] != "Pocket Secretary" ||
         text.catalog.archetype_names[2] != "Gator" ||
@@ -30,6 +39,11 @@ int main() {
         text.catalog.item_detail_labels[0] != "ammo" ||
         text.catalog.item_detail_labels[1] != "uses" ||
         text.catalog.item_detail_labels[2] != "rtng" ||
+        text.catalog.cyberware_title_lines[0] != " CYBERWARE" ||
+        text.catalog.cyberware_title_lines[1] !=
+            std::string("[") + std::string(10U, '\\') ||
+        text.catalog.cyberware_empty_message != "NONE" ||
+        text.catalog.cyberware_entries != expected_cyberware_entries ||
         text.catalog.physical_label != "Physical" ||
         text.catalog.mental_label != "Mental" ||
         text.catalog.attack_label != "Atk" ||

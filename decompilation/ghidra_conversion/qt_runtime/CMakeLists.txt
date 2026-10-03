@@ -88,6 +88,27 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_secretary_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_secretary_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Exercise both ROM 0x11950 branches. The normal field smoke record has bit 0
+# set; the explicit empty fixture drives the zero-word branch and NONE text.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_cyberware_populated_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-cyberware-dump
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-cyberware-populated/actual.bmp")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_cyberware_populated_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
+add_test(NAME shadowrun_ghidra_conversion_qt_field_cyberware_empty_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-cyberware-empty-qa
+                 --field-cyberware-dump
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-cyberware-empty/actual.bmp")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_cyberware_empty_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # The 0x119CE posture dialog must raise/lower the typed posture with the
 # source clamp and keep the command shell underneath.
 add_test(NAME shadowrun_ghidra_conversion_qt_field_posture_qa

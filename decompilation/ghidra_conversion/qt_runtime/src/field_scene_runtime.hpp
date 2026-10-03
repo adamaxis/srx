@@ -26,6 +26,7 @@
 #include "shadowrun_ghidra/integration/field_session_bootstrap_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
 #include "shadowrun_ghidra/menus/equipment_combat_bar_conversion.hpp"
+#include "shadowrun_ghidra/menus/cyberware_menu_conversion.hpp"
 #include "shadowrun_ghidra/menus/inventory_action_conversion.hpp"
 #include "shadowrun_ghidra/menus/menu_confirmation_conversion.hpp"
 #include "shadowrun_ghidra/session/runner_switch_conversion.hpp"
@@ -115,6 +116,12 @@ public:
     bool clips_menu_open() const noexcept {
         return command_overview_clips_.is_open();
     }
+    bool cyberware_menu_open() const noexcept {
+        return command_overview_cyberware_active_;
+    }
+    const CyberwareMenuModel& cyberware_menu_model() const noexcept {
+        return command_overview_cyberware_;
+    }
     std::uint8_t clips_menu_selection() const noexcept {
         return command_overview_clips_.selection();
     }
@@ -202,6 +209,7 @@ private:
         std::uint16_t controller_events);
     void advance_command_overview_clips(std::uint16_t controller_events);
     void begin_command_overview_inventory_action();
+    void begin_command_overview_cyberware();
     void begin_command_overview_clips();
     void begin_pocket_secretary();
     void dispatch_command_overview_inventory_action(
@@ -267,6 +275,8 @@ private:
         command_overview_selected_inventory_item_;
     MenuConfirmationState command_overview_discard_confirmation_{};
     FieldClipsMenuRuntime command_overview_clips_{};
+    CyberwareMenuModel command_overview_cyberware_{};
+    bool command_overview_cyberware_active_ = false;
     std::string command_overview_action_message_;
     bool command_overview_inventory_action_active_ = false;
     bool command_overview_discard_confirmation_active_ = false;

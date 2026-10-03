@@ -23,6 +23,8 @@ inline constexpr std::size_t kFieldMenuItemDetailLabelCount = 3U;
 inline constexpr std::size_t kFieldMenuItemNameCount = 50U;
 inline constexpr std::size_t kFieldMenuClipsCommandCount = 4U;
 inline constexpr std::size_t kAttributeSkillLabelCount = 20U;
+inline constexpr std::size_t kCyberwareTitleLineCount = 2U;
+inline constexpr std::size_t kCyberwareEntryCount = 15U;
 
 struct FieldMenuTextCatalog {
     std::array<std::string, kCommandOverviewLabelCount> command_labels{};
@@ -61,6 +63,10 @@ struct FieldMenuTextCatalog {
     // the Attributes/Skills command page.
     std::array<std::string, kAttributeSkillLabelCount>
         attribute_skill_labels{};
+    std::array<std::string, kCyberwareTitleLineCount>
+        cyberware_title_lines{};
+    std::string cyberware_empty_message;
+    std::array<std::string, kCyberwareEntryCount> cyberware_entries{};
     std::array<std::string, 3> clips_trade_prompt{};
     std::array<std::string, 2> clips_exchange_complete{};
     std::string clips_title;

@@ -26,6 +26,24 @@ attribute.skill.16	Biotech
 attribute.skill.17	Electronics
 attribute.skill.18	Reputation
 attribute.skill.19	Negotiation
+cyberware.title.0	" CYBERWARE"
+cyberware.title.1	[\\\\\\\\\\
+cyberware.empty	NONE
+cyberware.entry.0	"    Datajack"
+cyberware.entry.1	"    CyberEyes"
+cyberware.entry.2	"   Hand Razors"
+cyberware.entry.3	"      Spurs"
+cyberware.entry.4	"    Smartlink"
+cyberware.entry.5	Muscle Replace(1)
+cyberware.entry.6	Muscle Replace(2)
+cyberware.entry.7	Muscle Replace(3)
+cyberware.entry.8	Muscle Replace(4)
+cyberware.entry.9	Dermal Plating(1)
+cyberware.entry.10	Dermal Plating(2)
+cyberware.entry.11	Dermal Plating(3)
+cyberware.entry.12	Wired Reflexes(1)
+cyberware.entry.13	Wired Reflexes(2)
+cyberware.entry.14	Wired Reflexes(3)
 archetype.0	Samurai
 archetype.1	Decker
 archetype.2	Gator

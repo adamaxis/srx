@@ -1069,6 +1069,8 @@ void FieldSceneRuntime::open_command_overview() {
     command_overview_inventory_action_active_ = false;
     command_overview_discard_confirmation_active_ = false;
     command_overview_clips_.close();
+    command_overview_cyberware_active_ = false;
+    command_overview_cyberware_ = CyberwareMenuModel{};
 
     const auto command_asset_available = [this](const std::string_view alias) {
         if (alias == "menu.field.command_overview.background") {
@@ -1180,6 +1182,21 @@ void FieldSceneRuntime::begin_command_overview_clips() {
     }
     command_overview_clips_.open();
     source_boundary("field.command_overview.clips.opened");
+}
+
+void FieldSceneRuntime::begin_command_overview_cyberware() {
+    if (!command_overview_.open() ||
+        command_overview_.view().source_state.primary_page != 4U) {
+        source_boundary("field.command_overview.cyberware.invalid_route");
+        return;
+    }
+    // ROM 0x11950 reads the active record's +0x90 word. A zero word selects
+    // NONE; otherwise visible bits are emitted from 0 through 14, compacted
+    // into successive rows. Bit 15 alone is nonzero but names no row.
+    command_overview_cyberware_ = build_cyberware_menu(
+        active_runner_record().cyberware_flags);
+    command_overview_cyberware_active_ = true;
+    source_boundary("field.command_overview.cyberware.opened");
 }
 
 void FieldSceneRuntime::advance_command_overview_clips(
@@ -2203,6 +2220,16 @@ void FieldSceneRuntime::advance_frame() {
                 field_controller_sample_state_.events);
             return;
         }
+        if (command_overview_cyberware_active_) {
+            // ROM 0x11950 waits for one controller event after drawing the
+            // +0x90 bit rows, refreshes the shared menu row, and returns.
+            // Keep the wait non-blocking in the Qt event loop.
+            if ((field_controller_sample_state_.events & 0xFF00U) != 0U) {
+                command_overview_cyberware_active_ = false;
+                source_boundary("field.command_overview.cyberware.returned");
+            }
+            return;
+        }
         if (command_overview_.take_action_dialog()) {
             // 0x11506 armed the 0x119CE posture adjustment dialog. Its
             // non-blocking host form mirrors the source loop: Down raises,
@@ -2284,6 +2311,8 @@ void FieldSceneRuntime::advance_frame() {
             command_overview_inventory_action_active_ = false;
             command_overview_discard_confirmation_active_ = false;
             command_overview_clips_.close();
+            command_overview_cyberware_active_ = false;
+            command_overview_cyberware_ = CyberwareMenuModel{};
             pocket_secretary_.open = false;
             posture_dialog_active_ = false;
         } else if (command_overview_.take_action_dispatch_pending()) {
@@ -2295,10 +2324,13 @@ void FieldSceneRuntime::advance_frame() {
             } else if (command_overview_.view().source_state.primary_page ==
                        6U) {
                 begin_pocket_secretary();
+            } else if (command_overview_.view().source_state.primary_page ==
+                       4U) {
+                begin_command_overview_cyberware();
             } else {
                 // The converted command bridge has identified the remaining
                 // action route, but its handler still needs a source-verified
-                // native target (Magic, Cyberware, Attributes/Skills).
+                // native target (Magic and Attributes/Skills).
                 source_boundary(
                     "field.command_overview.non_inventory_action_pending");
             }
@@ -2659,6 +2691,34 @@ void FieldSceneRuntime::paint_command_overview_clips(
 void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     painter.fillRect(0, 0, 320, 224, Qt::black);
     if (!command_overview_.open()) {
+        return;
+    }
+    if (command_overview_cyberware_active_) {
+        // The 0x11950 destinations are offsets in a 64-column name plane:
+        // C1A2 -> (136,24), C328/C31C -> (160/112,48), and each emitted
+        // record row advances by 0x100 bytes (16 host pixels vertically).
+        painter.drawImage(0, 0, command_overview_background_);
+        draw_command_overview_text(
+            painter, 136, 24, field_menu_text_.cyberware_title_lines[0]);
+        draw_command_overview_text(
+            painter, 136, 32, field_menu_text_.cyberware_title_lines[1]);
+        if (command_overview_cyberware_.shows_no_cyberware_message) {
+            draw_command_overview_text(
+                painter, 160, 48, field_menu_text_.cyberware_empty_message);
+        } else {
+            for (std::size_t row = 0;
+                 row < command_overview_cyberware_.installed_row_indices.size();
+                 ++row) {
+                const auto bit = command_overview_cyberware_
+                                     .installed_row_indices[row];
+                if (bit >= field_menu_text_.cyberware_entries.size()) {
+                    continue;
+                }
+                draw_command_overview_text(
+                    painter, 112, 48 + static_cast<int>(row) * 16,
+                    field_menu_text_.cyberware_entries[bit]);
+            }
+        }
         return;
     }
     if (pocket_secretary_.open) {

@@ -659,6 +659,18 @@ GenesisCabCursorTiles decode_genesis_cab_cursor_tiles(
 std::array<std::string, 20> read_genesis_attribute_skill_labels(
     const std::vector<std::uint8_t>& rom);
 
+struct GenesisCyberwareText {
+    std::string title;
+    std::string empty_message;
+    std::array<std::string, 15> entries{};
+};
+
+// ROM 0x11950: the Cyberware page title at 0xD2054 (including its 0x80
+// second-line control), the NONE message at 0xD206B, and the fifteen padded
+// entry strings at 0xD20AE..0xD2194 indexed by record +0x90 bits 0..14.
+GenesisCyberwareText read_genesis_cyberware_text(
+    const std::vector<std::uint8_t>& rom);
+
 // Reconstruct the field command screen's plane-B base from the exact 0x1232
 // writers called by ROM 0x10F50. This is host RGBA output, not a Genesis
 // name-table or palette dependency retained by the runtime.
