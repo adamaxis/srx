@@ -22,6 +22,7 @@ inline constexpr std::size_t kFieldMenuArmorRowCount = 2U;
 inline constexpr std::size_t kFieldMenuItemDetailLabelCount = 3U;
 inline constexpr std::size_t kFieldMenuItemNameCount = 50U;
 inline constexpr std::size_t kFieldMenuClipsCommandCount = 4U;
+inline constexpr std::size_t kAttributeSkillLabelCount = 20U;
 
 struct FieldMenuTextCatalog {
     std::array<std::string, kCommandOverviewLabelCount> command_labels{};
@@ -56,6 +57,10 @@ struct FieldMenuTextCatalog {
     std::string action_choice_yes;
     std::array<std::string, kFieldMenuClipsCommandCount> clips_commands{};
     std::array<std::string, kFieldMenuClipsCommandCount> clips_trade_commands{};
+    // 0xC1A2A: eight attribute labels followed by twelve skill labels for
+    // the Attributes/Skills command page.
+    std::array<std::string, kAttributeSkillLabelCount>
+        attribute_skill_labels{};
     std::array<std::string, 3> clips_trade_prompt{};
     std::array<std::string, 2> clips_exchange_complete{};
     std::string clips_title;

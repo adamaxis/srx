@@ -456,6 +456,23 @@ native::NativeImage read_native_image(std::istream& input) {
 
 } // namespace
 
+std::array<std::string, 20> read_genesis_attribute_skill_labels(
+    const std::vector<std::uint8_t>& rom) {
+    // 0xD01C walks the 20-entry pointer table at 0xC1A2A: eight attribute
+    // labels then twelve skill labels. Each pointer resolves to the same
+    // padded menu text used by the other command labels.
+    std::array<std::string, 20> result{};
+    for (std::size_t index = 0; index < result.size(); ++index) {
+        const auto pointer = static_cast<std::size_t>(read_rom_u32(
+            rom, 0xC1A2AU + index * 4U,
+            "Genesis attribute/skill label pointer is truncated"));
+        result[index] = read_genesis_menu_text(
+            rom, pointer, 0x12U,
+            "Genesis attribute/skill label is truncated");
+    }
+    return result;
+}
+
 std::array<std::string, 7> read_genesis_command_overview_labels(
     const std::vector<std::uint8_t>& rom) {
     std::array<std::string, 7> result{};

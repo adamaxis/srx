@@ -6,6 +6,26 @@ command.3	Attributes/Skills
 command.4	Cyberware
 command.5	Magic
 command.6	Pocket Secretary
+attribute.skill.0	Body
+attribute.skill.1	Quickness
+attribute.skill.2	Strength
+attribute.skill.3	Charisma
+attribute.skill.4	Intelligence
+attribute.skill.5	Willpower
+attribute.skill.6	Essence      .
+attribute.skill.7	Magic
+attribute.skill.8	Sorcery
+attribute.skill.9	Firearms
+attribute.skill.10	Pistols
+attribute.skill.11	SMGs
+attribute.skill.12	Shotguns
+attribute.skill.13	Melee Combat
+attribute.skill.14	Throwing
+attribute.skill.15	Computer
+attribute.skill.16	Biotech
+attribute.skill.17	Electronics
+attribute.skill.18	Reputation
+attribute.skill.19	Negotiation
 archetype.0	Samurai
 archetype.1	Decker
 archetype.2	Gator

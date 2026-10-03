@@ -653,6 +653,12 @@ struct GenesisCabCursorTiles {
 GenesisCabCursorTiles decode_genesis_cab_cursor_tiles(
     const std::vector<std::uint8_t>& rom);
 
+// ROM 0xC1A2A: the 20 pointer table entries naming the eight attributes
+// followed by the twelve skills used by the Attributes/Skills command page
+// (0xD01C). The source renders each through 0xC0DA's encoded text writer.
+std::array<std::string, 20> read_genesis_attribute_skill_labels(
+    const std::vector<std::uint8_t>& rom);
+
 // Reconstruct the field command screen's plane-B base from the exact 0x1232
 // writers called by ROM 0x10F50. This is host RGBA output, not a Genesis
 // name-table or palette dependency retained by the runtime.

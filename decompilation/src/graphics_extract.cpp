@@ -136,6 +136,13 @@ void write_field_menu_text_catalog(
     for (std::size_t index = 0; index < command_labels.size(); ++index) {
         emit("command." + std::to_string(index), command_labels[index]);
     }
+    const auto attribute_skill_labels =
+        shadowrun::graphics::read_genesis_attribute_skill_labels(rom);
+    for (std::size_t index = 0; index < attribute_skill_labels.size();
+         ++index) {
+        emit("attribute.skill." + std::to_string(index),
+             attribute_skill_labels[index]);
+    }
     for (std::size_t index = 0; index < assets.intro.archetypes.size();
          ++index) {
         emit("archetype." + std::to_string(index),

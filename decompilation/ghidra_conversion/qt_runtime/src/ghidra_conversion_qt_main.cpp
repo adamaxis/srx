@@ -294,6 +294,17 @@ bool field_command_shell_survives(const QImage& scene,
          QPoint(10, 100), QPoint(300, 10), QPoint(300, 220)});
 }
 
+bool field_command_shell_survives(
+    const QImage& scene, const std::filesystem::path& asset_root,
+    const std::string& background_file) {
+    const QImage shell(QString::fromStdWString(
+        (asset_root / "menu" / "field" / background_file).wstring()));
+    return source_shell_pixels_survive(
+        scene, shell,
+        {QPoint(10, 10), QPoint(100, 0), QPoint(120, 0),
+         QPoint(10, 100), QPoint(300, 10), QPoint(300, 220)});
+}
+
 bool field_hud_chrome_survives(const QImage& scene,
                                const std::filesystem::path& asset_root) {
     const QImage shell(QString::fromStdWString(
@@ -2652,7 +2663,16 @@ int main(int argc, char** argv) {
                 QPainter command_painter(&command_scene);
                 field_scene.paint(command_painter);
                 command_painter.end();
-                if (!field_command_shell_survives(command_scene, asset_root)) {
+                // 0xD01C replaces the base frame with the Attributes/Skills
+                // composition, so the shell invariant compares against that
+                // replacement instead of the ordinary command background.
+                const auto shell_reference =
+                    field_command_page.has_value() &&
+                            *field_command_page == 3U
+                        ? std::string("attributes-background.bmp")
+                        : std::string("background.bmp");
+                if (!field_command_shell_survives(command_scene, asset_root,
+                                                  shell_reference)) {
                     std::cerr << "field command dump: source command shell "
                                  "was not preserved around the overlays\n";
                     return 3;

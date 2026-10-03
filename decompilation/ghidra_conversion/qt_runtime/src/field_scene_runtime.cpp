@@ -485,7 +485,9 @@ bool FieldSceneRuntime::load_command_overview_assets(
                     command_overview_action_background_) ||
         !load_image(catalog, "menu.field.font", command_overview_font_) ||
         !load_image(catalog, "menu.pocket.secretary.background",
-                    pocket_secretary_background_)) {
+                    pocket_secretary_background_) ||
+        !load_image(catalog, "menu.field.attributes.background",
+                    command_overview_attributes_background_)) {
         return false;
     }
     // The source inventory-box writer changes only the box outline cells;
@@ -2642,6 +2644,45 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     }
 
     painter.drawImage(0, 0, command_overview_background_);
+    if (command_overview_.view().source_state.primary_page == 3U) {
+        // 0xD01C draws the Attributes/Skills frame over the base command
+        // screen. Its 0xC1A2A label table is stamped in four blocks:
+        // words 0xC386/0xC3AC (rows 7+0..3) and 0xC686/0xC6AC (rows
+        // 13+0..5) of the 64-column plane, i.e. screen columns 24 and
+        // 176 with an eight-pixel row gap at y88-96.
+        painter.drawImage(0, 0, command_overview_attributes_background_);
+        const auto place = [](const std::size_t label_index) {
+            std::array<int, 2> result{};
+            if (label_index < 4U) {
+                return std::array<int, 2>{24, 56 + static_cast<int>(
+                                                      label_index) * 8};
+            }
+            if (label_index < 8U) {
+                return std::array<int, 2>{
+                    176, 56 + static_cast<int>(label_index - 4U) * 8};
+            }
+            if (label_index < 14U) {
+                return std::array<int, 2>{
+                    24, 104 + static_cast<int>(label_index - 8U) * 8};
+            }
+            return std::array<int, 2>{
+                176, 104 + static_cast<int>(label_index - 14U) * 8};
+        };
+        for (std::size_t index = 0;
+             index < field_menu_text_.attribute_skill_labels.size();
+             ++index) {
+            if (field_menu_text_.attribute_skill_labels[index].empty()) {
+                continue;
+            }
+            const auto position = place(index);
+            draw_command_overview_text(
+                painter, position[0], position[1],
+                field_menu_text_.attribute_skill_labels[index]);
+        }
+        // Attribute/skill values and the 0xD27C cursor navigation remain
+        // on the visual audit ledger.
+        return;
+    }
     painter.drawImage(0, 0, command_overview_inventory_boxes_);
 
     // ROM 0x110BC writes the active runner's 8x10 portrait at E104, which is

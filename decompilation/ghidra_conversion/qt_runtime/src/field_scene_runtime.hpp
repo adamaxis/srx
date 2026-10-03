@@ -269,6 +269,7 @@ private:
     std::array<FieldHudSlotState, kFieldHudSlotCount> field_hud_slots_{};
     PocketSecretaryMenuState pocket_secretary_{};
     QImage pocket_secretary_background_;
+    QImage command_overview_attributes_background_;
     std::array<QImage, 8> field_entity_idle_images_{};
     std::array<int, 8> field_entity_idle_origin_x_{};
     std::array<int, 8> field_entity_idle_origin_y_{};

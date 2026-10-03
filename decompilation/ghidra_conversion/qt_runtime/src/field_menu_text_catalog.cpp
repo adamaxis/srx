@@ -83,6 +83,7 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::array<bool, kFieldMenuArchetypeNameCount> archetype_found{};
     std::array<bool, kFieldMenuRunnerNameCount> runner_found{};
     std::array<bool, kFieldMenuStatusNameCount> status_found{};
+    std::array<bool, kAttributeSkillLabelCount> attribute_skill_found{};
     std::array<bool, kFieldMenuPowerLabelCount> power_found{};
     std::array<std::array<bool, kFieldMenuArmorRowCount>,
                kFieldMenuArmorCount>
@@ -200,6 +201,17 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             } else {
                 status_found[index] = true;
                 result.catalog.status_names[index] = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "attribute.skill.", index) &&
+            index < result.catalog.attribute_skill_labels.size()) {
+            if (attribute_skill_found[index]) {
+                result.errors.emplace_back("duplicate field menu text row: " +
+                                          key);
+            } else {
+                attribute_skill_found[index] = true;
+                result.catalog.attribute_skill_labels[index] = value;
             }
             continue;
         }
@@ -435,6 +447,8 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     add_missing_entries(archetype_found, "archetype.", result.errors);
     add_missing_entries(runner_found, "runner.", result.errors);
     add_missing_entries(status_found, "status.", result.errors);
+    add_missing_entries(attribute_skill_found, "attribute.skill.",
+                        result.errors);
     add_missing_entries(clips_found, "clips.", result.errors);
     add_missing_entries(clips_trade_found, "clips.trade.", result.errors);
     add_missing_entries(clips_trade_prompt_found, "clips.trade-prompt.",
