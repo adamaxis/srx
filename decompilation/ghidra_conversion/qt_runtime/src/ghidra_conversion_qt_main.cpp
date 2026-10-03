@@ -555,11 +555,18 @@ public:
             return 3;
         }
         std::filesystem::create_directories(output_directory);
+        std::ofstream boundary_log(output_directory / "boundaries.tsv");
+        std::size_t next_boundary = 0U;
         for (std::uint32_t frame = 0U; frame < end; ++frame) {
             if (state_.phase != StartupIntegrationPhase::opening_intro) {
                 std::cerr << "startup range dump: opening ended at frame "
                           << frame << '\n';
                 return 3;
+            }
+            while (next_boundary < presentation_boundaries_.size()) {
+                boundary_log << frame << '\t'
+                             << presentation_boundaries_[next_boundary++]
+                             << '\n';
             }
             if (frame >= start) {
                 const auto scene = render_scene();
