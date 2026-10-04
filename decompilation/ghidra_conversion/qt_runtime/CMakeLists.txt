@@ -430,3 +430,23 @@ target_link_libraries(shadowrun_ghidra_shop_menu_runtime_test
     PRIVATE shadowrun_ghidra_conversion_runtime)
 add_test(NAME shadowrun_ghidra_shop_menu_runtime
          COMMAND shadowrun_ghidra_shop_menu_runtime_test)
+
+# Source selector event 0x25 is ROM table-2 entry 37. Verify the event reaches
+# the direct extracted asset resolver without assigning aliases to unknown
+# events.
+add_executable(shadowrun_ghidra_audio_playback_test
+    tests/audio_playback_test.cpp
+    src/audio_playback.cpp
+)
+target_include_directories(shadowrun_ghidra_audio_playback_test
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+set_target_properties(shadowrun_ghidra_audio_playback_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
+target_compile_definitions(shadowrun_ghidra_audio_playback_test PRIVATE
+    SHADOWRUN_GHIDRA_AUDIO_RESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-037.flac")
+target_link_libraries(shadowrun_ghidra_audio_playback_test
+    PRIVATE Qt6::Core Qt6::Multimedia)
+add_test(NAME shadowrun_ghidra_audio_playback
+         COMMAND shadowrun_ghidra_audio_playback_test)

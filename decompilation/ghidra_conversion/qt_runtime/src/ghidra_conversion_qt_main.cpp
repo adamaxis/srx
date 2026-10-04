@@ -5532,7 +5532,8 @@ int main(int argc, char** argv) {
                 }
                 std::cout << "dismiss_runner_review=fixed_abort,active_list,"
                              "compact_marker,active_runner_switch,e660_cadence "
-                             "e660_pixels=pending source_audio=0x25_unmapped\n";
+                             "e660_pixels=pending "
+                             "source_audio=0x25_resource_037\n";
                 std::cout << "notebook_review=menu,current-run-no-run,wait,return "
                              "contacts_gate=visible source_effect=not_rendered\n";
                 std::cout << "field_secretary_dump=written path="

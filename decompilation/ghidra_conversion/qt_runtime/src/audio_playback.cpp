@@ -26,6 +26,9 @@ AudioPlaybackService::AudioPlaybackService(PathResolver resolver,
         {0x11U, "audio.intro.title.stage-1"},
         {0x12U, "audio.intro.title.stage-3"},
         {0x24U, "audio.menu.command-024"},
+        // ROM command 0x25 is table-2 index 37. The importer emits that
+        // zero-based entry as audio.effects.resource.037.
+        {0x25U, "audio.effects.resource.037"},
         {0x29U, "audio.menu.command-029"},
     };
 }

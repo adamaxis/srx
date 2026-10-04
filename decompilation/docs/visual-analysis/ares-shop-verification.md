@@ -7,8 +7,10 @@ one-pixel item selector, and source-specific Universal Gun Clips art/text. The
 new-game wallet uses the ROM's starting 20 nuyen. Purchase, E-coded clip,
 confirmation, sale/refund, and protected-item paths now mutate the active
 runner and new-game wallet through typed state. The restored-save adapter still
-does not expose wallet funds, and production sound playback/duration remain
-unresolved; the Ares hill remains partial. The introduction and shop were
+does not expose wallet funds. Events `0x24` and `0x25` now reach extracted
+one-shot files through the Qt playback service; their source event identity
+and file durations are recorded below. Actual Windows speaker output remains
+unmeasured, so the Ares hill remains partial. The introduction and shop were
 independently reviewed against the longplay sequence around frames 5983-5994.
 
 ## Source trace
@@ -47,6 +49,12 @@ independently reviewed against the longplay sequence around frames 5983-5994.
   `0x58C54` bounds the selection cursor, `0x58CDE` switches the two panels,
   `0x587DA` publishes the action selection, and `0x57C7A` redraws the selected
   action presentation. The menu has no periodic animation in this loop.
+- Audio: ROM `0x56C72`, `0x56C8E`, `0x56CAA`, and `0x56CC8` load `D0=0x25`
+  before calling `0x530DE`; the enabled queue path passes that value to
+  `0x52F3C`. The Z80 offline importer exposes 94 zero-based table-2 streams,
+  so byte `0x25` selects decimal entry 37, extracted as
+  `audio.effects.resource.037`. The Qt alias test checks both the selected
+  alias and that the playback service forwards it to the asset resolver.
 - Service tabs/headings: `0x58B5E` writes the 18x2 tab row from `0xCE17E`;
   `0x58BB6` adds the selected 2x2 overlay from `0xCE22E + cursor*8`. The
   heading table at `0x1AA8AF` contains 32 records with 20 visible characters
@@ -131,12 +139,17 @@ independently reviewed against the longplay sequence around frames 5983-5994.
    same selected item art persists through the prompt; input moves the Yes/No
    cursor or ends the transaction. No extra animation was observed in the
    adjacent longplay frames.
-5. **Sound?** The generic prompt makes no direct sound request. Shop movement
-   and tab changes request event `0x25`; confirm/cancel paths request `0x24`.
-   QA checks the event requests for row/tab movement, purchase confirmation,
-   Yes/No movement, sale confirmation, and protected-item selection. These
-   requests currently have no verified production sample identity or measured
-   playback duration; the event sink is not proof that a sound played.
+5. **Sound?** The generic prompt makes no direct sound request. The ROM shop
+   loop at `0x56C72..0x56CCC` requests `0x25` for selection movement; that
+   byte is table-2 index 37 and maps to `audio.effects.resource.037`. Its FLAC
+   is 2.134 seconds including the extractor's two-second release tail, and
+   the Qt service sends it to `QSoundEffect`. Confirm/cancel paths request
+   `0x24`, mapped to `audio.menu.command-024` (2.484 seconds). A
+   pre-emphasized waveform comparison against longplay audio from seconds
+   5980-6000 found repeated strong matches for resource 037 at 5985.289,
+   5987.022, and 5993.456. Debug/Release QA verifies that event `0x25` reaches
+   its direct asset alias; it does not capture Windows speaker output, so
+   device playback remains unverified.
 6. **Related screen content?** The independent sequence includes the mode
    prompt, black transition, shop category, selected clips/patch details,
    and a later transaction prompt. QA also inspects the insufficient-funds,
@@ -175,5 +188,5 @@ introduction, category, selected-item, purchase failure/cancel/accept, Stim
 Patch confirmation, E-coded clips, sale/refund, protected-sale, and return
 `actual.bmp` checkpoints. The importer was run explicitly with
 `shadowrun_graphics_extract --all-assets`; extraction is not part of CTest or
-ordinary builds. Loaded-save wallet binding and production audio playback are
-still open.
+ordinary builds. Loaded-save wallet binding and an independent capture of Qt
+speaker output are still open.

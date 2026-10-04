@@ -155,11 +155,14 @@ selected item. That did not match the single fine outline in the longplay.
    sprite record on a selector refresh; this path has no separate cursor
    animation counter.
 5. **Sound:** D-pad movement reaches the command detail refresh, which emits
-   audio event `0x25`; no alias or measured clip is identified, and the Qt
-   command route does not play that event. Action-button dispatch uses `0x24`,
-   mapped to `audio.menu.command-024` (2.484 seconds including its two-second
-   release tail), but that is not evidence for a selector-movement sound.
-   Movement sound identity and duration remain unresolved.
+   audio event `0x25`. ROM `0x530DE` sends that byte to the audio command
+   queue; it selects table-2 index 37 (`audio.effects.resource.037`, 2.134
+   seconds including its release tail). Qt maps and forwards the event to
+   `QSoundEffect`. Independent longplay audio around the Ares shop has repeated
+   waveform matches for this sample; the Qt tests verify the alias route, not
+   speaker output for this specific First Aid visit. Action-button dispatch
+   uses `0x24`, mapped to `audio.menu.command-024` (2.484 seconds including
+   its two-second release tail).
 6. **Related screen parts:** inspected the item art, equipped-cell frame,
    center detail panel, field HUD, command shell, and the nested action row.
    Qt page-1 QA checks all four outline edges, rejects matching-color pixels
@@ -223,13 +226,13 @@ open.
    until the `0x0D94` event wait returns.
 5. **Does sound accompany it?** Moving the target cursor requests ROM audio
    event `0x25` at `0x12392`; confirming/cancelling requests `0x24` at
-   `0x12412`. The Qt callback trace confirms those event IDs. The host maps
-   `0x24` to `audio.menu.command-024`, whose extracted FLAC lasts 2.484 seconds
-   including the release tail; no separate result sound is issued. The QA
-   spies on requested event IDs but does not capture acoustic playback. No
-   extracted alias/clip for `0x25` exists, and `AudioPlaybackService` ignores
-   that unmapped event, so cursor movement is currently silent in Qt. Keep
-   this as an unresolved audio boundary instead of assigning another clip.
+   `0x12412`. Event `0x25` maps through the shared playback service to
+   `audio.effects.resource.037` (2.134 seconds including its release tail);
+   `0x24` maps to `audio.menu.command-024` (2.484 seconds). The Qt callback
+   trace and focused audio CTest verify the source event and alias route, but
+   neither captures Windows speaker output. No separate result sound is
+   issued, and this longplay visit does not independently isolate its cursor
+   cue.
 6. **Are related parts correct?** Reviewed the inventory icons and item
    detail, selected/equipped layers, shell, right HUD and live meter, center
    target face, result line, and return to Inventory. QA checks the full
@@ -241,8 +244,8 @@ open.
    002630 show the target list on separate visits; 002611 and 002640 show the
    used result; 002615 and 002699 show return. These support the repeated row
    layout, selection/result transition, selector persistence/removal, and
-   static hold. They do not establish the Samurai portrait or exact audible
-   sound for event `0x25`.
+   static hold. They do not establish the Samurai portrait or capture Qt's
+   acoustic output for event `0x25`.
 
 The focused CTests are
 `shadowrun_ghidra_conversion_qt_field_first_aid_qa`,
@@ -252,8 +255,8 @@ The focused CTests are
 `shadowrun_ghidra_conversion_qt.exe --assets decompilation/assets --field-archetype samurai --field-first-aid-dump <output-dir>`;
 it writes `actual.bmp` plus the interaction checkpoints and verifies that
 held A does not dismiss the result before a fresh controller edge. This hill stays
-`partial`: Joshua-only roster integration, host RNG seeding, the unmapped
-`0x25` audio event, and same-archetype visual support still need work.
+`partial`: Joshua-only roster integration, host RNG seeding, measured Qt
+speaker output, and same-archetype visual support still need work.
 
 ### Applied review: Seattle opening text and focus box
 
@@ -366,8 +369,10 @@ longplay frames remain the independent appearance evidence.
    and Magic spell cursor cadence are unimplemented and remain unclassified.
 5. **Sound:** A dispatch uses event 0x24, extracted as
    audio.menu.command-024 with a 2.484-second file including its two-second
-   release tail. The selector cue at event 0x25 has no identified alias or
-   duration. No panel-specific sound is inferred from the tab label.
+   release tail. Selector movement uses event 0x25, mapped to table-2 entry 37
+   (`audio.effects.resource.037`, 2.134 seconds including its release tail).
+   A longplay audio cross-check matches that sample during the Ares shop;
+   speaker output from the Qt build remains unmeasured.
 6. **Related screen parts:** inspected the shared command background, field
    HUD, portraits, selected tab, inventory art/equipment treatment, Clips
    rows, Cyberware panel and return, and Pocket Secretary entry. QA checks
@@ -742,10 +747,11 @@ new behavior is invented.
    animate the focus during idle. The Qt QA checks the rendered image after
    30 idle frames and captures No, Yes, next-recipient, and return states.
 5. **Does sound accompany it?** `0x12988` requests event `0x25` after either
-   horizontal edge; `0x129B2` requests `0x24` on confirm. The host callback
-   checks those event IDs. Event `0x24` maps to the existing 2.484-second
-   audio file including its release tail. Event `0x25` has no verified alias
-   or clip duration, and callback coverage does not prove playback.
+   horizontal edge; `0x129B2` requests `0x24` on confirm. Event `0x25` maps to
+   `audio.effects.resource.037` (2.134 seconds including its release tail),
+   and `0x24` maps to `audio.menu.command-024` (2.484 seconds). The source
+   sample is cross-checked against the independent Ares longplay audio; this
+   Trade QA checks the event and alias path but does not capture speaker output.
 6. **Are related parts of the screen correct too?** The whole frame was
    checked for the inventory item, item detail, command shell, active runner
    HUD, Yes/No focus, and return to the inventory grid. The item remains at
@@ -918,9 +924,11 @@ new behavior is invented.
    changing while page text and counter stay fixed. The effect remains below
    the panel content.
 5. **Does sound accompany it?** Tips drawing and Left/Right/A/B/Start do not
-   request audio. C calls `0x391A`, which requests event `0x25`; Qt forwards
-   that event and keeps the selected page open. `0x25` has no verified alias
-   or measured duration, so audible playback remains unverified.
+   request audio. C calls `0x391A`, which requests event `0x25`; Qt maps that
+   event to `audio.effects.resource.037` (2.134 seconds including its release
+   tail) and keeps the selected page open. The asset identity is checked
+   against the independent Ares longplay audio, but speaker output during this
+   Tips action remains unverified.
 6. **Are related parts of the screen also correct?** The review checks both
    page text and page count, the shared lower animation, input edge behavior,
    and the parent Notebook before/after child entry. The page body reaches at
@@ -978,10 +986,10 @@ new behavior is invented.
     so Genesis animation and preview cadence remain unverified.
 5. **Does it have a sound?** Up/down requests source event `0x25`; the
    selected/Abort action requests `0x24`; Start and child entry request no
-   additional event. The known `audio.menu.command-024` asset lasts 2.484
-   seconds including its release tail. Event `0x25` has no identified alias
-   or clip duration, and the CTest observes callback events rather than
-   speaker output.
+   additional event. Event `0x25` maps to `audio.effects.resource.037` (2.134
+   seconds including its release tail); event `0x24` maps to
+   `audio.menu.command-024` (2.484 seconds). The CTest checks the event/alias
+   route, not speaker output for this screen.
 6. **Are nearby screen parts also correct?** The review includes the parent
    Pocket Secretary, the Dismiss child, both candidate counts, each return
     path, party membership, live-record flags, active-runner HUD selection,
