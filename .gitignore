@@ -4,6 +4,8 @@
 **/build-*/
 **/cmake-build-*/
 /build-ide-*/
+**/bin/
+**/obj/
 /decompilation/build/
 /decompilation/build-*/
 /decompilation/ghidra_conversion/build/
@@ -37,6 +39,17 @@
 **/*.lastbuildstate
 **/cmake_install.cmake
 **/compile_commands.json
+
+# Visual Studio/MSBuild user state and output databases. These can be emitted
+# beside a project even when the main CMake tree is out of source.
+**/.vs/
+**/*.suo
+**/*.user
+**/*.VC.db
+**/*.VC.VC.opendb
+**/*.sdf
+**/*.opensdf
+**/*.opendb
 
 # Ghidra project databases are large, host-specific working state. The
 # exported listings and C++ evidence under export/ remain versioned.
