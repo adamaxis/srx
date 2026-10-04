@@ -2487,6 +2487,7 @@ bool FieldSceneRuntime::bootstrap(
     field_camera_alignment_ready_ = false;
     command_overview_.close();
     field_dialogue_.close();
+    field_mode_text_.close();
     field_party_roster_.clear();
     field_menu_text_ = FieldMenuTextCatalog{};
     command_overview_resource_variant_ = ResourceVariantState{};
@@ -2589,6 +2590,7 @@ bool FieldSceneRuntime::bootstrap(
     // 0x1F65A callback can bind direct assets without rebuilding a catalog on
     // every prompt or reaching back into the ROM.
     (void)field_dialogue_.load_assets(startup_state.asset_catalog.catalog);
+    (void)field_mode_text_.load_assets(startup_state.asset_catalog.catalog);
 
     const auto field_map_alias =
         std::string("field.maps.mode.") + std::to_string(scene_reference);
@@ -3096,6 +3098,21 @@ void FieldSceneRuntime::update_source_field_camera() {
 
 void FieldSceneRuntime::advance_frame() {
     if (!ready_) {
+        return;
+    }
+    if (field_mode_text_.open()) {
+        field_controller_latch_state_.events =
+            field_controller_sample_state_.events;
+        field_controller_latch_state_.extra_events = 0U;
+        (void)::shadowrun::ghidra_conversion::latch_controller_events(
+            field_controller_latch_state_);
+        ::shadowrun::ghidra_conversion::sample_controller_input(
+            field_controller_sample_state_, field_controller_port_byte_);
+        const auto result = field_mode_text_.advance_controller_events(
+            field_controller_sample_state_.events);
+        if (result == FieldModeTextAdvanceResult::returned_to_route) {
+            source_boundary("field.mode_text_prompt.returned_to_caller");
+        }
         return;
     }
     if (field_dialogue_.open()) {
@@ -4827,6 +4844,14 @@ void FieldSceneRuntime::paint(QPainter& painter) const {
     if (!ready_ || field_map_.isNull()) {
         return;
     }
+    if (field_mode_text_.open()) {
+        field_mode_text_.paint(painter);
+        return;
+    }
+    if (field_dialogue_.open()) {
+        field_dialogue_.paint(painter);
+        return;
+    }
     if (command_overview_.open()) {
         paint_command_overview(painter);
         // The field command loop updates its menu plane without replacing
@@ -4839,11 +4864,6 @@ void FieldSceneRuntime::paint(QPainter& painter) const {
         }
         return;
     }
-    if (field_dialogue_.open()) {
-        field_dialogue_.paint(painter);
-        return;
-    }
-
     const auto& scene = state_.field_scene_buffers;
     const auto camera_x = std::max(
         0, static_cast<int>(scene.camera_x >> 4U));

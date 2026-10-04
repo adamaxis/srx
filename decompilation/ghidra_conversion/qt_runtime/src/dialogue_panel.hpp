@@ -46,6 +46,7 @@ enum class DialoguePanelOptionRole {
 };
 
 enum class DialoguePanelActorKind {
+    none,
     recruited_runner,
     field_npc,
 };

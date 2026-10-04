@@ -1,11 +1,11 @@
 # Ares Weapon Emporium verification
 
-Status: controller, transaction logic, and the source-selected Ares mode-text
-record provider are partial. The Qt field event route, prompt presenter, and
-live wallet binding are not connected. The source uses a generic mode-text
-prompt here, not the Stoker/NPC panel resolver. No Ares shop frame has been
-confirmed in the available early-section capture, so no visual fidelity claim
-is made.
+Status: controller, transaction logic, source-selected Ares mode-text records,
+and a text-only Qt prompt runtime with a diagnostic dump are implemented. The
+live field event route, shop presenter, and live wallet binding are not
+connected. The source uses a generic mode-text prompt here, not the Stoker/NPC
+panel resolver. No Ares prompt or shop frame has been confirmed in the
+available early-section capture, so no visual fidelity claim is made.
 
 ## Source trace
 
@@ -21,6 +21,15 @@ is made.
   `0x11166E` / text `0x1189F2` (package handoff). Those alternate paths return
   without entering `0x56AC0`. The native provider keys all three text records
   by mode/event/result and does not assign them Stoker's speaker or portrait.
+- Prompt draw: `0x1F246` loads the shared menu assets and font, prepares the
+  optional mode resources, then calls `0x1F3C4`; `0x1F5A8` clears the source
+  text and choice wells before the prompt draws. The Qt runtime uses the
+  extracted common panel frame/font, splits source paragraph separators into
+  text segments, draws no portrait or A/B/C marker for the sentinel record,
+  and waits 30 frames before accepting a sampled controller edge. Whether the
+  common panel frame is the exact Ares exterior remains unverified without an
+  independent Ares image. The CLI dump is diagnostic; the live event is not
+  connected yet.
 - Dialogue boundary: NPC prompt resolver `0x1F65A` matches mode 2/event 2 for
   the Stoker motel. Ares mode 2/event 11 follows `0x1FA78`; it must use its own
   event-selected mode-text data and must not borrow Stoker speaker assets.
@@ -44,30 +53,33 @@ is made.
 
 ## Visual audit questions
 
-1. **Does it look correct?** Pending. There is no independent Ares capture, and
-   the native presenter is not implemented.
-2. **Does appearance reflect behavior?** The controller test checks the typed
-   selected group, offer cursor, sell slot, and exact stock rows. A visible
-   selector has not been rendered or checked.
-3. **Are visuals correct?** Pending source-positioned presenter and `actual.bmp`.
-   ROM draw entry points are traced above; the native screen is not built.
-4. **Animation?** The menu loop redraws after input and has no periodic shop
-   animation. Its behavior-counter display service is not a shop animation
-   clock. Ares-specific cadence remains visually unverified.
-5. **Sound?** The ROM requests event `0x25` on cursor/panel movement and `0x24`
-   on confirmation and runner restart. The `0x25` clip identity and both
-   playback durations are unresolved; Qt playback is not connected here.
-6. **Related screen content?** The mode-text prompt precedes the shop and the
-   field-mode service redraws its title, active-runner HUD, selected action
-   detail, offer panel, and funds/price feedback. The current runtime does not
-   yet compose these regions together.
-7. **Multiple frames?** The available longplay has no Ares shop example. There
-   are no independent shop frames to compare; the new controller CTest checks
-   transitions, not appearance.
-8. **Stale UI?** The presenter is pending. It must replace its complete owned
-   panel on entry, panel switch, selection change, confirmation, and return;
-   no controls from the prior page may remain underneath. A stale-panel pixel
-   test is still required.
+1. **Does it look correct?** The diagnostic prompt has clean text in the host
+   panel, but the exact Ares exterior is unverified. The shop has no presenter.
+2. **Does appearance reflect behavior?** The title-only sentinel has no
+   selection, speaker, portrait, or A/B/C choice. Runtime tests check those
+   absences, event/result text selection, and the 30-frame input gate. The shop
+   cursor has not been rendered.
+3. **Are visuals correct?** ROM prompt text and well preparation are traced;
+   Debug produced and inspected
+   `field-mode-text-qa/introduction/actual.bmp`. This checks host composition,
+   not Genesis fidelity. Shop pixels remain pending.
+4. **Animation?** The prompt has no periodic animation; it waits 30 frames
+   before accepting a controller edge. The shop loop redraws after input and
+   has no periodic shop animation.
+5. **Sound?** The traced `0x1F246`/`0x1F3C4` prompt path makes no direct sound
+   request. The shop requests event `0x25` on cursor/panel movement and `0x24`
+   on confirmation and runner restart. The `0x25` clip identity and playback
+   durations remain unresolved; shop audio is not connected here.
+6. **Related screen content?** The prompt redraws the complete host panel
+   before the shop. The eventual shop view must compose its title, active-runner
+   HUD, selected action detail, offer panel, and funds/price feedback together.
+7. **Multiple frames?** The available longplay has no Ares prompt or shop
+   example. No independent frame is available to compare; the diagnostic dump
+   is one host frame, not another game example.
+8. **Stale UI?** The prompt redraws its full host frame and clears both text
+   wells. Its test verifies the lower choice well contains no old buttons. The
+   shop's entry, panel changes, confirmations, and return still need full-panel
+   redraw and pixel checks.
 
 ## Implemented controller slice
 
@@ -76,8 +88,9 @@ returns purchase, sale, source-boundary, runner-change, and field-return
 requests. It does not own a second inventory or wallet. `ShopTransactionService`
 delegates to the existing typed purchase/removal conversions. The focused test
 checks Ares stock order, navigation, confirmations, protected sale rows,
-funds, and inventory mutations in Debug and Release. The Ares hill remains partial until
-field routing, presentation, dump, stale-panel check, and visual evidence are
-complete. `ModeTextPromptCatalogConversion` supplies the three ROM-selected
-Ares text records and the no-option sentinel descriptor; it does not yet draw
-the mode-specific background or connect the prompt return to the shop.
+funds, and inventory mutations in Debug and Release. `FieldModeTextRuntime`
+displays the three ROM-selected text records in a no-choice panel, enforces the
+sentinel delay, and writes an `actual.bmp` diagnostic. The Ares hill remains
+partial until the live field route, shop presentation, wallet binding, stale
+shop-panel check, and independent visual evidence are complete. The exact
+Ares-specific frame and background remain unverified.

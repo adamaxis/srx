@@ -108,6 +108,7 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
                    " [--field-hud-qa <output-dir>]"
                    " [--field-command-reopen-smoke]"
                    " [--field-dialogue-dump <prompt> <file>]"
+                   " [--field-mode-text-dump <variant> <file>]"
                    " [--boot-dump-frame <frame> <file>]"
                    " [--startup-dump <stage> <selection> <frame> <file>]"
                    " [--startup-qa <output-dir>]"
@@ -178,6 +179,10 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
             continue;
         }
         if (argument == "--field-dialogue-dump" && index + 2 < argc) {
+            index += 2;
+            continue;
+        }
+        if (argument == "--field-mode-text-dump" && index + 2 < argc) {
             index += 2;
             continue;
         }
@@ -2671,6 +2676,8 @@ int main(int argc, char** argv) {
         std::optional<std::string> field_archetype_name;
         std::optional<std::string> field_dialogue_dump_prompt;
         std::optional<std::filesystem::path> field_dialogue_dump_path;
+        std::optional<std::string> field_mode_text_dump_variant;
+        std::optional<std::filesystem::path> field_mode_text_dump_path;
         std::optional<std::uint32_t> boot_dump_frame;
         std::optional<std::filesystem::path> boot_dump_path;
         std::optional<std::string> startup_dump_stage;
@@ -2703,6 +2710,7 @@ int main(int argc, char** argv) {
                        " [--field-hud-qa <output-dir>]"
                        " [--field-command-reopen-smoke]"
                        " [--field-dialogue-dump <prompt> <file>]"
+                       " [--field-mode-text-dump <variant> <file>]"
                        " [--boot-dump-frame <frame> <file>]"
                        " [--startup-dump <stage> <selection> <frame> <file>]"
                        " [--startup-qa <output-dir>]"
@@ -2820,6 +2828,13 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_dialogue_dump_prompt = std::string(argv[++index]);
                 field_dialogue_dump_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-mode-text-dump" &&
+                index + 2 < argc) {
+                field_smoke = true;
+                field_mode_text_dump_variant = std::string(argv[++index]);
+                field_mode_text_dump_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--boot-dump-frame" &&
@@ -3001,6 +3016,48 @@ int main(int argc, char** argv) {
                 std::cout << "field_dialogue_dump=written prompt="
                           << *field_dialogue_dump_prompt << " path="
                           << field_dialogue_dump_path->string() << "\n";
+                return 0;
+            }
+            if (field_mode_text_dump_variant.has_value() &&
+                field_mode_text_dump_path.has_value()) {
+                std::int8_t alternate_result = 0;
+                if (*field_mode_text_dump_variant == "introduction") {
+                    alternate_result = 0;
+                } else if (*field_mode_text_dump_variant ==
+                           "package-handoff") {
+                    alternate_result = -1;
+                } else if (*field_mode_text_dump_variant ==
+                           "package-payment") {
+                    alternate_result = 1;
+                } else {
+                    std::cerr << "field mode-text dump: unknown variant '"
+                              << *field_mode_text_dump_variant << "'\n";
+                    return 3;
+                }
+                if (!field_scene.open_ares_mode_text_for_dump(
+                        alternate_result)) {
+                    std::cerr << "field mode-text dump: prompt did not open\n";
+                    return 3;
+                }
+                QImage mode_text_scene(kSceneWidth, kSceneHeight,
+                                       QImage::Format_RGB32);
+                mode_text_scene.fill(Qt::black);
+                QPainter mode_text_painter(&mode_text_scene);
+                field_scene.paint(mode_text_painter);
+                mode_text_painter.end();
+                if (field_mode_text_dump_path->has_parent_path()) {
+                    std::filesystem::create_directories(
+                        field_mode_text_dump_path->parent_path());
+                }
+                if (!mode_text_scene.save(QString::fromStdWString(
+                        field_mode_text_dump_path->wstring()))) {
+                    std::cerr << "field mode-text dump: could not write "
+                              << field_mode_text_dump_path->string() << '\n';
+                    return 3;
+                }
+                std::cout << "field_mode_text_dump=written variant="
+                          << *field_mode_text_dump_variant << " path="
+                          << field_mode_text_dump_path->string() << "\n";
                 return 0;
             }
             if (field_magic_spell_dump_path.has_value()) {

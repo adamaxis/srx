@@ -17,6 +17,7 @@ add_executable(shadowrun_ghidra_conversion_qt
     src/dialogue_panel_presenter.cpp
     src/dialogue_text_catalog.cpp
     src/field_dialogue_runtime.cpp
+    src/field_mode_text_runtime.cpp
     src/audio_playback.cpp
 )
 target_include_directories(shadowrun_ghidra_conversion_qt
@@ -140,6 +141,18 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_dialogue_qa
                  --field-dialogue-dump manager-package
                  "${CMAKE_CURRENT_BINARY_DIR}/field-dialogue-qa/manager-package/actual.bmp")
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_dialogue_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
+# The Ares title-only mode-text prompt is a separate presenter from the
+# Stoker/NPC route. This diagnostic dump exercises its source-selected text,
+# shared text wells, and no-button composition without fabricating a live
+# field-event trigger.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_mode_text_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-mode-text-dump introduction
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-mode-text-qa/introduction/actual.bmp")
+set_tests_properties(shadowrun_ghidra_conversion_qt_field_mode_text_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Exercise both ROM 0x11950 branches. The normal field smoke record has bit 0
@@ -335,6 +348,25 @@ target_link_libraries(shadowrun_ghidra_field_dialogue_runtime_test
     PRIVATE shadowrun_ghidra_conversion_runtime Qt6::Gui)
 add_test(NAME shadowrun_ghidra_field_dialogue_runtime
          COMMAND shadowrun_ghidra_field_dialogue_runtime_test)
+
+add_executable(shadowrun_ghidra_field_mode_text_runtime_test
+    tests/field_mode_text_runtime_test.cpp
+    src/field_mode_text_runtime.cpp
+    src/dialogue_panel_presenter.cpp
+    src/dialogue_panel.cpp
+)
+target_include_directories(shadowrun_ghidra_field_mode_text_runtime_test
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+set_target_properties(shadowrun_ghidra_field_mode_text_runtime_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
+target_compile_definitions(shadowrun_ghidra_field_mode_text_runtime_test PRIVATE
+    SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets")
+target_link_libraries(shadowrun_ghidra_field_mode_text_runtime_test
+    PRIVATE shadowrun_ghidra_conversion_runtime Qt6::Gui)
+add_test(NAME shadowrun_ghidra_field_mode_text_runtime
+         COMMAND shadowrun_ghidra_field_mode_text_runtime_test)
 
 if (WIN32)
     find_program(SHADOWRUN_GHIDRA_QT_WINDEPLOYQT

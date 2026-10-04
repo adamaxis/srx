@@ -48,6 +48,7 @@
 #include "field_clips_menu_runtime.hpp"
 #include "field_party_roster_runtime.hpp"
 #include "field_dialogue_runtime.hpp"
+#include "field_mode_text_runtime.hpp"
 #include "field_menu_text_catalog.hpp"
 
 #include <array>
@@ -122,6 +123,10 @@ public:
     bool open_stoker_dialogue_for_dump(
         StokerMotelPromptId prompt) {
         return field_dialogue_.open_stoker_prompt_for_dump(prompt);
+    }
+    bool open_ares_mode_text_for_dump(std::int8_t alternate_result) {
+        return field_mode_text_.open(
+            FieldModeTextPromptContext{2U, 11U, alternate_result});
     }
     const FieldCommandOverviewView& command_overview_view() const noexcept {
         return command_overview_.view();
@@ -471,6 +476,7 @@ private:
     FieldViewportState viewport_state_;
     FieldCommandOverviewBridge command_overview_;
     FieldDialogueRuntime field_dialogue_;
+    FieldModeTextRuntime field_mode_text_{};
     FieldDialogueEventResolver field_dialogue_event_resolver_;
     FieldPartyRosterRuntime field_party_roster_{};
     DismissRunnerMenuState dismiss_runner_{};
