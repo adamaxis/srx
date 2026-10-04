@@ -110,6 +110,7 @@ file(GLOB SHADOWRUN_MODULE_FIELD_PRESENTATION_SERVICES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/mode_prompt_prepare_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/mode_selection_render_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/mode_services_conversion.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/field/mode_text_prompt_catalog_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/mode_text_prompt_conversion.cpp"
 )
 file(GLOB SHADOWRUN_MODULE_FIELD_TERRAIN_COLLISION CONFIGURE_DEPENDS

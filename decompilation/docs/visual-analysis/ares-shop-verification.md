@@ -1,10 +1,11 @@
 # Ares Weapon Emporium verification
 
-Status: controller and transaction logic are partial. The Qt field event route,
-mode-text prompt, presenter, and live wallet binding are not connected. The
-source uses a generic mode-text prompt here, not the Stoker/NPC panel resolver.
-No Ares shop frame has been confirmed in the available early-section capture,
-so no visual fidelity claim is made.
+Status: controller, transaction logic, and the source-selected Ares mode-text
+record provider are partial. The Qt field event route, prompt presenter, and
+live wallet binding are not connected. The source uses a generic mode-text
+prompt here, not the Stoker/NPC panel resolver. No Ares shop frame has been
+confirmed in the available early-section capture, so no visual fidelity claim
+is made.
 
 ## Source trace
 
@@ -12,6 +13,14 @@ so no visual fidelity claim is made.
   mode resource `0x1220C0`, sets menu mode 1 and result -1, and selects text
   record `0x110DD2`. It calls `0x1F246` (whose `0x1F3C4` child handles the
   generic mode-text prompt), then dispatches `0x56AC0`.
+- Prompt data: record `0x110DD2` points to text at `0x118934`, followed by the
+  `0xFFFFFFFF` first-option sentinel. The prompt draws no A/B/C choices; ROM
+  `0x1F3C4` waits 30 frames and returns `0xFB` on any controller event before
+  the default route enters the shop. Positive `FFF0D5` selects record
+  `0x111676` / text `0x118A6C` (package payment); negative selects
+  `0x11166E` / text `0x1189F2` (package handoff). Those alternate paths return
+  without entering `0x56AC0`. The native provider keys all three text records
+  by mode/event/result and does not assign them Stoker's speaker or portrait.
 - Dialogue boundary: NPC prompt resolver `0x1F65A` matches mode 2/event 2 for
   the Stoker motel. Ares mode 2/event 11 follows `0x1FA78`; it must use its own
   event-selected mode-text data and must not borrow Stoker speaker assets.
@@ -68,4 +77,6 @@ delegates to the existing typed purchase/removal conversions. The focused test
 checks Ares stock, navigation, confirmations, protected sale rows, funds, and
 inventory mutations in Debug and Release. The Ares hill remains partial until
 field routing, presentation, dump, stale-panel check, and visual evidence are
-complete.
+complete. `ModeTextPromptCatalogConversion` supplies the three ROM-selected
+Ares text records and the no-option sentinel descriptor; it does not yet draw
+the mode-specific background or connect the prompt return to the shop.

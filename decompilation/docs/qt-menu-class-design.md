@@ -71,8 +71,9 @@ their current host:
 - **Generic mode-text prompt:** the typed `0x1F3C4` conversion now exposes a
   one-frame advance API with the source 10-frame option delay, 30-frame
   sentinel delay, controller priority, and subcommand return. A Qt runtime
-  provider/presenter still needs event-selected text records and source-owned
-  assets before it can be attached to Ares or another field route.
+  provider now resolves Ares mode 2/event 11 and its positive/negative text
+  variants. Its source-owned background/presenter and live field route still
+  need to be connected before the shop can open through that event.
 - **Shop:** `ShopMenuController` and `ShopTransactionService` exist for the
   Ares source selection and transactions. The live field route, wallet
   binding, and presenter remain pending.
