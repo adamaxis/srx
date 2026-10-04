@@ -227,6 +227,19 @@ struct GenesisFieldMenuLabels {
 GenesisFieldMenuLabels read_genesis_field_menu_labels(
     const std::vector<std::uint8_t>& rom);
 
+struct GenesisFieldServiceTitle {
+    // The first word of each 0x1AAB50 title record is the source text's
+    // destination cell in the field menu plane.
+    std::uint16_t destination_word = 0;
+    std::string text;
+};
+
+// ROM 0x56AC0 indexes the 12-entry title pointer table at 0x1AAB50 with
+// FFF0B6, then renders the record's destination and encoded title. Export
+// those values once so the native menu can bind a title to its source layout.
+std::array<GenesisFieldServiceTitle, 12>
+read_genesis_field_service_titles(const std::vector<std::uint8_t>& rom);
+
 // ROM 0x12634/0x127B0 supply the inventory action feedback strings.  Extract
 // the individual source lines once so the host command screen can preserve
 // the discard confirmation without carrying a Genesis text-table address.

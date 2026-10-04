@@ -136,6 +136,14 @@ void write_field_menu_text_catalog(
     for (std::size_t index = 0; index < command_labels.size(); ++index) {
         emit("command." + std::to_string(index), command_labels[index]);
     }
+    const auto service_titles =
+        shadowrun::graphics::read_genesis_field_service_titles(rom);
+    for (std::size_t index = 0; index < service_titles.size(); ++index) {
+        emit("field-service.title." + std::to_string(index),
+             service_titles[index].text);
+        emit("field-service.title-destination." + std::to_string(index),
+             std::to_string(service_titles[index].destination_word));
+    }
     const auto pocket_secretary_text =
         shadowrun::graphics::read_genesis_pocket_secretary_text(rom);
     emit("pocket-secretary.title", pocket_secretary_text.title);

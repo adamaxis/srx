@@ -6,6 +6,30 @@ command.3	Attributes/Skills
 command.4	Cyberware
 command.5	Magic
 command.6	Pocket Secretary
+field-service.title.0	Weapons World
+field-service.title-destination.0	49430
+field-service.title.1	Ares Weapon Emporium
+field-service.title-destination.1	49424
+field-service.title.2	Crime Mall
+field-service.title-destination.2	49434
+field-service.title.3	Medicine Lodge
+field-service.title-destination.3	49430
+field-service.title.4	Riannon's
+field-service.title-destination.4	49432
+field-service.title.5	Merlin's Lore
+field-service.title-destination.5	49430
+field-service.title.6	Microtronics
+field-service.title-destination.6	49430
+field-service.title.7	Wire-Masters
+field-service.title-destination.7	49430
+field-service.title.8	Little Chiba
+field-service.title-destination.8	49430
+field-service.title.9	Dr. Bob's
+field-service.title-destination.9	49434
+field-service.title.10	Council Island Hospital
+field-service.title-destination.10	49420
+field-service.title.11	Seattle General Hospital
+field-service.title-destination.11	49420
 pocket-secretary.title	" Main Menu"
 pocket-secretary.separator	[\\\\\\\\\\
 pocket-secretary.option.0	Notebook

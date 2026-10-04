@@ -92,6 +92,9 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::array<bool, kMagicSpellTextCount> magic_spell_description_found{};
     std::array<bool, kPocketSecretaryOptionCount>
         pocket_secretary_option_found{};
+    std::array<bool, kFieldServiceTitleCount> field_service_title_found{};
+    std::array<bool, kFieldServiceTitleCount>
+        field_service_title_destination_found{};
     std::array<bool, kCyberdeckUnavailableLineCount>
         pocket_secretary_cyberdeck_line_found{};
     std::array<bool, kPocketSecretaryGroupItemCount>
@@ -200,6 +203,39 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             value = encoded_value;
         }
         std::size_t index = 0;
+        if (parse_indexed_key(key, "field-service.title.", index) &&
+            index < result.catalog.field_service_titles.size()) {
+            if (field_service_title_found[index]) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else {
+                field_service_title_found[index] = true;
+                result.catalog.field_service_titles[index] = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "field-service.title-destination.",
+                              index) &&
+            index < result.catalog.field_service_title_destinations.size()) {
+            if (field_service_title_destination_found[index]) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else {
+                std::uint16_t destination = 0U;
+                const auto* first = value.data();
+                const auto* last = first + value.size();
+                const auto parsed = std::from_chars(first, last, destination);
+                if (parsed.ec != std::errc{} || parsed.ptr != last) {
+                    result.errors.emplace_back(
+                        "invalid field-service title destination: " + key);
+                } else {
+                    field_service_title_destination_found[index] = true;
+                    result.catalog.field_service_title_destinations[index] =
+                        destination;
+                }
+            }
+            continue;
+        }
         if (parse_indexed_key(key, "command.", index) &&
             index < result.catalog.command_labels.size()) {
             if (command_found[index]) {
@@ -865,6 +901,10 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                         result.errors);
     add_missing_entries(notebook_event_gate_found, "notebook.event-gate.",
                         result.errors);
+    add_missing_entries(field_service_title_found, "field-service.title.",
+                        result.errors);
+    add_missing_entries(field_service_title_destination_found,
+                        "field-service.title-destination.", result.errors);
     add_missing_entries(dismiss_runner_label_found, "dismiss.label.",
                         result.errors);
     const auto decode_newlines = [](std::string& value) {

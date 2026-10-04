@@ -33,6 +33,9 @@ int main() {
             "Wired Reflexes(3)"}};
     if (text.catalog.command_labels[0] != "Inventory" ||
         text.catalog.command_labels[6] != "Pocket Secretary" ||
+        text.catalog.field_service_titles[0] != "Weapons World" ||
+        text.catalog.field_service_titles[1] != "Ares Weapon Emporium" ||
+        text.catalog.field_service_title_destinations[1] != 0xC110U ||
         text.catalog.archetype_names[2] != "Gator" ||
         text.catalog.archetype_names[3] != "Shaman" ||
         text.catalog.race_names !=

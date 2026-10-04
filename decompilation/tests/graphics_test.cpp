@@ -132,6 +132,10 @@ int main() {
     assert(field_labels.weapons == "Wpns");
     assert(field_labels.guns == "Guns");
     assert(field_labels.power == "Power");
+    const auto field_service_titles = read_genesis_field_service_titles(rom);
+    assert(field_service_titles[0].text == "Weapons World");
+    assert(field_service_titles[1].text == "Ares Weapon Emporium");
+    assert(field_service_titles[1].destination_word == 0xC110U);
     const auto entity_template =
         read_genesis_field_entity_template(rom);
     assert(entity_template.record_offset == 0x7291A);

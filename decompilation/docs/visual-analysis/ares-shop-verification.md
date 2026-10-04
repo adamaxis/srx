@@ -1,11 +1,12 @@
 # Ares Weapon Emporium verification
 
 Status: controller, transaction logic, source-selected Ares mode-text records,
-and a text-only Qt prompt runtime with a diagnostic dump are implemented. The
-live field event route, shop presenter, and live wallet binding are not
-connected. The source uses a generic mode-text prompt here, not the Stoker/NPC
-panel resolver. No Ares prompt or shop frame has been confirmed in the
-available early-section capture, so no visual fidelity claim is made.
+the twelve source field-service titles and their draw destinations, and a
+text-only Qt prompt runtime with a diagnostic dump are implemented. The live
+field event route, shop presenter, and live wallet binding are not connected.
+The source uses a generic mode-text prompt here, not the Stoker/NPC panel
+resolver. No Ares prompt or shop frame has been confirmed in the available
+early-section capture, so no visual fidelity claim is made.
 
 ## Source trace
 
@@ -37,6 +38,11 @@ available early-section capture, so no visual fidelity claim is made.
   `0x58C54` bounds the selection cursor, `0x58CDE` switches the two panels,
   `0x587DA` publishes the action selection, and `0x57C7A` redraws the selected
   action presentation. The menu has no periodic animation in this loop.
+- Title: `0x56AC0` indexes the 12-entry pointer table at `0x1AAB50` with
+  `FFF0B6`. Ares uses entry 1, whose record at `0x1AAB92` stores destination
+  cell `0xC110` and text `Ares Weapon Emporium`. The offline extractor now
+  publishes every title and destination as host text in `menu/field/text.tsv`;
+  the Qt runtime does not follow those ROM pointers.
 - Offers: `0x56DC4` chooses one of three action tables. Source action indices
   0, 1, and 2 map to weapons, other items, and armor at `0x1AAC9E`, `0x1AADD7`,
   and `0x1AAD8F`. Direct US ROM reads confirm item codes `01,02,06,04,05,0D,0E`,
@@ -54,7 +60,8 @@ available early-section capture, so no visual fidelity claim is made.
 ## Visual audit questions
 
 1. **Does it look correct?** The diagnostic prompt has clean text in the host
-   panel, but the exact Ares exterior is unverified. The shop has no presenter.
+   panel, but the exact Ares exterior is unverified. The shop has no presenter;
+   title extraction adds no visible pixels.
 2. **Does appearance reflect behavior?** The title-only sentinel has no
    selection, speaker, portrait, or A/B/C choice. Runtime tests check those
    absences, event/result text selection, and the 30-frame input gate. The shop
@@ -62,14 +69,17 @@ available early-section capture, so no visual fidelity claim is made.
 3. **Are visuals correct?** ROM prompt text and well preparation are traced;
    Debug produced and inspected
    `field-mode-text-qa/introduction/actual.bmp`. This checks host composition,
-   not Genesis fidelity. Shop pixels remain pending.
+   not Genesis fidelity. The Ares title record and `0xC110` destination have
+   source assertions and Debug/Release catalog checks. Shop pixels remain
+   pending.
 4. **Animation?** The prompt has no periodic animation; it waits 30 frames
    before accepting a controller edge. The shop loop redraws after input and
    has no periodic shop animation.
 5. **Sound?** The traced `0x1F246`/`0x1F3C4` prompt path makes no direct sound
    request. The shop requests event `0x25` on cursor/panel movement and `0x24`
    on confirmation and runner restart. The `0x25` clip identity and playback
-   durations remain unresolved; shop audio is not connected here.
+   durations remain unresolved; shop audio is not connected here. Title
+   extraction has no sound behavior.
 6. **Related screen content?** The prompt redraws the complete host panel
    before the shop. The eventual shop view must compose its title, active-runner
    HUD, selected action detail, offer panel, and funds/price feedback together.
@@ -88,7 +98,10 @@ returns purchase, sale, source-boundary, runner-change, and field-return
 requests. It does not own a second inventory or wallet. `ShopTransactionService`
 delegates to the existing typed purchase/removal conversions. The focused test
 checks Ares stock order, navigation, confirmations, protected sale rows,
-funds, and inventory mutations in Debug and Release. `FieldModeTextRuntime`
+funds, and inventory mutations in Debug and Release. The offline importer now
+exports the 12 title strings and source draw cells under the named field-menu
+text asset; the Ares record is checked against `0x1AAB92`/`0xC110`. This data
+slice does not render or connect the live shop. `FieldModeTextRuntime`
 displays the three ROM-selected text records in a no-choice panel, enforces the
 sentinel delay, and writes an `actual.bmp` diagnostic. The Ares hill remains
 partial until the live field route, shop presentation, wallet binding, stale

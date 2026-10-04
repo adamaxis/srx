@@ -611,6 +611,44 @@ GenesisFieldMenuLabels read_genesis_field_menu_labels(
             "Genesis Power field-menu label is truncated")};
 }
 
+std::array<GenesisFieldServiceTitle, 12>
+read_genesis_field_service_titles(const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kTitlePointerTable = 0x1AAB50U;
+    constexpr std::size_t kTitleRecordHeaderBytes = 4U;
+    constexpr std::size_t kMaximumTitleBytes = 64U;
+
+    std::array<GenesisFieldServiceTitle, 12> result{};
+    for (std::size_t index = 0; index < result.size(); ++index) {
+        const auto table_entry = kTitlePointerTable + index * 4U;
+        const auto record = static_cast<std::size_t>(read_rom_u32(
+            rom, table_entry,
+            "Genesis field-service title pointer is truncated"));
+        if (record > rom.size() ||
+            rom.size() - record < kTitleRecordHeaderBytes + kMaximumTitleBytes) {
+            throw std::out_of_range(
+                "Genesis field-service title record is truncated");
+        }
+        const auto upper_destination = read_rom_u16(
+            rom, record,
+            "Genesis field-service title destination is truncated");
+        if (upper_destination != 0U) {
+            throw std::runtime_error(
+                "Genesis field-service title destination is not a plane cell");
+        }
+        result[index].destination_word = read_rom_u16(
+            rom, record + 2U,
+            "Genesis field-service title destination is truncated");
+        result[index].text = read_genesis_menu_text(
+            rom, record + kTitleRecordHeaderBytes, kMaximumTitleBytes,
+            "Genesis field-service title text is truncated");
+        if (result[index].text.empty()) {
+            throw std::runtime_error(
+                "Genesis field-service title record has no visible text");
+        }
+    }
+    return result;
+}
+
 GenesisFieldMenuActionText read_genesis_field_menu_action_text(
     const std::vector<std::uint8_t>& rom) {
     // 0xD1CBB is the two-line equipped-item notice, followed by the
