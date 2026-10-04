@@ -52,6 +52,33 @@ flowchart TD
 | Dialogue | `FieldDialogueEventResolver` plus `DialoguePanelPresenter` | `DialoguePanelView`, `FieldExitPromptState`, and source speaker/event records | Resolve speaker properties, trigger event, text, portrait, options, and frame mode before the generic presenter draws. Use event-specific providers for motel, building, and random street encounters. |
 | Shop | `ShopMenuController`, `ShopTransactionService`, and `ShopMenuPresenter` | Ares mode/event and offer rows are traced; controller and typed transaction adapters are implemented | Connect the event-resolved dialogue and field-mode route, then add the source-positioned presenter and live session wallet binding. |
 
+## Current runtime status
+
+These are target class boundaries; several still describe work to extract from
+their current host:
+
+- **New Game, Save/Load, and archetype:** typed startup conversions exist, but
+  `GhidraConversionWindow` still owns their input routing, callbacks, and
+  painting. The three named controller/presenter pairs in the screen map have
+  not been extracted.
+- **In-game command overview:** `FieldCommandOverviewBridge` owns the typed
+  root-page transition and resolved view. `FieldSceneRuntime` still owns its
+  assets, root and child drawing, child state, and most child input routing.
+- **Dialogue:** `FieldDialogueEventResolver`, `FieldDialogueRuntime`, and the
+  shared `DialoguePanelPresenter` exist. Event selection is source-keyed, but
+  only converted prompt branches and extracted speaker records resolve;
+  Ares's separate mode-text route and other event providers remain pending.
+- **Shop:** `ShopMenuController` and `ShopTransactionService` exist for the
+  Ares source selection and transactions. The live field route, wallet
+  binding, and presenter remain pending.
+- **Clips:** `FieldClipsMenuRuntime` owns the converted selector and action
+  state. Its composition and several other child screens still live in
+  `FieldSceneRuntime`.
+
+The menu-class table is both the intended architecture and an extraction
+checklist. It does not claim that every listed class is already in the
+executable.
+
 `GhidraConversionWindow` remains the Qt window and focused-input endpoint. The
 current `FieldSceneRuntime` is the field composition host; its embedded menu
 state and `paint_command_overview*` / `advance_command_overview*` methods mark
