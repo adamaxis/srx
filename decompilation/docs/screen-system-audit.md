@@ -363,9 +363,14 @@ new-game state equivalent to clear `FF018F` bit 0, it writes the exact three
 lines at `0xE43D1`, `0xE43E2`, and `0xE43F3` into the Pocket Secretary panel.
 Notebook now follows the base `0xF236`/`0xF33E` path: it extracts the title,
 Current Run, Tips & Clues, and the three event-gated labels. The New Game
-initializer at `0x59C48` sets `FFFC2C`, so Contacts is visible in the fresh
-post-opening session; the native screen displays the exact `0xF2E2`
-no-current-run response.
+path clears `FFFC2C/27/2A` at `0x82A`, then `0x59C48` seeds `FFFC2C` to
+`0x1C7F`, so Contacts is visible in the fresh post-opening session. The Qt
+runtime now builds the three row gates from typed field state instead of
+static text-asset data. Stoker command `0x30` adds `FFFC30` bit 1, exposing
+the next Tips & Clues record; command `0x31` sets `FFFC27` bit 0, exposing
+Mr. Johnsons. `FFFC2A` remains clear until a runner-information event writes
+it. A restored save that omits these flags stops at an explicit boundary. The
+native screen displays the exact `0xF2E2` no-current-run response.
 The 96 Tips & Clues source entries are also extracted from the three
 `0xC2716`/`0xC2796`/`0xC2816` pointer tables into a named direct text asset.
 Startup `0x084E` sets `FFFC30` bit 0, and `0xF9A4` scans each group LSB-first.
@@ -450,7 +455,7 @@ of a port.
 | Opening | `0x59C5E` and timed groups | Partial | Typed stage chain and direct timed/overlay assets are present in the separate conversion target; independent visual comparison and source audio playback remain pending |
 | Field movement | `0x075E`, `0x03084`, `0x2B34`, `0xE7C8`, `0x5FDC`, `0x600E` | Partial | Scene descriptor loading is source-traced; reviewed player collision and animation path is present, while movement step/timing, source camera transitions, right-side HUD/entity presentation, and NPC/entity logic remain pending |
 | Area transitions | `0x5A62`, `0x172CDC`, `0x20E48`, `0x20E7A`, `0x20E92`, `0x20EC2` | Partial | The current ROM trace covers the mode-2 event table and the electromagnetic-lock/Security Terminal prompt continuations. The earlier Stoker attribution was from the old native-port layer and is not source evidence; building destinations, NPC/dialogue records, and reverse transitions remain open |
-| NPC dialogue panels | `0x1F65A`, `0x1F246`, `0x1F3C4`, `0xC168`, `0xF4AA0..0xF4B2C`, `0x121FA0`, `0x122420` | Partial | The shared panel consumes typed speaker/prompt views. When the typed Stoker mode-2/event-2 tuple selects the arrival record, A on `<MORE>` dispatches command `0xE9`; rolls 0..79 open `0xF4AB4`. The room-offer command `0x06` now spends the source 20-nuyen charge, selects `0xF5AB8` paid or `0xF5AF8` insufficient-funds feedback, then requests Hotel Options after the paid message. The Qt Hotel Options screen is still an explicit boundary. The live field object/property trigger, loaded-save wallet, 80..99 `0x1E1FC` effect, package-state property, other speaker records, exact frame selection, debt continuation, source RNG initialization, and measured audio remain open |
+| NPC dialogue panels | `0x1F65A`, `0x1F246`, `0x1F3C4`, `0xC168`, `0xF4AA0..0xF4B2C`, `0x121FA0`, `0x122420`, `0x213CA`, `0x213E2` | Partial | The shared panel consumes typed speaker/prompt views. When the typed Stoker mode-2/event-2 tuple selects the arrival record, A on `<MORE>` dispatches command `0xE9`; rolls 0..79 open `0xF4AB4`. Package C now dispatches `0x30` to set `FFFC30` bit 1 and open F4E8C; debt-page B dispatches `0x31` to set `FFFC27` bit 0 and open F5AB0. These flags feed the dynamic Notebook rows and Tips list; Debug/Release CTests write prompt and Notebook `actual.bmp` files, with independent debt/referral examples in section 03. The room-offer command `0x06` spends the source 20-nuyen charge, selects `0xF5AB8` paid or `0xF5AF8` insufficient-funds feedback, then requests Hotel Options after the paid message. The Qt Hotel Options screen remains an explicit boundary. The live field object/property trigger, loaded-save wallet/flags, 80..99 `0x1E1FC` effect, three-option package-state property, other speaker records, source RNG initialization, debt-payment transaction `0x213FA`, unresolved indirect audio hook, and live field return remain open |
 | Command overview | `0x10D30`, `0x10F50`, `0x111E8`, `0x11454` | Partial | Normal overview, source command-tab focus blocks, and selector are present; Magic target/effect and remaining Pocket Secretary row handlers remain pending |
 | Inventory navigation | `0x11506`..`0x11678` | Implemented | Eight-cell cursor and source column/row semantics are covered |
 | Equipment action | `0x11740`..`0x118C6`, `0x12148`, `0x12168`..`0x125F8`, `0x12634`..`0x129FE` | Partial | Two-step source action loop, Equip/Unequip, armor, Discard, and typed Trade recipient/transfer routes are present; First Aid is separately connected through active-target/CANCEL, source A-confirm, effect, result wait, and inventory return; recipient HUD projection, independent Trade capture, utility playback, and later item handlers remain |

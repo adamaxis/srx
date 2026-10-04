@@ -1107,3 +1107,74 @@ debt-payment result, Hotel Options UI, loaded-save wallet state, live field
 restoration, and measured dialogue audio remain open. Exact independent
 longplay frames for the two-option manager and room-payment outcomes are not
 available.
+
+### Applied review: Stoker follow-up commands and Notebook flags
+
+1. **Does it look correct?** I inspected the Debug Qt captures at
+   `field-dialogue-qa/debt-followup/actual.bmp`,
+   `field-dialogue-qa/referral-followup/actual.bmp`,
+   `field-dialogue-qa/referral-followup/notebook-after-referral/actual.bmp`,
+   and `field-dialogue-qa/referral-followup/notebook-tips-after-debt/actual.bmp`.
+   The debt prompt shell, Stoker portrait, source A/B choice labels, and the
+   title-only referral match independent section 03 frames 000600 and 000690.
+   The subsequent Notebook output shows Current Run, Tips & Clues, Contacts,
+   and the newly available Mr. Johnsons row.
+2. **Does the look reflect the behavioral state?** The manager-package C
+   command runs typed source command `0x30`: bit 1 is added to `FFFC30` before
+   F4E8C opens. The debt-page B command runs `0x31`: bit 0 is added to
+   `FFFC27` before F5AB0 opens. New Game already seeds bit 0 in `FFFC30`;
+   together the flags expose Tips entries 0 and 1. New Game clears
+   `FFFC27/2A`, then sets Contacts `FFFC2C` to `0x1C7F`, so the referral makes
+   Mr. Johnsons a fourth Notebook row while Shadowrunners remains gated. A
+   restored save without these fields stops at the source-state boundary.
+3. **Are the visuals themselves correct?** ROM bytes for `0x213CA` and
+   `0x213E2` set those individual bits and return F4E8C/F5AB0. F33E tests
+   FFFC27 before appending Mr. Johnsons; `0xF458` checks bit zero. The Qt
+   controller opens the text records through the generic speaker panel and
+   rebuilds the Notebook from its current typed flags. The referral has no
+   choice markers; the lower choice panel is blank after the debt page's A/B
+   controls are removed. The Notebook capture has its Current Run selector,
+   four source rows, and no fifth Shadowrunners row. The source frame is
+   directly extracted; visual agreement was checked against the independent
+   longplay, not against a second compositor.
+4. **Is it animated, and should it be?** The prompt command records do not
+   set an animation counter. Independent debt frames 000600-000602 are
+   byte-identical. Referral frames 000750 and 000780 are also byte-identical,
+   and frames 000690, 000720, 000810, and 000840 show the same held prompt;
+   nearby compressed-video differences do not show a new visual state. The
+   Qt runtime test holds both pages for 30 input-free controller frames and
+   checks the entire 320x224 image remains unchanged.
+5. **Does it have a sound or sound effect, and how long does it play?** The
+   two command routines do not issue a direct sound-play call. Shared prompt
+   routine `0x1F246` has an optional indirect `A1` hook when FFF10C is set,
+   and its callee is unresolved. The gameplay capture does not isolate a
+   command-specific effect from the continuous soundtrack, so the effect
+   identity and duration are unknown; no duration is invented.
+6. **Are other parts of the screen also correct?** QA checks the debt prompt,
+   referral, field return, Pocket Secretary entry, Notebook rows, and Tips
+   page. It verifies the debt writer reveals source tip 1, the referral writer
+   reveals only the Mr. Johnsons gate, Contacts remains visible from its New
+   Game seed, and Shadowrunners stays absent. The Mr. Johnsons row's detail
+   handler is still an explicit boundary.
+7. **Do multiple frames support this interpretation?** Independent section
+   03 frames 000600-000602 show the debt question held across three adjacent
+   captures. Frames 000690, 000720, 000750, 000780, 000810, and 000840 show
+   the Jump House referral at several later points; frames 000750 and 000780
+   are byte-identical. Debug and Release CTests add controller-driven route
+   coverage and named `actual.bmp` artifacts, but are kept separate from the
+   Genesis evidence.
+8. **Was old UI cleared before new controls were drawn?** On the debt-to-
+   referral change, the panel is redrawn as a title-only record and the old
+   A/B controls disappear. The diagnostic then dismisses the prompt, uses the
+   command overview to open Pocket Secretary and Notebook, and enters Tips.
+   Pixel checks confirm the Stoker text and old Notebook rows do not remain
+   over those screens; Notebook keeps the shared frame and redraws only its
+   current rows/child page.
+
+**Status:** partial. Both follow-up command bodies, their prompt selection,
+the New Game flag sources, dynamic Notebook gates, and the filtered Tips
+result are connected and checked in Debug/Release. Independent Genesis frames
+support both text records. The property choosing the manager-package variant,
+loaded-save flag restoration, source command `0x05` debt-payment transaction,
+Mr. Johnsons detail handler, unrelated live field trigger, and unresolved
+shared audio hook remain open.

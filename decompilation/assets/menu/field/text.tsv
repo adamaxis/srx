@@ -108,9 +108,6 @@ notebook.label.5	Shadowrunners
 notebook.no-run.0	" You are not currently"
 notebook.no-run.1	engaged in a shadowrun.
 notebook.no-run.2	"     Get a job!!"
-notebook.event-gate.0	1
-notebook.event-gate.1	0
-notebook.event-gate.2	0
 race.0	Human
 race.1	"  Elf"
 race.2	Dwarf

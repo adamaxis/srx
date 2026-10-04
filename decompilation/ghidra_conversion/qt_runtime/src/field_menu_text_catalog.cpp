@@ -107,7 +107,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         pocket_secretary_group_items_empty_found{};
     std::array<bool, kNotebookLabelCount> notebook_label_found{};
     std::array<bool, kNotebookNoRunLineCount> notebook_no_run_found{};
-    std::array<bool, kNotebookEventGateCount> notebook_event_gate_found{};
     bool notebook_tips_title_found = false;
     bool notebook_tips_separator_found = false;
     bool notebook_tips_page_count_found = false;
@@ -657,21 +656,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             }
             continue;
         }
-        if (parse_indexed_key(key, "notebook.event-gate.", index) &&
-            index < result.catalog.notebook_event_gates.size()) {
-            if (notebook_event_gate_found[index]) {
-                result.errors.emplace_back(
-                    "duplicate field menu text row: " + key);
-            } else if (value != "0" && value != "1") {
-                result.errors.emplace_back(
-                    "invalid Notebook event gate at line " +
-                    std::to_string(line_number));
-            } else {
-                notebook_event_gate_found[index] = true;
-                result.catalog.notebook_event_gates[index] = value == "1";
-            }
-            continue;
-        }
         if (key == "notebook.tips.title") {
             if (notebook_tips_title_found) {
                 result.errors.emplace_back(
@@ -984,8 +968,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                         "pocket-secretary.group-items.empty.", result.errors);
     add_missing_entries(notebook_label_found, "notebook.label.", result.errors);
     add_missing_entries(notebook_no_run_found, "notebook.no-run.",
-                        result.errors);
-    add_missing_entries(notebook_event_gate_found, "notebook.event-gate.",
                         result.errors);
     add_missing_entries(field_service_title_found, "field-service.title.",
                         result.errors);

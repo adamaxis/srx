@@ -128,6 +128,13 @@ int main() {
         return std::optional<StokerMotelRoomPaymentOutcome>(
             room_payment_outcome);
     });
+    StokerMotelFollowupState followup_state{1U, 0U};
+    runtime.set_followup_command_callback(
+        [&followup_state](const StokerMotelFollowupCommand command) {
+            return std::optional<StokerMotelFollowupOutcome>{
+                resolve_stoker_motel_followup_command(command,
+                                                       followup_state)};
+        });
     if (!expect(runtime.load_assets(assets.catalog))) {
         return 2;
     }
@@ -536,6 +543,8 @@ int main() {
 
     if (!expect(runtime.advance_controller_events(0x2000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(followup_state.story_flags == 3U) ||
+        !expect(followup_state.referral_flags == 0U) ||
         !expect(runtime.panel().option_count == 2U) ||
         !expect(runtime.panel().text_segments[0].find("Michael's brother") !=
                 std::string_view::npos)) {
@@ -556,13 +565,53 @@ int main() {
         !expect(!has_green_ink(scene, 48, 197, 256, 16))) {
         return 31;
     }
+    const auto held_debt_scene = scene;
+    for (int frame = 0; frame < 30; ++frame) {
+        if (!expect(runtime.advance_controller_events(0U) ==
+                    FieldDialogueAdvanceResult::waiting_for_controller)) {
+            return 60;
+        }
+    }
+    scene.fill(Qt::magenta);
+    QPainter held_debt_painter(&scene);
+    runtime.paint(held_debt_painter);
+    held_debt_painter.end();
+    if (!expect(matches_region(scene, held_debt_scene, 0, 0, 320, 224))) {
+        return 61;
+    }
     if (!expect(runtime.advance_controller_events(0x1000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(followup_state.story_flags == 3U) ||
+        !expect(followup_state.referral_flags == 1U) ||
         !expect(runtime.panel().text_segments[0].find("Jump House") !=
                 std::string_view::npos) ||
         !expect(runtime.panel().option_count == 0U) ||
         !expect(runtime.panel().returns_to_field)) {
         return 32;
+    }
+    scene.fill(Qt::magenta);
+    QPainter referral_painter(&scene);
+    runtime.paint(referral_painter);
+    referral_painter.end();
+    if (!expect(!has_exact_color(scene, 0, 0, 320, 224,
+                                 QColor(Qt::magenta))) ||
+        !expect(!has_green_ink(scene, 48, 152, 256, 64)) ||
+        !expect(!has_nonblack_pixel(scene, 17, 203, 11, 11))) {
+        return 62;
+    }
+    const auto held_referral_scene = scene;
+    for (int frame = 0; frame < 30; ++frame) {
+        if (!expect(runtime.advance_controller_events(0U) ==
+                    FieldDialogueAdvanceResult::waiting_for_controller)) {
+            return 63;
+        }
+    }
+    scene.fill(Qt::magenta);
+    QPainter held_referral_painter(&scene);
+    runtime.paint(held_referral_painter);
+    held_referral_painter.end();
+    if (!expect(matches_region(scene, held_referral_scene, 0, 0, 320, 224))) {
+        return 64;
     }
     if (!expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::returned_to_field) ||

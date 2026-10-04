@@ -39,7 +39,6 @@ inline constexpr std::size_t kPocketSecretaryGroupItemCount = 15U;
 inline constexpr std::size_t kPocketSecretaryGroupItemsEmptyLineCount = 2U;
 inline constexpr std::size_t kNotebookLabelCount = 6U;
 inline constexpr std::size_t kNotebookNoRunLineCount = 3U;
-inline constexpr std::size_t kNotebookEventGateCount = 3U;
 inline constexpr std::size_t kNotebookTipCount = 96U;
 
 struct FieldMenuTextCatalog {
@@ -130,11 +129,10 @@ struct FieldMenuTextCatalog {
     std::array<std::string, kDismissRunnerLabelCount>
         dismiss_runner_labels{};
     std::string dismiss_runner_separator;
-    // ROM F33E/F2E2 host text. The 3 gates are the New Game seed for
-    // Contacts, Mr. Johnsons, and Shadowrunners in that order.
+    // ROM F33E/F2E2 host text. Event gates are typed field-session state and
+    // are intentionally not part of this static text catalog.
     std::array<std::string, kNotebookLabelCount> notebook_labels{};
     std::array<std::string, kNotebookNoRunLineCount> notebook_no_run_lines{};
-    std::array<bool, kNotebookEventGateCount> notebook_event_gates{};
     std::string notebook_tips_title;
     std::string notebook_tips_separator;
     std::string notebook_tips_page_count_label;

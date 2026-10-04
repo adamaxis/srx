@@ -3062,26 +3062,70 @@ int main(int argc, char** argv) {
                     *field_dialogue_dump_prompt == "room-paid";
                 const bool room_insufficient_result =
                     *field_dialogue_dump_prompt == "room-insufficient";
+                const bool debt_followup_result =
+                    *field_dialogue_dump_prompt == "debt-followup";
+                const bool referral_followup_result =
+                    *field_dialogue_dump_prompt == "referral-followup";
+                const bool followup_result = debt_followup_result ||
+                                             referral_followup_result;
                 const bool room_payment_result = room_paid_result ||
                                                  room_insufficient_result;
                 const auto prompt = arrival_result || room_payment_result
+                                            || followup_result
                                         ? std::optional<StokerMotelPromptId>{}
                                         : parse_stoker_dialogue_prompt(
                                               *field_dialogue_dump_prompt);
                 if (!arrival_result && !room_payment_result &&
-                    !prompt.has_value()) {
+                    !followup_result && !prompt.has_value()) {
                     std::cerr << "field dialogue dump: unknown Stoker prompt '"
                               << *field_dialogue_dump_prompt << "'\n";
                     return 3;
                 }
-                const bool prompt_opened =
-                    arrival_result
-                        ? field_scene.open_stoker_arrival_result_for_dump(79U)
-                        : room_payment_result
-                              ? field_scene.open_stoker_room_payment_for_dump(
-                                    room_paid_result ? 20U : 19U)
-                              : field_scene.open_stoker_dialogue_for_dump(
-                                    *prompt);
+                bool prompt_opened = false;
+                if (followup_result) {
+                    prompt_opened = field_scene.open_stoker_dialogue_for_dump(
+                        StokerMotelPromptId::manager_greeting_with_package);
+                    if (prompt_opened) {
+                        prompt_opened =
+                            field_scene.advance_stoker_dialogue_for_dump(
+                                0x2000U) ==
+                            FieldDialogueAdvanceResult::prompt_advanced;
+                    }
+                    if (prompt_opened && referral_followup_result) {
+                        prompt_opened =
+                            field_scene.advance_stoker_dialogue_for_dump(
+                                0x1000U) ==
+                            FieldDialogueAdvanceResult::prompt_advanced;
+                    }
+                    const auto story_flags =
+                        field_scene.notebook_story_flags_for_dump();
+                    const auto referral_flags =
+                        field_scene.notebook_referral_flags_for_dump();
+                    const auto notebook_gates =
+                        field_scene.notebook_event_gates();
+                    const auto expected_gates =
+                        referral_followup_result
+                            ? std::array<bool, 3>{true, true, false}
+                            : std::array<bool, 3>{true, false, false};
+                    if (!prompt_opened || !story_flags.has_value() ||
+                        *story_flags != 3U || !referral_flags.has_value() ||
+                        *referral_flags !=
+                            (referral_followup_result ? 1U : 0U) ||
+                        !notebook_gates.has_value() ||
+                        *notebook_gates != expected_gates) {
+                        std::cerr << "field dialogue dump: typed Stoker flags or Notebook gates mismatch\n";
+                        return 3;
+                    }
+                } else if (arrival_result) {
+                    prompt_opened =
+                        field_scene.open_stoker_arrival_result_for_dump(79U);
+                } else if (room_payment_result) {
+                    prompt_opened = field_scene.open_stoker_room_payment_for_dump(
+                        room_paid_result ? 20U : 19U);
+                } else {
+                    prompt_opened =
+                        field_scene.open_stoker_dialogue_for_dump(*prompt);
+                }
                 if (!prompt_opened) {
                     std::cerr << "field dialogue dump: prompt did not open\n";
                     return 3;
@@ -3109,6 +3153,104 @@ int main(int argc, char** argv) {
                     std::cerr << "field dialogue dump: could not write "
                               << field_dialogue_dump_path->string() << '\n';
                     return 3;
+                }
+
+                if (referral_followup_result) {
+                    if (field_scene.advance_stoker_dialogue_for_dump(0x4000U) !=
+                            FieldDialogueAdvanceResult::returned_to_field ||
+                        !field_scene.open_command_overview_for_dump() ||
+                        !field_scene.seek_command_overview_page(6U)) {
+                        std::cerr << "field dialogue dump: could not return to the field Notebook route\n";
+                        return 3;
+                    }
+                    field_scene.set_controller_port_byte(0x40U);
+                    field_scene.advance_frame();
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    if (!field_scene.pocket_secretary_open()) {
+                        std::cerr << "field dialogue dump: Pocket Secretary did not open\n";
+                        return 3;
+                    }
+                    field_scene.set_controller_port_byte(0x40U);
+                    field_scene.advance_frame();
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    if (!field_scene.pocket_secretary_notebook_open() ||
+                        field_scene.pocket_secretary_notebook_option_count() !=
+                            4U) {
+                        std::cerr << "field dialogue dump: referral did not unlock the Mr. Johnsons Notebook row\n";
+                        return 3;
+                    }
+                    QImage notebook_scene(kSceneWidth, kSceneHeight,
+                                          QImage::Format_RGB32);
+                    notebook_scene.fill(Qt::black);
+                    QPainter notebook_painter(&notebook_scene);
+                    field_scene.paint(notebook_painter);
+                    notebook_painter.end();
+                    if (!image_has_green_ink(notebook_scene, 88, 88, 160, 8) ||
+                        !image_has_green_ink(notebook_scene, 88, 104, 160, 8) ||
+                        image_has_green_ink(notebook_scene, 88, 120, 160, 8) ||
+                        !image_has_green_ink(notebook_scene, 72, 56, 8, 8) ||
+                        image_has_green_ink(notebook_scene, 88, 16, 160, 8) ||
+                        image_has_green_ink(notebook_scene, 88, 152, 216, 64)) {
+                        std::cerr << "field dialogue dump: dynamic Notebook rows or stale-row clearing mismatch\n";
+                        return 3;
+                    }
+                    const auto notebook_dump_path =
+                        field_dialogue_dump_path->parent_path() /
+                        "notebook-after-referral" / "actual.bmp";
+                    std::filesystem::create_directories(
+                        notebook_dump_path.parent_path());
+                    if (!notebook_scene.save(QString::fromStdWString(
+                            notebook_dump_path.wstring()))) {
+                        std::cerr << "field dialogue dump: could not write Notebook image\n";
+                        return 3;
+                    }
+
+                    field_scene.set_controller_port_byte(0x02U);
+                    field_scene.advance_frame();
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    field_scene.set_controller_port_byte(0x40U);
+                    field_scene.advance_frame();
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    if (!field_scene.pocket_secretary_notebook_tips_open() ||
+                        field_scene
+                                .pocket_secretary_notebook_visible_tip_count() !=
+                            2U ||
+                        field_scene
+                                .pocket_secretary_notebook_visible_tip_source_index(
+                                    0U) != 0U ||
+                        field_scene
+                                .pocket_secretary_notebook_visible_tip_source_index(
+                                    1U) != 1U) {
+                        std::cerr << "field dialogue dump: debt flag did not unlock its Notebook clue\n";
+                        return 3;
+                    }
+                    QImage notebook_tips_scene(kSceneWidth, kSceneHeight,
+                                               QImage::Format_RGB32);
+                    notebook_tips_scene.fill(Qt::black);
+                    QPainter notebook_tips_painter(&notebook_tips_scene);
+                    field_scene.paint(notebook_tips_painter);
+                    notebook_tips_painter.end();
+                    if (!image_has_green_ink(notebook_tips_scene, 40, 56,
+                                             192, 8) ||
+                        image_has_green_ink(notebook_tips_scene, 88, 120,
+                                            160, 8)) {
+                        std::cerr << "field dialogue dump: unlocked Tips page has missing text or stale Notebook rows\n";
+                        return 3;
+                    }
+                    const auto notebook_tips_dump_path =
+                        field_dialogue_dump_path->parent_path() /
+                        "notebook-tips-after-debt" / "actual.bmp";
+                    std::filesystem::create_directories(
+                        notebook_tips_dump_path.parent_path());
+                    if (!notebook_tips_scene.save(QString::fromStdWString(
+                            notebook_tips_dump_path.wstring()))) {
+                        std::cerr << "field dialogue dump: could not write Tips image\n";
+                        return 3;
+                    }
                 }
                 std::cout << "field_dialogue_dump=written prompt="
                           << *field_dialogue_dump_prompt << " path="

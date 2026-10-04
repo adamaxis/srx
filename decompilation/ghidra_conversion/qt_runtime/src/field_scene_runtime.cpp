@@ -11,6 +11,7 @@
 #include "shadowrun_ghidra/field/field_resource_sequence_conversion.hpp"
 #include "shadowrun_ghidra/field/field_action_detail_text_conversion.hpp"
 #include "shadowrun_ghidra/field/field_scene_entry_conversion.hpp"
+#include "shadowrun_ghidra/field/stoker_motel_followup_commands_conversion.hpp"
 #include "shadowrun_ghidra/field/field_entity_render_batch_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
 #include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
@@ -279,6 +280,32 @@ FieldSceneRuntime::FieldSceneRuntime(
         field_funds_ = outcome.remaining_funds;
         return outcome;
     });
+    field_dialogue_.set_followup_command_callback(
+        [this](const StokerMotelFollowupCommand command)
+            -> std::optional<StokerMotelFollowupOutcome> {
+            StokerMotelFollowupState followup_state{};
+            if (command == StokerMotelFollowupCommand::debt_collection) {
+                if (!notebook_tip_flags_resolved_) {
+                    return std::nullopt;
+                }
+                followup_state.story_flags = notebook_tip_flags_[0];
+            } else {
+                if (!notebook_referral_flags_.has_value()) {
+                    return std::nullopt;
+                }
+                followup_state.referral_flags =
+                    *notebook_referral_flags_;
+            }
+
+            const auto outcome = resolve_stoker_motel_followup_command(
+                command, followup_state);
+            if (command == StokerMotelFollowupCommand::debt_collection) {
+                notebook_tip_flags_[0] = followup_state.story_flags;
+            } else {
+                notebook_referral_flags_ = followup_state.referral_flags;
+            }
+            return outcome;
+        });
     configure_callbacks();
 }
 
@@ -2568,6 +2595,17 @@ bool FieldSceneRuntime::bootstrap(
     // ROM startup 0x084E seeds FFFC30 bit 0 for a fresh New Game.
     notebook_tip_flags_ = {{1U, 0U, 0U}};
     notebook_tip_flags_resolved_ = restored_field_state == nullptr;
+    // 0x82A clears FFFC2C/27/2A; New Game setup later calls 0x59C48 to seed
+    // the Contacts gate to 0x1C7F. No loaded-save adapter restores these.
+    notebook_contacts_flags_ = restored_field_state == nullptr
+                                   ? std::optional<std::uint32_t>{0x1C7FU}
+                                   : std::nullopt;
+    notebook_referral_flags_ = restored_field_state == nullptr
+                                   ? std::optional<std::uint8_t>{0U}
+                                   : std::nullopt;
+    notebook_shadowrunner_flags_ = restored_field_state == nullptr
+                                      ? std::optional<std::uint16_t>{0U}
+                                      : std::nullopt;
     const auto& assets = *startup_state.field_session_source_assets;
     const auto scene_reference = restored_field_state != nullptr
                                      ? restored_field_state->world_mode
@@ -3626,12 +3664,19 @@ void FieldSceneRuntime::advance_frame() {
                  [this](const std::uint8_t selection) {
                      source_boundary("field.pocket_secretary.handler");
                      if (selection == 0U) {
-                         begin_pocket_secretary_notebook(
-                             pocket_secretary_,
-                             notebook_current_run_available_,
-                             field_menu_text_.notebook_event_gates);
-                         source_boundary(
-                             "field.pocket_secretary.notebook.opened");
+                         const auto event_gates =
+                             notebook_event_gates();
+                         if (!event_gates.has_value()) {
+                             source_boundary(
+                                 "field.pocket_secretary.notebook.event_flags_unresolved");
+                         } else {
+                             begin_pocket_secretary_notebook(
+                                 pocket_secretary_,
+                                 notebook_current_run_available_,
+                                 *event_gates);
+                             source_boundary(
+                                 "field.pocket_secretary.notebook.opened");
+                         }
                      } else if (selection == 2U) {
                          if (cyberdeck_available_.has_value() &&
                              !*cyberdeck_available_) {

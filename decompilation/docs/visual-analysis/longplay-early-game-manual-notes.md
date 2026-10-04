@@ -104,7 +104,13 @@ prompt at `0x11CD62`. Neither is the Stoker motel text. The Stoker records are
 traced through `0x1F65A` and the `0xF4AA0..0xF4B2C` prompt table; the direct
 text catalog and 56x72 portrait are projected through the common Qt dialogue
 panel. The old `NativePortShell` tuple remains excluded from source evidence.
-The live field event trigger and exact source tile placement are still open.
+At frames 000600-000602 the player reaches the two-choice F4E8C debt question;
+by 000690 the B branch has opened the title-only F5AB0 Jump House referral.
+Frames 000750 and 000780 are identical captures of that held referral page.
+These follow-up screens match the source commands at `0x213CA`/`0x213E2` and
+their independent frame output now has Qt dumps and controller-route QA. The
+live field event trigger, the property selecting the three-option
+manager-package state, and exact source tile placement are still open.
 
 ### 04. Facility/corridor movement and NPC/package dialogue — 03:58-06:30
 
@@ -350,10 +356,11 @@ comparison are all closed together.
    verify the selected archetype record, portrait alias, and opening state.
 2. Trace the named Stoker/Jump House event descriptor and connect the actual
    field interaction dispatcher. The prompt records, portrait stream, direct
-   text catalog, and common panel are now source-bound; the old
-   `NativePortShell::open_stoker_motel_dialog` tuple remains excluded. Do not
-   invent a trigger or follow-up if the ROM path is not found; return to the
-   conversion audit and report the omission.
+   text catalog, shared panel, and 0x30/0x31 follow-up flag commands are now
+   source-bound; the old `NativePortShell::open_stoker_motel_dialog` tuple
+   remains excluded. The live property selecting the three-option prompt and
+   the field trigger remain open; do not infer either from the diagnostic
+   prompt route.
 3. Use the section frames to annotate field/HUD/dialog boundaries and compare
    them against the Qt output, especially the opaque sidebar and full-width
    dialogue panel. The new dump is a diagnostic, not a golden.

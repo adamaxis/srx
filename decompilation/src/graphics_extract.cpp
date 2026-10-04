@@ -218,11 +218,6 @@ void write_field_menu_text_catalog(
         emit("notebook.no-run." + std::to_string(index),
              assets.notebook_no_run_lines[index]);
     }
-    for (std::size_t index = 0; index < assets.notebook_event_gates.size();
-         ++index) {
-        emit("notebook.event-gate." + std::to_string(index),
-             std::to_string(assets.notebook_event_gates[index] != 0U ? 1 : 0));
-    }
     const auto command_names =
         shadowrun::graphics::read_genesis_command_overview_names(rom);
     for (std::size_t index = 0; index < command_names.races.size(); ++index) {

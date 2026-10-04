@@ -308,6 +308,22 @@ is not yet connected. Restored-save wallet state is unavailable, so the Qt
 controller stops at a source boundary instead of guessing a balance for a
 loaded game.
 
+The manager-package C option now dispatches source command `0x30` through the
+typed follow-up resolver: it sets bit 1 of `FFFC30` and opens the F4E8C debt
+question. The question's B option dispatches command `0x31`, sets bit 0 of
+`FFFC27`, and opens the F5AB0 Jump House referral. `FieldSceneRuntime` owns
+these optional field flags; New Game seeds `FFFC30` bit 0, `FFFC27` clear, and
+the Contacts gate `FFFC2C` to `0x1C7F` after the startup clear. The Notebook
+builds Contacts, Mr. Johnsons, and Shadowrunners from `FFFC2C`, `FFFC27`, and
+`FFFC2A` at each entry, so the referral reveals its row and a missing loaded-
+save value remains a source boundary. The debt command also unlocks the next
+Tips & Clues record through the shared `FFFC30` flag word. The follow-up QA
+dumps the two prompts, returns to the field, opens the Notebook, and checks
+both updated menus. Source command `0x05` (`0x213FA`) still owns debt payment;
+its funds/payment-result branch is not connected. Independent section 03
+frames 000600-000602 show the debt prompt, while 000690/000750/000780/000840
+show the referral page.
+
 ## 2. Gameplay subsystems
 
 ### FieldWorld

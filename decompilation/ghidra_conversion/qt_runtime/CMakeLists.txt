@@ -170,6 +170,26 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_dialogue_room_insufficient_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Exercise the source 0x30/0x31 follow-up commands through the Qt dialogue
+# controller and verify their mutations feed the dynamic Notebook row gates.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_dialogue_debt_followup_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-dialogue-dump debt-followup
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-dialogue-qa/debt-followup/actual.bmp")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_dialogue_debt_followup_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
+add_test(NAME shadowrun_ghidra_conversion_qt_field_dialogue_referral_followup_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-dialogue-dump referral-followup
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-dialogue-qa/referral-followup/actual.bmp")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_dialogue_referral_followup_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # The Ares title-only mode-text prompt is a separate presenter from the
 # Stoker/NPC route. This diagnostic dump exercises its source-selected text,
 # shared text wells, and no-button composition without fabricating a live

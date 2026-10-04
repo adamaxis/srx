@@ -59,6 +59,12 @@ void FieldDialogueRuntime::set_room_payment_callback(
     room_payment_callback_ = std::move(callback);
 }
 
+void FieldDialogueRuntime::set_followup_command_callback(
+    std::function<std::optional<StokerMotelFollowupOutcome>(
+        StokerMotelFollowupCommand)> callback) {
+    followup_command_callback_ = std::move(callback);
+}
+
 bool FieldDialogueRuntime::load_assets(const ConversionAssetCatalog& assets) {
     failure_.clear();
     const auto text = load_dialogue_text_catalog(assets, "dialogue.stoker.motel");
@@ -260,6 +266,40 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
             return FieldDialogueAdvanceResult::source_boundary;
         }
         hotel_options_menu_follows_ = outcome->hotel_options_menu_follows;
+        return FieldDialogueAdvanceResult::prompt_advanced;
+    }
+
+    if (*command == StokerMotelPromptCommand::open_debt_question ||
+        *command == StokerMotelPromptCommand::open_jump_house_referral) {
+        if (!followup_command_callback_) {
+            open_source_boundary("Stoker follow-up flag state is unresolved");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+
+        const bool opens_debt_question =
+            *command == StokerMotelPromptCommand::open_debt_question;
+        const auto followup_command = opens_debt_question
+            ? StokerMotelFollowupCommand::debt_collection
+            : StokerMotelFollowupCommand::jump_house_referral;
+        const auto expected_prompt = opens_debt_question
+            ? StokerMotelFollowupPrompt::michael_debt_question
+            : StokerMotelFollowupPrompt::jump_house_nuyen_referral;
+        const auto outcome = followup_command_callback_(followup_command);
+        if (!outcome.has_value()) {
+            open_source_boundary("Stoker follow-up flag state is unresolved");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+        if (outcome->prompt != expected_prompt) {
+            open_source_boundary("Stoker follow-up command returned an inconsistent prompt");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+
+        const auto followup_prompt = opens_debt_question
+            ? StokerMotelPromptId::debt_question
+            : StokerMotelPromptId::jump_house_referral;
+        if (!open_stoker_prompt(followup_prompt)) {
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
         return FieldDialogueAdvanceResult::prompt_advanced;
     }
 

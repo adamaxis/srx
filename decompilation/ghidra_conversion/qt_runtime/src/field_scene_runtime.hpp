@@ -130,6 +130,29 @@ public:
             random_roll);
     }
     bool open_stoker_room_payment_for_dump(std::uint32_t funds);
+    FieldDialogueAdvanceResult advance_stoker_dialogue_for_dump(
+        std::uint16_t event_word) {
+        return field_dialogue_.advance_controller_events(event_word);
+    }
+    std::optional<std::uint32_t> notebook_story_flags_for_dump() const noexcept {
+        return notebook_tip_flags_resolved_
+                   ? std::optional<std::uint32_t>{notebook_tip_flags_[0]}
+                   : std::nullopt;
+    }
+    std::optional<std::uint8_t> notebook_referral_flags_for_dump() const noexcept {
+        return notebook_referral_flags_;
+    }
+    std::optional<std::array<bool, 3>> notebook_event_gates() const noexcept {
+        if (!notebook_contacts_flags_.has_value() ||
+            !notebook_referral_flags_.has_value() ||
+            !notebook_shadowrunner_flags_.has_value()) {
+            return std::nullopt;
+        }
+        return std::array<bool, 3>{
+            *notebook_contacts_flags_ != 0U,
+            *notebook_referral_flags_ != 0U,
+            *notebook_shadowrunner_flags_ != 0U};
+    }
     bool open_ares_mode_text_for_dump(std::int8_t alternate_result) {
         return field_mode_text_.open(
             FieldModeTextPromptContext{2U, 11U, alternate_result});
@@ -618,6 +641,12 @@ private:
     bool notebook_current_run_available_ = false;
     std::array<std::uint32_t, 3> notebook_tip_flags_{{1U, 0U, 0U}};
     bool notebook_tip_flags_resolved_ = true;
+    // FFFC2C, FFFC27, and FFFC2A independently gate Contacts, Mr. Johnsons,
+    // and Shadowrunners in F33E. Fresh New Game seeds Contacts to 0x1C7F at
+    // 0x59C48 and clears the other two; a loaded save does not restore them.
+    std::optional<std::uint32_t> notebook_contacts_flags_ = 0x1C7FU;
+    std::optional<std::uint8_t> notebook_referral_flags_ = 0U;
+    std::optional<std::uint16_t> notebook_shadowrunner_flags_ = 0U;
     QImage pocket_secretary_background_;
     QImage pocket_secretary_grid_;
     std::unordered_map<std::string, QImage> dismiss_runner_preview_panels_;

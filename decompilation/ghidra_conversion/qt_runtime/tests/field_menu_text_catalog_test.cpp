@@ -103,8 +103,6 @@ int main() {
             std::array<std::string, kNotebookNoRunLineCount>{
                 " You are not currently", "engaged in a shadowrun.",
                 "     Get a job!!"} ||
-        text.catalog.notebook_event_gates !=
-            std::array<bool, kNotebookEventGateCount>{true, false, false} ||
         text.catalog.notebook_tips_title != "Tips & Clues" ||
         text.catalog.notebook_tips_separator !=
             std::string("[") + std::string(15U, static_cast<char>(92)) ||
