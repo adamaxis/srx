@@ -3,10 +3,11 @@
 Status: controller, transaction logic, source-selected Ares mode-text records,
 the twelve source field-service titles and their draw destinations, and a Qt
 generic prompt runtime with the selected Ares mode-profile sprite are
-implemented. The Ares introduction was independently confirmed in the full
-longplay at 01:39:43; the shop follows at 01:39:45. The live field event route,
-shop presenter, and live wallet binding are not connected, so the Ares hill
-remains partial.
+implemented. The ROM-derived static field-service background is now available
+as a named host asset. The Ares introduction was independently confirmed in
+the full longplay at 01:39:43; the shop follows at 01:39:45. The live field
+event route, shop presenter, and live wallet binding are not connected, so the
+Ares hill remains partial.
 
 ## Source trace
 
@@ -46,6 +47,16 @@ remains partial.
   cell `0xC110` and text `Ares Weapon Emporium`. The offline extractor now
   publishes every title and destination as host text in `menu/field/text.tsv`;
   the Qt runtime does not follow those ROM pointers.
+- Service background: `0x56AC0` begins by calling `0x10BC4`. That routine
+  loads the shared pattern stream at `0xCAB0C` through `0x10918`, copies the
+  raw `0x340` bytes at `0xD263C` to VRAM `0x9F40`, then writes eight literal
+  name-table blocks: Plane A `CE2A6/E000/34x2`, `CE32E/E100/2x13`,
+  `CE362/E142/1x13`, `CE37C/E780/34x13`, `CE798/E744/6x14`,
+  `CE840/E2C6/4x1`, and `CE848/E546/4x1`; Plane B `CE6F0/C044/6x14`.
+  The checked name words use palette line 0 and low priority. The offline
+  importer flattens the transparent Plane B backing and Plane A frame into
+  `menu/field/service-background.bmp`; the runtime receives only this RGBA
+  asset, not the ROM maps or VDP operations.
 - Mode-entry sprite: `0x1FA78` selects profile `0x1220C0`; its ROM pointers are
   palette `0x1219BC`, pattern stream `0x12C84E`, and sprite stream `0x12266A`.
   The offline importer emits the profile's 7x9 sprite as
@@ -82,13 +93,17 @@ remains partial.
    mode profile, and sprite extraction are traced. Debug produced and inspected
    `field-mode-text-qa/introduction/actual.bmp` beside the independent
    `reference-frames/ares-introduction-5983.png`. The host dump checks the
-   conversion; the longplay frame remains the visual authority. Shop pixels
-   remain pending.
+   conversion; the longplay frame remains the visual authority. The new static
+   shop background was inspected beside
+   `reference-frames/ares-shop-5985.png`: the upper service frame, lower item
+   panel, and right HUD backing occupy the expected regions. The source background
+   does not include changing labels, item icons, selected-item focus, cursor, or
+   portrait sprites; those shop pixels remain pending in the presenter.
 4. **Animation?** The prompt has no periodic animation; it waits 30 frames
    before accepting a controller edge. The selected profile contributes one
    static sprite. Fifteen consecutive 30 fps frames around 01:39:54 show the
    shop selection and screen content unchanged; this supports a static shop
-   view, with input-driven redraws still to implement.
+   background, with input-driven redraws still to implement.
 5. **Sound?** The traced `0x1F246`/`0x1F3C4` prompt path makes no direct sound
    request. The shop requests event `0x25` on cursor/panel movement and `0x24`
    on confirmation and runner restart. The `0x25` clip identity and playback
@@ -99,8 +114,9 @@ remains partial.
    in the left well, and leaves its lower well blank. The transition at
    01:39:44 is black; the shop at 01:39:45 then shows its own title, item
    detail, item row, and funds display while preserving the right-side field
-   HUD. The shop redraw must preserve that source composition while replacing
-   the full shop-owned panel.
+   HUD. The extracted full-screen base redraw contains the service panel and
+   right HUD backing as one named image; the presenter must redraw its owned
+   dynamic rows over that base and clear them on return.
 7. **Multiple frames?** The reference sequence includes the Ares introduction
    at 01:39:43, the shop category changes at 01:39:45-46, Universal Gun Clips
    at 01:39:47, Stim and Trauma Patch detail at 01:39:48-49, and a transaction
@@ -111,7 +127,10 @@ remains partial.
    text wells; its lower well is black and contains no previous controls. The
    black transition at 01:39:44 separates the introduction from the shop at
    01:39:45, which replaces the introduction with its own interface. The shop
-   presenter and its entry/return stale-panel checks remain pending.
+   static service background covers the whole 320x224 screen and therefore
+   replaces the prior prompt pixels when used as a base. Presenter entry/return
+   checks for dynamic shop labels, icons, focus, and confirmation controls remain
+   pending.
 
 ## Implemented controller slice
 
@@ -128,7 +147,10 @@ exports profile `0x1220C0` as the named 56x72 `field/mode-entry/ares-sprite.bmp`
 asset. `FieldModeTextRuntime` displays the three ROM-selected text records
 through the shared generic panel, binds the profile sprite to the Ares logo
 well, enforces the sentinel delay, and writes an `actual.bmp` diagnostic. The
-Ares hill remains partial until the live field route, shop presentation,
-wallet binding, and stale shop-panel check are complete. The longplay confirms
-the shop exterior and multiple menu states; source-extracted shop chrome and
-its host composition remain unimplemented.
+offline importer now emits `menu/field/service-background.bmp` from the eight
+`0x10BC4` map writes and the shared pattern/palette source. Its test checks the
+320x224 opaque host image contract; the independent longplay at
+`reference-frames/ares-shop-5985.png` remains the visual authority. The Ares
+hill remains partial until the live field route, shop presentation, wallet
+binding, dynamic-row redraw, and stale-panel checks are complete. Shop sound
+clip identity and duration also remain unresolved.

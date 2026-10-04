@@ -1559,6 +1559,11 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         written, missing, blank);
     write("menu/field/background.bmp", assets.field_menu_background, "background",
           "0x10F50", false);
+    write_catalog_asset(
+        root, "menu/field/service-background.bmp",
+        shadowrun::graphics::decode_genesis_field_service_background(rom),
+        "background", "0x10BC4/0x10918/0x1232", false, manifest, written,
+        missing, blank);
     write("menu/field/action-background.bmp",
           assets.field_menu_action_background, "background", "0x117A0", false);
     write("menu/field/action-confirm-background.bmp",
@@ -2377,6 +2382,23 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
+    if (argc == 4 &&
+        std::string(argv[3]) == "--field-service-background") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto image =
+                shadowrun::graphics::decode_genesis_field_service_background(
+                    rom);
+            shadowrun::graphics::write_bmp32(argv[2], image);
+            std::cout << "field service background: " << image.width << "x"
+                      << image.height << "\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
     if (argc == 4 && std::string(argv[3]) == "--field-dialogue-panel") {
         try {
             const auto rom = read_file(argv[1]);
@@ -2627,6 +2649,8 @@ int main(int argc, char** argv) {
                       "--cab-map\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
                       "--native-menu\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
+                      "--field-service-background\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
                       "--field-dialogue-panel\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "

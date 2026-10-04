@@ -247,6 +247,40 @@ int main() {
     assert(dialogue_frame.width == 320U && dialogue_frame.height == 224U);
     assert(dialogue_frame_alternate.width == 320U &&
            dialogue_frame_alternate.height == 224U);
+    const auto field_service_background =
+        decode_genesis_field_service_background(rom);
+    assert(field_service_background.width == 320U &&
+           field_service_background.height == 224U);
+    assert(field_service_background.pixels.size() == 320U * 224U);
+    assert(std::all_of(field_service_background.pixels.begin(),
+                       field_service_background.pixels.end(),
+                       [](const auto& pixel) { return pixel.alpha == 255U; }));
+    assert(std::any_of(field_service_background.pixels.begin(),
+                       field_service_background.pixels.end(),
+                       [](const auto& pixel) {
+                           return pixel.red != 0U || pixel.green != 0U ||
+                                  pixel.blue != 0U;
+                       }));
+    const auto service_pixel = [&](std::size_t x, std::size_t y)
+        -> const shadowrun::native::Rgba8& {
+        return field_service_background.pixels[
+            y * field_service_background.width + x];
+    };
+    const auto& service_frame_edge = service_pixel(12U, 12U);
+    assert(service_frame_edge.red == 219U &&
+           service_frame_edge.green == 219U &&
+           service_frame_edge.blue == 219U);
+    const auto& service_text_well = service_pixel(16U, 16U);
+    assert(service_text_well.red == 0U && service_text_well.green == 0U &&
+           service_text_well.blue == 0U);
+    const auto& service_right_panel = service_pixel(300U, 20U);
+    assert(service_right_panel.red == 73U &&
+           service_right_panel.green == 73U &&
+           service_right_panel.blue == 73U);
+    const auto& service_lower_right_clear = service_pixel(319U, 223U);
+    assert(service_lower_right_clear.red == 0U &&
+           service_lower_right_clear.green == 0U &&
+           service_lower_right_clear.blue == 0U);
     bool dialogue_left_panel_differs = false;
     for (std::size_t y = 0; y < dialogue_frame.height; ++y) {
         for (std::size_t x = 0; x < dialogue_frame.width; ++x) {

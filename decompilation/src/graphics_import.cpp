@@ -2645,6 +2645,155 @@ RgbaImage decode_genesis_field_menu_background(
     return decode_genesis_field_menu_layer(rom, false);
 }
 
+RgbaImage decode_genesis_field_service_background(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kPatternStreamOffset = 0xCAB0CU;
+    constexpr std::size_t kPatternVramOffset = 0x1E20U;
+    constexpr std::size_t kPlaneColumns = 64U;
+    constexpr std::size_t kPlaneRows = 32U;
+    constexpr std::size_t kPlaneBytes = kPlaneColumns * kPlaneRows * 2U;
+    constexpr std::size_t kVisibleColumns = 40U;
+    constexpr std::size_t kVisibleRows = 28U;
+    constexpr std::size_t kRowStride = 0x80U;
+
+    // ROM 0x10BC4 calls 0x10918, which loads the shared patterns from CAB0C
+    // at VRAM 1E20, then copies D263C to 9F40 for adjacent field-service
+    // graphics. The copy does not affect these static background cells, but
+    // is included here to preserve the complete source upload sequence.
+    auto pattern_vram = decode_genesis_1530_vram(
+        rom, kPatternStreamOffset, kPatternVramOffset);
+    write_genesis_f5c_vram(rom, 0xD263CU, 0x9F40U, 0x340U,
+                           pattern_vram);
+
+    using NameTable = std::array<std::uint16_t,
+                                 kPlaneColumns * kPlaneRows>;
+    using WrittenCells = std::array<bool, kPlaneColumns * kPlaneRows>;
+    NameTable plane_a{};
+    NameTable plane_b{};
+    WrittenCells plane_a_written{};
+    WrittenCells plane_b_written{};
+    const auto write_block = [&](NameTable& table, WrittenCells& written,
+                                 std::size_t plane_base,
+                                 std::size_t source_offset,
+                                 std::uint16_t vdp_address,
+                                 std::size_t width, std::size_t height) {
+        if (width == 0U || height == 0U || source_offset > rom.size() ||
+            width * height > (rom.size() - source_offset) / 2U) {
+            throw std::out_of_range(
+                "Genesis field-service name-table block is truncated");
+        }
+        const auto address = static_cast<std::size_t>(vdp_address);
+        if (address < plane_base || address - plane_base >= kPlaneBytes) {
+            throw std::out_of_range(
+                "Genesis field-service plane address is invalid");
+        }
+        const auto table_byte_offset = address - plane_base;
+        if (table_byte_offset % 2U != 0U) {
+            throw std::out_of_range(
+                "Genesis field-service name-table address is unaligned");
+        }
+        const auto first_column = (table_byte_offset % kRowStride) / 2U;
+        const auto first_row = table_byte_offset / kRowStride;
+        if (first_column + width > kPlaneColumns ||
+            first_row + height > kPlaneRows) {
+            throw std::out_of_range(
+                "Genesis field-service block exceeds its plane");
+        }
+        for (std::size_t row = 0; row < height; ++row) {
+            for (std::size_t column = 0; column < width; ++column) {
+                const auto source =
+                    source_offset + (row * width + column) * 2U;
+                const auto word = static_cast<std::uint16_t>(
+                    (static_cast<std::uint16_t>(rom[source]) << 8U) |
+                    rom[source + 1U]);
+                const auto index = (first_row + row) * kPlaneColumns +
+                                   first_column + column;
+                table[index] = word;
+                written[index] = true;
+            }
+        }
+    };
+
+    // These are the eight literal 0x1232 blocks submitted by 0x10BC4 after
+    // the shared pattern load and high-VRAM copy. Keep the two planes apart
+    // until host flattening so zero-index pixels remain transparent.
+    write_block(plane_a, plane_a_written, 0xE000U,
+                0xCE2A6U, 0xE000U, 34U, 2U);
+    write_block(plane_a, plane_a_written, 0xE000U,
+                0xCE32EU, 0xE100U, 2U, 13U);
+    write_block(plane_a, plane_a_written, 0xE000U,
+                0xCE362U, 0xE142U, 1U, 13U);
+    write_block(plane_a, plane_a_written, 0xE000U,
+                0xCE37CU, 0xE780U, 34U, 13U);
+    write_block(plane_b, plane_b_written, 0xC000U,
+                0xCE6F0U, 0xC044U, 6U, 14U);
+    write_block(plane_a, plane_a_written, 0xE000U,
+                0xCE798U, 0xE744U, 6U, 14U);
+    write_block(plane_a, plane_a_written, 0xE000U,
+                0xCE840U, 0xE2C6U, 4U, 1U);
+    write_block(plane_a, plane_a_written, 0xE000U,
+                0xCE848U, 0xE546U, 4U, 1U);
+
+    const auto palette = read_genesis_palette(rom, 0xD29D6U);
+    RgbaImage image{
+        static_cast<std::uint16_t>(kVisibleColumns * 8U),
+        static_cast<std::uint16_t>(kVisibleRows * 8U),
+        std::vector<native::Rgba8>(
+            kVisibleColumns * kVisibleRows * 64U,
+            native::Rgba8{0U, 0U, 0U, 255U}),
+    };
+    const auto draw_plane = [&](const NameTable& table,
+                                const WrittenCells& written) {
+        for (std::size_t row = 0; row < kVisibleRows; ++row) {
+            for (std::size_t column = 0; column < kVisibleColumns; ++column) {
+                const auto table_index = row * kPlaneColumns + column;
+                if (!written[table_index]) {
+                    continue;
+                }
+                const auto name_word = table[table_index];
+                const auto palette_line =
+                    static_cast<std::size_t>((name_word >> 13U) & 0x03U);
+                if (palette_line != 0U || (name_word & 0x8000U) != 0U) {
+                    throw std::runtime_error(
+                        "Genesis field-service frame uses an unreviewed palette or priority");
+                }
+                const auto tile_index =
+                    static_cast<std::size_t>(name_word & 0x07FFU);
+                if (tile_index * 32U + 32U > pattern_vram.size()) {
+                    throw std::out_of_range(
+                        "Genesis field-service tile data is truncated");
+                }
+                const auto tile = decode_genesis_tile(
+                    pattern_vram.data() + tile_index * 32U, 32U);
+                const auto hflip = (name_word & 0x0800U) != 0U;
+                const auto vflip = (name_word & 0x1000U) != 0U;
+                for (std::size_t pixel_y = 0; pixel_y < 8U; ++pixel_y) {
+                    for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
+                        const auto source_x = hflip ? 7U - pixel_x : pixel_x;
+                        const auto source_y = vflip ? 7U - pixel_y : pixel_y;
+                        const auto color_index =
+                            tile.pixels[source_y * 8U + source_x];
+                        if (color_index == 0U) {
+                            continue;
+                        }
+                        auto color = palette[color_index];
+                        color.alpha = 255U;
+                        image.pixels[(row * 8U + pixel_y) * image.width +
+                                     column * 8U + pixel_x] = color;
+                    }
+                }
+            }
+        }
+    };
+
+    // Both planes use palette line 0 and low priority. Plane A is in front
+    // at equal priority, so its nonzero pixels replace Plane B while its
+    // zero pixels reveal the lower plane.
+    draw_plane(plane_b, plane_b_written);
+    draw_plane(plane_a, plane_a_written);
+    return image;
+}
+
 RgbaImage decode_genesis_field_menu_attributes_background(
     const std::vector<std::uint8_t>& rom) {
     constexpr std::size_t kPatternStreamOffset = 0xCAB0CU;

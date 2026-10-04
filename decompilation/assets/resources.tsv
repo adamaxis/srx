@@ -560,12 +560,12 @@ intro.cab.cursor.right	intro/cab/cursor-right.bmp	image	0	0
 intro.cab.cursor.bottom.left	intro/cab/cursor-bottom-left.bmp	image	0	0
 intro.cab.cursor.bottom.middle	intro/cab/cursor-bottom-middle.bmp	image	0	0
 intro.cab.cursor.bottom.right	intro/cab/cursor-bottom-right.bmp	image	0	0
+dialogue.portraits.stoker.motel	dialogue/portraits/stoker-motel.bmp	image	0	0
+dialogue.panel.frame	dialogue/panel/frame.bmp	image	0	0
+dialogue.panel.frame.alternate.left.panel	dialogue/panel/frame-alternate-left-panel.bmp	image	0	0
 dialogue.panel.button.a	dialogue/panel/button-a.bmp	image	0	0
 dialogue.panel.button.b	dialogue/panel/button-b.bmp	image	0	0
 dialogue.panel.button.c	dialogue/panel/button-c.bmp	image	0	0
-dialogue.panel.frame	dialogue/panel/frame.bmp	image	0	0
-dialogue.panel.frame.alternate.left.panel	dialogue/panel/frame-alternate-left-panel.bmp	image	0	0
-dialogue.portraits.stoker.motel	dialogue/portraits/stoker-motel.bmp	image	0	0
 field.hud.background	field/hud/background.bmp	image	0	0
 field.mode.entry.ares.sprite	field/mode-entry/ares-sprite.bmp	image	0	0
 field.hud.face.0	field/hud/face-0.bmp	image	0	0
@@ -683,6 +683,7 @@ field.hud.ammo.counter.63	field/hud/ammo-counter-63.bmp	image	0	0
 menu.pocket.secretary.background	menu/pocket-secretary/background.bmp	image	0	0
 menu.pocket.secretary.grid	menu/pocket-secretary/grid.bmp	image	0	0
 menu.field.background	menu/field/background.bmp	image	0	0
+menu.field.service.background	menu/field/service-background.bmp	image	0	0
 menu.field.action.background	menu/field/action-background.bmp	image	0	0
 menu.field.action.confirm.background	menu/field/action-confirm-background.bmp	image	0	0
 menu.field.attributes.background	menu/field/attributes-background.bmp	image	0	0

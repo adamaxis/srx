@@ -767,6 +767,11 @@ GenesisMagicMenuText read_genesis_magic_menu_text(
 // name-table or palette dependency retained by the runtime.
 RgbaImage decode_genesis_field_menu_background(
     const std::vector<std::uint8_t>& rom);
+// ROM 0x10BC4 installs the shared field-service screen: the service frame on
+// Plane A and its right-side field HUD backing on Plane B. This is an offline
+// extraction result; runtime consumers receive RGBA pixels, not VDP state.
+RgbaImage decode_genesis_field_service_background(
+    const std::vector<std::uint8_t>& rom);
 // ROM 0x10984 submits the shared dialogue frame as nine named tile-map
 // regions over the patterns loaded by 0x10918. The FFF0AF mode flag optionally
 // replaces the portrait-side panel region.
