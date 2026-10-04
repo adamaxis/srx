@@ -3605,9 +3605,9 @@ int main(int argc, char** argv) {
                     &field_before_prompt_scene);
                 field_scene.paint(field_before_prompt_painter);
                 field_before_prompt_painter.end();
-                if (!field_scene.open_field_interaction_for_dump(
+                if (!field_scene.dispatch_field_interaction_through_coordinator_for_dump(
                         prompt, 2U, suppressed)) {
-                    std::cerr << "field interaction dump: prompt did not open\n";
+                    std::cerr << "field interaction dump: pending handler did not open the prompt\n";
                     return 3;
                 }
                 if (show_lock_choices) {

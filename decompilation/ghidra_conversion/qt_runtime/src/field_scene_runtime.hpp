@@ -177,14 +177,10 @@ public:
     const DialoguePanelView& field_interaction_panel() const noexcept {
         return field_interaction_.panel();
     }
-    bool open_field_interaction_for_dump(
+    bool dispatch_field_interaction_through_coordinator_for_dump(
         FieldInteractionPrompt prompt, std::uint8_t interaction_selection = 2U,
         bool interaction_suppressed = false,
-        std::optional<std::uint8_t> security_floor_index = std::nullopt) {
-        return field_interaction_.open_prompt_for_dump(
-            prompt, interaction_selection, interaction_suppressed,
-            security_floor_index);
-    }
+        std::optional<std::uint8_t> security_floor_index = std::nullopt);
     FieldInteractionAdvanceResult advance_field_interaction_for_dump(
         std::uint16_t event_word) {
         return advance_field_interaction(event_word);

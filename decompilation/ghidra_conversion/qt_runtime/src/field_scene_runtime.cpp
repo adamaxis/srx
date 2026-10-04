@@ -3020,6 +3020,47 @@ void FieldSceneRuntime::record_field_activity_start(
     source_boundary("field.world.activity.started");
 }
 
+bool FieldSceneRuntime::dispatch_field_interaction_through_coordinator_for_dump(
+    const FieldInteractionPrompt prompt,
+    const std::uint8_t interaction_selection,
+    const bool interaction_suppressed,
+    const std::optional<std::uint8_t> security_floor_index) {
+    if (!ready_ || field_interaction_.open()) {
+        return false;
+    }
+    MovementModeTransitionContinuation continuation =
+        MovementModeTransitionContinuation::none;
+    switch (prompt) {
+    case FieldInteractionPrompt::electromagnetic_lock_door:
+        continuation =
+            MovementModeTransitionContinuation::maglock_door_interaction;
+        break;
+    case FieldInteractionPrompt::building_security_terminal:
+        continuation =
+            MovementModeTransitionContinuation::building_security_terminal;
+        break;
+    case FieldInteractionPrompt::electromagnetic_lock_resolution:
+        return false;
+    }
+    field_movement_transition_state_.activity_selection =
+        interaction_selection;
+    field_movement_transition_state_.terrain_event_suppressed =
+        interaction_suppressed;
+    field_security_floor_index_ = security_floor_index;
+
+    // Inject the typed continuation at the point after collision/event
+    // resolution. Use the production activity scheduler, pending-handler bit,
+    // and field coordinator to enter the same modal route as gameplay.
+    if (!begin_world_activity_if_idle(
+            field_world_activity_state_,
+            static_cast<std::uint16_t>(continuation))) {
+        return false;
+    }
+    record_field_activity_start(continuation);
+    advance_frame();
+    return field_interaction_.open();
+}
+
 bool FieldSceneRuntime::recover_blocked_field_movement(
     const MovementProbeResult& initial_probe) {
     field_movement_behavior_record_.current_heading =
