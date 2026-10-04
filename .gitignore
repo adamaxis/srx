@@ -19,6 +19,25 @@
 **/.ninja_deps
 **/.ninja_log
 
+# Compiler and CMake products that some generators place beside source files
+# instead of in one of the ignored build directories above.
+**/*.o
+**/*.obj
+**/*.a
+**/*.lib
+**/*.dll
+**/*.exe
+**/*.exp
+**/*.pdb
+**/*.ilk
+**/*.idb
+**/*.pch
+**/*.ipch
+**/*.tlog
+**/*.lastbuildstate
+**/cmake_install.cmake
+**/compile_commands.json
+
 # Ghidra project databases are large, host-specific working state. The
 # exported listings and C++ evidence under export/ remain versioned.
 /decompilation/ShadowRunGenesis.gpr
