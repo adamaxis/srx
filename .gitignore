@@ -1,4 +1,8 @@
 # CMake/Ninja build products are regenerated per checkout.
+/build/
+**/build/
+**/build-*/
+**/cmake-build-*/
 /build-ide-*/
 /decompilation/build/
 /decompilation/build-*/
@@ -6,6 +10,7 @@
 /decompilation/ghidra_conversion/build-*/
 /decompilation/ghidra_conversion/build-ghidra-conversion-*/
 /decompilation/ghidra_conversion/Testing/
+**/Testing/
 
 # Generator state can also appear in ad-hoc CMake build trees.
 **/CMakeFiles/
