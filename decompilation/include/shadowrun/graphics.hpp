@@ -687,6 +687,13 @@ GenesisCyberwareText read_genesis_cyberware_text(
 // name-table or palette dependency retained by the runtime.
 RgbaImage decode_genesis_field_menu_background(
     const std::vector<std::uint8_t>& rom);
+// ROM 0x10984 submits the shared dialogue frame as nine named tile-map
+// regions over the patterns loaded by 0x10918. The FFF0AF mode flag optionally
+// replaces the portrait-side panel region.
+RgbaImage decode_genesis_field_dialogue_panel_background(
+    const std::vector<std::uint8_t>& rom, bool alternate_portrait_panel);
+std::array<RgbaImage, 3> decode_genesis_field_dialogue_option_markers(
+    const std::vector<std::uint8_t>& rom);
 // ROM 0x117A0 redraws the lower action row from the source CD302 name table
 // before applying the selected action focus block.
 RgbaImage decode_genesis_field_menu_action_background(

@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <iostream>
 #include <string_view>
 
 namespace {
@@ -15,6 +16,79 @@ using namespace shadowrun::ghidra_conversion;
 using namespace shadowrun::ghidra_conversion::qt_runtime;
 
 bool expect(const bool condition) { return condition; }
+
+bool has_green_ink(const QImage& image, const int x, const int y,
+                   const int width, const int height) {
+    for (int row = y; row < y + height; ++row) {
+        for (int column = x; column < x + width; ++column) {
+            const auto pixel = image.pixelColor(column, row);
+            if (pixel.green() > 150 && pixel.red() < 100 &&
+                pixel.blue() < 140) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool has_nonblack_pixel(const QImage& image, const int x, const int y,
+                        const int width, const int height) {
+    for (int row = y; row < y + height; ++row) {
+        for (int column = x; column < x + width; ++column) {
+            if (image.pixelColor(column, row) != QColor(0, 0, 0)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool has_exact_color(const QImage& image, const int x, const int y,
+                     const int width, const int height,
+                     const QColor expected) {
+    for (int row = y; row < y + height; ++row) {
+        for (int column = x; column < x + width; ++column) {
+            if (image.pixelColor(column, row) == expected) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool matches_region(const QImage& image, const QImage& reference,
+                   const int x, const int y, const int width,
+                   const int height) {
+    for (int row = y; row < y + height; ++row) {
+        for (int column = x; column < x + width; ++column) {
+            if (image.pixelColor(column, row) !=
+                reference.pixelColor(column, row)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool matches_overlay(const QImage& image, const QImage& overlay,
+                     const int x, const int y) {
+    for (int row = 0; row < overlay.height(); ++row) {
+        for (int column = 0; column < overlay.width(); ++column) {
+            const auto actual = image.pixelColor(x + column, y + row);
+            const auto source = overlay.pixelColor(column, row);
+            const auto alpha = source.alpha();
+            const auto composite_on_black = [alpha](const int component) {
+                return (component * alpha + 127) / 255;
+            };
+            if (actual.red() != composite_on_black(source.red()) ||
+                actual.green() != composite_on_black(source.green()) ||
+                actual.blue() != composite_on_black(source.blue())) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
 
 } // namespace
 
@@ -31,16 +105,33 @@ int main() {
     if (!expect(runtime.load_assets(assets.catalog))) {
         return 2;
     }
+    const auto* standard_frame_record =
+        assets.catalog.find("dialogue.panel.frame");
+    const auto* alternate_frame_record =
+        assets.catalog.find("dialogue.panel.frame.alternate.left.panel");
+    const auto* button_a_record = assets.catalog.find(
+        "dialogue.panel.button.a");
+    if (!expect(standard_frame_record != nullptr) ||
+        !expect(alternate_frame_record != nullptr) ||
+        !expect(button_a_record != nullptr)) {
+        return 35;
+    }
+    const QImage standard_frame(QString::fromStdWString(
+        standard_frame_record->absolute_path.wstring()));
+    const QImage button_a(QString::fromStdWString(
+        button_a_record->absolute_path.wstring()));
 
     if (!expect(runtime.open_stoker_prompt_for_dump(
-            StokerMotelPromptId::manager_greeting)) ||
-        !expect(runtime.panel().actor_name == "Stoker") ||
-        !expect(runtime.panel().option_count == 2U) ||
-        !expect(runtime.panel().text_segment_count == 3U) ||
-        !expect(runtime.panel().text_segments[0].find("manager yawns") !=
-                std::string_view::npos)) {
+            StokerMotelPromptId::manager_greeting))) {
         return 3;
     }
+    if (!expect(runtime.panel().actor_name == "Stoker")) return 39;
+    if (!expect(runtime.panel().option_count == 2U)) return 40;
+    if (!expect(runtime.panel().text_segment_count == 5U)) return 41;
+    if (!expect(runtime.panel().text_segments[1].empty()) ||
+        !expect(runtime.panel().text_segments[3].empty())) return 42;
+    if (!expect(runtime.panel().text_segments[0].find("manager yawns") !=
+                std::string_view::npos)) return 43;
 
     if (!expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
@@ -68,11 +159,37 @@ int main() {
         FieldExitResourceProfile::stoker_motel,
         FieldExitPromptAsset::stoker_motel_arrival,
         0x14U};
-    if (!expect(runtime.open_field_exit_prompt(arrival)) ||
-        !expect(runtime.panel().has_more) ||
-        !expect(runtime.panel().options[0].source_label.find("MORE") !=
-                std::string_view::npos)) {
+    if (!expect(runtime.open_field_exit_prompt(arrival))) {
         return 7;
+    }
+    if (!expect(runtime.panel().has_more)) {
+        return 14;
+    }
+    if (!expect(runtime.panel().option_count == 1U)) {
+        return 15;
+    }
+    if (!expect(runtime.panel().continuation_label == "          < MORE >")) {
+        return 16;
+    }
+    if (!expect(runtime.panel().text_segment_count == 5U)) {
+        return 17;
+    }
+    if (!expect(runtime.panel().text_segments[1].empty()) ||
+        !expect(runtime.panel().text_segments[3].empty())) {
+        return 18;
+    }
+    QImage continuation_scene(320, 224, QImage::Format_RGB32);
+    continuation_scene.fill(Qt::magenta);
+    QPainter continuation_painter(&continuation_scene);
+    runtime.paint(continuation_painter);
+    continuation_painter.end();
+    if (!expect(!has_exact_color(continuation_scene, 0, 0, 320, 224,
+                                 QColor(Qt::magenta))) ||
+        !expect(has_green_ink(continuation_scene, 88, 16, 216, 8)) ||
+        !expect(!has_green_ink(continuation_scene, 16, 151, 16, 16)) ||
+        !expect(!has_green_ink(continuation_scene, 48, 159, 80, 8)) ||
+        !expect(has_green_ink(continuation_scene, 128, 159, 64, 8))) {
+        return 14;
     }
     if (!expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::source_boundary) ||
@@ -101,19 +218,63 @@ int main() {
         !expect(runtime.panel().kind == DialoguePanelKind::source_boundary)) {
         return 10;
     }
+    QImage unresolved_speaker_scene(320, 224, QImage::Format_RGB32);
+    unresolved_speaker_scene.fill(Qt::black);
+    QPainter unresolved_speaker_painter(&unresolved_speaker_scene);
+    runtime.paint(unresolved_speaker_painter);
+    unresolved_speaker_painter.end();
+    if (!expect(unresolved_speaker_scene.pixelColor(40, 60) ==
+                QColor(Qt::black))) {
+        return 34;
+    }
 
     if (!expect(runtime.open_stoker_prompt_for_dump(
             StokerMotelPromptId::manager_greeting_with_package)) ||
-        !expect(runtime.panel().text_segment_count == 3U) ||
+        !expect(runtime.panel().text_segment_count == 5U) ||
+        !expect(runtime.panel().option_count == 3U) ||
         !expect(runtime.panel().text_segments[0].find("manager yawns") !=
                 std::string_view::npos)) {
         return 11;
     }
     QImage scene(320, 224, QImage::Format_RGB32);
-    scene.fill(Qt::black);
+    scene.fill(Qt::magenta);
     QPainter painter(&scene);
     runtime.paint(painter);
     painter.end();
+    if (!expect(!has_exact_color(scene, 0, 0, 320, 224,
+                                 QColor(Qt::magenta)))) {
+        return 13;
+    }
+    if (!expect(has_green_ink(scene, 88, 16, 216, 8))) {
+        return 19;
+    }
+    if (!expect(!has_green_ink(scene, 82, 16, 6, 8))) {
+        return 20;
+    }
+    if (!expect(has_green_ink(scene, 88, 32, 216, 8))) {
+        return 21;
+    }
+    if (!expect(!has_green_ink(scene, 88, 24, 216, 8))) {
+        return 22;
+    }
+    if (!expect(has_nonblack_pixel(scene, 16, 32, 56, 72))) {
+        return 23;
+    }
+    if (!expect(matches_region(scene, standard_frame, 16, 20, 54, 8))) {
+        return 24;
+    }
+    if (!expect(has_green_ink(scene, 88, 56, 216, 8))) {
+        return 25;
+    }
+    if (!expect(!has_green_ink(scene, 88, 48, 216, 8))) {
+        return 26;
+    }
+    if (!expect(matches_region(scene, standard_frame, 0, 146, 320, 6))) {
+        return 27;
+    }
+    if (!expect(matches_region(scene, standard_frame, 312, 152, 8, 72))) {
+        return 29;
+    }
     int lit_pixels = 0;
     for (int y = 0; y < scene.height(); ++y) {
         for (int x = 0; x < scene.width(); ++x) {
@@ -125,6 +286,126 @@ int main() {
     }
     if (!expect(lit_pixels > 1000)) {
         return 12;
+    }
+
+    if (!expect(runtime.advance_controller_events(0x2000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 2U) ||
+        !expect(runtime.panel().text_segments[0].find("Michael's brother") !=
+                std::string_view::npos)) {
+        return 30;
+    }
+    scene.fill(Qt::magenta);
+    QPainter debt_painter(&scene);
+    runtime.paint(debt_painter);
+    debt_painter.end();
+    if (!expect(!has_exact_color(scene, 0, 0, 320, 224,
+                                 QColor(Qt::magenta))) ||
+        !expect(has_green_ink(scene, 88, 16, 216, 8)) ||
+        !expect(!has_green_ink(scene, 88, 32, 216, 8)) ||
+        !expect(has_green_ink(scene, 88, 40, 216, 8)) ||
+        !expect(has_green_ink(scene, 88, 80, 216, 8)) ||
+        !expect(!has_green_ink(scene, 88, 88, 216, 8)) ||
+        !expect(has_green_ink(scene, 88, 96, 216, 8)) ||
+        !expect(!has_green_ink(scene, 48, 197, 256, 16))) {
+        return 31;
+    }
+    if (!expect(runtime.advance_controller_events(0x1000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().text_segments[0].find("Jump House") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().option_count == 0U) ||
+        !expect(runtime.panel().returns_to_field)) {
+        return 32;
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(!runtime.open())) {
+        return 33;
+    }
+
+    // A different source can supply its resolved speaker/event view without
+    // inheriting Stoker content. Repainting fewer options removes the old
+    // bottom row and selector before applying the source-selected frame mode.
+    DialoguePanelPresenter presenter;
+    if (!expect(presenter.load_assets(assets.catalog))) {
+        return 36;
+    }
+    DialoguePanelView other_speaker;
+    other_speaker.open = true;
+    other_speaker.actor_kind = DialoguePanelActorKind::field_npc;
+    other_speaker.actor_name = "Mara";
+    other_speaker.kind = DialoguePanelKind::field_npc_prompt;
+    other_speaker.text_segments[0] =
+        "Mara asks what brings you to the building.";
+    other_speaker.text_segment_count = 1U;
+    other_speaker.options[0] = {
+        DialoguePanelOptionRole::field_continue,
+        "Ask about the building.",
+        DialoguePanelCommand::stoker_resolve_arrival};
+    other_speaker.options[1] = {
+        DialoguePanelOptionRole::field_leave_motel,
+        "Leave for now.",
+        DialoguePanelCommand::stoker_open_leave_notice};
+    other_speaker.options[2] = {
+        DialoguePanelOptionRole::field_pay_debt,
+        "Ask who sent you.",
+        DialoguePanelCommand::stoker_open_debt_question};
+    other_speaker.option_count = 3U;
+    QImage generic_scene(320, 224, QImage::Format_RGB32);
+    generic_scene.fill(Qt::magenta);
+    QPainter generic_painter(&generic_scene);
+    presenter.paint(generic_painter, other_speaker);
+    other_speaker.option_count = 1U;
+    presenter.paint(generic_painter, other_speaker);
+    generic_painter.end();
+    if (!expect(!has_exact_color(generic_scene, 0, 0, 320, 224,
+                                 QColor(Qt::magenta)))) return 47;
+    if (!expect(has_green_ink(generic_scene, 88, 16, 216, 8))) return 48;
+    if (!expect(has_green_ink(generic_scene, 48, 152, 216, 8))) return 49;
+    if (!expect(!has_green_ink(generic_scene, 48, 200, 256, 16))) return 50;
+    if (!expect(!has_nonblack_pixel(generic_scene, 17, 203, 11, 11))) return 51;
+    if (!expect(generic_scene.pixelColor(40, 60) == QColor(Qt::black))) return 52;
+    if (!matches_overlay(generic_scene, button_a, 16, 152)) {
+        for (int row = 0; row < button_a.height(); ++row) {
+            for (int column = 0; column < button_a.width(); ++column) {
+                const auto actual =
+                    generic_scene.pixelColor(16 + column, 152 + row);
+                const auto expected = button_a.pixelColor(column, row);
+                if (actual != expected) {
+                    std::cerr << "dialogue A marker differs at " << column
+                              << ',' << row << ": actual="
+                              << actual.name(QColor::HexArgb).toStdString()
+                              << " expected="
+                              << expected.name(QColor::HexArgb).toStdString()
+                              << '\n';
+                    row = button_a.height();
+                    break;
+                }
+            }
+        }
+        return 53;
+    }
+
+    QImage alternate_scene(320, 224, QImage::Format_RGB32);
+    alternate_scene.fill(Qt::black);
+    other_speaker.frame_variant =
+        DialoguePanelFrameVariant::alternate_left_panel;
+    QPainter alternate_painter(&alternate_scene);
+    presenter.paint(alternate_painter, other_speaker);
+    alternate_painter.end();
+    bool selected_frame_differs = false;
+    for (int y = 32; y < 152 && !selected_frame_differs; ++y) {
+        for (int x = 0; x < 80; ++x) {
+            if (generic_scene.pixelColor(x, y) !=
+                alternate_scene.pixelColor(x, y)) {
+                selected_frame_differs = true;
+                break;
+            }
+        }
+    }
+    if (!expect(selected_frame_differs)) {
+        return 38;
     }
     return 0;
 }

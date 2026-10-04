@@ -969,8 +969,9 @@ void write_asset_readme(const std::filesystem::path& root) {
               "`menu/field/text.tsv` and exposed through the `menu.field.text` "
               "manifest alias. Item art is grouped under items/weapons, "
               "items/first-aid, items/miscellaneous, items/magic, and items/armor. "
-              "Field dialogue portraits are grouped under dialogue/portraits; "
-              "source-backed Stoker prompt text is in "
+              "The shared field dialogue frames and A/B/C marker sprites are "
+              "grouped under dialogue/panel, with speaker portraits under "
+              "dialogue/portraits; source-backed Stoker prompt text is in "
               "`dialogue/stoker-motel.tsv` under the `dialogue.stoker.motel` "
               "alias. "
               "Separately traced cinematic resources belong under movies/<scene>; "
@@ -1328,6 +1329,33 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         shadowrun::graphics::decode_genesis_field_dialogue_portrait(rom, 0U),
         "sprite", "0x1F65A/0x121FA0/0x1287C6/0x122420", false, manifest,
         written, missing, blank);
+
+    write_catalog_asset(
+        root, "dialogue/panel/frame.bmp",
+        shadowrun::graphics::decode_genesis_field_dialogue_panel_background(
+            rom, false),
+        "background", "0x10984/0x10918/0xCAB0C/0xCECD8-0xCEFA4", false,
+        manifest, written, missing, blank);
+    write_catalog_asset(
+        root, "dialogue/panel/frame-alternate-left-panel.bmp",
+        shadowrun::graphics::decode_genesis_field_dialogue_panel_background(
+            rom, true),
+        "background", "0x10984/0x10918/0xCAB0C/0xCEFF0 (FFF0AF)", false,
+        manifest, written, missing, blank);
+    constexpr std::array<std::string_view, 3> kDialogueButtonFiles{{
+        "dialogue/panel/button-a.bmp",
+        "dialogue/panel/button-b.bmp",
+        "dialogue/panel/button-c.bmp",
+    }};
+    const auto dialogue_buttons =
+        shadowrun::graphics::decode_genesis_field_dialogue_option_markers(rom);
+    for (std::size_t index = 0; index < dialogue_buttons.size(); ++index) {
+        write_catalog_asset(
+            root, std::string(kDialogueButtonFiles[index]),
+            dialogue_buttons[index], "sprite",
+            "0x1F3C4/0x1232/0xCF11C-0xCF12C", false,
+            manifest, written, missing, blank);
+    }
 
     // Field HUD and menu source layers.
     write("field/hud/background.bmp", assets.field_hud, "background",
@@ -2054,6 +2082,81 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
+    if (argc == 4 && std::string(argv[3]) == "--field-dialogue-panel") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto image =
+                shadowrun::graphics::decode_genesis_field_dialogue_panel_background(
+                    rom, false);
+            shadowrun::graphics::write_bmp32(argv[2], image);
+            std::cout << "field dialogue frame: " << image.width << "x"
+                      << image.height << "\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 5 && std::string(argv[3]) == "--field-dialogue-portrait") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto profile = static_cast<std::size_t>(
+                parse_number(argv[4]));
+            const auto image =
+                shadowrun::graphics::decode_genesis_field_dialogue_portrait(
+                    rom, profile);
+            shadowrun::graphics::write_bmp32(argv[2], image);
+            std::cout << "field dialogue portrait profile " << profile << ": "
+                      << image.width << "x" << image.height << "\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 4 && std::string(argv[3]) ==
+                         "--field-dialogue-panel-alternate") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto image =
+                shadowrun::graphics::decode_genesis_field_dialogue_panel_background(
+                    rom, true);
+            shadowrun::graphics::write_bmp32(argv[2], image);
+            std::cout << "alternate field dialogue frame: " << image.width
+                      << "x" << image.height << "\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 4 && std::string(argv[3]) == "--field-dialogue-buttons") {
+        try {
+            const auto rom = read_file(argv[1]);
+            constexpr std::array<std::string_view, 3> kButtonFiles{{
+                "button-a.bmp", "button-b.bmp", "button-c.bmp",
+            }};
+            const auto output_directory = std::filesystem::path(argv[2]);
+            std::filesystem::create_directories(output_directory);
+            const auto buttons = shadowrun::graphics::
+                decode_genesis_field_dialogue_option_markers(rom);
+            for (std::size_t index = 0; index < buttons.size(); ++index) {
+                shadowrun::graphics::write_bmp32(
+                    (output_directory / kButtonFiles[index]).string(),
+                    buttons[index]);
+            }
+            std::cout << "field dialogue button markers: " << buttons.size()
+                      << " 16x16 images\n"
+                      << "output directory: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
     if (argc == 4 && std::string(argv[3]) == "--native-menu") {
         try {
             const auto rom = read_file(argv[1]);
@@ -2228,6 +2331,14 @@ int main(int argc, char** argv) {
                       "--cab-map\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
                       "--native-menu\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
+                      "--field-dialogue-panel\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
+                      "--field-dialogue-portrait <profile-index>\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
+                      "--field-dialogue-panel-alternate\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out-dir> "
+                      "--field-dialogue-buttons\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
                       "--native-menu-inventory\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "

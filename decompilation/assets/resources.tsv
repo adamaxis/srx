@@ -559,6 +559,11 @@ intro.cab.cursor.right	intro/cab/cursor-right.bmp	image	0	0
 intro.cab.cursor.bottom.left	intro/cab/cursor-bottom-left.bmp	image	0	0
 intro.cab.cursor.bottom.middle	intro/cab/cursor-bottom-middle.bmp	image	0	0
 intro.cab.cursor.bottom.right	intro/cab/cursor-bottom-right.bmp	image	0	0
+dialogue.panel.button.a	dialogue/panel/button-a.bmp	image	0	0
+dialogue.panel.button.b	dialogue/panel/button-b.bmp	image	0	0
+dialogue.panel.button.c	dialogue/panel/button-c.bmp	image	0	0
+dialogue.panel.frame	dialogue/panel/frame.bmp	image	0	0
+dialogue.panel.frame.alternate.left.panel	dialogue/panel/frame-alternate-left-panel.bmp	image	0	0
 dialogue.portraits.stoker.motel	dialogue/portraits/stoker-motel.bmp	image	0	0
 field.hud.background	field/hud/background.bmp	image	0	0
 field.hud.face.0	field/hud/face-0.bmp	image	0	0

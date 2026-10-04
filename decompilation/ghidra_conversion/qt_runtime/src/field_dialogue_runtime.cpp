@@ -1,14 +1,7 @@
 #include "field_dialogue_runtime.hpp"
 
-#include "genesis_image_compositor.hpp"
-
-#include <QColor>
 #include <QPainter>
-#include <QRect>
 
-#include <algorithm>
-#include <array>
-#include <cstddef>
 #include <optional>
 #include <string_view>
 #include <utility>
@@ -39,10 +32,6 @@ std::optional<StokerMotelPromptId> stoker_prompt_for_asset(
     }
 }
 
-QColor source_panel_dark() { return QColor(48, 48, 48); }
-QColor source_panel_mid() { return QColor(112, 112, 112); }
-QColor source_panel_light() { return QColor(184, 184, 184); }
-
 } // namespace
 
 FieldDialogueRuntime::FieldDialogueRuntime(
@@ -53,44 +42,18 @@ bool FieldDialogueRuntime::load_assets(const ConversionAssetCatalog& assets) {
     failure_.clear();
     const auto text = load_dialogue_text_catalog(assets, "dialogue.stoker.motel");
     text_catalog_ = text.catalog;
-    if (!text.complete()) {
-        failure_ = text.errors.empty() ? "Stoker dialogue text is unavailable"
-                                       : text.errors.front();
+
+    if (!presenter_.load_assets(assets)) {
+        failure_ = presenter_.failure();
         assets_loaded_ = false;
         if (source_boundary_callback_) {
-            source_boundary_callback_("field.dialogue.text_assets_missing");
+            source_boundary_callback_("field.dialogue.shared_assets_unavailable");
         }
         return false;
     }
 
-    const auto* portrait_record =
-        assets.find("dialogue.portraits.stoker.motel");
-    const auto* font_record = assets.find("menu.field.font");
-    if (portrait_record == nullptr || font_record == nullptr) {
-        failure_ = "Stoker dialogue portrait or font asset is unavailable";
-        assets_loaded_ = false;
-        if (source_boundary_callback_) {
-            source_boundary_callback_("field.dialogue.image_assets_missing");
-        }
-        return false;
-    }
-
-    portrait_ = QImage(QString::fromStdWString(
-                           portrait_record->absolute_path.wstring()))
-                     .convertToFormat(QImage::Format_ARGB32_Premultiplied);
-    font_ = QImage(QString::fromStdWString(font_record->absolute_path.wstring()))
-                .convertToFormat(QImage::Format_ARGB32_Premultiplied);
-    if (portrait_.isNull() || font_.isNull()) {
-        failure_ = "Stoker dialogue image assets could not be loaded";
-        assets_loaded_ = false;
-        if (source_boundary_callback_) {
-            source_boundary_callback_("field.dialogue.image_assets_unreadable");
-        }
-        return false;
-    }
-
-    // The portrait's color-zero alpha arrives through the V4 BMP alpha
-    // mask; wiping black pixels would erase the sprite's outline.
+    // Speaker-specific tables remain controller-owned, while the presenter
+    // loads all available named portraits without choosing one itself.
     assets_loaded_ = true;
     return true;
 }
@@ -210,150 +173,8 @@ void FieldDialogueRuntime::close() noexcept {
     boundary_reason_.clear();
 }
 
-void FieldDialogueRuntime::draw_beveled_panel(QPainter& painter, const int x,
-                                              const int y, const int width,
-                                              const int height) const {
-    painter.fillRect(QRect(x, y, width, height), source_panel_dark());
-    painter.setPen(source_panel_light());
-    painter.drawLine(x, y, x + width - 4, y);
-    painter.drawLine(x, y, x, y + height - 4);
-    painter.setPen(source_panel_mid());
-    painter.drawLine(x + 2, y + 2, x + width - 6, y + 2);
-    painter.drawLine(x + 2, y + 2, x + 2, y + height - 6);
-    painter.setPen(QColor(16, 16, 16));
-    painter.drawLine(x + 3, y + height - 1, x + width - 1, y + height - 1);
-    painter.drawLine(x + width - 1, y + 3, x + width - 1, y + height - 1);
-    painter.fillRect(QRect(x + 5, y + 5, width - 10, height - 10),
-                     Qt::black);
-}
-
-void FieldDialogueRuntime::draw_pixel_text(QPainter& painter, const int x,
-                                            const int y,
-                                            const std::string_view text,
-                                            const int max_columns,
-                                            const int max_lines) const {
-    if (font_.isNull() || font_.width() < 8 || font_.height() < 8) {
-        return;
-    }
-    const auto bounded = std::min<std::size_t>(
-        text.size(), static_cast<std::size_t>(std::max(0, max_columns)));
-    auto cursor = x;
-    for (std::size_t index = 0U; index < bounded; ++index) {
-        const auto code = static_cast<unsigned char>(text[index]);
-        if (code < 0x20U || code > 0x7FU) {
-            cursor += 8;
-            continue;
-        }
-        const auto glyph = static_cast<int>(code - 0x20U);
-        const auto source_x = (glyph % 16) * 8;
-        const auto source_y = (glyph / 16) * 8;
-        if (source_x + 8 > font_.width() || source_y + 8 > font_.height()) {
-            cursor += 8;
-            continue;
-        }
-        QImage tinted_glyph(8, 8, QImage::Format_ARGB32_Premultiplied);
-        tinted_glyph.fill(Qt::transparent);
-        for (int glyph_y = 0; glyph_y < 8; ++glyph_y) {
-            for (int glyph_x = 0; glyph_x < 8; ++glyph_x) {
-                const auto source_pixel =
-                    font_.pixelColor(source_x + glyph_x, source_y + glyph_y);
-                const auto coverage = std::max(
-                    {source_pixel.red(), source_pixel.green(),
-                     source_pixel.blue()});
-                if (source_pixel.alpha() == 0 || coverage == 0) {
-                    continue;
-                }
-                const auto alpha = static_cast<int>(
-                    (static_cast<std::uint32_t>(source_pixel.alpha()) *
-                     static_cast<std::uint32_t>(coverage)) /
-                    255U);
-                tinted_glyph.setPixelColor(
-                    glyph_x, glyph_y, QColor(0, 255, 0, alpha));
-            }
-        }
-        painter.drawImage(cursor, y, tinted_glyph);
-        cursor += 8;
-    }
-    (void)max_lines;
-}
-
-int FieldDialogueRuntime::draw_wrapped_segment(
-    QPainter& painter, const int x, const int y, const std::string_view text,
-    const int max_columns, const int max_lines) const {
-    std::size_t cursor = 0U;
-    int line = 0;
-    while (cursor < text.size() && line < max_lines) {
-        while (cursor < text.size() && text[cursor] == ' ') {
-            ++cursor;
-        }
-        if (cursor >= text.size()) {
-            break;
-        }
-        const auto remaining = text.substr(cursor);
-        auto length = std::min<std::size_t>(
-            remaining.size(), static_cast<std::size_t>(max_columns));
-        if (length < remaining.size()) {
-            const auto break_at = remaining.rfind(' ', length);
-            if (break_at != std::string_view::npos && break_at != 0U) {
-                length = break_at;
-            }
-        }
-        draw_pixel_text(painter, x, y + line * 8,
-                        remaining.substr(0U, length), max_columns, 1);
-        cursor += length;
-        ++line;
-        while (cursor < text.size() && text[cursor] == ' ') {
-            ++cursor;
-        }
-    }
-    return line;
-}
-
 void FieldDialogueRuntime::paint(QPainter& painter) const {
-    if (!panel_.open) {
-        return;
-    }
-
-    painter.fillRect(0, 0, 320, 224, Qt::black);
-    // The source performs two repeated menu-grid writes before the text loop.
-    // These host panels retain the same three-region geometry observed in the
-    // independent Genesis capture while keeping the shell as ordinary Qt
-    // presentation, not as a bitmap flipbook.
-    draw_beveled_panel(painter, 8, 8, 68, 136);
-    draw_beveled_panel(painter, 76, 8, 236, 136);
-    draw_beveled_panel(painter, 8, 145, 304, 74);
-
-    if (panel_.actor_kind == DialoguePanelActorKind::field_npc &&
-        !portrait_.isNull()) {
-        painter.drawImage(16, 20, portrait_);
-    }
-
-    int text_line = 0;
-    for (std::size_t index = 0U; index < panel_.text_segment_count &&
-                                  text_line < 15;
-         ++index) {
-        text_line += draw_wrapped_segment(
-            painter, 82, 16 + text_line * 8, panel_.text_segments[index],
-            28, 15 - text_line);
-    }
-
-    if (panel_.kind == DialoguePanelKind::source_boundary) {
-        draw_wrapped_segment(painter, 82, 16, panel_.source_boundary_reason,
-                             28, 15);
-        return;
-    }
-
-    constexpr std::array<char, 3> kButtonLabels{'A', 'B', 'C'};
-    for (std::size_t index = 0U; index < panel_.option_count && index < 3U;
-         ++index) {
-        const auto y = 151 + static_cast<int>(index * 23U);
-        painter.setPen(source_panel_light());
-        painter.drawRect(QRect(17, y, 11, 11));
-        draw_pixel_text(painter, 19, y + 2,
-                        std::string_view(&kButtonLabels[index], 1), 1, 1);
-        draw_wrapped_segment(painter, 48, y,
-                             panel_.options[index].source_label, 32, 2);
-    }
+    presenter_.paint(painter, panel_);
 }
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime

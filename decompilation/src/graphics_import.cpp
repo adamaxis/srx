@@ -719,10 +719,10 @@ std::vector<std::string> read_genesis_dialogue_segments(
             return result;
         }
         if ((byte & 0x80U) != 0U) {
-            if (!segment.empty()) {
-                result.push_back(std::move(segment));
-                segment.clear();
-            }
+            // Repeated 0x80-family delimiters in dialogue streams preserve
+            // blank paragraph rows for the host text presenter.
+            result.push_back(std::move(segment));
+            segment.clear();
             continue;
         }
         if (byte < 0x20U || byte > 0x7EU) {
@@ -2906,6 +2906,116 @@ std::array<RgbaImage, 3> decode_genesis_field_menu_runner_portraits(
     return portraits;
 }
 
+RgbaImage decode_genesis_field_dialogue_panel_background(
+    const std::vector<std::uint8_t>& rom,
+    const bool alternate_portrait_panel) {
+    constexpr std::size_t kPatternStreamOffset = 0xCAB0CU;
+    constexpr std::size_t kPatternVramOffset = 0x1E20U;
+    constexpr std::size_t kNameTableColumns = 64U;
+    constexpr std::size_t kNameTableRows = 32U;
+    constexpr std::size_t kVisibleColumns = 40U;
+    constexpr std::size_t kVisibleRows = 28U;
+    constexpr std::size_t kNameTableRowStride = 0x80U;
+    constexpr std::size_t kNameTableBase = 0xE000U;
+
+    // 0x10918 loads the shared menu/panel patterns. The nine 0x1232 calls in
+    // 0x10984 then assemble the common metallic frame on Plane B. The tenth
+    // call is conditional on FFF0AF and replaces the left speaker well.
+    const auto pattern_vram = decode_genesis_1530_vram(
+        rom, kPatternStreamOffset, kPatternVramOffset);
+    std::array<std::uint16_t, kNameTableColumns * kNameTableRows>
+        name_table{};
+    const auto write_grid = [&](const std::size_t source_offset,
+                                const std::uint16_t destination,
+                                const std::size_t columns,
+                                const std::size_t rows) {
+        if (columns == 0U || rows == 0U ||
+            source_offset > rom.size() ||
+            columns * rows > (rom.size() - source_offset) / 2U ||
+            destination < kNameTableBase) {
+            throw std::out_of_range(
+                "Genesis dialogue frame name-table grid is truncated");
+        }
+        const auto table_offset =
+            static_cast<std::size_t>(destination) - kNameTableBase;
+        if ((table_offset & 1U) != 0U ||
+            table_offset / kNameTableRowStride >= kNameTableRows) {
+            throw std::out_of_range(
+                "Genesis dialogue frame destination is invalid");
+        }
+        const auto first_column =
+            (table_offset % kNameTableRowStride) / 2U;
+        const auto first_row = table_offset / kNameTableRowStride;
+        if (first_column + columns > kNameTableColumns ||
+            first_row + rows > kNameTableRows) {
+            throw std::out_of_range(
+                "Genesis dialogue frame grid exceeds the VDP plane");
+        }
+        for (std::size_t row = 0; row < rows; ++row) {
+            for (std::size_t column = 0; column < columns; ++column) {
+                const auto source = source_offset +
+                    (row * columns + column) * 2U;
+                name_table[(first_row + row) * kNameTableColumns +
+                           first_column + column] = read_rom_u16(
+                    rom, source,
+                    "Genesis dialogue frame name-table entry is truncated");
+            }
+        }
+    };
+
+    write_grid(0xCECD8U, 0xE000U, 20U, 2U);
+    write_grid(0xCED28U, 0xE028U, 20U, 2U);
+    write_grid(0xCED78U, 0xE100U, 10U, 15U);
+    write_grid(0xCEEA4U, 0xE14CU, 2U, 15U);
+    write_grid(0xCEEE0U, 0xE880U, 20U, 2U);
+    write_grid(0xCEF30U, 0xE8A8U, 20U, 2U);
+    write_grid(0xCEF80U, 0xE980U, 1U, 9U);
+    write_grid(0xCEF92U, 0xE9CEU, 1U, 9U);
+    write_grid(0xCEFA4U, 0xED82U, 38U, 1U);
+    if (alternate_portrait_panel) {
+        write_grid(0xCEFF0U, 0xE100U, 10U, 15U);
+    }
+
+    const auto palette = read_genesis_command_palette_set(rom);
+    RgbaImage image{
+        static_cast<std::uint16_t>(kVisibleColumns * 8U),
+        static_cast<std::uint16_t>(kVisibleRows * 8U),
+        std::vector<native::Rgba8>(
+            kVisibleColumns * kVisibleRows * 64U,
+            native::Rgba8{0, 0, 0, 255}),
+    };
+    for (std::size_t row = 0; row < kVisibleRows; ++row) {
+        for (std::size_t column = 0; column < kVisibleColumns; ++column) {
+            const auto name_word =
+                name_table[row * kNameTableColumns + column];
+            const auto tile_index =
+                static_cast<std::size_t>(name_word & 0x07FFU);
+            if (tile_index * 32U + 32U > pattern_vram.size()) {
+                throw std::out_of_range(
+                    "Genesis dialogue frame tile is outside the loaded patterns");
+            }
+            const auto tile = decode_genesis_tile(
+                pattern_vram.data() + tile_index * 32U, 32U);
+            const auto palette_line =
+                static_cast<std::size_t>((name_word >> 13U) & 0x03U);
+            const auto hflip = (name_word & 0x0800U) != 0U;
+            const auto vflip = (name_word & 0x1000U) != 0U;
+            for (std::size_t pixel_y = 0; pixel_y < 8U; ++pixel_y) {
+                for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
+                    const auto source_x = hflip ? 7U - pixel_x : pixel_x;
+                    const auto source_y = vflip ? 7U - pixel_y : pixel_y;
+                    const auto color_index =
+                        tile.pixels[source_y * 8U + source_x];
+                    auto color = palette[palette_line * 16U + color_index];
+                    color.alpha = 255U;
+                    image.pixels[(row * 8U + pixel_y) * image.width +
+                                 column * 8U + pixel_x] = color;
+                }
+            }
+        }
+    }
+    return image;
+}
 namespace {
 
 RgbaImage decode_genesis_menu_name_table_block(
@@ -2913,7 +3023,8 @@ RgbaImage decode_genesis_menu_name_table_block(
     const std::vector<std::uint8_t>& pattern_vram,
     std::size_t source_offset, std::size_t width, std::size_t height,
     const std::array<native::Rgba8, 64>& palette,
-    std::uint16_t attributes = 0U) {
+    std::uint16_t attributes = 0U,
+    const bool transparent_color_zero = false) {
     if (width == 0U || height == 0U || source_offset > rom.size() ||
         width * height > (rom.size() - source_offset) / 2U) {
         throw std::out_of_range(
@@ -2948,9 +3059,12 @@ RgbaImage decode_genesis_menu_name_table_block(
             for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
                 const auto source_x = hflip ? 7U - pixel_x : pixel_x;
                 const auto source_y = vflip ? 7U - pixel_y : pixel_y;
-                auto color = palette[palette_line * 16U + tile.pixels[
-                    source_y * 8U + source_x]];
-                color.alpha = 255;
+                const auto color_index = tile.pixels[
+                    source_y * 8U + source_x];
+                auto color = palette[palette_line * 16U + color_index];
+                color.alpha = transparent_color_zero && color_index == 0U
+                                  ? 0U
+                                  : 255U;
                 image.pixels[(tile_y + pixel_y) * image.width +
                              tile_x + pixel_x] = color;
             }
@@ -2960,6 +3074,28 @@ RgbaImage decode_genesis_menu_name_table_block(
 }
 
 } // namespace
+
+std::array<RgbaImage, 3>
+decode_genesis_field_dialogue_option_markers(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kPatternStreamOffset = 0xCAB0CU;
+    constexpr std::size_t kPatternVramOffset = 0x1E20U;
+    constexpr std::array<std::size_t, 3> kOptionSources{{
+        0xCF11CU, 0xCF124U, 0xCF12CU,
+    }};
+    const auto pattern_vram = decode_genesis_1530_vram(
+        rom, kPatternStreamOffset, kPatternVramOffset);
+    const auto palette = read_genesis_command_palette_set(rom);
+    std::array<RgbaImage, kOptionSources.size()> markers{};
+    for (std::size_t index = 0; index < markers.size(); ++index) {
+        // 0x1F3C4 writes each 2x2 button graphic into the lower content well.
+        // Color-zero transparency preserves the freshly cleared black panel.
+        markers[index] = decode_genesis_menu_name_table_block(
+            rom, pattern_vram, kOptionSources[index], 2U, 2U, palette, 0U,
+            true);
+    }
+    return markers;
+}
 
 RgbaImage decode_genesis_field_menu_action_background(
     const std::vector<std::uint8_t>& rom) {

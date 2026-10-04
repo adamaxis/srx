@@ -50,6 +50,13 @@ enum class DialoguePanelActorKind {
     field_npc,
 };
 
+// Source 0x10984 has a shared frame and an optional left-panel replacement
+// selected by FFF0AF. The source controller owns that selection.
+enum class DialoguePanelFrameVariant : std::uint8_t {
+    standard,
+    alternate_left_panel,
+};
+
 // The presenter dispatches this semantic command back to the owning
 // conversion controller. It is deliberately broader than either source
 // command table, so the common panel does not carry Genesis command numbers.
@@ -85,6 +92,9 @@ struct DialoguePanelOption {
         DialoguePanelCommand::runner_leave_conversation;
 };
 
+// A conversation source resolves this view from its speaker properties and
+// triggering event before presentation. The common panel consumes only the
+// already selected portrait, text segments, options, and continuation state.
 struct DialoguePanelView {
     bool open = false;
     DialoguePanelActorKind actor_kind =
@@ -96,9 +106,13 @@ struct DialoguePanelView {
     // the presenter must not substitute another NPC's image.
     std::string_view portrait_alias;
     DialoguePanelKind kind = DialoguePanelKind::closed;
+    DialoguePanelFrameVariant frame_variant =
+        DialoguePanelFrameVariant::standard;
     std::size_t page_index = 0;
 
-    std::array<std::string_view, 4> text_segments{};
+    // Source 0x80 separators can include blank paragraph rows. Keep enough
+    // segments for complete dialogue text, including those blank rows.
+    std::array<std::string_view, 16> text_segments{};
     std::size_t text_segment_count = 0;
     std::array<DialoguePanelOption, 3> options{};
     std::size_t option_count = 0;

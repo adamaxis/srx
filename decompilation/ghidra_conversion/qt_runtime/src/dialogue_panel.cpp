@@ -86,8 +86,11 @@ DialoguePanelCommand map_stoker_command(
 
 void copy_text_stream(DialoguePanelView& view,
                       const RecruitedRunnerInformationTextStream& stream) {
-    view.text_segments = stream.segments;
-    view.text_segment_count = stream.segment_count;
+    const auto count = std::min(stream.segment_count,
+                                view.text_segments.size());
+    std::copy_n(stream.segments.begin(), count,
+                view.text_segments.begin());
+    view.text_segment_count = count;
 }
 
 void add_option(DialoguePanelView& view, const DialoguePanelOptionRole role,
@@ -132,7 +135,7 @@ void copy_text_alias_stream(DialoguePanelView& view,
         view.text_segment_count == view.text_segments.size()) {
         view.source_complete = false;
         view.source_boundary_reason =
-            "dialogue text stream exceeds the shared four-segment panel";
+            "dialogue text stream exceeds the shared panel capacity";
     }
 }
 
@@ -343,8 +346,16 @@ DialoguePanelView make_dialogue_panel_view(
 
     for (std::size_t index = 0U; index < source_view.option_count; ++index) {
         const auto& option = source_view.options[index];
-        const auto label = resolve_text ? resolve_text(option.text_alias)
-                                        : std::string_view{};
+        auto label = resolve_text ? resolve_text(option.text_alias)
+                                  : std::string_view{};
+        if (source_view.has_more) {
+            // A leading empty source segment is a text-stream delimiter, not
+            // part of the centered continuation label. Preserve the authored
+            // spaces after it; they carry the source's horizontal placement.
+            while (!label.empty() && label.front() == '|') {
+                label.remove_prefix(1U);
+            }
+        }
         if (label.empty()) {
             mark_missing_text(view, option.text_alias);
         }

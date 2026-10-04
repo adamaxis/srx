@@ -83,12 +83,14 @@ int main() {
     assert((stoker_arrival_text ==
             std::vector<std::string>{
                 "<The battered sign reads Stoker's Coffin Motel.",
+                "",
                 "Motels like these are cheap, each room only large enough to fit a small bed.",
+                "",
                 "Dumps like these tend to attract the dregs of humanity.>"}));
     const auto stoker_more_text =
         read_genesis_dialogue_segments(rom, 0x0FE5BFU);
-    assert(stoker_more_text.size() == 1U &&
-           stoker_more_text[0].find("< MORE >") != std::string::npos);
+    assert((stoker_more_text ==
+            std::vector<std::string>{"", "          < MORE >"}));
     const auto stoker_package_option =
         read_genesis_dialogue_segments(rom, 0x103A55U);
     assert((stoker_package_option ==
@@ -202,6 +204,59 @@ int main() {
                 "Dermal Plating(2)", "Dermal Plating(3)",
                 "Wired Reflexes(1)", "Wired Reflexes(2)",
                 "Wired Reflexes(3)"}));
+    const auto dialogue_frame =
+        decode_genesis_field_dialogue_panel_background(rom, false);
+    const auto dialogue_frame_alternate =
+        decode_genesis_field_dialogue_panel_background(rom, true);
+    assert(dialogue_frame.width == 320U && dialogue_frame.height == 224U);
+    assert(dialogue_frame_alternate.width == 320U &&
+           dialogue_frame_alternate.height == 224U);
+    bool dialogue_left_panel_differs = false;
+    for (std::size_t y = 0; y < dialogue_frame.height; ++y) {
+        for (std::size_t x = 0; x < dialogue_frame.width; ++x) {
+            const auto index = y * dialogue_frame.width + x;
+            const auto& standard = dialogue_frame.pixels[index];
+            const auto& alternate = dialogue_frame_alternate.pixels[index];
+            if (x < 80U &&
+                (standard.red != alternate.red ||
+                 standard.green != alternate.green ||
+                 standard.blue != alternate.blue ||
+                 standard.alpha != alternate.alpha)) {
+                dialogue_left_panel_differs = true;
+            }
+            if (x >= 80U) {
+                assert(standard.red == alternate.red &&
+                       standard.green == alternate.green &&
+                       standard.blue == alternate.blue &&
+                       standard.alpha == alternate.alpha);
+            }
+        }
+    }
+    assert(dialogue_left_panel_differs);
+    const auto dialogue_buttons =
+        decode_genesis_field_dialogue_option_markers(rom);
+    for (const auto& button : dialogue_buttons) {
+        assert(button.width == 16U && button.height == 16U);
+        assert(button.pixels.size() == 16U * 16U);
+        assert(std::any_of(button.pixels.begin(), button.pixels.end(),
+                           [](const auto& pixel) {
+                               return pixel.alpha != 0U;
+                           }));
+    }
+    for (std::size_t left = 0; left < dialogue_buttons.size(); ++left) {
+        for (std::size_t right = left + 1U;
+             right < dialogue_buttons.size(); ++right) {
+            bool differs = false;
+            for (std::size_t pixel = 0;
+                 pixel < dialogue_buttons[left].pixels.size(); ++pixel) {
+                const auto& a = dialogue_buttons[left].pixels[pixel];
+                const auto& b = dialogue_buttons[right].pixels[pixel];
+                differs = differs || a.red != b.red || a.green != b.green ||
+                          a.blue != b.blue || a.alpha != b.alpha;
+            }
+            assert(differs);
+        }
+    }
     const auto attribute_skill_catalog =
         read_genesis_attribute_skill_catalog(rom);
     assert(attribute_skill_catalog.size() == 20);

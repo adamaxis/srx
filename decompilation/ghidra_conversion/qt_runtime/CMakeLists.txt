@@ -13,6 +13,7 @@ add_executable(shadowrun_ghidra_conversion_qt
     src/field_command_overview_bridge.cpp
     src/genesis_image_compositor.cpp
     src/dialogue_panel.cpp
+    src/dialogue_panel_presenter.cpp
     src/dialogue_text_catalog.cpp
     src/field_dialogue_runtime.cpp
     src/audio_playback.cpp
@@ -96,6 +97,16 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_secretary_qa
                  --field-secretary-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-secretary-qa.bmp")
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_secretary_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
+# Dump the source-backed Stoker package prompt as the dialogue hill's named
+# actual image. The focused runtime test checks its panel pixels and branches.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_dialogue_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-dialogue-dump manager-package
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-dialogue-qa/manager-package/actual.bmp")
+set_tests_properties(shadowrun_ghidra_conversion_qt_field_dialogue_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Exercise both ROM 0x11950 branches. The normal field smoke record has bit 0
@@ -229,6 +240,7 @@ add_test(NAME shadowrun_ghidra_dialogue_panel
 add_executable(shadowrun_ghidra_field_dialogue_runtime_test
     tests/field_dialogue_runtime_test.cpp
     src/field_dialogue_runtime.cpp
+    src/dialogue_panel_presenter.cpp
     src/dialogue_panel.cpp
     src/dialogue_text_catalog.cpp
     src/genesis_image_compositor.cpp

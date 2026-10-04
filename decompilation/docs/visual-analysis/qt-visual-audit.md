@@ -536,3 +536,71 @@ silently rendered as Samurai, a sprite family merged into a background, a
 fade affecting the wrong layer, or a runtime path that has no source-derived
 record to explain it. Such a finding goes back to conversion analysis before
 new behavior is invented.
+
+### Applied review: shared field dialogue panel
+
+1. **Does it look correct?** The Debug CLI CTest writes the manager prompt to
+   `decompilation/ghidra_conversion/build-ghidra-conversion-qt-debug/qt_runtime/field-dialogue-qa/manager-package/actual.bmp`.
+   The extracted standard frame now matches the metallic border and right rail
+   in independent section 03 frames 000300, 000600, 001200, 001500, and 001800.
+   The manager paragraphs begin at x=88 on rows 16, 32, and 56. The Qt view
+   uses the same origin, preserves blank paragraph rows, and displays the
+   source A/B/C marker sprites and lower option rows.
+2. **Does the look reflect the actual behavioral state?** A conversation
+   source resolves the speaker, triggering event, prompt/page, text, portrait,
+   choices, and frame variant into `DialoguePanelView`. `DialoguePanelPresenter`
+   consumes that view without choosing Stoker content. The Stoker controller
+   binds the profile-0 portrait and `dialogue.stoker.motel` text for the
+   `manager` and `manager-package` states. The synthetic second-speaker check
+   supplies its own text and no portrait, so the presenter does not borrow
+   Stoker's image. Live field-property/event selection and additional speaker
+   providers remain unconnected.
+3. **Are the visuals themselves correct?** ROM `0x10984` installs nine shared
+   frame regions using patterns loaded at `0x10918`; its tenth `0xCEFF0` block
+   replaces the left panel when `FFF0AF` is set. The offline importer exports
+   both 320x224 frame variants. ROM `0x1F5A8` clears the body at `(88,16)` and
+   the lower panel at `(16,152)` before `0x1F3C4` draws content. That prompt
+   path uses `0xC168` with a 27-column body and sends its 2x2 A/B/C markers
+   from `0xCF11C`, `0xCF124`, and `0xCF12C` through `0x1232`. These assets
+   replace the former hand-drawn bevel and square markers. The `FFF0AF` frame
+   choice is represented in typed view state, but its live source binding is
+   not implemented.
+4. **Is it animated, and should it be?** The prompt redraws on entry or page
+   change, waits for VBlank, and samples input; it has no dialogue animation
+   counter. Independent frames 000300-000302 and 001800-001802 are pixel
+   identical holds. The frame and portrait therefore stay static in the
+   observed pages; other event scenes have not been checked.
+5. **Does sound accompany it?** The traced `0x1F246`/`0x1F3C4` draw and wait
+   path and prompt callbacks `0x213CA`, `0x213E2`, and `0x21458` contain no
+   direct sound-play call. The optional `A1` hook in `0x1F246` is indirect and
+   unresolved. The background soundtrack has not been measured as a dialogue
+   effect, so no dialogue sound ID or clip duration is assigned.
+6. **Are related parts of the screen also correct?** The review covers the
+   frame, left speaker well, portrait alias, paragraph rows, exact source
+   button sprites, option labels, centered `< MORE >`, page/return state, and
+   full lower panel. Manager choices, debt choices, and a no-choice
+   continuation page use the same panel. Debt payment, room payment, random
+   arrival, and a live building entry are not yet connected end to end.
+7. **Do multiple frames support the interpretation?** Section 03 frame 000300
+   shows manager choices, 000600 shows the debt question, 001200 shows an
+   information page with another portrait, 001500 shows another three-choice
+   page, and 001800 shows `< MORE >`. The shared frame persists while the
+   speaker and source-provided contents change. Adjacent 000300-000302 and
+   001800-001802 captures are pixel-identical holds. These examples do not
+   prove every speaker or event uses the same transition graph.
+8. **Was the previous screen cleared before the new one was drawn?** Each open
+   page clears the full 320x224 canvas, redraws the frame, then clears both
+   source content wells before drawing new text and markers. The Debug and
+   Release tests paint over a magenta sentinel and confirm it is gone; they
+   also verify the source A marker asset, no Stoker portrait for the synthetic
+   speaker, and removal of the third option and marker on the next page. CLI
+   captures are standalone views, so the live field-to-dialog-to-field
+   restoration remains unverified.
+
+**Status:** partial. The shared frame, conditional frame asset, source option
+markers, body/choice placement, blank rows, and observed static timing are
+source traced and checked against multiple independent gameplay frames. Debug
+and Release tests cover rendering and the manager-to-debt-to-referral path.
+Live speaker/event lookup, `FFF0AF` frame selection, additional speaker data,
+remaining payment results, live field restoration, and measured dialogue
+audio remain open.

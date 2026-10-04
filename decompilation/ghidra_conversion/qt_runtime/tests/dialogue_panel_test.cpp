@@ -163,12 +163,13 @@ int main() {
         !expect(stoker_panel.portrait_alias ==
                 "dialogue.portraits.stoker.motel") ||
         !expect(stoker_panel.kind == DialoguePanelKind::field_npc_prompt) ||
-        !expect(stoker_panel.text_segment_count == 3U) ||
+        !expect(stoker_panel.text_segment_count == 5U) ||
+        !expect(stoker_panel.text_segments[1].empty()) ||
+        !expect(stoker_panel.text_segments[3].empty()) ||
         !expect(stoker_panel.text_segments[0].find("Stoker's Coffin Motel") !=
                 std::string_view::npos) ||
         !expect(stoker_panel.has_more) ||
-        !expect(stoker_panel.continuation_label.find("< MORE >") !=
-                std::string_view::npos) ||
+        !expect(stoker_panel.continuation_label == "          < MORE >") ||
         !expect(dialogue_panel_option_command(stoker_panel, 0U).value() ==
                 DialoguePanelCommand::stoker_resolve_arrival)) {
         return 11;

@@ -1,14 +1,13 @@
 #pragma once
 
 #include "dialogue_panel.hpp"
+#include "dialogue_panel_presenter.hpp"
 #include "dialogue_text_catalog.hpp"
-
-#include <QImage>
 
 #include <cstdint>
 #include <functional>
-#include <string_view>
 #include <string>
+#include <string_view>
 
 class QPainter;
 
@@ -59,19 +58,10 @@ private:
     bool open_stoker_prompt(StokerMotelPromptId prompt);
     bool open_source_boundary(std::string reason);
     std::string_view resolve_text(std::string_view alias) const;
-    void draw_pixel_text(QPainter& painter, int x, int y,
-                         std::string_view text, int max_columns,
-                         int max_lines) const;
-    int draw_wrapped_segment(QPainter& painter, int x, int y,
-                             std::string_view text, int max_columns,
-                             int max_lines) const;
-    void draw_beveled_panel(QPainter& painter, int x, int y, int width,
-                            int height) const;
 
     std::function<void(std::string_view)> source_boundary_callback_;
     DialogueTextCatalog text_catalog_;
-    QImage portrait_;
-    QImage font_;
+    DialoguePanelPresenter presenter_;
     DialoguePanelView panel_{};
     StokerMotelPromptId active_prompt_ = StokerMotelPromptId::source_boundary;
     std::string failure_;
