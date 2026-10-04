@@ -263,6 +263,7 @@ dialogue/panel/frame.bmp	background	0	0	320	224	0x10984/0x10918/0xCAB0C/0xCECD8-
 dialogue/panel/frame-alternate-left-panel.bmp	background	0	0	320	224	0x10984/0x10918/0xCAB0C/0xCEFF0 (FFF0AF)	extracted
 dialogue/portraits/stoker-motel.bmp	sprite	0	0	56	72	0x1F65A/0x121FA0/0x1287C6/0x122420	extracted
 field/hud/background.bmp	background	0	0	320	224	0x334C/0x39F2	extracted
+field/mode-entry/ares-sprite.bmp	sprite	0	0	56	72	0x1FA78/0x1F246/0x1F292/0x1220C0	extracted
 field/hud/face-0.bmp	sprite	0	0	32	32	0x3404[0]	extracted
 field/hud/face-1.bmp	sprite	0	0	32	32	0x3404[1]	extracted
 field/hud/face-2.bmp	sprite	0	0	32	32	0x3404[2]	extracted

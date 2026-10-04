@@ -136,6 +136,15 @@ int main() {
     assert(field_service_titles[0].text == "Weapons World");
     assert(field_service_titles[1].text == "Ares Weapon Emporium");
     assert(field_service_titles[1].destination_word == 0xC110U);
+    const auto ares_mode_sprite =
+        decode_genesis_field_mode_profile_sprite(rom, 0x1220C0U);
+    assert(ares_mode_sprite.width == 56U);
+    assert(ares_mode_sprite.height == 72U);
+    assert(std::any_of(ares_mode_sprite.pixels.begin(),
+                       ares_mode_sprite.pixels.end(),
+                       [](const shadowrun::native::Rgba8& pixel) {
+                           return pixel.alpha != 0U;
+                       }));
     const auto entity_template =
         read_genesis_field_entity_template(rom);
     assert(entity_template.record_offset == 0x7291A);

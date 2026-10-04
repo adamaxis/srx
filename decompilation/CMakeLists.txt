@@ -64,6 +64,12 @@ target_link_libraries(shadowrun_graphics_test PRIVATE
     shadowrun_graphics_import shadowrun_port)
 target_compile_definitions(shadowrun_graphics_test PRIVATE
     SHADOWRUN_TEST_ROM="${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin")
+# Keep assert-based import checks active in Release as well as Debug.
+if(MSVC)
+    target_compile_options(shadowrun_graphics_test PRIVATE /UNDEBUG)
+else()
+    target_compile_options(shadowrun_graphics_test PRIVATE -UNDEBUG)
+endif()
 add_test(NAME shadowrun_graphics COMMAND shadowrun_graphics_test)
 
 add_executable(shadowrun_menu_system_test

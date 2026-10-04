@@ -1518,6 +1518,14 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     // Field HUD and menu source layers.
     write("field/hud/background.bmp", assets.field_hud, "background",
           "0x334C/0x39F2", false);
+    const auto ares_mode_sprite =
+        shadowrun::graphics::decode_genesis_field_mode_profile_sprite(
+            rom, 0x1220C0U);
+    write("field/mode-entry/ares-sprite.bmp",
+          shadowrun::native::NativeImage{ares_mode_sprite.width,
+                                         ares_mode_sprite.height,
+                                         ares_mode_sprite.pixels},
+          "sprite", "0x1FA78/0x1F246/0x1F292/0x1220C0", true);
     write_array("field/hud/face-", assets.field_hud_faces, "sprite", "0x3404",
                 true);
     write_array("field/hud/item-", assets.field_hud_item_blocks, "sprite",

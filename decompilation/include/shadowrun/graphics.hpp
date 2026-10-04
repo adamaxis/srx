@@ -413,6 +413,12 @@ std::vector<std::uint8_t> decode_genesis_resource_stream(
 RgbaImage decode_genesis_field_dialogue_portrait(
     const std::vector<std::uint8_t>& rom, std::size_t profile_index);
 
+// ROM 0x1F292 consumes the same palette/pattern/7x9 sprite-profile shape as
+// 0x1F65A. Decode a directly selected profile into a named host image for
+// offline extraction; the runtime does not retain its ROM pointer or VDP map.
+RgbaImage decode_genesis_field_mode_profile_sprite(
+    const std::vector<std::uint8_t>& rom, std::size_t profile_offset);
+
 std::array<native::Rgba8, 16> read_genesis_palette(
     const std::vector<std::uint8_t>& rom, std::size_t byte_offset);
 
