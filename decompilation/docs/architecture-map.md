@@ -279,17 +279,24 @@ creating an NPC-specific dialogue widget. Its semantic commands are returned
 to the owning conversion controller, so the panel carries no ROM addresses or
 Genesis command bytes.
 
-The remaining boundary is integration: `0x249C4`'s random arrival branch,
-live field speaker/event dispatch, exact source tile placement, the
-room-payment return to Hotel Options, and the debt-payment result still need
-source traces and independent Qt image dumps. The separate
+After the typed Stoker arrival record is selected, the ordinary `0x249C4`
+branch now runs from the shared Qt controller: rolls 0..79 select the source
+`0xF4AB4` manager record. Rolls 80..99 still stop
+at an explicit boundary because the `0x1E1FC` effect sequence is not
+connected. The host uses the source bounded-random algorithm, but its field
+seed is currently initialized by Qt. The three-option package state seen in
+independent section 03 frame 000300 has no traced live property condition and
+is not substituted for the two-option record. Exact source tile placement,
+the room-payment return to Hotel Options, and the debt-payment result still
+need source traces and independent Qt image dumps. The separate
 `qt_runtime/field_dialogue_runtime.*` seam now connects the converted field
 exit orchestrator to the shared panel without duplicating field state or
 putting ROM pointers in the runtime. Its controller path preserves the
 source A/B/C priority and title-only wait semantics. The diagnostic
-`--field-dialogue-dump` path exercises this typed projection, but the hill
-remains `partial` until a real field trigger and independent visual defense
-exist.
+`--field-dialogue-dump arrival-manager` path exercises the arrival command
+and emits its manager result. The hill remains `partial` until package-state
+selection, rare-effect handling, real field placement, and independent visual
+defense exist.
 No other field-exit profile is allowed to borrow Stoker's portrait or text
 aliases.
 

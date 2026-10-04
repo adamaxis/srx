@@ -44,8 +44,15 @@ FieldExitPromptAction FieldDialogueEventResolver::resolve(
 }
 
 FieldDialogueRuntime::FieldDialogueRuntime(
-    std::function<void(std::string_view)> source_boundary)
-    : source_boundary_callback_(std::move(source_boundary)) {}
+    std::function<void(std::string_view)> source_boundary,
+    StokerMotelArrivalCommandCallbacks arrival_command_callbacks)
+    : source_boundary_callback_(std::move(source_boundary)),
+      arrival_command_callbacks_(std::move(arrival_command_callbacks)) {}
+
+void FieldDialogueRuntime::set_arrival_command_callbacks(
+    StokerMotelArrivalCommandCallbacks callbacks) {
+    arrival_command_callbacks_ = std::move(callbacks);
+}
 
 bool FieldDialogueRuntime::load_assets(const ConversionAssetCatalog& assets) {
     failure_.clear();
@@ -84,6 +91,28 @@ bool FieldDialogueRuntime::open_field_exit_prompt(
 bool FieldDialogueRuntime::open_stoker_prompt_for_dump(
     const StokerMotelPromptId prompt) {
     return open_stoker_prompt(prompt);
+}
+
+bool FieldDialogueRuntime::open_stoker_arrival_result_for_dump(
+    const std::uint8_t random_roll) {
+    const auto saved_callbacks = arrival_command_callbacks_;
+    arrival_command_callbacks_.sample_random_bound =
+        [random_roll](const std::uint8_t bound)
+        -> std::optional<std::uint8_t> {
+        if (bound != 100U || random_roll >= bound) {
+            return std::nullopt;
+        }
+        return random_roll;
+    };
+    arrival_command_callbacks_.forward_ambush_effect_sequence = {};
+
+    const bool arrival_opened = open_stoker_prompt(StokerMotelPromptId::arrival);
+    const bool result_opened =
+        arrival_opened &&
+        advance_controller_events(kControllerAEvent) ==
+            FieldDialogueAdvanceResult::prompt_advanced;
+    arrival_command_callbacks_ = saved_callbacks;
+    return result_opened;
 }
 
 bool FieldDialogueRuntime::open_stoker_prompt(
@@ -159,6 +188,32 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
     }
 
     panel_.selected_option = option_index;
+    const auto command = stoker_motel_prompt_command(active_prompt_,
+                                                     option_index);
+    if (!command.has_value()) {
+        open_source_boundary("selected Stoker option has no command record");
+        return FieldDialogueAdvanceResult::source_boundary;
+    }
+    if (*command == StokerMotelPromptCommand::resolve_arrival) {
+        const auto result = resolve_stoker_motel_arrival_command(
+            arrival_command_callbacks_);
+        if (result == StokerMotelArrivalCommandResult::manager_greeting) {
+            if (!open_stoker_prompt(StokerMotelPromptId::manager_greeting)) {
+                return FieldDialogueAdvanceResult::source_boundary;
+            }
+            return FieldDialogueAdvanceResult::prompt_advanced;
+        }
+        if (result == StokerMotelArrivalCommandResult::street_ambush) {
+            if (!open_stoker_prompt(StokerMotelPromptId::street_ambush)) {
+                return FieldDialogueAdvanceResult::source_boundary;
+            }
+            return FieldDialogueAdvanceResult::prompt_advanced;
+        }
+        open_source_boundary(
+            "Stoker arrival random or ambush-effect callback is unresolved");
+        return FieldDialogueAdvanceResult::source_boundary;
+    }
+
     const auto target = stoker_motel_prompt_target(active_prompt_, option_index);
     if (!target.has_value()) {
         open_source_boundary(

@@ -4,6 +4,7 @@
 #include "dialogue_panel_presenter.hpp"
 #include "dialogue_text_catalog.hpp"
 #include "shadowrun_ghidra/field/field_exit_prompt_conversion.hpp"
+#include "shadowrun_ghidra/field/stoker_motel_arrival_command_conversion.hpp"
 
 #include <cstdint>
 #include <functional>
@@ -48,9 +49,13 @@ public:
 class FieldDialogueRuntime final {
 public:
     explicit FieldDialogueRuntime(
-        std::function<void(std::string_view)> source_boundary);
+        std::function<void(std::string_view)> source_boundary,
+        StokerMotelArrivalCommandCallbacks arrival_command_callbacks = {});
 
     bool load_assets(const ConversionAssetCatalog& assets);
+
+    void set_arrival_command_callbacks(
+        StokerMotelArrivalCommandCallbacks callbacks);
 
     // Bind the selection made by converted 0x1F65A to a common NPC panel.
     // Profiles whose portrait/text records have not been extracted remain a
@@ -61,6 +66,7 @@ public:
     // same typed prompt graph as the field-exit callback without pretending
     // that a missing world interaction trigger has been converted.
     bool open_stoker_prompt_for_dump(StokerMotelPromptId prompt);
+    bool open_stoker_arrival_result_for_dump(std::uint8_t random_roll);
 
     FieldDialogueAdvanceResult advance_controller_events(
         std::uint16_t event_word);
@@ -85,6 +91,7 @@ private:
     DialoguePanelPresenter presenter_;
     DialoguePanelView panel_{};
     StokerMotelPromptId active_prompt_ = StokerMotelPromptId::source_boundary;
+    StokerMotelArrivalCommandCallbacks arrival_command_callbacks_;
     std::string failure_;
     std::string boundary_reason_;
     bool assets_loaded_ = false;

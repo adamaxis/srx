@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
+#include <optional>
 #include <string_view>
 
 namespace {
@@ -100,8 +101,22 @@ int main() {
     }
 
     std::string_view boundary;
+    std::uint8_t arrival_roll = 79U;
+    std::uint8_t observed_arrival_bound = 0U;
+    std::size_t arrival_roll_count = 0U;
+    StokerMotelArrivalCommandCallbacks arrival_callbacks{};
+    arrival_callbacks.sample_random_bound =
+        [&arrival_roll, &observed_arrival_bound,
+         &arrival_roll_count](const std::uint8_t bound)
+        -> std::optional<std::uint8_t> {
+        observed_arrival_bound = bound;
+        ++arrival_roll_count;
+        return bound == 100U ? std::optional<std::uint8_t>(arrival_roll)
+                             : std::nullopt;
+    };
     FieldDialogueRuntime runtime(
-        [&boundary](const std::string_view reason) { boundary = reason; });
+        [&boundary](const std::string_view reason) { boundary = reason; },
+        arrival_callbacks);
     if (!expect(runtime.load_assets(assets.catalog))) {
         return 2;
     }
@@ -229,11 +244,104 @@ int main() {
         return 14;
     }
     if (!expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(arrival_roll_count == 1U) ||
+        !expect(observed_arrival_bound == 100U) ||
+        !expect(runtime.panel().actor_name == "Stoker") ||
+        !expect(runtime.panel().actor_kind ==
+                DialoguePanelActorKind::field_npc) ||
+        !expect(runtime.panel().portrait_alias ==
+                "dialogue.portraits.stoker.motel") ||
+        !expect(runtime.panel().option_count == 2U) ||
+        !expect(!runtime.panel().has_more) ||
+        !expect(dialogue_panel_option_command(runtime.panel(), 0U) ==
+                DialoguePanelCommand::stoker_open_room_offer) ||
+        !expect(dialogue_panel_option_command(runtime.panel(), 1U) ==
+                DialoguePanelCommand::stoker_open_leave_notice) ||
+        !expect(runtime.panel().text_segments[0].find("manager yawns") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().options[2].source_label.empty())) {
+        return 8;
+    }
+    QImage manager_after_arrival(320, 224, QImage::Format_RGB32);
+    manager_after_arrival.fill(Qt::magenta);
+    QPainter manager_after_arrival_painter(&manager_after_arrival);
+    runtime.paint(manager_after_arrival_painter);
+    manager_after_arrival_painter.end();
+    if (!expect(!has_exact_color(manager_after_arrival, 0, 0, 320, 224,
+                                 QColor(Qt::magenta))) ||
+        !expect(has_green_ink(manager_after_arrival, 88, 16, 216, 8)) ||
+        !expect(has_green_ink(manager_after_arrival, 48, 152, 216, 8)) ||
+        !expect(!has_green_ink(manager_after_arrival, 48, 200, 256, 16)) ||
+        !expect(!has_nonblack_pixel(manager_after_arrival, 17, 203, 11, 11))) {
+        return 53;
+    }
+    for (int frame = 0; frame < 30; ++frame) {
+        if (!expect(runtime.advance_controller_events(0U) ==
+                    FieldDialogueAdvanceResult::waiting_for_controller)) {
+            return 60;
+        }
+    }
+    QImage manager_idle(320, 224, QImage::Format_RGB32);
+    manager_idle.fill(Qt::magenta);
+    QPainter manager_idle_painter(&manager_idle);
+    runtime.paint(manager_idle_painter);
+    manager_idle_painter.end();
+    if (!expect(matches_region(manager_after_arrival, manager_idle, 0, 0,
+                               320, 224))) {
+        return 61;
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().text_segments[0].find("20$") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().option_count == 2U)) {
+        return 56;
+    }
+
+    // The 80..99 path must not be misreported as the manager greeting while
+    // the source 0x1E1FC effect sequence is still unbound.
+    if (!expect(runtime.open_field_exit_prompt(arrival))) {
+        return 54;
+    }
+    arrival_roll = 80U;
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::source_boundary) ||
         !expect(runtime.panel().kind == DialoguePanelKind::source_boundary) ||
-        !expect(boundary.find("no fully converted continuation") !=
+        !expect(boundary.find("ambush-effect callback is unresolved") !=
                 std::string_view::npos)) {
-        return 8;
+        return 55;
+    }
+
+    // If the source effect handler reports success, command 0xE9 selects its
+    // own text record and clears the previous manager buttons from the panel.
+    arrival_callbacks.forward_ambush_effect_sequence = [] { return true; };
+    runtime.set_arrival_command_callbacks(arrival_callbacks);
+    if (!expect(runtime.open_field_exit_prompt(arrival)) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "leap from the shadows") != std::string_view::npos) ||
+        !expect(runtime.panel().option_count == 0U) ||
+        !expect(runtime.panel().returns_to_field)) {
+        return 57;
+    }
+    QImage ambush_scene(320, 224, QImage::Format_RGB32);
+    ambush_scene.fill(Qt::magenta);
+    QPainter ambush_painter(&ambush_scene);
+    runtime.paint(ambush_painter);
+    ambush_painter.end();
+    if (!expect(!has_exact_color(ambush_scene, 0, 0, 320, 224,
+                                 QColor(Qt::magenta))) ||
+        !expect(matches_region(ambush_scene, standard_frame, 16, 152, 16, 16)) ||
+        !expect(matches_region(ambush_scene, standard_frame, 16, 176, 16, 16)) ||
+        !expect(matches_region(ambush_scene, standard_frame, 16, 200, 16, 16))) {
+        return 58;
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(!runtime.open())) {
+        return 59;
     }
 
     const FieldExitPromptSelection package_question{

@@ -1025,10 +1025,15 @@ new behavior is invented.
    choices, and frame variant into `DialoguePanelView`. `DialoguePanelPresenter`
    consumes that view without choosing Stoker content. The Stoker controller
    binds the profile-0 portrait and `dialogue.stoker.motel` text for the
-   `manager` and `manager-package` states. The synthetic second-speaker check
-   supplies its own text and no portrait, so the presenter does not borrow
-   Stoker's image. Live field-property/event selection and additional speaker
-   providers remain unconnected.
+   `manager` and `manager-package` states. It now reads the source command on
+   the arrival `<MORE>` option and runs `0x249C4`: a 0..79 sample opens the
+   two-option manager record at `0xF4AB4`; A then opens the room offer. The
+   field uses the source bounded-random algorithm, but its seed remains
+   host-initialized. The `0x1E1FC` effect callback for samples 80..99 is not
+   connected. The synthetic second-speaker check supplies its own text and no
+   portrait, so the presenter does not borrow Stoker's image. The property
+   selecting the three-option package state in longplay frame 000300 and
+   additional live speaker providers remain unconnected.
 3. **Are the visuals themselves correct?** ROM `0x10984` installs nine shared
    frame regions using patterns loaded at `0x10918`; its tenth `0xCEFF0` block
    replaces the left panel when `FFF0AF` is set. The offline importer exports
@@ -1053,28 +1058,39 @@ new behavior is invented.
    frame, left speaker well, portrait alias, paragraph rows, exact source
    button sprites, option labels, centered `< MORE >`, page/return state, and
    full lower panel. Manager choices, debt choices, and a no-choice
-   continuation page use the same panel. Debt payment, room payment, random
-   arrival, and a live building entry are not yet connected end to end.
+   continuation page use the same panel. The ordinary random-arrival result
+   now reaches the manager prompt, but the rare effect, room payment, debt
+   payment, package-property selection, and live building placement are not
+   connected end to end.
 7. **Do multiple frames support the interpretation?** Section 03 frame 000300
-   shows manager choices, 000600 shows the debt question, 001200 shows an
-   information page with another portrait, 001500 shows another three-choice
-   page, and 001800 shows `< MORE >`. The shared frame persists while the
-   speaker and source-provided contents change. Adjacent 000300-000302 and
-   001800-001802 captures are pixel-identical holds. These examples do not
-   prove every speaker or event uses the same transition graph.
+   shows a three-option manager/package state, 000600 shows the debt question,
+   001200 shows an information page with another portrait, 001500 shows
+   another three-choice page, and 001800 shows `< MORE >`. The shared frame
+   persists while the speaker and source-provided contents change. Adjacent
+   000300-000302 and 001800-001802 captures are pixel-identical holds. The
+   current `0xF4AB4` branch has two choices; no exact independent longplay
+   frame for that result has been identified, and frame 000300 is not used as
+   its golden.
 8. **Was the previous screen cleared before the new one was drawn?** Each open
    page clears the full 320x224 canvas, redraws the frame, then clears both
    source content wells before drawing new text and markers. The Debug and
    Release tests paint over a magenta sentinel and confirm it is gone; they
    also verify the source A marker asset, no Stoker portrait for the synthetic
-   speaker, and removal of the third option and marker on the next page. CLI
-   captures are standalone views, so the live field-to-dialog-to-field
+   speaker, and removal of the third option and marker on the next page. The
+   arrival-result QA confirms that the previous `<MORE>` and C-option regions
+   are cleared before the two-option manager screen is shown; the injected
+   successful ambush result clears A/B/C markers before its no-choice text.
+   CLI captures are standalone views, so the live field-to-dialog-to-field
    restoration remains unverified.
 
 **Status:** partial. The shared frame, conditional frame asset, source option
 markers, body/choice placement, blank rows, and observed static timing are
 source traced and checked against multiple independent gameplay frames. Debug
-and Release tests cover rendering and the manager-to-debt-to-referral path.
-Live speaker/event lookup, `FFF0AF` frame selection, additional speaker data,
+and Release tests cover the 0xE9 thresholds, ordinary arrival-to-manager and
+room-offer transitions, injected ambush text, stale-control clearing, and the
+manager-to-debt-to-referral path. The manager dump for the two-option
+`0xF4AB4` record is renderer output, not an independent golden. The rare
+`0x1E1FC` effect, host-vs-source random seed, property selecting the
+three-option package state, `FFF0AF` frame selection, additional speaker data,
 remaining payment results, live field restoration, and measured dialogue
 audio remain open.

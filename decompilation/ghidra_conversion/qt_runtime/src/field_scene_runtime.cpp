@@ -254,7 +254,20 @@ FieldSceneRuntime::FieldSceneRuntime(
       source_audio_event_callback_(std::move(source_audio_event)),
       field_dialogue_([this](const std::string_view boundary) {
           this->source_boundary(boundary);
-      }) {
+      }, StokerMotelArrivalCommandCallbacks{
+          [this](const std::uint8_t bound)
+              -> std::optional<std::uint8_t> {
+              if (bound == 0U) {
+                  return std::nullopt;
+              }
+              const auto sample = sample_source_random_bound(
+                  field_random_seed_, static_cast<std::uint16_t>(bound));
+              if (sample < 0 || sample >= static_cast<std::int16_t>(bound)) {
+                  return std::nullopt;
+              }
+              return static_cast<std::uint8_t>(sample);
+          },
+          {}}) {
     configure_callbacks();
 }
 

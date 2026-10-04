@@ -3056,14 +3056,22 @@ int main(int argc, char** argv) {
             }
             if (field_dialogue_dump_prompt.has_value() &&
                 field_dialogue_dump_path.has_value()) {
-                const auto prompt = parse_stoker_dialogue_prompt(
-                    *field_dialogue_dump_prompt);
-                if (!prompt.has_value()) {
+                const bool arrival_result =
+                    *field_dialogue_dump_prompt == "arrival-manager";
+                const auto prompt = arrival_result
+                                        ? std::optional<StokerMotelPromptId>{}
+                                        : parse_stoker_dialogue_prompt(
+                                              *field_dialogue_dump_prompt);
+                if (!arrival_result && !prompt.has_value()) {
                     std::cerr << "field dialogue dump: unknown Stoker prompt '"
                               << *field_dialogue_dump_prompt << "'\n";
                     return 3;
                 }
-                if (!field_scene.open_stoker_dialogue_for_dump(*prompt)) {
+                const bool prompt_opened =
+                    arrival_result
+                        ? field_scene.open_stoker_arrival_result_for_dump(79U)
+                        : field_scene.open_stoker_dialogue_for_dump(*prompt);
+                if (!prompt_opened) {
                     std::cerr << "field dialogue dump: prompt did not open\n";
                     return 3;
                 }
