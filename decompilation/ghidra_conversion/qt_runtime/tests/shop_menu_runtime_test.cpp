@@ -16,9 +16,9 @@ int main() {
     if (!expect(ShopMenuController::offer_count(
                     ares, ShopActionGroup::weapons) == 7U) ||
         !expect(ShopMenuController::offer_count(
-                    ares, ShopActionGroup::armor) == 2U) ||
-        !expect(ShopMenuController::offer_count(
                     ares, ShopActionGroup::other_items) == 4U) ||
+        !expect(ShopMenuController::offer_count(
+                    ares, ShopActionGroup::armor) == 2U) ||
         !expect(!ShopMenuController::offer(
                      ares, ShopActionGroup::weapons, 7U)
                      .has_value())) {
@@ -27,10 +27,10 @@ int main() {
 
     const auto weapon_offer = ShopMenuController::offer(
         ares, ShopActionGroup::weapons, 2U);
-    const auto armor_offer = ShopMenuController::offer(
-        ares, ShopActionGroup::armor, 1U);
     const auto other_offer = ShopMenuController::offer(
         ares, ShopActionGroup::other_items, 0U);
+    const auto armor_offer = ShopMenuController::offer(
+        ares, ShopActionGroup::armor, 1U);
     if (!expect(weapon_offer.has_value() && weapon_offer->type == 6U &&
                 weapon_offer->quantity == 15U) ||
         !expect(armor_offer.has_value() && armor_offer->type == 0x2DU &&
@@ -44,13 +44,13 @@ int main() {
     if (!expect(menu.open(ares)) || !expect(menu.menu_mode() == 1U) ||
         !expect(menu.source_state().action_selection.menu_result == -1) ||
         !expect(menu.advance(0x0800U) == ShopMenuEvent::selection_moved) ||
-        !expect(menu.selected_group() == ShopActionGroup::armor) ||
+        !expect(menu.selected_group() == ShopActionGroup::other_items) ||
         !expect(menu.advance(0x0200U) == ShopMenuEvent::panel_changed) ||
         !expect(menu.offers_panel_active()) ||
-        !expect(menu.selected_group() == ShopActionGroup::armor) ||
+        !expect(menu.selected_group() == ShopActionGroup::other_items) ||
         !expect(menu.advance(0x4000U) == ShopMenuEvent::purchase_selected) ||
         !expect(menu.pending_action().has_value()) ||
-        !expect(menu.pending_action()->offer->type == 0x2EU)) {
+        !expect(menu.pending_action()->offer->type == 0x45U)) {
         return 3;
     }
     menu.finish_action();

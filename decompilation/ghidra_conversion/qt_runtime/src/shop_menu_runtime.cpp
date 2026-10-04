@@ -24,23 +24,23 @@ constexpr std::uint8_t kUnavailable = 0xFFU;
 
 using OfferGroup = std::array<FieldActionCostRecord, 8>;
 
-// US ROM records at 0x1AAC9E, 0x1AADD7, and 0x1AAD8F. Ares mode 1 selects
-// these three-byte rows through the source action families at 0x56DC4.
+// US ROM records at 0x1AAC9E, 0x1AADD7, and 0x1AAD8F. Source action indices
+// 0, 1, and 2 select weapons, other items, and armor respectively at 0x56DC4.
 constexpr std::array<OfferGroup, 3> kAresOfferGroups{{
     {{{0x01U, 0x00U, 0x00U}, {0x02U, 0x00U, 0x00U},
       {0x06U, 0x00U, 0x0FU}, {0x04U, 0x00U, 0x00U},
       {0x05U, 0x00U, 0x0DU}, {0x0DU, 0x06U, 0x14U},
       {0x0EU, 0x06U, 0x00U},
       {kUnavailable, kUnavailable, kUnavailable}}},
-    {{{0x2EU, 0x00U, 0x00U}, {0x2DU, 0x00U, 0x0CU},
-      {kUnavailable, kUnavailable, kUnavailable},
-      {kUnavailable, kUnavailable, kUnavailable},
+    {{{0x45U, 0x00U, 0x19U}, {0x0FU, 0x06U, 0x00U},
+      {0x10U, 0x04U, 0x07U}, {0x11U, 0x04U, 0x07U},
       {kUnavailable, kUnavailable, kUnavailable},
       {kUnavailable, kUnavailable, kUnavailable},
       {kUnavailable, kUnavailable, kUnavailable},
       {kUnavailable, kUnavailable, kUnavailable}}},
-    {{{0x45U, 0x00U, 0x19U}, {0x0FU, 0x06U, 0x00U},
-      {0x10U, 0x04U, 0x07U}, {0x11U, 0x04U, 0x07U},
+    {{{0x2EU, 0x00U, 0x00U}, {0x2DU, 0x00U, 0x0CU},
+      {kUnavailable, kUnavailable, kUnavailable},
+      {kUnavailable, kUnavailable, kUnavailable},
       {kUnavailable, kUnavailable, kUnavailable},
       {kUnavailable, kUnavailable, kUnavailable},
       {kUnavailable, kUnavailable, kUnavailable},
@@ -105,7 +105,7 @@ ShopActionGroup ShopMenuController::selected_group() const noexcept {
 std::size_t ShopMenuController::offer_count(
     const ShopId shop, const ShopActionGroup group) noexcept {
     if (shop != ShopId::ares_weapon_emporium ||
-        group < ShopActionGroup::weapons || group > ShopActionGroup::other_items) {
+        group < ShopActionGroup::weapons || group > ShopActionGroup::armor) {
         return 0U;
     }
     const auto& rows = kAresOfferGroups[static_cast<std::size_t>(group)];

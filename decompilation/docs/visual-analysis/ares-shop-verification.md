@@ -28,10 +28,11 @@ is made.
   `0x58C54` bounds the selection cursor, `0x58CDE` switches the two panels,
   `0x587DA` publishes the action selection, and `0x57C7A` redraws the selected
   action presentation. The menu has no periodic animation in this loop.
-- Offers: `0x56DC4` chooses one of three action tables. Ares mode 1 selects
-  three-byte rows at `0x1AAC9E`, `0x1AADD7`, and `0x1AAD8F`; `0xFF` in byte 0
-  ends each offer list. Those rows are represented as typed records in
-  `shop_menu_runtime.cpp`.
+- Offers: `0x56DC4` chooses one of three action tables. Source action indices
+  0, 1, and 2 map to weapons, other items, and armor at `0x1AAC9E`, `0x1AADD7`,
+  and `0x1AAD8F`. Direct US ROM reads confirm item codes `01,02,06,04,05,0D,0E`,
+  `45,0F,10,11`, and `2E,2D` respectively. `0xFF` in byte 0 ends each offer
+  list. Those rows are represented as typed records in `shop_menu_runtime.cpp`.
 - Purchase: `0x5794E` applies a selected offer; `0x57A44` reads its full word
   base cost from `0xD4540 + type * 0x30 + 0x22`; `0x57A6E` applies the mode and
   runner adjustment; `0x57B8C` confirms before inventory or funds mutate.
@@ -74,8 +75,8 @@ is made.
 returns purchase, sale, source-boundary, runner-change, and field-return
 requests. It does not own a second inventory or wallet. `ShopTransactionService`
 delegates to the existing typed purchase/removal conversions. The focused test
-checks Ares stock, navigation, confirmations, protected sale rows, funds, and
-inventory mutations in Debug and Release. The Ares hill remains partial until
+checks Ares stock order, navigation, confirmations, protected sale rows,
+funds, and inventory mutations in Debug and Release. The Ares hill remains partial until
 field routing, presentation, dump, stale-panel check, and visual evidence are
 complete. `ModeTextPromptCatalogConversion` supplies the three ROM-selected
 Ares text records and the no-option sentinel descriptor; it does not yet draw
