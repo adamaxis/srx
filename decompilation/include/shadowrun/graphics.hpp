@@ -78,6 +78,12 @@ struct GenesisFieldEntityTemplate {
     // ROM 0x391A reads the entity-record type at +0x3E. This is distinct
     // from the graphics/state kind at +0x0E.
     std::uint16_t record_type = 0;
+    // ROM 0x110BC/0x110E8 reads the HUD panel attributes at +0x2C. The
+    // 0x3404 field refresh reads the current 8-column portrait table at
+    // +0x50 and its byte offset at +0x54 before uploading the 4x4 face.
+    std::uint16_t command_overview_panel_parameter = 0;
+    std::uint32_t hud_portrait_table_pointer = 0;
+    std::uint16_t hud_portrait_table_offset = 0;
     // Command overview source fields: race/archetype indexes and the two
     // current condition percentages read from each runner record.
     std::uint8_t race_index = 0;
@@ -232,6 +238,15 @@ struct GenesisFieldMenuActionText {
     std::string cannot_trade;
     std::string choice_no;
     std::string choice_yes;
+    std::string automatic_use_message;
+    std::string first_aid_prompt;
+    std::string first_aid_label;
+    std::string first_aid_cancel;
+    std::string first_aid_not_injured;
+    std::string first_aid_slap_patch_used;
+    std::string first_aid_medkit_used;
+    std::string trade_recipient_label;
+    std::string trade_full_inventory_message;
 };
 
 GenesisFieldMenuActionText read_genesis_field_menu_action_text(
@@ -281,6 +296,10 @@ read_genesis_cyberware_catalog(const std::vector<std::uint8_t>& rom);
 // host storage before the native runtime starts.
 std::array<std::string, native::kNativeGroupItemCount>
 read_genesis_group_item_catalog(const std::vector<std::uint8_t>& rom);
+// ROM 0xC8C8 writes these two lines at C50E when FFFC22 is zero, then waits
+// for any controller event. Preserve the source's separate text rows.
+std::array<std::string, native::kNativeGroupItemEmptyLineCount>
+read_genesis_group_items_empty_text(const std::vector<std::uint8_t>& rom);
 
 // ROM 0x18150 writes these three source strings when FF018F bit 0 says the
 // player has no cyberdeck. They are extracted before the native runtime starts
@@ -289,10 +308,13 @@ std::array<std::string, native::kNativeCyberdeckUnavailableLineCount>
 read_genesis_cyberdeck_unavailable_text(
     const std::vector<std::uint8_t>& rom);
 
-// ROM 0xC448 emits the fixed Dismiss/Who/Abort labels around the active
-// runner names. The VDP placeholder line at 0xC14AE is not user-facing.
+// ROM 0xC448 emits the fixed Dismiss/Who/Abort labels and visible separator
+// around the active runner names.
 std::array<std::string, native::kNativeDismissRunnerLabelCount>
 read_genesis_dismiss_runner_labels(const std::vector<std::uint8_t>& rom);
+// ROM 0xC448 separator written between Who?? and Abort.
+std::string read_genesis_dismiss_runner_separator(
+    const std::vector<std::uint8_t>& rom);
 
 // ROM 0xF33E/0xF2F6 supplies the Notebook menu labels and the exact
 // no-current-run response. Preserve source leading spaces and separators in
@@ -301,6 +323,24 @@ std::array<std::string, native::kNativeNotebookLabelCount>
 read_genesis_notebook_labels(const std::vector<std::uint8_t>& rom);
 std::array<std::string, native::kNativeNotebookNoRunLineCount>
 read_genesis_notebook_no_run_text(const std::vector<std::uint8_t>& rom);
+// ROM 0xC2A6 writes the Pocket Secretary heading and five field-mode rows
+// from 0xC1418. Preserve source spacing and the separator as extracted host
+// text; the Qt menu draws these strings from its text catalog.
+struct GenesisPocketSecretaryText {
+    std::string title;
+    std::string separator;
+    std::array<std::string, 5> options{};
+};
+GenesisPocketSecretaryText read_genesis_pocket_secretary_text(
+    const std::vector<std::uint8_t>& rom);
+struct GenesisNotebookTipsText {
+    std::string title;
+    std::string separator;
+    std::string page_count_label;
+    std::string page_number_clear;
+};
+GenesisNotebookTipsText read_genesis_notebook_tips_text(
+    const std::vector<std::uint8_t>& rom);
 // ROM 0xF9A4 reads three 32-entry pointer tables selected by FFFC30/34/38.
 // 0x80 is converted to a host newline and 0xFF terminates each source item.
 std::array<std::string, native::kNativeNotebookTipCount>
@@ -548,6 +588,12 @@ struct GenesisFieldHudLayers {
     std::array<RgbaImage, 3> faces{};
     std::array<RgbaImage, 3> item_blocks{};
     std::array<RgbaImage, 3> unarmed_item_blocks{};
+    // Direct value rows for the live +0x4C and +0x9C HUD meters. 0x3674
+    // selects one of eleven vertical rows; 0x37EC selects one of eleven
+    // horizontal rows from either the primary-runner or companion table.
+    std::array<RgbaImage, 11> delay_meter_counters{};
+    std::array<std::array<RgbaImage, 11>, 2> behavior_meter_counters{};
+    // Starter-record snapshots retained for the NativePort reference path.
     std::array<RgbaImage, 3> vertical_counters{};
     std::array<RgbaImage, 3> horizontal_counters{};
     std::array<RgbaImage, 64> ammo_counters{};
@@ -562,6 +608,10 @@ GenesisFieldHudLayers decode_genesis_field_hud_layers(
 // Pocket Secretary bezel from ROM 0x10A7E's four raw 0x1232 name-table
 // writes, independent of the field command-screen base.
 RgbaImage decode_genesis_pocket_secretary_background(
+    const std::vector<std::uint8_t>& rom);
+// ROM 0xC3E6 repeats the C1320 space-glyph tile with palette line 3 across
+// the 28x21 Pocket Secretary content area. Extract that layer separately.
+RgbaImage decode_genesis_pocket_secretary_grid(
     const std::vector<std::uint8_t>& rom);
 
 // Title layers are extracted separately because the ROM does not present a
@@ -676,10 +726,21 @@ struct GenesisCyberwareText {
     std::array<std::string, 15> entries{};
 };
 
+struct GenesisMagicMenuText {
+    std::string set_force_and_posture;
+    std::string success_label;
+    std::string force_label;
+    std::string availability_label;
+    std::array<std::string, 13> spell_names{};
+    std::array<std::string, 13> spell_descriptions{};
+};
+
 // ROM 0x11950: the Cyberware page title at 0xD2054 (including its 0x80
 // second-line control), the NONE message at 0xD206B, and the fifteen padded
 // entry strings at 0xD20AE..0xD2194 indexed by record +0x90 bits 0..14.
 GenesisCyberwareText read_genesis_cyberware_text(
+    const std::vector<std::uint8_t>& rom);
+GenesisMagicMenuText read_genesis_magic_menu_text(
     const std::vector<std::uint8_t>& rom);
 
 // Reconstruct the field command screen's plane-B base from the exact 0x1232
@@ -694,9 +755,32 @@ RgbaImage decode_genesis_field_dialogue_panel_background(
     const std::vector<std::uint8_t>& rom, bool alternate_portrait_panel);
 std::array<RgbaImage, 3> decode_genesis_field_dialogue_option_markers(
     const std::vector<std::uint8_t>& rom);
+// ROM 0xFBA6 replaces Plane A with a 34x28 spell-capable panel. The compressed
+// pattern upload and 0x1728 tile stream are decoded here during offline
+// extraction; the Qt runtime consumes this transparent RGBA layer directly.
+RgbaImage decode_genesis_field_magic_panel_background(
+    const std::vector<std::uint8_t>& rom);
+std::array<RgbaImage, 13> decode_genesis_field_magic_spell_icons(
+    const std::vector<std::uint8_t>& rom);
+std::array<RgbaImage, 4> decode_genesis_field_magic_cursor_frames(
+    const std::vector<std::uint8_t>& rom);
+// ROM 0x107CE writes the selected eight-tile posture row from C8600 at C8A8.
+// ROM 0x10172 composes the live current/maximum force meter from these five
+// one-tile source rows at C85A2/C85A4/C85A6/C85A8/C85AC.
+std::array<RgbaImage, 5> decode_genesis_field_magic_posture_bars(
+    const std::vector<std::uint8_t>& rom);
+std::array<RgbaImage, 5> decode_genesis_field_magic_force_meter_tiles(
+    const std::vector<std::uint8_t>& rom);
+std::array<RgbaImage, 4> decode_genesis_field_magic_availability_bars(
+    const std::vector<std::uint8_t>& rom);
+std::array<RgbaImage, 10> decode_genesis_field_magic_damage_bars(
+    const std::vector<std::uint8_t>& rom);
 // ROM 0x117A0 redraws the lower action row from the source CD302 name table
 // before applying the selected action focus block.
 RgbaImage decode_genesis_field_menu_action_background(
+    const std::vector<std::uint8_t>& rom);
+// ROM 0x127B0 replaces the action row with the source Yes/No bar at CD3B6.
+RgbaImage decode_genesis_field_menu_action_confirmation_background(
     const std::vector<std::uint8_t>& rom);
 // ROM 0xD01C uses the separate 0x10C96 frame: two upper panels, two side
 // rails, and three lower separator rows. It is not the 0x10F50 command base.
@@ -719,6 +803,20 @@ RgbaImage decode_genesis_field_menu_font(
 // 0x110BC runner portrait and 0x11136/0x11190 item-icon writers.
 std::array<RgbaImage, 3> decode_genesis_field_menu_runner_portraits(
     const std::vector<std::uint8_t>& rom);
+// ROM 0xC4C4 calls 0x110E8/0x110EC to draw the selected runner's 4x4 face at
+// C91E. 0x3404 supplies its current tile words from the live record's +0x50
+// table and +0x54 offset, then uploads the referenced tiles from 0x6ACFA.
+// Materialize all four +0x2C palette-line variants as direct host images.
+std::array<RgbaImage, 4>
+decode_genesis_field_menu_dismiss_runner_preview_panels(
+    const std::vector<std::uint8_t>& rom,
+    const GenesisFieldEntityTemplate& record);
+// ROM 0xE660 writes one random two-cell decoration each VBlank. These seven
+// named overlays are the three 0xCE126/0xCE12E/0xCE136 pairs and four
+// 0xCE13E table pairs after the command-screen pattern upload is resolved.
+std::array<RgbaImage, 7>
+decode_genesis_field_menu_random_grid_effects(
+    const std::vector<std::uint8_t>& rom);
 std::array<RgbaImage, 2> decode_genesis_field_menu_selected_cells(
     const std::vector<std::uint8_t>& rom);
 // Extract the five source focus blocks written by ROM 0x11454. Each block is
@@ -730,6 +828,10 @@ std::array<RgbaImage, 5> decode_genesis_field_menu_command_focus(
 // buttons. These source blocks replace the five top-level command tabs while
 // Equip/Discard/Trade/Cancel (or First Aid/Discard/Trade/Cancel) is active.
 std::array<RgbaImage, 4> decode_genesis_field_menu_action_focus(
+    const std::vector<std::uint8_t>& rom);
+// ROM 0x127FC writes Yes/No focus blocks from CD47A; Yes is the first block.
+std::array<RgbaImage, 2>
+decode_genesis_field_menu_action_confirmation_focus(
     const std::vector<std::uint8_t>& rom);
 // ROM 0x11B58/0x11E7E pass CD43A/CD45A to the same writer for the Clips
 // action rows. These four 2x2 blocks are separate from the command tabs.

@@ -103,8 +103,9 @@ int main() {
                 ++state_count;
             } else if (kind == "text") {
                 require(alias == "menu.field.text" ||
-                            alias == "dialogue.stoker.motel",
-                        "unexpected text resource alias");
+                            alias == "dialogue.stoker.motel" ||
+                            alias == "menu.pocket_secretary.notebook.tips",
+                        "unexpected text resource alias: " + alias);
                 ++text_count;
             } else {
                 throw std::runtime_error("unknown manifest resource kind: " +
@@ -114,8 +115,8 @@ int main() {
 
         require(native_state_seen && state_count != 0U,
                 "resources.tsv must contain a native state row");
-        require(text_count == 2U,
-                "resources.tsv must contain the field and dialogue text rows");
+        require(text_count == 3U,
+                "resources.tsv must contain the field, dialogue, and Notebook Tips text rows");
         require(image_count == assets.resources.size(),
                 "manifest image rows and loaded resources differ");
         require(audio_count == 65U,

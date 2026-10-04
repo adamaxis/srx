@@ -199,7 +199,7 @@ static void fill_grayscale_entity_assets(native::NativePortAssets& assets);
 static native::NativeFieldRecord read_native_field_record_state(
     std::istream& input);
 static native::NativeFieldEntity read_native_field_entity_state(
-    std::istream& input);
+    std::istream& input, bool has_hud_portrait_fields);
 static terrain::Map read_native_terrain_state(std::istream& input);
 static native::NativeIntroData read_native_intro_state(std::istream& input);
 
@@ -222,7 +222,7 @@ native::NativePortAssets read_native_asset_directory(const std::string& root) {
     const auto version = read_pack_u16(
         input, "native asset state version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNS" ||
-        (version != 2U && version != 3U)) {
+        (version != 2U && version != 3U && version != 4U)) {
         throw std::runtime_error("invalid direct native asset state header");
     }
     (void)read_pack_u16(input, "native asset state header is truncated");
@@ -236,12 +236,16 @@ native::NativePortAssets read_native_asset_directory(const std::string& root) {
     for (auto& record : assets.initial_field_records) {
         record = read_native_field_record_state(input);
     }
-    assets.entity_template = read_native_field_entity_state(input);
+    const auto has_hud_portrait_fields = version >= 4U;
+    assets.entity_template = read_native_field_entity_state(
+        input, has_hud_portrait_fields);
     for (auto& entity : assets.protagonist_archetype_records) {
-        entity = read_native_field_entity_state(input);
+        entity = read_native_field_entity_state(input,
+                                               has_hud_portrait_fields);
     }
     for (auto& entity : assets.field_entity_records) {
-        entity = read_native_field_entity_state(input);
+        entity = read_native_field_entity_state(input,
+                                               has_hud_portrait_fields);
     }
     if (version >= 3U) {
         const auto roster_count = static_cast<std::size_t>(read_pack_u32(
@@ -256,7 +260,8 @@ native::NativePortAssets read_native_asset_directory(const std::string& root) {
             candidate.source_index = index;
             candidate.display_name = read_pack_string(
                 input, "native asset state recruited runner name is truncated");
-            candidate.record = read_native_field_entity_state(input);
+            candidate.record = read_native_field_entity_state(
+                input, has_hud_portrait_fields);
             assets.recruited_runner_templates.push_back(std::move(candidate));
         }
     }
@@ -746,7 +751,7 @@ static native::NativeFieldRecord read_native_field_record_state(
 
 
 static native::NativeFieldEntity read_native_field_entity_state(
-    std::istream& input) {
+    std::istream& input, const bool has_hud_portrait_fields) {
     native::NativeFieldEntity entity;
     entity.record_index = read_pack_u8(
         input, "native field entity state is truncated");
@@ -843,6 +848,14 @@ static native::NativeFieldEntity read_native_field_entity_state(
     }
     for (auto& value : entity.attribute_skill_auxiliary) {
         value = read_pack_u8(input, "native field entity state is truncated");
+    }
+    if (has_hud_portrait_fields) {
+        entity.command_overview_panel_parameter = read_pack_u16(
+            input, "native field entity HUD panel state is truncated");
+        entity.hud_portrait_table_pointer = read_pack_u32(
+            input, "native field entity portrait table state is truncated");
+        entity.hud_portrait_table_offset = read_pack_u16(
+            input, "native field entity portrait offset state is truncated");
     }
     return entity;
 }

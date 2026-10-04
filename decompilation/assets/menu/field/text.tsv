@@ -6,6 +6,53 @@ command.3	Attributes/Skills
 command.4	Cyberware
 command.5	Magic
 command.6	Pocket Secretary
+pocket-secretary.title	" Main Menu"
+pocket-secretary.separator	[\\\\\\\\\\
+pocket-secretary.option.0	Notebook
+pocket-secretary.option.1	Group Items
+pocket-secretary.option.2	Cyberdeck
+pocket-secretary.option.3	Dismiss Runner
+pocket-secretary.option.4	Save/Load Game
+pocket-secretary.cyberdeck.line.0	" You do not have"
+pocket-secretary.cyberdeck.line.1	"  a cyberdeck!!"
+pocket-secretary.cyberdeck.line.2	" Keep looking."
+pocket-secretary.group-item.0	Prototype Cyber-heart
+pocket-secretary.group-item.1	Indian Lands Visa
+pocket-secretary.group-item.2	Feathered Scale
+pocket-secretary.group-item.3	Hell Hound Pelt
+pocket-secretary.group-item.4	Gargoyle Horn
+pocket-secretary.group-item.5	Gift for Lady Gillian
+pocket-secretary.group-item.6	Gift for Red Buffalo Woman
+pocket-secretary.group-item.7	Landmark Map
+pocket-secretary.group-item.8	Map Overlay
+pocket-secretary.group-item.9	Package for current run
+pocket-secretary.group-item.10	Security Pass
+pocket-secretary.group-item.11	Weapon Permit
+pocket-secretary.group-item.12	Eye-Fiver Ear Cuff
+pocket-secretary.group-item.13	Halloweener Patch
+pocket-secretary.group-item.14	Ork Armband
+pocket-secretary.group-items.empty.0	You are not carrying
+pocket-secretary.group-items.empty.1	"  any group items."
+dismiss.label.0	"   Dismiss"
+dismiss.label.1	"    Who??"
+dismiss.label.2	"    Abort"
+dismiss.separator	[\\\\\\\\\\\\
+notebook.tips.title	Tips & Clues
+notebook.tips.separator	[\\\\\\\\\\\\\\\
+notebook.tips.page-count	Page    of
+notebook.tips.page-number-clear	"  "
+notebook.label.0	"  Notebook"
+notebook.label.1	Current Run
+notebook.label.2	Tips & Clues
+notebook.label.3	Contacts
+notebook.label.4	Mr. Johnsons
+notebook.label.5	Shadowrunners
+notebook.no-run.0	" You are not currently"
+notebook.no-run.1	engaged in a shadowrun.
+notebook.no-run.2	"     Get a job!!"
+notebook.event-gate.0	1
+notebook.event-gate.1	0
+notebook.event-gate.2	0
 race.0	Human
 race.1	"  Elf"
 race.2	Dwarf
@@ -53,6 +100,37 @@ cyberware.entry.11	Dermal Plating(3)
 cyberware.entry.12	Wired Reflexes(1)
 cyberware.entry.13	Wired Reflexes(2)
 cyberware.entry.14	Wired Reflexes(3)
+magic.defense.title	" Magical Defense"
+magic.heading.force-posture	Set Force & Posture.
+magic.label.success	Success
+magic.label.force	Force
+magic.label.availability	Damage
+magic.spell.name.0	Flame Dart
+magic.spell.description.0	A small burst of fire that\ndelivers a nasty burn.
+magic.spell.name.1	Flame Bolt
+magic.spell.description.1	A large ball of fire which\ncauses a vicious burn.
+magic.spell.name.2	Hellblast
+magic.spell.description.2	Creates fire to incinerate\nall in its area of effect!
+magic.spell.name.3	Invisibility
+magic.spell.description.3	Renders a person invisible.
+magic.spell.name.4	Sleep
+magic.spell.description.4	An area attack on one's\nmental state, fatiguing them\ninto unconciousness.
+magic.spell.name.5	Stink
+magic.spell.description.5	An area effect spell which\nsickens all targets with\na foul stench.
+magic.spell.name.6	Super Barrier
+magic.spell.description.6	Creates a magical wall which\ninhibits everything.
+magic.spell.name.7	Mana Zap
+magic.spell.description.7	A small zap of energy that\ndelivers a nasty jolt.
+magic.spell.name.8	Mana Blast
+magic.spell.description.8	A burst of magical energy\nthat causes a vicious jolt.
+magic.spell.name.9	Mana Storm
+magic.spell.description.9	A magical conflagration\nengulfing all within its\narea of effect!
+magic.spell.name.10	Rockskin
+magic.spell.description.10	Hardens flesh to resist\nthe effects of damage.
+magic.spell.name.11	Heal Wounds
+magic.spell.description.11	Cures damage to characters.
+magic.spell.name.12	Confusion
+magic.spell.description.12	An area effect spell which\ndistracts all enemies with\nsensory overload.
 archetype.0	Samurai
 archetype.1	Decker
 archetype.2	Gator
@@ -83,6 +161,15 @@ action.cannot-discard	Cannot discard
 action.cannot-trade	Cannot trade magic items!
 action.choice-no	No
 action.choice-yes	Yes
+action.automatic-use.message	This item is\nautomatically\n    used.
+first-aid.prompt	" Heal who??"
+first-aid.label	"    First Aid    "
+first-aid.cancel	CANCEL
+first-aid.not-injured	This person is\n not injured!
+first-aid.slap-patch-used	Slap-patch used.
+first-aid.medkit-used	Medkit used.
+action.trade-recipient	Give to
+action.trade-full-inventory	"  has a full\n  inventory.\n\nPress a button\n to continue."
 clips.0	Reload
 clips.trade.0	Increase Clips
 clips.1	Trade

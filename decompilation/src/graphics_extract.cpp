@@ -136,6 +136,63 @@ void write_field_menu_text_catalog(
     for (std::size_t index = 0; index < command_labels.size(); ++index) {
         emit("command." + std::to_string(index), command_labels[index]);
     }
+    const auto pocket_secretary_text =
+        shadowrun::graphics::read_genesis_pocket_secretary_text(rom);
+    emit("pocket-secretary.title", pocket_secretary_text.title);
+    emit("pocket-secretary.separator", pocket_secretary_text.separator);
+    for (std::size_t index = 0;
+         index < pocket_secretary_text.options.size(); ++index) {
+        emit("pocket-secretary.option." + std::to_string(index),
+             pocket_secretary_text.options[index]);
+    }
+    const auto cyberdeck_unavailable_text =
+        shadowrun::graphics::read_genesis_cyberdeck_unavailable_text(rom);
+    for (std::size_t index = 0;
+         index < cyberdeck_unavailable_text.size(); ++index) {
+        emit("pocket-secretary.cyberdeck.line." + std::to_string(index),
+             cyberdeck_unavailable_text[index]);
+    }
+    const auto group_item_names =
+        shadowrun::graphics::read_genesis_group_item_catalog(rom);
+    for (std::size_t index = 0; index < group_item_names.size(); ++index) {
+        emit("pocket-secretary.group-item." + std::to_string(index),
+             group_item_names[index]);
+    }
+    const auto group_items_empty_text =
+        shadowrun::graphics::read_genesis_group_items_empty_text(rom);
+    for (std::size_t index = 0; index < group_items_empty_text.size(); ++index) {
+        emit("pocket-secretary.group-items.empty." + std::to_string(index),
+             group_items_empty_text[index]);
+    }
+    const auto dismiss_runner_labels =
+        shadowrun::graphics::read_genesis_dismiss_runner_labels(rom);
+    for (std::size_t index = 0; index < dismiss_runner_labels.size(); ++index) {
+        emit("dismiss.label." + std::to_string(index),
+             dismiss_runner_labels[index]);
+    }
+    emit("dismiss.separator",
+         shadowrun::graphics::read_genesis_dismiss_runner_separator(rom));
+    const auto notebook_tips_text =
+        shadowrun::graphics::read_genesis_notebook_tips_text(rom);
+    emit("notebook.tips.title", notebook_tips_text.title);
+    emit("notebook.tips.separator", notebook_tips_text.separator);
+    emit("notebook.tips.page-count", notebook_tips_text.page_count_label);
+    emit("notebook.tips.page-number-clear",
+         notebook_tips_text.page_number_clear);
+    for (std::size_t index = 0; index < assets.notebook_labels.size(); ++index) {
+        emit("notebook.label." + std::to_string(index),
+             assets.notebook_labels[index]);
+    }
+    for (std::size_t index = 0; index < assets.notebook_no_run_lines.size();
+         ++index) {
+        emit("notebook.no-run." + std::to_string(index),
+             assets.notebook_no_run_lines[index]);
+    }
+    for (std::size_t index = 0; index < assets.notebook_event_gates.size();
+         ++index) {
+        emit("notebook.event-gate." + std::to_string(index),
+             std::to_string(assets.notebook_event_gates[index] != 0U ? 1 : 0));
+    }
     const auto command_names =
         shadowrun::graphics::read_genesis_command_overview_names(rom);
     for (std::size_t index = 0; index < command_names.races.size(); ++index) {
@@ -168,6 +225,30 @@ void write_field_menu_text_catalog(
          ++index) {
         emit("cyberware.entry." + std::to_string(index),
              cyberware_text.entries[index]);
+    }
+    // ROM 0xFBA6 passes C89C0 to the encoded-title writer as the fallback
+    // heading. Keep the source's leading space for its original cell offset.
+    emit("magic.defense.title", " Magical Defense");
+    const auto magic_text =
+        shadowrun::graphics::read_genesis_magic_menu_text(rom);
+    emit("magic.heading.force-posture", magic_text.set_force_and_posture);
+    emit("magic.label.success", magic_text.success_label);
+    emit("magic.label.force", magic_text.force_label);
+    emit("magic.label.availability", magic_text.availability_label);
+    const auto escape_newlines = [](std::string value) {
+        std::size_t position = 0U;
+        while ((position = value.find('\n', position)) != std::string::npos) {
+            value.replace(position, 1U, "\\n");
+            position += 2U;
+        }
+        return value;
+    };
+    for (std::size_t index = 0; index < magic_text.spell_names.size();
+         ++index) {
+        emit("magic.spell.name." + std::to_string(index),
+             magic_text.spell_names[index]);
+        emit("magic.spell.description." + std::to_string(index),
+             escape_newlines(magic_text.spell_descriptions[index]));
     }
     for (std::size_t index = 0; index < assets.intro.archetypes.size();
          ++index) {
@@ -206,6 +287,19 @@ void write_field_menu_text_catalog(
     emit("action.cannot-trade", action_text.cannot_trade);
     emit("action.choice-no", action_text.choice_no);
     emit("action.choice-yes", action_text.choice_yes);
+    emit("action.automatic-use.message",
+         escape_newlines(action_text.automatic_use_message));
+    emit("first-aid.prompt", escape_newlines(action_text.first_aid_prompt));
+    emit("first-aid.label", action_text.first_aid_label);
+    emit("first-aid.cancel", action_text.first_aid_cancel);
+    emit("first-aid.not-injured",
+         escape_newlines(action_text.first_aid_not_injured));
+    emit("first-aid.slap-patch-used",
+         action_text.first_aid_slap_patch_used);
+    emit("first-aid.medkit-used", action_text.first_aid_medkit_used);
+    emit("action.trade-recipient", action_text.trade_recipient_label);
+    emit("action.trade-full-inventory",
+         escape_newlines(action_text.trade_full_inventory_message));
     const auto clips_text =
         shadowrun::graphics::read_genesis_field_menu_clips_text(rom);
     for (std::size_t index = 0; index < clips_text.commands.size(); ++index) {
@@ -275,6 +369,47 @@ void write_field_menu_text_catalog(
              assets.inventory_items[index].name);
         emit("item-category." + std::to_string(index + 1U),
              assets.inventory_items[index].category);
+    }
+}
+
+void write_notebook_tips_text_asset(
+    const std::filesystem::path& root,
+    const shadowrun::native::NativePortAssets& assets) {
+    const auto path = root / "menu" / "pocket-secretary" /
+                      "notebook-tips.tsv";
+    std::filesystem::create_directories(path.parent_path());
+    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    if (!output) {
+        throw std::runtime_error("cannot create Notebook Tips catalog: " +
+                                 path.string());
+    }
+    output << "tip_index\ttext\n";
+    for (std::size_t index = 0; index < assets.notebook_tip_text.size();
+         ++index) {
+        auto text = assets.notebook_tip_text[index];
+        if (text.find_first_of("\t\r") != std::string::npos) {
+            throw std::runtime_error(
+                "Notebook tip contains an unsupported TSV control character: " +
+                std::to_string(index));
+        }
+        std::size_t position = 0U;
+        while ((position = text.find('\n', position)) != std::string::npos) {
+            text.replace(position, 1U, "\\n");
+            position += 2U;
+        }
+        const auto padded = !text.empty() &&
+                            (text.front() == ' ' || text.back() == ' ');
+        output << index << '\t';
+        if (text.empty() || padded) {
+            output << '"' << text << '"';
+        } else {
+            output << text;
+        }
+        output << '\n';
+    }
+    if (!output) {
+        throw std::runtime_error("cannot write Notebook Tips catalog: " +
+                                 path.string());
     }
 }
 
@@ -967,7 +1102,8 @@ void write_asset_readme(const std::filesystem::path& root) {
               "archetype, runner, status, power, armor, item-detail, and "
               "item strings are kept in "
               "`menu/field/text.tsv` and exposed through the `menu.field.text` "
-              "manifest alias. Item art is grouped under items/weapons, "
+              "manifest alias. The spell-capable Magic panel is an individually "
+              "named RGBA overlay. Item art is grouped under items/weapons, "
               "items/first-aid, items/miscellaneous, items/magic, and items/armor. "
               "The shared field dialogue frames and A/B/C marker sprites are "
               "grouped under dialogue/panel, with speaker portraits under "
@@ -1170,6 +1306,9 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
     emit_generated_resource_row(
         "menu.field.text", "menu/field/text.tsv", "text");
     emit_generated_resource_row(
+        "menu.pocket_secretary.notebook.tips",
+        "menu/pocket-secretary/notebook-tips.tsv", "text");
+    emit_generated_resource_row(
         "dialogue.stoker.motel", "dialogue/stoker-motel.tsv", "text");
     std::string line;
     std::getline(catalog, line);
@@ -1225,6 +1364,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     std::size_t blank = 0;
     const auto assets = shadowrun::graphics::decode_genesis_native_assets(rom);
     write_field_menu_text_catalog(rom, root, assets);
+    write_notebook_tips_text_asset(root, assets);
     write_stoker_motel_dialogue_catalog(rom, root);
     const auto write = [&](const std::string& name,
                            const shadowrun::native::NativeImage& image,
@@ -1248,6 +1388,17 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         for (std::size_t index = 0; index < images.size(); ++index) {
             write(prefix + std::to_string(index) + ".bmp", images[index], kind,
                   source + "[" + std::to_string(index) + "]", crop);
+        }
+    };
+    const auto write_rgba_array = [&](const std::string& prefix,
+                                      const auto& images,
+                                      const std::string& kind,
+                                      const std::string& source, bool crop) {
+        for (std::size_t index = 0; index < images.size(); ++index) {
+            write_catalog_asset(
+                root, prefix + std::to_string(index) + ".bmp", images[index],
+                kind, source + "[" + std::to_string(index) + "]", crop,
+                manifest, written, missing, blank);
         }
     };
 
@@ -1329,7 +1480,6 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         shadowrun::graphics::decode_genesis_field_dialogue_portrait(rom, 0U),
         "sprite", "0x1F65A/0x121FA0/0x1287C6/0x122420", false, manifest,
         written, missing, blank);
-
     write_catalog_asset(
         root, "dialogue/panel/frame.bmp",
         shadowrun::graphics::decode_genesis_field_dialogue_panel_background(
@@ -1367,6 +1517,17 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     write_array("field/hud/unarmed-item-",
                 assets.field_hud_unarmed_item_blocks, "sprite",
                 "0x3404/0xD1860-0xD1878", true);
+    write_array("field/hud/delay-meter-",
+                assets.field_hud_delay_meter_counters, "sprite",
+                "0x3674/0x6AB3E", true);
+    for (std::size_t profile = 0;
+         profile < assets.field_hud_behavior_meter_counters.size(); ++profile) {
+        write_array(
+            profile == 0U ? "field/hud/behavior-meter-primary-"
+                          : "field/hud/behavior-meter-companion-",
+            assets.field_hud_behavior_meter_counters[profile], "sprite",
+            profile == 0U ? "0x37EC/0x6ABEE" : "0x37EC/0x6AB96", true);
+    }
     write_array("field/hud/vertical-counter-", assets.field_hud_vertical_counters,
                 "sprite", "0x35D4", true);
     write_array("field/hud/horizontal-counter-",
@@ -1375,10 +1536,18 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 "sprite", "0x36FC", true);
     write("menu/pocket-secretary/background.bmp",
           assets.pocket_secretary_background, "background", "0x10A7E", false);
+    write_catalog_asset(
+        root, "menu/pocket-secretary/grid.bmp",
+        shadowrun::graphics::decode_genesis_pocket_secretary_grid(rom),
+        "background", "0xC3E6/0x12C5A/0xC1320/0xC1064", false, manifest,
+        written, missing, blank);
     write("menu/field/background.bmp", assets.field_menu_background, "background",
           "0x10F50", false);
     write("menu/field/action-background.bmp",
           assets.field_menu_action_background, "background", "0x117A0", false);
+    write("menu/field/action-confirm-background.bmp",
+          assets.field_menu_action_confirmation_background, "background",
+          "0x127B0/0xCD3B6", false);
     write("menu/field/attributes-background.bmp",
           assets.field_menu_attributes_background, "background", "0x10C96", false);
     write("menu/field/inventory-boxes.bmp", assets.field_menu_inventory_boxes,
@@ -1387,12 +1556,78 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
           true);
     write_array("menu/field/runner-portrait-", assets.field_menu_runner_portraits,
                 "sprite", "0x7291A", true);
+    std::vector<shadowrun::graphics::GenesisFieldEntityTemplate>
+        runner_preview_records;
+    runner_preview_records.reserve(13U);
+    for (std::size_t index = 0; index < 3U; ++index) {
+        runner_preview_records.push_back(
+            shadowrun::graphics::read_genesis_field_entity_template(
+                rom, 0x7291AU + index * 0x100U));
+    }
+    const auto recruited_preview_records =
+        shadowrun::graphics::read_genesis_recruited_roster(rom);
+    runner_preview_records.insert(runner_preview_records.end(),
+                                  recruited_preview_records.begin(),
+                                  recruited_preview_records.end());
+    std::vector<std::pair<std::uint32_t, std::uint16_t>>
+        emitted_preview_sources;
+    for (const auto& record : runner_preview_records) {
+        const auto source_key = std::pair{
+            record.hud_portrait_table_pointer,
+            record.hud_portrait_table_offset};
+        if (std::find(emitted_preview_sources.begin(),
+                      emitted_preview_sources.end(), source_key) !=
+            emitted_preview_sources.end()) {
+            continue;
+        }
+        emitted_preview_sources.push_back(source_key);
+        const auto panels =
+            shadowrun::graphics::decode_genesis_field_menu_dismiss_runner_preview_panels(
+                rom, record);
+        for (std::size_t palette_line = 0;
+             palette_line < panels.size(); ++palette_line) {
+            write_catalog_asset(
+                root,
+                "menu/field/runner-preview-table-" +
+                    std::to_string(record.hud_portrait_table_pointer) +
+                    "-offset-" +
+                    std::to_string(record.hud_portrait_table_offset) +
+                    "-palette-" + std::to_string(palette_line) + ".bmp",
+                panels[palette_line], "sprite",
+                "0x3404/0x6ACFA/0x110E8/0x110EC/0x03648", false, manifest,
+                written, missing, blank);
+        }
+    }
+    const auto random_grid_effects =
+        shadowrun::graphics::decode_genesis_field_menu_random_grid_effects(
+            rom);
+    for (std::size_t index = 0; index < 3U; ++index) {
+        write_catalog_asset(
+            root,
+            "menu/field/random-grid-fixed-" + std::to_string(index) +
+                ".bmp",
+            random_grid_effects[index], "background",
+            "0xE660/0xC13E8/0xCE126/0xCE12E/0xCE136", false,
+            manifest, written, missing, blank);
+    }
+    for (std::size_t index = 0; index < 4U; ++index) {
+        write_catalog_asset(
+            root,
+            "menu/field/random-grid-indexed-" + std::to_string(index) +
+                ".bmp",
+            random_grid_effects[3U + index], "background",
+            "0xE660/0xC13F8/0xCE13E", false, manifest, written, missing,
+            blank);
+    }
     write_array("menu/field/selected-cell-", assets.field_menu_selected_cells,
                 "sprite", "0x11678", true);
     write_array("menu/field/command-focus-", assets.field_menu_command_focus,
                 "sprite", "0x11454", true);
     write_array("menu/field/action-focus-", assets.field_menu_action_focus,
                 "sprite", "0x117A4", true);
+    write_array("menu/field/action-confirm-focus-",
+                assets.field_menu_action_confirmation_focus, "sprite",
+                "0x127FC/0xCD47A", true);
     write_array("menu/field/clips-focus-", assets.field_menu_clips_focus, "sprite",
                 "0x11B58", true);
     write_array("menu/field/clips-trade-focus-", assets.field_menu_clips_trade_focus,
@@ -1429,6 +1664,35 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 "0x12CEE/0xCF3D4", true);
     write_array("menu/field/defense-bar-", assets.field_menu_defense_bars, "sprite",
                 "0x12CEE/0xCF610", true);
+    write_catalog_asset(
+        root, "menu/field/magic-panel-background.bmp",
+        shadowrun::graphics::decode_genesis_field_magic_panel_background(rom),
+        "background", "0xFBA6/0xC6714/0xC8108", false,
+        manifest, written, missing, blank);
+    write_rgba_array(
+        "menu/field/magic-spell-icon-",
+        shadowrun::graphics::decode_genesis_field_magic_spell_icons(rom),
+        "sprite", "0xFBA6/0xFCB4/0x11190", false);
+    write_rgba_array(
+        "menu/field/magic-cursor-frame-",
+        shadowrun::graphics::decode_genesis_field_magic_cursor_frames(rom),
+        "sprite", "0xFDFE/0xC8B3E/0x1378", false);
+    write_rgba_array(
+        "menu/field/magic-posture-bar-",
+        shadowrun::graphics::decode_genesis_field_magic_posture_bars(rom),
+        "sprite", "0x107CE/0xC8600", false);
+    write_rgba_array(
+        "menu/field/magic-force-meter-tile-",
+        shadowrun::graphics::decode_genesis_field_magic_force_meter_tiles(rom),
+        "sprite", "0x10172/0xC85A2", false);
+    write_rgba_array(
+        "menu/field/magic-availability-bar-",
+        shadowrun::graphics::decode_genesis_field_magic_availability_bars(rom),
+        "sprite", "0x1088C/0xC86C0", false);
+    write_rgba_array(
+        "menu/field/magic-damage-bar-",
+        shadowrun::graphics::decode_genesis_field_magic_damage_bars(rom),
+        "sprite", "0x105E6/0xC86F8", false);
 
     // Field maps are backgrounds; entity and walking frames are sprites.
     // The mode-2 map is already the first entry in field_areas; emitting the
@@ -2082,6 +2346,21 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
+    if (argc == 4 && std::string(argv[3]) == "--native-menu") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto image =
+                shadowrun::graphics::decode_genesis_field_menu_background(rom);
+            shadowrun::graphics::write_bmp32(argv[2], image);
+            std::cout << "native field menu base: " << image.width << "x"
+                      << image.height << "\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
     if (argc == 4 && std::string(argv[3]) == "--field-dialogue-panel") {
         try {
             const auto rom = read_file(argv[1]);
@@ -2157,13 +2436,14 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
-    if (argc == 4 && std::string(argv[3]) == "--native-menu") {
+    if (argc == 4 && std::string(argv[3]) == "--magic-panel") {
         try {
             const auto rom = read_file(argv[1]);
             const auto image =
-                shadowrun::graphics::decode_genesis_field_menu_background(rom);
+                shadowrun::graphics::decode_genesis_field_magic_panel_background(
+                    rom);
             shadowrun::graphics::write_bmp32(argv[2], image);
-            std::cout << "native field menu base: " << image.width << "x"
+            std::cout << "magic panel background: " << image.width << "x"
                       << image.height << "\n"
                       << "output: " << argv[2] << "\n";
             return 0;
@@ -2339,6 +2619,8 @@ int main(int argc, char** argv) {
                       "--field-dialogue-panel-alternate\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out-dir> "
                       "--field-dialogue-buttons\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
+                     "--magic-panel\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
                       "--native-menu-inventory\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "

@@ -204,6 +204,29 @@ int main() {
                 "Dermal Plating(2)", "Dermal Plating(3)",
                 "Wired Reflexes(1)", "Wired Reflexes(2)",
                 "Wired Reflexes(3)"}));
+    const auto field_action_text =
+        read_genesis_field_menu_action_text(rom);
+    assert(field_action_text.automatic_use_message ==
+           "This item is\nautomatically\n    used.");
+    assert(field_action_text.trade_recipient_label == "Give to");
+    assert(field_action_text.trade_full_inventory_message ==
+           "  has a full\n  inventory.\n\nPress a button\n to continue.");
+    const auto action_confirmation_background =
+        decode_genesis_field_menu_action_confirmation_background(rom);
+    assert(action_confirmation_background.width == 120U);
+    assert(action_confirmation_background.height == 16U);
+    const auto action_confirmation_focus =
+        decode_genesis_field_menu_action_confirmation_focus(rom);
+    assert(action_confirmation_focus.size() == 2U);
+    for (const auto& focus : action_confirmation_focus) {
+        assert(focus.width == 16U);
+        assert(focus.height == 16U);
+        assert(focus.pixels.size() == 16U * 16U);
+        assert(std::all_of(focus.pixels.begin(), focus.pixels.end(),
+                           [](const auto& pixel) {
+                               return pixel.alpha == 255U;
+                           }));
+    }
     const auto dialogue_frame =
         decode_genesis_field_dialogue_panel_background(rom, false);
     const auto dialogue_frame_alternate =
@@ -304,7 +327,64 @@ int main() {
     assert(portraits_differ(portraits[0], portraits[1]));
     assert(portraits_differ(portraits[0], portraits[2]));
     assert(portraits_differ(portraits[1], portraits[2]));
+    const auto magic_posture_bars =
+        decode_genesis_field_magic_posture_bars(rom);
+    const auto magic_force_meter_tiles =
+        decode_genesis_field_magic_force_meter_tiles(rom);
+    const auto magic_availability_bars =
+        decode_genesis_field_magic_availability_bars(rom);
+    const auto magic_damage_bars =
+        decode_genesis_field_magic_damage_bars(rom);
+    const auto magic_menu_text = read_genesis_magic_menu_text(rom);
+    for (const auto& bar : magic_posture_bars) {
+        assert(bar.width == 64U && bar.height == 8U);
+        assert(bar.pixels.size() == 64U * 8U);
+        assert(std::any_of(bar.pixels.begin(), bar.pixels.end(),
+                           [](const auto& pixel) {
+                               return pixel.alpha != 0U;
+                           }));
+    }
+    for (const auto& tile : magic_force_meter_tiles) {
+        assert(tile.width == 8U && tile.height == 8U);
+        assert(tile.pixels.size() == 64U);
+    }
+    for (const auto& bar : magic_availability_bars) {
+        assert(bar.width == 56U && bar.height == 8U);
+        assert(bar.pixels.size() == 56U * 8U);
+    }
+    for (const auto& bar : magic_damage_bars) {
+        assert(bar.width == 56U && bar.height == 8U);
+        assert(bar.pixels.size() == 56U * 8U);
+    }
+    assert(portraits_differ(magic_posture_bars[0],
+                            magic_posture_bars[4]));
+    assert(portraits_differ(magic_force_meter_tiles[3],
+                            magic_force_meter_tiles[4]));
+    assert(magic_menu_text.set_force_and_posture ==
+           "Set Force & Posture.");
+    assert(magic_menu_text.success_label == "Success");
+    assert(magic_menu_text.force_label == "Force");
+    assert(magic_menu_text.availability_label == "Damage");
     const auto field_menu_font = decode_genesis_field_menu_font(rom);
+    const auto pocket_secretary_grid =
+        decode_genesis_pocket_secretary_grid(rom);
+    assert(pocket_secretary_grid.width == 224U &&
+           pocket_secretary_grid.height == 168U &&
+           pocket_secretary_grid.pixels.size() == 224U * 168U);
+    for (std::size_t y = 0; y < pocket_secretary_grid.height; ++y) {
+        for (std::size_t x = 0; x < pocket_secretary_grid.width; ++x) {
+            const auto repeated_tile_pixel =
+                (y % 8U) * pocket_secretary_grid.width + (x % 8U);
+            const auto& actual = pocket_secretary_grid.pixels[
+                y * pocket_secretary_grid.width + x];
+            const auto& expected =
+                pocket_secretary_grid.pixels[repeated_tile_pixel];
+            assert(actual.red == expected.red &&
+                   actual.green == expected.green &&
+                   actual.blue == expected.blue &&
+                   actual.alpha == expected.alpha);
+        }
+    }
     const auto startup_cursor = decode_genesis_startup_cursor(rom);
     const auto field_font_ink = std::find_if(
         field_menu_font.pixels.begin(), field_menu_font.pixels.end(),
@@ -725,6 +805,20 @@ int main() {
     assert(native_assets.dismiss_runner_labels[0] == "   Dismiss");
     assert(native_assets.dismiss_runner_labels[1] == "    Who??");
     assert(native_assets.dismiss_runner_labels[2] == "    Abort");
+    const auto random_grid_effects =
+        decode_genesis_field_menu_random_grid_effects(rom);
+    for (const auto& effect : random_grid_effects) {
+        assert(effect.width == 16U);
+        assert(effect.height == 8U);
+        assert(effect.pixels.size() == 16U * 8U);
+        assert(std::any_of(effect.pixels.begin(), effect.pixels.end(),
+                           [](const auto& pixel) {
+                               return pixel.red != 0U || pixel.green != 0U ||
+                                      pixel.blue != 0U;
+                           }));
+    }
+    assert(read_genesis_dismiss_runner_separator(rom) ==
+           std::string("[") + std::string(12U, static_cast<char>(92)));
     const auto notebook_labels = read_genesis_notebook_labels(rom);
     assert((notebook_labels == std::array<std::string, 6>{
         "  Notebook", "Current Run", "Tips & Clues", "Contacts",
@@ -733,6 +827,15 @@ int main() {
             std::array<std::string, 3>{
                 " You are not currently", "engaged in a shadowrun.",
                 "     Get a job!!"}));
+    const auto pocket_secretary_text =
+        read_genesis_pocket_secretary_text(rom);
+    assert(pocket_secretary_text.title == " Main Menu");
+    assert(pocket_secretary_text.separator ==
+           std::string("[") + std::string(10U, static_cast<char>(92)));
+    assert((pocket_secretary_text.options ==
+            std::array<std::string, 5>{
+                "Notebook", "Group Items", "Cyberdeck", "Dismiss Runner",
+                "Save/Load Game"}));
     assert(native_assets.notebook_labels == notebook_labels);
     assert(native_assets.notebook_no_run_lines ==
            read_genesis_notebook_no_run_text(rom));
@@ -752,7 +855,7 @@ int main() {
                 "Vigore & Jarl", "Caleb Brightmore"}));
     assert(native_assets.notebook_mr_johnson_names == mr_johnson_names);
     assert((native_assets.notebook_tip_flags ==
-            std::array<std::uint32_t, 3>{0U, 0U, 0U}));
+            std::array<std::uint32_t, 3>{1U, 0U, 0U}));
     native_assets.notebook_tip_flags =
         std::array<std::uint32_t, 3>{0x80000001U, 0x00000000U,
                                      0x00000000U};
@@ -860,6 +963,64 @@ int main() {
         assert(native_assets.field_hud.pixels.size() == field_hud.pixels.size());
         assert(loaded_assets.field_hud.pixels.size() ==
                native_assets.field_hud.pixels.size());
+        for (std::size_t meter = 0;
+             meter < native_assets.field_hud_delay_meter_counters.size();
+             ++meter) {
+            const auto& delay =
+                native_assets.field_hud_delay_meter_counters[meter];
+            assert(delay.width == 8U && delay.height == 32U);
+            assert(std::any_of(delay.pixels.begin(), delay.pixels.end(),
+                               [](const auto& pixel) {
+                                   return pixel.alpha != 0U;
+                               }));
+            for (std::size_t profile = 0;
+                 profile <
+                     native_assets.field_hud_behavior_meter_counters.size();
+                 ++profile) {
+                const auto& behavior =
+                    native_assets.field_hud_behavior_meter_counters[profile]
+                        [meter];
+                assert(behavior.width == 32U && behavior.height == 8U);
+                assert(std::any_of(behavior.pixels.begin(),
+                                   behavior.pixels.end(), [](const auto& pixel) {
+                                       return pixel.alpha != 0U;
+                                   }));
+            }
+        }
+        const auto meter_index = [](const std::uint8_t value) {
+            return std::min<std::size_t>(value, 10U);
+        };
+        const auto same_pixels = [](
+                                     const auto& left,
+                                     const auto& right) {
+            return left.size() == right.size() &&
+                   std::equal(left.begin(), left.end(), right.begin(),
+                              [](const auto& a, const auto& b) {
+                                  return a.red == b.red &&
+                                         a.green == b.green &&
+                                         a.blue == b.blue &&
+                                         a.alpha == b.alpha;
+                              });
+        };
+        for (std::size_t profile = 0;
+             profile < native_assets.protagonist_archetype_records.size();
+             ++profile) {
+            const auto& record =
+                native_assets.protagonist_archetype_records[profile];
+            const auto delay = (record.flags_10 & 0x01U) != 0U
+                ? meter_index(record.physical_value)
+                : 0U;
+            const auto behavior_profile = profile == 0U ? 0U : 1U;
+            const auto behavior = meter_index(record.mental_value);
+            assert(same_pixels(
+                native_assets.field_hud_vertical_counters[profile].pixels,
+                native_assets.field_hud_delay_meter_counters[delay].pixels));
+            assert(same_pixels(
+                native_assets.field_hud_horizontal_counters[profile].pixels,
+                native_assets.field_hud_behavior_meter_counters
+                    [behavior_profile][behavior]
+                        .pixels));
+        }
         assert(!native_assets.entity_frames_gray.empty());
         assert(native_assets.entity_frames_gray.size() ==
                native_assets.entity_frames.size());

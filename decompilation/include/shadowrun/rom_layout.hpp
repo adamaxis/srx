@@ -112,6 +112,11 @@ constexpr std::size_t kCyberwareCount = 15;
 // pointer table for the visible Group Items names.
 constexpr std::uint32_t kGroupItemPointerTable = 0xC25C4;
 constexpr std::size_t kGroupItemCount = 15;
+// ROM 0xC8C8 emits these two source rows at the empty-catalog branch.
+inline constexpr std::array<GenesisAddress, 2> kGroupItemEmptyText{
+    0xC1471, 0xC1486};
+inline constexpr std::array<std::size_t, 2> kGroupItemEmptyTextLengths{
+    20, 18};
 // 0x18150 passes these three FF-terminated strings to C0DA when the
 // cyberdeck-present flag at FF018F bit 0 is clear.
 inline constexpr std::array<GenesisAddress, 3>
@@ -150,6 +155,19 @@ constexpr std::uint32_t kInitialNotebookContactsFlags = 0x59C48;
 inline constexpr std::array<GenesisAddress, 3> kNotebookTipPointerTables{
     0xC2716, 0xC2796, 0xC2816};
 constexpr std::size_t kNotebookTipTableEntryCount = 32;
+// F9A4's presentation labels and its FFFC30 new-game seed are ordinary
+// source state/text that the host imports once; the Qt runtime consumes the
+// resulting strings and typed flags directly.
+constexpr GenesisAddress kNotebookTipsTitleText = 0xC56C9;
+constexpr std::size_t kNotebookTipsTitleTextLength = 12;
+constexpr GenesisAddress kNotebookTipsSeparatorText = 0xC56D6;
+constexpr std::size_t kNotebookTipsSeparatorTextLength = 16;
+constexpr GenesisAddress kNotebookTipsPageCountText = 0xC663A;
+constexpr std::size_t kNotebookTipsPageCountTextLength = 10;
+constexpr GenesisAddress kNotebookTipsPageNumberClearText = 0xC6645;
+constexpr std::size_t kNotebookTipsPageNumberClearTextLength = 2;
+inline constexpr std::array<std::uint32_t, 3> kInitialNotebookTipFlags{
+    0x00000001U, 0x00000000U, 0x00000000U};
 // ROM 0xD01C loads twenty labels through this longword table. The first
 // eight correspond to the attribute bytes at record +0x77..+0x7E; the final
 // twelve correspond to the skill bytes at +0x80..+0x85 and +0x87..+0x8C.
