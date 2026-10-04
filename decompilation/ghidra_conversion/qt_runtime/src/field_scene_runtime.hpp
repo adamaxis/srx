@@ -48,6 +48,7 @@
 #include "field_clips_menu_runtime.hpp"
 #include "field_party_roster_runtime.hpp"
 #include "field_dialogue_runtime.hpp"
+#include "hotel_menu_runtime.hpp"
 #include "field_mode_text_runtime.hpp"
 #include "field_menu_text_catalog.hpp"
 #include "shop_menu_runtime.hpp"
@@ -131,9 +132,21 @@ public:
     }
     bool open_stoker_room_payment_for_dump(std::uint32_t funds);
     FieldDialogueAdvanceResult advance_stoker_dialogue_for_dump(
-        std::uint16_t event_word) {
-        return field_dialogue_.advance_controller_events(event_word);
+        std::uint16_t event_word);
+    bool hotel_menu_open() const noexcept { return hotel_menu_.open(); }
+    HotelMenuPhase hotel_menu_phase() const noexcept {
+        return hotel_menu_.phase();
     }
+    std::uint8_t hotel_option_selection() const noexcept {
+        return static_cast<std::uint8_t>(hotel_menu_.option_selection());
+    }
+    std::uint8_t hotel_checkout_selection() const noexcept {
+        return static_cast<std::uint8_t>(hotel_menu_.checkout_selection());
+    }
+    std::uint32_t hotel_animation_frames() const noexcept {
+        return hotel_menu_.animation_frames();
+    }
+    HotelMenuEvent advance_hotel_menu_for_dump(std::uint16_t events);
     std::optional<std::uint32_t> notebook_story_flags_for_dump() const noexcept {
         return notebook_tip_flags_resolved_
                    ? std::optional<std::uint32_t>{notebook_tip_flags_[0]}
@@ -479,8 +492,13 @@ private:
     void paint_command_overview(QPainter& painter) const;
     void paint_command_overview_clips(QPainter& painter) const;
     void paint_field_shop(QPainter& painter) const;
+    void begin_hotel_menu();
+    HotelMenuEvent process_hotel_menu_events(std::uint16_t events);
     void draw_command_overview_text(QPainter& painter, int x, int y,
                                     std::string_view text) const;
+    void draw_hotel_menu_text(QPainter& painter, int x, int y,
+                              std::string_view text,
+                              HotelMenuPaletteLine palette_line) const;
     void refresh_command_overview_combat_bars();
     void refresh_command_overview_item_detail();
     void refresh_field_hud_runner_slot();
@@ -541,6 +559,7 @@ private:
     FieldViewportState viewport_state_;
     FieldCommandOverviewBridge command_overview_;
     FieldDialogueRuntime field_dialogue_;
+    HotelMenuRuntime hotel_menu_{};
     FieldModeTextRuntime field_mode_text_{};
     ShopMenuController field_shop_menu_{};
     FieldDialogueEventResolver field_dialogue_event_resolver_;
@@ -559,6 +578,7 @@ private:
     QImage command_overview_background_;
     QImage command_overview_inventory_boxes_;
     QImage command_overview_font_;
+    QImage hotel_checkout_font_;
     QImage command_overview_cursor_;
     FieldMenuTextCatalog field_menu_text_{};
     std::array<QImage, 3> command_overview_portraits_{};
@@ -649,6 +669,8 @@ private:
     std::optional<std::uint16_t> notebook_shadowrunner_flags_ = 0U;
     QImage pocket_secretary_background_;
     QImage pocket_secretary_grid_;
+    QImage hotel_options_cursor_;
+    QImage hotel_checkout_cursor_;
     std::unordered_map<std::string, QImage> dismiss_runner_preview_panels_;
     std::array<QImage, 7> dismiss_runner_random_grid_patterns_{};
     QImage command_overview_attributes_background_;

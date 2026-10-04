@@ -194,8 +194,8 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
             active_prompt_ == StokerMotelPromptId::room_paid &&
             hotel_options_menu_follows_;
         if (hotel_options_menu_follows) {
-            open_source_boundary("field.exit.hotel_options_unresolved");
-            return FieldDialogueAdvanceResult::source_boundary;
+            close();
+            return FieldDialogueAdvanceResult::hotel_options_requested;
         }
         close();
         return FieldDialogueAdvanceResult::returned_to_field;

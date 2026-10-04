@@ -175,6 +175,32 @@ void write_field_menu_text_catalog(
         emit("pocket-secretary.option." + std::to_string(index),
              pocket_secretary_text.options[index]);
     }
+    const auto hotel_options_text =
+        shadowrun::graphics::read_genesis_hotel_options_text(rom);
+    emit("hotel.title", hotel_options_text.title);
+    emit("hotel.separator", hotel_options_text.separator);
+    for (std::size_t index = 0; index < hotel_options_text.options.size();
+         ++index) {
+        emit("hotel.option." + std::to_string(index),
+             hotel_options_text.options[index]);
+    }
+    for (std::size_t index = 0;
+         index < hotel_options_text.checkout_question.size(); ++index) {
+        emit("hotel.checkout-question." + std::to_string(index),
+             hotel_options_text.checkout_question[index]);
+    }
+    for (std::size_t index = 0;
+         index < hotel_options_text.checkout_options.size(); ++index) {
+        emit("hotel.checkout-option." + std::to_string(index),
+             hotel_options_text.checkout_options[index]);
+    }
+    emit("hotel.medical-attention-suffix",
+         hotel_options_text.medical_attention_suffix);
+    for (std::size_t index = 0;
+         index < hotel_options_text.recovery_message.size(); ++index) {
+        emit("hotel.recovery-message." + std::to_string(index),
+             hotel_options_text.recovery_message[index]);
+    }
     const auto cyberdeck_unavailable_text =
         shadowrun::graphics::read_genesis_cyberdeck_unavailable_text(rom);
     for (std::size_t index = 0;
@@ -1623,8 +1649,13 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
           assets.field_menu_attributes_background, "background", "0x10C96", false);
     write("menu/field/inventory-boxes.bmp", assets.field_menu_inventory_boxes,
           "background", "0x10F50/0x1232", false);
-    write("menu/field/font.bmp", assets.field_menu_font, "sprite", "0xC1064",
-          true);
+    write("menu/field/font.bmp", assets.field_menu_font, "sprite",
+          "0xC1064 palette-line=3", true);
+    write_catalog_asset(
+        root, "menu/field/font-palette-2.bmp",
+        shadowrun::graphics::decode_genesis_field_menu_font(rom, 2U),
+        "sprite", "0xC1064/0xD29D6/0x18AC56 palette-line=2", true,
+        manifest, written, missing, blank);
     write_array("menu/field/runner-portrait-", assets.field_menu_runner_portraits,
                 "sprite", "0x7291A", true);
     std::vector<shadowrun::graphics::GenesisFieldEntityTemplate>
@@ -1707,6 +1738,16 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
           "0x119CE", true);
     write("menu/field/cursor.bmp", assets.field_menu_cursor, "sprite", "0x11592",
           true);
+    write_catalog_asset(
+        root, "menu/field/hotel-cursor.bmp",
+        shadowrun::graphics::decode_genesis_hotel_options_cursor(rom),
+        "sprite", "0xC0C2/0xC376/0xDA6A/0xC1064/0x5FF", true, manifest,
+        written, missing, blank);
+    write_catalog_asset(
+        root, "menu/field/hotel-checkout-cursor.bmp",
+        shadowrun::graphics::decode_genesis_hotel_options_cursor(rom, 2U),
+        "sprite", "0xC0C2/0xC376/0xDA6A/0xC1064/0x5FF palette-line=2", true,
+        manifest, written, missing, blank);
     for (std::size_t item = 0; item < assets.field_menu_item_art.size(); ++item) {
         const auto item_code = item + 1U;
         write(shadowrun::resources::item_detail_asset_path(item_code),

@@ -75,6 +75,21 @@ int main() {
         text.catalog.pocket_secretary_title != " Main Menu" ||
         text.catalog.pocket_secretary_separator !=
             std::string("[") + std::string(10U, static_cast<char>(92)) ||
+        text.catalog.hotel_title != " Hotel Options" ||
+        text.catalog.hotel_separator !=
+            std::string("[") + std::string(14U, static_cast<char>(92)) ||
+        text.catalog.hotel_options !=
+            std::array<std::string, 2>{"  Karma Screen", "  Check Out"} ||
+        text.catalog.hotel_checkout_question !=
+            std::array<std::string, 2>{"Do you wish to", "  check out?"} ||
+        text.catalog.hotel_checkout_options !=
+            std::array<std::string, 3>{"Yes", "", "No"} ||
+        text.catalog.hotel_medical_attention_suffix !=
+            " needs medical attention!" ||
+        text.catalog.hotel_recovery_message !=
+            std::array<std::string, 5>{
+                "", "", "     A steaming mug of",
+                "   soykaf would be just", "   wiz about now."} ||
         text.catalog.dismiss_runner_labels !=
             std::array<std::string, kDismissRunnerLabelCount>{
                 "   Dismiss", "    Who??", "    Abort"} ||

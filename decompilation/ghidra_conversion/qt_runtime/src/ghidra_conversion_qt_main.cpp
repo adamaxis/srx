@@ -164,6 +164,7 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
                    " [--field-magic-spell-dump <output-dir>]"
                    " [--field-archetype <samurai|decker|gator>]"
                    " [--field-hud-qa <output-dir>]"
+                   " [--field-hotel-qa <output-dir>]"
                    " [--field-command-reopen-smoke]"
                    " [--field-dialogue-dump <prompt> <file>]"
                    " [--field-mode-text-dump <variant> <file>]"
@@ -229,6 +230,10 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
             continue;
         }
         if (argument == "--field-hud-qa" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-hotel-qa" && index + 1 < argc) {
             ++index;
             continue;
         }
@@ -2723,6 +2728,7 @@ int main(int argc, char** argv) {
         bool intro_to_field_smoke = false;
         std::optional<std::filesystem::path> field_dump_path;
         std::optional<std::filesystem::path> field_hud_qa_path;
+        std::optional<std::filesystem::path> field_hotel_qa_path;
         std::optional<std::filesystem::path> field_command_dump_path;
         std::optional<std::uint8_t> field_command_page;
         std::optional<std::filesystem::path> field_cyberware_dump_path;
@@ -2772,6 +2778,7 @@ int main(int argc, char** argv) {
                        " [--field-magic-spell-dump <output-dir>]"
                        " [--field-archetype <samurai|decker|gator>]"
                        " [--field-hud-qa <output-dir>]"
+                       " [--field-hotel-qa <output-dir>]"
                        " [--field-command-reopen-smoke]"
                        " [--field-dialogue-dump <prompt> <file>]"
                        " [--field-mode-text-dump <variant> <file>]"
@@ -2874,6 +2881,11 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_hud_qa_path = std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-hotel-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_hotel_qa_path = std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-command-page" &&
                 index + 1 < argc) {
@@ -3282,6 +3294,235 @@ int main(int argc, char** argv) {
                 std::cout << "field_dialogue_dump=written prompt="
                           << *field_dialogue_dump_prompt << " path="
                           << field_dialogue_dump_path->string() << "\n";
+                return 0;
+            }
+            if (field_hotel_qa_path.has_value()) {
+                const auto output = *field_hotel_qa_path;
+                std::filesystem::create_directories(output);
+                field_scene.active_runner_record().delay_meter = 2U;
+                field_scene.active_runner_record().behavior_meter = 0U;
+                if (!field_scene.open_stoker_room_payment_for_dump(20U) ||
+                    field_scene.field_funds_for_dump() != 0U) {
+                    std::cerr << "field Hotel QA: paid-room outcome did not open\n";
+                    return 3;
+                }
+                const auto capture = [&field_scene](
+                                         const std::filesystem::path& path) {
+                    QImage image(kSceneWidth, kSceneHeight,
+                                 QImage::Format_RGB32);
+                    image.fill(Qt::magenta);
+                    QPainter painter(&image);
+                    field_scene.paint(painter);
+                    painter.end();
+                    if (path.has_parent_path()) {
+                        std::filesystem::create_directories(
+                            path.parent_path());
+                    }
+                    if (!image.save(QString::fromStdWString(
+                            path.wstring()))) {
+                        return QImage{};
+                    }
+                    return image;
+                };
+                if (capture(output / "paid-dialogue" / "actual.bmp").isNull() ||
+                    field_scene.advance_stoker_dialogue_for_dump(0x4000U) !=
+                        FieldDialogueAdvanceResult::hotel_options_requested ||
+                    !field_scene.hotel_menu_open() ||
+                    field_scene.dialogue_open() ||
+                    field_scene.hotel_menu_phase() !=
+                        HotelMenuPhase::entity_status ||
+                    field_scene.active_runner_record().behavior_meter !=
+                        10U) {
+                    std::cerr << "field Hotel QA: paid dialogue did not transfer into Hotel status\n";
+                    return 3;
+                }
+                auto status = capture(output / "status" / "actual.bmp");
+                if (status.isNull() ||
+                    !image_has_green_ink(status, 88, 40, 48, 8) ||
+                    !image_has_green_ink(status, 32, 48, 240, 8) ||
+                    !image_has_green_ink(status, 32, 80, 224, 8) ||
+                    !image_region_has_color(status, 88, 40, 48, 8,
+                                            QColor(36, 219, 36)) ||
+                    image_has_green_ink(status, 32, 40, 48, 8) ||
+                    image_has_green_ink(status, 32, 56, 240, 24)) {
+                    std::cerr << "field Hotel QA: status page text or full redraw is incorrect\n";
+                    return 3;
+                }
+                QImage black_reference(kSceneWidth, kSceneHeight,
+                                       QImage::Format_RGB32);
+                black_reference.fill(Qt::black);
+                if (image_region_differs(status, black_reference,
+                                         272, 0, 48, 224)) {
+                    std::cerr << "field Hotel QA: stale field HUD remains over Hotel screen\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 30; ++frame) {
+                    if (field_scene.advance_hotel_menu_for_dump(0U) !=
+                        HotelMenuEvent::waiting) {
+                        std::cerr << "field Hotel QA: status page left without input\n";
+                        return 3;
+                    }
+                }
+                const auto status_frame_30 =
+                    capture(output / "status-frame-30" / "actual.bmp");
+                if (status_frame_30.isNull() ||
+                    field_scene.hotel_animation_frames() != 30U ||
+                    image_region_differs(status, status_frame_30,
+                                         24, 24, 224, 168) ||
+                    !image_region_differs(status, status_frame_30,
+                                          24, 192, 224, 32)) {
+                    std::cerr << "field Hotel QA: status text or E660 wait animation is incorrect\n";
+                    return 3;
+                }
+
+                if (field_scene.advance_hotel_menu_for_dump(0x4000U) !=
+                        HotelMenuEvent::status_acknowledged ||
+                    field_scene.hotel_menu_phase() != HotelMenuPhase::options ||
+                    field_scene.hotel_option_selection() != 0U) {
+                    std::cerr << "field Hotel QA: status acknowledgement did not open the options page\n";
+                    return 3;
+                }
+                const auto options_default =
+                    capture(output / "options" / "actual.bmp");
+                if (options_default.isNull() ||
+                    !image_has_green_ink(options_default, 88, 72, 160, 8) ||
+                    !image_has_green_ink(options_default, 88, 80, 160, 8) ||
+                    !image_region_has_color(options_default, 88, 72, 160, 8,
+                                            QColor(36, 219, 36)) ||
+                    image_has_green_ink(options_default, 32, 40, 240, 8)) {
+                    std::cerr << "field Hotel QA: options page is missing rows or retained the status page\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 30; ++frame) {
+                    if (field_scene.advance_hotel_menu_for_dump(0U) !=
+                        HotelMenuEvent::waiting) {
+                        std::cerr << "field Hotel QA: options page left without input\n";
+                        return 3;
+                    }
+                }
+                const auto options_frame_30 = capture(
+                    output / "options-frame-30" / "actual.bmp");
+                if (options_frame_30.isNull() ||
+                    field_scene.hotel_animation_frames() != 30U ||
+                    image_region_differs(options_default, options_frame_30,
+                                         24, 24, 224, 168) ||
+                    !image_region_differs(options_default, options_frame_30,
+                                          24, 192, 224, 32)) {
+                    std::cerr << "field Hotel QA: E660 should animate the lower grid once per options wait frame\n";
+                    return 3;
+                }
+                if (field_scene.advance_hotel_menu_for_dump(0x0200U) !=
+                        HotelMenuEvent::selection_moved ||
+                    field_scene.hotel_option_selection() != 1U) {
+                    std::cerr << "field Hotel QA: Down did not select Check Out\n";
+                    return 3;
+                }
+                const auto options_checkout =
+                    capture(output / "options-checkout-selected" / "actual.bmp");
+                if (options_checkout.isNull() ||
+                    !image_region_differs(options_default, options_checkout,
+                                          72, 72, 8, 16) ||
+                    !image_region_has_color(options_checkout, 72, 80, 8, 8,
+                                            QColor(36, 219, 36))) {
+                    std::cerr << "field Hotel QA: source's 8x8 selection arrow did not move between options\n";
+                    return 3;
+                }
+                if (field_scene.advance_hotel_menu_for_dump(0x4000U) !=
+                        HotelMenuEvent::checkout_opened ||
+                    field_scene.hotel_menu_phase() != HotelMenuPhase::checkout ||
+                    field_scene.hotel_checkout_selection() != 1U) {
+                    std::cerr << "field Hotel QA: checkout did not open with No selected\n";
+                    return 3;
+                }
+                const auto checkout_no =
+                    capture(output / "checkout-no" / "actual.bmp");
+                if (checkout_no.isNull() ||
+                    !image_region_has_color(checkout_no, 80, 72, 160, 16,
+                                            QColor(109, 73, 146)) ||
+                    !image_region_has_color(checkout_no, 128, 96, 64, 8,
+                                            QColor(109, 73, 146)) ||
+                    !image_region_has_color(checkout_no, 128, 112, 64, 8,
+                                            QColor(109, 73, 146)) ||
+                    image_has_green_ink(checkout_no, 88, 72, 160, 16) ||
+                    !image_region_has_color(checkout_no, 104, 104, 8, 8,
+                                            QColor(109, 73, 146)) ||
+                    image_has_green_ink(checkout_no, 72, 48, 160, 8)) {
+                    std::cerr << "field Hotel QA: checkout text or old options clear is incorrect\n";
+                    return 3;
+                }
+                const auto checkout_animation_frame_count =
+                    field_scene.hotel_animation_frames();
+                for (int frame = 0; frame < 30; ++frame) {
+                    if (field_scene.advance_hotel_menu_for_dump(0U) !=
+                        HotelMenuEvent::waiting) {
+                        std::cerr << "field Hotel QA: checkout prompt left without input\n";
+                        return 3;
+                    }
+                }
+                const auto checkout_no_frame_30 = capture(
+                    output / "checkout-no-frame-30" / "actual.bmp");
+                if (checkout_no_frame_30.isNull() ||
+                    field_scene.hotel_animation_frames() !=
+                        checkout_animation_frame_count ||
+                    image_region_differs(checkout_no, checkout_no_frame_30,
+                                         0, 0, 320, 224)) {
+                    std::cerr << "field Hotel QA: nested checkout prompt should hold without E660\n";
+                    return 3;
+                }
+                if (field_scene.advance_hotel_menu_for_dump(0x4000U) !=
+                        HotelMenuEvent::stayed_at_hotel ||
+                    field_scene.hotel_menu_phase() != HotelMenuPhase::options ||
+                    field_scene.hotel_option_selection() != 0U) {
+                    std::cerr << "field Hotel QA: default No did not return to the first Hotel option\n";
+                    return 3;
+                }
+                const auto options_after_no =
+                    capture(output / "options-after-no" / "actual.bmp");
+                if (options_after_no.isNull() ||
+                    image_has_green_ink(options_after_no, 80, 96, 160, 32) ||
+                    image_region_has_color(options_after_no, 80, 72, 160, 48,
+                                           QColor(109, 73, 146)) ||
+                    image_region_has_color(options_after_no, 104, 96, 8, 24,
+                                           QColor(109, 73, 146))) {
+                    std::cerr << "field Hotel QA: No left checkout text under the Hotel options\n";
+                    return 3;
+                }
+                if (field_scene.advance_hotel_menu_for_dump(
+                        0x0200U | 0x4000U) != HotelMenuEvent::checkout_opened ||
+                    field_scene.hotel_checkout_selection() != 1U ||
+                    field_scene.advance_hotel_menu_for_dump(0x0100U) !=
+                        HotelMenuEvent::selection_moved ||
+                    field_scene.hotel_checkout_selection() != 0U) {
+                    std::cerr << "field Hotel QA: same-frame move/confirm order or checkout wrap is incorrect\n";
+                    return 3;
+                }
+                const auto checkout_yes =
+                    capture(output / "checkout-yes" / "actual.bmp");
+                if (checkout_yes.isNull() ||
+                    !image_region_has_color(checkout_yes, 104, 96, 8, 8,
+                                            QColor(109, 73, 146)) ||
+                    !image_region_differs(checkout_no, checkout_yes,
+                                          104, 96, 8, 16)) {
+                    std::cerr << "field Hotel QA: checkout cursor did not move from No to Yes\n";
+                    return 3;
+                }
+                if (field_scene.advance_hotel_menu_for_dump(0x1000U) !=
+                        HotelMenuEvent::checked_out ||
+                    field_scene.hotel_menu_open() ||
+                    field_scene.dialogue_open() || !field_audio_events.empty()) {
+                    std::cerr << "field Hotel QA: Yes did not return to the field or Hotel emitted unexpected audio\n";
+                    return 3;
+                }
+                const auto returned_field =
+                    capture(output / "returned-field" / "actual.bmp");
+                if (returned_field.isNull() ||
+                    !image_region_differs(returned_field, black_reference,
+                                          0, 0, 320, 224)) {
+                    std::cerr << "field Hotel QA: checkout did not redraw the field scene\n";
+                    return 3;
+                }
+                std::cout << "field_hotel_qa=passed path="
+                          << output.string() << "\n";
                 return 0;
             }
             if (field_mode_text_dump_variant.has_value() &&

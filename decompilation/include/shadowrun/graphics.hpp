@@ -382,6 +382,31 @@ struct GenesisPocketSecretaryText {
 };
 GenesisPocketSecretaryText read_genesis_pocket_secretary_text(
     const std::vector<std::uint8_t>& rom);
+
+// ROM 0xCF38 renders Hotel Options from C14D0; checkout prompt 0xDA6A uses
+// C164C and E387E. The Hotel status pass at 0xEF08 uses C2643/C265E. Keep the
+// exact source rows as extracted host strings so the Qt screen can use the
+// shared text renderer without reading ROM data at runtime.
+struct GenesisHotelOptionsText {
+    std::string title;
+    std::string separator;
+    std::array<std::string, 2> options{};
+    std::array<std::string, 2> checkout_question{};
+    std::array<std::string, 3> checkout_options{};
+    std::string medical_attention_suffix;
+    std::array<std::string, 5> recovery_message{};
+};
+GenesisHotelOptionsText read_genesis_hotel_options_text(
+    const std::vector<std::uint8_t>& rom);
+
+// ROM 0xC0C2 uploads the menu font at VRAM 0xB560. ROM 0xC376 clears the old
+// row with tile 0x5AB and selects the new row with tile 0x5FF. Options use
+// palette line three; the nested checkout prompt uses palette line two. This
+// is the source's 8x8 Hotel cursor, not the larger 32x24 command-screen
+// inventory selector.
+RgbaImage decode_genesis_hotel_options_cursor(
+    const std::vector<std::uint8_t>& rom,
+    std::size_t palette_line = 3U);
 struct GenesisNotebookTipsText {
     std::string title;
     std::string separator;
@@ -863,7 +888,8 @@ RgbaImage decode_genesis_field_menu_inventory_boxes(
     const std::vector<std::uint8_t>& rom);
 
 RgbaImage decode_genesis_field_menu_font(
-    const std::vector<std::uint8_t>& rom);
+    const std::vector<std::uint8_t>& rom,
+    std::size_t palette_line = 3U);
 
 // The clip counter at C4B4 is emitted with C0DA's palette-line zero rather
 // than the command text's palette-line three. Keep that source palette

@@ -17,6 +17,7 @@ add_executable(shadowrun_ghidra_conversion_qt
     src/dialogue_panel_presenter.cpp
     src/dialogue_text_catalog.cpp
     src/field_dialogue_runtime.cpp
+    src/hotel_menu_runtime.cpp
     src/field_mode_text_runtime.cpp
     src/audio_playback.cpp
 )
@@ -121,6 +122,16 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_hud_qa
                  --field-hud-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-hud-qa")
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_hud_qa PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
+# The paid-room result must enter its full-screen Hotel status/options route,
+# and checkout must redraw both its prompt and the returning field scene.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_hotel_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-hotel-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-hotel-qa")
+set_tests_properties(shadowrun_ghidra_conversion_qt_field_hotel_qa PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # The Pocket Secretary route must open from the command overview's sixth

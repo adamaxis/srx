@@ -49,6 +49,7 @@ flowchart TD
 | Cyberware | `CyberwareMenuController` and `CyberwareMenuPresenter` | `CyberwareMenuModel` | Keep the current installed-bit/name view read-only until source purchase/install paths are traced. |
 | Magic | `MagicMenuController` and `MagicMenuPresenter` | `MagicMenuLoopState`, `MagicForceState`, and Magic conversions | Move spell/force selection and return behavior out of `FieldSceneRuntime`; keep the defense fallback as its own source-selected branch. |
 | Pocket Secretary | `PocketSecretaryMenuController` and a presenter per child page | `PocketSecretaryMenuState`, `NotebookMenuState`, and `DismissRunnerMenuState` | Give the parent, Notebook/Tips, and Dismiss Runner distinct views and route results. Rebuild the panel before a child page replaces parent controls. |
+| Hotel status/options/checkout | HotelMenuRuntime with HotelOptionsMenuState and HotelCheckoutPromptState | service_hotel_entity_status, Hotel input transitions, and FieldSceneRuntime route from paid room text | Keep status/options/checkout as one typed screen route; preserve the blank-clear/arrow-selected source tiles, redraw the full screen on each phase change, and leave Karma Screen as a traced boundary. |
 | Dialogue | `FieldDialogueEventResolver` plus `DialoguePanelPresenter` | `DialoguePanelView`, `FieldExitPromptState`, and source speaker/event records | Resolve speaker properties, trigger event, text, portrait, options, and frame mode before the generic presenter draws. Use event-specific providers for motel, building, and random street encounters. |
 | Shop | `ShopMenuController`, `ShopTransactionService`, and `ShopMenuPresenter` | Ares mode/event and offer rows are traced; controller and typed transaction adapters are implemented | Connect the event-resolved dialogue and field-mode route, then add the source-positioned presenter and live session wallet binding. |
 
@@ -64,6 +65,7 @@ their current host:
 - **In-game command overview:** `FieldCommandOverviewBridge` owns the typed
   root-page transition and resolved view. `FieldSceneRuntime` still owns its
   assets, root and child drawing, child state, and most child input routing.
+- **Hotel Options:** HotelMenuRuntime owns the typed status/options/checkout phases and source cursor transitions; FieldSceneRuntime routes the paid Stoker room result into it. The full-screen presenter clears stale dialogue, buttons, and field HUD. Debug/Release QA writes phase screenshots and checks status/options E660 cadence, static checkout, source palette lines three/two, and stale-control clearing. Karma Screen, the source random seed, and independent Hotel captures remain open.
 - **Dialogue:** `FieldDialogueEventResolver`, `FieldDialogueRuntime`, and the
   shared `DialoguePanelPresenter` exist. Event selection is source-keyed, but
   only converted prompt branches and extracted speaker records resolve. Ares

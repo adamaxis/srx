@@ -429,6 +429,17 @@ int main() {
     assert(magic_menu_text.force_label == "Force");
     assert(magic_menu_text.availability_label == "Damage");
     const auto field_menu_font = decode_genesis_field_menu_font(rom);
+    const auto field_menu_font_palette_2 =
+        decode_genesis_field_menu_font(rom, 2U);
+    assert(field_menu_font.width == 128U && field_menu_font.height == 48U);
+    assert(field_menu_font_palette_2.width == field_menu_font.width &&
+           field_menu_font_palette_2.height == field_menu_font.height);
+    assert(std::any_of(
+        field_menu_font_palette_2.pixels.begin(),
+        field_menu_font_palette_2.pixels.end(), [](const auto& pixel) {
+            return pixel.alpha != 0U && pixel.red == 109U &&
+                   pixel.green == 73U && pixel.blue == 146U;
+        }));
     const auto pocket_secretary_grid =
         decode_genesis_pocket_secretary_grid(rom);
     assert(pocket_secretary_grid.width == 224U &&
@@ -899,6 +910,41 @@ int main() {
             std::array<std::string, 5>{
                 "Notebook", "Group Items", "Cyberdeck", "Dismiss Runner",
                 "Save/Load Game"}));
+    const auto hotel_text = read_genesis_hotel_options_text(rom);
+    assert(hotel_text.title == " Hotel Options");
+    assert(hotel_text.separator ==
+           std::string("[") + std::string(14U, static_cast<char>(92)));
+    assert((hotel_text.options ==
+            std::array<std::string, 2>{
+                "  Karma Screen", "  Check Out"}));
+    assert((hotel_text.checkout_question ==
+            std::array<std::string, 2>{
+                "Do you wish to", "  check out?"}));
+    assert((hotel_text.checkout_options ==
+            std::array<std::string, 3>{"Yes", "", "No"}));
+    assert(hotel_text.medical_attention_suffix ==
+           " needs medical attention!");
+    assert(hotel_text.recovery_message[0].empty());
+    assert(hotel_text.recovery_message[1].empty());
+    assert(hotel_text.recovery_message[2] == "     A steaming mug of");
+    assert(hotel_text.recovery_message[3] == "   soykaf would be just");
+    assert(hotel_text.recovery_message[4] == "   wiz about now.");
+    const auto hotel_cursor = decode_genesis_hotel_options_cursor(rom);
+    const auto hotel_checkout_cursor =
+        decode_genesis_hotel_options_cursor(rom, 2U);
+    assert(hotel_cursor.width == 8U && hotel_cursor.height == 8U);
+    assert(hotel_checkout_cursor.width == 8U &&
+           hotel_checkout_cursor.height == 8U);
+    // C376 clears with tile 0x5AB, then writes the selected arrow from tile
+    // 0x5FF in the C1064 font upload.
+    assert(std::any_of(hotel_cursor.pixels.begin(), hotel_cursor.pixels.end(),
+                       [](const auto& pixel) { return pixel.alpha != 0U; }));
+    assert(std::any_of(
+        hotel_checkout_cursor.pixels.begin(), hotel_checkout_cursor.pixels.end(),
+        [](const auto& pixel) {
+            return pixel.alpha != 0U && pixel.red == 109U &&
+                   pixel.green == 73U && pixel.blue == 146U;
+        }));
     assert(native_assets.notebook_labels == notebook_labels);
     assert(native_assets.notebook_no_run_lines ==
            read_genesis_notebook_no_run_text(rom));

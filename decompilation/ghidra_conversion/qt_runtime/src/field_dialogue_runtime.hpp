@@ -23,6 +23,7 @@ enum class FieldDialogueAdvanceResult {
     waiting_for_controller,
     prompt_advanced,
     returned_to_field,
+    hotel_options_requested,
     source_boundary,
 };
 

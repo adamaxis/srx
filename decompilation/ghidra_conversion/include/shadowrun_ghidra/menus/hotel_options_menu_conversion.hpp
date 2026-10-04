@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <optional>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -30,6 +31,17 @@ struct HotelOptionsMenuState {
     std::int8_t menu_result = 0; // source FFF0DC
     std::uint8_t entity_status_marker = 0; // source FFF10D, cleared at entry
 };
+
+struct HotelOptionsInputTransition {
+    bool selection_moved = false;
+    bool confirmed = false;
+    bool action = false;
+};
+
+// Apply one already-latched source input sample. ROM 0xCF98 checks Up before
+// Down; confirmation and action remain visible in the same sampled frame.
+HotelOptionsInputTransition apply_hotel_options_input(
+    HotelOptionsMenuState& state, const HotelOptionsInputFrame& input) noexcept;
 
 struct HotelOptionsMenuCallbacks {
     // ROM 0xCF3E, 0xCFFE, and 0xEF08. The entity-status service is kept as a
@@ -108,6 +120,12 @@ enum class HotelCheckoutResult {
     stay_at_hotel,
     checked_out,
 };
+
+// Apply one already-latched source input sample. Movement happens before the
+// ROM 0xDAF0/0xDAFC confirmation test, and No/Yes wrap as a two-row cursor.
+std::optional<HotelCheckoutResult> apply_hotel_checkout_input(
+    HotelCheckoutPromptState& state,
+    const HotelOptionsInputFrame& input) noexcept;
 
 // ROM 0xDA6A: ask "Do you wish to check out?". The source initializes the
 // selection to No, wraps the two choices, and treats controller bits 0x0E,

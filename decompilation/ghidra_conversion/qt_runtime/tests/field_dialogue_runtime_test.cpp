@@ -366,10 +366,9 @@ int main() {
     if (!expect(matches_region(room_paid_scene, room_paid_idle, 0, 0, 320,
                                224)) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
-                FieldDialogueAdvanceResult::source_boundary) ||
-        !expect(runtime.panel().kind == DialoguePanelKind::source_boundary) ||
-        !expect(boundary == "field.exit.hotel_options_unresolved") ||
-        !expect(runtime.open())) {
+                FieldDialogueAdvanceResult::hotel_options_requested) ||
+        !expect(!runtime.open()) ||
+        !expect(boundary.empty())) {
         return 65;
     }
 

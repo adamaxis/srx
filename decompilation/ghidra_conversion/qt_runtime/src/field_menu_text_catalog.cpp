@@ -107,6 +107,13 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         pocket_secretary_group_items_empty_found{};
     std::array<bool, kNotebookLabelCount> notebook_label_found{};
     std::array<bool, kNotebookNoRunLineCount> notebook_no_run_found{};
+    std::array<bool, 2> hotel_option_found{};
+    std::array<bool, 2> hotel_checkout_question_found{};
+    std::array<bool, 3> hotel_checkout_option_found{};
+    std::array<bool, 5> hotel_recovery_message_found{};
+    bool hotel_title_found = false;
+    bool hotel_separator_found = false;
+    bool hotel_medical_attention_suffix_found = false;
     bool notebook_tips_title_found = false;
     bool notebook_tips_separator_found = false;
     bool notebook_tips_page_count_found = false;
@@ -567,6 +574,13 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             parse_named("pocket-secretary.separator",
                         result.catalog.pocket_secretary_separator,
                         pocket_secretary_separator_found) ||
+            parse_named("hotel.title", result.catalog.hotel_title,
+                        hotel_title_found) ||
+            parse_named("hotel.separator", result.catalog.hotel_separator,
+                        hotel_separator_found) ||
+            parse_named("hotel.medical-attention-suffix",
+                        result.catalog.hotel_medical_attention_suffix,
+                        hotel_medical_attention_suffix_found) ||
             parse_named("dismiss.separator",
                         result.catalog.dismiss_runner_separator,
                         dismiss_runner_separator_found)) {
@@ -631,6 +645,50 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                 pocket_secretary_group_items_empty_found[index] = true;
                 result.catalog.pocket_secretary_group_items_empty_lines[index] =
                     value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "hotel.option.", index) &&
+            index < result.catalog.hotel_options.size()) {
+            if (hotel_option_found[index]) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else {
+                hotel_option_found[index] = true;
+                result.catalog.hotel_options[index] = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "hotel.checkout-question.", index) &&
+            index < result.catalog.hotel_checkout_question.size()) {
+            if (hotel_checkout_question_found[index]) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else {
+                hotel_checkout_question_found[index] = true;
+                result.catalog.hotel_checkout_question[index] = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "hotel.checkout-option.", index) &&
+            index < result.catalog.hotel_checkout_options.size()) {
+            if (hotel_checkout_option_found[index]) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else {
+                hotel_checkout_option_found[index] = true;
+                result.catalog.hotel_checkout_options[index] = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "hotel.recovery-message.", index) &&
+            index < result.catalog.hotel_recovery_message.size()) {
+            if (hotel_recovery_message_found[index]) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else {
+                hotel_recovery_message_found[index] = true;
+                result.catalog.hotel_recovery_message[index] = value;
             }
             continue;
         }
@@ -926,6 +984,10 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     require_named("pocket-secretary.title", pocket_secretary_title_found);
     require_named("pocket-secretary.separator",
                   pocket_secretary_separator_found);
+    require_named("hotel.title", hotel_title_found);
+    require_named("hotel.separator", hotel_separator_found);
+    require_named("hotel.medical-attention-suffix",
+                  hotel_medical_attention_suffix_found);
     require_named("dismiss.separator", dismiss_runner_separator_found);
     require_named("notebook.tips.title", notebook_tips_title_found);
     require_named("notebook.tips.separator", notebook_tips_separator_found);
@@ -969,6 +1031,13 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     add_missing_entries(notebook_label_found, "notebook.label.", result.errors);
     add_missing_entries(notebook_no_run_found, "notebook.no-run.",
                         result.errors);
+    add_missing_entries(hotel_option_found, "hotel.option.", result.errors);
+    add_missing_entries(hotel_checkout_question_found,
+                        "hotel.checkout-question.", result.errors);
+    add_missing_entries(hotel_checkout_option_found,
+                        "hotel.checkout-option.", result.errors);
+    add_missing_entries(hotel_recovery_message_found,
+                        "hotel.recovery-message.", result.errors);
     add_missing_entries(field_service_title_found, "field-service.title.",
                         result.errors);
     add_missing_entries(field_service_title_destination_found,

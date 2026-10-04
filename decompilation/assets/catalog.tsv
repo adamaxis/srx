@@ -391,7 +391,8 @@ menu/field/action-background.bmp	background	0	0	120	16	0x117A0	extracted
 menu/field/action-confirm-background.bmp	background	0	0	120	16	0x127B0/0xCD3B6	extracted
 menu/field/attributes-background.bmp	background	0	0	320	224	0x10C96	extracted
 menu/field/inventory-boxes.bmp	background	0	0	320	224	0x10F50/0x1232	extracted
-menu/field/font.bmp	sprite	0	0	128	48	0xC1064	extracted
+menu/field/font.bmp	sprite	0	0	128	48	0xC1064 palette-line=3	extracted
+menu/field/font-palette-2.bmp	sprite	0	0	128	48	0xC1064/0xD29D6/0x18AC56 palette-line=2	extracted
 menu/field/runner-portrait-0.bmp	sprite	0	0	64	80	0x7291A[0]	extracted
 menu/field/runner-portrait-1.bmp	sprite	0	0	64	80	0x7291A[1]	extracted
 menu/field/runner-portrait-2.bmp	sprite	0	0	64	80	0x7291A[2]	extracted
@@ -477,6 +478,8 @@ menu/field/clips-trade-focus-2.bmp	sprite	0	0	16	16	0x11E7E[2]	extracted
 menu/field/clips-trade-focus-3.bmp	sprite	0	0	16	16	0x11E7E[3]	extracted
 menu/field/posture-focus.bmp	sprite	0	0	48	8	0x119CE	extracted
 menu/field/cursor.bmp	sprite	0	0	32	24	0x11592	extracted
+menu/field/hotel-cursor.bmp	sprite	1	0	7	8	0xC0C2/0xC376/0xDA6A/0xC1064/0x5FF	extracted
+menu/field/hotel-checkout-cursor.bmp	sprite	1	0	7	8	0xC0C2/0xC376/0xDA6A/0xC1064/0x5FF palette-line=2	extracted
 items/weapons/detail/item-01.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=1]	extracted
 items/weapons/detail/item-02.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=2]	extracted
 items/weapons/detail/item-03.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=3]	extracted

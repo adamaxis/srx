@@ -49,6 +49,38 @@ void service_checkout_frame(const HotelCheckoutPromptCallbacks& callbacks,
 
 } // namespace
 
+HotelOptionsInputTransition apply_hotel_options_input(
+    HotelOptionsMenuState& state,
+    const HotelOptionsInputFrame& input) noexcept {
+    HotelOptionsInputTransition transition{};
+    if (input.move_up) {
+        state.selection = move_hotel_option(state.selection, -1);
+        transition.selection_moved = true;
+    } else if (input.move_down) {
+        state.selection = move_hotel_option(state.selection, 1);
+        transition.selection_moved = true;
+    }
+    transition.confirmed = input.confirm;
+    transition.action = input.action;
+    return transition;
+}
+
+std::optional<HotelCheckoutResult> apply_hotel_checkout_input(
+    HotelCheckoutPromptState& state,
+    const HotelOptionsInputFrame& input) noexcept {
+    if (input.move_up) {
+        state.selection = move_checkout_selection(state.selection, -1);
+    } else if (input.move_down) {
+        state.selection = move_checkout_selection(state.selection, 1);
+    }
+    if (!input.confirm && !input.alternate_confirm && !input.action) {
+        return std::nullopt;
+    }
+    return state.selection == HotelCheckoutSelection::yes
+               ? HotelCheckoutResult::checked_out
+               : HotelCheckoutResult::stay_at_hotel;
+}
+
 HotelOptionsMenuResult run_hotel_options_menu(
     HotelOptionsMenuState& state,
     const HotelOptionsMenuCallbacks& callbacks) {
@@ -90,19 +122,14 @@ HotelOptionsMenuResult run_hotel_options_menu(
 
             // ROM 0xCF98 checks Up before Down and still proceeds to the
             // confirm/action checks in the same sampled frame.
-            if (input.move_up) {
-                state.selection = move_hotel_option(state.selection, -1);
-                if (callbacks.render_cursor) {
-                    callbacks.render_cursor(state.selection);
-                }
-            } else if (input.move_down) {
-                state.selection = move_hotel_option(state.selection, 1);
+            const auto transition = apply_hotel_options_input(state, input);
+            if (transition.selection_moved) {
                 if (callbacks.render_cursor) {
                     callbacks.render_cursor(state.selection);
                 }
             }
 
-            if (input.confirm) {
+            if (transition.confirmed) {
                 HotelMenuHandlerOutcome outcome =
                     HotelMenuHandlerOutcome::redraw_options;
                 switch (state.selection) {
@@ -127,7 +154,7 @@ HotelOptionsMenuResult run_hotel_options_menu(
 
             // ROM 0xCFEA handles only the action input here; it does not
             // treat Start/cancel as a separate Hotel Options exit.
-            if (input.action) {
+            if (transition.action) {
                 if (callbacks.handle_mode_action_event) {
                     callbacks.handle_mode_action_event();
                 }
@@ -157,24 +184,15 @@ HotelCheckoutResult run_hotel_checkout_prompt(
         HotelOptionsInputFrame input{};
         service_checkout_frame(callbacks, input);
 
-        if (input.move_up) {
-            state.selection = move_checkout_selection(state.selection, -1);
-            if (callbacks.render_cursor) {
-                callbacks.render_cursor(state.selection);
-            }
-        } else if (input.move_down) {
-            state.selection = move_checkout_selection(state.selection, 1);
+        const auto previous_selection = state.selection;
+        const auto result = apply_hotel_checkout_input(state, input);
+        if (state.selection != previous_selection) {
             if (callbacks.render_cursor) {
                 callbacks.render_cursor(state.selection);
             }
         }
-
-        // ROM 0xDAF0/0xDAFC accepts A/C/B-style confirmation inputs. The
-        // selected result is tested only after movement has been applied.
-        if (input.confirm || input.alternate_confirm || input.action) {
-            return state.selection == HotelCheckoutSelection::yes
-                       ? HotelCheckoutResult::checked_out
-                       : HotelCheckoutResult::stay_at_hotel;
+        if (result.has_value()) {
+            return *result;
         }
     }
 }

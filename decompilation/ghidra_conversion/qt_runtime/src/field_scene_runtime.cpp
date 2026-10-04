@@ -732,10 +732,16 @@ bool FieldSceneRuntime::load_command_overview_assets(
                     kCommandOverviewActionConfirmationBackgroundAlias,
                     command_overview_action_confirmation_background_) ||
         !load_image(catalog, "menu.field.font", command_overview_font_) ||
+        !load_image(catalog, "menu.field.font.palette.2",
+                    hotel_checkout_font_) ||
         !load_image(catalog, "menu.pocket.secretary.background",
                     pocket_secretary_background_) ||
         !load_image(catalog, "menu.pocket.secretary.grid",
                     pocket_secretary_grid_) ||
+        !load_image(catalog, "menu.field.hotel.cursor",
+                    hotel_options_cursor_) ||
+        !load_image(catalog, "menu.field.hotel.checkout.cursor",
+                    hotel_checkout_cursor_) ||
         !load_image(catalog, "menu.field.attributes.background",
                     command_overview_attributes_background_) ||
         !load_image(catalog, "menu.field.posture.focus", posture_focus_) ||
@@ -2690,6 +2696,7 @@ bool FieldSceneRuntime::bootstrap(
     field_camera_alignment_ready_ = false;
     command_overview_.close();
     field_dialogue_.close();
+    hotel_menu_.close();
     field_mode_text_.close();
     field_party_roster_.clear();
     field_menu_text_ = FieldMenuTextCatalog{};
@@ -3322,6 +3329,19 @@ void FieldSceneRuntime::advance_frame() {
     if (!ready_) {
         return;
     }
+    if (hotel_menu_.open()) {
+        field_controller_latch_state_.events =
+            field_controller_sample_state_.events;
+        field_controller_latch_state_.extra_events = 0U;
+        (void)::shadowrun::ghidra_conversion::latch_controller_events(
+            field_controller_latch_state_);
+        ::shadowrun::ghidra_conversion::sample_controller_input(
+            field_controller_sample_state_, field_controller_port_byte_);
+        hotel_menu_.advance_animation(field_random_seed_);
+        (void)process_hotel_menu_events(
+            field_controller_sample_state_.events);
+        return;
+    }
     if (field_mode_text_.open()) {
         field_controller_latch_state_.events =
             field_controller_sample_state_.events;
@@ -3361,6 +3381,9 @@ void FieldSceneRuntime::advance_frame() {
             field_controller_sample_state_.events);
         if (result == FieldDialogueAdvanceResult::returned_to_field) {
             source_boundary("field.dialogue.returned_to_field");
+        } else if (result ==
+                   FieldDialogueAdvanceResult::hotel_options_requested) {
+            begin_hotel_menu();
         }
         return;
     }
@@ -3923,6 +3946,73 @@ bool FieldSceneRuntime::open_stoker_room_payment_for_dump(
            FieldDialogueAdvanceResult::prompt_advanced;
 }
 
+FieldDialogueAdvanceResult
+FieldSceneRuntime::advance_stoker_dialogue_for_dump(
+    const std::uint16_t event_word) {
+    const auto result = field_dialogue_.advance_controller_events(event_word);
+    if (result == FieldDialogueAdvanceResult::hotel_options_requested) {
+        begin_hotel_menu();
+    }
+    return result;
+}
+
+void FieldSceneRuntime::begin_hotel_menu() {
+    if (!ready_) {
+        return;
+    }
+    std::array<std::string, FieldPartyRosterRuntime::kSlotCount> names{};
+    for (std::size_t slot = 0; slot < names.size(); ++slot) {
+        names[slot] = field_party_roster_.name(slot);
+    }
+    hotel_menu_.open(field_party_roster_.records(), names,
+                     field_party_roster_.active_slot());
+    refresh_field_hud_runner_slot();
+    source_boundary("field.hotel.entity_status.opened");
+}
+
+HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
+    const std::uint16_t events) {
+    const auto result = hotel_menu_.advance_controller_events(events);
+    switch (result) {
+    case HotelMenuEvent::waiting:
+        break;
+    case HotelMenuEvent::status_acknowledged:
+        source_boundary("field.hotel.entity_status.acknowledged");
+        break;
+    case HotelMenuEvent::selection_moved:
+        // The Hotel loop and E660 path do not request a sound event.
+        source_boundary("field.hotel.selection_moved");
+        break;
+    case HotelMenuEvent::checkout_opened:
+        source_boundary("field.hotel.checkout.opened");
+        break;
+    case HotelMenuEvent::stayed_at_hotel:
+        source_boundary("field.hotel.checkout.stayed");
+        break;
+    case HotelMenuEvent::checked_out:
+        refresh_field_hud_runner_slot();
+        source_boundary("field.hotel.checked_out");
+        break;
+    case HotelMenuEvent::karma_screen_boundary:
+        source_boundary("field.hotel.karma_screen_unresolved");
+        break;
+    case HotelMenuEvent::mode_action:
+        handle_field_mode_action_event();
+        source_boundary("field.hotel.mode_action");
+        break;
+    }
+    return result;
+}
+
+HotelMenuEvent FieldSceneRuntime::advance_hotel_menu_for_dump(
+    const std::uint16_t events) {
+    if (!hotel_menu_.open()) {
+        return HotelMenuEvent::waiting;
+    }
+    hotel_menu_.advance_animation(field_random_seed_);
+    return process_hotel_menu_events(events);
+}
+
 bool FieldSceneRuntime::begin_ares_shop_event_for_dump() {
     if (!ready_) {
         return false;
@@ -4385,6 +4475,44 @@ void FieldSceneRuntime::draw_command_overview_text(
             }
         }
         painter.drawImage(cursor, cursor_y, tinted_glyph);
+        cursor += 8;
+    }
+}
+
+void FieldSceneRuntime::draw_hotel_menu_text(
+    QPainter& painter, const int x, const int y,
+    const std::string_view text,
+    const HotelMenuPaletteLine palette_line) const {
+    const auto& font = palette_line == HotelMenuPaletteLine::checkout
+                           ? hotel_checkout_font_
+                           : command_overview_font_;
+    if (font.isNull() || font.width() < 8 || font.height() < 8) {
+        return;
+    }
+    auto cursor = x;
+    auto cursor_y = y;
+    for (const auto character : text) {
+        if (character == '\n') {
+            cursor = x;
+            cursor_y += 8;
+            continue;
+        }
+        const auto code = static_cast<unsigned char>(character);
+        if (code < 0x20U || code > 0x7FU) {
+            cursor += 8;
+            continue;
+        }
+        const auto glyph = static_cast<int>(code - 0x20U);
+        const auto source_x = (glyph % 16) * 8;
+        const auto source_y = (glyph / 16) * 8;
+        if (source_x + 8 <= font.width() &&
+            source_y + 8 <= font.height()) {
+            // Hotel pages select the CRAM line in the source text writer.
+            // Keep the extracted RGBA colors intact for both green options
+            // text and the purple nested checkout prompt.
+            painter.drawImage(cursor, cursor_y, font, source_x, source_y, 8,
+                              8);
+        }
         cursor += 8;
     }
 }
@@ -5574,6 +5702,18 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
 void FieldSceneRuntime::paint(QPainter& painter) const {
     painter.fillRect(0, 0, 320, 224, Qt::black);
     if (!ready_ || field_map_.isNull()) {
+        return;
+    }
+    if (hotel_menu_.open()) {
+        hotel_menu_.paint(
+            painter, pocket_secretary_grid_, hotel_options_cursor_,
+            hotel_checkout_cursor_, dismiss_runner_random_grid_patterns_,
+            field_menu_text_,
+            [this](QPainter& target, const int x, const int y,
+                   const std::string_view text,
+                   const HotelMenuPaletteLine palette_line) {
+                draw_hotel_menu_text(target, x, y, text, palette_line);
+            });
         return;
     }
     if (field_mode_text_.open()) {

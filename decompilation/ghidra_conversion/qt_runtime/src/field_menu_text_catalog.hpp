@@ -109,6 +109,13 @@ struct FieldMenuTextCatalog {
     std::array<std::string, kMagicSpellTextCount> magic_spell_descriptions{};
     std::string pocket_secretary_title;
     std::string pocket_secretary_separator;
+    std::string hotel_title;
+    std::string hotel_separator;
+    std::array<std::string, 2> hotel_options{};
+    std::array<std::string, 2> hotel_checkout_question{};
+    std::array<std::string, 3> hotel_checkout_options{};
+    std::string hotel_medical_attention_suffix;
+    std::array<std::string, 5> hotel_recovery_message{};
     std::array<std::string, kFieldServiceTitleCount> field_service_titles{};
     std::array<std::uint16_t, kFieldServiceTitleCount>
         field_service_title_destinations{};

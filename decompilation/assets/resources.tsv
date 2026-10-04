@@ -696,6 +696,7 @@ menu.field.action.confirm.background	menu/field/action-confirm-background.bmp	im
 menu.field.attributes.background	menu/field/attributes-background.bmp	image	0	0
 menu.field.inventory.boxes	menu/field/inventory-boxes.bmp	image	0	0
 menu.field.font	menu/field/font.bmp	image	0	0
+menu.field.font.palette.2	menu/field/font-palette-2.bmp	image	0	0
 menu.field.runner.portrait.0	menu/field/runner-portrait-0.bmp	image	0	0
 menu.field.runner.portrait.1	menu/field/runner-portrait-1.bmp	image	0	0
 menu.field.runner.portrait.2	menu/field/runner-portrait-2.bmp	image	0	0
@@ -781,6 +782,8 @@ menu.field.clips.trade.focus.2	menu/field/clips-trade-focus-2.bmp	image	0	0
 menu.field.clips.trade.focus.3	menu/field/clips-trade-focus-3.bmp	image	0	0
 menu.field.posture.focus	menu/field/posture-focus.bmp	image	0	0
 menu.field.cursor	menu/field/cursor.bmp	image	0	0
+menu.field.hotel.cursor	menu/field/hotel-cursor.bmp	image	1	0
+menu.field.hotel.checkout.cursor	menu/field/hotel-checkout-cursor.bmp	image	1	0
 items.weapons.detail.item.01	items/weapons/detail/item-01.bmp	image	0	0
 items.weapons.detail.item.02	items/weapons/detail/item-02.bmp	image	0	0
 items.weapons.detail.item.03	items/weapons/detail/item-03.bmp	image	0	0

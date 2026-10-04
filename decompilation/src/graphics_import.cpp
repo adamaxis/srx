@@ -1228,6 +1228,55 @@ GenesisPocketSecretaryText read_genesis_pocket_secretary_text(
     return result;
 }
 
+GenesisHotelOptionsText read_genesis_hotel_options_text(
+    const std::vector<std::uint8_t>& rom) {
+    GenesisHotelOptionsText result{};
+    const auto menu_lines = read_genesis_dialogue_segments(rom, 0xC14D0U);
+    if (menu_lines.size() != 6U) {
+        throw std::runtime_error(
+            "Genesis Hotel Options text does not contain six source rows");
+    }
+    result.title = menu_lines[0];
+    result.separator = menu_lines[1];
+    result.options = {menu_lines[3], menu_lines[5]};
+
+    const auto checkout_question =
+        read_genesis_dialogue_segments(rom, 0xC164CU);
+    if (checkout_question.size() != result.checkout_question.size()) {
+        throw std::runtime_error(
+            "Genesis Hotel checkout question does not contain two rows");
+    }
+    std::copy(checkout_question.begin(), checkout_question.end(),
+              result.checkout_question.begin());
+
+    const auto checkout_options =
+        read_genesis_dialogue_segments(rom, 0xE387EU);
+    if (checkout_options.size() != result.checkout_options.size()) {
+        throw std::runtime_error(
+            "Genesis Hotel checkout choices do not contain three rows");
+    }
+    std::copy(checkout_options.begin(), checkout_options.end(),
+              result.checkout_options.begin());
+
+    const auto attention_suffix =
+        read_genesis_dialogue_segments(rom, 0xC2643U);
+    if (attention_suffix.size() != 2U || !attention_suffix[0].empty()) {
+        throw std::runtime_error(
+            "Genesis Hotel medical-attention suffix is malformed");
+    }
+    result.medical_attention_suffix = attention_suffix[1];
+
+    const auto recovery_message =
+        read_genesis_dialogue_segments(rom, 0xC265EU);
+    if (recovery_message.size() != result.recovery_message.size()) {
+        throw std::runtime_error(
+            "Genesis Hotel recovery message does not contain five rows");
+    }
+    std::copy(recovery_message.begin(), recovery_message.end(),
+              result.recovery_message.begin());
+    return result;
+}
+
 GenesisNotebookTipsText read_genesis_notebook_tips_text(
     const std::vector<std::uint8_t>& rom) {
     GenesisNotebookTipsText result{};
@@ -3384,20 +3433,24 @@ std::array<native::Rgba8, 64> read_genesis_command_palette_set(
 } // namespace
 
 RgbaImage decode_genesis_field_menu_font(
-    const std::vector<std::uint8_t>& rom) {
+    const std::vector<std::uint8_t>& rom,
+    const std::size_t palette_line) {
     constexpr std::size_t kFontStreamOffset = 0xC1064U;
     constexpr std::size_t kFontVramOffset = 0xB560U;
     constexpr std::size_t kCharacterCount = 0x60U;
     constexpr std::size_t kAtlasColumns = 16U;
     constexpr std::size_t kAtlasRows = 6U;
+    if (palette_line >= 4U) {
+        throw std::out_of_range(
+            "Genesis field menu font palette line is out of range");
+    }
 
     const auto font_vram = decode_genesis_1530_vram(
         rom, kFontStreamOffset, kFontVramOffset);
 
-    // 0x10D7C invokes 0x5670E before the command loop. The menu font is
-    // written with palette-line three (0x6000), so it must use the same
-    // command CRAM image as the other field-menu layers rather than the
-    // startup palette still stored at 0x1FF0.
+    // The command screen loads this CRAM set through 0x5670E. The Hotel
+    // options/status writer uses palette line three (0x6000), while the
+    // nested checkout writer uses line two (0x4000).
     const auto palette = read_genesis_command_palette_set(rom);
     RgbaImage atlas{
         static_cast<std::uint16_t>(kAtlasColumns * 8U),
@@ -3429,7 +3482,7 @@ RgbaImage decode_genesis_field_menu_font(
             for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
                 const auto color_index =
                     tile.pixels[pixel_y * 8U + pixel_x];
-                auto color = palette[48U + color_index];
+                auto color = palette[palette_line * 16U + color_index];
                 color.alpha = color_index == 0U ? 0U : 255U;
                 atlas.pixels[(atlas_y + pixel_y) * atlas.width +
                              atlas_x + pixel_x] = color;
@@ -4140,6 +4193,43 @@ RgbaImage decode_genesis_field_menu_cursor(
                                  tile_x * 8U + pixel_x] = color;
                 }
             }
+        }
+    }
+    return image;
+}
+
+RgbaImage decode_genesis_hotel_options_cursor(
+    const std::vector<std::uint8_t>& rom,
+    const std::size_t palette_line) {
+    constexpr std::size_t kPatternStreamOffset = 0xC1064U;
+    constexpr std::size_t kPatternVramOffset = 0xB560U;
+    constexpr std::size_t kTileIndex = 0x5FFU;
+    constexpr std::size_t kTileBytes = 32U;
+
+    if (palette_line >= 4U) {
+        throw std::out_of_range(
+            "Genesis Hotel cursor palette line is out of range");
+    }
+    // ROM 0xC0C2 uploads the menu font from C1064 at VRAM B560. ROM 0xC376
+    // clears the previous row with 0x85AB and draws the selected row with
+    // 0x85FF; the active page sets D4 to palette line three or two.
+    const auto pattern_vram = decode_genesis_1530_vram(
+        rom, kPatternStreamOffset, kPatternVramOffset);
+    if (kTileIndex * kTileBytes + kTileBytes > pattern_vram.size()) {
+        throw std::out_of_range("Genesis Hotel cursor tile is truncated");
+    }
+    const auto palette = read_genesis_command_palette_set(rom);
+    const auto tile = decode_genesis_tile(
+        pattern_vram.data() + kTileIndex * kTileBytes, kTileBytes);
+    RgbaImage image{
+        8U, 8U,
+        std::vector<native::Rgba8>(64U, native::Rgba8{0, 0, 0, 0})};
+    for (std::size_t y = 0; y < 8U; ++y) {
+        for (std::size_t x = 0; x < 8U; ++x) {
+            const auto color_index = tile.pixels[y * 8U + x];
+            auto color = palette[palette_line * 16U + color_index];
+            color.alpha = color_index == 0U ? 0U : 255U;
+            image.pixels[y * 8U + x] = color;
         }
     }
     return image;
