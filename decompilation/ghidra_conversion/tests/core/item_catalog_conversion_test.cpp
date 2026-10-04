@@ -1,11 +1,28 @@
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 
+#include <array>
 #include <cstdint>
 
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
     const auto& catalog = us_item_catalog();
+    constexpr std::array<std::uint16_t, kUsItemDefinitionCount> kRomBaseCosts{{
+        0x0064U, 0x015EU, 0x012CU, 0x01C2U, 0x01F4U, 0x01C2U, 0x01C2U,
+        0x03E8U, 0x05DCU, 0x0320U, 0x0578U, 0x03E8U, 0x012CU, 0x00B4U,
+        0x00B4U, 0x00C8U, 0x012CU, 0x012CU, 0x01F4U, 0x2710U, 0x03E8U,
+        0x0BB8U, 0xC350U, 0x3A98U, 0x0FA0U, 0x0FA0U, 0x0FA0U, 0x0FA0U,
+        0x0FA0U, 0x0FA0U, 0x0FA0U, 0x0FA0U, 0x0FA0U, 0x0FA0U, 0x0FA0U,
+        0x0FA0U, 0x0FA0U, 0x0FA0U, 0x445CU, 0x445CU, 0x0002U, 0xFFFFU,
+        0x0000U, 0x00C8U, 0x01F4U, 0x0384U, 0x0258U, 0x02BCU, 0x2710U,
+        0x4E20U,
+    }};
+    for (std::size_t index = 0; index < kRomBaseCosts.size(); ++index) {
+        if (catalog[index].base_cost != kRomBaseCosts[index]) {
+            return 8;
+        }
+    }
+
     if (catalog.size() != kUsItemDefinitionCount ||
         catalog.front().item_code != 1U ||
         !catalog.front().has_detail_art ||
@@ -17,7 +34,7 @@ int main() {
     }
 
     const auto& item_five = catalog[4];
-    if (item_five.item_code != 5U || item_five.base_cost != 0x00F4U ||
+    if (item_five.item_code != 5U || item_five.base_cost != 0x01F4U ||
         item_five.source_combat_factor != 0x06U ||
         item_five.signed_detail_asset_index != 1 ||
         item_five.detail_selector != 0x0AU) {
@@ -37,7 +54,7 @@ int main() {
     if (catalog[42].has_detail_art || catalog[42].base_cost != 0U ||
         catalog[42].detail_selector != 2U ||
         !catalog[43].has_detail_art ||
-        catalog.back().item_code != 50U || catalog.back().base_cost != 0x20U ||
+        catalog.back().item_code != 50U || catalog.back().base_cost != 0x4E20U ||
         catalog.back().detail_selector != 6U) {
         return 4;
     }

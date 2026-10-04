@@ -106,7 +106,7 @@ int main() {
     if (!expect(calculate_field_action_record_cost(
                     {0U, 0U, 2U}, context, item_catalog) == 20U &&
                 calculate_field_action_record_cost(
-                    {4U, 0U, 0U}, context, item_catalog) == 0x00F4U &&
+                    {4U, 0U, 0U}, context, item_catalog) == 0x01F4U &&
                 calculate_field_action_record_cost(
                     {50U, 0U, 0U}, context, item_catalog) == 0U)) {
         return 13;

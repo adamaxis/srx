@@ -116,7 +116,7 @@ int main() {
     }
 
     // The source-bound path treats ordinary record.type as a zero-based
-    // D4540 row. Type 2 therefore uses item 3's verified 0x2C base cost,
+    // D4540 row. Type 2 therefore uses item 3's verified 0x012C base cost,
     // rather than a caller-provided lookup value.
     FieldActionPurchaseState typed{};
     typed.funds = 1000U;
@@ -127,7 +127,7 @@ int main() {
                     callbacks) == FieldActionApplicationResult::applied &&
                 typed.runner.action_codes[0] == 3U &&
                 typed.runner.companion_values[0] == 0x5AU &&
-                typed.funds == 0x03BCU &&
+                typed.funds == 0x02BCU &&
                 events == std::vector<std::string>{"refresh", "confirm"})) {
         return 8;
     }
