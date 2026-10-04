@@ -28,11 +28,17 @@ struct RunnerRecordFields {
     std::uint16_t timing_accumulator = 0;
     std::uint16_t timing_threshold = 0;
     std::uint16_t state_index = 0;
+    // ROM 0x1253E writes the First Aid continuation at record +0x3A.
+    std::uint32_t first_aid_continuation = 0;
     // ROM 0x110BC reads active record +0x2C as the command-overview panel
     // parameter. This is a presentation field, not an address or a VRAM
     // handle, so expose it with the other confirmed live-record values.
     std::uint16_t command_overview_panel_parameter = 0;
     std::uint16_t record_type = 0;
+    // ROM 0x3404 reads +0x50/+0x54 on the live record to select the current
+    // eight-column face table and its byte offset before uploading the 4x4.
+    std::uint32_t hud_portrait_table_pointer = 0;
+    std::uint16_t hud_portrait_table_offset = 0;
 
     std::uint8_t race_index = 0;
     // Source +0x9A. The Attributes/Skills upgrade table at ROM 0xC22A6

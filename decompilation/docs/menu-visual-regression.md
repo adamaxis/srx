@@ -29,8 +29,9 @@ The test covers:
   class labels, active item details, and item-to-icon mappings;
 - both source icon palette variants when a record selects one;
 - all five `0x11454` middle-button focus blocks at their source coordinates;
-- the `0xD29F6` inventory cursor in every one of the eight cells;
-- the `0x11624` equipment borders independently of the inventory cursor; and
+- the one-pixel `#C4BE27` inventory selection outline at occupied and empty
+  cells, positioned by the `0x11592` selector state and checked independently
+  of the `0x11624` equipment borders; and
 - the source command font at the runner, status, item, and combat-label
   destinations.
 

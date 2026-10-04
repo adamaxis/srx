@@ -869,7 +869,8 @@ int main() {
     // requested pixel delta.
     assert(rom_shell.field_world_x() == initial_world_x);
     assert(rom_shell.field_world_y() < initial_world_y);
-    assert(rom_shell.field_entity_state_selector() == 0x0060);
+    // C0B2 is the walking selector table; C072 is the hurt/stagger family.
+    assert(rom_shell.field_entity_state_selector() == 0x00E8);
     assert(rom_shell.field_entity_state_index() == 0);
     assert(rom_shell.field_entity_frame_index() == 0);
     assert(rom_shell.field_entity_screen_x() == rom_shell.marker_x());
@@ -880,10 +881,10 @@ int main() {
         rom_shell.update(InputState{button_mask(Button::Right), 0});
     }
     // The source C002 movement vector is 0x28 fixed-point units (2.5
-    // pixels), and the angle slew settles on direction two (0x68 walking
+    // pixels), and the angle slew settles on direction two (0xF0 walking
     // state). 0x3BAC catches the camera up so the runner stays on-screen.
     assert(rom_shell.field_entity_visible());
-    assert(rom_shell.field_entity_state_selector() == 0x0068);
+    assert(rom_shell.field_entity_state_selector() == 0x00F0);
     const auto frame_before_source_cadence =
         rom_shell.field_entity_frame_index();
     for (int frame = 0; frame < 6; ++frame) {
@@ -937,8 +938,9 @@ int main() {
            1U);
     assert(native_assets.recruited_runner_templates[3].record.cyberware_flags ==
            1U);
-    assert(native_assets.field_menu_cursor.width == 24);
-    assert(native_assets.field_menu_cursor.height == 32);
+    // The SAT record at D29F6 stores size 0x000E at +4: a 4x3 tile (32x24).
+    assert(native_assets.field_menu_cursor.width == 32);
+    assert(native_assets.field_menu_cursor.height == 24);
     assert(native_assets.field_menu_selected_cells[0].width == 40);
     assert(native_assets.field_menu_selected_cells[0].height == 32);
     assert(native_assets.field_menu_item_art[1].width == 72);
@@ -975,7 +977,7 @@ int main() {
     direct_shell.update(InputState{button_mask(Button::Right), 0});
     assert(direct_shell.marker_x() == direct_start_x);
     assert(direct_shell.marker_y() < direct_start_y);
-    assert(direct_shell.field_entity_state_selector() == 0x0060);
+    assert(direct_shell.field_entity_state_selector() == 0x00E8);
     direct_shell.render(direct_screen);
     assert(direct_screen.presented_frames() == 1);
 

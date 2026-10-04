@@ -27,12 +27,25 @@ int main() {
                 SelectedItemBranch::first_aid &&
                 classify_selected_item(0x13U) ==
                     SelectedItemBranch::automatic_use &&
+                classify_selected_item(0x14U) ==
+                    SelectedItemBranch::automatic_use &&
+                classify_selected_item(0x16U) ==
+                    SelectedItemBranch::automatic_use &&
+                classify_selected_item(0x20U) ==
+                    SelectedItemBranch::automatic_use &&
                 classify_selected_item(0x15U) ==
                     SelectedItemBranch::weapon_or_gear &&
-                classify_selected_item(0x20U) ==
-                    SelectedItemBranch::item_action &&
+                classify_selected_item(0x17U) ==
+                    SelectedItemBranch::weapon_or_gear &&
                 classify_selected_item(0x2CU) == SelectedItemBranch::armor)) {
         return 3;
+    }
+    for (std::uint8_t item_code = 0x18U; item_code < 0x2CU;
+         ++item_code) {
+        if (!expect(classify_selected_item(item_code) ==
+                    SelectedItemBranch::automatic_use)) {
+            return 13;
+        }
     }
 
     InventoryActionMenuState menu{};
@@ -112,10 +125,89 @@ int main() {
         return 12;
     }
 
+    std::array<RunnerRecordFields, kInventoryTradePartySlotCount> party{};
+    std::array<bool, kInventoryTradePartySlotCount> active_party{
+        true, false, false};
+    party[0].inventory_item_codes[0] = 0x15U;
+    party[0].inventory_phase_bytes[0] = 6U;
+    const SelectedInventoryItem party_item{0U, 0x15U, 6U};
+    InventoryTradeState trade_state{};
+    auto trade = begin_inventory_trade(
+        party, active_party, 0U, party_item, trade_state);
+    if (!expect(trade.event == InventoryTradeEvent::no_recipient &&
+                !trade_state.open)) {
+        return 14;
+    }
+
+    active_party = {true, true, true};
+    party[1].inventory_item_codes.fill(1U);
+    trade = begin_inventory_trade(
+        party, active_party, 0U, party_item, trade_state);
+    if (!expect(trade.event == InventoryTradeEvent::recipient_opened &&
+                trade.recipient_slot == 1U &&
+                trade.recipient_inventory_full &&
+                !trade.yes_selected && trade_state.open)) {
+        return 15;
+    }
+    trade = advance_inventory_trade(
+        party, active_party, trade_state,
+        InventoryTradeInput{false, false, true});
+    if (!expect(trade.event == InventoryTradeEvent::full_recipient_advanced &&
+                trade.recipient_slot == 2U &&
+                !trade.recipient_inventory_full &&
+                trade.recipient_inventory_slot == 0U &&
+                !trade.yes_selected)) {
+        return 16;
+    }
+    trade = advance_inventory_trade(
+        party, active_party, trade_state,
+        InventoryTradeInput{true, false, false});
+    if (!expect(trade.event == InventoryTradeEvent::choice_moved &&
+                trade.yes_selected)) {
+        return 17;
+    }
+    trade = advance_inventory_trade(
+        party, active_party, trade_state,
+        InventoryTradeInput{false, false, true});
+    if (!expect(trade.event == InventoryTradeEvent::transferred &&
+                !trade_state.open &&
+                party[0].inventory_item_codes[0] == 0U &&
+                party[2].inventory_item_codes[0] == 0x15U &&
+                party[2].inventory_phase_bytes[0] == 6U)) {
+        return 18;
+    }
+
+    party = {};
+    party[0].inventory_item_codes[0] = 0x15U;
+    active_party = {true, true, true};
+    trade = begin_inventory_trade(
+        party, active_party, 0U, party_item, trade_state);
+    trade = advance_inventory_trade(
+        party, active_party, trade_state,
+        InventoryTradeInput{false, false, true});
+    if (!expect(trade.event == InventoryTradeEvent::recipient_advanced &&
+                trade.recipient_slot == 2U && !trade.yes_selected)) {
+        return 19;
+    }
+    trade = advance_inventory_trade(
+        party, active_party, trade_state,
+        InventoryTradeInput{false, true, false});
+    if (!expect(trade.event == InventoryTradeEvent::choice_moved &&
+                trade.yes_selected)) {
+        return 20;
+    }
+    trade = advance_inventory_trade(
+        party, active_party, trade_state,
+        InventoryTradeInput{false, false, true});
+    if (!expect(trade.event == InventoryTradeEvent::transferred &&
+                party[2].inventory_item_codes[0] == 0x15U)) {
+        return 21;
+    }
+
     if (!expect(route_field_command(2U) == FieldCommandRoute::clips &&
                 route_field_command(6U) == FieldCommandRoute::pocket_secretary &&
                 !route_field_command(7U))) {
-        return 13;
+        return 22;
     }
     return 0;
 }

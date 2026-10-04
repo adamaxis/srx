@@ -50,6 +50,38 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_action_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_action_qa PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# First Aid shares the real item cell/action path, then exercises the active
+# party list, CANCEL row, RNG-backed medkit effect, result wait, and inventory
+# return against directly extracted source text and HUD assets.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_first_aid_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-archetype samurai
+                 --field-first-aid-dump
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-first-aid-qa")
+set_tests_properties(shadowrun_ghidra_conversion_qt_field_first_aid_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
+# Automatic-use utility items share the real inventory selector/action loop,
+# then wait for a fresh controller edge without changing item/equipment state.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_automatic_use_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-automatic-use-dump
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-automatic-use-qa")
+set_tests_properties(shadowrun_ghidra_conversion_qt_field_automatic_use_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
+# Item Trade scans the typed active party roster, tests recipient capacity,
+# lets the player cycle the source Yes/No choice, then mutates both records.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_inventory_trade_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-inventory-trade-dump
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-inventory-trade-qa")
+set_tests_properties(shadowrun_ghidra_conversion_qt_field_inventory_trade_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 add_test(NAME shadowrun_ghidra_conversion_qt_field_clips_qa
          COMMAND shadowrun_ghidra_conversion_qt
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
@@ -96,7 +128,7 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_secretary_qa
          COMMAND shadowrun_ghidra_conversion_qt
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-secretary-dump
-                 "${CMAKE_CURRENT_BINARY_DIR}/field-secretary-qa.bmp")
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-secretary-qa")
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_secretary_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
@@ -141,6 +173,39 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_posture_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_posture_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# The page-5 A route has two source branches. This integration fixture uses
+# Gator's field composition and sets typed +0x7F to zero to exercise the
+# static Magical Defense fallback; it writes before/open/held/return frames.
+# It is a runtime regression artifact, not an independent Genesis golden.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_magic_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-archetype gator
+                 --field-magic-dump
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-magic-qa")
+set_tests_properties(shadowrun_ghidra_conversion_qt_field_magic_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
+# This route preserves the Gator field composition's typed magic gate/table
+# and walks the spell panel, live selection, four cursor phases, and return.
+# Its snapshots are Qt regression artifacts, not independent Genesis goldens.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_magic_spell_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-archetype gator
+                 --field-magic-spell-dump
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-magic-spell-qa")
+set_tests_properties(shadowrun_ghidra_conversion_qt_field_magic_spell_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
+add_executable(shadowrun_ghidra_magic_menu_conversion_test
+    ../tests/menus/magic_menu_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_magic_menu_conversion_test
+    PRIVATE shadowrun_ghidra_conversion_runtime)
+add_test(NAME shadowrun_ghidra_magic_menu_conversion
+         COMMAND shadowrun_ghidra_magic_menu_conversion_test)
+
 # Keep the source-state and arithmetic contract in the same CTest suite as
 # the executable walk. The Qt QA test proves wiring/pixels; this leaf test
 # proves selector wrap, cancellation, equipment/ammo math, discard gates, and
@@ -152,6 +217,14 @@ target_link_libraries(shadowrun_ghidra_inventory_action_conversion_test
     PRIVATE shadowrun_ghidra_conversion_runtime)
 add_test(NAME shadowrun_ghidra_inventory_action_conversion
          COMMAND shadowrun_ghidra_inventory_action_conversion_test)
+
+add_executable(shadowrun_ghidra_first_aid_conversion_test
+    ../tests/menus/first_aid_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_first_aid_conversion_test
+    PRIVATE shadowrun_ghidra_conversion_runtime)
+add_test(NAME shadowrun_ghidra_first_aid_conversion
+         COMMAND shadowrun_ghidra_first_aid_conversion_test)
 
 add_executable(shadowrun_ghidra_field_clips_menu_runtime_test
     tests/field_clips_menu_runtime_test.cpp
@@ -193,6 +266,10 @@ add_test(NAME shadowrun_ghidra_genesis_image_compositor
 add_executable(shadowrun_ghidra_bmp_alpha_load_test
     tests/bmp_alpha_load_test.cpp
 )
+set_target_properties(shadowrun_ghidra_bmp_alpha_load_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
 target_compile_definitions(shadowrun_ghidra_bmp_alpha_load_test PRIVATE
     SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets")
 target_link_libraries(shadowrun_ghidra_bmp_alpha_load_test

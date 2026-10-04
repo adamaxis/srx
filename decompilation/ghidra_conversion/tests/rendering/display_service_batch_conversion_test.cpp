@@ -251,7 +251,7 @@ int main() {
         submitted_plan.variant_source !=
             RandomGridVariantSource::fixed_three_variant_resources ||
         submitted_plan.variant_entry_index != 2U ||
-        submitted_plan.grid_row_count != 2U) {
+        submitted_plan.grid_width != 2U || submitted_plan.grid_height != 1U) {
         return 15;
     }
     const auto metadata_grid = write_menu_grid_with_metadata();

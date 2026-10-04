@@ -553,9 +553,8 @@ The source dispatch at `0x12168` first classifies the selected item:
 
 | Item code | Source branch |
 | ---: | --- |
-| `0x13`, `0x14`, `0x16` | separate use/error path at `0x121C0` |
+| `0x13`, `0x14`, `0x16`, `0x18..0x2B` | automatic-use acknowledgement at `0x121C0` |
 | `< 0x18` otherwise | weapon/gear equip path at `0x121E0` |
-| `0x18..0x2B` | separate item-action path |
 | `0x2C+` | armor path |
 
 The weapon/gear path uses `+0x56` and `+0x57` as equipment state. It converts
@@ -659,14 +658,22 @@ mutation/effect paths remain `PENDING`.
 
 ### Magic: `0xFBA6`
 
-The Magic command first checks the runner class at `+0x9B`; the ordinary magic
-branch requires a class value below 2 and a nonzero magic/resource byte at
-`+0x7F`. It then enters the source magic
-panel through `0x11900`/`0x12C36`, with its own spell cursor and panel state
-(`FFF10E` is part of that state). Magic is therefore not an alias for the
-cyberware panel and must not be enabled merely because the command selector
-can reach index 5. The display shell is identified; spell availability,
-selection, costs, effects, and failure messages remain `PENDING`.
+The Magic command first compares runner class `+0x9B` with 2 at `0xFBA6`.
+Classes 0/1 enter the spell-panel branch only when resource/cap byte `+0x7F`
+is nonzero. That path uses `0x11900`/`0x12C36`, the `+0xA0` table selector,
+`FFF10E` spell-panel state, and later spell/force/target helpers. If the class
+is 2 or greater, or class 0/1 has `+0x7F == 0`, ROM takes the Magical Defense
+fallback instead. It prepares the command row, writes `C89C0` (`Magical
+Defense`) to `C31C`, then calls `0x106DA` twice with `D2=0` and `D2=-1`.
+Those calls build independent physical and mana values from active-party
+`+0x10`/class/item-0x18 state and the active runner's `+0x77`/`+0x7C`, then
+write 13-tile rows at `C51E` and `C69E` from `0xCF610` (stride `0x1A`,
+palette `0x2000`). It waits through `0x0D94` for a fresh controller event
+before `0x11928` restores the command row. This fallback does not clear the
+whole menu plane. The Qt executable now connects this static subpath and its
+parent `0x24` action sound; its CTest writes entry/held/return captures. The
+spell-capable panel, force/action selection, target/effect, and independent
+Genesis visual validation remain `PENDING`.
 
 ### Pocket Secretary: `0xC2A6`, Group Items: `0xC8C8`
 
@@ -674,23 +681,32 @@ Pocket Secretary draws through `0xC3E6`, with the source option/label table at
 `0xC1418`; the cursor is maintained at `0xC376`. The source debug/state byte
 at `FFF101` changes the visible bounds between four and five entries, which is
 evidence that this panel has state-dependent contents and is not a decorative
-list. The native base presents the verified five-row field-mode order and sends
-Save/Load to the existing `0x59172` screen.
+list. The existing NativePort base presents the five-row field-mode order and
+sends Save/Load to the existing `0x59172` screen. Qt draws the same source row
+order; its Save/Load handler remains a separate unconnected route.
 
 Selecting Group Items dispatches to `0xC8C8`. That handler reads the persistent
 global bitfield at `FFFC22`, emits the names from the fifteen-entry pointer
 table at `0xC25C4` in descending bit order, or writes the exact empty message
 at `0xC1471` when no bits are set. It then waits through `0xF312` for any
-controller edge and returns to the command loop. The native port has extracted
-the catalog into the native state data and covers the empty-catalog path; event
-setters for the persistent bits remain pending.
+controller edge and returns to the command loop. The NativePort has a separate
+catalog path. Qt now connects the empty and populated display branches using
+typed FFFC22 state and the extracted item-name table. For a fresh New Game,
+FFFC22 is zero: C8C8 clears the inner panel, writes the two C1471/C1486 source
+lines at C50E, then waits at F312. For populated diagnostic flags, the typed
+view visits bits 14 down to 0 and draws names at C208, advancing two tile rows
+per visible entry to match the source +0x100-byte destination stride. The Qt
+QA holds each state for 30 idle frames and returns to the same selected row.
+Normal quest acquisition and restored-save FFFC22 are not connected, and the
+supplied longplay sections do not show this screen; these dumps are regression
+evidence, not Genesis visual proof.
 
 The Cyberdeck row dispatches to `0x18150`. The first instruction tests
 `FF018F` bit 0, the source deck-present flag. When it is clear, the handler
 calls `0xC3E6`, passes `0xE43D1` to `0xC0DA` with destination `0xC40E`, and
 returns to the Pocket Secretary loop. The three fixed source strings are:
 `" You do not have"`, `"  a cyberdeck!!"`, and `" Keep looking."`. The native
-port extracts those lines and keeps the Pocket Secretary open while displaying
+Qt extracts those lines and keeps the Pocket Secretary open while displaying
 them. The inline branch beginning at `0x1817E` is now source-traced as the
 deck-present entry shell: it prepares/copies the Matrix resource block at
 `0xE2E3A`, establishes ten menu slots, enters `0x1822C`, then refreshes the
@@ -707,16 +723,36 @@ The remaining session loop/finalizer is kept as an explicit boundary until its
 source state is converted rather than being conflated with the `0x1817E`
 inline caller shell.
 
-Dismiss Runner dispatches to `0xC448`. It writes the fixed lines at `0xC1499`
-(`Dismiss`), `0xC14A4` (`Who??`), and `0xC14BD` (`Abort`), then checks the
-active-record bit at `+0x10` while enumerating the source runner records. The
-selector starts at zero; `0xC376` clamps it to the active-list bound, and the
-zero row returns without changing party state. A nonzero selection resolves a
-live runner and enters the source dismissal event path (`0x6AA7E`/`0x33AA`),
-after which that record is no longer eligible as an active party member. The
-native port extracts the fixed labels, lists live non-current host records,
-preserves the Abort boundary, and clears the selected record's active bit.
-The source event's narrative/audio side effects remain a separate boundary.
+Dismiss Runner dispatches to `0xC448`. It clears the inner panel through
+`0xC3E6`, then writes the fixed text from `0xC1499` at `0xC216`: `Dismiss`,
+`Who??`, the visible `0xC14AE` separator (`[` plus twelve backslashes), a
+blank row, and `Abort`. The separator is visible text, not name-table
+padding. `Abort` is always at `0xC416` / host `(88,64)`, independent of the
+candidate count. The handler enumerates the live records at `FF0200` then
+`FF0300`, tests bit 0 of each record's `+0x10`, and advances the destination
+by `0x100` before writing each active name. Thus the first candidate begins
+at `(88,80)`, followed by 16-pixel rows. Cursor base `0xC412` is `(72,64)`;
+each selected row advances it by 16 pixels. Up/down requests sound event
+`0x25`; A/B/C confirm with `0x24`, while Start returns to the parent.
+
+Selecting a candidate enters `0x59798` and clears its compact party marker
+(`FFFC0C` or `FFFC0D`); it does not clear the live record's `+0x10` bit.
+Follow-up counter, effect, rendering, and active-runner paths include
+`0xC8B0`, `0x6AA7E`/`0x33AA`, `0x1E514`, `0x3404`, `0x38FA`, and `0x391A` when
+the dismissed runner is current. Candidate selection also calls `0x110E8`
+for a HUD preview. The Qt route now uses typed candidate/cursor state, the
+fixed Abort row, source text positions, compact-marker removal, and active
+runner replacement. It advances the `0xE660` random two-cell effect once per
+frame and paints the persistent cells in twelve lower-bezel positions. The
+`0x110E8` preview resolves each live record's portrait table, offset, and
+palette attributes and draws its 32x32 image at `(120,144)`. Held-frame QA
+checks that lamps do not cover child text, cursor, or portrait, and that the
+portrait changes with candidate selection. Event `0x25` has no identified
+alias or duration. The independent longplay contains no Dismiss Runner screen,
+so source visual cadence remains unverified. Current Qt captures and tests
+cover state transitions and internal draw consistency. The separate NativePort route is not
+evidence of ROM fidelity: it filters the current record, moves Abort after
+the names, omits the visible separator, and clears a live-record flag.
 
 Notebook dispatches to `0xF236`. Its setup helper `0xF33E` writes the title
 and two ungated rows from `0xC567E`, then appends `Contacts`, `Mr. Johnsons`,
@@ -735,20 +771,46 @@ pointer lists and the three conditional event setters remain explicit next
 boundaries; they must be ported from their source tables rather than replaced
 with an always-visible invented list.
 
+The raw US ROM placement is now recorded for the Qt base screen. `0xF33E`
+clears the inner panel through `0xC3E6`, draws `0xC567E` at `0xC216`, and
+draws its separator at `0xC292`; the `0x80` markers in `0xC0DA` advance one
+8-pixel name-table row. Thus the title, Current Run, and Tips & Clues begin at
+`(88,32)`, `(88,56)`, and `(88,72)`. Each visible event-gated row begins 16
+pixels after the prior option, starting at `(88,88)`, and the cursor base
+`0xC392` is `(72,56)`. The no-run branch at `0xF2F6` clears the same panel
+before drawing `0xC56E7` at `0xC30C`, or `(48,48)`, with 8-pixel line spacing.
+The Qt painter redraws the blank inner grid before either screen's text. Its
+QA checks that Notebook rows are gone during the response and that response
+text is gone after Notebook is rebuilt. Independent Pocket Secretary frames
+are still absent from the supplied longplay. Qt renders the shared `0xE660`
+wait animation inside the twelve source-derived lower-bezel destinations;
+independent Genesis frames are needed to verify its appearance and cadence.
+
 The Tips & Clues handler at `0xF9A4` is backed by three 32-entry pointer
 tables: `0xC2716` selected by `FFFC30`, `0xC2796` by `FFFC34`, and `0xC2816`
-by `FFFC38`. It starts `FFF0B9` at `0xFF`, walks each table pointer in order,
-and tests D7 from 31 down to 0; therefore table entry `n` is enabled by flag
-bit `31-n`. Set pointers are appended to `FFEF56` and use the same
-`FFF0DC`/`C376` cursor family as the other Notebook screens. The native
-extractor resolves all 96 pointers and converts each source `0x80` separator
-to a host newline in native state data. The native Tips screen now preserves the
-three source flag longwords, builds the MSB-first visible page list, writes the
-source page counter boundary from `C663A`, renders the selected entry's source
-lines, and returns on A/C/Start; B follows the already ported `0x391A` runner
-switch path and redraws the page. Story/event writers that set the three tip
-flag longwords remain pending, so a fresh decoded session correctly has zero
-visible tips until a test or future event path sets them.
+by `FFFC38`. It starts `FFF0B9` at `0xFF`, clears D1, then uses `BTST.L D1,D0`
+while advancing the table pointer and D1; table entry `n` is enabled by flag
+bit `n` (LSB first). Startup at `0x084E` sets `FFFC30` to `1`, so a fresh
+New Game has source entry zero available. Set pointers are appended to
+`FFEF16`, and `FFF0DC` selects the compact visible-page list. Left and Right
+move that page cursor with a zero/final-index clamp. A and B return to Notebook,
+C calls the shared `0x391A` mode-action routine and resumes Tips, and Start
+returns to Notebook.
+
+Qt loads all 96 source strings from the named direct asset
+`menu/pocket-secretary/notebook-tips.tsv`; `0x80` becomes a host newline. The
+screen draws the title/separator at `(88,32)/(72,40)`, page text at `(40,56)`,
+the `C663A` page-count label at `(136,184)`, the right-aligned current page at
+`(184,184)`, and the total at `(232,184)`. `C6645` is the two-cell current-page
+clear span. The Qt panel is rebuilt from its blank inner grid before drawing
+the tip, so parent buttons do not remain underneath the child; returning to
+Notebook similarly clears the tip and counter. E660 advances once per VBlank
+in the twelve lower-bezel cells, outside the tip body and page counter. F9A4
+does not request sound. Its C action reaches event `0x25` through `0x391A`, but
+that event still has no verified Qt audio alias or measured clip. Story-event
+writers and restored-save tip flags remain open; independent Notebook/Tips
+Genesis frames are absent from the supplied longplay, so visual fidelity stays
+partial.
 
 The conditional Mr. Johnsons handler at `0xF416` is a separate five-name
 screen, not another Tips page. It writes the title from `0xC56AE`, then tests

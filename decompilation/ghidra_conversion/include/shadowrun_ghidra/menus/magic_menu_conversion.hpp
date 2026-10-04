@@ -48,13 +48,13 @@ struct MagicActionEffectValueInput {
     MagicSpellDefinition spell{};
 };
 
-// The positive branch selects a six-tile Damage row. The host renderer uses
+// The positive branch selects a seven-tile Damage row. The host renderer uses
 // the typed row and layout plan rather than ROM or VDP memory.
 struct MagicActionEffectDamageGridPlan {
     std::uint16_t effect_row = 0;
     std::uint16_t source_row_stride = 0x0EU;
     std::uint16_t destination_tile_base = 0xC688U;
-    std::uint16_t tile_count = 6U;
+    std::uint16_t tile_count = 7U;
     std::uint16_t palette_flags = 0;
 };
 
@@ -266,7 +266,7 @@ std::uint16_t run_magic_menu_loop(
 
 // ROM 0x105E6: refresh the selected magic action's Damage value. Nonpositive
 // residuals render the literal None value; positive residuals select source
-// damage row (residual - 1) and submit its six-tile grid.
+// damage row (residual - 1) and submit its seven-tile grid.
 MagicActionEffectValueResult refresh_magic_action_effect_value(
     const MagicActionEffectValueInput& input,
     const MagicActionEffectValueCallbacks& callbacks = {});

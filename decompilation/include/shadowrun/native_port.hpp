@@ -132,12 +132,12 @@ constexpr std::size_t kNativeCyberwareCount = 15;
 // ROM 0xC8C8 walks bits 0..14 of FFFC22 and indexes the fifteen longwords
 // at 0xC25C4 when drawing Group Items.
 constexpr std::size_t kNativeGroupItemCount = 15;
+constexpr std::size_t kNativeGroupItemEmptyLineCount = 2;
 // ROM 0x18150 writes three fixed strings at 0xE43D1 when FF018F bit 0 is
 // clear. Keep the lines separate because C0DA receives one source pointer.
 constexpr std::size_t kNativeCyberdeckUnavailableLineCount = 3;
-// ROM 0xC448 emits these fixed Dismiss Runner panel lines around its dynamic
-// runner-name list. The placeholder line at 0xC14AE is VDP layout padding and
-// is intentionally not carried as user-facing text.
+// ROM 0xC448 emits these fixed Dismiss Runner labels around its dynamic
+// runner-name list. The visible separator at 0xC14AE is extracted separately.
 constexpr std::size_t kNativeDismissRunnerLabelCount = 3;
 // ROM 0xF33E writes two base Notebook entries from 0xC567E, then appends
 // Contacts/Mr. Johnsons/Shadowrunners when their persistent event gates are
@@ -364,6 +364,11 @@ struct NativeFieldEntity {
     std::uint16_t projection_word_08 = 0;
     std::uint16_t kind = 0;
     std::uint16_t record_type = 0;
+    // 0x110BC reads the panel attributes at +0x2C. ROM 0x3404 uses the
+    // record's +0x50 pointer and +0x54 offset to upload its current 4x4 face.
+    std::uint16_t command_overview_panel_parameter = 0;
+    std::uint32_t hud_portrait_table_pointer = 0;
+    std::uint16_t hud_portrait_table_offset = 0;
     // The command overview reads these directly from each 0x100-byte runner
     // record. They are source indexes/values, not host-generated labels.
     std::uint8_t race_index = 0;
@@ -548,6 +553,9 @@ struct NativePortAssets {
     std::array<NativeImage, 3> field_hud_faces{};
     std::array<NativeImage, 3> field_hud_item_blocks{};
     std::array<NativeImage, 3> field_hud_unarmed_item_blocks{};
+    std::array<NativeImage, 11> field_hud_delay_meter_counters{};
+    std::array<std::array<NativeImage, 11>, 2>
+        field_hud_behavior_meter_counters{};
     std::array<NativeImage, 3> field_hud_vertical_counters{};
     std::array<NativeImage, 3> field_hud_horizontal_counters{};
     std::array<NativeImage, 64> field_hud_ammo_counters{};
@@ -560,6 +568,9 @@ struct NativePortAssets {
     // ROM 0x117A0 redraws the lower action row from CD302 when an inventory
     // action loop replaces the five top-level command tabs.
     NativeImage field_menu_action_background;
+    // ROM 0x127B0 replaces that four-action row with a Yes/No row from
+    // CD3B6 while discard and item-trade confirmation owns input.
+    NativeImage field_menu_action_confirmation_background;
     // ROM 0xD01C calls 0x10C96 instead of the ordinary 0x10F50 command
     // initializer. Preserve that complete attributes/skills frame separately
     // so its source border and separators are not replaced by the field-menu
@@ -581,6 +592,9 @@ struct NativePortAssets {
     // inventory action loop is active. These are the four source action
     // button blocks; they are distinct from the five top-level commands.
     std::array<NativeImage, 4> field_menu_action_focus{};
+    // ROM 0x127FC writes one of these 2x2 blocks from CD47A for the selected
+    // Yes/No choice (Yes first, No second).
+    std::array<NativeImage, 2> field_menu_action_confirmation_focus{};
     // ROM 0x11B58 uses a separate four-entry focus table at CD43A for the
     // Clips action row. It is not the top-level CD3F2 command focus table.
     std::array<NativeImage, 4> field_menu_clips_focus{};
@@ -681,12 +695,10 @@ struct NativePortAssets {
     // remain gated until their source event setters are ported.
     std::array<std::uint8_t, 3> notebook_event_gates{{1, 0, 0}};
     std::array<std::string, kNativeNotebookTipCount> notebook_tip_text{};
-    // F9A4 reads these three source longwords at FFFC30/34/38 and tests
-    // their bits before appending a pointer to the visible page list. The
-    // new-game initializer leaves these event-owned fields clear; setters
-    // will be ported as their story/event writers are audited.
+    // ROM startup 0x084E seeds FFFC30 bit 0. F9A4 then tests each group
+    // LSB-first while appending the corresponding pointer-table entry.
     std::array<std::uint32_t, kNativeNotebookTipFlagGroupCount>
-        notebook_tip_flags{};
+        notebook_tip_flags{{1U, 0U, 0U}};
     std::array<std::string, kNativeNotebookMrJohnsonCount>
         notebook_mr_johnson_names{};
 };
@@ -1450,7 +1462,7 @@ private:
     std::array<std::uint8_t, 3> notebook_event_gates_{{1, 0, 0}};
     std::array<std::string, kNativeNotebookTipCount> notebook_tip_text_{};
     std::array<std::uint32_t, kNativeNotebookTipFlagGroupCount>
-        notebook_tip_flags_{};
+        notebook_tip_flags_{{1U, 0U, 0U}};
     std::array<std::string, kNativeNotebookMrJohnsonCount>
         notebook_mr_johnson_names_{};
     std::array<std::size_t, kNativeNotebookTipCount>

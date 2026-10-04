@@ -34,7 +34,7 @@ int main() {
 
     MagicMenuLoopState menu_loop_state{{0U, 0U}, 14U};
     std::vector<std::uint16_t> menu_inputs{0x0C00U, 0x0300U, 0x2080U,
-                                           0x0080U};
+                                           0x8000U};
     std::size_t menu_input_index = 0U;
     std::vector<int> menu_loop_events;
     MagicMenuLoopCallbacks menu_loop_callbacks{};
@@ -56,7 +56,7 @@ int main() {
         [&]() { menu_loop_events.push_back(9); };
     const auto menu_exit = run_magic_menu_loop(menu_loop_state,
                                                menu_loop_callbacks);
-    if (!expect(menu_exit == 0x0080U && menu_input_index == 4U &&
+    if (!expect(menu_exit == 0x8000U && menu_input_index == 4U &&
                 menu_loop_state.selection.column == 6U &&
                 menu_loop_state.selection.row == 1U &&
                 menu_loop_events ==
@@ -563,6 +563,22 @@ int main() {
         idle_party, fallback_actor, false);
     if (!expect(empty.value == 0U && empty.row == 0U)) {
         return 40;
+    }
+
+    const auto* hellblast = find_us_magic_spell(2U);
+    if (!expect(hellblast != nullptr)) {
+        return 41;
+    }
+    MagicActionEffectValueInput effect_input{};
+    effect_input.current_force = 1U;
+    effect_input.spell = *hellblast;
+    const auto effect = refresh_magic_action_effect_value(effect_input);
+    if (!expect(effect.residual_valid && effect.residual_effect == 10 &&
+                effect.damage_grid.has_value() &&
+                effect.damage_grid->effect_row == 9U &&
+                effect.damage_grid->tile_count == 7U &&
+                effect.damage_grid->source_row_stride == 0x0EU)) {
+        return 42;
     }
 
     return 0;

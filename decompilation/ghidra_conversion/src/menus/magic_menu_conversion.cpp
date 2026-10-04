@@ -117,7 +117,7 @@ std::uint16_t run_magic_menu_loop(MagicMenuLoopState& state,
             continue;
         }
 
-        // Action edges are checked before the source bit-7 exit condition.
+        // Action edges are checked before the source bit-15 Start exit edge.
         if ((input & (0x2000U | 0x1000U | 0x4000U)) != 0U) {
             if (callbacks.run_equipment_selection) {
                 callbacks.run_equipment_selection(state.selection);
@@ -127,7 +127,7 @@ std::uint16_t run_magic_menu_loop(MagicMenuLoopState& state,
             }
             continue;
         }
-        if ((input & 0x0080U) != 0U) {
+        if ((input & 0x8000U) != 0U) {
             return input;
         }
     }

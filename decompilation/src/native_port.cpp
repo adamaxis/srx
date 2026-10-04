@@ -2668,17 +2668,14 @@ void NativePortShell::open_notebook_menu() {
 }
 
 void NativePortShell::open_notebook_tips_menu() {
-    // ROM 0xF9A4 builds FFEF56 by walking each pointer table in source order
-    // while testing D7 from 31 down to 0. Thus table entry zero is controlled
-    // by the most-significant flag bit, not by bit zero. Keep that ordering in
-    // the host list so page selection follows the source bytecode exactly.
+    // ROM 0xF9A4 clears D1, tests bit 0 first, and advances both the source
+    // pointer and D1 once per table entry. Preserve that LSB-first page order.
     notebook_visible_tip_count_ = 0;
     for (std::size_t group = 0;
          group < notebook_tip_flags_.size(); ++group) {
         for (std::size_t entry = 0; entry < 32U; ++entry) {
-            const auto source_bit = 31U - entry;
             if ((notebook_tip_flags_[group] &
-                 (static_cast<std::uint32_t>(1U) << source_bit)) == 0U) {
+                 (static_cast<std::uint32_t>(1U) << entry)) == 0U) {
                 continue;
             }
             const auto index = group * 32U + entry;
@@ -2745,34 +2742,40 @@ void NativePortShell::update_notebook_menu(const InputState& input) {
 }
 
 void NativePortShell::update_notebook_tips_menu(const InputState& input) {
-    // F9A4 leaves its selected text page on screen and returns to F236 on A,
-    // C, or Start. A zero-page state is valid before the story has set any
-    // FFFC30/34/38 bit, so navigation remains a no-op in that state.
+    // F9A4 moves its page cursor with Left/Right and clamps at both ends.
+    // The fresh-game FFFC30 bit guarantees one page; save-restored flag state
+    // remains a separate input to this legacy presentation path.
     if (notebook_visible_tip_count_ != 0U) {
-        const auto vertical_step =
-            menu_direction_step(input, Button::Up, Button::Down, false);
-        if (vertical_step && input.is_held(Button::Up) &&
-            !input.is_held(Button::Down)) {
+        const auto horizontal_step =
+            menu_direction_step(input, Button::Left, Button::Right, false);
+        if (horizontal_step && input.is_held(Button::Left) &&
+            !input.is_held(Button::Right)) {
             notebook_tip_selection_ = notebook_tip_selection_ == 0U
-                ? notebook_visible_tip_count_ - 1U
-                : notebook_tip_selection_ - 1U;
-        } else if (vertical_step && input.is_held(Button::Down) &&
-                   !input.is_held(Button::Up)) {
-            notebook_tip_selection_ =
-                (notebook_tip_selection_ + 1U) % notebook_visible_tip_count_;
+                ? 0U : notebook_tip_selection_ - 1U;
+        } else if (horizontal_step && input.is_held(Button::Right) &&
+                   !input.is_held(Button::Left)) {
+            notebook_tip_selection_ = std::min(
+                notebook_tip_selection_ + 1U,
+                notebook_visible_tip_count_ - 1U);
         }
     }
 
-    if (input.was_pressed(Button::A) || input.was_pressed(Button::C) ||
-        input.was_pressed(Button::Start)) {
+    if (input.was_pressed(Button::A) || input.was_pressed(Button::B)) {
         scene_ = NativeScene::NotebookMenu;
         notebook_selection_ = 1U;
         return;
     }
-    if (input.was_pressed(Button::B)) {
-        // B is the parent-navigation key throughout the Pocket Secretary
-        // tree. The old path incorrectly treated it as the runner-switch
-        // shortcut and left the user on (or altered) the field menu.
+    if (input.was_pressed(Button::C) && !field_records_.empty()) {
+        ++runner_switch_attempts_;
+        const auto previous_record = active_field_record_;
+        activate_field_record(next_available_field_record());
+        if (active_field_record_ == previous_record) {
+            ++runner_switch_rejections_;
+        }
+        ++action_count_;
+        return;
+    }
+    if (input.was_pressed(Button::Start)) {
         scene_ = NativeScene::NotebookMenu;
         notebook_selection_ = 1U;
     }
@@ -4184,7 +4187,7 @@ void NativePortShell::update(const InputState& input) {
     if (attempted_movement) {
         if (movement_accepted) {
             // 0x600E selects the direction-specific walking record from the
-            // source selector table at 0xC072.  The values are ROM data, not
+            // source selector table at 0xC0B2. The values are ROM data, not
             // an arithmetic 0x60 + direction*4 convention; that convention
             // selected an unrelated effect state for several directions.
             const auto desired_selector =

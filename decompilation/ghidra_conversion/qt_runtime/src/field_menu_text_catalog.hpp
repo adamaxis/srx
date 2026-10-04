@@ -27,6 +27,16 @@ inline constexpr std::size_t kFieldMenuClipsCommandCount = 4U;
 inline constexpr std::size_t kAttributeSkillLabelCount = 20U;
 inline constexpr std::size_t kCyberwareTitleLineCount = 2U;
 inline constexpr std::size_t kCyberwareEntryCount = 15U;
+inline constexpr std::size_t kCyberdeckUnavailableLineCount = 3U;
+inline constexpr std::size_t kDismissRunnerLabelCount = 3U;
+inline constexpr std::size_t kMagicSpellTextCount = 13U;
+inline constexpr std::size_t kPocketSecretaryOptionCount = 5U;
+inline constexpr std::size_t kPocketSecretaryGroupItemCount = 15U;
+inline constexpr std::size_t kPocketSecretaryGroupItemsEmptyLineCount = 2U;
+inline constexpr std::size_t kNotebookLabelCount = 6U;
+inline constexpr std::size_t kNotebookNoRunLineCount = 3U;
+inline constexpr std::size_t kNotebookEventGateCount = 3U;
+inline constexpr std::size_t kNotebookTipCount = 96U;
 
 struct FieldMenuTextCatalog {
     std::array<std::string, kCommandOverviewLabelCount> command_labels{};
@@ -61,6 +71,15 @@ struct FieldMenuTextCatalog {
     std::string action_cannot_trade;
     std::string action_choice_no;
     std::string action_choice_yes;
+    std::string action_trade_recipient_label;
+    std::string action_trade_full_inventory_message;
+    std::string action_automatic_use_message;
+    std::string first_aid_prompt;
+    std::string first_aid_label;
+    std::string first_aid_cancel;
+    std::string first_aid_not_injured;
+    std::string first_aid_slap_patch_used;
+    std::string first_aid_medkit_used;
     std::array<std::string, kFieldMenuClipsCommandCount> clips_commands{};
     std::array<std::string, kFieldMenuClipsCommandCount> clips_trade_commands{};
     // 0xC1A2A: eight attribute labels followed by twelve skill labels for
@@ -70,6 +89,41 @@ struct FieldMenuTextCatalog {
     std::array<std::string, kCyberwareTitleLineCount>
         cyberware_title_lines{};
     std::string cyberware_empty_message;
+    // ROM 0xFBA6 fallback branch decodes the C89C0 title into C31C.
+    std::string magic_defense_title;
+    std::string magic_force_posture_heading;
+    std::string magic_success_label;
+    std::string magic_force_label;
+    std::string magic_availability_label;
+    std::array<std::string, kMagicSpellTextCount> magic_spell_names{};
+    std::array<std::string, kMagicSpellTextCount> magic_spell_descriptions{};
+    std::string pocket_secretary_title;
+    std::string pocket_secretary_separator;
+    std::array<std::string, kPocketSecretaryOptionCount>
+        pocket_secretary_options{};
+    std::array<std::string, kCyberdeckUnavailableLineCount>
+        pocket_secretary_cyberdeck_unavailable_lines{};
+    std::array<std::string, kPocketSecretaryGroupItemCount>
+        pocket_secretary_group_item_names{};
+    std::array<std::string, kPocketSecretaryGroupItemsEmptyLineCount>
+        pocket_secretary_group_items_empty_lines{};
+    // ROM 0xC448 fixed text. The Dismiss separator has 12 backslashes,
+    // unlike the Pocket Secretary separator's 10.
+    std::array<std::string, kDismissRunnerLabelCount>
+        dismiss_runner_labels{};
+    std::string dismiss_runner_separator;
+    // ROM F33E/F2E2 host text. The 3 gates are the New Game seed for
+    // Contacts, Mr. Johnsons, and Shadowrunners in that order.
+    std::array<std::string, kNotebookLabelCount> notebook_labels{};
+    std::array<std::string, kNotebookNoRunLineCount> notebook_no_run_lines{};
+    std::array<bool, kNotebookEventGateCount> notebook_event_gates{};
+    std::string notebook_tips_title;
+    std::string notebook_tips_separator;
+    std::string notebook_tips_page_count_label;
+    std::string notebook_tips_page_number_clear;
+    // ROM 0xF9A4's three pointer tables are imported offline into their own
+    // named text asset and loaded as host strings before the field runtime.
+    std::array<std::string, kNotebookTipCount> notebook_tips{};
     std::array<std::string, kCyberwareEntryCount> cyberware_entries{};
     std::array<std::string, 3> clips_trade_prompt{};
     std::array<std::string, 2> clips_exchange_complete{};
@@ -92,9 +146,8 @@ struct FieldMenuTextLoadResult {
     bool complete() const { return errors.empty(); }
 };
 
-// Load the generated menu/field/text.tsv resource through its manifest alias.
-// This is intentionally a small table loader, not a fallback label provider:
-// an absent or incomplete source catalog remains a visible conversion gap.
+// Load generated field/menu text plus the separate 0xF9A4 Tips text asset
+// through their manifest aliases. Missing source rows remain visible errors.
 FieldMenuTextLoadResult load_field_menu_text_catalog(
     const ConversionAssetCatalog& assets);
 

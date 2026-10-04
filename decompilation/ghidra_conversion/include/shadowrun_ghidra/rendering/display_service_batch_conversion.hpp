@@ -280,10 +280,10 @@ void prepare_hotel_options_display(
 void render_attributes_skills_heading(
     const std::function<void()>& render_text);
 
-// ROM 0x0E660: choose the menu/world effect resource using three bounded
-// source-random draws, then submit the selected two-row grid. The native
-// conversion keeps the table-selection result as typed provenance; it does
-// not reproduce Genesis address arithmetic or the VDP write.
+// ROM 0xE660: choose the menu/world effect resource using three bounded
+// source-random draws, then submit the selected one-row, two-cell grid. The
+// native conversion keeps the table-selection result as typed provenance; it
+// does not reproduce Genesis address arithmetic or the VDP write.
 enum class RandomGridPrimarySource {
     branch_zero_table,
     branch_nonzero_table,
@@ -303,7 +303,10 @@ struct RandomGridEffectPlan {
         RandomGridVariantSource::fixed_three_variant_resources;
     std::uint8_t variant_entry_index = 0;
     std::uint8_t variant_byte_offset = 0;
-    std::uint8_t grid_row_count = 2;
+    // At 0x1232, E660 enters with D1=0 and D7=1: one output row,
+    // two adjacent name-table cells.
+    std::uint8_t grid_width = 2;
+    std::uint8_t grid_height = 1;
 };
 
 struct RandomGridEffectState {

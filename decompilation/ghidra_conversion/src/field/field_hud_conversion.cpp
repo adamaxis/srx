@@ -1,5 +1,7 @@
 #include "shadowrun_ghidra/field/field_hud_conversion.hpp"
 
+#include <algorithm>
+
 namespace shadowrun::ghidra_conversion {
 namespace {
 
@@ -19,6 +21,15 @@ std::uint16_t slot_vram(const std::uint16_t base, const std::uint8_t slot) {
         base + static_cast<std::uint16_t>(slot) * kFieldHudSlotVramStride);
 }
 
+std::uint8_t meter_asset_index(const std::int8_t meter) {
+    if (meter <= 0) {
+        return 0U;
+    }
+    return static_cast<std::uint8_t>(std::min<int>(
+        static_cast<int>(meter),
+        static_cast<int>(kFieldHudMeterLevelCount - 1U)));
+}
+
 FieldHudOverlay make_overlay(const FieldHudOverlayKind kind,
                              const std::uint8_t slot,
                              const std::uint16_t vram,
@@ -36,19 +47,24 @@ std::vector<FieldHudOverlay> compose_field_hud_overlays(
         if (!slot_is_active(slots[slot])) {
             continue;
         }
-        // Portrait, bars, and item art are per-record uploads in 0x3404, so
-        // all four use the slot's record family. The ammo counter below is
-        // the one overlay selected by live value instead.
+        // Portrait and item art are per-record uploads in 0x3404. The meter
+        // rows come from the source's 0..10 value tables; only the HUD assets
+        // with record-specific palette/layout families use this index.
         const auto family = slots[slot].asset_family_index;
         overlays.push_back(make_overlay(FieldHudOverlayKind::portrait, slot,
                                         slot_vram(kFieldHudPortraitVram, slot),
                                         family));
         overlays.push_back(
             make_overlay(FieldHudOverlayKind::physical_bar, slot,
-                         slot_vram(kFieldHudPhysicalBarVram, slot), family));
+                         slot_vram(kFieldHudPhysicalBarVram, slot),
+                         meter_asset_index(slots[slot].delay_meter)));
         overlays.push_back(
             make_overlay(FieldHudOverlayKind::mental_bar, slot,
-                         slot_vram(kFieldHudMentalBarVram, slot), family));
+                         slot_vram(kFieldHudMentalBarVram, slot),
+                         static_cast<std::uint8_t>(
+                             (slots[slot].primary_runner ? 0U
+                                 : kFieldHudMeterLevelCount) +
+                             meter_asset_index(slots[slot].behavior_meter))));
         if (slot_is_armed(slots[slot])) {
             overlays.push_back(
                 make_overlay(FieldHudOverlayKind::item, slot,

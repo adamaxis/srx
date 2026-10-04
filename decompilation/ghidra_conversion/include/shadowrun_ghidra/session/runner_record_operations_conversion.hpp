@@ -112,8 +112,8 @@ struct RunnerPostureLoopCallbacks {
     std::function<void(std::int8_t)> adjust_and_refresh_posture;
 };
 
-// ROM 0x10722: the posture sub-loop gives up/down priority to posture
-// mutation, while the source confirm/cancel masks finish the loop. Rendering
+// ROM 0x10722: the posture sub-loop gives Up immediate finish priority,
+// Right/Left posture mutation priority, and A/C/B finish masks. Rendering
 // and vblank service remain outside this state conversion.
 RunnerPostureLoopResult apply_runner_posture_input(
     RunnerRecordFields& record, std::uint16_t input);

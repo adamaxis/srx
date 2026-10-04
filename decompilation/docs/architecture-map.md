@@ -262,14 +262,17 @@ The first field actor binding is the Stoker's Coffin Motel profile selected by
 stream and `0x122420` 7x9 portrait stream; the offline importer emits the
 single direct asset `dialogue.portraits.stoker.motel` (56x72 host pixels).
 The portrait is now source-tested. No other field-exit profile is allowed to
-borrow that portrait alias.
+borrow that portrait alias. The shared Qt presenter looks up each view's
+`portrait_alias`; an empty or unavailable alias remains portraitless rather
+than falling back to Stoker. Stoker is still the only extracted field-NPC
+portrait currently bound to this route.
 
 The Stoker prompt records at `0xF4AA0..0xF4B2C` are represented by the typed
 `StokerMotelPromptView` graph in
 `ghidra_conversion/src/field/stoker_motel_prompt_conversion.cpp`. The graph
-preserves the source's title/option/command boundaries, including sentinel
-pages and the unresolved debt/package continuation. The offline graphics
-importer emits the source text streams as the direct asset
+preserves the source's title/option/command boundaries, including the tested
+manager-package C-to-debt and B-to-referral path, sentinel pages, and the
+unresolved debt-payment result. The offline graphics importer emits the source text streams as the direct asset
 `dialogue.stoker.motel` (`assets/dialogue/stoker-motel.tsv`); the Qt adapter
 resolves those aliases and projects Stoker through this same panel rather than
 creating an NPC-specific dialogue widget. Its semantic commands are returned
@@ -277,9 +280,9 @@ to the owning conversion controller, so the panel carries no ROM addresses or
 Genesis command bytes.
 
 The remaining boundary is integration: `0x249C4`'s random arrival branch,
-field event dispatch, exact source tile placement, the room-payment return to
-Hotel Options, and the full debt/package continuation still need source
-traces and independent Qt image dumps. The separate
+live field speaker/event dispatch, exact source tile placement, the
+room-payment return to Hotel Options, and the debt-payment result still need
+source traces and independent Qt image dumps. The separate
 `qt_runtime/field_dialogue_runtime.*` seam now connects the converted field
 exit orchestrator to the shared panel without duplicating field state or
 putting ROM pointers in the runtime. Its controller path preserves the

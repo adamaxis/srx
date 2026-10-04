@@ -11,6 +11,8 @@ namespace shadowrun::ghidra_conversion {
 
 constexpr std::size_t kFieldHudSlotCount = 3U;
 constexpr std::size_t kFieldHudAmmoCounterCount = 64U;
+constexpr std::size_t kFieldHudMeterLevelCount = 11U;
+constexpr std::size_t kFieldHudBehaviorMeterProfileCount = 2U;
 constexpr std::uint16_t kFieldHudPlaneBase = 0xF000U;
 constexpr std::uint16_t kFieldHudPlaneWidthTiles = 64U;
 constexpr std::uint16_t kFieldHudSlotVramStride = 0x0400U;
@@ -58,6 +60,11 @@ struct FieldHudSlotState {
     std::int8_t equipped_inventory_slot = 0;
     std::uint8_t equipped_item_code = 0;
     std::uint8_t ammo_rounds = 0;
+    // Live record +0x4C and +0x9C. The source clamps both displayed meters
+    // to 0..10; the physical bar and mental/behavior bar use separate tables.
+    std::int8_t delay_meter = 0;
+    std::int8_t behavior_meter = 0;
+    bool primary_runner = false;
     // 0x3404 uploads the portrait, bar, and item tile families from the
     // slot's own live record (+0x50/+0x54 portrait selector, +0x57 active
     // item). The extracted per-record sprite families are indexed by the

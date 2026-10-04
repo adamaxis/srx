@@ -95,16 +95,16 @@ description identifies it as a small bar inside the Redmond Barrens. The end
 of the section is the first sustained field/interior view with Joshua's HUD
 on the right.
 
-This is not generic dialogue. The visible portrait, text source, option rows,
-and return-to-field behavior identify a named Stoker interaction. A source
-audit corrected the old attribution: `0x20E48` selects the electromagnetic-lock
-door prompt at `0x11CCCE`, while `0x20EC2` selects the building Security
-Terminal prompt at `0x11CD62`. Neither is the Stoker motel text. The Stoker
-records are now traced through `0x1F65A` and the `0xF4AA0..0xF4B2C` prompt
-table; the direct text catalog and 56x72 portrait are projected through the
-common Qt dialogue panel. The old `NativePortShell` tuple remains excluded
-from source evidence. The live field event trigger and exact source tile
-placement are still open.
+The dialogue window is shared, while the speaker portrait, text, option rows,
+and return behavior come from the active source interaction and event state.
+Here those properties identify a named Stoker interaction. A source audit
+corrected the old attribution: `0x20E48` selects the electromagnetic-lock door
+prompt at `0x11CCCE`, while `0x20EC2` selects the building Security Terminal
+prompt at `0x11CD62`. Neither is the Stoker motel text. The Stoker records are
+traced through `0x1F65A` and the `0xF4AA0..0xF4B2C` prompt table; the direct
+text catalog and 56x72 portrait are projected through the common Qt dialogue
+panel. The old `NativePortShell` tuple remains excluded from source evidence.
+The live field event trigger and exact source tile placement are still open.
 
 ### 04. Facility/corridor movement and NPC/package dialogue — 03:58-06:30
 
@@ -303,10 +303,10 @@ generic action callback.
 | --- | --- | --- |
 | New Game, two downward moves, Gator Shaman selected | `0x59092`, `0x59248`, `0x42B0`; `startup_menu_conversion.cpp`, `startup_integration_conversion.cpp` | Choice names and three typed records exist. Existing integration coverage follows Decker; add/defend the captured Shaman route and its portrait/record binding. |
 | Seattle -> wilderness -> ambush -> tri-vid -> airport/cab/map | `0x59C5E` chain; `OpeningIntroScene`; `opening_intro_conversion.cpp` | Visual order agrees with the typed scene families and source text records. Need independent frame/dump assertions for layer placement and fade/clear behavior; do not promote the longplay itself to a golden. |
-| Stoker portrait, A/B/C menu, `<MORE>`, return to field | `0x1F65A` scene 2/submode 2; profile `0x121FA0` -> pattern `0x1287C6` / portrait `0x122420`; prompt records `0xF4AA0`, `0xF4AF4`, `0xF4AEC`; `0x1F246`/`0x1F3C4`; commands `0x213CA`, `0x213E2`, `0x213FA`, `0x21458` | The top-level Stoker prompt selection is source-identified as arrival/package-question/package-handoff. The portrait is extracted as one 56x72 direct asset, the text catalog is direct, and `field_dialogue_runtime` exercises the common panel with source A/B/C priority and title-only return pages. The diagnostic `--field-dialogue-dump manager <bmp>` now produces a native panel after converted field bootstrap. Room payment, random arrival, debt/package continuation, real field trigger, exact source tile placement, and an independent visual golden remain open; `0x20E48` remains the separate maglock doorway family. |
+| Stoker portrait, A/B/C menu, `<MORE>`, return to field | `0x1F65A` scene 2/submode 2; profile `0x121FA0` -> pattern `0x1287C6` / portrait `0x122420`; prompt records `0xF4AA0`, `0xF4AF4`, `0xF4AEC`; `0x1F246`/`0x1F3C4`; commands `0x213CA`, `0x213E2`, `0x213FA`, `0x21458` | The top-level Stoker prompt selection is source-identified as arrival/package-question/package-handoff. The portrait is extracted as one 56x72 direct asset and the text catalog is direct. The shared panel preserves blank paragraph rows and centered continuation text; Debug covers manager-package C-to-debt, B-to-referral, and A-to-field. `--field-dialogue-dump manager-package/debt/jump-house/arrival <bmp>` emits diagnostic panels after field bootstrap. Room payment, debt-payment result, random arrival, live speaker/event trigger, exact source frame art, and live field return remain open; `0x20E48` remains the separate maglock doorway family. |
 | Field map plus 48-pixel right HUD | `0x334C`/`0x39F2`, `0x110EC`, field scene controller | The opaque sidebar rule is visibly required. Recheck Qt screenshots at field/dialog return and defend the HUD compositing hill independently. |
 | Package/signature and named NPC conversations | field interaction/entity/dialog records | Generic interaction callbacks are insufficient. Resolve NPC identity, text page, option cursor, package/credstick state, and return mode from the source records before implementing new visuals. |
-| Runner item sheet and `Medkit` target flow | `0x11740`, `0x12168`, `0x1253E`, first-aid/inventory conversion modules | Converted action branches exist but have no defended visual hill for this captured route. The item-detail and first-aid states need separate typed presentation requests. |
+| Runner item sheet and `Medkit` target flow | `0x11740`, `0x12168`, `0x12298`, `0x1235C`, `0x12402`, `0x1253E`, first-aid/inventory conversion modules | The Qt conversion now connects the typed selected item to the active-target/CANCEL, use/result wait, and Inventory return path. Frames 002610/002611/002615/002630/002640/002699 support the visible states. The audit remains partial because the captured Gator Shaman acquired the Medkit in play, the deterministic Qt fixture starts from Samurai, sound event 0x25 is unmapped, and multiple-runner presentation is not connected. |
 | Letter/Holopix/hospital pages | dialog/text catalogs and field return | This is a multi-page text state, not one screen. Identify the source text records and page transitions, then compare the typed catalog to each observed page. |
 
 ## Opening palette/text verification pass

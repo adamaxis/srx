@@ -110,6 +110,9 @@ int main() {
     joshua[0].equipped_inventory_slot = 0;
     joshua[0].equipped_item_code = 1U;
     joshua[0].ammo_rounds = 18U;
+    joshua[0].delay_meter = 5;
+    joshua[0].behavior_meter = 7;
+    joshua[0].primary_runner = true;
     joshua[1].equipped_item_code = 2U;
     joshua[1].ammo_rounds = 7U;
     const auto active = compose_field_hud_overlays(joshua);
@@ -119,8 +122,10 @@ int main() {
                 active[0].y == 24 && active[0].asset_index == 0U &&
                 active[1].kind == FieldHudOverlayKind::physical_bar &&
                 active[1].x == 272 && active[1].y == 24 &&
+                active[1].asset_index == 5U &&
                 active[2].kind == FieldHudOverlayKind::mental_bar &&
                 active[2].x == 280 && active[2].y == 56 &&
+                active[2].asset_index == 7U &&
                 active[3].kind == FieldHudOverlayKind::item &&
                 active[3].x == 288 && active[3].y == 64 &&
                 active[4].kind == FieldHudOverlayKind::ammo &&
@@ -138,9 +143,8 @@ int main() {
         return 9;
     }
 
-    // The portrait, bars, and item art are per-record uploads in 0x3404, so
-    // all four follow the slot's asset family. The ammo counter stays
-    // value-indexed.
+    // Portrait and item art are per-record uploads in 0x3404. The delay and
+    // behavior meters follow their live values, and ammo stays value-indexed.
     joshua[0].equipped_inventory_slot = 0;
     joshua[0].equipped_item_code = 1U;
     joshua[0].ammo_rounds = 18U;
@@ -150,9 +154,9 @@ int main() {
                 family[0].kind == FieldHudOverlayKind::portrait &&
                 family[0].asset_index == 2U &&
                 family[1].kind == FieldHudOverlayKind::physical_bar &&
-                family[1].asset_index == 2U &&
+                family[1].asset_index == 5U &&
                 family[2].kind == FieldHudOverlayKind::mental_bar &&
-                family[2].asset_index == 2U &&
+                family[2].asset_index == 7U &&
                 family[3].kind == FieldHudOverlayKind::item &&
                 family[3].asset_index == 2U &&
                 family[4].kind == FieldHudOverlayKind::ammo &&
@@ -166,8 +170,17 @@ int main() {
     const auto secondary = compose_field_hud_overlays(companion);
     if (!expect(secondary.size() == 5U && secondary[0].slot == 1U &&
                 secondary[0].y == 88 && secondary[4].asset_index == 4U &&
-                secondary[4].y == 136)) {
+                secondary[4].y == 136 && secondary[2].asset_index ==
+                    kFieldHudMeterLevelCount)) {
         return 10;
+    }
+
+    joshua[0].delay_meter = -1;
+    joshua[0].behavior_meter = 127;
+    const auto clamped_meter_assets = compose_field_hud_overlays(joshua);
+    if (!expect(clamped_meter_assets[1].asset_index == 0U &&
+                clamped_meter_assets[2].asset_index == 10U)) {
+        return 41;
     }
 
     joshua[0].equipped_inventory_slot = 0;

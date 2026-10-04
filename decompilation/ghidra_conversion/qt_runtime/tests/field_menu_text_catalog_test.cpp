@@ -49,6 +49,56 @@ int main() {
         text.catalog.cyberware_title_lines[1] !=
             std::string("[") + std::string(10U, '\\') ||
         text.catalog.cyberware_empty_message != "NONE" ||
+        text.catalog.magic_defense_title != " Magical Defense" ||
+        text.catalog.magic_force_posture_heading !=
+            "Set Force & Posture." ||
+        text.catalog.magic_success_label != "Success" ||
+        text.catalog.magic_force_label != "Force" ||
+        text.catalog.magic_availability_label != "Damage" ||
+        text.catalog.pocket_secretary_title != " Main Menu" ||
+        text.catalog.pocket_secretary_separator !=
+            std::string("[") + std::string(10U, static_cast<char>(92)) ||
+        text.catalog.dismiss_runner_labels !=
+            std::array<std::string, kDismissRunnerLabelCount>{
+                "   Dismiss", "    Who??", "    Abort"} ||
+        text.catalog.dismiss_runner_separator !=
+            std::string("[") + std::string(12U, static_cast<char>(92)) ||
+        text.catalog.pocket_secretary_options !=
+            std::array<std::string, kPocketSecretaryOptionCount>{
+                "Notebook", "Group Items", "Cyberdeck", "Dismiss Runner",
+                "Save/Load Game"} ||
+        text.catalog.pocket_secretary_cyberdeck_unavailable_lines !=
+            std::array<std::string, kCyberdeckUnavailableLineCount>{
+                " You do not have", "  a cyberdeck!!", " Keep looking."} ||
+        text.catalog.pocket_secretary_group_item_names[0] !=
+            "Prototype Cyber-heart" ||
+        text.catalog.pocket_secretary_group_item_names[14] !=
+            "Ork Armband" ||
+        text.catalog.pocket_secretary_group_items_empty_lines !=
+            std::array<std::string,
+                       kPocketSecretaryGroupItemsEmptyLineCount>{
+                "You are not carrying", "  any group items."} ||
+        text.catalog.notebook_labels !=
+            std::array<std::string, kNotebookLabelCount>{
+                "  Notebook", "Current Run", "Tips & Clues", "Contacts",
+                "Mr. Johnsons", "Shadowrunners"} ||
+        text.catalog.notebook_no_run_lines !=
+            std::array<std::string, kNotebookNoRunLineCount>{
+                " You are not currently", "engaged in a shadowrun.",
+                "     Get a job!!"} ||
+        text.catalog.notebook_event_gates !=
+            std::array<bool, kNotebookEventGateCount>{true, false, false} ||
+        text.catalog.notebook_tips_title != "Tips & Clues" ||
+        text.catalog.notebook_tips_separator !=
+            std::string("[") + std::string(15U, static_cast<char>(92)) ||
+        text.catalog.notebook_tips_page_count_label != "Page    of" ||
+        text.catalog.notebook_tips_page_number_clear != "  " ||
+        text.catalog.notebook_tips[0].find(
+            "Michael's last credstick\ntransaction:") != 0U ||
+        text.catalog.notebook_tips[2].find(
+            "<The letter addressed to\nMichael reads as follows:") != 0U ||
+        text.catalog.notebook_tips[95].find(
+            "You have deleted the") != 0U ||
         text.catalog.cyberware_entries != expected_cyberware_entries ||
         text.catalog.physical_label != "Physical" ||
         text.catalog.mental_label != "Mental" ||
@@ -66,6 +116,18 @@ int main() {
         text.catalog.action_cannot_trade != "Cannot trade magic items!" ||
         text.catalog.action_choice_no != "No" ||
         text.catalog.action_choice_yes != "Yes" ||
+        text.catalog.action_trade_recipient_label != "Give to" ||
+        text.catalog.action_trade_full_inventory_message !=
+            "  has a full\n  inventory.\n\nPress a button\n to continue." ||
+        text.catalog.action_automatic_use_message !=
+            "This item is\nautomatically\n    used." ||
+        text.catalog.first_aid_prompt != " Heal who??" ||
+        text.catalog.first_aid_label != "    First Aid    " ||
+        text.catalog.first_aid_cancel != "CANCEL" ||
+        text.catalog.first_aid_not_injured !=
+            "This person is\n not injured!" ||
+        text.catalog.first_aid_slap_patch_used != "Slap-patch used." ||
+        text.catalog.first_aid_medkit_used != "Medkit used." ||
         text.catalog.clips_commands[0] != "Reload" ||
         text.catalog.clips_commands[2] != "Distribute" ||
         text.catalog.clips_trade_commands[3] != "Change Recipient" ||

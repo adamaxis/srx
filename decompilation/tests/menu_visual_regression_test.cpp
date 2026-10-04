@@ -81,6 +81,54 @@ std::uint32_t pack(Rgba8 color) {
            color.blue;
 }
 
+void draw_inventory_selector_outline(SoftwareScreen& screen,
+                                    const std::size_t selection,
+                                    const std::size_t row) {
+    if (selection >= 2U || row >= 4U) {
+        return;
+    }
+    // 0x11592 positions the 32x24 selection footprint; section-06 captures
+    // show a single one-pixel warm-gold edge hugging the 24x16 item image.
+    const auto x = 14 + static_cast<std::int32_t>(selection * 40U);
+    const auto y = 118 + static_cast<std::int32_t>(row * 24U);
+    constexpr std::int32_t kOutlineWidth = 28;
+    constexpr std::int32_t kOutlineHeight = 20;
+    constexpr Rgba8 kSelectorGold{0xC4, 0xBE, 0x27, 0xFF};
+    screen.fill_rect(x, y, kOutlineWidth, 1, kSelectorGold);
+    screen.fill_rect(x, y + kOutlineHeight - 1, kOutlineWidth, 1,
+                     kSelectorGold);
+    screen.fill_rect(x, y, 1, kOutlineHeight, kSelectorGold);
+    screen.fill_rect(x + kOutlineWidth - 1, y, 1, kOutlineHeight,
+                     kSelectorGold);
+}
+
+void require_inventory_selector_outline(const SoftwareScreen& screen,
+                                        const std::size_t selection,
+                                        const std::size_t row) {
+    if (selection >= 2U || row >= 4U) {
+        throw std::runtime_error("inventory selector is outside its 2x4 grid");
+    }
+    const auto x = 14 + static_cast<std::int32_t>(selection * 40U);
+    const auto y = 118 + static_cast<std::int32_t>(row * 24U);
+    constexpr std::int32_t kOutlineWidth = 28;
+    constexpr std::int32_t kOutlineHeight = 20;
+    const auto kGold = pack(Rgba8{0xC4, 0xBE, 0x27, 0xFF});
+    for (std::int32_t offset = 0; offset < kOutlineWidth; ++offset) {
+        if (screen.pixel(x + offset, y) != kGold ||
+            screen.pixel(x + offset, y + kOutlineHeight - 1) != kGold) {
+            throw std::runtime_error(
+                "inventory selector top/bottom gold edge is missing");
+        }
+    }
+    for (std::int32_t offset = 0; offset < kOutlineHeight; ++offset) {
+        if (screen.pixel(x, y + offset) != kGold ||
+            screen.pixel(x + kOutlineWidth - 1, y + offset) != kGold) {
+            throw std::runtime_error(
+                "inventory selector left/right gold edge is missing");
+        }
+    }
+}
+
 void write_source_text(SoftwareScreen& screen, const NativeImage& font,
                        std::int32_t destination_x,
                        std::int32_t destination_y,
@@ -347,11 +395,7 @@ SoftwareScreen source_field_menu_reference(const NativePortAssets& assets,
                            184, focus.width, focus.height, focus.pixels);
     }
     if (selection < 2U) {
-        const auto x = 8 + static_cast<std::int32_t>(selection * 40U);
-        const auto y = 112 + static_cast<std::int32_t>(row * 24U);
-        expected.blit_rgba(x, y, assets.field_menu_cursor.width,
-                           assets.field_menu_cursor.height,
-                           assets.field_menu_cursor.pixels);
+        draw_inventory_selector_outline(expected, selection, row);
         const auto slot = row * 2U + selection;
         if (slot < record.inventory_item_codes.size()) {
             draw_item_detail(record.inventory_item_codes[slot], true);
@@ -814,14 +858,14 @@ void test_field_menu_visual_contract(
                                  "command-tab focus " + std::to_string(focus));
         }
 
-        // Inventory selection uses the source command-screen cursor shown by
-        // the native command screen, separate from equipment borders.
+        // Inventory selection uses the thin warm-gold outline visible in the
+        // independent section-06 frames, separate from equipment borders.
         while (shell.field_menu_selection() != 0U) {
             press(shell, Button::Left);
         }
         shell.render(screen);
-        require_image_pixels(screen, assets.field_menu_cursor, 8, 112,
-                             "inventory selection at slot 0");
+        require_inventory_selector_outline(
+            screen, shell.field_menu_selection(), shell.field_menu_row());
 
         // Each occupied inventory cell also opens the source item-detail
         // page. Verify the exact item art selected by the source item code,

@@ -68,7 +68,6 @@ evidence cannot settle a question; it is not a pass.
    adjacent frames to distinguish animation from a static drawing and other
    gameplay/menu visits to confirm repeated layout. One screenshot is not
    enough to establish state, cadence, or persistence.
-
 8. **Was the previous screen or modal cleared before the new one was drawn?**
    Trace whether the ROM clears or redraws the panel, or intentionally keeps a
    shared interface. Check that old buttons, labels, cursors, icons, and other
@@ -124,7 +123,7 @@ selected item. That did not match the single fine outline in the longplay.
 
 1. **Appearance:** compared the whole 320x224 frame and the inventory crop.
    The mismatch was confined to the selected item marker. Corrected output is
-   `decompilation/ghidra_conversion/build-ghidra-conversion-qt-debug/qt_runtime/field-inventory-selector-qa.bmp`;
+   `decompilation/ghidra_conversion/build-qt-magic-qa/qt_runtime/field-inventory-selector-qa.bmp`;
    section 06 frame 002560 shows the armor cell selected and equipped-cell
    treatment at once. Frames 002580, 002610, and 002640 show the medkit with
    the cursor isolated from that equipment treatment.
@@ -136,16 +135,18 @@ selected item. That did not match the single fine outline in the longplay.
    `0x11592` builds the sprite record from the selectors and `0xD29F6`.
    The focused QA requires the reached cell to contain an item and verifies
    that its icon pixels remain visible inside the outline.
-3. **Visual construction:** `0x11592` yields host sprite origin
-   `(primary * 40 + 12, secondary * 24 + 116)`. The independent capture shows
-   a one-pixel warm-gold outline inset two pixels from that origin. The
-   repeated medkit edge in frames 002580, 002610, and 002640 samples as
-   `#C4BE27`; both Qt and NativePort now draw the same one-pixel outline from
-   the typed selected-cell state instead of the extracted sprite's extra
-   internal segments. ROM `0x11624` installs equipped-cell treatment before
-   the item glyph rows; the renderer order keeps the item art visible above
-   that treatment. Fresh NativePort CLI captures are in
-   `decompilation/build-qt-debug/menu-selector-verified/`.
+3. **Visual construction:** `0x11592` yields host SAT origin
+   `(primary * 40 + 12, secondary * 24 + 116)` for a 32x24 cursor footprint.
+   The 24x16 item image starts four pixels inside that footprint, at
+   `(primary * 40 + 16, secondary * 24 + 120)`. The independent capture shows
+   a one-pixel warm-gold outline hugging the item image itself, with no extra
+   inset. Its repeated medkit edge in frames 002580, 002610, and 002640 samples
+   as `#C4BE27`; Qt and NativePort now draw that geometry from typed selected-
+   cell state instead of the extracted sprite's oversized internal segments.
+   ROM `0x11624` installs equipped-cell treatment before the item glyph rows;
+   the renderer order keeps the item art visible above that treatment. Fresh
+   Qt selector captures are in
+   `decompilation/ghidra_conversion/build-qt-magic-qa/qt_runtime/`.
 4. **Animation:** the observed focus is stationary while held. It moves when
    the selector changes and remains through the Heal-who prompt and use
    result. It is still visible in section 07 frame 000030; the field view at
@@ -166,8 +167,9 @@ selected item. That did not match the single fine outline in the longplay.
    the same geometry for the occupied Scatter cell before its later field
    movement assertion. Field-action QA checks that the Qt outline remains
    around its item when Equip opens. The
-   longplay shows it around the medkit through Heal-who/use, but there is not
-   yet a native First Aid state dump to verify that complete route.
+   longplay shows it around the medkit through Heal-who/use. The Qt First Aid
+   dump now checks the same outline through target selection and result and
+   confirms it is removed on return.
 7. **Frame support:** section 06 frames 002550, 002560, 002580, 002610,
    002640, and 002699 show the unselected menu, armor selection, movement to
    the medkit, and held action/result states. Section 07 frames 000030 and
@@ -179,8 +181,79 @@ selected item. That did not match the single fine outline in the longplay.
 
 The focused selector CTest is a renderer regression guard, not a Genesis
 golden. The selected-item appearance is independently checked against the
-listed longplay frames. The eight-cell equipment/empty-slot matrix and First
-Aid return route remain open.
+listed longplay frames. The eight-cell equipment/empty-slot matrix remains
+open.
+
+### Applied review: First Aid target, result, and return
+
+1. **Does it look correct?** Inspected the whole Qt 320x224 output at
+   `decompilation/ghidra_conversion/build-qt-magic-qa/qt_runtime/field-first-aid-qa/actual.bmp`
+   and the named target, CANCEL, result, and return checkpoints beside it.
+   Section 06 frame 002610 shows the target prompt; 002640 shows
+   `Medkit used.`; 002699 shows the returned Inventory page. The selected
+   item has the narrow gold edge in target/result and no edge after return.
+   Full-frame art is not a same-record match: the executable fixture uses the
+   Samurai starter record because it supplies a Medkit, while these longplay
+   frames show Joshua's Gator Shaman record after a Medkit was acquired.
+2. **Does the look reflect the behavioral state?** ROM `0x12298` reads the
+   three active-runner flags at `FF0100/FF0200/FF0300 + 0x10`, their names at
+   `+0x58`, and stores the selected record pointers. The typed
+   `CommandOverviewFirstAidState`, target list/cursor, selected inventory slot,
+   `RunnerRecordFields` meters/flags/phase, and continuation drive the Qt
+   screen. QA reaches Medkit through the inventory action row, verifies the
+   single active Joshua target, rejects B/C, confirms A, then checks the
+   meter, item phase, flags, continuation, result wait, and return.
+3. **Are the visuals correct?** The prompt and rows are placed from source
+   name-table destinations: `C5A0` for `Heal who??`, `C6A0` for the first
+   target name, `+0x80` per following active record, and `+0x86` before
+   `CANCEL`; the native coordinates are x/y `(128,88)`, `(128,104)`, and
+   `(152,112)` for the one-target case. ROM strings at `D1EEA`, `D1F03`,
+   `D1F0A`, `D1F1B`, and `D1F28` supply the prompt/cancel/result text. The
+   centered target face, shell, HUD, item detail, and 24x16 `#C4BE27` selector
+   remain visible. The test checks the source shell/HUD, extracted face and
+   meter assets, text regions, and selector edges. The same-archetype full
+   portrait comparison remains open because the longplay and QA use different
+   runner records.
+4. **Is it animated?** `0x1235C` waits for VBlank and samples input; this
+   loop redraws on selection changes but has no First Aid cursor timer or
+   animation counter. The Qt target frame is pixel-identical after 30 idle
+   frames. Longplay frames 002630-002635 hold the target/list layout; the
+   four-pixel change from 002630 to 002631 is not enough evidence to add an
+   animation. D-pad movement changes the selected row; result text holds
+   until the `0x0D94` event wait returns.
+5. **Does sound accompany it?** Moving the target cursor requests ROM audio
+   event `0x25` at `0x12392`; confirming/cancelling requests `0x24` at
+   `0x12412`. The Qt callback trace confirms those event IDs. The host maps
+   `0x24` to `audio.menu.command-024`, whose extracted FLAC lasts 2.484 seconds
+   including the release tail; no separate result sound is issued. The QA
+   spies on requested event IDs but does not capture acoustic playback. No
+   extracted alias/clip for `0x25` exists, and `AudioPlaybackService` ignores
+   that unmapped event, so cursor movement is currently silent in Qt. Keep
+   this as an unresolved audio boundary instead of assigning another clip.
+6. **Are related parts correct?** Reviewed the inventory icons and item
+   detail, selected/equipped layers, shell, right HUD and live meter, center
+   target face, result line, and return to Inventory. QA checks the full
+   screen shell/HUD on every checkpoint, confirms the live HUD meter follows
+   the changed runner record, verifies Cancel leaves the item and meters
+   alone, and checks that the selector is restored only when another
+   direction is pressed after return.
+7. **Do multiple frames support this?** Independent frames 002610 and
+   002630 show the target list on separate visits; 002611 and 002640 show the
+   used result; 002615 and 002699 show return. These support the repeated row
+   layout, selection/result transition, selector persistence/removal, and
+   static hold. They do not establish the Samurai portrait or exact audible
+   sound for event `0x25`.
+
+The focused CTests are
+`shadowrun_ghidra_conversion_qt_field_first_aid_qa`,
+`shadowrun_ghidra_first_aid_conversion`,
+`shadowrun_ghidra_field_party_roster_runtime`, and
+`shadowrun_ghidra_field_menu_text_catalog`. The CLI command is
+`shadowrun_ghidra_conversion_qt.exe --assets decompilation/assets --field-archetype samurai --field-first-aid-dump <output-dir>`;
+it writes `actual.bmp` plus the interaction checkpoints and verifies that
+held A does not dismiss the result before a fresh controller edge. This hill stays
+`partial`: Joshua-only roster integration, host RNG seeding, the unmapped
+`0x25` audio event, and same-archetype visual support still need work.
 
 ### Applied review: Seattle opening text and focus box
 
@@ -280,12 +353,13 @@ longplay frames remain the independent appearance evidence.
    Cyberware, Magic, and Pocket Secretary. The base status panel remaining
    visible while pages 4, 5, or 6 are merely focused is source-correct: A
    dispatches those panels. A opens Cyberware at 0x11950 and Pocket Secretary
-   at 0xC2A6; Magic dispatch at 0xFBA6 remains an explicit boundary.
+   at 0xC2A6; page-5 A now opens the Magical Defense fallback from 0xFBA6.
 3. **Visual construction:** pages 0/1 retain the two-column eight-cell
    inventory and selected-item detail; page 2 opens the Clips action panel;
    page 3 replaces the base frame and renders the 20 labels from 0xC1A2A;
    pages 4 and 6 open their own compositions on A. The page-3 values and
-   0xD27C cursor are not rendered, and page 5's spell panel is not connected.
+   0xD27C cursor are not rendered. Page 5's spell-capable panel is not
+   connected; its static fallback has a separate applied review below.
 4. **Animation:** the tab highlight stays still until a D-pad edge changes
    primary_page; it is not a blinking animation. Inventory selection changes
    secondary_page by input. The separate Attributes/Skills cursor navigation
@@ -304,6 +378,53 @@ longplay frames remain the independent appearance evidence.
    persistence. They do not show the other tab panels. The seven native page
    images prove current rendering only; retain partial until independent
    captures cover the missing pages and archetype/save states.
+
+### Applied review: Magical Defense fallback
+
+1. **Appearance:** before the change, page-5 A had no Qt subview. The ROM
+   branch writes a `Magical Defense` heading over the command/status page and
+   two numeric strips. Inspected `magic_tab.bmp`, `actual.bmp`, `held.bmp`,
+   and `return.bmp` under
+   `decompilation/ghidra_conversion/build-qt-magic-qa/qt_runtime/field-magic-qa/`.
+   The current 320x224 output follows the traced overlay positions; its match
+   to an actual Genesis Magic screen remains unknown.
+2. **Behavioral state:** page-5 A now dispatches into typed
+   `CommandOverviewMagicState::magical_defense_wait`. ROM `0xFBA6` chooses the
+   spell panel only when `+0x9B < 2` and `+0x7F != 0`; otherwise it chooses
+   this fallback. The QA fixture uses the Gator field composition and sets
+   typed `+0x7F` to zero to exercise the class-1 fallback. Both plans use the
+   three party records, the `+0x10` active flag, class, item-0x18 skill, and
+   separate active-runner attributes `+0x77`/`+0x7C`. A new input edge exits;
+   the runner's inventory, equipment, force, posture, and ammo stay unchanged.
+3. **Visual construction:** ROM `0xFBA6` sends `C89C0` to `C31C` at
+   `(112,48)`, then calls `0x106DA` with `D2=0` and `D2=-1` for the physical
+   and mana strips. The plans target `C51E`/`C69E`, use 13 tiles at stride
+   `0x1A`, and select 104x8 source rows from `0xCF610` at `(120,80)` and
+   `(120,104)`. The Qt capture matches the named strip assets at those spots
+   and retains the page shell, selected tab, and right HUD. This is a same-
+   source placement check, not proof of Genesis visual fidelity.
+4. **Animation:** the fallback draws once, then calls `0x0D94` to service
+   VBlank/input until a high-byte controller event and take its final sample.
+   It does not enter the spell cursor/sprite loop or advance a Magic timer.
+   Thirty empty Qt frames are pixel-identical; a fresh direction edge returns
+   through `0x11928` to page 5. The supplied longplay has no Magic visit, so
+   source cadence still needs an independent capture.
+5. **Sound:** the parent command loop at `0x10E4E` sends audio event `0x24`
+   before A/C dispatch. Qt now forwards that event to
+   `audio.menu.command-024`; the extracted clip is 2.484 seconds including
+   its two-second release tail. The fallback itself and its `0x0D94` wait
+   issue no additional sound. The CTest checks event delivery, not audible
+   playback on a speaker.
+6. **Related screen parts:** the full screenshot checks the command shell,
+   selected tab, page content, archetype face, and persistent right HUD. The
+   return image equals the same page-5 image and record fields are unchanged.
+   The other `0xFBA6` branch remains open: it clears/loads a separate spell
+   panel and needs spell cursor visuals, force selection, target/effect, and
+   result/return behavior.
+7. **Frame support:** the CLI supplies before/open/held/return snapshots, but
+   these are Qt captures. Sections 01-07 of the independent longplay do not
+   show this Magic panel. Keep the route `partial` and obtain multiple real-
+   game Magic frames before making a visual-correctness claim.
 
 ### Applied review: wilderness story and actor sequence
 
@@ -529,7 +650,11 @@ shadowrun_ghidra_conversion_qt.exe --field-dump <file> --assets <assets>
 shadowrun_ghidra_conversion_qt.exe --field-hud-qa <audit-dir> --assets <assets>
 shadowrun_ghidra_conversion_qt.exe --field-command-dump <file> --field-archetype <samurai|decker|gator> --assets <assets>
 shadowrun_ghidra_conversion_qt.exe --field-action-dump <dir> --assets <assets>
+shadowrun_ghidra_conversion_qt.exe --field-first-aid-dump <dir> --field-archetype samurai --assets <assets>
+shadowrun_ghidra_conversion_qt.exe --field-automatic-use-dump <dir> --assets <assets>
+shadowrun_ghidra_conversion_qt.exe --field-inventory-trade-dump <dir> --assets <assets>
 shadowrun_ghidra_conversion_qt.exe --field-clips-dump <dir> --assets <assets>
+shadowrun_ghidra_conversion_qt.exe --field-magic-dump <dir> --field-archetype gator --assets <assets>
 shadowrun_ghidra_conversion_qt.exe --field-dialogue-dump <prompt> <file> --assets <assets>
 ```
 
@@ -549,6 +674,334 @@ silently rendered as Samurai, a sprite family merged into a background, a
 fade affecting the wrong layer, or a runtime path that has no source-derived
 record to explain it. Such a finding goes back to conversion analysis before
 new behavior is invented.
+
+### Applied review: Automatic-use acknowledgement
+
+1. **Does it look correct?** Inspected the full 320x224 Qt output in
+   `build-qt-magic-qa/qt_runtime/field-automatic-use-qa/actual.bmp`. The green
+   three-line message sits in the inventory detail panel while the item icon,
+   right HUD, status strip, and thin item outline remain visible.
+2. **Does the current look reflect the behavioral state?** ROM `0x12168` routes
+   codes `0x13`, `0x14`, `0x16`, and `0x18..0x2B` to `0x121C0`. The typed Qt
+   state is `CommandOverviewAutomaticUseState::result_wait`; the QA dispatches
+   a Mana Blast item (`0x20`) from the real item/action loop and verifies its
+   item code, phase, equipped slot/code, and armor index are unchanged. The
+   selected outline stays through the wait and clears after return.
+3. **Are the visuals correct?** `0x121C0` writes the D202F text at C620, which
+   maps to `(128,96)`. The ROM's `0x80` separators decode to `This item is`,
+   `automatically`, and `    used.`. Those lines come from the offline ROM
+   import and render through the direct field font. Position and source text
+   are traced, but the exact scene lacks an independent capture.
+4. **Is it animated, and when?** The branch prepares the panel, renders text,
+   then enters `0x0D94`; no cursor timer or message animation appears in this
+   path. The Qt dump is pixel-identical after 30 idle frames and while the
+   dispatch A is held or released.
+5. **Is there a sound?** The parent action loop at `0x11C3C` requests event
+   `0x24` before dispatch; `0x121C0` and the `0x0D94` acknowledgement add no
+   separate request. Event `0x24` maps to the existing 2.484-second clip,
+   including its release tail. The QA checks callback requests, not acoustic
+   output from a speaker.
+6. **Are nearby screen parts correct too?** QA compares the item name/detail
+   region before and during the message, checks the one-pixel item outline,
+   and verifies the command shell and HUD assets. It also checks no equipment
+   or inventory mutation occurs and that the outline is gone after return.
+7. **Do multiple frames support the interpretation?** The Qt dump includes
+   message, 30-frame idle, held, released, and return images. Independent
+   longplay frames 002610/002611/002615 and 002630/002640/002699 support the
+   neighboring inventory/First Aid panel placement, selector persistence, and
+   return. None shows the exact D202F message, so the visual status remains
+   `partial` until a matching independent frame is available.
+
+### Applied review: Trade recipient and transfer
+
+1. **Does it look correct?** Inspected the complete 320x224 frames
+   `field-inventory-trade-qa/trade_recipient_full.bmp`,
+   `trade_recipient_dog_no.bmp`, `trade_recipient_dog_yes.bmp`, and
+   `trade_transferred.bmp`. The action background, choice bar, item detail,
+   and one-pixel yellow-gold outline remain visible. The recipient line and
+   full-inventory message use the traced source text positions. The screen is
+   still only partially reviewed visually because no supplied independent
+   Trade frame is available.
+2. **Does the look reflect the behavioral state?** ROM `0x12836` rejects
+   `0x17..0x2B`; the eligible path at `0x1288E` scans the three-record ring
+   for another active runner, and `0x1296A` starts each candidate on No.
+   Typed state is `InventoryTradeState` plus the live
+   `FieldPartyRosterRuntime` records. The Qt QA reaches no-recipient, full
+   recipient, next active recipient, Yes/No, and transferred states; it
+   verifies item code/phase and source equipment cleanup. These diagnostic
+   records are test fixtures, not normal-game party members.
+3. **Are the visuals correct?** ROM writes the full-recipient name/message at
+   `C69E/C71E` and the eligible prompt/name at `C7A6/C820`; the Qt positions
+   follow those plane addresses. The selected-item edge matches the
+   independent inventory captures: a single warm-gold pixel around the item
+   art. The source also calls `0x110E8` at `C928` to draw the recipient's HUD
+   panel. Qt currently leaves the active runner's panel in place, so this
+   source-visible recipient projection is a known missing visual detail.
+4. **Is it animated, and when?** `0x1296A` waits for VBlank between input
+   samples. The source redraws the Yes/No row after Left/Right; it does not
+   animate the focus during idle. The Qt QA checks the rendered image after
+   30 idle frames and captures No, Yes, next-recipient, and return states.
+5. **Does sound accompany it?** `0x12988` requests event `0x25` after either
+   horizontal edge; `0x129B2` requests `0x24` on confirm. The host callback
+   checks those event IDs. Event `0x24` maps to the existing 2.484-second
+   audio file including its release tail. Event `0x25` has no verified alias
+   or clip duration, and callback coverage does not prove playback.
+6. **Are related parts of the screen correct too?** The whole frame was
+   checked for the inventory item, item detail, command shell, active runner
+   HUD, Yes/No focus, and return to the inventory grid. The item remains at
+   its source slot until transfer; transfer clears it and updates the source
+   inventory view. The recipient HUD call at `0x110E8` is the related panel
+   still missing from Qt.
+7. **Do multiple frames support the interpretation?** Native checkpoints
+   cover a full recipient, the next recipient on No, that recipient on Yes,
+   transfer, and the one-runner no-op. Independent section 06 inventory
+   frames 002550-002699 support the shared shell and selector shape, but none
+   shows Trade or its recipient panel. The Trade visual status remains
+   `partial`; independent reference capture and the `0x110E8` projection are
+   outstanding.
+
+### Applied review: Pocket Secretary Group Items
+
+1. **Does it look correct?** Inspected `actual.bmp`,
+   `group-items-populated.bmp`, `group-items-empty.bmp`, both 30-frame held
+   captures, both return frames, and the adjacent Cyberdeck no-deck/return
+   frames under `build-qt-magic-qa/qt_runtime/field-secretary-qa/`. The outer
+   Pocket Secretary frame remains around the black center. The child removes
+   the parent title/options and shows only its current source rows. This is a
+   same-source visual review; no independent Pocket Secretary frame is in the
+   supplied longplay sections. The parent cursor tile is source-mapped to the
+   lowercase `x` at x=136; its appearance against each row still needs an
+   independent reference.
+2. **Does the look reflect the behavioral state?** The Group Items row is
+   selection 1. The typed `PocketSecretaryMenuState::group_items_wait` holds
+   the modal state, and `group_item_flags` selects either the empty message or
+   a descending-bit item list. Fresh New Game supplies FFFC22=0. The populated
+   QA frame uses diagnostic bits 14 and 1 to prove order (`Ork Armband`, then
+   `Indian Lands Visa`); normal quest acquisition and restored-save FFFC22
+   are not connected. Any controller event dismisses the child and preserves
+   the parent selection at row 1.
+3. **Are the visuals themselves correct?** ROM `0xC8C8` calls `0xC3E6`,
+   reads FFFC22, and on the zero branch passes C1471 to C0DA at C50E. The
+   extracted strings remain separate: `You are not carrying` and
+   `  any group items.`. C50E maps to host (56,80), with the second source row
+   at y=88. The populated path reads the name table at C25C4, begins at C208
+   (host x=32,y=32), and advances A2 by `0x100` bytes (16 host pixels) per
+   visible entry. C3E6's 28x21 repeated grid is now an offline named asset:
+   its first tile word comes from C1320 and selects the space glyph in the
+   C1064 font stream uploaded at B560. Qt draws that decoded 224x168 layer
+   inside the extracted frame, then draws the child text; the parent is not
+   redrawn over the cleared panel. The source placement is implemented, but
+   the output has no independent Genesis comparison.
+4. **Is it animated, and should it be?** The child writes once and jumps to
+   `0xF312` to wait for any controller event. That shared wait calls `0xE660`
+   once after each VBlank, so the complete source path does animate a random
+   two-cell grid effect while the child is waiting. `0xE660` chooses a
+   destination and tile pair from its random tables; its `0x1232` call uses
+   D1=0 and D7=1, which writes one row by two adjacent cells. The typed plan
+   now records width 2 and height 1. Qt loads seven named source-decoded
+   patterns and advances this effect once per frame. Each written pair stays
+   in its source-mapped lower-bezel destination until the panel is rebuilt.
+   Held-frame QA confirms the pair changes while child text and controls stay
+   stable. Independent Genesis frames are still needed to verify visual
+   cadence.
+5. **Is there a sound?** `0xC8C8` contains no sound request, so the child adds
+   none. The parent command overview requests event `0x24` when A opens the
+   Pocket Secretary; its extracted `audio.menu.command-024` clip lasts 2.484
+   seconds including the release tail. The child wait does not request a new
+   sound, and the QA records callback/state behavior rather than speaker
+   output. `0xE660` contains random sampling and a name-table write, but no
+   sound request; the source wait adds no separate sound.
+6. **Are nearby screen parts correct too?** Compared the parent menu at
+   selection 1, populated and empty children, both returns, and the neighboring
+   Cyberdeck no-deck child/return. The frame and black center persist, parent
+   text clears during each child, and the same selected row returns. The
+   source random-grid destinations lie in the bottom bezel. Held captures
+   confirm the lamps do not cover child text or selectable rows. Notebook detail
+   handlers, Save/Load, deck-present Matrix, and restored-save flags remain
+   explicit Qt boundaries; Dismiss E660 art and candidate HUD projection are
+   documented in its applied review below.
+ 7. **Do multiple frames support the interpretation?** Native checkpoints
+    capture entry, each Group Items branch, 30 held frames, return, and the
+    Cyberdeck branch at its own wait/return. They show the lower-bezel effect
+    changing while child content remains stable. The supplied independent longplay contains
+   no Pocket Secretary example, so visual fidelity remains `partial` until
+   several matching Genesis frames are available.
+8. **Was the previous screen or modal cleared before the new one was drawn?**
+   `0xC8C8` calls `0xC3E6` before writing either child branch. The Qt painter
+   redraws the frame and blank inner grid before child text, and the captures
+   show no Pocket Secretary title/options beneath Group Items or Cyberdeck
+    feedback. The two-cell effect stays within the lower bezel and does not
+    overlap child controls. Both panel replacement and overlay bounds are checked.
+
+### Applied review: Notebook and Current Run no-run response
+
+ 1. **Does it look correct?** The corrected Qt captures are in
+    `decompilation/ghidra_conversion/build-qt-magic-qa/qt_runtime/field-secretary-qa/`:
+   `notebook-menu.bmp`, `notebook-selection-1.bmp`,
+   `notebook-current-run-unavailable.bmp`, `notebook-current-run-held.bmp`,
+   `notebook-current-run-return.bmp`, and `notebook-return.bmp`. They establish
+   the present renderer's full entry, selection, response, wait, and return
+   sequence; no matching independent Pocket Secretary frame is in the supplied
+   longplay.
+2. **Does the look reflect the behavioral state?** The typed
+   `NotebookMenuState` starts at Current Run, includes Current Run and Tips &
+   Clues, and includes Contacts because fresh New Game sets `FFFC2C` at
+   `0x59C48`. With no active run, A enters the three-line `0xF2E2` response;
+   it waits for a controller edge, rebuilds Notebook at selection zero, and
+   B returns to the selected Pocket Secretary row.
+3. **Are the visuals themselves correct?** Raw US ROM bytes show `0xF33E`
+   clearing through `0xC3E6`, writing the encoded labels from `0xC567E` at
+   `0xC216`, and writing the separator at `0xC292`. `0xC0DA` advances the
+   name-table destination by `0x80` bytes per source row marker. This places
+   the title at `(88,32)`, Current Run at `(88,56)`, Tips & Clues at
+   `(88,72)`, and gated rows from `(88,88)` with 16-pixel spacing. The cursor
+   base `0xC392` is `(72,56)`. `0xF2F6` clears again and writes the no-run
+   response from `0xC56E7` at `0xC30C`, or `(48,48)`, with 8-pixel line
+   spacing. The Qt layout now follows those placements. An independent
+   Genesis image is still required to call the visual fidelity verified.
+4. **Is it animated, and should it be?** The `0xF236` menu loop calls
+   `0xE660` once per VBlank. The Current Run response enters `0xF312`, which
+    also advances `0xE660` once per VBlank. The source writes one row of two
+    random bottom-chrome cells while waiting. Qt draws seven decoded patterns
+    into the twelve traced lower-bezel destinations, retaining earlier writes
+    until the panel is rebuilt. Thirty held frames verify that this region
+    changes while Notebook and response text remain fixed.
+5. **Does sound accompany it?** The Notebook setup, no-run handler, and wait
+   contain no sound request. The parent command overview plays event `0x24`
+   when A opens Pocket Secretary; the extracted clip lasts 2.484 seconds
+   including its release tail. The Notebook response does not request a new
+   sound.
+6. **Are related parts of the screen also correct?** The review checks the
+   Pocket Secretary parent, Notebook selection, no-run child, held response,
+    rebuilt Notebook, and parent return. The no-run child redraws the same
+    frame and blank grid used by other children. The shared `0xE660` effect
+    changes only the lower bezel during the wait, with text and selectors stable.
+7. **Do multiple frames support the interpretation?** Native captures cover
+   the initial row, moved selection, A response, 30 held frames, response
+   dismissal, and B return. They are not independent Genesis evidence. The
+   supplied longplay has no Notebook example, so repeated real-game visits
+   and cadence remain `needs_independent_capture`.
+8. **Was the previous screen or modal cleared before the new one was drawn?**
+   Both `0xF33E` and `0xF2F6` call `0xC3E6` before drawing the replacement
+   panel contents. Qt paints the shared outer frame and blank inner grid,
+   then draws only the active Notebook or response state. QA checks that
+   the old title and lower gated rows disappear on the response, and that
+    response-only text disappears when Notebook is rebuilt. The outer frame
+    is the intentionally shared interface; old buttons and labels are not
+    retained beneath the new content. The animated lower bezel stays within
+    its twelve source positions and does not cover either page's text.
+
+### Applied review: Notebook Tips & Clues
+
+1. **Does it look correct?** I inspected the Qt captures under
+   `decompilation/ghidra_conversion/build-ghidra-conversion-qt-debug/qt_runtime/field-secretary-qa/notebook-tips/`:
+   `actual.bmp`, `page-2.bmp`, `held-30-frames.bmp`, and all three return
+   frames. The labels, first-page text, page counter, and cleared Notebook
+   return are internally consistent with the ROM trace. The supplied longplay
+   contains no Tips visit, so this does not establish an independent visual
+   match.
+2. **Does the look reflect the behavioral state?** Fresh New Game seeds
+   `FFFC30` to `1` at startup `0x084E`, so page list entry zero is available.
+   `0xF9A4` tests D1 from bit 0 through bit 31 in each of the three flag
+   groups. The Qt QA adds source bits 2, 33, and 95 and verifies visible order
+   `0, 2, 33, 95`, page selection, the one-page default, and right-edge clamp.
+3. **Are the visuals themselves correct?** ROM `0xF9A4` clears through
+   `0xC3E6`, writes the title/separator from `0xC56C9`/`0xC56D6`, the source
+   page label from `0xC663A`, and the selected entry from `FFEF16` through
+   `0xC0DA` to `0xC38A`. Qt places those at `(88,32)`, `(72,40)`, `(136,184)`,
+   and `(40,56)`. Current/total page numbers are right-aligned at the traced
+   `0xCBAE`/`0xCBBA` cells. The loaded source page-two image fits its 25-column,
+   16-row panel bounds and leaves the page counter row clear.
+4. **Is it animated, and should it be?** `0xF9A4` calls `0xE660` once per
+   VBlank. The typed Qt update advances it once per host frame; at 60 FPS that
+   follows the source cadence. The 30-frame QA shows the lower-bezel cells
+   changing while page text and counter stay fixed. The effect remains below
+   the panel content.
+5. **Does sound accompany it?** Tips drawing and Left/Right/A/B/Start do not
+   request audio. C calls `0x391A`, which requests event `0x25`; Qt forwards
+   that event and keeps the selected page open. `0x25` has no verified alias
+   or measured duration, so audible playback remains unverified.
+6. **Are related parts of the screen also correct?** The review checks both
+   page text and page count, the shared lower animation, input edge behavior,
+   and the parent Notebook before/after child entry. The page body reaches at
+   most 25 characters by 16 rows; the frame/counter remains visible and the
+   effect does not cover those controls.
+7. **Do multiple frames support the interpretation?** The QA captures the
+   default page, page two, a 30-frame hold, and A/B/Start returns. These are
+   multiple Qt states, not multiple real-game examples. No independent Tips
+   frame is present in the supplied longplay; visual fidelity remains partial.
+8. **Was the old screen cleared before the new one was drawn?** Every Qt paint
+   rebuilds the shared outer frame and blank inner grid, then draws only Tips.
+   The QA checks the old Tips button and selector are absent at `(88,72)` and
+   `(72,72)`, where page zero has a blank body row. A/B/Start return captures
+   confirm the tip body and counter disappear before Notebook options return.
+
+### Applied review: Dismiss Runner
+
+1. **Does it look correct?** The Qt dump checkpoints are written under
+    `decompilation/ghidra_conversion/build-qt-magic-qa/qt_runtime/field-secretary-qa/`;
+   the route records entry, moved selection, 30 held frames, B return,
+   one-candidate layout, Abort return, Start return, and active-runner
+   replacement. These show the current Qt output only. The supplied longplay
+   has no Dismiss Runner visit, so there is no independent Genesis image to
+   judge visual correctness against.
+2. **Does the look reflect the behavioral state?** Typed
+   `DismissRunnerMenuState` contains the live candidate slots and selected
+   row. Source `0xC448` tests bit 0 of `+0x10` while walking the two live
+   records in source order. Qt builds candidates from active compact party
+   slots whose corresponding live bit is set. The `x` selector follows the
+   source cursor at x=72; selection movement requests event `0x25`. A/B/C
+   confirms the highlighted candidate or Abort with event `0x24`, and Start
+   returns to Pocket Secretary. Dismissing a candidate clears its compact
+   party marker and preserves its live record flags. Dismissing the currently
+    active runner switches the field HUD to the next active record. Selection
+    also projects the chosen record's source portrait attributes into typed
+    preview state.
+3. **Are the visuals themselves correct?** ROM `0xC448` clears through
+   `0xC3E6` and writes its fixed text from `0xC1499` at `0xC216`. The visible
+   separator at `0xC14AE` is included. `Abort` is fixed at `(88,64)`;
+   candidate names start at `(88,80)` and advance 16 pixels, regardless of
+   how many candidates remain. The cursor starts at `(72,64)` and follows the
+    selected row. Candidate selection invokes the `0x110E8` projection using
+    the live record's `+0x50` table pointer, `+0x54` offset, and `+0x2C`
+    palette bits; Qt draws its decoded 32x32 portrait at `(120,144)`. QA checks
+    that the portrait crop matches the selected source-derived asset. This is
+    renderer-consistency evidence; no Genesis capture is available to confirm
+    typography, pixel color, or alignment independently.
+4. **Is it animated, and should it be?** The source returns through `0xC4C4`
+   and calls `0xE660` once per VBlank while the child waits. The typed Qt
+    runtime advances the traced random two-cell effect once per frame and
+    draws it into the twelve source-mapped lower-bezel positions. Cells persist
+    until the owning panel is rebuilt. CTest checks 30 held frames: lamps
+    change while text, cursor, and portrait stay stable. Candidate movement
+    updates the portrait preview; the supplied longplay has no Dismiss visit,
+    so Genesis animation and preview cadence remain unverified.
+5. **Does it have a sound?** Up/down requests source event `0x25`; the
+   selected/Abort action requests `0x24`; Start and child entry request no
+   additional event. The known `audio.menu.command-024` asset lasts 2.484
+   seconds including its release tail. Event `0x25` has no identified alias
+   or clip duration, and the CTest observes callback events rather than
+   speaker output.
+6. **Are nearby screen parts also correct?** The review includes the parent
+   Pocket Secretary, the Dismiss child, both candidate counts, each return
+    path, party membership, live-record flags, active-runner HUD selection,
+    and the selected portrait. It confirms the shared outer frame remains
+    while the child replaces the parent controls. The lower-bezel lamps stay
+    within their traced positions and do not overlap child controls.
+7. **Do multiple frames support the interpretation?** The Qt QA produces
+   entry, movement, held, dismissal, return, Abort, Start, and active-runner
+    replacement frames. They support the implementation's state changes,
+    portrait selection, and lower-bezel animation over time. They are not independent Genesis examples;
+   the supplied longplay has no Dismiss Runner frames.
+8. **Was the previous screen cleared before new controls were drawn?** The
+   child painter redraws the blank panel before writing Dismiss, Who??,
+   separator, Abort, names, and cursor. QA verifies the five parent option
+   rows are absent in the child. After B, Abort, and Start, it compares the
+    complete inner content panel against the pre-entry parent image and checks
+    that child title, prompt, Abort row, candidate names, and portrait are gone.
+    The shared outer frame is intentional. The 30-frame check also confirms the
+    lamp effect does not paint over controls or the portrait; no old button or
+    child graphic remains underneath the replacement controls.
 
 ### Applied review: shared field dialogue panel
 

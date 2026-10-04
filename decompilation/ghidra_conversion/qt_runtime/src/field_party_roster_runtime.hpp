@@ -6,6 +6,7 @@
 #include <array>
 #include <cstddef>
 #include <string>
+#include <utility>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
@@ -35,6 +36,12 @@ public:
     bool available() const noexcept { return source_ != Source::unavailable; }
     std::size_t active_slot() const noexcept { return active_slot_; }
     void set_active_slot(std::size_t slot) noexcept;
+    void install_party_member_for_dump(std::size_t slot,
+                                       RunnerRecordFields record,
+                                       std::string name);
+    // Clear the compact roster membership marker represented by this host
+    // slot. The live record remains available for field/world state.
+    bool deactivate_party_member(std::size_t slot) noexcept;
 
     bool slot_active(std::size_t slot) const noexcept {
         return slot < active_slots_.size() && active_slots_[slot];

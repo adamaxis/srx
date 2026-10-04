@@ -88,6 +88,24 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::array<bool, kAttributeSkillLabelCount> attribute_skill_found{};
     std::array<bool, kCyberwareTitleLineCount> cyberware_title_found{};
     std::array<bool, kCyberwareEntryCount> cyberware_entry_found{};
+    std::array<bool, kMagicSpellTextCount> magic_spell_name_found{};
+    std::array<bool, kMagicSpellTextCount> magic_spell_description_found{};
+    std::array<bool, kPocketSecretaryOptionCount>
+        pocket_secretary_option_found{};
+    std::array<bool, kCyberdeckUnavailableLineCount>
+        pocket_secretary_cyberdeck_line_found{};
+    std::array<bool, kPocketSecretaryGroupItemCount>
+        pocket_secretary_group_item_found{};
+    std::array<bool, kPocketSecretaryGroupItemsEmptyLineCount>
+        pocket_secretary_group_items_empty_found{};
+    std::array<bool, kNotebookLabelCount> notebook_label_found{};
+    std::array<bool, kNotebookNoRunLineCount> notebook_no_run_found{};
+    std::array<bool, kNotebookEventGateCount> notebook_event_gate_found{};
+    bool notebook_tips_title_found = false;
+    bool notebook_tips_separator_found = false;
+    bool notebook_tips_page_count_found = false;
+    bool notebook_tips_page_number_clear_found = false;
+    std::array<bool, kDismissRunnerLabelCount> dismiss_runner_label_found{};
     std::array<bool, kFieldMenuPowerLabelCount> power_found{};
     std::array<std::array<bool, kFieldMenuArmorRowCount>,
                kFieldMenuArmorCount>
@@ -122,10 +140,27 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     bool action_cannot_trade_found = false;
     bool action_choice_no_found = false;
     bool action_choice_yes_found = false;
+    bool action_trade_recipient_found = false;
+    bool action_trade_full_inventory_found = false;
+    bool action_automatic_use_message_found = false;
+    bool first_aid_prompt_found = false;
+    bool first_aid_label_found = false;
+    bool first_aid_cancel_found = false;
+    bool first_aid_not_injured_found = false;
+    bool first_aid_slap_patch_used_found = false;
+    bool first_aid_medkit_used_found = false;
     bool clips_title_found = false;
     bool clips_separator_found = false;
     bool clips_counter_found = false;
     bool cyberware_empty_found = false;
+    bool magic_defense_title_found = false;
+    bool magic_force_posture_heading_found = false;
+    bool magic_success_label_found = false;
+    bool magic_force_label_found = false;
+    bool magic_availability_label_found = false;
+    bool pocket_secretary_title_found = false;
+    bool pocket_secretary_separator_found = false;
+    bool dismiss_runner_separator_found = false;
     std::string line;
     std::size_t line_number = 0;
     bool header_seen = false;
@@ -363,6 +398,33 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                         action_choice_no_found) ||
             parse_named("action.choice-yes", result.catalog.action_choice_yes,
                         action_choice_yes_found) ||
+            parse_named("action.trade-recipient",
+                        result.catalog.action_trade_recipient_label,
+                        action_trade_recipient_found) ||
+            parse_named("action.trade-full-inventory",
+                        result.catalog.action_trade_full_inventory_message,
+                        action_trade_full_inventory_found) ||
+            parse_named("action.automatic-use.message",
+                        result.catalog.action_automatic_use_message,
+                        action_automatic_use_message_found) ||
+            parse_named("first-aid.prompt",
+                        result.catalog.first_aid_prompt,
+                        first_aid_prompt_found) ||
+            parse_named("first-aid.label",
+                        result.catalog.first_aid_label,
+                        first_aid_label_found) ||
+            parse_named("first-aid.cancel",
+                        result.catalog.first_aid_cancel,
+                        first_aid_cancel_found) ||
+            parse_named("first-aid.not-injured",
+                        result.catalog.first_aid_not_injured,
+                        first_aid_not_injured_found) ||
+            parse_named("first-aid.slap-patch-used",
+                        result.catalog.first_aid_slap_patch_used,
+                        first_aid_slap_patch_used_found) ||
+            parse_named("first-aid.medkit-used",
+                        result.catalog.first_aid_medkit_used,
+                        first_aid_medkit_used_found) ||
             parse_named("clips.title", result.catalog.clips_title,
                         clips_title_found) ||
             parse_named("clips.separator", result.catalog.clips_separator,
@@ -371,7 +433,200 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                         clips_counter_found) ||
             parse_named("cyberware.empty",
                         result.catalog.cyberware_empty_message,
-                        cyberware_empty_found)) {
+                        cyberware_empty_found) ||
+            parse_named("magic.defense.title",
+                        result.catalog.magic_defense_title,
+                        magic_defense_title_found) ||
+            parse_named("magic.heading.force-posture",
+                        result.catalog.magic_force_posture_heading,
+                        magic_force_posture_heading_found) ||
+            parse_named("magic.label.success",
+                        result.catalog.magic_success_label,
+                        magic_success_label_found) ||
+            parse_named("magic.label.force",
+                        result.catalog.magic_force_label,
+                        magic_force_label_found) ||
+            parse_named("magic.label.availability",
+                        result.catalog.magic_availability_label,
+                        magic_availability_label_found) ||
+            parse_named("pocket-secretary.title",
+                        result.catalog.pocket_secretary_title,
+                        pocket_secretary_title_found) ||
+            parse_named("pocket-secretary.separator",
+                        result.catalog.pocket_secretary_separator,
+                        pocket_secretary_separator_found) ||
+            parse_named("dismiss.separator",
+                        result.catalog.dismiss_runner_separator,
+                        dismiss_runner_separator_found)) {
+            continue;
+        }
+        if (parse_indexed_key(key, "dismiss.label.", index) &&
+            index < result.catalog.dismiss_runner_labels.size()) {
+            if (dismiss_runner_label_found[index]) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else {
+                dismiss_runner_label_found[index] = true;
+                result.catalog.dismiss_runner_labels[index] = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "pocket-secretary.option.", index) &&
+            index < result.catalog.pocket_secretary_options.size()) {
+            if (pocket_secretary_option_found[index]) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else {
+                pocket_secretary_option_found[index] = true;
+                result.catalog.pocket_secretary_options[index] = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "pocket-secretary.cyberdeck.line.",
+                              index) &&
+            index < result.catalog
+                        .pocket_secretary_cyberdeck_unavailable_lines.size()) {
+            if (pocket_secretary_cyberdeck_line_found[index]) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else {
+                pocket_secretary_cyberdeck_line_found[index] = true;
+                result.catalog
+                    .pocket_secretary_cyberdeck_unavailable_lines[index] =
+                    value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "pocket-secretary.group-item.", index) &&
+            index < result.catalog.pocket_secretary_group_item_names.size()) {
+            if (pocket_secretary_group_item_found[index]) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else {
+                pocket_secretary_group_item_found[index] = true;
+                result.catalog.pocket_secretary_group_item_names[index] = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "pocket-secretary.group-items.empty.",
+                              index) &&
+            index < result.catalog
+                        .pocket_secretary_group_items_empty_lines.size()) {
+            if (pocket_secretary_group_items_empty_found[index]) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else {
+                pocket_secretary_group_items_empty_found[index] = true;
+                result.catalog.pocket_secretary_group_items_empty_lines[index] =
+                    value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "notebook.label.", index) &&
+            index < result.catalog.notebook_labels.size()) {
+            if (notebook_label_found[index]) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else {
+                notebook_label_found[index] = true;
+                result.catalog.notebook_labels[index] = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "notebook.no-run.", index) &&
+            index < result.catalog.notebook_no_run_lines.size()) {
+            if (notebook_no_run_found[index]) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else {
+                notebook_no_run_found[index] = true;
+                result.catalog.notebook_no_run_lines[index] = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "notebook.event-gate.", index) &&
+            index < result.catalog.notebook_event_gates.size()) {
+            if (notebook_event_gate_found[index]) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else if (value != "0" && value != "1") {
+                result.errors.emplace_back(
+                    "invalid Notebook event gate at line " +
+                    std::to_string(line_number));
+            } else {
+                notebook_event_gate_found[index] = true;
+                result.catalog.notebook_event_gates[index] = value == "1";
+            }
+            continue;
+        }
+        if (key == "notebook.tips.title") {
+            if (notebook_tips_title_found) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else {
+                notebook_tips_title_found = true;
+                result.catalog.notebook_tips_title = value;
+            }
+            continue;
+        }
+        if (key == "notebook.tips.separator") {
+            if (notebook_tips_separator_found) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else {
+                notebook_tips_separator_found = true;
+                result.catalog.notebook_tips_separator = value;
+            }
+            continue;
+        }
+        if (key == "notebook.tips.page-count") {
+            if (notebook_tips_page_count_found) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else {
+                notebook_tips_page_count_found = true;
+                result.catalog.notebook_tips_page_count_label = value;
+            }
+            continue;
+        }
+        if (key == "notebook.tips.page-number-clear") {
+            if (notebook_tips_page_number_clear_found) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else {
+                notebook_tips_page_number_clear_found = true;
+                result.catalog.notebook_tips_page_number_clear = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "magic.spell.name.", index) &&
+            index < result.catalog.magic_spell_names.size()) {
+            if (magic_spell_name_found[index]) {
+                result.errors.emplace_back("duplicate field menu text row: " +
+                                          key);
+            } else {
+                magic_spell_name_found[index] = true;
+                result.catalog.magic_spell_names[index] = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "magic.spell.description.", index) &&
+            index < result.catalog.magic_spell_descriptions.size()) {
+            if (magic_spell_description_found[index]) {
+                result.errors.emplace_back("duplicate field menu text row: " +
+                                          key);
+            } else {
+                magic_spell_description_found[index] = true;
+                auto description = value;
+                std::size_t position = 0U;
+                while ((position = description.find("\\n", position)) !=
+                       std::string::npos) {
+                    description.replace(position, 2U, "\n");
+                    ++position;
+                }
+                result.catalog.magic_spell_descriptions[index] =
+                    std::move(description);
+            }
             continue;
         }
         if (parse_indexed_key(key, "clips.reload.", index) &&
@@ -539,10 +794,39 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     require_named("action.cannot-trade", action_cannot_trade_found);
     require_named("action.choice-no", action_choice_no_found);
     require_named("action.choice-yes", action_choice_yes_found);
+    require_named("action.trade-recipient", action_trade_recipient_found);
+    require_named("action.trade-full-inventory",
+                  action_trade_full_inventory_found);
+    require_named("action.automatic-use.message",
+                  action_automatic_use_message_found);
+    require_named("first-aid.prompt", first_aid_prompt_found);
+    require_named("first-aid.label", first_aid_label_found);
+    require_named("first-aid.cancel", first_aid_cancel_found);
+    require_named("first-aid.not-injured", first_aid_not_injured_found);
+    require_named("first-aid.slap-patch-used",
+                  first_aid_slap_patch_used_found);
+    require_named("first-aid.medkit-used", first_aid_medkit_used_found);
     require_named("clips.title", clips_title_found);
     require_named("clips.separator", clips_separator_found);
     require_named("clips.counter", clips_counter_found);
     require_named("cyberware.empty", cyberware_empty_found);
+    require_named("magic.defense.title", magic_defense_title_found);
+    require_named("magic.heading.force-posture",
+                  magic_force_posture_heading_found);
+    require_named("magic.label.success", magic_success_label_found);
+    require_named("magic.label.force", magic_force_label_found);
+    require_named("magic.label.availability",
+                  magic_availability_label_found);
+    require_named("pocket-secretary.title", pocket_secretary_title_found);
+    require_named("pocket-secretary.separator",
+                  pocket_secretary_separator_found);
+    require_named("dismiss.separator", dismiss_runner_separator_found);
+    require_named("notebook.tips.title", notebook_tips_title_found);
+    require_named("notebook.tips.separator", notebook_tips_separator_found);
+    require_named("notebook.tips.page-count",
+                  notebook_tips_page_count_found);
+    require_named("notebook.tips.page-number-clear",
+                  notebook_tips_page_number_clear_found);
     add_missing_entries(clips_reload_found, "clips.reload.", result.errors);
     add_missing_entries(clips_success_found, "clips.success.", result.errors);
     add_missing_entries(clips_out_of_ammo_found, "clips.out-of-ammo.",
@@ -564,6 +848,117 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     add_missing_entries(item_detail_found, "item-detail.", result.errors);
     add_missing_entries(item_found, "item.", result.errors);
     add_missing_entries(item_category_found, "item-category.", result.errors);
+    add_missing_entries(magic_spell_name_found, "magic.spell.name.",
+                        result.errors);
+    add_missing_entries(magic_spell_description_found,
+                        "magic.spell.description.", result.errors);
+    add_missing_entries(pocket_secretary_option_found,
+                        "pocket-secretary.option.", result.errors);
+    add_missing_entries(pocket_secretary_cyberdeck_line_found,
+                        "pocket-secretary.cyberdeck.line.", result.errors);
+    add_missing_entries(pocket_secretary_group_item_found,
+                        "pocket-secretary.group-item.", result.errors);
+    add_missing_entries(pocket_secretary_group_items_empty_found,
+                        "pocket-secretary.group-items.empty.", result.errors);
+    add_missing_entries(notebook_label_found, "notebook.label.", result.errors);
+    add_missing_entries(notebook_no_run_found, "notebook.no-run.",
+                        result.errors);
+    add_missing_entries(notebook_event_gate_found, "notebook.event-gate.",
+                        result.errors);
+    add_missing_entries(dismiss_runner_label_found, "dismiss.label.",
+                        result.errors);
+    const auto decode_newlines = [](std::string& value) {
+        std::size_t position = 0U;
+        while ((position = value.find("\\n", position)) !=
+               std::string::npos) {
+            value.replace(position, 2U, "\n");
+            ++position;
+        }
+    };
+    decode_newlines(result.catalog.first_aid_prompt);
+    decode_newlines(result.catalog.first_aid_not_injured);
+    decode_newlines(result.catalog.action_trade_full_inventory_message);
+    decode_newlines(result.catalog.action_automatic_use_message);
+
+    const auto* tips_record =
+        assets.find("menu.pocket_secretary.notebook.tips");
+    if (tips_record == nullptr) {
+        result.errors.emplace_back(
+            "missing Notebook Tips text alias: "
+            "menu.pocket_secretary.notebook.tips");
+    } else {
+        std::ifstream tips_input(tips_record->absolute_path);
+        if (!tips_input) {
+            result.errors.emplace_back(
+                "cannot open Notebook Tips text: " +
+                tips_record->absolute_path.string());
+        } else {
+            std::array<bool, kNotebookTipCount> tip_found{};
+            std::string tip_line;
+            std::size_t tip_line_number = 0U;
+            bool tip_header_seen = false;
+            while (std::getline(tips_input, tip_line)) {
+                ++tip_line_number;
+                if (!tip_line.empty() && tip_line.back() == '\r') {
+                    tip_line.pop_back();
+                }
+                if (tip_line.empty()) {
+                    continue;
+                }
+                if (!tip_header_seen) {
+                    tip_header_seen = true;
+                    if (tip_line != "tip_index\ttext") {
+                        result.errors.emplace_back(
+                            "invalid Notebook Tips header at line " +
+                            std::to_string(tip_line_number));
+                    }
+                    continue;
+                }
+                const auto separator = tip_line.find('\t');
+                if (separator == std::string::npos) {
+                    result.errors.emplace_back(
+                        "invalid Notebook Tips row at line " +
+                        std::to_string(tip_line_number));
+                    continue;
+                }
+                const auto index_text = tip_line.substr(0U, separator);
+                std::size_t tip_index = 0U;
+                const auto* first = index_text.data();
+                const auto* last = first + index_text.size();
+                const auto parsed =
+                    std::from_chars(first, last, tip_index);
+                if (parsed.ec != std::errc{} || parsed.ptr != last ||
+                    tip_index >= tip_found.size()) {
+                    result.errors.emplace_back(
+                        "invalid Notebook Tips index at line " +
+                        std::to_string(tip_line_number));
+                    continue;
+                }
+                if (tip_found[tip_index]) {
+                    result.errors.emplace_back(
+                        "duplicate Notebook Tips entry: " + index_text);
+                    continue;
+                }
+                tip_found[tip_index] = true;
+                auto value = tip_line.substr(separator + 1U);
+                if (value.size() >= 2U && value.front() == '"' &&
+                    value.back() == '"') {
+                    value = value.substr(1U, value.size() - 2U);
+                }
+                std::size_t position = 0U;
+                while ((position = value.find("\\n", position)) !=
+                       std::string::npos) {
+                    value.replace(position, 2U, "\n");
+                    ++position;
+                }
+                result.catalog.notebook_tips[tip_index] = std::move(value);
+            }
+            if (!tip_header_seen) {
+                result.errors.emplace_back("Notebook Tips text asset is empty");
+            }
+            add_missing_entries(tip_found, "notebook.tip.", result.errors);
+        }
+    }
     return result;
 }
 

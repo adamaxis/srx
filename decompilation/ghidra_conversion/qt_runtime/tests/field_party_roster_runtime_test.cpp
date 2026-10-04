@@ -34,7 +34,7 @@ int main() {
         !expect(roster.active_slot() == 0U && roster.slot_active(0U) &&
                     !roster.slot_active(1U) && !roster.slot_active(2U),
                 "new-game roster activated an invented recruited slot") ||
-        !expect((roster.active_record().flags & 0x01U) != 0U &&
+        !expect((roster.active_record().flags & 0x0101U) == 0x0101U &&
                     roster.active_record().ammo_clips == 3U &&
                     roster.name(0U) == "Joshua",
                 "new-game roster did not publish Joshua as active")) {
@@ -70,6 +70,16 @@ int main() {
                     roster.name(1U) == "Ricky",
                 "save roster records were not projected into typed fields")) {
         return 2;
+    }
+
+    if (!expect(roster.deactivate_party_member(1U) &&
+                    !roster.slot_active(1U) && roster.slot_active(0U) &&
+                    !roster.deactivate_party_member(1U) &&
+                    !roster.deactivate_party_member(0U) &&
+                    (roster.records()[1].flags & 0x0100U) != 0U &&
+                    roster.name(1U) == "Ricky",
+                "dismissal erased the live record or changed the source flag")) {
+        return 4;
     }
 
     integration::StartupIntegrationState unavailable{};

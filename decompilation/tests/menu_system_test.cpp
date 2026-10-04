@@ -103,6 +103,26 @@ void assert_startup_cursor_at(const SoftwareScreen& screen,
     assert_cursor_at(screen, cursor, source_x, source_y);
 }
 
+void assert_inventory_selector_outline(const SoftwareScreen& screen,
+                                       std::size_t selection,
+                                       std::size_t row) {
+    assert(selection < 2U);
+    assert(row < 4U);
+    const auto gold = pack(Rgba8{0xC4, 0xBE, 0x27, 0xFF});
+    const auto x = 14 + static_cast<std::int32_t>(selection * 40U);
+    const auto y = 118 + static_cast<std::int32_t>(row * 24U);
+    constexpr std::int32_t kOutlineWidth = 28;
+    constexpr std::int32_t kOutlineHeight = 20;
+    for (std::int32_t offset = 0; offset < kOutlineWidth; ++offset) {
+        assert(screen.pixel(x + offset, y) == gold);
+        assert(screen.pixel(x + offset, y + kOutlineHeight - 1) == gold);
+    }
+    for (std::int32_t offset = 0; offset < kOutlineHeight; ++offset) {
+        assert(screen.pixel(x, y + offset) == gold);
+        assert(screen.pixel(x + kOutlineWidth - 1, y + offset) == gold);
+    }
+}
+
 void select_field_inventory_slot(NativePortShell& shell, std::size_t slot) {
     assert(slot < 8U);
     while (shell.field_menu_selection() != 0U) {
@@ -444,13 +464,13 @@ void test_field_menu_behavior_and_rendering(
     // Inventory is a two-column/four-row selector. Its action loop is the
     // source 0x11740/0x118C6 table: Equip, Discard, Trade, Cancel, wrapped by
     // Left/Right and confirmed by a second A/B edge.
-    // Slot 7 is the source-empty cell in Joshua's startup record. The native
-    // selector is the extracted command-screen cursor, separate from the
-    // equipment borders; it is a 24x32 corner cursor rather than a host-filled
-    // 32x24 rectangle.
+    // Slot 7 is the source-empty cell in Joshua's startup record. The
+    // selected cell still gets the one-pixel warm-gold outline observed in
+    // section 06; it is separate from the equipment borders and remains
+    // visible when the cell has no item icon.
     select_field_inventory_slot(shell, 7U);
     shell.render(screen);
-    assert_cursor_at(screen, assets.field_menu_cursor, 48, 184);
+    assert_inventory_selector_outline(screen, 1U, 3U);
     select_field_inventory_slot(shell, 0U);
     assert(shell.field_inventory_item_code(0U) != 0U);
     shell.render(screen);
@@ -671,10 +691,11 @@ void test_pocket_secretary_menu(const std::vector<std::uint8_t>& rom) {
 
 void test_notebook_tip_filtering(const std::vector<std::uint8_t>& rom) {
     auto assets = shadowrun::graphics::decode_genesis_native_assets(rom);
-    // F9A4 tests D7=31..0 while consuming each table pointer in order. These
-    // two bits therefore expose source entries 0 and 31, in that order.
+    // F9A4 starts D1 at zero and increments it with the source pointer. An
+    // asymmetric three-group mask verifies the source's LSB-first ordering.
     assets.notebook_tip_flags =
-        std::array<std::uint32_t, 3>{0x80000001U, 0U, 0U};
+        std::array<std::uint32_t, 3>{0x00000005U, 0x00000002U,
+                                     0x80000000U};
     NativePortShell shell("SHADOWRUN", std::move(assets));
     enter_field(shell);
     press(shell, Button::Start);
@@ -685,20 +706,21 @@ void test_notebook_tip_filtering(const std::vector<std::uint8_t>& rom) {
     press(shell, Button::Down);
     press(shell, Button::A);
     assert(shell.notebook_tips_menu_open());
-    assert(shell.notebook_visible_tip_count() == 2U);
+    assert(shell.notebook_visible_tip_count() == 4U);
     assert(shell.notebook_tip_selection() == 0U);
     assert(shell.notebook_visible_tip_index(0) == 0U);
-    assert(shell.notebook_visible_tip_index(1) == 31U);
+    assert(shell.notebook_visible_tip_index(1) == 2U);
+    assert(shell.notebook_visible_tip_index(2) == 33U);
+    assert(shell.notebook_visible_tip_index(3) == 95U);
     assert(shell.notebook_tip_text(0).find("Michael's last credstick") == 0U);
 
     SoftwareScreen screen;
     shell.render(screen);
-    press(shell, Button::Down);
+    press(shell, Button::Right);
     assert(shell.notebook_tip_selection() == 1U);
-    press(shell, Button::Up);
+    press(shell, Button::Left);
     assert(shell.notebook_tip_selection() == 0U);
-    // B is parent navigation from the Tips page. It returns to Notebook and
-    // leaves the Pocket Secretary tree intact; it is not a runner switch.
+    // A and B return to Notebook, while C is the shared mode action.
     press(shell, Button::B);
     assert(shell.notebook_menu_open());
     assert(shell.notebook_selection() == 1U);

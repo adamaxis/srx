@@ -167,7 +167,8 @@ RunnerPostureLoopResult apply_runner_posture_input(
     constexpr std::uint16_t kFinishImmediately = 0x0100U;
     constexpr std::uint16_t kRaisePosture = 0x0800U;
     constexpr std::uint16_t kLowerPosture = 0x0400U;
-    constexpr std::uint16_t kFinishPosture = 0x4000U | 0x1000U;
+    constexpr std::uint16_t kFinishPosture =
+        0x4000U | 0x2000U | 0x1000U;
     if ((input & kFinishImmediately) != 0U) {
         adjust_runner_posture(record, 0);
         return RunnerPostureLoopResult::finished;

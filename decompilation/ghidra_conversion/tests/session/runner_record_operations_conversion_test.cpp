@@ -118,6 +118,8 @@ int main() {
                 record.posture == 0U &&
                 apply_runner_posture_input(record, 0x0100U) ==
                     RunnerPostureLoopResult::finished &&
+                apply_runner_posture_input(record, 0x2000U) ==
+                    RunnerPostureLoopResult::finished &&
                 apply_runner_posture_input(record, 0x4000U) ==
                     RunnerPostureLoopResult::finished &&
                 apply_runner_posture_input(record, 0U) ==

@@ -23,6 +23,7 @@ int main() {
                 fields.timing_accumulator == 0x1A1BU &&
                 fields.timing_threshold == 0x1C1DU &&
                 fields.state_index == 0x1E1FU &&
+                fields.first_aid_continuation == 0x3A3B3C3DU &&
                 fields.command_overview_panel_parameter == 0x2C2DU &&
                 fields.record_type == 0x3E3FU && fields.race_index == 0x00U &&
                 fields.species_index == 0x9AU &&
@@ -54,6 +55,7 @@ int main() {
     changed.projection_word_08 = 0xA1B2U;
     changed.state_pointer = 0xC3D4E5F6U;
     changed.command_overview_panel_parameter = 0x7788U;
+    changed.first_aid_continuation = 0xABCDEF01U;
     changed.equipped_inventory_slot = -1;
     changed.posture = 4U;
     changed.inventory_item_codes[3] = 0x2AU;
@@ -74,6 +76,8 @@ int main() {
                 destination.bytes[0x15U] == 0xF6U &&
                 destination.bytes[0x2CU] == 0x77U &&
                 destination.bytes[0x2DU] == 0x88U &&
+                destination.bytes[0x3AU] == 0xABU &&
+                destination.bytes[0x3DU] == 0x01U &&
                 destination.bytes[0x56U] == 0xFFU &&
                 destination.bytes[0x4DU] == 4U &&
                 destination.bytes[0x69U] == 0x2AU &&

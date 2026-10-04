@@ -49,6 +49,40 @@ constexpr int kSceneWidth = 320;
 constexpr int kSceneHeight = 224;
 constexpr int kSceneScale = 3;
 
+bool image_has_green_ink(const QImage& image, const int x, const int y,
+                         const int width, const int height) {
+    const auto right = std::min(image.width(), x + width);
+    const auto bottom = std::min(image.height(), y + height);
+    for (auto row = std::max(0, y); row < bottom; ++row) {
+        for (auto column = std::max(0, x); column < right; ++column) {
+            const auto pixel = image.pixelColor(column, row);
+            if (pixel.green() > pixel.red() + 24 &&
+                pixel.green() > pixel.blue() + 24) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool image_region_differs(const QImage& first, const QImage& second,
+                          const int x, const int y, const int width,
+                          const int height) {
+    if (first.size() != second.size()) {
+        return true;
+    }
+    const auto right = std::min(first.width(), x + width);
+    const auto bottom = std::min(first.height(), y + height);
+    for (auto row = std::max(0, y); row < bottom; ++row) {
+        for (auto column = std::max(0, x); column < right; ++column) {
+            if (first.pixel(column, row) != second.pixel(column, row)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 std::filesystem::path find_asset_root(int argc, char** argv) {
     for (int index = 1; index < argc; ++index) {
         const std::string argument(argv[index]);
@@ -60,10 +94,16 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
                 << "usage: shadowrun_ghidra_conversion_qt"
                    " [--assets <decompilation/assets>] [--field-smoke]"
                    " [--field-smoke-move-right] [--field-dump <file>]"
+                   " [--field-secretary-dump <output-dir>]"
                    " [--field-command-dump <file>]"
                        " [--field-command-page <0..6>]"
                    " [--field-action-dump <output-dir>]"
+                   " [--field-first-aid-dump <output-dir>]"
+                   " [--field-automatic-use-dump <output-dir>]"
+                   " [--field-inventory-trade-dump <output-dir>]"
                    " [--field-clips-dump <output-dir>]"
+                   " [--field-magic-dump <output-dir>]"
+                   " [--field-magic-spell-dump <output-dir>]"
                    " [--field-archetype <samurai|decker|gator>]"
                    " [--field-hud-qa <output-dir>]"
                    " [--field-command-reopen-smoke]"
@@ -96,7 +136,24 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
             ++index;
             continue;
         }
+        if (argument == "--field-first-aid-dump" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-inventory-trade-dump" &&
+            index + 1 < argc) {
+            ++index;
+            continue;
+        }
         if (argument == "--field-clips-dump" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-magic-dump" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-magic-spell-dump" && index + 1 < argc) {
             ++index;
             continue;
         }
@@ -312,25 +369,27 @@ bool field_command_shell_survives(
 bool field_inventory_selector_survives(const QImage& scene,
                                        const std::uint8_t primary,
                                        const std::uint8_t secondary) {
-    constexpr int kSpriteXOrigin = 12;
-    constexpr int kSpriteYOrigin = 116;
+    constexpr int kItemXOrigin = 16;
+    constexpr int kItemYOrigin = 120;
     constexpr int kCellWidth = 40;
     constexpr int kCellHeight = 24;
-    constexpr int kOutlineInset = 2;
-    constexpr int kOutlineWidth = 28;
-    constexpr int kOutlineHeight = 20;
+    constexpr int kOutlineWidth = 24;
+    constexpr int kOutlineHeight = 16;
     const QColor gold(196, 190, 39);
-    const auto x = kSpriteXOrigin + static_cast<int>(primary) * kCellWidth +
-                   kOutlineInset;
-    const auto y = kSpriteYOrigin + static_cast<int>(secondary) * kCellHeight +
-                   kOutlineInset;
+    const auto x = kItemXOrigin + static_cast<int>(primary) * kCellWidth;
+    const auto y = kItemYOrigin + static_cast<int>(secondary) * kCellHeight;
     if (x < 0 || y < 0 || x + kOutlineWidth > scene.width() ||
         y + kOutlineHeight > scene.height()) {
         return false;
     }
 
-    // The selected-item marker is a single-pixel rectangle. Requiring every
-    // edge and rejecting gold inside it catches the old crossed-segment art.
+    // The one-pixel gold stroke hugs the 24x16 item image. Reject the previous
+    // wider cursor-footprint rectangle at its upper-left and lower-right.
+    if (scene.pixelColor(x - 2, y - 2) == gold ||
+        scene.pixelColor(x + kOutlineWidth + 1,
+                         y + kOutlineHeight + 1) == gold) {
+        return false;
+    }
     for (int offset = 0; offset < kOutlineWidth; ++offset) {
         if (scene.pixelColor(x + offset, y) != gold ||
             scene.pixelColor(x + offset, y + kOutlineHeight - 1) != gold) {
@@ -410,6 +469,48 @@ bool field_hud_face_family_survives(const QImage& scene,
     return opaque > 64;
 }
 
+bool field_hud_meter_assets_survive(const QImage& scene,
+                                    const std::filesystem::path& asset_root,
+                                    const std::uint8_t delay_meter,
+                                    const std::uint8_t behavior_meter,
+                                    const bool primary_runner) {
+    const auto delay_index = std::min<std::uint8_t>(delay_meter, 10U);
+    const auto behavior_index = std::min<std::uint8_t>(behavior_meter, 10U);
+    const auto delay = QImage(QString::fromStdWString(
+        (asset_root / "field" / "hud" /
+         ("delay-meter-" + std::to_string(delay_index) + ".bmp"))
+            .wstring()));
+    const auto behavior = QImage(QString::fromStdWString(
+        (asset_root / "field" / "hud" /
+         ((primary_runner ? "behavior-meter-primary-"
+                          : "behavior-meter-companion-") +
+          std::to_string(behavior_index) + ".bmp"))
+            .wstring()));
+    if (delay.size() != QSize(8, 32) || behavior.size() != QSize(32, 8) ||
+        scene.width() < 312 || scene.height() < 64) {
+        return false;
+    }
+
+    const auto matches_at = [&scene](const QImage& asset, const int x,
+                                     const int y) {
+        std::size_t checked = 0U;
+        for (int row = 0; row < asset.height(); ++row) {
+            for (int column = 0; column < asset.width(); ++column) {
+                const auto pixel = asset.pixelColor(column, row);
+                if (pixel.alpha() == 0) {
+                    continue;
+                }
+                if (scene.pixelColor(x + column, y + row) != pixel) {
+                    return false;
+                }
+                ++checked;
+            }
+        }
+        return checked > 0U;
+    };
+    return matches_at(delay, 272, 24) && matches_at(behavior, 280, 56);
+}
+
 class GhidraConversionWindow final : public QWidget {
 public:
     explicit GhidraConversionWindow(std::filesystem::path asset_root,
@@ -418,6 +519,8 @@ public:
           asset_root_(std::move(asset_root)),
           field_scene_runtime_([this](const std::string_view boundary) {
               note_presentation_boundary(boundary);
+          }, [this](const std::uint16_t event) {
+              audio_playback_.play_event(event);
           }),
           audio_playback_(
               [this](const std::string_view alias) -> std::filesystem::path {
@@ -2559,7 +2662,12 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_secretary_dump_path;
         std::optional<std::filesystem::path> field_posture_dump_path;
         std::optional<std::filesystem::path> field_action_dump_path;
+        std::optional<std::filesystem::path> field_first_aid_dump_path;
+        std::optional<std::filesystem::path> field_automatic_use_dump_path;
+        std::optional<std::filesystem::path> field_inventory_trade_dump_path;
         std::optional<std::filesystem::path> field_clips_dump_path;
+        std::optional<std::filesystem::path> field_magic_dump_path;
+        std::optional<std::filesystem::path> field_magic_spell_dump_path;
         std::optional<std::string> field_archetype_name;
         std::optional<std::string> field_dialogue_dump_prompt;
         std::optional<std::filesystem::path> field_dialogue_dump_path;
@@ -2585,7 +2693,12 @@ int main(int argc, char** argv) {
                        " [--field-cyberware-dump <file>]"
                        " [--field-cyberware-empty-qa]"
                        " [--field-action-dump <output-dir>]"
+                       " [--field-first-aid-dump <output-dir>]"
+                       " [--field-automatic-use-dump <output-dir>]"
+                       " [--field-inventory-trade-dump <output-dir>]"
                        " [--field-clips-dump <output-dir>]"
+                       " [--field-magic-dump <output-dir>]"
+                       " [--field-magic-spell-dump <output-dir>]"
                        " [--field-archetype <samurai|decker|gator>]"
                        " [--field-hud-qa <output-dir>]"
                        " [--field-command-reopen-smoke]"
@@ -2627,10 +2740,41 @@ int main(int argc, char** argv) {
                 field_action_dump_path =
                     std::filesystem::path(argv[++index]);
             }
+            if (std::string(argv[index]) == "--field-first-aid-dump" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_first_aid_dump_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-automatic-use-dump" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_automatic_use_dump_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-inventory-trade-dump" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_inventory_trade_dump_path =
+                    std::filesystem::path(argv[++index]);
+            }
             if (std::string(argv[index]) == "--field-clips-dump" &&
                 index + 1 < argc) {
                 field_smoke = true;
                 field_clips_dump_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-magic-dump" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_magic_dump_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-magic-spell-dump" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_magic_spell_dump_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-cyberware-dump" &&
@@ -2784,7 +2928,12 @@ int main(int argc, char** argv) {
                 std::cerr << smoke_state_error << '\n';
                 return 3;
             }
-            qt_runtime::FieldSceneRuntime field_scene([](const auto&) {});
+            std::vector<std::uint16_t> field_audio_events;
+            qt_runtime::FieldSceneRuntime field_scene(
+                [](const auto&) {},
+                [&field_audio_events](const std::uint16_t event) {
+                    field_audio_events.push_back(event);
+                });
             if (!field_scene.bootstrap(smoke_state)) {
                 std::cerr << "field smoke: " << field_scene.failure() << '\n';
                 return 3;
@@ -2839,6 +2988,10 @@ int main(int argc, char** argv) {
                 QPainter dialogue_painter(&dialogue_scene);
                 field_scene.paint(dialogue_painter);
                 dialogue_painter.end();
+                if (field_dialogue_dump_path->has_parent_path()) {
+                    std::filesystem::create_directories(
+                        field_dialogue_dump_path->parent_path());
+                }
                 if (!dialogue_scene.save(QString::fromStdWString(
                         field_dialogue_dump_path->wstring()))) {
                     std::cerr << "field dialogue dump: could not write "
@@ -2848,6 +3001,561 @@ int main(int argc, char** argv) {
                 std::cout << "field_dialogue_dump=written prompt="
                           << *field_dialogue_dump_prompt << " path="
                           << field_dialogue_dump_path->string() << "\n";
+                return 0;
+            }
+            if (field_magic_spell_dump_path.has_value()) {
+                if (field_archetype != 2U) {
+                    std::cerr << "field Magic spell dump: expected the "
+                                 "Gator field composition\n";
+                    return 3;
+                }
+                const auto initial_record =
+                    field_scene.active_runner_record();
+                const auto* spell_table = find_us_magic_spell_table(
+                    initial_record.magic_table_index);
+                if (select_magic_menu_path(initial_record) !=
+                        MagicMenuPath::spell_panel ||
+                    spell_table == nullptr || spell_table->entry_count < 2U) {
+                    std::cerr << "field Magic spell dump: active typed "
+                                 "runner has no spell table (class="
+                              << static_cast<int>(
+                                     initial_record.archetype_index)
+                              << ", gate="
+                              << static_cast<int>(initial_record.auxiliary[0])
+                              << ", table="
+                              << initial_record.magic_table_index << ")\n";
+                    return 3;
+                }
+                if (!field_scene.open_command_overview_for_dump() ||
+                    !field_scene.seek_command_overview_page(5U)) {
+                    std::cerr << "field Magic spell dump: command route "
+                                 "did not reach page 5\n";
+                    return 3;
+                }
+                std::filesystem::create_directories(
+                    *field_magic_spell_dump_path);
+                const auto render_scene = [&field_scene] {
+                    QImage scene(kSceneWidth, kSceneHeight,
+                                 QImage::Format_RGB32);
+                    scene.fill(Qt::black);
+                    QPainter painter(&scene);
+                    field_scene.paint(painter);
+                    painter.end();
+                    return scene;
+                };
+                const auto save_scene = [&](const std::string_view name,
+                                            const QImage& scene) {
+                    return scene.save(QString::fromStdWString(
+                        ((*field_magic_spell_dump_path) /
+                         (std::string(name) + ".bmp"))
+                            .wstring()));
+                };
+                const auto page_scene = render_scene();
+                if (!field_command_shell_survives(page_scene, asset_root) ||
+                    !field_hud_chrome_survives(page_scene, asset_root) ||
+                    !field_hud_face_family_survives(
+                        page_scene, asset_root, field_archetype) ||
+                    !save_scene("magic_tab", page_scene)) {
+                    std::cerr << "field Magic spell dump: page-5 shell/HUD "
+                                 "capture failed\n";
+                    return 3;
+                }
+
+                field_scene.set_controller_port_byte(0x40U);
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                if (!field_scene.magic_spell_panel_open() ||
+                    !field_scene.magic_selected_spell().has_value() ||
+                    field_scene.magic_spell_selection().column != 0U ||
+                    field_scene.magic_spell_selection().row != 0U ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x24U}) {
+                    std::cerr << "field Magic spell dump: A did not enter "
+                                 "the typed spell panel or emit the parent "
+                                 "action event\n";
+                    return 3;
+                }
+                const auto spell_panel_scene = render_scene();
+                if (spell_panel_scene == page_scene ||
+                    field_command_shell_survives(spell_panel_scene,
+                                                 asset_root) ||
+                    !field_hud_chrome_survives(spell_panel_scene, asset_root) ||
+                    !field_hud_face_family_survives(
+                        spell_panel_scene, asset_root, field_archetype) ||
+                    !save_scene("spell_panel", spell_panel_scene)) {
+                    std::cerr << "field Magic spell dump: panel, persistent "
+                                 "HUD, or archetype portrait failed\n";
+                    return 3;
+                }
+
+                const auto first_spell =
+                    field_scene.magic_selected_spell()->spell_code;
+                const auto first_selection =
+                    field_scene.magic_spell_selection();
+                field_scene.set_controller_port_byte(0x08U);
+                field_scene.advance_frame();
+                const auto moved_selection =
+                    field_scene.magic_spell_selection();
+                const auto moved_spell = field_scene.magic_selected_spell();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                if (moved_selection.column == first_selection.column &&
+                    moved_selection.row == first_selection.row) {
+                    std::cerr << "field Magic spell dump: Right did not "
+                                 "move the selection\n";
+                    return 3;
+                }
+                if (!moved_spell.has_value() ||
+                    moved_spell->spell_code == first_spell ||
+                    field_scene.magic_selected_spell()->spell_code !=
+                        moved_spell->spell_code ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x24U}) {
+                    std::cerr << "field Magic spell dump: selection text/state "
+                                 "or audio changed outside the traced route\n";
+                    return 3;
+                }
+                const auto moved_scene = render_scene();
+                if (moved_scene == spell_panel_scene ||
+                    !save_scene("spell_selection_moved", moved_scene)) {
+                    std::cerr << "field Magic spell dump: cursor/text did "
+                                 "not change on selection\n";
+                    return 3;
+                }
+
+                // The shared ROM cursor service uses a six-frame countdown;
+                // including the expiry call, each later phase lasts seven
+                // field frames. Save every phase and verify the four-frame
+                // cycle after the navigation reset.
+                auto expected_phase = field_scene.magic_cursor_phase();
+                auto previous_phase_scene = moved_scene;
+                for (std::uint8_t phase_step = 1U; phase_step <= 4U;
+                     ++phase_step) {
+                    for (int frame = 0; frame < 7; ++frame) {
+                        field_scene.set_controller_port_byte(0U);
+                        field_scene.advance_frame();
+                    }
+                    expected_phase = static_cast<std::uint8_t>(
+                        (expected_phase + 1U) % 4U);
+                    if (field_scene.magic_cursor_phase() != expected_phase) {
+                        std::cerr << "field Magic spell dump: cursor phase "
+                                     "did not advance at the seven-frame "
+                                     "cadence\n";
+                        return 3;
+                    }
+                    const auto phase_scene = render_scene();
+                    if (phase_scene == previous_phase_scene ||
+                        !save_scene("cursor_phase_" +
+                                        std::to_string(expected_phase),
+                                    phase_scene)) {
+                        std::cerr << "field Magic spell dump: cursor phase "
+                                     "frame failed to render\n";
+                        return 3;
+                    }
+                    previous_phase_scene = phase_scene;
+                }
+
+                field_scene.set_controller_port_byte(0x80U);
+                field_scene.advance_frame();
+                if (field_scene.magic_spell_panel_open() ||
+                    field_scene.magic_selected_spell().has_value() ||
+                    !field_scene.command_overview_open() ||
+                    field_scene.command_overview_view().source_state
+                            .primary_page != 5U ||
+                    field_scene.active_runner_record().magic_force !=
+                        initial_record.magic_force ||
+                    field_scene.active_runner_record().auxiliary !=
+                        initial_record.auxiliary ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x24U}) {
+                    std::cerr << "field Magic spell dump: Start did not "
+                                 "return to page 5 without record changes\n";
+                    return 3;
+                }
+                const auto return_scene = render_scene();
+                if (return_scene != page_scene ||
+                    !save_scene("return", return_scene)) {
+                    std::cerr << "field Magic spell dump: return did not "
+                                 "restore page 5\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0x40U);
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                if (!field_scene.magic_spell_panel_open() ||
+                    field_scene.magic_spell_selection().column != 0U ||
+                    field_scene.magic_spell_selection().row != 0U ||
+                    !field_scene.magic_selected_spell().has_value() ||
+                    field_scene.magic_selected_spell()->spell_code !=
+                        first_spell ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x24U, 0x24U}) {
+                    std::cerr << "field Magic spell dump: re-entry did not "
+                                 "reset the source cursor/table state\n";
+                    return 3;
+                }
+                if (!save_scene("spell_panel_reopened", render_scene())) {
+                    std::cerr << "field Magic spell dump: could not save "
+                                 "re-entry frame\n";
+                    return 3;
+                }
+
+                const auto press_field_port = [&](const std::uint8_t port) {
+                    field_scene.set_controller_port_byte(port);
+                    field_scene.advance_frame();
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                };
+                if (field_scene.magic_maximum_force() != 3U ||
+                    field_scene.magic_current_force() != 3U) {
+                    std::cerr << "field Magic spell dump: selected force "
+                                 "did not initialize from the spell table\n";
+                    return 3;
+                }
+                press_field_port(0x40U); // A enters the force loop.
+                if (!field_scene.magic_force_selection_open() ||
+                    !save_scene("force_selection", render_scene())) {
+                    std::cerr << "field Magic spell dump: A did not enter "
+                                 "the force loop\n";
+                    return 3;
+                }
+                press_field_port(0x04U); // Left lowers force.
+                if (!field_scene.magic_force_selection_open() ||
+                    field_scene.magic_current_force() != 2U ||
+                    field_scene.active_runner_record().magic_force != 2U ||
+                    !save_scene("force_lowered", render_scene())) {
+                    std::cerr << "field Magic spell dump: Left did not "
+                                 "lower the typed force and meter\n";
+                    return 3;
+                }
+                press_field_port(0x08U); // Right raises force.
+                if (field_scene.magic_current_force() != 3U ||
+                    field_scene.active_runner_record().magic_force != 3U ||
+                    !save_scene("force_raised", render_scene())) {
+                    std::cerr << "field Magic spell dump: Right did not "
+                                 "restore the selected force\n";
+                    return 3;
+                }
+                press_field_port(0x02U); // Down enters posture adjustment.
+                if (!field_scene.magic_posture_selection_open() ||
+                    !save_scene("posture_selection", render_scene())) {
+                    std::cerr << "field Magic spell dump: Down did not "
+                                 "enter the posture loop\n";
+                    return 3;
+                }
+                press_field_port(0x08U); // Right raises posture.
+                const auto expected_posture = static_cast<std::uint8_t>(
+                    std::min<unsigned>(
+                        static_cast<unsigned>(initial_record.posture) + 1U,
+                        4U));
+                if (field_scene.active_runner_record().posture !=
+                        expected_posture ||
+                    !field_scene.magic_posture_selection_open() ||
+                    !save_scene("posture_raised", render_scene())) {
+                    std::cerr << "field Magic spell dump: posture row did "
+                                 "not follow the runner record\n";
+                    return 3;
+                }
+                press_field_port(0x20U); // B finishes the equipment action.
+                const auto equipped_scene = render_scene();
+                if (!field_scene.magic_spell_panel_open() ||
+                    field_scene.active_runner_record().equipped_inventory_slot !=
+                        -1 ||
+                    field_scene.active_runner_record().equipped_item_code !=
+                        static_cast<std::uint8_t>(first_spell + 1U) ||
+                    field_scene.active_runner_record().magic_force != 3U ||
+                    field_scene.active_runner_record().posture !=
+                        expected_posture ||
+                    (initial_record.equipped_inventory_slot >= 0 &&
+                     initial_record.equipped_item_code != 0U &&
+                     field_scene.active_runner_record().ammo_rounds != 3U) ||
+                    !field_hud_chrome_survives(equipped_scene, asset_root) ||
+                    !save_scene("spell_equipped", equipped_scene)) {
+                    std::cerr << "field Magic spell dump: force/posture "
+                                 "finalization did not update typed equipment "
+                                 "and HUD state\n";
+                    return 3;
+                }
+
+                field_scene.set_controller_port_byte(0x80U);
+                field_scene.advance_frame();
+                if (field_scene.magic_spell_panel_open() ||
+                    !field_scene.command_overview_open() ||
+                    field_scene.command_overview_view().source_state
+                            .primary_page != 5U ||
+                    field_scene.active_runner_record().equipped_item_code !=
+                        static_cast<std::uint8_t>(first_spell + 1U) ||
+                    field_scene.active_runner_record().magic_force != 3U ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x24U, 0x24U}) {
+                    std::cerr << "field Magic spell dump: Start did not "
+                                 "return to page 5 with spell state intact\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                if (!save_scene("equipped_return", render_scene())) {
+                    std::cerr << "field Magic spell dump: could not save "
+                                 "the post-equipment return frame\n";
+                    return 3;
+                }
+                std::cout << "field_magic_spell_dump=written path="
+                          << field_magic_spell_dump_path->string()
+                          << " table=" << initial_record.magic_table_index
+                          << " spell=" << static_cast<int>(first_spell)
+                          << "->" << static_cast<int>(moved_spell->spell_code)
+                          << " cursor=4x7frames force=1..3 posture=0..4 "
+                             "equip=record+0x57/+0x9D return=page5\n";
+                return 0;
+            }
+            if (field_magic_dump_path.has_value()) {
+                // This field composition's active live record is class 1,
+                // even with the Gator startup selection. Set its typed
+                // +0x7F resource/action cap to zero to exercise the ROM's
+                // class<2 fallback branch, without fabricating a spell panel.
+                if (field_archetype != 2U) {
+                    std::cerr << "field Magic dump: Gator did not reach "
+                                 "the expected QA composition\n";
+                    return 3;
+                }
+                field_scene.active_runner_record().auxiliary[0] = 0U;
+                if (!field_scene.open_command_overview_for_dump() ||
+                    !field_scene.seek_command_overview_page(5U)) {
+                    std::cerr << "field Magic dump: command route did not "
+                                 "reach page 5\n";
+                    return 3;
+                }
+                std::filesystem::create_directories(
+                    *field_magic_dump_path);
+                const auto render_scene = [&field_scene] {
+                    QImage scene(kSceneWidth, kSceneHeight,
+                                 QImage::Format_RGB32);
+                    scene.fill(Qt::black);
+                    QPainter painter(&scene);
+                    field_scene.paint(painter);
+                    painter.end();
+                    return scene;
+                };
+                const auto save_scene = [&](const std::string_view name,
+                                            const QImage& scene) {
+                    return scene.save(QString::fromStdWString(
+                        ((*field_magic_dump_path) /
+                         (std::string(name) + ".bmp"))
+                            .wstring()));
+                };
+                const auto same_runner_action_state =
+                    [](const RunnerRecordFields& left,
+                       const RunnerRecordFields& right) {
+                        return left.archetype_index == right.archetype_index &&
+                               left.auxiliary == right.auxiliary &&
+                               left.attributes == right.attributes &&
+                               left.skills == right.skills &&
+                               left.inventory_item_codes ==
+                                   right.inventory_item_codes &&
+                               left.inventory_phase_bytes ==
+                                   right.inventory_phase_bytes &&
+                               left.magic_table_index ==
+                                   right.magic_table_index &&
+                               left.magic_force == right.magic_force &&
+                               left.equipped_inventory_slot ==
+                                   right.equipped_inventory_slot &&
+                               left.equipped_item_code ==
+                                   right.equipped_item_code &&
+                               left.posture == right.posture &&
+                               left.ammo_rounds == right.ammo_rounds &&
+                               left.ammo_clips == right.ammo_clips;
+                    };
+                const auto region_matches = [](const QImage& scene,
+                                               const QImage& asset,
+                                               const int origin_x,
+                                               const int origin_y) {
+                    if (asset.isNull() || origin_x < 0 || origin_y < 0 ||
+                        origin_x + asset.width() > scene.width() ||
+                        origin_y + asset.height() > scene.height()) {
+                        return false;
+                    }
+                    const auto expected =
+                        asset.convertToFormat(QImage::Format_RGB32);
+                    const auto actual = scene.copy(
+                        origin_x, origin_y, asset.width(), asset.height());
+                    return actual == expected;
+                };
+
+                const auto page_scene = render_scene();
+                if (!field_command_shell_survives(page_scene, asset_root) ||
+                    !field_hud_chrome_survives(page_scene, asset_root) ||
+                    !field_hud_face_family_survives(
+                        page_scene, asset_root, field_archetype) ||
+                    !save_scene("magic_tab", page_scene)) {
+                    std::cerr << "field Magic dump: page-5 shell, HUD, "
+                                 "portrait, or initial capture failed\n";
+                    return 3;
+                }
+                const auto initial_record =
+                    field_scene.active_runner_record();
+                field_scene.set_controller_port_byte(0x40U);
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                if (!field_scene.magic_defense_open() ||
+                    !field_scene.command_overview_open() ||
+                    field_scene.command_overview_view().source_state
+                            .primary_page != 5U) {
+                    std::cerr << "field Magic dump: page-5 A did not open "
+                                 "the Magical Defense fallback (open="
+                              << field_scene.command_overview_open()
+                              << ", page="
+                              << static_cast<int>(field_scene
+                                     .command_overview_view()
+                                     .source_state.primary_page)
+                              << ", modal="
+                              << field_scene.magic_defense_open()
+                              << ", class="
+                              << static_cast<int>(field_scene
+                                     .active_runner_record()
+                                     .archetype_index)
+                              << ", gate="
+                              << static_cast<int>(field_scene
+                                     .active_runner_record()
+                                     .auxiliary[0])
+                              << ")\n";
+                    return 3;
+                }
+                if (field_audio_events !=
+                    std::vector<std::uint16_t>{0x24U}) {
+                    std::cerr << "field Magic dump: command-action sound "
+                                 "event 0x24 was not emitted exactly once\n";
+                    return 3;
+                }
+                const auto& physical =
+                    field_scene.magic_physical_defense_view();
+                const auto& mana = field_scene.magic_mana_defense_view();
+                std::array<EntityActionRecord,
+                           FieldPartyRosterRuntime::kSlotCount>
+                    ready_entities{};
+                const auto& party_records =
+                    field_scene.field_party_records_for_dump();
+                for (std::size_t index = 0; index < ready_entities.size();
+                     ++index) {
+                    const auto& runner = party_records[index];
+                    auto& entity = ready_entities[index];
+                    // Independent expectation for the Qt adapter: the
+                    // source ready gate is byte +0x10, the high byte of
+                    // RunnerRecordFields::flags (a big-endian word).
+                    entity.flags_10 =
+                        static_cast<std::uint8_t>(runner.flags >> 8U);
+                    entity.class_code = runner.archetype_index;
+                    entity.item18_base = runner.skills[0];
+                    entity.attribute_77 = runner.attributes[0];
+                    entity.attribute_7c = runner.attributes[5];
+                    entity.item_codes = runner.inventory_item_codes;
+                    entity.item_phases = runner.inventory_phase_bytes;
+                }
+                const auto ready_bonus =
+                    calculate_ready_entity_action_bonus(ready_entities);
+                const auto expected_physical = static_cast<std::uint8_t>(
+                    static_cast<std::uint8_t>(ready_bonus) +
+                    initial_record.attributes[0]);
+                const auto expected_mana = static_cast<std::uint8_t>(
+                    static_cast<std::uint8_t>(ready_bonus) +
+                    initial_record.attributes[5]);
+                const auto valid_view = [](const MagicDefenseStripView& view) {
+                    const auto expected_row = view.value == 0U
+                        ? std::uint16_t{0U}
+                        : static_cast<std::uint16_t>(view.value - 1U);
+                    return view.bar_row == expected_row &&
+                           view.bar_row < 23U;
+                };
+                const auto expected_physical_bar = QImage(QString::fromStdWString(
+                    (asset_root / "menu" / "field" /
+                     ("defense-bar-" + std::to_string(physical.bar_row) +
+                      ".bmp"))
+                        .wstring()));
+                const auto expected_mana_bar = QImage(QString::fromStdWString(
+                    (asset_root / "menu" / "field" /
+                     ("defense-bar-" + std::to_string(mana.bar_row) + ".bmp"))
+                        .wstring()));
+                const auto actual_scene = render_scene();
+                if (physical.value != expected_physical ||
+                    mana.value != expected_mana ||
+                    !valid_view(physical) || !valid_view(mana) ||
+                    !region_matches(actual_scene, expected_physical_bar,
+                                    120, 80) ||
+                    !region_matches(actual_scene, expected_mana_bar,
+                                    120, 104)) {
+                    std::cerr << "field Magic dump: physical/mana values, "
+                                 "source rows, or strip placement diverged\n";
+                    return 3;
+                }
+                int title_ink = 0;
+                for (int y = 48; y < 56; ++y) {
+                    for (int x = 112; x < 256; ++x) {
+                        if (page_scene.pixel(x, y) !=
+                            actual_scene.pixel(x, y)) {
+                            ++title_ink;
+                        }
+                    }
+                }
+                if (title_ink == 0 ||
+                    !field_command_shell_survives(actual_scene, asset_root) ||
+                    !field_hud_chrome_survives(actual_scene, asset_root) ||
+                    !field_hud_face_family_survives(
+                        actual_scene, asset_root, field_archetype) ||
+                    !save_scene("actual", actual_scene)) {
+                    std::cerr << "field Magic dump: title or persistent "
+                                 "screen layers failed\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 30; ++frame) {
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                }
+                const auto held_scene = render_scene();
+                if (held_scene != actual_scene ||
+                    !save_scene("held", held_scene) ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x24U}) {
+                    std::cerr << "field Magic dump: static wait frame "
+                                 "changed without controller input\n";
+                    return 3;
+                }
+
+                // A fresh directional edge satisfies ROM 0x0D94's
+                // one-event wait and returns to the same command page.
+                field_scene.set_controller_port_byte(0x04U);
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                if (field_scene.magic_defense_open() ||
+                    !field_scene.command_overview_open() ||
+                    field_scene.command_overview_view().source_state
+                            .primary_page != 5U ||
+                    !same_runner_action_state(
+                        initial_record, field_scene.active_runner_record()) ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x24U}) {
+                    std::cerr << "field Magic dump: return edge escaped "
+                                 "page 5 or mutated the runner record\n";
+                    return 3;
+                }
+                const auto return_scene = render_scene();
+                if (return_scene != page_scene ||
+                    !save_scene("return", return_scene)) {
+                    std::cerr << "field Magic dump: return did not restore "
+                                 "the same page-5 frame\n";
+                    return 3;
+                }
+                std::cout << "field_magic_dump=written path="
+                          << field_magic_dump_path->string()
+                          << " class="
+                          << static_cast<int>(initial_record.archetype_index)
+                          << " physical=" << physical.value << ":"
+                          << static_cast<int>(physical.bar_row)
+                          << " mana=" << mana.value << ":"
+                          << static_cast<int>(mana.bar_row)
+                          << " held_frames=30 return=page5\n";
                 return 0;
             }
             if (field_command_dump_path.has_value()) {
@@ -3055,21 +3763,969 @@ int main(int argc, char** argv) {
                                  "did not open\n";
                     return 3;
                 }
-                QImage secretary_scene(kSceneWidth, kSceneHeight,
-                                       QImage::Format_RGB32);
-                secretary_scene.fill(Qt::black);
-                QPainter secretary_painter(&secretary_scene);
-                field_scene.paint(secretary_painter);
-                secretary_painter.end();
-                if (!secretary_scene.save(QString::fromStdWString(
-                        field_secretary_dump_path->wstring()))) {
-                    std::cerr << "field secretary dump: could not write "
-                              << field_secretary_dump_path->string() << '\n';
+                // These two named QA candidates correspond to the US ROM's
+                // recruited templates at 0x72C1A + 0x100*n. Ricky's +0x3E,
+                // +0x2C, +0x50 and +0x54 are 3, 0x2000, 467674 and 20;
+                // Winston Marrs' are 4, 0x4000, 467834 and 4. The test feeds
+                // the same typed live-record fields that recruitment must
+                // install; it does not link the NativePort asset decoder.
+                RunnerRecordFields ricky_record{};
+                ricky_record.record_type = 3U;
+                ricky_record.command_overview_panel_parameter = 0x2000U;
+                ricky_record.hud_portrait_table_pointer = 467674U;
+                ricky_record.hud_portrait_table_offset = 20U;
+                field_scene.install_party_member_for_dump(
+                    1U, ricky_record, "Ricky");
+                RunnerRecordFields winston_record{};
+                winston_record.record_type = 4U;
+                winston_record.command_overview_panel_parameter = 0x4000U;
+                winston_record.hud_portrait_table_pointer = 467834U;
+                winston_record.hud_portrait_table_offset = 4U;
+                field_scene.install_party_member_for_dump(
+                    2U, winston_record, "Winston Marrs");
+                std::filesystem::create_directories(
+                    *field_secretary_dump_path);
+                const auto render_secretary_scene = [&field_scene] {
+                    QImage scene(kSceneWidth, kSceneHeight,
+                                 QImage::Format_RGB32);
+                    scene.fill(Qt::black);
+                    QPainter painter(&scene);
+                    field_scene.paint(painter);
+                    painter.end();
+                    return scene;
+                };
+                const auto preview_matches_asset =
+                    [&smoke_state](const QImage& scene,
+                                   const std::uint32_t table_pointer,
+                                   const std::uint16_t table_offset,
+                                   const std::size_t palette_line) {
+                        const auto alias =
+                            "menu.field.runner.preview.table." +
+                            std::to_string(table_pointer) + ".offset." +
+                            std::to_string(table_offset) + ".palette." +
+                            std::to_string(palette_line);
+                        const auto* resource =
+                            smoke_state.asset_catalog.catalog.find(alias);
+                        if (resource == nullptr) {
+                            return false;
+                        }
+                        QImage expected(QString::fromStdWString(
+                            resource->absolute_path.wstring()));
+                        if (expected.isNull() || expected.width() != 32 ||
+                            expected.height() != 32) {
+                            return false;
+                        }
+                        return scene.copy(QRect(120, 144, 32, 32)) ==
+                               expected.convertToFormat(
+                                   QImage::Format_RGB32);
+                    };
+                const auto save_secretary_scene =
+                    [&](const std::string_view name, const QImage& scene) {
+                        return scene.save(QString::fromStdWString(
+                            ((*field_secretary_dump_path) /
+                             (std::string(name) + ".bmp"))
+                                .wstring()));
+                    };
+                const auto notebook_tips_dump_directory =
+                    *field_secretary_dump_path / "notebook-tips";
+                const auto save_notebook_tips_scene =
+                    [&notebook_tips_dump_directory](
+                        const std::string_view name, const QImage& scene) {
+                        std::filesystem::create_directories(
+                            notebook_tips_dump_directory);
+                        return scene.save(QString::fromStdWString(
+                            (notebook_tips_dump_directory /
+                             (std::string(name) + ".bmp"))
+                                .wstring()));
+                    };
+                auto secretary_scene = render_secretary_scene();
+                if (!image_has_green_ink(secretary_scene, 88, 32, 80, 8) ||
+                    !image_has_green_ink(secretary_scene, 88, 40, 96, 8)) {
+                    std::cerr << "field secretary dump: source title or "
+                                 "separator text is not visible\n";
                     return 3;
                 }
+                for (std::size_t row = 0;
+                     row < kPocketSecretaryOptionCount; ++row) {
+                    if (!image_has_green_ink(
+                            secretary_scene, 88,
+                            56 + static_cast<int>(row) * 16,
+                            144, 8)) {
+                        std::cerr << "field secretary dump: source option "
+                                  << row << " has no visible text\n";
+                        return 3;
+                    }
+                }
+                if (field_scene.pocket_secretary_selection() != 0U ||
+                    !save_secretary_scene("actual", secretary_scene)) {
+                    std::cerr << "field secretary dump: initial selection "
+                                 "or actual.bmp capture failed\n";
+                    return 3;
+                }
+                auto previous_secretary_scene = secretary_scene;
+                for (std::uint8_t selection = 1U; selection <= 4U;
+                     ++selection) {
+                    field_scene.set_controller_port_byte(0x02U); // Down.
+                    field_scene.advance_frame();
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    if (field_scene.pocket_secretary_selection() !=
+                        selection) {
+                        std::cerr << "field secretary dump: Down did not "
+                                     "select source row "
+                                  << static_cast<int>(selection) << '\n';
+                        return 3;
+                    }
+                    secretary_scene = render_secretary_scene();
+                    const auto previous_row_y =
+                        56 + static_cast<int>(selection - 1U) * 16;
+                    const auto current_row_y =
+                        56 + static_cast<int>(selection) * 16;
+                    if (!image_region_differs(
+                            previous_secretary_scene, secretary_scene,
+                            136, previous_row_y, 8, 8) ||
+                        !image_region_differs(
+                            previous_secretary_scene, secretary_scene,
+                            136, current_row_y, 8, 8) ||
+                        !save_secretary_scene(
+                            "selection_" + std::to_string(selection),
+                            secretary_scene)) {
+                        std::cerr << "field secretary dump: source cursor "
+                                     "did not follow typed selection "
+                                  << static_cast<int>(selection) << '\n';
+                        return 3;
+                    }
+                    previous_secretary_scene = secretary_scene;
+                }
+                field_scene.set_controller_port_byte(0x02U); // Down wraps.
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                if (field_scene.pocket_secretary_selection() != 0U) {
+                    std::cerr << "field secretary dump: Down did not wrap "
+                                 "from the fifth option to the first\n";
+                    return 3;
+                }
+                secretary_scene = render_secretary_scene();
+                if (!image_region_differs(previous_secretary_scene,
+                                          secretary_scene, 136, 56, 8, 8) ||
+                    !image_region_differs(previous_secretary_scene,
+                                          secretary_scene, 136, 120, 8, 8) ||
+                    !save_secretary_scene("wrap_to_0", secretary_scene)) {
+                    std::cerr << "field secretary dump: wraparound cursor "
+                                 "frame failed\n";
+                    return 3;
+                }
+
+                const auto press_secretary_button =
+                    [&field_scene](const std::uint8_t port_byte) {
+                        field_scene.set_controller_port_byte(port_byte);
+                        field_scene.advance_frame();
+                        field_scene.set_controller_port_byte(0U);
+                        field_scene.advance_frame();
+                    };
+                press_secretary_button(0x02U);
+                if (field_scene.pocket_secretary_selection() != 1U) {
+                    std::cerr << "field secretary dump: could not select "
+                                 "Group Items\n";
+                    return 3;
+                }
+                field_scene.set_group_item_flags_for_dump(
+                    (std::uint32_t{1} << 14U) | (std::uint32_t{1} << 1U));
+                press_secretary_button(0x40U);
+                if (!field_scene.pocket_secretary_open() ||
+                    !field_scene.pocket_secretary_group_items_waiting()) {
+                    std::cerr << "field secretary dump: populated Group Items "
+                                 "handler did not enter its input wait\n";
+                    return 3;
+                }
+                auto group_items_scene = render_secretary_scene();
+                if (!image_has_green_ink(group_items_scene, 32, 32, 240, 8) ||
+                    !image_has_green_ink(group_items_scene, 32, 48, 240, 8) ||
+                    !save_secretary_scene("group-items-populated",
+                                          group_items_scene)) {
+                    std::cerr << "field secretary dump: FFFC22 bit order or "
+                                 "source item rows are not visible\n";
+                    return 3;
+                }
+                const auto held_populated_group_items_scene =
+                    group_items_scene;
+                for (int frame = 0; frame < 30; ++frame) {
+                    field_scene.advance_frame();
+                }
+                group_items_scene = render_secretary_scene();
+                if (image_region_differs(held_populated_group_items_scene,
+                                         group_items_scene, 0, 0,
+                                         240, 144) ||
+                    !image_region_differs(held_populated_group_items_scene,
+                                          group_items_scene, 32, 200,
+                                          224, 16)) {
+                    std::cerr << "field secretary dump: populated Group "
+                                 "Items text or E660 chrome cadence failed\n";
+                    return 3;
+                }
+                press_secretary_button(0x80U);
+                if (!field_scene.pocket_secretary_open() ||
+                    field_scene.pocket_secretary_group_items_waiting() ||
+                    field_scene.pocket_secretary_selection() != 1U ||
+                    !save_secretary_scene("group-items-populated-return",
+                                          render_secretary_scene())) {
+                    std::cerr << "field secretary dump: populated Group "
+                                 "Items did not return to its selected row\n";
+                    return 3;
+                }
+
+                field_scene.set_group_item_flags_for_dump(0U);
+                press_secretary_button(0x40U);
+                if (!field_scene.pocket_secretary_open() ||
+                    !field_scene.pocket_secretary_group_items_waiting()) {
+                    std::cerr << "field secretary dump: empty Group Items "
+                                 "handler did not enter its input wait\n";
+                    return 3;
+                }
+                group_items_scene = render_secretary_scene();
+                if (!image_has_green_ink(group_items_scene, 56, 80, 208, 8) ||
+                    !image_has_green_ink(group_items_scene, 56, 88, 208, 8) ||
+                    image_has_green_ink(group_items_scene, 88, 32, 80, 8) ||
+                    image_has_green_ink(group_items_scene, 88, 56, 144, 8) ||
+                    !save_secretary_scene("group-items-empty",
+                                          group_items_scene)) {
+                    std::cerr << "field secretary dump: source empty-catalog "
+                                 "text or cleared parent plane is wrong\n";
+                    return 3;
+                }
+                const auto held_group_items_scene = group_items_scene;
+                for (int frame = 0; frame < 30; ++frame) {
+                    field_scene.advance_frame();
+                }
+                group_items_scene = render_secretary_scene();
+                if (image_region_differs(held_group_items_scene,
+                                         group_items_scene, 24, 24,
+                                         240, 144) ||
+                    !image_region_differs(held_group_items_scene,
+                                          group_items_scene, 32, 200,
+                                          224, 16) ||
+                    !save_secretary_scene("group-items-held",
+                                          group_items_scene)) {
+                    std::cerr << "field secretary dump: Group Items content "
+                                 "or E660 chrome cadence failed\n";
+                    return 3;
+                }
+                press_secretary_button(0x80U);
+                if (!field_scene.pocket_secretary_open() ||
+                    field_scene.pocket_secretary_group_items_waiting() ||
+                    field_scene.pocket_secretary_selection() != 1U) {
+                    std::cerr << "field secretary dump: Group Items did not "
+                                 "return to its selected parent row\n";
+                    return 3;
+                }
+                const auto group_items_return_scene = render_secretary_scene();
+                if (!image_region_differs(held_group_items_scene,
+                                          group_items_return_scene, 56, 80,
+                                          208, 16) ||
+                    !save_secretary_scene("group-items-return",
+                                          group_items_return_scene)) {
+                    std::cerr << "field secretary dump: Group Items response "
+                                 "did not clear on return\n";
+                    return 3;
+                }
+
+                press_secretary_button(0x02U);
+                if (field_scene.pocket_secretary_selection() != 2U) {
+                    std::cerr << "field secretary dump: could not select "
+                                 "Cyberdeck\n";
+                    return 3;
+                }
+                press_secretary_button(0x40U); // A opens the source handler.
+                if (!field_scene.pocket_secretary_open() ||
+                    !field_scene
+                         .pocket_secretary_cyberdeck_unavailable_waiting()) {
+                    std::cerr << "field secretary dump: new-game Cyberdeck "
+                                 "handler did not enter its no-deck response\n";
+                    return 3;
+                }
+                auto cyberdeck_scene = render_secretary_scene();
+                for (std::size_t line = 0; line < 3U; ++line) {
+                    if (!image_has_green_ink(
+                            cyberdeck_scene, 56,
+                            64 + static_cast<int>(line) * 8, 240, 8)) {
+                        std::cerr << "field secretary dump: Cyberdeck source "
+                                     "response line "
+                                  << line << " has no visible text\n";
+                        return 3;
+                    }
+                }
+                if (image_has_green_ink(cyberdeck_scene, 88, 32, 80, 8)) {
+                    std::cerr << "field secretary dump: C3E6 response screen "
+                                 "left parent title text visible\n";
+                    return 3;
+                }
+                if (!save_secretary_scene("cyberdeck_unavailable",
+                                          cyberdeck_scene)) {
+                    std::cerr << "field secretary dump: could not save "
+                                 "Cyberdeck response frame\n";
+                    return 3;
+                }
+                const auto held_cyberdeck_scene = cyberdeck_scene;
+                for (int frame = 0; frame < 30; ++frame) {
+                    field_scene.advance_frame();
+                }
+                cyberdeck_scene = render_secretary_scene();
+                if (image_region_differs(held_cyberdeck_scene,
+                                         cyberdeck_scene, 56, 64,
+                                         240, 32) ||
+                    !image_region_differs(held_cyberdeck_scene,
+                                          cyberdeck_scene, 32, 200,
+                                          224, 16)) {
+                    std::cerr << "field secretary dump: no-deck feedback "
+                                 "content or E660 chrome cadence failed\n";
+                    return 3;
+                }
+                press_secretary_button(0x80U); // Start is an input edge.
+                if (!field_scene.pocket_secretary_open() ||
+                    field_scene
+                        .pocket_secretary_cyberdeck_unavailable_waiting() ||
+                    field_scene.pocket_secretary_selection() != 2U) {
+                    std::cerr << "field secretary dump: Start did not return "
+                                 "to the selected parent row\n";
+                    return 3;
+                }
+                cyberdeck_scene = render_secretary_scene();
+                if (!image_region_differs(held_cyberdeck_scene,
+                                          cyberdeck_scene, 56, 64, 240, 24) ||
+                    !save_secretary_scene("cyberdeck_return",
+                                          cyberdeck_scene)) {
+                    std::cerr << "field secretary dump: response did not "
+                                 "clear on return to Pocket Secretary\n";
+                    return 3;
+                }
+
+                press_secretary_button(0x01U); // Up to Notebook.
+                press_secretary_button(0x01U);
+                if (field_scene.pocket_secretary_selection() != 0U) {
+                    std::cerr << "field secretary dump: could not return to "
+                                 "the Notebook row\n";
+                    return 3;
+                }
+                press_secretary_button(0x40U);
+                if (!field_scene.pocket_secretary_notebook_open() ||
+                    field_scene.pocket_secretary_notebook_option_count() !=
+                        3U) {
+                    std::cerr << "field secretary dump: Notebook did not "
+                                 "build the two base rows and New Game Contacts "
+                                 "row\n";
+                    return 3;
+                }
+                auto notebook_scene = render_secretary_scene();
+                if (!image_has_green_ink(notebook_scene, 88, 32, 96, 8) ||
+                    !image_has_green_ink(notebook_scene, 72, 40, 128, 8) ||
+                    !image_has_green_ink(notebook_scene, 88, 56, 160, 8) ||
+                    !image_has_green_ink(notebook_scene, 88, 72, 160, 8) ||
+                    !image_has_green_ink(notebook_scene, 88, 88, 160, 8) ||
+                    !image_has_green_ink(notebook_scene, 72, 56, 8, 8) ||
+                    !save_secretary_scene("notebook-menu", notebook_scene)) {
+                    std::cerr << "field secretary dump: Notebook source "
+                                 "coordinates or selected state are not visible\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0x02U); // Down.
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                if (field_scene.pocket_secretary_notebook_selection() != 1U) {
+                    std::cerr << "field secretary dump: Notebook Down did "
+                                 "not select Tips & Clues\n";
+                    return 3;
+                }
+                const auto notebook_tips_selected = render_secretary_scene();
+                if (!image_region_differs(notebook_scene,
+                                          notebook_tips_selected, 72, 56,
+                                          8, 32) ||
+                    !save_secretary_scene("notebook-selection-1",
+                                          notebook_tips_selected)) {
+                    std::cerr << "field secretary dump: Notebook cursor did "
+                                 "not follow its typed row selection\n";
+                    return 3;
+                }
+                field_audio_events.clear();
+                press_secretary_button(0x40U); // Open Tips & Clues.
+                if (!field_scene.pocket_secretary_notebook_tips_open() ||
+                    field_scene.pocket_secretary_notebook_visible_tip_count() !=
+                        1U ||
+                    field_scene
+                            .pocket_secretary_notebook_visible_tip_source_index(
+                                0U) != 0U ||
+                    !field_audio_events.empty()) {
+                    std::cerr << "field secretary dump: the fresh-game "
+                                 "tip seed or silent open is incorrect\n";
+                    return 3;
+                }
+                auto notebook_tips_scene = render_secretary_scene();
+                if (!image_has_green_ink(notebook_tips_scene, 88, 32,
+                                         104, 8) ||
+                    !image_has_green_ink(notebook_tips_scene, 72, 40,
+                                         136, 8) ||
+                    !image_has_green_ink(notebook_tips_scene, 136, 184,
+                                         80, 8) ||
+                    !image_has_green_ink(notebook_tips_scene, 40, 56,
+                                         192, 8) ||
+                    !image_has_green_ink(notebook_tips_scene, 184, 184,
+                                         8, 8) ||
+                    !image_has_green_ink(notebook_tips_scene, 232, 184,
+                                         8, 8) ||
+                    image_has_green_ink(notebook_tips_scene, 72, 72, 8, 8) ||
+                    image_has_green_ink(notebook_tips_scene, 88, 72, 96, 8) ||
+                    !save_notebook_tips_scene("actual",
+                                              notebook_tips_scene) ||
+                    !save_secretary_scene("notebook-tips-actual",
+                                          notebook_tips_scene)) {
+                    std::cerr << "field secretary dump: Tips title, page "
+                                 "counter, first page, or stale parent-row "
+                                 "cleanup is wrong\n";
+                    return 3;
+                }
+                press_secretary_button(0x40U); // A returns to Notebook.
+                auto notebook_after_tips = render_secretary_scene();
+                if (!field_scene.pocket_secretary_notebook_open() ||
+                    field_scene.pocket_secretary_notebook_tips_open() ||
+                    field_scene.pocket_secretary_notebook_selection() != 1U ||
+                    image_has_green_ink(notebook_after_tips, 40, 56, 40, 16) ||
+                    image_has_green_ink(notebook_after_tips, 136, 184,
+                                        104, 8) ||
+                    !save_notebook_tips_scene("return-a",
+                                              notebook_after_tips) ||
+                    !save_secretary_scene("notebook-tips-return-a",
+                                          notebook_after_tips)) {
+                    std::cerr << "field secretary dump: A return did not "
+                                 "rebuild Notebook and clear the old tip "
+                                 "text/counter\n";
+                    return 3;
+                }
+
+                // Seed three additional source event bits to exercise the
+                // compact LSB-first page list and both clamp boundaries.
+                if (!field_scene.set_notebook_tip_unlocked(2U, true) ||
+                    !field_scene.set_notebook_tip_unlocked(33U, true) ||
+                    !field_scene.set_notebook_tip_unlocked(95U, true)) {
+                    std::cerr << "field secretary dump: could not set "
+                                 "typed Tips event bits\n";
+                    return 3;
+                }
+                press_secretary_button(0x40U); // Reopen with four pages.
+                if (!field_scene.pocket_secretary_notebook_tips_open() ||
+                    field_scene.pocket_secretary_notebook_visible_tip_count() !=
+                        4U ||
+                    field_scene
+                            .pocket_secretary_notebook_visible_tip_source_index(
+                                0U) != 0U ||
+                    field_scene
+                            .pocket_secretary_notebook_visible_tip_source_index(
+                                1U) != 2U ||
+                    field_scene
+                            .pocket_secretary_notebook_visible_tip_source_index(
+                                2U) != 33U ||
+                    field_scene
+                            .pocket_secretary_notebook_visible_tip_source_index(
+                                3U) != 95U) {
+                    std::cerr << "field secretary dump: FFFC30/34/38 bits "
+                                 "did not produce the source page order\n";
+                    return 3;
+                }
+                const auto first_tip_page = render_secretary_scene();
+                field_scene.set_controller_port_byte(0x08U); // Right.
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                if (field_scene.pocket_secretary_notebook_tips_selection() !=
+                        1U ||
+                    field_scene
+                            .pocket_secretary_notebook_visible_tip_source_index(
+                                1U) != 2U) {
+                    std::cerr << "field secretary dump: Right did not "
+                                 "select the next unlocked page\n";
+                    return 3;
+                }
+                auto second_tip_page = render_secretary_scene();
+                if (!image_region_differs(first_tip_page, second_tip_page,
+                                          40, 56, 208, 128) ||
+                    !image_region_differs(first_tip_page, second_tip_page,
+                                          176, 184, 16, 8) ||
+                    !save_notebook_tips_scene("page-2", second_tip_page) ||
+                    !save_secretary_scene("notebook-tips-page-2",
+                                          second_tip_page)) {
+                    std::cerr << "field secretary dump: page text or "
+                                 "current-page number did not update\n";
+                    return 3;
+                }
+                press_secretary_button(0x08U);
+                press_secretary_button(0x08U);
+                press_secretary_button(0x08U); // Clamp on page four.
+                if (field_scene.pocket_secretary_notebook_tips_selection() !=
+                        3U ||
+                    field_scene
+                            .pocket_secretary_notebook_visible_tip_source_index(
+                                3U) != 95U) {
+                    std::cerr << "field secretary dump: Right did not clamp "
+                                 "at the final unlocked page\n";
+                    return 3;
+                }
+                press_secretary_button(0x08U);
+                if (field_scene.pocket_secretary_notebook_tips_selection() !=
+                    3U) {
+                    std::cerr << "field secretary dump: final-page clamp "
+                                 "was lost on continued Right input\n";
+                    return 3;
+                }
+                field_audio_events.clear();
+                press_secretary_button(0x20U); // C invokes mode action.
+                if (!field_scene.pocket_secretary_notebook_tips_open() ||
+                    field_scene.pocket_secretary_notebook_tips_selection() !=
+                        3U ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x25U}) {
+                    std::cerr << "field secretary dump: C did not keep the "
+                                 "selected page and request source event "
+                                 "0x25\n";
+                    return 3;
+                }
+                auto last_tip_page = render_secretary_scene();
+                for (int frame = 0; frame < 30; ++frame) {
+                    field_scene.advance_frame();
+                }
+                const auto held_last_tip_page = render_secretary_scene();
+                if (image_region_differs(last_tip_page, held_last_tip_page,
+                                         32, 32, 256, 160) ||
+                    !image_region_differs(last_tip_page, held_last_tip_page,
+                                          32, 200, 224, 16) ||
+                    !save_notebook_tips_scene("held-30-frames",
+                                              held_last_tip_page) ||
+                    !save_secretary_scene("notebook-tips-held",
+                                          held_last_tip_page)) {
+                    std::cerr << "field secretary dump: held page text "
+                                 "changed or E660 lower chrome failed to "
+                                 "advance\n";
+                    return 3;
+                }
+                field_audio_events.clear();
+                press_secretary_button(0x80U); // Start returns to Notebook.
+                if (!field_scene.pocket_secretary_notebook_open() ||
+                    field_scene.pocket_secretary_notebook_tips_open() ||
+                    !field_audio_events.empty() ||
+                    !save_notebook_tips_scene(
+                        "return-start", render_secretary_scene()) ||
+                    !save_secretary_scene("notebook-tips-return-start",
+                                          render_secretary_scene())) {
+                    std::cerr << "field secretary dump: Start return did "
+                                 "not rebuild Notebook cleanly\n";
+                    return 3;
+                }
+                press_secretary_button(0x40U); // Reopen Tips.
+                field_audio_events.clear();
+                press_secretary_button(0x10U); // B returns immediately.
+                if (field_scene.pocket_secretary_notebook_tips_open() ||
+                    !field_scene.pocket_secretary_notebook_open() ||
+                    !field_audio_events.empty() ||
+                    !save_notebook_tips_scene(
+                        "return-b", render_secretary_scene()) ||
+                    !save_secretary_scene("notebook-tips-return-b",
+                                          render_secretary_scene())) {
+                    std::cerr << "field secretary dump: B did not return "
+                                 "to the clean Notebook panel silently\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0x01U); // Up.
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0x40U); // Current Run.
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                if (!field_scene.pocket_secretary_notebook_no_run_waiting()) {
+                    std::cerr << "field secretary dump: Current Run did not "
+                                 "enter its no-run response wait\n";
+                    return 3;
+                }
+                auto notebook_no_run_scene = render_secretary_scene();
+                for (std::size_t line = 0; line < 3U; ++line) {
+                    if (!image_has_green_ink(
+                            notebook_no_run_scene, 48,
+                            48 + static_cast<int>(line) * 8, 240, 8)) {
+                        std::cerr << "field secretary dump: no-run source "
+                                     "line "
+                                  << line << " has no visible text\n";
+                        return 3;
+                    }
+                }
+                if (image_has_green_ink(notebook_no_run_scene, 88, 32,
+                                        96, 8) ||
+                    image_has_green_ink(notebook_no_run_scene, 88, 72,
+                                        160, 8) ||
+                    image_has_green_ink(notebook_no_run_scene, 88, 88,
+                                        160, 8) ||
+                    image_has_green_ink(notebook_no_run_scene, 88, 104,
+                                        160, 8) ||
+                    image_has_green_ink(notebook_no_run_scene, 88, 120,
+                                        160, 8) ||
+                    !save_secretary_scene("notebook-current-run-unavailable",
+                                          notebook_no_run_scene)) {
+                    std::cerr << "field secretary dump: no-run response "
+                                 "retained stale Notebook rows or capture "
+                                 "failed\n";
+                    return 3;
+                }
+                const auto held_notebook_no_run_scene =
+                    notebook_no_run_scene;
+                for (int frame = 0; frame < 30; ++frame) {
+                    field_scene.advance_frame();
+                }
+                notebook_no_run_scene = render_secretary_scene();
+                if (!image_has_green_ink(notebook_no_run_scene, 48, 48,
+                                         240, 8) ||
+                    !field_scene.pocket_secretary_notebook_no_run_waiting() ||
+                    image_region_differs(held_notebook_no_run_scene,
+                                         notebook_no_run_scene,
+                                         48, 48, 240, 24) ||
+                    !image_region_differs(held_notebook_no_run_scene,
+                                          notebook_no_run_scene,
+                                          32, 200, 224, 16) ||
+                    !save_secretary_scene("notebook-current-run-held",
+                                          notebook_no_run_scene)) {
+                    std::cerr << "field secretary dump: no-run response did "
+                                 "not persist or E660 chrome did not animate\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0x80U); // dismiss wait.
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                if (!field_scene.pocket_secretary_notebook_open() ||
+                    field_scene.pocket_secretary_notebook_no_run_waiting() ||
+                    field_scene.pocket_secretary_notebook_selection() != 0U ||
+                    !save_secretary_scene("notebook-current-run-return",
+                                          render_secretary_scene())) {
+                    std::cerr << "field secretary dump: no-run response did "
+                                 "not rebuild Notebook at its source selection\n";
+                    return 3;
+                }
+                notebook_scene = render_secretary_scene();
+                if (image_has_green_ink(notebook_scene, 48, 48, 240, 8) ||
+                    image_has_green_ink(notebook_scene, 48, 64, 240, 8)) {
+                    std::cerr << "field secretary dump: rebuilt Notebook "
+                                 "retained stale no-run response text\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0x10U); // B to parent.
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                if (field_scene.pocket_secretary_notebook_open() ||
+                    !field_scene.pocket_secretary_open() ||
+                    field_scene.pocket_secretary_selection() != 0U ||
+                    !save_secretary_scene("notebook-return",
+                                          render_secretary_scene())) {
+                    std::cerr << "field secretary dump: B did not return to "
+                                 "the selected Pocket Secretary parent row\n";
+                    return 3;
+                }
+                for (int step = 0; step < 3; ++step) {
+                    press_secretary_button(0x02U); // Down to Dismiss Runner.
+                }
+                if (field_scene.pocket_secretary_selection() != 3U) {
+                    std::cerr << "field secretary dump: could not select "
+                                 "Dismiss Runner\n";
+                    return 3;
+                }
+                const auto dismiss_parent_scene = render_secretary_scene();
+                if (!save_secretary_scene("dismiss-runner-parent-before",
+                                          dismiss_parent_scene)) {
+                    std::cerr << "field secretary dump: could not save "
+                                 "pre-entry parent panel\n";
+                    return 3;
+                }
+                const auto dismiss_parent_panel_matches =
+                    [&dismiss_parent_scene](const QImage& scene) {
+                        // The outer frame and blank inner grid are shared by
+                        // these source screens. Compare the full content
+                        // panel after return so no child labels, selector, or
+                        // graphics can survive beneath the parent buttons.
+                        return !image_region_differs(
+                            dismiss_parent_scene, scene, 24, 24, 216, 168);
+                    };
+                field_audio_events.clear();
+                press_secretary_button(0x40U);
+                if (!field_scene.pocket_secretary_dismiss_runner_open() ||
+                    field_scene.dismiss_runner_selection() != 0U ||
+                    field_scene.dismiss_runner_option_count() != 3U ||
+                    !field_audio_events.empty()) {
+                    std::cerr << "field secretary dump: Dismiss Runner "
+                                 "entry state or source audio event is wrong "
+                              << "open="
+                              << field_scene
+                                     .pocket_secretary_dismiss_runner_open()
+                              << " selection="
+                              << static_cast<int>(
+                                     field_scene.dismiss_runner_selection())
+                              << " options="
+                              << static_cast<int>(
+                                     field_scene.dismiss_runner_option_count())
+                              << " audio=";
+                    for (const auto event : field_audio_events) {
+                        std::cerr << std::hex << event << ' ' << std::dec;
+                    }
+                    std::cerr << '\n';
+                    return 3;
+                }
+                auto dismiss_scene = render_secretary_scene();
+                const auto has_parent_option = [](const QImage& scene,
+                                                  int row) {
+                    return image_has_green_ink(
+                        scene, 88, 56 + row * 16, 144, 8);
+                };
+                if (!image_has_green_ink(dismiss_scene, 88, 32, 112, 8) ||
+                    !image_has_green_ink(dismiss_scene, 88, 40, 112, 8) ||
+                    !image_has_green_ink(dismiss_scene, 72, 48, 160, 8) ||
+                    !image_has_green_ink(dismiss_scene, 88, 64, 112, 8) ||
+                    !image_has_green_ink(dismiss_scene, 88, 80, 112, 8) ||
+                    !image_has_green_ink(dismiss_scene, 88, 96, 112, 8) ||
+                    image_has_green_ink(dismiss_scene, 72, 64, 8, 8) == false ||
+                    image_has_green_ink(dismiss_scene, 136, 104, 8, 8) ||
+                    !image_region_differs(dismiss_parent_scene, dismiss_scene,
+                                          136, 96, 8, 16) ||
+                    image_region_differs(dismiss_parent_scene, dismiss_scene,
+                                         120, 144, 32, 32) ||
+                    has_parent_option(dismiss_scene, 0) ||
+                    has_parent_option(dismiss_scene, 1) ||
+                    has_parent_option(dismiss_scene, 2) ||
+                    has_parent_option(dismiss_scene, 3) ||
+                    has_parent_option(dismiss_scene, 4) ||
+                    !save_secretary_scene("dismiss-runner-actual",
+                                          dismiss_scene)) {
+                    std::cerr << "field secretary dump: Dismiss labels, "
+                                 "fixed Abort row, or clear-panel order is "
+                                 "wrong\n";
+                    return 3;
+                }
+
+                const auto effect_frames_before_move =
+                    field_scene.dismiss_runner_effect_frames();
+                field_audio_events.clear();
+                press_secretary_button(0x02U); // Select Ricky.
+                if (field_scene.dismiss_runner_selection() != 1U ||
+                    field_scene.dismiss_runner_effect_frames() !=
+                        effect_frames_before_move + 2U ||
+                    field_audio_events != std::vector<std::uint16_t>{0x25U}) {
+                    std::cerr << "field secretary dump: Dismiss Runner "
+                                 "movement cadence or event 0x25 is wrong\n";
+                    return 3;
+                }
+                const auto dismiss_ricky_scene = render_secretary_scene();
+                if (field_scene.dismiss_runner_preview_slot() !=
+                        std::optional<std::size_t>{1U} ||
+                    !preview_matches_asset(dismiss_ricky_scene,
+                                           467674U, 20U, 1U) ||
+                    !image_has_green_ink(dismiss_ricky_scene, 72, 80, 8, 8) ||
+                    !image_region_differs(dismiss_scene, dismiss_ricky_scene,
+                                          72, 64, 8, 32) ||
+                    !image_region_differs(dismiss_scene, dismiss_ricky_scene,
+                                          120, 144, 32, 32) ||
+                    !save_secretary_scene("dismiss-runner-selection-1",
+                                          dismiss_ricky_scene)) {
+                    std::cerr << "field secretary dump: Dismiss cursor did "
+                                 "not follow the selected runner\n";
+                    return 3;
+                }
+                const auto effect_frames_before_second_move =
+                    field_scene.dismiss_runner_effect_frames();
+                field_audio_events.clear();
+                press_secretary_button(0x02U); // Select Winston.
+                const auto dismiss_winston_scene = render_secretary_scene();
+                if (field_scene.dismiss_runner_selection() != 2U ||
+                    field_scene.dismiss_runner_preview_slot() !=
+                        std::optional<std::size_t>{2U} ||
+                    !preview_matches_asset(dismiss_winston_scene,
+                                           467834U, 4U, 2U) ||
+                    field_scene.dismiss_runner_effect_frames() !=
+                        effect_frames_before_second_move + 2U ||
+                    field_audio_events != std::vector<std::uint16_t>{0x25U} ||
+                    !image_region_differs(dismiss_ricky_scene,
+                                          dismiss_winston_scene,
+                                          120, 144, 32, 32) ||
+                    !save_secretary_scene("dismiss-runner-selection-2",
+                                          dismiss_winston_scene)) {
+                    std::cerr << "field secretary dump: second candidate "
+                                 "did not select its own HUD preview\n";
+                    return 3;
+                }
+                const auto effect_frames_before_reverse_move =
+                    field_scene.dismiss_runner_effect_frames();
+                field_audio_events.clear();
+                press_secretary_button(0x01U); // Return to Ricky.
+                const auto dismiss_ricky_again_scene = render_secretary_scene();
+                if (field_scene.dismiss_runner_selection() != 1U ||
+                    field_scene.dismiss_runner_preview_slot() !=
+                        std::optional<std::size_t>{1U} ||
+                    !preview_matches_asset(dismiss_ricky_again_scene,
+                                           467674U, 20U, 1U) ||
+                    field_scene.dismiss_runner_effect_frames() !=
+                        effect_frames_before_reverse_move + 2U ||
+                    field_audio_events != std::vector<std::uint16_t>{0x25U} ||
+                    image_region_differs(dismiss_ricky_scene,
+                                         dismiss_ricky_again_scene,
+                                         120, 144, 32, 32)) {
+                    std::cerr << "field secretary dump: preview did not "
+                                 "follow the cursor back to Ricky\n";
+                    return 3;
+                }
+                const auto effect_frames_before_wait =
+                    field_scene.dismiss_runner_effect_frames();
+                auto previous_grid_scene = dismiss_ricky_again_scene;
+                bool random_grid_pixels_changed = false;
+                for (int frame = 0; frame < 30; ++frame) {
+                    field_scene.advance_frame();
+                    const auto current_scene = render_secretary_scene();
+                    random_grid_pixels_changed =
+                        random_grid_pixels_changed || image_region_differs(
+                            previous_grid_scene, current_scene,
+                            32, 200, 224, 16);
+                    previous_grid_scene = current_scene;
+                }
+                dismiss_scene = previous_grid_scene;
+                if (!field_scene.pocket_secretary_dismiss_runner_open() ||
+                    field_scene.dismiss_runner_preview_slot() !=
+                        std::optional<std::size_t>{1U} ||
+                    field_scene.dismiss_runner_effect_frames() !=
+                        effect_frames_before_wait + 30U ||
+                    !random_grid_pixels_changed ||
+                    !image_has_green_ink(dismiss_scene, 88, 80, 112, 8) ||
+                    has_parent_option(dismiss_scene, 0) ||
+                    has_parent_option(dismiss_scene, 1) ||
+                    has_parent_option(dismiss_scene, 2) ||
+                    has_parent_option(dismiss_scene, 3) ||
+                    has_parent_option(dismiss_scene, 4) ||
+                    image_region_differs(dismiss_ricky_again_scene,
+                                         dismiss_scene, 24, 24, 216, 128) ||
+                    image_region_differs(dismiss_ricky_again_scene,
+                                         dismiss_scene, 120, 144, 32, 32) ||
+                    !image_region_differs(dismiss_parent_scene, dismiss_scene,
+                                          120, 144, 32, 32) ||
+                    !save_secretary_scene("dismiss-runner-held",
+                                          dismiss_scene)) {
+                    std::cerr << "field secretary dump: Dismiss child did "
+                                 "not hold state through 30 E660 frames\n";
+                    return 3;
+                }
+
+                field_audio_events.clear();
+                press_secretary_button(0x10U); // Source B confirms the row.
+                if (field_scene.pocket_secretary_dismiss_runner_open() ||
+                    !field_scene.pocket_secretary_open() ||
+                    field_scene.pocket_secretary_selection() != 3U ||
+                    field_scene.field_party_slot_active_for_dump(1U) ||
+                    !field_scene.field_party_slot_active_for_dump(2U) ||
+                    (field_scene.field_party_records_for_dump()[1].flags &
+                     0x0100U) == 0U ||
+                    field_audio_events != std::vector<std::uint16_t>{0x24U}) {
+                    std::cerr << "field secretary dump: selected runner did "
+                                 "not clear only its compact party marker\n";
+                    return 3;
+                }
+                auto dismiss_return_scene = render_secretary_scene();
+                if (!has_parent_option(dismiss_return_scene, 3) ||
+                    !dismiss_parent_panel_matches(dismiss_return_scene) ||
+                    !save_secretary_scene("dismiss-runner-return",
+                                          dismiss_return_scene)) {
+                    std::cerr << "field secretary dump: parent redraw did not "
+                                 "restore the complete panel without stale "
+                                 "child controls\n";
+                    return 3;
+                }
+
+                field_audio_events.clear();
+                press_secretary_button(0x40U);
+                if (!field_scene.pocket_secretary_dismiss_runner_open() ||
+                    field_scene.dismiss_runner_option_count() != 2U) {
+                    std::cerr << "field secretary dump: dismissed runner "
+                                 "remained in the next candidate list\n";
+                    return 3;
+                }
+                dismiss_scene = render_secretary_scene();
+                if (!image_has_green_ink(dismiss_scene, 88, 64, 112, 8) ||
+                    !image_has_green_ink(dismiss_scene, 88, 80, 112, 8) ||
+                    image_has_green_ink(dismiss_scene, 88, 96, 112, 8) ||
+                    !save_secretary_scene("dismiss-runner-one-candidate",
+                                          dismiss_scene)) {
+                    std::cerr << "field secretary dump: fixed Abort row moved "
+                                 "when candidate count changed\n";
+                    return 3;
+                }
+                field_audio_events.clear();
+                press_secretary_button(0x40U); // A on Abort.
+                if (field_scene.pocket_secretary_dismiss_runner_open() ||
+                    !field_scene.field_party_slot_active_for_dump(2U) ||
+                    field_audio_events != std::vector<std::uint16_t>{0x24U} ||
+                    !dismiss_parent_panel_matches(render_secretary_scene())) {
+                    std::cerr << "field secretary dump: Abort changed the "
+                                 "remaining party record\n";
+                    return 3;
+                }
+
+                field_audio_events.clear();
+                press_secretary_button(0x40U);
+                if (!field_scene.pocket_secretary_dismiss_runner_open()) {
+                    std::cerr << "field secretary dump: could not reopen "
+                                 "Dismiss Runner for Start return\n";
+                    return 3;
+                }
+                field_audio_events.clear();
+                press_secretary_button(0x80U); // Start returns to parent.
+                if (field_scene.pocket_secretary_dismiss_runner_open() ||
+                    field_audio_events.size() != 0U ||
+                    !dismiss_parent_panel_matches(render_secretary_scene()) ||
+                    !save_secretary_scene("dismiss-runner-start-return",
+                                          render_secretary_scene())) {
+                    std::cerr << "field secretary dump: Start did not return "
+                                 "without an action sound\n";
+                    return 3;
+                }
+
+                field_scene.set_active_party_slot_for_dump(2U);
+                if (field_scene.field_active_party_slot_for_dump() != 2U) {
+                    std::cerr << "field secretary dump: could not seed active "
+                                 "runner for dismissal replacement\n";
+                    return 3;
+                }
+                press_secretary_button(0x40U);
+                field_audio_events.clear();
+                press_secretary_button(0x02U); // Select current runner.
+                if (field_audio_events !=
+                    std::vector<std::uint16_t>{0x25U}) {
+                    std::cerr << "field secretary dump: current-runner "
+                                 "cursor did not request event 0x25\n";
+                    return 3;
+                }
+                press_secretary_button(0x40U);
+                if (field_scene.field_party_slot_active_for_dump(2U) ||
+                    field_scene.field_active_party_slot_for_dump() != 0U ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x25U, 0x24U} ||
+                    !dismiss_parent_panel_matches(render_secretary_scene()) ||
+                    !save_secretary_scene(
+                        "dismiss-runner-current-replaced",
+                        render_secretary_scene())) {
+                    std::cerr << "field secretary dump: removing the current "
+                                 "runner did not switch to the next active "
+                                 "record\n";
+                    return 3;
+                }
+                std::cout << "dismiss_runner_review=fixed_abort,active_list,"
+                             "compact_marker,active_runner_switch,e660_cadence "
+                             "e660_pixels=pending source_audio=0x25_unmapped\n";
+                std::cout << "notebook_review=menu,current-run-no-run,wait,return "
+                             "contacts_gate=visible source_effect=not_rendered\n";
                 std::cout << "field_secretary_dump=written path="
                           << field_secretary_dump_path->string()
-                          << " selection="
+                          << " frames=21 selection="
                           << static_cast<int>(
                                  field_scene.pocket_secretary_selection())
                           << '\n';
@@ -3108,6 +4764,833 @@ int main(int argc, char** argv) {
                           << static_cast<int>(
                                  field_scene.posture_dialog_value())
                           << '\n';
+                return 0;
+            }
+            if (field_automatic_use_dump_path.has_value()) {
+                std::filesystem::create_directories(
+                    *field_automatic_use_dump_path);
+                auto& runner = field_scene.active_runner_record();
+                constexpr std::size_t kItemSlot = 0U;
+                // 0x20 belongs to the ROM's 0x18..0x2B automatic-use range.
+                constexpr std::uint8_t kAutomaticUseItemCode = 0x20U;
+                constexpr std::uint8_t kInitialItemPhase = 7U;
+                runner.inventory_item_codes[kItemSlot] =
+                    kAutomaticUseItemCode;
+                runner.inventory_phase_bytes[kItemSlot] = kInitialItemPhase;
+                const auto before_action = runner;
+
+                const auto render_scene = [&] {
+                    QImage scene(kSceneWidth, kSceneHeight,
+                                 QImage::Format_RGB32);
+                    scene.fill(Qt::black);
+                    QPainter painter(&scene);
+                    field_scene.paint(painter);
+                    painter.end();
+                    return scene;
+                };
+                const auto save_scene = [&](const std::string_view name,
+                                            const QImage& scene) {
+                    if (!field_command_shell_survives(scene, asset_root) ||
+                        !field_hud_chrome_survives(scene, asset_root)) {
+                        std::cerr << "field automatic-use dump: command "
+                                     "shell or HUD changed for "
+                                  << name << "\n";
+                        return false;
+                    }
+                    return scene.save(QString::fromStdWString(
+                        ((*field_automatic_use_dump_path) /
+                         (std::string(name) + ".bmp"))
+                            .wstring()));
+                };
+                const auto press = [&](const std::uint8_t port_byte) {
+                    field_scene.set_controller_port_byte(port_byte);
+                    field_scene.advance_frame();
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                };
+                const auto region_has_green_ink = [](
+                                                   const QImage& scene,
+                                                   const QRect& region) {
+                    const auto clipped = region.intersected(scene.rect());
+                    for (int y = clipped.top(); y <= clipped.bottom(); ++y) {
+                        for (int x = clipped.left(); x <= clipped.right(); ++x) {
+                            const auto pixel = scene.pixelColor(x, y);
+                            if (pixel.green() > 40 &&
+                                pixel.green() > pixel.red() * 2 &&
+                                pixel.green() > pixel.blue() * 2) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                };
+                const auto same_region = [](const QImage& left,
+                                            const QImage& right,
+                                            const QRect& region) {
+                    if (left.size() != right.size()) {
+                        return false;
+                    }
+                    const auto clipped = region.intersected(left.rect());
+                    for (int y = clipped.top(); y <= clipped.bottom(); ++y) {
+                        for (int x = clipped.left(); x <= clipped.right(); ++x) {
+                            if (left.pixel(x, y) != right.pixel(x, y)) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                };
+
+                if (!field_scene.open_command_overview_for_dump()) {
+                    std::cerr << "field automatic-use dump: command overview "
+                                 "did not open\n";
+                    return 3;
+                }
+                for (int move = 0;
+                     move < 7 && field_scene.command_overview_view()
+                                         .source_state.primary_page != 0U;
+                     ++move) {
+                    press(0x04U);
+                }
+                if (field_scene.command_overview_view().source_state
+                        .primary_page != 0U) {
+                    std::cerr << "field automatic-use dump: inventory page "
+                                 "did not become selected\n";
+                    return 3;
+                }
+
+                // Ignore command-page navigation cues here. The checked
+                // sequence begins with opening the item action and includes
+                // its A-confirm request, both source command event 0x24.
+                field_audio_events.clear();
+                press(0x40U);
+                if (!field_scene.inventory_action_open() ||
+                    field_scene.inventory_action_selection() != 2U) {
+                    std::cerr << "field automatic-use dump: item action did "
+                                 "not open\n";
+                    return 3;
+                }
+                const auto action_open_scene = render_scene();
+
+                field_scene.set_controller_port_byte(0x40U);
+                field_scene.advance_frame();
+                if (!field_scene.automatic_use_result_waiting() ||
+                    field_scene.inventory_action_open() ||
+                    field_scene.first_aid_open() ||
+                    runner.inventory_item_codes[kItemSlot] !=
+                        before_action.inventory_item_codes[kItemSlot] ||
+                    runner.inventory_phase_bytes[kItemSlot] !=
+                        before_action.inventory_phase_bytes[kItemSlot] ||
+                    runner.equipped_item_code !=
+                        before_action.equipped_item_code ||
+                    runner.equipped_inventory_slot !=
+                        before_action.equipped_inventory_slot ||
+                    runner.equipped_armor_index !=
+                        before_action.equipped_armor_index ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x24U, 0x24U}) {
+                    std::cerr << "field automatic-use dump: dispatch state, "
+                                 "item bytes, or action audio diverged\n";
+                    return 3;
+                }
+
+                const auto message_scene = render_scene();
+                if (!field_inventory_selector_survives(message_scene, 0U, 0U) ||
+                    !same_region(action_open_scene, message_scene,
+                                 QRect(112, 24, 136, 72)) ||
+                    !region_has_green_ink(message_scene,
+                                          QRect(128, 96, 120, 8)) ||
+                    !region_has_green_ink(message_scene,
+                                          QRect(128, 104, 120, 8)) ||
+                    !region_has_green_ink(message_scene,
+                                          QRect(128, 112, 120, 8)) ||
+                    !save_scene("automatic_use_message", message_scene) ||
+                    !save_scene("actual", message_scene)) {
+                    std::cerr << "field automatic-use dump: source message, "
+                                 "item selector, shell, or HUD failed\n";
+                    return 3;
+                }
+
+                // D202F has three static lines. The source loop redraws only
+                // after a fresh input edge; thirty idle frames must be exact
+                // pixel repeats and produce no extra sound requests.
+                for (int frame = 0; frame < 30; ++frame) {
+                    field_scene.advance_frame();
+                }
+                const auto idle_scene = render_scene();
+                if (idle_scene != message_scene ||
+                    !field_scene.automatic_use_result_waiting() ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x24U, 0x24U} ||
+                    !save_scene("automatic_use_idle_30", idle_scene)) {
+                    std::cerr << "field automatic-use dump: acknowledgement "
+                                 "message animated or changed without input\n";
+                    return 3;
+                }
+
+                // Keep the dispatch A held, then release it. Neither the
+                // held event nor release edge is a fresh 0x0D94 input.
+                field_scene.advance_frame();
+                const auto held_scene = render_scene();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                const auto released_scene = render_scene();
+                if (!field_scene.automatic_use_result_waiting() ||
+                    held_scene != message_scene ||
+                    released_scene != message_scene ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x24U, 0x24U} ||
+                    !save_scene("automatic_use_held", held_scene) ||
+                    !save_scene("automatic_use_released", released_scene)) {
+                    std::cerr << "field automatic-use dump: held/released "
+                                 "input incorrectly acknowledged the message\n";
+                    return 3;
+                }
+
+                press(0x10U);
+                if (field_scene.automatic_use_result_waiting() ||
+                    runner.inventory_item_codes[kItemSlot] !=
+                        before_action.inventory_item_codes[kItemSlot] ||
+                    runner.inventory_phase_bytes[kItemSlot] !=
+                        before_action.inventory_phase_bytes[kItemSlot] ||
+                    runner.equipped_item_code !=
+                        before_action.equipped_item_code ||
+                    runner.equipped_inventory_slot !=
+                        before_action.equipped_inventory_slot ||
+                    runner.equipped_armor_index !=
+                        before_action.equipped_armor_index ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x24U, 0x24U}) {
+                    std::cerr << "field automatic-use dump: new controller "
+                                 "edge failed to return cleanly\n";
+                    return 3;
+                }
+                const auto returned_scene = render_scene();
+                if (field_inventory_selector_survives(returned_scene, 0U, 0U) ||
+                    !save_scene("automatic_use_return", returned_scene)) {
+                    std::cerr << "field automatic-use dump: return did not "
+                                 "clear the item selector\n";
+                    return 3;
+                }
+                std::cout << "field_automatic_use_dump=written path="
+                          << field_automatic_use_dump_path->string() << "\n";
+                return 0;
+            }
+            if (field_inventory_trade_dump_path.has_value()) {
+                std::filesystem::create_directories(
+                    *field_inventory_trade_dump_path);
+                auto& source = field_scene.active_runner_record();
+                constexpr std::size_t kItemSlot = 0U;
+                constexpr std::uint8_t kTradeableItemCode = 0x15U;
+                constexpr std::uint8_t kItemPhase = 5U;
+                source.inventory_item_codes[kItemSlot] = kTradeableItemCode;
+                source.inventory_phase_bytes[kItemSlot] = kItemPhase;
+                source.equipped_inventory_slot = -1;
+                source.equipped_item_code = 0U;
+                const auto source_before_trade = source;
+
+                const auto render_scene = [&] {
+                    QImage scene(kSceneWidth, kSceneHeight,
+                                 QImage::Format_RGB32);
+                    scene.fill(Qt::black);
+                    QPainter painter(&scene);
+                    field_scene.paint(painter);
+                    painter.end();
+                    return scene;
+                };
+                const auto save_scene = [&](const std::string_view name,
+                                            const QImage& scene) {
+                    if (!field_command_shell_survives(scene, asset_root) ||
+                        !field_hud_chrome_survives(scene, asset_root)) {
+                        std::cerr << "field inventory-trade dump: shell or "
+                                     "field HUD changed for "
+                                  << name << "\n";
+                        return false;
+                    }
+                    return scene.save(QString::fromStdWString(
+                        ((*field_inventory_trade_dump_path) /
+                         (std::string(name) + ".bmp"))
+                            .wstring()));
+                };
+                const auto press = [&](const std::uint8_t port_byte) {
+                    field_scene.set_controller_port_byte(port_byte);
+                    field_scene.advance_frame();
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                };
+                const auto has_green_ink = [](const QImage& scene,
+                                              const QRect& region) {
+                    const auto clipped = region.intersected(scene.rect());
+                    for (int y = clipped.top(); y <= clipped.bottom(); ++y) {
+                        for (int x = clipped.left(); x <= clipped.right(); ++x) {
+                            const auto pixel = scene.pixelColor(x, y);
+                            if (pixel.green() > 40 &&
+                                pixel.green() > pixel.red() * 2 &&
+                                pixel.green() > pixel.blue() * 2) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                };
+                const auto image_region_matches = [](
+                                                      const QImage& scene,
+                                                      const int x,
+                                                      const int y,
+                                                      const QImage& expected) {
+                    if (expected.isNull() || x < 0 || y < 0 ||
+                        x + expected.width() > scene.width() ||
+                        y + expected.height() > scene.height()) {
+                        return false;
+                    }
+                    for (int row = 0; row < expected.height(); ++row) {
+                        for (int column = 0; column < expected.width();
+                             ++column) {
+                            if (scene.pixel(x + column, y + row) !=
+                                expected.pixel(column, row)) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                };
+
+                if (!field_scene.open_command_overview_for_dump()) {
+                    std::cerr << "field inventory-trade dump: command "
+                                 "overview did not open\n";
+                    return 3;
+                }
+                for (int move = 0;
+                     move < 7 && field_scene.command_overview_view()
+                                         .source_state.primary_page != 0U;
+                     ++move) {
+                    press(0x04U);
+                }
+                if (field_scene.command_overview_view()
+                        .source_state.primary_page != 0U) {
+                    std::cerr << "field inventory-trade dump: Inventory "
+                                 "page did not become selected\n";
+                    return 3;
+                }
+
+                const auto open_trade_action = [&] {
+                    press(0x40U);
+                    if (!field_scene.inventory_action_open()) {
+                        return false;
+                    }
+                    press(0x08U);
+                    press(0x08U);
+                    return field_scene.inventory_action_selection() == 4U;
+                };
+                if (!open_trade_action()) {
+                    std::cerr << "field inventory-trade dump: Trade action "
+                                 "did not select\n";
+                    return 3;
+                }
+                field_audio_events.clear();
+                press(0x40U);
+                if (field_scene.inventory_trade_open() ||
+                    field_scene.inventory_action_open() ||
+                    field_scene.inventory_action_message() !=
+                        CommandOverviewActionMessage::none ||
+                    source.inventory_item_codes[kItemSlot] !=
+                        source_before_trade.inventory_item_codes[kItemSlot] ||
+                    field_audio_events != std::vector<std::uint16_t>{0x24U}) {
+                    std::cerr << "field inventory-trade dump: one-member "
+                                 "roster did not return without mutation\n";
+                    return 3;
+                }
+                const auto no_recipient_scene = render_scene();
+                if (!field_inventory_selector_survives(
+                        no_recipient_scene, 0U, 0U) ||
+                    !save_scene("trade_no_recipient", no_recipient_scene)) {
+                    std::cerr << "field inventory-trade dump: source return "
+                                 "or item selector failed\n";
+                    return 3;
+                }
+
+                RunnerRecordFields full_recipient{};
+                full_recipient.inventory_item_codes.fill(1U);
+                field_scene.install_party_member_for_dump(
+                    1U, full_recipient, "Stark");
+                field_scene.install_party_member_for_dump(
+                    2U, RunnerRecordFields{}, "Dog");
+                if (!open_trade_action()) {
+                    std::cerr << "field inventory-trade dump: second Trade "
+                                 "action did not open\n";
+                    return 3;
+                }
+                field_audio_events.clear();
+                press(0x40U);
+                if (!field_scene.inventory_trade_open() ||
+                    field_scene.inventory_trade_recipient() != 1U ||
+                    !field_scene.inventory_trade_recipient_full() ||
+                    field_scene.inventory_trade_yes_selected() ||
+                    field_audio_events != std::vector<std::uint16_t>{0x24U}) {
+                    std::cerr << "field inventory-trade dump: roster order, "
+                                 "full gate, default choice, or audio failed\n";
+                    return 3;
+                }
+                const auto full_scene = render_scene();
+                const QImage confirmation_background(QString::fromStdWString(
+                    (asset_root / "menu" / "field" /
+                     "action-confirm-background.bmp")
+                        .wstring()));
+                const QImage no_focus(QString::fromStdWString(
+                    (asset_root / "menu" / "field" /
+                     "action-confirm-focus-1.bmp")
+                        .wstring()));
+                const QImage yes_focus(QString::fromStdWString(
+                    (asset_root / "menu" / "field" /
+                     "action-confirm-focus-0.bmp")
+                        .wstring()));
+                if (!field_inventory_selector_survives(full_scene, 0U, 0U) ||
+                    !has_green_ink(full_scene, QRect(120, 104, 176, 48)) ||
+                    !image_region_matches(full_scene, 184, 184, no_focus) ||
+                    confirmation_background.isNull() ||
+                    full_scene.pixel(122, 185) !=
+                        confirmation_background.pixel(2, 1) ||
+                    !save_scene("trade_recipient_full", full_scene) ||
+                    !save_scene("actual", full_scene)) {
+                    std::cerr << "field inventory-trade dump: full message, "
+                                 "No focus, source assets, shell, HUD, or "
+                                 "selector failed\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 30; ++frame) {
+                    field_scene.advance_frame();
+                }
+                if (render_scene() != full_scene ||
+                    !field_scene.inventory_trade_open()) {
+                    std::cerr << "field inventory-trade dump: static full "
+                                 "screen changed without input\n";
+                    return 3;
+                }
+
+                press(0x10U);
+                if (!field_scene.inventory_trade_open() ||
+                    field_scene.inventory_trade_recipient() != 2U ||
+                    field_scene.inventory_trade_recipient_full() ||
+                    field_scene.inventory_trade_yes_selected()) {
+                    std::cerr << "field inventory-trade dump: confirming a "
+                                 "full recipient did not advance the scan\n";
+                    return 3;
+                }
+                const auto dog_no_scene = render_scene();
+                if (!has_green_ink(dog_no_scene, QRect(152, 120, 80, 8)) ||
+                    !has_green_ink(dog_no_scene, QRect(128, 128, 96, 8)) ||
+                    !field_inventory_selector_survives(dog_no_scene, 0U, 0U) ||
+                    !image_region_matches(dog_no_scene, 184, 184, no_focus) ||
+                    !save_scene("trade_recipient_dog_no", dog_no_scene)) {
+                    std::cerr << "field inventory-trade dump: recipient "
+                                 "label/name or default No state failed\n";
+                    return 3;
+                }
+                press(0x04U);
+                const auto dog_yes_scene = render_scene();
+                if (!field_scene.inventory_trade_yes_selected() ||
+                    !image_region_matches(dog_yes_scene, 136, 184, yes_focus) ||
+                    !has_green_ink(dog_yes_scene, QRect(112, 200, 128, 8)) ||
+                    !save_scene("trade_recipient_dog_yes", dog_yes_scene)) {
+                    std::cerr << "field inventory-trade dump: Yes focus or "
+                                 "choice text did not update\n";
+                    return 3;
+                }
+                press(0x40U);
+                const auto& traded_party =
+                    field_scene.field_party_records_for_dump();
+                const auto traded_scene = render_scene();
+                if (field_scene.inventory_trade_open() ||
+                    field_scene.active_runner_record()
+                            .inventory_item_codes[kItemSlot] != 0U ||
+                    traded_party[2].inventory_item_codes[0] !=
+                        kTradeableItemCode ||
+                    traded_party[2].inventory_phase_bytes[0] != kItemPhase ||
+                    source.inventory_phase_bytes[kItemSlot] != 0U ||
+                    field_audio_events != std::vector<std::uint16_t>{
+                        0x24U, 0x24U, 0x25U, 0x24U} ||
+                    !save_scene("trade_transferred", traded_scene)) {
+                    std::cerr << "field inventory-trade dump: typed transfer, "
+                                 "item phase, audio sequence, or return failed\n";
+                    return 3;
+                }
+                std::cout << "field_inventory_trade_dump=written path="
+                          << field_inventory_trade_dump_path->string() << "\n";
+                return 0;
+            }
+            if (field_first_aid_dump_path.has_value()) {
+                std::filesystem::create_directories(
+                    *field_first_aid_dump_path);
+                auto& patient = field_scene.active_runner_record();
+                patient.delay_meter = 8U;
+                patient.behavior_meter = 10U;
+                std::size_t medkit_slot = patient.inventory_item_codes.size();
+                for (std::size_t slot = 0;
+                     slot < patient.inventory_item_codes.size(); ++slot) {
+                    if (patient.inventory_item_codes[slot] == 0x10U) {
+                        medkit_slot = slot;
+                        break;
+                    }
+                }
+                if (medkit_slot >= patient.inventory_item_codes.size()) {
+                    std::cerr << "field First Aid dump: starter record has "
+                                 "no source Medkit item\n";
+                    return 3;
+                }
+                const auto medkit_phase =
+                    patient.inventory_phase_bytes[medkit_slot];
+                const auto pre_cancel_patient = patient;
+
+                const auto render_scene = [&] {
+                    QImage scene(kSceneWidth, kSceneHeight,
+                                 QImage::Format_RGB32);
+                    scene.fill(Qt::black);
+                    QPainter painter(&scene);
+                    field_scene.paint(painter);
+                    painter.end();
+                    return scene;
+                };
+                const auto save_scene = [&](const std::string_view name,
+                                            const QImage& scene) {
+                    if (!field_command_shell_survives(scene, asset_root) ||
+                        !field_hud_chrome_survives(scene, asset_root)) {
+                        std::cerr << "field First Aid dump: adjacent shell "
+                                     "or HUD changed for "
+                                  << name << "\n";
+                        return false;
+                    }
+                    return scene.save(QString::fromStdWString(
+                        ((*field_first_aid_dump_path) /
+                         (std::string(name) + ".bmp"))
+                            .wstring()));
+                };
+                const auto press = [&](const std::uint8_t port_byte) {
+                    field_scene.set_controller_port_byte(port_byte);
+                    field_scene.advance_frame();
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                };
+                const auto region_has_green_ink = [](
+                                                   const QImage& scene,
+                                                   const QRect& region) {
+                    const auto clipped = region.intersected(scene.rect());
+                    for (int y = clipped.top(); y <= clipped.bottom(); ++y) {
+                        for (int x = clipped.left(); x <= clipped.right(); ++x) {
+                            const auto pixel = scene.pixelColor(x, y);
+                            if (pixel.green() > 40 &&
+                                pixel.green() > pixel.red() * 2 &&
+                                pixel.green() > pixel.blue() * 2) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                };
+                const auto target_face_matches = [&](const QImage& scene) {
+                    const QImage face(QString::fromStdWString(
+                        (asset_root / "field" / "hud" /
+                         ("face-" + std::to_string(field_archetype) + ".bmp"))
+                            .wstring()));
+                    if (face.isNull() || face.size() != QSize(32, 32)) {
+                        return false;
+                    }
+                    int checked = 0;
+                    for (int y = 0; y < face.height(); ++y) {
+                        for (int x = 0; x < face.width(); ++x) {
+                            const auto pixel = face.pixelColor(x, y);
+                            if (pixel.alpha() == 0) {
+                                continue;
+                            }
+                            ++checked;
+                            if (scene.pixelColor(144 + x, 144 + y) != pixel) {
+                                return false;
+                            }
+                        }
+                    }
+                    return checked > 64;
+                };
+
+                if (!field_scene.open_command_overview_for_dump()) {
+                    std::cerr << "field First Aid dump: command overview "
+                                 "did not open\n";
+                    return 3;
+                }
+                for (int move = 0;
+                     move < 7 && field_scene.command_overview_view()
+                                         .source_state.primary_page != 0U;
+                     ++move) {
+                    press(0x04U);
+                }
+                const auto desired_column =
+                    static_cast<std::uint8_t>(medkit_slot % 2U);
+                const auto desired_row =
+                    static_cast<std::uint8_t>(medkit_slot / 2U);
+                if (desired_column != 0U) {
+                    press(0x08U);
+                }
+                for (std::uint8_t row = 0; row < desired_row; ++row) {
+                    press(0x02U);
+                }
+                const auto& reached = field_scene.command_overview_view()
+                                          .source_state;
+                if (reached.primary_page != desired_column ||
+                    reached.secondary_page != desired_row ||
+                    patient.inventory_item_codes[medkit_slot] != 0x10U) {
+                    std::cerr << "field First Aid dump: Medkit cell did not "
+                                 "become selected\n";
+                    return 3;
+                }
+
+                press(0x40U);
+                if (!field_scene.inventory_action_open() ||
+                    field_scene.inventory_action_selection() != 2U) {
+                    std::cerr << "field First Aid dump: Equip/Use action "
+                                 "did not open\n";
+                    return 3;
+                }
+                press(0x40U);
+                if (!field_scene.first_aid_open() ||
+                    field_scene.first_aid_result_waiting() ||
+                    field_scene.first_aid_targets().active_count != 1U ||
+                    field_scene.first_aid_targets()
+                            .active_record_indices[0] != 0U ||
+                    field_scene.first_aid_target_cursor() != 0U) {
+                    std::cerr << "field First Aid dump: active target list "
+                                 "or initial selection is incorrect\n";
+                    return 3;
+                }
+                const auto target_scene = render_scene();
+                if (!field_inventory_selector_survives(
+                        target_scene, desired_column, desired_row) ||
+                    !target_face_matches(target_scene) ||
+                    !region_has_green_ink(
+                        target_scene, QRect(128, 88, 96, 8)) ||
+                    !region_has_green_ink(
+                        target_scene, QRect(128, 104, 96, 8)) ||
+                    !region_has_green_ink(
+                        target_scene, QRect(152, 112, 64, 8)) ||
+                    !field_hud_face_family_survives(
+                        target_scene, asset_root, field_archetype) ||
+                    !save_scene("first_aid_target", target_scene)) {
+                    std::cerr << "field First Aid dump: prompt, target, "
+                                 "cursor, portrait, or item outline failed\n";
+                    return 3;
+                }
+                if (!save_scene("actual", target_scene)) {
+                    std::cerr << "field First Aid dump: could not write "
+                                 "the canonical actual.bmp checkpoint\n";
+                    return 3;
+                }
+
+                for (int frame = 0; frame < 30; ++frame) {
+                    field_scene.advance_frame();
+                }
+                const auto target_idle_scene = render_scene();
+                if (target_idle_scene != target_scene ||
+                    !save_scene("first_aid_target_idle_30",
+                                target_idle_scene)) {
+                    std::cerr << "field First Aid dump: static target "
+                                 "screen changed without input\n";
+                    return 3;
+                }
+
+                // The ROM's target loop confirms with bit 14 only. B/C
+                // presses must neither consume the item nor acknowledge the
+                // target or emit the A-confirm audio command.
+                const auto audio_events_before_non_a = field_audio_events;
+                press(0x20U);
+                press(0x10U);
+                if (!field_scene.first_aid_open() ||
+                    field_scene.first_aid_target_cursor() != 0U ||
+                    field_scene.active_runner_record()
+                            .inventory_phase_bytes[medkit_slot] !=
+                        medkit_phase ||
+                    field_audio_events != audio_events_before_non_a ||
+                    render_scene() != target_scene) {
+                    std::cerr << "field First Aid dump: B/C changed the "
+                                 "A-only target loop\n";
+                    return 3;
+                }
+
+                press(0x02U);
+                if (field_scene.first_aid_target_cursor() !=
+                    field_scene.first_aid_targets().cancel_row()) {
+                    std::cerr << "field First Aid dump: Down did not select "
+                                 "CANCEL\n";
+                    return 3;
+                }
+                const auto cancel_scene = render_scene();
+                if (!region_has_green_ink(
+                        cancel_scene, QRect(144, 112, 72, 8)) ||
+                    !save_scene("first_aid_cancel_selected", cancel_scene)) {
+                    std::cerr << "field First Aid dump: CANCEL row failed\n";
+                    return 3;
+                }
+                press(0x40U);
+                if (field_scene.first_aid_open() ||
+                    patient.inventory_item_codes[medkit_slot] != 0x10U ||
+                    patient.inventory_phase_bytes[medkit_slot] !=
+                        medkit_phase ||
+                    patient.delay_meter != pre_cancel_patient.delay_meter ||
+                    patient.behavior_meter !=
+                        pre_cancel_patient.behavior_meter) {
+                    std::cerr << "field First Aid dump: CANCEL changed the "
+                                 "runner or medicine\n";
+                    return 3;
+                }
+                const auto cancelled_scene = render_scene();
+                if (field_inventory_selector_survives(
+                        cancelled_scene, desired_column, desired_row) ||
+                    !save_scene("first_aid_cancel_return", cancelled_scene)) {
+                    std::cerr << "field First Aid dump: cancel return did "
+                                 "not clear the item selector\n";
+                    return 3;
+                }
+
+                // Re-enter the same occupied cell through the command tabs.
+                // The medkit source archetype starts healthy, so lower its
+                // already-typed physical meter to a valid injured value for
+                // this deterministic effect-path fixture.
+                press(0x08U);
+                press(0x04U);
+                press(0x40U);
+                if (!field_scene.inventory_action_open() ||
+                    field_scene.inventory_action_selection() != 2U) {
+                    std::cerr << "field First Aid dump: item could not be "
+                                 "reselected after CANCEL\n";
+                    return 3;
+                }
+                press(0x40U);
+                if (!field_scene.first_aid_open() ||
+                    field_scene.first_aid_target_cursor() != 0U ||
+                    field_scene.first_aid_targets().active_count != 1U) {
+                    std::cerr << "field First Aid dump: target list did not "
+                                 "re-open after CANCEL count="
+                              << field_scene.first_aid_targets().active_count
+                              << " cursor="
+                              << field_scene.first_aid_target_cursor()
+                              << " open=" << field_scene.first_aid_open()
+                              << " flags=0x" << std::hex << patient.flags
+                              << std::dec << "\n";
+                    return 3;
+                }
+                const auto before_use = field_scene.active_runner_record();
+                const auto pre_confirm_target_count =
+                    field_scene.first_aid_targets().active_count;
+                field_scene.set_controller_port_byte(0x40U);
+                field_scene.advance_frame();
+                const auto& after_use = field_scene.active_runner_record();
+                if (!field_scene.first_aid_result_waiting() ||
+                    field_scene.first_aid_message() !=
+                        FirstAidMessage::medkit_used ||
+                    after_use.delay_meter <= before_use.delay_meter ||
+                    after_use.inventory_item_codes[medkit_slot] != 0x10U ||
+                    after_use.inventory_phase_bytes[medkit_slot] + 1U !=
+                        before_use.inventory_phase_bytes[medkit_slot] ||
+                    after_use.first_aid_continuation != 0xB45CU ||
+                    (after_use.flags & 0x5100U) !=
+                        (before_use.flags & 0x0100U)) {
+                    std::cerr << "field First Aid dump: medkit effect, "
+                                 "phase, status, or continuation failed"
+                              << " state="
+                              << field_scene.first_aid_result_waiting()
+                              << " target_count="
+                              << pre_confirm_target_count
+                              << " message="
+                              << static_cast<int>(
+                                     field_scene.first_aid_message())
+                              << " meter="
+                              << static_cast<int>(before_use.delay_meter)
+                              << "->"
+                              << static_cast<int>(after_use.delay_meter)
+                              << " phase="
+                              << static_cast<int>(
+                                     before_use.inventory_phase_bytes[
+                                         medkit_slot])
+                              << "->"
+                              << static_cast<int>(
+                                     after_use.inventory_phase_bytes[
+                                         medkit_slot])
+                              << " item=0x" << std::hex
+                              << static_cast<int>(
+                                     after_use.inventory_item_codes[
+                                         medkit_slot])
+                              << " flags=0x" << after_use.flags
+                              << " continuation=0x"
+                              << after_use.first_aid_continuation << std::dec
+                              << "\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0x40U);
+                field_scene.advance_frame();
+                if (!field_scene.first_aid_result_waiting()) {
+                    std::cerr << "field First Aid dump: held A dismissed "
+                                 "the result before a new edge\n";
+                    return 3;
+                }
+                const auto held_result_scene = render_scene();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                if (!field_scene.first_aid_result_waiting()) {
+                    std::cerr << "field First Aid dump: release dismissed "
+                                 "the result before a new edge\n";
+                    return 3;
+                }
+                const auto result_scene = render_scene();
+                if (result_scene != held_result_scene ||
+                    !field_inventory_selector_survives(
+                        result_scene, desired_column, desired_row) ||
+                    !target_face_matches(result_scene) ||
+                    !region_has_green_ink(
+                        result_scene, QRect(144, 104, 112, 8)) ||
+                    !region_has_green_ink(
+                        result_scene, QRect(136, 200, 96, 8)) ||
+                    !field_hud_meter_assets_survive(
+                        result_scene, asset_root, after_use.delay_meter,
+                        after_use.behavior_meter, true) ||
+                    !save_scene("first_aid_medkit_used", result_scene)) {
+                    std::cerr << "field First Aid dump: result, persistent "
+                                 "selector, target face, or live HUD failed\n";
+                    return 3;
+                }
+                if (field_audio_events != std::vector<std::uint16_t>{
+                                              0x24U, 0x24U, 0x25U, 0x24U,
+                                              0x24U, 0x24U, 0x24U}) {
+                    std::cerr << "field First Aid dump: source audio events "
+                                 "do not match the menu/move/use sequence:";
+                    for (const auto event : field_audio_events) {
+                        std::cerr << " 0x" << std::hex << event;
+                    }
+                    std::cerr << std::dec << '\n';
+                    return 3;
+                }
+                press(0x40U);
+                if (field_scene.first_aid_open() ||
+                    field_scene.active_runner_record().delay_meter !=
+                        after_use.delay_meter ||
+                    field_scene.active_runner_record()
+                            .inventory_phase_bytes[medkit_slot] !=
+                        after_use.inventory_phase_bytes[medkit_slot]) {
+                    std::cerr << "field First Aid dump: result acknowledgement "
+                                 "rolled back the treatment\n";
+                    return 3;
+                }
+                const auto returned_scene = render_scene();
+                if (field_inventory_selector_survives(
+                        returned_scene, desired_column, desired_row) ||
+                    !save_scene("first_aid_return", returned_scene)) {
+                    std::cerr << "field First Aid dump: return kept the "
+                                 "selected-item outline\n";
+                    return 3;
+                }
+                std::cout << "field_first_aid_dump=written path="
+                          << field_first_aid_dump_path->string()
+                          << " slot=" << medkit_slot
+                          << " physical="
+                          << static_cast<int>(after_use.delay_meter)
+                          << " mental="
+                          << static_cast<int>(after_use.behavior_meter)
+                          << "\n";
                 return 0;
             }
             if (field_action_dump_path.has_value()) {
@@ -3805,6 +6288,99 @@ int main(int argc, char** argv) {
                             std::cerr << "field HUD QA: archetypes " << a
                                       << " and " << b
                                       << " produced identical frames\n";
+                            return 3;
+                        }
+                    }
+                }
+
+                StartupIntegrationState meter_state;
+                std::string meter_state_error;
+                if (!build_smoke_state(0U, meter_state,
+                                       meter_state_error)) {
+                    std::cerr << meter_state_error << '\n';
+                    return 3;
+                }
+                qt_runtime::FieldSceneRuntime meter_scene(
+                    [](const auto&) {});
+                if (!meter_scene.bootstrap(meter_state)) {
+                    std::cerr << "field HUD meter QA: "
+                              << meter_scene.failure() << '\n';
+                    return 3;
+                }
+                const auto capture_meter = [&](const std::uint8_t delay,
+                                               const std::uint8_t behavior,
+                                               const std::string& label,
+                                               QImage& destination) {
+                    auto& record = meter_scene.active_runner_record();
+                    record.delay_meter = delay;
+                    record.behavior_meter = behavior;
+                    destination = QImage(kSceneWidth, kSceneHeight,
+                                         QImage::Format_RGB32);
+                    destination.fill(Qt::black);
+                    QPainter meter_painter(&destination);
+                    meter_scene.paint(meter_painter);
+                    meter_painter.end();
+                    if (!field_hud_meter_assets_survive(
+                            destination, asset_root, delay, behavior, true) ||
+                        !field_hud_chrome_survives(destination, asset_root)) {
+                        std::cerr << "field HUD meter QA: " << label
+                                  << " did not display the selected live row\n";
+                        return false;
+                    }
+                    const auto path = *field_hud_qa_path /
+                                      ("field-hud-" + label + ".bmp");
+                    if (!destination.save(QString::fromStdWString(
+                            path.wstring()))) {
+                        std::cerr << "field HUD meter QA: could not write "
+                                  << path.string() << '\n';
+                        return false;
+                    }
+                    return true;
+                };
+
+                std::array<QImage, 3> delay_frames{};
+                constexpr std::array<std::uint8_t, 3> kMeterSamples{0U, 5U,
+                                                                    10U};
+                for (std::size_t sample = 0;
+                     sample < kMeterSamples.size(); ++sample) {
+                    const auto value = kMeterSamples[sample];
+                    if (!capture_meter(value, 0U,
+                                       "delay-" + std::to_string(value),
+                                       delay_frames[sample])) {
+                        return 3;
+                    }
+                }
+                for (std::size_t a = 0; a < delay_frames.size(); ++a) {
+                    for (std::size_t b = a + 1U; b < delay_frames.size();
+                         ++b) {
+                        if (delay_frames[a].copy(QRect(272, 24, 8, 32)) ==
+                            delay_frames[b].copy(QRect(272, 24, 8, 32))) {
+                            std::cerr << "field HUD meter QA: delay rows "
+                                      << a << " and " << b
+                                      << " rendered identically\n";
+                            return 3;
+                        }
+                    }
+                }
+
+                std::array<QImage, 3> behavior_frames{};
+                for (std::size_t sample = 0;
+                     sample < kMeterSamples.size(); ++sample) {
+                    const auto value = kMeterSamples[sample];
+                    if (!capture_meter(10U, value,
+                                       "behavior-" + std::to_string(value),
+                                       behavior_frames[sample])) {
+                        return 3;
+                    }
+                }
+                for (std::size_t a = 0; a < behavior_frames.size(); ++a) {
+                    for (std::size_t b = a + 1U;
+                         b < behavior_frames.size(); ++b) {
+                        if (behavior_frames[a].copy(QRect(280, 56, 32, 8)) ==
+                            behavior_frames[b].copy(QRect(280, 56, 32, 8))) {
+                            std::cerr << "field HUD meter QA: behavior rows "
+                                      << a << " and " << b
+                                      << " rendered identically\n";
                             return 3;
                         }
                     }

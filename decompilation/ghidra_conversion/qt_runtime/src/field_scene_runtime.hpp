@@ -2,6 +2,8 @@
 
 #include "shadowrun_ghidra/core/controller_wait_conversion.hpp"
 #include "shadowrun_ghidra/menus/pocket_secretary_menu_conversion.hpp"
+#include "shadowrun_ghidra/menus/magic_menu_conversion.hpp"
+#include "shadowrun_ghidra/menus/first_aid_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_coordinate_conversion.hpp"
 #include "shadowrun_ghidra/entities/collision_state_conversion.hpp"
 #include "shadowrun_ghidra/entities/collision_probe_conversion.hpp"
@@ -55,10 +57,42 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
+#include <utility>
 
 class QPainter;
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
+
+enum class CommandOverviewMagicState {
+    inactive,
+    magical_defense_wait,
+    spell_panel,
+    spell_force_selection,
+    spell_posture_selection,
+};
+
+enum class CommandOverviewFirstAidState {
+    inactive,
+    target_selection,
+    result_wait,
+};
+
+enum class CommandOverviewAutomaticUseState {
+    inactive,
+    result_wait,
+};
+
+enum class CommandOverviewActionMessage {
+    none,
+    cannot_discard,
+    cannot_trade,
+};
+
+struct MagicDefenseStripView {
+    std::uint16_t value = 0;
+    std::uint8_t bar_row = 0;
+};
 
 // Composition-only adapter for the separate Ghidra-conversion Qt executable.
 // It owns no ROM view and does not duplicate converted field state. The
@@ -67,7 +101,8 @@ namespace shadowrun::ghidra_conversion::qt_runtime {
 class FieldSceneRuntime final {
 public:
     explicit FieldSceneRuntime(
-        std::function<void(std::string_view)> source_boundary);
+        std::function<void(std::string_view)> source_boundary,
+        std::function<void(std::uint16_t)> source_audio_event = {});
 
     bool bootstrap(
         const integration::StartupIntegrationState& startup_state);
@@ -94,8 +129,35 @@ public:
     RunnerRecordFields& active_runner_record() noexcept {
         return field_party_roster_.active_record();
     }
+    void install_party_member_for_dump(std::size_t slot,
+                                       RunnerRecordFields record,
+                                       std::string name) {
+        field_party_roster_.install_party_member_for_dump(
+            slot, std::move(record), std::move(name));
+    }
+    void set_active_party_slot_for_dump(std::size_t slot) {
+        field_party_roster_.set_active_slot(slot);
+        field_entity_selection_state_.active_index =
+            field_party_roster_.active_slot();
+        field_entity_behavior_flags_ = static_cast<std::uint8_t>(
+            active_runner_record().flags >> 8U);
+        field_movement_behavior_record_.behavior_flags =
+            field_entity_behavior_flags_;
+        refresh_field_hud_runner_slot();
+    }
+    bool field_party_slot_active_for_dump(std::size_t slot) const noexcept {
+        return field_party_roster_.slot_active(slot);
+    }
+    std::size_t field_active_party_slot_for_dump() const noexcept {
+        return field_party_roster_.active_slot();
+    }
     const RunnerRecordFields& active_runner_record() const noexcept {
         return field_party_roster_.active_record();
+    }
+    const std::array<RunnerRecordFields,
+                     FieldPartyRosterRuntime::kSlotCount>&
+    field_party_records_for_dump() const noexcept {
+        return field_party_roster_.records();
     }
     const EquipmentCombatBarResult& command_overview_combat_bars() const
         noexcept {
@@ -107,17 +169,98 @@ public:
     std::uint8_t inventory_action_selection() const noexcept {
         return command_overview_inventory_action_.action_selector;
     }
+    bool first_aid_open() const noexcept {
+        return command_overview_first_aid_state_ !=
+               CommandOverviewFirstAidState::inactive;
+    }
+    bool first_aid_result_waiting() const noexcept {
+        return command_overview_first_aid_state_ ==
+               CommandOverviewFirstAidState::result_wait;
+    }
+    std::size_t first_aid_target_cursor() const noexcept {
+        return command_overview_first_aid_cursor_;
+    }
+    const FirstAidTargetList& first_aid_targets() const noexcept {
+        return command_overview_first_aid_targets_;
+    }
+    FirstAidMessage first_aid_message() const noexcept {
+        return command_overview_first_aid_message_;
+    }
+    bool automatic_use_result_waiting() const noexcept {
+        return command_overview_automatic_use_state_ ==
+               CommandOverviewAutomaticUseState::result_wait;
+    }
     bool discard_confirmation_open() const noexcept {
         return command_overview_discard_confirmation_active_;
     }
     bool discard_confirmation_yes() const noexcept {
         return command_overview_discard_confirmation_.selected_option == 0U;
     }
+    bool inventory_trade_open() const noexcept {
+        return command_overview_inventory_trade_.open;
+    }
+    std::size_t inventory_trade_recipient() const noexcept {
+        return command_overview_inventory_trade_.recipient_slot;
+    }
+    std::size_t inventory_trade_recipient_inventory_slot() const noexcept {
+        return command_overview_inventory_trade_.recipient_inventory_slot;
+    }
+    bool inventory_trade_recipient_full() const noexcept {
+        return command_overview_inventory_trade_.recipient_inventory_full;
+    }
+    bool inventory_trade_yes_selected() const noexcept {
+        return command_overview_inventory_trade_.yes_selected;
+    }
+    CommandOverviewActionMessage inventory_action_message() const noexcept {
+        return command_overview_action_message_;
+    }
     bool clips_menu_open() const noexcept {
         return command_overview_clips_.is_open();
     }
     bool cyberware_menu_open() const noexcept {
         return command_overview_cyberware_active_;
+    }
+    bool magic_defense_open() const noexcept {
+        return command_overview_magic_state_ ==
+               CommandOverviewMagicState::magical_defense_wait;
+    }
+    bool magic_spell_panel_open() const noexcept {
+        return command_overview_magic_state_ ==
+               CommandOverviewMagicState::spell_panel;
+    }
+    bool magic_force_selection_open() const noexcept {
+        return command_overview_magic_state_ ==
+               CommandOverviewMagicState::spell_force_selection;
+    }
+    bool magic_posture_selection_open() const noexcept {
+        return command_overview_magic_state_ ==
+               CommandOverviewMagicState::spell_posture_selection;
+    }
+    bool magic_spell_interface_open() const noexcept {
+        return magic_spell_panel_open() || magic_force_selection_open() ||
+               magic_posture_selection_open();
+    }
+    std::uint16_t magic_current_force() const noexcept {
+        return command_overview_magic_force_.current_force;
+    }
+    std::uint16_t magic_maximum_force() const noexcept {
+        return command_overview_magic_force_.maximum_force;
+    }
+    MagicMenuSelection magic_spell_selection() const noexcept {
+        return command_overview_magic_loop_.selection;
+    }
+    const std::optional<MagicSpellSelection>& magic_selected_spell() const
+        noexcept {
+        return command_overview_magic_selected_spell_;
+    }
+    std::uint8_t magic_cursor_phase() const noexcept {
+        return command_overview_magic_cursor_phase_;
+    }
+    const MagicDefenseStripView& magic_physical_defense_view() const noexcept {
+        return command_overview_magic_physical_defense_;
+    }
+    const MagicDefenseStripView& magic_mana_defense_view() const noexcept {
+        return command_overview_magic_mana_defense_;
     }
     const CyberwareMenuModel& cyberware_menu_model() const noexcept {
         return command_overview_cyberware_;
@@ -142,8 +285,75 @@ public:
     bool pocket_secretary_open() const noexcept {
         return pocket_secretary_.open;
     }
+    bool pocket_secretary_cyberdeck_unavailable_waiting() const noexcept {
+        return pocket_secretary_.cyberdeck_unavailable_wait;
+    }
+    bool pocket_secretary_group_items_waiting() const noexcept {
+        return pocket_secretary_.group_items_wait;
+    }
+    bool pocket_secretary_notebook_open() const noexcept {
+        return pocket_secretary_.notebook.open;
+    }
+    bool pocket_secretary_notebook_no_run_waiting() const noexcept {
+        return pocket_secretary_.notebook.no_current_run_wait;
+    }
+    std::uint8_t pocket_secretary_notebook_selection() const noexcept {
+        return pocket_secretary_.notebook.selection;
+    }
+    std::uint8_t pocket_secretary_notebook_option_count() const noexcept {
+        return pocket_secretary_.notebook.option_count;
+    }
+    bool pocket_secretary_notebook_tips_open() const noexcept {
+        return pocket_secretary_.notebook.tips.open;
+    }
+    std::uint8_t pocket_secretary_notebook_tips_selection() const noexcept {
+        return pocket_secretary_.notebook.tips.selection;
+    }
+    std::uint8_t pocket_secretary_notebook_visible_tip_count() const noexcept {
+        return pocket_secretary_.notebook.tips.visible_count;
+    }
+    std::uint8_t pocket_secretary_notebook_visible_tip_source_index(
+        std::size_t page) const noexcept {
+        const auto& tips = pocket_secretary_.notebook.tips;
+        return page < tips.visible_count
+                   ? tips.visible_source_indices[page]
+                   : 0xFFU;
+    }
+    bool notebook_tip_flags_resolved() const noexcept {
+        return notebook_tip_flags_resolved_;
+    }
+    // Story event writers use the same typed source bit order as F9A4. This
+    // adapter currently seeds fresh New Game; save restoration must supply
+    // the full three-longword state before mutating individual tips.
+    bool set_notebook_tip_unlocked(std::size_t source_index,
+                                   bool unlocked) noexcept;
+    // QA seam for the source FFFC22 catalog branch. Normal play obtains this
+    // word from quest-item event handling, which is not connected yet.
+    void set_group_item_flags_for_dump(std::uint32_t flags) noexcept {
+        group_item_flags_ = flags & 0x7FFFU;
+    }
     std::uint8_t pocket_secretary_selection() const noexcept {
         return pocket_secretary_.selection;
+    }
+    bool pocket_secretary_dismiss_runner_open() const noexcept {
+        return dismiss_runner_.open;
+    }
+    std::uint8_t dismiss_runner_selection() const noexcept {
+        return dismiss_runner_.selection;
+    }
+    std::uint8_t dismiss_runner_option_count() const noexcept {
+        return static_cast<std::uint8_t>(dismiss_runner_.candidate_count + 1U);
+    }
+    std::optional<std::size_t> dismiss_runner_preview_slot() const noexcept {
+        if (!dismiss_runner_.open || dismiss_runner_.selection == 0U ||
+            dismiss_runner_.selection > dismiss_runner_.candidate_count) {
+            return std::nullopt;
+        }
+        return dismiss_runner_.candidate_slots[
+            static_cast<std::size_t>(dismiss_runner_.selection - 1U)];
+    }
+    std::uint32_t dismiss_runner_effect_frames() const noexcept {
+        return dismiss_runner_effect_frames_;
     }
     bool posture_dialog_open() const noexcept {
         return posture_dialog_active_;
@@ -196,6 +406,7 @@ private:
                            int& origin_y);
     void paint_field_entity(QPainter& painter) const;
     void paint_field_hud_overlays(QPainter& painter) const;
+    void paint_command_overview_magic(QPainter& painter) const;
     void paint_command_overview(QPainter& painter) const;
     void paint_command_overview_clips(QPainter& painter) const;
     void draw_command_overview_text(QPainter& painter, int x, int y,
@@ -207,14 +418,30 @@ private:
         const integration::StartupIntegrationState& startup_state);
     void advance_command_overview_inventory_action(
         std::uint16_t controller_events);
+    void begin_command_overview_first_aid();
+    void advance_command_overview_first_aid(
+        std::uint16_t controller_events);
+    void finish_command_overview_first_aid();
+    void advance_command_overview_automatic_use(
+        std::uint16_t controller_events);
+    void finish_command_overview_automatic_use();
     void advance_command_overview_clips(std::uint16_t controller_events);
     void begin_command_overview_inventory_action();
     void begin_command_overview_cyberware();
+    void begin_command_overview_magic();
+    void advance_command_overview_magic(std::uint16_t controller_events);
+    void begin_command_overview_magic_spell_action();
+    void finish_command_overview_magic_spell_action();
     void begin_command_overview_clips();
     void begin_pocket_secretary();
+    void begin_pocket_secretary_dismiss_runner();
+    void finish_pocket_secretary_dismiss_runner(std::size_t slot);
+    void advance_pocket_secretary_dismiss_runner_effect();
     void dispatch_command_overview_inventory_action(
         const InventoryActionResult& result);
     void advance_command_overview_discard_confirmation(
+        std::uint16_t controller_events);
+    void advance_command_overview_inventory_trade(
         std::uint16_t controller_events);
     void open_command_overview();
     bool load_command_overview_assets(const ConversionAssetCatalog& catalog);
@@ -229,6 +456,7 @@ private:
     };
 
     std::function<void(std::string_view)> source_boundary_callback_;
+    std::function<void(std::uint16_t)> source_audio_event_callback_;
     integration::FieldSessionBootstrapInput input_;
     integration::FieldSessionBootstrapState state_;
     integration::FieldSessionBootstrapCallbacks callbacks_;
@@ -245,6 +473,11 @@ private:
     FieldDialogueRuntime field_dialogue_;
     FieldDialogueEventResolver field_dialogue_event_resolver_;
     FieldPartyRosterRuntime field_party_roster_{};
+    DismissRunnerMenuState dismiss_runner_{};
+    RandomGridEffectState dismiss_runner_random_grid_effect_{};
+    std::uint32_t dismiss_runner_effect_frames_ = 0U;
+    std::array<std::int8_t, 12> dismiss_runner_random_grid_cells_{
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
     std::size_t field_joshua_archetype_selection_ = 0U;
     QImage field_map_;
     QImage field_hud_;
@@ -259,8 +492,17 @@ private:
     std::array<QImage, 2> command_overview_selected_cells_{};
     QImage command_overview_action_background_;
     std::array<QImage, 4> command_overview_action_focus_{};
+    QImage command_overview_action_confirmation_background_;
+    std::array<QImage, 2> command_overview_action_confirmation_focus_{};
     std::array<QImage, 4> command_overview_clips_focus_{};
     std::array<QImage, 4> command_overview_clips_trade_focus_{};
+    QImage command_overview_magic_panel_background_;
+    std::array<QImage, kMagicSpellTextCount> command_overview_magic_spell_icons_{};
+    std::array<QImage, 4> command_overview_magic_cursor_frames_{};
+    std::array<QImage, 5> command_overview_magic_posture_bars_{};
+    std::array<QImage, 5> command_overview_magic_force_meter_tiles_{};
+    std::array<QImage, 4> command_overview_magic_availability_bars_{};
+    std::array<QImage, 10> command_overview_magic_damage_bars_{};
     std::array<std::array<QImage, 2>, 50> command_overview_inventory_icons_{};
     std::array<QImage, 50> command_overview_item_details_{};
     std::array<QImage, 14> command_overview_damage_bars_{};
@@ -272,24 +514,62 @@ private:
     EquipmentCombatBarResult command_overview_combat_bars_{};
     ItemActionDetailResult command_overview_item_detail_{};
     InventoryActionMenuState command_overview_inventory_action_{};
+    CommandOverviewFirstAidState command_overview_first_aid_state_ =
+        CommandOverviewFirstAidState::inactive;
+    FirstAidTargetList command_overview_first_aid_targets_{};
+    std::size_t command_overview_first_aid_cursor_ = 0U;
+    FirstAidMessage command_overview_first_aid_message_ =
+        FirstAidMessage::none;
+    CommandOverviewAutomaticUseState command_overview_automatic_use_state_ =
+        CommandOverviewAutomaticUseState::inactive;
+    std::uint16_t field_random_seed_ = 0U;
     std::optional<SelectedInventoryItem>
         command_overview_selected_inventory_item_;
     MenuConfirmationState command_overview_discard_confirmation_{};
+    InventoryTradeState command_overview_inventory_trade_{};
     FieldClipsMenuRuntime command_overview_clips_{};
     CyberwareMenuModel command_overview_cyberware_{};
     bool command_overview_cyberware_active_ = false;
-    std::string command_overview_action_message_;
+    CommandOverviewMagicState command_overview_magic_state_ =
+        CommandOverviewMagicState::inactive;
+    MagicDefenseStripView command_overview_magic_physical_defense_{};
+    MagicDefenseStripView command_overview_magic_mana_defense_{};
+    MagicMenuLoopState command_overview_magic_loop_{};
+    MagicForceState command_overview_magic_force_{};
+    std::optional<MagicSpellSelection> command_overview_magic_selected_spell_;
+    std::uint8_t command_overview_magic_cursor_phase_ = 0U;
+    std::uint8_t command_overview_magic_cursor_timer_ = 0U;
+    CommandOverviewActionMessage command_overview_action_message_ =
+        CommandOverviewActionMessage::none;
     bool command_overview_inventory_action_active_ = false;
+    bool command_overview_inventory_selector_suppressed_ = false;
     bool command_overview_discard_confirmation_active_ = false;
     std::array<QImage, kFieldHudSlotCount> field_hud_faces_{};
     std::array<QImage, kFieldHudSlotCount> field_hud_items_{};
     std::array<QImage, kFieldHudSlotCount> field_hud_unarmed_items_{};
-    std::array<QImage, kFieldHudSlotCount> field_hud_vertical_counters_{};
-    std::array<QImage, kFieldHudSlotCount> field_hud_horizontal_counters_{};
+    std::array<QImage, kFieldHudMeterLevelCount>
+        field_hud_delay_meter_counters_{};
+    std::array<QImage,
+               kFieldHudMeterLevelCount * kFieldHudBehaviorMeterProfileCount>
+        field_hud_behavior_meter_counters_{};
     std::array<QImage, kFieldHudAmmoCounterCount> field_hud_ammo_counters_{};
     std::array<FieldHudSlotState, kFieldHudSlotCount> field_hud_slots_{};
     PocketSecretaryMenuState pocket_secretary_{};
+    // FF018F bit 0 is session state. Fresh New Game starts clear; restored
+    // saves remain unknown until that global is included in the save adapter.
+    std::optional<bool> cyberdeck_available_ = false;
+    // FFFC22 is not present in the current save adapter. New Game initializes
+    // it to zero; restored saves remain an explicit source-state boundary.
+    std::optional<std::uint32_t> group_item_flags_ = 0U;
+    // A fresh New Game has no active run. Save restoration does not yet
+    // publish the source FFFBEC run state to this presentation adapter.
+    bool notebook_current_run_available_ = false;
+    std::array<std::uint32_t, 3> notebook_tip_flags_{{1U, 0U, 0U}};
+    bool notebook_tip_flags_resolved_ = true;
     QImage pocket_secretary_background_;
+    QImage pocket_secretary_grid_;
+    std::unordered_map<std::string, QImage> dismiss_runner_preview_panels_;
+    std::array<QImage, 7> dismiss_runner_random_grid_patterns_{};
     QImage command_overview_attributes_background_;
     QImage posture_focus_;
     bool posture_dialog_active_ = false;

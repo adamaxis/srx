@@ -13,11 +13,15 @@
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
 #include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
+#include "shadowrun_ghidra/core/random_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_action_math_conversion.hpp"
 #include "shadowrun_ghidra/menus/clips_menu_conversion.hpp"
+#include "shadowrun_ghidra/menus/menu_transfer_batch_conversion.hpp"
 #include "genesis_image_compositor.hpp"
 
 #include <QPainter>
 #include <QColor>
+#include <QRandomGenerator>
 
 #include <algorithm>
 #include <cstdint>
@@ -37,10 +41,12 @@ constexpr std::string_view kFieldHudFaceAliasPrefix = "field.hud.face.";
 constexpr std::string_view kFieldHudItemAliasPrefix = "field.hud.item.";
 constexpr std::string_view kFieldHudUnarmedItemAliasPrefix =
     "field.hud.unarmed.item.";
-constexpr std::string_view kFieldHudVerticalCounterAliasPrefix =
-    "field.hud.vertical.counter.";
-constexpr std::string_view kFieldHudHorizontalCounterAliasPrefix =
-    "field.hud.horizontal.counter.";
+constexpr std::string_view kFieldHudDelayMeterAliasPrefix =
+    "field.hud.delay.meter.";
+constexpr std::string_view kFieldHudBehaviorMeterPrimaryAliasPrefix =
+    "field.hud.behavior.meter.primary.";
+constexpr std::string_view kFieldHudBehaviorMeterCompanionAliasPrefix =
+    "field.hud.behavior.meter.companion.";
 constexpr std::string_view kFieldHudAmmoCounterAliasPrefix =
     "field.hud.ammo.counter.";
 constexpr std::string_view kFieldEntityIdleAliasPrefix = "field.entities.idle.";
@@ -53,6 +59,10 @@ constexpr std::string_view kCommandOverviewInventoryBoxesAlias =
 constexpr std::string_view kCommandOverviewCursorAlias = "menu.field.cursor";
 constexpr std::string_view kCommandOverviewPortraitAliasPrefix =
     "menu.field.runner.portrait.";
+constexpr std::string_view kRandomGridFixedAliasPrefix =
+    "menu.field.random.grid.fixed.";
+constexpr std::string_view kRandomGridIndexedAliasPrefix =
+    "menu.field.random.grid.indexed.";
 constexpr std::string_view kCommandOverviewFocusAliasPrefix =
     "menu.field.command.focus.";
 constexpr std::string_view kCommandOverviewStatusAliasPrefix =
@@ -61,8 +71,12 @@ constexpr std::string_view kCommandOverviewSelectedCellAliasPrefix =
     "menu.field.selected.cell.";
 constexpr std::string_view kCommandOverviewActionBackgroundAlias =
     "menu.field.action.background";
+constexpr std::string_view kCommandOverviewActionConfirmationBackgroundAlias =
+    "menu.field.action.confirm.background";
 constexpr std::string_view kCommandOverviewActionFocusAliasPrefix =
     "menu.field.action.focus.";
+constexpr std::string_view kCommandOverviewActionConfirmationFocusAliasPrefix =
+    "menu.field.action.confirm.focus.";
 constexpr std::string_view kCommandOverviewClipsFocusAliasPrefix =
     "menu.field.clips.focus.";
 constexpr std::string_view kCommandOverviewClipsTradeFocusAliasPrefix =
@@ -85,6 +99,11 @@ constexpr int kCommandOverviewActionBackgroundY = 184;
 constexpr std::array<int, 4> kCommandOverviewActionFocusX{{128, 152, 176,
                                                              200}};
 constexpr int kCommandOverviewActionFocusY = 184;
+// ROM 0x127FC writes Yes at plane-B EBA2 and No at EBAE, over the
+// source CD3B6 confirmation row installed at EB9E.
+constexpr std::array<int, 2> kCommandOverviewActionConfirmationFocusX{{136,
+                                                                        184}};
+constexpr int kCommandOverviewActionConfirmationFocusY = 184;
 // 0x11B58 and 0x11E7E use the same lower four-button row origin as the
 // inventory action loop, but select from their own four-entry focus tables.
 // Painting this opaque 120x16 row is intentional: it replaces the five
@@ -157,11 +176,30 @@ std::array<std::uint8_t, 4> field_sample_state_from_result(
         static_cast<std::uint8_t>(packed_state)};
 }
 
+EntityActionRecord magic_action_record_from_runner(
+    const RunnerRecordFields& runner) {
+    // 0x1047E / 0x106DA use this subset of the source record for Magical
+    // Defense: active byte +0x10 (the high byte of the exposed big-endian
+    // flags word), class +0x9B, item-0x18 skill +0x80, +0x77/+0x7C defense
+    // attributes, and possession/phase rows +0x66..75.
+    EntityActionRecord result{};
+    result.flags_10 = static_cast<std::uint8_t>(runner.flags >> 8U);
+    result.class_code = runner.archetype_index;
+    result.item18_base = runner.skills[0];
+    result.attribute_77 = runner.attributes[0];
+    result.attribute_7c = runner.attributes[5];
+    result.item_codes = runner.inventory_item_codes;
+    result.item_phases = runner.inventory_phase_bytes;
+    return result;
+}
+
 } // namespace
 
 FieldSceneRuntime::FieldSceneRuntime(
-    std::function<void(std::string_view)> source_boundary)
+    std::function<void(std::string_view)> source_boundary,
+    std::function<void(std::uint16_t)> source_audio_event)
     : source_boundary_callback_(std::move(source_boundary)),
+      source_audio_event_callback_(std::move(source_audio_event)),
       field_dialogue_([this](const std::string_view boundary) {
           this->source_boundary(boundary);
       }) {
@@ -458,12 +496,33 @@ bool FieldSceneRuntime::load_field_hud_overlays(
     if (!load_slot(kFieldHudFaceAliasPrefix, field_hud_faces_) ||
         !load_slot(kFieldHudItemAliasPrefix, field_hud_items_) ||
         !load_slot(kFieldHudUnarmedItemAliasPrefix,
-                   field_hud_unarmed_items_) ||
-        !load_slot(kFieldHudVerticalCounterAliasPrefix,
-                   field_hud_vertical_counters_) ||
-        !load_slot(kFieldHudHorizontalCounterAliasPrefix,
-                   field_hud_horizontal_counters_)) {
+                   field_hud_unarmed_items_)) {
         return false;
+    }
+    for (std::size_t meter = 0; meter < kFieldHudMeterLevelCount; ++meter) {
+        const auto delay_alias =
+            std::string(kFieldHudDelayMeterAliasPrefix) +
+            std::to_string(meter);
+        const auto primary_alias =
+            std::string(kFieldHudBehaviorMeterPrimaryAliasPrefix) +
+            std::to_string(meter);
+        const auto companion_alias =
+            std::string(kFieldHudBehaviorMeterCompanionAliasPrefix) +
+            std::to_string(meter);
+        if (!load_sprite_image(catalog, delay_alias,
+                               field_hud_delay_meter_counters_[meter],
+                               origin_x, origin_y) ||
+            !load_sprite_image(
+                catalog, primary_alias,
+                field_hud_behavior_meter_counters_[meter], origin_x,
+                origin_y) ||
+            !load_sprite_image(
+                catalog, companion_alias,
+                field_hud_behavior_meter_counters_[
+                    kFieldHudMeterLevelCount + meter],
+                origin_x, origin_y)) {
+            return false;
+        }
     }
     for (std::size_t ammo = 0; ammo < field_hud_ammo_counters_.size();
          ++ammo) {
@@ -485,13 +544,99 @@ bool FieldSceneRuntime::load_command_overview_assets(
                     command_overview_inventory_boxes_) ||
         !load_image(catalog, kCommandOverviewActionBackgroundAlias,
                     command_overview_action_background_) ||
+        !load_image(catalog,
+                    kCommandOverviewActionConfirmationBackgroundAlias,
+                    command_overview_action_confirmation_background_) ||
         !load_image(catalog, "menu.field.font", command_overview_font_) ||
         !load_image(catalog, "menu.pocket.secretary.background",
                     pocket_secretary_background_) ||
+        !load_image(catalog, "menu.pocket.secretary.grid",
+                    pocket_secretary_grid_) ||
         !load_image(catalog, "menu.field.attributes.background",
                     command_overview_attributes_background_) ||
-        !load_image(catalog, "menu.field.posture.focus", posture_focus_)) {
+        !load_image(catalog, "menu.field.posture.focus", posture_focus_) ||
+        !load_image(catalog, "menu.field.magic.panel.background",
+                    command_overview_magic_panel_background_)) {
         return false;
+    }
+    constexpr std::string_view kRunnerPreviewAliasPrefix =
+        "menu.field.runner.preview.table.";
+    for (const auto& resource : catalog.records) {
+        if (resource.alias.rfind(kRunnerPreviewAliasPrefix.data(), 0U) != 0U) {
+            continue;
+        }
+        QImage image;
+        if (!load_image(catalog, resource.alias, image)) {
+            return false;
+        }
+        dismiss_runner_preview_panels_.emplace(resource.alias,
+                                               std::move(image));
+    }
+    for (std::size_t index = 0;
+         index < dismiss_runner_random_grid_patterns_.size(); ++index) {
+        const auto alias = index < 3U
+            ? std::string(kRandomGridFixedAliasPrefix) +
+                  std::to_string(index)
+            : std::string(kRandomGridIndexedAliasPrefix) +
+                  std::to_string(index - 3U);
+        if (!load_image(catalog, alias,
+                        dismiss_runner_random_grid_patterns_[index])) {
+            return false;
+        }
+    }
+    for (std::size_t index = 0;
+         index < command_overview_magic_spell_icons_.size(); ++index) {
+        if (!load_image(catalog,
+                        "menu.field.magic.spell.icon." +
+                            std::to_string(index),
+                        command_overview_magic_spell_icons_[index])) {
+            return false;
+        }
+    }
+    for (std::size_t phase = 0;
+         phase < command_overview_magic_cursor_frames_.size(); ++phase) {
+        if (!load_image(catalog,
+                        "menu.field.magic.cursor.frame." +
+                            std::to_string(phase),
+                        command_overview_magic_cursor_frames_[phase])) {
+            return false;
+        }
+    }
+    for (std::size_t index = 0;
+         index < command_overview_magic_posture_bars_.size(); ++index) {
+        if (!load_image(catalog,
+                        "menu.field.magic.posture.bar." +
+                            std::to_string(index),
+                        command_overview_magic_posture_bars_[index])) {
+            return false;
+        }
+    }
+    for (std::size_t index = 0;
+         index < command_overview_magic_force_meter_tiles_.size(); ++index) {
+        if (!load_image(catalog,
+                        "menu.field.magic.force.meter.tile." +
+                            std::to_string(index),
+                        command_overview_magic_force_meter_tiles_[index])) {
+            return false;
+        }
+    }
+    for (std::size_t index = 0;
+         index < command_overview_magic_availability_bars_.size(); ++index) {
+        if (!load_image(catalog,
+                        "menu.field.magic.availability.bar." +
+                            std::to_string(index),
+                        command_overview_magic_availability_bars_[index])) {
+            return false;
+        }
+    }
+    for (std::size_t index = 0;
+         index < command_overview_magic_damage_bars_.size(); ++index) {
+        if (!load_image(catalog,
+                        "menu.field.magic.damage.bar." +
+                            std::to_string(index),
+                        command_overview_magic_damage_bars_[index])) {
+            return false;
+        }
     }
     // The source inventory-box writer changes only the box outline cells;
     // its extracted plane-sized bitmap carries color-zero as alpha 0. The
@@ -544,6 +689,17 @@ bool FieldSceneRuntime::load_command_overview_assets(
                         std::string(kCommandOverviewActionFocusAliasPrefix) +
                             std::to_string(index),
                         command_overview_action_focus_[index])) {
+            return false;
+        }
+    }
+    for (std::size_t index = 0;
+         index < command_overview_action_confirmation_focus_.size(); ++index) {
+        if (!load_image(
+                catalog,
+                std::string(
+                    kCommandOverviewActionConfirmationFocusAliasPrefix) +
+                    std::to_string(index),
+                command_overview_action_confirmation_focus_[index])) {
             return false;
         }
     }
@@ -1066,8 +1222,17 @@ void FieldSceneRuntime::open_command_overview() {
 
     command_overview_inventory_action_ = InventoryActionMenuState{};
     command_overview_selected_inventory_item_.reset();
+    command_overview_first_aid_state_ =
+        CommandOverviewFirstAidState::inactive;
+    command_overview_first_aid_targets_ = FirstAidTargetList{};
+    command_overview_first_aid_cursor_ = 0U;
+    command_overview_first_aid_message_ = FirstAidMessage::none;
+    command_overview_automatic_use_state_ =
+        CommandOverviewAutomaticUseState::inactive;
+    command_overview_inventory_selector_suppressed_ = false;
     command_overview_discard_confirmation_ = MenuConfirmationState{};
-    command_overview_action_message_.clear();
+    command_overview_inventory_trade_ = InventoryTradeState{};
+    command_overview_action_message_ = CommandOverviewActionMessage::none;
     command_overview_inventory_action_active_ = false;
     command_overview_discard_confirmation_active_ = false;
     command_overview_clips_.close();
@@ -1115,6 +1280,11 @@ void FieldSceneRuntime::refresh_field_hud_runner_slot() {
         active_runner_record().equipped_inventory_slot;
     slot.equipped_item_code = active_runner_record().equipped_item_code;
     slot.ammo_rounds = active_runner_record().ammo_rounds;
+    slot.delay_meter =
+        static_cast<std::int8_t>(active_runner_record().delay_meter);
+    slot.behavior_meter =
+        static_cast<std::int8_t>(active_runner_record().behavior_meter);
+    slot.primary_runner = true;
 }
 
 void FieldSceneRuntime::initialize_field_party_roster(
@@ -1173,7 +1343,137 @@ void FieldSceneRuntime::begin_pocket_secretary() {
          [this] { source_boundary("field.pocket_secretary.render_menu_text"); },
          [this] { source_boundary("field.pocket_secretary.render_menu_numbers"); },
          {}, {}});
+    dismiss_runner_ = DismissRunnerMenuState{};
+    dismiss_runner_random_grid_effect_ = RandomGridEffectState{};
+    dismiss_runner_effect_frames_ = 0U;
+    dismiss_runner_random_grid_cells_.fill(-1);
     source_boundary("field.pocket_secretary.opened");
+}
+
+bool FieldSceneRuntime::set_notebook_tip_unlocked(
+    const std::size_t source_index, const bool unlocked) noexcept {
+    if (!notebook_tip_flags_resolved_ || source_index >= 96U) {
+        return false;
+    }
+    const auto group = source_index / 32U;
+    const auto mask = std::uint32_t{1} << (source_index % 32U);
+    if (unlocked) {
+        notebook_tip_flags_[group] |= mask;
+    } else {
+        notebook_tip_flags_[group] &= ~mask;
+    }
+    return true;
+}
+
+void FieldSceneRuntime::begin_pocket_secretary_dismiss_runner() {
+    if (!pocket_secretary_.open || pocket_secretary_.selection != 3U) {
+        source_boundary(
+            "field.pocket_secretary.dismiss_runner.invalid_route");
+        return;
+    }
+
+    std::array<std::uint8_t, 2> candidates{};
+    std::size_t count = 0U;
+    const auto& records = field_party_roster_.records();
+    for (std::size_t slot = 1U;
+         slot < FieldPartyRosterRuntime::kSlotCount; ++slot) {
+        const auto active_record =
+            (records[slot].flags & 0x0100U) != 0U;
+        if (field_party_roster_.slot_active(slot) && active_record) {
+            candidates[count++] = static_cast<std::uint8_t>(slot);
+        }
+    }
+    begin_dismiss_runner_menu(dismiss_runner_, candidates, count);
+    dismiss_runner_random_grid_effect_ = RandomGridEffectState{};
+    dismiss_runner_effect_frames_ = 0U;
+    dismiss_runner_random_grid_cells_.fill(-1);
+    source_boundary("field.pocket_secretary.dismiss_runner.opened");
+}
+
+void FieldSceneRuntime::advance_pocket_secretary_dismiss_runner_effect() {
+    advance_random_grid_effect(
+        dismiss_runner_random_grid_effect_,
+        {[this](const std::uint16_t bound) {
+             return sample_source_random_bound(field_random_seed_, bound);
+         },
+         [this](const RandomGridEffectPlan& plan) {
+             const auto branch_zero =
+                 plan.primary_source ==
+                 RandomGridPrimarySource::branch_zero_table;
+             const auto location = branch_zero
+                 ? static_cast<std::size_t>(plan.primary_entry_index)
+                 : 8U + static_cast<std::size_t>(plan.primary_entry_index);
+             const auto pattern = plan.variant_source ==
+                     RandomGridVariantSource::fixed_three_variant_resources
+                 ? static_cast<std::size_t>(plan.variant_entry_index)
+                 : 3U + static_cast<std::size_t>(plan.variant_entry_index);
+             if (location < dismiss_runner_random_grid_cells_.size() &&
+                 pattern < dismiss_runner_random_grid_patterns_.size()) {
+                 // 0x1232 writes into the installed shared frame. Keep
+                 // previously changed cells until that panel is rebuilt,
+                 // matching the source name table's persistence between
+                 // VBlanks.
+                 dismiss_runner_random_grid_cells_[location] =
+                     static_cast<std::int8_t>(pattern);
+             }
+         }});
+    ++dismiss_runner_effect_frames_;
+}
+
+void FieldSceneRuntime::finish_pocket_secretary_dismiss_runner(
+    const std::size_t slot) {
+    source_boundary(
+        "field.pocket_secretary.dismiss_runner.serialize_population");
+    if (!field_party_roster_.deactivate_party_member(slot)) {
+        source_boundary(
+            "field.pocket_secretary.dismiss_runner.invalid_party_marker");
+        return;
+    }
+    source_boundary("field.pocket_secretary.dismiss_runner.party_marker_cleared");
+
+    const auto previous_active_slot = field_party_roster_.active_slot();
+    if (slot == previous_active_slot) {
+        RunnerSwitchState switch_state{};
+        switch_state.records.reserve(FieldPartyRosterRuntime::kSlotCount);
+        const auto& records = field_party_roster_.records();
+        for (std::size_t index = 0U;
+             index < FieldPartyRosterRuntime::kSlotCount; ++index) {
+            auto flags = static_cast<std::uint8_t>(records[index].flags >> 8U);
+            if (!field_party_roster_.slot_active(index)) {
+                flags = static_cast<std::uint8_t>(flags & ~0x01U);
+            }
+            switch_state.records.push_back(RunnerSwitchRecord{
+                static_cast<std::uint16_t>(index), flags});
+        }
+        switch_state.active_index = previous_active_slot;
+        switch_state.suppression_override =
+            field_entity_selection_state_.suppression_override;
+        const auto decision = advance_runner_switch(switch_state);
+        if (decision.result == RunnerSwitchResult::switched) {
+            field_party_roster_.set_active_slot(decision.selected_index);
+            field_entity_selection_state_ = std::move(switch_state);
+            field_entity_behavior_flags_ = static_cast<std::uint8_t>(
+                field_entity_selection_state_
+                    .records[field_entity_selection_state_.active_index]
+                    .flags);
+            field_movement_behavior_record_.behavior_flags =
+                field_entity_behavior_flags_;
+            field_entity_.projection.sprite_offset_y =
+                active_runner_record().projection_word_08;
+            source_boundary(
+                "field.pocket_secretary.dismiss_runner.active_runner_switched");
+        } else {
+            source_boundary(
+                "field.pocket_secretary.dismiss_runner.no_replacement_runner");
+        }
+    }
+
+    refresh_field_hud_runner_slot();
+    refresh_command_overview_combat_bars();
+    refresh_command_overview_item_detail();
+    source_boundary(
+        "field.pocket_secretary.dismiss_runner.effect_asset_refresh_pending");
+    source_boundary("field.pocket_secretary.dismiss_runner.dismissed");
 }
 
 void FieldSceneRuntime::begin_command_overview_clips() {
@@ -1199,6 +1499,298 @@ void FieldSceneRuntime::begin_command_overview_cyberware() {
         active_runner_record().cyberware_flags);
     command_overview_cyberware_active_ = true;
     source_boundary("field.command_overview.cyberware.opened");
+}
+
+void FieldSceneRuntime::begin_command_overview_magic() {
+    if (!command_overview_.open() ||
+        command_overview_.view().source_state.primary_page != 5U) {
+        source_boundary("field.command_overview.magic.invalid_route");
+        return;
+    }
+
+    const auto path = select_magic_menu_path(active_runner_record());
+    if (path == MagicMenuPath::spell_panel) {
+        const auto* table = find_us_magic_spell_table(
+            active_runner_record().magic_table_index);
+        if (table == nullptr || table->entry_count == 0U) {
+            source_boundary(
+                "field.command_overview.magic.spell_table_unavailable");
+            return;
+        }
+        // FBA6 clears both source cursor coordinates on each entry; a second
+        // visit starts at the first spell instead of leaking the last cursor.
+        command_overview_magic_loop_ = MagicMenuLoopState{};
+        command_overview_magic_loop_.first_entry_count =
+            static_cast<std::uint16_t>(table->entry_count - 1U);
+        command_overview_magic_selected_spell_ = select_magic_spell(
+            *table, command_overview_magic_loop_.selection,
+            us_magic_spell_catalog());
+        if (!command_overview_magic_selected_spell_.has_value()) {
+            source_boundary(
+                "field.command_overview.magic.initial_spell_unavailable");
+            return;
+        }
+        command_overview_magic_force_ = MagicForceState{};
+        prepare_magic_menu_grid_and_select_force(
+            command_overview_magic_force_,
+            *command_overview_magic_selected_spell_, active_runner_record());
+        command_overview_magic_cursor_phase_ = 0U;
+        command_overview_magic_cursor_timer_ = 0U;
+        command_overview_magic_state_ = CommandOverviewMagicState::spell_panel;
+        source_boundary("field.command_overview.magic.spell_panel.opened");
+        return;
+    }
+
+    std::array<EntityActionRecord, FieldPartyRosterRuntime::kSlotCount>
+        ready_entities{};
+    const auto& records = field_party_roster_.records();
+    for (std::size_t index = 0; index < ready_entities.size(); ++index) {
+        ready_entities[index] = magic_action_record_from_runner(records[index]);
+    }
+    const auto actor = magic_action_record_from_runner(active_runner_record());
+    const auto physical =
+        prepare_magic_fallback_defense_strip(ready_entities, actor, false);
+    const auto mana =
+        prepare_magic_fallback_defense_strip(ready_entities, actor, true);
+    // The source conversion plan retains addresses for auditing. The Qt
+    // runtime keeps only native values and named asset rows for presentation.
+    command_overview_magic_physical_defense_ = {
+        physical.value, static_cast<std::uint8_t>(physical.row)};
+    command_overview_magic_mana_defense_ = {
+        mana.value, static_cast<std::uint8_t>(mana.row)};
+    command_overview_magic_state_ =
+        CommandOverviewMagicState::magical_defense_wait;
+    source_boundary("field.command_overview.magic.magical_defense.opened");
+}
+
+void FieldSceneRuntime::begin_command_overview_magic_spell_action() {
+    if (command_overview_magic_state_ !=
+            CommandOverviewMagicState::spell_panel ||
+        !command_overview_magic_selected_spell_.has_value()) {
+        source_boundary("field.command_overview.magic.action.invalid_route");
+        return;
+    }
+    const auto* spell = find_us_magic_spell(
+        command_overview_magic_selected_spell_->spell_code);
+    if (spell == nullptr) {
+        source_boundary("field.command_overview.magic.action.spell_missing");
+        return;
+    }
+
+    MagicActionDetailCallbacks detail_callbacks{};
+    detail_callbacks.prepare_menu_grid_then_service = [this] {
+        source_boundary("field.command_overview.magic.details.grid_prepared");
+    };
+    detail_callbacks.render_action_text = [this](const auto region) {
+        switch (region) {
+        case MagicActionTextRegion::set_force_and_posture_heading:
+            source_boundary(
+                "field.command_overview.magic.details.heading_rendered");
+            break;
+        case MagicActionTextRegion::success_label:
+            source_boundary(
+                "field.command_overview.magic.details.success_label_rendered");
+            break;
+        case MagicActionTextRegion::force_label:
+            source_boundary(
+                "field.command_overview.magic.details.force_label_rendered");
+            break;
+        }
+    };
+    detail_callbacks.adjust_runner_posture = [this] {
+        (void)adjust_runner_posture(active_runner_record(), 0);
+        source_boundary("field.command_overview.magic.details.posture_refreshed");
+    };
+    detail_callbacks.render_spell_availability = [this](const auto& selected) {
+        MagicSpellAvailabilityCallbacks availability_callbacks{};
+        availability_callbacks.write_repeated_grid = [this] {
+            source_boundary(
+                "field.command_overview.magic.availability.cleared");
+        };
+        availability_callbacks.render_spell_text = [this](const auto&) {
+            source_boundary(
+                "field.command_overview.magic.availability.label_rendered");
+        };
+        availability_callbacks.write_grid = [this] {
+            source_boundary(
+                "field.command_overview.magic.availability.bar_rendered");
+        };
+        render_magic_spell_availability(selected, availability_callbacks);
+    };
+    detail_callbacks.build_grouped_decimal_glyphs = [this] {
+        source_boundary(
+            "field.command_overview.magic.details.force_value_prepared");
+    };
+    prepare_magic_action_details(*spell, detail_callbacks);
+
+    auto& runner = active_runner_record();
+    if (runner.equipped_inventory_slot >= 0 &&
+        runner.equipped_item_code != 0U) {
+        // ROM 0xFF74 copies FFF096 into the active item's +0x4E after the
+        // auxiliary marker service and before installing the selected spell.
+        EntityAuxiliaryState active_item_auxiliary{runner.ammo_rounds};
+        clear_entity_auxiliary_marker(active_item_auxiliary);
+        runner.ammo_rounds = active_item_auxiliary.marker;
+        runner.ammo_rounds = static_cast<std::uint8_t>(
+            command_overview_magic_force_.current_force);
+        source_boundary(
+            "field.command_overview.magic.action.save_active_force");
+    }
+    runner.equipped_item_code = static_cast<std::uint8_t>(
+        static_cast<unsigned>(spell->spell_code) + 1U);
+    command_overview_magic_state_ =
+        CommandOverviewMagicState::spell_force_selection;
+    source_boundary("field.command_overview.magic.force.opened");
+}
+
+void FieldSceneRuntime::finish_command_overview_magic_spell_action() {
+    if (!magic_force_selection_open() && !magic_posture_selection_open()) {
+        source_boundary("field.command_overview.magic.action.finish.invalid");
+        return;
+    }
+    auto& runner = active_runner_record();
+    runner.equipped_inventory_slot = -1;
+    runner.magic_force = static_cast<std::uint8_t>(
+        command_overview_magic_force_.current_force);
+    refresh_field_hud_runner_slot();
+    refresh_command_overview_combat_bars();
+    command_overview_magic_state_ = CommandOverviewMagicState::spell_panel;
+    source_boundary("field.command_overview.magic.spell_equipped");
+}
+
+void FieldSceneRuntime::advance_command_overview_magic(
+    const std::uint16_t controller_events) {
+    if (command_overview_magic_cursor_timer_ == 0U) {
+        command_overview_magic_cursor_timer_ = 6U;
+        command_overview_magic_cursor_phase_ = static_cast<std::uint8_t>(
+            (command_overview_magic_cursor_phase_ + 1U) %
+            command_overview_magic_cursor_frames_.size());
+    } else {
+        --command_overview_magic_cursor_timer_;
+    }
+
+    const auto* table = find_us_magic_spell_table(
+        active_runner_record().magic_table_index);
+    if (table == nullptr) {
+        source_boundary("field.command_overview.magic.spell_table_unavailable");
+        return;
+    }
+
+    if (magic_force_selection_open()) {
+        MagicForceSelection selection{
+            static_cast<std::uint8_t>(
+                std::min<std::uint16_t>(
+                    command_overview_magic_force_.current_force, 0xFFU))};
+        const auto force_result = apply_magic_force_input(
+            selection, controller_events,
+            static_cast<std::uint8_t>(std::min<std::uint16_t>(
+                command_overview_magic_force_.maximum_force, 0xFFU)));
+        if (force_result == MagicForceLoopResult::adjusted) {
+            const auto delta = (controller_events & 0x0800U) != 0U ? 1 : -1;
+            adjust_magic_force(active_runner_record(),
+                               command_overview_magic_force_,
+                               static_cast<std::int16_t>(delta));
+            source_boundary(
+                delta > 0
+                    ? "field.command_overview.magic.force.raised"
+                    : "field.command_overview.magic.force.lowered");
+            return;
+        }
+        if (force_result == MagicForceLoopResult::finished) {
+            source_boundary(
+                "field.command_overview.magic.force.final_display_refreshed");
+            if ((controller_events & (0x2000U | 0x1000U | 0x4000U)) != 0U) {
+                finish_command_overview_magic_spell_action();
+            } else if ((controller_events & 0x0200U) != 0U) {
+                (void)adjust_runner_posture(active_runner_record(), 0);
+                command_overview_magic_state_ =
+                    CommandOverviewMagicState::spell_posture_selection;
+                source_boundary(
+                    "field.command_overview.magic.posture.opened");
+            }
+        }
+        return;
+    }
+
+    if (magic_posture_selection_open()) {
+        const auto posture_result = apply_runner_posture_input(
+            active_runner_record(), controller_events);
+        if (posture_result == RunnerPostureLoopResult::adjusted) {
+            refresh_command_overview_combat_bars();
+            source_boundary(
+                "field.command_overview.magic.posture.adjusted");
+            return;
+        }
+        if (posture_result == RunnerPostureLoopResult::finished) {
+            source_boundary(
+                "field.command_overview.magic.posture.final_display_refreshed");
+            if ((controller_events & (0x2000U | 0x1000U | 0x4000U)) != 0U) {
+                finish_command_overview_magic_spell_action();
+            } else {
+                command_overview_magic_state_ =
+                    CommandOverviewMagicState::spell_force_selection;
+                source_boundary(
+                    "field.command_overview.magic.force.reopened");
+            }
+        }
+        return;
+    }
+
+    const auto refresh_selection = [this, table] {
+        command_overview_magic_selected_spell_ = select_magic_spell(
+            *table, command_overview_magic_loop_.selection,
+            us_magic_spell_catalog());
+        if (!command_overview_magic_selected_spell_.has_value()) {
+            source_boundary(
+                "field.command_overview.magic.spell_entry_unavailable");
+            return;
+        }
+        prepare_magic_menu_grid_and_select_force(
+            command_overview_magic_force_,
+            *command_overview_magic_selected_spell_, active_runner_record());
+        source_boundary("field.command_overview.magic.spell_selection_changed");
+    };
+    if ((controller_events & 0x0400U) != 0U) {
+        command_overview_magic_loop_.selection = move_magic_selection_column(
+            command_overview_magic_loop_.selection, -1,
+            command_overview_magic_loop_.first_entry_count);
+        refresh_selection();
+        command_overview_magic_cursor_timer_ = 0U;
+        return;
+    }
+    if ((controller_events & 0x0800U) != 0U) {
+        command_overview_magic_loop_.selection = move_magic_selection_column(
+            command_overview_magic_loop_.selection, 1,
+            command_overview_magic_loop_.first_entry_count);
+        refresh_selection();
+        command_overview_magic_cursor_timer_ = 0U;
+        return;
+    }
+    if ((controller_events & 0x0100U) != 0U) {
+        command_overview_magic_loop_.selection = move_magic_selection_row(
+            command_overview_magic_loop_.selection, -1,
+            command_overview_magic_loop_.first_entry_count);
+        refresh_selection();
+        command_overview_magic_cursor_timer_ = 0U;
+        return;
+    }
+    if ((controller_events & 0x0200U) != 0U) {
+        command_overview_magic_loop_.selection = move_magic_selection_row(
+            command_overview_magic_loop_.selection, 1,
+            command_overview_magic_loop_.first_entry_count);
+        refresh_selection();
+        command_overview_magic_cursor_timer_ = 0U;
+        return;
+    }
+    if ((controller_events & (0x2000U | 0x1000U | 0x4000U)) != 0U) {
+        begin_command_overview_magic_spell_action();
+        return;
+    }
+    if ((controller_events & 0x8000U) != 0U) {
+        command_overview_magic_state_ = CommandOverviewMagicState::inactive;
+        command_overview_magic_selected_spell_.reset();
+        source_boundary("field.command_overview.magic.spell_panel.returned");
+    }
 }
 
 void FieldSceneRuntime::advance_command_overview_clips(
@@ -1343,17 +1935,19 @@ void FieldSceneRuntime::dispatch_command_overview_inventory_action(
                 refresh_command_overview_item_detail();
             }
         } else if (branch == SelectedItemBranch::first_aid) {
-            // 0x12298/0x1253E owns target selection and the typed First Aid
-            // effect. The common item loop is connected, but this active
-            // record has not yet been given the party-target list it needs.
-            source_boundary(
-                "field.command_overview.inventory_action.first_aid_pending");
+            begin_command_overview_first_aid();
+            // First Aid spans multiple controller frames, so its target and
+            // result states retain the selected slot until the nested menu
+            // returns. Other one-shot item actions clear it below.
+            command_overview_inventory_action_active_ = false;
+            return;
         } else if (branch == SelectedItemBranch::automatic_use) {
+            command_overview_automatic_use_state_ =
+                CommandOverviewAutomaticUseState::result_wait;
+            command_overview_inventory_action_active_ = false;
             source_boundary(
-                "field.command_overview.inventory_action.automatic_use_pending");
-        } else {
-            source_boundary(
-                "field.command_overview.inventory_action.item_action_pending");
+                "field.command_overview.inventory_action.automatic_use_opened");
+            return;
         }
         command_overview_inventory_action_active_ = false;
         command_overview_selected_inventory_item_.reset();
@@ -1363,8 +1957,8 @@ void FieldSceneRuntime::dispatch_command_overview_inventory_action(
     if (choice == InventoryActionChoice::discard) {
         if (!can_discard_selected_item(*result.item)) {
             command_overview_action_message_ =
-                field_menu_text_.action_cannot_discard;
-            command_overview_inventory_action_active_ = true;
+                CommandOverviewActionMessage::cannot_discard;
+            command_overview_inventory_action_active_ = false;
             source_boundary(
                 "field.command_overview.inventory_action.discard_rejected");
             return;
@@ -1383,19 +1977,39 @@ void FieldSceneRuntime::dispatch_command_overview_inventory_action(
 
     if (choice == InventoryActionChoice::trade) {
         if (!can_trade_selected_item(result.item->item_code)) {
-            command_overview_action_message_ = field_menu_text_.action_cannot_trade;
-            command_overview_inventory_action_active_ = true;
+            command_overview_action_message_ =
+                CommandOverviewActionMessage::cannot_trade;
+            command_overview_inventory_action_active_ = false;
             source_boundary(
                 "field.command_overview.inventory_action.trade_rejected");
             return;
         }
-        // The source 0x12836 roster scan and 0x129FE transfer are converted,
-        // but the Qt field session currently exposes Joshua alone. Do not
-        // fabricate a recipient; leave this as an explicit source boundary.
-        source_boundary(
-            "field.command_overview.inventory_action.trade_recipient_pending");
+
+        std::array<bool, kInventoryTradePartySlotCount> active_slots{};
+        for (std::size_t slot = 0; slot < active_slots.size(); ++slot) {
+            active_slots[slot] = field_party_roster_.slot_active(slot);
+        }
+        const auto trade = begin_inventory_trade(
+            field_party_roster_.records(), active_slots,
+            field_party_roster_.active_slot(), *result.item,
+            command_overview_inventory_trade_);
         command_overview_inventory_action_active_ = false;
-        command_overview_selected_inventory_item_.reset();
+        if (trade.event == InventoryTradeEvent::no_recipient) {
+            command_overview_selected_inventory_item_.reset();
+            source_boundary(
+                "field.command_overview.inventory_action.trade_no_recipient");
+            return;
+        }
+        if (trade.event != InventoryTradeEvent::recipient_opened) {
+            command_overview_selected_inventory_item_.reset();
+            source_boundary(
+                "field.command_overview.inventory_action.trade_open_failed");
+            return;
+        }
+        source_boundary(
+            trade.recipient_inventory_full
+                ? "field.command_overview.inventory_action.trade_recipient_full"
+                : "field.command_overview.inventory_action.trade_recipient_opened");
         return;
     }
 
@@ -1405,12 +2019,13 @@ void FieldSceneRuntime::dispatch_command_overview_inventory_action(
 
 void FieldSceneRuntime::advance_command_overview_discard_confirmation(
     const std::uint16_t controller_events) {
-    if (((controller_events & 0x0400U) != 0U ||
-         (controller_events & 0x0800U) != 0U) &&
-        (controller_events & 0x0C00U) != 0x0C00U) {
+    if ((controller_events & 0x0C00U) != 0U) {
         // ROM 0x12704 calls the shared Yes/No writer for either horizontal
         // edge; the source toggles its binary choice rather than assigning a
         // direction-specific value. The prompt starts on No.
+        if (source_audio_event_callback_) {
+            source_audio_event_callback_(0x25U);
+        }
         command_overview_discard_confirmation_.selected_option =
             command_overview_discard_confirmation_.selected_option == 0U ? 1U
                                                                           : 0U;
@@ -1420,17 +2035,13 @@ void FieldSceneRuntime::advance_command_overview_discard_confirmation(
                 : "field.command_overview.discard_confirmation.select_no");
         return;
     }
-    if ((controller_events & 0x1000U) != 0U ||
-        (controller_events & 0x8000U) != 0U) {
-        command_overview_discard_confirmation_active_ = false;
-        command_overview_inventory_action_active_ = false;
-        command_overview_selected_inventory_item_.reset();
-        source_boundary(
-            "field.command_overview.discard_confirmation.cancelled");
+    // 0x126F8/0x12750 confirm on A or C. B and Start are ignored in this
+    // source loop; neither is a cancel shortcut here.
+    if ((controller_events & 0x5000U) == 0U) {
         return;
     }
-    if ((controller_events & 0x4000U) == 0U) {
-        return;
+    if (source_audio_event_callback_) {
+        source_audio_event_callback_(0x24U);
     }
 
     const auto selected = command_overview_selected_inventory_item_;
@@ -1461,17 +2072,87 @@ void FieldSceneRuntime::advance_command_overview_discard_confirmation(
     }
 }
 
+void FieldSceneRuntime::advance_command_overview_inventory_trade(
+    const std::uint16_t controller_events) {
+    if (!command_overview_inventory_trade_.open) {
+        return;
+    }
+    const auto left = (controller_events & 0x0400U) != 0U;
+    const auto right = (controller_events & 0x0800U) != 0U;
+    const auto confirm = (controller_events & 0x5000U) != 0U;
+    if (left || right) {
+        if (source_audio_event_callback_) {
+            source_audio_event_callback_(0x25U);
+        }
+    } else if (confirm && source_audio_event_callback_) {
+        source_audio_event_callback_(0x24U);
+    }
+
+    std::array<bool, kInventoryTradePartySlotCount> active_slots{};
+    for (std::size_t slot = 0; slot < active_slots.size(); ++slot) {
+        active_slots[slot] = field_party_roster_.slot_active(slot);
+    }
+    const auto result = advance_inventory_trade(
+        field_party_roster_.records(), active_slots,
+        command_overview_inventory_trade_,
+        InventoryTradeInput{left, right, confirm});
+    switch (result.event) {
+    case InventoryTradeEvent::no_change:
+        break;
+    case InventoryTradeEvent::choice_moved:
+        source_boundary(
+            result.yes_selected
+                ? "field.command_overview.inventory_action.trade_select_yes"
+                : "field.command_overview.inventory_action.trade_select_no");
+        break;
+    case InventoryTradeEvent::recipient_advanced:
+        source_boundary(
+            "field.command_overview.inventory_action.trade_recipient_advanced");
+        break;
+    case InventoryTradeEvent::full_recipient_advanced:
+        source_boundary(
+            "field.command_overview.inventory_action.trade_full_recipient_advanced");
+        break;
+    case InventoryTradeEvent::no_recipient:
+    case InventoryTradeEvent::recipient_opened:
+        source_boundary(
+            "field.command_overview.inventory_action.trade_invalid_transition");
+        break;
+    case InventoryTradeEvent::finished:
+        command_overview_selected_inventory_item_.reset();
+        command_overview_inventory_action_active_ = false;
+        source_boundary(
+            "field.command_overview.inventory_action.trade_finished");
+        break;
+    case InventoryTradeEvent::transferred:
+        command_overview_selected_inventory_item_.reset();
+        command_overview_inventory_action_active_ = false;
+        refresh_field_hud_runner_slot();
+        refresh_command_overview_combat_bars();
+        refresh_command_overview_item_detail();
+        source_boundary(
+            "field.command_overview.inventory_action.trade_transferred");
+        break;
+    case InventoryTradeEvent::transfer_failed:
+        command_overview_selected_inventory_item_.reset();
+        command_overview_inventory_action_active_ = false;
+        source_boundary(
+            "field.command_overview.inventory_action.trade_transfer_failed");
+        break;
+    }
+}
+
 void FieldSceneRuntime::advance_command_overview_inventory_action(
     const std::uint16_t controller_events) {
     if (command_overview_discard_confirmation_active_) {
         advance_command_overview_discard_confirmation(controller_events);
         return;
     }
-    if (!command_overview_action_message_.empty()) {
-        if ((controller_events & 0x1000U) != 0U ||
-            (controller_events & 0x4000U) != 0U ||
-            (controller_events & 0x8000U) != 0U) {
-            command_overview_action_message_.clear();
+    if (command_overview_action_message_ !=
+        CommandOverviewActionMessage::none) {
+        if ((controller_events & 0xFF00U) != 0U) {
+            command_overview_action_message_ =
+                CommandOverviewActionMessage::none;
             command_overview_inventory_action_active_ = false;
             command_overview_selected_inventory_item_.reset();
             source_boundary(
@@ -1493,6 +2174,9 @@ void FieldSceneRuntime::advance_command_overview_inventory_action(
         active_runner_record(), command_overview_inventory_action_, input);
     switch (result.event) {
     case InventoryActionEvent::action_moved:
+        if (source_audio_event_callback_) {
+            source_audio_event_callback_(0x25U);
+        }
         source_boundary(
             "field.command_overview.inventory_action.selector_moved");
         break;
@@ -1508,6 +2192,11 @@ void FieldSceneRuntime::advance_command_overview_inventory_action(
             "field.command_overview.inventory_action.empty_cell_after_open");
         break;
     case InventoryActionEvent::dispatched:
+        // 0x11C3C requests the command-confirm sound before entering the
+        // selected equip/discard/trade/cancel handler.
+        if (source_audio_event_callback_) {
+            source_audio_event_callback_(0x24U);
+        }
         dispatch_command_overview_inventory_action(result);
         break;
     case InventoryActionEvent::opened:
@@ -1516,10 +2205,199 @@ void FieldSceneRuntime::advance_command_overview_inventory_action(
     }
 }
 
+void FieldSceneRuntime::begin_command_overview_first_aid() {
+    if (!command_overview_selected_inventory_item_.has_value()) {
+        source_boundary("field.command_overview.first_aid.missing_item");
+        return;
+    }
+
+    std::array<std::uint8_t, FieldPartyRosterRuntime::kSlotCount> flags{};
+    const auto& records = field_party_roster_.records();
+    for (std::size_t index = 0; index < records.size(); ++index) {
+        // The ROM tests bit zero in the first byte at +0x10. The typed word
+        // is big-endian, so that byte is its high byte.
+        flags[index] = static_cast<std::uint8_t>(records[index].flags >> 8U);
+    }
+    command_overview_first_aid_targets_ = build_first_aid_target_list(flags);
+    command_overview_first_aid_cursor_ = 0U;
+    command_overview_first_aid_message_ = FirstAidMessage::none;
+    command_overview_first_aid_state_ =
+        CommandOverviewFirstAidState::target_selection;
+    command_overview_inventory_action_active_ = false;
+    command_overview_discard_confirmation_active_ = false;
+    source_boundary("field.command_overview.first_aid.targets_opened");
+}
+
+void FieldSceneRuntime::finish_command_overview_first_aid() {
+    command_overview_first_aid_state_ =
+        CommandOverviewFirstAidState::inactive;
+    command_overview_first_aid_targets_ = FirstAidTargetList{};
+    command_overview_first_aid_cursor_ = 0U;
+    command_overview_first_aid_message_ = FirstAidMessage::none;
+    command_overview_inventory_action_active_ = false;
+    command_overview_discard_confirmation_active_ = false;
+    command_overview_selected_inventory_item_.reset();
+    // 0x11928 redraws the inventory row after the nested action; the
+    // reference keeps the selected item's detail but clears its gold cursor.
+    command_overview_inventory_selector_suppressed_ = true;
+}
+
+void FieldSceneRuntime::finish_command_overview_automatic_use() {
+    command_overview_automatic_use_state_ =
+        CommandOverviewAutomaticUseState::inactive;
+    command_overview_inventory_action_active_ = false;
+    command_overview_selected_inventory_item_.reset();
+    // After the 0x0D94 acknowledgement the source redraws the inventory row
+    // through 0x11928, which clears the yellow item selector.
+    command_overview_inventory_selector_suppressed_ = true;
+}
+
+void FieldSceneRuntime::advance_command_overview_automatic_use(
+    const std::uint16_t controller_events) {
+    if (command_overview_automatic_use_state_ !=
+        CommandOverviewAutomaticUseState::result_wait) {
+        return;
+    }
+    // 0x121DA tail-calls 0x0D94. That shared wait accepts a newly pressed
+    // controller event, so held buttons and released frames leave the
+    // acknowledgement screen in place.
+    if ((controller_events & 0xFF00U) != 0U) {
+        finish_command_overview_automatic_use();
+        source_boundary(
+            "field.command_overview.inventory_action.automatic_use_acknowledged");
+    }
+}
+
+void FieldSceneRuntime::advance_command_overview_first_aid(
+    const std::uint16_t controller_events) {
+    if (command_overview_first_aid_state_ ==
+        CommandOverviewFirstAidState::inactive) {
+        return;
+    }
+
+    if (command_overview_first_aid_state_ ==
+        CommandOverviewFirstAidState::result_wait) {
+        // ROM 0x0D94 waits for a newly pressed high-byte event. A held
+        // confirm button must not dismiss the result on the following frame.
+        if ((controller_events & 0xFF00U) != 0U) {
+            finish_command_overview_first_aid();
+            source_boundary(
+                "field.command_overview.first_aid.result_acknowledged");
+        }
+        return;
+    }
+
+    if ((controller_events & 0x0100U) != 0U ||
+        (controller_events & 0x0200U) != 0U) {
+        const auto delta = (controller_events & 0x0100U) != 0U
+                               ? std::int8_t{-1}
+                               : std::int8_t{1};
+        command_overview_first_aid_cursor_ =
+            advance_first_aid_target_cursor(
+                command_overview_first_aid_cursor_,
+                command_overview_first_aid_targets_.active_count, delta);
+        if (source_audio_event_callback_) {
+            source_audio_event_callback_(0x25U);
+        }
+        source_boundary("field.command_overview.first_aid.target_moved");
+        return;
+    }
+
+    // ROM 0x12402 tests only input bit 14 (A). B/C are sampled by the shared
+    // controller service but do not confirm a First Aid target.
+    if ((controller_events & 0x4000U) == 0U) {
+        return;
+    }
+    if (source_audio_event_callback_) {
+        source_audio_event_callback_(0x24U);
+    }
+    if (command_overview_first_aid_cursor_ ==
+        command_overview_first_aid_targets_.cancel_row()) {
+        finish_command_overview_first_aid();
+        source_boundary("field.command_overview.first_aid.cancelled");
+        return;
+    }
+    if (!command_overview_selected_inventory_item_.has_value() ||
+        command_overview_first_aid_cursor_ >=
+            command_overview_first_aid_targets_.active_count) {
+        source_boundary("field.command_overview.first_aid.target_missing");
+        finish_command_overview_first_aid();
+        return;
+    }
+
+    const auto target_index = command_overview_first_aid_targets_
+                                  .active_record_indices[
+                                      command_overview_first_aid_cursor_];
+    if (target_index >= field_party_roster_.records().size()) {
+        source_boundary("field.command_overview.first_aid.target_out_of_range");
+        finish_command_overview_first_aid();
+        return;
+    }
+
+    auto& target_record = field_party_roster_.records()[target_index];
+    const auto item = *command_overview_selected_inventory_item_;
+    if (item.slot >= active_runner_record().inventory_item_codes.size()) {
+        source_boundary("field.command_overview.first_aid.item_slot_invalid");
+        finish_command_overview_first_aid();
+        return;
+    }
+
+    FirstAidTargetState target{
+        target_record.delay_meter,
+        target_record.behavior_meter,
+        target_record.attributes[0],
+        static_cast<std::uint8_t>(target_record.flags >> 8U),
+        target_record.first_aid_continuation};
+    const FirstAidUserState user{active_runner_record().skills[8]};
+    const auto roll_service = [this](const std::uint8_t roll_count,
+                                     const std::uint8_t difficulty) {
+        return count_thresholded_random_rolls(
+            roll_count, static_cast<std::int16_t>(difficulty),
+            [this](const std::uint16_t bound) {
+                return sample_source_random_bound(field_random_seed_, bound);
+            });
+    };
+
+    auto& item_code = active_runner_record().inventory_item_codes[item.slot];
+    auto& item_phase = active_runner_record().inventory_phase_bytes[item.slot];
+    const auto resolution = use_first_aid_item(
+        item_code, item_phase, user, target, roll_service);
+    if (resolution.result == FirstAidItemResult::used) {
+        target_record.delay_meter = target.physical_meter;
+        target_record.behavior_meter = target.mental_meter;
+        target_record.flags = static_cast<std::uint16_t>(
+            (target_record.flags & 0x00FFU) |
+            (static_cast<std::uint16_t>(target.flags) << 8U));
+        target_record.first_aid_continuation = target.continuation;
+        command_overview_first_aid_message_ = resolution.message;
+        if (target_index == 0U) {
+            refresh_field_hud_runner_slot();
+        }
+        refresh_command_overview_combat_bars();
+        refresh_command_overview_item_detail();
+        source_boundary("field.command_overview.first_aid.item_used");
+    } else if (resolution.result == FirstAidItemResult::target_not_injured) {
+        command_overview_first_aid_message_ = resolution.message;
+        source_boundary("field.command_overview.first_aid.target_not_injured");
+    } else {
+        source_boundary("field.command_overview.first_aid.item_unavailable");
+        finish_command_overview_first_aid();
+        return;
+    }
+
+    command_overview_selected_inventory_item_->item_code = item_code;
+    command_overview_selected_inventory_item_->phase = item_phase;
+    command_overview_first_aid_state_ =
+        CommandOverviewFirstAidState::result_wait;
+}
+
 bool FieldSceneRuntime::bootstrap(
     const integration::StartupIntegrationState& startup_state) {
     ready_ = false;
     failure_.clear();
+    command_overview_magic_state_ = CommandOverviewMagicState::inactive;
+    command_overview_magic_physical_defense_ = MagicDefenseStripView{};
+    command_overview_magic_mana_defense_ = MagicDefenseStripView{};
     state_ = integration::FieldSessionBootstrapState{};
     world_frame_state_ = WorldFrameState{};
     viewport_state_ = FieldViewportState{};
@@ -1534,6 +2412,23 @@ bool FieldSceneRuntime::bootstrap(
         startup_state.restored_field_state.has_value()
             ? &*startup_state.restored_field_state
             : nullptr;
+    pocket_secretary_ = PocketSecretaryMenuState{};
+    dismiss_runner_ = DismissRunnerMenuState{};
+    dismiss_runner_random_grid_effect_ = RandomGridEffectState{};
+    dismiss_runner_effect_frames_ = 0U;
+    dismiss_runner_random_grid_cells_.fill(-1);
+    // The 0x59C48 New Game path begins without the FF018F deck-present bit.
+    // The loaded-save contract does not yet expose this global, so keep that
+    // branch explicit instead of treating an unknown saved bit as clear.
+    cyberdeck_available_ = restored_field_state == nullptr
+                               ? std::optional<bool>{false}
+                               : std::nullopt;
+    group_item_flags_ = restored_field_state == nullptr
+                            ? std::optional<std::uint32_t>{0U}
+                            : std::nullopt;
+    // ROM startup 0x084E seeds FFFC30 bit 0 for a fresh New Game.
+    notebook_tip_flags_ = {{1U, 0U, 0U}};
+    notebook_tip_flags_resolved_ = restored_field_state == nullptr;
     const auto& assets = *startup_state.field_session_source_assets;
     const auto scene_reference = restored_field_state != nullptr
                                      ? restored_field_state->world_mode
@@ -1562,6 +2457,8 @@ bool FieldSceneRuntime::bootstrap(
     }
     field_controller_nibble_ = 0U;
     field_controller_port_byte_ = 0U;
+    field_random_seed_ = static_cast<std::uint16_t>(
+        QRandomGenerator::global()->generate());
     field_controller_sample_state_ = ControllerSampleState{};
     field_controller_latch_state_ = ControllerLatchState{};
     field_target_heading_ = 0U;
@@ -1597,8 +2494,17 @@ bool FieldSceneRuntime::bootstrap(
     command_overview_item_detail_ = ItemActionDetailResult{};
     command_overview_inventory_action_ = InventoryActionMenuState{};
     command_overview_selected_inventory_item_.reset();
+    command_overview_first_aid_state_ =
+        CommandOverviewFirstAidState::inactive;
+    command_overview_first_aid_targets_ = FirstAidTargetList{};
+    command_overview_first_aid_cursor_ = 0U;
+    command_overview_first_aid_message_ = FirstAidMessage::none;
+    command_overview_automatic_use_state_ =
+        CommandOverviewAutomaticUseState::inactive;
+    command_overview_inventory_selector_suppressed_ = false;
     command_overview_discard_confirmation_ = MenuConfirmationState{};
-    command_overview_action_message_.clear();
+    command_overview_inventory_trade_ = InventoryTradeState{};
+    command_overview_action_message_ = CommandOverviewActionMessage::none;
     command_overview_inventory_action_active_ = false;
     command_overview_discard_confirmation_active_ = false;
     command_overview_clips_.close();
@@ -1656,6 +2562,11 @@ bool FieldSceneRuntime::bootstrap(
             record.equipped_inventory_slot;
         field_hud_slots_[0].equipped_item_code = record.equipped_item_code;
         field_hud_slots_[0].ammo_rounds = record.ammo_rounds;
+        field_hud_slots_[0].delay_meter =
+            static_cast<std::int8_t>(record.delay_meter);
+        field_hud_slots_[0].behavior_meter =
+            static_cast<std::int8_t>(record.behavior_meter);
+        field_hud_slots_[0].primary_runner = true;
         // The extracted face/bar/item families follow the archetype record
         // that produced them, not the field slot number.
         field_hud_slots_[0].asset_family_index = static_cast<std::uint8_t>(
@@ -2222,6 +3133,32 @@ void FieldSceneRuntime::advance_frame() {
                 field_controller_sample_state_.events);
             return;
         }
+        if (magic_spell_interface_open()) {
+            advance_command_overview_magic(
+                field_controller_sample_state_.events);
+            return;
+        }
+        if (command_overview_automatic_use_state_ !=
+            CommandOverviewAutomaticUseState::inactive) {
+            advance_command_overview_automatic_use(
+                field_controller_sample_state_.events);
+            return;
+        }
+        if (command_overview_first_aid_state_ !=
+            CommandOverviewFirstAidState::inactive) {
+            advance_command_overview_first_aid(
+                field_controller_sample_state_.events);
+            return;
+        }
+        if (command_overview_inventory_trade_.open) {
+            advance_command_overview_inventory_trade(
+                field_controller_sample_state_.events);
+            return;
+        }
+        if (command_overview_inventory_selector_suppressed_ &&
+            (field_controller_sample_state_.events & 0x0F00U) != 0U) {
+            command_overview_inventory_selector_suppressed_ = false;
+        }
         if (command_overview_cyberware_active_) {
             // ROM 0x11950 waits for one controller event after drawing the
             // +0x90 bit rows, refreshes the shared menu row, and returns.
@@ -2229,6 +3166,19 @@ void FieldSceneRuntime::advance_frame() {
             if ((field_controller_sample_state_.events & 0xFF00U) != 0U) {
                 command_overview_cyberware_active_ = false;
                 source_boundary("field.command_overview.cyberware.returned");
+            }
+            return;
+        }
+        if (command_overview_magic_state_ ==
+            CommandOverviewMagicState::magical_defense_wait) {
+            // ROM 0x0D94 services VBlank/input until any newly pressed
+            // high-byte event arrives, takes one final sample, then 0x11928
+            // restores the selected command row.
+            if ((field_controller_sample_state_.events & 0xFF00U) != 0U) {
+                command_overview_magic_state_ =
+                    CommandOverviewMagicState::inactive;
+                source_boundary(
+                    "field.command_overview.magic.magical_defense.returned");
             }
             return;
         }
@@ -2257,6 +3207,56 @@ void FieldSceneRuntime::advance_frame() {
             return;
         }
         if (pocket_secretary_.open) {
+            // C2A6's parent loop and C448's child loop both call E660 once
+            // after the VBlank input sample. Its named cell assets are kept
+            // in typed panel state and painted with the active secretary UI.
+            advance_pocket_secretary_dismiss_runner_effect();
+            if (dismiss_runner_.open) {
+                const auto event = apply_dismiss_runner_input(
+                    dismiss_runner_, field_controller_sample_state_.events);
+                switch (event) {
+                case DismissRunnerMenuEvent::selection_moved:
+                    if (source_audio_event_callback_) {
+                        source_audio_event_callback_(0x25U);
+                    }
+                    source_boundary(
+                        "field.pocket_secretary.dismiss_runner.selection_moved");
+                    break;
+                case DismissRunnerMenuEvent::abort_selected:
+                    if (source_audio_event_callback_) {
+                        source_audio_event_callback_(0x24U);
+                    }
+                    source_boundary(
+                        "field.pocket_secretary.dismiss_runner.abort_selected");
+                    break;
+                case DismissRunnerMenuEvent::runner_selected:
+                    if (source_audio_event_callback_) {
+                        source_audio_event_callback_(0x24U);
+                    }
+                    if (dismiss_runner_.selection > 0U &&
+                        dismiss_runner_.selection <=
+                            dismiss_runner_.candidate_count) {
+                        const auto slot = dismiss_runner_.candidate_slots[
+                            dismiss_runner_.selection - 1U];
+                        finish_pocket_secretary_dismiss_runner(slot);
+                    }
+                    break;
+                case DismissRunnerMenuEvent::returned:
+                    source_boundary(
+                        "field.pocket_secretary.dismiss_runner.returned");
+                    break;
+                case DismissRunnerMenuEvent::waiting:
+                    break;
+                }
+                if (!dismiss_runner_.open) {
+                    // Returning to the parent reconstructs its own menu
+                    // panel. Do not let child grid writes survive the redraw.
+                    dismiss_runner_random_grid_effect_ =
+                        RandomGridEffectState{};
+                    dismiss_runner_random_grid_cells_.fill(-1);
+                }
+                return;
+            }
             const auto event = apply_pocket_secretary_input(
                 pocket_secretary_, field_controller_sample_state_.events,
                 {[this] {
@@ -2275,12 +3275,101 @@ void FieldSceneRuntime::advance_frame() {
                  },
                  [this](const std::uint8_t selection) {
                      source_boundary("field.pocket_secretary.handler");
-                     (void)selection;
+                     if (selection == 0U) {
+                         begin_pocket_secretary_notebook(
+                             pocket_secretary_,
+                             notebook_current_run_available_,
+                             field_menu_text_.notebook_event_gates);
+                         source_boundary(
+                             "field.pocket_secretary.notebook.opened");
+                     } else if (selection == 2U) {
+                         if (cyberdeck_available_.has_value() &&
+                             !*cyberdeck_available_) {
+                             begin_pocket_secretary_cyberdeck_unavailable(
+                                 pocket_secretary_);
+                             source_boundary(
+                                 "field.pocket_secretary.cyberdeck_unavailable");
+                         } else if (!cyberdeck_available_.has_value()) {
+                             source_boundary(
+                                 "field.pocket_secretary.cyberdeck_flag_unresolved");
+                         } else {
+                             source_boundary(
+                                 "field.pocket_secretary.matrix_path_pending");
+                         }
+                    } else if (selection == 1U) {
+                        if (!group_item_flags_.has_value()) {
+                            source_boundary(
+                                "field.pocket_secretary.group_items_flags_unresolved");
+                        } else {
+                            begin_pocket_secretary_group_items(
+                                pocket_secretary_, *group_item_flags_);
+                            source_boundary(*group_item_flags_ == 0U
+                                                ? "field.pocket_secretary.group_items_empty"
+                                                : "field.pocket_secretary.group_items_populated");
+                        }
+                     } else if (selection == 3U) {
+                         begin_pocket_secretary_dismiss_runner();
+                     }
                      return true;
                  },
                  [this] {
+                     if (source_audio_event_callback_) {
+                         source_audio_event_callback_(0x25U);
+                     }
+                     handle_field_mode_action_event();
                      source_boundary("field.pocket_secretary.mode_action");
                  }});
+            switch (event) {
+            case PocketSecretaryMenuEvent::notebook_selection_moved:
+                source_boundary(
+                    "field.pocket_secretary.notebook.selection_moved");
+                break;
+            case PocketSecretaryMenuEvent::notebook_current_run_no_run:
+                source_boundary(
+                    "field.pocket_secretary.notebook.current_run.unavailable");
+                break;
+            case PocketSecretaryMenuEvent::notebook_response_dismissed:
+                source_boundary(
+                    "field.pocket_secretary.notebook.current_run.dismissed");
+                break;
+            case PocketSecretaryMenuEvent::notebook_returned:
+                source_boundary("field.pocket_secretary.notebook.returned");
+                break;
+            case PocketSecretaryMenuEvent::notebook_action_boundary:
+                if (pocket_secretary_.notebook.selection <
+                    pocket_secretary_.notebook.option_count &&
+                    pocket_secretary_.notebook.visible_options[
+                        pocket_secretary_.notebook.selection] ==
+                        NotebookMenuOption::tips_and_clues) {
+                    if (!notebook_tip_flags_resolved_) {
+                        source_boundary(
+                            "field.pocket_secretary.notebook.tips.flags_unresolved");
+                        break;
+                    }
+                    begin_pocket_secretary_notebook_tips(
+                        pocket_secretary_, notebook_tip_flags_);
+                    source_boundary(
+                        "field.pocket_secretary.notebook.tips.opened");
+                } else {
+                    source_boundary(
+                        "field.pocket_secretary.notebook.child_pending");
+                }
+                break;
+            case PocketSecretaryMenuEvent::notebook_tips_selection_moved:
+                source_boundary(
+                    "field.pocket_secretary.notebook.tips.selection_moved");
+                break;
+            case PocketSecretaryMenuEvent::notebook_tips_returned:
+                source_boundary(
+                    "field.pocket_secretary.notebook.tips.returned");
+                break;
+            case PocketSecretaryMenuEvent::notebook_tips_mode_action:
+                source_boundary(
+                    "field.pocket_secretary.notebook.tips.mode_action");
+                break;
+            default:
+                break;
+            }
             if (event == PocketSecretaryMenuEvent::exited) {
                 pocket_secretary_.open = false;
                 source_boundary("field.pocket_secretary.exited");
@@ -2309,15 +3398,36 @@ void FieldSceneRuntime::advance_frame() {
             command_overview_inventory_action_ = InventoryActionMenuState{};
             command_overview_selected_inventory_item_.reset();
             command_overview_discard_confirmation_ = MenuConfirmationState{};
-            command_overview_action_message_.clear();
+            command_overview_action_message_ =
+                CommandOverviewActionMessage::none;
             command_overview_inventory_action_active_ = false;
             command_overview_discard_confirmation_active_ = false;
+            command_overview_first_aid_state_ =
+                CommandOverviewFirstAidState::inactive;
+            command_overview_first_aid_targets_ = FirstAidTargetList{};
+            command_overview_first_aid_cursor_ = 0U;
+            command_overview_first_aid_message_ = FirstAidMessage::none;
+            command_overview_automatic_use_state_ =
+                CommandOverviewAutomaticUseState::inactive;
+            command_overview_inventory_selector_suppressed_ = false;
             command_overview_clips_.close();
             command_overview_cyberware_active_ = false;
             command_overview_cyberware_ = CyberwareMenuModel{};
+            command_overview_magic_state_ =
+                CommandOverviewMagicState::inactive;
+            command_overview_magic_loop_ = MagicMenuLoopState{};
+            command_overview_magic_selected_spell_.reset();
+            command_overview_magic_force_ = MagicForceState{};
             pocket_secretary_.open = false;
+            dismiss_runner_ = DismissRunnerMenuState{};
             posture_dialog_active_ = false;
         } else if (command_overview_.take_action_dispatch_pending()) {
+            // ROM 0x10E4E publishes audio command 0x24 before dispatching the
+            // A/C action selected on the command overview. FBA6 itself has
+            // no additional sound call in its Magical Defense fallback.
+            if (source_audio_event_callback_) {
+                source_audio_event_callback_(0x24U);
+            }
             if (command_overview_.view().source_state.primary_page < 2U) {
                 begin_command_overview_inventory_action();
             } else if (command_overview_.view().source_state.primary_page ==
@@ -2329,10 +3439,13 @@ void FieldSceneRuntime::advance_frame() {
             } else if (command_overview_.view().source_state.primary_page ==
                        4U) {
                 begin_command_overview_cyberware();
+            } else if (command_overview_.view().source_state.primary_page ==
+                       5U) {
+                begin_command_overview_magic();
             } else {
                 // The converted command bridge has identified the remaining
-                // action route, but its handler still needs a source-verified
-                // native target (Magic and Attributes/Skills).
+                // action route, but Attributes/Skills still needs a native
+                // action target.
                 source_boundary(
                     "field.command_overview.non_inventory_action_pending");
             }
@@ -2431,12 +3544,13 @@ void FieldSceneRuntime::paint_field_hud_overlays(QPainter& painter) const {
                 ? &field_hud_faces_[overlay.asset_index]
                 : nullptr;
         case FieldHudOverlayKind::physical_bar:
-            return overlay.asset_index < field_hud_vertical_counters_.size()
-                ? &field_hud_vertical_counters_[overlay.asset_index]
+            return overlay.asset_index < field_hud_delay_meter_counters_.size()
+                ? &field_hud_delay_meter_counters_[overlay.asset_index]
                 : nullptr;
         case FieldHudOverlayKind::mental_bar:
-            return overlay.asset_index < field_hud_horizontal_counters_.size()
-                ? &field_hud_horizontal_counters_[overlay.asset_index]
+            return overlay.asset_index <
+                    field_hud_behavior_meter_counters_.size()
+                ? &field_hud_behavior_meter_counters_[overlay.asset_index]
                 : nullptr;
         case FieldHudOverlayKind::item:
             return overlay.asset_index < field_hud_items_.size()
@@ -2453,7 +3567,18 @@ void FieldSceneRuntime::paint_field_hud_overlays(QPainter& painter) const {
         }
         return nullptr;
     };
-    for (const auto& overlay : compose_field_hud_overlays(field_hud_slots_)) {
+    auto live_slots = field_hud_slots_;
+    const auto& active = active_runner_record();
+    live_slots[0].flags_byte =
+        static_cast<std::uint8_t>(active.flags >> 8U);
+    live_slots[0].equipped_inventory_slot = active.equipped_inventory_slot;
+    live_slots[0].equipped_item_code = active.equipped_item_code;
+    live_slots[0].ammo_rounds = active.ammo_rounds;
+    live_slots[0].delay_meter = static_cast<std::int8_t>(active.delay_meter);
+    live_slots[0].behavior_meter =
+        static_cast<std::int8_t>(active.behavior_meter);
+    live_slots[0].primary_runner = true;
+    for (const auto& overlay : compose_field_hud_overlays(live_slots)) {
         const auto* image = image_for(overlay);
         if (image == nullptr || image->isNull()) {
             continue;
@@ -2470,7 +3595,13 @@ void FieldSceneRuntime::draw_command_overview_text(
         return;
     }
     auto cursor = x;
+    auto cursor_y = y;
     for (const auto character : text) {
+        if (character == '\n') {
+            cursor = x;
+            cursor_y += 8;
+            continue;
+        }
         const auto code = static_cast<unsigned char>(character);
         if (code < 0x20U || code > 0x7FU) {
             cursor += 8;
@@ -2504,7 +3635,7 @@ void FieldSceneRuntime::draw_command_overview_text(
                     glyph_x, glyph_y, QColor(0, 255, 0, alpha));
             }
         }
-        painter.drawImage(cursor, y, tinted_glyph);
+        painter.drawImage(cursor, cursor_y, tinted_glyph);
         cursor += 8;
     }
 }
@@ -2690,9 +3821,161 @@ void FieldSceneRuntime::paint_command_overview_clips(
     }
 }
 
+void FieldSceneRuntime::paint_command_overview_magic(
+    QPainter& painter) const {
+    // FBA6 clears Plane A before installing this 34x28 layer. The command
+    // overview shell is therefore absent beneath transparent Magic cells;
+    // its separately presented right-hand field HUD is composed afterward.
+    painter.drawImage(0, 0, command_overview_magic_panel_background_);
+    const auto* table = find_us_magic_spell_table(
+        active_runner_record().magic_table_index);
+    if (table != nullptr) {
+        for (std::size_t index = 0;
+             index < table->entry_count &&
+             index < kMagicSpellTableEntryCapacity;
+             ++index) {
+            const auto spell_code = table->entries[index].spell_code;
+            if (spell_code >= command_overview_magic_spell_icons_.size()) {
+                continue;
+            }
+            const auto column = index % 7U;
+            const auto row = index / 7U;
+            painter.drawImage(
+                32 + static_cast<int>(column * 32U),
+                168 + static_cast<int>(row * 24U),
+                command_overview_magic_spell_icons_[spell_code]);
+        }
+    }
+
+    if (!command_overview_magic_selected_spell_.has_value()) {
+        return;
+    }
+    const auto spell_code =
+        command_overview_magic_selected_spell_->spell_code;
+    const auto* spell = find_us_magic_spell(spell_code);
+    if (spell_code < field_menu_text_.magic_spell_names.size()) {
+        draw_command_overview_text(
+            painter, 112, 32,
+            field_menu_text_.magic_spell_names[spell_code]);
+        draw_command_overview_text(
+            painter, 32, 48,
+            field_menu_text_.magic_spell_descriptions[spell_code]);
+    }
+    draw_command_overview_text(
+        painter, 0, 56,
+        field_menu_text_.magic_force_posture_heading);
+    draw_command_overview_text(
+        painter, 32, 80, field_menu_text_.magic_success_label);
+    draw_command_overview_text(
+        painter, 160, 104, field_menu_text_.magic_force_label);
+    draw_command_overview_text(
+        painter, 216, 104,
+        std::to_string(command_overview_magic_force_.current_force));
+
+    const auto& runner = active_runner_record();
+    MagicMenuValueRefreshInput success_input{};
+    success_input.current_force =
+        command_overview_magic_force_.current_force;
+    success_input.action_cap = runner.auxiliary[0];
+    success_input.active_entity = magic_action_record_from_runner(runner);
+    const auto success =
+        refresh_magic_menu_success_or_defense_values(success_input);
+    draw_command_overview_text(
+        painter, 32, 88, std::to_string(success.success_value));
+
+    // 0x1088C draws the spell's availability label and seven-tile row only
+    // for nonnegative +0x25 values. The negative branch clears that region.
+    if (spell != nullptr && spell->availability_byte >= 0) {
+        draw_command_overview_text(
+            painter, 160, 80, field_menu_text_.magic_availability_label);
+        const auto availability = static_cast<std::size_t>(
+            spell->availability_byte);
+        if (availability < command_overview_magic_availability_bars_.size()) {
+            painter.drawImage(
+                160, 88,
+                command_overview_magic_availability_bars_[availability]);
+        }
+    }
+
+    // 0x105E6 writes `None` at C68C for nonpositive residuals, otherwise the
+    // selected seven-tile C86F8 row at C688. The typed calculation consumes
+    // the active runner and spell records; the extracted rows supply pixels.
+    if (spell != nullptr) {
+        const MagicActionEffectValueInput effect_input{
+            command_overview_magic_force_.current_force,
+            magic_action_record_from_runner(runner), *spell};
+        const auto effect = refresh_magic_action_effect_value(effect_input);
+        if (!effect.residual_valid || effect.residual_effect <= 0) {
+            draw_command_overview_text(painter, 48, 104,
+                                       field_menu_text_.none_label);
+        } else if (effect.damage_grid.has_value() &&
+                   effect.damage_grid->effect_row <
+                       command_overview_magic_damage_bars_.size()) {
+            painter.drawImage(
+                32, 104,
+                command_overview_magic_damage_bars_[
+                    effect.damage_grid->effect_row]);
+        }
+    }
+
+    const auto posture = std::min<std::size_t>(
+        runner.posture, command_overview_magic_posture_bars_.size() - 1U);
+    painter.drawImage(160, 136,
+                      command_overview_magic_posture_bars_[posture]);
+    if (posture < field_menu_text_.status_names.size()) {
+        draw_command_overview_text(
+            painter, 144, 144, field_menu_text_.status_names[posture]);
+    }
+
+    // ROM 0x10172 lays out the endpoint, current-force fill, marker, one
+    // separator cell, remaining fill, and final endpoint at C728. These are
+    // direct source tile assets; only their positions depend on typed state.
+    const auto maximum_force = std::max<std::uint16_t>(
+        1U, command_overview_magic_force_.maximum_force);
+    const auto current_force = std::clamp<std::uint16_t>(
+        command_overview_magic_force_.current_force, 1U, maximum_force);
+    const auto force_tile_x = [](const std::uint16_t index) {
+        return 160 + static_cast<int>(index) * 8;
+    };
+    painter.drawImage(force_tile_x(0U), 112,
+                      command_overview_magic_force_meter_tiles_[0]);
+    for (std::uint16_t index = 1U; index < current_force; ++index) {
+        painter.drawImage(force_tile_x(index), 112,
+                          command_overview_magic_force_meter_tiles_[2]);
+    }
+    const auto marker = magic_force_selection_open() ? 3U : 4U;
+    painter.drawImage(force_tile_x(current_force), 112,
+                      command_overview_magic_force_meter_tiles_[marker]);
+    for (std::uint16_t index = 0U;
+         index < maximum_force - current_force; ++index) {
+        painter.drawImage(
+            force_tile_x(static_cast<std::uint16_t>(current_force + 2U + index)),
+            112, command_overview_magic_force_meter_tiles_[2]);
+    }
+    painter.drawImage(force_tile_x(
+                          static_cast<std::uint16_t>(maximum_force + 2U)),
+                      112, command_overview_magic_force_meter_tiles_[1]);
+
+    const auto selection = command_overview_magic_loop_.selection;
+    const auto phase = static_cast<std::size_t>(
+        command_overview_magic_cursor_phase_ %
+        command_overview_magic_cursor_frames_.size());
+    painter.drawImage(
+        static_cast<int>(selection.column) * 32,
+        static_cast<int>(selection.row) * 24,
+        command_overview_magic_cursor_frames_[phase]);
+}
+
 void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     painter.fillRect(0, 0, 320, 224, Qt::black);
     if (!command_overview_.open()) {
+        return;
+    }
+    if (magic_spell_interface_open()) {
+        // The ROM cleared the previous command Plane A before writing Magic.
+        // Transparent cells expose the cleared/black underlay; the HUD plane
+        // remains a separate pass in paint().
+        paint_command_overview_magic(painter);
         return;
     }
     if (command_overview_cyberware_active_) {
@@ -2724,10 +4007,244 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         return;
     }
     if (pocket_secretary_.open) {
-        // The Pocket Secretary is its own full-screen 0xC2A6 composition.
-        // The FFF0DC-driven row text and selection cursor remain on the
-        // visual audit ledger until their source geometry is derived.
+        // ROM 0xC2A6 writes C1418 at C216 with C0DA. The embedded 0x80
+        // markers advance eight pixels per row, leaving one blank row
+        // between options. C376 writes its right cursor tile at C3A2, x=136;
+        // C1320 maps tile 0x05FF to the source lowercase-x glyph.
         painter.drawImage(0, 0, pocket_secretary_background_);
+        // ROM 0xC3E6 fills 28x21 name words from C186; this direct asset is
+        // the extracted C1320 space tile repeated with palette line 3.
+        painter.drawImage(24, 24, pocket_secretary_grid_);
+        // ROM 0xE660's C13E8/C13F8 destinations map to these twelve 8x8
+        // cells in the lower shared frame. Each call replaces one adjacent
+        // 16x8 pair; all previous pairs remain until the panel is rebuilt.
+        constexpr std::array<std::array<int, 2>, 12> kEffectCellOrigins{{
+            {{40, 200}}, {{72, 200}}, {{184, 200}}, {{216, 200}},
+            {{40, 208}}, {{72, 208}}, {{184, 208}}, {{216, 208}},
+            {{56, 200}}, {{200, 200}}, {{56, 208}}, {{200, 208}},
+        }};
+        for (std::size_t location = 0;
+             location < dismiss_runner_random_grid_cells_.size();
+             ++location) {
+            const auto pattern = dismiss_runner_random_grid_cells_[location];
+            if (pattern < 0 ||
+                static_cast<std::size_t>(pattern) >=
+                    dismiss_runner_random_grid_patterns_.size()) {
+                continue;
+            }
+            painter.drawImage(
+                kEffectCellOrigins[location][0],
+                kEffectCellOrigins[location][1],
+                dismiss_runner_random_grid_patterns_[
+                    static_cast<std::size_t>(pattern)]);
+        }
+        if (pocket_secretary_.notebook.open) {
+            if (pocket_secretary_.notebook.tips.open) {
+                const auto& tips = pocket_secretary_.notebook.tips;
+                draw_command_overview_text(
+                    painter, 88, 32, field_menu_text_.notebook_tips_title);
+                draw_command_overview_text(
+                    painter, 72, 40,
+                    field_menu_text_.notebook_tips_separator);
+                draw_command_overview_text(
+                    painter, 136, 184,
+                    field_menu_text_.notebook_tips_page_count_label);
+                if (tips.visible_count != 0U &&
+                    tips.selection < tips.visible_count) {
+                    const auto source_index =
+                        tips.visible_source_indices[tips.selection];
+                    draw_command_overview_text(
+                        painter, 40, 56,
+                        field_menu_text_.notebook_tips[source_index]);
+                }
+                const auto draw_right_aligned_decimal =
+                    [this, &painter](const int right_edge,
+                                     const int y,
+                                     const std::size_t value) {
+                        const auto digits = std::to_string(value);
+                        const auto left_edge = right_edge -
+                            static_cast<int>(digits.size() - 1U) * 8;
+                        draw_command_overview_text(
+                            painter, left_edge, y, digits);
+                    };
+                draw_right_aligned_decimal(
+                    184, 184,
+                    static_cast<std::size_t>(tips.selection) + 1U);
+                draw_right_aligned_decimal(232, 184, tips.visible_count);
+                return;
+            }
+            if (pocket_secretary_.notebook.no_current_run_wait) {
+                for (std::size_t line = 0;
+                     line < field_menu_text_.notebook_no_run_lines.size();
+                     ++line) {
+                    draw_command_overview_text(
+                        painter, 48, 48 + static_cast<int>(line) * 8,
+                        field_menu_text_.notebook_no_run_lines[line]);
+                }
+                return;
+            }
+            // ROM 0xF33E clears through C3E6, writes C567E at C216, and
+            // writes its separator at C292. C0DA advances 0x80 source bytes
+            // (one eight-pixel row) at each marker. Current Run and Tips &
+            // Clues therefore start at y=56 and y=72; F33E places each
+            // enabled event-gated row another 16 pixels below the previous
+            // row. F236's C376 cursor base is C392, eight pixels left of the
+            // first option, and uses the same 16-pixel row stride.
+            draw_command_overview_text(
+                painter, 88, 32, field_menu_text_.notebook_labels[0]);
+            draw_command_overview_text(
+                painter, 72, 40, field_menu_text_.pocket_secretary_separator);
+            for (std::size_t row = 0;
+                 row < pocket_secretary_.notebook.option_count; ++row) {
+                const auto label_index = static_cast<std::size_t>(
+                    pocket_secretary_.notebook.visible_options[row]) + 1U;
+                if (label_index >= field_menu_text_.notebook_labels.size()) {
+                    continue;
+                }
+                const auto y = 56 + static_cast<int>(row) * 16;
+                draw_command_overview_text(
+                    painter, 88, y,
+                    field_menu_text_.notebook_labels[label_index]);
+            }
+            if (pocket_secretary_.notebook.selection <
+                pocket_secretary_.notebook.option_count) {
+                draw_command_overview_text(
+                    painter, 72,
+                    56 + static_cast<int>(
+                             pocket_secretary_.notebook.selection) * 16,
+                    "x");
+            }
+            return;
+        }
+        if (dismiss_runner_.open) {
+            // ROM C448 writes its fixed C1499/C14A4/Separator/C14BD block
+            // through C0DA at C216. Abort remains at C416 (y=64); each active
+            // FF0200/FF0300 name is written one row below it, at y=80+16n.
+            // Redrawing the cleared shared inner grid first prevents the old
+            // Pocket Secretary buttons from remaining beneath this child.
+            draw_command_overview_text(
+                painter, 88, 32, field_menu_text_.dismiss_runner_labels[0]);
+            draw_command_overview_text(
+                painter, 88, 40, field_menu_text_.dismiss_runner_labels[1]);
+            draw_command_overview_text(
+                painter, 72, 48, field_menu_text_.dismiss_runner_separator);
+            draw_command_overview_text(
+                painter, 88, 64, field_menu_text_.dismiss_runner_labels[2]);
+            for (std::size_t row = 0;
+                 row < dismiss_runner_.candidate_count; ++row) {
+                const auto slot = dismiss_runner_.candidate_slots[row];
+                draw_command_overview_text(
+                    painter, 88, 80 + static_cast<int>(row) * 16,
+                    field_party_roster_.name(slot));
+            }
+            if (dismiss_runner_.selection <=
+                dismiss_runner_.candidate_count) {
+                draw_command_overview_text(
+                    painter, 72,
+                    64 + static_cast<int>(dismiss_runner_.selection) * 16,
+                    "x");
+            }
+            if (const auto slot = dismiss_runner_preview_slot();
+                slot.has_value() &&
+                *slot < field_party_roster_.records().size()) {
+                const auto& record = field_party_roster_.records()[*slot];
+                constexpr std::uint16_t kPaletteLineMask = 0x6000U;
+                const auto panel_attributes =
+                    record.command_overview_panel_parameter;
+                // ROM 0x110EC maps +0x3E values through <=0, ==1, and >=2
+                // layout branches. All three select a portrait-panel origin;
+                // recruited records commonly carry 3 or 4, so larger values
+                // must remain valid here.
+                if ((panel_attributes &
+                            static_cast<std::uint16_t>(~kPaletteLineMask)) !=
+                           0U) {
+                    source_boundary(
+                        "field.pocket_secretary.dismiss_runner.preview_attributes_unresolved");
+                } else if (record.hud_portrait_table_pointer == 0U) {
+                    source_boundary(
+                        "field.pocket_secretary.dismiss_runner.preview_table_unresolved");
+                } else {
+                    const auto palette_line = static_cast<std::size_t>(
+                        (panel_attributes & kPaletteLineMask) >> 13U);
+                    const auto alias =
+                        "menu.field.runner.preview.table." +
+                        std::to_string(record.hud_portrait_table_pointer) +
+                        ".offset." +
+                        std::to_string(record.hud_portrait_table_offset) +
+                        ".palette." + std::to_string(palette_line);
+                    const auto preview =
+                        dismiss_runner_preview_panels_.find(alias);
+                    if (preview == dismiss_runner_preview_panels_.end()) {
+                        source_boundary(
+                            "field.pocket_secretary.dismiss_runner.preview_asset_unavailable");
+                    } else {
+                        painter.drawImage(120, 144, preview->second);
+                    }
+                }
+            }
+            return;
+        }
+        if (pocket_secretary_.cyberdeck_unavailable_wait) {
+            // 0x18150 calls C3E6 before writing this response at C40E, which
+            // replaces the parent menu plane contents until the wait ends.
+            for (std::size_t line = 0;
+                 line < field_menu_text_
+                           .pocket_secretary_cyberdeck_unavailable_lines.size();
+                 ++line) {
+                draw_command_overview_text(
+                    painter, 56, 64 + static_cast<int>(line) * 8,
+                    field_menu_text_
+                        .pocket_secretary_cyberdeck_unavailable_lines[line]);
+            }
+            return;
+        }
+        if (pocket_secretary_.group_items_wait) {
+            if (pocket_secretary_.group_item_flags == 0U) {
+                for (std::size_t line = 0;
+                     line < field_menu_text_
+                                .pocket_secretary_group_items_empty_lines.size();
+                     ++line) {
+                    draw_command_overview_text(
+                        painter, 56, 80 + static_cast<int>(line) * 8,
+                        field_menu_text_
+                            .pocket_secretary_group_items_empty_lines[line]);
+                }
+            } else {
+                const auto display_order =
+                    pocket_secretary_group_item_display_order(
+                        pocket_secretary_.group_item_flags);
+                for (std::size_t row = 0; row < display_order.size(); ++row) {
+                    const auto item_index = display_order[row];
+                    if (item_index >= field_menu_text_
+                                          .pocket_secretary_group_item_names
+                                          .size()) {
+                        continue;
+                    }
+                    draw_command_overview_text(
+                        painter, 32, 32 + static_cast<int>(row) * 16,
+                        field_menu_text_
+                            .pocket_secretary_group_item_names[item_index]);
+                }
+            }
+            return;
+        }
+        draw_command_overview_text(
+            painter, 88, 32, field_menu_text_.pocket_secretary_title);
+        draw_command_overview_text(
+            painter, 88, 40, field_menu_text_.pocket_secretary_separator);
+        for (std::size_t row = 0;
+             row < field_menu_text_.pocket_secretary_options.size(); ++row) {
+            draw_command_overview_text(
+                painter, 88, 56 + static_cast<int>(row) * 16,
+                field_menu_text_.pocket_secretary_options[row]);
+        }
+        if (pocket_secretary_.selection <
+            field_menu_text_.pocket_secretary_options.size()) {
+            draw_command_overview_text(
+                painter, 136,
+                56 + static_cast<int>(pocket_secretary_.selection) * 16,
+                "x");
+        }
         return;
     }
 
@@ -3056,33 +4573,27 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                           kInventoryIconPositions[slot][1], icon);
     }
 
-    if (view.source_state.primary_page < 2U) {
+    if (view.source_state.primary_page < 2U &&
+        !command_overview_inventory_selector_suppressed_) {
         // ROM 0x11592 builds the cursor SAT entry from the 0xD29F6 list:
         // x = FFF0D0*0x28 + 0x008C, y = FFF0D1*0x18 + 0x00F4. The Genesis
-        // SAT origin adds 0x80 on both axes, so the screen position is
-        // (primary*40 + 12, secondary*24 + 116). Independent inventory
-        // frames show a one-pixel warm-gold outline inset two pixels from
-        // that sprite footprint; drawing the extracted sprite pattern
-        // directly adds internal lines absent from the game capture. The
-        // color below samples the repeated medkit outline in section 06
-        // frames 2580, 2610, and 2640.
-        const auto x = 12 + static_cast<int>(
+        // SAT origin adds 0x80 on both axes. The 24x16 item graphic starts
+        // four pixels inside that 32x24 sprite footprint. Section 06 frames
+        // 2580, 2610, and 2640 show a one-pixel warm-gold outline hugging the
+        // item graphic; outlining the larger SAT footprint leaves the broad
+        // rectangular margin that is absent from those captures.
+        const auto x = 16 + static_cast<int>(
                                view.source_state.primary_page * 40U);
-        const auto y = 116 + static_cast<int>(
-                               view.source_state.secondary_page * 24U);
-        constexpr int kOutlineInset = 2;
-        constexpr int kOutlineWidth = 28;
-        constexpr int kOutlineHeight = 20;
+        const auto y = 120 + static_cast<int>(
+                                view.source_state.secondary_page * 24U);
+        constexpr int kOutlineWidth = 24;
+        constexpr int kOutlineHeight = 16;
         const QColor selector_color(196, 190, 39);
-        painter.fillRect(x + kOutlineInset, y + kOutlineInset,
+        painter.fillRect(x, y, kOutlineWidth, 1, selector_color);
+        painter.fillRect(x, y + kOutlineHeight - 1,
                          kOutlineWidth, 1, selector_color);
-        painter.fillRect(x + kOutlineInset,
-                         y + kOutlineInset + kOutlineHeight - 1,
-                         kOutlineWidth, 1, selector_color);
-        painter.fillRect(x + kOutlineInset, y + kOutlineInset, 1,
-                         kOutlineHeight, selector_color);
-        painter.fillRect(x + kOutlineInset + kOutlineWidth - 1,
-                         y + kOutlineInset, 1, kOutlineHeight,
+        painter.fillRect(x, y, 1, kOutlineHeight, selector_color);
+        painter.fillRect(x + kOutlineWidth - 1, y, 1, kOutlineHeight,
                          selector_color);
     }
     if (command_overview_clips_.is_open()) {
@@ -3096,31 +4607,34 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                           command_overview_focus_[focus_index]);
     }
     if (command_overview_inventory_action_active_) {
-        painter.drawImage(kCommandOverviewActionBackgroundX,
-                          kCommandOverviewActionBackgroundY,
-                          command_overview_action_background_);
-        const auto action_selector =
-            command_overview_inventory_action_.action_selector;
-        if (action_selector >= 2U && action_selector <= 5U) {
-            const auto focus_index = static_cast<std::size_t>(action_selector -
-                                                                2U);
-            painter.drawImage(kCommandOverviewActionFocusX[focus_index],
-                              kCommandOverviewActionFocusY,
-                              command_overview_action_focus_[focus_index]);
-        }
         if (command_overview_discard_confirmation_active_) {
+            painter.drawImage(
+                kCommandOverviewActionBackgroundX,
+                kCommandOverviewActionBackgroundY,
+                command_overview_action_confirmation_background_);
+            const auto choice_index = static_cast<std::size_t>(
+                command_overview_discard_confirmation_.selected_option == 0U
+                    ? 0U
+                    : 1U);
+            painter.drawImage(
+                kCommandOverviewActionConfirmationFocusX[choice_index],
+                kCommandOverviewActionConfirmationFocusY,
+                command_overview_action_confirmation_focus_[choice_index]);
+            // 0x126A2 writes D1CD3 at Plane A C7A0 (128,120).
             draw_command_overview_text(
-                painter, 112, 176, field_menu_text_.action_discard_prompt);
+                painter, 128, 120, field_menu_text_.action_discard_prompt);
             if (command_overview_selected_inventory_item_.has_value() &&
                 active_runner_record().equipped_inventory_slot >= 0 &&
                 static_cast<std::size_t>(
                     active_runner_record().equipped_inventory_slot) ==
                     command_overview_selected_inventory_item_->slot) {
+                // 0x126AE writes D1CBB at C620; its 0x80 line break separates
+                // the warning at y=96 from the suffix at y=104.
                 draw_command_overview_text(
-                    painter, 112, 184,
+                    painter, 128, 96,
                     field_menu_text_.action_item_equipped_prefix);
                 draw_command_overview_text(
-                    painter, 112, 192,
+                    painter, 128, 104,
                     field_menu_text_.action_item_equipped_suffix);
             }
             draw_command_overview_text(
@@ -3128,16 +4642,183 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 command_overview_discard_confirmation_.selected_option == 0U
                     ? field_menu_text_.action_choice_yes
                     : field_menu_text_.action_choice_no);
-        } else if (!command_overview_action_message_.empty()) {
+        } else {
+            painter.drawImage(kCommandOverviewActionBackgroundX,
+                              kCommandOverviewActionBackgroundY,
+                              command_overview_action_background_);
+            const auto action_selector =
+                command_overview_inventory_action_.action_selector;
+            if (action_selector >= 2U && action_selector <= 5U) {
+                const auto focus_index = static_cast<std::size_t>(
+                    action_selector - 2U);
+                painter.drawImage(kCommandOverviewActionFocusX[focus_index],
+                                  kCommandOverviewActionFocusY,
+                                  command_overview_action_focus_[focus_index]);
+            }
+        }
+    } else if (command_overview_inventory_trade_.open) {
+        painter.drawImage(kCommandOverviewActionBackgroundX,
+                          kCommandOverviewActionBackgroundY,
+                          command_overview_action_confirmation_background_);
+        const auto choice_index = command_overview_inventory_trade_.yes_selected
+            ? 0U
+            : 1U;
+        painter.drawImage(
+            kCommandOverviewActionConfirmationFocusX[choice_index],
+            kCommandOverviewActionConfirmationFocusY,
+            command_overview_action_confirmation_focus_[choice_index]);
+        if (command_overview_inventory_trade_.recipient_inventory_full) {
+            const auto recipient =
+                command_overview_inventory_trade_.recipient_slot;
+            if (recipient < FieldPartyRosterRuntime::kSlotCount) {
+                draw_command_overview_text(
+                    painter, 120, 104, field_party_roster_.name(recipient));
+            }
             draw_command_overview_text(
-                painter, 112, 200, command_overview_action_message_);
+                painter, 120, 112,
+                field_menu_text_.action_trade_full_inventory_message);
+        } else {
+            draw_command_overview_text(
+                painter, 152, 120,
+                field_menu_text_.action_trade_recipient_label);
+            const auto recipient =
+                command_overview_inventory_trade_.recipient_slot;
+            if (recipient < FieldPartyRosterRuntime::kSlotCount) {
+                draw_command_overview_text(
+                    painter, 128, 128, field_party_roster_.name(recipient));
+            }
+            if (command_overview_selected_inventory_item_.has_value() &&
+                active_runner_record().equipped_inventory_slot >= 0 &&
+                static_cast<std::size_t>(
+                    active_runner_record().equipped_inventory_slot) ==
+                    command_overview_selected_inventory_item_->slot) {
+                draw_command_overview_text(
+                    painter, 128, 96,
+                    field_menu_text_.action_item_equipped_prefix);
+                draw_command_overview_text(
+                    painter, 128, 104,
+                    field_menu_text_.action_item_equipped_suffix);
+            }
+        }
+        draw_command_overview_text(
+            painter, 112, 200,
+            command_overview_inventory_trade_.yes_selected
+                ? field_menu_text_.action_choice_yes
+                : field_menu_text_.action_choice_no);
+    } else if (command_overview_action_message_ !=
+               CommandOverviewActionMessage::none) {
+        if (command_overview_action_message_ ==
+            CommandOverviewActionMessage::cannot_discard) {
+            draw_command_overview_text(
+                painter, 128, 96, field_menu_text_.action_cannot_discard);
+        } else if (command_overview_action_message_ ==
+                   CommandOverviewActionMessage::cannot_trade) {
+            draw_command_overview_text(
+                painter, 136, 96, field_menu_text_.action_cannot_trade);
         }
     } else if (!command_overview_clips_.is_open() &&
+               command_overview_first_aid_state_ ==
+                   CommandOverviewFirstAidState::inactive &&
                view.source_state.primary_page <
                field_menu_text_.command_labels.size()) {
         draw_command_overview_text(
             painter, 112, 200,
             field_menu_text_.command_labels[view.source_state.primary_page]);
+    }
+
+    if (command_overview_magic_state_ ==
+        CommandOverviewMagicState::magical_defense_wait) {
+        // ROM 0xFBA6 writes C89C0 at name-plane C31C (screen 112,48), then
+        // 0x106DA writes 13-tile strips at C51E/C69E (120,80 and 120,104).
+        // Keep the page and runner/HUD below these overlays; this fallback
+        // does not call 0x0FFE to clear Plane A.
+        draw_command_overview_text(painter, 112, 48,
+                                   field_menu_text_.magic_defense_title);
+        const auto draw_strip = [this, &painter](
+                                    const MagicDefenseStripView& strip,
+                                    const int y) {
+            if (strip.bar_row < command_overview_defense_bars_.size()) {
+                painter.drawImage(
+                    120, y, command_overview_defense_bars_[strip.bar_row]);
+            }
+        };
+        draw_strip(command_overview_magic_physical_defense_, 80);
+        draw_strip(command_overview_magic_mana_defense_, 104);
+    }
+
+    if (command_overview_first_aid_state_ !=
+        CommandOverviewFirstAidState::inactive) {
+        if (command_overview_first_aid_state_ ==
+            CommandOverviewFirstAidState::target_selection) {
+            draw_command_overview_text(
+                painter, 128, 88, field_menu_text_.first_aid_prompt);
+            for (std::size_t row = 0;
+                 row < command_overview_first_aid_targets_.active_count;
+                 ++row) {
+                const auto record_index = command_overview_first_aid_targets_
+                                              .active_record_indices[row];
+                if (record_index < FieldPartyRosterRuntime::kSlotCount) {
+                    draw_command_overview_text(
+                        painter, 128, 104 + static_cast<int>(row) * 8,
+                        field_party_roster_.name(record_index));
+                }
+            }
+            draw_command_overview_text(
+                painter, 152,
+                104 + static_cast<int>(
+                          command_overview_first_aid_targets_.active_count) * 8,
+                field_menu_text_.first_aid_cancel);
+            const auto selected_row = command_overview_first_aid_cursor_;
+            const auto cursor_x = selected_row ==
+                                          command_overview_first_aid_targets_
+                                              .cancel_row()
+                                      ? 144
+                                      : 120;
+            draw_command_overview_text(
+                painter, cursor_x,
+                104 + static_cast<int>(selected_row) * 8, ">");
+        } else if (command_overview_first_aid_message_ ==
+                   FirstAidMessage::medkit_used) {
+            draw_command_overview_text(
+                painter, 144, 104,
+                field_menu_text_.first_aid_medkit_used);
+        } else if (command_overview_first_aid_message_ ==
+                   FirstAidMessage::slap_patch_used) {
+            draw_command_overview_text(
+                painter, 144, 104,
+                field_menu_text_.first_aid_slap_patch_used);
+        } else if (command_overview_first_aid_message_ ==
+                   FirstAidMessage::target_not_injured) {
+            draw_command_overview_text(
+                painter, 104, 104,
+                field_menu_text_.first_aid_not_injured);
+        }
+
+        if (command_overview_first_aid_cursor_ <
+            command_overview_first_aid_targets_.active_count) {
+            const auto target_index = command_overview_first_aid_targets_
+                                          .active_record_indices[
+                                              command_overview_first_aid_cursor_];
+            // The extracted face bank contains the three Joshua starter
+            // portraits. Recruited-runner portraits are still a source-data
+            // boundary and are not guessed from class indices.
+            if (target_index == 0U &&
+                field_joshua_archetype_selection_ <
+                    field_hud_faces_.size() &&
+                !field_hud_faces_[field_joshua_archetype_selection_].isNull()) {
+                painter.drawImage(
+                    144, 144,
+                    field_hud_faces_[field_joshua_archetype_selection_]);
+            }
+        }
+        draw_command_overview_text(
+            painter, 104, 200, field_menu_text_.first_aid_label);
+    }
+    if (command_overview_automatic_use_state_ ==
+        CommandOverviewAutomaticUseState::result_wait) {
+        draw_command_overview_text(
+            painter, 128, 96,
+            field_menu_text_.action_automatic_use_message);
     }
 }
 

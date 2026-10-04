@@ -35,15 +35,14 @@ SelectedItemBranch classify_selected_item(
     if (pending_medical_action && item_code >= 0x10U && item_code <= 0x12U) {
         return SelectedItemBranch::first_aid;
     }
-    // 0x121C0 is the source acknowledgement path for these utility items.
-    if (item_code == 0x13U || item_code == 0x14U || item_code == 0x16U) {
+    // 0x121C0 is the source acknowledgement path for these utility and
+    // spell-focus item codes.
+    if (item_code == 0x13U || item_code == 0x14U || item_code == 0x16U ||
+        (item_code >= 0x18U && item_code < 0x2CU)) {
         return SelectedItemBranch::automatic_use;
     }
     if (item_code < 0x18U) {
         return SelectedItemBranch::weapon_or_gear;
-    }
-    if (item_code < 0x2CU) {
-        return SelectedItemBranch::item_action;
     }
     return SelectedItemBranch::armor;
 }
@@ -265,6 +264,130 @@ bool transfer_selected_item(
     source.inventory_item_codes[selected.slot] = 0U;
     source.inventory_phase_bytes[selected.slot] = 0U;
     return true;
+}
+
+namespace {
+
+std::optional<std::size_t> next_inventory_trade_recipient(
+    const std::array<bool, kInventoryTradePartySlotCount>& active_slots,
+    const std::size_t source_slot,
+    const std::size_t after_slot) {
+    if (source_slot >= kInventoryTradePartySlotCount ||
+        after_slot >= kInventoryTradePartySlotCount) {
+        return std::nullopt;
+    }
+    for (std::size_t step = 1U; step <= kInventoryTradePartySlotCount; ++step) {
+        const auto candidate =
+            (after_slot + step) % kInventoryTradePartySlotCount;
+        if (candidate != source_slot && active_slots[candidate]) {
+            return candidate;
+        }
+    }
+    return std::nullopt;
+}
+
+void select_inventory_trade_recipient(
+    const std::array<RunnerRecordFields, kInventoryTradePartySlotCount>&
+        records,
+    const std::size_t recipient_slot,
+    InventoryTradeState& state) {
+    state.recipient_slot = recipient_slot;
+    const auto& items = records[recipient_slot].inventory_item_codes;
+    const auto free_slot = std::find(items.begin(), items.end(), 0U);
+    state.recipient_inventory_full = free_slot == items.end();
+    state.recipient_inventory_slot = state.recipient_inventory_full
+        ? 0U
+        : static_cast<std::size_t>(free_slot - items.begin());
+    // FFF114 is cleared and toggled by the initial 0x127B0 draw, making No
+    // the source default every time a new recipient is shown.
+    state.yes_selected = false;
+}
+
+InventoryTradeResult inventory_trade_result(
+    const InventoryTradeEvent event,
+    const InventoryTradeState& state) {
+    return InventoryTradeResult{event, state.recipient_slot,
+                                state.recipient_inventory_slot,
+                                state.recipient_inventory_full,
+                                state.yes_selected};
+}
+
+} // namespace
+
+InventoryTradeResult begin_inventory_trade(
+    const std::array<RunnerRecordFields, kInventoryTradePartySlotCount>&
+        records,
+    const std::array<bool, kInventoryTradePartySlotCount>& active_slots,
+    const std::size_t source_slot,
+    const SelectedInventoryItem& selected,
+    InventoryTradeState& state) {
+    state = InventoryTradeState{};
+    if (source_slot >= kInventoryTradePartySlotCount ||
+        !active_slots[source_slot] ||
+        selected.slot >= records[source_slot].inventory_item_codes.size() ||
+        records[source_slot].inventory_item_codes[selected.slot] !=
+            selected.item_code ||
+        selected.item_code == 0U ||
+        !can_trade_selected_item(selected.item_code)) {
+        return inventory_trade_result(InventoryTradeEvent::transfer_failed,
+                                      state);
+    }
+
+    state.open = true;
+    state.selected_item = selected;
+    state.source_slot = source_slot;
+    const auto recipient = next_inventory_trade_recipient(
+        active_slots, source_slot, source_slot);
+    if (!recipient.has_value()) {
+        state = InventoryTradeState{};
+        return inventory_trade_result(InventoryTradeEvent::no_recipient,
+                                      state);
+    }
+    select_inventory_trade_recipient(records, *recipient, state);
+    return inventory_trade_result(InventoryTradeEvent::recipient_opened,
+                                  state);
+}
+
+InventoryTradeResult advance_inventory_trade(
+    std::array<RunnerRecordFields, kInventoryTradePartySlotCount>& records,
+    const std::array<bool, kInventoryTradePartySlotCount>& active_slots,
+    InventoryTradeState& state,
+    const InventoryTradeInput& input) {
+    if (!state.open) {
+        return inventory_trade_result(InventoryTradeEvent::no_change, state);
+    }
+    if (input.left || input.right) {
+        state.yes_selected = !state.yes_selected;
+        return inventory_trade_result(InventoryTradeEvent::choice_moved,
+                                      state);
+    }
+    if (!input.confirm) {
+        return inventory_trade_result(InventoryTradeEvent::no_change, state);
+    }
+
+    if (state.recipient_inventory_full || !state.yes_selected) {
+        const auto recipient = next_inventory_trade_recipient(
+            active_slots, state.source_slot, state.recipient_slot);
+        if (!recipient.has_value()) {
+            state.open = false;
+            return inventory_trade_result(InventoryTradeEvent::finished,
+                                          state);
+        }
+        const auto event = state.recipient_inventory_full
+            ? InventoryTradeEvent::full_recipient_advanced
+            : InventoryTradeEvent::recipient_advanced;
+        select_inventory_trade_recipient(records, *recipient, state);
+        return inventory_trade_result(event, state);
+    }
+
+    const auto transferred = transfer_selected_item(
+        records[state.source_slot], state.selected_item,
+        records[state.recipient_slot], state.recipient_inventory_slot);
+    state.open = false;
+    return inventory_trade_result(
+        transferred ? InventoryTradeEvent::transferred
+                    : InventoryTradeEvent::transfer_failed,
+        state);
 }
 
 } // namespace shadowrun::ghidra_conversion

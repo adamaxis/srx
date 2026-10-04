@@ -2,6 +2,7 @@
 
 #include "shadowrun_ghidra/session/runner_record_access_conversion.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -41,7 +42,6 @@ enum class SelectedItemBranch : std::uint8_t {
     first_aid,
     automatic_use,
     weapon_or_gear,
-    item_action,
     armor,
 };
 
@@ -143,5 +143,59 @@ bool transfer_selected_item(
     const SelectedInventoryItem& selected,
     RunnerRecordFields& recipient,
     std::size_t recipient_slot);
+
+inline constexpr std::size_t kInventoryTradePartySlotCount = 3U;
+
+struct InventoryTradeState {
+    bool open = false;
+    SelectedInventoryItem selected_item{};
+    std::size_t source_slot = 0U;
+    std::size_t recipient_slot = 0U;
+    std::size_t recipient_inventory_slot = 0U;
+    bool recipient_inventory_full = false;
+    bool yes_selected = false;
+};
+
+enum class InventoryTradeEvent : std::uint8_t {
+    no_change,
+    no_recipient,
+    recipient_opened,
+    choice_moved,
+    recipient_advanced,
+    full_recipient_advanced,
+    finished,
+    transferred,
+    transfer_failed,
+};
+
+struct InventoryTradeInput {
+    bool left = false;
+    bool right = false;
+    bool confirm = false;
+};
+
+struct InventoryTradeResult {
+    InventoryTradeEvent event = InventoryTradeEvent::no_change;
+    std::size_t recipient_slot = 0U;
+    std::size_t recipient_inventory_slot = 0U;
+    bool recipient_inventory_full = false;
+    bool yes_selected = false;
+};
+
+// ROM 0x12836/0x1288E scan the next active record, skipping the source runner,
+// and 0x1296A lets the player toggle Yes/No before advancing or transferring.
+InventoryTradeResult begin_inventory_trade(
+    const std::array<RunnerRecordFields, kInventoryTradePartySlotCount>&
+        records,
+    const std::array<bool, kInventoryTradePartySlotCount>& active_slots,
+    std::size_t source_slot,
+    const SelectedInventoryItem& selected,
+    InventoryTradeState& state);
+
+InventoryTradeResult advance_inventory_trade(
+    std::array<RunnerRecordFields, kInventoryTradePartySlotCount>& records,
+    const std::array<bool, kInventoryTradePartySlotCount>& active_slots,
+    InventoryTradeState& state,
+    const InventoryTradeInput& input);
 
 } // namespace shadowrun::ghidra_conversion

@@ -52,10 +52,10 @@ void FieldPartyRosterRuntime::clear() noexcept {
 
 void FieldPartyRosterRuntime::mark_slot_active(
     RunnerRecordFields& record) noexcept {
-    // The converted Clips/field roster scans +0x10 bit 0.  The startup
-    // archetype record is a template result, so the field handoff publishes
-    // the source's active-slot bit here instead of fabricating a second record.
-    record.flags = static_cast<std::uint16_t>(record.flags | 0x0001U);
+    // First Aid and the field HUD test byte +0x10, which is the high byte of
+    // this big-endian word. Keep the pre-existing +0x11 active marker too:
+    // command-overview routing consumes that adjacent byte independently.
+    record.flags = static_cast<std::uint16_t>(record.flags | 0x0101U);
 }
 
 void FieldPartyRosterRuntime::set_active_slot(const std::size_t slot) noexcept {
@@ -64,6 +64,31 @@ void FieldPartyRosterRuntime::set_active_slot(const std::size_t slot) noexcept {
         return;
     }
     active_slot_ = 0U;
+}
+
+void FieldPartyRosterRuntime::install_party_member_for_dump(
+    const std::size_t slot, RunnerRecordFields record, std::string name) {
+    if (slot >= kSlotCount) {
+        return;
+    }
+    mark_slot_active(record);
+    records_[slot] = std::move(record);
+    names_[slot] = std::move(name);
+    active_slots_[slot] = true;
+    if (source_ == Source::unavailable) {
+        source_ = Source::restored_save;
+    }
+}
+
+bool FieldPartyRosterRuntime::deactivate_party_member(
+    const std::size_t slot) noexcept {
+    if (slot == 0U || slot >= active_slots_.size() || !active_slots_[slot]) {
+        return false;
+    }
+    // Dismiss Runner removes the FFFC0C/FFFC0D compact party marker. It does
+    // not erase the live record or its field-presence byte at +0x10.
+    active_slots_[slot] = false;
+    return true;
 }
 
 FieldPartyRosterRuntime::Source FieldPartyRosterRuntime::initialize(
