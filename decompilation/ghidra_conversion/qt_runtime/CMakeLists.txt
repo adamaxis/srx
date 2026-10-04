@@ -8,6 +8,7 @@ add_executable(shadowrun_ghidra_conversion_qt
     src/ghidra_conversion_qt_main.cpp
     src/field_scene_runtime.cpp
     src/field_clips_menu_runtime.cpp
+    src/shop_menu_runtime.cpp
     src/field_party_roster_runtime.cpp
     src/field_menu_text_catalog.cpp
     src/field_command_overview_bridge.cpp
@@ -297,3 +298,14 @@ if (WIN32)
         COMMENT "Removing leftover qt_runtime copy of the conversion frontend"
         VERBATIM)
 endif()
+
+add_executable(shadowrun_ghidra_shop_menu_runtime_test
+    tests/shop_menu_runtime_test.cpp
+    src/shop_menu_runtime.cpp
+)
+target_include_directories(shadowrun_ghidra_shop_menu_runtime_test
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_link_libraries(shadowrun_ghidra_shop_menu_runtime_test
+    PRIVATE shadowrun_ghidra_conversion_runtime)
+add_test(NAME shadowrun_ghidra_shop_menu_runtime
+         COMMAND shadowrun_ghidra_shop_menu_runtime_test)

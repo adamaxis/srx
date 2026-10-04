@@ -50,7 +50,7 @@ flowchart TD
 | Magic | `MagicMenuController` and `MagicMenuPresenter` | `MagicMenuLoopState`, `MagicForceState`, and Magic conversions | Move spell/force selection and return behavior out of `FieldSceneRuntime`; keep the defense fallback as its own source-selected branch. |
 | Pocket Secretary | `PocketSecretaryMenuController` and a presenter per child page | `PocketSecretaryMenuState`, `NotebookMenuState`, and `DismissRunnerMenuState` | Give the parent, Notebook/Tips, and Dismiss Runner distinct views and route results. Rebuild the panel before a child page replaces parent controls. |
 | Dialogue | `FieldDialogueEventResolver` plus `DialoguePanelPresenter` | `DialoguePanelView`, `FieldExitPromptState`, and source speaker/event records | Resolve speaker properties, trigger event, text, portrait, options, and frame mode before the generic presenter draws. Use event-specific providers for motel, building, and random street encounters. |
-| Shop | `ShopMenuController`, `ShopTransactionService`, and `ShopMenuPresenter` | Shop entry, stock, and transaction source records are pending | Trace the shop's mode/event, stock and price tables, buy/sell rules, input loop, and return path before defining the final state fields or enabling transactions. |
+| Shop | `ShopMenuController`, `ShopTransactionService`, and `ShopMenuPresenter` | Ares mode/event and offer rows are traced; controller and typed transaction adapters are implemented | Connect the event-resolved dialogue and field-mode route, then add the source-positioned presenter and live session wallet binding. |
 
 `GhidraConversionWindow` remains the Qt window and focused-input endpoint. The
 current `FieldSceneRuntime` is the field composition host; its embedded menu
@@ -76,13 +76,30 @@ duration.
 
 ## Shop boundary
 
-The current source audit identifies the Ares Weapon Emporium entrance as a
-separate building/event path and leaves its shop behavior open. The
-`FieldAction*Purchase` conversions cover field action progression, cyberware,
-resource, and quantity purchases. The general shop inventory, buy/sell
-interface, prices, and transaction rules remain open. The shop controller will
-consume catalog and stock data after its entry path and tables have been
-traced; buying an item and equipping it remain separate state changes.
+The Ares Weapon Emporium route is scene 2/event 11 through `0x1FA78`: it sets
+menu mode 1 and result -1, runs the shared mode-exit services, then enters the
+`0x56AC0` field service loop. The three source offer groups are the 8-row
+records at `0x1AAC9E`, `0x1AADD7`, and `0x1AAD8F`; `0x56DC4` dispatches the
+selected group and cursor. Ordinary purchases use the 50-row item catalog and
+`0x5794E`/`0x57A44`; Ares sales use the shared `0x56F4A` removal path and its
+half-price quote with the mode-1 runner surcharge. `0x57B8C` owns the common
+Yes/No confirmation.
+
+`ShopMenuController` now retains the converted `FieldModeServiceState`, uses
+the source directional precedence and panel bounds, and returns typed buy,
+sell, return, runner-change, or unresolved-action requests. It does not own
+wallet or inventory copies. `ShopTransactionService` delegates to the existing
+typed purchase and removal conversions. The live event-to-dialogue-to-shop
+route, shared wallet binding, and source-positioned `ShopMenuPresenter` remain
+open, so this slice is partial and does not claim a playable Ares shop.
+
+The Ares entry dialogue must use the generic dialogue panel. Its provider is
+selected from the scene/event and speaker properties, then supplies only
+source-bound Ares text and portrait records. The early longplay capture has no
+Ares shop frames; shop appearance and multi-frame visual verification remain
+open. The eventual presenter must redraw its owned panel on entry, category
+change, offer change, confirmation, and return so stale buttons or graphics
+cannot remain underneath the current page.
 
 ## Verification for each screen
 
@@ -103,8 +120,9 @@ appearance reference; internal assets and dumps check the conversion path.
    into their screen controllers and presenters.
 3. Separate dialogue event resolution from the generic panel. Connect each
    provider from its speaker properties and field/building/encounter event.
-4. Trace the Ares/shop entry and transaction tables, then define and connect
-   `ShopMenuController`.
+4. Connect the traced Ares/shop route, generic event dialogue, shared wallet,
+   and `ShopMenuPresenter` around the implemented controller/transaction
+   layer.
 
 The dialogue frame/presenter slice is committed as `18ae07ba42` and remains
 partial while live speaker/event resolution and other event branches are open.
