@@ -114,9 +114,20 @@ int main() {
         return bound == 100U ? std::optional<std::uint8_t>(arrival_roll)
                              : std::nullopt;
     };
+    std::uint32_t room_payment_funds = 20U;
+    StokerMotelRoomPaymentOutcome room_payment_outcome{};
     FieldDialogueRuntime runtime(
         [&boundary](const std::string_view reason) { boundary = reason; },
         arrival_callbacks);
+    runtime.set_room_payment_callback([&room_payment_funds,
+                                       &room_payment_outcome]() {
+        StokerMotelRoomPaymentState state{};
+        state.funds = room_payment_funds;
+        room_payment_outcome = resolve_stoker_motel_room_payment(state);
+        room_payment_funds = state.funds;
+        return std::optional<StokerMotelRoomPaymentOutcome>(
+            room_payment_outcome);
+    });
     if (!expect(runtime.load_assets(assets.catalog))) {
         return 2;
     }
@@ -192,9 +203,8 @@ int main() {
         return 4;
     }
 
-    // The B button is the source's second option. The room-offer payment
-    // branch is not yet fully connected, while leaving is a proven sentinel
-    // page and therefore remains executable.
+    // The B button is the source's second option and leaves on its proven
+    // sentinel page. The A payment branch is exercised below.
     if (!expect(runtime.advance_controller_events(0x1000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(runtime.panel().option_count == 0U) ||
@@ -297,6 +307,97 @@ int main() {
                 std::string_view::npos) ||
         !expect(runtime.panel().option_count == 2U)) {
         return 56;
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(room_payment_funds == 0U) ||
+        !expect(room_payment_outcome.result ==
+                StokerMotelRoomPaymentResult::room_paid) ||
+        !expect(room_payment_outcome.remaining_funds == 0U) ||
+        !expect(room_payment_outcome.hotel_options_menu_follows) ||
+        !expect(runtime.panel().text_segments[0].find("own towels") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().option_count == 0U) ||
+        !expect(runtime.panel().returns_to_field)) {
+        return 62;
+    }
+    QImage room_paid_scene(320, 224, QImage::Format_RGB32);
+    room_paid_scene.fill(Qt::magenta);
+    QPainter room_paid_painter(&room_paid_scene);
+    runtime.paint(room_paid_painter);
+    room_paid_painter.end();
+    if (!expect(!has_exact_color(room_paid_scene, 0, 0, 320, 224,
+                                 QColor(Qt::magenta))) ||
+        !expect(has_green_ink(room_paid_scene, 88, 16, 216, 40)) ||
+        !expect(matches_region(room_paid_scene, standard_frame, 16, 152, 16, 16)) ||
+        !expect(matches_region(room_paid_scene, standard_frame, 16, 176, 16, 16)) ||
+        !expect(matches_region(room_paid_scene, standard_frame, 16, 200, 16, 16))) {
+        return 63;
+    }
+    for (int frame = 0; frame < 30; ++frame) {
+        if (!expect(runtime.advance_controller_events(0U) ==
+                    FieldDialogueAdvanceResult::waiting_for_controller)) {
+            return 64;
+        }
+    }
+    QImage room_paid_idle(320, 224, QImage::Format_RGB32);
+    room_paid_idle.fill(Qt::magenta);
+    QPainter room_paid_idle_painter(&room_paid_idle);
+    runtime.paint(room_paid_idle_painter);
+    room_paid_idle_painter.end();
+    if (!expect(matches_region(room_paid_scene, room_paid_idle, 0, 0, 320,
+                               224)) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::source_boundary) ||
+        !expect(runtime.panel().kind == DialoguePanelKind::source_boundary) ||
+        !expect(boundary == "field.exit.hotel_options_unresolved") ||
+        !expect(runtime.open())) {
+        return 65;
+    }
+
+    room_payment_funds = 19U;
+    if (!expect(runtime.open_stoker_prompt_for_dump(
+            StokerMotelPromptId::room_offer)) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(room_payment_funds == 19U) ||
+        !expect(room_payment_outcome.result ==
+                StokerMotelRoomPaymentResult::insufficient_funds) ||
+        !expect(!room_payment_outcome.hotel_options_menu_follows) ||
+        !expect(runtime.panel().text_segments[0].find("low on creds") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().option_count == 0U) ||
+        !expect(runtime.panel().returns_to_field)) {
+        return 66;
+    }
+    QImage room_insufficient_scene(320, 224, QImage::Format_RGB32);
+    room_insufficient_scene.fill(Qt::magenta);
+    QPainter room_insufficient_painter(&room_insufficient_scene);
+    runtime.paint(room_insufficient_painter);
+    room_insufficient_painter.end();
+    if (!expect(!has_exact_color(room_insufficient_scene, 0, 0, 320, 224,
+                                 QColor(Qt::magenta))) ||
+        !expect(has_green_ink(room_insufficient_scene, 88, 16, 216, 56)) ||
+        !expect(matches_region(room_insufficient_scene, standard_frame, 16, 152,
+                               16, 16)) ||
+        !expect(matches_region(room_insufficient_scene, standard_frame, 16, 176,
+                               16, 16)) ||
+        !expect(matches_region(room_insufficient_scene, standard_frame, 16, 200,
+                               16, 16)) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(!runtime.open())) {
+        return 67;
+    }
+
+    runtime.set_room_payment_callback({});
+    if (!expect(runtime.open_stoker_prompt_for_dump(
+            StokerMotelPromptId::room_offer)) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::source_boundary) ||
+        !expect(boundary.find("room-payment state is unresolved") !=
+                std::string_view::npos)) {
+        return 68;
     }
 
     // The 80..99 path must not be misreported as the manager greeting while

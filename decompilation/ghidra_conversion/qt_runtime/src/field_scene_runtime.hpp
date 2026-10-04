@@ -129,6 +129,7 @@ public:
         return field_dialogue_.open_stoker_arrival_result_for_dump(
             random_roll);
     }
+    bool open_stoker_room_payment_for_dump(std::uint32_t funds);
     bool open_ares_mode_text_for_dump(std::int8_t alternate_result) {
         return field_mode_text_.open(
             FieldModeTextPromptContext{2U, 11U, alternate_result});

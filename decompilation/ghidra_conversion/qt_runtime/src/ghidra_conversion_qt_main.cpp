@@ -3058,11 +3058,18 @@ int main(int argc, char** argv) {
                 field_dialogue_dump_path.has_value()) {
                 const bool arrival_result =
                     *field_dialogue_dump_prompt == "arrival-manager";
-                const auto prompt = arrival_result
+                const bool room_paid_result =
+                    *field_dialogue_dump_prompt == "room-paid";
+                const bool room_insufficient_result =
+                    *field_dialogue_dump_prompt == "room-insufficient";
+                const bool room_payment_result = room_paid_result ||
+                                                 room_insufficient_result;
+                const auto prompt = arrival_result || room_payment_result
                                         ? std::optional<StokerMotelPromptId>{}
                                         : parse_stoker_dialogue_prompt(
                                               *field_dialogue_dump_prompt);
-                if (!arrival_result && !prompt.has_value()) {
+                if (!arrival_result && !room_payment_result &&
+                    !prompt.has_value()) {
                     std::cerr << "field dialogue dump: unknown Stoker prompt '"
                               << *field_dialogue_dump_prompt << "'\n";
                     return 3;
@@ -3070,9 +3077,21 @@ int main(int argc, char** argv) {
                 const bool prompt_opened =
                     arrival_result
                         ? field_scene.open_stoker_arrival_result_for_dump(79U)
-                        : field_scene.open_stoker_dialogue_for_dump(*prompt);
+                        : room_payment_result
+                              ? field_scene.open_stoker_room_payment_for_dump(
+                                    room_paid_result ? 20U : 19U)
+                              : field_scene.open_stoker_dialogue_for_dump(
+                                    *prompt);
                 if (!prompt_opened) {
                     std::cerr << "field dialogue dump: prompt did not open\n";
+                    return 3;
+                }
+                if ((room_paid_result &&
+                     field_scene.field_funds_for_dump() != 0U) ||
+                    (room_insufficient_result &&
+                     field_scene.field_funds_for_dump() != 19U)) {
+                    std::cerr
+                        << "field dialogue dump: room-payment wallet result mismatch\n";
                     return 3;
                 }
                 QImage dialogue_scene(kSceneWidth, kSceneHeight,

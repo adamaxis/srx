@@ -1030,7 +1030,12 @@ new behavior is invented.
    two-option manager record at `0xF4AB4`; A then opens the room offer. The
    field uses the source bounded-random algorithm, but its seed remains
    host-initialized. The `0x1E1FC` effect callback for samples 80..99 is not
-   connected. The synthetic second-speaker check supplies its own text and no
+   connected. A on the room offer dispatches `0x21458` through the typed
+   payment resolver: exactly 20 nuyen opens the paid page and subtracts the
+   charge, while 19 leaves the wallet untouched and opens the low-cred page.
+   Dismissing the paid page requests Hotel Options, whose Qt screen is still
+   an explicit boundary; loaded-save wallet state is unavailable. The
+   synthetic second-speaker check supplies its own text and no
    portrait, so the presenter does not borrow Stoker's image. The property
    selecting the three-option package state in longplay frame 000300 and
    additional live speaker providers remain unconnected.
@@ -1048,7 +1053,9 @@ new behavior is invented.
    change, waits for VBlank, and samples input; it has no dialogue animation
    counter. Independent frames 000300-000302 and 001800-001802 are pixel
    identical holds. The frame and portrait therefore stay static in the
-   observed pages; other event scenes have not been checked.
+   observed pages; other event scenes have not been checked. The paid and
+   insufficient-funds pages also remain pixel-stable through 30 input-free
+   controller frames in both Qt configurations.
 5. **Does sound accompany it?** The traced `0x1F246`/`0x1F3C4` draw and wait
    path and prompt callbacks `0x213CA`, `0x213E2`, and `0x21458` contain no
    direct sound-play call. The optional `A1` hook in `0x1F246` is indirect and
@@ -1059,18 +1066,20 @@ new behavior is invented.
    button sprites, option labels, centered `< MORE >`, page/return state, and
    full lower panel. Manager choices, debt choices, and a no-choice
    continuation page use the same panel. The ordinary random-arrival result
-   now reaches the manager prompt, but the rare effect, room payment, debt
-   payment, package-property selection, and live building placement are not
-   connected end to end.
+   now reaches the manager prompt, and room payment selects its source
+   paid/insufficient records from the typed wallet. The paid message requests
+   Hotel Options, but that screen and live building placement are not yet
+   connected end to end. The rare effect, debt payment, package-property
+   selection, and restored-save wallet also remain open.
 7. **Do multiple frames support the interpretation?** Section 03 frame 000300
    shows a three-option manager/package state, 000600 shows the debt question,
    001200 shows an information page with another portrait, 001500 shows
    another three-choice page, and 001800 shows `< MORE >`. The shared frame
    persists while the speaker and source-provided contents change. Adjacent
    000300-000302 and 001800-001802 captures are pixel-identical holds. The
-   current `0xF4AB4` branch has two choices; no exact independent longplay
-   frame for that result has been identified, and frame 000300 is not used as
-   its golden.
+   current `0xF4AB4` branch has two choices, and the payment-result records
+   have no exact independent longplay frames. Frame 000300 is not used as a
+   golden for those states.
 8. **Was the previous screen cleared before the new one was drawn?** Each open
    page clears the full 320x224 canvas, redraws the frame, then clears both
    source content wells before drawing new text and markers. The Debug and
@@ -1080,6 +1089,8 @@ new behavior is invented.
    arrival-result QA confirms that the previous `<MORE>` and C-option regions
    are cleared before the two-option manager screen is shown; the injected
    successful ambush result clears A/B/C markers before its no-choice text.
+   Both room-payment results also clear the room offer's A/B controls before
+   drawing their no-choice message.
    CLI captures are standalone views, so the live field-to-dialog-to-field
    restoration remains unverified.
 
@@ -1092,5 +1103,7 @@ manager-to-debt-to-referral path. The manager dump for the two-option
 `0xF4AB4` record is renderer output, not an independent golden. The rare
 `0x1E1FC` effect, host-vs-source random seed, property selecting the
 three-option package state, `FFF0AF` frame selection, additional speaker data,
-remaining payment results, live field restoration, and measured dialogue
-audio remain open.
+debt-payment result, Hotel Options UI, loaded-save wallet state, live field
+restoration, and measured dialogue audio remain open. Exact independent
+longplay frames for the two-option manager and room-payment outcomes are not
+available.

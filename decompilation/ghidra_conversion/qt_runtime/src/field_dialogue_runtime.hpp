@@ -5,9 +5,11 @@
 #include "dialogue_text_catalog.hpp"
 #include "shadowrun_ghidra/field/field_exit_prompt_conversion.hpp"
 #include "shadowrun_ghidra/field/stoker_motel_arrival_command_conversion.hpp"
+#include "shadowrun_ghidra/field/stoker_motel_room_payment_conversion.hpp"
 
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -56,6 +58,9 @@ public:
 
     void set_arrival_command_callbacks(
         StokerMotelArrivalCommandCallbacks callbacks);
+    void set_room_payment_callback(
+        std::function<std::optional<StokerMotelRoomPaymentOutcome>()>
+            callback);
 
     // Bind the selection made by converted 0x1F65A to a common NPC panel.
     // Profiles whose portrait/text records have not been extracted remain a
@@ -92,9 +97,12 @@ private:
     DialoguePanelView panel_{};
     StokerMotelPromptId active_prompt_ = StokerMotelPromptId::source_boundary;
     StokerMotelArrivalCommandCallbacks arrival_command_callbacks_;
+    std::function<std::optional<StokerMotelRoomPaymentOutcome>()>
+        room_payment_callback_;
     std::string failure_;
     std::string boundary_reason_;
     bool assets_loaded_ = false;
+    bool hotel_options_menu_follows_ = false;
 };
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime

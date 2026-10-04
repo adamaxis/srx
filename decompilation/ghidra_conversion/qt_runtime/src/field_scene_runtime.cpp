@@ -268,6 +268,17 @@ FieldSceneRuntime::FieldSceneRuntime(
               return static_cast<std::uint8_t>(sample);
           },
           {}}) {
+    field_dialogue_.set_room_payment_callback([this]()
+        -> std::optional<StokerMotelRoomPaymentOutcome> {
+        if (!field_funds_.has_value()) {
+            return std::nullopt;
+        }
+        StokerMotelRoomPaymentState payment_state{};
+        payment_state.funds = *field_funds_;
+        const auto outcome = resolve_stoker_motel_room_payment(payment_state);
+        field_funds_ = outcome.remaining_funds;
+        return outcome;
+    });
     configure_callbacks();
 }
 
@@ -3825,6 +3836,20 @@ bool FieldSceneRuntime::open_command_overview_for_dump() {
     set_controller_port_byte(static_cast<std::uint8_t>(
         field_controller_port_byte_ & static_cast<std::uint8_t>(~0x80U)));
     return command_overview_.open();
+}
+
+bool FieldSceneRuntime::open_stoker_room_payment_for_dump(
+    const std::uint32_t funds) {
+    if (!ready_) {
+        return false;
+    }
+    field_funds_ = funds;
+    if (!field_dialogue_.open_stoker_prompt_for_dump(
+            StokerMotelPromptId::room_offer)) {
+        return false;
+    }
+    return field_dialogue_.advance_controller_events(0x4000U) ==
+           FieldDialogueAdvanceResult::prompt_advanced;
 }
 
 bool FieldSceneRuntime::begin_ares_shop_event_for_dump() {

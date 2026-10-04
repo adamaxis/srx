@@ -54,6 +54,11 @@ void FieldDialogueRuntime::set_arrival_command_callbacks(
     arrival_command_callbacks_ = std::move(callbacks);
 }
 
+void FieldDialogueRuntime::set_room_payment_callback(
+    std::function<std::optional<StokerMotelRoomPaymentOutcome>()> callback) {
+    room_payment_callback_ = std::move(callback);
+}
+
 bool FieldDialogueRuntime::load_assets(const ConversionAssetCatalog& assets) {
     failure_.clear();
     const auto text = load_dialogue_text_catalog(assets, "dialogue.stoker.motel");
@@ -124,6 +129,7 @@ bool FieldDialogueRuntime::open_stoker_prompt(
     }
     boundary_reason_.clear();
     active_prompt_ = prompt;
+    hotel_options_menu_follows_ = false;
     const auto source_view = make_stoker_motel_prompt(prompt);
     const DialogueTextResolver resolver = [this](const std::string_view alias) {
         return resolve_text(alias);
@@ -146,6 +152,7 @@ bool FieldDialogueRuntime::open_source_boundary(std::string reason) {
     panel_.source_complete = false;
     panel_.source_boundary_reason = boundary_reason_;
     active_prompt_ = StokerMotelPromptId::source_boundary;
+    hotel_options_menu_follows_ = false;
     if (source_boundary_callback_) {
         source_boundary_callback_(panel_.source_boundary_reason);
     }
@@ -168,9 +175,17 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
     }
 
     // 0x1F3C4 tests A first, then B and C. A title-only source record uses
-    // the shared wait-for-controller path and returns to field after any
-    // button edge; it is not a hidden fourth option.
+    // the shared wait-for-controller path; it is not a hidden fourth option.
+    // The successful room-payment record carries a caller follow-up marker,
+    // so its wait ends at the unresolved Hotel Options boundary.
     if (panel_.option_count == 0U) {
+        const bool hotel_options_menu_follows =
+            active_prompt_ == StokerMotelPromptId::room_paid &&
+            hotel_options_menu_follows_;
+        if (hotel_options_menu_follows) {
+            open_source_boundary("field.exit.hotel_options_unresolved");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
         close();
         return FieldDialogueAdvanceResult::returned_to_field;
     }
@@ -213,6 +228,40 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
             "Stoker arrival random or ambush-effect callback is unresolved");
         return FieldDialogueAdvanceResult::source_boundary;
     }
+    if (*command == StokerMotelPromptCommand::pay_room) {
+        if (!room_payment_callback_) {
+            open_source_boundary("Stoker room-payment state is unresolved");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+        const auto outcome = room_payment_callback_();
+        if (!outcome.has_value()) {
+            open_source_boundary("Stoker room-payment state is unresolved");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+
+        StokerMotelPromptId result_prompt{};
+        if (outcome->result ==
+                StokerMotelRoomPaymentResult::insufficient_funds &&
+            outcome->prompt == StokerMotelRoomPaymentPrompt::get_patched &&
+            !outcome->hotel_options_menu_follows) {
+            result_prompt = StokerMotelPromptId::room_insufficient;
+        } else if (outcome->result ==
+                       StokerMotelRoomPaymentResult::room_paid &&
+                   outcome->prompt ==
+                       StokerMotelRoomPaymentPrompt::bring_your_own_towels &&
+                   outcome->hotel_options_menu_follows) {
+            result_prompt = StokerMotelPromptId::room_paid;
+        } else {
+            open_source_boundary(
+                "Stoker room-payment result is inconsistent");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+        if (!open_stoker_prompt(result_prompt)) {
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+        hotel_options_menu_follows_ = outcome->hotel_options_menu_follows;
+        return FieldDialogueAdvanceResult::prompt_advanced;
+    }
 
     const auto target = stoker_motel_prompt_target(active_prompt_, option_index);
     if (!target.has_value()) {
@@ -235,6 +284,7 @@ void FieldDialogueRuntime::close() noexcept {
     panel_ = DialoguePanelView{};
     active_prompt_ = StokerMotelPromptId::source_boundary;
     boundary_reason_.clear();
+    hotel_options_menu_follows_ = false;
 }
 
 void FieldDialogueRuntime::paint(QPainter& painter) const {

@@ -287,8 +287,8 @@ connected. The host uses the source bounded-random algorithm, but its field
 seed is currently initialized by Qt. The three-option package state seen in
 independent section 03 frame 000300 has no traced live property condition and
 is not substituted for the two-option record. Exact source tile placement,
-the room-payment return to Hotel Options, and the debt-payment result still
-need source traces and independent Qt image dumps. The separate
+the Hotel Options Qt presentation after a room payment, and the debt-payment
+result still need integration work and independent Qt image dumps. The separate
 `qt_runtime/field_dialogue_runtime.*` seam now connects the converted field
 exit orchestrator to the shared panel without duplicating field state or
 putting ROM pointers in the runtime. Its controller path preserves the
@@ -299,6 +299,14 @@ selection, rare-effect handling, real field placement, and independent visual
 defense exist.
 No other field-exit profile is allowed to borrow Stoker's portrait or text
 aliases.
+
+The typed room-payment command `0x21458` now uses the field wallet and source
+20-nuyen charge. It opens the corresponding insufficient-funds or paid
+message, preserves the wallet on failure, and deducts the charge on success.
+After the paid message, the controller requests Hotel Options; that Qt screen
+is not yet connected. Restored-save wallet state is unavailable, so the Qt
+controller stops at a source boundary instead of guessing a balance for a
+loaded game.
 
 ## 2. Gameplay subsystems
 

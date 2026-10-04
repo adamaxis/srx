@@ -152,6 +152,24 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_dialogue_arrival_manager_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+add_test(NAME shadowrun_ghidra_conversion_qt_field_dialogue_room_paid_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-dialogue-dump room-paid
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-dialogue-qa/room-paid/actual.bmp")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_dialogue_room_paid_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
+add_test(NAME shadowrun_ghidra_conversion_qt_field_dialogue_room_insufficient_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-dialogue-dump room-insufficient
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-dialogue-qa/room-insufficient/actual.bmp")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_dialogue_room_insufficient_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # The Ares title-only mode-text prompt is a separate presenter from the
 # Stoker/NPC route. This diagnostic dump exercises its source-selected text,
 # shared text wells, and no-button composition without fabricating a live
