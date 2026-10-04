@@ -93,13 +93,16 @@ typed purchase and removal conversions. The live event-to-dialogue-to-shop
 route, shared wallet binding, and source-positioned `ShopMenuPresenter` remain
 open, so this slice is partial and does not claim a playable Ares shop.
 
-The Ares entry dialogue must use the generic dialogue panel. Its provider is
-selected from the scene/event and speaker properties, then supplies only
-source-bound Ares text and portrait records. The early longplay capture has no
-Ares shop frames; shop appearance and multi-frame visual verification remain
-open. The eventual presenter must redraw its owned panel on entry, category
-change, offer change, confirmation, and return so stale buttons or graphics
-cannot remain underneath the current page.
+The Ares route is field mode 2/event 11. `0x1FA78` selects resource profile
+`0x1220C0` and the mode text record at `0x110DD2`, then `0x1F246` calls the
+generic text-prompt loop at `0x1F3C4` before entering `0x56AC0`. This is not the
+Stoker/NPC panel route selected by `0x1F65A` for mode 2/event 2. Keep both
+routes event-selected, with speaker properties and text supplied by their
+source records; do not assign the Ares prompt a Stoker portrait or dialogue
+record. The host mode-text prompt and Ares presenter remain pending. Its
+presenter must redraw its owned panel on entry, category change, offer change,
+confirmation, and return so stale buttons or graphics cannot remain beneath
+the current page.
 
 ## Verification for each screen
 

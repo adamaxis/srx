@@ -64,17 +64,18 @@ enum class FieldExitPromptAction {
     hotel_options_menu_unresolved,
 };
 
-// ROM 0x1F65A: select the field-exit prompt/resource pair for the current
-// scene/submode and alternate-result marker, then run the exit services. The
-// scene-2/submode-2 route is the Stoker's Coffin Motel interaction: its
+// ROM 0x1F65A: select the field-exit prompt/resource pair from FFFBF8
+// (field mode), FFFBF9 (event code), and the alternate-result marker, then run
+// the exit services. The mode-2/event-2 route is the Stoker's Coffin Motel
+// interaction: its
 // source records at 0xF4AA0/0xF4AF4/0xF4AEC are exposed as arrival,
 // package-question, and package-handoff prompt identities. A matched route
 // publishes the source's D6=-1 result; a negative FFF10D marker enters the
 // specifically identified Hotel Options menu first. The source's FFFC1E bits
 // 13 and 30 are modeled as ordinary world flags.
 FieldExitPromptAction select_field_exit_prompt(
-    std::uint8_t scene_id,
-    std::uint8_t submode,
+    std::uint8_t field_mode,
+    std::uint8_t event_code,
     std::int8_t alternate_result,
     FieldExitPromptState& state,
     const FieldExitPromptCallbacks& callbacks);

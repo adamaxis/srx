@@ -266,11 +266,13 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
     callbacks.select_field_exit_prompt =
         [this, &runtime_state](FieldExitOrchestratorState& state) {
             FieldExitPromptState prompt_state{};
-            prompt_state.world_flags = field_exit_world_flags_;
-            const auto action = select_field_exit_prompt(
-                static_cast<std::uint8_t>(runtime_state.scene_id),
-                runtime_state.field_mode, field_exit_alternate_result_,
-                prompt_state,
+            const FieldDialogueEventContext event_context{
+                runtime_state.field_mode,
+                field_movement_transition_state_.mode_event_code,
+                field_exit_alternate_result_,
+                field_exit_world_flags_};
+            const auto action = field_dialogue_event_resolver_.resolve(
+                event_context, prompt_state,
                 {[this](FieldExitPromptSelection& selection,
                        FieldExitPromptState&) {
                      // 0x1F246/0x1F3C4 is blocking on the Genesis but is a

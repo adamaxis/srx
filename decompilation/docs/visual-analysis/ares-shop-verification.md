@@ -1,14 +1,20 @@
 # Ares Weapon Emporium verification
 
 Status: controller and transaction logic are partial. The Qt field event route,
-generic event dialogue, presenter, and live wallet binding are not connected.
-No independent Ares shop frame occurs in the supplied early-game longplay
-capture, so no visual fidelity claim is made.
+mode-text prompt, presenter, and live wallet binding are not connected. The
+source uses a generic mode-text prompt here, not the Stoker/NPC panel resolver.
+No Ares shop frame has been confirmed in the available early-section capture,
+so no visual fidelity claim is made.
 
 ## Source trace
 
-- Entry: US ROM `0x1FA78`, scene 2/submode 11, sets menu mode 1 and menu result
-  -1, runs mode-exit services, then dispatches `0x56AC0`.
+- Entry: US ROM `0x1FA78`, field mode `FFFBF8=2`/event `FFFBF9=11`, selects
+  mode resource `0x1220C0`, sets menu mode 1 and result -1, and selects text
+  record `0x110DD2`. It calls `0x1F246` (whose `0x1F3C4` child handles the
+  generic mode-text prompt), then dispatches `0x56AC0`.
+- Dialogue boundary: NPC prompt resolver `0x1F65A` matches mode 2/event 2 for
+  the Stoker motel. Ares mode 2/event 11 follows `0x1FA78`; it must use its own
+  event-selected mode-text data and must not borrow Stoker speaker assets.
 - Selection: `0x56AC0` consumes `FFDD22` direction/confirm/return edges.
   `0x58C54` bounds the selection cursor, `0x58CDE` switches the two panels,
   `0x587DA` publishes the action selection, and `0x57C7A` redraws the selected
@@ -41,9 +47,10 @@ capture, so no visual fidelity claim is made.
 5. **Sound?** The ROM requests event `0x25` on cursor/panel movement and `0x24`
    on confirmation and runner restart. The `0x25` clip identity and both
    playback durations are unresolved; Qt playback is not connected here.
-6. **Related screen content?** The field-mode service also redraws its title,
-   active-runner HUD, selected action detail, offer panel, and funds/price
-   feedback. The current runtime does not yet compose these regions together.
+6. **Related screen content?** The mode-text prompt precedes the shop and the
+   field-mode service redraws its title, active-runner HUD, selected action
+   detail, offer panel, and funds/price feedback. The current runtime does not
+   yet compose these regions together.
 7. **Multiple frames?** The available longplay has no Ares shop example. There
    are no independent shop frames to compare; the new controller CTest checks
    transitions, not appearance.

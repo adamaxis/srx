@@ -3,6 +3,7 @@
 #include "dialogue_panel.hpp"
 #include "dialogue_panel_presenter.hpp"
 #include "dialogue_text_catalog.hpp"
+#include "shadowrun_ghidra/field/field_exit_prompt_conversion.hpp"
 
 #include <cstdint>
 #include <functional>
@@ -18,6 +19,26 @@ enum class FieldDialogueAdvanceResult {
     prompt_advanced,
     returned_to_field,
     source_boundary,
+};
+
+// The source event identity is FFFBF8/FFFBF9. These values select a prompt
+// record; speaker text and portrait remain provider data consumed by the
+// generic panel runtime.
+struct FieldDialogueEventContext {
+    std::uint8_t field_mode = 0; // FFFBF8
+    std::uint8_t event_code = 0; // FFFBF9
+    std::int8_t alternate_result = 0; // FFF0D5
+    std::uint32_t world_flags = 0; // FFFC1E
+};
+
+// Source-backed router for event-selected dialogue records. It keeps mode
+// and event selection out of the generic text and panel presentation code.
+class FieldDialogueEventResolver final {
+public:
+    FieldExitPromptAction resolve(
+        const FieldDialogueEventContext& context,
+        FieldExitPromptState& state,
+        const FieldExitPromptCallbacks& callbacks) const;
 };
 
 // Host-side composition for the source 0x1F246/0x1F3C4 prompt loop.  The

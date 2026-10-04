@@ -243,6 +243,7 @@ private:
     FieldViewportState viewport_state_;
     FieldCommandOverviewBridge command_overview_;
     FieldDialogueRuntime field_dialogue_;
+    FieldDialogueEventResolver field_dialogue_event_resolver_;
     FieldPartyRosterRuntime field_party_roster_{};
     std::size_t field_joshua_archetype_selection_ = 0U;
     QImage field_map_;

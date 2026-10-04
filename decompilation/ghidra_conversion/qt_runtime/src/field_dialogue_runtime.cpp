@@ -34,6 +34,15 @@ std::optional<StokerMotelPromptId> stoker_prompt_for_asset(
 
 } // namespace
 
+FieldExitPromptAction FieldDialogueEventResolver::resolve(
+    const FieldDialogueEventContext& context,
+    FieldExitPromptState& state,
+    const FieldExitPromptCallbacks& callbacks) const {
+    state.world_flags = context.world_flags;
+    return select_field_exit_prompt(context.field_mode, context.event_code,
+                                    context.alternate_result, state, callbacks);
+}
+
 FieldDialogueRuntime::FieldDialogueRuntime(
     std::function<void(std::string_view)> source_boundary)
     : source_boundary_callback_(std::move(source_boundary)) {}

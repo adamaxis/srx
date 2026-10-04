@@ -105,6 +105,43 @@ int main() {
     if (!expect(runtime.load_assets(assets.catalog))) {
         return 2;
     }
+
+    FieldDialogueEventResolver event_resolver;
+    FieldExitPromptState resolver_state{};
+    FieldExitPromptSelection resolved_selection{};
+    bool selection_published = false;
+    FieldExitPromptCallbacks resolver_callbacks{};
+    resolver_callbacks.run_mode_exit_services =
+        [&resolved_selection, &selection_published](
+            const FieldExitPromptSelection& selection,
+            FieldExitPromptState&) {
+            resolved_selection = selection;
+            selection_published = true;
+        };
+    const auto stoker_route = event_resolver.resolve(
+        FieldDialogueEventContext{2U, 2U, 1, 0U}, resolver_state,
+        resolver_callbacks);
+    if (!expect(stoker_route == FieldExitPromptAction::prompt_presented) ||
+        !expect(selection_published) ||
+        !expect(resolved_selection.resource_profile ==
+                FieldExitResourceProfile::stoker_motel) ||
+        !expect(resolved_selection.prompt_asset ==
+                FieldExitPromptAsset::stoker_motel_package_question) ||
+        !expect(resolver_state.exit_marker == 0x14U)) {
+        return 47;
+    }
+
+    resolver_state = FieldExitPromptState{};
+    selection_published = false;
+    const auto ares_route = event_resolver.resolve(
+        FieldDialogueEventContext{2U, 11U, 0, 0U}, resolver_state,
+        resolver_callbacks);
+    if (!expect(ares_route == FieldExitPromptAction::no_matching_scene) ||
+        !expect(!selection_published) ||
+        !expect(resolver_state.caller_exit_status == 0)) {
+        return 48;
+    }
+
     const auto* standard_frame_record =
         assets.catalog.find("dialogue.panel.frame");
     const auto* alternate_frame_record =

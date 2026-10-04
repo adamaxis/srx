@@ -40,20 +40,20 @@ FieldExitPromptSelection select_scene_one_submode_one(
 } // namespace
 
 FieldExitPromptAction select_field_exit_prompt(
-    const std::uint8_t scene_id,
-    const std::uint8_t submode,
+    const std::uint8_t field_mode,
+    const std::uint8_t event_code,
     const std::int8_t alternate_result,
     FieldExitPromptState& state,
     const FieldExitPromptCallbacks& callbacks) {
     FieldExitPromptSelection selection{};
     bool matched = true;
 
-    if (scene_id == 0U && submode == 3U) {
+    if (field_mode == 0U && event_code == 3U) {
         selection = select_scene_zero_submode_three(alternate_result);
-    } else if (scene_id == 1U && submode == 1U) {
+    } else if (field_mode == 1U && event_code == 1U) {
         selection = select_scene_one_submode_one(alternate_result,
                                                  state.world_flags);
-    } else if (scene_id == 2U && submode == 2U) {
+    } else if (field_mode == 2U && event_code == 2U) {
         selection.resource_profile =
             FieldExitResourceProfile::stoker_motel;
         selection.exit_marker = 0x14U;
@@ -67,7 +67,7 @@ FieldExitPromptAction select_field_exit_prompt(
             selection.prompt_asset =
                 FieldExitPromptAsset::stoker_motel_arrival;
         }
-    } else if (scene_id == 3U && submode == 1U) {
+    } else if (field_mode == 3U && event_code == 1U) {
         selection.resource_profile =
             FieldExitResourceProfile::scene_three_submode_one;
         selection.exit_marker = 0x32U;
@@ -81,7 +81,7 @@ FieldExitPromptAction select_field_exit_prompt(
             selection.prompt_asset =
                 FieldExitPromptAsset::scene_three_submode_one_default;
         }
-    } else if (scene_id == 4U && submode == 0U) {
+    } else if (field_mode == 4U && event_code == 0U) {
         selection.resource_profile =
             FieldExitResourceProfile::scene_four_submode_zero;
         selection.exit_marker = 0x28U;
