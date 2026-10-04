@@ -189,7 +189,7 @@ ShopMenuEvent ShopMenuController::advance(
         request.group = selected_group();
         request.cursor = static_cast<std::uint8_t>(selection.action_cursor);
         if (request.group >= ShopActionGroup::weapons &&
-            request.group <= ShopActionGroup::other_items) {
+            request.group <= ShopActionGroup::armor) {
             request.offer = offer(shop_, request.group, request.cursor);
             if (!request.offer.has_value()) {
                 return ShopMenuEvent::offer_unavailable;

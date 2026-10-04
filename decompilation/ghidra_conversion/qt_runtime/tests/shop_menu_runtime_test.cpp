@@ -66,6 +66,18 @@ int main() {
     }
 
     menu.finish_action();
+    if (!expect(menu.advance(0x0800U) == ShopMenuEvent::selection_moved) ||
+        !expect(menu.advance(0x0800U) == ShopMenuEvent::selection_moved) ||
+        !expect(menu.selected_group() == ShopActionGroup::armor) ||
+        !expect(menu.advance(0x0200U) == ShopMenuEvent::panel_changed) ||
+        !expect(menu.advance(0x4000U) == ShopMenuEvent::purchase_selected) ||
+        !expect(menu.pending_action().has_value()) ||
+        !expect(menu.pending_action()->group == ShopActionGroup::armor) ||
+        !expect(menu.pending_action()->offer->type == 0x2EU)) {
+        return 16;
+    }
+
+    menu.finish_action();
     for (int step = 0; step < 5; ++step) {
         if (!expect(menu.advance(0x0800U) ==
                     ShopMenuEvent::selection_moved)) {
