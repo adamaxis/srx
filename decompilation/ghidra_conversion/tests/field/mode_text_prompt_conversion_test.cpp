@@ -127,5 +127,89 @@ int main() {
         return 3;
     }
 
+    ModeTextPromptState stepped_state{};
+    const ModeTextPromptDescriptor stepped_prompt{
+        40U,
+        {41U, true},
+        {42U, true},
+        {0U, false},
+        {0x00FAU, 0x0020U, 0U},
+        false};
+    std::vector<std::uint32_t> stepped_rendered;
+    std::vector<std::uint32_t> stepped_dispatches;
+    int stepped_preparations = 0;
+    const ModeTextPromptCallbacks stepped_callbacks{
+        [&] { ++stepped_preparations; },
+        [&](const ModeTextPromptTextRole, const std::uint32_t text_key) {
+            stepped_rendered.push_back(text_key);
+        },
+        {},
+        {},
+        {},
+        {},
+        [&](const std::uint32_t command) {
+            stepped_dispatches.push_back(command);
+            stepped_state.display_already_prepared = true;
+        }};
+
+    const auto entered = advance_mode_text_prompt(
+        stepped_state, stepped_prompt, std::nullopt, 0U,
+        stepped_callbacks);
+    const auto entered_frames_remaining = stepped_state.frames_remaining;
+    const auto early_choice = advance_mode_text_prompt(
+        stepped_state, stepped_prompt, std::uint8_t{0x10U}, 9U,
+        stepped_callbacks);
+    const auto early_frames_remaining = stepped_state.frames_remaining;
+    const auto dispatched_step = advance_mode_text_prompt(
+        stepped_state, stepped_prompt, std::uint8_t{0x10U}, 1U,
+        stepped_callbacks);
+    const auto dispatched_phase = stepped_state.phase;
+    const auto dispatched_frames_remaining = stepped_state.frames_remaining;
+    const auto dispatched_count = stepped_state.dispatched_subcommands;
+    const auto selected_first = advance_mode_text_prompt(
+        stepped_state, stepped_prompt, std::uint8_t{0x50U}, 10U,
+        stepped_callbacks);
+    if (expect(entered.kind == ModeTextPromptStepKind::waiting &&
+               entered_frames_remaining == 10U &&
+               early_choice.kind == ModeTextPromptStepKind::waiting &&
+               early_frames_remaining == 1U &&
+               dispatched_step.kind ==
+                   ModeTextPromptStepKind::subcommand_dispatched &&
+               dispatched_step.command == 0x0020U &&
+               dispatched_phase ==
+                   ModeTextPromptState::Phase::awaiting_option &&
+               dispatched_frames_remaining == 10U &&
+               dispatched_count == 1U &&
+               selected_first.kind ==
+                   ModeTextPromptStepKind::terminal_command &&
+               selected_first.command == 0x00FAU &&
+               stepped_preparations == 1 &&
+               stepped_dispatches == std::vector<std::uint32_t>{0x0020U} &&
+               stepped_rendered ==
+                   std::vector<std::uint32_t>{40U, 41U, 42U, 41U, 42U}) != 0) {
+        return 4;
+    }
+
+    ModeTextPromptState stepped_sentinel_state{};
+    const auto sentinel_entered = advance_mode_text_prompt(
+        stepped_sentinel_state, sentinel_prompt, std::nullopt, 0U, {});
+    const auto sentinel_initial_delay = stepped_sentinel_state.frames_remaining;
+    const auto early_sentinel_event = advance_mode_text_prompt(
+        stepped_sentinel_state, sentinel_prompt, std::uint8_t{0x01U}, 29U,
+        {});
+    const auto sentinel_final_delay = stepped_sentinel_state.frames_remaining;
+    const auto sentinel_completed = advance_mode_text_prompt(
+        stepped_sentinel_state, sentinel_prompt, std::uint8_t{0x01U}, 1U,
+        {});
+    if (expect(sentinel_entered.kind == ModeTextPromptStepKind::waiting &&
+               sentinel_initial_delay == 30U &&
+               early_sentinel_event.kind == ModeTextPromptStepKind::waiting &&
+               sentinel_final_delay == 1U &&
+               sentinel_completed.kind ==
+                   ModeTextPromptStepKind::negative_first_option &&
+               sentinel_completed.command == 0x00FBU) != 0) {
+        return 5;
+    }
+
     return 0;
 }

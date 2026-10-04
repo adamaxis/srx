@@ -38,6 +38,15 @@ struct ModeTextPromptState {
     bool display_already_prepared = false;
     bool second_option_available = false;
     bool third_option_available = false;
+    enum class Phase : std::uint8_t {
+        not_started,
+        awaiting_option,
+        awaiting_any_event,
+        terminal,
+    } phase = Phase::not_started;
+    std::uint16_t frames_remaining = 0;
+    std::uint32_t terminal_command = 0;
+    std::size_t dispatched_subcommands = 0;
 };
 
 struct ModeTextPromptCallbacks {
@@ -68,6 +77,28 @@ struct ModeTextPromptResult {
     std::uint32_t command = 0;
     std::size_t dispatched_subcommands = 0;
 };
+
+enum class ModeTextPromptStepKind {
+    waiting,
+    subcommand_dispatched,
+    terminal_command,
+    negative_first_option,
+};
+
+struct ModeTextPromptStepResult {
+    ModeTextPromptStepKind kind = ModeTextPromptStepKind::waiting;
+    std::uint32_t command = 0;
+};
+
+// Host-friendly form of ROM 0x1F3C4. The first call draws the resolved prompt;
+// later calls consume elapsed source frames and at most one sampled controller
+// mask. A subcommand returns to the prompt loop after its handler completes.
+ModeTextPromptStepResult advance_mode_text_prompt(
+    ModeTextPromptState& state,
+    const ModeTextPromptDescriptor& prompt,
+    std::optional<std::uint8_t> controller_mask,
+    std::uint16_t elapsed_frames,
+    const ModeTextPromptCallbacks& callbacks);
 
 // ROM 0x1F3C4: present a title and up to three options, wait ten frames,
 // prioritize first/second/third controller choices, dispatch commands below
