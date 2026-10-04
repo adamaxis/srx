@@ -489,6 +489,7 @@ private:
     void apply_field_entity_animation(bool walking);
     bool recover_blocked_field_movement(
         const MovementProbeResult& initial_probe);
+    void advance_field_scene_transition_after_modal();
     std::optional<std::size_t> projected_terrain_cell() const;
     void record_field_activity_start(
         MovementModeTransitionContinuation continuation);

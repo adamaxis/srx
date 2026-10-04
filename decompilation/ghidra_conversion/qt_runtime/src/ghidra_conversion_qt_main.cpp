@@ -3233,13 +3233,33 @@ int main(int argc, char** argv) {
                     QPainter notebook_painter(&notebook_scene);
                     field_scene.paint(notebook_painter);
                     notebook_painter.end();
-                    if (!image_has_green_ink(notebook_scene, 88, 88, 160, 8) ||
-                        !image_has_green_ink(notebook_scene, 88, 104, 160, 8) ||
-                        image_has_green_ink(notebook_scene, 88, 120, 160, 8) ||
-                        !image_has_green_ink(notebook_scene, 72, 56, 8, 8) ||
-                        image_has_green_ink(notebook_scene, 88, 16, 160, 8) ||
-                        image_has_green_ink(notebook_scene, 88, 152, 216, 64)) {
-                        std::cerr << "field dialogue dump: dynamic Notebook rows or stale-row clearing mismatch\n";
+                    const std::array<bool, 6> notebook_pixels{
+                        image_has_green_ink(notebook_scene, 88, 88, 160, 8),
+                        image_has_green_ink(notebook_scene, 88, 104, 160, 8),
+                        !image_has_green_ink(notebook_scene, 88, 120, 160, 8),
+                        image_has_green_ink(notebook_scene, 72, 56, 8, 8),
+                        !image_has_green_ink(notebook_scene, 88, 16, 160, 8),
+                        // Keep the stale-row check above the E660 effect
+                        // cells at y=200/208; their animated pixels are
+                        // verified by the dedicated Tips frame sequence.
+                        !image_has_green_ink(notebook_scene, 88, 152, 216, 48)};
+                    if (std::any_of(notebook_pixels.begin(),
+                                    notebook_pixels.end(),
+                                    [](const bool pixel_check) {
+                                        return !pixel_check;
+                                    })) {
+                        auto diagnostic_path = *field_dialogue_dump_path;
+                        diagnostic_path.replace_filename(
+                            "notebook-pixel-check-failure.bmp");
+                        (void)notebook_scene.save(QString::fromStdWString(
+                            diagnostic_path.wstring()));
+                        std::cerr << "field dialogue dump: dynamic Notebook "
+                                     "rows or stale-row clearing mismatch "
+                                     "checks=";
+                        for (const auto check : notebook_pixels) {
+                            std::cerr << (check ? '1' : '0');
+                        }
+                        std::cerr << "\n";
                         return 3;
                     }
                     const auto notebook_result_name =
@@ -4923,6 +4943,16 @@ int main(int argc, char** argv) {
                 return 0;
             }
             if (field_command_dump_path.has_value()) {
+                const auto capture_field_scene = [&field_scene] {
+                    QImage scene(kSceneWidth, kSceneHeight,
+                                 QImage::Format_RGB32);
+                    scene.fill(Qt::black);
+                    QPainter painter(&scene);
+                    field_scene.paint(painter);
+                    painter.end();
+                    return scene;
+                };
+                const auto field_before_command = capture_field_scene();
                 if (!field_scene.open_command_overview_for_dump()) {
                     std::cerr << "field command dump: command overview did "
                                  "not open\n";
@@ -4935,12 +4965,7 @@ int main(int argc, char** argv) {
                               << static_cast<int>(*field_command_page) << '\n';
                     return 3;
                 }
-                QImage command_scene(kSceneWidth, kSceneHeight,
-                                     QImage::Format_RGB32);
-                command_scene.fill(Qt::black);
-                QPainter command_painter(&command_scene);
-                field_scene.paint(command_painter);
-                command_painter.end();
+                const auto command_scene = capture_field_scene();
                 // 0xD01C replaces the base frame with the Attributes/Skills
                 // composition, so the shell invariant compares against that
                 // replacement instead of the ordinary command background.
@@ -4994,11 +5019,54 @@ int main(int argc, char** argv) {
                               << field_command_dump_path->string() << '\n';
                     return 3;
                 }
+
+                // The command page has no source timer or animated cursor;
+                // drawing it across 30 neutral VBlanks must leave the whole
+                // composition stable while its modal state owns the window.
+                for (std::uint8_t frame = 0U; frame < 30U; ++frame) {
+                    field_scene.advance_frame();
+                }
+                if (capture_field_scene() != command_scene) {
+                    std::cerr << "field command dump: neutral frames changed "
+                                 "the static command page\n";
+                    return 3;
+                }
+
+                // Release the synthetic Start from entry, then press it to
+                // close through the same controller/coordinator path. The
+                // returned full frame must equal the fresh field composition;
+                // this catches stale command buttons and selectors.
+                field_scene.set_controller_port_byte(0x80U);
+                field_scene.advance_frame();
+                if (field_scene.command_overview_open()) {
+                    std::cerr << "field command dump: Start did not return to "
+                                 "the field\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                const auto returned_field_scene = capture_field_scene();
+                if (returned_field_scene != field_before_command) {
+                    std::cerr << "field command dump: 0x2BD2 return did not "
+                                 "redraw the original field composition\n";
+                    return 3;
+                }
+                auto return_path = *field_command_dump_path;
+                return_path.replace_filename(
+                    field_command_dump_path->stem().wstring() +
+                    L"-return-field.bmp");
+                if (!returned_field_scene.save(QString::fromStdWString(
+                        return_path.wstring()))) {
+                    std::cerr << "field command dump: could not write "
+                              << return_path.string() << '\n';
+                    return 3;
+                }
                 std::cout << "field_command_dump=written path="
                           << field_command_dump_path->string()
                           << " selector="
                           << static_cast<int>(field_scene.command_overview_view()
                                                    .source_state.primary_page)
+                          << " static_frames=30 clean_return=1"
                           << "\n";
                 return 0;
             }

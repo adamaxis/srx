@@ -1398,7 +1398,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                     : "field.runtime.scene_transition_suspended_for_command_overview");
             return;
         }
-        source_boundary("field.runtime.advance_scene_transition");
+        advance_field_scene_transition_after_modal();
     };
 
     world_frame_logic_callbacks_.prepare_mode_entry = [this] {
@@ -3403,6 +3403,80 @@ void FieldSceneRuntime::update_source_field_camera() {
     }
 }
 
+void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
+    // The modal Qt loop is non-blocking, so the coordinator's 0x2BD2 call
+    // arrives while the command overview is still open. Resume its ordinary
+    // same-scene refresh only after that full-screen page has closed. Scene
+    // selection and pending event-counter writes remain explicit boundaries
+    // until their source records are available to this runtime.
+    if (field_runtime_state_.scene_refresh_marker != 0) {
+        source_boundary("field.scene.transition.profile_reentry_unresolved");
+        return;
+    }
+    if (field_movement_transition_state_.activity_source_word != 0U) {
+        source_boundary("field.scene.transition.pending_event_accounting");
+        return;
+    }
+
+    FieldSceneTransitionState transition{};
+    transition.field_transition_marker = static_cast<std::uint16_t>(
+        field_runtime_state_.scene_refresh_marker);
+    transition.scene_refresh_marker =
+        state_.field_scene_entry.scene_refresh_marker;
+    transition.pending_scene_marker =
+        state_.field_scene_entry.pending_scene_marker;
+    transition.camera_x = static_cast<std::uint16_t>(
+        state_.field_scene_buffers.camera_x);
+    transition.camera_y = static_cast<std::uint16_t>(
+        state_.field_scene_buffers.camera_y);
+    transition.camera_transition_x = static_cast<std::uint16_t>(
+        state_.field_scene_entry.camera_transition_x);
+    transition.camera_transition_y = static_cast<std::uint16_t>(
+        state_.field_scene_entry.camera_transition_y);
+
+    std::vector<std::uint8_t> unavailable_event_counters;
+    FieldSceneEntryCallbacks scene_callbacks{};
+    scene_callbacks.step_palette_transition =
+        callbacks_.advance_title_palette_fade;
+    scene_callbacks.run_world_frame_services =
+        callbacks_.run_world_frame_services;
+    scene_callbacks.guard_world_effect_player_spawn =
+        callbacks_.guard_world_effect_player_spawn;
+    scene_callbacks.prepare_field_viewports = [this] {
+        prepare_field_viewports(
+            FieldViewportPreparationState{state_.field_resource_mode},
+            callbacks_.field_viewports);
+    };
+    scene_callbacks.upload_scene_profile_block =
+        callbacks_.upload_scene_profile_block;
+
+    ::shadowrun::ghidra_conversion::advance_field_scene_transition(
+        transition, unavailable_event_counters, scene_callbacks);
+
+    state_.field_scene_entry.field_transition_marker =
+        transition.field_transition_marker;
+    state_.field_scene_entry.scene_refresh_marker =
+        transition.scene_refresh_marker;
+    state_.field_scene_entry.pending_scene_marker =
+        transition.pending_scene_marker;
+    state_.field_scene_entry.camera_x = transition.camera_x;
+    state_.field_scene_entry.camera_y = transition.camera_y;
+    state_.field_scene_entry.camera_transition_x = static_cast<std::int16_t>(
+        transition.camera_transition_x);
+    state_.field_scene_entry.camera_transition_y = static_cast<std::int16_t>(
+        transition.camera_transition_y);
+    state_.field_scene_buffers.camera_x = transition.camera_x;
+    state_.field_scene_buffers.camera_y = transition.camera_y;
+    field_runtime_state_.scene_refresh_marker = static_cast<std::int16_t>(
+        transition.field_transition_marker);
+    field_runtime_state_.display_dirty_flags = static_cast<std::uint8_t>(
+        field_runtime_state_.display_dirty_flags | 0x0EU);
+    state_.display_dirty_flags = static_cast<std::uint8_t>(
+        state_.display_dirty_flags | 0x0EU);
+    field_camera_alignment_ready_ = false;
+    source_boundary("field.scene.transition.same_scene_reentered");
+}
+
 void FieldSceneRuntime::advance_frame() {
     if (!ready_) {
         return;
@@ -3955,6 +4029,7 @@ void FieldSceneRuntime::advance_frame() {
             pocket_secretary_.open = false;
             dismiss_runner_ = DismissRunnerMenuState{};
             posture_dialog_active_ = false;
+            advance_field_scene_transition_after_modal();
         } else if (command_overview_.take_action_dispatch_pending()) {
             // ROM 0x10E4E publishes audio command 0x24 before dispatching the
             // A/C action selected on the command overview. FBA6 itself has
