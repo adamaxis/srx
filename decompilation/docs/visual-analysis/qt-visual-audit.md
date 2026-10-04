@@ -26,7 +26,7 @@ Every audit item has three separate evidence channels:
 An item is not source-verified because a unit test passes, because a named
 asset exists, or because a screenshot contains some expected pixels.
 
-## Seven-question anomaly gate
+## Eight-question anomaly gate
 
 Run this gate before changing any screen that looks suspicious, then answer it
 again against the corrected native dump. Keep the answers with the ledger row
@@ -37,10 +37,13 @@ evidence cannot settle a question; it is not a pass.
    visible mismatch in plain terms. Compare the whole source-size frame and
    record the reference and native artifact paths.
 2. **Does the look reflect the actual behavioral state?** Name the typed state
-   field and ROM record/table that drive it. Check that the chosen, equipped,
-   active, unavailable, or disabled state has every source-visible attribute
-   (icon, cursor, tint, border, label, and value as applicable). Record the
-   input that reached the state and the value before and after it.
+   fields and ROM records/tables that drive it, including the speaker or
+   object's properties and the event/context that opened the screen. For
+   dialogue, verify the selected speaker, text/page, options, and return path
+   come from those properties and that trigger. For selection states, check
+   every source-visible attribute (icon, cursor, tint, border, label, and
+   value as applicable). Record the input and relevant values before and
+   after the transition.
 3. **Are the visuals themselves correct?** Trace the ROM draw path and source
    placement, then compare shell, layer order, text, palette/alpha, clipping,
    and geometry against independent gameplay frames. Do not infer correctness
@@ -65,6 +68,16 @@ evidence cannot settle a question; it is not a pass.
    adjacent frames to distinguish animation from a static drawing and other
    gameplay/menu visits to confirm repeated layout. One screenshot is not
    enough to establish state, cadence, or persistence.
+
+8. **Was the previous screen or modal cleared before the new one was drawn?**
+   Trace whether the ROM clears or redraws the panel, or intentionally keeps a
+   shared interface. Check that old buttons, labels, cursors, icons, and other
+   graphics are absent wherever the new screen replaces them. A shared shell
+   may remain only when the source path preserves it; a new control must never
+   sit over an old control by accident. Pass this check only when each
+   replaced control is explicitly hidden/removed or its owning panel is fully
+   redrawn before the new control is painted; verify the old control's former
+   bounds in the new screen and on return from the child/modal.
 
 For each answer, record concrete ROM addresses or typed fields, reference
 section/frame numbers, and a native artifact. If the reference lacks the
