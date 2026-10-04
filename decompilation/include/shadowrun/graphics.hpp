@@ -240,6 +240,24 @@ struct GenesisFieldServiceTitle {
 std::array<GenesisFieldServiceTitle, 12>
 read_genesis_field_service_titles(const std::vector<std::uint8_t>& rom);
 
+// ROM 0x1AA8AF contains the 32 fixed-width field-service option headings
+// used above the source item row. Each record occupies 0x15 bytes; the
+// visible 20-character label is followed by one separator byte.
+std::array<std::string, 32>
+read_genesis_field_service_action_titles(
+    const std::vector<std::uint8_t>& rom);
+
+struct GenesisFieldServiceUniversalClipsText {
+    std::string title;
+    std::string description;
+};
+
+// The source E offer at 0x1AADD7 has its own two-line title and description
+// streams at 0x1AACCE/0x1AACE2, including explicit 0x80 line breaks.
+GenesisFieldServiceUniversalClipsText
+read_genesis_field_service_universal_clips_text(
+    const std::vector<std::uint8_t>& rom);
+
 // ROM 0x12634/0x127B0 supply the inventory action feedback strings.  Extract
 // the individual source lines once so the host command screen can preserve
 // the discard confirmation without carrying a Genesis text-table address.
@@ -771,6 +789,16 @@ RgbaImage decode_genesis_field_menu_background(
 // Plane A and its right-side field HUD backing on Plane B. This is an offline
 // extraction result; runtime consumers receive RGBA pixels, not VDP state.
 RgbaImage decode_genesis_field_service_background(
+    const std::vector<std::uint8_t>& rom);
+
+// ROM 0x58B5E/0x58BB6 paint the six-tab Ares selector row. Each host image
+// contains the source tab row with one selected category overlay.
+std::array<RgbaImage, 6> decode_genesis_field_service_selection_tabs(
+    const std::vector<std::uint8_t>& rom);
+
+// ROM 0x586F6 draws the special E offer's 3x2 item art from 0xCE28E using
+// field palette line 1 from 0xD29D6/0x18AC56; keep it as a named 24x16 image.
+RgbaImage decode_genesis_field_service_universal_clips_icon(
     const std::vector<std::uint8_t>& rom);
 // ROM 0x10984 submits the shared dialogue frame as nine named tile-map
 // regions over the patterns loaded by 0x10918. The FFF0AF mode flag optionally

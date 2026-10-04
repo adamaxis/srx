@@ -30,6 +30,40 @@ field-service.title.10	Council Island Hospital
 field-service.title-destination.10	49420
 field-service.title.11	Seattle General Hospital
 field-service.title-destination.11	49420
+field-service.action-title.0	"      Display       "
+field-service.action-title.1	" Available Weapons  "
+field-service.action-title.2	"      Display       "
+field-service.action-title.3	"  Available Armor   "
+field-service.action-title.4	" Display Available  "
+field-service.action-title.5	"     Equipment      "
+field-service.action-title.6	"   Display Weapon   "
+field-service.action-title.7	"    Accessories     "
+field-service.action-title.8	"   Select Firearm   "
+field-service.action-title.9	"   To Accessorize   "
+field-service.action-title.10	"   Sell Item From   "
+field-service.action-title.11	"     Inventory      "
+field-service.action-title.12	" Display Available  "
+field-service.action-title.13	"  Combat Utilities  "
+field-service.action-title.14	" Display Available  "
+field-service.action-title.15	" Defense Utilities  "
+field-service.action-title.16	" Display Available  "
+field-service.action-title.17	Mask/Sense Utilities
+field-service.action-title.18	" Display Available  "
+field-service.action-title.19	"    Cyberdecks      "
+field-service.action-title.20	" Display Available  "
+field-service.action-title.21	" Cyberdeck Upgrades "
+field-service.action-title.22	" Display Available  "
+field-service.action-title.23	" Cyberdeck Upgrades "
+field-service.action-title.24	" Display Available  "
+field-service.action-title.25	"    Magic Spells    "
+field-service.action-title.26	" Display Available  "
+field-service.action-title.27	"    Magic Items     "
+field-service.action-title.28	" Display Available  "
+field-service.action-title.29	"    Magic Foci      "
+field-service.action-title.30	"   Sell Item From   "
+field-service.action-title.31	"     Inventory      "
+field-service.universal-clips.title	Universal\nGun Clips
+field-service.universal-clips.description	These clips may be used in\nany gun.\n\nWhen switching weapons, the\nclip transfers the percentage\nof ammo left to the new gun.\n\n     Cost per Clip    $
 pocket-secretary.title	" Main Menu"
 pocket-secretary.separator	[\\\\\\\\\\
 pocket-secretary.option.0	Notebook

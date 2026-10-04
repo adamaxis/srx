@@ -13,13 +13,14 @@ int expect(const bool condition) {
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
-    FieldModeServiceState state{2U, 11U, 0U, 0, 0, 0};
+    FieldModeServiceRouteState state{2U, 11U, 0U, 0, 0, 0};
     FieldModeServiceSelection observed{};
     int services = 0;
     int field_mode_services = 0;
     std::int8_t callback_service_result = 0;
-    const FieldModeServiceCallbacks callbacks{
-        [&](FieldModeServiceSelection& selection, FieldModeServiceState& callback_state) {
+    const FieldModeServiceRouteCallbacks callbacks{
+        [&](FieldModeServiceSelection& selection,
+            FieldModeServiceRouteState& callback_state) {
             observed = selection;
             ++services;
             if (selection.profile ==
@@ -29,7 +30,7 @@ int main() {
                 callback_state.service_result = callback_service_result;
             }
         },
-        [&](FieldModeServiceState&) { ++field_mode_services; }};
+        [&](FieldModeServiceRouteState&) { ++field_mode_services; }};
 
     if (expect(select_field_mode_service(state, callbacks) ==
                    FieldModeServiceAction::field_mode_service_dispatched &&

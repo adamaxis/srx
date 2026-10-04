@@ -380,6 +380,13 @@ menu/pocket-secretary/background.bmp	background	0	0	320	224	0x10A7E	extracted
 menu/pocket-secretary/grid.bmp	background	0	0	224	168	0xC3E6/0x12C5A/0xC1320/0xC1064	extracted
 menu/field/background.bmp	background	0	0	320	224	0x10F50	extracted
 menu/field/service-background.bmp	background	0	0	320	224	0x10BC4/0x10918/0x1232	extracted
+menu/field/service-tabs-selected-0.bmp	sprite	0	0	144	16	0x58B5E/0x58BB6/0xCE17E/0xCE22E	extracted
+menu/field/service-tabs-selected-1.bmp	sprite	0	0	144	16	0x58B5E/0x58BB6/0xCE17E/0xCE22E	extracted
+menu/field/service-tabs-selected-2.bmp	sprite	0	0	144	16	0x58B5E/0x58BB6/0xCE17E/0xCE22E	extracted
+menu/field/service-tabs-selected-3.bmp	sprite	0	0	144	16	0x58B5E/0x58BB6/0xCE17E/0xCE22E	extracted
+menu/field/service-tabs-selected-4.bmp	sprite	0	0	144	16	0x58B5E/0x58BB6/0xCE17E/0xCE22E	extracted
+menu/field/service-tabs-selected-5.bmp	sprite	0	0	144	16	0x58B5E/0x58BB6/0xCE17E/0xCE22E	extracted
+menu/field/service-universal-clips.bmp	sprite	0	0	24	16	0x586F6/0xCE28E/0xD29D6/0x18AC56	extracted
 menu/field/action-background.bmp	background	0	0	120	16	0x117A0	extracted
 menu/field/action-confirm-background.bmp	background	0	0	120	16	0x127B0/0xCD3B6	extracted
 menu/field/attributes-background.bmp	background	0	0	320	224	0x10C96	extracted

@@ -22,7 +22,7 @@ enum class FieldModeServicePromptVariant {
     negative_result_prompt,
 };
 
-struct FieldModeServiceState {
+struct FieldModeServiceRouteState {
     std::uint8_t scene_id = 0;
     std::uint8_t submode = 0;
     std::uint8_t menu_mode = 0; // FFF0B6
@@ -41,12 +41,13 @@ struct FieldModeServiceSelection {
     std::int8_t menu_result = 0;
 };
 
-struct FieldModeServiceCallbacks {
-    std::function<void(FieldModeServiceSelection&, FieldModeServiceState&)>
+struct FieldModeServiceRouteCallbacks {
+    std::function<void(FieldModeServiceSelection&,
+                       FieldModeServiceRouteState&)>
         run_mode_exit_services;
     // ROM 0x56AC0: the default route dispatches the field-mode service after
     // 0x1F246 has prepared the selected mode.
-    std::function<void(FieldModeServiceState&)> run_field_mode_service;
+    std::function<void(FieldModeServiceRouteState&)> run_field_mode_service;
 };
 
 enum class FieldModeServiceAction {
@@ -62,7 +63,7 @@ enum class FieldModeServiceAction {
 // dispatch the named 0x56AC0 field-mode service where the ROM does so. Every
 // completed source route publishes D6=-1 to the caller.
 FieldModeServiceAction select_field_mode_service(
-    FieldModeServiceState& state,
-    const FieldModeServiceCallbacks& callbacks);
+    FieldModeServiceRouteState& state,
+    const FieldModeServiceRouteCallbacks& callbacks);
 
 } // namespace shadowrun::ghidra_conversion

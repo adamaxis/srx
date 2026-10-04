@@ -1,20 +1,24 @@
 # Ares Weapon Emporium verification
 
-Status: controller, transaction logic, source-selected Ares mode-text records,
-the twelve source field-service titles and their draw destinations, and a Qt
-generic prompt runtime with the selected Ares mode-profile sprite are
-implemented. The ROM-derived static field-service background is now available
-as a named host asset. The Ares introduction was independently confirmed in
-the full longplay at 01:39:43; the shop follows at 01:39:45. The live field
-event route, shop presenter, and live wallet binding are not connected, so the
-Ares hill remains partial.
+Status: the Ares event now traverses the field-exit selector and generic
+mode-text prompt before opening a typed Qt shop controller. The presenter draws
+the source service background, selected tab, fixed-width headings, item row,
+one-pixel item selector, and source-specific Universal Gun Clips art/text. A
+new-game wallet fallback displays the ROM's starting 20 nuyen. Purchase/sale
+confirmation and mutation are not connected to the live session, restored-save
+wallet data is not exposed by the save adapter, and actual sound playback is
+unresolved; the Ares hill remains partial. The introduction and shop were
+independently reviewed against the full longplay at 01:39:43-01:39:49.
 
 ## Source trace
 
 - Entry: US ROM `0x1FA78`, field mode `FFFBF8=2`/event `FFFBF9=11`, selects
   mode resource `0x1220C0`, sets menu mode 1 and result -1, and selects text
   record `0x110DD2`. It calls `0x1F246` (whose `0x1F3C4` child handles the
-  generic mode-text prompt), then dispatches `0x56AC0`.
+  generic mode-text prompt), then dispatches `0x56AC0`. The converted field
+  exit orchestrator now recognizes this exact mode/event pair, holds the shop
+  dispatch until the prompt returns, and opens the typed Ares shop only for
+  its default result. Alternate text results return to the field.
 - Prompt data: record `0x110DD2` points to text at `0x118934`, followed by the
   `0xFFFFFFFF` first-option sentinel. The prompt draws no A/B/C choices; ROM
   `0x1F3C4` waits 30 frames and returns `0xFB` on any controller event before
@@ -33,8 +37,8 @@ Ares hill remains partial.
   accepting a sampled controller edge. Its independent visual reference is
   `reference-frames/ares-introduction-5983.png`, decoded from the 01:39:43
   full-longplay frame and scaled to the native 320x224 presentation size. It
-  shows the logo, text well, empty lower well, and full-panel redraw. The live
-  field event route is still not connected.
+  shows the logo, text well, empty lower well, and full-panel redraw. The
+  field-event QA exercises the same prompt-to-service route.
 - Dialogue boundary: NPC prompt resolver `0x1F65A` matches mode 2/event 2 for
   the Stoker motel. Ares mode 2/event 11 follows `0x1FA78`; it must use its own
   event-selected mode-text data and must not borrow Stoker speaker assets.
@@ -42,6 +46,11 @@ Ares hill remains partial.
   `0x58C54` bounds the selection cursor, `0x58CDE` switches the two panels,
   `0x587DA` publishes the action selection, and `0x57C7A` redraws the selected
   action presentation. The menu has no periodic animation in this loop.
+- Service tabs/headings: `0x58B5E` writes the 18x2 tab row from `0xCE17E`;
+  `0x58BB6` adds the selected 2x2 overlay from `0xCE22E + cursor*8`. The
+  heading table at `0x1AA8AF` contains 32 records with 20 visible characters
+  and a separator byte. Extraction preserves their spaces because the source
+  uses them to align the two centered title lines.
 - Title: `0x56AC0` indexes the 12-entry pointer table at `0x1AAB50` with
   `FFF0B6`. Ares uses entry 1, whose record at `0x1AAB92` stores destination
   cell `0xC110` and text `Ares Weapon Emporium`. The offline extractor now
@@ -57,6 +66,14 @@ Ares hill remains partial.
   importer flattens the transparent Plane B backing and Plane A frame into
   `menu/field/service-background.bmp`; the runtime receives only this RGBA
   asset, not the ROM maps or VDP operations.
+- Universal Gun Clips detail: the special offer type `0x45` takes the E branch
+  in `0x586CA`. Its 3x2 art comes from `0xCE28E`, title from `0x1AACCE`, and
+  description from `0x1AACE2`; the row carries quantity/price 25. The art uses
+  palette line 1 from field palette setup `0xD29D6` plus `0x18AC56`, and its
+  name words retain horizontal/vertical flips. The host importer emits a
+  named 24x16 image and text rows. The runtime draws detail art at `(128,32)`,
+  description at `(24,56)`, cost at `(192,112)`, title at `(104,144)`, and the
+  stock icon in the first offer cell.
 - Mode-entry sprite: `0x1FA78` selects profile `0x1220C0`; its ROM pointers are
   palette `0x1219BC`, pattern stream `0x12C84E`, and sprite stream `0x12266A`.
   The offline importer emits the profile's 7x9 sprite as
@@ -79,78 +96,68 @@ Ares hill remains partial.
 
 ## Visual audit questions
 
-1. **Does it look correct?** The independent 01:39:43 capture shows the Ares
-   logo in the left well, green text in the right well, and a blank lower
-   well. The corrected Qt dump was inspected beside that frame and matches
-   the placement and composition. The shop is a separate screen and still has
-   no presenter.
-2. **Does appearance reflect behavior?** Mode 2/event 11 selects profile
-   `0x1220C0`; its Ares sprite is now bound to all three event-selected text
-   results. The normal store-introduction sentinel has no choices or selection
-   marker. Runtime checks cover its profile alias, visible left-well art,
-   event/result text selection, and 30-frame input gate.
-3. **Are visuals correct?** ROM prompt text, shared frame/well clears, selected
-   mode profile, and sprite extraction are traced. Debug produced and inspected
-   `field-mode-text-qa/introduction/actual.bmp` beside the independent
-   `reference-frames/ares-introduction-5983.png`. The host dump checks the
-   conversion; the longplay frame remains the visual authority. The new static
-   shop background was inspected beside
-   `reference-frames/ares-shop-5985.png`: the upper service frame, lower item
-   panel, and right HUD backing occupy the expected regions. The source background
-   does not include changing labels, item icons, selected-item focus, cursor, or
-   portrait sprites; those shop pixels remain pending in the presenter.
-4. **Animation?** The prompt has no periodic animation; it waits 30 frames
-   before accepting a controller edge. The selected profile contributes one
-   static sprite. Fifteen consecutive 30 fps frames around 01:39:54 show the
-   shop selection and screen content unchanged; this supports a static shop
-   background, with input-driven redraws still to implement.
-5. **Sound?** The traced `0x1F246`/`0x1F3C4` prompt path makes no direct sound
-   request. The shop requests event `0x25` on cursor/panel movement and `0x24`
-   on confirmation and runner restart. The `0x25` clip identity and playback
-   durations remain unresolved; shop audio is not connected here. Title
-   extraction has no sound behavior.
-6. **Related screen content?** The Ares prompt is a full-screen composition:
-   the shared frame clears the prior field image, draws the selected profile
-   in the left well, and leaves its lower well blank. The transition at
-   01:39:44 is black; the shop at 01:39:45 then shows its own title, item
-   detail, item row, and funds display while preserving the right-side field
-   HUD. The extracted full-screen base redraw contains the service panel and
-   right HUD backing as one named image; the presenter must redraw its owned
-   dynamic rows over that base and clear them on return.
-7. **Multiple frames?** The reference sequence includes the Ares introduction
-   at 01:39:43, the shop category changes at 01:39:45-46, Universal Gun Clips
-   at 01:39:47, Stim and Trauma Patch detail at 01:39:48-49, and a transaction
-   prompt at 01:39:52. More item/category states continue through 01:40:00. At
-   01:39:53.9, fifteen consecutive frames show a stable shop view. These
-   longplay captures have no uploader overlay.
-8. **Stale UI?** The introduction frame covers the full screen and clears both
-   text wells; its lower well is black and contains no previous controls. The
-   black transition at 01:39:44 separates the introduction from the shop at
-   01:39:45, which replaces the introduction with its own interface. The shop
-   static service background covers the whole 320x224 screen and therefore
-   replaces the prior prompt pixels when used as a base. Presenter entry/return
-   checks for dynamic shop labels, icons, focus, and confirmation controls remain
-   pending.
+1. **Does it look correct?** The intro at 01:39:43 shows the Ares logo, green
+   mode text, and empty lower well. The shop at 01:39:45 shows its title,
+   two-line service label, stock row, service tabs, and right HUD. Native intro
+   and category dumps were reviewed beside those independent longplay frames.
+   The native QA fixture has Joshua's archetype-0 portrait and 20 nuyen, while
+   the reference save shows another portrait and 7,923; those state values are
+   not presented as a pixel match.
+2. **Does appearance reflect behavior?** Mode 2/event 11 selects the Ares
+   profile and event/result text. The default sentinel prompt has no A/B/C
+   choice markers, waits 30 frames, and opens the shop only after returning to
+   its caller. The six tab overlays follow the typed selected group, and the
+   slim yellow selector follows the typed offer cursor. QA checks default
+   routing, group selection, first offer selection, and input-gate timing.
+3. **Are the visuals correct?** The independent 01:39:45 category and
+   01:39:47 Universal Gun Clips frames were compared with `shop-category` and
+   `shop-special-clips/actual.bmp`. The two-line category heading preserves
+   its ROM spacing. The E offer's art shape, red/black palette, detail text,
+   cost/quantity 25, tab, and item-row icon now match the longplay composition.
+   The native selector QA requires a one-pixel 24x16 border and rejects extra
+   selector-color pixels elsewhere in the 32x24 offer cell. The captures are
+   conversion evidence; the longplay remains the visual authority.
+4. **Animation?** The mode prompt waits 30 frames and has no periodic motion.
+   The shop loop has no periodic animation; its static art changes only when
+   input selects another category/item or opens a later transaction prompt.
+   Fifteen consecutive 30 fps frames around 01:39:54 show the independent shop
+   view stable between inputs.
+5. **Sound?** The generic prompt makes no direct sound request. Shop movement
+   and tab changes request event `0x25`; confirm/restart paths request `0x24`.
+   The QA event sink confirms two `0x25` requests for cursor movement and two
+   for category/item-panel movement. Actual sample identity, playback duration,
+   and production playback are unresolved; a queued event ID is not an audio
+   verification.
+6. **Related screen content?** The independent sequence includes the mode
+   prompt, black transition, shop category, selected clips/patch details,
+   and a later transaction prompt. The service base owns the complete panel
+   and right-side HUD backing; the presenter layers tabs, headings, offer art,
+   selector, and funds once. The shop's portrait and wallet remain live-state
+   fields over that backing.
+7. **Multiple frames?** The interpretation uses longplay frames 5983 (intro),
+   5985?5986 (shop/category), 5987 (clips), 5988?5989 (Stim/Trauma Patch),
+   5992 (transaction prompt), and 5994 (updated funds), plus fifteen adjacent
+   frames near 01:39:54. This confirms both stable presentation and input-driven
+   changes across several states.
+8. **Stale UI?** The mode prompt and shop each draw their own full-screen base.
+   Shop QA saves the category, selected item, special clips detail, and return
+   to field as separate `actual.bmp` frames. It verifies the shop replaces
+   prompt/field pixels on entry and that Start return replaces the full shop,
+   including the tabs, item art, detail text, and selector. No old shop controls
+   remain over the field frame.
 
 ## Implemented controller slice
 
 `ShopMenuController` wraps the existing typed field-service selection state and
 returns purchase, sale, source-boundary, runner-change, and field-return
-requests. It does not own a second inventory or wallet. `ShopTransactionService`
-delegates to the existing typed purchase/removal conversions. The focused test
-checks Ares stock order, navigation, confirmations, protected sale rows,
-funds, and inventory mutations in Debug and Release. The offline importer now
-exports the 12 title strings and source draw cells under the named field-menu
-text asset; the Ares record is checked against `0x1AAB92`/`0xC110`. This data
-slice does not render or connect the live shop. The offline importer also
-exports profile `0x1220C0` as the named 56x72 `field/mode-entry/ares-sprite.bmp`
-asset. `FieldModeTextRuntime` displays the three ROM-selected text records
-through the shared generic panel, binds the profile sprite to the Ares logo
-well, enforces the sentinel delay, and writes an `actual.bmp` diagnostic. The
-offline importer now emits `menu/field/service-background.bmp` from the eight
-`0x10BC4` map writes and the shared pattern/palette source. Its test checks the
-320x224 opaque host image contract; the independent longplay at
-`reference-frames/ares-shop-5985.png` remains the visual authority. The Ares
-hill remains partial until the live field route, shop presentation, wallet
-binding, dynamic-row redraw, and stale-panel checks are complete. Shop sound
-clip identity and duration also remain unresolved.
+requests. It does not own a second inventory or wallet. The live presenter
+consumes the named background, six extracted selected-tab images, fixed-width
+heading records, existing named item images, and a dedicated E-offer art/text
+asset. `ShopTransactionService` delegates to the existing typed
+purchase/removal conversions, but the live shop currently records the
+transaction request as an unresolved boundary instead of mutating session
+inventory or funds. Debug build and five focused CTests pass; the field-shop QA
+writes introduction, category, selected-item, moved-cursor, clips-detail, and
+field-return `actual.bmp` checkpoints. The importer was run explicitly with
+`shadowrun_graphics_extract --all-assets`; extraction is not part of CTest or
+ordinary builds.

@@ -36,6 +36,20 @@ int main() {
         text.catalog.field_service_titles[0] != "Weapons World" ||
         text.catalog.field_service_titles[1] != "Ares Weapon Emporium" ||
         text.catalog.field_service_title_destinations[1] != 0xC110U ||
+        text.catalog.field_service_action_titles[1] !=
+            " Available Weapons  " ||
+        text.catalog.field_service_action_titles[4] !=
+            " Display Available  " ||
+        text.catalog.field_service_action_titles[5] !=
+            "     Equipment      " ||
+        text.catalog.field_service_action_titles[10] !=
+            "   Sell Item From   " ||
+        text.catalog.field_service_universal_clips_title !=
+            "Universal\nGun Clips" ||
+        text.catalog.field_service_universal_clips_description.find(
+            "These clips may be used in\nany gun.") != 0U ||
+        text.catalog.field_service_universal_clips_description.find(
+            "Cost per Clip") == std::string::npos ||
         text.catalog.archetype_names[2] != "Gator" ||
         text.catalog.archetype_names[3] != "Shaman" ||
         text.catalog.race_names !=

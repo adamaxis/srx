@@ -33,6 +33,7 @@ inline constexpr std::size_t kDismissRunnerLabelCount = 3U;
 inline constexpr std::size_t kMagicSpellTextCount = 13U;
 inline constexpr std::size_t kPocketSecretaryOptionCount = 5U;
 inline constexpr std::size_t kFieldServiceTitleCount = 12U;
+inline constexpr std::size_t kFieldServiceActionTitleCount = 32U;
 inline constexpr std::size_t kPocketSecretaryGroupItemCount = 15U;
 inline constexpr std::size_t kPocketSecretaryGroupItemsEmptyLineCount = 2U;
 inline constexpr std::size_t kNotebookLabelCount = 6U;
@@ -104,6 +105,10 @@ struct FieldMenuTextCatalog {
     std::array<std::string, kFieldServiceTitleCount> field_service_titles{};
     std::array<std::uint16_t, kFieldServiceTitleCount>
         field_service_title_destinations{};
+    std::array<std::string, kFieldServiceActionTitleCount>
+        field_service_action_titles{};
+    std::string field_service_universal_clips_title;
+    std::string field_service_universal_clips_description;
     std::array<std::string, kPocketSecretaryOptionCount>
         pocket_secretary_options{};
     std::array<std::string, kCyberdeckUnavailableLineCount>

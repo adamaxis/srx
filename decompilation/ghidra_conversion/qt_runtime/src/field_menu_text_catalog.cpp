@@ -95,6 +95,10 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::array<bool, kFieldServiceTitleCount> field_service_title_found{};
     std::array<bool, kFieldServiceTitleCount>
         field_service_title_destination_found{};
+    std::array<bool, kFieldServiceActionTitleCount>
+        field_service_action_title_found{};
+    bool field_service_universal_clips_title_found = false;
+    bool field_service_universal_clips_description_found = false;
     std::array<bool, kCyberdeckUnavailableLineCount>
         pocket_secretary_cyberdeck_line_found{};
     std::array<bool, kPocketSecretaryGroupItemCount>
@@ -233,6 +237,38 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                     result.catalog.field_service_title_destinations[index] =
                         destination;
                 }
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "field-service.action-title.", index) &&
+            index < result.catalog.field_service_action_titles.size()) {
+            if (field_service_action_title_found[index]) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else {
+                field_service_action_title_found[index] = true;
+                result.catalog.field_service_action_titles[index] = value;
+            }
+            continue;
+        }
+        if (key == "field-service.universal-clips.title") {
+            if (field_service_universal_clips_title_found) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else {
+                field_service_universal_clips_title_found = true;
+                result.catalog.field_service_universal_clips_title = value;
+            }
+            continue;
+        }
+        if (key == "field-service.universal-clips.description") {
+            if (field_service_universal_clips_description_found) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else {
+                field_service_universal_clips_description_found = true;
+                result.catalog.field_service_universal_clips_description =
+                    value;
             }
             continue;
         }
@@ -905,6 +941,12 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                         result.errors);
     add_missing_entries(field_service_title_destination_found,
                         "field-service.title-destination.", result.errors);
+    add_missing_entries(field_service_action_title_found,
+                        "field-service.action-title.", result.errors);
+    require_named("field-service.universal-clips.title",
+                  field_service_universal_clips_title_found);
+    require_named("field-service.universal-clips.description",
+                  field_service_universal_clips_description_found);
     add_missing_entries(dismiss_runner_label_found, "dismiss.label.",
                         result.errors);
     const auto decode_newlines = [](std::string& value) {
@@ -919,6 +961,9 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     decode_newlines(result.catalog.first_aid_not_injured);
     decode_newlines(result.catalog.action_trade_full_inventory_message);
     decode_newlines(result.catalog.action_automatic_use_message);
+    decode_newlines(result.catalog.field_service_universal_clips_title);
+    decode_newlines(
+        result.catalog.field_service_universal_clips_description);
 
     const auto* tips_record =
         assets.find("menu.pocket_secretary.notebook.tips");

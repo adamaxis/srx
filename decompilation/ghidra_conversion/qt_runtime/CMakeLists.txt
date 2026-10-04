@@ -155,6 +155,17 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_mode_text_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_mode_text_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Ares mode 2/event 11 must pass through the generic 30-frame prompt before
+# entering its modal service menu. This captures the prompt, categories,
+# selected item, cursor movement, and full-screen return redraw.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_shop_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-shop-dump
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-shop-ares-qa")
+set_tests_properties(shadowrun_ghidra_conversion_qt_field_shop_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Exercise both ROM 0x11950 branches. The normal field smoke record has bit 0
 # set; the explicit empty fixture drives the zero-word branch and NONE text.
 add_test(NAME shadowrun_ghidra_conversion_qt_field_cyberware_populated_qa

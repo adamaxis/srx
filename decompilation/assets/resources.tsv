@@ -684,6 +684,13 @@ menu.pocket.secretary.background	menu/pocket-secretary/background.bmp	image	0	0
 menu.pocket.secretary.grid	menu/pocket-secretary/grid.bmp	image	0	0
 menu.field.background	menu/field/background.bmp	image	0	0
 menu.field.service.background	menu/field/service-background.bmp	image	0	0
+menu.field.service.tabs.selected.0	menu/field/service-tabs-selected-0.bmp	image	0	0
+menu.field.service.tabs.selected.1	menu/field/service-tabs-selected-1.bmp	image	0	0
+menu.field.service.tabs.selected.2	menu/field/service-tabs-selected-2.bmp	image	0	0
+menu.field.service.tabs.selected.3	menu/field/service-tabs-selected-3.bmp	image	0	0
+menu.field.service.tabs.selected.4	menu/field/service-tabs-selected-4.bmp	image	0	0
+menu.field.service.tabs.selected.5	menu/field/service-tabs-selected-5.bmp	image	0	0
+menu.field.service.universal.clips	menu/field/service-universal-clips.bmp	image	0	0
 menu.field.action.background	menu/field/action-background.bmp	image	0	0
 menu.field.action.confirm.background	menu/field/action-confirm-background.bmp	image	0	0
 menu.field.attributes.background	menu/field/attributes-background.bmp	image	0	0

@@ -18,8 +18,8 @@ FieldModeServicePromptVariant prompt_variant(
 } // namespace
 
 FieldModeServiceAction select_field_mode_service(
-    FieldModeServiceState& state,
-    const FieldModeServiceCallbacks& callbacks) {
+    FieldModeServiceRouteState& state,
+    const FieldModeServiceRouteCallbacks& callbacks) {
     FieldModeServiceSelection selection{};
     bool matched = true;
     bool uses_service_result = false;

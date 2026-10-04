@@ -50,6 +50,7 @@
 #include "field_dialogue_runtime.hpp"
 #include "field_mode_text_runtime.hpp"
 #include "field_menu_text_catalog.hpp"
+#include "shop_menu_runtime.hpp"
 
 #include <array>
 #include <cstddef>
@@ -127,6 +128,17 @@ public:
     bool open_ares_mode_text_for_dump(std::int8_t alternate_result) {
         return field_mode_text_.open(
             FieldModeTextPromptContext{2U, 11U, alternate_result});
+    }
+    bool begin_ares_shop_event_for_dump();
+    bool shop_menu_open() const noexcept { return field_shop_menu_.is_open(); }
+    ShopActionGroup shop_menu_group() const noexcept {
+        return field_shop_menu_.selected_group();
+    }
+    std::uint8_t shop_menu_cursor() const noexcept {
+        return field_shop_menu_.selected_cursor();
+    }
+    bool shop_menu_offers_active() const noexcept {
+        return field_shop_menu_.offers_panel_active();
     }
     const FieldCommandOverviewView& command_overview_view() const noexcept {
         return command_overview_.view();
@@ -414,6 +426,7 @@ private:
     void paint_command_overview_magic(QPainter& painter) const;
     void paint_command_overview(QPainter& painter) const;
     void paint_command_overview_clips(QPainter& painter) const;
+    void paint_field_shop(QPainter& painter) const;
     void draw_command_overview_text(QPainter& painter, int x, int y,
                                     std::string_view text) const;
     void refresh_command_overview_combat_bars();
@@ -477,6 +490,7 @@ private:
     FieldCommandOverviewBridge command_overview_;
     FieldDialogueRuntime field_dialogue_;
     FieldModeTextRuntime field_mode_text_{};
+    ShopMenuController field_shop_menu_{};
     FieldDialogueEventResolver field_dialogue_event_resolver_;
     FieldPartyRosterRuntime field_party_roster_{};
     DismissRunnerMenuState dismiss_runner_{};
@@ -487,6 +501,9 @@ private:
     std::size_t field_joshua_archetype_selection_ = 0U;
     QImage field_map_;
     QImage field_hud_;
+    QImage field_service_background_;
+    QImage field_service_universal_clips_icon_;
+    std::array<QImage, 6> field_service_tab_images_{};
     QImage command_overview_background_;
     QImage command_overview_inventory_boxes_;
     QImage command_overview_font_;
@@ -637,6 +654,8 @@ private:
     std::uint8_t field_entity_behavior_flags_ = 0;
     std::int8_t field_exit_alternate_result_ = 0;
     std::uint32_t field_exit_world_flags_ = 0;
+    std::optional<std::uint32_t> field_funds_{0x14U};
+    bool field_shop_route_pending_ = false;
     FieldEntityPresentation field_entity_{};
     std::string failure_;
     bool ready_ = false;

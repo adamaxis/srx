@@ -144,6 +144,28 @@ void write_field_menu_text_catalog(
         emit("field-service.title-destination." + std::to_string(index),
              std::to_string(service_titles[index].destination_word));
     }
+    const auto service_action_titles =
+        shadowrun::graphics::read_genesis_field_service_action_titles(rom);
+    for (std::size_t index = 0; index < service_action_titles.size(); ++index) {
+        emit("field-service.action-title." + std::to_string(index),
+             service_action_titles[index]);
+    }
+    const auto universal_clips_text =
+        shadowrun::graphics::read_genesis_field_service_universal_clips_text(
+            rom);
+    const auto escape_field_text = [](std::string text) {
+        std::size_t position = 0U;
+        while ((position = text.find('\n', position)) !=
+               std::string::npos) {
+            text.replace(position, 1U, "\\n");
+            position += 2U;
+        }
+        return text;
+    };
+    emit("field-service.universal-clips.title",
+         escape_field_text(universal_clips_text.title));
+    emit("field-service.universal-clips.description",
+         escape_field_text(universal_clips_text.description));
     const auto pocket_secretary_text =
         shadowrun::graphics::read_genesis_pocket_secretary_text(rom);
     emit("pocket-secretary.title", pocket_secretary_text.title);
@@ -1564,6 +1586,22 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         shadowrun::graphics::decode_genesis_field_service_background(rom),
         "background", "0x10BC4/0x10918/0x1232", false, manifest, written,
         missing, blank);
+    const auto service_selection_tabs =
+        shadowrun::graphics::decode_genesis_field_service_selection_tabs(rom);
+    for (std::size_t index = 0; index < service_selection_tabs.size(); ++index) {
+        write_catalog_asset(
+            root, "menu/field/service-tabs-selected-" +
+                      std::to_string(index) + ".bmp",
+            service_selection_tabs[index], "sprite",
+            "0x58B5E/0x58BB6/0xCE17E/0xCE22E", false, manifest,
+            written, missing, blank);
+    }
+    write_catalog_asset(
+        root, "menu/field/service-universal-clips.bmp",
+        shadowrun::graphics::decode_genesis_field_service_universal_clips_icon(
+            rom),
+        "sprite", "0x586F6/0xCE28E/0xD29D6/0x18AC56", false, manifest,
+        written, missing, blank);
     write("menu/field/action-background.bmp",
           assets.field_menu_action_background, "background", "0x117A0", false);
     write("menu/field/action-confirm-background.bmp",

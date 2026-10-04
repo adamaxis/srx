@@ -83,6 +83,63 @@ bool image_region_differs(const QImage& first, const QImage& second,
     return false;
 }
 
+bool image_region_has_color(const QImage& image, const int x, const int y,
+                            const int width, const int height,
+                            const QColor& expected) {
+    const auto right = std::min(image.width(), x + width);
+    const auto bottom = std::min(image.height(), y + height);
+    for (auto row = std::max(0, y); row < bottom; ++row) {
+        for (auto column = std::max(0, x); column < right; ++column) {
+            if (image.pixelColor(column, row) == expected) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool field_shop_selector_survives(const QImage& scene, const int x) {
+    constexpr int kY = 168;
+    constexpr int kWidth = 24;
+    constexpr int kHeight = 16;
+    const QColor selector(196, 190, 39);
+    if (scene.width() != kSceneWidth || scene.height() != kSceneHeight ||
+        x < 0 || x + 32 > scene.width() || kY + 24 > scene.height()) {
+        return false;
+    }
+    for (int dx = 0; dx < kWidth; ++dx) {
+        if (scene.pixelColor(x + dx, kY) != selector ||
+            scene.pixelColor(x + dx, kY + kHeight - 1) != selector) {
+            return false;
+        }
+    }
+    for (int dy = 0; dy < kHeight; ++dy) {
+        if (scene.pixelColor(x, kY + dy) != selector ||
+            scene.pixelColor(x + kWidth - 1, kY + dy) != selector) {
+            return false;
+        }
+    }
+    int item_ink = 0;
+    for (int dy = 0; dy < 24; ++dy) {
+        for (int dx = 0; dx < 32; ++dx) {
+            const auto is_border =
+                dx < kWidth && dy < kHeight &&
+                (dx == 0 || dx == kWidth - 1 || dy == 0 ||
+                 dy == kHeight - 1);
+            const auto pixel = scene.pixelColor(x + dx, kY + dy);
+            if (pixel == selector && !is_border) {
+                return false;
+            }
+            if (dx >= 2 && dx < kWidth - 2 && dy >= 2 &&
+                dy < kHeight - 2 && pixel.red() < 48 &&
+                pixel.green() < 48 && pixel.blue() < 48) {
+                ++item_ink;
+            }
+        }
+    }
+    return item_ink >= 8;
+}
+
 std::filesystem::path find_asset_root(int argc, char** argv) {
     for (int index = 1; index < argc; ++index) {
         const std::string argument(argv[index]);
@@ -102,6 +159,7 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
                    " [--field-automatic-use-dump <output-dir>]"
                    " [--field-inventory-trade-dump <output-dir>]"
                    " [--field-clips-dump <output-dir>]"
+                    " [--field-shop-dump <output-dir>]"
                    " [--field-magic-dump <output-dir>]"
                    " [--field-magic-spell-dump <output-dir>]"
                    " [--field-archetype <samurai|decker|gator>]"
@@ -147,6 +205,10 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
             continue;
         }
         if (argument == "--field-clips-dump" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-shop-dump" && index + 1 < argc) {
             ++index;
             continue;
         }
@@ -2671,6 +2733,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_automatic_use_dump_path;
         std::optional<std::filesystem::path> field_inventory_trade_dump_path;
         std::optional<std::filesystem::path> field_clips_dump_path;
+        std::optional<std::filesystem::path> field_shop_dump_path;
         std::optional<std::filesystem::path> field_magic_dump_path;
         std::optional<std::filesystem::path> field_magic_spell_dump_path;
         std::optional<std::string> field_archetype_name;
@@ -2704,6 +2767,7 @@ int main(int argc, char** argv) {
                        " [--field-automatic-use-dump <output-dir>]"
                        " [--field-inventory-trade-dump <output-dir>]"
                        " [--field-clips-dump <output-dir>]"
+                       " [--field-shop-dump <output-dir>]"
                        " [--field-magic-dump <output-dir>]"
                        " [--field-magic-spell-dump <output-dir>]"
                        " [--field-archetype <samurai|decker|gator>]"
@@ -2771,6 +2835,12 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_clips_dump_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-shop-dump" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_shop_dump_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-magic-dump" &&
@@ -3058,6 +3128,229 @@ int main(int argc, char** argv) {
                 std::cout << "field_mode_text_dump=written variant="
                           << *field_mode_text_dump_variant << " path="
                           << field_mode_text_dump_path->string() << "\n";
+                return 0;
+            }
+            if (field_shop_dump_path.has_value()) {
+                const auto output = *field_shop_dump_path;
+                std::filesystem::create_directories(output);
+                const auto render_shop_scene = [&field_scene] {
+                    QImage scene(kSceneWidth, kSceneHeight,
+                                 QImage::Format_RGB32);
+                    scene.fill(Qt::black);
+                    QPainter painter(&scene);
+                    field_scene.paint(painter);
+                    painter.end();
+                    return scene;
+                };
+                const auto save_scene = [&output](
+                                           const std::filesystem::path& path,
+                                           const QImage& scene) {
+                    const auto destination = output / path;
+                    if (destination.has_parent_path()) {
+                        std::filesystem::create_directories(
+                            destination.parent_path());
+                    }
+                    return scene.save(QString::fromStdWString(
+                        destination.wstring()));
+                };
+
+                if (!field_scene.begin_ares_shop_event_for_dump()) {
+                    std::cerr << "field Ares shop QA: source event route did "
+                                 "not open the generic mode-text prompt\n";
+                    return 3;
+                }
+                const auto introduction = render_shop_scene();
+                if (!save_scene("introduction/actual.bmp", introduction)) {
+                    std::cerr << "field Ares shop QA: could not write "
+                                 "introduction actual.bmp\n";
+                    return 3;
+                }
+
+                // ROM 0x1F3C4 waits 30 frames before accepting a fresh
+                // controller edge; the prompt's A edge then returns to the
+                // 0x1FA78 caller and dispatches the 0x56AC0 shop.
+                field_scene.set_controller_port_byte(0U);
+                for (int frame = 0; frame < 30; ++frame) {
+                    field_scene.advance_frame();
+                }
+                field_scene.set_controller_port_byte(0x40U);
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                if (!field_scene.shop_menu_open()) {
+                    std::cerr << "field Ares shop QA: prompt return did not "
+                                 "open the shop controller\n";
+                    return 3;
+                }
+
+                const auto category = render_shop_scene();
+                const QImage service_background(QString::fromStdWString(
+                    (asset_root / "menu" / "field" /
+                     "service-background.bmp").wstring()));
+                if (service_background.isNull() ||
+                    !image_region_differs(category, service_background,
+                                          64, 128, 144, 16) ||
+                    !image_region_differs(category, service_background,
+                                          16, 168, 240, 24) ||
+                    !image_has_green_ink(category, 64, 144, 160, 16) ||
+                    !save_scene("shop-category/actual.bmp", category)) {
+                    std::cerr << "field Ares shop QA: could not write "
+                                 "category actual.bmp or tabs/stock pixels "
+                                 "are missing\n";
+                    return 3;
+                }
+
+                field_scene.set_controller_port_byte(0x02U); // Down: offers.
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                if (!field_scene.shop_menu_offers_active() ||
+                    field_scene.shop_menu_cursor() != 0U) {
+                    std::cerr << "field Ares shop QA: Down did not select the "
+                                 "first available weapon\n";
+                    return 3;
+                }
+                const auto first_item = render_shop_scene();
+                if (!field_shop_selector_survives(first_item, 16) ||
+                    !save_scene("shop-item/actual.bmp", first_item)) {
+                    std::cerr << "field Ares shop QA: item focus is not a "
+                                 "one-pixel 24x16 outline or actual.bmp is "
+                                 "missing\n";
+                    return 3;
+                }
+
+                field_scene.set_controller_port_byte(0x08U); // Right.
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                if (field_scene.shop_menu_cursor() != 1U) {
+                    std::cerr << "field Ares shop QA: Right did not move the "
+                                 "item cursor\n";
+                    return 3;
+                }
+                const auto moved_item = render_shop_scene();
+                if (moved_item == first_item ||
+                    !field_shop_selector_survives(moved_item, 48) ||
+                    !save_scene("shop-cursor-moved/actual.bmp", moved_item)) {
+                    std::cerr << "field Ares shop QA: item pixels did not "
+                                 "follow the typed cursor\n";
+                    return 3;
+                }
+
+                if (field_audio_events !=
+                    std::vector<std::uint16_t>{0x25U, 0x25U}) {
+                    std::cerr << "field Ares shop QA: movement audio events "
+                                 "do not match the source service\n";
+                    return 3;
+                }
+
+                field_scene.set_controller_port_byte(0x80U); // Start return.
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                if (field_scene.shop_menu_open()) {
+                    std::cerr << "field Ares shop QA: Start did not return "
+                                 "to the field\n";
+                    return 3;
+                }
+                const auto returned = render_shop_scene();
+                if (returned == moved_item ||
+                    !save_scene("field-return/actual.bmp", returned)) {
+                    std::cerr << "field Ares shop QA: shop pixels survived "
+                                 "the full-screen return redraw\n";
+                    return 3;
+                }
+
+                // The E-coded offer is Universal Gun Clips, not an ordinary
+                // inventory item. Re-enter through the same event/prompt and
+                // verify its source-specific art, text, quantity, tab, and
+                // selected-row frame.
+                if (!field_scene.begin_ares_shop_event_for_dump()) {
+                    std::cerr << "field Ares shop QA: second event route did "
+                                 "not open the generic prompt\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0U);
+                for (int frame = 0; frame < 30; ++frame) {
+                    field_scene.advance_frame();
+                }
+                field_scene.set_controller_port_byte(0x40U);
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0x08U); // Other items.
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                if (!field_scene.shop_menu_open() ||
+                    field_scene.shop_menu_group() !=
+                        ShopActionGroup::other_items ||
+                    field_scene.shop_menu_offers_active()) {
+                    std::cerr << "field Ares shop QA: Right did not select "
+                                 "the other-items tab\n";
+                    return 3;
+                }
+                const auto other_items = render_shop_scene();
+                if (!save_scene("shop-other-items/actual.bmp",
+                                other_items)) {
+                    std::cerr << "field Ares shop QA: could not write "
+                                 "other-items actual.bmp\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0x02U); // Offers.
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                if (!field_scene.shop_menu_offers_active() ||
+                    field_scene.shop_menu_group() !=
+                        ShopActionGroup::other_items ||
+                    field_scene.shop_menu_cursor() != 0U) {
+                    std::cerr << "field Ares shop QA: other-items tab did "
+                                 "not select Universal Gun Clips\n";
+                    return 3;
+                }
+                const auto universal_clips = render_shop_scene();
+                if (!field_shop_selector_survives(universal_clips, 16) ||
+                    !image_region_differs(universal_clips,
+                                          service_background, 128, 32, 24,
+                                          16) ||
+                    !image_region_has_color(
+                        universal_clips, 128, 32, 24, 16,
+                        QColor(146, 146, 146)) ||
+                    !image_region_has_color(
+                        universal_clips, 128, 32, 24, 16,
+                        QColor(255, 0, 0)) ||
+                    !image_has_green_ink(universal_clips, 24, 56, 224, 64) ||
+                    !image_has_green_ink(universal_clips, 104, 144, 64, 16) ||
+                    !image_has_green_ink(universal_clips, 192, 112, 32, 16) ||
+                    !save_scene("shop-special-clips/actual.bmp",
+                                universal_clips)) {
+                    std::cerr << "field Ares shop QA: source-specific clips "
+                                 "detail or slim row selector is missing\n";
+                    return 3;
+                }
+                if (field_audio_events != std::vector<std::uint16_t>{
+                                              0x25U, 0x25U, 0x25U, 0x25U}) {
+                    std::cerr << "field Ares shop QA: category and row "
+                                 "movement audio requests are unexpected\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0x80U); // Start return.
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                const auto clips_returned = render_shop_scene();
+                if (field_scene.shop_menu_open() ||
+                    clips_returned == universal_clips ||
+                    !save_scene("field-return-after-clips/actual.bmp",
+                                clips_returned)) {
+                    std::cerr << "field Ares shop QA: special-offer pixels "
+                                 "survived the return redraw\n";
+                    return 3;
+                }
+
+                std::cout << "field_ares_shop_qa=passed output="
+                          << output.string() << "\n";
                 return 0;
             }
             if (field_magic_spell_dump_path.has_value()) {

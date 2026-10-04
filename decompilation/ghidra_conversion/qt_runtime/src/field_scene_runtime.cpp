@@ -7,6 +7,7 @@
 #include "shadowrun_ghidra/field/field_mode_scene_runtime_preparation_conversion.hpp"
 #include "shadowrun_ghidra/field/field_exit_orchestrator_conversion.hpp"
 #include "shadowrun_ghidra/field/field_exit_prompt_conversion.hpp"
+#include "shadowrun_ghidra/field/field_mode_service_conversion.hpp"
 #include "shadowrun_ghidra/field/field_resource_sequence_conversion.hpp"
 #include "shadowrun_ghidra/field/field_scene_entry_conversion.hpp"
 #include "shadowrun_ghidra/field/field_entity_render_batch_conversion.hpp"
@@ -329,20 +330,75 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
             return false;
         };
 
-    // The remaining routes are deliberately explicit until their resource
-    // selectors are connected. Returning true stops the converted
-    // orchestrator at the same typed boundary instead of silently allowing a
-    // scene transition with no source-backed presentation.
-    callbacks.prepare_field_mode_exit = [this](FieldExitOrchestratorState& state) {
+    // Mode 2/event 11 is the Ares service entry at ROM 0x1FA78. The preceding
+    // generic field-dialogue selector has no speaker record for this route;
+    // its text and optional alternate result are selected by the mode-text
+    // provider below. Other mode-exit routes remain explicit boundaries.
+    const auto is_ares_shop_event = [&runtime_state, this] {
+        return runtime_state.field_mode == 2U &&
+               field_movement_transition_state_.mode_event_code == 11U;
+    };
+    callbacks.prepare_field_mode_exit = [this, &is_ares_shop_event](
+                                            FieldExitOrchestratorState& state) {
+        if (is_ares_shop_event()) {
+            return false;
+        }
         source_boundary("field.exit.prepare_mode_exit_unresolved");
         state.caller_exit_status = -1;
         return true;
     };
-    callbacks.select_field_mode_service = [this](FieldExitOrchestratorState& state) {
-        source_boundary("field.exit.mode_service_unresolved");
-        state.caller_exit_status = -1;
-        return true;
-    };
+    callbacks.select_field_mode_service =
+        [this, &runtime_state, &is_ares_shop_event](
+            FieldExitOrchestratorState& state) {
+            if (!is_ares_shop_event()) {
+                source_boundary("field.exit.mode_service_unresolved");
+                state.caller_exit_status = -1;
+                return true;
+            }
+
+            FieldModeServiceRouteState route_state{};
+            route_state.scene_id = runtime_state.field_mode;
+            route_state.submode =
+                field_movement_transition_state_.mode_event_code;
+            route_state.alternate_result = field_exit_alternate_result_;
+            bool prompt_opened = false;
+            FieldModeServiceRouteCallbacks service_callbacks{};
+            service_callbacks.run_mode_exit_services =
+                [this, &prompt_opened](
+                    FieldModeServiceSelection&,
+                    FieldModeServiceRouteState& source_state) {
+                    prompt_opened = field_mode_text_.open(
+                        FieldModeTextPromptContext{
+                            source_state.scene_id, source_state.submode,
+                            source_state.alternate_result});
+                    if (!prompt_opened) {
+                        source_boundary(
+                            "field.ares_mode_text_prompt.open_failed");
+                    }
+                };
+            service_callbacks.run_field_mode_service =
+                [this, &prompt_opened](FieldModeServiceRouteState&) {
+                    if (!prompt_opened) {
+                        return;
+                    }
+                    field_shop_route_pending_ = true;
+                    source_boundary("field.shop.ares.service_dispatched");
+                };
+
+            const auto action = select_field_mode_service(
+                route_state, service_callbacks);
+            if (action == FieldModeServiceAction::no_matching_route) {
+                source_boundary("field.exit.mode_service_unmatched");
+            } else if (action ==
+                       FieldModeServiceAction::field_mode_service_unresolved) {
+                source_boundary("field.exit.mode_service_callback_unresolved");
+            }
+            state.caller_exit_status = route_state.caller_exit_status;
+            // The generic prompt owns the next input samples. For default
+            // result it will open the shop after the prompt returns; alternate
+            // result records return to the field without dispatching 0x56AC0.
+            return true;
+        };
     callbacks.finalize_field_mode_exit = [this](FieldExitOrchestratorState& state) {
         source_boundary("field.exit.finalize_mode_exit_unresolved");
         state.caller_exit_status = -1;
@@ -2395,6 +2451,9 @@ bool FieldSceneRuntime::bootstrap(
     const integration::StartupIntegrationState& startup_state) {
     ready_ = false;
     failure_.clear();
+    field_shop_menu_.close();
+    field_shop_route_pending_ = false;
+    field_funds_.reset();
     command_overview_magic_state_ = CommandOverviewMagicState::inactive;
     command_overview_magic_physical_defense_ = MagicDefenseStripView{};
     command_overview_magic_mana_defense_ = MagicDefenseStripView{};
@@ -2412,6 +2471,11 @@ bool FieldSceneRuntime::bootstrap(
         startup_state.restored_field_state.has_value()
             ? &*startup_state.restored_field_state
             : nullptr;
+    // ROM 0x007F0 initializes FFFBFE to 20 on the New Game route before the
+    // field is entered. The current save adapter does not restore that global.
+    field_funds_ = restored_field_state == nullptr
+                       ? std::optional<std::uint32_t>{0x14U}
+                       : std::nullopt;
     pocket_secretary_ = PocketSecretaryMenuState{};
     dismiss_runner_ = DismissRunnerMenuState{};
     dismiss_runner_random_grid_effect_ = RandomGridEffectState{};
@@ -2598,9 +2662,28 @@ bool FieldSceneRuntime::bootstrap(
                     field_map_) ||
         !load_image(startup_state.asset_catalog.catalog, kFieldHudAlias,
                     field_hud_) ||
+        !load_image(startup_state.asset_catalog.catalog,
+                    "menu.field.service.background",
+                    field_service_background_) ||
         !load_field_hud_overlays(startup_state.asset_catalog.catalog) ||
         !load_command_overview_assets(startup_state.asset_catalog.catalog)) {
         source_boundary("field.bootstrap.direct_assets_missing");
+        return false;
+    }
+    for (std::size_t index = 0; index < field_service_tab_images_.size();
+         ++index) {
+        const auto alias = "menu.field.service.tabs.selected." +
+                           std::to_string(index);
+        if (!load_image(startup_state.asset_catalog.catalog, alias,
+                        field_service_tab_images_[index])) {
+            source_boundary("field.bootstrap.service_tab_asset_missing");
+            return false;
+        }
+    }
+    if (!load_image(startup_state.asset_catalog.catalog,
+                    "menu.field.service.universal.clips",
+                    field_service_universal_clips_icon_)) {
+        source_boundary("field.bootstrap.service_clips_icon_missing");
         return false;
     }
     // The extracted HUD record is a plane-sized image: color zero is a hole
@@ -3112,6 +3195,15 @@ void FieldSceneRuntime::advance_frame() {
             field_controller_sample_state_.events);
         if (result == FieldModeTextAdvanceResult::returned_to_route) {
             source_boundary("field.mode_text_prompt.returned_to_caller");
+            if (field_shop_route_pending_) {
+                field_shop_route_pending_ = false;
+                if (field_shop_menu_.open(
+                        ShopId::ares_weapon_emporium)) {
+                    source_boundary("field.shop.ares.opened");
+                } else {
+                    source_boundary("field.shop.ares.open_failed");
+                }
+            }
         }
         return;
     }
@@ -3130,6 +3222,75 @@ void FieldSceneRuntime::advance_frame() {
             field_controller_sample_state_.events);
         if (result == FieldDialogueAdvanceResult::returned_to_field) {
             source_boundary("field.dialogue.returned_to_field");
+        }
+        return;
+    }
+    if (field_shop_menu_.is_open()) {
+        // ROM 0x56AC0 services audio and new high-byte input inside its menu
+        // loop. Keep that interaction modal so field movement cannot write
+        // stale map pixels underneath the full-screen service presentation.
+        field_controller_latch_state_.events =
+            field_controller_sample_state_.events;
+        field_controller_latch_state_.extra_events = 0U;
+        (void)::shadowrun::ghidra_conversion::latch_controller_events(
+            field_controller_latch_state_);
+        ::shadowrun::ghidra_conversion::sample_controller_input(
+            field_controller_sample_state_, field_controller_port_byte_);
+        const auto menu_event = field_shop_menu_.advance(
+            field_controller_sample_state_.events);
+        switch (menu_event) {
+        case ShopMenuEvent::selection_moved:
+            if (source_audio_event_callback_) {
+                source_audio_event_callback_(0x25U);
+            }
+            source_boundary("field.shop.ares.selection_moved");
+            break;
+        case ShopMenuEvent::panel_changed:
+            if (source_audio_event_callback_) {
+                source_audio_event_callback_(0x25U);
+            }
+            source_boundary("field.shop.ares.panel_changed");
+            break;
+        case ShopMenuEvent::purchase_selected:
+            if (source_audio_event_callback_) {
+                source_audio_event_callback_(0x24U);
+            }
+            source_boundary("field.shop.ares.purchase_transaction_unresolved");
+            field_shop_menu_.finish_action();
+            break;
+        case ShopMenuEvent::sale_selected:
+            if (source_audio_event_callback_) {
+                source_audio_event_callback_(0x24U);
+            }
+            source_boundary("field.shop.ares.sale_transaction_unresolved");
+            field_shop_menu_.finish_action();
+            break;
+        case ShopMenuEvent::offer_unavailable:
+            source_boundary("field.shop.ares.offer_unavailable");
+            break;
+        case ShopMenuEvent::source_action_boundary:
+            if (source_audio_event_callback_) {
+                source_audio_event_callback_(0x24U);
+            }
+            source_boundary("field.shop.ares.action_boundary");
+            field_shop_menu_.finish_action();
+            break;
+        case ShopMenuEvent::active_runner_change_requested:
+            if (source_audio_event_callback_) {
+                source_audio_event_callback_(0x24U);
+            }
+            handle_field_mode_action_event();
+            refresh_field_hud_runner_slot();
+            source_boundary("field.shop.ares.active_runner_changed");
+            break;
+        case ShopMenuEvent::returned_to_field:
+            field_shop_route_pending_ = false;
+            state_.display_service_word = 0U;
+            field_runtime_state_.display_service_word = 0U;
+            source_boundary("field.shop.ares.returned_to_field");
+            break;
+        case ShopMenuEvent::no_change:
+            break;
         }
         return;
     }
@@ -3505,6 +3666,21 @@ bool FieldSceneRuntime::open_command_overview_for_dump() {
     return command_overview_.open();
 }
 
+bool FieldSceneRuntime::begin_ares_shop_event_for_dump() {
+    if (!ready_) {
+        return false;
+    }
+    // Inject the already source-resolved event tuple into the same converted
+    // orchestrator used by field movement. This test seam does not skip the
+    // generic prompt or the 0x1FA78 service selector.
+    field_runtime_state_.field_mode = 2U;
+    field_movement_transition_state_.mode_event_code = 11U;
+    field_exit_alternate_result_ = 0;
+    field_shop_route_pending_ = false;
+    (void)run_field_exit_orchestrator(field_runtime_state_);
+    return field_mode_text_.open();
+}
+
 bool FieldSceneRuntime::seek_command_overview_page(const std::uint8_t page) {
     if (!command_overview_.open() || page > 6U) {
         return false;
@@ -3601,6 +3777,148 @@ void FieldSceneRuntime::paint_field_hud_overlays(QPainter& painter) const {
             continue;
         }
         painter.drawImage(overlay.x, overlay.y, *image);
+    }
+}
+
+void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
+    if (field_service_background_.isNull()) {
+        return;
+    }
+    painter.drawImage(0, 0, field_service_background_);
+
+    // 0x56AC0 selects Ares title record 1 from the extracted source table.
+    // The full-screen service asset replaces the preceding dialogue and map;
+    // dynamic labels, item art, icons, and runner HUD are layered once over it.
+    draw_command_overview_text(painter, 64, 16,
+                               field_menu_text_.field_service_titles[1]);
+    const auto group = field_shop_menu_.selected_group();
+    const auto group_index = static_cast<std::size_t>(group);
+    if (group_index < field_service_tab_images_.size()) {
+        painter.drawImage(64, 128, field_service_tab_images_[group_index]);
+    }
+    std::size_t first_title = 0U;
+    switch (group) {
+    case ShopActionGroup::weapons:
+        first_title = 0U;
+        break;
+    case ShopActionGroup::other_items:
+        first_title = 4U;
+        break;
+    case ShopActionGroup::armor:
+        first_title = 2U;
+        break;
+    case ShopActionGroup::source_action_3:
+        first_title = 6U;
+        break;
+    case ShopActionGroup::source_action_4:
+        first_title = 8U;
+        break;
+    case ShopActionGroup::sell:
+        first_title = 10U;
+        break;
+    }
+
+    const auto& action_titles = field_menu_text_.field_service_action_titles;
+    if (first_title + 1U < action_titles.size()) {
+        if (field_shop_menu_.offers_panel_active()) {
+            const auto selected_offer = ShopMenuController::offer(
+                field_shop_menu_.shop(), group,
+                field_shop_menu_.selected_cursor());
+            if (selected_offer.has_value() &&
+                selected_offer->type == static_cast<std::uint8_t>('E')) {
+                // ROM 0x586F6 uses the dedicated CE28E grid, 1AACE2
+                // description, 1AACCE title, and record quantity for the
+                // Universal Gun Clips row. These are source text/assets, not
+                // a fabricated inventory item-code mapping.
+                painter.drawImage(128, 32,
+                                  field_service_universal_clips_icon_);
+                draw_command_overview_text(
+                    painter, 24, 56,
+                    field_menu_text_.field_service_universal_clips_description);
+                draw_command_overview_text(
+                    painter, 104, 144,
+                    field_menu_text_.field_service_universal_clips_title);
+                draw_command_overview_text(
+                    painter, 192, 112,
+                    std::to_string(selected_offer->quantity));
+            } else if (selected_offer.has_value()) {
+                const auto item_code = static_cast<std::uint8_t>(
+                    selected_offer->type + 1U);
+                if (item_code > 0U &&
+                    item_code <= field_menu_text_.item_names.size()) {
+                    draw_command_overview_text(
+                        painter, 80, 144,
+                        field_menu_text_.item_names[item_code - 1U]);
+                    draw_command_overview_text(
+                        painter, 80, 152,
+                        field_menu_text_.item_categories[item_code - 1U]);
+                    if (item_code <= command_overview_item_details_.size()) {
+                        painter.drawImage(
+                            124, 32,
+                            command_overview_item_details_[item_code - 1U]);
+                    }
+                }
+            }
+        } else {
+            draw_command_overview_text(painter, 64, 144,
+                                       action_titles[first_title]);
+            draw_command_overview_text(painter, 64, 152,
+                                       action_titles[first_title + 1U]);
+        }
+    }
+
+    const auto count = ShopMenuController::offer_count(
+        field_shop_menu_.shop(), group);
+    for (std::size_t index = 0; index < count && index < 8U; ++index) {
+        const auto offer = ShopMenuController::offer(
+            field_shop_menu_.shop(), group, index);
+        if (!offer.has_value()) {
+            continue;
+        }
+        if (offer->type == static_cast<std::uint8_t>('E')) {
+            painter.drawImage(
+                16 + static_cast<int>(index) * 32, 168,
+                field_service_universal_clips_icon_);
+            continue;
+        }
+        const auto item_code = static_cast<std::uint8_t>(offer->type + 1U);
+        if (item_code == 0U ||
+            item_code > command_overview_inventory_icons_.size()) {
+            continue;
+        }
+        painter.drawImage(
+            16 + static_cast<int>(index) * 32, 168,
+            command_overview_inventory_icons_[item_code - 1U][0]);
+    }
+
+    if (field_shop_menu_.offers_panel_active()) {
+        // The Genesis selector hugs each 24x16 item image. Draw a single
+        // warm-yellow pixel around that footprint; the surrounding 32x24
+        // cell and neighboring controls remain clear.
+        const auto cursor = field_shop_menu_.selected_cursor();
+        if (cursor < count && cursor < 8U) {
+            constexpr int kIconWidth = 24;
+            constexpr int kIconHeight = 16;
+            const auto x = 16 + static_cast<int>(cursor) * 32;
+            constexpr int y = 168;
+            const QColor selector_color(196, 190, 39);
+            painter.fillRect(x, y, kIconWidth, 1, selector_color);
+            painter.fillRect(x, y + kIconHeight - 1, kIconWidth, 1,
+                             selector_color);
+            painter.fillRect(x, y, 1, kIconHeight, selector_color);
+            painter.fillRect(x + kIconWidth - 1, y, 1, kIconHeight,
+                             selector_color);
+        }
+    }
+
+    paint_field_hud_overlays(painter);
+    if (field_funds_.has_value()) {
+        auto amount = std::to_string(*field_funds_);
+        for (auto position = amount.size(); position > 3U; position -= 3U) {
+            amount.insert(position - 3U, ",");
+        }
+        draw_command_overview_text(painter, 144, 200, amount);
+        draw_command_overview_text(painter, 200, 200, "$");
     }
 }
 
@@ -4846,6 +5164,10 @@ void FieldSceneRuntime::paint(QPainter& painter) const {
     }
     if (field_mode_text_.open()) {
         field_mode_text_.paint(painter);
+        return;
+    }
+    if (field_shop_menu_.is_open()) {
+        paint_field_shop(painter);
         return;
     }
     if (field_dialogue_.open()) {

@@ -649,6 +649,86 @@ read_genesis_field_service_titles(const std::vector<std::uint8_t>& rom) {
     return result;
 }
 
+std::array<std::string, 32> read_genesis_field_service_action_titles(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kTableStart = 0x1AA8AFU;
+    constexpr std::size_t kRecordStride = 0x15U;
+    constexpr std::size_t kTextBytes = 0x14U;
+
+    std::array<std::string, 32> result{};
+    for (std::size_t index = 0; index < result.size(); ++index) {
+        const auto offset = kTableStart + index * kRecordStride;
+        if (offset > rom.size() || rom.size() - offset < kTextBytes) {
+            throw std::out_of_range(
+                "Genesis field-service action title is truncated");
+        }
+        auto& text = result[index];
+        text.reserve(kTextBytes);
+        for (std::size_t character = 0; character < kTextBytes; ++character) {
+            const auto byte = rom[offset + character];
+            if (byte < 0x20U || byte > 0x7EU) {
+                throw std::runtime_error(
+                    "Genesis field-service action title contains an invalid "
+                    "fixed-width character");
+            }
+            // Keep the source's leading and trailing spaces: 0x58BB6 draws
+            // every title at the same cell, so those spaces provide the
+            // original alignment within its 20-character field.
+            text.push_back(static_cast<char>(byte));
+        }
+        if (result[index].empty()) {
+            throw std::runtime_error(
+                "Genesis field-service action title has no visible text");
+        }
+    }
+    return result;
+}
+
+GenesisFieldServiceUniversalClipsText
+read_genesis_field_service_universal_clips_text(
+    const std::vector<std::uint8_t>& rom) {
+    const auto read_lines = [&rom](const std::size_t offset,
+                                   const std::size_t maximum_bytes,
+                                   const char* error) {
+        if (offset > rom.size() || rom.size() - offset < maximum_bytes) {
+            throw std::out_of_range(error);
+        }
+        std::string text;
+        text.reserve(maximum_bytes);
+        for (std::size_t index = 0; index < maximum_bytes; ++index) {
+            const auto byte = rom[offset + index];
+            if (byte == 0xFFU) {
+                return text;
+            }
+            if (byte == 0x80U) {
+                text.push_back('\n');
+                continue;
+            }
+            if (byte < 0x20U || byte > 0x7EU) {
+                throw std::runtime_error(error);
+            }
+            text.push_back(static_cast<char>(byte));
+        }
+        return text;
+    };
+
+    GenesisFieldServiceUniversalClipsText result{};
+    result.title = read_lines(
+        0x1AACCEU, 0x14U,
+        "Genesis Universal Gun Clips title is truncated or malformed");
+    result.description = read_lines(
+        0x1AACE2U, 0x100U,
+        "Genesis Universal Gun Clips description is truncated or malformed");
+    if (!result.title.empty() && result.title.back() == '\n') {
+        result.title.pop_back();
+    }
+    if (result.title.empty() || result.description.empty()) {
+        throw std::runtime_error(
+            "Genesis Universal Gun Clips text is empty");
+    }
+    return result;
+}
+
 GenesisFieldMenuActionText read_genesis_field_menu_action_text(
     const std::vector<std::uint8_t>& rom) {
     // 0xD1CBB is the two-line equipped-item notice, followed by the
@@ -2791,6 +2871,197 @@ RgbaImage decode_genesis_field_service_background(
     // zero pixels reveal the lower plane.
     draw_plane(plane_b, plane_b_written);
     draw_plane(plane_a, plane_a_written);
+    return image;
+}
+
+std::array<RgbaImage, 6> decode_genesis_field_service_selection_tabs(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kPatternStreamOffset = 0xCAB0CU;
+    constexpr std::size_t kPatternVramOffset = 0x1E20U;
+    constexpr std::size_t kTabBaseOffset = 0xCE17EU;
+    constexpr std::size_t kSelectedTabOffset = 0xCE22EU;
+    constexpr std::size_t kPlaneBase = 0xE000U;
+    constexpr std::size_t kTabDestination = 0xE810U;
+    constexpr std::size_t kPlaneRowStride = 0x80U;
+    constexpr std::size_t kTabWidth = 18U;
+    constexpr std::size_t kTabHeight = 2U;
+    constexpr std::size_t kImageWidth = kTabWidth * 8U;
+    constexpr std::size_t kImageHeight = kTabHeight * 8U;
+
+    auto pattern_vram = decode_genesis_1530_vram(
+        rom, kPatternStreamOffset, kPatternVramOffset);
+    write_genesis_f5c_vram(rom, 0xD263CU, 0x9F40U, 0x340U,
+                           pattern_vram);
+    const auto palette = read_genesis_palette(rom, 0xD29D6U);
+    const auto draw_block = [&](RgbaImage& image,
+                                const std::size_t source_offset,
+                                const std::size_t vdp_address,
+                                const std::size_t width,
+                                const std::size_t height) {
+        if (width == 0U || height == 0U || source_offset > rom.size() ||
+            width * height > (rom.size() - source_offset) / 2U) {
+            throw std::out_of_range(
+                "Genesis field-service selector grid is truncated");
+        }
+        if (vdp_address < kTabDestination) {
+            throw std::out_of_range(
+                "Genesis field-service selector destination is invalid");
+        }
+        const auto table_offset = vdp_address - kPlaneBase;
+        const auto base_offset = kTabDestination - kPlaneBase;
+        if (table_offset < base_offset ||
+            table_offset - base_offset >= kPlaneRowStride * kTabHeight ||
+            (table_offset - base_offset) % 2U != 0U) {
+            throw std::out_of_range(
+                "Genesis field-service selector grid is misaligned");
+        }
+        const auto first_row = (table_offset - base_offset) / kPlaneRowStride;
+        const auto first_column =
+            ((table_offset - base_offset) % kPlaneRowStride) / 2U;
+        if (first_column + width > kTabWidth ||
+            first_row + height > kTabHeight) {
+            throw std::out_of_range(
+                "Genesis field-service selector grid exceeds its host image");
+        }
+
+        for (std::size_t row = 0; row < height; ++row) {
+            for (std::size_t column = 0; column < width; ++column) {
+                const auto source =
+                    source_offset + (row * width + column) * 2U;
+                const auto name_word = static_cast<std::uint16_t>(
+                    (static_cast<std::uint16_t>(rom[source]) << 8U) |
+                    rom[source + 1U]);
+                const auto palette_line =
+                    static_cast<std::size_t>((name_word >> 13U) & 0x03U);
+                if (palette_line != 0U || (name_word & 0x8000U) != 0U) {
+                    throw std::runtime_error(
+                        "Genesis field-service selector uses an unreviewed "
+                        "palette or priority");
+                }
+                const auto tile_index =
+                    static_cast<std::size_t>(name_word & 0x07FFU);
+                if (tile_index * 32U + 32U > pattern_vram.size()) {
+                    throw std::out_of_range(
+                        "Genesis field-service selector tile data is "
+                        "truncated");
+                }
+                const auto tile = decode_genesis_tile(
+                    pattern_vram.data() + tile_index * 32U, 32U);
+                const auto hflip = (name_word & 0x0800U) != 0U;
+                const auto vflip = (name_word & 0x1000U) != 0U;
+                for (std::size_t pixel_y = 0; pixel_y < 8U; ++pixel_y) {
+                    for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
+                        const auto source_x = hflip ? 7U - pixel_x : pixel_x;
+                        const auto source_y = vflip ? 7U - pixel_y : pixel_y;
+                        const auto color_index =
+                            tile.pixels[source_y * 8U + source_x];
+                        if (color_index == 0U) {
+                            continue;
+                        }
+                        auto color = palette[color_index];
+                        color.alpha = 255U;
+                        const auto output_x =
+                            (first_column + column) * 8U + pixel_x;
+                        const auto output_y =
+                            (first_row + row) * 8U + pixel_y;
+                        image.pixels[output_y * image.width + output_x] =
+                            color;
+                    }
+                }
+            }
+        }
+    };
+
+    std::array<RgbaImage, 6> images{};
+    for (std::size_t selected = 0; selected < images.size(); ++selected) {
+        images[selected] = RgbaImage{
+            static_cast<std::uint16_t>(kImageWidth),
+            static_cast<std::uint16_t>(kImageHeight),
+            std::vector<native::Rgba8>(
+                kImageWidth * kImageHeight,
+                native::Rgba8{0U, 0U, 0U, 0U}),
+        };
+        draw_block(images[selected], kTabBaseOffset, kTabDestination,
+                   kTabWidth, kTabHeight);
+        draw_block(images[selected],
+                   kSelectedTabOffset + selected * 8U,
+                   kTabDestination + 2U + selected * 6U, 2U, 2U);
+    }
+    return images;
+}
+
+RgbaImage decode_genesis_field_service_universal_clips_icon(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kPatternStreamOffset = 0xCAB0CU;
+    constexpr std::size_t kPatternVramOffset = 0x1E20U;
+    constexpr std::size_t kIconSourceOffset = 0xCE28EU;
+    constexpr std::size_t kIconColumns = 3U;
+    constexpr std::size_t kIconRows = 2U;
+
+    auto pattern_vram = decode_genesis_1530_vram(
+        rom, kPatternStreamOffset, kPatternVramOffset);
+    write_genesis_f5c_vram(rom, 0xD263CU, 0x9F40U, 0x340U,
+                           pattern_vram);
+    // The name words select palette line 1. Field setup replaces the three
+    // palette lines after the first line at 0xD29D6 with 0x18AC56; 0xD29F6
+    // is the command-screen cursor record and is not palette data.
+    const auto palette = read_genesis_field_palette_set(rom, 0xD29D6U);
+    RgbaImage image{
+        static_cast<std::uint16_t>(kIconColumns * 8U),
+        static_cast<std::uint16_t>(kIconRows * 8U),
+        std::vector<native::Rgba8>(
+            kIconColumns * kIconRows * 64U,
+            native::Rgba8{0U, 0U, 0U, 0U}),
+    };
+    if (kIconSourceOffset > rom.size() ||
+        kIconColumns * kIconRows >
+            (rom.size() - kIconSourceOffset) / 2U) {
+        throw std::out_of_range(
+            "Genesis Universal Gun Clips art is truncated");
+    }
+    for (std::size_t row = 0; row < kIconRows; ++row) {
+        for (std::size_t column = 0; column < kIconColumns; ++column) {
+            const auto source =
+                kIconSourceOffset + (row * kIconColumns + column) * 2U;
+            const auto name_word = static_cast<std::uint16_t>(
+                (static_cast<std::uint16_t>(rom[source]) << 8U) |
+                rom[source + 1U]);
+            // The service draw applies D2=0x2000 (palette line 1) and the
+            // six words retain that palette bit plus their individual flips.
+            const auto palette_line =
+                static_cast<std::size_t>((name_word >> 13U) & 0x03U);
+            if ((name_word & 0x8000U) != 0U || palette_line != 1U) {
+                throw std::runtime_error(
+                    "Genesis Universal Gun Clips art has unexpected tile "
+                    "palette/priority attributes");
+            }
+            const auto tile_index =
+                static_cast<std::size_t>(name_word & 0x07FFU);
+            if (tile_index * 32U + 32U > pattern_vram.size()) {
+                throw std::out_of_range(
+                    "Genesis Universal Gun Clips tile data is truncated");
+            }
+            const auto tile = decode_genesis_tile(
+                pattern_vram.data() + tile_index * 32U, 32U);
+            const auto hflip = (name_word & 0x0800U) != 0U;
+            const auto vflip = (name_word & 0x1000U) != 0U;
+            for (std::size_t pixel_y = 0; pixel_y < 8U; ++pixel_y) {
+                for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
+                    const auto source_x = hflip ? 7U - pixel_x : pixel_x;
+                    const auto source_y = vflip ? 7U - pixel_y : pixel_y;
+                    const auto color_index =
+                        tile.pixels[source_y * 8U + source_x];
+                    if (color_index == 0U) {
+                        continue;
+                    }
+                    auto color = palette[palette_line * 16U + color_index];
+                    color.alpha = 255U;
+                    image.pixels[(row * 8U + pixel_y) * image.width +
+                                 column * 8U + pixel_x] = color;
+                }
+            }
+        }
+    }
     return image;
 }
 
