@@ -66,7 +66,8 @@ int main() {
     const auto& intro = runtime.panel();
     if (!expect(intro.actor_kind == DialoguePanelActorKind::none) ||
         !expect(intro.actor_name.empty()) ||
-        !expect(intro.portrait_alias.empty()) ||
+        !expect(intro.portrait_alias ==
+                "field.mode.entry.ares.sprite") ||
         !expect(intro.option_count == 0U) ||
         !expect(intro.text_segment_count >= 5U) ||
         !expect(intro.text_segments[1].empty()) ||
@@ -81,6 +82,8 @@ int main() {
     runtime.paint(painter);
     painter.end();
     if (!expect(has_green_ink(image, 88, 16, 216, 120)) ||
+        !expect(!region_is_color(image, 16, 32, 56, 72,
+                                 QColor(0, 0, 0))) ||
         !expect(region_is_color(image, 16, 152, 296, 72,
                                 QColor(0, 0, 0)))) {
         return 5;

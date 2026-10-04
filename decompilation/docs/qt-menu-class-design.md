@@ -67,16 +67,19 @@ their current host:
 - **Dialogue:** `FieldDialogueEventResolver`, `FieldDialogueRuntime`, and the
   shared `DialoguePanelPresenter` exist. Event selection is source-keyed, but
   only converted prompt branches and extracted speaker records resolve. Ares
-  has a separate text-only mode-prompt runtime; its live field route and other
-  event providers remain pending.
+  uses a separate generic mode-text route whose event-selected mode profile
+  supplies the left-well logo; its live field route and other event providers
+  remain pending.
 - **Generic mode-text prompt:** the typed `0x1F3C4` conversion now exposes a
   one-frame advance API with the source 10-frame option delay, 30-frame
   sentinel delay, controller priority, and subcommand return. A Qt runtime
   provider now resolves Ares mode 2/event 11 and its positive/negative text
-  variants. `FieldModeTextRuntime` presents the title-only record, applies the
-  30-frame sentinel wait, and writes a diagnostic BMP through the common
-  panel presenter. The exact Ares frame remains visually unverified, and the
-  live field route still needs to open the prompt before the shop.
+  variants. `FieldModeTextRuntime` binds profile `0x1220C0` to the Ares left
+  speaker well, presents the title-only record, applies the 30-frame sentinel
+  wait, and writes a diagnostic BMP through the common panel presenter. The
+  longplay frame at 01:39:43 confirms the frame, logo placement, and blank
+  lower well. The live field route still needs to open the prompt before the
+  shop.
 - **Shop:** `ShopMenuController` and `ShopTransactionService` exist for the
   Ares source selection and transactions. The live field route, wallet
   binding, and presenter remain pending.
@@ -135,11 +138,11 @@ generic text-prompt loop at `0x1F3C4` before entering `0x56AC0`. This is not the
 Stoker/NPC panel route selected by `0x1F65A` for mode 2/event 2. Keep both
 routes event-selected, with speaker properties and text supplied by their
 source records; do not assign the Ares prompt a Stoker portrait or dialogue
-record. The text-only mode prompt now has a diagnostic presenter and dump; its
-live event route and exact Ares frame remain pending. The shop presenter must
-redraw its owned panel on entry, category change, offer change, confirmation,
-and return so stale buttons or graphics cannot remain beneath the current
-page.
+record. The generic mode-text prompt has a diagnostic presenter and dump, and
+its frame and profile placement are confirmed by the 01:39:43 longplay capture.
+Its live event route remains pending. The shop presenter must redraw its owned
+panel on entry, category change, offer change, confirmation, and return so
+stale buttons or graphics cannot remain beneath the current page.
 
 ## Verification for each screen
 

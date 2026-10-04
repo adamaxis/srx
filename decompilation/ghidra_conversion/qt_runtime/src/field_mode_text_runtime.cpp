@@ -74,6 +74,14 @@ bool FieldModeTextRuntime::open(
         return false;
     }
 
+    // ROM 0x1FA78 selects Ares mode profile 0x1220C0 before calling the
+    // generic 0x1F246 prompt service. That profile supplies the logo in the
+    // shared left speaker well; the mode-text record still supplies the
+    // words and has no choices of its own.
+    if (context.field_mode == 2U && context.event_code == 11U) {
+        panel_.portrait_alias = "field.mode.entry.ares.sprite";
+    }
+
     prompt_state_ = ModeTextPromptState{};
     (void)advance_mode_text_prompt(prompt_state_, prompt_, std::nullopt, 0U,
                                    {});

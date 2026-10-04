@@ -75,9 +75,13 @@ bool DialoguePanelPresenter::load_assets(
 
     for (const auto& record : assets.records) {
         const auto alias = std::string_view(record.alias);
+        const bool is_dialogue_portrait =
+            alias.size() >= kPortraitPrefix.size() &&
+            alias.substr(0U, kPortraitPrefix.size()) == kPortraitPrefix;
+        const bool is_mode_profile =
+            alias == "field.mode.entry.ares.sprite";
         if (record.kind != "image" ||
-            alias.size() < kPortraitPrefix.size() ||
-            alias.substr(0U, kPortraitPrefix.size()) != kPortraitPrefix) {
+            (!is_dialogue_portrait && !is_mode_profile)) {
             continue;
         }
         QImage portrait(QString::fromStdWString(
