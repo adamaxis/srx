@@ -3,12 +3,13 @@
 Status: the Ares event now traverses the field-exit selector and generic
 mode-text prompt before opening a typed Qt shop controller. The presenter draws
 the source service background, selected tab, fixed-width headings, item row,
-one-pixel item selector, and source-specific Universal Gun Clips art/text. A
-new-game wallet fallback displays the ROM's starting 20 nuyen. Purchase/sale
-confirmation and mutation are not connected to the live session, restored-save
-wallet data is not exposed by the save adapter, and actual sound playback is
+one-pixel item selector, and source-specific Universal Gun Clips art/text. The
+new-game wallet uses the ROM's starting 20 nuyen. Purchase, E-coded clip,
+confirmation, sale/refund, and protected-item paths now mutate the active
+runner and new-game wallet through typed state. The restored-save adapter still
+does not expose wallet funds, and production sound playback/duration remain
 unresolved; the Ares hill remains partial. The introduction and shop were
-independently reviewed against the full longplay at 01:39:43-01:39:49.
+independently reviewed against the longplay sequence around frames 5983-5994.
 
 ## Source trace
 
@@ -107,44 +108,56 @@ independently reviewed against the full longplay at 01:39:43-01:39:49.
    profile and event/result text. The default sentinel prompt has no A/B/C
    choice markers, waits 30 frames, and opens the shop only after returning to
    its caller. The six tab overlays follow the typed selected group, and the
-   slim yellow selector follows the typed offer cursor. QA checks default
-   routing, group selection, first offer selection, and input-gate timing.
+   slim yellow selector follows the typed offer cursor. Transaction state
+   controls the default-No cursor, Yes movement, message wait, funds, ordinary
+   slot writes, special-E count, sale refund, and protected-item response. QA
+   checks these values against the active runner and wallet before/after each
+   input; it does not infer selection from pixels alone.
 3. **Are the visuals correct?** The independent 01:39:45 category and
    01:39:47 Universal Gun Clips frames were compared with `shop-category` and
    `shop-special-clips/actual.bmp`. The two-line category heading preserves
    its ROM spacing. The E offer's art shape, red/black palette, detail text,
    cost/quantity 25, tab, and item-row icon now match the longplay composition.
-   The native selector QA requires a one-pixel 24x16 border and rejects extra
-   selector-color pixels elsewhere in the 32x24 offer cell. The captures are
-   conversion evidence; the longplay remains the visual authority.
+   The Stim Patch detail and confirmation captures were compared with
+   independent frames 5988 and 5992. The confirmation keeps the selected art,
+   title, row, and HUD, clears the old description, defaults to No, and does
+   not leave price text under the prompt. The sale quote appears on its
+   confirmation line; it no longer collides with the idle item description.
+   Selector QA requires a one-pixel 24x16 border and rejects extra selector
+   color elsewhere in the 32x24 offer cell. Native captures are conversion
+   evidence; the longplay remains the visual authority.
 4. **Animation?** The mode prompt waits 30 frames and has no periodic motion.
-   The shop loop has no periodic animation; its static art changes only when
-   input selects another category/item or opens a later transaction prompt.
-   Fifteen consecutive 30 fps frames around 01:39:54 show the independent shop
-   view stable between inputs.
+   The shop loop and confirmation are static between controller events. The
+   same selected item art persists through the prompt; input moves the Yes/No
+   cursor or ends the transaction. No extra animation was observed in the
+   adjacent longplay frames.
 5. **Sound?** The generic prompt makes no direct sound request. Shop movement
-   and tab changes request event `0x25`; confirm/restart paths request `0x24`.
-   The QA event sink confirms two `0x25` requests for cursor movement and two
-   for category/item-panel movement. Actual sample identity, playback duration,
-   and production playback are unresolved; a queued event ID is not an audio
-   verification.
+   and tab changes request event `0x25`; confirm/cancel paths request `0x24`.
+   QA checks the event requests for row/tab movement, purchase confirmation,
+   Yes/No movement, sale confirmation, and protected-item selection. These
+   requests currently have no verified production sample identity or measured
+   playback duration; the event sink is not proof that a sound played.
 6. **Related screen content?** The independent sequence includes the mode
    prompt, black transition, shop category, selected clips/patch details,
-   and a later transaction prompt. The service base owns the complete panel
-   and right-side HUD backing; the presenter layers tabs, headings, offer art,
-   selector, and funds once. The shop's portrait and wallet remain live-state
-   fields over that backing.
+   and a later transaction prompt. QA also inspects the insufficient-funds,
+   sale/refund, and protected-Totem screens. The service base owns the full
+   frame and HUD backing; the presenter redraws the selected tab, item detail,
+   selector, transaction text, and wallet from current state. Modal text
+   replaces the item detail in the shared text well while leaving the intended
+   item art and lower row in place.
 7. **Multiple frames?** The interpretation uses longplay frames 5983 (intro),
-   5985?5986 (shop/category), 5987 (clips), 5988?5989 (Stim/Trauma Patch),
-   5992 (transaction prompt), and 5994 (updated funds), plus fifteen adjacent
-   frames near 01:39:54. This confirms both stable presentation and input-driven
-   changes across several states.
+   5986 (shop/category), 5987 (clips), 5988-5989 (Stim/Trauma Patch), 5992
+   (Stim Patch confirmation), and 5994 (updated funds), plus fifteen adjacent
+   frames near 01:39:54. The native QA produces separate `actual.bmp` files for
+   category, item, confirmation-No, confirmation-Yes, purchase, sale, protected
+   sale, and return. Independent longplay frames anchor the visual reading;
+   native frames verify the typed state transitions.
 8. **Stale UI?** The mode prompt and shop each draw their own full-screen base.
-   Shop QA saves the category, selected item, special clips detail, and return
-   to field as separate `actual.bmp` frames. It verifies the shop replaces
-   prompt/field pixels on entry and that Start return replaces the full shop,
-   including the tabs, item art, detail text, and selector. No old shop controls
-   remain over the field frame.
+   Shop QA saves category, selected item, purchase modal, sale modal, failure
+   message, protected-item message, and field return as separate `actual.bmp`
+   frames. It checks that modal redraw removes stale description/price text,
+   preserves the intended item art/title/row, and that Start return replaces
+   the whole service page, including tabs, item art, details, and selector.
 
 ## Implemented controller slice
 
@@ -153,11 +166,14 @@ returns purchase, sale, source-boundary, runner-change, and field-return
 requests. It does not own a second inventory or wallet. The live presenter
 consumes the named background, six extracted selected-tab images, fixed-width
 heading records, existing named item images, and a dedicated E-offer art/text
-asset. `ShopTransactionService` delegates to the existing typed
-purchase/removal conversions, but the live shop currently records the
-transaction request as an unresolved boundary instead of mutating session
-inventory or funds. Debug build and five focused CTests pass; the field-shop QA
-writes introduction, category, selected-item, moved-cursor, clips-detail, and
-field-return `actual.bmp` checkpoints. The importer was run explicitly with
+asset. Source text records include the common prompt, transaction feedback,
+purchase/sale headings, and the 32 detail strings resolved from the ROM pointer
+table during offline extraction. `ShopTransactionService` delegates to the
+existing typed purchase/removal conversions, and the field session applies
+successful mutations to its active runner and new-game wallet. Debug QA writes
+introduction, category, selected-item, purchase failure/cancel/accept, Stim
+Patch confirmation, E-coded clips, sale/refund, protected-sale, and return
+`actual.bmp` checkpoints. The importer was run explicitly with
 `shadowrun_graphics_extract --all-assets`; extraction is not part of CTest or
-ordinary builds.
+ordinary builds. Loaded-save wallet binding and production audio playback are
+still open.

@@ -224,6 +224,22 @@ int main() {
     assert(field_action_text.trade_recipient_label == "Give to");
     assert(field_action_text.trade_full_inventory_message ==
            "  has a full\n  inventory.\n\nPress a button\n to continue.");
+    assert(field_action_text.transaction_prompt == "Complete Transaction?");
+    assert(field_action_text.no_inventory_slot_message ==
+           "Your inventory\n   is full!");
+    assert(field_action_text.insufficient_funds_message ==
+           " You do not have the\nnuyen for this item!!");
+    assert(field_action_text.special_action_limit_message ==
+           "  You are already\ncarrying the maximum\n  number ");
+    assert(field_action_text.protected_sale_message ==
+           "Totems cannot be sold!!");
+    assert(field_action_text.sale_quote_heading == "Item sells for       $");
+    assert(field_action_text.purchase_price_heading == "Price        $");
+    const auto field_action_detail_texts =
+        read_genesis_field_action_detail_texts(rom);
+    assert(field_action_detail_texts.size() == 32U);
+    assert(field_action_detail_texts[16] ==
+           "A slap patch that instantly\nincreases mental health\nby 20%.");
     const auto action_confirmation_background =
         decode_genesis_field_menu_action_confirmation_background(rom);
     assert(action_confirmation_background.width == 120U);

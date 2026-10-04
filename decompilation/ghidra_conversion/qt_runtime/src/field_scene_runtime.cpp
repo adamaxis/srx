@@ -9,6 +9,7 @@
 #include "shadowrun_ghidra/field/field_exit_prompt_conversion.hpp"
 #include "shadowrun_ghidra/field/field_mode_service_conversion.hpp"
 #include "shadowrun_ghidra/field/field_resource_sequence_conversion.hpp"
+#include "shadowrun_ghidra/field/field_action_detail_text_conversion.hpp"
 #include "shadowrun_ghidra/field/field_scene_entry_conversion.hpp"
 #include "shadowrun_ghidra/field/field_entity_render_batch_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
@@ -116,6 +117,56 @@ constexpr std::array<int, 4> kCommandOverviewClipsFocusX{{128, 152, 176,
 constexpr int kCommandOverviewClipsFocusY = 184;
 // FFDE08 is profile word 33. The 48-word block starts at FFDDC6.
 constexpr std::size_t kSceneProfileEntityPositionWord = 33U;
+
+FieldActionCostContext ares_cost_context(
+    const std::uint8_t menu_mode, const RunnerRecordFields& runner) {
+    // Ares enters the service with FFF0B6 = 1. 1AAC6E[1] is 2, and the
+    // source reads the active runner's +0x8C statistic (typed as skills[11]).
+    return FieldActionCostContext{menu_mode, 0U, runner.skills[11], 2U};
+}
+
+FieldActionPurchaseState make_purchase_state(
+    const RunnerRecordFields& runner, const std::uint32_t funds) {
+    FieldActionPurchaseState state{};
+    state.funds = funds;
+    state.runner.action_codes = runner.inventory_item_codes;
+    state.runner.companion_values = runner.inventory_phase_bytes;
+    state.runner.special_action_count = runner.ammo_clips;
+    return state;
+}
+
+RunnerActionRemovalState make_sale_state(
+    const RunnerRecordFields& runner, const std::uint8_t slot,
+    const std::uint32_t funds) {
+    RunnerActionRemovalState state{};
+    state.runner.action_codes = runner.inventory_item_codes;
+    state.runner.companion_values = runner.inventory_phase_bytes;
+    state.runner_slot = slot;
+    state.selected_runner_slot = runner.equipped_inventory_slot < 0
+        ? 0xFFU
+        : static_cast<std::uint8_t>(runner.equipped_inventory_slot);
+    state.action_suffix_marker = runner.equipped_armor_index;
+    state.funds = funds;
+    return state;
+}
+
+void apply_purchase_state(const FieldActionPurchaseState& state,
+                          RunnerRecordFields& runner) {
+    runner.inventory_item_codes = state.runner.action_codes;
+    runner.inventory_phase_bytes = state.runner.companion_values;
+    runner.ammo_clips = state.runner.special_action_count;
+}
+
+void apply_sale_state(const RunnerActionRemovalState& state,
+                      RunnerRecordFields& runner) {
+    runner.inventory_item_codes = state.runner.action_codes;
+    runner.inventory_phase_bytes = state.runner.companion_values;
+    runner.equipped_armor_index = state.action_suffix_marker;
+    if (state.menu_selection_cleared) {
+        runner.equipped_inventory_slot = -1;
+        runner.equipped_item_code = 0U;
+    }
+}
 
 std::string command_overview_item_alias(const std::uint8_t item_code,
                                         const std::uint8_t palette_variant) {
@@ -3236,6 +3287,65 @@ void FieldSceneRuntime::advance_frame() {
             field_controller_latch_state_);
         ::shadowrun::ghidra_conversion::sample_controller_input(
             field_controller_sample_state_, field_controller_port_byte_);
+        if (field_shop_menu_.transaction_confirmation_open() ||
+            field_shop_menu_.transaction_waiting_for_event()) {
+            if (!field_funds_.has_value()) {
+                source_boundary("field.shop.ares.transaction_wallet_unavailable");
+                field_shop_menu_.clear_pending_action();
+                return;
+            }
+            auto purchase_state = make_purchase_state(
+                active_runner_record(), *field_funds_);
+            auto sale_state = make_sale_state(
+                active_runner_record(), field_shop_menu_.selected_cursor(),
+                *field_funds_);
+            const auto cost_context = ares_cost_context(
+                field_shop_menu_.menu_mode(), active_runner_record());
+            const auto confirmation_was_open =
+                field_shop_menu_.transaction_confirmation_open();
+            const auto transaction_event =
+                field_shop_menu_.advance_transaction(
+                    field_controller_sample_state_.events, cost_context,
+                    purchase_state, sale_state);
+            if (transaction_event ==
+                ShopTransactionEvent::confirmation_moved) {
+                if (source_audio_event_callback_) {
+                    source_audio_event_callback_(0x25U);
+                }
+                source_boundary("field.shop.ares.confirmation_moved");
+            } else if (confirmation_was_open &&
+                       !field_shop_menu_.transaction_confirmation_open() &&
+                       source_audio_event_callback_) {
+                // 0x57B8C requests event 0x24 on either source exit button.
+                source_audio_event_callback_(0x24U);
+            }
+
+            if (transaction_event == ShopTransactionEvent::purchase_applied) {
+                apply_purchase_state(purchase_state, active_runner_record());
+                field_funds_ = purchase_state.funds;
+                refresh_field_hud_runner_slot();
+                source_boundary("field.shop.ares.purchase_applied");
+            } else if (transaction_event ==
+                       ShopTransactionEvent::sale_applied) {
+                apply_sale_state(sale_state, active_runner_record());
+                field_funds_ = sale_state.funds;
+                refresh_field_hud_runner_slot();
+                source_boundary("field.shop.ares.sale_applied");
+            } else if (transaction_event ==
+                       ShopTransactionEvent::message_shown) {
+                source_boundary("field.shop.ares.transaction_message");
+            } else if (transaction_event ==
+                       ShopTransactionEvent::cancelled) {
+                source_boundary("field.shop.ares.transaction_cancelled");
+            } else if (transaction_event ==
+                       ShopTransactionEvent::message_dismissed) {
+                source_boundary("field.shop.ares.message_dismissed");
+            } else if (transaction_event ==
+                       ShopTransactionEvent::unresolved) {
+                source_boundary("field.shop.ares.transaction_unresolved");
+            }
+            return;
+        }
         const auto menu_event = field_shop_menu_.advance(
             field_controller_sample_state_.events);
         switch (menu_event) {
@@ -3255,15 +3365,53 @@ void FieldSceneRuntime::advance_frame() {
             if (source_audio_event_callback_) {
                 source_audio_event_callback_(0x24U);
             }
-            source_boundary("field.shop.ares.purchase_transaction_unresolved");
-            field_shop_menu_.finish_action();
+            if (field_shop_menu_.pending_action().has_value() &&
+                field_shop_menu_.pending_action()->offer.has_value() &&
+                field_funds_.has_value()) {
+                auto purchase_state = make_purchase_state(
+                    active_runner_record(), *field_funds_);
+                const auto cost_context = ares_cost_context(
+                    field_shop_menu_.menu_mode(), active_runner_record());
+                const auto transaction_event =
+                    field_shop_menu_.begin_purchase(
+                        *field_shop_menu_.pending_action()->offer,
+                        cost_context, purchase_state);
+                if (transaction_event == ShopTransactionEvent::message_shown) {
+                    source_boundary("field.shop.ares.purchase_preflight_message");
+                } else if (transaction_event ==
+                           ShopTransactionEvent::unresolved) {
+                    source_boundary("field.shop.ares.purchase_unresolved");
+                }
+            } else {
+                field_shop_menu_.clear_pending_action();
+                source_boundary("field.shop.ares.purchase_state_unavailable");
+            }
             break;
         case ShopMenuEvent::sale_selected:
             if (source_audio_event_callback_) {
                 source_audio_event_callback_(0x24U);
             }
-            source_boundary("field.shop.ares.sale_transaction_unresolved");
-            field_shop_menu_.finish_action();
+            if (field_funds_.has_value()) {
+                auto sale_state = make_sale_state(
+                    active_runner_record(), field_shop_menu_.selected_cursor(),
+                    *field_funds_);
+                const auto cost_context = ares_cost_context(
+                    field_shop_menu_.menu_mode(), active_runner_record());
+                const auto transaction_event = field_shop_menu_.begin_sale(
+                    cost_context, sale_state);
+                if (transaction_event == ShopTransactionEvent::message_shown) {
+                    source_boundary("field.shop.ares.sale_preflight_message");
+                } else if (transaction_event ==
+                           ShopTransactionEvent::action_ignored) {
+                    source_boundary("field.shop.ares.sale_empty_slot");
+                } else if (transaction_event ==
+                           ShopTransactionEvent::unresolved) {
+                    source_boundary("field.shop.ares.sale_unresolved");
+                }
+            } else {
+                field_shop_menu_.clear_pending_action();
+                source_boundary("field.shop.ares.sale_wallet_unavailable");
+            }
             break;
         case ShopMenuEvent::offer_unavailable:
             source_boundary("field.shop.ares.offer_unavailable");
@@ -3821,9 +3969,28 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
     const auto& action_titles = field_menu_text_.field_service_action_titles;
     if (first_title + 1U < action_titles.size()) {
         if (field_shop_menu_.offers_panel_active()) {
-            const auto selected_offer = ShopMenuController::offer(
-                field_shop_menu_.shop(), group,
-                field_shop_menu_.selected_cursor());
+            const bool transaction_replaces_detail =
+                field_shop_menu_.transaction_confirmation_open() ||
+                field_shop_menu_.transaction_message() !=
+                    ShopTransactionMessage::none;
+            const auto cursor = field_shop_menu_.selected_cursor();
+            const auto selected_offer = group == ShopActionGroup::sell
+                ? std::optional<FieldActionCostRecord>{}
+                : ShopMenuController::offer(
+                      field_shop_menu_.shop(), group, cursor);
+            std::uint8_t selected_item_code = 0U;
+            if (group == ShopActionGroup::sell) {
+                if (cursor < active_runner_record().inventory_item_codes.size()) {
+                    selected_item_code =
+                        active_runner_record().inventory_item_codes[cursor];
+                }
+            } else if (selected_offer.has_value() &&
+                       selected_offer->type !=
+                           static_cast<std::uint8_t>('E')) {
+                selected_item_code = static_cast<std::uint8_t>(
+                    selected_offer->type + 1U);
+            }
+
             if (selected_offer.has_value() &&
                 selected_offer->type == static_cast<std::uint8_t>('E')) {
                 // ROM 0x586F6 uses the dedicated CE28E grid, 1AACE2
@@ -3832,31 +3999,106 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                 // a fabricated inventory item-code mapping.
                 painter.drawImage(128, 32,
                                   field_service_universal_clips_icon_);
-                draw_command_overview_text(
-                    painter, 24, 56,
-                    field_menu_text_.field_service_universal_clips_description);
+                if (!transaction_replaces_detail) {
+                    draw_command_overview_text(
+                        painter, 24, 56,
+                        field_menu_text_
+                            .field_service_universal_clips_description);
+                }
                 draw_command_overview_text(
                     painter, 104, 144,
                     field_menu_text_.field_service_universal_clips_title);
-                draw_command_overview_text(
-                    painter, 192, 112,
-                    std::to_string(selected_offer->quantity));
-            } else if (selected_offer.has_value()) {
-                const auto item_code = static_cast<std::uint8_t>(
-                    selected_offer->type + 1U);
-                if (item_code > 0U &&
-                    item_code <= field_menu_text_.item_names.size()) {
+                if (!transaction_replaces_detail) {
                     draw_command_overview_text(
-                        painter, 80, 144,
-                        field_menu_text_.item_names[item_code - 1U]);
+                        painter, 192, 112,
+                        std::to_string(selected_offer->quantity));
+                }
+            }
+            else if (selected_item_code > 0U &&
+                     selected_item_code <= field_menu_text_.item_names.size()) {
+                const auto item_index =
+                    static_cast<std::size_t>(selected_item_code - 1U);
+                const auto& item_name = field_menu_text_.item_names[item_index];
+                const auto& item_category =
+                    field_menu_text_.item_categories[item_index];
+                const auto space = item_name.find(' ');
+                if (!item_category.empty()) {
                     draw_command_overview_text(
-                        painter, 80, 152,
-                        field_menu_text_.item_categories[item_code - 1U]);
-                    if (item_code <= command_overview_item_details_.size()) {
-                        painter.drawImage(
-                            124, 32,
-                            command_overview_item_details_[item_code - 1U]);
+                        painter,
+                        (320 - static_cast<int>(item_name.size() * 8U)) / 2,
+                        144, item_name);
+                    draw_command_overview_text(
+                        painter,
+                        (320 - static_cast<int>(item_category.size() * 8U)) / 2,
+                        152, item_category);
+                } else if (space != std::string::npos && space > 0U &&
+                           space + 1U < item_name.size()) {
+                    const auto first_line =
+                        std::string_view(item_name).substr(0U, space);
+                    const auto second_line =
+                        std::string_view(item_name).substr(space + 1U);
+                    draw_command_overview_text(
+                        painter, (320 - static_cast<int>(first_line.size() * 8U)) / 2,
+                        144, first_line);
+                    draw_command_overview_text(
+                        painter, (320 - static_cast<int>(second_line.size() * 8U)) / 2,
+                        152, second_line);
+                } else {
+                    draw_command_overview_text(
+                        painter,
+                        (320 - static_cast<int>(item_name.size() * 8U)) / 2,
+                        144, item_name);
+                }
+                if (selected_item_code <=
+                    command_overview_item_details_.size()) {
+                    painter.drawImage(
+                        124, 32,
+                        command_overview_item_details_[item_index]);
+                }
+
+                if (!transaction_replaces_detail) {
+                    const auto detail_label_index = selected_item_code <= 15U
+                        ? 0U
+                        : selected_item_code <= 22U ? 1U : 2U;
+                    draw_command_overview_text(
+                        painter, 72, 56,
+                        field_menu_text_
+                            .item_detail_labels[detail_label_index]);
+                    const auto detail_text = select_field_action_detail_text(
+                        static_cast<std::uint8_t>(selected_item_code - 1U));
+                    if (detail_text.has_value() &&
+                        detail_text->table_index <
+                            field_menu_text_.field_action_detail_texts.size()) {
+                        draw_command_overview_text(
+                            painter, 24, 80,
+                            field_menu_text_.field_action_detail_texts[
+                                detail_text->table_index]);
                     }
+                }
+
+                const auto grouped_decimal = [](std::uint32_t amount) {
+                    auto value = std::to_string(amount);
+                    for (auto position = value.size(); position > 3U;
+                         position -= 3U) {
+                        value.insert(position - 3U, ",");
+                    }
+                    return value;
+                };
+                if (!transaction_replaces_detail &&
+                    group != ShopActionGroup::sell &&
+                    selected_offer.has_value()) {
+                    draw_command_overview_text(
+                        painter, 80, 112,
+                        field_menu_text_.shop_purchase_price_heading);
+                    const auto amount = grouped_decimal(
+                        calculate_field_action_record_cost(
+                            *selected_offer,
+                            ares_cost_context(field_shop_menu_.menu_mode(),
+                                              active_runner_record()),
+                            us_item_catalog()));
+                    const auto x = 184 -
+                        static_cast<int>(amount.size() * 8U);
+                    draw_command_overview_text(painter, x, 112, amount);
                 }
             }
         } else {
@@ -3867,9 +4109,21 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
         }
     }
 
-    const auto count = ShopMenuController::offer_count(
-        field_shop_menu_.shop(), group);
+    const auto count = group == ShopActionGroup::sell
+        ? active_runner_record().inventory_item_codes.size()
+        : ShopMenuController::offer_count(field_shop_menu_.shop(), group);
     for (std::size_t index = 0; index < count && index < 8U; ++index) {
+        if (group == ShopActionGroup::sell) {
+            const auto item_code =
+                active_runner_record().inventory_item_codes[index];
+            if (item_code > 0U &&
+                item_code <= command_overview_inventory_icons_.size()) {
+                painter.drawImage(
+                    16 + static_cast<int>(index) * 32, 168,
+                    command_overview_inventory_icons_[item_code - 1U][0]);
+            }
+            continue;
+        }
         const auto offer = ShopMenuController::offer(
             field_shop_menu_.shop(), group, index);
         if (!offer.has_value()) {
@@ -3882,13 +4136,12 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
             continue;
         }
         const auto item_code = static_cast<std::uint8_t>(offer->type + 1U);
-        if (item_code == 0U ||
-            item_code > command_overview_inventory_icons_.size()) {
-            continue;
+        if (item_code > 0U &&
+            item_code <= command_overview_inventory_icons_.size()) {
+            painter.drawImage(
+                16 + static_cast<int>(index) * 32, 168,
+                command_overview_inventory_icons_[item_code - 1U][0]);
         }
-        painter.drawImage(
-            16 + static_cast<int>(index) * 32, 168,
-            command_overview_inventory_icons_[item_code - 1U][0]);
     }
 
     if (field_shop_menu_.offers_panel_active()) {
@@ -3896,7 +4149,10 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
         // warm-yellow pixel around that footprint; the surrounding 32x24
         // cell and neighboring controls remain clear.
         const auto cursor = field_shop_menu_.selected_cursor();
-        if (cursor < count && cursor < 8U) {
+        const auto selectable = group != ShopActionGroup::sell ||
+            (cursor < active_runner_record().inventory_item_codes.size() &&
+             active_runner_record().inventory_item_codes[cursor] != 0U);
+        if (selectable && cursor < count && cursor < 8U) {
             constexpr int kIconWidth = 24;
             constexpr int kIconHeight = 16;
             const auto x = 16 + static_cast<int>(cursor) * 32;
@@ -3919,6 +4175,55 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
         }
         draw_command_overview_text(painter, 144, 200, amount);
         draw_command_overview_text(painter, 200, 200, "$");
+    }
+
+    if (field_shop_menu_.transaction_confirmation_open()) {
+        draw_command_overview_text(
+            painter, 24, 80, field_menu_text_.shop_transaction_prompt);
+        if (group == ShopActionGroup::sell) {
+            draw_command_overview_text(
+                painter, 56, 88, field_menu_text_.shop_sale_quote_heading);
+            auto amount = std::to_string(
+                field_shop_menu_.transaction_amount());
+            for (auto position = amount.size(); position > 3U;
+                 position -= 3U) {
+                amount.insert(position - 3U, ",");
+            }
+            const auto x = 224 - static_cast<int>(amount.size() * 8U);
+            draw_command_overview_text(painter, x, 88, amount);
+        }
+        draw_command_overview_text(
+            painter, 128, 96, field_menu_text_.action_choice_yes);
+        draw_command_overview_text(
+            painter, 128, 112, field_menu_text_.action_choice_no);
+        draw_command_overview_text(
+            painter, 112,
+            field_shop_menu_.transaction_confirmation().selected_option == 0U
+                ? 96
+                : 112,
+            ">");
+    } else {
+        switch (field_shop_menu_.transaction_message()) {
+        case ShopTransactionMessage::no_inventory_slot:
+            draw_command_overview_text(
+                painter, 96, 88, field_menu_text_.shop_no_inventory_slot);
+            break;
+        case ShopTransactionMessage::insufficient_funds:
+            draw_command_overview_text(
+                painter, 56, 88, field_menu_text_.shop_insufficient_funds);
+            break;
+        case ShopTransactionMessage::special_action_limit:
+            draw_command_overview_text(
+                painter, 56, 88,
+                field_menu_text_.shop_special_action_limit);
+            break;
+        case ShopTransactionMessage::protected_sale:
+            draw_command_overview_text(
+                painter, 48, 96, field_menu_text_.shop_protected_sale);
+            break;
+        case ShopTransactionMessage::none:
+            break;
+        }
     }
 }
 

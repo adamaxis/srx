@@ -191,5 +191,133 @@ int main() {
         return 15;
     }
 
+    ShopMenuController transaction_menu;
+    if (!expect(transaction_menu.open(ares)) ||
+        !expect(transaction_menu.advance(0x0800U) ==
+                ShopMenuEvent::selection_moved) ||
+        !expect(transaction_menu.advance(0x0200U) ==
+                ShopMenuEvent::panel_changed) ||
+        !expect(transaction_menu.advance(0x4000U) ==
+                ShopMenuEvent::purchase_selected)) {
+        return 17;
+    }
+    FieldActionPurchaseState live_special_purchase{};
+    live_special_purchase.funds = 100U;
+    const auto special_begin = transaction_menu.begin_purchase(
+        *transaction_menu.pending_action()->offer, cost_context,
+        live_special_purchase);
+    if (!expect(special_begin ==
+                ShopTransactionEvent::confirmation_opened) ||
+        !expect(transaction_menu.transaction_confirmation_open()) ||
+        !expect(transaction_menu.transaction_confirmation().selected_option ==
+                1U) ||
+        !expect(live_special_purchase.funds == 100U &&
+                live_special_purchase.runner.special_action_count == 0U) ||
+        !expect(transaction_menu.advance_transaction(
+                    0x0100U, cost_context, live_special_purchase, sale) ==
+                ShopTransactionEvent::confirmation_moved) ||
+        !expect(transaction_menu.transaction_confirmation().selected_option ==
+                0U) ||
+        !expect(transaction_menu.advance_transaction(
+                    0x1000U, cost_context, live_special_purchase, sale) ==
+                ShopTransactionEvent::purchase_applied) ||
+        !expect(live_special_purchase.funds == 75U &&
+                live_special_purchase.runner.special_action_count == 1U) ||
+        !expect(transaction_menu.selected_group() ==
+                ShopActionGroup::other_items) ||
+        !expect(transaction_menu.selected_cursor() == 0U) ||
+        !expect(transaction_menu.offers_panel_active())) {
+        return 18;
+    }
+
+    if (!expect(transaction_menu.advance(0x4000U) ==
+                ShopMenuEvent::purchase_selected)) {
+        return 19;
+    }
+    FieldActionPurchaseState default_no_purchase{};
+    default_no_purchase.funds = 100U;
+    if (!expect(transaction_menu.begin_purchase(
+                    *transaction_menu.pending_action()->offer, cost_context,
+                    default_no_purchase) ==
+                ShopTransactionEvent::confirmation_opened) ||
+        !expect(transaction_menu.advance_transaction(
+                    0x1000U, cost_context, default_no_purchase, sale) ==
+                ShopTransactionEvent::cancelled) ||
+        !expect(default_no_purchase.funds == 100U &&
+                default_no_purchase.runner.special_action_count == 0U)) {
+        return 20;
+    }
+
+    if (!expect(transaction_menu.advance(0x4000U) ==
+                ShopMenuEvent::purchase_selected)) {
+        return 21;
+    }
+    FieldActionPurchaseState poor_purchase{};
+    poor_purchase.funds = 0U;
+    if (!expect(transaction_menu.begin_purchase(
+                    *transaction_menu.pending_action()->offer, cost_context,
+                    poor_purchase) == ShopTransactionEvent::message_shown) ||
+        !expect(transaction_menu.transaction_waiting_for_event()) ||
+        !expect(transaction_menu.transaction_message() ==
+                ShopTransactionMessage::insufficient_funds) ||
+        !expect(poor_purchase.funds == 0U) ||
+        !expect(transaction_menu.advance_transaction(
+                    0x0100U, cost_context, poor_purchase, sale) ==
+                ShopTransactionEvent::message_dismissed) ||
+        !expect(transaction_menu.transaction_message() ==
+                ShopTransactionMessage::none) ||
+        !expect(transaction_menu.selected_group() ==
+                ShopActionGroup::other_items)) {
+        return 22;
+    }
+
+    ShopMenuController sale_menu;
+    if (!expect(sale_menu.open(ares))) {
+        return 23;
+    }
+    for (int step = 0; step < 5; ++step) {
+        if (!expect(sale_menu.advance(0x0800U) ==
+                    ShopMenuEvent::selection_moved)) {
+            return 24;
+        }
+    }
+    if (!expect(sale_menu.selected_group() == ShopActionGroup::sell) ||
+        !expect(sale_menu.advance(0x0200U) ==
+                ShopMenuEvent::panel_changed) ||
+        !expect(sale_menu.advance(0x4000U) ==
+                ShopMenuEvent::sale_selected)) {
+        return 25;
+    }
+    RunnerActionRemovalState live_sale{};
+    live_sale.runner.action_codes[0] = 2U;
+    live_sale.runner_slot = 0U;
+    live_sale.funds = 50U;
+    if (!expect(sale_menu.begin_sale(cost_context, live_sale) ==
+                ShopTransactionEvent::confirmation_opened) ||
+        !expect(sale_menu.transaction_amount() == 180U) ||
+        !expect(sale_menu.advance_transaction(
+                    0x4000U, cost_context, live_special_purchase, live_sale) ==
+                ShopTransactionEvent::cancelled) ||
+        !expect(live_sale.funds == 50U &&
+                live_sale.runner.action_codes[0] == 2U)) {
+        return 26;
+    }
+    if (!expect(sale_menu.advance(0x4000U) ==
+                ShopMenuEvent::sale_selected) ||
+        !expect(sale_menu.begin_sale(cost_context, live_sale) ==
+                ShopTransactionEvent::confirmation_opened) ||
+        !expect(sale_menu.advance_transaction(
+                    0x0100U, cost_context, live_special_purchase, live_sale) ==
+                ShopTransactionEvent::confirmation_moved) ||
+        !expect(sale_menu.advance_transaction(
+                    0x1000U, cost_context, live_special_purchase, live_sale) ==
+                ShopTransactionEvent::sale_applied) ||
+        !expect(live_sale.funds == 230U &&
+                live_sale.runner.action_codes[0] == 0U) ||
+        !expect(sale_menu.selected_group() == ShopActionGroup::sell) ||
+        !expect(sale_menu.selected_cursor() == 0U)) {
+        return 27;
+    }
+
     return 0;
 }

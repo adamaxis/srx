@@ -317,6 +317,23 @@ void write_field_menu_text_catalog(
     emit("action.cannot-trade", action_text.cannot_trade);
     emit("action.choice-no", action_text.choice_no);
     emit("action.choice-yes", action_text.choice_yes);
+    emit("shop.transaction-prompt", action_text.transaction_prompt);
+    emit("shop.no-inventory-slot",
+         escape_newlines(action_text.no_inventory_slot_message));
+    emit("shop.insufficient-funds",
+         escape_newlines(action_text.insufficient_funds_message));
+    emit("shop.special-action-limit",
+         escape_newlines(action_text.special_action_limit_message));
+    emit("shop.protected-sale", action_text.protected_sale_message);
+    emit("shop.sale-quote-heading", action_text.sale_quote_heading);
+    emit("shop.purchase-price-heading", action_text.purchase_price_heading);
+    const auto field_action_detail_texts =
+        shadowrun::graphics::read_genesis_field_action_detail_texts(rom);
+    for (std::size_t index = 0; index < field_action_detail_texts.size();
+         ++index) {
+        emit("field-action.detail-text." + std::to_string(index),
+             escape_newlines(field_action_detail_texts[index]));
+    }
     emit("action.automatic-use.message",
          escape_newlines(action_text.automatic_use_message));
     emit("first-aid.prompt", escape_newlines(action_text.first_aid_prompt));

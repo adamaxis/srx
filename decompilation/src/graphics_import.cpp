@@ -785,6 +785,50 @@ GenesisFieldMenuActionText read_genesis_field_menu_action_text(
     result.trade_full_inventory_message = read_genesis_multiline_text(
         rom, 0xD1CE1U, 0x38U,
         "Genesis full-inventory message is truncated");
+    result.transaction_prompt = read_genesis_fixed_text(
+        rom, 0x1AA715U, 0x30U,
+        "Genesis shop transaction prompt is truncated");
+    result.no_inventory_slot_message = read_genesis_multiline_text(
+        rom, 0x1AA3C2U, 0x30U,
+        "Genesis shop inventory-full message is truncated");
+    result.insufficient_funds_message = read_genesis_multiline_text(
+        rom, 0x1AA587U, 0x30U,
+        "Genesis shop insufficient-funds message is truncated");
+    result.special_action_limit_message = read_genesis_multiline_text(
+        rom, 0x1AA54DU, 0x30U,
+        "Genesis shop special-action-limit message is truncated");
+    result.protected_sale_message = read_genesis_fixed_text(
+        rom, 0x1AA3DDU, 0x30U,
+        "Genesis shop protected-sale message is truncated");
+    result.sale_quote_heading = read_genesis_padded_text(
+        rom, 0x1AA72BU, 0x30U,
+        "Genesis shop sale-quote heading is truncated");
+    result.purchase_price_heading = read_genesis_padded_text(
+        rom, 0x1AB4D8U, 0x20U,
+        "Genesis shop purchase-price heading is truncated");
+    return result;
+}
+
+GenesisFieldActionDetailTextTable read_genesis_field_action_detail_texts(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kTextPointerTable = 0x1AC7FCU;
+    constexpr std::size_t kTextPointerStride = 4U;
+    constexpr std::size_t kMaximumTextLength = 0x100U;
+    GenesisFieldActionDetailTextTable result{};
+    for (std::size_t index = 0; index < result.size(); ++index) {
+        const auto pointer = static_cast<std::size_t>(read_rom_u32(
+            rom, kTextPointerTable + index * kTextPointerStride,
+            "Genesis field-action detail pointer table is truncated"));
+        if (pointer >= rom.size()) {
+            throw std::out_of_range(
+                "Genesis field-action detail text pointer is outside ROM");
+        }
+        const auto length = std::min(kMaximumTextLength,
+                                     rom.size() - pointer);
+        result[index] = read_genesis_multiline_text(
+            rom, pointer, length,
+            "Genesis field-action detail text is truncated");
+    }
     return result;
 }
 

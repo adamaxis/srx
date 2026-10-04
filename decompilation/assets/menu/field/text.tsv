@@ -219,6 +219,45 @@ action.cannot-discard	Cannot discard
 action.cannot-trade	Cannot trade magic items!
 action.choice-no	No
 action.choice-yes	Yes
+shop.transaction-prompt	Complete Transaction?
+shop.no-inventory-slot	Your inventory\n   is full!
+shop.insufficient-funds	" You do not have the\nnuyen for this item!!"
+shop.special-action-limit	"  You are already\ncarrying the maximum\n  number "
+shop.protected-sale	Totems cannot be sold!!
+shop.sale-quote-heading	Item sells for       $
+shop.purchase-price-heading	Price        $
+field-action.detail-text.0	A small, cheap hold-out\npistol.\nLight damage, low power.
+field-action.detail-text.1	A slim-line personal weapon\nfavored by street thugs.\nLight damage, light power.
+field-action.detail-text.2	This light design is popular\namong the style-conscious.\nLight damage, light power.
+field-action.detail-text.3	Designed for light security\nwork.\nLight damage, light power.
+field-action.detail-text.4	This revolver holds less\nammo but more punch.\nMed damage, brutal power.
+field-action.detail-text.5	A sturdy weapon that trades\nfirepower for ammo.\nMed damage, high power.
+field-action.detail-text.6	This menacing gun is popular\namong mercenaries.\nMed damage, high power.
+field-action.detail-text.7	A common Soviet SMG carbine.\nIt is illegal.\nMed damage, light power.
+field-action.detail-text.8	This SMG is most favored with\nCorp security.  It is illegal.\nMed damage, medium power.
+field-action.detail-text.9	A common SMG for street gangs.\nIt is illegal.\nMed damage, light power.
+field-action.detail-text.10	This autoloading shotgun\nis illegal.\nHigh damage, brutal power.
+field-action.detail-text.11	This pistol-like shotgun\nis illegal.\nHigh damage, high power.
+field-action.detail-text.12	This illegal grenade causes\nphys damage in a large area.\nHigh damage, med-high power.
+field-action.detail-text.13	This grenade casues physical\ndamage in a large area.\nHigh damage, light power.
+field-action.detail-text.14	This grenade causes stun\ndamage in a large area.\nMed damage, brutal power.
+field-action.detail-text.15	A portable first aid kit\nthat can heal wounds based\non the users Biotech skill.
+field-action.detail-text.16	A slap patch that instantly\nincreases mental health\nby 20%.
+field-action.detail-text.17	A slap patch that instantly\nincreases physical health\nby 20%.
+field-action.detail-text.18	This item absorbs drain from\nthe casting of a spell.
+field-action.detail-text.19	This illegal key can open\nMaglocked doors less than or\nequal to its rating.
+field-action.detail-text.20	This illegal kit increases\nthe chances of opening\nMaglocked doors.
+field-action.detail-text.21	Though not as efficient as a\nSmartlink, these allow the\nuser to operate a SmartGun.
+field-action.detail-text.22	A magical weapon that\nenhances the user's accuracy\nand damage.
+field-action.detail-text.23	A Power Focus increases the\npotency of all spells known\nby the user!
+field-action.detail-text.24	Spell Foci are used to\nincrease the potency of\ntheir corresponding spells.
+field-action.detail-text.25	A magical device that reduces\nall types of damage directed\nat the user.
+field-action.detail-text.26	A magical device that\nenhances the combat ability\nof the user.
+field-action.detail-text.27	Durable cloth and mesh.\nPoor weapon protection.\nLow gun protection.
+field-action.detail-text.28	Fashionable body armor.\nLow weapon protection.\nPoor gun protection.
+field-action.detail-text.29	Ribbed, padded and woven.\nFair weapon protection.\nGreat gun protection.
+field-action.detail-text.30	Rigid plates under cloth.\nFair weapon protection.\nGood gun protection.
+field-action.detail-text.31	Can conceal illegal weapons.\nLow weapon protection.\nGood gun protection.
 action.automatic-use.message	This item is\nautomatically\n    used.
 first-aid.prompt	" Heal who??"
 first-aid.label	"    First Aid    "

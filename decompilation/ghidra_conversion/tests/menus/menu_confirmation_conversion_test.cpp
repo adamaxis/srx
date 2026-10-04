@@ -15,6 +15,26 @@ bool expect(const bool condition) {
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
+    MenuConfirmationState stepped{};
+    if (!expect(stepped.selected_option == 1U &&
+                advance_menu_confirmation_prompt(stepped, 0x0100U) ==
+                    MenuConfirmationStep::option_moved &&
+                stepped.selected_option == 0U && !stepped.closed) ||
+        !expect(advance_menu_confirmation_prompt(stepped, 0x1000U) ==
+                    MenuConfirmationStep::closed &&
+                stepped.accepted && stepped.closed) ||
+        !expect(advance_menu_confirmation_prompt(stepped, 0x4000U) ==
+                MenuConfirmationStep::no_change)) {
+        return 4;
+    }
+
+    MenuConfirmationState declined{};
+    if (!expect(advance_menu_confirmation_prompt(declined, 0x4000U) ==
+                    MenuConfirmationStep::closed &&
+                !declined.accepted && declined.selected_option == 1U)) {
+        return 5;
+    }
+
     std::vector<std::uint16_t> inputs{0x0100U, 0x1000U};
     std::size_t input_index = 0;
     int labels = 0;

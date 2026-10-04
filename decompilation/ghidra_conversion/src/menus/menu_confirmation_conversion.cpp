@@ -43,38 +43,50 @@ MenuConfirmationState run_menu_confirmation_prompt(
                                ? callbacks.sample_controller_input()
                                : std::uint16_t{0};
 
-        if ((input & bit(MenuConfirmationInput::option_decrement)) != 0U) {
+        const auto step = advance_menu_confirmation_prompt(state, input);
+        if (step == MenuConfirmationStep::option_moved) {
             if (callbacks.play_move_sound) {
                 callbacks.play_move_sound();
             }
-            move_binary_option(state, -1);
             if (callbacks.draw_prompt_choice) {
                 callbacks.draw_prompt_choice();
             }
             continue;
         }
-        if ((input & bit(MenuConfirmationInput::option_increment)) != 0U) {
-            if (callbacks.play_move_sound) {
-                callbacks.play_move_sound();
-            }
-            move_binary_option(state, 1);
-            if (callbacks.draw_prompt_choice) {
-                callbacks.draw_prompt_choice();
-            }
-            continue;
-        }
-        if ((input & (bit(MenuConfirmationInput::confirm) |
-                     bit(MenuConfirmationInput::cancel))) == 0U) {
+        if (step != MenuConfirmationStep::closed) {
             continue;
         }
 
         if (callbacks.play_confirm_sound) {
             callbacks.play_confirm_sound();
         }
-        state.accepted = state.selected_option == 0U;
-        state.closed = true;
         return state;
     }
+}
+
+MenuConfirmationStep advance_menu_confirmation_prompt(
+    MenuConfirmationState& state,
+    const std::uint16_t controller_events) noexcept {
+    if (state.closed) {
+        return MenuConfirmationStep::no_change;
+    }
+    if ((controller_events & bit(MenuConfirmationInput::option_decrement)) !=
+        0U) {
+        move_binary_option(state, -1);
+        return MenuConfirmationStep::option_moved;
+    }
+    if ((controller_events & bit(MenuConfirmationInput::option_increment)) !=
+        0U) {
+        move_binary_option(state, 1);
+        return MenuConfirmationStep::option_moved;
+    }
+    if ((controller_events & (bit(MenuConfirmationInput::confirm) |
+                              bit(MenuConfirmationInput::cancel))) == 0U) {
+        return MenuConfirmationStep::no_change;
+    }
+    state.accepted = state.selected_option == 0U;
+    state.closed = true;
+    return MenuConfirmationStep::closed;
 }
 
 } // namespace shadowrun::ghidra_conversion

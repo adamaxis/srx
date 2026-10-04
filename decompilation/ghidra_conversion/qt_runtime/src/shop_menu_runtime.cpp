@@ -66,6 +66,7 @@ bool ShopMenuController::open(const ShopId shop) noexcept {
     source_state_.action_selection.selected_action = 0;
     source_state_.selection_marker = -1;
     pending_action_.reset();
+    reset_transaction();
     open_ = true;
     return true;
 }
@@ -73,6 +74,7 @@ bool ShopMenuController::open(const ShopId shop) noexcept {
 void ShopMenuController::close() noexcept {
     open_ = false;
     pending_action_.reset();
+    reset_transaction();
     source_state_ = FieldModeServiceState{};
     menu_mode_ = 0U;
 }
@@ -82,11 +84,168 @@ void ShopMenuController::finish_action() noexcept {
         return;
     }
     pending_action_.reset();
+    reset_transaction();
     source_state_.service_result = 0;
     source_state_.selection_marker = -1;
     source_state_.action_selection.action_cursor = 0;
     source_state_.action_selection.action_panel = 0;
     source_state_.action_selection.selected_action = 0;
+}
+
+void ShopMenuController::clear_pending_action() noexcept {
+    pending_action_.reset();
+}
+
+void ShopMenuController::reset_transaction() noexcept {
+    transaction_confirmation_ = MenuConfirmationState{};
+    transaction_kind_ = TransactionKind::none;
+    transaction_message_ = ShopTransactionMessage::none;
+    transaction_amount_ = 0U;
+    transaction_confirmation_open_ = false;
+    transaction_waiting_for_event_ = false;
+}
+
+ShopTransactionEvent ShopMenuController::begin_purchase(
+    const FieldActionCostRecord& selected_offer,
+    const FieldActionCostContext& cost_context,
+    FieldActionPurchaseState& state) {
+    reset_transaction();
+    transaction_kind_ = TransactionKind::purchase;
+    last_purchase_result_ = ShopTransactionService{}.purchase(
+        selected_offer, cost_context, state, false);
+    if (last_purchase_result_ == FieldActionApplicationResult::cancelled) {
+        transaction_amount_ =
+            selected_offer.type == static_cast<std::uint8_t>('E')
+                ? apply_field_action_cost_discounts(
+                      selected_offer.quantity, cost_context)
+                : calculate_field_action_record_cost(
+                      selected_offer, cost_context, us_item_catalog());
+        transaction_confirmation_ = MenuConfirmationState{};
+        transaction_confirmation_open_ = true;
+        return ShopTransactionEvent::confirmation_opened;
+    }
+    if (last_purchase_result_ == FieldActionApplicationResult::no_inventory_slot) {
+        transaction_message_ = ShopTransactionMessage::no_inventory_slot;
+    } else if (last_purchase_result_ ==
+               FieldActionApplicationResult::insufficient_funds) {
+        transaction_message_ = ShopTransactionMessage::insufficient_funds;
+    } else {
+        transaction_kind_ = TransactionKind::none;
+        clear_pending_action();
+        return ShopTransactionEvent::unresolved;
+    }
+    transaction_waiting_for_event_ = true;
+    return ShopTransactionEvent::message_shown;
+}
+
+ShopTransactionEvent ShopMenuController::begin_sale(
+    const FieldActionCostContext& cost_context,
+    RunnerActionRemovalState& state) {
+    reset_transaction();
+    transaction_kind_ = TransactionKind::sale;
+    last_sale_outcome_ = ShopTransactionService{}.sell(
+        cost_context, state, false);
+    if (last_sale_outcome_.result == ShopSaleOutcome::Result::cancelled) {
+        transaction_amount_ = last_sale_outcome_.quoted_refund;
+        transaction_confirmation_ = MenuConfirmationState{};
+        transaction_confirmation_open_ = true;
+        return ShopTransactionEvent::confirmation_opened;
+    }
+    if (last_sale_outcome_.result ==
+        ShopSaleOutcome::Result::protected_action) {
+        transaction_message_ = ShopTransactionMessage::protected_sale;
+        transaction_waiting_for_event_ = true;
+        return ShopTransactionEvent::message_shown;
+    }
+    transaction_kind_ = TransactionKind::none;
+    clear_pending_action();
+    return last_sale_outcome_.result == ShopSaleOutcome::Result::empty_slot
+               ? ShopTransactionEvent::action_ignored
+               : ShopTransactionEvent::unresolved;
+}
+
+ShopTransactionEvent ShopMenuController::advance_transaction(
+    const std::uint16_t controller_events,
+    const FieldActionCostContext& cost_context,
+    FieldActionPurchaseState& purchase_state,
+    RunnerActionRemovalState& sale_state) {
+    if (transaction_waiting_for_event_) {
+        if (controller_events == 0U) {
+            return ShopTransactionEvent::no_change;
+        }
+        reset_transaction();
+        clear_pending_action();
+        return ShopTransactionEvent::message_dismissed;
+    }
+    if (!transaction_confirmation_open_) {
+        return ShopTransactionEvent::no_change;
+    }
+
+    const auto confirmation_step = advance_menu_confirmation_prompt(
+        transaction_confirmation_, controller_events);
+    if (confirmation_step == MenuConfirmationStep::option_moved) {
+        return ShopTransactionEvent::confirmation_moved;
+    }
+    if (confirmation_step != MenuConfirmationStep::closed) {
+        return ShopTransactionEvent::no_change;
+    }
+    transaction_confirmation_open_ = false;
+    if (!transaction_confirmation_.accepted) {
+        last_purchase_result_ = FieldActionApplicationResult::cancelled;
+        last_sale_outcome_.result = ShopSaleOutcome::Result::cancelled;
+        clear_pending_action();
+        reset_transaction();
+        return ShopTransactionEvent::cancelled;
+    }
+
+    if (transaction_kind_ == TransactionKind::purchase && pending_action_ &&
+        pending_action_->offer.has_value()) {
+        last_purchase_result_ = ShopTransactionService{}.purchase(
+            *pending_action_->offer, cost_context, purchase_state, true);
+        if (last_purchase_result_ == FieldActionApplicationResult::applied) {
+            clear_pending_action();
+            reset_transaction();
+            return ShopTransactionEvent::purchase_applied;
+        }
+        if (last_purchase_result_ ==
+            FieldActionApplicationResult::special_action_limit) {
+            transaction_message_ =
+                ShopTransactionMessage::special_action_limit;
+        } else if (last_purchase_result_ ==
+                   FieldActionApplicationResult::no_inventory_slot) {
+            transaction_message_ = ShopTransactionMessage::no_inventory_slot;
+        } else if (last_purchase_result_ ==
+                   FieldActionApplicationResult::insufficient_funds) {
+            transaction_message_ = ShopTransactionMessage::insufficient_funds;
+        } else {
+            clear_pending_action();
+            reset_transaction();
+            return ShopTransactionEvent::unresolved;
+        }
+        transaction_kind_ = TransactionKind::none;
+        transaction_waiting_for_event_ = true;
+        return ShopTransactionEvent::message_shown;
+    }
+
+    if (transaction_kind_ == TransactionKind::sale && pending_action_) {
+        last_sale_outcome_ = ShopTransactionService{}.sell(
+            cost_context, sale_state, true);
+        if (last_sale_outcome_.result == ShopSaleOutcome::Result::removed) {
+            clear_pending_action();
+            reset_transaction();
+            return ShopTransactionEvent::sale_applied;
+        }
+        if (last_sale_outcome_.result ==
+            ShopSaleOutcome::Result::protected_action) {
+            transaction_message_ = ShopTransactionMessage::protected_sale;
+            transaction_kind_ = TransactionKind::none;
+            transaction_waiting_for_event_ = true;
+            return ShopTransactionEvent::message_shown;
+        }
+    }
+    clear_pending_action();
+    reset_transaction();
+    return ShopTransactionEvent::unresolved;
 }
 
 void ShopMenuController::publish_selected_group() noexcept {

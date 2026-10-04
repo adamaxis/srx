@@ -3153,6 +3153,27 @@ int main(int argc, char** argv) {
                     return scene.save(QString::fromStdWString(
                         destination.wstring()));
                 };
+                const auto press_field_input = [&field_scene](
+                                                   const std::uint8_t input) {
+                    field_scene.set_controller_port_byte(input);
+                    field_scene.advance_frame();
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                };
+                const auto enter_ares_shop = [&field_scene] {
+                    if (!field_scene.begin_ares_shop_event_for_dump()) {
+                        return false;
+                    }
+                    field_scene.set_controller_port_byte(0U);
+                    for (int frame = 0; frame < 30; ++frame) {
+                        field_scene.advance_frame();
+                    }
+                    field_scene.set_controller_port_byte(0x40U);
+                    field_scene.advance_frame();
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    return field_scene.shop_menu_open();
+                };
 
                 if (!field_scene.begin_ares_shop_event_for_dump()) {
                     std::cerr << "field Ares shop QA: source event route did "
@@ -3346,6 +3367,447 @@ int main(int argc, char** argv) {
                                 clips_returned)) {
                     std::cerr << "field Ares shop QA: special-offer pixels "
                                  "survived the return redraw\n";
+                    return 3;
+                }
+
+                // Exercise the complete ordinary purchase transaction. The
+                // selected record is intentionally expensive relative to the
+                // ROM's 20-nuyen new-game wallet, so this route also covers
+                // the source insufficient-funds message before injecting a
+                // larger QA wallet for the confirmation/commit branch.
+                if (!enter_ares_shop()) {
+                    std::cerr << "field Ares shop QA: transaction route did "
+                                 "not reopen through the mode prompt\n";
+                    return 3;
+                }
+                field_scene.set_field_funds_for_dump(20U);
+                const auto inventory_before_purchase =
+                    field_scene.active_runner_record().inventory_item_codes;
+                const auto purchase_slot_it = std::find(
+                    inventory_before_purchase.begin(),
+                    inventory_before_purchase.end(), 0U);
+                if (purchase_slot_it == inventory_before_purchase.end()) {
+                    std::cerr << "field Ares shop QA: Joshua has no empty "
+                                 "inventory slot for the purchase path\n";
+                    return 3;
+                }
+                const auto purchase_slot = static_cast<std::size_t>(
+                    std::distance(inventory_before_purchase.begin(),
+                                  purchase_slot_it));
+                field_audio_events.clear();
+                press_field_input(0x02U); // Open the offer panel.
+                press_field_input(0x08U); // Select offer 1.
+                press_field_input(0x08U); // Select offer 2.
+                if (field_scene.shop_menu_group() != ShopActionGroup::weapons ||
+                    !field_scene.shop_menu_offers_active() ||
+                    field_scene.shop_menu_cursor() != 2U) {
+                    std::cerr << "field Ares shop QA: ordinary offer cursor "
+                                 "did not reach the third weapon\n";
+                    return 3;
+                }
+                press_field_input(0x40U); // Purchase with insufficient funds.
+                const auto insufficient_funds = render_shop_scene();
+                if (!field_scene.shop_transaction_waiting_for_event() ||
+                    field_scene.shop_transaction_message() !=
+                        ShopTransactionMessage::insufficient_funds ||
+                    field_scene.field_funds_for_dump() != 20U ||
+                    field_scene.active_runner_record().inventory_item_codes !=
+                        inventory_before_purchase ||
+                    image_has_green_ink(insufficient_funds, 24, 56, 224, 16) ||
+                    !image_has_green_ink(insufficient_funds, 48, 80, 224, 32) ||
+                    !field_shop_selector_survives(insufficient_funds, 80) ||
+                    !save_scene("shop-insufficient-funds/actual.bmp",
+                                insufficient_funds) ||
+                    field_audio_events != std::vector<std::uint16_t>{
+                                              0x25U, 0x25U, 0x25U, 0x24U}) {
+                    std::cerr << "field Ares shop QA: insufficient-funds "
+                                 "message, state, selector, or sound request "
+                                 "is incorrect (wait="
+                              << field_scene.shop_transaction_waiting_for_event()
+                              << ", message="
+                              << static_cast<int>(field_scene
+                                      .shop_transaction_message())
+                              << ", funds="
+                              << field_scene.field_funds_for_dump().value_or(
+                                     0xFFFFFFFFU)
+                              << ", item="
+                              << static_cast<int>(field_scene
+                                      .active_runner_record()
+                                      .inventory_item_codes[0])
+                              << ", stale="
+                              << image_has_green_ink(insufficient_funds, 24,
+                                                     56, 224, 16)
+                              << ", message-ink="
+                              << image_has_green_ink(insufficient_funds, 48,
+                                                     80, 224, 32)
+                              << ", selector="
+                              << field_shop_selector_survives(
+                                     insufficient_funds, 80)
+                              << ", audio=";
+                    for (const auto event : field_audio_events) {
+                        std::cerr << event << ',';
+                    }
+                    std::cerr << ")\n";
+                    return 3;
+                }
+                press_field_input(0x40U); // Dismiss the source message.
+                if (field_scene.shop_transaction_waiting_for_event() ||
+                    field_scene.shop_transaction_message() !=
+                        ShopTransactionMessage::none ||
+                    field_scene.field_funds_for_dump() != 20U ||
+                    field_scene.shop_menu_cursor() != 2U ||
+                    field_scene.active_runner_record().inventory_item_codes !=
+                        inventory_before_purchase) {
+                    std::cerr << "field Ares shop QA: dismissing the purchase "
+                                 "message changed the wallet or selection\n";
+                    return 3;
+                }
+                field_scene.set_field_funds_for_dump(1000U);
+                field_audio_events.clear();
+                press_field_input(0x40U); // Open default-No confirmation.
+                const auto purchase_no = render_shop_scene();
+                if (!field_scene.shop_transaction_confirmation_open() ||
+                    field_scene.shop_transaction_confirmation()
+                            .selected_option != 1U ||
+                    field_scene.field_funds_for_dump() != 1000U ||
+                    field_scene.active_runner_record().inventory_item_codes !=
+                        inventory_before_purchase ||
+                    image_has_green_ink(purchase_no, 24, 56, 224, 16) ||
+                    !image_has_green_ink(purchase_no, 24, 80, 224, 40) ||
+                    !image_region_differs(purchase_no, service_background, 124,
+                                          32, 24, 16) ||
+                    !image_has_green_ink(purchase_no, 112, 144, 96, 16) ||
+                    !field_shop_selector_survives(purchase_no, 80) ||
+                    !save_scene("shop-purchase-confirmation-no/actual.bmp",
+                                purchase_no)) {
+                    std::cerr << "field Ares shop QA: purchase confirmation "
+                                 "did not preserve the selected item state "
+                                 "without leaving its detail text underneath\n";
+                    return 3;
+                }
+                press_field_input(0x40U); // Default No cancels.
+                const auto purchase_cancelled = render_shop_scene();
+                if (field_scene.shop_transaction_confirmation_open() ||
+                    field_scene.shop_last_purchase_result() !=
+                        FieldActionApplicationResult::cancelled ||
+                    field_scene.field_funds_for_dump() != 1000U ||
+                    field_scene.active_runner_record().inventory_item_codes !=
+                        inventory_before_purchase ||
+                    field_scene.shop_menu_group() != ShopActionGroup::weapons ||
+                    field_scene.shop_menu_cursor() != 2U ||
+                    !save_scene("shop-purchase-cancelled/actual.bmp",
+                                purchase_cancelled)) {
+                    std::cerr << "field Ares shop QA: default-No changed the "
+                                 "wallet, inventory, or selected offer\n";
+                    return 3;
+                }
+
+                press_field_input(0x40U); // Reopen, still default No.
+                press_field_input(0x01U); // Move to Yes.
+                const auto purchase_yes = render_shop_scene();
+                if (!field_scene.shop_transaction_confirmation_open() ||
+                    field_scene.shop_transaction_confirmation()
+                            .selected_option != 0U ||
+                    !image_has_green_ink(purchase_yes, 24, 80, 224, 40) ||
+                    image_has_green_ink(purchase_yes, 24, 56, 224, 16) ||
+                    !save_scene("shop-purchase-confirmation-yes/actual.bmp",
+                                purchase_yes)) {
+                    std::cerr << "field Ares shop QA: Yes selection or clean "
+                                 "confirmation redraw is incorrect\n";
+                    return 3;
+                }
+                press_field_input(0x40U); // Commit the purchase.
+                const auto purchased_weapon = render_shop_scene();
+                if (field_scene.shop_transaction_confirmation_open() ||
+                    field_scene.shop_last_purchase_result() !=
+                        FieldActionApplicationResult::applied ||
+                    !field_scene.field_funds_for_dump().has_value() ||
+                    *field_scene.field_funds_for_dump() >= 1000U ||
+                    field_scene.active_runner_record().inventory_item_codes[
+                        purchase_slot] != 7U ||
+                    field_scene.shop_menu_group() != ShopActionGroup::weapons ||
+                    field_scene.shop_menu_cursor() != 2U ||
+                    !field_shop_selector_survives(purchased_weapon, 80) ||
+                    !save_scene("shop-purchase-applied/actual.bmp",
+                                purchased_weapon) ||
+                    field_audio_events != std::vector<std::uint16_t>{
+                                              0x24U, 0x24U, 0x24U, 0x25U,
+                                              0x24U}) {
+                    std::cerr << "field Ares shop QA: accepted ordinary "
+                                 "purchase failed to update typed state, keep "
+                                 "the selected row, redraw, or request source "
+                                 "sounds\n";
+                    return 3;
+                }
+
+                // E-coded clips increment the runner's special-action count
+                // instead of writing an ordinary inventory slot.
+                press_field_input(0x01U); // Return to service categories.
+                press_field_input(0x08U); // Other items.
+                press_field_input(0x02U); // Open the offer panel.
+                if (field_scene.shop_menu_group() !=
+                        ShopActionGroup::other_items ||
+                    !field_scene.shop_menu_offers_active() ||
+                    field_scene.shop_menu_cursor() != 0U) {
+                    std::cerr << "field Ares shop QA: transaction return did "
+                                 "not retain category navigation\n";
+                    return 3;
+                }
+                const auto funds_before_clips =
+                    field_scene.field_funds_for_dump();
+                const auto clips_before =
+                    field_scene.active_runner_record().ammo_clips;
+                field_audio_events.clear();
+                press_field_input(0x40U);
+                const auto clips_confirmation = render_shop_scene();
+                if (!field_scene.shop_transaction_confirmation_open() ||
+                    field_scene.shop_transaction_confirmation()
+                            .selected_option != 1U ||
+                    !image_has_green_ink(clips_confirmation, 24, 80, 224, 40) ||
+                    image_has_green_ink(clips_confirmation, 24, 56, 224, 16) ||
+                    !save_scene("shop-clips-confirmation-no/actual.bmp",
+                                clips_confirmation)) {
+                    std::cerr << "field Ares shop QA: E-offer confirmation "
+                                 "did not redraw over the item detail\n";
+                    return 3;
+                }
+                press_field_input(0x01U);
+                press_field_input(0x40U);
+                const auto purchased_clips = render_shop_scene();
+                if (!funds_before_clips.has_value() ||
+                    field_scene.shop_transaction_confirmation_open() ||
+                    field_scene.active_runner_record().ammo_clips !=
+                        static_cast<std::uint8_t>(clips_before + 1U) ||
+                    field_scene.field_funds_for_dump() !=
+                        *funds_before_clips - 25U ||
+                    field_scene.active_runner_record().inventory_item_codes[
+                        purchase_slot] != 7U ||
+                    field_scene.shop_menu_group() !=
+                        ShopActionGroup::other_items ||
+                    field_scene.shop_menu_cursor() != 0U ||
+                    !save_scene("shop-clips-purchased/actual.bmp",
+                                purchased_clips) ||
+                    field_audio_events != std::vector<std::uint16_t>{
+                                              0x24U, 0x25U, 0x24U}) {
+                    std::cerr << "field Ares shop QA: accepted E-offer did "
+                                 "not charge 25 nuyen, increment the special "
+                                 "count, or retain the row\n";
+                    return 3;
+                }
+
+                // Match the independent Stim Patch sequence: a source detail
+                // frame followed by the same item under the default-No
+                // confirmation. The modal replaces the detail text well but
+                // keeps the selected art, title, row, wallet, and HUD.
+                press_field_input(0x08U);
+                press_field_input(0x08U);
+                field_scene.set_field_funds_for_dump(1000U);
+                const auto stim_patch_detail = render_shop_scene();
+                if (field_scene.shop_menu_group() !=
+                        ShopActionGroup::other_items ||
+                    field_scene.shop_menu_cursor() != 2U ||
+                    !image_has_green_ink(stim_patch_detail, 24, 56, 224, 48) ||
+                    !image_has_green_ink(stim_patch_detail, 112, 144, 96, 16) ||
+                    !field_shop_selector_survives(stim_patch_detail, 80) ||
+                    !save_scene("shop-stim-patch-detail/actual.bmp",
+                                stim_patch_detail)) {
+                    std::cerr << "field Ares shop QA: Stim Patch detail did "
+                                 "not follow its typed row selection\n";
+                    return 3;
+                }
+                const auto inventory_with_weapon =
+                    field_scene.active_runner_record().inventory_item_codes;
+                const auto wallet_before_stim_confirmation =
+                    field_scene.field_funds_for_dump();
+                const auto clips_before_stim_confirmation =
+                    field_scene.active_runner_record().ammo_clips;
+                field_audio_events.clear();
+                press_field_input(0x40U);
+                const auto stim_patch_confirmation = render_shop_scene();
+                if (!field_scene.shop_transaction_confirmation_open() ||
+                    field_scene.shop_transaction_confirmation()
+                            .selected_option != 1U ||
+                    field_scene.field_funds_for_dump() !=
+                        wallet_before_stim_confirmation ||
+                    field_scene.active_runner_record().inventory_item_codes !=
+                        inventory_with_weapon ||
+                    field_scene.active_runner_record().ammo_clips !=
+                        clips_before_stim_confirmation ||
+                    image_has_green_ink(stim_patch_confirmation, 24, 56, 224,
+                                        16) ||
+                    !image_has_green_ink(stim_patch_confirmation, 24, 80,
+                                         224, 40) ||
+                    !image_region_differs(stim_patch_confirmation,
+                                          service_background, 124, 32, 24, 16) ||
+                    !image_has_green_ink(stim_patch_confirmation, 112, 144,
+                                         96, 16) ||
+                    !field_shop_selector_survives(stim_patch_confirmation,
+                                                  80) ||
+                    !save_scene(
+                        "shop-stim-patch-confirmation-no/actual.bmp",
+                        stim_patch_confirmation)) {
+                    std::cerr << "field Ares shop QA: Stim Patch confirmation "
+                                 "does not match its selected state or leaves "
+                                 "the detail text under the modal\n";
+                    return 3;
+                }
+                press_field_input(0x40U); // Default No leaves state intact.
+                if (field_scene.shop_transaction_confirmation_open() ||
+                    field_scene.field_funds_for_dump() !=
+                        wallet_before_stim_confirmation ||
+                    field_scene.active_runner_record().inventory_item_codes !=
+                        inventory_with_weapon ||
+                    field_scene.active_runner_record().ammo_clips !=
+                        clips_before_stim_confirmation ||
+                    field_scene.shop_menu_cursor() != 2U ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x24U, 0x24U}) {
+                    std::cerr << "field Ares shop QA: Stim Patch No changed "
+                                 "state, selection, or source sound requests\n";
+                    return 3;
+                }
+
+                // Sell the just-purchased item to exercise the shared quote,
+                // default-No confirmation, refund, slot clearing, and
+                // protected-item response on the same active runner.
+                press_field_input(0x01U); // Return to service categories.
+                for (int step = 0; step < 5; ++step) {
+                    press_field_input(0x08U); // Other items -> Sell.
+                }
+                press_field_input(0x02U); // Open inventory row.
+                for (std::size_t step = 0; step < purchase_slot; ++step) {
+                    press_field_input(0x08U);
+                }
+                if (field_scene.shop_menu_group() != ShopActionGroup::sell ||
+                    !field_scene.shop_menu_offers_active() ||
+                    field_scene.shop_menu_cursor() != purchase_slot ||
+                    field_scene.active_runner_record().inventory_item_codes[
+                        purchase_slot] != 7U) {
+                    std::cerr << "field Ares shop QA: sale inventory row did "
+                                 "not select the purchased item (group="
+                              << static_cast<int>(field_scene.shop_menu_group())
+                              << ", panel="
+                              << field_scene.shop_menu_offers_active()
+                              << ", cursor="
+                              << static_cast<int>(field_scene.shop_menu_cursor())
+                              << ", expected=" << purchase_slot << ", code="
+                              << static_cast<int>(field_scene
+                                      .active_runner_record()
+                                      .inventory_item_codes[purchase_slot])
+                              << ")\n";
+                    return 3;
+                }
+                const auto sale_quote = render_shop_scene();
+                const auto funds_before_sale =
+                    field_scene.field_funds_for_dump();
+                if (!image_has_green_ink(sale_quote, 24, 80, 224, 24) ||
+                    image_region_differs(purchased_weapon, sale_quote, 0, 16,
+                                         272, 96) ||
+                    !save_scene("shop-sale-item-detail/actual.bmp",
+                                sale_quote)) {
+                    std::cerr << "field Ares shop QA: the selected sale item "
+                                 "detail changed before the source transaction "
+                                 "was opened\n";
+                    return 3;
+                }
+                field_audio_events.clear();
+                press_field_input(0x40U);
+                const auto sale_confirmation = render_shop_scene();
+                const auto refund =
+                    field_scene.shop_last_sale_outcome().quoted_refund;
+                if (!field_scene.shop_transaction_confirmation_open() ||
+                    field_scene.shop_transaction_confirmation()
+                            .selected_option != 1U ||
+                    refund == 0U || !funds_before_sale.has_value() ||
+                    field_scene.field_funds_for_dump() != funds_before_sale ||
+                    field_scene.active_runner_record().inventory_item_codes[
+                        purchase_slot] != 7U ||
+                    image_has_green_ink(sale_confirmation, 24, 56, 224, 16) ||
+                    !image_has_green_ink(sale_confirmation, 24, 80, 224, 40) ||
+                    !image_has_green_ink(sale_confirmation, 56, 88, 168, 8) ||
+                    !save_scene("shop-sale-confirmation-no/actual.bmp",
+                                sale_confirmation)) {
+                    std::cerr << "field Ares shop QA: sale confirmation "
+                                 "changed state or left old detail text visible\n";
+                    return 3;
+                }
+                press_field_input(0x40U); // Default No cancels the sale.
+                if (field_scene.shop_last_sale_outcome().result !=
+                        ShopSaleOutcome::Result::cancelled ||
+                    field_scene.field_funds_for_dump() != funds_before_sale ||
+                    field_scene.active_runner_record().inventory_item_codes[
+                        purchase_slot] != 7U) {
+                    std::cerr << "field Ares shop QA: No changed the sale state\n";
+                    return 3;
+                }
+                press_field_input(0x40U); // Reopen the sale confirmation.
+                press_field_input(0x01U); // Move to Yes.
+                press_field_input(0x40U); // Commit the sale.
+                const auto sold_item = render_shop_scene();
+                if (field_scene.shop_last_sale_outcome().result !=
+                        ShopSaleOutcome::Result::removed ||
+                    field_scene.field_funds_for_dump() !=
+                        *funds_before_sale + refund ||
+                    field_scene.active_runner_record().inventory_item_codes[
+                        purchase_slot] != 0U ||
+                    field_scene.active_runner_record().inventory_phase_bytes[
+                        purchase_slot] != 0U ||
+                    field_scene.shop_menu_group() != ShopActionGroup::sell ||
+                    field_scene.shop_menu_cursor() != purchase_slot ||
+                    !save_scene("shop-sale-applied/actual.bmp", sold_item) ||
+                    field_audio_events != std::vector<std::uint16_t>{
+                                              0x24U, 0x24U, 0x24U, 0x25U,
+                                              0x24U}) {
+                    std::cerr << "field Ares shop QA: confirmed sale did not "
+                                 "refund, clear the runner slots, or retain "
+                                 "the selected row\n";
+                    return 3;
+                }
+
+                const auto protected_slot_it = std::find(
+                    field_scene.active_runner_record().inventory_item_codes
+                        .begin(),
+                    field_scene.active_runner_record().inventory_item_codes
+                        .end(),
+                    0U);
+                if (protected_slot_it ==
+                    field_scene.active_runner_record().inventory_item_codes
+                        .end()) {
+                    std::cerr << "field Ares shop QA: sale did not free an "
+                                 "inventory row for protected-item checks\n";
+                    return 3;
+                }
+                const auto protected_slot = static_cast<std::size_t>(
+                    std::distance(
+                        field_scene.active_runner_record()
+                            .inventory_item_codes.begin(),
+                        protected_slot_it));
+                field_scene.active_runner_record().inventory_item_codes[
+                    protected_slot] = 0x29U;
+                const auto funds_before_protected_sale =
+                    field_scene.field_funds_for_dump();
+                field_audio_events.clear();
+                while (field_scene.shop_menu_cursor() < protected_slot) {
+                    press_field_input(0x08U);
+                }
+                while (field_scene.shop_menu_cursor() > protected_slot) {
+                    press_field_input(0x04U);
+                }
+                press_field_input(0x40U);
+                const auto protected_sale = render_shop_scene();
+                if (!field_scene.shop_transaction_waiting_for_event() ||
+                    field_scene.shop_transaction_message() !=
+                        ShopTransactionMessage::protected_sale ||
+                    field_scene.active_runner_record().inventory_item_codes[
+                        protected_slot] != 0x29U ||
+                    field_scene.field_funds_for_dump() !=
+                        funds_before_protected_sale ||
+                    !image_has_green_ink(protected_sale, 40, 88, 232, 24) ||
+                    !save_scene("shop-protected-sale/actual.bmp",
+                                protected_sale)) {
+                    std::cerr << "field Ares shop QA: protected sale was not "
+                                 "rejected without touching the runner or "
+                                 "wallet\n";
                     return 3;
                 }
 

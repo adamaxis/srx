@@ -133,6 +133,18 @@ int main() {
         text.catalog.action_cannot_trade != "Cannot trade magic items!" ||
         text.catalog.action_choice_no != "No" ||
         text.catalog.action_choice_yes != "Yes" ||
+        text.catalog.shop_transaction_prompt != "Complete Transaction?" ||
+        text.catalog.shop_no_inventory_slot !=
+            "Your inventory\n   is full!" ||
+        text.catalog.shop_insufficient_funds !=
+            " You do not have the\nnuyen for this item!!" ||
+        text.catalog.shop_special_action_limit !=
+            "  You are already\ncarrying the maximum\n  number " ||
+        text.catalog.shop_protected_sale != "Totems cannot be sold!!" ||
+        text.catalog.shop_sale_quote_heading != "Item sells for       $" ||
+        text.catalog.shop_purchase_price_heading != "Price        $" ||
+        text.catalog.field_action_detail_texts[16] !=
+            "A slap patch that instantly\nincreases mental health\nby 20%." ||
         text.catalog.action_trade_recipient_label != "Give to" ||
         text.catalog.action_trade_full_inventory_message !=
             "  has a full\n  inventory.\n\nPress a button\n to continue." ||

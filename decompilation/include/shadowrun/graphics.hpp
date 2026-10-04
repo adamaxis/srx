@@ -278,9 +278,27 @@ struct GenesisFieldMenuActionText {
     std::string first_aid_medkit_used;
     std::string trade_recipient_label;
     std::string trade_full_inventory_message;
+    // ROM 0x57B8C and 0x5794E transaction prompt/failure text, plus the
+    // 0x56F4A sale quote heading. These are host text data for the Qt shop.
+    std::string transaction_prompt;
+    std::string no_inventory_slot_message;
+    std::string insufficient_funds_message;
+    std::string special_action_limit_message;
+    std::string protected_sale_message;
+    std::string sale_quote_heading;
+    std::string purchase_price_heading;
 };
 
 GenesisFieldMenuActionText read_genesis_field_menu_action_text(
+    const std::vector<std::uint8_t>& rom);
+
+inline constexpr std::size_t kGenesisFieldActionDetailTextCount = 32U;
+using GenesisFieldActionDetailTextTable =
+    std::array<std::string, kGenesisFieldActionDetailTextCount>;
+
+// ROM 0x5878E indexes the pointer table at 0x1AC7FC. Resolve the strings at
+// extraction time so the host runtime receives only named text records.
+GenesisFieldActionDetailTextTable read_genesis_field_action_detail_texts(
     const std::vector<std::uint8_t>& rom);
 
 // ROM 0x11B58/0x11E7E select the four-entry Clips rows at 0xD1DDC and

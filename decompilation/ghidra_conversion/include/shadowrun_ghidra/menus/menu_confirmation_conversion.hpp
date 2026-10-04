@@ -18,6 +18,12 @@ struct MenuConfirmationState {
     bool closed = false;
 };
 
+enum class MenuConfirmationStep : std::uint8_t {
+    no_change,
+    option_moved,
+    closed,
+};
+
 struct MenuConfirmationCallbacks {
     std::function<void()> draw_prompt_labels;
     std::function<void()> draw_prompt_choice;
@@ -34,5 +40,11 @@ struct MenuConfirmationCallbacks {
 // boundary. The native conversion has no VDP or controller-port dependency.
 MenuConfirmationState run_menu_confirmation_prompt(
     const MenuConfirmationCallbacks& callbacks);
+
+// One non-blocking iteration of ROM 0x57B8C. The Qt menu keeps this typed
+// state between frames while the source conversion above uses the same input
+// transition inside its blocking callback loop.
+MenuConfirmationStep advance_menu_confirmation_prompt(
+    MenuConfirmationState& state, std::uint16_t controller_events) noexcept;
 
 } // namespace shadowrun::ghidra_conversion

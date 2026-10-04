@@ -124,13 +124,15 @@ selected group and cursor. Ordinary purchases use the 50-row item catalog and
 half-price quote with the mode-1 runner surcharge. `0x57B8C` owns the common
 Yes/No confirmation.
 
-`ShopMenuController` now retains the converted `FieldModeServiceState`, uses
-the source directional precedence and panel bounds, and returns typed buy,
-sell, return, runner-change, or unresolved-action requests. It does not own
-wallet or inventory copies. `ShopTransactionService` delegates to the existing
-typed purchase and removal conversions. The live event-to-dialogue-to-shop
-route, shared wallet binding, and source-positioned `ShopMenuPresenter` remain
-open, so this slice is partial and does not claim a playable Ares shop.
+`ShopMenuController` retains the converted `FieldModeServiceState`, uses the
+source directional precedence and panel bounds, and returns typed buy, sell,
+return, runner-change, or unresolved-action requests. Its transaction state
+uses the shared confirmation conversion and keeps the active group/row while
+the owning field session applies the typed purchase or sale result.
+`ShopTransactionService` delegates to the existing typed purchase and removal
+conversions. The live event-to-dialogue-to-shop route and new-game wallet plus
+active-runner binding are connected. Restored-save wallet data and production
+audio playback remain open, so the Ares hill is partial.
 
 The Ares route is field mode 2/event 11. `0x1FA78` selects resource profile
 `0x1220C0` and the mode text record at `0x110DD2`, then `0x1F246` calls the

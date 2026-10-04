@@ -156,8 +156,9 @@ set_tests_properties(shadowrun_ghidra_conversion_qt_field_mode_text_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Ares mode 2/event 11 must pass through the generic 30-frame prompt before
-# entering its modal service menu. This captures the prompt, categories,
-# selected item, cursor movement, and full-screen return redraw.
+# entering its modal service menu. This captures category/item selection,
+# insufficient funds, default-No/Yes confirmation, ordinary and E-coded
+# purchases, sale/refund, protected-item feedback, and full-screen return.
 add_test(NAME shadowrun_ghidra_conversion_qt_field_shop_qa
          COMMAND shadowrun_ghidra_conversion_qt
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"

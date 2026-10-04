@@ -3,6 +3,7 @@
 #include "shadowrun_ghidra/field/field_action_application_conversion.hpp"
 #include "shadowrun_ghidra/field/field_action_removal_conversion.hpp"
 #include "shadowrun_ghidra/field/field_mode_service_loop_conversion.hpp"
+#include "shadowrun_ghidra/menus/menu_confirmation_conversion.hpp"
 
 #include <array>
 #include <cstddef>
@@ -30,6 +31,38 @@ struct ShopActionRequest {
     ShopActionGroup group = ShopActionGroup::weapons;
     std::uint8_t cursor = 0;
     std::optional<FieldActionCostRecord> offer;
+};
+
+struct ShopSaleOutcome {
+    enum class Result : std::uint8_t {
+        removed,
+        empty_slot,
+        protected_action,
+        cancelled,
+        missing_item_record,
+    } result = Result::empty_slot;
+    std::uint32_t quoted_refund = 0;
+};
+
+enum class ShopTransactionMessage : std::uint8_t {
+    none,
+    no_inventory_slot,
+    insufficient_funds,
+    special_action_limit,
+    protected_sale,
+};
+
+enum class ShopTransactionEvent : std::uint8_t {
+    no_change,
+    confirmation_opened,
+    confirmation_moved,
+    purchase_applied,
+    sale_applied,
+    cancelled,
+    message_shown,
+    message_dismissed,
+    action_ignored,
+    unresolved,
 };
 
 enum class ShopMenuEvent : std::uint8_t {
@@ -65,6 +98,27 @@ public:
     bool offers_panel_active() const noexcept {
         return source_state_.action_selection.action_panel != 0;
     }
+    bool transaction_confirmation_open() const noexcept {
+        return transaction_confirmation_open_;
+    }
+    bool transaction_waiting_for_event() const noexcept {
+        return transaction_waiting_for_event_;
+    }
+    const MenuConfirmationState& transaction_confirmation() const noexcept {
+        return transaction_confirmation_;
+    }
+    ShopTransactionMessage transaction_message() const noexcept {
+        return transaction_message_;
+    }
+    std::uint32_t transaction_amount() const noexcept {
+        return transaction_amount_;
+    }
+    FieldActionApplicationResult last_purchase_result() const noexcept {
+        return last_purchase_result_;
+    }
+    const ShopSaleOutcome& last_sale_outcome() const noexcept {
+        return last_sale_outcome_;
+    }
     ShopActionGroup selected_group() const noexcept;
     std::uint8_t selected_cursor() const noexcept {
         return static_cast<std::uint8_t>(
@@ -79,25 +133,39 @@ public:
     static std::optional<FieldActionCostRecord> offer(
         ShopId shop, ShopActionGroup group, std::size_t index) noexcept;
 
+    ShopTransactionEvent begin_purchase(
+        const FieldActionCostRecord& selected_offer,
+        const FieldActionCostContext& cost_context,
+        FieldActionPurchaseState& state);
+    ShopTransactionEvent begin_sale(
+        const FieldActionCostContext& cost_context,
+        RunnerActionRemovalState& state);
+    ShopTransactionEvent advance_transaction(
+        std::uint16_t controller_events,
+        const FieldActionCostContext& cost_context,
+        FieldActionPurchaseState& purchase_state,
+        RunnerActionRemovalState& sale_state);
+    void clear_pending_action() noexcept;
+
 private:
+    enum class TransactionKind : std::uint8_t { none, purchase, sale };
+    void reset_transaction() noexcept;
     void publish_selected_group() noexcept;
 
     ShopId shop_ = ShopId::ares_weapon_emporium;
     std::uint8_t menu_mode_ = 0;
     FieldModeServiceState source_state_{};
     std::optional<ShopActionRequest> pending_action_;
+    MenuConfirmationState transaction_confirmation_{};
+    TransactionKind transaction_kind_ = TransactionKind::none;
+    ShopTransactionMessage transaction_message_ = ShopTransactionMessage::none;
+    FieldActionApplicationResult last_purchase_result_ =
+        FieldActionApplicationResult::cancelled;
+    ShopSaleOutcome last_sale_outcome_{};
+    std::uint32_t transaction_amount_ = 0U;
+    bool transaction_confirmation_open_ = false;
+    bool transaction_waiting_for_event_ = false;
     bool open_ = false;
-};
-
-struct ShopSaleOutcome {
-    enum class Result : std::uint8_t {
-        removed,
-        empty_slot,
-        protected_action,
-        cancelled,
-        missing_item_record,
-    } result = Result::empty_slot;
-    std::uint32_t quoted_refund = 0;
 };
 
 // Transactions reuse the same typed source conversions as the field action

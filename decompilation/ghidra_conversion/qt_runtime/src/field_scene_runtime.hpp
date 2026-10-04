@@ -140,6 +140,30 @@ public:
     bool shop_menu_offers_active() const noexcept {
         return field_shop_menu_.offers_panel_active();
     }
+    bool shop_transaction_confirmation_open() const noexcept {
+        return field_shop_menu_.transaction_confirmation_open();
+    }
+    bool shop_transaction_waiting_for_event() const noexcept {
+        return field_shop_menu_.transaction_waiting_for_event();
+    }
+    const MenuConfirmationState& shop_transaction_confirmation() const noexcept {
+        return field_shop_menu_.transaction_confirmation();
+    }
+    ShopTransactionMessage shop_transaction_message() const noexcept {
+        return field_shop_menu_.transaction_message();
+    }
+    FieldActionApplicationResult shop_last_purchase_result() const noexcept {
+        return field_shop_menu_.last_purchase_result();
+    }
+    const ShopSaleOutcome& shop_last_sale_outcome() const noexcept {
+        return field_shop_menu_.last_sale_outcome();
+    }
+    std::optional<std::uint32_t> field_funds_for_dump() const noexcept {
+        return field_funds_;
+    }
+    void set_field_funds_for_dump(const std::uint32_t funds) noexcept {
+        field_funds_ = funds;
+    }
     const FieldCommandOverviewView& command_overview_view() const noexcept {
         return command_overview_.view();
     }
