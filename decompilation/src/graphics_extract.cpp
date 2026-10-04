@@ -537,6 +537,79 @@ void write_stoker_motel_dialogue_catalog(
     }
 }
 
+void write_field_interaction_dialogue_catalog(
+    const std::vector<std::uint8_t>& rom,
+    const std::filesystem::path& root) {
+    const auto path = root / "dialogue" / "field-interactions.tsv";
+    std::filesystem::create_directories(path.parent_path());
+    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    if (!output) {
+        throw std::runtime_error("cannot create field interaction catalog: " +
+                                 path.string());
+    }
+    output << "key\ttext\n";
+    // These object prompts and response pages are selected by 0x20E48,
+    // 0x20EC2, and their mode-command handlers. The ROM text encoder stays in
+    // this explicit offline import; the Qt runtime consumes this named TSV.
+    const std::array<std::pair<const char*, std::size_t>, 24> records{{
+        {"field.maglock.door.title", 0x11C882U},
+        {"field.maglock.more", 0x0FE5BFU},
+        {"field.maglock.no-passkey", 0x11C8C8U},
+        {"field.maglock.insufficient-passkey", 0x11C91CU},
+        {"field.interaction.option.electronics", 0x11C984U},
+        {"field.maglock.option.grenade", 0x11C9A1U},
+        {"field.interaction.option.walk-away", 0x103B53U},
+        {"field.maglock.passkey.result", 0x11C9E6U},
+        {"field.maglock.electronics.no-skill", 0x11CA59U},
+        {"field.maglock.electronics.success", 0x11CAB2U},
+        {"field.maglock.electronics.failure", 0x11CAF6U},
+        {"field.maglock.electronics.alert", 0x11CB5CU},
+        {"field.maglock.grenade.unavailable", 0x11CBF5U},
+        {"field.maglock.grenade.result", 0x11CC26U},
+        {"field.maglock.already-unlocked", 0x0F4837U},
+        {"field.security-terminal.title", 0x11CDBAU},
+        {"field.security-terminal.failed", 0x11CDE9U},
+        {"field.security-terminal.alarm-disabled", 0x11CE2AU},
+        {"field.security-terminal.system-disabled", 0x11CE68U},
+        {"field.security-terminal.files", 0x11CEC0U},
+        {"field.security-terminal.floor.0", 0x11CEF4U},
+        {"field.security-terminal.floor.1", 0x11CF02U},
+        {"field.security-terminal.floor.2", 0x11CF11U},
+        {"field.security-terminal.floor.3", 0x11CF1FU},
+    }};
+    for (const auto& [key, source_offset] : records) {
+        const auto segments =
+            shadowrun::graphics::read_genesis_dialogue_segments(
+                rom, source_offset);
+        if (segments.empty()) {
+            throw std::runtime_error("empty field interaction text: " +
+                                     std::string(key));
+        }
+        output << key << '\t';
+        for (std::size_t index = 0; index < segments.size(); ++index) {
+            if (index != 0U) {
+                output << '|';
+            }
+            output << segments[index];
+        }
+        output << '\n';
+    }
+    const std::array<std::pair<const char*, std::size_t>, 2> final_floors{{
+        {"field.security-terminal.floor.4", 0x11CF2EU},
+        {"field.security-terminal.floor.5", 0x11CF3CU},
+    }};
+    for (const auto& [key, source_offset] : final_floors) {
+        const auto segments =
+            shadowrun::graphics::read_genesis_dialogue_segments(
+                rom, source_offset);
+        if (segments.empty()) {
+            throw std::runtime_error("empty field interaction text: " +
+                                     std::string(key));
+        }
+        output << key << '\t' << segments.front() << '\n';
+    }
+}
+
 struct DecodedSourceByteStream {
     std::vector<std::uint8_t> bytes;
     std::size_t source_end = 0;
@@ -1378,6 +1451,9 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
         "menu/pocket-secretary/notebook-tips.tsv", "text");
     emit_generated_resource_row(
         "dialogue.stoker.motel", "dialogue/stoker-motel.tsv", "text");
+    emit_generated_resource_row(
+        "dialogue.field.interactions",
+        "dialogue/field-interactions.tsv", "text");
     std::string line;
     std::getline(catalog, line);
     while (std::getline(catalog, line)) {
@@ -1434,6 +1510,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     write_field_menu_text_catalog(rom, root, assets);
     write_notebook_tips_text_asset(root, assets);
     write_stoker_motel_dialogue_catalog(rom, root);
+    write_field_interaction_dialogue_catalog(rom, root);
     const auto write = [&](const std::string& name,
                            const shadowrun::native::NativeImage& image,
                            const std::string& kind,

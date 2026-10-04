@@ -1232,3 +1232,68 @@ unresolved shared audio hook remain open.
 checked in Debug/Release. The paid-debt branch, loaded-save balance, direct
 Genesis example of this A-to-referral transition, live Stoker property
 selection, and indirect sound hook remain open.
+
+### Applied review: electromagnetic-lock and Security Terminal interaction
+
+1. **Does it look correct?** I inspected the Debug `actual.bmp` files for
+   `maglock-choices` and `security-terminal`, plus each `return-field.bmp`.
+   Both prompts use the shared 320x224 dialogue frame. The lock shows its
+   three A/B/C actions; the Security Terminal shows Electronics and Walk Away.
+   A nearest-neighbor crop of the Security choice well confirms the long
+   Electronics label is drawn. These are internal renderer captures, not an
+   independent Genesis comparison.
+2. **Does the look reflect the behavioral state?** The ROM mode-2/event route
+   selects the electromagnetic-lock branch at `0x20E48` and the Security
+   Terminal branch at `0x20EC2`. The lock begins on `<MORE>`, waits the shared
+   ten-frame choice gate, then builds typed Electronics/Grenade/Walk Away
+   rows from the interaction selection and active party inventory. The
+   terminal exposes typed Electronics/Walk Away rows. Result pages remove
+   the option rows; the terminal floor sentence is withheld when the current
+   field bootstrap lacks source state `FFE12C`.
+3. **Are the visuals themselves correct?** The presenter fills the complete
+   screen, redraws the extracted shared frame, clears both source content
+   wells, then draws source text and A/B/C marker assets. The first option is
+   present in the terminal capture; its green text was difficult to see at
+   full-frame scale, so the test now requires substantial green-pixel counts
+   in both choice rows as well as checking the exact typed label and role.
+   The exact Genesis placement remains unverified without matching gameplay
+   frames.
+4. **Is it animated, and should it be?** These prompt/result records do not
+   set an animation counter. The shared prompt logic gates choice input for
+   ten frames and holds result text for thirty frames before accepting a
+   dismissal input. The choice captures are static across the input-free
+   holds; field animation is paused while the full-screen modal owns the
+   window.
+5. **Does it have a sound or sound effect, and how long does it play?** The
+   unlock command `0x4B` resolves to extracted resource 075. The FLAC is valid
+   and contains 97,770 samples at 44,100 Hz, or 2.2167 seconds; the Qt resolver
+   test confirms that this event reaches that asset, though speaker output
+   has not been captured. Grenade command `0x2C` is table resource 044, which
+   the offline audio catalog classifies as silent and omits. Alert command
+   `0x30` points to persistent resource 048; its FLAC is a 600-second
+   observation capture without a verified source stop boundary. Qt leaves
+   that event unmapped rather than playing the observation window as a
+   one-shot. Its actual gameplay duration remains unknown.
+6. **Are other parts of the screen also correct?** While the prompt is open,
+   `FieldSceneRuntime::paint` returns after the modal draws, so the old field
+   HUD/map is not visible behind the dialogue controls. Walk Away closes the
+   modal and writes `return-field.bmp`; Debug/Release QA compares that entire
+   image pixel-for-pixel with the pre-prompt field render.
+7. **Do multiple frames support this interpretation?** Debug/Release tests
+   exercise the `<MORE>` page, action rows, passkey success, electronics
+   outcomes, grenade inventory mutation, Security Terminal outcomes, result
+   holds, and return. No independent longplay frame showing these exact
+   object prompts or their results was identified in supplied sections
+   03/04, so the internal frames do not serve as multiple Genesis examples.
+8. **Was old UI cleared before new controls were drawn?** The shared presenter
+   clears the full 320x224 surface and both content wells before drawing each
+   page. The return check compares the post-modal field image with the exact
+   pre-modal image, so any dialogue text, button marker, or frame left over
+   fails the route QA. The actual in-world object collision trigger still
+   needs an end-to-end gameplay test.
+
+**Status:** partial. Typed prompt/result behavior, menu rendering, audio
+resource 075 mapping, full-frame modal ownership, and clean field return have
+Debug/Release test coverage. Independent Genesis frames, the actual field
+object trigger route, the `FFE12C` floor source, resource-048 alert lifetime,
+and captured device audio remain open.

@@ -19,6 +19,7 @@ add_executable(shadowrun_ghidra_conversion_qt
     src/field_dialogue_runtime.cpp
     src/hotel_menu_runtime.cpp
     src/field_mode_text_runtime.cpp
+    src/field_interaction_runtime.cpp
     src/audio_playback.cpp
 )
 target_include_directories(shadowrun_ghidra_conversion_qt
@@ -222,6 +223,24 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_mode_text_qa
                  --field-mode-text-dump introduction
                  "${CMAKE_CURRENT_BINARY_DIR}/field-mode-text-qa/introduction/actual.bmp")
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_mode_text_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
+# Door and Security Terminal object prompts use the shared dialogue frame and
+# the same source-timed A/B/C prompt controller as NPC and mode text.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_interaction_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-interaction-dump maglock-choices
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-interaction-qa/maglock-choices/actual.bmp")
+set_tests_properties(shadowrun_ghidra_conversion_qt_field_interaction_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
+add_test(NAME shadowrun_ghidra_conversion_qt_security_terminal_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-interaction-dump security-terminal
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-interaction-qa/security-terminal/actual.bmp")
+set_tests_properties(shadowrun_ghidra_conversion_qt_security_terminal_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Ares mode 2/event 11 must pass through the generic 30-frame prompt before
@@ -449,6 +468,26 @@ target_link_libraries(shadowrun_ghidra_field_mode_text_runtime_test
 add_test(NAME shadowrun_ghidra_field_mode_text_runtime
          COMMAND shadowrun_ghidra_field_mode_text_runtime_test)
 
+add_executable(shadowrun_ghidra_field_interaction_runtime_test
+    tests/field_interaction_runtime_test.cpp
+    src/field_interaction_runtime.cpp
+    src/dialogue_panel_presenter.cpp
+    src/dialogue_panel.cpp
+    src/dialogue_text_catalog.cpp
+)
+target_include_directories(shadowrun_ghidra_field_interaction_runtime_test
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+set_target_properties(shadowrun_ghidra_field_interaction_runtime_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
+target_compile_definitions(shadowrun_ghidra_field_interaction_runtime_test PRIVATE
+    SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets")
+target_link_libraries(shadowrun_ghidra_field_interaction_runtime_test
+    PRIVATE shadowrun_ghidra_conversion_runtime Qt6::Gui)
+add_test(NAME shadowrun_ghidra_field_interaction_runtime
+         COMMAND shadowrun_ghidra_field_interaction_runtime_test)
+
 if (WIN32)
     find_program(SHADOWRUN_GHIDRA_QT_WINDEPLOYQT
         NAMES windeployqt windeployqt.exe
@@ -500,9 +539,9 @@ target_link_libraries(shadowrun_ghidra_shop_menu_runtime_test
 add_test(NAME shadowrun_ghidra_shop_menu_runtime
          COMMAND shadowrun_ghidra_shop_menu_runtime_test)
 
-# Source selector event 0x25 is ROM table-2 entry 37. Verify the event reaches
-# the direct extracted asset resolver without assigning aliases to unknown
-# events.
+# Verify the source selector and maglock unlock events reach their extracted
+# assets without assigning aliases to unknown, silent, or lifecycle-unresolved
+# audio commands.
 add_executable(shadowrun_ghidra_audio_playback_test
     tests/audio_playback_test.cpp
     src/audio_playback.cpp
@@ -514,7 +553,8 @@ set_target_properties(shadowrun_ghidra_audio_playback_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
     RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
 target_compile_definitions(shadowrun_ghidra_audio_playback_test PRIVATE
-    SHADOWRUN_GHIDRA_AUDIO_RESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-037.flac")
+    SHADOWRUN_GHIDRA_AUDIO_RESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-037.flac"
+    SHADOWRUN_GHIDRA_AUDIO_PASSKEY_RESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-075.flac")
 target_link_libraries(shadowrun_ghidra_audio_playback_test
     PRIVATE Qt6::Core Qt6::Multimedia)
 add_test(NAME shadowrun_ghidra_audio_playback

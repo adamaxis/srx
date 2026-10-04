@@ -50,6 +50,7 @@
 #include "field_dialogue_runtime.hpp"
 #include "hotel_menu_runtime.hpp"
 #include "field_mode_text_runtime.hpp"
+#include "field_interaction_runtime.hpp"
 #include "field_menu_text_catalog.hpp"
 #include "shop_menu_runtime.hpp"
 
@@ -169,6 +170,24 @@ public:
     bool open_ares_mode_text_for_dump(std::int8_t alternate_result) {
         return field_mode_text_.open(
             FieldModeTextPromptContext{2U, 11U, alternate_result});
+    }
+    bool field_interaction_open() const noexcept {
+        return field_interaction_.open();
+    }
+    const DialoguePanelView& field_interaction_panel() const noexcept {
+        return field_interaction_.panel();
+    }
+    bool open_field_interaction_for_dump(
+        FieldInteractionPrompt prompt, std::uint8_t interaction_selection = 2U,
+        bool interaction_suppressed = false,
+        std::optional<std::uint8_t> security_floor_index = std::nullopt) {
+        return field_interaction_.open_prompt_for_dump(
+            prompt, interaction_selection, interaction_suppressed,
+            security_floor_index);
+    }
+    FieldInteractionAdvanceResult advance_field_interaction_for_dump(
+        std::uint16_t event_word) {
+        return advance_field_interaction(event_word);
     }
     bool begin_ares_shop_event_for_dump();
     bool shop_menu_open() const noexcept { return field_shop_menu_.is_open(); }
@@ -458,6 +477,8 @@ public:
     }
 
 private:
+    FieldInteractionAdvanceResult advance_field_interaction(
+        std::uint16_t event_word);
     void configure_callbacks();
     void configure_runtime_coordinator_callbacks();
     void advance_field_movement();
@@ -561,6 +582,7 @@ private:
     FieldDialogueRuntime field_dialogue_;
     HotelMenuRuntime hotel_menu_{};
     FieldModeTextRuntime field_mode_text_{};
+    FieldInteractionRuntime field_interaction_;
     ShopMenuController field_shop_menu_{};
     FieldDialogueEventResolver field_dialogue_event_resolver_;
     FieldPartyRosterRuntime field_party_roster_{};
@@ -713,6 +735,9 @@ private:
     WorldActivityState field_world_activity_state_{};
     MovementModeTransitionContinuation field_activity_continuation_ =
         MovementModeTransitionContinuation::none;
+    // FFE12C selects a floor label on the successful Security Terminal file
+    // branch. Its scene initialization source has not been connected yet.
+    std::optional<std::uint8_t> field_security_floor_index_;
     std::uint8_t field_projected_terrain_mark_count_ = 0;
     bool field_terrain_render_dirty_ = false;
     std::array<std::uint8_t, 4> field_terrain_sample_state_{};

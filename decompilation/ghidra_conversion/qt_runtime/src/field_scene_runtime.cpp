@@ -268,7 +268,12 @@ FieldSceneRuntime::FieldSceneRuntime(
               }
               return static_cast<std::uint8_t>(sample);
           },
-          {}}) {
+          {}}),
+      field_interaction_(
+          [this](const std::string_view boundary) {
+              this->source_boundary(boundary);
+          },
+          source_audio_event_callback_) {
     field_dialogue_.set_room_payment_callback([this]()
         -> std::optional<StokerMotelRoomPaymentOutcome> {
         if (!field_funds_.has_value()) {
@@ -1299,6 +1304,24 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         [this](integration::FieldRuntimeCoordinatorState& runtime) {
             return run_field_exit_orchestrator(runtime);
         };
+    field_runtime_callbacks_.run_pending_field_scene_handler = [this] {
+        const auto continuation = field_activity_continuation_;
+        field_activity_continuation_ =
+            MovementModeTransitionContinuation::none;
+        const bool opened = field_interaction_.open(
+            continuation,
+            state_.field_scene_buffers.scene_reference,
+            field_movement_transition_state_.world_mode,
+            field_movement_transition_state_.terrain_event_suppressed,
+            field_movement_transition_state_.activity_selection,
+            field_security_floor_index_);
+        if (!opened) {
+            source_boundary("field.interaction.open_failed");
+        } else {
+            source_boundary("field.interaction.prompt_opened");
+        }
+        return integration::PendingFieldSceneHandlerResult::resumed_field;
+    };
     field_runtime_callbacks_.latch_controller_events = [this] {
         source_boundary("field.runtime.latch_controller_events");
         field_controller_latch_state_.events =
@@ -1365,12 +1388,14 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         source_boundary("field.runtime.restart_field_session");
     };
     field_runtime_callbacks_.advance_field_scene_transition = [this] {
-        if (command_overview_.open()) {
+        if (command_overview_.open() || field_interaction_.open()) {
             // The source routine returns from the blocking command loop before
             // the field transition leaf can run. The Qt bridge keeps that
             // ordering explicit while the menu owns the next host frames.
             source_boundary(
-                "field.runtime.scene_transition_suspended_for_command_overview");
+                field_interaction_.open()
+                    ? "field.runtime.scene_transition_suspended_for_interaction"
+                    : "field.runtime.scene_transition_suspended_for_command_overview");
             return;
         }
         source_boundary("field.runtime.advance_scene_transition");
@@ -2698,6 +2723,7 @@ bool FieldSceneRuntime::bootstrap(
     field_dialogue_.close();
     hotel_menu_.close();
     field_mode_text_.close();
+    field_interaction_.reset_session();
     field_party_roster_.clear();
     field_menu_text_ = FieldMenuTextCatalog{};
     command_overview_resource_variant_ = ResourceVariantState{};
@@ -2801,6 +2827,11 @@ bool FieldSceneRuntime::bootstrap(
     // every prompt or reaching back into the ROM.
     (void)field_dialogue_.load_assets(startup_state.asset_catalog.catalog);
     (void)field_mode_text_.load_assets(startup_state.asset_catalog.catalog);
+    if (!field_interaction_.load_assets(startup_state.asset_catalog.catalog)) {
+        failure_ = field_interaction_.failure();
+        source_boundary("field.bootstrap.interaction_assets_missing");
+        return false;
+    }
 
     const auto field_map_alias =
         std::string("field.maps.mode.") + std::to_string(scene_reference);
@@ -2977,6 +3008,12 @@ std::optional<std::size_t> FieldSceneRuntime::projected_terrain_cell() const {
 void FieldSceneRuntime::record_field_activity_start(
     const MovementModeTransitionContinuation continuation) {
     field_activity_continuation_ = continuation;
+    if (continuation ==
+            MovementModeTransitionContinuation::maglock_door_interaction ||
+        continuation ==
+            MovementModeTransitionContinuation::building_security_terminal) {
+        field_runtime_state_.pending_field_scene_handler = true;
+    }
     // ROM 0x1E2E0/0x1E2EC stores the typed continuation in the activity
     // timer. Scene-table selection belongs to the later 0x167AE dispatcher;
     // it is not a return value of the timer helper.
@@ -3327,6 +3364,18 @@ void FieldSceneRuntime::update_source_field_camera() {
 
 void FieldSceneRuntime::advance_frame() {
     if (!ready_) {
+        return;
+    }
+    if (field_interaction_.open()) {
+        field_controller_latch_state_.events =
+            field_controller_sample_state_.events;
+        field_controller_latch_state_.extra_events = 0U;
+        (void)::shadowrun::ghidra_conversion::latch_controller_events(
+            field_controller_latch_state_);
+        ::shadowrun::ghidra_conversion::sample_controller_input(
+            field_controller_sample_state_, field_controller_port_byte_);
+        (void)advance_field_interaction(
+            field_controller_sample_state_.events);
         return;
     }
     if (hotel_menu_.open()) {
@@ -3953,6 +4002,29 @@ FieldSceneRuntime::advance_stoker_dialogue_for_dump(
     if (result == FieldDialogueAdvanceResult::hotel_options_requested) {
         begin_hotel_menu();
     }
+    return result;
+}
+
+FieldInteractionAdvanceResult
+FieldSceneRuntime::advance_field_interaction(
+    const std::uint16_t event_word) {
+    std::array<bool, FieldPartyRosterRuntime::kSlotCount> active_slots{};
+    for (std::size_t slot = 0U; slot < active_slots.size(); ++slot) {
+        active_slots[slot] = field_party_roster_.slot_active(slot);
+    }
+    const auto result = field_interaction_.advance_controller_events(
+        event_word, field_party_roster_.records(), active_slots,
+        field_movement_transition_state_.activity_selection,
+        field_random_seed_);
+    if (result == FieldInteractionAdvanceResult::returned_to_field) {
+        // The source re-enters the field renderer after the prompt callback.
+        // This host redraw replaces its full 320x224 image and consumes the
+        // coordinator's display-service marker here.
+        state_.display_service_word = 0U;
+        field_runtime_state_.display_service_word = 0U;
+        source_boundary("field.interaction.returned_to_field");
+    }
+    refresh_field_hud_runner_slot();
     return result;
 }
 
@@ -5702,6 +5774,10 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
 void FieldSceneRuntime::paint(QPainter& painter) const {
     painter.fillRect(0, 0, 320, 224, Qt::black);
     if (!ready_ || field_map_.isNull()) {
+        return;
+    }
+    if (field_interaction_.open()) {
+        field_interaction_.paint(painter);
         return;
     }
     if (hotel_menu_.open()) {

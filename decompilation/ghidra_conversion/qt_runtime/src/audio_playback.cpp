@@ -30,6 +30,11 @@ AudioPlaybackService::AudioPlaybackService(PathResolver resolver,
         // zero-based entry as audio.effects.resource.037.
         {0x25U, "audio.effects.resource.037"},
         {0x29U, "audio.menu.command-029"},
+        // The maglock unlock routine sends command 0x4B (table-2 resource 75).
+        {0x4BU, "audio.effects.resource.075"},
+        // 0x2C/resource 44 is a verified silent table slot and has no asset.
+        // 0x30/resource 48 is a persistent observation capture; keep it
+        // unmapped until the alert's source playback lifetime is implemented.
     };
 }
 

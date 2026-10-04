@@ -29,15 +29,35 @@ int main(int argc, char** argv) {
         std::cerr << "the extracted resource-037 FLAC is missing\n";
         return 1;
     }
+    if (playback.alias_for_event(0x4BU) !=
+        "audio.effects.resource.075") {
+        std::cerr << "event 0x4B did not select table-2 resource 75\n";
+        return 1;
+    }
+    if (!std::filesystem::is_regular_file(
+            SHADOWRUN_GHIDRA_AUDIO_PASSKEY_RESOURCE_PATH)) {
+        std::cerr << "the extracted resource-075 FLAC is missing\n";
+        return 1;
+    }
 
     playback.play_event(0x25U);
     if (resolver_calls != 1U || resolved_alias != expected_alias) {
         std::cerr << "event 0x25 did not reach its extracted asset alias\n";
         return 1;
     }
+    playback.play_event(0x4BU);
+    if (resolver_calls != 2U ||
+        resolved_alias != "audio.effects.resource.075") {
+        std::cerr << "event 0x4B did not reach its extracted asset alias\n";
+        return 1;
+    }
 
     playback.play_event(0x2AU);
-    if (resolver_calls != 1U) {
+    playback.play_event(0x2CU);
+    playback.play_event(0x30U);
+    if (resolver_calls != 2U ||
+        !playback.alias_for_event(0x2CU).empty() ||
+        !playback.alias_for_event(0x30U).empty()) {
         std::cerr << "an unresolved event was assigned an audio asset\n";
         return 1;
     }

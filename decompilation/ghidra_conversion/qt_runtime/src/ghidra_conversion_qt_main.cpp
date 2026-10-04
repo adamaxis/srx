@@ -168,6 +168,7 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
                    " [--field-command-reopen-smoke]"
                    " [--field-dialogue-dump <prompt> <file>]"
                    " [--field-mode-text-dump <variant> <file>]"
+                   " [--field-interaction-dump <variant> <file>]"
                    " [--boot-dump-frame <frame> <file>]"
                    " [--startup-dump <stage> <selection> <frame> <file>]"
                    " [--startup-qa <output-dir>]"
@@ -250,6 +251,10 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
             continue;
         }
         if (argument == "--field-mode-text-dump" && index + 2 < argc) {
+            index += 2;
+            continue;
+        }
+        if (argument == "--field-interaction-dump" && index + 2 < argc) {
             index += 2;
             continue;
         }
@@ -2747,6 +2752,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_dialogue_dump_path;
         std::optional<std::string> field_mode_text_dump_variant;
         std::optional<std::filesystem::path> field_mode_text_dump_path;
+        std::optional<std::string> field_interaction_dump_variant;
+        std::optional<std::filesystem::path> field_interaction_dump_path;
         std::optional<std::uint32_t> boot_dump_frame;
         std::optional<std::filesystem::path> boot_dump_path;
         std::optional<std::string> startup_dump_stage;
@@ -2782,6 +2789,7 @@ int main(int argc, char** argv) {
                        " [--field-command-reopen-smoke]"
                        " [--field-dialogue-dump <prompt> <file>]"
                        " [--field-mode-text-dump <variant> <file>]"
+                       " [--field-interaction-dump <variant> <file>]"
                        " [--boot-dump-frame <frame> <file>]"
                        " [--startup-dump <stage> <selection> <frame> <file>]"
                        " [--startup-qa <output-dir>]"
@@ -2917,6 +2925,13 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_mode_text_dump_variant = std::string(argv[++index]);
                 field_mode_text_dump_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-interaction-dump" &&
+                index + 2 < argc) {
+                field_smoke = true;
+                field_interaction_dump_variant = std::string(argv[++index]);
+                field_interaction_dump_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--boot-dump-frame" &&
@@ -3565,6 +3580,106 @@ int main(int argc, char** argv) {
                 std::cout << "field_mode_text_dump=written variant="
                           << *field_mode_text_dump_variant << " path="
                           << field_mode_text_dump_path->string() << "\n";
+                return 0;
+            }
+            if (field_interaction_dump_variant.has_value() &&
+                field_interaction_dump_path.has_value()) {
+                auto prompt = FieldInteractionPrompt::electromagnetic_lock_door;
+                bool suppressed = false;
+                const bool show_lock_choices =
+                    *field_interaction_dump_variant == "maglock-choices";
+                if (*field_interaction_dump_variant == "security-terminal") {
+                    prompt = FieldInteractionPrompt::building_security_terminal;
+                } else if (*field_interaction_dump_variant ==
+                           "maglock-suppressed") {
+                    suppressed = true;
+                } else if (!show_lock_choices) {
+                    std::cerr << "field interaction dump: unknown variant '"
+                              << *field_interaction_dump_variant << "'\n";
+                    return 3;
+                }
+                QImage field_before_prompt_scene(kSceneWidth, kSceneHeight,
+                                                 QImage::Format_RGB32);
+                field_before_prompt_scene.fill(Qt::black);
+                QPainter field_before_prompt_painter(
+                    &field_before_prompt_scene);
+                field_scene.paint(field_before_prompt_painter);
+                field_before_prompt_painter.end();
+                if (!field_scene.open_field_interaction_for_dump(
+                        prompt, 2U, suppressed)) {
+                    std::cerr << "field interaction dump: prompt did not open\n";
+                    return 3;
+                }
+                if (show_lock_choices) {
+                    for (std::uint16_t frame = 0U; frame < 10U; ++frame) {
+                        (void)field_scene.advance_field_interaction_for_dump(0U);
+                    }
+                    (void)field_scene.advance_field_interaction_for_dump(
+                        0x4000U);
+                    if (field_scene.field_interaction_panel().option_count !=
+                        3U) {
+                        std::cerr << "field interaction dump: lock action choices did not resolve\n";
+                        return 3;
+                    }
+                } else if (*field_interaction_dump_variant ==
+                               "security-terminal" &&
+                           field_scene.field_interaction_panel().option_count !=
+                               2U) {
+                    std::cerr << "field interaction dump: Security Terminal action choices did not resolve\n";
+                    return 3;
+                }
+                QImage interaction_scene(kSceneWidth, kSceneHeight,
+                                         QImage::Format_RGB32);
+                interaction_scene.fill(Qt::black);
+                QPainter interaction_painter(&interaction_scene);
+                field_scene.paint(interaction_painter);
+                interaction_painter.end();
+                if (field_interaction_dump_path->has_parent_path()) {
+                    std::filesystem::create_directories(
+                        field_interaction_dump_path->parent_path());
+                }
+                if (!interaction_scene.save(QString::fromStdWString(
+                        field_interaction_dump_path->wstring()))) {
+                    std::cerr << "field interaction dump: could not write "
+                              << field_interaction_dump_path->string() << '\n';
+                    return 3;
+                }
+                for (std::uint16_t frame = 0U; frame < 10U; ++frame) {
+                    (void)field_scene.advance_field_interaction_for_dump(0U);
+                }
+                const auto leave_event =
+                    *field_interaction_dump_variant == "security-terminal"
+                        ? 0x1000U
+                        : 0x2000U;
+                if (field_scene.advance_field_interaction_for_dump(
+                        leave_event) !=
+                        FieldInteractionAdvanceResult::returned_to_field ||
+                    field_scene.field_interaction_open()) {
+                    std::cerr << "field interaction dump: modal did not return to the field\n";
+                    return 3;
+                }
+                QImage returned_field_scene(kSceneWidth, kSceneHeight,
+                                            QImage::Format_RGB32);
+                returned_field_scene.fill(Qt::black);
+                QPainter returned_field_painter(&returned_field_scene);
+                field_scene.paint(returned_field_painter);
+                returned_field_painter.end();
+                if (returned_field_scene != field_before_prompt_scene) {
+                    std::cerr << "field interaction dump: field did not fully redraw after return\n";
+                    return 3;
+                }
+                const auto return_path =
+                    field_interaction_dump_path->parent_path() /
+                    "return-field.bmp";
+                if (!returned_field_scene.save(QString::fromStdWString(
+                        return_path.wstring()))) {
+                    std::cerr << "field interaction dump: could not write "
+                              << return_path.string() << '\n';
+                    return 3;
+                }
+                std::cout << "field_interaction_dump=written variant="
+                          << *field_interaction_dump_variant << " path="
+                          << field_interaction_dump_path->string() << "\n";
                 return 0;
             }
             if (field_shop_dump_path.has_value()) {

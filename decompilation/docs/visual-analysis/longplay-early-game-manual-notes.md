@@ -111,6 +111,16 @@ These follow-up screens match the source commands at `0x213CA`/`0x213E2` and
 their independent frame output now has Qt dumps and controller-route QA. The
 live field event trigger, the property selecting the three-option
 manager-package state, and exact source tile placement are still open.
+The electromagnetic-lock and Security Terminal continuations are now
+connected to the Qt field coordinator. Their Debug/Release captures cover the
+shared prompt frame, action rows, result branches, and a full field-screen
+redraw on return. No matching independent Genesis frame for either object
+prompt or its result branch was identified in the supplied early-game sections;
+these internal captures do not establish visual fidelity. Passkey/electronics
+success uses audio command 0x4B (resource 075, 2.2167 seconds). Frag Grenade
+command 0x2C addresses silent table resource 044. Command 0x30 uses a persistent
+resource-048 observation capture with unresolved source stop timing, so Qt does
+not play that cue yet.
 The debt prompt's A command now reaches the source low-funds branch when the
 fresh New Game wallet holds 20 nuyen: `0x213FA` branches to `0x213E2`, leaves
 the wallet unchanged, sets FFFC27 bit 0, and opens the Jump House page. The

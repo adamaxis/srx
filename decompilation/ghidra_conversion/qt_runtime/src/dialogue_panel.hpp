@@ -43,6 +43,10 @@ enum class DialoguePanelOptionRole {
     field_collect_package,
     field_pay_debt,
     field_jump_house,
+    field_use_electronics,
+    field_use_grenade,
+    field_security_access,
+    field_walk_away,
 };
 
 enum class DialoguePanelActorKind {
@@ -81,6 +85,11 @@ enum class DialoguePanelCommand {
     stoker_pay_michael_debt,
     stoker_open_jump_house_referral,
     stoker_source_boundary,
+    field_continue,
+    field_use_electronics,
+    field_use_grenade,
+    field_security_access,
+    field_walk_away,
 };
 
 struct DialoguePanelOption {
