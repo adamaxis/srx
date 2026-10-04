@@ -280,6 +280,32 @@ FieldSceneRuntime::FieldSceneRuntime(
         field_funds_ = outcome.remaining_funds;
         return outcome;
     });
+    field_dialogue_.set_debt_payment_callback([this]()
+        -> std::optional<StokerMotelDebtPaymentOutcome> {
+        constexpr std::uint32_t kDebt = 250U;
+        if (!field_funds_.has_value() || *field_funds_ >= kDebt ||
+            !notebook_tip_flags_resolved_ ||
+            !notebook_referral_flags_.has_value()) {
+            // The paid branch also consumes FFDD64, runner status, and three
+            // source runner bytes. Do not seed those fields with guessed
+            // defaults; this runtime slice connects the source low-funds
+            // branch available to a fresh New Game wallet.
+            return std::nullopt;
+        }
+
+        StokerMotelDebtPaymentState payment_state{};
+        payment_state.funds = *field_funds_;
+        payment_state.followup_state.story_flags = notebook_tip_flags_[0];
+        payment_state.followup_state.referral_flags =
+            *notebook_referral_flags_;
+        const auto outcome =
+            resolve_stoker_motel_debt_payment(payment_state);
+        field_funds_ = payment_state.funds;
+        notebook_tip_flags_[0] = payment_state.followup_state.story_flags;
+        notebook_referral_flags_ =
+            payment_state.followup_state.referral_flags;
+        return outcome;
+    });
     field_dialogue_.set_followup_command_callback(
         [this](const StokerMotelFollowupCommand command)
             -> std::optional<StokerMotelFollowupOutcome> {

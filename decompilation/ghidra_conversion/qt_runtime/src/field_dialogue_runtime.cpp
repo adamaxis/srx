@@ -59,6 +59,11 @@ void FieldDialogueRuntime::set_room_payment_callback(
     room_payment_callback_ = std::move(callback);
 }
 
+void FieldDialogueRuntime::set_debt_payment_callback(
+    std::function<std::optional<StokerMotelDebtPaymentOutcome>()> callback) {
+    debt_payment_callback_ = std::move(callback);
+}
+
 void FieldDialogueRuntime::set_followup_command_callback(
     std::function<std::optional<StokerMotelFollowupOutcome>(
         StokerMotelFollowupCommand)> callback) {
@@ -267,6 +272,32 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         }
         hotel_options_menu_follows_ = outcome->hotel_options_menu_follows;
         return FieldDialogueAdvanceResult::prompt_advanced;
+    }
+
+    if (*command == StokerMotelPromptCommand::pay_michael_debt) {
+        if (!debt_payment_callback_) {
+            open_source_boundary("Stoker debt-payment state is unresolved");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+        const auto outcome = debt_payment_callback_();
+        if (!outcome.has_value()) {
+            open_source_boundary(
+                "Stoker paid-debt effect and package state are unresolved");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+        if (outcome->result ==
+                StokerMotelDebtPaymentResult::insufficient_funds &&
+            outcome->prompt ==
+                StokerMotelDebtPaymentPrompt::jump_house_nuyen_referral &&
+            !outcome->michael_package_sequence_follows) {
+            if (!open_stoker_prompt(StokerMotelPromptId::jump_house_referral)) {
+                return FieldDialogueAdvanceResult::source_boundary;
+            }
+            return FieldDialogueAdvanceResult::prompt_advanced;
+        }
+        open_source_boundary(
+            "Stoker paid-debt package sequence is not converted");
+        return FieldDialogueAdvanceResult::source_boundary;
     }
 
     if (*command == StokerMotelPromptCommand::open_debt_question ||

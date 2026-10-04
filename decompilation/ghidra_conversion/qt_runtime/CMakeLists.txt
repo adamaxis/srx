@@ -190,6 +190,17 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_dialogue_referral_followup_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Run command 0x05 from the debt question with the New Game wallet. The source
+# 20-nuyen balance takes the insufficient-funds branch to the Jump House page.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_dialogue_debt_payment_insufficient_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-dialogue-dump debt-payment-insufficient
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-dialogue-qa/debt-payment-insufficient/actual.bmp")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_dialogue_debt_payment_insufficient_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # The Ares title-only mode-text prompt is a separate presenter from the
 # Stoker/NPC route. This diagnostic dump exercises its source-selected text,
 # shared text wells, and no-button composition without fabricating a live

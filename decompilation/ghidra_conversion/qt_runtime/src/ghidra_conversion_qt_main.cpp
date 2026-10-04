@@ -3066,8 +3066,12 @@ int main(int argc, char** argv) {
                     *field_dialogue_dump_prompt == "debt-followup";
                 const bool referral_followup_result =
                     *field_dialogue_dump_prompt == "referral-followup";
+                const bool debt_payment_insufficient_result =
+                    *field_dialogue_dump_prompt ==
+                    "debt-payment-insufficient";
                 const bool followup_result = debt_followup_result ||
-                                             referral_followup_result;
+                                             referral_followup_result ||
+                                             debt_payment_insufficient_result;
                 const bool room_payment_result = room_paid_result ||
                                                  room_insufficient_result;
                 const auto prompt = arrival_result || room_payment_result
@@ -3097,23 +3101,37 @@ int main(int argc, char** argv) {
                                 0x1000U) ==
                             FieldDialogueAdvanceResult::prompt_advanced;
                     }
+                    if (prompt_opened && debt_payment_insufficient_result) {
+                        prompt_opened =
+                            field_scene.advance_stoker_dialogue_for_dump(
+                                0x4000U) ==
+                            FieldDialogueAdvanceResult::prompt_advanced;
+                    }
                     const auto story_flags =
                         field_scene.notebook_story_flags_for_dump();
                     const auto referral_flags =
                         field_scene.notebook_referral_flags_for_dump();
                     const auto notebook_gates =
                         field_scene.notebook_event_gates();
+                    const bool referral_flag_expected =
+                        referral_followup_result ||
+                        debt_payment_insufficient_result;
                     const auto expected_gates =
-                        referral_followup_result
+                        referral_flag_expected
                             ? std::array<bool, 3>{true, true, false}
                             : std::array<bool, 3>{true, false, false};
                     if (!prompt_opened || !story_flags.has_value() ||
                         *story_flags != 3U || !referral_flags.has_value() ||
                         *referral_flags !=
-                            (referral_followup_result ? 1U : 0U) ||
+                            (referral_flag_expected ? 1U : 0U) ||
                         !notebook_gates.has_value() ||
                         *notebook_gates != expected_gates) {
                         std::cerr << "field dialogue dump: typed Stoker flags or Notebook gates mismatch\n";
+                        return 3;
+                    }
+                    if (debt_payment_insufficient_result &&
+                        field_scene.field_funds_for_dump() != 20U) {
+                        std::cerr << "field dialogue dump: low-funds debt payment changed the wallet\n";
                         return 3;
                     }
                 } else if (arrival_result) {
@@ -3155,7 +3173,8 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
-                if (referral_followup_result) {
+                if (referral_followup_result ||
+                    debt_payment_insufficient_result) {
                     if (field_scene.advance_stoker_dialogue_for_dump(0x4000U) !=
                             FieldDialogueAdvanceResult::returned_to_field ||
                         !field_scene.open_command_overview_for_dump() ||
@@ -3196,9 +3215,13 @@ int main(int argc, char** argv) {
                         std::cerr << "field dialogue dump: dynamic Notebook rows or stale-row clearing mismatch\n";
                         return 3;
                     }
+                    const auto notebook_result_name =
+                        debt_payment_insufficient_result
+                            ? "notebook-after-debt-payment"
+                            : "notebook-after-referral";
                     const auto notebook_dump_path =
                         field_dialogue_dump_path->parent_path() /
-                        "notebook-after-referral" / "actual.bmp";
+                        notebook_result_name / "actual.bmp";
                     std::filesystem::create_directories(
                         notebook_dump_path.parent_path());
                     if (!notebook_scene.save(QString::fromStdWString(
@@ -3241,9 +3264,13 @@ int main(int argc, char** argv) {
                         std::cerr << "field dialogue dump: unlocked Tips page has missing text or stale Notebook rows\n";
                         return 3;
                     }
+                    const auto notebook_tips_result_name =
+                        debt_payment_insufficient_result
+                            ? "notebook-tips-after-debt-payment"
+                            : "notebook-tips-after-debt";
                     const auto notebook_tips_dump_path =
                         field_dialogue_dump_path->parent_path() /
-                        "notebook-tips-after-debt" / "actual.bmp";
+                        notebook_tips_result_name / "actual.bmp";
                     std::filesystem::create_directories(
                         notebook_tips_dump_path.parent_path());
                     if (!notebook_tips_scene.save(QString::fromStdWString(

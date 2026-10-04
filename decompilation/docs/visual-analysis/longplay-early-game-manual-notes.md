@@ -111,6 +111,11 @@ These follow-up screens match the source commands at `0x213CA`/`0x213E2` and
 their independent frame output now has Qt dumps and controller-route QA. The
 live field event trigger, the property selecting the three-option
 manager-package state, and exact source tile placement are still open.
+The debt prompt's A command now reaches the source low-funds branch when the
+fresh New Game wallet holds 20 nuyen: `0x213FA` branches to `0x213E2`, leaves
+the wallet unchanged, sets FFFC27 bit 0, and opens the Jump House page. The
+paid branch remains an explicit boundary because its FFDD64 effect marker and
+package/runner state are not yet connected.
 
 ### 04. Facility/corridor movement and NPC/package dialogue — 03:58-06:30
 

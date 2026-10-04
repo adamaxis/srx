@@ -5,6 +5,7 @@
 #include "dialogue_text_catalog.hpp"
 #include "shadowrun_ghidra/field/field_exit_prompt_conversion.hpp"
 #include "shadowrun_ghidra/field/stoker_motel_arrival_command_conversion.hpp"
+#include "shadowrun_ghidra/field/stoker_motel_debt_payment_conversion.hpp"
 #include "shadowrun_ghidra/field/stoker_motel_followup_commands_conversion.hpp"
 #include "shadowrun_ghidra/field/stoker_motel_room_payment_conversion.hpp"
 
@@ -62,6 +63,9 @@ public:
     void set_room_payment_callback(
         std::function<std::optional<StokerMotelRoomPaymentOutcome>()>
             callback);
+    void set_debt_payment_callback(
+        std::function<std::optional<StokerMotelDebtPaymentOutcome>()>
+            callback);
     void set_followup_command_callback(
         std::function<std::optional<StokerMotelFollowupOutcome>(
             StokerMotelFollowupCommand)> callback);
@@ -103,6 +107,8 @@ private:
     StokerMotelArrivalCommandCallbacks arrival_command_callbacks_;
     std::function<std::optional<StokerMotelRoomPaymentOutcome>()>
         room_payment_callback_;
+    std::function<std::optional<StokerMotelDebtPaymentOutcome>()>
+        debt_payment_callback_;
     std::function<std::optional<StokerMotelFollowupOutcome>(
         StokerMotelFollowupCommand)> followup_command_callback_;
     std::string failure_;

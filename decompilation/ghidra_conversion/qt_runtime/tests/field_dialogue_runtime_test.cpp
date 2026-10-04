@@ -135,6 +135,17 @@ int main() {
                 resolve_stoker_motel_followup_command(command,
                                                        followup_state)};
         });
+    StokerMotelDebtPaymentState debt_payment_state{};
+    debt_payment_state.funds = 249U;
+    debt_payment_state.followup_state.story_flags = 3U;
+    StokerMotelDebtPaymentOutcome debt_payment_outcome{};
+    runtime.set_debt_payment_callback([&debt_payment_state,
+                                      &debt_payment_outcome]() {
+        debt_payment_outcome =
+            resolve_stoker_motel_debt_payment(debt_payment_state);
+        return std::optional<StokerMotelDebtPaymentOutcome>(
+            debt_payment_outcome);
+    });
     if (!expect(runtime.load_assets(assets.catalog))) {
         return 2;
     }
@@ -596,6 +607,7 @@ int main() {
     if (!expect(!has_exact_color(scene, 0, 0, 320, 224,
                                  QColor(Qt::magenta))) ||
         !expect(!has_green_ink(scene, 48, 152, 256, 64)) ||
+        !expect(!has_green_ink(scene, 296, 16, 8, 120)) ||
         !expect(!has_nonblack_pixel(scene, 17, 203, 11, 11))) {
         return 62;
     }
@@ -617,6 +629,67 @@ int main() {
                 FieldDialogueAdvanceResult::returned_to_field) ||
         !expect(!runtime.open())) {
         return 33;
+    }
+
+    // The source A command on the debt question enters 0x213E2 when the
+    // typed wallet is below 250. Verify it reaches the same title-only
+    // Jump House page and clears the former A/B rows.
+    debt_payment_state.followup_state.referral_flags = 0U;
+    if (!expect(runtime.open_stoker_prompt_for_dump(
+            StokerMotelPromptId::manager_greeting_with_package)) ||
+        !expect(runtime.advance_controller_events(0x2000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 2U) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(debt_payment_outcome.result ==
+                StokerMotelDebtPaymentResult::insufficient_funds) ||
+        !expect(debt_payment_outcome.remaining_funds == 249U) ||
+        !expect(debt_payment_state.followup_state.referral_flags == 1U) ||
+        !expect(runtime.panel().text_segments[0].find("Jump House") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().option_count == 0U) ||
+        !expect(runtime.panel().returns_to_field)) {
+        return 65;
+    }
+    scene.fill(Qt::magenta);
+    QPainter debt_payment_painter(&scene);
+    runtime.paint(debt_payment_painter);
+    debt_payment_painter.end();
+    if (!expect(!has_exact_color(scene, 0, 0, 320, 224,
+                                 QColor(Qt::magenta))) ||
+        !expect(!has_green_ink(scene, 48, 152, 256, 64)) ||
+        !expect(!has_green_ink(scene, 296, 16, 8, 120)) ||
+        !expect(!has_nonblack_pixel(scene, 17, 203, 11, 11))) {
+        return 66;
+    }
+    const auto debt_payment_scene = scene;
+    for (int frame = 0; frame < 30; ++frame) {
+        if (!expect(runtime.advance_controller_events(0U) ==
+                    FieldDialogueAdvanceResult::waiting_for_controller)) {
+            return 67;
+        }
+    }
+    scene.fill(Qt::magenta);
+    QPainter held_debt_payment_painter(&scene);
+    runtime.paint(held_debt_payment_painter);
+    held_debt_payment_painter.end();
+    if (!expect(matches_region(scene, debt_payment_scene, 0, 0, 320, 224)) ||
+        !expect(runtime.open_stoker_prompt_for_dump(
+            StokerMotelPromptId::jump_house_referral))) {
+        return 68;
+    }
+    scene.fill(Qt::magenta);
+    QPainter direct_referral_painter(&scene);
+    runtime.paint(direct_referral_painter);
+    direct_referral_painter.end();
+    if (!expect(matches_region(scene, debt_payment_scene, 0, 0, 320, 224))) {
+        return 69;
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(!runtime.open())) {
+        return 70;
     }
 
     // A different source can supply its resolved speaker/event view without

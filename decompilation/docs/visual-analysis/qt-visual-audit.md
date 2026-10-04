@@ -1044,7 +1044,8 @@ new behavior is invented.
    replaces the left panel when `FFF0AF` is set. The offline importer exports
    both 320x224 frame variants. ROM `0x1F5A8` clears the body at `(88,16)` and
    the lower panel at `(16,152)` before `0x1F3C4` draws content. That prompt
-   path uses `0xC168` with a 27-column body and sends its 2x2 A/B/C markers
+   path uses `0xC168` with a 27-count wrap scan and up to 26 visible glyphs,
+   then sends its 2x2 A/B/C markers
    from `0xCF11C`, `0xCF124`, and `0xCF12C` through `0x1232`. These assets
    replace the former hand-drawn bevel and square markers. The `FFF0AF` frame
    choice is represented in typed view state, but its live source binding is
@@ -1175,6 +1176,59 @@ available.
 the New Game flag sources, dynamic Notebook gates, and the filtered Tips
 result are connected and checked in Debug/Release. Independent Genesis frames
 support both text records. The property choosing the manager-package variant,
-loaded-save flag restoration, source command `0x05` debt-payment transaction,
-Mr. Johnsons detail handler, unrelated live field trigger, and unresolved
-shared audio hook remain open.
+loaded-save flag restoration, paid-debt/package result for source command
+`0x05`, Mr. Johnsons detail handler, unrelated live field trigger, and
+unresolved shared audio hook remain open.
+
+### Applied review: Stoker debt-payment low-funds branch
+
+1. **Does it look correct?** I inspected
+   `field-dialogue-qa/debt-payment-insufficient/actual.bmp` beside independent
+   section 03 frames 000690, 000750, and 000840. The title-only Jump House
+   page, text line breaks, frame, and blank lower choice well agree. The
+   extracted Stoker portrait is visibly more saturated than the compressed
+   video capture, so this pass does not claim pixel-exact portrait color.
+2. **Does the look reflect the behavioral state?** ROM `0x213FA` compares
+   FFFBFE with 250; below that balance it branches to `0x213E2`, which sets
+   FFFC27 bit 0 and returns F5AB0. The new-game initializer at `0x007F0`
+   supplies 20 nuyen. Qt keeps that balance, writes the referral flag, and
+   selects the title-only result. Balances at or above 250 stop at the
+   explicit success-state boundary because FFDD64 and the runner/package
+   fields are not available here.
+3. **Are the visuals themselves correct?** The referral string at ROM
+   `0xF41A1` includes the comma after “Hey” and two `0x80` paragraph
+   separators. The shared panel uses the source 27-count wrap scan as 26
+   visible glyph columns; the previous 27-glyph host line let words run into
+   the frame. The result has no A/B/C markers, matching its source record.
+4. **Is it animated, and should it be?** The command only updates flags and
+   selects the referral record; it sets no animation counter. Independent
+   frames 000690, 000720, 000750, 000780, 000810, and 000840 show the same
+   held page. The Qt runtime test holds it for 30 controller frames and
+   confirms the 320x224 image stays unchanged.
+5. **Does it have a sound or sound effect, and how long does it play?** The
+   `0x213FA` and `0x213E2` command bodies issue no direct sound call. The
+   common `0x1F246` prompt has an unresolved indirect `A1` hook, and the
+   capture does not isolate an effect from the soundtrack. Sound identity
+   and duration remain unknown.
+6. **Are other parts of the screen also correct?** The route assertion checks
+   the unchanged 20-nuyen wallet and FFFC27 bit 0, then opens Pocket
+   Secretary and Notebook. Its dump includes the Mr. Johnsons row, excludes
+   the still-gated Shadowrunners row, and shows the two unlocked Tips entries.
+   The text well is fully repainted when the title-only page opens.
+7. **Do multiple frames support this interpretation?** Frames 000600-000602
+   show the debt question held before selection. Frames 000690, 000750, and
+   000840 show the referral page later in the same section; the captured page
+   follows the B route, so it supports the output appearance but does not
+   independently show the A/low-funds transition. Debug and Release CTests
+   cover that controller route and write named `actual.bmp` files.
+8. **Was old UI cleared before new controls were drawn?** The A/B debt rows
+   and markers disappear when the referral replaces that panel. Pixel tests
+   check the lower well and compare the result to a separately opened
+   title-only referral, then verify the page remains unchanged for 30 frames.
+   The controller route dismisses the referral before opening the field menu;
+   its Notebook and Tips captures contain no dialogue text or old selector.
+
+**Status:** partial. The New Game low-funds command path is connected and
+checked in Debug/Release. The paid-debt branch, loaded-save balance, direct
+Genesis example of this A-to-referral transition, live Stoker property
+selection, and indirect sound hook remain open.

@@ -217,12 +217,12 @@ void DialoguePanelPresenter::paint(QPainter& painter,
          ++index) {
         text_line += draw_wrapped_segment(
             painter, 88, 16 + text_line * 8, panel.text_segments[index],
-            27, 15 - text_line, dialogue_green);
+            26, 15 - text_line, dialogue_green);
     }
 
     if (panel.kind == DialoguePanelKind::source_boundary) {
         draw_wrapped_segment(painter, 88, 16, panel.source_boundary_reason,
-                             27, 15, dialogue_green);
+                             26, 15, dialogue_green);
         return;
     }
 
