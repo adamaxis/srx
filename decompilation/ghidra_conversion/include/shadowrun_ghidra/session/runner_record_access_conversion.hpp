@@ -60,7 +60,14 @@ struct RunnerRecordFields {
     std::int8_t equipped_inventory_slot = -1;
     std::uint8_t equipped_item_code = 0;
     std::uint8_t posture = 0;
+    // In the weapon/inventory path, the source reuses +0x4E: it is loaded
+    // rounds while a clip-using weapon is equipped and the loaded percentage
+    // while no weapon is active or non-weapon gear is equipped. Weapon changes
+    // normalize through that percentage before applying the new weapon's
+    // +0x24 limit. Other action paths may reuse the same source byte.
     std::uint8_t ammo_rounds = 0;
+    // Source +0x4F is the runner's shared Universal Gun Clips count, not a
+    // per-inventory-item clip pool.
     std::uint8_t ammo_clips = 0;
     std::uint8_t equipped_armor_index = 0;
     std::uint16_t cyberware_flags = 0;

@@ -4,6 +4,35 @@
 #include <cstdint>
 
 namespace shadowrun::ghidra_conversion {
+namespace {
+
+std::uint16_t active_weapon_ammo_percent(const std::uint8_t rounds,
+                                         const std::uint8_t capacity) {
+    const auto numerator = static_cast<std::uint32_t>(rounds) * 100U;
+    if (capacity == 0U) {
+        // ROM 0x125FA skips DIVU when the item factor is zero and then keeps
+        // the low byte of rounds * 100 in the shared +0x4E meter.
+        return static_cast<std::uint16_t>(numerator & 0xFFFFU);
+    }
+    auto percent = numerator / capacity;
+    if ((numerator % capacity) != 0U) {
+        // The source increments for any nonzero division remainder.
+        ++percent;
+    }
+    return static_cast<std::uint16_t>(percent & 0xFFFFU);
+}
+
+std::uint8_t scale_ammo_percent_to_capacity(
+    const std::uint16_t percent, const std::uint8_t capacity) {
+    const auto scaled = static_cast<std::uint32_t>(percent) * capacity;
+    auto result = scaled / 100U;
+    if ((scaled % 100U) >= 50U) {
+        ++result;
+    }
+    return static_cast<std::uint8_t>(std::min<std::uint32_t>(result, 0xFFU));
+}
+
+} // namespace
 
 std::optional<FieldCommandRoute> route_field_command(
     const std::uint8_t source_selector) {
@@ -136,16 +165,12 @@ std::uint8_t convert_equipped_ammo(const std::uint8_t old_rounds,
     if (new_factor == 0U) {
         return 0U;
     }
-    std::uint32_t normalized = old_rounds;
-    if (old_factor != 0U) {
-        normalized = normalized * 100U / old_factor;
-    }
-    const auto scaled = normalized * new_factor;
-    auto result = scaled / 100U;
-    if ((scaled % 100U) >= 50U) {
-        ++result;
-    }
-    return static_cast<std::uint8_t>(std::min<std::uint32_t>(result, 0xFFU));
+    const auto normalized_percent = old_factor == 0U
+        ? static_cast<std::uint32_t>(old_rounds)
+        : static_cast<std::uint32_t>(
+              active_weapon_ammo_percent(old_rounds, old_factor));
+    return scale_ammo_percent_to_capacity(
+        static_cast<std::uint16_t>(normalized_percent), new_factor);
 }
 
 EquipmentMutation toggle_selected_equipment(
@@ -176,21 +201,50 @@ EquipmentMutation toggle_selected_equipment(
         return EquipmentMutation::rejected_item_action;
     }
 
-    const auto old_rounds = record.ammo_rounds;
-    if (record.equipped_inventory_slot >= 0 &&
-        static_cast<std::size_t>(record.equipped_inventory_slot) ==
-            selected.slot) {
-        if (record.equipped_item_code < 0x0DU) {
-            record.ammo_rounds = convert_equipped_ammo(
-                old_rounds, old_item_factor, old_item_factor);
-        }
+    const auto old_rounds_or_percent = record.ammo_rounds;
+    const auto equipped_slot = record.equipped_inventory_slot;
+    const bool current_slot_is_valid =
+        equipped_slot >= 0 &&
+        static_cast<std::size_t>(equipped_slot) <
+            record.inventory_item_codes.size();
+    const bool current_item_is_weapon =
+        current_slot_is_valid && record.equipped_item_code != 0U &&
+        record.equipped_item_code < 0x0DU;
+    const bool same_equipped_slot =
+        current_slot_is_valid &&
+        static_cast<std::size_t>(equipped_slot) == selected.slot;
+    const bool selected_item_is_weapon = selected.item_code < 0x0DU;
+
+    // 0x125FA saves the active magazine as a percentage and clears +0x4E.
+    // On the same-slot unequip path 0x12222 restores that percentage; it does
+    // not restore the original round count.
+    const auto carried_percent = current_item_is_weapon
+        ? static_cast<std::uint8_t>(active_weapon_ammo_percent(
+              old_rounds_or_percent, old_item_factor) & 0xFFU)
+        : old_rounds_or_percent;
+
+    if (same_equipped_slot) {
+        record.ammo_rounds = current_item_is_weapon
+            ? carried_percent
+            : old_rounds_or_percent;
         record.equipped_inventory_slot = -1;
         record.equipped_item_code = 0U;
         return EquipmentMutation::unequipped;
     }
 
-    record.ammo_rounds = convert_equipped_ammo(
-        old_rounds, old_item_factor, selected_item_factor);
+    if (selected_item_is_weapon) {
+        record.ammo_rounds = current_item_is_weapon
+            ? scale_ammo_percent_to_capacity(
+                  active_weapon_ammo_percent(old_rounds_or_percent,
+                                             old_item_factor),
+                  selected_item_factor)
+            : convert_equipped_ammo(carried_percent, 0U,
+                                    selected_item_factor);
+    } else {
+        // A weapon switching to gear leaves its normalized percentage in
+        // +0x4E; gear and unequipped states already carry that percentage.
+        record.ammo_rounds = carried_percent;
+    }
     record.equipped_inventory_slot = static_cast<std::int8_t>(selected.slot);
     record.equipped_item_code = selected.item_code;
     return EquipmentMutation::equipped;

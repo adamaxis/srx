@@ -81,8 +81,84 @@ int main() {
                 record.equipped_item_code == 0U)) {
         return 7;
     }
-    if (!expect(convert_equipped_ammo(50U, 100U, 25U) == 13U)) {
+    if (!expect(convert_equipped_ammo(50U, 100U, 25U) == 13U &&
+                convert_equipped_ammo(3U, 6U, 12U) == 6U &&
+                convert_equipped_ammo(1U, 7U, 50U) == 8U &&
+                convert_equipped_ammo(15U, 0U, 50U) == 8U)) {
         return 8;
+    }
+
+    // ROM 0x125FA stores the old gun's remaining fill percentage when it is
+    // unequipped. Re-equipping another gun applies that percentage to the
+    // new gun's own capacity; ammo does not remain as raw rounds from gun 1.
+    RunnerRecordFields ammo_record{};
+    ammo_record.inventory_item_codes[0] = 1U;
+    ammo_record.inventory_item_codes[1] = 2U;
+    ammo_record.equipped_inventory_slot = 0;
+    ammo_record.equipped_item_code = 1U;
+    ammo_record.ammo_rounds = 3U;
+    const auto gun_one = read_selected_inventory_item(ammo_record, 0U, 0U);
+    const auto gun_two = read_selected_inventory_item(ammo_record, 1U, 0U);
+    if (!expect(gun_one && gun_two &&
+                toggle_selected_equipment(ammo_record, *gun_one, 6U, 6U) ==
+                    EquipmentMutation::unequipped &&
+                ammo_record.equipped_inventory_slot == -1 &&
+                ammo_record.equipped_item_code == 0U &&
+                ammo_record.ammo_rounds == 50U)) {
+        return 14;
+    }
+    if (!expect(toggle_selected_equipment(ammo_record, *gun_two, 0U, 12U) ==
+                    EquipmentMutation::equipped &&
+                ammo_record.equipped_inventory_slot == 1 &&
+                ammo_record.equipped_item_code == 2U &&
+                ammo_record.ammo_rounds == 6U)) {
+        return 15;
+    }
+
+    // Switching directly between two guns follows the same path. A one-round
+    // gun at 1/7 capacity rounds up to 15%, then 15% of a 50-round weapon
+    // rounds half-up to eight rounds, matching the ROM's DIVU branches.
+    RunnerRecordFields direct_switch{};
+    direct_switch.inventory_item_codes[0] = 1U;
+    direct_switch.inventory_item_codes[1] = 2U;
+    direct_switch.equipped_inventory_slot = 0;
+    direct_switch.equipped_item_code = 1U;
+    direct_switch.ammo_rounds = 1U;
+    const auto direct_target =
+        read_selected_inventory_item(direct_switch, 1U, 0U);
+    if (!expect(direct_target &&
+                toggle_selected_equipment(direct_switch, *direct_target,
+                                          7U, 50U) ==
+                    EquipmentMutation::equipped &&
+                direct_switch.equipped_inventory_slot == 1 &&
+                direct_switch.equipped_item_code == 2U &&
+                direct_switch.ammo_rounds == 8U)) {
+        return 16;
+    }
+
+    // Non-weapon gear does not reinterpret the stored percentage using its
+    // own +0x24 value. That shared +0x4E value remains a percentage until a
+    // weapon is equipped again.
+    RunnerRecordFields gear_switch{};
+    gear_switch.inventory_item_codes[0] = 1U;
+    gear_switch.inventory_item_codes[1] = 0x15U;
+    gear_switch.inventory_item_codes[2] = 2U;
+    gear_switch.equipped_inventory_slot = 0;
+    gear_switch.equipped_item_code = 1U;
+    gear_switch.ammo_rounds = 1U;
+    const auto gear = read_selected_inventory_item(gear_switch, 1U, 0U);
+    const auto later_gun = read_selected_inventory_item(gear_switch, 0U, 1U);
+    if (!expect(gear && later_gun &&
+                toggle_selected_equipment(gear_switch, *gear, 7U, 200U) ==
+                    EquipmentMutation::equipped &&
+                gear_switch.equipped_item_code == 0x15U &&
+                gear_switch.ammo_rounds == 15U &&
+                toggle_selected_equipment(gear_switch, *later_gun, 200U,
+                                          50U) ==
+                    EquipmentMutation::equipped &&
+                gear_switch.equipped_item_code == 2U &&
+                gear_switch.ammo_rounds == 8U)) {
+        return 17;
     }
 
     record.inventory_item_codes[0] = 0x2CU;

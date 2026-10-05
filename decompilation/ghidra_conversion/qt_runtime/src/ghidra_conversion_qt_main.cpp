@@ -7476,12 +7476,28 @@ int main(int argc, char** argv) {
                                    right.inventory_phase_bytes[slot];
                     };
 
-                const auto& initial_record = field_scene.active_runner_record();
-                if (initial_record.inventory_item_codes[0] == 0U) {
-                    std::cerr << "field action dump: source inventory cell "
-                                 "0 is empty\n";
+                // Seed two ROM-defined weapons to exercise the complete
+                // weapon -> stored percentage -> different weapon path. The
+                // US ROM's D4540 +0x24 values are 6 for item 1 and 12 for
+                // item 2; the actual FieldSceneRuntime menu handles every
+                // input and redraw below.
+                const auto original_runner_record =
+                    field_scene.active_runner_record();
+                auto& ammo_runner = field_scene.active_runner_record();
+                ammo_runner.inventory_item_codes[0] = 1U;
+                ammo_runner.inventory_phase_bytes[0] = 0U;
+                ammo_runner.inventory_item_codes[1] = 2U;
+                ammo_runner.inventory_phase_bytes[1] = 0U;
+                ammo_runner.equipped_inventory_slot = 0;
+                ammo_runner.equipped_item_code = 1U;
+                ammo_runner.ammo_rounds = 3U;
+                ammo_runner.ammo_clips = 3U;
+                if (item_factor(1U) != 6U || item_factor(2U) != 12U) {
+                    std::cerr << "field action dump: source weapon capacity "
+                                 "rows 1 and 2 did not match ROM +0x24\n";
                     return 3;
                 }
+                const auto& initial_record = ammo_runner;
                 const auto focus_equip = direct_asset("action-focus-0.bmp");
                 const auto focus_cancel = direct_asset("action-focus-3.bmp");
                 if (focus_equip.isNull() || focus_cancel.isNull()) {
@@ -7637,11 +7653,199 @@ int main(int argc, char** argv) {
                 }
                 if (!field_scene.command_overview_open() ||
                     field_scene.inventory_action_open() ||
-                    !save_scene("05_inventory_after_equip", render_scene())) {
+                    !save_scene("05_weapon_1_unequipped", render_scene())) {
                     std::cerr << "field action dump: equip action did not "
                                  "return to the command overview\n";
                     return 3;
                 }
+                if (field_scene.active_runner_record().ammo_rounds != 50U ||
+                    field_scene.active_runner_record().ammo_clips != 3U ||
+                    field_scene.active_runner_record().equipped_item_code !=
+                        0U) {
+                    std::cerr << "field action dump: first gun did not store "
+                                 "its 3/6 load as 50 percent on unequip\n";
+                    return 3;
+                }
+
+                // Select weapon 2 from the adjacent inventory column. The
+                // shared percentage must become six rounds at its 12-round
+                // capacity; the runner-wide Universal Gun Clips stay at 3.
+                press(0x08U);
+                if (field_scene.command_overview_view().source_state
+                        .primary_page != 1U) {
+                    std::cerr << "field action dump: second weapon column "
+                                 "did not become selected\n";
+                    return 3;
+                }
+                press(0x40U);
+                if (!field_scene.inventory_action_open()) {
+                    std::cerr << "field action dump: second weapon action "
+                                 "row did not open\n";
+                    return 3;
+                }
+                const auto switch_audio_event_count = field_audio_events.size();
+                press(0x40U);
+                const auto& weapon_two_equipped =
+                    field_scene.active_runner_record();
+                if (weapon_two_equipped.equipped_inventory_slot != 1 ||
+                    weapon_two_equipped.equipped_item_code != 2U ||
+                    weapon_two_equipped.ammo_rounds != 6U ||
+                    weapon_two_equipped.ammo_clips != 3U ||
+                    field_audio_events.size() != switch_audio_event_count + 1U ||
+                    field_audio_events.back() != 0x24U ||
+                    !save_scene("10_weapon_2_equipped_at_50_percent",
+                                render_scene())) {
+                    std::cerr << "field action dump: weapon 2 did not receive "
+                                 "six rounds and one command-confirm event\n";
+                    return 3;
+                }
+
+                // Un-equipping weapon 2 returns its 6/12 load to 50 percent;
+                // weapon 1 then reconstructs 3/6 from that same percentage.
+                press(0x40U);
+                if (!field_scene.inventory_action_open()) {
+                    std::cerr << "field action dump: weapon 2 could not be "
+                                 "selected for unequip\n";
+                    return 3;
+                }
+                press(0x40U);
+                if (field_scene.active_runner_record().equipped_item_code !=
+                        0U ||
+                    field_scene.active_runner_record().ammo_rounds != 50U ||
+                    !save_scene("11_weapon_2_unequipped_at_50_percent",
+                                render_scene())) {
+                    std::cerr << "field action dump: weapon 2 did not return "
+                                 "to the shared 50 percent ammo state\n";
+                    return 3;
+                }
+                press(0x04U);
+                press(0x40U);
+                if (!field_scene.inventory_action_open()) {
+                    std::cerr << "field action dump: weapon 1 could not be "
+                                 "reselected\n";
+                    return 3;
+                }
+                press(0x40U);
+                if (field_scene.active_runner_record().equipped_inventory_slot !=
+                        0 ||
+                    field_scene.active_runner_record().equipped_item_code !=
+                        1U ||
+                    field_scene.active_runner_record().ammo_rounds != 3U ||
+                    field_scene.active_runner_record().ammo_clips != 3U ||
+                    !save_scene("12_weapon_1_reloaded_from_50_percent",
+                                render_scene())) {
+                    std::cerr << "field action dump: weapon 1 did not restore "
+                                 "three rounds from the shared percentage\n";
+                    return 3;
+                }
+
+                // Reload while weapon 1 is active. The Clips route receives
+                // this gun's six-round +0x24 limit, consumes one shared clip,
+                // and plays the source confirmation/selector events.
+                press(0x08U);
+                press(0x08U);
+                if (field_scene.command_overview_view().source_state
+                        .primary_page != 2U) {
+                    std::cerr << "field action dump: Clips page did not "
+                                 "become selected for weapon 1\n";
+                    return 3;
+                }
+                auto clips_audio_event_count = field_audio_events.size();
+                press(0x40U);
+                if (!field_scene.clips_menu_open() ||
+                    field_audio_events.size() != clips_audio_event_count + 1U ||
+                    field_audio_events.back() != 0x24U) {
+                    std::cerr << "field action dump: Clips child did not open "
+                                 "with source confirm audio\n";
+                    return 3;
+                }
+                clips_audio_event_count = field_audio_events.size();
+                press(0x40U);
+                if (!field_scene.clips_reload_confirmation_open() ||
+                    field_scene.clips_reload_confirmation_yes() ||
+                    field_scene.active_runner_record().ammo_rounds != 3U ||
+                    field_scene.active_runner_record().ammo_clips != 3U ||
+                    field_audio_events.size() != clips_audio_event_count + 1U ||
+                    field_audio_events.back() != 0x24U ||
+                    !save_scene("13_reload_confirmation_no", render_scene())) {
+                    std::cerr << "field action dump: Reload did not show the "
+                                 "default-No prompt and confirm sound\n";
+                    return 3;
+                }
+                clips_audio_event_count = field_audio_events.size();
+                press(0x08U);
+                if (!field_scene.clips_reload_confirmation_yes() ||
+                    field_audio_events.size() != clips_audio_event_count + 1U ||
+                    field_audio_events.back() != 0x25U ||
+                    !save_scene("14_reload_confirmation_yes", render_scene())) {
+                    std::cerr << "field action dump: Reload prompt did not "
+                                 "select Yes with selector audio\n";
+                    return 3;
+                }
+                clips_audio_event_count = field_audio_events.size();
+                press(0x40U);
+                if (field_scene.active_runner_record().ammo_rounds != 6U ||
+                    field_scene.active_runner_record().ammo_clips != 2U ||
+                    field_scene.clips_menu_message() !=
+                        qt_runtime::ClipsMenuMessage::reload_success ||
+                    field_audio_events.size() != clips_audio_event_count + 1U ||
+                    field_audio_events.back() != 0x24U ||
+                    !save_scene("15_weapon_1_reloaded_to_capacity",
+                                render_scene())) {
+                    std::cerr << "field action dump: Reload did not cap at "
+                                 "six rounds, consume one clip, and confirm\n";
+                    return 3;
+                }
+                press(0x10U);
+                if (field_scene.clips_menu_message() !=
+                    qt_runtime::ClipsMenuMessage::none) {
+                    std::cerr << "field action dump: reload result did not "
+                                 "acknowledge\n";
+                    return 3;
+                }
+                clips_audio_event_count = field_audio_events.size();
+                press(0x10U);
+                if (field_scene.clips_menu_open() ||
+                    field_audio_events.size() != clips_audio_event_count + 1U ||
+                    field_audio_events.back() != 0x24U ||
+                    !save_scene("16_clips_closed_parent_redraw",
+                                render_scene())) {
+                    std::cerr << "field action dump: Clips return did not "
+                                 "restore its command page\n";
+                    return 3;
+                }
+                const auto parent_after_reload = render_scene();
+                press(0x40U);
+                if (!field_scene.clips_menu_open()) {
+                    std::cerr << "field action dump: Clips did not reopen for "
+                                 "the clear-old-controls check\n";
+                    return 3;
+                }
+                press(0x04U);
+                if (field_scene.clips_menu_selection() != 5U) {
+                    std::cerr << "field action dump: Clips Cancel row did not "
+                                 "replace Reload row\n";
+                    return 3;
+                }
+                press(0x40U);
+                const auto parent_after_cancel = render_scene();
+                if (field_scene.clips_menu_open() ||
+                    !same_image(parent_after_reload, parent_after_cancel) ||
+                    !save_scene("17_clips_cancel_clears_child_controls",
+                                parent_after_cancel)) {
+                    std::cerr << "field action dump: Clips cancel left stale "
+                                 "child buttons over the command page\n";
+                    return 3;
+                }
+                press(0x04U);
+                press(0x04U);
+                if (field_scene.command_overview_view().source_state
+                        .primary_page != 0U) {
+                    std::cerr << "field action dump: ammo QA did not return to "
+                                 "the first inventory column\n";
+                    return 3;
+                }
+                field_scene.active_runner_record() = original_runner_record;
 
                 // Page two exposes the attack/defense bars. Their indices are
                 // source-derived typed math; verify that the rendered regions

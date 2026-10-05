@@ -2033,24 +2033,39 @@ void FieldSceneRuntime::advance_command_overview_clips(
         field_party_roster_.active_slot(), capacity);
     switch (event) {
     case ClipsMenuEvent::selection_moved:
+        if (source_audio_event_callback_) {
+            source_audio_event_callback_(0x25U);
+        }
         source_boundary("field.command_overview.clips.selector_moved");
         break;
     case ClipsMenuEvent::confirmation_opened:
+        if (source_audio_event_callback_) {
+            source_audio_event_callback_(0x24U);
+        }
         source_boundary(
             "field.command_overview.clips.reload_confirmation_opened");
         break;
     case ClipsMenuEvent::confirmation_toggled:
+        if (source_audio_event_callback_) {
+            source_audio_event_callback_(0x25U);
+        }
         source_boundary(
             command_overview_clips_.reload_confirmation_yes()
                 ? "field.command_overview.clips.reload_confirmation_yes"
                 : "field.command_overview.clips.reload_confirmation_no");
         break;
     case ClipsMenuEvent::reloaded:
+        if (source_audio_event_callback_) {
+            source_audio_event_callback_(0x24U);
+        }
         refresh_field_hud_runner_slot();
         refresh_command_overview_combat_bars();
         source_boundary("field.command_overview.clips.reloaded");
         break;
     case ClipsMenuEvent::trade_opened:
+        if (source_audio_event_callback_) {
+            source_audio_event_callback_(0x24U);
+        }
         source_boundary("field.command_overview.clips.trade.opened");
         if (command_overview_clips_.trade_recipient_record() >=
                 FieldPartyRosterRuntime::kSlotCount ||
@@ -2062,32 +2077,54 @@ void FieldSceneRuntime::advance_command_overview_clips(
         }
         break;
     case ClipsMenuEvent::trade_selection_moved:
+        if (source_audio_event_callback_) {
+            source_audio_event_callback_(0x25U);
+        }
         source_boundary(
             "field.command_overview.clips.trade.selector_moved");
         break;
     case ClipsMenuEvent::trade_quantity_changed:
+        if (source_audio_event_callback_) {
+            source_audio_event_callback_(0x24U);
+        }
         source_boundary(
             "field.command_overview.clips.trade.quantity_changed");
         break;
     case ClipsMenuEvent::trade_recipient_changed:
+        if (source_audio_event_callback_) {
+            source_audio_event_callback_(0x24U);
+        }
         source_boundary(
             "field.command_overview.clips.trade.recipient_changed");
         break;
     case ClipsMenuEvent::trade_transferred:
+        if (source_audio_event_callback_) {
+            source_audio_event_callback_(0x24U);
+        }
         refresh_field_hud_runner_slot();
         refresh_command_overview_combat_bars();
         source_boundary(
             "field.command_overview.clips.trade.transferred");
         break;
     case ClipsMenuEvent::trade_closed:
+        if (source_audio_event_callback_ &&
+            (controller_events & 0x7000U) != 0U) {
+            source_audio_event_callback_(0x24U);
+        }
         source_boundary("field.command_overview.clips.trade.closed");
         break;
     case ClipsMenuEvent::distributed:
+        if (source_audio_event_callback_) {
+            source_audio_event_callback_(0x24U);
+        }
         refresh_field_hud_runner_slot();
         refresh_command_overview_combat_bars();
         source_boundary("field.command_overview.clips.distributed");
         break;
     case ClipsMenuEvent::message_shown:
+        if (source_audio_event_callback_) {
+            source_audio_event_callback_(0x24U);
+        }
         switch (command_overview_clips_.message()) {
         case ClipsMenuMessage::out_of_ammo:
             source_boundary("field.command_overview.clips.out_of_ammo");
@@ -2110,6 +2147,10 @@ void FieldSceneRuntime::advance_command_overview_clips(
         source_boundary("field.command_overview.clips.message_acknowledged");
         break;
     case ClipsMenuEvent::closed:
+        if (source_audio_event_callback_ &&
+            (controller_events & 0x7000U) != 0U) {
+            source_audio_event_callback_(0x24U);
+        }
         // `closed` also describes leaving the nested reload prompt. The
         // runtime remains on the parent Clips screen unless the top-level
         // selector itself was cancelled.

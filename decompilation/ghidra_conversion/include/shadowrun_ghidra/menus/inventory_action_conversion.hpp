@@ -109,16 +109,20 @@ enum class EquipmentMutation : std::uint8_t {
     discarded,
 };
 
-// ROM 0x125FA/0x12256..0x12284.  The source converts the old meter through
-// the old item factor, scales it by the selected item factor, and rounds at
-// a remainder of fifty.  Factors are extracted item-record fields, not ROM
+// ROM 0x125FA/0x12256..0x12284.  When the old item is a weapon, the source
+// first converts loaded rounds to a remaining-ammo percentage (rounding that
+// division up), then scales the percentage to the selected weapon's +0x24
+// limit (rounding half up). With old_factor == 0, old_rounds is already the
+// stored percentage. Factors are extracted item-record fields, not ROM
 // addresses retained by the host conversion.
 std::uint8_t convert_equipped_ammo(std::uint8_t old_rounds,
                                    std::uint8_t old_factor,
                                    std::uint8_t new_factor);
 
-// ROM 0x121E0..0x12292.  Weapon/gear state (+0x56/+0x57/+0x4E) and armor
-// state (+0x76 and the selected +0x6E byte) remain separate from possession.
+// ROM 0x121E0..0x12292 and 0x125FA. Weapon/gear state (+0x56/+0x57/+0x4E)
+// and armor state (+0x76 and the selected +0x6E byte) remain separate from
+// possession. Unequipping a weapon stores its loaded percentage in +0x4E;
+// equipping a later weapon converts that percentage using its own +0x24 limit.
 EquipmentMutation toggle_selected_equipment(
     RunnerRecordFields& record,
     const SelectedInventoryItem& selected,
