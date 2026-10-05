@@ -32,6 +32,8 @@ int main() {
                 fields.behavior_meter == 0x9CU &&
                 fields.magic_force == 0x9DU &&
                 static_cast<std::uint8_t>(fields.action_result) == 0x9FU &&
+                fields.animation_action_gate ==
+                    static_cast<std::int16_t>(0xDCDDU) &&
                 fields.equipped_inventory_slot == 0x56 &&
                 fields.equipped_item_code == 0x57U &&
                 fields.posture == 0x4DU && fields.ammo_rounds == 0x4EU &&
@@ -66,6 +68,7 @@ int main() {
     changed.magic_table_index = 0x4567U;
     changed.species_index = 0x12U;
     changed.action_result = 7;
+    changed.animation_action_gate = 0x1234;
 
     LiveRunnerRecord destination{};
     destination.bytes.fill(0xEEU);
@@ -87,6 +90,8 @@ int main() {
                 destination.bytes[0x90U] == 0x01U &&
                 destination.bytes[0x91U] == 0x23U &&
                 destination.bytes[0x9FU] == 7U &&
+                destination.bytes[0xDCU] == 0x12U &&
+                destination.bytes[0xDDU] == 0x34U &&
                 destination.bytes[0x9DU] == 0x9DU &&
                 destination.bytes[0x9AU] == 0x12U &&
                 destination.bytes[0xA0U] == 0x45U &&

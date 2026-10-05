@@ -270,6 +270,9 @@ public:
     const RunnerRecordFields& active_runner_record() const noexcept {
         return field_party_roster_.active_record();
     }
+    void refresh_field_hud_for_dump() {
+        refresh_field_hud_runner_slot();
+    }
     const std::array<RunnerRecordFields,
                      FieldPartyRosterRuntime::kSlotCount>&
     field_party_records_for_dump() const noexcept {
@@ -494,6 +497,7 @@ private:
     void configure_callbacks();
     void configure_runtime_coordinator_callbacks();
     void advance_field_movement();
+    void service_player_weapon_action();
     void initialize_field_entity_selection_state();
     void refresh_field_runner_state_and_assets();
     void handle_field_mode_action_event();

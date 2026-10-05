@@ -2743,6 +2743,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_secretary_dump_path;
         std::optional<std::filesystem::path> field_posture_dump_path;
         std::optional<std::filesystem::path> field_action_dump_path;
+        std::optional<std::filesystem::path> field_player_action_dump_path;
         std::optional<std::filesystem::path> field_first_aid_dump_path;
         std::optional<std::filesystem::path> field_automatic_use_dump_path;
         std::optional<std::filesystem::path> field_inventory_trade_dump_path;
@@ -2781,6 +2782,7 @@ int main(int argc, char** argv) {
                        " [--field-cyberware-dump <file>]"
                        " [--field-cyberware-empty-qa]"
                        " [--field-action-dump <output-dir>]"
+                       " [--field-player-action-dump <output-dir>]"
                        " [--field-first-aid-dump <output-dir>]"
                        " [--field-automatic-use-dump <output-dir>]"
                        " [--field-inventory-trade-dump <output-dir>]"
@@ -2831,6 +2833,12 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_action_dump_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-player-action-dump" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_player_action_dump_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-first-aid-dump" &&
@@ -3062,6 +3070,134 @@ int main(int argc, char** argv) {
             if (!field_scene.bootstrap(smoke_state)) {
                 std::cerr << "field smoke: " << field_scene.failure() << '\n';
                 return 3;
+            }
+            if (field_player_action_dump_path.has_value()) {
+                std::filesystem::create_directories(
+                    *field_player_action_dump_path);
+                auto& runner = field_scene.active_runner_record();
+                runner.flags = static_cast<std::uint16_t>(
+                    runner.flags | 0x0100U);
+                runner.inventory_item_codes[0] = 1U;
+                runner.equipped_inventory_slot = 0;
+                runner.equipped_item_code = 1U;
+                runner.ammo_rounds = 0U;
+                runner.ammo_clips = 3U;
+                runner.animation_action_gate = 1;
+                field_scene.refresh_field_hud_for_dump();
+                field_audio_events.clear();
+
+                const auto render_scene = [&] {
+                    QImage image(kSceneWidth, kSceneHeight,
+                                 QImage::Format_RGB32);
+                    image.fill(Qt::black);
+                    QPainter painter(&image);
+                    field_scene.paint(painter);
+                    painter.end();
+                    return image;
+                };
+                const auto save_scene = [&](const std::string_view name,
+                                            const QImage& image) {
+                    return image.save(QString::fromStdWString(
+                        ((*field_player_action_dump_path) /
+                         (std::string(name) + ".bmp")).wstring()));
+                };
+                const auto ammo_counter_matches = [&](const QImage& image,
+                                                     const int rounds) {
+                    const auto counter = QImage(QString::fromStdWString(
+                        (asset_root / "field" / "hud" /
+                         ("ammo-counter-" + std::to_string(rounds) +
+                          ".bmp")).wstring()));
+                    const int x = field_hud_vram_x(kFieldHudAmmoVram);
+                    const int y = field_hud_vram_y(kFieldHudAmmoVram);
+                    if (counter.isNull() || x < 0 || y < 0 ||
+                        x + counter.width() > image.width() ||
+                        y + counter.height() > image.height()) {
+                        return false;
+                    }
+                    for (int row = 0; row < counter.height(); ++row) {
+                        for (int column = 0; column < counter.width(); ++column) {
+                            if (image.pixel(x + column, y + row) !=
+                                counter.pixel(column, row)) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                };
+                const auto weapon_glyph_matches = [&](const QImage& image) {
+                    const auto item = QImage(QString::fromStdWString(
+                        (asset_root / "field" / "hud" /
+                         ("item-" + std::to_string(runner.archetype_index) +
+                          ".bmp")).wstring()));
+                    const int x = field_hud_vram_x(kFieldHudItemVram);
+                    const int y = field_hud_vram_y(kFieldHudItemVram);
+                    if (item.isNull() || x < 0 || y < 0 ||
+                        x + item.width() > image.width() ||
+                        y + item.height() > image.height()) {
+                        return false;
+                    }
+                    for (int row = 0; row < item.height(); ++row) {
+                        for (int column = 0; column < item.width(); ++column) {
+                            if (image.pixel(x + column, y + row) !=
+                                item.pixel(column, row)) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                };
+                const auto before = render_scene();
+                if (!save_scene("before", before) ||
+                    !ammo_counter_matches(before, 0) ||
+                    !weapon_glyph_matches(before)) {
+                    std::cerr << "field player action dump: empty magazine was not visible before the action gate opened\n";
+                    return 3;
+                }
+
+                field_scene.advance_frame();
+                const auto waiting = render_scene();
+                if (field_scene.active_runner_record().ammo_rounds != 0U ||
+                    field_scene.active_runner_record().ammo_clips != 3U ||
+                    field_scene.active_runner_record().animation_action_gate !=
+                        0 ||
+                    !field_audio_events.empty() ||
+                    !ammo_counter_matches(waiting, 0) ||
+                    !weapon_glyph_matches(waiting) ||
+                    !save_scene("gate-frame-1", waiting)) {
+                    std::cerr << "field player action dump: reload ran before the signed animation gate became negative\n";
+                    return 3;
+                }
+
+                field_scene.advance_frame();
+                const auto scene = render_scene();
+                const auto output =
+                    *field_player_action_dump_path / "actual.bmp";
+                const bool audio_ordered =
+                    field_audio_events ==
+                    std::vector<std::uint16_t>{0x4BU, 0x4BU};
+                const auto& item_catalog = us_item_catalog();
+                const bool weapon_source_valid =
+                    !item_catalog.empty() &&
+                    item_catalog[0].item_code == 1U &&
+                    item_catalog[0].source_combat_factor == 6U;
+                if (field_scene.active_runner_record().ammo_rounds != 6U ||
+                    field_scene.active_runner_record().ammo_clips != 2U ||
+                    field_scene.active_runner_record().animation_action_gate <=
+                        0 ||
+                    !audio_ordered || !weapon_source_valid ||
+                    !ammo_counter_matches(scene, 6) ||
+                    !weapon_glyph_matches(scene) ||
+                    field_scene.command_overview_open() ||
+                    field_scene.dialogue_open() || field_scene.hotel_menu_open() ||
+                    field_scene.inventory_action_open() ||
+                    field_scene.clips_menu_open() ||
+                    !save_scene("actual", scene)) {
+                    std::cerr << "field player action dump: source-gated reload, shared clip, delay, audio, or live HUD counter did not match\n";
+                    return 3;
+                }
+                std::cout << "field_player_action_dump=written path="
+                          << output.string() << " clips=2 rounds=6 audio=2\n";
+                return 0;
             }
             if (field_smoke_move_right) {
                 field_scene.set_controller_nibble(0x08U);

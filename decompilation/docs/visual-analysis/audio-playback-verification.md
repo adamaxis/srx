@@ -18,6 +18,12 @@ This review covers the shared one-shot audio service for source events `0x24`,
 - The electromagnetic-lock unlock path submits event `0x4B`, mapped to
   resource 75; its extracted FLAC contains 97,770 samples at 44.1 kHz, or
   2.2167 seconds.
+- The empty-ammo player action also submits `0x4B`: ROM `0x14226` dispatches
+  it before the delay/clip/meter update, then the successful `0xAAD2` return
+  reaches the `0xACAE` tail, which dispatches `0x4B` again and resets the
+  normal delay. Qt QA checks both event IDs and order. It does not capture
+  Windows output loopback, so the audible result of the two rapid submissions
+  is not independently established.
 - Silent resource 44 remains omitted. Event `0x30` remains unmapped because
   resource 48 is a persistent observation capture with no traced source stop.
 
@@ -53,6 +59,8 @@ The shared scene paths also passed Debug and Release Qt QA:
 
 - `shadowrun_ghidra_conversion_qt_field_interaction_qa` exercises the
   interaction route carrying event `0x4B`.
+- `shadowrun_ghidra_conversion_qt_field_player_action_qa` checks the pair of
+  source event `0x4B` submissions and the before/waiting/reload field frames.
 - `shadowrun_ghidra_conversion_qt_field_shop_qa` exercises the Ares shop and
   emits full-frame images under `qt_runtime/field-shop-ares-qa/`.
 - `shadowrun_ghidra_conversion_qt_field_magic_spell_qa` exercises a menu path

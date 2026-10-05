@@ -46,11 +46,11 @@ int main() {
     }
 
     std::array<RunnerRecordFields, 3> party{};
-    party[0].flags = 0x01U;
+    party[0].flags = 0x0100U;
     party[0].ammo_clips = 7U;
-    party[1].flags = 0x01U;
+    party[1].flags = 0x0100U;
     party[1].ammo_clips = 2U;
-    party[2].flags = 0x03U;
+    party[2].flags = 0x0300U;
     party[2].ammo_clips = 9U;
     ClipTradeState trade{};
     if (!expect(open_clip_trade(party, 0U, trade) &&
@@ -70,11 +70,11 @@ int main() {
     }
 
     std::array<RunnerRecordFields, 3> distribution{};
-    distribution[0].flags = 0x01U;
+    distribution[0].flags = 0x0100U;
     distribution[0].ammo_clips = 4U;
-    distribution[1].flags = 0x01U;
+    distribution[1].flags = 0x0100U;
     distribution[1].ammo_clips = 3U;
-    distribution[2].flags = 0x03U;
+    distribution[2].flags = 0x0300U;
     distribution[2].ammo_clips = 2U;
     if (!expect(distribute_clips(distribution) ==
                     DistributionResult::distributed &&
@@ -89,6 +89,12 @@ int main() {
     if (!expect(distribute_clips(distribution) ==
                 DistributionResult::no_party_members)) {
         return 8;
+    }
+    distribution[0].flags = 0x0001U;
+    distribution[1].flags = 0x0001U;
+    if (!expect(distribute_clips(distribution) ==
+                DistributionResult::no_party_members)) {
+        return 9;
     }
     return 0;
 }

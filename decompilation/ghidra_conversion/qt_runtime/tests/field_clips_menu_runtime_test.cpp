@@ -171,9 +171,9 @@ int main() {
     FieldClipsMenuRuntime trade_menu;
     std::array<RunnerRecordFields, 3> party{};
     party[0] = record;
-    party[0].flags = static_cast<std::uint16_t>(party[0].flags | 0x01U);
+    party[0].flags = static_cast<std::uint16_t>(party[0].flags | 0x0100U);
     party[0].ammo_clips = 4U;
-    party[1].flags = 0x01U;
+    party[1].flags = 0x0100U;
     party[1].ammo_clips = 1U;
     trade_menu.open();
     if (!expect(trade_menu.advance(0x0800U, party, 0U, 30U) ==

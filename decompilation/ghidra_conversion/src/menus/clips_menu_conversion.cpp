@@ -57,8 +57,9 @@ std::vector<std::size_t> build_clip_trade_recipients(
     const std::size_t source_record) {
     std::vector<std::size_t> recipients;
     for (std::size_t index = 0; index < records.size(); ++index) {
-        if (index == source_record || (records[index].flags & 0x02U) != 0U ||
-            (records[index].flags & 0x01U) == 0U) {
+        if (index == source_record ||
+            (records[index].flags & 0x0200U) != 0U ||
+            (records[index].flags & 0x0100U) == 0U) {
             continue;
         }
         recipients.push_back(index);
@@ -162,7 +163,10 @@ DistributionResult distribute_clips(
     std::size_t active_count = 0U;
     unsigned total_clips = 0U;
     for (const auto& record : records) {
-        if ((record.flags & 0x01U) == 0U) {
+        // The source scans bit 0 of record byte +0x10. RunnerRecordFields
+        // stores +0x10/+0x11 as a big-endian word, so the active-member flag
+        // occupies bit 8 here (not the low-byte flag at +0x11).
+        if ((record.flags & 0x0100U) == 0U) {
             continue;
         }
         ++active_count;
@@ -175,12 +179,14 @@ DistributionResult distribute_clips(
     const auto quotient = total_clips / active_count;
     const auto remainder = total_clips % active_count;
     for (auto& record : records) {
-        if ((record.flags & 0x01U) == 0U) {
+        if ((record.flags & 0x0100U) == 0U) {
             continue;
         }
         auto distributed = static_cast<unsigned>(
             static_cast<std::uint8_t>(quotient & 0xFFU));
-        if ((record.flags & 0x02U) != 0U) {
+        // Source bit 1 is likewise in +0x10 and marks the member that gets
+        // the division remainder.
+        if ((record.flags & 0x0200U) != 0U) {
             distributed += remainder;
         }
         record.ammo_clips = static_cast<std::uint8_t>(distributed & 0xFFU);

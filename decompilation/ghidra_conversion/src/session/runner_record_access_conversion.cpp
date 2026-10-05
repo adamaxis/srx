@@ -58,6 +58,8 @@ RunnerRecordFields read_runner_record_fields(const LiveRunnerRecord& record) {
     fields.behavior_meter = record.bytes[0x9CU];
     fields.magic_force = record.bytes[0x9DU];
     fields.action_result = static_cast<std::int8_t>(record.bytes[0x9FU]);
+    fields.animation_action_gate =
+        static_cast<std::int16_t>(read_be16(record, 0xDCU));
     fields.equipped_inventory_slot =
         static_cast<std::int8_t>(record.bytes[0x56U]);
     fields.equipped_item_code = record.bytes[0x57U];
@@ -113,6 +115,8 @@ void write_runner_record_fields(const RunnerRecordFields& fields,
     destination.bytes[0x9CU] = fields.behavior_meter;
     destination.bytes[0x9DU] = fields.magic_force;
     destination.bytes[0x9FU] = static_cast<std::uint8_t>(fields.action_result);
+    write_be16(destination, 0xDCU,
+               static_cast<std::uint16_t>(fields.animation_action_gate));
     destination.bytes[0x56U] =
         static_cast<std::uint8_t>(fields.equipped_inventory_slot);
     destination.bytes[0x57U] = fields.equipped_item_code;

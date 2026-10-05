@@ -34,7 +34,9 @@ int main() {
         return 2;
     }
 
-    record.flags = 1U;
+    // The source tests bit 0 of byte +0x10; RunnerRecordFields stores +0x10
+    // and +0x11 together as a big-endian word, so this is bit 8.
+    record.flags = 0x0101U;
     record.equipped_inventory_slot = 2;
     record.equipped_item_code = 3U;
     record.ammo_rounds = 2U;

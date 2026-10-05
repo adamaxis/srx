@@ -57,6 +57,9 @@ struct RunnerRecordFields {
     // Source +0x9F. Action-result routines publish thresholded successes or
     // -1 here after the compact-runner timing gate.
     std::int8_t action_result = -1;
+    // ROM 0xA8EA decrements this signed frame gate at +0xDC for active
+    // entities; 0xAAD2 waits for it to become negative before player action.
+    std::int16_t animation_action_gate = 0;
     std::int8_t equipped_inventory_slot = -1;
     std::uint8_t equipped_item_code = 0;
     std::uint8_t posture = 0;

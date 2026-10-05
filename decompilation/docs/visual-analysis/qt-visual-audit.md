@@ -719,6 +719,7 @@ shadowrun_ghidra_conversion_qt.exe --field-first-aid-dump <dir> --field-archetyp
 shadowrun_ghidra_conversion_qt.exe --field-automatic-use-dump <dir> --assets <assets>
 shadowrun_ghidra_conversion_qt.exe --field-inventory-trade-dump <dir> --assets <assets>
 shadowrun_ghidra_conversion_qt.exe --field-clips-dump <dir> --assets <assets>
+shadowrun_ghidra_conversion_qt.exe --field-player-action-dump <dir> --assets <assets>
 shadowrun_ghidra_conversion_qt.exe --field-magic-dump <dir> --field-archetype gator --assets <assets>
 shadowrun_ghidra_conversion_qt.exe --field-dialogue-dump <prompt> <file> --assets <assets>
 ```
@@ -1361,3 +1362,90 @@ resource 075 mapping, full-frame modal ownership, and clean field return have
 Debug/Release test coverage. Independent Genesis frames, the actual field
 object trigger route, the `FFE12C` floor source, resource-048 alert lifetime,
 and captured device audio remain open.
+
+### Applied review: Start-menu Karma view and Hotel Karma spending page
+
+1. **Does it look correct?** Inspected the fresh Start-menu status capture and
+   Hotel spending capture. They share the Attributes/Skills grid and current
+   Karma total; the Start page has no upgrade preview, while the Hotel page
+   shows the selected next value and cost. These are Qt images. No matching
+   independent Genesis capture is available, so Genesis appearance remains
+   unknown.
+2. **Does the visible look match the behavioral state?** ROM `0xD01C` writes
+   `FFF116=-1` and opens the read-only current-Karma route. It does not mutate
+   stats or Karma. Hotel option 0 enters at `0xD024`, carries upgrade
+   selection/cost data, and opens confirmation before mutation. FieldSceneRuntime
+   owns separate Start-menu and Hotel menu instances.
+3. **Are the visuals themselves correct?** The two variants share their grid
+   and current-total placement. The pixel QA requires the only difference to
+   be in the source lower detail line and checks that the Hotel upgrade/cost
+   detail is present only there. This validates route composition against
+   extracted assets, not Genesis fidelity.
+4. **Is it animated, and should it be?** Both child pages are static between
+   input edges. The row selector moves on input; Hotel E660 animation pauses
+   while its Karma child is open. No independent capture establishes Genesis
+   cadence.
+5. **Does it have a sound or sound effect, and how long does it play?** The
+   outer Start command action sends event `0x24` before entering the view-only
+   child; that child adds no event. The Hotel Karma child is silent. The
+   extracted `0x24` file is 2.484 seconds and the shared Qt audio CTest reaches
+   decoded `PlayingState`; exact-route output loopback was not recorded.
+6. **Are the other visible parts of the screen also correct?** Start entry
+   replaces the command shell and return rebuilds it. Hotel entry removes
+   Hotel Options controls; return redraws the options page. Debug/Release QA
+   checks the shared value/grid, mutation boundaries, and parent redraw.
+7. **Do multiple frames support the interpretation?** Qt QA captures row
+   movement, prompts, Yes/No outcomes, spending, and returns. These are
+   internal captures. No independent gameplay examples of either Karma page
+   were found.
+8. **Was old UI cleared before new controls were drawn?** Both routes replace
+   the full panel. The Hotel child capture rejects leftover Hotel controls,
+   and the Start view return is checked against a fresh command render.
+
+**Status:** the distinct routes and conversion behavior are defended by ROM
+trace, typed state, CTests, and dumps. Their exact Genesis visual appearance
+remains unverified until matching independent frames are available.
+
+### Applied review: Empty-ammo player reload action
+
+1. **Does it look correct?** Inspected the full 320x224 `before.bmp`,
+   `gate-frame-1.bmp`, and `actual.bmp`: the field, active runner HUD, named
+   weapon glyph, and ammo counter remain in place while the counter changes
+   from `00` to `06`. No matching independent reload frame is present in the
+   supplied longplay, so Genesis appearance/timing remains unknown.
+2. **Does the visible look match the behavioral state?** The route requires
+   ammo `+0x4E==0`, shared clips `+0x4F>0`, and a negative signed `+0xDC`
+   action gate. The waiting frame stays at zero with three clips. The next
+   source field tick loads six rounds, consumes one clip, and rearms the
+   action delay.
+3. **Are the visuals themselves correct?** The QA compares the complete ammo
+   counter and weapon-glyph rectangles with their named extracted HUD assets
+   at all three captures. It checks the whole field image for unexpected menu
+   state, but the same-source comparison does not prove Genesis fidelity.
+4. **Is it animated, and should it be?** The typed `+0xDC` gate counts down
+   once per active field behavior frame. This slice does not yet connect the
+   ROM attack/target sprite sequence, so it makes no claim about the complete
+   combat animation cadence.
+5. **Does it have a sound or sound effect, and how long does it play?** The
+   successful route submits event `0x4B` twice, from `0x14226` and the `0xACAE`
+   success tail. Resource 075 is 97,770 samples at 44.1 kHz (2.2167 seconds).
+   Qt QA verifies both event IDs and order; the shared audio CTest verifies a
+   single event decodes and plays for about 2.217 seconds. It does not record
+   output loopback for the paired reload submissions, so audible retrigger or
+   overlap duration remains unknown.
+6. **Are the other visible parts of the screen also correct?** The reload
+   preserves the weapon glyph, field background, face, bars, and panel chrome.
+   The three state frames are checked as full-screen output, and the clip
+   reserve is checked alongside the displayed ammo value.
+7. **Do multiple frames support the interpretation?** The CLI records an
+   empty, waiting, and reloaded frame. They support the Qt state transition,
+   but are not independent Genesis examples. The supplied longplay does not
+   show this reload route.
+8. **Was old UI cleared before new controls were drawn?** This action draws no
+   menu controls. QA requires command, dialogue, Hotel, inventory-action, and
+   Clips pages to be closed; the captured field retains only its field HUD.
+
+**Status:** partial. Empty-ammo clip consumption, action delay, audio event
+submissions, and HUD projection are connected and tested. Weapon firing,
+target selection, collision, damage, full attack animation, and independent
+reload/audio captures remain open.

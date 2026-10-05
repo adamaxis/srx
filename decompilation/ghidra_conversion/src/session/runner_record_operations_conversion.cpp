@@ -38,7 +38,10 @@ CyberwareValues read_cyberware_detail(const RunnerRecordFields& record) {
 RunnerAssetOperationResult advance_entity_asset_meter(
     RunnerRecordFields& record, const std::int8_t delta,
     const std::uint8_t ammo_limit) {
-    if ((record.flags & 1U) == 0U || record.equipped_inventory_slot < 0 ||
+    // The live record exposes source bytes +0x10/+0x11 as a big-endian
+    // word. 0x36FC tests bit 0 of the first byte (+0x10), which is bit 8 of
+    // that host word; the low-byte flags at +0x11 are unrelated here.
+    if ((record.flags & 0x0100U) == 0U || record.equipped_inventory_slot < 0 ||
         record.equipped_inventory_slot == 0x7F ||
         static_cast<std::size_t>(record.equipped_inventory_slot) >=
             kRunnerRecordInventorySlots || record.equipped_item_code == 0U) {

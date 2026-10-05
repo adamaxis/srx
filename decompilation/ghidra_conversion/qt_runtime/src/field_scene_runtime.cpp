@@ -18,6 +18,7 @@
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/random_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_action_math_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_animation_player_action_conversion.hpp"
 #include "shadowrun_ghidra/menus/clips_menu_conversion.hpp"
 #include "shadowrun_ghidra/menus/menu_transfer_batch_conversion.hpp"
 #include "genesis_image_compositor.hpp"
@@ -1376,9 +1377,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         return field_controller_sample_state_.events;
     };
     field_runtime_callbacks_.service_entity_behavior_frames = [this] {
-        // The converted movement/behavior path is the first active entity
-        // consumer in this host. The remaining entity slots stay owned by the
-        // conversion callback boundary until their source records are wired.
+        service_player_weapon_action();
         advance_field_movement();
     };
     field_runtime_callbacks_.update_field_camera = [this] {
@@ -3409,6 +3408,36 @@ void FieldSceneRuntime::advance_field_movement() {
         apply_field_entity_animation(true);
     } else {
         apply_field_entity_animation(false);
+    }
+}
+
+void FieldSceneRuntime::service_player_weapon_action() {
+    if (!ready_ || !field_entity_.active) {
+        return;
+    }
+
+    auto& runner = active_runner_record();
+    advance_active_entity_animation_action_gate(runner);
+
+    // ROM 0xACAE enters the player-action dispatcher for equipped action codes
+    // 1..14. The full target/spawn-cycle system is still a separate hill, but
+    // this live-player route now services the proven empty-ammo readiness
+    // checks and reload mutation once the typed +0xDC gate is ready.
+    if (runner.equipped_item_code == 0U || runner.equipped_item_code > 14U ||
+        (runner.flags & 0x0100U) == 0U) {
+        return;
+    }
+
+    const auto result = dispatch_player_action_if_ready(
+        runner, us_item_catalog(),
+        {[this](const std::uint16_t event) {
+            if (source_audio_event_callback_) {
+                source_audio_event_callback_(event);
+            }
+        }});
+    if (result.status == PlayerActionDispatchStatus::serviced) {
+        refresh_field_hud_runner_slot();
+        source_boundary("field.combat.player_auto_reload");
     }
 }
 
