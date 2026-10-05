@@ -6522,9 +6522,12 @@ int main(int argc, char** argv) {
                 for (int frame = 0; frame < 30; ++frame) {
                     field_scene.advance_frame();
                 }
-                if (capture_scene() != initial_scene) {
+                const auto view_only_frame_30 = capture_scene();
+                if (view_only_frame_30 != initial_scene ||
+                    !save_scene("frame-30", view_only_frame_30)) {
                     std::cerr << "field Attributes/Skills dump: static page "
-                                 "animated without a source timer\n";
+                                 "animated without a source timer or could "
+                                 "not save frame 30\n";
                     return 3;
                 }
 
@@ -6557,8 +6560,8 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
-                // A/B leave the command-menu view because ROM 0xD01C marks
-                // FFF116 negative. Neither action can spend Karma here.
+                // A/B/Start leave the command-menu view because ROM 0xD01C marks
+                // FFF116 negative. None of these exits can spend Karma here.
                 const auto read_only_record =
                     field_scene.active_runner_record();
                 press(0x40U);
@@ -6592,7 +6595,8 @@ int main(int argc, char** argv) {
 
                 // B enters the same menu action, then exits the view-only
                 // page without touching the active runner.
-                if (!field_scene.seek_command_overview_page(3U)) {
+                if (!field_scene.seek_command_overview_page(3U) ||
+                    field_scene.attributes_skills_menu_open()) {
                     std::cerr << "field Attributes/Skills dump: could not "
                                  "reopen focused row 3\n";
                     return 3;
@@ -6625,10 +6629,44 @@ int main(int argc, char** argv) {
                                  "restore the read-only command view cleanly\n";
                     return 3;
                 }
+
+                if (!field_scene.seek_command_overview_page(3U) ||
+                    field_scene.attributes_skills_menu_open()) {
+                    std::cerr << "field Attributes/Skills dump: could not "
+                                 "reopen focused row 3 for Start return\n";
+                    return 3;
+                }
+                press(0x40U);
+                if (!field_scene.attributes_skills_menu_open()) {
+                    std::cerr << "field Attributes/Skills dump: A did not "
+                                 "reopen the page for Start return\n";
+                    return 3;
+                }
+                field_audio_events.clear();
+                press(0x80U);
+                const auto start_return_scene = capture_scene();
+                if (!field_scene.command_overview_open() ||
+                    field_scene.attributes_skills_menu_open() ||
+                    field_scene.command_overview_view().source_state
+                            .primary_page != 6U ||
+                    start_return_scene != page_six_scene ||
+                    field_scene.active_runner_record().attributes !=
+                        read_only_record.attributes ||
+                    field_scene.active_runner_record().auxiliary !=
+                        read_only_record.auxiliary ||
+                    !field_audio_events.empty() ||
+                    !save_scene("returned-command-page6-after-start",
+                                start_return_scene)) {
+                    std::cerr << "field Attributes/Skills dump: Start did "
+                                 "not restore the read-only command view "
+                                 "cleanly\n";
+                    return 3;
+                }
                 std::cout << "field_attributes_skills_dump=written path="
                           << field_attributes_skills_dump_path->string()
                           << " focus_no_open=1 read_only=1 selected_cell=1 "
-                             "a_b_return=1 clean_return=1 static_frames=30\n";
+                             "a_b_start_return=1 clean_return=1 "
+                             "static_frames=30\n";
                 return 0;
             }
             if (field_cyberware_dump_path.has_value()) {

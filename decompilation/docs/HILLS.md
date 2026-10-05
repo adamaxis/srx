@@ -6,6 +6,12 @@ composites do not count. Apply the question-by-question evidence process in
 [`visual-verification-checklist.md`](visual-verification-checklist.md) to each
 screen change.
 
+The Attributes/Skills grid has two distinct Karma pages: the in-game command
+menu is view-only, and Hotel Options opens the separate spending child. Their
+routes, input rules, lower detail line, and redraw behavior are reviewed
+separately in
+[karma-status-and-hotel-upgrade.md](visual-audits/karma-status-and-hotel-upgrade.md).
+
 | Cluster | Hill | ROM | Status | Defending test | Dump |
 |---|---|---|---|---|---|
 | 0 Process | Visual dump CLI | — | defended | `shadowrun_visual_dump` writes 320x224 BMPs | `build-debug/visual-regression/dump/` |
