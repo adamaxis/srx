@@ -679,7 +679,7 @@ public:
             return 3;
         }
         trace << "label\tframe\tstage\tpalette_pass\tvblank_phase\t"
-                 "hold_remaining\n";
+                 "hold_remaining\tfigure_fade_steps\tlightning_batches\n";
 
         const auto fail = [](const std::string& message) {
             std::cerr << "boot FASA QA: " << message << '\n';
@@ -703,7 +703,12 @@ public:
                   << '\t'
                   << static_cast<unsigned>(state_.pre_title
                                                .palette_transition_vblank_phase)
-                  << '\t' << state_.pre_title.fasa_hold_frames << '\n';
+                  << '\t' << state_.pre_title.fasa_hold_frames << '\t'
+                  << static_cast<unsigned>(state_.pre_title
+                                               .figure_palette_fade_steps)
+                  << '\t'
+                  << (state_.pre_title.sega_lightning_batches_active ? 1 : 0)
+                  << '\n';
             return true;
         };
         const auto is_black = [](const QImage& scene) {
@@ -733,6 +738,68 @@ public:
         };
         if (state_.phase != StartupIntegrationPhase::pre_title ||
             !advance_until([&] {
+                return stage() ==
+                    PreTitleSequenceState::PresentationStage::sega_shock;
+            }) ||
+            !save_snapshot("sega_shock_start", "sega-shock-start.bmp")) {
+            return fail("did not reach the SEGA shock phase");
+        }
+        if (!advance_until([&] {
+                return state_.pre_title.sega_lightning_batches_active;
+            }) ||
+            !save_snapshot("sega_shock_lightning",
+                           "sega-shock-lightning.bmp")) {
+            return fail("0x5D996 did not publish the shock lightning batches");
+        }
+        if (!advance_until([&] {
+                return stage() ==
+                    PreTitleSequenceState::PresentationStage::sega_strobe;
+            })) {
+            return fail("did not reach the ROM SEGA logo strobe");
+        }
+        if (!state_.pre_title.sega_lightning_batches_active ||
+            state_.pre_title.figure_palette_fade_steps != 0U ||
+            !save_snapshot("sega_strobe_start", "sega-strobe-start.bmp")) {
+            return fail("strobe activation lost the source-built lightning or figure");
+        }
+        advance_one_source_frame();
+        if (stage() !=
+                PreTitleSequenceState::PresentationStage::sega_strobe ||
+            state_.pre_title.sega_lightning_batches_active ||
+            !save_snapshot("sega_strobe_lightning_cleared",
+                           "sega-strobe-lightning-cleared.bmp")) {
+            return fail("stale lightning survived the source strobe handoff");
+        }
+        if (!advance_until([&] {
+                return state_.pre_title.figure_palette_fade_steps == 1U;
+            }) ||
+            !save_snapshot("sega_figure_fade_step_1",
+                           "sega-figure-fade-step-1.bmp")) {
+            return fail("first figure CRAM fade step did not arrive");
+        }
+        if (!advance_until([&] {
+                return state_.pre_title.figure_palette_fade_steps ==
+                       kPreTitleFigurePaletteLevelsToBlack;
+            }) ||
+            stage() != PreTitleSequenceState::PresentationStage::sega_strobe) {
+            return fail("figure palette did not reach black during the strobe");
+        }
+        const auto resolved_sega = render_scene();
+        QImage expected_sega(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        expected_sega.fill(Qt::black);
+        {
+            QPainter painter(&expected_sega);
+            draw_boot_snow(painter);
+            draw_alias(
+                painter,
+                "boot.sega.strobe." +
+                    std::to_string(state_.pre_title.strobe_phase % 8U));
+        }
+        if (resolved_sega != expected_sega ||
+            !save_snapshot("sega_resolved", "sega-resolved.bmp")) {
+            return fail("resolved SEGA frame retained the figure or lightning");
+        }
+        if (!advance_until([&] {
                 return stage() ==
                     PreTitleSequenceState::PresentationStage::fasa_fade_in;
             })) {
@@ -2347,7 +2414,7 @@ private:
             draw_alias(painter, "boot.sega.background");
         }
 
-        if (stage == PresentationStage::sega_shock) {
+        if (state_.pre_title.sega_lightning_batches_active) {
             const auto phase = static_cast<int>(
                 state_.pre_title.sega_lightning_phase % 6U);
             draw_alias(painter,
@@ -2357,11 +2424,13 @@ private:
         const auto* record = state_.asset_catalog.catalog.find("boot.guy");
         const auto image = draw_asset_cache_.find("boot.guy");
         if (record != nullptr && image != draw_asset_cache_.end() &&
-            state_.pre_title.figure_color_fade_weight != 0U) {
+            state_.pre_title.figure_palette_fade_steps <
+                kPreTitleFigurePaletteLevelsToBlack) {
             const auto y = static_cast<int>(state_.pre_title.figure_y) -
                            0xD0 + record->origin_y;
-            const auto figure = scale_genesis_image_rgb(
-                image->second, state_.pre_title.figure_color_fade_weight);
+            const auto figure = transition_genesis_cram_image(
+                image->second,
+                state_.pre_title.figure_palette_fade_steps, true);
             painter.drawImage(record->origin_x, y, figure);
         }
     }

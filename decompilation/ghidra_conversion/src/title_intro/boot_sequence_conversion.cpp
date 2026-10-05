@@ -244,14 +244,12 @@ void advance_pre_title_logo_strobe(
         state.dirty_flags = static_cast<std::uint8_t>(state.dirty_flags | 0x01U);
     } else if (state.strobe_countdown == 2) {
         callbacks.animation.step_entity_color_words();
-        // 0x5B2E2 decrements each active figure CRAM component by one
-        // Genesis step. Fifteen extracted words share the same visible
-        // bounded fade, so keep that presentation weight in typed state.
-        if (state.figure_color_fade_weight > 8U) {
-            state.figure_color_fade_weight = static_cast<std::uint16_t>(
-                state.figure_color_fade_weight - 8U);
-        } else {
-            state.figure_color_fade_weight = 0U;
+        // 0x5B2E2 visits the fifteen figure colors and subtracts one 3-bit
+        // CRAM level from each nonzero component. Seven calls fully clear a
+        // Genesis component; keep those source palette steps as typed state.
+        if (state.figure_palette_fade_steps <
+            kPreTitleFigurePaletteLevelsToBlack) {
+            ++state.figure_palette_fade_steps;
         }
     }
 }
@@ -273,7 +271,9 @@ void advance_pre_title_animation(
 
     // 0x5D996. FFDD30 is represented by sega_phase_delay and FFDD3C by
     // logo_strobe_active; FFE066/FFE064 remain typed caller-owned phase state.
-    if (state.sega_phase_delay < 0 && !state.logo_strobe_active) {
+    state.sega_lightning_batches_active =
+        state.sega_phase_delay < 0 && !state.logo_strobe_active;
+    if (state.sega_lightning_batches_active) {
         --state.logo_phase_countdown;
         if (state.logo_phase_countdown < 0) {
             state.logo_phase_countdown = 3;
@@ -379,6 +379,7 @@ PreTitleSequenceResult begin_pre_title_sequence(
     state.figure_y = 0x01A8;
     state.logo_effect_counter = 0x0041;
     state.logo_strobe_active = false;
+    state.sega_lightning_batches_active = false;
     state.frame_counter = 0x0150;
     state.strobe_phase = 9U;
     state.presentation_stage =
@@ -386,7 +387,7 @@ PreTitleSequenceResult begin_pre_title_sequence(
     state.sega_lightning_phase = 0;
     state.sega_shock_frames = 0;
     state.fasa_hold_frames = 0;
-    state.figure_color_fade_weight = 256U;
+    state.figure_palette_fade_steps = 0U;
     return PreTitleSequenceResult::source_complete;
 }
 

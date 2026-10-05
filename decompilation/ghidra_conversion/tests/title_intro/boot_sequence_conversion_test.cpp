@@ -222,6 +222,7 @@ int main() {
     advance_pre_title_animation(phase_state, phase_callbacks);
     if (phase_state.sprite_update_marker != 1U ||
         phase_state.sprite_projection_marker != 1U ||
+        !phase_state.sega_lightning_batches_active ||
         phase_state.logo_phase != 0U || phase_state.logo_phase_countdown != 3 ||
         phase_builds != 4U || phase_batches.size() != 4U ||
         phase_batches[0].source !=
@@ -247,18 +248,44 @@ int main() {
         return 3;
     }
 
-    PreTitleSequenceState fade_state{};
-    fade_state.strobe_countdown = 3;
-    fade_state.figure_color_fade_weight = 16U;
-    PreTitleSequenceCallbacks fade_callbacks{};
-    fade_callbacks.animation.step_entity_color_words = [] {};
-    advance_pre_title_logo_strobe(fade_state, fade_callbacks);
-    if (fade_state.figure_color_fade_weight != 8U) {
-        return 4;
+    PreTitleSequenceState lightning_exit_state{};
+    lightning_exit_state.sega_phase_delay = -1;
+    lightning_exit_state.logo_strobe_active = true;
+    PreTitleSequenceCallbacks lightning_exit_callbacks{};
+    lightning_exit_callbacks.animation.publish_sprite_batch =
+        [](const PreTitleSpriteBatch&) {};
+    lightning_exit_callbacks.animation.clear_last_sprite_sequence = [] {};
+    advance_pre_title_animation(lightning_exit_state,
+                                lightning_exit_callbacks);
+    if (lightning_exit_state.sega_lightning_batches_active) {
+        return 6;
     }
-    fade_state.strobe_countdown = 3;
-    advance_pre_title_logo_strobe(fade_state, fade_callbacks);
-    if (fade_state.figure_color_fade_weight != 0U) {
+
+    PreTitleSequenceState fade_state{};
+    fade_state.strobe_countdown = 0;
+    std::size_t figure_palette_fade_calls = 0U;
+    PreTitleSequenceCallbacks fade_callbacks{};
+    fade_callbacks.animation.publish_logo_strobe_palette =
+        [](const PreTitleLogoStrobePalette&) {};
+    fade_callbacks.animation.step_entity_color_words =
+        [&figure_palette_fade_calls] { ++figure_palette_fade_calls; };
+    for (std::uint8_t vblank = 1U; vblank <= 38U; ++vblank) {
+        advance_pre_title_logo_strobe(fade_state, fade_callbacks);
+        const auto expected_calls = vblank < 3U
+                                        ? 0U
+                                        : static_cast<std::size_t>(
+                                              1U + (vblank - 3U) / 5U);
+        const auto expected_step = static_cast<std::uint8_t>(
+            std::min<std::size_t>(expected_calls,
+                                  kPreTitleFigurePaletteLevelsToBlack));
+        if (figure_palette_fade_calls != expected_calls ||
+            fade_state.figure_palette_fade_steps != expected_step) {
+            return 4;
+        }
+    }
+    if (figure_palette_fade_calls != 8U ||
+        fade_state.figure_palette_fade_steps !=
+            kPreTitleFigurePaletteLevelsToBlack) {
         return 5;
     }
 

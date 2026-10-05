@@ -15,6 +15,7 @@ constexpr std::size_t kPreTitleHorizontalScrollLines = 224U;
 constexpr std::size_t kPreTitleResourceWorkWordCount = 0x1C0U;
 constexpr std::uint8_t kPreTitlePaletteTransitionPasses = 17U;
 constexpr std::uint8_t kPreTitleVBlanksPerPalettePass = 2U;
+constexpr std::uint8_t kPreTitleFigurePaletteLevelsToBlack = 7U;
 
 // The aliases are the direct host resources required before the title can
 // hand off to the startup menu. Full-screen title animation samples are not
@@ -34,6 +35,9 @@ struct PreTitleSequenceState {
     std::int16_t sega_delay_cadence = 0;
     std::int16_t secondary_effect_counter = 0;
     bool logo_strobe_active = false;
+    // Exact output of the 0x5D996 lightning-batch gate for the frame just
+    // built. It can differ from the post-loop presentation stage for one tick.
+    bool sega_lightning_batches_active = false;
 
     // 0x5D996 owns these title-phase words. Their initial values are set by
     // surrounding title setup, not invented by this leaf conversion.
@@ -69,10 +73,9 @@ struct PreTitleSequenceState {
     // VBlanks in 0x1342 before moving all 64 CRAM words by one component.
     std::uint8_t palette_transition_passes_completed = 0;
     std::uint8_t palette_transition_vblank_phase = 0;
-    // 0x5D8BA calls 0x5B2E2 on DF90 == 2 while the logo strobe is active.
-    // The callee steps the fifteen figure palette words toward black; the
-    // host renderer uses this equivalent RGB weight for the extracted guy.
-    std::uint16_t figure_color_fade_weight = 256U;
+    // 0x5D8BA calls 0x5B2E2 when DF90 == 2 during the logo strobe. The callee
+    // steps fifteen figure CRAM words down one Genesis color level per call.
+    std::uint8_t figure_palette_fade_steps = 0U;
 
     std::uint32_t random_state = 0;
     std::int16_t frame_counter = 0;

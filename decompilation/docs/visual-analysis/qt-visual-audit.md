@@ -116,6 +116,81 @@ than silently treating the current rendering as correct.
    remains `partial` until an independent Load Game capture and valid-save
    route are available.
 
+### Applied review: SEGA shock figure fade
+
+The previous Qt fade reduced the extracted figure by a linear RGB weight over
+many updates. ROM `0x5D8BA` instead calls the figure palette routine on its
+five-tick cadence, decrementing the Genesis color components one discrete level
+per call. The rendered actor therefore remained visible after the logo had
+resolved.
+
+1. **Does it look correct?** Independent section 01 frames 000060, 000090,
+   and 000120 show the raised figure and lightning around the SEGA mark. Frames
+   000150 and 000180 show the resolved mark without either layer; 000198 shows
+   the mark dim, and 000204 is black. The red uploader overlay is excluded.
+   Native `sega-shock-start.bmp`, `sega-shock-lightning.bmp`,
+   `sega-strobe-start.bmp`, `sega-strobe-lightning-cleared.bmp`,
+   `sega-figure-fade-step-1.bmp`, and `sega-resolved.bmp` are under
+   `decompilation/ghidra_conversion/build-ghidra-conversion-qt-debug/qt_runtime/boot-fasa-qa/`.
+   The native resolved image shows the logo alone. The independent capture is
+   30 fps, so it supports the state order but not an exact 60-Hz frame offset.
+2. **Does the look reflect behavioral state?** ROM `0x5D8BA` decrements
+   `FFDF90`, calls `0x5B2E2` with palette index 3 when the counter reaches 2,
+   and resets the expired counter to 4. `0x5B2E2` updates fifteen color words
+   and marks the palette dirty. Native state records
+   `strobe_countdown` and `figure_palette_fade_steps`; the fade is capped at
+   the seven levels available in a Genesis color component. The typed
+   `sega_lightning_batches_active` records what `0x5D996` built before the
+   parent loop updated the strobe flag, so it can differ from the post-loop
+   stage for one tick. There is no menu selection state here.
+3. **Are the visuals themselves correct?** The ROM call subtracts one
+   `0x002`, `0x020`, or `0x200` component step only when that component is
+   nonzero. Qt now applies those discrete palette levels to the named
+   `boot.guy` asset; it no longer scales the actor's RGB channels by a
+   fractional weight. The lightning and SEGA logo remain separate visual
+   layers. The internal full-frame check confirms the resolved Qt composition
+   contains only the snow background and the current logo strobe layer; this
+   checks stale-layer clearing, not Genesis pixel fidelity.
+4. **Is it animated, and should it be?** Yes. `0x5D8BA` checks the countdown
+   every source VBlank; after its first phase update, `0x5B2E2` runs once every
+   five VBlanks. Seven calls take the figure palette to black, after which the
+   step count stays at seven even if the source callback continues. Unit QA
+   checks the first call, five-VBlank spacing, seven-step limit, and later
+   callbacks. ROM `0x5D938` builds the lightning batches before the parent
+   sets its strobe-active flag, so the lightning remains on the activation
+   frame and is absent on the next frame. Qt QA captures shock entry at 93,
+   lightning at 94, strobe activation at 222, its clean next frame at 223,
+   fade step 1 at 225, and the resolved figure at 255.
+5. **Does sound accompany it?** `0x5D8BA` and `0x5B2E2` make no sound call.
+   The parent `0x5D746` submits command `0x16` through `0x530D2` when its logo
+   counter is below six and again when it reaches zero, the threshold that
+   enables the strobe. It also submits command `0x5C` through `0x530DE` while
+   the counter is above four. These requests do not run once per palette fade
+   step. The extracted aliases and measured clip durations for `0x16` and
+   `0x5C` remain unresolved, so the sound identity and length are not claimed.
+6. **Are related screen parts also correct?** The source frames and native
+   dumps were checked across the entire black background, SEGA mark, lightning,
+   and figure. At the resolved state, the full-frame assertion rejects a
+   leftover actor or lightning layer. FASA's next stage clears both planes;
+   its separate QA also checks the black handoff and rejects old SEGA pixels.
+7. **Do multiple frames support the interpretation?** Yes. The independent
+   frame set covers initial/rising shock (000060/000090), active shock
+   (000120), resolved logo (000150/000180), dim logo (000198), and black
+   (000204). Native checkpoints cover shock entry, lightning, the final
+   lightning frame at strobe entry, its removal, the first palette decrement,
+   and the resolved mark. The capture cadence cannot confirm the exact native
+   update count.
+8. **Was an old screen left underneath the next one?** This boot sequence has
+   no buttons or menu controls. The resolved-frame comparison checks that the
+   figure and lightning are gone while the SEGA mark remains. The following
+   FASA path clears both planes before drawing its mark, and the FASA QA checks
+   those transition frames for old SEGA graphics.
+
+The code now follows the source palette cadence, and internal Debug/Release
+tests pass. The whole pre-title hill remains partial: the supplied 30-fps
+capture cannot settle exact source-frame alignment, and the adjacent SEGA
+audio command assets and durations have not been identified.
+
 ### Applied review: FASA boot mark
 
 The first Qt pass skipped the FASA transition and showed its logo in cyan.
