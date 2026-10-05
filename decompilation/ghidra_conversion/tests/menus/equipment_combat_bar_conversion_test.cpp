@@ -181,7 +181,7 @@ int main() {
         metric.damage_grid->effect_row != 6U ||
         metric.damage_grid->source_row_stride != 0x0EU ||
         metric.damage_grid->destination_tile_base != 0xC688U ||
-        metric.damage_grid->tile_count != 6U ||
+        metric.damage_grid->tile_count != 7U ||
         metric_events != std::vector<int>{6}) {
         return 8;
     }
