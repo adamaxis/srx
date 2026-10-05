@@ -170,8 +170,9 @@ int main() {
         return 44;
     }
 
-    // Portrait and item art are per-record uploads in 0x3404. The delay and
-    // behavior meters follow their live values, and ammo stays value-indexed.
+    // Portrait art follows its runner family and 0x3602 palette. Ordinary
+    // items follow the live item code and +0x2C palette; meters and ammo stay
+    // value-indexed.
     joshua[0].equipped_inventory_slot = 0;
     joshua[0].equipped_item_code = 1U;
     joshua[0].ammo_rounds = 18U;
@@ -185,10 +186,29 @@ int main() {
                 family[2].kind == FieldHudOverlayKind::mental_bar &&
                 family[2].asset_index == 7U &&
                 family[3].kind == FieldHudOverlayKind::item &&
-                family[3].asset_index == 2U &&
+                family[3].asset_index == 0U &&
                 family[4].kind == FieldHudOverlayKind::ammo &&
                 family[4].asset_index == 18U)) {
         return 40;
+    }
+    joshua[0].equipped_item_code = 0x0EU;
+    joshua[0].item_palette_variant = 2U;
+    const auto changed_item = compose_field_hud_overlays(joshua);
+    if (!expect(changed_item[3].kind == FieldHudOverlayKind::item &&
+                changed_item[3].asset_index == 0x0DU &&
+                changed_item[3].palette_variant == 2U &&
+                changed_item[0].asset_index == 2U)) {
+        return 45;
+    }
+    joshua[0].unarmed_item_variant = 2U;
+    joshua[0].equipped_inventory_slot = 0x7F;
+    joshua[0].equipped_item_code = 0U;
+    const auto cyberware_unarmed = compose_field_hud_overlays(joshua);
+    if (!expect(cyberware_unarmed[3].kind ==
+                    FieldHudOverlayKind::unarmed_item &&
+                cyberware_unarmed[3].asset_index == 2U &&
+                cyberware_unarmed[3].palette_variant == 2U)) {
+        return 46;
     }
 
     std::array<FieldHudSlotState, kFieldHudSlotCount> companion{};

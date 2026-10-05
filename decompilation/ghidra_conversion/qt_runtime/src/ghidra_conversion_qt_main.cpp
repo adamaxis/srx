@@ -524,34 +524,62 @@ bool field_hud_chrome_survives(const QImage& scene,
 bool field_hud_face_family_survives(const QImage& scene,
                                     const std::filesystem::path& asset_root,
                                     const std::size_t archetype_index) {
-    // Every opaque pixel of the archetype's extracted 4x4 face family must
-    // appear verbatim at 0x35D4's slot-0 stamp location (F1C6 -> 280,24).
-    // Transparent family pixels may show the shell behind them. This is a
-    // regression check against silently reusing the default archetype's
-    // portrait, not a substitute for independent visual review.
-    const QImage face(QString::fromStdWString(
-        (asset_root / "field" / "hud" /
-         ("face-" + std::to_string(archetype_index) + ".bmp")).wstring()));
-    if (face.isNull() || face.size() != QSize(32, 32)) {
+    // Palette selection is record-dependent, so either source variant may be
+    // correct for a given live item/class combination. Require one complete
+    // extracted face to match at the fixed F1C6 presentation location.
+    for (std::size_t palette = 0; palette < 2U; ++palette) {
+        const QImage face(QString::fromStdWString(
+            (asset_root / "field" / "hud" / "party" /
+             ("face-" + std::to_string(archetype_index) + "-palette-" +
+              std::to_string(palette) + ".bmp")).wstring()));
+        if (face.isNull() || face.size() != QSize(32, 32)) {
+            continue;
+        }
+        bool matches = true;
+        int opaque = 0;
+        for (int y = 0; y < 32 && matches; ++y) {
+            for (int x = 0; x < 32; ++x) {
+                const auto source = face.pixelColor(x, y);
+                if (source.alpha() == 0) {
+                    continue;
+                }
+                ++opaque;
+                if (scene.pixelColor(280 + x, 24 + y) != source) {
+                    matches = false;
+                    break;
+                }
+            }
+        }
+        if (matches && opaque > 64) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool field_hud_party_slot_asset_survives(
+    const QImage& scene, const std::filesystem::path& asset_root,
+    const std::string& relative_path, const int x, const int y,
+    const QSize expected_size) {
+    const QImage asset(QString::fromStdWString(
+        (asset_root / std::filesystem::path(relative_path)).wstring()));
+    if (asset.isNull() || asset.size() != expected_size) {
         return false;
     }
-    constexpr int kFaceX = 280;
-    constexpr int kFaceY = 24;
-    int opaque = 0;
-    for (int y = 0; y < 32; ++y) {
-        for (int x = 0; x < 32; ++x) {
-            const auto source = face.pixelColor(x, y);
+    std::size_t opaque = 0U;
+    for (int row = 0; row < asset.height(); ++row) {
+        for (int column = 0; column < asset.width(); ++column) {
+            const auto source = asset.pixelColor(column, row);
             if (source.alpha() == 0) {
                 continue;
             }
             ++opaque;
-            const auto scene_pixel = scene.pixelColor(kFaceX + x, kFaceY + y);
-            if (scene_pixel != source) {
+            if (scene.pixelColor(x + column, y + row) != source) {
                 return false;
             }
         }
     }
-    return opaque > 64;
+    return opaque > 8U;
 }
 
 bool field_hud_meter_assets_survive(const QImage& scene,
@@ -9620,6 +9648,144 @@ int main(int argc, char** argv) {
                             return 3;
                         }
                     }
+                }
+
+                StartupIntegrationState party_state;
+                std::string party_state_error;
+                if (!build_smoke_state(0U, party_state, party_state_error)) {
+                    std::cerr << party_state_error << '\n';
+                    return 3;
+                }
+                qt_runtime::FieldSceneRuntime party_scene(
+                    [](const auto&) {});
+                if (!party_scene.bootstrap(party_state)) {
+                    std::cerr << "field HUD party QA: "
+                              << party_scene.failure() << '\n';
+                    return 3;
+                }
+                const auto load_party_record =
+                    [&party_state](const std::size_t template_index) {
+                        LiveRunnerRecord source{};
+                        source.bytes = party_state.startup_records
+                                           ->save_roster_templates[template_index]
+                                           .record;
+                        return read_runner_record_fields(source);
+                    };
+                const auto ricky = load_party_record(1U);
+                const auto winston = load_party_record(2U);
+                party_scene.install_party_member_for_dump(
+                    1U, ricky, "Ricky", 3U);
+                party_scene.install_party_member_for_dump(
+                    2U, winston, "Winston Marrs", 4U);
+                party_scene.set_active_party_slot_for_dump(1U);
+
+                const auto portrait_palette_for = [](const RunnerRecordFields& record) {
+                    const auto flags = select_hud_glyph_attribute_flags(
+                        HudGlyphAttributeInput{
+                            static_cast<std::int8_t>(record.equipped_item_code),
+                            static_cast<std::int8_t>(record.archetype_index),
+                            record.equipped_inventory_slot});
+                    return static_cast<std::size_t>(
+                        flags == 0x6000U ? 1U : 0U);
+                };
+                const auto item_palette_for = [](const RunnerRecordFields& record) {
+                    const auto line = static_cast<std::uint8_t>(
+                        (record.command_overview_panel_parameter & 0x6000U) >>
+                        13U);
+                    return static_cast<std::size_t>(
+                        line == 0U ? 0U : line - 1U);
+                };
+                const auto save_party_frame =
+                    [&](const std::string& directory, QImage& destination) {
+                        destination = QImage(kSceneWidth, kSceneHeight,
+                                             QImage::Format_RGB32);
+                        destination.fill(Qt::black);
+                        QPainter party_painter(&destination);
+                        party_scene.paint(party_painter);
+                        party_painter.end();
+                        if (!field_hud_chrome_survives(destination, asset_root)) {
+                            return false;
+                        }
+                        const auto output_directory =
+                            *field_hud_qa_path / directory;
+                        std::filesystem::create_directories(output_directory);
+                        return destination.save(QString::fromStdWString(
+                            (output_directory / "actual.bmp").wstring()));
+                    };
+                QImage party_equipped;
+                if (!save_party_frame("party-equipped", party_equipped) ||
+                    !field_hud_party_slot_asset_survives(
+                        party_equipped, asset_root,
+                        "field/hud/party/face-3-palette-" +
+                            std::to_string(portrait_palette_for(ricky)) +
+                            ".bmp",
+                        280, 88, QSize(32, 32)) ||
+                    !field_hud_party_slot_asset_survives(
+                        party_equipped, asset_root,
+                        "field/hud/party/item-" +
+                            std::to_string(ricky.equipped_item_code) +
+                            "-palette-" +
+                            std::to_string(item_palette_for(ricky)) + ".bmp",
+                        288, 128, QSize(24, 16)) ||
+                    !field_hud_party_slot_asset_survives(
+                        party_equipped, asset_root,
+                        "field/hud/party/face-4-palette-" +
+                            std::to_string(portrait_palette_for(winston)) +
+                            ".bmp",
+                        280, 152, QSize(32, 32)) ||
+                    !field_hud_party_slot_asset_survives(
+                        party_equipped, asset_root,
+                        "field/hud/party/item-" +
+                            std::to_string(winston.equipped_item_code) +
+                            "-palette-" +
+                            std::to_string(item_palette_for(winston)) +
+                            ".bmp",
+                        288, 192, QSize(24, 16))) {
+                    std::cerr << "field HUD party QA: a recruited runner's "
+                                 "portrait/item did not match its typed record\n";
+                    return 3;
+                }
+
+                party_scene.set_active_party_slot_for_dump(2U);
+                QImage party_active_winston;
+                if (!save_party_frame("party-active-winston",
+                                      party_active_winston) ||
+                    !field_hud_party_slot_asset_survives(
+                        party_active_winston, asset_root,
+                        "field/hud/party/face-3-palette-" +
+                            std::to_string(portrait_palette_for(ricky)) +
+                            ".bmp",
+                        280, 88, QSize(32, 32)) ||
+                    !field_hud_party_slot_asset_survives(
+                        party_active_winston, asset_root,
+                        "field/hud/party/face-4-palette-" +
+                            std::to_string(portrait_palette_for(winston)) +
+                            ".bmp",
+                        280, 152, QSize(32, 32))) {
+                    std::cerr << "field HUD party QA: changing the controlled "
+                                 "runner reordered a fixed HUD panel\n";
+                    return 3;
+                }
+
+                auto ricky_unarmed = ricky;
+                ricky_unarmed.equipped_inventory_slot = 0x7F;
+                ricky_unarmed.equipped_item_code = 0U;
+                party_scene.set_active_party_slot_for_dump(1U);
+                party_scene.install_party_member_for_dump(
+                    1U, ricky_unarmed, "Ricky", 3U);
+                QImage party_unarmed;
+                if (!save_party_frame("party-ricky-unarmed", party_unarmed) ||
+                    !field_hud_party_slot_asset_survives(
+                        party_unarmed, asset_root,
+                        "field/hud/party/unarmed-item-0-palette-" +
+                            std::to_string(item_palette_for(ricky_unarmed)) +
+                            ".bmp",
+                        288, 128, QSize(24, 16)) ||
+                    party_equipped.copy(QRect(288, 128, 24, 16)) ==
+                        party_unarmed.copy(QRect(288, 128, 24, 16))) {
+                    std::cerr << "field HUD party QA: unequipping gear left "
+                                 "the previous item image in place\n";
+                    return 3;
                 }
 
                 StartupIntegrationState meter_state;

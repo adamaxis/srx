@@ -46,6 +46,7 @@ void FieldPartyRosterRuntime::clear() noexcept {
     records_ = {};
     names_ = {};
     active_slots_ = {};
+    portrait_asset_families_ = {};
     active_slot_ = 0U;
     source_ = Source::unavailable;
 }
@@ -67,7 +68,8 @@ void FieldPartyRosterRuntime::set_active_slot(const std::size_t slot) noexcept {
 }
 
 void FieldPartyRosterRuntime::install_party_member_for_dump(
-    const std::size_t slot, RunnerRecordFields record, std::string name) {
+    const std::size_t slot, RunnerRecordFields record, std::string name,
+    const std::uint8_t portrait_asset_family) {
     if (slot >= kSlotCount) {
         return;
     }
@@ -75,6 +77,7 @@ void FieldPartyRosterRuntime::install_party_member_for_dump(
     records_[slot] = std::move(record);
     names_[slot] = std::move(name);
     active_slots_[slot] = true;
+    portrait_asset_families_[slot] = portrait_asset_family;
     if (source_ == Source::unavailable) {
         source_ = Source::restored_save;
     }
@@ -101,6 +104,19 @@ FieldPartyRosterRuntime::Source FieldPartyRosterRuntime::initialize(
         names_[0] = read_runner_name(restored.roster.default_record);
         mark_slot_active(records_[0]);
         active_slots_[0] = true;
+        if (startup_state.startup_records.has_value()) {
+            for (std::size_t family = 0;
+                 family < startup_state.startup_records->joshua_archetypes.size();
+                 ++family) {
+                if (startup_state.startup_records
+                            ->joshua_archetypes[family]
+                            .record[0x9BU] == records_[0].archetype_index) {
+                    portrait_asset_families_[0] =
+                        static_cast<std::uint8_t>(family);
+                    break;
+                }
+            }
+        }
 
         if (save_marker_active(restored.roster.primary_marker)) {
             records_[1] =
@@ -108,6 +124,11 @@ FieldPartyRosterRuntime::Source FieldPartyRosterRuntime::initialize(
             names_[1] = read_runner_name(restored.roster.primary_record);
             mark_slot_active(records_[1]);
             active_slots_[1] = true;
+            if (restored.roster.primary_marker > 0U &&
+                restored.roster.primary_marker <= 10U) {
+                portrait_asset_families_[1] = static_cast<std::uint8_t>(
+                    3U + restored.roster.primary_marker - 1U);
+            }
         }
         if (save_marker_active(restored.roster.secondary_marker)) {
             records_[2] =
@@ -115,6 +136,11 @@ FieldPartyRosterRuntime::Source FieldPartyRosterRuntime::initialize(
             names_[2] = read_runner_name(restored.roster.secondary_record);
             mark_slot_active(records_[2]);
             active_slots_[2] = true;
+            if (restored.roster.secondary_marker > 0U &&
+                restored.roster.secondary_marker <= 10U) {
+                portrait_asset_families_[2] = static_cast<std::uint8_t>(
+                    3U + restored.roster.secondary_marker - 1U);
+            }
         }
         source_ = Source::restored_save;
         set_active_slot(std::min(restored.active_runner_slot, kSlotCount - 1U));
@@ -128,6 +154,9 @@ FieldPartyRosterRuntime::Source FieldPartyRosterRuntime::initialize(
         names_[0] = read_runner_name(raw_joshua);
         mark_slot_active(records_[0]);
         active_slots_[0] = true;
+        const auto selected = static_cast<std::uint8_t>(
+            startup_state.joshua_archetype.selected);
+        portrait_asset_families_[0] = selected < 3U ? selected : 0U;
         source_ = Source::new_game_joshua;
         active_slot_ = 0U;
         return source_;

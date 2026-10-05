@@ -15,6 +15,9 @@ constexpr std::size_t kFieldHudMeterLevelCount = 11U;
 constexpr std::size_t kFieldHudBehaviorMeterProfileCount = 2U;
 constexpr std::size_t kFieldHudMagicItemCount = 13U;
 constexpr std::size_t kFieldHudMagicItemPaletteVariantCount = 2U;
+constexpr std::size_t kFieldHudItemCount = 50U;
+constexpr std::size_t kFieldHudItemPaletteVariantCount = 3U;
+constexpr std::size_t kFieldHudPortraitFamilyCount = 13U;
 constexpr std::uint16_t kFieldHudPlaneBase = 0xF000U;
 constexpr std::uint16_t kFieldHudPlaneWidthTiles = 64U;
 constexpr std::uint16_t kFieldHudSlotVramStride = 0x0400U;
@@ -73,9 +76,13 @@ struct FieldHudSlotState {
     bool primary_runner = false;
     // 0x3404 uploads the portrait and ordinary item tiles from the slot's
     // live record (+0x50/+0x54 portrait selector, +0x57 active item). Negative
-    // +0x56 instead selects a shared D4EA0 spell sprite. The extracted
-    // portrait/ordinary-item families are indexed by their source record.
+    // +0x56 instead selects a shared D4EA0 spell sprite. Portraits use the
+    // normalized Joshua/recruited runner family. Item art is selected by the
+    // current +0x57 code and +0x2C palette line.
     std::uint8_t asset_family_index = 0;
+    std::uint8_t item_palette_variant = 0;
+    // D1860/D186C/D1878, selected by +0x90 cyberware bits.
+    std::uint8_t unarmed_item_variant = 0;
 };
 
 // ROM 0x35D4/0x35F0/0x36FC/0x3674: emit the nametable-backed overlays for

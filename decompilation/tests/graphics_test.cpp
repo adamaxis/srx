@@ -1151,6 +1151,40 @@ int main() {
             assert(same_pixels(low_palette.pixels, loaded_low.pixels));
             assert(same_pixels(high_palette.pixels, loaded_high.pixels));
         }
+        const auto party_hud = decode_genesis_field_hud_party_assets(rom);
+        bool portrait_palette_differs = false;
+        for (const auto& family : party_hud.portraits) {
+            for (const auto& portrait : family) {
+                assert(portrait.width == 32U && portrait.height == 32U);
+                assert(portrait.pixels.size() == 32U * 32U);
+                assert(std::any_of(portrait.pixels.begin(), portrait.pixels.end(),
+                                   [](const auto& pixel) {
+                                       return pixel.alpha != 0U;
+                                   }));
+            }
+            portrait_palette_differs |=
+                !same_pixels(family[0].pixels, family[1].pixels);
+        }
+        assert(party_hud.portraits.size() == 13U);
+        assert(portrait_palette_differs);
+        bool item_palette_differs = false;
+        for (const auto& item : party_hud.items) {
+            for (const auto& image : item) {
+                assert(image.width == 24U && image.height == 16U);
+                assert(image.pixels.size() == 24U * 16U);
+            }
+            item_palette_differs |=
+                !same_pixels(item[0].pixels, item[1].pixels) ||
+                !same_pixels(item[1].pixels, item[2].pixels);
+        }
+        assert(party_hud.items.size() == 50U);
+        assert(item_palette_differs);
+        for (const auto& item : party_hud.unarmed_items) {
+            for (const auto& image : item) {
+                assert(image.width == 24U && image.height == 16U);
+                assert(image.pixels.size() == 24U * 16U);
+            }
+        }
         for (std::size_t profile = 0;
              profile < native_assets.protagonist_archetype_records.size();
              ++profile) {

@@ -247,9 +247,13 @@ public:
     }
     void install_party_member_for_dump(std::size_t slot,
                                        RunnerRecordFields record,
-                                       std::string name) {
+                                       std::string name,
+                                       std::uint8_t portrait_asset_family =
+                                           0U) {
         field_party_roster_.install_party_member_for_dump(
-            slot, std::move(record), std::move(name));
+            slot, std::move(record), std::move(name),
+            portrait_asset_family);
+        refresh_field_hud_runner_slot();
     }
     void set_active_party_slot_for_dump(std::size_t slot) {
         field_party_roster_.set_active_slot(slot);
@@ -526,6 +530,7 @@ private:
                            int& origin_y);
     void paint_field_entity(QPainter& painter) const;
     void paint_field_hud_overlays(QPainter& painter) const;
+    FieldHudSlotState field_hud_slot_state(std::size_t slot) const;
     void paint_command_overview_magic(QPainter& painter) const;
     void paint_attributes_skills_menu(
         QPainter& painter,
@@ -694,6 +699,14 @@ private:
     std::array<QImage, kFieldHudSlotCount> field_hud_faces_{};
     std::array<QImage, kFieldHudSlotCount> field_hud_items_{};
     std::array<QImage, kFieldHudSlotCount> field_hud_unarmed_items_{};
+    std::array<std::array<QImage, kFieldHudMagicItemPaletteVariantCount>,
+               kFieldHudPortraitFamilyCount>
+        field_hud_party_faces_{};
+    std::array<std::array<QImage, kFieldHudItemPaletteVariantCount>,
+               kFieldHudItemCount>
+        field_hud_party_items_{};
+    std::array<std::array<QImage, kFieldHudItemPaletteVariantCount>, 3U>
+        field_hud_party_unarmed_items_{};
     std::array<std::array<QImage, kFieldHudMagicItemPaletteVariantCount>,
                kFieldHudMagicItemCount>
         field_hud_magic_items_{};

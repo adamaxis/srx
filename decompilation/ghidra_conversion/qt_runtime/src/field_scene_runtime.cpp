@@ -45,6 +45,12 @@ constexpr std::string_view kFieldHudFaceAliasPrefix = "field.hud.face.";
 constexpr std::string_view kFieldHudItemAliasPrefix = "field.hud.item.";
 constexpr std::string_view kFieldHudUnarmedItemAliasPrefix =
     "field.hud.unarmed.item.";
+constexpr std::string_view kFieldHudPartyFaceAliasPrefix =
+    "field.hud.party.face.";
+constexpr std::string_view kFieldHudPartyItemAliasPrefix =
+    "field.hud.party.item.";
+constexpr std::string_view kFieldHudPartyUnarmedItemAliasPrefix =
+    "field.hud.party.unarmed.item.";
 constexpr std::string_view kFieldHudMagicItemAliasPrefix =
     "field.hud.magic.item.";
 constexpr std::string_view kFieldHudDelayMeterAliasPrefix =
@@ -691,6 +697,49 @@ bool FieldSceneRuntime::load_field_hud_overlays(
         !load_slot(kFieldHudUnarmedItemAliasPrefix,
                    field_hud_unarmed_items_)) {
         return false;
+    }
+    for (std::size_t family = 0; family < field_hud_party_faces_.size();
+         ++family) {
+        for (std::size_t palette = 0;
+             palette < field_hud_party_faces_[family].size(); ++palette) {
+            const auto alias = std::string(kFieldHudPartyFaceAliasPrefix) +
+                               std::to_string(family) + ".palette." +
+                               std::to_string(palette);
+            if (!load_sprite_image(catalog, alias,
+                                   field_hud_party_faces_[family][palette],
+                                   origin_x, origin_y)) {
+                return false;
+            }
+        }
+    }
+    for (std::size_t item = 0; item < field_hud_party_items_.size(); ++item) {
+        for (std::size_t palette = 0;
+             palette < field_hud_party_items_[item].size(); ++palette) {
+            const auto alias = std::string(kFieldHudPartyItemAliasPrefix) +
+                               std::to_string(item + 1U) + ".palette." +
+                               std::to_string(palette);
+            if (!load_sprite_image(catalog, alias,
+                                   field_hud_party_items_[item][palette],
+                                   origin_x, origin_y)) {
+                return false;
+            }
+        }
+    }
+    for (std::size_t item = 0;
+         item < field_hud_party_unarmed_items_.size(); ++item) {
+        for (std::size_t palette = 0;
+             palette < field_hud_party_unarmed_items_[item].size(); ++palette) {
+            const auto alias =
+                std::string(kFieldHudPartyUnarmedItemAliasPrefix) +
+                std::to_string(item) + ".palette." +
+                std::to_string(palette);
+            if (!load_sprite_image(
+                    catalog, alias,
+                    field_hud_party_unarmed_items_[item][palette],
+                    origin_x, origin_y)) {
+                return false;
+            }
+        }
     }
     for (std::size_t spell = 0; spell < field_hud_magic_items_.size();
          ++spell) {
@@ -1511,23 +1560,39 @@ void FieldSceneRuntime::open_command_overview() {
     refresh_command_overview_item_detail();
 }
 
-void FieldSceneRuntime::refresh_field_hud_runner_slot() {
-    if (field_hud_slots_.empty()) {
-        return;
+FieldHudSlotState FieldSceneRuntime::field_hud_slot_state(
+    const std::size_t index) const {
+    if (index >= field_party_roster_.records().size()) {
+        return {};
     }
-    auto& slot = field_hud_slots_[0];
-    slot.flags_byte = static_cast<std::uint8_t>(
-        active_runner_record().flags >> 8U);
-    slot.equipped_inventory_slot =
-        active_runner_record().equipped_inventory_slot;
-    slot.equipped_item_code = active_runner_record().equipped_item_code;
-    slot.class_code = active_runner_record().archetype_index;
-    slot.ammo_rounds = active_runner_record().ammo_rounds;
-    slot.delay_meter =
-        static_cast<std::int8_t>(active_runner_record().delay_meter);
-    slot.behavior_meter =
-        static_cast<std::int8_t>(active_runner_record().behavior_meter);
-    slot.primary_runner = true;
+    const auto& record = field_party_roster_.records()[index];
+    FieldHudSlotState slot{};
+    slot.flags_byte = static_cast<std::uint8_t>(record.flags >> 8U);
+    slot.equipped_inventory_slot = record.equipped_inventory_slot;
+    slot.equipped_item_code = record.equipped_item_code;
+    slot.class_code = record.archetype_index;
+    slot.ammo_rounds = record.ammo_rounds;
+    slot.delay_meter = static_cast<std::int8_t>(record.delay_meter);
+    slot.behavior_meter = static_cast<std::int8_t>(record.behavior_meter);
+    slot.primary_runner = index == field_party_roster_.active_slot();
+    slot.asset_family_index =
+        field_party_roster_.portrait_asset_family(index);
+    const auto palette_line = static_cast<std::uint8_t>(
+        (record.command_overview_panel_parameter & 0x6000U) >> 13U);
+    slot.item_palette_variant = static_cast<std::uint8_t>(
+        palette_line == 0U ? 0U : palette_line - 1U);
+    if ((record.cyberware_flags & 0x0008U) != 0U) {
+        slot.unarmed_item_variant = 2U;
+    } else if ((record.cyberware_flags & 0x0004U) != 0U) {
+        slot.unarmed_item_variant = 1U;
+    }
+    return slot;
+}
+
+void FieldSceneRuntime::refresh_field_hud_runner_slot() {
+    for (std::size_t slot = 0; slot < field_hud_slots_.size(); ++slot) {
+        field_hud_slots_[slot] = field_hud_slot_state(slot);
+    }
 }
 
 void FieldSceneRuntime::initialize_field_party_roster(
@@ -2873,25 +2938,7 @@ bool FieldSceneRuntime::bootstrap(
     // field-buffer preparation can invoke 0xC7F8.
     field_entity_behavior_flags_ = field_entity_.active ? 0x05U : 0U;
     initialize_field_entity_selection_state();
-    if (field_entity_.active) {
-        const auto& record = active_runner_record();
-        field_hud_slots_[0].flags_byte =
-            static_cast<std::uint8_t>(record.flags >> 8U);
-        field_hud_slots_[0].equipped_inventory_slot =
-            record.equipped_inventory_slot;
-        field_hud_slots_[0].equipped_item_code = record.equipped_item_code;
-        field_hud_slots_[0].class_code = record.archetype_index;
-        field_hud_slots_[0].ammo_rounds = record.ammo_rounds;
-        field_hud_slots_[0].delay_meter =
-            static_cast<std::int8_t>(record.delay_meter);
-        field_hud_slots_[0].behavior_meter =
-            static_cast<std::int8_t>(record.behavior_meter);
-        field_hud_slots_[0].primary_runner = true;
-        // The extracted face/bar/item families follow the archetype record
-        // that produced them, not the field slot number.
-        field_hud_slots_[0].asset_family_index = static_cast<std::uint8_t>(
-            field_joshua_archetype_selection_);
-    }
+    refresh_field_hud_runner_slot();
 
     const auto menu_text = load_field_menu_text_catalog(
         startup_state.asset_catalog.catalog);
@@ -4571,8 +4618,11 @@ void FieldSceneRuntime::paint_field_hud_overlays(QPainter& painter) const {
         -> const QImage* {
         switch (overlay.kind) {
         case FieldHudOverlayKind::portrait:
-            return overlay.asset_index < field_hud_faces_.size()
-                ? &field_hud_faces_[overlay.asset_index]
+            return overlay.asset_index < field_hud_party_faces_.size() &&
+                    overlay.palette_variant <
+                        field_hud_party_faces_[overlay.asset_index].size()
+                ? &field_hud_party_faces_[overlay.asset_index]
+                                 [overlay.palette_variant]
                 : nullptr;
         case FieldHudOverlayKind::physical_bar:
             return overlay.asset_index < field_hud_delay_meter_counters_.size()
@@ -4584,12 +4634,20 @@ void FieldSceneRuntime::paint_field_hud_overlays(QPainter& painter) const {
                 ? &field_hud_behavior_meter_counters_[overlay.asset_index]
                 : nullptr;
         case FieldHudOverlayKind::item:
-            return overlay.asset_index < field_hud_items_.size()
-                ? &field_hud_items_[overlay.asset_index]
+            return overlay.asset_index < field_hud_party_items_.size() &&
+                    overlay.palette_variant <
+                        field_hud_party_items_[overlay.asset_index].size()
+                ? &field_hud_party_items_[overlay.asset_index]
+                                  [overlay.palette_variant]
                 : nullptr;
         case FieldHudOverlayKind::unarmed_item:
-            return overlay.asset_index < field_hud_unarmed_items_.size()
-                ? &field_hud_unarmed_items_[overlay.asset_index]
+            return overlay.asset_index <
+                       field_hud_party_unarmed_items_.size() &&
+                    overlay.palette_variant <
+                        field_hud_party_unarmed_items_[overlay.asset_index]
+                            .size()
+                ? &field_hud_party_unarmed_items_[overlay.asset_index]
+                                           [overlay.palette_variant]
                 : nullptr;
         case FieldHudOverlayKind::magic_item:
             return overlay.asset_index < field_hud_magic_items_.size() &&
@@ -4606,17 +4664,9 @@ void FieldSceneRuntime::paint_field_hud_overlays(QPainter& painter) const {
         return nullptr;
     };
     auto live_slots = field_hud_slots_;
-    const auto& active = active_runner_record();
-    live_slots[0].flags_byte =
-        static_cast<std::uint8_t>(active.flags >> 8U);
-    live_slots[0].equipped_inventory_slot = active.equipped_inventory_slot;
-    live_slots[0].equipped_item_code = active.equipped_item_code;
-    live_slots[0].class_code = active.archetype_index;
-    live_slots[0].ammo_rounds = active.ammo_rounds;
-    live_slots[0].delay_meter = static_cast<std::int8_t>(active.delay_meter);
-    live_slots[0].behavior_meter =
-        static_cast<std::int8_t>(active.behavior_meter);
-    live_slots[0].primary_runner = true;
+    for (std::size_t slot = 0; slot < live_slots.size(); ++slot) {
+        live_slots[slot] = field_hud_slot_state(slot);
+    }
     for (const auto& overlay : compose_field_hud_overlays(live_slots)) {
         const auto* image = image_for(overlay);
         if (image == nullptr || image->isNull()) {
@@ -6424,9 +6474,9 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             const auto target_index = command_overview_first_aid_targets_
                                           .active_record_indices[
                                               command_overview_first_aid_cursor_];
-            // The extracted face bank contains the three Joshua starter
-            // portraits. Recruited-runner portraits are still a source-data
-            // boundary and are not guessed from class indices.
+            // This First Aid child panel currently projects the selected
+            // Joshua face. The separate three-slot HUD asset families do not
+            // imply that recruited target portraits are wired into this page.
             if (target_index == 0U &&
                 field_joshua_archetype_selection_ <
                     field_hud_faces_.size() &&

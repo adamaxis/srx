@@ -695,6 +695,33 @@ struct GenesisFieldHudLayers {
     std::array<RgbaImage, 3> horizontal_counters{};
     std::array<RgbaImage, 64> ammo_counters{};
 };
+// Direct field-HUD assets for every selectable runner portrait and ordinary
+// inventory item. Runtime code indexes these named files from typed roster
+// state; it does not retain ROM pointers or emulate the 0x3404 upload buffer.
+// Portrait variants correspond to 0x3602 palette attributes 0x2000/0x6000.
+// Item variants preserve palette lines 1, 2, and 3 selected by +0x2C.
+inline constexpr std::size_t kGenesisFieldHudJoshuaPortraitCount = 3U;
+inline constexpr std::size_t kGenesisFieldHudRecruitedPortraitCount = 10U;
+inline constexpr std::size_t kGenesisFieldHudPortraitFamilyCount =
+    kGenesisFieldHudJoshuaPortraitCount +
+    kGenesisFieldHudRecruitedPortraitCount;
+inline constexpr std::size_t kGenesisFieldHudPortraitPaletteVariantCount = 2U;
+inline constexpr std::size_t kGenesisFieldHudItemPaletteVariantCount = 3U;
+inline constexpr std::size_t kGenesisFieldHudUnarmedVariantCount = 3U;
+struct GenesisFieldHudPartyAssets {
+    std::array<std::array<RgbaImage,
+                          kGenesisFieldHudPortraitPaletteVariantCount>,
+               kGenesisFieldHudPortraitFamilyCount>
+        portraits{};
+    std::array<std::array<RgbaImage,
+                          kGenesisFieldHudItemPaletteVariantCount>,
+               native::kNativeInventoryItemCount>
+        items{};
+    std::array<std::array<RgbaImage,
+                          kGenesisFieldHudItemPaletteVariantCount>,
+               kGenesisFieldHudUnarmedVariantCount>
+        unarmed_items{};
+};
 // ROM 0x3404 uploads each runner's raw 4x4 portrait and six-tile item block;
 // 0x35D4/0x35F0/0x36FC/0x37EC then stamp those resources at the four fixed
 // field-HUD destinations. Extraction keeps the layers separate so the native
@@ -702,6 +729,10 @@ struct GenesisFieldHudLayers {
 GenesisFieldHudLayers decode_genesis_field_hud_layers(
     const std::vector<std::uint8_t>& rom,
     const std::array<GenesisFieldEntityTemplate, 3>& records);
+// ROM 0x3404/0x35D4/0x35F0: extract all named portrait, equipped-item, and
+// unarmed-item variants as standalone RGBA host assets.
+GenesisFieldHudPartyAssets decode_genesis_field_hud_party_assets(
+    const std::vector<std::uint8_t>& rom);
 // Pocket Secretary bezel from ROM 0x10A7E's four raw 0x1232 name-table
 // writes, independent of the field command-screen base.
 RgbaImage decode_genesis_pocket_secretary_background(

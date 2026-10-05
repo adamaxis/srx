@@ -1686,6 +1686,46 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     write_array("field/hud/unarmed-item-",
                 assets.field_hud_unarmed_item_blocks, "sprite",
                 "0x3404/0xD1860-0xD1878", true);
+    const auto field_hud_party =
+        shadowrun::graphics::decode_genesis_field_hud_party_assets(rom);
+    for (std::size_t family = 0;
+         family < field_hud_party.portraits.size(); ++family) {
+        for (std::size_t palette = 0;
+             palette < field_hud_party.portraits[family].size(); ++palette) {
+            write_catalog_asset(
+                root,
+                "field/hud/party/face-" + std::to_string(family) +
+                    "-palette-" + std::to_string(palette) + ".bmp",
+                field_hud_party.portraits[family][palette], "sprite",
+                "0x3404/0x35D4/0x3602", false, manifest, written, missing,
+                blank);
+        }
+    }
+    for (std::size_t item = 0; item < field_hud_party.items.size(); ++item) {
+        for (std::size_t palette = 0;
+             palette < field_hud_party.items[item].size(); ++palette) {
+            write_catalog_asset(
+                root,
+                "field/hud/party/item-" + std::to_string(item + 1U) +
+                    "-palette-" + std::to_string(palette) + ".bmp",
+                field_hud_party.items[item][palette], "sprite",
+                "0x3404/0xD4540/0x35F0", false, manifest, written, missing,
+                blank);
+        }
+    }
+    for (std::size_t item = 0;
+         item < field_hud_party.unarmed_items.size(); ++item) {
+        for (std::size_t palette = 0;
+             palette < field_hud_party.unarmed_items[item].size(); ++palette) {
+            write_catalog_asset(
+                root,
+                "field/hud/party/unarmed-item-" + std::to_string(item) +
+                    "-palette-" + std::to_string(palette) + ".bmp",
+                field_hud_party.unarmed_items[item][palette], "sprite",
+                "0x3404/0xD1860-0xD1878/0x35F0", false, manifest, written,
+                missing, blank);
+        }
+    }
     for (std::size_t spell = 0;
          spell < assets.field_hud_magic_item_blocks.size(); ++spell) {
         for (std::size_t palette = 0;

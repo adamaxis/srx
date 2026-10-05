@@ -1594,3 +1594,53 @@ are connected and tested with an explicitly injected action behavior bit.
 Live combat entry into that state, weapon firing, target selection, collision,
 damage, full attack animation, and independent reload/audio captures remain
 open.
+
+### Applied review: three-slot field-party HUD
+
+1. **Does it look correct?** Debug QA captures
+   `field-hud-qa/party-equipped/actual.bmp`,
+   `field-hud-qa/party-active-winston/actual.bmp`, and
+   `field-hud-qa/party-ricky-unarmed/actual.bmp`. The supplied longplay frames
+   000001/000017/000049 show Joshua with empty companion panels, so they do not
+   independently confirm recruited portrait appearance or alignment.
+2. **Does the look reflect the behavioral state?** ROM `0x3404` scans the
+   three fixed live-record slots. Save markers select recruited record
+   families; the field controller's active slot selects the active meter
+   profile without moving another runner's panel. Qt reads each typed record
+   for its +0x10 draw flag, portrait family, +0x56/+0x57 item state, +0x2C
+   item palette, +0x90 cyberware, and live meters/ammo. CTest changes the
+   active runner and verifies fixed panel placement.
+3. **Are the visuals themselves correct?** The ROM trace follows +0x50/+0x54
+   to the runner's 4x4 portrait, +0x57 to the ordinary item row, negative
+   +0x56 to D4EA0 spell art, and D1860/D186C/D1878 to unarmed art. The
+   extracted catalog contains all 13 runner families, 50 ordinary item codes,
+   palette lines 1/2/3, and both 0x3602 portrait/spell palettes. QA checks
+   opaque source pixels at each of the three panel coordinates and checks
+   that unarmed art replaces Ricky's equipped item.
+4. **Is it animated, and should it be?** Portraits and item icons remain
+   static between record refreshes. Source `0x3674`, `0x37EC`, and `0x36FC`
+   update the value bars and ammo count from live record changes; the Qt
+   overlay selects the resulting named value row. There is no separate idle
+   animation on the portrait or item image in this path.
+5. **Does it have sound, and how long does it play?** No audio call is traced
+   to the field HUD asset upload or panel-stamp routines. This slice requests
+   no sound and therefore has no HUD-specific playback duration.
+6. **Are the other visible parts of the screen also correct?** Full-frame QA
+   checks the field scene, right-side HUD shell, and all three portrait/item
+   areas together. Each repaint starts from the field HUD background before
+   applying the live overlays.
+7. **Do multiple frames support the interpretation?** Qt QA records equipped
+   Ricky, active-runner switch to Winston, and Ricky unarmed. Those establish
+   state-dependent host output. The independent longplay does not contain a
+   recruited-party HUD example, so its interpretation remains open to an
+   independent game capture.
+8. **Was old UI cleared before new controls were drawn?** The HUD reuses the
+   source's fixed sidebar panels. Painting rebuilds the frame from its
+   background for every image and composes only the current live assets. The
+   gear-removal check confirms the previous item pixels disappear before
+   unarmed pixels occupy that panel.
+
+**Status:** partial. ROM-derived named assets, fixed three-slot typed state,
+portrait/item selection, active-runner profile selection, and unequip redraw
+are connected and covered in Debug and Release. Independent recruited-party
+visual evidence and recruited hire-to-field-session handoff remain open.

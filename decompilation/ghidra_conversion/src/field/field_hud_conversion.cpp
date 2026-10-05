@@ -14,7 +14,8 @@ bool slot_is_armed(const FieldHudSlotState& slot) {
     return slot.equipped_inventory_slot >= 0 &&
            static_cast<std::uint8_t>(slot.equipped_inventory_slot) !=
                0x7FU &&
-           slot.equipped_item_code != 0U;
+           slot.equipped_item_code != 0U &&
+           slot.equipped_item_code <= kFieldHudItemCount;
 }
 
 bool slot_has_active_spell(const FieldHudSlotState& slot) {
@@ -64,14 +65,15 @@ std::vector<FieldHudOverlay> compose_field_hud_overlays(
         if (!slot_is_active(slots[slot])) {
             continue;
         }
-        // Portrait and ordinary item art are per-record uploads in 0x3404;
-        // negative +0x56 instead selects a shared D4EA0 spell row below. The
-        // meter rows come from the source's 0..10 value tables, while only
-        // record-specific palette/layout assets use this family index.
+        // The face family follows the runner's selected portrait. The item
+        // family follows the live +0x57 code and palette word; spells use the
+        // shared D4EA0 row when +0x56 is negative.
         const auto family = slots[slot].asset_family_index;
         overlays.push_back(make_overlay(FieldHudOverlayKind::portrait, slot,
                                         slot_vram(kFieldHudPortraitVram, slot),
-                                        family));
+                                        family,
+                                        magic_item_palette_variant(
+                                            slots[slot])));
         overlays.push_back(
             make_overlay(FieldHudOverlayKind::physical_bar, slot,
                          slot_vram(kFieldHudPhysicalBarVram, slot),
@@ -93,11 +95,16 @@ std::vector<FieldHudOverlay> compose_field_hud_overlays(
         } else if (slot_is_armed(slots[slot])) {
             overlays.push_back(
                 make_overlay(FieldHudOverlayKind::item, slot,
-                             slot_vram(kFieldHudItemVram, slot), family));
+                             slot_vram(kFieldHudItemVram, slot),
+                             static_cast<std::uint8_t>(
+                                 slots[slot].equipped_item_code - 1U),
+                             slots[slot].item_palette_variant));
         } else {
             overlays.push_back(
                 make_overlay(FieldHudOverlayKind::unarmed_item, slot,
-                             slot_vram(kFieldHudItemVram, slot), family));
+                             slot_vram(kFieldHudItemVram, slot),
+                             slots[slot].unarmed_item_variant,
+                             slots[slot].item_palette_variant));
         }
         if (slots[slot].ammo_rounds < kFieldHudAmmoCounterCount) {
             overlays.push_back(make_overlay(

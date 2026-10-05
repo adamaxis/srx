@@ -8590,6 +8590,151 @@ GenesisFieldHudLayers decode_genesis_field_hud_layers(
     return result;
 }
 
+GenesisFieldHudPartyAssets decode_genesis_field_hud_party_assets(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kJoshuaRecordStart = 0x7291AU;
+    constexpr std::size_t kRunnerRecordStride = 0x100U;
+    constexpr std::size_t kPortraitTileSource = 0x6ACFAU;
+    constexpr std::size_t kItemTileSource = 0xCF97CU;
+    constexpr std::size_t kInventoryItemTable = 0xD4540U;
+    constexpr std::size_t kInventoryItemStride = 0x30U;
+    constexpr std::size_t kItemPaletteLines[] = {1U, 2U, 3U};
+    constexpr std::size_t kPortraitPaletteLines[] = {1U, 3U};
+    constexpr std::size_t kUnarmedTables[] = {0xD1860U, 0xD186CU, 0xD1878U};
+
+    const auto palette = read_genesis_command_palette_set(rom);
+    const auto make_item_block = [&rom, &palette](
+                                     const std::size_t table_offset,
+                                     const std::size_t palette_line) {
+        RgbaImage image{
+            24U, 16U,
+            std::vector<native::Rgba8>(24U * 16U,
+                                       native::Rgba8{0, 0, 0, 0})};
+        for (std::size_t tile_index = 0; tile_index < 6U; ++tile_index) {
+            const auto table_word = read_rom_u16(
+                rom, table_offset + tile_index * 2U,
+                "Genesis field HUD item table is truncated");
+            const auto source_tile = static_cast<std::size_t>(
+                table_word & 0x07FFU);
+            const auto source_offset = kItemTileSource + source_tile * 32U;
+            if (source_offset > rom.size() || rom.size() - source_offset < 32U) {
+                throw std::out_of_range(
+                    "Genesis field HUD item tile is truncated");
+            }
+            const auto tile = decode_genesis_tile(
+                rom.data() + source_offset, 32U);
+            const auto hflip = (table_word & 0x0800U) != 0U;
+            const auto vflip = (table_word & 0x1000U) != 0U;
+            const auto tile_x = (tile_index % 3U) * 8U;
+            const auto tile_y = (tile_index / 3U) * 8U;
+            for (std::size_t y = 0; y < 8U; ++y) {
+                for (std::size_t x = 0; x < 8U; ++x) {
+                    const auto source_x = hflip ? 7U - x : x;
+                    const auto source_y = vflip ? 7U - y : y;
+                    const auto color_index = tile.pixels[
+                        source_y * 8U + source_x];
+                    auto color = palette[palette_line * 16U + color_index];
+                    color.alpha = color_index == 0U ? 0U : 255U;
+                    image.pixels[(tile_y + y) * image.width + tile_x + x] =
+                        color;
+                }
+            }
+        }
+        return image;
+    };
+
+    GenesisFieldHudPartyAssets result;
+    std::array<GenesisFieldEntityTemplate,
+               kGenesisFieldHudPortraitFamilyCount>
+        runner_records{};
+    for (std::size_t index = 0;
+         index < kGenesisFieldHudJoshuaPortraitCount; ++index) {
+        runner_records[index] = read_genesis_field_entity_template(
+            rom, kJoshuaRecordStart + index * kRunnerRecordStride);
+    }
+    const auto recruited = read_genesis_recruited_roster(rom);
+    if (recruited.size() != kGenesisFieldHudRecruitedPortraitCount) {
+        throw std::runtime_error(
+            "Genesis recruited roster does not match field HUD families");
+    }
+    for (std::size_t index = 0; index < recruited.size(); ++index) {
+        runner_records[kGenesisFieldHudJoshuaPortraitCount + index] =
+            recruited[index];
+    }
+
+    for (std::size_t family = 0; family < runner_records.size(); ++family) {
+        const auto& record = runner_records[family];
+        if (record.record_offset == 0U || record.kind == 0U) {
+            throw std::runtime_error(
+                "Genesis field HUD portrait family is unavailable");
+        }
+        auto portrait_table = static_cast<std::size_t>(read_rom_u32(
+            rom, record.record_offset + 0x50U,
+            "Genesis field HUD portrait pointer is truncated"));
+        portrait_table += read_rom_u16(
+            rom, record.record_offset + 0x54U,
+            "Genesis field HUD portrait selector is truncated");
+        for (std::size_t variant = 0;
+             variant < kGenesisFieldHudPortraitPaletteVariantCount; ++variant) {
+            const auto palette_line = kPortraitPaletteLines[variant];
+            auto& face = result.portraits[family][variant];
+            face = RgbaImage{
+                32U, 32U,
+                std::vector<native::Rgba8>(32U * 32U,
+                                           native::Rgba8{0, 0, 0, 0})};
+            for (std::size_t row = 0; row < 4U; ++row) {
+                for (std::size_t column = 0; column < 4U; ++column) {
+                    const auto table_word = read_rom_u16(
+                        rom, portrait_table + (row * 8U + column) * 2U,
+                        "Genesis field HUD portrait table is truncated");
+                    const auto source_tile = static_cast<std::size_t>(
+                        table_word & 0x07FFU);
+                    const auto source_offset =
+                        kPortraitTileSource + source_tile * 32U;
+                    if (source_offset > rom.size() ||
+                        rom.size() - source_offset < 32U) {
+                        throw std::out_of_range(
+                            "Genesis field HUD portrait tile is truncated");
+                    }
+                    const auto tile = decode_genesis_tile(
+                        rom.data() + source_offset, 32U);
+                    for (std::size_t y = 0; y < 8U; ++y) {
+                        for (std::size_t x = 0; x < 8U; ++x) {
+                            const auto color_index = tile.pixels[y * 8U + x];
+                            auto color =
+                                palette[palette_line * 16U + color_index];
+                            color.alpha = color_index == 0U ? 0U : 255U;
+                            face.pixels[(row * 8U + y) * face.width +
+                                        column * 8U + x] = color;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    for (std::size_t item = 0; item < result.items.size(); ++item) {
+        const auto item_record =
+            kInventoryItemTable + item * kInventoryItemStride;
+        const auto item_table = static_cast<std::size_t>(read_rom_u32(
+            rom, item_record + 0x1AU,
+            "Genesis field HUD item pointer is truncated"));
+        for (std::size_t variant = 0;
+             variant < kGenesisFieldHudItemPaletteVariantCount; ++variant) {
+            result.items[item][variant] = make_item_block(
+                item_table, kItemPaletteLines[variant]);
+        }
+    }
+    for (std::size_t item = 0; item < result.unarmed_items.size(); ++item) {
+        for (std::size_t variant = 0;
+             variant < kGenesisFieldHudItemPaletteVariantCount; ++variant) {
+            result.unarmed_items[item][variant] = make_item_block(
+                kUnarmedTables[item], kItemPaletteLines[variant]);
+        }
+    }
+    return result;
+}
+
 
 
 } // namespace shadowrun::graphics

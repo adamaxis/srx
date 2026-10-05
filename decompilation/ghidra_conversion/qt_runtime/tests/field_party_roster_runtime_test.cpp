@@ -20,6 +20,8 @@ bool expect(const bool condition, const char* message) {
 int main() {
     integration::StartupIntegrationState new_game{};
     new_game.joshua_selection.emplace();
+    new_game.joshua_archetype.selected =
+        static_cast<JoshuaArchetypeChoice>(1U);
     const std::string joshua_name = "Joshua";
     for (std::size_t index = 0; index < joshua_name.size(); ++index) {
         new_game.joshua_selection->live_joshua_record[0x58U + index] =
@@ -36,13 +38,18 @@ int main() {
                 "new-game roster activated an invented recruited slot") ||
         !expect((roster.active_record().flags & 0x0101U) == 0x0101U &&
                     roster.active_record().ammo_clips == 3U &&
-                    roster.name(0U) == "Joshua",
+                    roster.name(0U) == "Joshua" &&
+                    roster.portrait_asset_family(0U) == 1U,
                 "new-game roster did not publish Joshua as active")) {
         return 1;
     }
 
     integration::StartupIntegrationState loaded{};
     loaded.restored_field_state.emplace();
+    loaded.startup_records.emplace();
+    loaded.startup_records->joshua_archetypes[0].record[0x9BU] = 2U;
+    loaded.startup_records->joshua_archetypes[1].record[0x9BU] = 3U;
+    loaded.startup_records->joshua_archetypes[2].record[0x9BU] = 1U;
     loaded.restored_field_state->roster.primary_marker = 1U;
     loaded.restored_field_state->roster.secondary_marker = 0xFFU;
     const std::string ricky_name = "Ricky";
@@ -55,6 +62,7 @@ int main() {
         loaded.restored_field_state->roster.default_record.bytes[0x58U + index] =
             static_cast<std::uint8_t>(winston_name[index]);
     }
+    loaded.restored_field_state->roster.default_record.bytes[0x9BU] = 3U;
     loaded.restored_field_state->roster.default_record.bytes[0x4FU] = 2U;
     loaded.restored_field_state->roster.primary_record.bytes[0x4FU] = 7U;
     loaded.restored_field_state->active_runner_slot = 1U;
@@ -67,7 +75,9 @@ int main() {
         !expect(roster.records()[0].ammo_clips == 2U &&
                     roster.records()[1].ammo_clips == 7U &&
                     roster.name(0U) == "Winston Marrs" &&
-                    roster.name(1U) == "Ricky",
+                    roster.name(1U) == "Ricky" &&
+                    roster.portrait_asset_family(0U) == 1U &&
+                    roster.portrait_asset_family(1U) == 3U,
                 "save roster records were not projected into typed fields")) {
         return 2;
     }
