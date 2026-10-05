@@ -1449,9 +1449,14 @@ selection, and indirect sound hook remain open.
    Terminal branch at `0x20EC2`. The lock begins on `<MORE>`, waits the shared
    ten-frame choice gate, then builds typed Electronics/Grenade/Walk Away
    rows from the interaction selection and active party inventory. The
-   terminal exposes typed Electronics/Walk Away rows. Result pages remove
-   the option rows; the terminal floor sentence is withheld when the current
-   field bootstrap lacks source state `FFE12C`.
+   terminal exposes typed Electronics/Walk Away rows. The movement runtime
+   now receives the active runner's source `+0x10` behavior byte from the
+   selected archetype or restored record; `0xB7B8` requires bit 1 before it
+   can resolve the blocked-cell interaction. The three `0x7291A` archetypes
+   all carry `0x0F` there. The separate `0x44BC` default `0x05` is for spawned
+   world entities. Result pages remove the option rows; the terminal floor
+   sentence is withheld when the current field bootstrap lacks source state
+   `FFE12C`.
 3. **Are the visuals themselves correct?** The presenter fills the complete
    screen, redraws the extracted shared frame, clears both source content
    wells, then draws source text and A/B/C marker assets. The first option is
@@ -1492,14 +1497,16 @@ selection, and indirect sound hook remain open.
    clears the full 320x224 surface and both content wells before drawing each
    page. The return check compares the post-modal field image with the exact
    pre-modal image, so any dialogue text, button marker, or frame left over
-   fails the route QA. The actual in-world object collision trigger still
-   needs an end-to-end gameplay test.
+   fails the route QA. Debug/Release interaction QA asserts the selected
+   runner's bit-1 gate, but still injects the typed continuation after event
+   resolution. The actual in-world object collision trigger still needs an
+   end-to-end gameplay test.
 
 **Status:** partial. Typed prompt/result behavior, menu rendering, audio
-resource 075 mapping, full-frame modal ownership, and clean field return have
-Debug/Release test coverage. Independent Genesis frames, the actual field
-object trigger route, the `FFE12C` floor source, resource-048 alert lifetime,
-and captured device audio remain open.
+resource 075 mapping, source behavior-flag binding, full-frame modal ownership,
+and clean field return have Debug/Release test coverage. Independent Genesis
+frames, the actual field object trigger route, the `FFE12C` floor source,
+resource-048 alert lifetime, and captured device audio remain open.
 
 ### Applied review: Start-menu Karma view and Hotel Karma spending page
 

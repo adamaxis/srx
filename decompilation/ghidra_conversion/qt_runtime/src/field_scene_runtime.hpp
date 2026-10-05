@@ -193,6 +193,9 @@ public:
     bool field_interaction_open() const noexcept {
         return field_interaction_.open();
     }
+    std::uint8_t field_entity_behavior_flags_for_dump() const noexcept {
+        return field_entity_behavior_flags_;
+    }
     const DialoguePanelView& field_interaction_panel() const noexcept {
         return field_interaction_.panel();
     }

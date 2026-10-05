@@ -365,6 +365,8 @@ void FieldSceneRuntime::initialize_field_entity_selection_state() {
     field_entity_selection_state_ = RunnerSwitchState{
         {{0U, field_entity_behavior_flags_}, {1U, 0U}, {2U, 0U}}, 0U,
         false};
+    field_movement_behavior_record_.behavior_flags =
+        field_entity_behavior_flags_;
     field_runner_refresh_state_ = FieldRunnerRefreshState{};
     field_mode_exit_transition_state_ = FieldModeExitTransitionState{};
     field_mode_exit_transition_state_.action_counter = field_action_counter_;
@@ -2933,10 +2935,13 @@ bool FieldSceneRuntime::bootstrap(
             active_runner_record()
                 .projection_word_08;
     }
-    // ROM 0x44BC installs behavior byte 0x05 in a field entity before the
-    // source 0xC64C/0x391A handoff. Keep the typed state initialized before
-    // field-buffer preparation can invoke 0xC7F8.
-    field_entity_behavior_flags_ = field_entity_.active ? 0x05U : 0U;
+    // The controlled runner is copied from the selected 0x7291A archetype or
+    // restored save record. Its live +0x10 flags gate field interactions in
+    // 0xB7B8; 0x44BC's separate 0x05 default is for spawned world entities.
+    field_entity_behavior_flags_ =
+        field_entity_.active
+            ? static_cast<std::uint8_t>(active_runner_record().flags >> 8U)
+            : 0U;
     initialize_field_entity_selection_state();
     refresh_field_hud_runner_slot();
 

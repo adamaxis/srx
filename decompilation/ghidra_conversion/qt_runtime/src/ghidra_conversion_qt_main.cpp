@@ -4230,6 +4230,11 @@ int main(int argc, char** argv) {
                               << *field_interaction_dump_variant << "'\n";
                     return 3;
                 }
+                if ((field_scene.field_entity_behavior_flags_for_dump() &
+                     0x02U) == 0U) {
+                    std::cerr << "field interaction dump: selected runner's source behavior flags do not enable the ROM 0xB7B8 interaction path\n";
+                    return 3;
+                }
                 QImage field_before_prompt_scene(kSceneWidth, kSceneHeight,
                                                  QImage::Format_RGB32);
                 field_before_prompt_scene.fill(Qt::black);
