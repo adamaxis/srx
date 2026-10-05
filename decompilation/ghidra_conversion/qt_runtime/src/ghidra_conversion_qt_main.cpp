@@ -3439,6 +3439,12 @@ int run_field_motel_entry_qa(
         return 3;
     }
 
+    // The city-door test holds Up to reach the doorway. Release it before
+    // describing any destination checkpoints as idle; the destination spawn
+    // may be against a blocking edge, which can make held input look stationary.
+    field_scene.set_controller_nibble(0U);
+    const auto destination_input_nibble =
+        field_scene.field_controller_nibble_for_dump();
     const auto destination_entry_position =
         field_scene.field_entity_world_position();
     const auto destination_entry_visible = field_scene.field_entity_visible();
@@ -3471,6 +3477,8 @@ int run_field_motel_entry_qa(
             print_destination_state(std::to_string(settle));
         }
     }
+    const auto destination_settled_position =
+        field_scene.field_entity_world_position();
     const auto destination = render_field();
     const bool settled_dump_saved = destination.save(QString::fromStdWString(
         (output / "destination-settled.bmp").wstring()));
@@ -3489,6 +3497,10 @@ int run_field_motel_entry_qa(
         destination == spawn_image ||
         !field_hud_chrome_survives(destination, asset_root) ||
         count_playfield_lit(destination) < 100U ||
+        destination_input_nibble != 0U ||
+        field_scene.field_controller_nibble_for_dump() != 0U ||
+        destination_settled_position.x != destination_entry_position.x ||
+        destination_settled_position.y != destination_entry_position.y ||
         field_scene.field_palette_fade_steps_for_dump() != 0U ||
         !settled_dump_saved || !actual_dump_saved ||
         !field_audio_events.empty() ||
@@ -3497,7 +3509,8 @@ int run_field_motel_entry_qa(
         field_scene.field_mode_event_code_for_dump() != 0U ||
         source_event_destination != 0x14U) {
         std::cerr << "field motel-entry QA: destination full frame, clean HUD, "
-                     "source handoff, or audio-service boundary failed "
+                     "no-input position stability, source handoff, or "
+                     "audio-service boundary failed "
                      "(SFX events=" << field_audio_events.size()
                   << ", mode-entry commands="
                   << mode_entry_commands_after - mode_entry_commands_before

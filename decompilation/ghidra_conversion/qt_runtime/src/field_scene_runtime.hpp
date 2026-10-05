@@ -534,6 +534,9 @@ public:
     bool field_entity_visible() const noexcept {
         return field_entity_.visible;
     }
+    std::uint8_t field_controller_nibble_for_dump() const noexcept {
+        return field_controller_nibble_;
+    }
     const std::string& failure() const noexcept { return failure_; }
     const integration::FieldSessionBootstrapState& state() const noexcept {
         return state_;
