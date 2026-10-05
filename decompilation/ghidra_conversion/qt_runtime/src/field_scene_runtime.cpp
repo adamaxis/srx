@@ -44,6 +44,8 @@ constexpr std::string_view kFieldHudFaceAliasPrefix = "field.hud.face.";
 constexpr std::string_view kFieldHudItemAliasPrefix = "field.hud.item.";
 constexpr std::string_view kFieldHudUnarmedItemAliasPrefix =
     "field.hud.unarmed.item.";
+constexpr std::string_view kFieldHudMagicItemAliasPrefix =
+    "field.hud.magic.item.";
 constexpr std::string_view kFieldHudDelayMeterAliasPrefix =
     "field.hud.delay.meter.";
 constexpr std::string_view kFieldHudBehaviorMeterPrimaryAliasPrefix =
@@ -688,6 +690,20 @@ bool FieldSceneRuntime::load_field_hud_overlays(
         !load_slot(kFieldHudUnarmedItemAliasPrefix,
                    field_hud_unarmed_items_)) {
         return false;
+    }
+    for (std::size_t spell = 0; spell < field_hud_magic_items_.size();
+         ++spell) {
+        for (std::size_t palette = 0;
+             palette < field_hud_magic_items_[spell].size(); ++palette) {
+            const auto alias = std::string(kFieldHudMagicItemAliasPrefix) +
+                               std::to_string(spell) + ".palette." +
+                               std::to_string(palette);
+            if (!load_sprite_image(catalog, alias,
+                                   field_hud_magic_items_[spell][palette],
+                                   origin_x, origin_y)) {
+                return false;
+            }
+        }
     }
     for (std::size_t meter = 0; meter < kFieldHudMeterLevelCount; ++meter) {
         const auto delay_alias =
@@ -1506,6 +1522,7 @@ void FieldSceneRuntime::refresh_field_hud_runner_slot() {
     slot.equipped_inventory_slot =
         active_runner_record().equipped_inventory_slot;
     slot.equipped_item_code = active_runner_record().equipped_item_code;
+    slot.class_code = active_runner_record().archetype_index;
     slot.ammo_rounds = active_runner_record().ammo_rounds;
     slot.delay_meter =
         static_cast<std::int8_t>(active_runner_record().delay_meter);
@@ -2866,6 +2883,7 @@ bool FieldSceneRuntime::bootstrap(
         field_hud_slots_[0].equipped_inventory_slot =
             record.equipped_inventory_slot;
         field_hud_slots_[0].equipped_item_code = record.equipped_item_code;
+        field_hud_slots_[0].class_code = record.archetype_index;
         field_hud_slots_[0].ammo_rounds = record.ammo_rounds;
         field_hud_slots_[0].delay_meter =
             static_cast<std::int8_t>(record.delay_meter);
@@ -4540,6 +4558,13 @@ void FieldSceneRuntime::paint_field_hud_overlays(QPainter& painter) const {
             return overlay.asset_index < field_hud_unarmed_items_.size()
                 ? &field_hud_unarmed_items_[overlay.asset_index]
                 : nullptr;
+        case FieldHudOverlayKind::magic_item:
+            return overlay.asset_index < field_hud_magic_items_.size() &&
+                    overlay.palette_variant <
+                        field_hud_magic_items_[overlay.asset_index].size()
+                ? &field_hud_magic_items_[overlay.asset_index]
+                                 [overlay.palette_variant]
+                : nullptr;
         case FieldHudOverlayKind::ammo:
             return overlay.asset_index < field_hud_ammo_counters_.size()
                 ? &field_hud_ammo_counters_[overlay.asset_index]
@@ -4553,6 +4578,7 @@ void FieldSceneRuntime::paint_field_hud_overlays(QPainter& painter) const {
         static_cast<std::uint8_t>(active.flags >> 8U);
     live_slots[0].equipped_inventory_slot = active.equipped_inventory_slot;
     live_slots[0].equipped_item_code = active.equipped_item_code;
+    live_slots[0].class_code = active.archetype_index;
     live_slots[0].ammo_rounds = active.ammo_rounds;
     live_slots[0].delay_meter = static_cast<std::int8_t>(active.delay_meter);
     live_slots[0].behavior_meter =
@@ -5357,10 +5383,22 @@ void FieldSceneRuntime::paint_command_overview_magic(
             painter, 112, 32,
             field_menu_text_.magic_spell_names[spell_code],
             magic_menu_font_);
-        draw_field_menu_font_text(
-            painter, 32, 48,
-            field_menu_text_.magic_spell_descriptions[spell_code],
-            magic_menu_font_);
+        if (magic_force_selection_open() ||
+            magic_posture_selection_open()) {
+            // ROM 0x102D4 replaces the spell description with the action
+            // heading at C390 while Force/Posture selection is active.
+            // paint() starts from the named panel background each frame, so
+            // omitting the old description also clears both stale text rows.
+            draw_field_menu_font_text(
+                painter, 64, 56,
+                field_menu_text_.magic_force_posture_heading,
+                magic_menu_font_);
+        } else {
+            draw_field_menu_font_text(
+                painter, 32, 48,
+                field_menu_text_.magic_spell_descriptions[spell_code],
+                magic_menu_font_);
+        }
     }
     // ROM 0x102EC passes each complete encoded label block to C0DA. The
     // 0x80 bytes inside them preserve the line breaks and empty Force-to-

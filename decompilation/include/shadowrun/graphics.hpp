@@ -680,6 +680,11 @@ struct GenesisFieldHudLayers {
     std::array<RgbaImage, 3> faces{};
     std::array<RgbaImage, 3> item_blocks{};
     std::array<RgbaImage, 3> unarmed_item_blocks{};
+    // 0x3404 selects each spell row from D4EA0 when +0x56 is negative. The
+    // source 0x3602 palette selector yields attribute words 0x2000/0x6000,
+    // which are palette lines 1/3 in the extracted host images.
+    std::array<std::array<RgbaImage, 2>, native::kNativeMagicSpellCount>
+        magic_item_blocks{};
     // Direct value rows for the live +0x4C and +0x9C HUD meters. 0x3674
     // selects one of eleven vertical rows; 0x37EC selects one of eleven
     // horizontal rows from either the primary-runner or companion table.

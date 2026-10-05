@@ -1111,6 +1111,33 @@ int main() {
                                          a.alpha == b.alpha;
                               });
         };
+        for (std::size_t spell = 0;
+             spell < native_assets.field_hud_magic_item_blocks.size();
+             ++spell) {
+            const auto& low_palette =
+                native_assets.field_hud_magic_item_blocks[spell][0U];
+            const auto& high_palette =
+                native_assets.field_hud_magic_item_blocks[spell][1U];
+            const auto& loaded_low =
+                loaded_assets.field_hud_magic_item_blocks[spell][0U];
+            const auto& loaded_high =
+                loaded_assets.field_hud_magic_item_blocks[spell][1U];
+            assert(low_palette.width == 24U && low_palette.height == 16U);
+            assert(high_palette.width == 24U && high_palette.height == 16U);
+            assert(std::any_of(low_palette.pixels.begin(),
+                               low_palette.pixels.end(), [](const auto& pixel) {
+                                   return pixel.alpha != 0U;
+                               }));
+            assert(std::any_of(high_palette.pixels.begin(),
+                               high_palette.pixels.end(), [](const auto& pixel) {
+                                   return pixel.alpha != 0U;
+                               }));
+            assert(!same_pixels(low_palette.pixels, high_palette.pixels));
+            assert(loaded_low.width == 24U && loaded_low.height == 16U);
+            assert(loaded_high.width == 24U && loaded_high.height == 16U);
+            assert(same_pixels(low_palette.pixels, loaded_low.pixels));
+            assert(same_pixels(high_palette.pixels, loaded_high.pixels));
+        }
         for (std::size_t profile = 0;
              profile < native_assets.protagonist_archetype_records.size();
              ++profile) {

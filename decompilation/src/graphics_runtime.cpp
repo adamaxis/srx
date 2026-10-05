@@ -596,6 +596,16 @@ native::NativePortAssets read_native_asset_directory(const std::string& root) {
         assets.field_hud_horizontal_counters[index] = load(
             "field/hud/horizontal-counter-" + std::to_string(index) + ".bmp");
     }
+    for (std::size_t spell = 0;
+         spell < assets.field_hud_magic_item_blocks.size(); ++spell) {
+        for (std::size_t palette = 0;
+             palette < assets.field_hud_magic_item_blocks[spell].size();
+             ++palette) {
+            assets.field_hud_magic_item_blocks[spell][palette] = load(
+                "field/hud/magic-item-" + std::to_string(spell) +
+                "-palette-" + std::to_string(palette) + ".bmp");
+        }
+    }
     for (std::size_t index = 0; index < assets.field_hud_ammo_counters.size(); ++index) {
         assets.field_hud_ammo_counters[index] = load(
             "field/hud/ammo-counter-" + std::to_string(index) + ".bmp");

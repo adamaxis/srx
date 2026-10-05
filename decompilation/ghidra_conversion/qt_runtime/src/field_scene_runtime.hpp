@@ -690,6 +690,9 @@ private:
     std::array<QImage, kFieldHudSlotCount> field_hud_faces_{};
     std::array<QImage, kFieldHudSlotCount> field_hud_items_{};
     std::array<QImage, kFieldHudSlotCount> field_hud_unarmed_items_{};
+    std::array<std::array<QImage, kFieldHudMagicItemPaletteVariantCount>,
+               kFieldHudMagicItemCount>
+        field_hud_magic_items_{};
     std::array<QImage, kFieldHudMeterLevelCount>
         field_hud_delay_meter_counters_{};
     std::array<QImage,

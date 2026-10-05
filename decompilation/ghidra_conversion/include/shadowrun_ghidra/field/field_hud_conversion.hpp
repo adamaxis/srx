@@ -13,6 +13,8 @@ constexpr std::size_t kFieldHudSlotCount = 3U;
 constexpr std::size_t kFieldHudAmmoCounterCount = 64U;
 constexpr std::size_t kFieldHudMeterLevelCount = 11U;
 constexpr std::size_t kFieldHudBehaviorMeterProfileCount = 2U;
+constexpr std::size_t kFieldHudMagicItemCount = 13U;
+constexpr std::size_t kFieldHudMagicItemPaletteVariantCount = 2U;
 constexpr std::uint16_t kFieldHudPlaneBase = 0xF000U;
 constexpr std::uint16_t kFieldHudPlaneWidthTiles = 64U;
 constexpr std::uint16_t kFieldHudSlotVramStride = 0x0400U;
@@ -42,6 +44,7 @@ enum class FieldHudOverlayKind {
     mental_bar,
     item,
     unarmed_item,
+    magic_item,
     ammo,
 };
 
@@ -51,6 +54,8 @@ struct FieldHudOverlay {
     int x = 0;
     int y = 0;
     std::uint8_t asset_index = 0;
+    // 0x3602 selects source palette attributes 0x2000 or 0x6000.
+    std::uint8_t palette_variant = 0;
 };
 
 struct FieldHudSlotState {
@@ -59,17 +64,17 @@ struct FieldHudSlotState {
     // Live record +0x56. 0x7F is the source unarmed sentinel.
     std::int8_t equipped_inventory_slot = 0;
     std::uint8_t equipped_item_code = 0;
+    std::uint8_t class_code = 0; // Live record +0x9B, used by 0x3602.
     std::uint8_t ammo_rounds = 0;
     // Live record +0x4C and +0x9C. The source clamps both displayed meters
     // to 0..10; the physical bar and mental/behavior bar use separate tables.
     std::int8_t delay_meter = 0;
     std::int8_t behavior_meter = 0;
     bool primary_runner = false;
-    // 0x3404 uploads the portrait, bar, and item tile families from the
-    // slot's own live record (+0x50/+0x54 portrait selector, +0x57 active
-    // item). The extracted per-record sprite families are indexed by the
-    // record that produced them, so the slot carries that index instead of
-    // baking one face/bar/item set per slot number.
+    // 0x3404 uploads the portrait and ordinary item tiles from the slot's
+    // live record (+0x50/+0x54 portrait selector, +0x57 active item). Negative
+    // +0x56 instead selects a shared D4EA0 spell sprite. The extracted
+    // portrait/ordinary-item families are indexed by their source record.
     std::uint8_t asset_family_index = 0;
 };
 

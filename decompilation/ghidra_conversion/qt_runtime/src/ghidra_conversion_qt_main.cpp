@@ -2,6 +2,7 @@
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_action_math_conversion.hpp"
 #include "shadowrun_ghidra/menus/clips_menu_conversion.hpp"
+#include "shadowrun_ghidra/menus/menu_service_sequence_conversion.hpp"
 #include "shadowrun_ghidra/menus/menu_transfer_batch_conversion.hpp"
 #include "shadowrun_ghidra/integration/startup_integration_conversion.hpp"
 #include "shadowrun_ghidra/title_intro/title_loop_conversion.hpp"
@@ -4602,6 +4603,52 @@ int main(int argc, char** argv) {
                     }
                     return true;
                 };
+                const auto font_text_pixels_match = [](
+                    const QImage& scene, const QImage& font,
+                    const int origin_x, const int origin_y,
+                    const std::string_view text) {
+                    auto cursor_x = origin_x;
+                    auto cursor_y = origin_y;
+                    for (const unsigned char code : text) {
+                        if (code == '\n') {
+                            cursor_x = origin_x;
+                            cursor_y += 8;
+                            continue;
+                        }
+                        if (code < 0x20U || code > 0x7EU) {
+                            cursor_x += 8;
+                            continue;
+                        }
+                        const auto glyph =
+                            static_cast<int>(code - 0x20U);
+                        const auto source_x = (glyph % 16) * 8;
+                        const auto source_y = (glyph / 16) * 8;
+                        if (source_x + 8 > font.width() ||
+                            source_y + 8 > font.height() ||
+                            cursor_x + 8 > scene.width() ||
+                            cursor_y + 8 > scene.height()) {
+                            return false;
+                        }
+                        for (int y = 0; y < 8; ++y) {
+                            for (int x = 0; x < 8; ++x) {
+                                const auto expected = font.pixelColor(
+                                    source_x + x, source_y + y);
+                                if (expected.alpha() == 0) {
+                                    continue;
+                                }
+                                const auto actual = scene.pixelColor(
+                                    cursor_x + x, cursor_y + y);
+                                if (actual.red() != expected.red() ||
+                                    actual.green() != expected.green() ||
+                                    actual.blue() != expected.blue()) {
+                                    return false;
+                                }
+                            }
+                        }
+                        cursor_x += 8;
+                    }
+                    return true;
+                };
                 const auto page_scene = render_scene();
                 if (!field_command_shell_survives(page_scene, asset_root) ||
                     !field_hud_chrome_survives(page_scene, asset_root) ||
@@ -4929,10 +4976,59 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 press_field_port(0x40U); // A enters the force loop.
+                const auto force_selection_scene = render_scene();
+                const auto magic_font = direct_asset(
+                    "menu/field/magic-font-palette-0.bmp");
+                constexpr std::string_view kManaZapDescription =
+                    "A small zap of energy that\ndelivers a nasty jolt.";
                 if (!field_scene.magic_force_selection_open() ||
-                    !save_scene("force_selection", render_scene())) {
+                    !font_text_pixels_match(
+                        force_selection_scene, magic_font, 64, 56,
+                        "Set Force & Posture.") ||
+                    font_text_pixels_match(force_selection_scene, magic_font,
+                                           32, 48, kManaZapDescription) ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x24U, 0x24U} ||
+                    !save_scene("force_selection", force_selection_scene)) {
                     std::cerr << "field Magic spell dump: A did not enter "
-                                 "the force loop\n";
+                                 "the source Set Force & Posture view, clear "
+                                 "the spell description, or stay silent\n";
+                    return 3;
+                }
+                auto expected_force_cursor_phase =
+                    field_scene.magic_cursor_phase();
+                auto previous_force_cursor_scene = force_selection_scene;
+                for (std::uint8_t phase_step = 1U; phase_step <= 4U;
+                     ++phase_step) {
+                    for (int frame = 0; frame < 7; ++frame) {
+                        field_scene.set_controller_port_byte(0U);
+                        field_scene.advance_frame();
+                    }
+                    expected_force_cursor_phase =
+                        static_cast<std::uint8_t>(
+                            (expected_force_cursor_phase + 1U) % 4U);
+                    const auto force_cursor_scene = render_scene();
+                    if (field_scene.magic_cursor_phase() !=
+                            expected_force_cursor_phase ||
+                        !field_scene.magic_force_selection_open() ||
+                        field_scene.magic_current_force() != 3U ||
+                        force_cursor_scene == previous_force_cursor_scene ||
+                        field_audio_events !=
+                            std::vector<std::uint16_t>{0x24U, 0x24U} ||
+                        !save_scene("force_cursor_phase_" +
+                                        std::to_string(
+                                            expected_force_cursor_phase),
+                                    force_cursor_scene)) {
+                        std::cerr << "field Magic spell dump: force cursor "
+                                     "did not advance through a visible "
+                                     "seven-frame phase, or action added sound\n";
+                        return 3;
+                    }
+                    previous_force_cursor_scene = force_cursor_scene;
+                }
+                if (previous_force_cursor_scene != force_selection_scene) {
+                    std::cerr << "field Magic spell dump: force cursor did "
+                                 "not complete a four-phase cycle\n";
                     return 3;
                 }
                 press_field_port(0x04U); // Left lowers force.
@@ -4974,6 +5070,16 @@ int main(int argc, char** argv) {
                 }
                 press_field_port(0x20U); // B finishes the equipment action.
                 const auto equipped_scene = render_scene();
+                const auto magic_hud_palette =
+                    select_hud_glyph_attribute_flags(HudGlyphAttributeInput{
+                        static_cast<std::int8_t>(first_spell + 1U),
+                        static_cast<std::int8_t>(field_scene.active_runner_record()
+                                                     .archetype_index),
+                        -1});
+                const auto magic_hud_item = direct_asset(
+                    "field/hud/magic-item-" +
+                    std::to_string(first_spell) + "-palette-" +
+                    (magic_hud_palette == 0x6000U ? "1" : "0") + ".bmp");
                 if (!field_scene.magic_spell_panel_open() ||
                     field_scene.active_runner_record().equipped_inventory_slot !=
                         -1 ||
@@ -4982,14 +5088,22 @@ int main(int argc, char** argv) {
                     field_scene.active_runner_record().magic_force != 3U ||
                     field_scene.active_runner_record().posture !=
                         expected_posture ||
+                    magic_hud_palette != 0x6000U ||
+                    !visible_asset_pixels_match(equipped_scene,
+                                                magic_hud_item, 288, 64) ||
                     (initial_record.equipped_inventory_slot >= 0 &&
                      initial_record.equipped_item_code != 0U &&
                      field_scene.active_runner_record().ammo_rounds != 3U) ||
+                    font_text_pixels_match(
+                        equipped_scene, magic_font, 64, 56,
+                        "Set Force & Posture.") ||
+                    !font_text_pixels_match(equipped_scene, magic_font, 32,
+                                            48, kManaZapDescription) ||
                     !field_hud_chrome_survives(equipped_scene, asset_root) ||
                     !save_scene("spell_equipped", equipped_scene)) {
                     std::cerr << "field Magic spell dump: force/posture "
-                                 "finalization did not update typed equipment "
-                                 "and HUD state\n";
+                                 "finalization did not update typed equipment, "
+                                 "description, and source spell HUD art\n";
                     return 3;
                 }
 

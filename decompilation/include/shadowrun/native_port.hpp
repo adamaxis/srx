@@ -58,6 +58,7 @@ constexpr std::int32_t kFieldHudAmmoCounterY = 72;
 constexpr std::uint16_t kTitleCircuitLightTicks = 3;
 constexpr std::size_t kNativeInventorySlotCount = 8;
 constexpr std::size_t kNativeInventoryItemCount = 50;
+constexpr std::size_t kNativeMagicSpellCount = 13;
 constexpr std::size_t kNativeTitleAnimationFrameCount = 6;
 // ROM 0x5D996 ping-pongs six SAT lists from 0x5DA20/0x5DA38.
 constexpr std::size_t kNativeBootSegaPhaseCount = 6;
@@ -553,6 +554,10 @@ struct NativePortAssets {
     std::array<NativeImage, 3> field_hud_faces{};
     std::array<NativeImage, 3> field_hud_item_blocks{};
     std::array<NativeImage, 3> field_hud_unarmed_item_blocks{};
+    // ROM 0x3404 selects D4EA0 when +0x56 is negative. The two arrays hold
+    // source palette lines 1 (0x2000) and 3 (0x6000) for each spell row.
+    std::array<std::array<NativeImage, 2>, kNativeMagicSpellCount>
+        field_hud_magic_item_blocks{};
     std::array<NativeImage, 11> field_hud_delay_meter_counters{};
     std::array<std::array<NativeImage, 11>, 2>
         field_hud_behavior_meter_counters{};
@@ -1336,6 +1341,8 @@ private:
     std::array<NativeImage, 3> field_hud_faces_{};
     std::array<NativeImage, 3> field_hud_item_blocks_{};
     std::array<NativeImage, 3> field_hud_unarmed_item_blocks_{};
+    std::array<std::array<NativeImage, 2>, kNativeMagicSpellCount>
+        field_hud_magic_item_blocks_{};
     std::array<NativeImage, 3> field_hud_vertical_counters_{};
     std::array<NativeImage, 3> field_hud_horizontal_counters_{};
     std::array<NativeImage, 64> field_hud_ammo_counters_{};

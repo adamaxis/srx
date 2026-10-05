@@ -143,6 +143,33 @@ int main() {
         return 9;
     }
 
+    joshua[0].equipped_inventory_slot = -1;
+    joshua[0].equipped_item_code = 8U; // D4EA0 row 7: Mana Zap.
+    joshua[0].class_code = 2U;
+    const auto magic = compose_field_hud_overlays(joshua);
+    if (!expect(magic.size() == 5U &&
+                magic[3].kind == FieldHudOverlayKind::magic_item &&
+                magic[3].asset_index == 7U &&
+                magic[3].palette_variant == 1U &&
+                magic[3].x == 288 && magic[3].y == 64)) {
+        return 42;
+    }
+    joshua[0].class_code = 0U;
+    joshua[0].equipped_item_code = 5U;
+    const auto magic_low_palette = compose_field_hud_overlays(joshua);
+    if (!expect(magic_low_palette[3].kind ==
+                    FieldHudOverlayKind::magic_item &&
+                magic_low_palette[3].asset_index == 4U &&
+                magic_low_palette[3].palette_variant == 0U)) {
+        return 43;
+    }
+    joshua[0].equipped_item_code = 14U;
+    const auto unsupported_magic = compose_field_hud_overlays(joshua);
+    if (!expect(unsupported_magic[3].kind ==
+                FieldHudOverlayKind::unarmed_item)) {
+        return 44;
+    }
+
     // Portrait and item art are per-record uploads in 0x3404. The delay and
     // behavior meters follow their live values, and ammo stays value-indexed.
     joshua[0].equipped_inventory_slot = 0;

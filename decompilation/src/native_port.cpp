@@ -808,6 +808,8 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     field_hud_item_blocks_ = std::move(assets.field_hud_item_blocks);
     field_hud_unarmed_item_blocks_ =
         std::move(assets.field_hud_unarmed_item_blocks);
+    field_hud_magic_item_blocks_ =
+        std::move(assets.field_hud_magic_item_blocks);
     field_hud_vertical_counters_ =
         std::move(assets.field_hud_vertical_counters);
     field_hud_horizontal_counters_ =

@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/field/field_hud_conversion.hpp"
+#include "shadowrun_ghidra/menus/menu_service_sequence_conversion.hpp"
 
 #include <algorithm>
 
@@ -14,6 +15,20 @@ bool slot_is_armed(const FieldHudSlotState& slot) {
            static_cast<std::uint8_t>(slot.equipped_inventory_slot) !=
                0x7FU &&
            slot.equipped_item_code != 0U;
+}
+
+bool slot_has_active_spell(const FieldHudSlotState& slot) {
+    return slot.equipped_inventory_slot < 0 &&
+           slot.equipped_item_code != 0U &&
+           slot.equipped_item_code <= kFieldHudMagicItemCount;
+}
+
+std::uint8_t magic_item_palette_variant(const FieldHudSlotState& slot) {
+    const auto flags = select_hud_glyph_attribute_flags(HudGlyphAttributeInput{
+        static_cast<std::int8_t>(slot.equipped_item_code),
+        static_cast<std::int8_t>(slot.class_code),
+        slot.equipped_inventory_slot});
+    return flags == 0x6000U ? 1U : 0U;
 }
 
 std::uint16_t slot_vram(const std::uint16_t base, const std::uint8_t slot) {
@@ -33,9 +48,11 @@ std::uint8_t meter_asset_index(const std::int8_t meter) {
 FieldHudOverlay make_overlay(const FieldHudOverlayKind kind,
                              const std::uint8_t slot,
                              const std::uint16_t vram,
-                             const std::uint8_t asset_index) {
+                             const std::uint8_t asset_index,
+                             const std::uint8_t palette_variant = 0U) {
     return FieldHudOverlay{kind, slot, field_hud_vram_x(vram),
-                           field_hud_vram_y(vram), asset_index};
+                           field_hud_vram_y(vram), asset_index,
+                           palette_variant};
 }
 
 } // namespace
@@ -47,9 +64,10 @@ std::vector<FieldHudOverlay> compose_field_hud_overlays(
         if (!slot_is_active(slots[slot])) {
             continue;
         }
-        // Portrait and item art are per-record uploads in 0x3404. The meter
-        // rows come from the source's 0..10 value tables; only the HUD assets
-        // with record-specific palette/layout families use this index.
+        // Portrait and ordinary item art are per-record uploads in 0x3404;
+        // negative +0x56 instead selects a shared D4EA0 spell row below. The
+        // meter rows come from the source's 0..10 value tables, while only
+        // record-specific palette/layout assets use this family index.
         const auto family = slots[slot].asset_family_index;
         overlays.push_back(make_overlay(FieldHudOverlayKind::portrait, slot,
                                         slot_vram(kFieldHudPortraitVram, slot),
@@ -65,7 +83,14 @@ std::vector<FieldHudOverlay> compose_field_hud_overlays(
                              (slots[slot].primary_runner ? 0U
                                  : kFieldHudMeterLevelCount) +
                              meter_asset_index(slots[slot].behavior_meter))));
-        if (slot_is_armed(slots[slot])) {
+        if (slot_has_active_spell(slots[slot])) {
+            overlays.push_back(make_overlay(
+                FieldHudOverlayKind::magic_item, slot,
+                slot_vram(kFieldHudItemVram, slot),
+                static_cast<std::uint8_t>(
+                    slots[slot].equipped_item_code - 1U),
+                magic_item_palette_variant(slots[slot])));
+        } else if (slot_is_armed(slots[slot])) {
             overlays.push_back(
                 make_overlay(FieldHudOverlayKind::item, slot,
                              slot_vram(kFieldHudItemVram, slot), family));

@@ -1979,6 +1979,15 @@ native::NativePortAssets decode_genesis_native_assets(
             field_hud_layers.horizontal_counters[index].height,
             field_hud_layers.horizontal_counters[index].pixels};
     }
+    for (std::size_t spell = 0;
+         spell < native::kNativeMagicSpellCount; ++spell) {
+        for (std::size_t palette = 0; palette < 2U; ++palette) {
+            const auto& source =
+                field_hud_layers.magic_item_blocks[spell][palette];
+            assets.field_hud_magic_item_blocks[spell][palette] = {
+                source.width, source.height, source.pixels};
+        }
+    }
     for (std::size_t meter = 0;
          meter < field_hud_layers.delay_meter_counters.size(); ++meter) {
         assets.field_hud_delay_meter_counters[meter] = {
@@ -8384,13 +8393,13 @@ GenesisFieldHudLayers decode_genesis_field_hud_layers(
         for (std::size_t tile_index = 0; tile_index < 6U; ++tile_index) {
             const auto table_word = read_rom_u16(
                 rom, table_offset + tile_index * 2U,
-                "Genesis unarmed HUD item table is truncated");
+                "Genesis field HUD item table is truncated");
             const auto source_tile = static_cast<std::size_t>(
                 table_word & 0x07FFU);
             const auto source_offset = kItemTileSource + source_tile * 32U;
             if (source_offset > rom.size() || rom.size() - source_offset < 32U) {
                 throw std::out_of_range(
-                    "Genesis unarmed HUD item tile is truncated");
+                    "Genesis field HUD item tile is truncated");
             }
             const auto tile = decode_genesis_tile(
                 rom.data() + source_offset, 32U);
@@ -8414,6 +8423,10 @@ GenesisFieldHudLayers decode_genesis_field_hud_layers(
         }
         return image;
     };
+
+    constexpr std::size_t kMagicSpellTable = 0xD4EA0U;
+    constexpr std::size_t kMagicSpellRecordStride = 0x30U;
+    constexpr std::array<std::size_t, 2> kMagicItemPaletteLines{1U, 3U};
 
     const auto crop = [](const RgbaImage& source, std::int32_t x,
                          std::int32_t y, std::uint16_t width,
@@ -8441,6 +8454,23 @@ GenesisFieldHudLayers decode_genesis_field_hud_layers(
     };
 
     GenesisFieldHudLayers result;
+    // ROM 0x3404 switches A4 from the ordinary D4540 item table to D4EA0
+    // when +0x56 is negative, then uses +0x57 - 1 as the 0x30-byte row
+    // selector and loads the six tile IDs through +0x1A. 0x3602 supplies
+    // palette attributes 0x2000 or 0x6000 for these same six tiles.
+    for (std::size_t spell = 0;
+         spell < native::kNativeMagicSpellCount; ++spell) {
+        const auto spell_record =
+            kMagicSpellTable + spell * kMagicSpellRecordStride;
+        const auto item_table = static_cast<std::size_t>(read_rom_u32(
+            rom, spell_record + 0x1AU,
+            "Genesis magic HUD item pointer is truncated"));
+        for (std::size_t palette = 0;
+             palette < kMagicItemPaletteLines.size(); ++palette) {
+            result.magic_item_blocks[spell][palette] = make_rom_tile_block(
+                item_table, kMagicItemPaletteLines[palette]);
+        }
+    }
     for (std::size_t index = 0; index < records.size(); ++index) {
         const auto& record = records[index];
         if (record.record_offset == 0U || record.kind == 0U) {

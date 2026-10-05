@@ -1686,6 +1686,19 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     write_array("field/hud/unarmed-item-",
                 assets.field_hud_unarmed_item_blocks, "sprite",
                 "0x3404/0xD1860-0xD1878", true);
+    for (std::size_t spell = 0;
+         spell < assets.field_hud_magic_item_blocks.size(); ++spell) {
+        for (std::size_t palette = 0;
+             palette < assets.field_hud_magic_item_blocks[spell].size();
+             ++palette) {
+            const auto filename = "field/hud/magic-item-" +
+                std::to_string(spell) + "-palette-" +
+                std::to_string(palette) + ".bmp";
+            write(filename,
+                  assets.field_hud_magic_item_blocks[spell][palette],
+                  "sprite", "0x3404/0xD4EA0/0x3602", true);
+        }
+    }
     write_array("field/hud/delay-meter-",
                 assets.field_hud_delay_meter_counters, "sprite",
                 "0x3674/0x6AB3E", true);
