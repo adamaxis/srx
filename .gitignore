@@ -40,6 +40,10 @@
 **/cmake_install.cmake
 **/compile_commands.json
 
+# Python bytecode and per-directory import caches.
+**/__pycache__/
+**/*.py[cod]
+
 # Visual Studio/MSBuild user state and output databases. These can be emitted
 # beside a project even when the main CMake tree is out of source.
 **/.vs/
