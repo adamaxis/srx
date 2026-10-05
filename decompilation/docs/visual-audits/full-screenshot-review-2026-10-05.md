@@ -1,40 +1,50 @@
 # Full screenshot review — 2026-10-05
 
+## Expanded whole-frame pass
+
+The original version of this note called a selected set of directories the
+complete screenshot corpus. That was wrong: it missed thousands of rendered
+screenshots in ignored build trees. The old counts below describe only that
+narrow set and must not be used as the whole-workspace inventory.
+
+The expanded pass indexed 7,064 full-frame BMP/PNG screenshot files in the
+build, runtime, and visual-audit output trees. Exact-pixel deduplication
+grouped them into 2,298 distinct frames: 2,239 at 320x224, 58 at 514x360, and
+one at 640x448. Every distinct 320x224 frame was reviewed in one of 144
+whole-frame contact sheets. The larger images were reviewed at their original
+resolution in 15 additional contact sheets. The index maps each of the 7,064
+source paths to its reviewed image, so Debug/Release duplicates and repeated
+captures remain traceable.
+
+I excluded resource-only exports, individual extracted assets, and a 1280x896
+shop mosaic whose individual full-frame captures were already included. The
+five excluded asset/refresh export trees contain 5,280 image files, including
+42 distinct 320x224 background, map, panel, and title-animation plates. I
+reviewed those full-canvas plates separately; they are named source resources,
+not rendered interface captures. The 21,609 numbered FFmpeg frames from the
+independent longplay are source-video reference frames, not application
+screenshot outputs; I did not review that
+entire reference archive frame by frame. I inspected the relevant section 02
+frames individually when checking the opening sequence. The index, contact
+sheets, and native-size sheets are in
+`%TEMP%\shadowrun-full-screen-review-20261005` on this machine; they are
+review aids, not checked-in build outputs.
+
+This supersedes the earlier selected-set count: the two Qt runtime trees had
+152 Debug and 139 Release images in that narrow pass, with 139 matching paths
+pixel-identical. The old 730-candidate inventory reduced to 437 unique
+images. Those figures remain valid only for the specific directories that
+were originally enumerated. The old report also sampled 18 clean section 01
+reference frames; that was never a full review of the longplay source.
+
 ## Scope and method
 
-This pass reviewed the complete screenshot artifact sets present in the
-checkout, including full frames outside the code areas changed in this session.
-I reviewed whole-screen contact sheets first, opened suspicious and newly
-generated frames at native resolution, and used SHA-256 hashes to compare
-matching Debug and Release outputs. Crops and zooms were treated as supporting
-views, never as substitutes for the full frame. Extracted single sprites and
-source panels were not counted as gameplay screenshots.
-
-The Qt runtime trees contained 152 BMP/PNG files in Debug and 139 in Release
-after the FASA recapture. There are 139 matching relative paths; all 139 are
-pixel-identical. Debug has 13 additional diagnostic images and Release has no
-Release-only images. These directories include generated review aids, so the
-unique pixel-image counts are 93 in Debug and 82 in Release. The newly
-regenerated FASA QA set contains 15 full-frame images in each configuration;
-each Debug/Release pair is identical, and every Debug image was opened at its
-original 320x224 resolution.
-
-The older screenshot inventory included 730 BMP/PNG candidates across:
-
-- `build-qt-debug/capture-title-boot`, `capture-title-boot-2`,
-  `cab-map-tile-verified`, `menu-anomaly-inspection`,
-  `menu-selector-verified`, and `visual-regression`;
-- `build-debug/visual-regression`, `build-release/visual-regression`,
-  `build-debug/ares-video-samples`, and `build-debug/dialogue-buttons`;
-- selected top-level full-frame captures in those build trees.
-
-Those files reduce to 437 unique pixel images. The nine root-level images in
-`build-qt-runtime-debug/boot-fasa-audit` were also reviewed. The Ares sample
-set contains 19 unique captures. The clean gameplay reference was sampled at
-18 full frames in section 01, including the SEGA, FASA, title-logo, and
-copyright phases. This is a review of the screenshot artifacts in the listed
-sets and the named independent reference samples; it is not a claim that every
-frame in the longplay video was individually inspected.
+I reviewed whole-screen contact sheets first and opened suspicious frames at
+native resolution. Duplicates were collapsed only when their whole-frame
+pixels matched. Crops and zooms were supporting views, never substitutes for
+the full frame. Extracted single sprites and source panels were not counted as
+gameplay screenshots. This was a visual review; I did not rerun tests or infer
+Genesis fidelity from Debug/Release agreement.
 
 ## The questions applied
 
@@ -62,6 +72,57 @@ applicable evidence:
    and background layers are hidden or replaced before the next page is drawn.
 
 ## Findings by screen family
+
+### Findings from the expanded whole-frame pass
+
+- **Archived opening mismatch:** the October 3 `wilderness-full-pass` captures
+  in `decompilation/ghidra_conversion/build-ghidra-conversion-qt-debug/qt_runtime/`
+  show projectiles crossing the three-line tri-vid narration in frames
+  1050-1060. Independent section 02 frames 000638, 000660, and 000690 show
+  the same narration state with projectiles below or beside the text. The
+  old native output is a visible mismatch; the exact frame alignment and
+  projectile coordinate/draw-order trace remain open. The October 5 source
+  change touched QA allocation and field/hotel capture helpers, not the
+  opening-scene renderer. There is no matching post-change whole-frame intro
+  dump in the current output tree, so the mismatch is likely still present but
+  is not yet confirmed against a fresh build. Re-capture and compare the
+  current renderer before marking this resolved.
+- **Stale broken trade image:**
+  `decompilation/ghidra_conversion/build-ghidra-conversion-qt-debug/qt_runtime/field-action-qa/02_inventory_action_trade.bmp`
+  is almost entirely black, with only fragments of the portrait, icons, and
+  posture row. It is dated October 1 and predates the current source. The
+  October 5 `field-inventory-trade-qa/actual.bmp` is a complete 320x224 frame.
+  The old image is a broken archived artifact, not evidence that the current
+  trade screen has that appearance.
+- **Current unequipped inventory frames:** the October 5 `field-action-qa`
+  whole frames for weapons 1 and 2 show the item icons and surrounding menu;
+  I did not see the extra large black rectangle reported for the unequipped
+  state. The selected icon retains the thin warm-gold selector. These are
+  internal conversion captures; the exact equip/unequip transition still has
+  no matching independent Genesis capture.
+- **Hotel Options appearance remains open:** the current
+  `field-hotel-qa/options/actual.bmp` is green option text on black. It is
+  visually unusual beside the full Attributes/Skills composition, but no
+  matching independent Hotel capture was identified. The Hotel Karma spend
+  page and the Start-menu Karma status page are distinct full-screen images;
+  the spend page adds the upgrade/cost detail row. Keep the two routes
+  separate, and do not call the text-only Hotel Options appearance visually
+  verified against Genesis.
+- **Seattle focus outline is intentional:** the amber outline in the root
+  `startup-qa/opening_604.bmp` through `opening_612.bmp` follows the five
+  source-derived focus phases. The separate `seattle-outline-window` images
+  are an older white-outline experiment and are not the expected product
+  appearance. Do not classify the amber Seattle focus box as an old button
+  drawn over the skyline.
+- **Contaminated title captures:** the older `capture-title-boot` sequences
+  contain video-player controls and creator overlays. Those pixels belong to
+  the capture UI and were excluded from game-art comparisons.
+
+The current field-action, Hotel child, field-secretary, Notebook, shop, and
+menu frames were reviewed as full images, including surrounding HUD and page
+replacement. No second unambiguous off-target overlay was identified in those
+current outputs. That statement is limited to visible artifacts; it is not a
+claim of independent Genesis fidelity.
 
 ### Pre-title, FASA, and title handoff
 
@@ -162,21 +223,28 @@ to claim an in-game black-screen defect.
 
 ## Whole-corpus result and remaining limits
 
-No new off-target whole-frame distortion was identified in the reviewed
-corpus. The two concrete review issues were (a) stale root-level FASA audit
-captures, now explicitly retired from comparison, and (b) nondeterministic
-lower-bezel pixels in QA, now fixed with a QA-only seed. Full-frame views also
-prevent the previous mistake of treating an acceptable crop as proof that the
-rest of the screen was correct.
+The earlier conclusion that no new whole-frame distortion was found is
+withdrawn. The expanded review found a visibly broken stale trade image and a
+projectile/text mismatch in archived opening output. It also confirmed that
+some surprising frames are capture or experiment artifacts, while the current
+Hotel Options text-only screen has no independent visual reference. The
+current source still needs a fresh full-frame intro capture before the
+archived projectile mismatch can be called fixed or current.
 
-All 139 matching Debug/Release screenshot paths are now pixel-identical. This
-proves reproducibility between those builds, not visual fidelity by itself.
-Independent visual confidence varies by scene; the specific weapon toggle,
-exact title timing, Ares transition cadence, and several audio clip identities
-remain unresolved. Continue to label those as open rather than converting
-internal screenshot agreement into an external correctness claim.
+The earlier 139-path Debug/Release pixel match applies only to the narrow
+directory set listed above. Pixel-identical builds establish reproducibility,
+not visual fidelity. The current field-action screenshots do not show the
+reported large black unequipped-item box, but no independent Genesis capture
+shows that exact equip/unequip transition. Exact title timing, the Hotel
+Options appearance, Ares transition cadence, and several audio clip identities
+remain unresolved. Do not turn internal screenshot agreement into an external
+correctness claim.
 
 ## Capture stability fix
+
+The following records the implementation and test results from the earlier
+capture-stability work. They were not rerun during this expanded screenshot
+review and do not resolve the visual findings above.
 
 Debug FASA QA had been crashing while it constructed a second, large
 `GhidraConversionWindow` on the stack during the outer window's QA method. The
