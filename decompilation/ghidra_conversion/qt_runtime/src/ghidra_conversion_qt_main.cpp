@@ -8178,6 +8178,18 @@ int main(int argc, char** argv) {
                     return QImage(QString::fromStdWString(
                         (asset_root / "menu" / "field" / name).wstring()));
                 };
+                const auto ammo_counter_matches = [&](
+                    const QImage& scene, const std::uint8_t rounds) {
+                    const auto asset_name = "ammo-counter-" +
+                                            std::to_string(rounds) + ".bmp";
+                    const auto counter = QImage(QString::fromStdWString(
+                        (asset_root / "field" / "hud" / asset_name)
+                            .wstring()));
+                    return region_matches(
+                        scene, counter,
+                        field_hud_vram_x(kFieldHudAmmoVram),
+                        field_hud_vram_y(kFieldHudAmmoVram));
+                };
                 const auto direct_weapon_icon = [&](const std::uint8_t code,
                                                      const std::uint8_t palette) {
                     const auto number = code < 10U
@@ -8336,6 +8348,7 @@ int main(int argc, char** argv) {
                 if (!region_matches(action_open_scene, focus_equip, 128, 184) ||
                     !field_inventory_selector_survives(action_open_scene, 0U,
                                                        0U) ||
+                    !ammo_counter_matches(action_open_scene, 3U) ||
                     !icon_interior_matches(action_open_scene,
                                            weapon_one_equipped_icon, 16, 120) ||
                     action_open_scene.pixelColor(11, 116) !=
@@ -8448,6 +8461,7 @@ int main(int argc, char** argv) {
                     direct_weapon_icon(1U, 0U);
                 if (!field_inventory_selector_survives(unequipped_scene, 0U,
                                                         0U) ||
+                    !ammo_counter_matches(unequipped_scene, 50U) ||
                     !icon_interior_matches(unequipped_scene,
                                            weapon_one_unequipped_icon, 16,
                                            120) ||
@@ -8533,12 +8547,14 @@ int main(int argc, char** argv) {
                     weapon_two_equipped.ammo_clips != 3U ||
                     field_audio_events.size() != switch_audio_event_count + 1U ||
                     field_audio_events.back() != 0x24U ||
+                    !ammo_counter_matches(weapon_two_equipped_scene, 6U) ||
                     !icon_interior_matches(weapon_two_equipped_scene,
                                            weapon_two_equipped_icon, 56, 120) ||
                     weapon_two_equipped_scene.pixelColor(51, 116) !=
                         QColor(109, 109, 109) ||
                     !save_scene("10_weapon_2_equipped_at_50_percent",
-                                weapon_two_equipped_scene)) {
+                                weapon_two_equipped_scene) ||
+                    !save_scene("actual", weapon_two_equipped_scene)) {
                     std::cerr << "field action dump: weapon 2 did not receive "
                                  "six rounds, its equipment cell, or one "
                                  "command-confirm event\n";
@@ -8562,6 +8578,7 @@ int main(int argc, char** argv) {
                     field_scene.active_runner_record().ammo_rounds != 50U ||
                     !field_inventory_selector_survives(
                         weapon_two_unequipped_scene, 1U, 0U) ||
+                    !ammo_counter_matches(weapon_two_unequipped_scene, 50U) ||
                     !icon_interior_matches(weapon_two_unequipped_scene,
                                            weapon_two_unequipped_icon, 56,
                                            120) ||
@@ -8582,14 +8599,18 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 press(0x40U);
+                const auto weapon_one_reloaded_from_percent_scene =
+                    render_scene();
                 if (field_scene.active_runner_record().equipped_inventory_slot !=
                         0 ||
                     field_scene.active_runner_record().equipped_item_code !=
                         1U ||
                     field_scene.active_runner_record().ammo_rounds != 3U ||
                     field_scene.active_runner_record().ammo_clips != 3U ||
+                    !ammo_counter_matches(
+                        weapon_one_reloaded_from_percent_scene, 3U) ||
                     !save_scene("12_weapon_1_reloaded_from_50_percent",
-                                render_scene())) {
+                                weapon_one_reloaded_from_percent_scene)) {
                     std::cerr << "field action dump: weapon 1 did not restore "
                                  "three rounds from the shared percentage\n";
                     return 3;
@@ -8640,14 +8661,16 @@ int main(int argc, char** argv) {
                 }
                 clips_audio_event_count = field_audio_events.size();
                 press(0x40U);
+                const auto weapon_one_full_scene = render_scene();
                 if (field_scene.active_runner_record().ammo_rounds != 6U ||
                     field_scene.active_runner_record().ammo_clips != 2U ||
                     field_scene.clips_menu_message() !=
                         qt_runtime::ClipsMenuMessage::reload_success ||
                     field_audio_events.size() != clips_audio_event_count + 1U ||
                     field_audio_events.back() != 0x24U ||
+                    !ammo_counter_matches(weapon_one_full_scene, 6U) ||
                     !save_scene("15_weapon_1_reloaded_to_capacity",
-                                render_scene())) {
+                                weapon_one_full_scene)) {
                     std::cerr << "field action dump: Reload did not cap at "
                                  "six rounds, consume one clip, and confirm\n";
                     return 3;

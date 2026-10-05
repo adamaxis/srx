@@ -80,9 +80,14 @@ This is a diagnostic state fixture, not a claim that the normal opening save
 contains those two inventory entries. The same route reloads weapon 1 to its
 six-round capacity, consumes one of the shared clips, checks the prompt's
 No/Yes states, and verifies that Cancel removes all Clips controls before the
-command page returns. The dump writes eighteen 320x224 BMP checkpoints
+command page returns. The dump writes eighteen 320x224 BMP checkpoints plus
+`actual.bmp` at the second weapon equipped with its converted 50-percent load,
 outside the asset tree, including weapon-switch, reload, unequip, and return
-frames. The matching CTest is
+frames. Each weapon checkpoint now also compares the visible HUD ammo region
+against the extracted counter tile for the live value: 3 rounds, 6 rounds, or
+the stored 50-percent state. This ties the displayed counter to the equipped
+weapon's capacity, the converted runner record, and the reload result. The
+matching CTest is
 `shadowrun_ghidra_conversion_qt_field_action_qa`.
 
 The weapon mutation menu has no item-specific animation branch: its state and
