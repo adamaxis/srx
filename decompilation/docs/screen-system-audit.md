@@ -285,6 +285,13 @@ produces the source `D1AC6`/`D1AD3` result (`is out of ammo clips!`) rather
 than changing the weapon state. Reload also rejects no-equipment and
 non-clip-using items through `D1B40` (`This item does not use clips!!`).
 
+The ROM does not keep an independent magazine count in each inventory slot.
+`+0x4E` is the active gun's loaded rounds; `0x125FA` converts that load to a
+percentage when the gun is put away, and `0x121E0` applies the percentage to
+the newly equipped gun's `0xD4540 + 0x24` capacity. `+0x4F` is the runner's
+shared Universal Gun Clips count. The live Clips route resolves reload capacity
+from the currently equipped item's `+0x24` value on each input step.
+
 Native status: selector bounds, source labels, extracted ammunition fields,
 action gates, exact reviewed error text, and the native transition are
 implemented in the separate Qt conversion runtime. The Clips screen replaces

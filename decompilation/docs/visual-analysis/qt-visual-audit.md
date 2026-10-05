@@ -1699,3 +1699,57 @@ checked:** related inventory states only; there is no matching Genesis weapon
 unequip frame. **Reported defect resolved:** the current host output has no
 stale black-box residue in these tested states, but exact Genesis appearance
 remains unverified without a matching capture.
+
+### Applied review: equipped-weapon reload capacity
+
+1. **Does it look correct?** The new Debug frames
+   `19_weapon_2_equipped_full_capacity.bmp`,
+   `20_weapon_2_empty_magazine.bmp`, and
+   `21_weapon_2_reloaded_to_capacity.bmp` show the live HUD counter changing
+   12 -> 00 -> 12. The item action opens on the second weapon column and the
+   Clips result replaces the submenu contents.
+2. **Does the visible look match the behavioral state?** Yes in the host
+   route: when weapon 2 is equipped it receives 12 rounds and the runner has
+   two shared clips; the QA then seeds an empty magazine before invoking the
+   Clips route, which returns it to 12 rounds and consumes one clip. The ROM
+   reads the equipped item capacity from D4540 `+0x24`; the tested weapon row
+   bytes are 6 (item 1) and 12 (item 2). ROM `+0x4F` is the shared Universal
+   Gun Clips count. Independent per-inventory-weapon magazines are not present
+   in this ROM path.
+3. **Are the visuals themselves correct?** The visible counter matches the
+   extracted 12 and 00 counter tiles, and the equipped weapon icon and command
+   panel remain visible. This is an internal comparison against named ROM
+   assets; no independent Genesis image shows this weapon-2 reload transition.
+4. **Is it animated, and should it be?** No animation is traced for the Clips
+   selector, reload confirmation/result, or HUD counter. The frame changes on
+   controller input and inventory state updates only.
+5. **Does it have a sound, and how long does it play?** Opening and completing
+   the route request source event `0x24`, mapped to `menu-024.flac` (2.484 s
+   including its release tail). This QA checks the event requests; shared
+   audio QA checks decoding, default-output `PlayingState`, duration, and stop.
+   Output loopback for this exact reload route remains unrecorded.
+6. **Are the other visible parts of the screen also correct?** The action
+   parent, selected inventory column, portrait, equipped icon, HUD, and item
+   cells remain visible during the route. The existing Clips Cancel check
+   compares the returned parent frame with its pre-entry frame to catch stale
+   child controls.
+7. **Do multiple frames support the interpretation?** The three new frames
+   capture equip, empty-magazine, and reload-result states; checkpoints 13-17
+   cover the separate weapon-1 prompt/confirmation/result/return route.
+   Nearby longplay inventory and HUD frames support their shared layout only;
+   none independently shows switching capacity or reloading weapon 2.
+8. **Was old UI cleared before new controls were drawn?** The Clips menu
+   replaces its parent row, and the existing Cancel assertion requires a
+   pixel-identical parent redraw. The new reload result is captured within the
+   Clips child after the reload action, with no second control row over it.
+
+**Code changed:** the Qt route QA now equips weapon 2 and exercises its
+12-round reload path; the production capacity lookup was already keyed by the
+currently equipped item. **Behavior implemented:** weapon capacity comes from
+that item's ROM `+0x24` and reserve clips remain runner-wide. **Internally
+checked:** Debug and Release `field_action_qa` capture both weapon capacities,
+counter pixels, reserve decrement, and source event requests. **Independently
+visually checked:** adjacent inventory/HUD layout only; no matching Genesis
+reload frame is present. The source-defined active-load percentage can look
+different from a model with persistent per-weapon magazines, but adding
+independent magazines would contradict this ROM's `+0x4E` transitions.

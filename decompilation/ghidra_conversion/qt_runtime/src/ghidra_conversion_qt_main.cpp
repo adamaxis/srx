@@ -9257,6 +9257,98 @@ int main(int argc, char** argv) {
                                  "the first inventory column\n";
                     return 3;
                 }
+
+                // Verify the Clips controller resolves capacity from the
+                // currently equipped weapon, not from weapon 1 or a stale
+                // menu value. Empty +0x4E here as a combat-produced test
+                // state; the combat firing/target loop is a separate hill.
+                press(0x08U);
+                if (field_scene.command_overview_view().source_state
+                        .primary_page != 1U) {
+                    std::cerr << "field action dump: second weapon column did "
+                                 "not become selected for reload QA\n";
+                    return 3;
+                }
+                press(0x40U);
+                if (!field_scene.inventory_action_open()) {
+                    std::cerr << "field action dump: weapon 2 equip action did "
+                                 "not open for reload QA\n";
+                    return 3;
+                }
+                const auto weapon_two_switch_audio_count =
+                    field_audio_events.size();
+                press(0x40U);
+                const auto weapon_two_equipped_before_reload =
+                    field_scene.active_runner_record();
+                const auto weapon_two_switch_scene = render_scene();
+                if (weapon_two_equipped_before_reload.equipped_item_code !=
+                        2U ||
+                    weapon_two_equipped_before_reload.ammo_rounds != 12U ||
+                    weapon_two_equipped_before_reload.ammo_clips != 2U ||
+                    field_audio_events.size() !=
+                        weapon_two_switch_audio_count + 1U ||
+                    field_audio_events.back() != 0x24U ||
+                    !ammo_counter_matches(weapon_two_switch_scene, 12U) ||
+                    !save_scene("19_weapon_2_equipped_full_capacity",
+                                weapon_two_switch_scene)) {
+                    std::cerr << "field action dump: weapon 2 did not receive "
+                                 "its 12-round capacity before reload QA\n";
+                    return 3;
+                }
+                field_scene.active_runner_record().ammo_rounds = 0U;
+                field_scene.refresh_field_hud_for_dump();
+                const auto weapon_two_empty_scene = render_scene();
+                if (!ammo_counter_matches(weapon_two_empty_scene, 0U) ||
+                    !save_scene("20_weapon_2_empty_magazine",
+                                weapon_two_empty_scene)) {
+                    std::cerr << "field action dump: weapon 2 empty-magazine "
+                                 "state did not reach its visible HUD counter\n";
+                    return 3;
+                }
+                press(0x08U);
+                if (field_scene.command_overview_view().source_state
+                        .primary_page != 2U) {
+                    std::cerr << "field action dump: Clips page did not become "
+                                 "selected for weapon 2 reload QA\n";
+                    return 3;
+                }
+                press(0x40U);
+                const auto weapon_two_reload_audio_count =
+                    field_audio_events.size();
+                press(0x40U);
+                const auto weapon_two_full_scene = render_scene();
+                if (field_scene.active_runner_record().ammo_rounds != 12U ||
+                    field_scene.active_runner_record().ammo_clips != 1U ||
+                    field_scene.clips_menu_message() !=
+                        qt_runtime::ClipsMenuMessage::reload_success ||
+                    field_audio_events.size() !=
+                        weapon_two_reload_audio_count + 1U ||
+                    field_audio_events[weapon_two_reload_audio_count] !=
+                        0x24U ||
+                    field_audio_events.back() != 0x24U ||
+                    !ammo_counter_matches(weapon_two_full_scene, 12U) ||
+                    !save_scene("21_weapon_2_reloaded_to_capacity",
+                                weapon_two_full_scene)) {
+                    std::cerr << "field action dump: weapon 2 reload did not "
+                                 "use its 12-round capacity and consume one "
+                                 "shared clip\n";
+                    return 3;
+                }
+                press(0x10U);
+                press(0x10U);
+                if (field_scene.clips_menu_open()) {
+                    std::cerr << "field action dump: weapon 2 Clips menu did "
+                                 "not close after acknowledging reload\n";
+                    return 3;
+                }
+                press(0x04U);
+                press(0x04U);
+                if (field_scene.command_overview_view().source_state
+                        .primary_page != 0U) {
+                    std::cerr << "field action dump: weapon 2 reload QA did "
+                                 "not return to the first inventory column\n";
+                    return 3;
+                }
                 field_scene.active_runner_record() = original_runner_record;
 
                 // Page two exposes the attack/defense bars. Their indices are
