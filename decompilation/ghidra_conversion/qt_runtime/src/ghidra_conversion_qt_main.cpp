@@ -35,6 +35,7 @@
 #include <initializer_list>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -958,8 +959,12 @@ public:
         const auto frame_dump_path =
             output_directory / "boot-dump-frame-373.bmp";
         {
-            GhidraConversionWindow frame_dump_window(asset_root_);
-            if (frame_dump_window.dump_boot_frame(373U, frame_dump_path) !=
+            // This widget embeds the converted startup and field source state.
+            // Keep the nested QA-only instance off the stack: the outer window
+            // and the asset loader's typed scene records are still live here.
+            const auto frame_dump_window =
+                std::make_unique<GhidraConversionWindow>(asset_root_);
+            if (frame_dump_window->dump_boot_frame(373U, frame_dump_path) !=
                 0) {
                 return fail("--boot-dump-frame could not render frame 373");
             }
@@ -4218,6 +4223,10 @@ int main(int argc, char** argv) {
             if (field_hotel_qa_path.has_value()) {
                 const auto output = *field_hotel_qa_path;
                 std::filesystem::create_directories(output);
+                // Keep randomized E660 lower-bezel art identical across QA
+                // runs and build configurations. This is a test fixture seed,
+                // not a claim about the ROM's unresolved live seed source.
+                field_scene.set_source_random_seed_for_dump(0x51A7U);
                 field_scene.active_runner_record().delay_meter = 2U;
                 field_scene.active_runner_record().behavior_meter = 0U;
                 field_scene.active_runner_record().attributes[0U] = 1U;
@@ -9422,6 +9431,17 @@ int main(int argc, char** argv) {
                                  "match a fresh scene redraw\n";
                     return 3;
                 }
+                for (int frame = 0; frame < 30; ++frame) {
+                    field_scene.advance_frame();
+                }
+                const auto unequipped_frame_30 = render_scene();
+                if (!same_image(unequipped_scene, unequipped_frame_30) ||
+                    !save_scene("05_weapon_1_unequipped_frame30",
+                                unequipped_frame_30)) {
+                    std::cerr << "field action dump: unequipped weapon 1 "
+                                 "changed during a 30-frame idle hold\n";
+                    return 3;
+                }
                 if (field_scene.active_runner_record().ammo_rounds != 50U ||
                     field_scene.active_runner_record().ammo_clips != 3U ||
                     field_scene.active_runner_record().equipped_item_code !=
@@ -9509,6 +9529,19 @@ int main(int argc, char** argv) {
                                  "command-confirm event\n";
                     return 3;
                 }
+                for (int frame = 0; frame < 30; ++frame) {
+                    field_scene.advance_frame();
+                }
+                const auto weapon_two_equipped_frame_30 = render_scene();
+                if (!same_image(weapon_two_equipped_scene,
+                                weapon_two_equipped_frame_30) ||
+                    !save_scene(
+                        "10_weapon_2_equipped_at_50_percent_frame30",
+                        weapon_two_equipped_frame_30)) {
+                    std::cerr << "field action dump: equipped weapon 2 "
+                                 "changed during a 30-frame idle hold\n";
+                    return 3;
+                }
 
                 // Un-equipping weapon 2 returns its 6/12 load to 50 percent;
                 // weapon 1 then reconstructs 3/6 from that same percentage.
@@ -9550,6 +9583,19 @@ int main(int argc, char** argv) {
                                  "to the 50 percent state or left its "
                                  "equipment treatment behind or failed to "
                                  "match a fresh scene redraw\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 30; ++frame) {
+                    field_scene.advance_frame();
+                }
+                const auto weapon_two_unequipped_frame_30 = render_scene();
+                if (!same_image(weapon_two_unequipped_scene,
+                                weapon_two_unequipped_frame_30) ||
+                    !save_scene(
+                        "11_weapon_2_unequipped_at_50_percent_frame30",
+                        weapon_two_unequipped_frame_30)) {
+                    std::cerr << "field action dump: unequipped weapon 2 "
+                                 "changed during a 30-frame idle hold\n";
                     return 3;
                 }
                 press(0x04U);

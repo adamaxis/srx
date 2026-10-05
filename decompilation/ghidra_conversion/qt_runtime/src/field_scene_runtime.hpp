@@ -167,6 +167,11 @@ public:
     std::uint32_t hotel_animation_frames() const noexcept {
         return hotel_menu_.animation_frames();
     }
+    // Deterministic source-PRNG injection for repeatable CLI screenshot QA.
+    // The live field runtime still initializes its own seed.
+    void set_source_random_seed_for_dump(std::uint16_t seed) noexcept {
+        field_random_seed_ = seed;
+    }
     HotelMenuEvent advance_hotel_menu_for_dump(std::uint16_t events);
     AttributesSkillsRuntimeEvent advance_hotel_karma_screen_for_dump(
         std::uint16_t events);
