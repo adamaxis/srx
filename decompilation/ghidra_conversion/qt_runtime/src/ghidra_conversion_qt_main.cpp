@@ -8729,6 +8729,29 @@ int main(int argc, char** argv) {
                     }
                     return true;
                 };
+                const auto render_fresh_inventory_scene =
+                    [&](const RunnerRecordFields& runner,
+                        const std::uint8_t primary_page) {
+                        qt_runtime::FieldSceneRuntime fresh_scene(
+                            [](const auto&) {});
+                        if (!fresh_scene.bootstrap(smoke_state)) {
+                            return QImage{};
+                        }
+                        fresh_scene.active_runner_record() = runner;
+                        fresh_scene.refresh_field_hud_for_dump();
+                        if (!fresh_scene.open_command_overview_for_dump() ||
+                            !fresh_scene.seek_command_overview_page(
+                                primary_page)) {
+                            return QImage{};
+                        }
+                        QImage image(kSceneWidth, kSceneHeight,
+                                     QImage::Format_RGB32);
+                        image.fill(Qt::black);
+                        QPainter painter(&image);
+                        fresh_scene.paint(painter);
+                        painter.end();
+                        return image;
+                    };
                 const auto item_factor = [](const std::uint8_t item_code) {
                     const auto* definition =
                         find_us_item_definition(item_code);
@@ -8943,6 +8966,14 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 const auto unequipped_scene = render_scene();
+                const auto fresh_unequipped_scene =
+                    render_fresh_inventory_scene(
+                        field_scene.active_runner_record(),
+                        field_scene.command_overview_view()
+                            .source_state.primary_page);
+                const auto fresh_unequipped_scene_saved = save_scene(
+                    "05_fresh_unequipped_baseline",
+                    fresh_unequipped_scene);
                 const auto weapon_one_unequipped_icon =
                     direct_weapon_icon(1U, 0U);
                 if (!field_inventory_selector_survives(unequipped_scene, 0U,
@@ -8953,10 +8984,14 @@ int main(int argc, char** argv) {
                                            120) ||
                     unequipped_scene.pixelColor(11, 116) !=
                         QColor(36, 36, 36) ||
+                    !same_inventory_grid(unequipped_scene,
+                                         fresh_unequipped_scene) ||
+                    !fresh_unequipped_scene_saved ||
                     !save_scene("05_weapon_1_unequipped", unequipped_scene)) {
                     std::cerr << "field action dump: unequip left a stale "
                                  "cell treatment, lost the source cursor, or "
-                                 "changed the unequipped icon\n";
+                                 "changed the unequipped icon or failed to "
+                                 "match a fresh scene redraw\n";
                     return 3;
                 }
                 if (field_scene.active_runner_record().ammo_rounds != 50U ||
@@ -9057,6 +9092,14 @@ int main(int argc, char** argv) {
                 }
                 press(0x40U);
                 const auto weapon_two_unequipped_scene = render_scene();
+                const auto fresh_weapon_two_unequipped_scene =
+                    render_fresh_inventory_scene(
+                        field_scene.active_runner_record(),
+                        field_scene.command_overview_view()
+                            .source_state.primary_page);
+                const auto fresh_weapon_two_unequipped_scene_saved =
+                    save_scene("11_fresh_weapon_2_unequipped_baseline",
+                               fresh_weapon_two_unequipped_scene);
                 const auto weapon_two_unequipped_icon =
                     direct_weapon_icon(2U, 0U);
                 if (field_scene.active_runner_record().equipped_item_code !=
@@ -9070,11 +9113,15 @@ int main(int argc, char** argv) {
                                            120) ||
                     weapon_two_unequipped_scene.pixelColor(51, 116) !=
                         QColor(36, 36, 36) ||
+                    !same_inventory_grid(weapon_two_unequipped_scene,
+                                         fresh_weapon_two_unequipped_scene) ||
+                    !fresh_weapon_two_unequipped_scene_saved ||
                     !save_scene("11_weapon_2_unequipped_at_50_percent",
                                 weapon_two_unequipped_scene)) {
                     std::cerr << "field action dump: weapon 2 did not return "
                                  "to the 50 percent state or left its "
-                                 "equipment treatment behind\n";
+                                 "equipment treatment behind or failed to "
+                                 "match a fresh scene redraw\n";
                     return 3;
                 }
                 press(0x04U);

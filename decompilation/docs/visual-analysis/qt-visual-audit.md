@@ -1644,3 +1644,58 @@ open.
 portrait/item selection, active-runner profile selection, and unequip redraw
 are connected and covered in Debug and Release. Independent recruited-party
 visual evidence and recruited hire-to-field-session handoff remain open.
+
+### Applied review: weapon inventory cells after equip and unequip
+
+1. **Does it look correct?** The Debug output frames
+   `05_weapon_1_unequipped.bmp` and
+   `11_weapon_2_unequipped_at_50_percent.bmp` show the item tiles and slim
+   selector without an added black region. Each 2x4 inventory grid also
+   matches a freshly bootstrapped scene carrying the same runner record and
+   selected column. Independent frames 002550, 002560, 002580, 002610, and
+   002699 show the game's inventory layout and selector, but none shows the
+   same weapon equip/unequip sequence.
+2. **Does the visible look match the behavioral state?** Yes. ROM
+   `0x11624` rebuilds the equipment treatment from the active record before
+   drawing item glyph rows; `0x11740` handles the inventory action. Qt checks
+   the typed equipped slot/code, stored 50-percent magazine value, selected
+   cell, and resulting HUD counter at both unequipped weapon states.
+3. **Are the visuals themselves correct?** Internally, yes: the unobscured
+   22x14 icon interior matches its named 24x16 ROM-derived item asset, the
+   one-pixel warm-gold outline remains on the icon edge, and the full inventory
+   grid matches a fresh scene. The longplay supports the shared layout and
+   selector color, but it does not independently verify this weapon state.
+4. **Is it animated, and should it be?** No animation is traced for the item
+   tiles or equipment treatment in this menu path. They update on equipment
+   changes and remain static between inputs; Debug/Release QA checks the
+   resulting frames.
+5. **Does it have a sound, and how long does it play?** The confirmed menu
+   action requests event `0x24`; its extracted file is 2.484 seconds including
+   the release tail. Shared audio QA verifies decoding and `PlayingState` on
+   the default output. Exact-route output loopback was not recorded.
+6. **Are the other visible parts of the screen also correct?** The action
+   frames keep the command shell, item details, HUD counter, and other item
+   cells visible. The no-residue assertion covers every pixel in the 2x4
+   inventory region, and the existing QA checks the HUD ammo tile and item
+   art alongside it.
+7. **Do multiple frames support the interpretation?** Yes for the host
+   transition: the test captures action open, weapon 1 unequipped, weapon 2
+   equipped and unequipped, and a repeated weapon 1 cycle. Independent frames
+   002550/002560/002580/002610/002699 support neighboring inventory states;
+   no matching Genesis weapon unequip example was found.
+8. **Was old UI cleared before new controls were drawn?** Yes for this
+   transition. After each unequip, the complete item-grid region is compared
+   pixel-for-pixel with a fresh scene using the same runner record and cursor
+   column. This catches stale borders or black residue from the prior equipped
+   state; the child action row is closed before the parent grid is compared.
+
+**Code changed:** QA now creates and saves fresh-state comparison frames for
+both weapon unequip paths. **Behavior implemented:** the existing ROM-derived
+equipment toggle and grid redraw remain unchanged. **Internally checked:**
+`shadowrun_ghidra_conversion_qt_field_action_qa` passes in Debug and Release;
+the new baseline frames are `05_fresh_unequipped_baseline.bmp` and
+`11_fresh_weapon_2_unequipped_baseline.bmp`. **Independently visually
+checked:** related inventory states only; there is no matching Genesis weapon
+unequip frame. **Reported defect resolved:** the current host output has no
+stale black-box residue in these tested states, but exact Genesis appearance
+remains unverified without a matching capture.
