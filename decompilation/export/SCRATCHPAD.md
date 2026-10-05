@@ -1346,10 +1346,13 @@ controller sample, and `0xE660` random-grid servicing. Up takes priority over
 Down but the same frame can still confirm; B/action calls `0x391A` and does not
 create a separate Hotel cancel path.
 
-The Karma handler target `0xD024` is an entry into the existing
-Attributes/Skills/Cyberware routine beginning at `0xD01C`; it is kept as an
-explicit callback until that full screen controller is converted. The Check
-Out target `0xDA6A` is not a stub: it writes the prompt grid, renders
+The Karma handler target `0xD024` enters the shared Attributes/Skills page body
+at the point after `0xD01C` assigns `FFF116=-1`. The Qt conversion now keeps a
+separate Hotel child state for this route: it shows the selected next value and
+cost, handles the Yes/No upgrade prompt, applies the source stat/Karma changes,
+and redraws Hotel Options on return. The command-menu route remains view-only
+and uses a separate state instance. The Check Out target `0xDA6A` is not a
+stub: it writes the prompt grid, renders
 `Do you wish to check out?`, starts on No, wraps Yes/No through `0xC376`, and
 accepts source controller bits `0x0E`, `0x0C`, or `0x0D`. Selecting Yes causes
 the original routine to unwind both its handler and Hotel-menu return frames;
