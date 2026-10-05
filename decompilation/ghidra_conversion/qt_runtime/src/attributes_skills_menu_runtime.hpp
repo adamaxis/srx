@@ -32,10 +32,10 @@ enum class AttributesSkillsMenuMode {
     hotel_karma_upgrade,
 };
 
-// Non-blocking Qt frame-loop adapter for the two source routes through the
-// Attributes/Skills screen body. ROM 0xD01C sets FFF116=-1 and exposes a
-// read-only command-menu view; Hotel dispatch enters at 0xD024 and enables
-// Karma upgrades.
+// Non-blocking Qt frame-loop adapter for two distinct screens that share the
+// ROM's Attributes/Skills grid body. ROM 0xD01C sets FFF116=-1; that command
+// screen displays current Karma only. Hotel dispatch enters at 0xD024 and
+// displays upgrade costs and enables Karma spending.
 class AttributesSkillsMenuRuntime final {
 public:
     void open(const RunnerRecordFields& active_record,

@@ -5303,7 +5303,7 @@ int main(int argc, char** argv) {
                                          attributes_background,
                                          48, 192, 272, 32)) {
                     std::cerr << "field Attributes/Skills dump: full-screen "
-                                 "read-only view or lower upgrade area was "
+                                 "read-only view or lower Karma total was "
                                  "not drawn cleanly "
                                  "(asset=" << attributes_background.width()
                               << 'x' << attributes_background.height()
@@ -5311,6 +5311,15 @@ int main(int argc, char** argv) {
                               << initial_scene.height() << ", row_matches="
                               << background_region_matches << ", saved="
                               << actual_saved << ")\n";
+                    return 3;
+                }
+                if (!image_region_has_color(initial_scene, 120, 160, 40, 8,
+                                            QColor(0, 219, 0)) ||
+                    image_region_has_color(initial_scene, 64, 200, 224, 8,
+                                           QColor(109, 73, 146))) {
+                    std::cerr << "field Attributes/Skills dump: command "
+                                 "view did not show its current Karma total "
+                                 "or leaked Hotel upgrade costs\n";
                     return 3;
                 }
                 for (int frame = 0; frame < 30; ++frame) {

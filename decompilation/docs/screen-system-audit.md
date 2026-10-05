@@ -305,27 +305,31 @@ remain open.
 
 ### Attributes/Skills view and Hotel Karma upgrades (`0xD01C`, `0xD024`)
 
-These are separate routes with different input permissions. Command selector 3
-dispatches to `0xD01C`, which sets `FFF116=-1` before drawing the
-Attributes/Skills page. `0xD33A` then sends A or B to the field-return path;
-the page is view-only. Hotel option 0 points to `0xD024`, inside the same ROM
-page body but past the `FFF116=-1` assignment. With live selection data, it
-draws the upgrade preview and accepts the Karma-spending flow through
-`0xD3EA`/`0xD53C`.
+These are two different user-facing screens that share the ROM's
+Attributes/Skills grid and drawing routine. Command selector 3 dispatches to
+`0xD01C`, which sets `FFF116=-1` before drawing the view-only page. It shows
+the current Karma total, with no next-value/cost preview; `0xD33A` sends A or
+B back to the command shell without mutation. Hotel option 0 points to
+`0xD024`, inside the shared ROM page body but past the `FFF116=-1` assignment.
+Its lower detail line shows the selected row's next value and Karma cost, and
+A opens the spending prompt through `0xD3EA`/`0xD53C`.
 
-The native runtime keeps these entry routes distinct: the command-menu view
-cannot mutate the runner, while the Hotel child page displays next-value/cost
-details, confirms Yes/No, updates the selected record byte and Karma at
-`+0x8D`, and returns to Hotel Options. Both use the source two-column,
-ten-row grid and selection highlighting. The five six-byte species-limit
-records are at `0xC22A6`; attributes 6 and 7 cannot be upgraded. The skill
-branch preserves the source 2x and left-column middle-skill 1.5x costs,
-including its linked-skill zero-value dependency.
+The native runtime keeps separate route state for both screens. The command
+view paints the current Karma total and cannot mutate the runner. The Hotel
+child paints next-value/cost details, confirms Yes/No, updates the selected
+record byte and Karma at `+0x8D`, and returns to Hotel Options. Both use the
+source two-column, ten-row grid and selection highlighting. The five six-byte
+species-limit records are at `0xC22A6`; attributes 6 and 7 cannot be upgraded.
+The skill branch preserves the source 2x and left-column middle-skill 1.5x
+costs, including its linked-skill zero-value dependency.
 
-Debug QA covers the read-only command route and the Hotel spend/decline/return
-route with multi-frame dumps. The supplied longplay has no matching frames for
-either Attributes/Skills page, so the dumps check source-driven state and
-redraw behavior but do not establish independent Genesis visual fidelity.
+Debug QA covers both routes with separate multi-frame dump directories. A
+pixel comparison requires the same shared grid and current Karma amount in
+both captures, plus upgrade/cost text only on the Hotel screen's lower detail
+line. Entry and return checks ensure the child screens replace and
+rebuild their parent panels cleanly. The supplied longplay has no matching
+frames for either Attributes/Skills page, so these checks do not establish
+independent Genesis visual fidelity.
 
 ### Cyberware (`0x11950`)
 

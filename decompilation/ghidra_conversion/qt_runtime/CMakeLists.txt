@@ -105,14 +105,14 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_command_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_command_qa PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
-# Attributes/Skills is an action on command row 3, so focusing the row must
-# preserve the ordinary shell. Its standalone page clears that shell, exposes
-# the active record, handles upgrades, and returns without leftover pixels.
+# Command-menu Attributes/Skills is the view-only Karma page. Its separate
+# Hotel route exposes the upgrade preview and spending prompt; keep the
+# captures and verification for those distinct screen variants separate.
 add_test(NAME shadowrun_ghidra_conversion_qt_field_attributes_skills_qa
          COMMAND shadowrun_ghidra_conversion_qt
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-attributes-skills-dump
-                 "${CMAKE_CURRENT_BINARY_DIR}/field-attributes-skills-qa")
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-attributes-skills-view-only-qa")
 set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_attributes_skills_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
@@ -147,6 +147,29 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_hotel_qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-hotel-qa")
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_hotel_qa PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
+# Both menu routes share the ROM's Attributes/Skills grid and current-Karma
+# value, but render different detail lines. Compare fresh output from each
+# end-to-end route and require only the lower line to differ.
+add_executable(shadowrun_ghidra_conversion_qt_karma_screen_distinction_qa
+    tests/karma_screen_distinction_test.cpp)
+target_link_libraries(
+    shadowrun_ghidra_conversion_qt_karma_screen_distinction_qa
+    PRIVATE Qt6::Gui)
+set_target_properties(
+    shadowrun_ghidra_conversion_qt_karma_screen_distinction_qa
+    PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
+add_test(NAME shadowrun_ghidra_conversion_qt_karma_screen_distinction_qa
+         COMMAND shadowrun_ghidra_conversion_qt_karma_screen_distinction_qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-attributes-skills-view-only-qa/actual.bmp"
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-hotel-qa/karma-spend/actual.bmp")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_karma_screen_distinction_qa
+    PROPERTIES
+        DEPENDS "shadowrun_ghidra_conversion_qt_field_attributes_skills_qa;shadowrun_ghidra_conversion_qt_field_hotel_qa")
 
 # The Pocket Secretary route must open from the command overview's sixth
 # tab and render its own full-screen composition.
