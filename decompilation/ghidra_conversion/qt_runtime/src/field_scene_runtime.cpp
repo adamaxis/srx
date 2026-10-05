@@ -3419,10 +3419,18 @@ void FieldSceneRuntime::service_player_weapon_action() {
     auto& runner = active_runner_record();
     advance_active_entity_animation_action_gate(runner);
 
-    // ROM 0xACAE enters the player-action dispatcher for equipped action codes
-    // 1..14. The full target/spawn-cycle system is still a separate hill, but
-    // this live-player route now services the proven empty-ammo readiness
-    // checks and reload mutation once the typed +0xDC gate is ready.
+    // ROM 0xA8EA only calls 0xACAE for an active record with source +0x10 bit
+    // 1 set. The ordinary field profile starts at 0x05 (active plus mode-5),
+    // so merely standing with an empty weapon must not reload it.
+    if ((runner.flags & 0x0200U) == 0U ||
+        (field_controller_sample_state_.events & 0x0040U) == 0U) {
+        return;
+    }
+
+    // ROM 0xACAE also requires held A (FFDD22 bit 6) before entering the
+    // spawn-cycle/action branch. The full projectile/target cycle remains a
+    // separate implementation boundary; this path handles only the source
+    // empty-ammo result after that action request has reached 0xAAD2.
     if (runner.equipped_item_code == 0U || runner.equipped_item_code > 14U ||
         (runner.flags & 0x0100U) == 0U) {
         return;

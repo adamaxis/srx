@@ -1409,18 +1409,22 @@ remains unverified until matching independent frames are available.
 ### Applied review: Empty-ammo player reload action
 
 1. **Does it look correct?** Inspected the full 320x224 `before.bmp`,
-   `gate-frame-1.bmp`, and `actual.bmp`: the field, active runner HUD, named
-   weapon glyph, and ammo counter remain in place while the counter changes
-   from `00` to `06`. No matching independent reload frame is present in the
-   supplied longplay, so Genesis appearance/timing remains unknown.
-2. **Does the visible look match the behavioral state?** The route requires
-   ammo `+0x4E==0`, shared clips `+0x4F>0`, and a negative signed `+0xDC`
-   action gate. The waiting frame stays at zero with three clips. The next
-   source field tick loads six rounds, consumes one clip, and rearms the
-   action delay.
+   `unselected-action-frame.bmp`, `ready-idle-frame.bmp`, and `actual.bmp`:
+   the field, active runner HUD, named weapon glyph, and ammo counter remain
+   in place while the counter changes from `00` to `06`. No matching
+   independent reload frame is present in the supplied longplay, so Genesis
+   appearance/timing remains unknown.
+2. **Does the visible look match the behavioral state?** The source path
+   requires the selected-action behavior bit at `+0x10`, held A
+   (FFDD22 bit 6), ammo `+0x4E==0`, shared clips `+0x4F>0`, and a negative
+   signed `+0xDC` action gate. QA first presses A while unselected, then
+   selects the action behavior while A is released; neither frame reloads.
+   The next selected, held-A frame loads six rounds, consumes one clip, and
+   rearms the action delay. QA sets the behavior bit directly because live
+   combat entry into that action-capable state is not connected.
 3. **Are the visuals themselves correct?** The QA compares the complete ammo
    counter and weapon-glyph rectangles with their named extracted HUD assets
-   at all three captures. It checks the whole field image for unexpected menu
+   at all four captures. It checks the whole field image for unexpected menu
    state, but the same-source comparison does not prove Genesis fidelity.
 4. **Is it animated, and should it be?** The typed `+0xDC` gate counts down
    once per active field behavior frame. This slice does not yet connect the
@@ -1435,17 +1439,20 @@ remains unverified until matching independent frames are available.
    overlap duration remains unknown.
 6. **Are the other visible parts of the screen also correct?** The reload
    preserves the weapon glyph, field background, face, bars, and panel chrome.
-   The three state frames are checked as full-screen output, and the clip
+   All four state frames are checked as full-screen output, and the clip
    reserve is checked alongside the displayed ammo value.
-7. **Do multiple frames support the interpretation?** The CLI records an
-   empty, waiting, and reloaded frame. They support the Qt state transition,
-   but are not independent Genesis examples. The supplied longplay does not
-   show this reload route.
+7. **Do multiple frames support the interpretation?** The CLI records the
+   initial empty state, A while unselected, selected with A released, and the
+   selected held-A reload. They support the Qt state transition, but are not
+   independent Genesis examples. The supplied longplay does not show this
+   reload route.
 8. **Was old UI cleared before new controls were drawn?** This action draws no
    menu controls. QA requires command, dialogue, Hotel, inventory-action, and
    Clips pages to be closed; the captured field retains only its field HUD.
 
-**Status:** partial. Empty-ammo clip consumption, action delay, audio event
-submissions, and HUD projection are connected and tested. Weapon firing,
-target selection, collision, damage, full attack animation, and independent
-reload/audio captures remain open.
+**Status:** partial. The selected-action and held-A entry gates, empty-ammo
+clip consumption, action delay, audio event submissions, and HUD projection
+are connected and tested with an explicitly injected action behavior bit.
+Live combat entry into that state, weapon firing, target selection, collision,
+damage, full attack animation, and independent reload/audio captures remain
+open.

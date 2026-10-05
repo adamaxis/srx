@@ -3154,21 +3154,42 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
+                field_scene.set_controller_port_byte(0x40U);
                 field_scene.advance_frame();
-                const auto waiting = render_scene();
+                field_scene.set_controller_port_byte(0U);
+                const auto unselected_action = render_scene();
                 if (field_scene.active_runner_record().ammo_rounds != 0U ||
                     field_scene.active_runner_record().ammo_clips != 3U ||
                     field_scene.active_runner_record().animation_action_gate !=
                         0 ||
                     !field_audio_events.empty() ||
-                    !ammo_counter_matches(waiting, 0) ||
-                    !weapon_glyph_matches(waiting) ||
-                    !save_scene("gate-frame-1", waiting)) {
-                    std::cerr << "field player action dump: reload ran before the signed animation gate became negative\n";
+                    !ammo_counter_matches(unselected_action, 0) ||
+                    !weapon_glyph_matches(unselected_action) ||
+                    !save_scene("unselected-action-frame",
+                                unselected_action)) {
+                    std::cerr << "field player action dump: unselected runner entered the weapon-action branch\n";
                     return 3;
                 }
 
+                runner.flags = static_cast<std::uint16_t>(
+                    runner.flags | 0x0200U);
                 field_scene.advance_frame();
+                const auto ready_idle = render_scene();
+                if (field_scene.active_runner_record().ammo_rounds != 0U ||
+                    field_scene.active_runner_record().ammo_clips != 3U ||
+                    field_scene.active_runner_record().animation_action_gate >=
+                        0 ||
+                    !field_audio_events.empty() ||
+                    !ammo_counter_matches(ready_idle, 0) ||
+                    !weapon_glyph_matches(ready_idle) ||
+                    !save_scene("ready-idle-frame", ready_idle)) {
+                    std::cerr << "field player action dump: idle selected runner reloaded without held A\n";
+                    return 3;
+                }
+
+                field_scene.set_controller_port_byte(0x40U);
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
                 const auto scene = render_scene();
                 const auto output =
                     *field_player_action_dump_path / "actual.bmp";
@@ -3191,8 +3212,9 @@ int main(int argc, char** argv) {
                     field_scene.dialogue_open() || field_scene.hotel_menu_open() ||
                     field_scene.inventory_action_open() ||
                     field_scene.clips_menu_open() ||
+                    field_scene.field_interaction_open() ||
                     !save_scene("actual", scene)) {
-                    std::cerr << "field player action dump: source-gated reload, shared clip, delay, audio, or live HUD counter did not match\n";
+                    std::cerr << "field player action dump: source-selected, held-A reload, shared clip, delay, audio, or live HUD counter did not match\n";
                     return 3;
                 }
                 std::cout << "field_player_action_dump=written path="

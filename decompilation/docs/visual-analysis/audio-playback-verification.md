@@ -18,7 +18,8 @@ This review covers the shared one-shot audio service for source events `0x24`,
 - The electromagnetic-lock unlock path submits event `0x4B`, mapped to
   resource 75; its extracted FLAC contains 97,770 samples at 44.1 kHz, or
   2.2167 seconds.
-- The empty-ammo player action also submits `0x4B`: ROM `0x14226` dispatches
+- The empty-ammo player action submits `0x4B` after the selected-action
+  behavior gate and held-A input gate: ROM `0x14226` dispatches
   it before the delay/clip/meter update, then the successful `0xAAD2` return
   reaches the `0xACAE` tail, which dispatches `0x4B` again and resets the
   normal delay. Qt QA checks both event IDs and order. It does not capture
