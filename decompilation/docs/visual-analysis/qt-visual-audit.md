@@ -1513,7 +1513,7 @@ and captured device audio remain open.
    `FFF116=-1` and opens the read-only current-Karma route. It does not mutate
    stats or Karma. Hotel option 0 enters at `0xD024`, carries upgrade
    selection/cost data, and opens confirmation before mutation. FieldSceneRuntime
-   owns separate Start-menu and Hotel menu instances.
+   owns separate fixed-mode command-view and Hotel screen types.
 3. **Are the visuals themselves correct?** The two variants share their grid
    and current-total placement. The pixel QA requires the only difference to
    be in the source lower detail line and checks that the Hotel upgrade/cost

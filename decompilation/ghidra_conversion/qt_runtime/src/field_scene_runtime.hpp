@@ -120,7 +120,7 @@ public:
     bool attributes_skills_menu_open() const noexcept {
         return command_overview_attributes_skills_.is_open();
     }
-    const AttributesSkillsMenuRuntime& attributes_skills_menu() const noexcept {
+    const CommandMenuKarmaViewRuntime& attributes_skills_menu() const noexcept {
         return command_overview_attributes_skills_;
     }
 
@@ -149,7 +149,7 @@ public:
     bool hotel_karma_screen_open() const noexcept {
         return hotel_karma_skills_.is_open();
     }
-    const AttributesSkillsMenuRuntime& hotel_karma_screen() const noexcept {
+    const HotelKarmaUpgradeRuntime& hotel_karma_screen() const noexcept {
         return hotel_karma_skills_;
     }
     HotelMenuPhase hotel_menu_phase() const noexcept {
@@ -529,7 +529,7 @@ private:
     void paint_command_overview_magic(QPainter& painter) const;
     void paint_attributes_skills_menu(
         QPainter& painter,
-        const AttributesSkillsMenuRuntime& menu) const;
+        const AttributesSkillsMenuController& menu) const;
     void paint_command_overview(QPainter& painter) const;
     void paint_command_overview_clips(QPainter& painter) const;
     void paint_field_shop(QPainter& painter) const;
@@ -605,8 +605,8 @@ private:
     WorldFrameLogicCallbacks world_frame_logic_callbacks_;
     FieldViewportState viewport_state_;
     FieldCommandOverviewBridge command_overview_;
-    AttributesSkillsMenuRuntime command_overview_attributes_skills_{};
-    AttributesSkillsMenuRuntime hotel_karma_skills_{};
+    CommandMenuKarmaViewRuntime command_overview_attributes_skills_{};
+    HotelKarmaUpgradeRuntime hotel_karma_skills_{};
     FieldDialogueRuntime field_dialogue_;
     HotelMenuRuntime hotel_menu_{};
     FieldModeTextRuntime field_mode_text_{};

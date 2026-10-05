@@ -4,7 +4,7 @@
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
-void AttributesSkillsMenuRuntime::open(
+void AttributesSkillsMenuController::open(
     const RunnerRecordFields& active_record,
     const AttributesSkillsMenuMode mode) {
     mode_ = mode;
@@ -20,31 +20,31 @@ void AttributesSkillsMenuRuntime::open(
     refresh_selection_state(active_record);
 }
 
-void AttributesSkillsMenuRuntime::close_to_parent() noexcept {
+void AttributesSkillsMenuController::close_to_parent() noexcept {
     state_.open = false;
     upgrade_prompt_open_ = false;
     upgrade_prompt_selection_ = 0U;
     message_ = AttributesSkillsMenuMessage::none;
 }
 
-AttributeSkillGrid AttributesSkillsMenuRuntime::grid(
+AttributeSkillGrid AttributesSkillsMenuController::grid(
     const RunnerRecordFields& record) const {
     return read_attributes_and_skills_grid(record, true);
 }
 
-AttributeSkillUpgradePreview AttributesSkillsMenuRuntime::preview(
+AttributeSkillUpgradePreview AttributesSkillsMenuController::preview(
     const RunnerRecordFields& record) const {
     return preview_attribute_skill_upgrade(record, state_.cursor);
 }
 
-void AttributesSkillsMenuRuntime::refresh(
+void AttributesSkillsMenuController::refresh(
     const RunnerRecordFields& active_record) {
     if (state_.open) {
         refresh_selection_state(active_record);
     }
 }
 
-void AttributesSkillsMenuRuntime::refresh_selection_state(
+void AttributesSkillsMenuController::refresh_selection_state(
     const RunnerRecordFields& active_record) {
     const auto result = render_attributes_and_skills(
         active_record, state_.cursor, allows_karma_upgrades());
@@ -64,7 +64,7 @@ void AttributesSkillsMenuRuntime::refresh_selection_state(
     }
 }
 
-AttributesSkillsRuntimeEvent AttributesSkillsMenuRuntime::advance(
+AttributesSkillsRuntimeEvent AttributesSkillsMenuController::advance(
     const std::uint16_t controller_events,
     RunnerRecordFields& active_record,
     const std::function<void()>& advance_active_runner_selection) {

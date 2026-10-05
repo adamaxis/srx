@@ -314,6 +314,11 @@ B back to the command shell without mutation. Hotel option 0 points to
 Its lower detail line shows the selected row's next value and Karma cost, and
 A opens the spending prompt through `0xD3EA`/`0xD53C`.
 
+The Qt field scene exposes these routes through separate fixed-mode screen
+types: `CommandMenuKarmaViewRuntime` and `HotelKarmaUpgradeRuntime`. They share
+the typed grid/input controller, while each route fixes its own interaction
+mode; the command view has no route-level API for enabling Karma spending.
+
 The native runtime keeps separate route state for both screens. The command
 view paints the current Karma total and cannot mutate the runner. The Hotel
 child paints next-value/cost details, confirms Yes/No, updates the selected

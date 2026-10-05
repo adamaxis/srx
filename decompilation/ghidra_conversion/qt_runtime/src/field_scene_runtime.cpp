@@ -1813,9 +1813,7 @@ void FieldSceneRuntime::begin_command_overview_attributes_skills() {
             "field.command_overview.attributes_skills.invalid_route");
         return;
     }
-    command_overview_attributes_skills_.open(
-        active_runner_record(),
-        AttributesSkillsMenuMode::command_view_only);
+    command_overview_attributes_skills_.open(active_runner_record());
     source_boundary(
         "field.command_overview.attributes_skills.opened");
 }
@@ -4428,9 +4426,7 @@ HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
         source_boundary("field.hotel.checked_out");
         break;
     case HotelMenuEvent::karma_screen_opened:
-        hotel_karma_skills_.open(
-            active_runner_record(),
-            AttributesSkillsMenuMode::hotel_karma_upgrade);
+        hotel_karma_skills_.open(active_runner_record());
         source_boundary("field.hotel.karma_screen.opened");
         break;
     case HotelMenuEvent::mode_action:
@@ -5233,7 +5229,7 @@ void FieldSceneRuntime::paint_command_overview_clips(
 }
 
 void FieldSceneRuntime::paint_attributes_skills_menu(
-    QPainter& painter, const AttributesSkillsMenuRuntime& menu) const {
+    QPainter& painter, const AttributesSkillsMenuController& menu) const {
     // ROM 0xD01C clears both planes and installs the command-menu view. The
     // Hotel option enters the shared page body at 0xD024, where the upgrade
     // detail fields are enabled by the live selection-data state.
@@ -5642,7 +5638,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     }
     if (command_overview_attributes_skills_.is_open()) {
         paint_attributes_skills_menu(
-            painter, command_overview_attributes_skills_);
+            painter, command_overview_attributes_skills_.controller());
         return;
     }
     if (command_overview_cyberware_active_) {
@@ -6461,7 +6457,8 @@ void FieldSceneRuntime::paint(QPainter& painter) const {
         return;
     }
     if (hotel_karma_skills_.is_open()) {
-        paint_attributes_skills_menu(painter, hotel_karma_skills_);
+        paint_attributes_skills_menu(painter,
+                                     hotel_karma_skills_.controller());
         return;
     }
     if (hotel_menu_.open()) {

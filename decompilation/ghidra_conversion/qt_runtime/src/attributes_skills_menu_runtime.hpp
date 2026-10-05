@@ -32,11 +32,11 @@ enum class AttributesSkillsMenuMode {
     hotel_karma_upgrade,
 };
 
-// Non-blocking Qt frame-loop adapter for two distinct screens that share the
-// ROM's Attributes/Skills grid body. ROM 0xD01C sets FFF116=-1; that command
-// screen displays current Karma only. Hotel dispatch enters at 0xD024 and
-// displays upgrade costs and enables Karma spending.
-class AttributesSkillsMenuRuntime final {
+// Shared state and input controller for two distinct screens that reuse the
+// ROM's Attributes/Skills grid body. Route-facing Qt code should use one of
+// the fixed-mode screen types below so the command view cannot enter the
+// hotel's Karma-spending flow.
+class AttributesSkillsMenuController final {
 public:
     void open(const RunnerRecordFields& active_record,
               AttributesSkillsMenuMode mode);
@@ -71,5 +71,62 @@ private:
     std::uint8_t upgrade_prompt_selection_ = 0U;
     AttributesSkillsMenuMessage message_ = AttributesSkillsMenuMessage::none;
 };
+
+template <AttributesSkillsMenuMode Mode>
+class AttributesSkillsMenuScreenRuntime final {
+public:
+    static constexpr bool kAllowsKarmaUpgrades =
+        Mode == AttributesSkillsMenuMode::hotel_karma_upgrade;
+
+    void open(const RunnerRecordFields& active_record) {
+        controller_.open(active_record, Mode);
+    }
+
+    void close_to_parent() noexcept { controller_.close_to_parent(); }
+    bool is_open() const noexcept { return controller_.is_open(); }
+    bool allows_karma_upgrades() const noexcept {
+        return kAllowsKarmaUpgrades;
+    }
+    bool upgrade_prompt_open() const noexcept {
+        return controller_.upgrade_prompt_open();
+    }
+    std::uint8_t upgrade_prompt_selection() const noexcept {
+        return controller_.upgrade_prompt_selection();
+    }
+    const AttributesSkillsMenuState& state() const noexcept {
+        return controller_.state();
+    }
+    AttributesSkillsMenuMessage message() const noexcept {
+        return controller_.message();
+    }
+    AttributeSkillGrid grid(const RunnerRecordFields& record) const {
+        return controller_.grid(record);
+    }
+    AttributeSkillUpgradePreview preview(
+        const RunnerRecordFields& record) const {
+        return controller_.preview(record);
+    }
+    void refresh(const RunnerRecordFields& active_record) {
+        controller_.refresh(active_record);
+    }
+    AttributesSkillsRuntimeEvent advance(
+        std::uint16_t controller_events, RunnerRecordFields& active_record,
+        const std::function<void()>& advance_active_runner_selection = {}) {
+        return controller_.advance(controller_events, active_record,
+                                   advance_active_runner_selection);
+    }
+
+    const AttributesSkillsMenuController& controller() const noexcept {
+        return controller_;
+    }
+
+private:
+    AttributesSkillsMenuController controller_{};
+};
+
+using CommandMenuKarmaViewRuntime = AttributesSkillsMenuScreenRuntime<
+    AttributesSkillsMenuMode::command_view_only>;
+using HotelKarmaUpgradeRuntime = AttributesSkillsMenuScreenRuntime<
+    AttributesSkillsMenuMode::hotel_karma_upgrade>;
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime
