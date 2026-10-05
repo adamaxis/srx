@@ -42,9 +42,9 @@ struct UsActionEffectDefinition {
 using UsActionEffectCatalog =
     std::array<UsActionEffectDefinition, kUsActionEffectCount>;
 
-// Each runner's +0xA0-selected row at ROM 0x166AD8 begins with a count and
-// then stores up to fourteen two-byte entries: spell code followed by the
-// force/value limit used by the magic menu.
+// Each runner's +0xA0-selected row at ROM 0x166AD8 stores a DBF last index,
+// followed by that many entries plus one. `entry_count` is the native total;
+// each entry contains a spell code followed by the force/value limit.
 struct MagicSpellTableEntry {
     std::uint8_t spell_code = 0;
     std::uint8_t force_limit = 0;

@@ -823,6 +823,12 @@ struct GenesisMagicMenuText {
     std::string success_label;
     std::string force_label;
     std::string availability_label;
+    // ROM 0x102EC passes the complete C89FC block to the text writer. Its
+    // 0x80 separators encode Success, Drain, Defense, vs. Phys, and vs. Mana.
+    std::string panel_metric_labels;
+    // ROM 0x102EC passes C8A3A as one two-column label block: Force, a blank
+    // row, then Posture.
+    std::string force_posture_labels;
     std::array<std::string, 13> spell_names{};
     std::array<std::string, 13> spell_descriptions{};
 };
@@ -902,6 +908,17 @@ RgbaImage decode_genesis_field_menu_inventory_boxes(
 RgbaImage decode_genesis_field_menu_font(
     const std::vector<std::uint8_t>& rom,
     std::size_t palette_line = 3U);
+// ROM 0xFBA6 selects the Magic palette set at C8A60 while 0xC0DA writes
+// spell-page text with palette flags zero. Keep that font color separate from
+// the command-menu font palette decoded from D29D6/18AC56.
+RgbaImage decode_genesis_field_magic_menu_font(
+    const std::vector<std::uint8_t>& rom);
+constexpr std::size_t kGenesisFieldMagicMetricBarCount = 22U;
+// ROM 0x1055E selects thirteen-cell rows from C8784. Extract the rows as
+// independent RGBA assets using the Magic palette at C8A60.
+std::array<RgbaImage, kGenesisFieldMagicMetricBarCount>
+decode_genesis_field_magic_metric_bars(
+    const std::vector<std::uint8_t>& rom);
 
 // The clip counter at C4B4 is emitted with C0DA's palette-line zero rather
 // than the command text's palette-line three. Keep that source palette

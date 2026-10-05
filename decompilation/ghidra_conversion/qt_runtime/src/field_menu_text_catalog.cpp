@@ -185,6 +185,8 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     bool magic_success_label_found = false;
     bool magic_force_label_found = false;
     bool magic_availability_label_found = false;
+    bool magic_panel_metric_labels_found = false;
+    bool magic_force_posture_labels_found = false;
     bool pocket_secretary_title_found = false;
     bool pocket_secretary_separator_found = false;
     bool dismiss_runner_separator_found = false;
@@ -588,6 +590,12 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             parse_named("magic.label.availability",
                         result.catalog.magic_availability_label,
                         magic_availability_label_found) ||
+            parse_named("magic.panel.metric-labels",
+                        result.catalog.magic_panel_metric_labels,
+                        magic_panel_metric_labels_found) ||
+            parse_named("magic.panel.force-posture-labels",
+                        result.catalog.magic_force_posture_labels,
+                        magic_force_posture_labels_found) ||
             parse_named("pocket-secretary.title",
                         result.catalog.pocket_secretary_title,
                         pocket_secretary_title_found) ||
@@ -1011,6 +1019,10 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     require_named("magic.label.force", magic_force_label_found);
     require_named("magic.label.availability",
                   magic_availability_label_found);
+    require_named("magic.panel.metric-labels",
+                  magic_panel_metric_labels_found);
+    require_named("magic.panel.force-posture-labels",
+                  magic_force_posture_labels_found);
     require_named("pocket-secretary.title", pocket_secretary_title_found);
     require_named("pocket-secretary.separator",
                   pocket_secretary_separator_found);
@@ -1103,6 +1115,8 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     decode_newlines(result.catalog.field_service_universal_clips_title);
     decode_newlines(
         result.catalog.field_service_universal_clips_description);
+    decode_newlines(result.catalog.magic_panel_metric_labels);
+    decode_newlines(result.catalog.magic_force_posture_labels);
 
     const auto* tips_record =
         assets.find("menu.pocket_secretary.notebook.tips");

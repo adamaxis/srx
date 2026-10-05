@@ -537,6 +537,12 @@ GenesisMagicMenuText read_genesis_magic_menu_text(
     result.availability_label = read_genesis_padded_text(
         rom, 0xC8A32U, 0x20U,
         "Genesis Magic availability label is truncated");
+    result.panel_metric_labels = read_genesis_multiline_text(
+        rom, 0xC89FCU, 0x40U,
+        "Genesis Magic panel labels are truncated");
+    result.force_posture_labels = read_genesis_multiline_text(
+        rom, 0xC8A3AU, 0x30U,
+        "Genesis Magic Force/Posture labels are truncated");
 
     constexpr std::size_t kSpellTable = 0xD4EA0U;
     constexpr std::size_t kSpellRecordStride = 0x30U;
@@ -3455,10 +3461,25 @@ namespace {
 std::array<native::Rgba8, 64> read_genesis_command_palette_set(
     const std::vector<std::uint8_t>& rom);
 
+RgbaImage decode_genesis_field_menu_font_with_palette(
+    const std::vector<std::uint8_t>& rom,
+    const std::array<native::Rgba8, 64>& palette,
+    std::size_t palette_line);
+
 } // namespace
 
 RgbaImage decode_genesis_field_menu_font(
     const std::vector<std::uint8_t>& rom,
+    const std::size_t palette_line) {
+    return decode_genesis_field_menu_font_with_palette(
+        rom, read_genesis_command_palette_set(rom), palette_line);
+}
+
+namespace {
+
+RgbaImage decode_genesis_field_menu_font_with_palette(
+    const std::vector<std::uint8_t>& rom,
+    const std::array<native::Rgba8, 64>& palette,
     const std::size_t palette_line) {
     constexpr std::size_t kFontStreamOffset = 0xC1064U;
     constexpr std::size_t kFontVramOffset = 0xB560U;
@@ -3473,10 +3494,8 @@ RgbaImage decode_genesis_field_menu_font(
     const auto font_vram = decode_genesis_1530_vram(
         rom, kFontStreamOffset, kFontVramOffset);
 
-    // The command screen loads this CRAM set through 0x5670E. The Hotel
-    // options/status writer uses palette line three (0x6000), while the
-    // nested checkout writer uses line two (0x4000).
-    const auto palette = read_genesis_command_palette_set(rom);
+    // 0xC0DA applies the caller's palette flags to these source glyph tiles.
+    // The caller supplies the screen-specific CRAM set and palette line.
     RgbaImage atlas{
         static_cast<std::uint16_t>(kAtlasColumns * 8U),
         static_cast<std::uint16_t>(kAtlasRows * 8U),
@@ -3516,6 +3535,8 @@ RgbaImage decode_genesis_field_menu_font(
     }
     return atlas;
 }
+
+} // namespace
 
 namespace {
 
@@ -7648,6 +7669,14 @@ GenesisBootPatternData decode_genesis_field_magic_graphics(
 
 } // namespace
 
+RgbaImage decode_genesis_field_magic_menu_font(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kMagicTextPaletteLine = 0U;
+    const auto scene = decode_genesis_field_magic_graphics(rom);
+    return decode_genesis_field_menu_font_with_palette(
+        rom, scene.palette, kMagicTextPaletteLine);
+}
+
 RgbaImage decode_genesis_field_magic_panel_background(
     const std::vector<std::uint8_t>& rom) {
     // ROM 0xFBA6 copies the selected spell palette from C8A60, uploads the
@@ -7661,6 +7690,62 @@ RgbaImage decode_genesis_field_magic_panel_background(
         rom, scene, image, 0xC8108U, 34U, 28U, 0xE000U, 0xE000U,
         0U, true);
     return image;
+}
+
+std::array<RgbaImage, kGenesisFieldMagicMetricBarCount>
+decode_genesis_field_magic_metric_bars(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kMetricRowTable = 0xC8784U;
+    constexpr std::size_t kMetricRowStride = 0x1AU;
+    constexpr std::size_t kTileCount = 13U;
+    constexpr std::size_t kTileBytes = 32U;
+    constexpr std::uint16_t kTileIndexMask = 0x07FFU;
+    constexpr std::uint16_t kHorizontalFlip = 0x0800U;
+    constexpr std::uint16_t kVerticalFlip = 0x1000U;
+    constexpr std::uint16_t kPaletteMask = 0x6000U;
+
+    const auto scene = decode_genesis_field_magic_graphics(rom);
+    std::array<RgbaImage, kGenesisFieldMagicMetricBarCount> result{};
+    for (std::size_t row = 0; row < result.size(); ++row) {
+        auto& image = result[row];
+        image.width = static_cast<std::uint16_t>(kTileCount * 8U);
+        image.height = 8U;
+        image.pixels.assign(kTileCount * 64U, native::Rgba8{0, 0, 0, 0});
+        for (std::size_t column = 0; column < kTileCount; ++column) {
+            const auto attribute = read_rom_u16(
+                rom, kMetricRowTable + row * kMetricRowStride + column * 2U,
+                "Genesis Magic metric bar table is truncated");
+            const auto tile_index = static_cast<std::size_t>(
+                attribute & kTileIndexMask);
+            const auto tile_offset = tile_index * kTileBytes;
+            if (tile_offset + kTileBytes > scene.pattern_vram.size()) {
+                throw std::out_of_range(
+                    "Genesis Magic metric bar references a missing tile");
+            }
+            const auto tile = decode_genesis_tile(
+                scene.pattern_vram.data() + tile_offset, kTileBytes);
+            const auto palette_line = static_cast<std::size_t>(
+                (attribute & kPaletteMask) >> 13U);
+            const auto flip_x = (attribute & kHorizontalFlip) != 0U;
+            const auto flip_y = (attribute & kVerticalFlip) != 0U;
+            for (std::size_t y = 0; y < 8U; ++y) {
+                for (std::size_t x = 0; x < 8U; ++x) {
+                    const auto source_x = flip_x ? 7U - x : x;
+                    const auto source_y = flip_y ? 7U - y : y;
+                    const auto color_index =
+                        tile.pixels[source_y * 8U + source_x];
+                    auto color =
+                        scene.palette[palette_line * 16U + color_index];
+                    // ROM row words retain palette index zero as the black
+                    // meter well; only the separate spell cursor/background
+                    // layers use transparent index-zero pixels.
+                    color.alpha = 255U;
+                    image.pixels[y * image.width + column * 8U + x] = color;
+                }
+            }
+        }
+    }
+    return result;
 }
 
 std::array<RgbaImage, 13> decode_genesis_field_magic_spell_icons(
@@ -7679,11 +7764,14 @@ std::array<RgbaImage, 13> decode_genesis_field_magic_spell_icons(
         const auto palette_flags = spell < 6U ? 0x2000U : 0x6000U;
         auto& image = result[spell];
         image = RgbaImage{
-            24U, 16U,
-            std::vector<native::Rgba8>(24U * 16U,
+            24U, 24U,
+            std::vector<native::Rgba8>(24U * 24U,
                                        native::Rgba8{0, 0, 0, 0}),
         };
-        for (std::size_t row = 0; row < 2U; ++row) {
+        // 0x11190 writes a 3x3 tile glyph. The caller advances the source
+        // pointer by one word per spell, so all nine words belong to this
+        // icon; a 3x2 crop drops its bottom tile row.
+        for (std::size_t row = 0; row < 3U; ++row) {
             for (std::size_t column = 0; column < 3U; ++column) {
                 auto word = read_rom_u16(
                     rom, glyph_stream + (row * 3U + column) * 2U,

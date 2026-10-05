@@ -239,6 +239,7 @@ EntityActionRecord magic_action_record_from_runner(
     result.flags_10 = static_cast<std::uint8_t>(runner.flags >> 8U);
     result.class_code = runner.archetype_index;
     result.item18_base = runner.skills[0];
+    result.posture = runner.posture;
     result.attribute_77 = runner.attributes[0];
     result.attribute_7c = runner.attributes[5];
     result.item_codes = runner.inventory_item_codes;
@@ -737,6 +738,8 @@ bool FieldSceneRuntime::load_command_overview_assets(
                     kCommandOverviewActionConfirmationBackgroundAlias,
                     command_overview_action_confirmation_background_) ||
         !load_image(catalog, "menu.field.font", command_overview_font_) ||
+        !load_image(catalog, "menu.field.magic.font.palette.0",
+                    magic_menu_font_) ||
         !load_image(catalog, "menu.field.font.palette.2",
                     hotel_checkout_font_) ||
         !load_image(catalog, "menu.pocket.secretary.background",
@@ -812,6 +815,15 @@ bool FieldSceneRuntime::load_command_overview_assets(
                         "menu.field.magic.force.meter.tile." +
                             std::to_string(index),
                         command_overview_magic_force_meter_tiles_[index])) {
+            return false;
+        }
+    }
+    for (std::size_t index = 0;
+         index < command_overview_magic_metric_bars_.size(); ++index) {
+        if (!load_image(catalog,
+                        "menu.field.magic.metric.bar." +
+                            std::to_string(index),
+                        command_overview_magic_metric_bars_[index])) {
             return false;
         }
     }
@@ -4863,14 +4875,13 @@ void FieldSceneRuntime::draw_command_overview_text(
     }
     auto cursor = x;
     auto cursor_y = y;
-    for (const auto character : text) {
-        if (character == '\n') {
+    for (const unsigned char code : text) {
+        if (code == '\n') {
             cursor = x;
             cursor_y += 8;
             continue;
         }
-        const auto code = static_cast<unsigned char>(character);
-        if (code < 0x20U || code > 0x7FU) {
+        if (code < 0x20U || code > 0x7EU) {
             cursor += 8;
             continue;
         }
@@ -4903,6 +4914,38 @@ void FieldSceneRuntime::draw_command_overview_text(
             }
         }
         painter.drawImage(cursor, cursor_y, tinted_glyph);
+        cursor += 8;
+    }
+}
+
+void FieldSceneRuntime::draw_field_menu_font_text(
+    QPainter& painter, const int x, const int y,
+    const std::string_view text, const QImage& font) const {
+    if (font.isNull() || font.width() < 8 || font.height() < 8) {
+        return;
+    }
+    auto cursor = x;
+    auto cursor_y = y;
+    for (const auto character : text) {
+        if (character == '\n') {
+            cursor = x;
+            cursor_y += 8;
+            continue;
+        }
+        const auto code = static_cast<unsigned char>(character);
+        if (code < 0x20U || code > 0x7FU) {
+            cursor += 8;
+            continue;
+        }
+        const auto glyph = static_cast<int>(code - 0x20U);
+        const auto source_x = (glyph % 16) * 8;
+        const auto source_y = (glyph / 16) * 8;
+        if (source_x + 8 > font.width() || source_y + 8 > font.height()) {
+            cursor += 8;
+            continue;
+        }
+        painter.drawImage(cursor, cursor_y, font,
+                          source_x, source_y, 8, 8);
         cursor += 8;
     }
 }
@@ -5303,23 +5346,35 @@ void FieldSceneRuntime::paint_command_overview_magic(
         command_overview_magic_selected_spell_->spell_code;
     const auto* spell = find_us_magic_spell(spell_code);
     if (spell_code < field_menu_text_.magic_spell_names.size()) {
-        draw_command_overview_text(
+        // ROM 0x10276 sends the selected D4EA0 glyph triplet to C194, which
+        // is the 24x24 cell beside the spell title. The menu row below uses
+        // the same named glyph assets at its separate list destinations.
+        if (spell_code < command_overview_magic_spell_icons_.size()) {
+            painter.drawImage(
+                80, 24, command_overview_magic_spell_icons_[spell_code]);
+        }
+        draw_field_menu_font_text(
             painter, 112, 32,
-            field_menu_text_.magic_spell_names[spell_code]);
-        draw_command_overview_text(
+            field_menu_text_.magic_spell_names[spell_code],
+            magic_menu_font_);
+        draw_field_menu_font_text(
             painter, 32, 48,
-            field_menu_text_.magic_spell_descriptions[spell_code]);
+            field_menu_text_.magic_spell_descriptions[spell_code],
+            magic_menu_font_);
     }
-    draw_command_overview_text(
-        painter, 0, 56,
-        field_menu_text_.magic_force_posture_heading);
-    draw_command_overview_text(
-        painter, 32, 80, field_menu_text_.magic_success_label);
-    draw_command_overview_text(
-        painter, 160, 104, field_menu_text_.magic_force_label);
-    draw_command_overview_text(
+    // ROM 0x102EC passes each complete encoded label block to C0DA. The
+    // 0x80 bytes inside them preserve the line breaks and empty Force-to-
+    // Posture row; this is not the fallback heading used by 0x102D4.
+    draw_field_menu_font_text(
+        painter, 32, 80, field_menu_text_.magic_panel_metric_labels,
+        magic_menu_font_);
+    draw_field_menu_font_text(
+        painter, 160, 104, field_menu_text_.magic_force_posture_labels,
+        magic_menu_font_);
+    draw_field_menu_font_text(
         painter, 216, 104,
-        std::to_string(command_overview_magic_force_.current_force));
+        std::to_string(command_overview_magic_force_.current_force),
+        magic_menu_font_);
 
     const auto& runner = active_runner_record();
     MagicMenuValueRefreshInput success_input{};
@@ -5327,16 +5382,97 @@ void FieldSceneRuntime::paint_command_overview_magic(
         command_overview_magic_force_.current_force;
     success_input.action_cap = runner.auxiliary[0];
     success_input.active_entity = magic_action_record_from_runner(runner);
+    MagicMenuValueRefreshCallbacks success_callbacks{};
+    success_callbacks.resolve_menu_metric =
+        [this, &runner, &success_input](
+        const std::uint16_t value) -> std::optional<std::uint16_t> {
+        const auto* spell_table = find_us_magic_spell_table(
+            runner.magic_table_index);
+        if (spell_table == nullptr ||
+            !command_overview_magic_selected_spell_.has_value()) {
+            return std::nullopt;
+        }
+
+        // FBA6 copies this count-and-pair table into FFF9FA. 0x104C8 then
+        // selects an even byte using its source row*6+column expression;
+        // preserve that source indexing through the typed lookup helper.
+        std::vector<std::uint8_t> source_action_indices;
+        source_action_indices.reserve(2U +
+                                      spell_table->entry_count * 2U);
+        source_action_indices.push_back(0U);
+        source_action_indices.push_back(static_cast<std::uint8_t>(
+            spell_table->entry_count - 1U));
+        for (std::size_t index = 0;
+             index < spell_table->entry_count &&
+             index < kMagicSpellTableEntryCapacity;
+             ++index) {
+            source_action_indices.push_back(
+                spell_table->entries[index].spell_code);
+            source_action_indices.push_back(
+                spell_table->entries[index].force_limit);
+        }
+
+        MenuMetricLookupInput metric_input{};
+        metric_input.menu_row = command_overview_magic_loop_.selection.row;
+        metric_input.menu_column =
+            command_overview_magic_loop_.selection.column;
+        metric_input.source_action_indices =
+            std::move(source_action_indices);
+        metric_input.value = value;
+        metric_input.entity = success_input.active_entity;
+        metric_input.item_catalog = &us_item_catalog();
+        metric_input.selector_table =
+            &us_special_item_modifier_selector_table();
+        const auto metric = resolve_menu_metric_action(metric_input);
+        if (!metric.has_value() || metric->modifiers.source_data_missing) {
+            return std::nullopt;
+        }
+        return metric->modifiers.value;
+    };
     const auto success =
-        refresh_magic_menu_success_or_defense_values(success_input);
-    draw_command_overview_text(
-        painter, 32, 88, std::to_string(success.success_value));
+        refresh_magic_menu_success_or_defense_values(success_input,
+                                                     success_callbacks);
+    if (!success.grid_requests.empty() &&
+        success.grid_requests.front().row <
+            command_overview_magic_metric_bars_.size()) {
+        painter.drawImage(
+            32, 88,
+            command_overview_magic_metric_bars_[
+                success.grid_requests.front().row]);
+    }
+
+    MagicMenuValueRefreshInput defense_input{};
+    defense_input.refresh_defense_strips = true;
+    defense_input.active_entity = success_input.active_entity;
+    defense_input.attribute_77 = defense_input.active_entity.attribute_77;
+    defense_input.attribute_7c = defense_input.active_entity.attribute_7c;
+    const auto& party_records = field_party_roster_.records();
+    for (std::size_t index = 0;
+         index < defense_input.ready_entities.size(); ++index) {
+        defense_input.ready_entities[index] =
+            magic_action_record_from_runner(party_records[index]);
+    }
+    const auto defense =
+        refresh_magic_menu_success_or_defense_values(defense_input);
+    for (const auto& request : defense.grid_requests) {
+        if (request.row >= command_overview_magic_metric_bars_.size()) {
+            continue;
+        }
+        if (request.strip == MagicMenuValueStrip::defense_physical) {
+            painter.drawImage(32, 128,
+                              command_overview_magic_metric_bars_[request.row]);
+        } else if (request.strip == MagicMenuValueStrip::defense_mana) {
+            painter.drawImage(32, 144,
+                              command_overview_magic_metric_bars_[request.row]);
+        }
+    }
 
     // 0x1088C draws the spell's availability label and seven-tile row only
     // for nonnegative +0x25 values. The negative branch clears that region.
     if (spell != nullptr && spell->availability_byte >= 0) {
-        draw_command_overview_text(
-            painter, 160, 80, field_menu_text_.magic_availability_label);
+        draw_field_menu_font_text(
+            painter, 160, 80, field_menu_text_.magic_availability_label,
+            magic_menu_font_);
         const auto availability = static_cast<std::size_t>(
             spell->availability_byte);
         if (availability < command_overview_magic_availability_bars_.size()) {
@@ -5355,8 +5491,9 @@ void FieldSceneRuntime::paint_command_overview_magic(
             magic_action_record_from_runner(runner), *spell};
         const auto effect = refresh_magic_action_effect_value(effect_input);
         if (!effect.residual_valid || effect.residual_effect <= 0) {
-            draw_command_overview_text(painter, 48, 104,
-                                       field_menu_text_.none_label);
+            draw_field_menu_font_text(painter, 48, 104,
+                                      field_menu_text_.none_label,
+                                      magic_menu_font_);
         } else if (effect.damage_grid.has_value() &&
                    effect.damage_grid->effect_row <
                        command_overview_magic_damage_bars_.size()) {
@@ -5372,8 +5509,9 @@ void FieldSceneRuntime::paint_command_overview_magic(
     painter.drawImage(160, 136,
                       command_overview_magic_posture_bars_[posture]);
     if (posture < field_menu_text_.status_names.size()) {
-        draw_command_overview_text(
-            painter, 144, 144, field_menu_text_.status_names[posture]);
+        draw_field_menu_font_text(
+            painter, 160, 144, field_menu_text_.status_names[posture],
+            magic_menu_font_);
     }
 
     // ROM 0x10172 lays out the endpoint, current-force fill, marker, one

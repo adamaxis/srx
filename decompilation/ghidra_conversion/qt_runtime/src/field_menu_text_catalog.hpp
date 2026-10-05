@@ -110,6 +110,8 @@ struct FieldMenuTextCatalog {
     std::string magic_success_label;
     std::string magic_force_label;
     std::string magic_availability_label;
+    std::string magic_panel_metric_labels;
+    std::string magic_force_posture_labels;
     std::array<std::string, kMagicSpellTextCount> magic_spell_names{};
     std::array<std::string, kMagicSpellTextCount> magic_spell_descriptions{};
     std::string pocket_secretary_title;

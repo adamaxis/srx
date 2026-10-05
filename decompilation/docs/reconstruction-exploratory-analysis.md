@@ -670,10 +670,31 @@ Those calls build independent physical and mana values from active-party
 write 13-tile rows at `C51E` and `C69E` from `0xCF610` (stride `0x1A`,
 palette `0x2000`). It waits through `0x0D94` for a fresh controller event
 before `0x11928` restores the command row. This fallback does not clear the
-whole menu plane. The Qt executable now connects this static subpath and its
-parent `0x24` action sound; its CTest writes entry/held/return captures. The
-spell-capable panel, force/action selection, target/effect, and independent
-Genesis visual validation remain `PENDING`.
+whole menu plane. The Qt executable connects this static subpath and its
+parent `0x24` action event.
+
+For the spell-capable branch, `0x10260` builds the selected spell/force state;
+`0x10276` writes the selected spell's 3x3 glyph beside its title, text, and
+force/posture values; `0x102EC` writes the multiline metric and Force/Posture
+labels; and `0x11190` transfers complete 3x3 spell icons to the lower strip.
+The five runner spell tables at `0x166AD8` store a DBF last index, so native
+`entry_count` is source word + 1. The typed panel draws the four source metric
+rows refreshed through `0x1055E`, calculates the Damage/None row through
+`0x105E6`, and applies the signed availability gate at `0x1088C`. The Qt QA
+walks the spell list, selection, four cursor phases, return, and reopen; it
+checks the retained side HUD and portrait and verifies the old command-center
+controls are cleared. Its runtime dump is
+`qt_runtime/field-magic-spell-qa/actual.bmp`.
+
+Visual review used the independent longplay frames
+`section_06_combat_inventory_delivery_0510-0600/frame_000001.png`,
+`frame_000002.png`, and `frame_000005.png`; frames 000000 through 000006 show
+the cursor changing while the page is otherwise stable. The source cursor
+counter advances phase every seven field frames. Opening requests event 0x24,
+which maps to `menu-024.flac` (2.484 seconds from FLAC metadata); actual Qt
+output-device playback has not been measured. The spell target/effect action
+route and broader independent Genesis coverage remain open, so this is a
+partial hill and the internal CTest dump is not a visual golden.
 
 ### Pocket Secretary: `0xC2A6`, Group Items: `0xC8C8`
 

@@ -306,6 +306,10 @@ void write_field_menu_text_catalog(
         }
         return value;
     };
+    emit("magic.panel.metric-labels",
+         escape_newlines(magic_text.panel_metric_labels));
+    emit("magic.panel.force-posture-labels",
+         escape_newlines(magic_text.force_posture_labels));
     for (std::size_t index = 0; index < magic_text.spell_names.size();
          ++index) {
         emit("magic.spell.name." + std::to_string(index),
@@ -1741,6 +1745,16 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     write("menu/field/font.bmp", assets.field_menu_font, "sprite",
           "0xC1064 palette-line=3", true);
     write_catalog_asset(
+        root, "menu/field/font-palette-0.bmp",
+        shadowrun::graphics::decode_genesis_field_menu_font(rom, 0U),
+        "sprite", "0xC1064/0x10276/0x102D4 palette-line=0", true,
+        manifest, written, missing, blank);
+    write_catalog_asset(
+        root, "menu/field/magic-font-palette-0.bmp",
+        shadowrun::graphics::decode_genesis_field_magic_menu_font(rom),
+        "sprite", "0xFBA6/0xC8A60/0xC1064/0x10276 palette-line=0", true,
+        manifest, written, missing, blank);
+    write_catalog_asset(
         root, "menu/field/font-palette-2.bmp",
         shadowrun::graphics::decode_genesis_field_menu_font(rom, 2U),
         "sprite", "0xC1064/0xD29D6/0x18AC56 palette-line=2", true,
@@ -1870,6 +1884,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         shadowrun::graphics::decode_genesis_field_magic_panel_background(rom),
         "background", "0xFBA6/0xC6714/0xC8108", false,
         manifest, written, missing, blank);
+    write_rgba_array(
+        "menu/field/magic-metric-bar-",
+        shadowrun::graphics::decode_genesis_field_magic_metric_bars(rom),
+        "sprite", "0x1055E/0xC8784/0xC8A60", false);
     write_rgba_array(
         "menu/field/magic-spell-icon-",
         shadowrun::graphics::decode_genesis_field_magic_spell_icons(rom),

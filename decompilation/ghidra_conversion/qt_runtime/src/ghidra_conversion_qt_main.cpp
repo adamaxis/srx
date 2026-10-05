@@ -1,6 +1,8 @@
 #include "shadowrun_ghidra/core/timing_conversion.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_action_math_conversion.hpp"
 #include "shadowrun_ghidra/menus/clips_menu_conversion.hpp"
+#include "shadowrun_ghidra/menus/menu_transfer_batch_conversion.hpp"
 #include "shadowrun_ghidra/integration/startup_integration_conversion.hpp"
 #include "shadowrun_ghidra/title_intro/title_loop_conversion.hpp"
 #include "shadowrun_ghidra/title_intro/title_setup_conversion.hpp"
@@ -4557,6 +4559,49 @@ int main(int argc, char** argv) {
                          (std::string(name) + ".bmp"))
                             .wstring()));
                 };
+                const auto direct_asset = [&asset_root](
+                    const std::string& relative_path) {
+                    return QImage(QString::fromStdWString(
+                        (asset_root / relative_path).wstring()));
+                };
+                const auto region_matches = [](const QImage& scene,
+                                               const QImage& asset,
+                                               const int origin_x,
+                                               const int origin_y) {
+                    if (asset.isNull() || origin_x < 0 || origin_y < 0 ||
+                        origin_x + asset.width() > scene.width() ||
+                        origin_y + asset.height() > scene.height()) {
+                        return false;
+                    }
+                    return scene.copy(origin_x, origin_y, asset.width(),
+                                      asset.height()) ==
+                           asset.convertToFormat(QImage::Format_RGB32);
+                };
+                const auto visible_asset_pixels_match = [](
+                    const QImage& scene, const QImage& asset,
+                    const int origin_x, const int origin_y) {
+                    if (asset.isNull() || origin_x < 0 || origin_y < 0 ||
+                        origin_x + asset.width() > scene.width() ||
+                        origin_y + asset.height() > scene.height()) {
+                        return false;
+                    }
+                    for (int y = 0; y < asset.height(); ++y) {
+                        for (int x = 0; x < asset.width(); ++x) {
+                            const auto expected = asset.pixelColor(x, y);
+                            if (expected.alpha() == 0) {
+                                continue;
+                            }
+                            const auto actual =
+                                scene.pixelColor(origin_x + x, origin_y + y);
+                            if (actual.red() != expected.red() ||
+                                actual.green() != expected.green() ||
+                                actual.blue() != expected.blue()) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                };
                 const auto page_scene = render_scene();
                 if (!field_command_shell_survives(page_scene, asset_root) ||
                     !field_hud_chrome_survives(page_scene, asset_root) ||
@@ -4592,7 +4637,8 @@ int main(int argc, char** argv) {
                         spell_panel_scene, asset_root, field_archetype) ||
                     !save_scene("spell_panel", spell_panel_scene)) {
                     std::cerr << "field Magic spell dump: panel, persistent "
-                                 "HUD, or archetype portrait failed\n";
+                                 "HUD, or archetype portrait "
+                                 "failed\n";
                     return 3;
                 }
 
@@ -4624,10 +4670,171 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 const auto moved_scene = render_scene();
+                auto unselected_spell_icons_match = true;
+                for (const auto index : {0U, 2U}) {
+                    if (index >= spell_table->entry_count) {
+                        unselected_spell_icons_match = false;
+                        break;
+                    }
+                    const auto code = spell_table->entries[index].spell_code;
+                    const auto icon = direct_asset(
+                        "menu/field/magic-spell-icon-" +
+                        std::to_string(code) + ".bmp");
+                    if (!visible_asset_pixels_match(
+                            moved_scene, icon,
+                            32 + static_cast<int>((index % 7U) * 32U),
+                            168 + static_cast<int>((index / 7U) * 24U))) {
+                        unselected_spell_icons_match = false;
+                        std::cerr << "field Magic spell dump: unselected "
+                                     "glyph mismatch entry=" << index
+                                  << " code=" << static_cast<int>(code)
+                                  << "\n";
+                        break;
+                    }
+                }
+                const auto action_record_from_runner = [](
+                    const RunnerRecordFields& runner) {
+                    EntityActionRecord entity{};
+                    entity.flags_10 = static_cast<std::uint8_t>(
+                        runner.flags >> 8U);
+                    entity.class_code = runner.archetype_index;
+                    entity.item18_base = runner.skills[0];
+                    entity.posture = runner.posture;
+                    entity.attribute_77 = runner.attributes[0];
+                    entity.attribute_7c = runner.attributes[5];
+                    entity.item_codes = runner.inventory_item_codes;
+                    entity.item_phases = runner.inventory_phase_bytes;
+                    return entity;
+                };
+                const auto& moved_runner = field_scene.active_runner_record();
+                const auto moved_entity =
+                    action_record_from_runner(moved_runner);
+                MagicMenuValueRefreshInput success_input{};
+                success_input.current_force = field_scene.magic_current_force();
+                success_input.action_cap = moved_runner.auxiliary[0];
+                success_input.active_entity = moved_entity;
+                MagicMenuValueRefreshCallbacks success_callbacks{};
+                success_callbacks.resolve_menu_metric =
+                    [&](const std::uint16_t value)
+                    -> std::optional<std::uint16_t> {
+                    std::vector<std::uint8_t> source_action_indices{
+                        0U, static_cast<std::uint8_t>(
+                                spell_table->entry_count - 1U)};
+                    for (std::size_t index = 0;
+                         index < spell_table->entry_count &&
+                         index < kMagicSpellTableEntryCapacity;
+                         ++index) {
+                        source_action_indices.push_back(
+                            spell_table->entries[index].spell_code);
+                        source_action_indices.push_back(
+                            spell_table->entries[index].force_limit);
+                    }
+                    const auto selection = field_scene.magic_spell_selection();
+                    MenuMetricLookupInput lookup_input{};
+                    lookup_input.menu_row = selection.row;
+                    lookup_input.menu_column = selection.column;
+                    lookup_input.source_action_indices =
+                        std::move(source_action_indices);
+                    lookup_input.value = value;
+                    lookup_input.entity = moved_entity;
+                    lookup_input.item_catalog = &us_item_catalog();
+                    lookup_input.selector_table =
+                        &us_special_item_modifier_selector_table();
+                    const auto lookup =
+                        resolve_menu_metric_action(lookup_input);
+                    if (!lookup.has_value() ||
+                        lookup->modifiers.source_data_missing) {
+                        return std::nullopt;
+                    }
+                    return lookup->modifiers.value;
+                };
+                const auto success =
+                    refresh_magic_menu_success_or_defense_values(
+                        success_input, success_callbacks);
+                auto success_bar_matches = false;
+                if (!success.grid_requests.empty()) {
+                    const auto row = success.grid_requests.front().row;
+                    const auto asset = direct_asset(
+                        "menu/field/magic-metric-bar-" +
+                        std::to_string(row) + ".bmp");
+                    success_bar_matches = region_matches(
+                        moved_scene, asset, 32, 88);
+                }
+
+                MagicMenuValueRefreshInput defense_input{};
+                defense_input.refresh_defense_strips = true;
+                defense_input.active_entity = moved_entity;
+                defense_input.attribute_77 = moved_entity.attribute_77;
+                defense_input.attribute_7c = moved_entity.attribute_7c;
+                const auto& party_records =
+                    field_scene.field_party_records_for_dump();
+                for (std::size_t index = 0;
+                     index < defense_input.ready_entities.size(); ++index) {
+                    defense_input.ready_entities[index] =
+                        action_record_from_runner(party_records[index]);
+                }
+                const auto defense =
+                    refresh_magic_menu_success_or_defense_values(
+                        defense_input);
+                auto defense_bars_match = !defense.grid_requests.empty();
+                for (const auto& request : defense.grid_requests) {
+                    const auto asset = direct_asset(
+                        "menu/field/magic-metric-bar-" +
+                        std::to_string(request.row) + ".bmp");
+                    const auto y = request.strip ==
+                                           MagicMenuValueStrip::defense_physical
+                                       ? 128
+                                       : 144;
+                    defense_bars_match = defense_bars_match &&
+                        region_matches(moved_scene, asset, 32, y);
+                }
+
+                const auto* moved_definition =
+                    find_us_magic_spell(moved_spell->spell_code);
+                auto drain_bar_matches = false;
+                if (moved_definition != nullptr) {
+                    const MagicActionEffectValueInput effect_input{
+                        field_scene.magic_current_force(), moved_entity,
+                        *moved_definition};
+                    const auto effect =
+                        refresh_magic_action_effect_value(effect_input);
+                    if (effect.residual_valid && effect.residual_effect > 0 &&
+                        effect.damage_grid.has_value()) {
+                        const auto asset = direct_asset(
+                            "menu/field/magic-damage-bar-" +
+                            std::to_string(
+                                effect.damage_grid->effect_row) + ".bmp");
+                        drain_bar_matches = region_matches(
+                            moved_scene, asset, 32, 104);
+                    }
+                }
+                const auto posture = std::min<std::size_t>(
+                    moved_runner.posture, 4U);
+                const auto posture_bar = direct_asset(
+                    "menu/field/magic-posture-bar-" +
+                    std::to_string(posture) + ".bmp");
+                const auto posture_bar_matches = region_matches(
+                    moved_scene, posture_bar, 160, 136);
+                const auto selected_spell_icon = direct_asset(
+                    "menu/field/magic-spell-icon-" +
+                    std::to_string(moved_spell->spell_code) + ".bmp");
+                const auto selected_spell_icon_matches =
+                    visible_asset_pixels_match(
+                        moved_scene, selected_spell_icon, 80, 24);
                 if (moved_scene == spell_panel_scene ||
+                    moved_spell->spell_code != 10U ||
+                    !unselected_spell_icons_match ||
+                    !selected_spell_icon_matches ||
+                    !success_bar_matches || !drain_bar_matches ||
+                    !defense_bars_match || !posture_bar_matches ||
+                    !field_hud_chrome_survives(moved_scene, asset_root) ||
+                    !field_hud_face_family_survives(
+                        moved_scene, asset_root, field_archetype) ||
+                    !save_scene("actual", moved_scene) ||
                     !save_scene("spell_selection_moved", moved_scene)) {
-                    std::cerr << "field Magic spell dump: cursor/text did "
-                                 "not change on selection\n";
+                    std::cerr << "field Magic spell dump: selection, source "
+                                 "meter assets, or adjacent HUD did not match "
+                                 "the typed source state\n";
                     return 3;
                 }
 

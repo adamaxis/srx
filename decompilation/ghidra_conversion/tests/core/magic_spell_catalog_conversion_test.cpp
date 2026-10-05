@@ -53,20 +53,25 @@ int main() {
 
     const auto& tables = us_magic_spell_table_catalog();
     if (tables.size() != kUsMagicSpellTableCount ||
-        tables[0].entry_count != 3U ||
+        tables[0].entry_count != 4U ||
         tables[0].entries[0].spell_code != 5U ||
         tables[0].entries[0].force_limit != 3U ||
         tables[0].entries[2].spell_code != 3U ||
-        tables[1].entry_count != 2U ||
+        tables[0].entries[3].spell_code != 10U ||
+        tables[1].entry_count != 3U ||
         tables[1].entries[0].spell_code != 0U ||
-        tables[1].entries[1].force_limit != 2U ||
-        tables[2].entry_count != 4U ||
+        tables[1].entries[2].spell_code != 10U ||
+        tables[1].entries[2].force_limit != 3U ||
+        tables[2].entry_count != 5U ||
         tables[2].entries[1].spell_code != 9U ||
         tables[2].entries[1].force_limit != 4U ||
-        tables[3].entry_count != 5U ||
+        tables[2].entries[4].spell_code != 12U ||
+        tables[3].entry_count != 6U ||
         tables[3].entries[4].spell_code != 4U ||
-        tables[4].entry_count != 2U ||
+        tables[3].entries[5].spell_code != 11U ||
+        tables[4].entry_count != 3U ||
         tables[4].entries[1].spell_code != 10U ||
+        tables[4].entries[2].spell_code != 11U ||
         find_us_magic_spell_table(4U) != &tables[4] ||
         find_us_magic_spell_table(5U) != nullptr) {
         return 4;

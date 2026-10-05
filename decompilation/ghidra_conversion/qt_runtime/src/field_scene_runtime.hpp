@@ -535,6 +535,9 @@ private:
         std::uint16_t events);
     void draw_command_overview_text(QPainter& painter, int x, int y,
                                     std::string_view text) const;
+    void draw_field_menu_font_text(QPainter& painter, int x, int y,
+                                   std::string_view text,
+                                   const QImage& font) const;
     void draw_hotel_menu_text(QPainter& painter, int x, int y,
                               std::string_view text,
                               HotelMenuPaletteLine palette_line) const;
@@ -621,6 +624,7 @@ private:
     QImage command_overview_background_;
     QImage command_overview_inventory_boxes_;
     QImage command_overview_font_;
+    QImage magic_menu_font_;
     QImage hotel_checkout_font_;
     QImage command_overview_cursor_;
     FieldMenuTextCatalog field_menu_text_{};
@@ -639,6 +643,7 @@ private:
     std::array<QImage, 4> command_overview_magic_cursor_frames_{};
     std::array<QImage, 5> command_overview_magic_posture_bars_{};
     std::array<QImage, 5> command_overview_magic_force_meter_tiles_{};
+    std::array<QImage, 22> command_overview_magic_metric_bars_{};
     std::array<QImage, 4> command_overview_magic_availability_bars_{};
     std::array<QImage, 10> command_overview_magic_damage_bars_{};
     std::array<std::array<QImage, 2>, 50> command_overview_inventory_icons_{};

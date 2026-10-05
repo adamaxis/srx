@@ -392,6 +392,8 @@ menu/field/action-confirm-background.bmp	background	0	0	120	16	0x127B0/0xCD3B6	e
 menu/field/attributes-background.bmp	background	0	0	320	224	0x10C96	extracted
 menu/field/inventory-boxes.bmp	background	0	0	320	224	0x10F50/0x1232	extracted
 menu/field/font.bmp	sprite	0	0	128	48	0xC1064 palette-line=3	extracted
+menu/field/font-palette-0.bmp	sprite	0	0	128	48	0xC1064/0x10276/0x102D4 palette-line=0	extracted
+menu/field/magic-font-palette-0.bmp	sprite	0	0	128	48	0xFBA6/0xC8A60/0xC1064/0x10276 palette-line=0	extracted
 menu/field/font-palette-2.bmp	sprite	0	0	128	48	0xC1064/0xD29D6/0x18AC56 palette-line=2	extracted
 menu/field/runner-portrait-0.bmp	sprite	0	0	64	80	0x7291A[0]	extracted
 menu/field/runner-portrait-1.bmp	sprite	0	0	64	80	0x7291A[1]	extracted
@@ -966,19 +968,41 @@ menu/field/defense-bar-20.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[20]	extracted
 menu/field/defense-bar-21.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[21]	extracted
 menu/field/defense-bar-22.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[22]	extracted
 menu/field/magic-panel-background.bmp	background	0	0	320	224	0xFBA6/0xC6714/0xC8108	extracted
-menu/field/magic-spell-icon-0.bmp	sprite	0	0	24	16	0xFBA6/0xFCB4/0x11190[0]	extracted
-menu/field/magic-spell-icon-1.bmp	sprite	0	0	24	16	0xFBA6/0xFCB4/0x11190[1]	extracted
-menu/field/magic-spell-icon-2.bmp	sprite	0	0	24	16	0xFBA6/0xFCB4/0x11190[2]	extracted
-menu/field/magic-spell-icon-3.bmp	sprite	0	0	24	16	0xFBA6/0xFCB4/0x11190[3]	extracted
-menu/field/magic-spell-icon-4.bmp	sprite	0	0	24	16	0xFBA6/0xFCB4/0x11190[4]	extracted
-menu/field/magic-spell-icon-5.bmp	sprite	0	0	24	16	0xFBA6/0xFCB4/0x11190[5]	extracted
-menu/field/magic-spell-icon-6.bmp	sprite	0	0	24	16	0xFBA6/0xFCB4/0x11190[6]	extracted
-menu/field/magic-spell-icon-7.bmp	sprite	0	0	24	16	0xFBA6/0xFCB4/0x11190[7]	extracted
-menu/field/magic-spell-icon-8.bmp	sprite	0	0	24	16	0xFBA6/0xFCB4/0x11190[8]	extracted
-menu/field/magic-spell-icon-9.bmp	sprite	0	0	24	16	0xFBA6/0xFCB4/0x11190[9]	extracted
-menu/field/magic-spell-icon-10.bmp	sprite	0	0	24	16	0xFBA6/0xFCB4/0x11190[10]	extracted
-menu/field/magic-spell-icon-11.bmp	sprite	0	0	24	16	0xFBA6/0xFCB4/0x11190[11]	extracted
-menu/field/magic-spell-icon-12.bmp	sprite	0	0	24	16	0xFBA6/0xFCB4/0x11190[12]	extracted
+menu/field/magic-metric-bar-0.bmp	sprite	0	0	104	8	0x1055E/0xC8784/0xC8A60[0]	extracted
+menu/field/magic-metric-bar-1.bmp	sprite	0	0	104	8	0x1055E/0xC8784/0xC8A60[1]	extracted
+menu/field/magic-metric-bar-2.bmp	sprite	0	0	104	8	0x1055E/0xC8784/0xC8A60[2]	extracted
+menu/field/magic-metric-bar-3.bmp	sprite	0	0	104	8	0x1055E/0xC8784/0xC8A60[3]	extracted
+menu/field/magic-metric-bar-4.bmp	sprite	0	0	104	8	0x1055E/0xC8784/0xC8A60[4]	extracted
+menu/field/magic-metric-bar-5.bmp	sprite	0	0	104	8	0x1055E/0xC8784/0xC8A60[5]	extracted
+menu/field/magic-metric-bar-6.bmp	sprite	0	0	104	8	0x1055E/0xC8784/0xC8A60[6]	extracted
+menu/field/magic-metric-bar-7.bmp	sprite	0	0	104	8	0x1055E/0xC8784/0xC8A60[7]	extracted
+menu/field/magic-metric-bar-8.bmp	sprite	0	0	104	8	0x1055E/0xC8784/0xC8A60[8]	extracted
+menu/field/magic-metric-bar-9.bmp	sprite	0	0	104	8	0x1055E/0xC8784/0xC8A60[9]	extracted
+menu/field/magic-metric-bar-10.bmp	sprite	0	0	104	8	0x1055E/0xC8784/0xC8A60[10]	extracted
+menu/field/magic-metric-bar-11.bmp	sprite	0	0	104	8	0x1055E/0xC8784/0xC8A60[11]	extracted
+menu/field/magic-metric-bar-12.bmp	sprite	0	0	104	8	0x1055E/0xC8784/0xC8A60[12]	extracted
+menu/field/magic-metric-bar-13.bmp	sprite	0	0	104	8	0x1055E/0xC8784/0xC8A60[13]	extracted
+menu/field/magic-metric-bar-14.bmp	sprite	0	0	104	8	0x1055E/0xC8784/0xC8A60[14]	extracted
+menu/field/magic-metric-bar-15.bmp	sprite	0	0	104	8	0x1055E/0xC8784/0xC8A60[15]	extracted
+menu/field/magic-metric-bar-16.bmp	sprite	0	0	104	8	0x1055E/0xC8784/0xC8A60[16]	extracted
+menu/field/magic-metric-bar-17.bmp	sprite	0	0	104	8	0x1055E/0xC8784/0xC8A60[17]	extracted
+menu/field/magic-metric-bar-18.bmp	sprite	0	0	104	8	0x1055E/0xC8784/0xC8A60[18]	extracted
+menu/field/magic-metric-bar-19.bmp	sprite	0	0	104	8	0x1055E/0xC8784/0xC8A60[19]	extracted
+menu/field/magic-metric-bar-20.bmp	sprite	0	0	104	8	0x1055E/0xC8784/0xC8A60[20]	extracted
+menu/field/magic-metric-bar-21.bmp	sprite	0	0	104	8	0x1055E/0xC8784/0xC8A60[21]	extracted
+menu/field/magic-spell-icon-0.bmp	sprite	0	0	24	24	0xFBA6/0xFCB4/0x11190[0]	extracted
+menu/field/magic-spell-icon-1.bmp	sprite	0	0	24	24	0xFBA6/0xFCB4/0x11190[1]	extracted
+menu/field/magic-spell-icon-2.bmp	sprite	0	0	24	24	0xFBA6/0xFCB4/0x11190[2]	extracted
+menu/field/magic-spell-icon-3.bmp	sprite	0	0	24	24	0xFBA6/0xFCB4/0x11190[3]	extracted
+menu/field/magic-spell-icon-4.bmp	sprite	0	0	24	24	0xFBA6/0xFCB4/0x11190[4]	extracted
+menu/field/magic-spell-icon-5.bmp	sprite	0	0	24	24	0xFBA6/0xFCB4/0x11190[5]	extracted
+menu/field/magic-spell-icon-6.bmp	sprite	0	0	24	24	0xFBA6/0xFCB4/0x11190[6]	extracted
+menu/field/magic-spell-icon-7.bmp	sprite	0	0	24	24	0xFBA6/0xFCB4/0x11190[7]	extracted
+menu/field/magic-spell-icon-8.bmp	sprite	0	0	24	24	0xFBA6/0xFCB4/0x11190[8]	extracted
+menu/field/magic-spell-icon-9.bmp	sprite	0	0	24	24	0xFBA6/0xFCB4/0x11190[9]	extracted
+menu/field/magic-spell-icon-10.bmp	sprite	0	0	24	24	0xFBA6/0xFCB4/0x11190[10]	extracted
+menu/field/magic-spell-icon-11.bmp	sprite	0	0	24	24	0xFBA6/0xFCB4/0x11190[11]	extracted
+menu/field/magic-spell-icon-12.bmp	sprite	0	0	24	24	0xFBA6/0xFCB4/0x11190[12]	extracted
 menu/field/magic-cursor-frame-0.bmp	sprite	0	0	320	224	0xFDFE/0xC8B3E/0x1378[0]	extracted
 menu/field/magic-cursor-frame-1.bmp	sprite	0	0	320	224	0xFDFE/0xC8B3E/0x1378[1]	extracted
 menu/field/magic-cursor-frame-2.bmp	sprite	0	0	320	224	0xFDFE/0xC8B3E/0x1378[2]	extracted
