@@ -497,6 +497,21 @@ public:
     const SceneRunnerPosition& field_entity_world_position() const noexcept {
         return field_entity_.world_position;
     }
+    std::uint16_t field_entity_heading_for_dump() const noexcept {
+        return field_movement_state_.heading;
+    }
+    std::uint16_t field_entity_target_heading_for_dump() const noexcept {
+        return field_target_heading_;
+    }
+    std::uint16_t field_entity_animation_frame_for_dump() const noexcept {
+        return field_entity_animation_.frame;
+    }
+    std::uint16_t field_entity_animation_selector_for_dump() const noexcept {
+        return field_entity_animation_selector_;
+    }
+    bool field_entity_walking_for_dump() const noexcept {
+        return field_entity_walking_;
+    }
 
 private:
     FieldInteractionAdvanceResult advance_field_interaction(

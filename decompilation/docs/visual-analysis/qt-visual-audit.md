@@ -1770,3 +1770,64 @@ visually checked:** adjacent inventory/HUD layout only; no matching Genesis
 reload frame is present. The source-defined active-load percentage can look
 different from a model with persistent per-weapon magazines, but adding
 independent magazines would contradict this ROM's `+0x4E` transitions.
+
+### Applied review: held D-pad movement and field redraw
+
+1. **Does it look correct?** Native full-frame captures are in
+   `qt_runtime/field-movement-qa/`: `idle.bmp`, `right-held-1.bmp`,
+   `right-held-4.bmp`, `right-held-8.bmp`, `right-held-16.bmp`, and
+   `released-idle.bmp`; `actual.bmp` is the release-to-idle image. The player
+   stays visible as the map scrolls through
+   the lower edge of the concrete corridor into its dark field region. The
+   independent corridor sequence has a related transition, but not a proven
+   matching input or map state; exact placement remains unresolved.
+2. **Does the visible look reflect the behavioral state?** The held nibble
+   `0x08` indexes target heading `0x4000` in ROM table `0x19D2`. Native typed
+   state records the current/target headings, world position, walking flag,
+   selector, and frame. Starting at `(15584,11520)`, the eight-tick current
+   heading reaches `0x4000`; after 16 ticks the source vectors produce
+   `(16184,11320)` and the walk frame is 1. Releasing input returns to the
+   right-facing idle selector and resets its frame.
+3. **Are the visuals themselves correct?** ROM `0xB530` advances the current
+   heading by `0x0800`; `0xBABC` maps it to one of the eight signed vectors at
+   `0xC002`; `0xB77E`/`0xE7C8` gate the position commit. The directional entity
+   projection and named sprite frames feed the field compositor. The
+   independent captures do not expose D-pad input, so they support corridor
+   player placement only and do not prove the native right-turn path or exact
+   sprite alignment.
+4. **Is it animated, and should it be?** The `0xC0B2` walking lists have
+   eight frames, increment `0x0200`, and period `0x1000`; one frame advances
+   per eight updates while a walking selector remains active. Heading-sector
+   changes reset the animation record, and release selects the static idle
+   list. The multi-frame native captures show the turn, stable right-facing
+   walk, and idle return.
+5. **Does movement have sound?** The reviewed input, heading, vector, and
+   collision chain has no direct sound call. A wider source trace for field
+   footstep/audio dispatch has not established whether movement plays a cue,
+   its event ID, or its lifetime. This remains unknown; no sound is assigned.
+6. **Are related parts of the screen also correct?** Each native checkpoint
+   checks the complete 320x224 frame, visible playfield, and persistent HUD
+   chrome. The map and HUD remain visible through the movement and release
+   frames. This route opens no menu or dialog, so sibling panels are outside
+   this hill.
+7. **Do multiple frames support the interpretation?** Independent section 04
+   frames `000064`, `000074`, `000090`, `000102`, and `000120` show the runner
+   on the corridor, crossing its edge, moving on the dark region, and reaching
+   a later bend. They establish multiple field states but have no synchronized
+   controller record. Native images at ticks 1, 4, 8, and 16 plus release
+   support the code's state progression; they are not a Genesis golden.
+8. **Was old UI cleared before new graphics were drawn?** This path has no
+   screen replacement. Each dump starts with a fresh framebuffer, redraws the
+   map and HUD, and paints only the current actor frame; inspection found no
+   doubled sprite or animation trail. Release also changes the typed selector
+   back to idle before drawing.
+
+**Code changed:** added a multi-frame field movement QA route, observable typed
+movement snapshots, and a CTest. **Behavior implemented:** held right follows
+the traced table, heading slew, vector, collision, and walk-frame cadence;
+release returns to idle. **Internally checked:** Debug and Release CTests
+require the source-derived heading and position deltas, frame cadence, full
+frame/HUD presence, and idle reset, and write the checkpoints above.
+**Independently visually checked:** section 04 supplies repeated field states,
+but lacks the input log and the same identified scene state; exact movement
+visuals and sound remain unresolved, so this hill stays partial.

@@ -77,6 +77,17 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_player_action_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Field input is held across multiple ROM-timed updates so direction slew,
+# collision-accepted motion, walk-frame cadence, release-to-idle, and the
+# replacement actor draw all have visible checkpoints in this scene.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_movement_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-movement-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-movement-qa")
+set_tests_properties(shadowrun_ghidra_conversion_qt_field_movement_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # First Aid shares the real item cell/action path, then exercises the active
 # party list, CANCEL row, RNG-backed medkit effect, result wait, and inventory
 # return against directly extracted source text and HUD assets.

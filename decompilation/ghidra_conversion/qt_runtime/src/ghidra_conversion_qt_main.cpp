@@ -154,6 +154,7 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
                 << "usage: shadowrun_ghidra_conversion_qt"
                    " [--assets <decompilation/assets>] [--field-smoke]"
                    " [--field-smoke-move-right] [--field-dump <file>]"
+                   " [--field-movement-qa <output-dir>]"
                    " [--field-secretary-dump <output-dir>]"
                    " [--field-command-dump <file>]"
                        " [--field-command-page <0..6>]"
@@ -194,6 +195,10 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
             continue;
         }
         if (argument == "--field-dump" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-movement-qa" && index + 1 < argc) {
             ++index;
             continue;
         }
@@ -3057,6 +3062,7 @@ int main(int argc, char** argv) {
         bool field_cyberware_empty_qa = false;
         bool intro_to_field_smoke = false;
         std::optional<std::filesystem::path> field_dump_path;
+        std::optional<std::filesystem::path> field_movement_qa_path;
         std::optional<std::filesystem::path> field_hud_qa_path;
         std::optional<std::filesystem::path> field_hotel_qa_path;
         std::optional<std::filesystem::path> field_command_dump_path;
@@ -3100,6 +3106,7 @@ int main(int argc, char** argv) {
                     << "usage: shadowrun_ghidra_conversion_qt"
                        " [--assets <decompilation/assets>] [--field-smoke]"
                        " [--field-smoke-move-right] [--field-dump <file>]"
+                       " [--field-movement-qa <output-dir>]"
                        " [--field-command-dump <file>]"
                        " [--field-command-page <0..6>]"
                        " [--field-cyberware-dump <file>]"
@@ -3134,6 +3141,12 @@ int main(int argc, char** argv) {
             if (std::string(argv[index]) == "--field-smoke-move-right") {
                 field_smoke = true;
                 field_smoke_move_right = true;
+            }
+            if (std::string(argv[index]) == "--field-movement-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_movement_qa_path =
+                    std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-command-reopen-smoke") {
                 field_smoke = true;
@@ -3398,6 +3411,113 @@ int main(int argc, char** argv) {
             if (!field_scene.bootstrap(smoke_state)) {
                 std::cerr << "field smoke: " << field_scene.failure() << '\n';
                 return 3;
+            }
+            if (field_movement_qa_path.has_value()) {
+                std::filesystem::create_directories(
+                    *field_movement_qa_path);
+                const auto render_field = [&] {
+                    QImage image(kSceneWidth, kSceneHeight,
+                                 QImage::Format_RGB32);
+                    image.fill(Qt::black);
+                    QPainter painter(&image);
+                    field_scene.paint(painter);
+                    painter.end();
+                    return image;
+                };
+                const auto save_movement_frame =
+                    [&](const std::string_view name) {
+                        const auto image = render_field();
+                        if (image.width() != kSceneWidth ||
+                            image.height() != kSceneHeight ||
+                            count_playfield_lit(image) < 100 ||
+                            !field_hud_chrome_survives(image, asset_root)) {
+                            return false;
+                        }
+                        return image.save(QString::fromStdWString(
+                            ((*field_movement_qa_path) /
+                             (std::string(name) + ".bmp")).wstring()));
+                    };
+                const auto initial_position =
+                    field_scene.field_entity_world_position();
+                if (!save_movement_frame("idle")) {
+                    std::cerr << "field movement QA: initial dump failed\n";
+                    return 3;
+                }
+
+                field_scene.set_controller_nibble(0x08U);
+                std::uint16_t heading_after_eight_ticks = 0U;
+                for (std::uint8_t tick = 1U; tick <= 16U; ++tick) {
+                    field_scene.advance_frame();
+                    if (tick == 8U) {
+                        heading_after_eight_ticks =
+                            field_scene.field_entity_heading_for_dump();
+                    }
+                    if (tick == 1U || tick == 4U || tick == 8U ||
+                        tick == 16U) {
+                        if (!save_movement_frame(
+                                "right-held-" + std::to_string(tick))) {
+                            std::cerr << "field movement QA: frame dump failed\n";
+                            return 3;
+                        }
+                    }
+                }
+                const auto held_position =
+                    field_scene.field_entity_world_position();
+                const auto held_heading =
+                    field_scene.field_entity_heading_for_dump();
+                const auto held_target =
+                    field_scene.field_entity_target_heading_for_dump();
+                const auto held_animation_frame =
+                    field_scene.field_entity_animation_frame_for_dump();
+                const auto held_animation_selector =
+                    field_scene.field_entity_animation_selector_for_dump();
+                const auto held_walking =
+                    field_scene.field_entity_walking_for_dump();
+                const auto x_delta = static_cast<std::int32_t>(
+                    held_position.x) -
+                    static_cast<std::int32_t>(initial_position.x);
+                const auto y_delta = static_cast<std::int32_t>(
+                    held_position.y) -
+                    static_cast<std::int32_t>(initial_position.y);
+
+                field_scene.set_controller_nibble(0U);
+                field_scene.advance_frame();
+                if (!save_movement_frame("released-idle") ||
+                    !save_movement_frame("actual")) {
+                    std::cerr << "field movement QA: release dump failed\n";
+                    return 3;
+                }
+                if (held_target != 0x4000U ||
+                    heading_after_eight_ticks != 0x4000U ||
+                    held_heading != 0x4000U || x_delta != 600 ||
+                    y_delta != -200 || held_animation_frame != 1U ||
+                    !held_walking ||
+                    field_scene.field_entity_walking_for_dump() ||
+                    field_scene.field_entity_animation_selector_for_dump() ==
+                        held_animation_selector ||
+                    field_scene.field_entity_animation_frame_for_dump() !=
+                        0U) {
+                    std::cerr << "field movement QA: held direction, heading "
+                                 "slew, accepted movement, or idle reset did "
+                                 "not match the source state\n";
+                    return 3;
+                }
+                const auto& buffers =
+                    field_scene.state().field_scene_buffers;
+                std::cout << "field_movement_qa=passed scene_reference="
+                          << buffers.scene_reference << " initial_position="
+                          << initial_position.x << ',' << initial_position.y
+                          << " held_position=" << held_position.x << ','
+                          << held_position.y << " target_heading="
+                          << held_target << " heading=" << held_heading
+                          << " heading_at_tick_8="
+                          << heading_after_eight_ticks << " delta=" << x_delta
+                          << ',' << y_delta
+                          << " walk_frame=" << held_animation_frame
+                          << " walk_selector=" << held_animation_selector
+                          << " artifacts="
+                          << field_movement_qa_path->string() << '\n';
+                return 0;
             }
             if (field_player_action_dump_path.has_value()) {
                 std::filesystem::create_directories(
