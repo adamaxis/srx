@@ -7452,6 +7452,59 @@ int main(int argc, char** argv) {
                     return QImage(QString::fromStdWString(
                         (asset_root / "menu" / "field" / name).wstring()));
                 };
+                const auto direct_weapon_icon = [&](const std::uint8_t code,
+                                                     const std::uint8_t palette) {
+                    const auto number = code < 10U
+                        ? std::string("0") + std::to_string(code)
+                        : std::to_string(code);
+                    const auto name = "item-" + number + "-" +
+                                      std::to_string(palette) + ".bmp";
+                    return QImage(QString::fromStdWString(
+                        (asset_root / "items" / "weapons" / "icons" /
+                         name).wstring()));
+                };
+                const auto icon_interior_matches = [](
+                    const QImage& scene, const QImage& icon,
+                    const int origin_x, const int origin_y) {
+                    if (icon.isNull() || icon.width() != 24 ||
+                        icon.height() != 16 || origin_x < 0 || origin_y < 0 ||
+                        origin_x + icon.width() > scene.width() ||
+                        origin_y + icon.height() > scene.height()) {
+                        return false;
+                    }
+                    // The 1px source cursor is drawn over the icon edge. Its
+                    // interior must still match the live 24x16 named asset,
+                    // including the opaque palette background of the plane
+                    // glyph (these are not transparent SAT sprites).
+                    for (int y = 1; y < icon.height() - 1; ++y) {
+                        for (int x = 1; x < icon.width() - 1; ++x) {
+                            if (scene.pixel(origin_x + x, origin_y + y) !=
+                                icon.pixel(x, y)) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                };
+                const auto same_inventory_grid = [](const QImage& left,
+                                                    const QImage& right) {
+                    constexpr QRect kInventoryGrid(8, 112, 80, 104);
+                    if (left.size() != right.size() ||
+                        kInventoryGrid.right() >= left.width() ||
+                        kInventoryGrid.bottom() >= left.height()) {
+                        return false;
+                    }
+                    for (int y = kInventoryGrid.top();
+                         y <= kInventoryGrid.bottom(); ++y) {
+                        for (int x = kInventoryGrid.left();
+                             x <= kInventoryGrid.right(); ++x) {
+                            if (left.pixel(x, y) != right.pixel(x, y)) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                };
                 const auto item_factor = [](const std::uint8_t item_code) {
                     const auto* definition =
                         find_us_item_definition(item_code);
@@ -7553,14 +7606,19 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 const auto action_open_scene = render_scene();
+                const auto weapon_one_equipped_icon = direct_weapon_icon(1U, 1U);
                 if (!region_matches(action_open_scene, focus_equip, 128, 184) ||
                     !field_inventory_selector_survives(action_open_scene, 0U,
                                                        0U) ||
+                    !icon_interior_matches(action_open_scene,
+                                           weapon_one_equipped_icon, 16, 120) ||
+                    action_open_scene.pixelColor(11, 116) !=
+                        QColor(109, 109, 109) ||
                     !save_scene("00_inventory_action_equip",
                                 action_open_scene)) {
                     std::cerr << "field action dump: could not write open "
-                                 "scene, action focus, or item selector is "
-                                 "misplaced\n";
+                                 "scene, action focus, equipped icon, cell "
+                                 "treatment, or item selector is misplaced\n";
                     return 3;
                 }
 
@@ -7653,9 +7711,26 @@ int main(int argc, char** argv) {
                 }
                 if (!field_scene.command_overview_open() ||
                     field_scene.inventory_action_open() ||
-                    !save_scene("05_weapon_1_unequipped", render_scene())) {
+                    field_scene.active_runner_record()
+                            .equipped_inventory_slot != -1) {
                     std::cerr << "field action dump: equip action did not "
                                  "return to the command overview\n";
+                    return 3;
+                }
+                const auto unequipped_scene = render_scene();
+                const auto weapon_one_unequipped_icon =
+                    direct_weapon_icon(1U, 0U);
+                if (!field_inventory_selector_survives(unequipped_scene, 0U,
+                                                        0U) ||
+                    !icon_interior_matches(unequipped_scene,
+                                           weapon_one_unequipped_icon, 16,
+                                           120) ||
+                    unequipped_scene.pixelColor(11, 116) !=
+                        QColor(36, 36, 36) ||
+                    !save_scene("05_weapon_1_unequipped", unequipped_scene)) {
+                    std::cerr << "field action dump: unequip left a stale "
+                                 "cell treatment, lost the source cursor, or "
+                                 "changed the unequipped icon\n";
                     return 3;
                 }
                 if (field_scene.active_runner_record().ammo_rounds != 50U ||
@@ -7664,6 +7739,42 @@ int main(int argc, char** argv) {
                         0U) {
                     std::cerr << "field action dump: first gun did not store "
                                  "its 3/6 load as 50 percent on unequip\n";
+                    return 3;
+                }
+
+                // An equip/unequip cycle must not leave old cell graphics
+                // behind. Repeat it and compare the entire 2x4 inventory
+                // region against the first unequipped frame; the source icon
+                // is static, so only the live equipment treatment changes.
+                press(0x40U);
+                if (!field_scene.inventory_action_open()) {
+                    std::cerr << "field action dump: repeated equip action "
+                                 "did not open\n";
+                    return 3;
+                }
+                press(0x40U);
+                if (field_scene.active_runner_record()
+                            .equipped_inventory_slot != 0) {
+                    std::cerr << "field action dump: repeated equip did not "
+                                 "select weapon 1\n";
+                    return 3;
+                }
+                press(0x40U);
+                if (!field_scene.inventory_action_open()) {
+                    std::cerr << "field action dump: repeated unequip action "
+                                 "did not open\n";
+                    return 3;
+                }
+                press(0x40U);
+                const auto repeated_unequip_scene = render_scene();
+                if (field_scene.active_runner_record()
+                            .equipped_inventory_slot != -1 ||
+                    !same_inventory_grid(unequipped_scene,
+                                         repeated_unequip_scene) ||
+                    !save_scene("18_weapon_1_unequip_redraw_repeat",
+                                repeated_unequip_scene)) {
+                    std::cerr << "field action dump: repeated equip/unequip "
+                                 "left stale graphics in the inventory grid\n";
                     return 3;
                 }
 
@@ -7687,16 +7798,24 @@ int main(int argc, char** argv) {
                 press(0x40U);
                 const auto& weapon_two_equipped =
                     field_scene.active_runner_record();
+                const auto weapon_two_equipped_scene = render_scene();
+                const auto weapon_two_equipped_icon =
+                    direct_weapon_icon(2U, 1U);
                 if (weapon_two_equipped.equipped_inventory_slot != 1 ||
                     weapon_two_equipped.equipped_item_code != 2U ||
                     weapon_two_equipped.ammo_rounds != 6U ||
                     weapon_two_equipped.ammo_clips != 3U ||
                     field_audio_events.size() != switch_audio_event_count + 1U ||
                     field_audio_events.back() != 0x24U ||
+                    !icon_interior_matches(weapon_two_equipped_scene,
+                                           weapon_two_equipped_icon, 56, 120) ||
+                    weapon_two_equipped_scene.pixelColor(51, 116) !=
+                        QColor(109, 109, 109) ||
                     !save_scene("10_weapon_2_equipped_at_50_percent",
-                                render_scene())) {
+                                weapon_two_equipped_scene)) {
                     std::cerr << "field action dump: weapon 2 did not receive "
-                                 "six rounds and one command-confirm event\n";
+                                 "six rounds, its equipment cell, or one "
+                                 "command-confirm event\n";
                     return 3;
                 }
 
@@ -7709,13 +7828,24 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 press(0x40U);
+                const auto weapon_two_unequipped_scene = render_scene();
+                const auto weapon_two_unequipped_icon =
+                    direct_weapon_icon(2U, 0U);
                 if (field_scene.active_runner_record().equipped_item_code !=
                         0U ||
                     field_scene.active_runner_record().ammo_rounds != 50U ||
+                    !field_inventory_selector_survives(
+                        weapon_two_unequipped_scene, 1U, 0U) ||
+                    !icon_interior_matches(weapon_two_unequipped_scene,
+                                           weapon_two_unequipped_icon, 56,
+                                           120) ||
+                    weapon_two_unequipped_scene.pixelColor(51, 116) !=
+                        QColor(36, 36, 36) ||
                     !save_scene("11_weapon_2_unequipped_at_50_percent",
-                                render_scene())) {
+                                weapon_two_unequipped_scene)) {
                     std::cerr << "field action dump: weapon 2 did not return "
-                                 "to the shared 50 percent ammo state\n";
+                                 "to the 50 percent state or left its "
+                                 "equipment treatment behind\n";
                     return 3;
                 }
                 press(0x04U);

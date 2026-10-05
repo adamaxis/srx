@@ -187,6 +187,62 @@ golden. The selected-item appearance is independently checked against the
 listed longplay frames. The eight-cell equipment/empty-slot matrix remains
 open.
 
+### Applied review: equipped and unequipped inventory glyphs
+
+1. **Does it look correct?** The report was a large dark block remaining
+   around an item after Equip/unequip. I inspected full 320x224 Qt checkpoints
+   `field-action-qa/00_inventory_action_equip.bmp`,
+   `05_weapon_1_unequipped.bmp`,
+   `10_weapon_2_equipped_at_50_percent.bmp`, and
+   `11_weapon_2_unequipped_at_50_percent.bmp`, plus an enlarged 2x4-cell
+   contact sheet. In these states the pale equipment-cell treatment appears
+   for the active weapon and disappears after unequip; the dark/gray rectangle
+   inside the item glyph remains part of the glyph artwork.
+2. **Does the look reflect the behavioral state?** The typed
+   `RunnerRecordFields::equipped_inventory_slot` and `equipped_item_code`
+   control the equipped-cell treatment and icon palette. The inventory codes
+   remain in `+0x66..+0x6D`. QA equips slot 0, unequips it, switches to slot 1,
+   equips and unequips it, and checks that the selected item stays selected
+   while the separate equipment treatment follows the live slot.
+3. **Are the visuals correct?** ROM `0x11136` writes each 3x2 inventory icon
+   as name-table glyphs through `0x11190`; `0x3602` selects its palette
+   attributes. These are opaque plane tiles, not transparent SAT sprites, so
+   color zero supplies the icon's tile background. ROM `0x11624` applies the
+   separate equipment cell before the icon row; `0x11592` supplies the slim
+   selected-item outline after it. The Qt QA compares the 22x14 icon interior
+   against the named 24x16 palette asset and checks separate equipped-cell
+   pixels before and after each transition.
+4. **Is it animated?** The icon, equipment treatment, and cursor have no
+   animation counter in these paths. They redraw on menu entry or a selection
+   or equipment state change. The tested icon remains stationary between
+   inputs.
+5. **Does sound accompany it?** Equip/unequip sends event `0x24`, mapped to
+   `audio.menu.command-024` (2.484 seconds including its release tail).
+   Selector movement sends event `0x25`, mapped to
+   `audio.effects.resource.037` (2.134 seconds including its release tail).
+   The Qt QA checks event requests and aliases; it does not measure speaker
+   output. The static icon itself has no separate sound.
+6. **Are related parts correct?** I checked the full screen shell, inventory
+   boxes, both weapon cells, icon interiors, cursor, equipment treatment,
+   center detail panel, and right-side HUD across both weapon slots. The QA
+   repeats the weapon-1 equip/unequip cycle and requires the full 2x4 inventory
+   pixel region to equal the first unequipped result, guarding against
+   accumulated overdraw or leftover cell graphics.
+7. **Do multiple frames support this?** Independent section 06 frames
+   002550, 002560, 002580, 002610, and 002640 show the repeated item-cell
+   layout, armor treatment, and cursor states. The first weapon glyph in
+   002550 and later held frames is closest to extracted palette variant 0.
+   The capture does not show this exact weapon-1/weapon-2 equip cycle, so it
+   does not independently prove the weapon toggle transition or every icon
+   palette state; keep the inventory hill `partial`.
+8. **Was old UI cleared before drawing?** `paint_command_overview` redraws
+   the command background and inventory boxes first, then adds equipment
+   treatment only for the live equipped slot, followed by item glyphs and the
+   cursor. Pixel checks require each treatment to disappear after unequip;
+   the repeated-cycle comparison checks the complete grid region for stale
+   pixels. The action child and parent return checkpoints continue to verify
+   their own panel redraws.
+
 ### Applied review: First Aid target, result, and return
 
 1. **Does it look correct?** Inspected the whole Qt 320x224 output at
