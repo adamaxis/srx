@@ -10,7 +10,7 @@ screen change.
 |---|---|---|---|---|---|
 | 0 Process | Visual dump CLI | — | defended | `shadowrun_visual_dump` writes 320x224 BMPs | `build-debug/visual-regression/dump/` |
 | 0 Process | Leftover-clear (startup + field menu) | `0x59092` / `0x59172` / `0x10F50` | defended | `shadowrun_leftover_clear` | leftover-clear/*.bmp |
-| 1 Boot | Pre-title logos | `0x5D746` after reset `0x0236` | partial | `shadowrun_boot_sequence` | `--scene boot` (guy fade, lightning hides, SEGA shine stops, FASA fade-in then hold then fade, 0x131C) |
+| 1 Boot | Pre-title logos | `0x5D746` after reset `0x0236` | partial | `shadowrun_boot_sequence`; `shadowrun_ghidra_conversion_qt_boot_fasa_qa` | `build-ghidra-conversion-qt-debug/qt_runtime/boot-fasa-qa/actual.bmp` (SEGA and FASA timed fades, 121-VBlank FASA hold, palette-line-2 logo, clean title handoff); whole pre-title hill remains partial |
 | 2 Title | Layered title loop | `0x1A9E` / `0x1E4E` / `0x1C6A` | partial | `shadowrun_menu_system`; `shadowrun_graphics` SAT box | `--scene title` (black, 4px L-R explode, baked 7-frame circuit lights stepping every 3 ticks, one Start + 0x131C fade) |
 | 3 Startup | Start Options | `0x59092` / `0x10B5A` | partial | `test_startup_behavior_and_rendering` | `--scene start-options` (CRT frame + layout `'['/'\\'` title bar, triangle cursor) |
 | 3 Startup | Save/Load empty slot | `0x59172` | partial | leftover-clear + startup test | `--scene save-load-empty` |

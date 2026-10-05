@@ -13,6 +13,13 @@ namespace shadowrun::ghidra_conversion::qt_runtime {
 QImage scale_genesis_image_rgb(const QImage& image, std::uint16_t weight,
                                std::uint16_t maximum = 256U);
 
+// Render one of ROM 0x1088/0x10D6's CRAM palette passes. Extracted Genesis
+// colors are expanded 3-bit RGB, so the native image can reproduce a fade by
+// stepping each component in its original 0..7 range. Alpha stays unchanged.
+QImage transition_genesis_cram_image(const QImage& image,
+                                     std::uint8_t passes_completed,
+                                     bool toward_black);
+
 // The field HUD extraction is a full 320x224 view of the source HUD layer.
 // 0x334C installs a six-tile (48px) right-hand chrome column at x=272. The
 // plane's color-zero cells are baked as alpha 0 everywhere, so the host

@@ -2,6 +2,7 @@
 
 #include <QColor>
 
+#include <algorithm>
 #include <string_view>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
@@ -45,6 +46,42 @@ QImage scale_genesis_image_rgb(const QImage& image,
         }
     }
     return faded;
+}
+
+QImage transition_genesis_cram_image(const QImage& image,
+                                     const std::uint8_t passes_completed,
+                                     const bool toward_black) {
+    if (image.isNull() || (toward_black && passes_completed == 0U)) {
+        return image;
+    }
+
+    const auto transition_component = [passes_completed, toward_black](
+                                          const int expanded_component) {
+        const auto source_level = static_cast<int>(
+            (static_cast<unsigned>(expanded_component) * 7U + 127U) / 255U);
+        const auto bounded_passes = static_cast<int>(
+            std::min<std::uint8_t>(passes_completed, 7U));
+        const auto result_level = toward_black
+            ? std::max(0, source_level - bounded_passes)
+            : std::min(source_level, bounded_passes);
+        return (result_level << 5) | (result_level << 2) |
+               (result_level >> 1);
+    };
+
+    auto transitioned = image;
+    for (int y = 0; y < transitioned.height(); ++y) {
+        for (int x = 0; x < transitioned.width(); ++x) {
+            auto pixel = transitioned.pixelColor(x, y);
+            if (pixel.alpha() == 0) {
+                continue;
+            }
+            pixel.setRed(transition_component(pixel.red()));
+            pixel.setGreen(transition_component(pixel.green()));
+            pixel.setBlue(transition_component(pixel.blue()));
+            transitioned.setPixelColor(x, y, pixel);
+        }
+    }
+    return transitioned;
 }
 
 void make_field_hud_layer_transparent_outside_chrome(QImage& image) {

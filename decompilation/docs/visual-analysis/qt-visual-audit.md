@@ -116,6 +116,67 @@ than silently treating the current rendering as correct.
    remains `partial` until an independent Load Game capture and valid-save
    route are available.
 
+### Applied review: FASA boot mark
+
+The first Qt pass skipped the FASA transition and showed its logo in cyan.
+The full-frame review traced two causes: the incremental state machine had
+collapsed blocking palette fades, and the offline bitmap importer omitted the
+palette-line attribute that the ROM adds when it draws FASA.
+
+1. **Does it look correct?** Independent section 01 frames 210, 216, 240, 280,
+   290, and 300 show a dim blue FASA mark, the full mark, a sustained hold,
+   the mark dimming, then black. The corrected full-bright Qt image is
+   `decompilation/ghidra_conversion/build-ghidra-conversion-qt-debug/qt_runtime/boot-fasa-qa/actual.bmp`;
+   its blue hue and centered 127x40 mark match the independent frames. The
+   previous cyan result came from palette line 0.
+2. **Does the look reflect the behavioral state?** Native state now carries
+   `presentation_stage`, `palette_transition_passes_completed`,
+   `palette_transition_vblank_phase`, and `fasa_hold_frames`. ROM `0x5D746`
+   runs 337 source frames, `0x131C` fades the SEGA scene to black, `0x5D886`
+   installs FASA and calls `0x12F6` to fade toward its target, then the
+   `0x5D86A` DBF loop waits 121 VBlanks before the second `0x131C`. There is
+   no selection state
+   or cursor on this screen. Qt QA records FASA fade-in at frame 371, full
+   brightness at 405, hold end at 526, and title handoff at 560.
+3. **Are the visuals themselves correct?** The ROM draws the 16x5 name table
+   from `0x1FFAC6` at Plane B `0xE518` with attribute `0x4000`, selecting
+   palette line 2. The offline importer now applies that attribute; CRAM word
+   `0x0E60` expands to the blue `#006DFF`. This agrees with the independent
+   blue logo. The source capture is compressed video, so it supports hue and
+   placement but not exact pixel equality.
+4. **Is it animated, and should it be?** Yes. ROM `0x131C` and `0x12F6` each
+   execute 17 palette passes; each pass waits for two VBlanks in `0x1342`, so
+   each fade lasts 34 VBlanks. The FASA hold is the `0x78` DBF loop, or 121
+   VBlanks. The native trace includes fade-in start/pass 1/full, the final
+   hold frame, fade-out start/pass 1/black, and title handoff. The independent
+   30-fps capture shows the same sequence across frames 210-300 but does not
+   establish an exact cross-capture frame offset.
+5. **Does sound accompany it?** Neither FASA palette routine nor the FASA
+   install/hold path requests a sound effect, so there is no FASA event ID or
+   clip duration to assign. The preceding SEGA loop issues `0x16` and `0x5C`
+   through separate audio service paths; they are not tied to the FASA
+   transitions. The longplay WAV does not isolate those service requests or
+   establish their individual clip durations.
+6. **Are related parts also correct?** The full-frame audit checks that the
+   fade begins from black, that the stable scene contains the blue logo, and
+   that no old SEGA layer or control is visible. `actual.bmp` remains static
+   through the last hold snapshot. The final fade reaches a black frame before
+   the title screen appears.
+7. **Do multiple frames support the interpretation?** Yes. The independent
+   frame set covers dim, full, sustained, dimming, and black states at 210,
+   216, 240, 280, 290, and 300. Native QA saves the corresponding state
+   boundaries under `build-ghidra-conversion-qt-debug/qt_runtime/boot-fasa-qa/`.
+8. **Was the previous screen cleared?** ROM `0x5D886` clears both planes
+   before writing the FASA grid. The Qt FASA stage draws only the FASA asset;
+   QA compares the whole 320x224 result with that single layer over black.
+   On completion, the title renderer replaces it and the QA rejects a stale
+   FASA frame.
+
+The FASA transition and palette defect are fixed in the Qt conversion path.
+The broader boot hill remains partial until the complete pre-title sequence
+has its own defended screen audit and an independent capture that resolves
+the exact 60-Hz timing and the adjacent SEGA audio clips.
+
 ### Applied review: field inventory selector
 
 The pre-fix NativePort page-1 dump showed several gold segments crossing the

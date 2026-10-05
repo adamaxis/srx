@@ -13,6 +13,8 @@ namespace shadowrun::ghidra_conversion {
 
 constexpr std::size_t kPreTitleHorizontalScrollLines = 224U;
 constexpr std::size_t kPreTitleResourceWorkWordCount = 0x1C0U;
+constexpr std::uint8_t kPreTitlePaletteTransitionPasses = 17U;
+constexpr std::uint8_t kPreTitleVBlanksPerPalettePass = 2U;
 
 // The aliases are the direct host resources required before the title can
 // hand off to the startup menu. Full-screen title animation samples are not
@@ -53,13 +55,20 @@ struct PreTitleSequenceState {
         sega_entry,
         sega_shock,
         sega_strobe,
-        fasa,
+        sega_fade_out,
+        fasa_fade_in,
+        fasa_hold,
+        fasa_fade_out,
         complete,
     };
     PresentationStage presentation_stage = PresentationStage::uninitialized;
     std::uint16_t sega_lightning_phase = 0;
     std::uint16_t sega_shock_frames = 0;
     std::uint16_t fasa_hold_frames = 0;
+    // ROM 0x131C/0x12F6 run 17 palette passes. Each pass waits for two
+    // VBlanks in 0x1342 before moving all 64 CRAM words by one component.
+    std::uint8_t palette_transition_passes_completed = 0;
+    std::uint8_t palette_transition_vblank_phase = 0;
     // 0x5D8BA calls 0x5B2E2 on DF90 == 2 while the logo strobe is active.
     // The callee steps the fifteen figure palette words toward black; the
     // host renderer uses this equivalent RGB weight for the extracted guy.
@@ -171,6 +180,8 @@ struct PreTitleSequenceCallbacks {
         write_horizontal_scroll_stream;
     std::function<void(const PreTitleAudioRequest&)> publish_audio_request;
     std::function<void()> sample_controller;
+    // 0x1342 latches controller events after each of its two VBlank waits.
+    std::function<void()> latch_controller_events;
     std::function<void()> step_palette_transition;
 };
 
@@ -201,8 +212,9 @@ void setup_pre_title_resources(
     PreTitleSequenceState& state,
     const PreTitleResourceCallbacks& callbacks);
 
-// ROM 0x5D886: clear the title planes, reset upload state, publish the grid,
-// and perform the final palette-fade step before the settling wait.
+// ROM 0x5D886: clear the title planes, reset upload state, publish the FASA
+// grid, and begin its target-palette fade. The incremental driver advances
+// that blocking 0x12F6 routine across source-frame calls.
 void finalize_pre_title_display(
     PreTitleSequenceState& state,
     const PreTitleResourceCallbacks& callbacks);

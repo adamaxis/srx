@@ -173,6 +173,7 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
                    " [--field-mode-text-dump <variant> <file>]"
                    " [--field-interaction-dump <variant> <file>]"
                    " [--boot-dump-frame <frame> <file>]"
+                   " [--boot-fasa-qa <output-dir>]"
                    " [--startup-dump <stage> <selection> <frame> <file>]"
                    " [--startup-qa <output-dir>]"
                    " [--intro-to-field-smoke]\n";
@@ -185,6 +186,10 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
             continue;
         }
         if (argument == "--startup-qa" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--boot-fasa-qa" && index + 1 < argc) {
             ++index;
             continue;
         }
@@ -665,6 +670,191 @@ public:
                   << " stage="
                   << static_cast<int>(state_.pre_title.presentation_stage)
                   << " path=" << output_path.string() << '\n';
+        return 0;
+    }
+
+    int run_boot_fasa_qa(const std::filesystem::path& output_directory) {
+        host_frame_timer_.stop();
+        std::filesystem::create_directories(output_directory);
+        std::ofstream trace(output_directory / "boot-fasa-qa.tsv");
+        if (!trace) {
+            std::cerr << "boot FASA QA: could not open trace in "
+                      << output_directory.string() << '\n';
+            return 3;
+        }
+        trace << "label\tframe\tstage\tpalette_pass\tvblank_phase\t"
+                 "hold_remaining\n";
+
+        const auto fail = [](const std::string& message) {
+            std::cerr << "boot FASA QA: " << message << '\n';
+            return 3;
+        };
+        const auto stage = [this] {
+            return state_.pre_title.presentation_stage;
+        };
+        const auto save_snapshot = [&](const std::string& label,
+                                       const std::string& filename) {
+            const auto scene = render_scene();
+            const auto path = output_directory / filename;
+            if (scene.size() != QSize(kSceneWidth, kSceneHeight) ||
+                !scene.save(QString::fromStdWString(path.wstring()))) {
+                return false;
+            }
+            trace << label << '\t' << state_.frame.frame_count << '\t'
+                  << static_cast<unsigned>(stage()) << '\t'
+                  << static_cast<unsigned>(state_.pre_title
+                                               .palette_transition_passes_completed)
+                  << '\t'
+                  << static_cast<unsigned>(state_.pre_title
+                                               .palette_transition_vblank_phase)
+                  << '\t' << state_.pre_title.fasa_hold_frames << '\n';
+            return true;
+        };
+        const auto is_black = [](const QImage& scene) {
+            for (int y = 0; y < scene.height(); ++y) {
+                for (int x = 0; x < scene.width(); ++x) {
+                    const auto pixel = scene.pixelColor(x, y);
+                    if (pixel.red() != 0 || pixel.green() != 0 ||
+                        pixel.blue() != 0) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        };
+        constexpr std::uint32_t kMaximumSourceFrames = 700U;
+        std::uint32_t advanced_frames = 0U;
+        const auto advance_until = [&](const auto& predicate) {
+            while (!predicate()) {
+                if (state_.phase != StartupIntegrationPhase::pre_title ||
+                    advanced_frames >= kMaximumSourceFrames) {
+                    return false;
+                }
+                advance_one_source_frame();
+                ++advanced_frames;
+            }
+            return true;
+        };
+        if (state_.phase != StartupIntegrationPhase::pre_title ||
+            !advance_until([&] {
+                return stage() ==
+                    PreTitleSequenceState::PresentationStage::fasa_fade_in;
+            })) {
+            return fail("did not reach the ROM FASA fade-in stage");
+        }
+        if (state_.pre_title.palette_transition_passes_completed != 0U ||
+            state_.pre_title.palette_transition_vblank_phase != 0U ||
+            !save_snapshot("fasa_fade_in_start", "fade-in-start.bmp")) {
+            return fail("fade-in did not begin from a clean zero-pass state");
+        }
+        if (!is_black(render_scene())) {
+            return fail("FASA fade-in must start from black");
+        }
+
+        advance_one_source_frame();
+        advance_one_source_frame();
+        if (state_.pre_title.palette_transition_passes_completed != 1U ||
+            state_.pre_title.palette_transition_vblank_phase != 0U ||
+            !save_snapshot("fasa_fade_in_pass_1", "fade-in-pass-1.bmp")) {
+            return fail("first fade-in palette pass did not take two VBlanks");
+        }
+        const auto first_fade_in = render_scene();
+        if (is_black(first_fade_in)) {
+            return fail("first FASA fade-in pass did not reveal color");
+        }
+        if (!advance_until([&] {
+                return stage() ==
+                    PreTitleSequenceState::PresentationStage::fasa_hold;
+            })) {
+            return fail("FASA fade-in did not reach its hold stage");
+        }
+        if (state_.pre_title.fasa_hold_frames != 0x0079U ||
+            state_.pre_title.palette_transition_passes_completed !=
+                kPreTitlePaletteTransitionPasses) {
+            return fail("FASA fade-in or source hold length is incorrect");
+        }
+        const auto fasa_full = render_scene();
+        const auto* fasa_record =
+            state_.asset_catalog.catalog.find("boot.fasa");
+        if (fasa_record == nullptr) {
+            return fail("boot.fasa is absent from the direct asset catalog");
+        }
+        QImage fasa_image(
+            QString::fromStdWString(fasa_record->absolute_path.wstring()));
+        if (fasa_image.isNull()) {
+            return fail("could not load the named boot.fasa asset");
+        }
+        QImage expected_fasa(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        expected_fasa.fill(Qt::black);
+        {
+            QPainter painter(&expected_fasa);
+            painter.drawImage(fasa_record->origin_x, fasa_record->origin_y,
+                              fasa_image);
+        }
+        if (expected_fasa != fasa_full) {
+            return fail("FASA screen contains stale Sega graphics or controls");
+        }
+        if (!save_snapshot("fasa_full_hold", "actual.bmp")) {
+            return fail("could not write the required actual.bmp image");
+        }
+
+        for (std::uint32_t frame = 0; frame < 120U; ++frame) {
+            advance_one_source_frame();
+        }
+        if (stage() != PreTitleSequenceState::PresentationStage::fasa_hold ||
+            state_.pre_title.fasa_hold_frames != 1U ||
+            render_scene() != fasa_full ||
+            !save_snapshot("fasa_hold_last", "hold-last.bmp")) {
+            return fail("FASA hold must stay visually stable for 121 VBlanks");
+        }
+        advance_one_source_frame();
+        if (stage() !=
+                PreTitleSequenceState::PresentationStage::fasa_fade_out ||
+            state_.pre_title.fasa_hold_frames != 0U ||
+            state_.pre_title.palette_transition_passes_completed != 0U ||
+            render_scene() != fasa_full ||
+            !save_snapshot("fasa_fade_out_start", "fade-out-start.bmp")) {
+            return fail("FASA fade-out must begin after the full hold");
+        }
+
+        advance_one_source_frame();
+        advance_one_source_frame();
+        if (state_.pre_title.palette_transition_passes_completed != 1U ||
+            state_.pre_title.palette_transition_vblank_phase != 0U ||
+            !save_snapshot("fasa_fade_out_pass_1", "fade-out-pass-1.bmp") ||
+            render_scene() == fasa_full) {
+            return fail("first fade-out palette pass did not darken FASA");
+        }
+        if (!advance_until([&] {
+                return stage() ==
+                           PreTitleSequenceState::PresentationStage::fasa_fade_out &&
+                       state_.pre_title.palette_transition_passes_completed ==
+                           16U &&
+                       state_.pre_title.palette_transition_vblank_phase == 0U;
+            })) {
+            return fail("FASA fade-out did not reach its final black hold");
+        }
+        const auto fasa_black = render_scene();
+        if (!is_black(fasa_black) ||
+            !save_snapshot("fasa_fade_out_black", "fade-out-black.bmp")) {
+            return fail("FASA must be fully black before title handoff");
+        }
+        advance_one_source_frame();
+        advance_one_source_frame();
+        if (state_.phase != StartupIntegrationPhase::title_ready ||
+            !state_.pre_title_complete || state_.frame.frame_count != 560U ||
+            !save_snapshot("title_handoff", "title-handoff.bmp")) {
+            return fail("title handoff must follow the complete 560-VBlank sequence");
+        }
+        if (render_scene() == fasa_full) {
+            return fail("title handoff retained the previous FASA screen");
+        }
+        std::cout << "boot_fasa_qa=passed source_frames="
+                  << state_.frame.frame_count
+                  << " fade_passes="
+                  << static_cast<unsigned>(kPreTitlePaletteTransitionPasses)
+                  << " hold=" << 0x0079U << " actual="
+                  << (output_directory / "actual.bmp").string() << '\n';
         return 0;
     }
 
@@ -1496,6 +1686,24 @@ private:
             draw_title(scene_painter);
         }
         scene_painter.end();
+        if (state_.phase == StartupIntegrationPhase::pre_title) {
+            using PresentationStage =
+                PreTitleSequenceState::PresentationStage;
+            const auto stage = state_.pre_title.presentation_stage;
+            if (stage == PresentationStage::sega_fade_out ||
+                stage == PresentationStage::fasa_fade_out) {
+                return transition_genesis_cram_image(
+                    scene,
+                    state_.pre_title.palette_transition_passes_completed,
+                    true);
+            }
+            if (stage == PresentationStage::fasa_fade_in) {
+                return transition_genesis_cram_image(
+                    scene,
+                    state_.pre_title.palette_transition_passes_completed,
+                    false);
+            }
+        }
         if (state_.phase == StartupIntegrationPhase::opening_intro &&
             state_.opening_intro.scene_palette_weight != 255U) {
             return scale_genesis_image_rgb(
@@ -1641,6 +1849,10 @@ private:
             };
         startup_callbacks_.pre_title.sample_controller = [this] {
             note_presentation_boundary("pre_title.sample_controller");
+        };
+        startup_callbacks_.pre_title.latch_controller_events = [this] {
+            note_presentation_boundary(
+                "pre_title.latch_controller_events");
         };
         startup_callbacks_.pre_title.step_palette_transition =
             [this] {
@@ -2107,7 +2319,9 @@ private:
         using PresentationStage =
             PreTitleSequenceState::PresentationStage;
         const auto stage = state_.pre_title.presentation_stage;
-        if (stage == PresentationStage::fasa) {
+        if (stage == PresentationStage::fasa_fade_in ||
+            stage == PresentationStage::fasa_hold ||
+            stage == PresentationStage::fasa_fade_out) {
             draw_alias(painter, "boot.fasa");
             return;
         }
@@ -2762,6 +2976,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_interaction_dump_path;
         std::optional<std::uint32_t> boot_dump_frame;
         std::optional<std::filesystem::path> boot_dump_path;
+        std::optional<std::filesystem::path> boot_fasa_qa_path;
         std::optional<std::string> startup_dump_stage;
         std::optional<std::uint32_t> startup_dump_selection;
         std::optional<std::uint32_t> startup_dump_frame;
@@ -2799,6 +3014,7 @@ int main(int argc, char** argv) {
                        " [--field-mode-text-dump <variant> <file>]"
                        " [--field-interaction-dump <variant> <file>]"
                        " [--boot-dump-frame <frame> <file>]"
+                       " [--boot-fasa-qa <output-dir>]"
                        " [--startup-dump <stage> <selection> <frame> <file>]"
                        " [--startup-qa <output-dir>]"
                        " [--intro-to-field-smoke]\n";
@@ -2960,6 +3176,10 @@ int main(int argc, char** argv) {
                 boot_dump_frame = static_cast<std::uint32_t>(
                     std::stoul(argv[++index]));
                 boot_dump_path = std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--boot-fasa-qa" &&
+                index + 1 < argc) {
+                boot_fasa_qa_path = std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--startup-dump" &&
                 index + 4 < argc) {
@@ -9459,6 +9679,9 @@ int main(int argc, char** argv) {
         GhidraConversionWindow window(asset_root);
         if (startup_qa_path.has_value()) {
             return window.run_startup_qa(*startup_qa_path);
+        }
+        if (boot_fasa_qa_path.has_value()) {
+            return window.run_boot_fasa_qa(*boot_fasa_qa_path);
         }
         if (startup_dump_stage.has_value() &&
             startup_dump_selection.has_value() &&

@@ -64,6 +64,9 @@ int main() {
     std::size_t enabled_service_audio_requests = 0;
     bool resource_work_area_zeroed = false;
     std::size_t palette_fades = 0;
+    std::size_t controller_samples = 0;
+    std::size_t controller_latches = 0;
+    std::size_t palette_transition_calls = 0;
     PreTitleSequenceCallbacks pre_title_callbacks{};
     pre_title_callbacks.resources.clear_plane_a = [&resource_events] {
         resource_events.emplace_back("clear-a");
@@ -122,13 +125,19 @@ int main() {
                 ++enabled_service_audio_requests;
             }
         };
-    pre_title_callbacks.sample_controller = [] {};
-    pre_title_callbacks.step_palette_transition = [] {};
+    pre_title_callbacks.sample_controller = [&controller_samples] {
+        ++controller_samples;
+    };
+    pre_title_callbacks.latch_controller_events = [&controller_latches] {
+        ++controller_latches;
+    };
+    pre_title_callbacks.step_palette_transition =
+        [&palette_transition_calls] { ++palette_transition_calls; };
     if (run_pre_title_sequence(pre_title, pre_title_callbacks) !=
             PreTitleSequenceResult::source_complete ||
         pre_title.startup_marker != 1U || pre_title.resource_marker != 1U ||
         pre_title.figure_x != 0x0119 || pre_title.figure_y != 0x0160 ||
-        waits != 458U || sprite_builds != 932U || hscroll_updates != 337U ||
+        waits != 560U || sprite_builds != 932U || hscroll_updates != 337U ||
         cleared_sprite_sequences != 337U || sprite_batches.size() != sprite_builds ||
         variant_audio_requests != 63U ||
             enabled_service_audio_requests != 60U ||
@@ -136,6 +145,14 @@ int main() {
             variant_audio_requests + enabled_service_audio_requests ||
         resource_stream_writes != 1U || !resource_work_area_zeroed ||
         palette_fades != 2U ||
+        controller_samples != 2U || controller_latches != 102U ||
+        palette_transition_calls != 2U ||
+        pre_title.presentation_stage !=
+            PreTitleSequenceState::PresentationStage::complete ||
+        pre_title.fasa_hold_frames != 0U ||
+        pre_title.palette_transition_passes_completed !=
+            kPreTitlePaletteTransitionPasses ||
+        pre_title.palette_transition_vblank_phase != 0U ||
         resource_events != std::vector<std::string>{
             "clear-a", "clear-b", "prepare-title", "refresh-field",
             "decode-upload", "write-grid", "clear-a", "clear-b",

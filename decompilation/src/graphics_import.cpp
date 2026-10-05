@@ -8022,9 +8022,11 @@ decode_genesis_boot_logo_strobe(const std::vector<std::uint8_t>& rom) {
 RgbaImage decode_genesis_boot_fasa(const std::vector<std::uint8_t>& rom) {
     auto image = make_transparent_title_layer();
     const auto boot = decode_genesis_boot_pattern_data(rom);
-    // 0x5D886: 16x5 at $E518 from 0x1FFAC6, same tiles as the SEGA 12x4.
+    // 0x5D886 ORs $4000 into every word: the FASA grid uses palette line 2.
+    // Omitting that plane attribute yields the cyan line-0 colors instead of
+    // the blue mark visible in the source sequence.
     blit_genesis_name_table(rom, boot, image, 0x1FFAC6U, 16U, 5U, 0xE518U,
-                            0xE000U, 0, true);
+                            0xE000U, 0x4000U, true);
     return image;
 }
 

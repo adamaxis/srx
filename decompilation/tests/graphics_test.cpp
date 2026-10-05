@@ -802,6 +802,19 @@ int main() {
             image.pixels.begin(), image.pixels.end(),
             [](const auto& pixel) { return pixel.alpha != 0U; });
     };
+    // ROM 0x5D886 ORs $4000 into the FASA grid, selecting palette line 2.
+    // Its first visible entry is $0E60 (#006DFF), not the cyan line-0 color.
+    const auto fasa_blue = decode_genesis_cram_word(0x0E60U, false);
+    const auto fasa_blue_pixels = std::count_if(
+        native_assets.boot_fasa.pixels.begin(),
+        native_assets.boot_fasa.pixels.end(),
+        [&fasa_blue](const auto& pixel) {
+            return pixel.alpha != 0U && pixel.red == fasa_blue.red &&
+                   pixel.green == fasa_blue.green &&
+                   pixel.blue == fasa_blue.blue;
+        });
+    assert(fasa_blue.red == 0U && fasa_blue.green == 109U &&
+           fasa_blue.blue == 255U && fasa_blue_pixels > 500U);
     assert(opaque_pixel_count(native_assets.field_menu_item_art[12]) > 10U);
     assert(opaque_pixel_count(native_assets.field_menu_item_art[49]) > 10U);
     assert(opaque_pixel_count(native_assets.field_menu_item_art[40]) == 0U);

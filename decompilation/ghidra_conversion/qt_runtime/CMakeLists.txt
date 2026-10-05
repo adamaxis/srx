@@ -46,6 +46,17 @@ add_test(NAME shadowrun_ghidra_conversion_qt_startup_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_startup_qa PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Keep the pre-title screen boundaries separate from the longer startup walk:
+# the ROM fades SEGA to black, fades FASA in, holds for 0x79 VBlanks, then
+# fades back out before the title screen replaces it.
+add_test(NAME shadowrun_ghidra_conversion_qt_boot_fasa_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --boot-fasa-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/boot-fasa-qa")
+set_tests_properties(shadowrun_ghidra_conversion_qt_boot_fasa_qa PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 add_test(NAME shadowrun_ghidra_conversion_qt_field_action_qa
          COMMAND shadowrun_ghidra_conversion_qt
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"

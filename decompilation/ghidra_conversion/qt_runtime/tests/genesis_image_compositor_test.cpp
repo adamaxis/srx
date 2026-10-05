@@ -45,5 +45,43 @@ int main() {
                 "palette fade must preserve sprite alpha")) {
         return 1;
     }
+
+    QImage fasa(1, 1, QImage::Format_ARGB32_Premultiplied);
+    fasa.setPixelColor(0, 0, QColor(73, 146, 219, 255));
+    const auto fasa_black =
+        transition_genesis_cram_image(fasa, 0U, false);
+    const auto fasa_first_pass =
+        transition_genesis_cram_image(fasa, 1U, false);
+    const auto fasa_second_pass =
+        transition_genesis_cram_image(fasa, 2U, false);
+    const auto fasa_target =
+        transition_genesis_cram_image(fasa, 17U, false);
+    if (!expect(fasa_black.pixelColor(0, 0) == QColor(0, 0, 0, 255),
+                "FASA fade-in must start from black") ||
+        !expect(fasa_first_pass.pixelColor(0, 0) ==
+                    QColor(36, 36, 36, 255),
+                "FASA first palette pass must advance only one CRAM level") ||
+        !expect(fasa_second_pass.pixelColor(0, 0) ==
+                    QColor(73, 73, 73, 255),
+                "FASA fade-in must clamp each channel to its target level") ||
+        !expect(fasa_target.pixelColor(0, 0) == QColor(73, 146, 219, 255),
+                "FASA fade-in must reach and preserve the target palette")) {
+        return 1;
+    }
+
+    const auto fasa_fade_out_first =
+        transition_genesis_cram_image(fasa, 1U, true);
+    const auto fasa_fade_out_complete =
+        transition_genesis_cram_image(fasa, 17U, true);
+    if (!expect(fasa_fade_out_first.pixelColor(0, 0) ==
+                    QColor(36, 109, 182, 255),
+                "FASA fade-out must remove one CRAM level per pass") ||
+        !expect(fasa_fade_out_complete.pixelColor(0, 0) ==
+                    QColor(0, 0, 0, 255),
+                "FASA fade-out must reach black") ||
+        !expect(fasa_target.pixelColor(0, 0).alpha() == 255,
+                "FASA fade must preserve alpha")) {
+        return 1;
+    }
     return 0;
 }

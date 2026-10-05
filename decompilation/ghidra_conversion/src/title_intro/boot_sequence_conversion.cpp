@@ -189,6 +189,7 @@ bool has_pre_title_callbacks(const PreTitleSequenceCallbacks& callbacks) {
            static_cast<bool>(callbacks.write_horizontal_scroll_stream) &&
            static_cast<bool>(callbacks.publish_audio_request) &&
            static_cast<bool>(callbacks.sample_controller) &&
+           static_cast<bool>(callbacks.latch_controller_events) &&
            static_cast<bool>(callbacks.step_palette_transition);
 }
 
@@ -404,18 +405,59 @@ PreTitleSequenceResult advance_pre_title_sequence_frame(
         return PreTitleSequenceResult::source_complete;
     }
 
-    if (state.presentation_stage ==
-        PreTitleSequenceState::PresentationStage::fasa) {
+    using PresentationStage = PreTitleSequenceState::PresentationStage;
+    if (state.presentation_stage == PresentationStage::sega_fade_out ||
+        state.presentation_stage == PresentationStage::fasa_fade_in ||
+        state.presentation_stage == PresentationStage::fasa_fade_out) {
+        // ROM 0x131C / 0x12F6 each execute 17 palette passes. The shared
+        // 0x1342 wait runs two VBlanks and latches controller events before
+        // each one-step CRAM update. Preserve those frames as native state
+        // rather than completing a whole blocking fade in one host update.
+        callbacks.wait_for_vblank();
+        callbacks.latch_controller_events();
+        ++state.palette_transition_vblank_phase;
+        if (state.palette_transition_vblank_phase >=
+            kPreTitleVBlanksPerPalettePass) {
+            state.palette_transition_vblank_phase = 0U;
+            ++state.palette_transition_passes_completed;
+        }
+        if (state.palette_transition_passes_completed <
+            kPreTitlePaletteTransitionPasses) {
+            return PreTitleSequenceResult::source_complete;
+        }
+
+        state.palette_transition_passes_completed =
+            kPreTitlePaletteTransitionPasses;
+        if (state.presentation_stage == PresentationStage::sega_fade_out) {
+            finalize_pre_title_display(state, callbacks.resources);
+            state.palette_transition_passes_completed = 0U;
+            state.palette_transition_vblank_phase = 0U;
+            state.presentation_stage = PresentationStage::fasa_fade_in;
+        } else if (state.presentation_stage ==
+                   PresentationStage::fasa_fade_in) {
+            state.fasa_hold_frames = 0x0079U;
+            state.presentation_stage = PresentationStage::fasa_hold;
+        } else {
+            state.presentation_stage = PresentationStage::complete;
+        }
+        return PreTitleSequenceResult::source_complete;
+    }
+
+    if (state.presentation_stage == PresentationStage::fasa_hold) {
         if (state.fasa_hold_frames != 0U) {
             callbacks.wait_for_vblank();
             --state.fasa_hold_frames;
+            if (state.fasa_hold_frames == 0U) {
+                // 0x5D878 samples input immediately after the 0x78 DBF
+                // wait, then enters 0x131C to fade FASA to black.
+                callbacks.sample_controller();
+                callbacks.step_palette_transition();
+                state.palette_transition_passes_completed = 0U;
+                state.palette_transition_vblank_phase = 0U;
+                state.presentation_stage = PresentationStage::fasa_fade_out;
+            }
             return PreTitleSequenceResult::source_complete;
         }
-        callbacks.sample_controller();
-        callbacks.step_palette_transition();
-        state.presentation_stage =
-            PreTitleSequenceState::PresentationStage::complete;
-        return PreTitleSequenceResult::source_complete;
     }
 
     callbacks.wait_for_vblank();
@@ -489,9 +531,9 @@ PreTitleSequenceResult advance_pre_title_sequence_frame(
 
     callbacks.sample_controller();
     callbacks.step_palette_transition();
-    finalize_pre_title_display(state, callbacks.resources);
-    state.fasa_hold_frames = 0x0079;
-    state.presentation_stage = PreTitleSequenceState::PresentationStage::fasa;
+    state.palette_transition_passes_completed = 0U;
+    state.palette_transition_vblank_phase = 0U;
+    state.presentation_stage = PresentationStage::sega_fade_out;
     return PreTitleSequenceResult::source_complete;
 }
 
