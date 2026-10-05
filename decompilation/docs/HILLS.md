@@ -47,6 +47,15 @@ separately in
 | later | Combat empty-magazine player action | `0xA8EA` / `0xAAD2` / `0xACAE` / `0xABFC` / `0x14226` / `0x36FC` | partial | `shadowrun_ghidra_entity_animation_player_action`; `shadowrun_ghidra_conversion_qt_field_player_action_qa` | `--field-player-action-dump <dir>` writes `before.bmp`, `unselected-action-frame.bmp`, `ready-idle-frame.bmp`, and `actual.bmp`. QA proves no reload for an active but unselected runner or a selected runner with A released; with source behavior bit 1 set, signed +0xDC negative, and A held, it checks empty +0x4E, shared +0x4F clip, event 0x4B dispatches, one-clip decrement, D4540 +0x24 capacity, named weapon HUD glyph, and live ammo-counter pixels in Debug/Release. The dump sets behavior bit 1 explicitly because the ordinary field profile starts in mode 5; entering this action-capable behavior from live combat is not connected yet. No matching independent Genesis reload frame/audio timing is identified, and internal compositor checks do not prove Genesis visual fidelity. Firing, target selection, hit/damage, and attack animation remain open |
 | later | Qt audio effect playback | `0x530DE` / table-2 entries 37 and 75; menu event `0x24` | partial | `shadowrun_ghidra_audio_playback`; `shadowrun_ghidra_conversion_qt_field_interaction_qa`; `shadowrun_ghidra_conversion_qt_field_shop_qa`; `shadowrun_ghidra_conversion_qt_field_magic_spell_qa` | `audio-playback-verification.md`; Debug/Release playback checks for events 0x24/0x25/0x4B, decoded audio, default output, durations, and stop; Ares `actual.bmp`; repeated independent longplay waveform matches support resources 024/037. Background music/loop points, other source events, persistent 0x30 stop lifetime, and Windows output-loopback capture remain open |
 
+## Added transition route
+
+| Hill | ROM entry and behavior | Status | Test and dump |
+|---|---|---|---|
+| Scene-2 motel doorway to scene `0x14` | `0x075E` / `0xB7B8` / `0x16396` / `0x095E` / `0x172CDC` / `0x2BD2`; up-input collision publishes event 0 and scene-2 table row 0 selects `0x14` | partial: the route loads and redraws the destination, but its exit path and an independent Genesis frame are not defended | `shadowrun_ghidra_conversion_qt_field_motel_entry_qa`; `build-qt-runtime-{debug,release}/qt_runtime/field-motel-entry-qa/actual.bmp` plus 12 other full-frame checkpoints; eight-question audit: [motel-doorway-scene-entry.md](visual-audits/motel-doorway-scene-entry.md) |
+
+The Security Terminal floor hill above remains separate: its QA still injects
+event 2 after collision. The motel event-0 test does not open Stoker dialogue.
+
 Rejected (must not return):
 
 - Extra Joshua archetypes as switchable party members.

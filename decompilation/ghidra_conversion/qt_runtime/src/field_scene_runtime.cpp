@@ -475,6 +475,27 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
             return false;
         };
 
+    // Scene 2's ROM event-table row 0 maps this blocked-step event to scene
+    // 0x14. When the scene/submode prompt selector has no match, let the
+    // coordinator's normal initialize-world-activity branch consume that
+    // table row. Treating it as an unresolved mode-exit prompt aborts before
+    // the source-selected scene can be prepared.
+    const auto continues_through_motel_event_table =
+        [this, &runtime_state] {
+            const auto& metadata =
+                state_.field_scene_buffers.source_metadata;
+            if (runtime_state.scene_id != 2U ||
+                runtime_state.field_mode != 2U ||
+                field_movement_transition_state_.mode_event_code != 0U ||
+                !metadata.event_table_available) {
+                return false;
+            }
+            const auto destination = resolve_world_activity_scene_id(
+                field_movement_transition_state_.mode_event_code,
+                metadata.event_mode_table);
+            return destination == std::optional<std::uint16_t>{0x14U};
+        };
+
     // Mode 2/event 11 is the Ares service entry at ROM 0x1FA78. The preceding
     // generic field-dialogue selector has no speaker record for this route;
     // its text and optional alternate result are selected by the mode-text
@@ -483,9 +504,14 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
         return runtime_state.field_mode == 2U &&
                field_movement_transition_state_.mode_event_code == 11U;
     };
-    callbacks.prepare_field_mode_exit = [this, &is_ares_shop_event](
+    callbacks.prepare_field_mode_exit =
+        [this, &is_ares_shop_event, &continues_through_motel_event_table](
                                             FieldExitOrchestratorState& state) {
         if (is_ares_shop_event()) {
+            return false;
+        }
+        if (continues_through_motel_event_table()) {
+            source_boundary("field.exit.world_activity_table_fallback");
             return false;
         }
         source_boundary("field.exit.prepare_mode_exit_unresolved");
@@ -493,8 +519,12 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
         return true;
     };
     callbacks.select_field_mode_service =
-        [this, &runtime_state, &is_ares_shop_event](
+        [this, &runtime_state, &is_ares_shop_event,
+         &continues_through_motel_event_table](
             FieldExitOrchestratorState& state) {
+            if (continues_through_motel_event_table()) {
+                return false;
+            }
             if (!is_ares_shop_event()) {
                 source_boundary("field.exit.mode_service_unresolved");
                 state.caller_exit_status = -1;
@@ -544,7 +574,12 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
             // result records return to the field without dispatching 0x56AC0.
             return true;
         };
-    callbacks.finalize_field_mode_exit = [this](FieldExitOrchestratorState& state) {
+    callbacks.finalize_field_mode_exit =
+        [this, &continues_through_motel_event_table](
+            FieldExitOrchestratorState& state) {
+        if (continues_through_motel_event_table()) {
+            return false;
+        }
         source_boundary("field.exit.finalize_mode_exit_unresolved");
         state.caller_exit_status = -1;
         return true;
@@ -1465,9 +1500,12 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             };
 
             field_security_floor_index_.reset();
+            const auto source_scene_id = runtime.scene_id;
             const auto result = run_world_activity_routine(
                 input, world_activity_routine_state_, activity_callbacks);
             runtime.scene_id = world_activity_routine_state_.scene_id;
+            field_world_activity_scene_entry_pending_ =
+                world_activity_routine_state_.scene_id != source_scene_id;
             runtime.field_scene_gate = static_cast<std::uint16_t>(
                 world_activity_routine_state_.mode);
             if (result == WorldActivityResult::resource_activity_ready) {
@@ -3005,6 +3043,7 @@ bool FieldSceneRuntime::bootstrap(
     field_movement_behavior_record_ = EntityBehaviorFrameRecord{};
     field_movement_transition_state_ = EntityMovementModeTransitionState{};
     field_palette_fade_steps_ = 0U;
+    field_world_activity_scene_entry_pending_ = false;
     field_world_activity_state_ = WorldActivityState{};
     world_activity_routine_state_ = WorldActivityRoutineState{};
     field_security_floor_index_.reset();
@@ -3404,9 +3443,6 @@ bool FieldSceneRuntime::initialize_world_activity_for_dump(
     // dispatcher has selected and prepared the typed resource scene.
     field_runtime_state_.scene_refresh_marker = -1;
     advance_field_scene_transition_after_modal();
-    update_source_field_camera();
-    update_entity_render_pass(state_.render_entities,
-                              callbacks_.entity_render_pass);
     return state_.field_scene_buffers.scene_reference ==
                world_activity_routine_state_.scene_id &&
            field_security_floor_index_.value() <
@@ -3836,7 +3872,8 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
         return false;
     }
 
-    const bool same_scene = state_.field_scene_buffers.initialized &&
+    const bool same_scene = !field_world_activity_scene_entry_pending_ &&
+                            state_.field_scene_buffers.initialized &&
                             state_.field_scene_buffers.scene_reference ==
                                 scene_reference;
     const auto prior_camera_x = state_.field_scene_buffers.camera_x;
@@ -3871,6 +3908,15 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
 
     state_.field_scene_buffers = std::move(next_buffers);
     field_map_ = std::move(next_field_map);
+    if (!same_scene && field_palette_fade_steps_ != 0U) {
+        // The source scene-buffer load replaces the palette after the
+        // field-transition fade. The Qt fade is a presentation overlay, so
+        // release it only after the new scene assets are committed; otherwise
+        // the replacement scene remains hidden behind the old scene's black
+        // transition layer.
+        field_palette_fade_steps_ = 0U;
+        source_boundary("field.scene.transition.clear_old_fade_overlay");
+    }
     state_.field_resource_mode =
         state_.field_scene_buffers.field_resource_mode;
     field_runtime_state_.scene_id = scene_reference;
@@ -3954,6 +4000,7 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
 
     ::shadowrun::ghidra_conversion::advance_field_scene_transition(
         transition, event_counters, scene_callbacks);
+    field_world_activity_scene_entry_pending_ = false;
 
     auto& updated_collision_map =
         state_.field_scene_buffers.source_metadata.terrain_collision_map;
@@ -3985,6 +4032,9 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
     state_.display_dirty_flags = static_cast<std::uint8_t>(
         state_.display_dirty_flags | 0x0EU);
     field_camera_alignment_ready_ = false;
+    update_source_field_camera();
+    update_entity_render_pass(state_.render_entities,
+                              callbacks_.entity_render_pass);
     source_boundary("field.scene.transition.same_scene_reentered");
 }
 

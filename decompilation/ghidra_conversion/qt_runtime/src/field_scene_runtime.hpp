@@ -231,6 +231,16 @@ public:
     bool field_transition_pending_for_dump() const noexcept {
         return field_runtime_state_.field_transition_requested;
     }
+    std::uint8_t field_mode_event_code_for_dump() const noexcept {
+        return field_movement_transition_state_.mode_event_code;
+    }
+    std::uint16_t field_projected_code_for_dump() const noexcept {
+        return field_movement_behavior_record_.projected_field_code;
+    }
+    const integration::FieldRuntimeCoordinatorState& field_runtime_state_for_dump()
+        const noexcept {
+        return field_runtime_state_;
+    }
     std::int16_t field_interaction_transition_timer_for_dump() const noexcept {
         return field_movement_transition_state_.interaction_transition_timer;
     }
@@ -836,6 +846,7 @@ private:
     std::array<AuxiliaryWorldEntity, 10> field_entity_table_{};
     EntityMovementModeTransitionState field_movement_transition_state_{};
     std::uint8_t field_palette_fade_steps_ = 0U;
+    bool field_world_activity_scene_entry_pending_ = false;
     WorldActivityState field_world_activity_state_{};
     WorldActivityRoutineState world_activity_routine_state_{};
     MovementModeTransitionContinuation field_activity_continuation_ =
