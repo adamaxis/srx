@@ -43,8 +43,12 @@ I reviewed whole-screen contact sheets first and opened suspicious frames at
 native resolution. Duplicates were collapsed only when their whole-frame
 pixels matched. Crops and zooms were supporting views, never substitutes for
 the full frame. Extracted single sprites and source panels were not counted as
-gameplay screenshots. This was a visual review; I did not rerun tests or infer
-Genesis fidelity from Debug/Release agreement.
+gameplay screenshots. I also reviewed all 142 sheets in the companion
+`contact-001..142.png` series, covering the 2,270 indexed pixel groups in its
+`index.csv`; that series includes older captures and experiments and overlaps
+the expanded capture set. Fresh Oct. 5 intro and airport frame ranges were
+opened separately after the index was made. This was a visual review; I did
+not rerun CTest or infer Genesis fidelity from Debug/Release agreement.
 
 ## The questions applied
 
@@ -75,18 +79,29 @@ applicable evidence:
 
 ### Findings from the expanded whole-frame pass
 
-- **Archived opening mismatch:** the October 3 `wilderness-full-pass` captures
-  in `decompilation/ghidra_conversion/build-ghidra-conversion-qt-debug/qt_runtime/`
-  show projectiles crossing the three-line tri-vid narration in frames
-  1050-1060. Independent section 02 frames 000638, 000660, and 000690 show
-  the same narration state with projectiles below or beside the text. The
-  old native output is a visible mismatch; the exact frame alignment and
-  projectile coordinate/draw-order trace remain open. The October 5 source
-  change touched QA allocation and field/hotel capture helpers, not the
-  opening-scene renderer. There is no matching post-change whole-frame intro
-  dump in the current output tree, so the mismatch is likely still present but
-  is not yet confirmed against a fresh build. Re-capture and compare the
-  current renderer before marking this resolved.
+- **Tri-vid narration and projectile crossings:** archived `wilderness-full-pass`
+  frames and fresh October 5 `full-screenshot-review-current/trivid-overlap-check`
+  frames show shots crossing the narration band in some frames. Independent
+  section 02 frames 000638, 000660, and 000690 show shots crossing or touching
+  the same caption area. The earlier draft's claim that the source shots stay
+  below or beside the text, and its Qt-only mismatch claim, are withdrawn.
+  Multiple frames support this as moving gameplay art. Exact ROM coordinates,
+  draw order, and 60-Hz alignment against the 30-fps reference remain open.
+- **Airport caption replacement:** archived October 3
+  `opening-gator-airport` frames show the old “Spending your last Nuyen...”
+  text still present under the new “Landing at Sea-Tac Airport...” paragraph.
+  Fresh October 5 `startup-qa/opening_2400.bmp`, `opening_2700.bmp`, and
+  `opening_3000.bmp` show the caption transition cleanly: the first has no
+  caption yet; the latter two show only the Landing paragraph. The overlap is
+  a stale archived defect, not a confirmed current renderer defect. Exact
+  timing against an independent Genesis capture remains open.
+- **Airport aircraft:** the small cyan shape above the Seattle skyline is a
+  moving aircraft, not an unexplained stray pixel. Fresh frames 2380 and 2500
+  in `full-screenshot-review-current/airport-edge-check` show it in different
+  positions; independent section 02 frame 0001380 also shows an aircraft above
+  the skyline, while 0001420 shows the next city state without it. This
+  supports the animation's presence, though exact path and phase alignment
+  remain unverified.
 - **Stale broken trade image:**
   `decompilation/ghidra_conversion/build-ghidra-conversion-qt-debug/qt_runtime/field-action-qa/02_inventory_action_trade.bmp`
   is almost entirely black, with only fragments of the portrait, icons, and
@@ -101,13 +116,16 @@ applicable evidence:
   internal conversion captures; the exact equip/unequip transition still has
   no matching independent Genesis capture.
 - **Hotel Options appearance remains open:** the current
-  `field-hotel-qa/options/actual.bmp` is green option text on black. It is
-  visually unusual beside the full Attributes/Skills composition, but no
-  matching independent Hotel capture was identified. The Hotel Karma spend
-  page and the Start-menu Karma status page are distinct full-screen images;
-  the spend page adds the upgrade/cost detail row. Keep the two routes
-  separate, and do not call the text-only Hotel Options appearance visually
-  verified against Genesis.
+  `field-hotel-qa/options/actual.bmp` is green option text on black. No
+  matching independent Hotel capture was identified, so its overall layout
+  is not visually verified against Genesis. Small colored cells in the
+  `options-frame-30`, checkout-selection, and post-Karma return screenshots
+  fall within the ROM-traced `0xE660` lower-grid region (`x=40..231`,
+  `y=200..215`). The one yellow cell after returning from Karma is an allowed
+  frame of that effect: the child screen suspends it, the parent options page
+  is rebuilt, and the effect resumes. It is not stale Karma-page artwork.
+  The Hotel Karma spend page and Start-menu Karma status page are distinct
+  full-screen routes; the spend page adds the upgrade/cost detail row.
 - **Seattle focus outline is intentional:** the amber outline in the root
   `startup-qa/opening_604.bmp` through `opening_612.bmp` follows the five
   source-derived focus phases. The separate `seattle-outline-window` images
@@ -223,13 +241,16 @@ to claim an in-game black-screen defect.
 
 ## Whole-corpus result and remaining limits
 
-The earlier conclusion that no new whole-frame distortion was found is
-withdrawn. The expanded review found a visibly broken stale trade image and a
-projectile/text mismatch in archived opening output. It also confirmed that
-some surprising frames are capture or experiment artifacts, while the current
-Hotel Options text-only screen has no independent visual reference. The
-current source still needs a fresh full-frame intro capture before the
-archived projectile mismatch can be called fixed or current.
+The expanded review found a visibly broken stale trade image and archived
+airport caption-overlap frames; neither is evidence of the current output.
+Fresh whole-frame captures now cover the current intro transition, and source
+frames confirm that projectile crossings and the small Seattle aircraft are
+part of the sequence. The audit did not find another unexplained overlay in
+the current menu, inventory, shop, dialogue, Hotel, or field screenshots.
+Hotel Options still lacks an independent game capture, and exact intro timing
+and several audio clip identities remain unresolved. This is a complete
+visual pass over the indexed screenshot sets, not a claim that every screen
+matches the Genesis game.
 
 The earlier 139-path Debug/Release pixel match applies only to the narrow
 directory set listed above. Pixel-identical builds establish reproducibility,
