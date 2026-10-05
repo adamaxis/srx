@@ -7,6 +7,7 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets Multimedia)
 add_executable(shadowrun_ghidra_conversion_qt
     src/ghidra_conversion_qt_main.cpp
     src/field_scene_runtime.cpp
+    src/attributes_skills_menu_runtime.cpp
     src/field_clips_menu_runtime.cpp
     src/shop_menu_runtime.cpp
     src/field_party_roster_runtime.cpp
@@ -103,6 +104,18 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_command_qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-command-qa.bmp")
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_command_qa PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
+# Attributes/Skills is an action on command row 3, so focusing the row must
+# preserve the ordinary shell. Its standalone page clears that shell, exposes
+# the active record, handles upgrades, and returns without leftover pixels.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_attributes_skills_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-attributes-skills-dump
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-attributes-skills-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_attributes_skills_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 add_test(NAME shadowrun_ghidra_conversion_qt_inventory_selector_qa
          COMMAND shadowrun_ghidra_conversion_qt
@@ -349,6 +362,17 @@ target_link_libraries(shadowrun_ghidra_field_clips_menu_runtime_test
     PRIVATE shadowrun_ghidra_conversion_runtime)
 add_test(NAME shadowrun_ghidra_field_clips_menu_runtime
          COMMAND shadowrun_ghidra_field_clips_menu_runtime_test)
+
+add_executable(shadowrun_ghidra_attributes_skills_menu_runtime_test
+    tests/attributes_skills_menu_runtime_test.cpp
+    src/attributes_skills_menu_runtime.cpp
+)
+target_include_directories(shadowrun_ghidra_attributes_skills_menu_runtime_test
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_link_libraries(shadowrun_ghidra_attributes_skills_menu_runtime_test
+    PRIVATE shadowrun_ghidra_conversion_runtime)
+add_test(NAME shadowrun_ghidra_attributes_skills_menu_runtime
+         COMMAND shadowrun_ghidra_attributes_skills_menu_runtime_test)
 
 add_executable(shadowrun_ghidra_field_party_roster_runtime_test
     tests/field_party_roster_runtime_test.cpp

@@ -2747,6 +2747,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_shop_dump_path;
         std::optional<std::filesystem::path> field_magic_dump_path;
         std::optional<std::filesystem::path> field_magic_spell_dump_path;
+        std::optional<std::filesystem::path>
+            field_attributes_skills_dump_path;
         std::optional<std::string> field_archetype_name;
         std::optional<std::string> field_dialogue_dump_prompt;
         std::optional<std::filesystem::path> field_dialogue_dump_path;
@@ -2783,6 +2785,7 @@ int main(int argc, char** argv) {
                        " [--field-shop-dump <output-dir>]"
                        " [--field-magic-dump <output-dir>]"
                        " [--field-magic-spell-dump <output-dir>]"
+                       " [--field-attributes-skills-dump <output-dir>]"
                        " [--field-archetype <samurai|decker|gator>]"
                        " [--field-hud-qa <output-dir>]"
                        " [--field-hotel-qa <output-dir>]"
@@ -2868,6 +2871,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_magic_spell_dump_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-attributes-skills-dump" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_attributes_skills_dump_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-cyberware-dump" &&
@@ -3336,6 +3346,8 @@ int main(int argc, char** argv) {
                 std::filesystem::create_directories(output);
                 field_scene.active_runner_record().delay_meter = 2U;
                 field_scene.active_runner_record().behavior_meter = 0U;
+                field_scene.active_runner_record().attributes[0U] = 1U;
+                field_scene.active_runner_record().auxiliary[2U] = 50U;
                 if (!field_scene.open_stoker_room_payment_for_dump(20U) ||
                     field_scene.field_funds_for_dump() != 0U) {
                     std::cerr << "field Hotel QA: paid-room outcome did not open\n";
@@ -3428,6 +3440,114 @@ int main(int argc, char** argv) {
                     std::cerr << "field Hotel QA: options page is missing rows or retained the status page\n";
                     return 3;
                 }
+
+                const auto hotel_record_before_upgrade =
+                    field_scene.active_runner_record();
+                field_audio_events.clear();
+                if (field_scene.advance_hotel_menu_for_dump(0x4000U) !=
+                        HotelMenuEvent::karma_screen_opened ||
+                    !field_scene.hotel_karma_screen_open() ||
+                    !field_scene.hotel_menu_open() ||
+                    field_scene.hotel_menu_phase() !=
+                        HotelMenuPhase::options ||
+                    !field_scene.hotel_karma_screen()
+                         .allows_karma_upgrades() ||
+                    !field_scene.hotel_karma_screen()
+                         .state().selection_data_available) {
+                    std::cerr << "field Hotel QA: Karma Screen did not enter the separate upgrade route\n";
+                    return 3;
+                }
+                auto karma_spend = capture(output / "karma-spend" /
+                                           "actual.bmp");
+                if (karma_spend.isNull() ||
+                    !image_region_has_color(karma_spend, 64, 200, 224, 8,
+                                            QColor(109, 73, 146)) ||
+                    image_has_green_ink(karma_spend, 88, 72, 40, 16) ||
+                    field_scene.active_runner_record().attributes !=
+                        hotel_record_before_upgrade.attributes ||
+                    field_scene.active_runner_record().auxiliary !=
+                        hotel_record_before_upgrade.auxiliary) {
+                    std::cerr << "field Hotel QA: spending page leaked Hotel controls, omitted its upgrade detail, or mutated on entry\n";
+                    return 3;
+                }
+                const auto parent_animation_at_entry =
+                    field_scene.hotel_animation_frames();
+                for (int frame = 0; frame < 30; ++frame) {
+                    if (field_scene.advance_hotel_karma_screen_for_dump(0U) !=
+                        AttributesSkillsRuntimeEvent::no_change) {
+                        std::cerr << "field Hotel QA: Karma page left during idle frames\n";
+                        return 3;
+                    }
+                }
+                if (capture(output / "karma-spend" / "frame-30.bmp") !=
+                        karma_spend ||
+                    field_scene.hotel_animation_frames() !=
+                        parent_animation_at_entry) {
+                    std::cerr << "field Hotel QA: Karma screen or suspended Hotel animation changed without input\n";
+                    return 3;
+                }
+                if (field_scene.advance_hotel_karma_screen_for_dump(0x4000U) !=
+                        AttributesSkillsRuntimeEvent::upgrade_prompt_opened ||
+                    !field_scene.hotel_karma_screen().upgrade_prompt_open() ||
+                    field_scene.active_runner_record().attributes !=
+                        hotel_record_before_upgrade.attributes ||
+                    field_scene.active_runner_record().auxiliary !=
+                        hotel_record_before_upgrade.auxiliary) {
+                    std::cerr << "field Hotel QA: A did not open the non-mutating default-Yes prompt\n";
+                    return 3;
+                }
+                const auto karma_prompt_yes = capture(
+                    output / "karma-spend" / "prompt-yes.bmp");
+                if (!image_region_has_color(karma_prompt_yes, 96, 168,
+                                            120, 32,
+                                            QColor(109, 73, 146))) {
+                    std::cerr << "field Hotel QA: prompt text or choices are missing\n";
+                    return 3;
+                }
+                if (field_scene.advance_hotel_karma_screen_for_dump(0x0200U) !=
+                        AttributesSkillsRuntimeEvent::upgrade_prompt_moved ||
+                    field_scene.hotel_karma_screen()
+                            .upgrade_prompt_selection() != 1U ||
+                    field_scene.advance_hotel_karma_screen_for_dump(0x1000U) !=
+                        AttributesSkillsRuntimeEvent::upgrade_declined ||
+                    field_scene.active_runner_record().attributes !=
+                        hotel_record_before_upgrade.attributes ||
+                    field_scene.active_runner_record().auxiliary !=
+                        hotel_record_before_upgrade.auxiliary) {
+                    std::cerr << "field Hotel QA: No mutated the runner or failed to move the choice cursor\n";
+                    return 3;
+                }
+                if (field_scene.advance_hotel_karma_screen_for_dump(0x4000U) !=
+                        AttributesSkillsRuntimeEvent::upgrade_prompt_opened ||
+                    field_scene.advance_hotel_karma_screen_for_dump(0x4000U) !=
+                        AttributesSkillsRuntimeEvent::upgrade_applied ||
+                    field_scene.active_runner_record().attributes[0U] != 2U ||
+                    field_scene.active_runner_record().auxiliary[2U] != 48U ||
+                    capture(output / "karma-spend" / "upgrade-applied.bmp")
+                        .isNull()) {
+                    std::cerr << "field Hotel QA: Yes did not spend Karma and increase Body\n";
+                    return 3;
+                }
+                if (field_scene.advance_hotel_karma_screen_for_dump(0x8000U) !=
+                        AttributesSkillsRuntimeEvent::returned_to_parent ||
+                    field_scene.hotel_karma_screen_open() ||
+                    !field_scene.hotel_menu_open() ||
+                    field_scene.hotel_option_selection() != 0U) {
+                    std::cerr << "field Hotel QA: Start did not return to Hotel Options\n";
+                    return 3;
+                }
+                const auto karma_return = capture(
+                    output / "karma-spend" / "return-options.bmp");
+                if (!image_has_green_ink(karma_return, 88, 72, 160, 8) ||
+                    image_has_green_ink(karma_return, 24, 56, 48, 8) ||
+                    !field_audio_events.empty()) {
+                    std::cerr << "field Hotel QA: Hotel Options redraw retained Attributes/Skills pixels\n";
+                    return 3;
+                }
+                const auto options_after_karma = capture(
+                    output / "options-after-karma" / "actual.bmp");
+                const auto option_frames_after_karma =
+                    field_scene.hotel_animation_frames();
                 for (int frame = 0; frame < 30; ++frame) {
                     if (field_scene.advance_hotel_menu_for_dump(0U) !=
                         HotelMenuEvent::waiting) {
@@ -3438,10 +3558,13 @@ int main(int argc, char** argv) {
                 const auto options_frame_30 = capture(
                     output / "options-frame-30" / "actual.bmp");
                 if (options_frame_30.isNull() ||
-                    field_scene.hotel_animation_frames() != 30U ||
-                    image_region_differs(options_default, options_frame_30,
+                    field_scene.hotel_animation_frames() !=
+                        option_frames_after_karma + 30U ||
+                    image_region_differs(options_after_karma,
+                                         options_frame_30,
                                          24, 24, 224, 168) ||
-                    !image_region_differs(options_default, options_frame_30,
+                    !image_region_differs(options_after_karma,
+                                          options_frame_30,
                                           24, 192, 224, 32)) {
                     std::cerr << "field Hotel QA: E660 should animate the lower grid once per options wait frame\n";
                     return 3;
@@ -4966,16 +5089,11 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 const auto command_scene = capture_field_scene();
-                // 0xD01C replaces the base frame with the Attributes/Skills
-                // composition, so the shell invariant compares against that
-                // replacement instead of the ordinary command background.
-                const auto shell_reference =
-                    field_command_page.has_value() &&
-                            *field_command_page == 3U
-                        ? std::string("attributes-background.bmp")
-                        : std::string("background.bmp");
-                if (!field_command_shell_survives(command_scene, asset_root,
-                                                  shell_reference)) {
+                // Focusing the Attributes/Skills command row must leave the
+                // shared command shell intact. ROM 0xD01C is entered only by
+                // the following A action.
+                if (!field_command_shell_survives(
+                        command_scene, asset_root, "background.bmp")) {
                     std::cerr << "field command dump: source command shell "
                                  "was not preserved around the overlays\n";
                     return 3;
@@ -5068,6 +5186,243 @@ int main(int argc, char** argv) {
                                                    .source_state.primary_page)
                           << " static_frames=30 clean_return=1"
                           << "\n";
+                return 0;
+            }
+            if (field_attributes_skills_dump_path.has_value()) {
+                std::filesystem::create_directories(
+                    *field_attributes_skills_dump_path);
+                const auto capture_scene = [&field_scene] {
+                    QImage scene(kSceneWidth, kSceneHeight,
+                                 QImage::Format_RGB32);
+                    scene.fill(Qt::black);
+                    QPainter painter(&scene);
+                    field_scene.paint(painter);
+                    painter.end();
+                    return scene;
+                };
+                const auto save_scene = [&](const std::string_view name,
+                                            const QImage& scene) {
+                    const auto path = *field_attributes_skills_dump_path /
+                                      (std::string(name) + ".bmp");
+                    if (!scene.save(QString::fromStdWString(path.wstring()))) {
+                        std::cerr << "field Attributes/Skills dump: could "
+                                     "not write "
+                                  << path.string() << '\n';
+                        return false;
+                    }
+                    return true;
+                };
+                const auto press = [&](const std::uint8_t port_byte) {
+                    field_scene.set_controller_port_byte(port_byte);
+                    field_scene.advance_frame();
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                };
+
+                // Give the diagnostic runner a known valid Body increase so
+                // the same fixture can exercise both prompt choices. Seed it
+                // before command entry so derived combat bars agree too.
+                field_scene.active_runner_record().attributes[0U] = 1U;
+                field_scene.active_runner_record().auxiliary[2U] = 50U;
+                if (!field_scene.open_command_overview_for_dump() ||
+                    field_scene.command_overview_view().source_state
+                            .primary_page != 6U) {
+                    std::cerr << "field Attributes/Skills dump: command "
+                                 "shell did not initialize on page 6\n";
+                    return 3;
+                }
+                const auto page_six_scene = capture_scene();
+                if (!save_scene("initial-command-page6", page_six_scene)) {
+                    std::cerr << "field Attributes/Skills dump: could not "
+                                 "write initial page-6 image\n";
+                    return 3;
+                }
+                if (!field_scene.seek_command_overview_page(3U) ||
+                    field_scene.attributes_skills_menu_open() ||
+                    field_scene.command_overview_view().source_state
+                            .primary_page != 3U) {
+                    std::cerr << "field Attributes/Skills dump: focusing "
+                                 "row 3 opened the page or lost the shell\n";
+                    return 3;
+                }
+                const auto focused_scene = capture_scene();
+                if (!field_command_shell_survives(
+                        focused_scene, asset_root, "background.bmp") ||
+                    !field_hud_chrome_survives(focused_scene, asset_root) ||
+                    !field_hud_face_family_survives(
+                        focused_scene, asset_root, field_archetype) ||
+                    !save_scene("focused-command-row3", focused_scene)) {
+                    std::cerr << "field Attributes/Skills dump: focus did "
+                                 "not retain the command shell and HUD\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 30; ++frame) {
+                    field_scene.advance_frame();
+                }
+                if (capture_scene() != focused_scene) {
+                    std::cerr << "field Attributes/Skills dump: focused "
+                                 "command row changed without input\n";
+                    return 3;
+                }
+
+                field_audio_events.clear();
+                press(0x40U);
+                if (!field_scene.attributes_skills_menu_open() ||
+                    field_scene.attributes_skills_menu()
+                        .allows_karma_upgrades() ||
+                    field_scene.attributes_skills_menu()
+                        .state().selection_data_available ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x24U}) {
+                    std::cerr << "field Attributes/Skills dump: A did not "
+                                 "open the read-only page with the source "
+                                 "action sound event 0x24\n";
+                    return 3;
+                }
+                field_audio_events.clear();
+                const QImage attributes_background(QString::fromStdWString(
+                    (asset_root / "menu" / "field" /
+                     "attributes-background.bmp")
+                        .wstring()));
+                const auto initial_scene = capture_scene();
+                const auto actual_saved = save_scene("actual", initial_scene);
+                bool background_region_matches =
+                    attributes_background.size() ==
+                    QSize(kSceneWidth, kSceneHeight);
+                for (int y = 0; background_region_matches && y < 16; ++y) {
+                    for (int x = 0; x < kSceneWidth; ++x) {
+                        if (initial_scene.pixelColor(x, y) !=
+                            attributes_background.pixelColor(x, y)) {
+                            background_region_matches = false;
+                            break;
+                        }
+                    }
+                }
+                if (!background_region_matches || !actual_saved ||
+                    image_region_differs(initial_scene,
+                                         attributes_background,
+                                         48, 192, 272, 32)) {
+                    std::cerr << "field Attributes/Skills dump: full-screen "
+                                 "read-only view or lower upgrade area was "
+                                 "not drawn cleanly "
+                                 "(asset=" << attributes_background.width()
+                              << 'x' << attributes_background.height()
+                              << ", scene=" << initial_scene.width() << 'x'
+                              << initial_scene.height() << ", row_matches="
+                              << background_region_matches << ", saved="
+                              << actual_saved << ")\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 30; ++frame) {
+                    field_scene.advance_frame();
+                }
+                if (capture_scene() != initial_scene) {
+                    std::cerr << "field Attributes/Skills dump: static page "
+                                 "animated without a source timer\n";
+                    return 3;
+                }
+
+                const auto& initial_record =
+                    field_scene.active_runner_record();
+                const auto initial_record_copy = initial_record;
+                press(0x02U);
+                if (field_scene.attributes_skills_menu().state().cursor.row !=
+                        1U ||
+                    field_scene.active_runner_record().attributes !=
+                        initial_record_copy.attributes ||
+                    field_scene.active_runner_record().auxiliary !=
+                        initial_record_copy.auxiliary) {
+                    std::cerr << "field Attributes/Skills dump: Down did not "
+                                 "move only the selection\n";
+                    return 3;
+                }
+                const auto moved_scene = capture_scene();
+                if (moved_scene == initial_scene ||
+                    !save_scene("selection-moved", moved_scene)) {
+                    std::cerr << "field Attributes/Skills dump: selected "
+                                 "attribute did not redraw\n";
+                    return 3;
+                }
+                press(0x01U);
+                if (field_scene.attributes_skills_menu().state().cursor.row !=
+                    0U) {
+                    std::cerr << "field Attributes/Skills dump: Up did not "
+                                 "restore Body selection\n";
+                    return 3;
+                }
+
+                // A/B leave the command-menu view because ROM 0xD01C marks
+                // FFF116 negative. Neither action can spend Karma here.
+                const auto read_only_record =
+                    field_scene.active_runner_record();
+                press(0x40U);
+                const auto returned_scene = capture_scene();
+                const auto returned_scene_saved =
+                    save_scene("returned-command-page6", returned_scene);
+                const auto returned_page = field_scene
+                                               .command_overview_view()
+                                               .source_state.primary_page;
+                if (!field_scene.command_overview_open() ||
+                    field_scene.attributes_skills_menu_open() ||
+                    returned_page != 6U ||
+                    returned_scene != page_six_scene ||
+                    field_scene.active_runner_record().attributes !=
+                        read_only_record.attributes ||
+                    field_scene.active_runner_record().auxiliary !=
+                        read_only_record.auxiliary ||
+                    !field_audio_events.empty() ||
+                    !returned_scene_saved) {
+                    std::cerr << "field Attributes/Skills dump: A did "
+                                 "not restore a clean command shell (open="
+                              << field_scene.command_overview_open()
+                              << ", attributes="
+                              << field_scene.attributes_skills_menu_open()
+                              << ", page=" << static_cast<int>(returned_page)
+                              << ", pixels_match="
+                              << (returned_scene == page_six_scene)
+                              << ", saved=" << returned_scene_saved << ")\n";
+                    return 3;
+                }
+
+                // B enters the same menu action, then exits the view-only
+                // page without touching the active runner.
+                if (!field_scene.seek_command_overview_page(3U)) {
+                    std::cerr << "field Attributes/Skills dump: could not "
+                                 "reopen focused row 3\n";
+                    return 3;
+                }
+                field_audio_events.clear();
+                press(0x40U);
+                if (!field_scene.attributes_skills_menu_open() ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x24U}) {
+                    std::cerr << "field Attributes/Skills dump: second A "
+                                 "did not enter the page through the source "
+                                 "action sound\n";
+                    return 3;
+                }
+                field_audio_events.clear();
+                press(0x10U);
+                const auto b_return_scene = capture_scene();
+                if (field_scene.attributes_skills_menu_open() ||
+                    field_scene.command_overview_view().source_state
+                            .primary_page != 6U ||
+                    b_return_scene != page_six_scene ||
+                    field_scene.active_runner_record().attributes !=
+                        read_only_record.attributes ||
+                    field_scene.active_runner_record().auxiliary !=
+                        read_only_record.auxiliary ||
+                    !field_audio_events.empty() ||
+                    !save_scene("returned-command-page6-after-b",
+                                b_return_scene)) {
+                    std::cerr << "field Attributes/Skills dump: B did not "
+                                 "restore the read-only command view cleanly\n";
+                    return 3;
+                }
+                std::cout << "field_attributes_skills_dump=written path="
+                          << field_attributes_skills_dump_path->string()
+                          << " focus_no_open=1 read_only=1 selected_cell=1 "
+                             "a_b_return=1 clean_return=1 static_frames=30\n";
                 return 0;
             }
             if (field_cyberware_dump_path.has_value()) {

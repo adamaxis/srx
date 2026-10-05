@@ -1778,6 +1778,20 @@ void FieldSceneRuntime::begin_command_overview_magic() {
     source_boundary("field.command_overview.magic.magical_defense.opened");
 }
 
+void FieldSceneRuntime::begin_command_overview_attributes_skills() {
+    if (!command_overview_.open() ||
+        command_overview_.view().source_state.primary_page != 3U) {
+        source_boundary(
+            "field.command_overview.attributes_skills.invalid_route");
+        return;
+    }
+    command_overview_attributes_skills_.open(
+        active_runner_record(),
+        AttributesSkillsMenuMode::command_view_only);
+    source_boundary(
+        "field.command_overview.attributes_skills.opened");
+}
+
 void FieldSceneRuntime::begin_command_overview_magic_spell_action() {
     if (command_overview_magic_state_ !=
             CommandOverviewMagicState::spell_panel ||
@@ -2722,6 +2736,7 @@ bool FieldSceneRuntime::bootstrap(
     command_overview_.close();
     field_dialogue_.close();
     hotel_menu_.close();
+    hotel_karma_skills_.close_to_parent();
     field_mode_text_.close();
     field_interaction_.reset_session();
     field_party_roster_.clear();
@@ -3501,6 +3516,11 @@ void FieldSceneRuntime::advance_frame() {
             field_controller_latch_state_);
         ::shadowrun::ghidra_conversion::sample_controller_input(
             field_controller_sample_state_, field_controller_port_byte_);
+        if (hotel_karma_skills_.is_open()) {
+            (void)process_hotel_karma_screen_events(
+                field_controller_sample_state_.events);
+            return;
+        }
         hotel_menu_.advance_animation(field_random_seed_);
         (void)process_hotel_menu_events(
             field_controller_sample_state_.events);
@@ -3729,6 +3749,68 @@ void FieldSceneRuntime::advance_frame() {
             field_controller_latch_state_);
         ::shadowrun::ghidra_conversion::sample_controller_input(
             field_controller_sample_state_, field_controller_port_byte_);
+        if (command_overview_attributes_skills_.is_open()) {
+            const auto menu_event =
+                command_overview_attributes_skills_.advance(
+                    field_controller_sample_state_.events,
+                    active_runner_record(),
+                    [this] {
+                        handle_field_mode_action_event();
+                        refresh_field_hud_runner_slot();
+                        source_boundary(
+                            "field.command_overview.attributes_skills.runner_selected");
+                    });
+            switch (menu_event) {
+            case AttributesSkillsRuntimeEvent::no_change:
+                break;
+            case AttributesSkillsRuntimeEvent::selection_moved:
+                source_boundary(
+                    "field.command_overview.attributes_skills.selection_moved");
+                break;
+            case AttributesSkillsRuntimeEvent::upgrade_prompt_opened:
+                source_boundary(
+                    "field.command_overview.attributes_skills.upgrade_prompt_opened");
+                break;
+            case AttributesSkillsRuntimeEvent::upgrade_prompt_moved:
+                source_boundary(
+                    "field.command_overview.attributes_skills.upgrade_prompt_moved");
+                break;
+            case AttributesSkillsRuntimeEvent::upgrade_applied:
+                refresh_command_overview_combat_bars();
+                source_boundary(
+                    "field.command_overview.attributes_skills.upgrade_applied");
+                break;
+            case AttributesSkillsRuntimeEvent::upgrade_declined:
+                source_boundary(
+                    "field.command_overview.attributes_skills.upgrade_declined");
+                break;
+            case AttributesSkillsRuntimeEvent::upgrade_blocked:
+                source_boundary(
+                    "field.command_overview.attributes_skills.upgrade_blocked");
+                break;
+            case AttributesSkillsRuntimeEvent::insufficient_karma:
+                source_boundary(
+                    "field.command_overview.attributes_skills.insufficient_karma");
+                break;
+            case AttributesSkillsRuntimeEvent::
+                active_runner_selection_requested:
+                command_overview_attributes_skills_.refresh(
+                    active_runner_record());
+                refresh_command_overview_combat_bars();
+                break;
+            case AttributesSkillsRuntimeEvent::returned_to_parent:
+                command_overview_attributes_skills_.close_to_parent();
+                // ROM 0x10E74 routes the Attributes return back through the
+                // 0x10D30 command initializer. Rebuild every shared panel and
+                // row here so partial page pixels cannot survive the return.
+                command_overview_.close();
+                open_command_overview();
+                source_boundary(
+                    "field.command_overview.attributes_skills.returned_to_command");
+                break;
+            }
+            return;
+        }
         if (command_overview_clips_.is_open()) {
             advance_command_overview_clips(
                 field_controller_sample_state_.events);
@@ -4051,10 +4133,10 @@ void FieldSceneRuntime::advance_frame() {
             } else if (command_overview_.view().source_state.primary_page ==
                        5U) {
                 begin_command_overview_magic();
+            } else if (command_overview_.view().source_state.primary_page ==
+                       3U) {
+                begin_command_overview_attributes_skills();
             } else {
-                // The converted command bridge has identified the remaining
-                // action route, but Attributes/Skills still needs a native
-                // action target.
                 source_boundary(
                     "field.command_overview.non_inventory_action_pending");
             }
@@ -4095,6 +4177,19 @@ bool FieldSceneRuntime::open_command_overview_for_dump() {
     set_controller_port_byte(static_cast<std::uint8_t>(
         field_controller_port_byte_ & static_cast<std::uint8_t>(~0x80U)));
     return command_overview_.open();
+}
+
+bool FieldSceneRuntime::open_attributes_skills_for_dump() {
+    if (!open_command_overview_for_dump() ||
+        !seek_command_overview_page(3U)) {
+        return false;
+    }
+    // Exercise the same command-row A dispatch as the focused Qt window.
+    set_controller_port_byte(0x40U);
+    advance_frame();
+    set_controller_port_byte(0U);
+    advance_frame();
+    return command_overview_attributes_skills_.is_open();
 }
 
 bool FieldSceneRuntime::open_stoker_room_payment_for_dump(
@@ -4181,8 +4276,11 @@ HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
         refresh_field_hud_runner_slot();
         source_boundary("field.hotel.checked_out");
         break;
-    case HotelMenuEvent::karma_screen_boundary:
-        source_boundary("field.hotel.karma_screen_unresolved");
+    case HotelMenuEvent::karma_screen_opened:
+        hotel_karma_skills_.open(
+            active_runner_record(),
+            AttributesSkillsMenuMode::hotel_karma_upgrade);
+        source_boundary("field.hotel.karma_screen.opened");
         break;
     case HotelMenuEvent::mode_action:
         handle_field_mode_action_event();
@@ -4197,8 +4295,66 @@ HotelMenuEvent FieldSceneRuntime::advance_hotel_menu_for_dump(
     if (!hotel_menu_.open()) {
         return HotelMenuEvent::waiting;
     }
+    if (hotel_karma_skills_.is_open()) {
+        (void)process_hotel_karma_screen_events(events);
+        return HotelMenuEvent::waiting;
+    }
     hotel_menu_.advance_animation(field_random_seed_);
     return process_hotel_menu_events(events);
+}
+
+AttributesSkillsRuntimeEvent
+FieldSceneRuntime::advance_hotel_karma_screen_for_dump(
+    const std::uint16_t events) {
+    if (!hotel_menu_.open() || !hotel_karma_skills_.is_open()) {
+        return AttributesSkillsRuntimeEvent::no_change;
+    }
+    return process_hotel_karma_screen_events(events);
+}
+
+AttributesSkillsRuntimeEvent
+FieldSceneRuntime::process_hotel_karma_screen_events(
+    const std::uint16_t events) {
+    const auto result = hotel_karma_skills_.advance(
+        events, active_runner_record(), [this] {
+            handle_field_mode_action_event();
+            refresh_field_hud_runner_slot();
+            source_boundary("field.hotel.karma_screen.runner_selected");
+        });
+    switch (result) {
+    case AttributesSkillsRuntimeEvent::no_change:
+        break;
+    case AttributesSkillsRuntimeEvent::selection_moved:
+        source_boundary("field.hotel.karma_screen.selection_moved");
+        break;
+    case AttributesSkillsRuntimeEvent::upgrade_prompt_opened:
+        source_boundary("field.hotel.karma_screen.upgrade_prompt_opened");
+        break;
+    case AttributesSkillsRuntimeEvent::upgrade_prompt_moved:
+        source_boundary("field.hotel.karma_screen.upgrade_prompt_moved");
+        break;
+    case AttributesSkillsRuntimeEvent::upgrade_applied:
+        source_boundary("field.hotel.karma_screen.upgrade_applied");
+        break;
+    case AttributesSkillsRuntimeEvent::upgrade_declined:
+        source_boundary("field.hotel.karma_screen.upgrade_declined");
+        break;
+    case AttributesSkillsRuntimeEvent::upgrade_blocked:
+        source_boundary("field.hotel.karma_screen.upgrade_blocked");
+        break;
+    case AttributesSkillsRuntimeEvent::insufficient_karma:
+        source_boundary("field.hotel.karma_screen.insufficient_karma");
+        break;
+    case AttributesSkillsRuntimeEvent::
+        active_runner_selection_requested:
+        hotel_karma_skills_.refresh(active_runner_record());
+        break;
+    case AttributesSkillsRuntimeEvent::returned_to_parent:
+        hotel_karma_skills_.close_to_parent();
+        source_boundary("field.hotel.karma_screen.returned_to_options");
+        break;
+    }
+    return result;
 }
 
 bool FieldSceneRuntime::begin_ares_shop_event_for_dump() {
@@ -4886,6 +5042,150 @@ void FieldSceneRuntime::paint_command_overview_clips(
     }
 }
 
+void FieldSceneRuntime::paint_attributes_skills_menu(
+    QPainter& painter, const AttributesSkillsMenuRuntime& menu) const {
+    // ROM 0xD01C clears both planes and installs the command-menu view. The
+    // Hotel option enters the shared page body at 0xD024, where the upgrade
+    // detail fields are enabled by the live selection-data state.
+    // Paint it as the page's base so no command buttons or stale field HUD
+    // pixels can remain underneath the new menu.
+    painter.drawImage(0, 0, command_overview_attributes_background_);
+
+    const auto& record = active_runner_record();
+    const auto slot = field_party_roster_.active_slot();
+    const auto runner_name = field_party_roster_.name(slot).empty()
+                                 ? field_menu_text_.runner_names[0]
+                                 : field_party_roster_.name(slot);
+    draw_command_overview_text(painter, 80, 24, runner_name);
+    if (record.species_index < field_menu_text_.race_names.size()) {
+        draw_command_overview_text(
+            painter, 80, 32,
+            field_menu_text_.race_names[record.species_index]);
+    }
+    if (record.archetype_index < field_menu_text_.class_names.size()) {
+        draw_command_overview_text(
+            painter, 128, 32,
+            field_menu_text_.class_names[record.archetype_index]);
+    }
+    // The source calls 0x110EC with VDP destination E132. That is the same
+    // runner panel family used at E104 on the command page, shifted to x=200.
+    if (slot < field_hud_faces_.size() &&
+        !field_hud_faces_[slot].isNull()) {
+        painter.drawImage(200, 16, field_hud_faces_[slot]);
+    }
+
+    const auto grid = menu.grid(record);
+    const auto cursor = menu.state().cursor;
+    for (std::size_t column = 0; column < kAttributesSkillsColumnCount;
+         ++column) {
+        for (std::size_t row = 0; row < kAttributesSkillsRowCount; ++row) {
+            const auto& cell = grid[column][row];
+            if (cell.label_index >=
+                field_menu_text_.attribute_skill_labels.size()) {
+                continue;
+            }
+            const auto x = column == 0U ? 24 : 176;
+            const auto y = row < 4U
+                               ? 56 + static_cast<int>(row) * 8
+                               : 104 + static_cast<int>(row - 4U) * 8;
+            if (cursor.column == column && cursor.row == row) {
+                draw_hotel_menu_text(
+                    painter, x, y,
+                    field_menu_text_.attribute_skill_labels[cell.label_index],
+                    HotelMenuPaletteLine::checkout);
+                draw_hotel_menu_text(
+                    painter, column == 0U ? 136 : 280, y,
+                    std::to_string(cell.value),
+                    HotelMenuPaletteLine::checkout);
+            } else {
+                draw_command_overview_text(
+                    painter, x, y,
+                    field_menu_text_.attribute_skill_labels[cell.label_index]);
+                draw_command_overview_text(
+                    painter, column == 0U ? 136 : 280, y,
+                    std::to_string(cell.value));
+            }
+        }
+    }
+    draw_command_overview_text(
+        painter, 120, 160,
+        std::to_string(static_cast<unsigned>(record.auxiliary[2U])));
+
+    const auto& menu_state = menu.state();
+    const auto& selected = selected_attribute_skill_cell(
+        grid, menu_state.cursor);
+    if (selected.label_index <
+        field_menu_text_.attribute_skill_labels.size()) {
+        draw_hotel_menu_text(
+            painter, 24, 168,
+            field_menu_text_.attribute_skill_labels[selected.label_index],
+            HotelMenuPaletteLine::checkout);
+    }
+
+    if (menu.allows_karma_upgrades()) {
+        const auto upgrade = menu.preview(record);
+        if (upgrade.status == AttributeSkillUpgradeStatus::available) {
+            draw_hotel_menu_text(
+                painter, 64, 200,
+                field_menu_text_.attributes_upgrade_header,
+                HotelMenuPaletteLine::checkout);
+            draw_hotel_menu_text(
+                painter, 160, 200,
+                std::to_string(static_cast<unsigned>(upgrade.next_value)),
+                HotelMenuPaletteLine::checkout);
+            draw_hotel_menu_text(
+                painter, 248, 200,
+                std::to_string(static_cast<unsigned>(upgrade.karma_cost)),
+                HotelMenuPaletteLine::checkout);
+        }
+    }
+
+    switch (menu.allows_karma_upgrades()
+                ? menu.message()
+                : AttributesSkillsMenuMessage::none) {
+    case AttributesSkillsMenuMessage::none:
+        break;
+    case AttributesSkillsMenuMessage::maximum_level:
+        draw_hotel_menu_text(
+            painter, 48, 200,
+            field_menu_text_.attributes_upgrade_maximum_level_message,
+            HotelMenuPaletteLine::checkout);
+        break;
+    case AttributesSkillsMenuMessage::mage_only_skill:
+        draw_hotel_menu_text(
+            painter, 72, 176,
+            field_menu_text_.attributes_upgrade_mage_only_message,
+            HotelMenuPaletteLine::checkout);
+        break;
+    case AttributesSkillsMenuMessage::insufficient_karma:
+        draw_hotel_menu_text(
+            painter, 72, 176,
+            field_menu_text_.attributes_upgrade_insufficient_karma_message,
+            HotelMenuPaletteLine::checkout);
+        break;
+    }
+
+    if (menu.allows_karma_upgrades() && menu.upgrade_prompt_open()) {
+        // D53C writes its choice text at CAb2 and the cursor at CAAE.
+        // Keep the existing Attributes/Skills detail beneath this nested
+        // prompt, matching the source's partial redraw of the lower panel.
+        draw_hotel_menu_text(
+            painter, 96, 176, field_menu_text_.attributes_upgrade_prompt,
+            HotelMenuPaletteLine::checkout);
+        draw_hotel_menu_text(
+            painter, 200, 168, field_menu_text_.hotel_checkout_options[0],
+            HotelMenuPaletteLine::checkout);
+        draw_hotel_menu_text(
+            painter, 200, 184, field_menu_text_.hotel_checkout_options[2],
+            HotelMenuPaletteLine::checkout);
+        const auto cursor_y =
+            menu.upgrade_prompt_selection() == 0U
+                ? 168
+                : 184;
+        painter.drawImage(184, cursor_y, hotel_checkout_cursor_);
+    }
+}
+
 void FieldSceneRuntime::paint_command_overview_magic(
     QPainter& painter) const {
     // FBA6 clears Plane A before installing this 34x28 layer. The command
@@ -5041,6 +5341,11 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         // Transparent cells expose the cleared/black underlay; the HUD plane
         // remains a separate pass in paint().
         paint_command_overview_magic(painter);
+        return;
+    }
+    if (command_overview_attributes_skills_.is_open()) {
+        paint_attributes_skills_menu(
+            painter, command_overview_attributes_skills_);
         return;
     }
     if (command_overview_cyberware_active_) {
@@ -5314,45 +5619,6 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     }
 
     painter.drawImage(0, 0, command_overview_background_);
-    if (command_overview_.view().source_state.primary_page == 3U) {
-        // 0xD01C draws the Attributes/Skills frame over the base command
-        // screen. Its 0xC1A2A label table is stamped in four blocks:
-        // words 0xC386/0xC3AC (rows 7+0..3) and 0xC686/0xC6AC (rows
-        // 13+0..5) of the 64-column plane, i.e. screen columns 24 and
-        // 176 with an eight-pixel row gap at y88-96.
-        painter.drawImage(0, 0, command_overview_attributes_background_);
-        const auto place = [](const std::size_t label_index) {
-            std::array<int, 2> result{};
-            if (label_index < 4U) {
-                return std::array<int, 2>{24, 56 + static_cast<int>(
-                                                      label_index) * 8};
-            }
-            if (label_index < 8U) {
-                return std::array<int, 2>{
-                    176, 56 + static_cast<int>(label_index - 4U) * 8};
-            }
-            if (label_index < 14U) {
-                return std::array<int, 2>{
-                    24, 104 + static_cast<int>(label_index - 8U) * 8};
-            }
-            return std::array<int, 2>{
-                176, 104 + static_cast<int>(label_index - 14U) * 8};
-        };
-        for (std::size_t index = 0;
-             index < field_menu_text_.attribute_skill_labels.size();
-             ++index) {
-            if (field_menu_text_.attribute_skill_labels[index].empty()) {
-                continue;
-            }
-            const auto position = place(index);
-            draw_command_overview_text(
-                painter, position[0], position[1],
-                field_menu_text_.attribute_skill_labels[index]);
-        }
-        // Attribute/skill values and the 0xD27C cursor navigation remain
-        // on the visual audit ledger.
-        return;
-    }
     painter.drawImage(0, 0, command_overview_inventory_boxes_);
 
     // ROM 0x110BC writes the active runner's 8x10 portrait at E104, which is
@@ -5896,6 +6162,10 @@ void FieldSceneRuntime::paint(QPainter& painter) const {
         field_interaction_.paint(painter);
         return;
     }
+    if (hotel_karma_skills_.is_open()) {
+        paint_attributes_skills_menu(painter, hotel_karma_skills_);
+        return;
+    }
     if (hotel_menu_.open()) {
         hotel_menu_.paint(
             painter, pocket_secretary_grid_, hotel_options_cursor_,
@@ -5922,6 +6192,9 @@ void FieldSceneRuntime::paint(QPainter& painter) const {
     }
     if (command_overview_.open()) {
         paint_command_overview(painter);
+        if (command_overview_attributes_skills_.is_open()) {
+            return;
+        }
         // The field command loop updates its menu plane without replacing
         // the field's right-hand HUD plane. Preserve the current runner face,
         // item, and counters above the command panel. Pocket Secretary is a

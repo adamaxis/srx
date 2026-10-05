@@ -86,6 +86,11 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::array<bool, kFieldMenuRunnerNameCount> runner_found{};
     std::array<bool, kFieldMenuStatusNameCount> status_found{};
     std::array<bool, kAttributeSkillLabelCount> attribute_skill_found{};
+    bool attributes_upgrade_header_found = false;
+    bool attributes_upgrade_maximum_level_found = false;
+    bool attributes_upgrade_mage_only_found = false;
+    bool attributes_upgrade_insufficient_karma_found = false;
+    bool attributes_upgrade_prompt_found = false;
     std::array<bool, kCyberwareTitleLineCount> cyberware_title_found{};
     std::array<bool, kCyberwareEntryCount> cyberware_entry_found{};
     std::array<bool, kMagicSpellTextCount> magic_spell_name_found{};
@@ -496,6 +501,21 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                         action_choice_no_found) ||
             parse_named("action.choice-yes", result.catalog.action_choice_yes,
                         action_choice_yes_found) ||
+            parse_named("attributes.upgrade.header",
+                        result.catalog.attributes_upgrade_header,
+                        attributes_upgrade_header_found) ||
+            parse_named("attributes.upgrade.maximum-level",
+                        result.catalog.attributes_upgrade_maximum_level_message,
+                        attributes_upgrade_maximum_level_found) ||
+            parse_named("attributes.upgrade.mage-only",
+                        result.catalog.attributes_upgrade_mage_only_message,
+                        attributes_upgrade_mage_only_found) ||
+            parse_named("attributes.upgrade.insufficient-karma",
+                        result.catalog.attributes_upgrade_insufficient_karma_message,
+                        attributes_upgrade_insufficient_karma_found) ||
+            parse_named("attributes.upgrade.prompt",
+                        result.catalog.attributes_upgrade_prompt,
+                        attributes_upgrade_prompt_found) ||
             parse_named("shop.transaction-prompt",
                         result.catalog.shop_transaction_prompt,
                         shop_transaction_prompt_found) ||
@@ -949,6 +969,16 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     require_named("action.cannot-trade", action_cannot_trade_found);
     require_named("action.choice-no", action_choice_no_found);
     require_named("action.choice-yes", action_choice_yes_found);
+    require_named("attributes.upgrade.header",
+                  attributes_upgrade_header_found);
+    require_named("attributes.upgrade.maximum-level",
+                  attributes_upgrade_maximum_level_found);
+    require_named("attributes.upgrade.mage-only",
+                  attributes_upgrade_mage_only_found);
+    require_named("attributes.upgrade.insufficient-karma",
+                  attributes_upgrade_insufficient_karma_found);
+    require_named("attributes.upgrade.prompt",
+                  attributes_upgrade_prompt_found);
     require_named("shop.transaction-prompt", shop_transaction_prompt_found);
     require_named("shop.no-inventory-slot", shop_no_inventory_slot_found);
     require_named("shop.insufficient-funds", shop_insufficient_funds_found);

@@ -38,7 +38,7 @@ enum class HotelMenuEvent {
     checkout_opened,
     stayed_at_hotel,
     checked_out,
-    karma_screen_boundary,
+    karma_screen_opened,
     mode_action,
 };
 

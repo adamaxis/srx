@@ -137,7 +137,7 @@ and Right wrap the seven selector values:
 | 0 | Inventory | left inventory column; row 0..3 |
 | 1 | Inventory | right inventory column; row 0..3 |
 | 2 | Clips | opens the clips loop |
-| 3 | Attributes/Skills | opens the display loop |
+| 3 | Attributes/Skills | A opens the view-only Attributes/Skills page; A/B leave it |
 | 4 | Cyberware | opens the display loop |
 | 5 | Magic | source magic handler |
 | 6 | Pocket Secretary | source pocket-secretary handler |
@@ -290,22 +290,29 @@ ammunition to the extracted item capacity, and emits the source
 recruited-recipient trade presentation and an independent visual golden
 remain open.
 
-### Attributes/Skills (`0xD01C`)
+### Attributes/Skills view and Hotel Karma upgrades (`0xD01C`, `0xD024`)
 
-This is a two-column attribute/skill view over the active record, but it is
-also a real Karma upgrade screen. The cursor selects one of eight attributes
-or twelve skills. A valid selection computes a next value and source cost;
-the confirmation branch writes the selected record byte and consumes the
-record's available Karma at `+0x8D`.
+These are separate routes with different input permissions. Command selector 3
+dispatches to `0xD01C`, which sets `FFF116=-1` before drawing the
+Attributes/Skills page. `0xD33A` then sends A or B to the field-return path;
+the page is view-only. Hotel option 0 points to `0xD024`, inside the same ROM
+page body but past the `FFF116=-1` assignment. With live selection data, it
+draws the upgrade preview and accepts the Karma-spending flow through
+`0xD3EA`/`0xD53C`.
 
-Native conversion status: source names, values, auxiliary bytes, two-column
-navigation, species limits, class gating, cost formulas, confirmation, and
-record mutation are implemented in `attributes_skills_menu_conversion`.
-Presentation text and the surrounding VDP callbacks remain separate. The
-species limit rows are the five six-byte records at `0xC22A6`; attributes 6
-and 7 are display-only in the upgrade path. The skill branch retains the
-source distinction between 2x costs and the left-column middle-skill 1.5x
-cost path, including its linked-skill zero-value dependency.
+The native runtime keeps these entry routes distinct: the command-menu view
+cannot mutate the runner, while the Hotel child page displays next-value/cost
+details, confirms Yes/No, updates the selected record byte and Karma at
+`+0x8D`, and returns to Hotel Options. Both use the source two-column,
+ten-row grid and selection highlighting. The five six-byte species-limit
+records are at `0xC22A6`; attributes 6 and 7 cannot be upgraded. The skill
+branch preserves the source 2x and left-column middle-skill 1.5x costs,
+including its linked-skill zero-value dependency.
+
+Debug QA covers the read-only command route and the Hotel spend/decline/return
+route with multi-frame dumps. The supplied longplay has no matching frames for
+either Attributes/Skills page, so the dumps check source-driven state and
+redraw behavior but do not establish independent Genesis visual fidelity.
 
 ### Cyberware (`0x11950`)
 
@@ -326,7 +333,7 @@ at `0xD2A0A` routes the five non-inventory commands as follows:
 | selector | source label | handler | current boundary |
 | ---: | --- | ---: | --- |
 | 2 | Clips | `0x11B58` | native selector, ammunition gate, and return path |
-| 3 | Attributes/Skills | `0xD01C` | native read-only two-column view |
+| 3 | Attributes/Skills | `0xD01C` | native read-only two-column view; A/B/Start return to the command shell |
 | 4 | Cyberware | `0x11950` | native installed-bit display |
 | 5 | Magic | `0xFBA6` | page-5 A opens the typed Magical Defense fallback for the source class/resource gates that select it; spell-panel cursor/force, target/effect, and result remain |
 | 6 | Pocket Secretary | `0xC2A6` | five/six-entry cursor loop, source-priority wrapping, handler/mode-action dispatch, and exit masks converted; handler table and presentation remain |
@@ -461,7 +468,8 @@ of a port.
 | Equipment action | `0x11740`..`0x118C6`, `0x12148`, `0x12168`..`0x125F8`, `0x12634`..`0x129FE` | Partial | Two-step source action loop, Equip/Unequip, armor, Discard, and typed Trade recipient/transfer routes are present; First Aid is separately connected through active-target/CANCEL, source A-confirm, effect, result wait, and inventory return; recipient HUD projection, independent Trade capture, utility playback, and later item handlers remain |
 | Posture and bars | `0x119CE`, `0x11ABE`, `0x11AE4`, `0x12CEE` | Partial | Normal equipped-item attack/defense calculation is source-derived; special negative `+0x56` path and combat consumers are pending |
 | Clips | `0x11B58`, `0x11CCA`, `0x11D86`, `0x11DD2`, `0x11E7E`, `0x11FDE`, `0x12014`, `0x12062`, `0x1209A`, `0x120E4`, `0x36FC` | Partial | Source top-level/nested selectors, typed Joshua/save roster projection, +0x58 selected-runner names, ammo gates, Reload confirmation/consumption/clamp, recipient filtering/cycling, quantity wrap, clip transfer, completion message, and Distribute average are present; loaded-save field composition and final panel art remain |
-| Attributes/skills | `0xD01C` | Partial | Source grid, cursor, species limits, Karma costs, class gate, confirmation, and record mutation are converted; presentation callbacks remain |
+| Attributes/skills view | `0xD01C` | Implemented | Command-menu route is view-only: FFF116 sentinel, live values, selector, A/B/Start return, full redraw, and no runner mutation are covered by the Qt QA |
+| Hotel Karma upgrades | `0xD024` via `0xCF38` | Implemented | Hotel option opens the spend-enabled child route; source cost/limits, Yes/No mutation, Karma change, child/parent redraw, and Hotel return are covered by Qt QA |
 | Cyberware | `0x11950` | Partial | Empty branch and source bit 0..14 installed-row scan are converted; text/input service and mutation flows remain |
 | Runner switching | `0x391A` | Partial | Source type-2 wrap, eligibility/suppression gate, and no-eligible no-install behavior are converted; recruited roster data and native integration remain |
 | Pocket Secretary / Notebook | `0xC2A6`, `0xC3E6`, `0xC376`, `0xC8C8`, `0xF236`, `0xF2E2`, `0xF33E`, `0xF312`, `0x18150`, `0xC448` | Partial | Qt connects the source five-row base, Group Items empty/populated branches, Cyberdeck no-deck response, Notebook base list, and Current Run no-run wait/return. The Notebook dump checks ROM-derived coordinates and verifies replacement text clears prior rows. The Dismiss route checks fixed Abort/name placement, compact-marker state, selected-runner preview, current-runner replacement, and full inner-panel replacement on return. F312/C448 call E660 once per VBlank; Qt draws the typed random 1x2 effect in twelve lower-bezel positions and QA checks that it does not overlap child text or controls. Normal quest acquisition and restored-save FFFC22, Contacts/Shadowrunners detail handlers, Mr. Johnsons, Save/Load, deck-present Matrix, restricted-mode gates, measured Qt output for event 0x25, and independent Pocket Secretary Genesis frames remain open. Existing NativePort menu paths do not count as Qt implementation evidence. |

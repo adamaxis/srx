@@ -152,6 +152,11 @@ attribute.skill.16	Biotech
 attribute.skill.17	Electronics
 attribute.skill.18	Reputation
 attribute.skill.19	Negotiation
+attributes.upgrade.header	Upgrade to       Cost
+attributes.upgrade.maximum-level	You are at the maximum level.
+attributes.upgrade.mage-only	This skill is for mages
+attributes.upgrade.insufficient-karma	You do not have enough
+attributes.upgrade.prompt	Upgrade?
 cyberware.title.0	" CYBERWARE"
 cyberware.title.1	[\\\\\\\\\\
 cyberware.empty	NONE

@@ -96,6 +96,11 @@ struct FieldMenuTextCatalog {
     // the Attributes/Skills command page.
     std::array<std::string, kAttributeSkillLabelCount>
         attribute_skill_labels{};
+    std::string attributes_upgrade_header;
+    std::string attributes_upgrade_maximum_level_message;
+    std::string attributes_upgrade_mage_only_message;
+    std::string attributes_upgrade_insufficient_karma_message;
+    std::string attributes_upgrade_prompt;
     std::array<std::string, kCyberwareTitleLineCount>
         cyberware_title_lines{};
     std::string cyberware_empty_message;

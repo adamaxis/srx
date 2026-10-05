@@ -197,7 +197,7 @@ HotelMenuEvent HotelMenuRuntime::advance_controller_events(
                 reset_page_effect();
                 return HotelMenuEvent::checkout_opened;
             }
-            return HotelMenuEvent::karma_screen_boundary;
+            return HotelMenuEvent::karma_screen_opened;
         }
         if (transition.action) {
             return HotelMenuEvent::mode_action;

@@ -399,6 +399,18 @@ struct GenesisHotelOptionsText {
 GenesisHotelOptionsText read_genesis_hotel_options_text(
     const std::vector<std::uint8_t>& rom);
 
+// ROM 0xD82A/0xD53C messages for the Attributes/Skills upgrade panel. These
+// source strings are extracted into menu/field/text.tsv for the host runtime.
+struct GenesisAttributesSkillsText {
+    std::string upgrade_header;
+    std::string maximum_level_message;
+    std::string mage_only_message;
+    std::string insufficient_karma_message;
+    std::string upgrade_prompt;
+};
+GenesisAttributesSkillsText read_genesis_attributes_skills_text(
+    const std::vector<std::uint8_t>& rom);
+
 // ROM 0xC0C2 uploads the menu font at VRAM 0xB560. ROM 0xC376 clears the old
 // row with tile 0x5AB and selects the new row with tile 0x5FF. Options use
 // palette line three; the nested checkout prompt uses palette line two. This

@@ -44,6 +44,7 @@
 
 #include <QImage>
 
+#include "attributes_skills_menu_runtime.hpp"
 #include "field_command_overview_bridge.hpp"
 #include "field_clips_menu_runtime.hpp"
 #include "field_party_roster_runtime.hpp"
@@ -115,6 +116,13 @@ public:
     void set_controller_port_byte(std::uint8_t port_byte) noexcept;
     void paint(QPainter& painter) const;
     bool open_command_overview_for_dump();
+    bool open_attributes_skills_for_dump();
+    bool attributes_skills_menu_open() const noexcept {
+        return command_overview_attributes_skills_.is_open();
+    }
+    const AttributesSkillsMenuRuntime& attributes_skills_menu() const noexcept {
+        return command_overview_attributes_skills_;
+    }
 
     bool command_overview_open() const noexcept {
         return command_overview_.open();
@@ -135,6 +143,12 @@ public:
     FieldDialogueAdvanceResult advance_stoker_dialogue_for_dump(
         std::uint16_t event_word);
     bool hotel_menu_open() const noexcept { return hotel_menu_.open(); }
+    bool hotel_karma_screen_open() const noexcept {
+        return hotel_karma_skills_.is_open();
+    }
+    const AttributesSkillsMenuRuntime& hotel_karma_screen() const noexcept {
+        return hotel_karma_skills_;
+    }
     HotelMenuPhase hotel_menu_phase() const noexcept {
         return hotel_menu_.phase();
     }
@@ -148,6 +162,8 @@ public:
         return hotel_menu_.animation_frames();
     }
     HotelMenuEvent advance_hotel_menu_for_dump(std::uint16_t events);
+    AttributesSkillsRuntimeEvent advance_hotel_karma_screen_for_dump(
+        std::uint16_t events);
     std::optional<std::uint32_t> notebook_story_flags_for_dump() const noexcept {
         return notebook_tip_flags_resolved_
                    ? std::optional<std::uint32_t>{notebook_tip_flags_[0]}
@@ -507,11 +523,16 @@ private:
     void paint_field_entity(QPainter& painter) const;
     void paint_field_hud_overlays(QPainter& painter) const;
     void paint_command_overview_magic(QPainter& painter) const;
+    void paint_attributes_skills_menu(
+        QPainter& painter,
+        const AttributesSkillsMenuRuntime& menu) const;
     void paint_command_overview(QPainter& painter) const;
     void paint_command_overview_clips(QPainter& painter) const;
     void paint_field_shop(QPainter& painter) const;
     void begin_hotel_menu();
     HotelMenuEvent process_hotel_menu_events(std::uint16_t events);
+    AttributesSkillsRuntimeEvent process_hotel_karma_screen_events(
+        std::uint16_t events);
     void draw_command_overview_text(QPainter& painter, int x, int y,
                                     std::string_view text) const;
     void draw_hotel_menu_text(QPainter& painter, int x, int y,
@@ -535,6 +556,7 @@ private:
     void begin_command_overview_inventory_action();
     void begin_command_overview_cyberware();
     void begin_command_overview_magic();
+    void begin_command_overview_attributes_skills();
     void advance_command_overview_magic(std::uint16_t controller_events);
     void begin_command_overview_magic_spell_action();
     void finish_command_overview_magic_spell_action();
@@ -576,6 +598,8 @@ private:
     WorldFrameLogicCallbacks world_frame_logic_callbacks_;
     FieldViewportState viewport_state_;
     FieldCommandOverviewBridge command_overview_;
+    AttributesSkillsMenuRuntime command_overview_attributes_skills_{};
+    AttributesSkillsMenuRuntime hotel_karma_skills_{};
     FieldDialogueRuntime field_dialogue_;
     HotelMenuRuntime hotel_menu_{};
     FieldModeTextRuntime field_mode_text_{};

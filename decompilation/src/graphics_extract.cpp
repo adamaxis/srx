@@ -259,6 +259,18 @@ void write_field_menu_text_catalog(
         emit("attribute.skill." + std::to_string(index),
              attribute_skill_labels[index]);
     }
+    const auto attributes_skills_text =
+        shadowrun::graphics::read_genesis_attributes_skills_text(rom);
+    emit("attributes.upgrade.header",
+         attributes_skills_text.upgrade_header);
+    emit("attributes.upgrade.maximum-level",
+         attributes_skills_text.maximum_level_message);
+    emit("attributes.upgrade.mage-only",
+         attributes_skills_text.mage_only_message);
+    emit("attributes.upgrade.insufficient-karma",
+         attributes_skills_text.insufficient_karma_message);
+    emit("attributes.upgrade.prompt",
+         attributes_skills_text.upgrade_prompt);
     const auto cyberware_text =
         shadowrun::graphics::read_genesis_cyberware_text(rom);
     const auto title_break = cyberware_text.title.find('\n');

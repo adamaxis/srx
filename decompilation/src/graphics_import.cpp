@@ -473,6 +473,31 @@ std::array<std::string, 20> read_genesis_attribute_skill_labels(
     return result;
 }
 
+GenesisAttributesSkillsText read_genesis_attributes_skills_text(
+    const std::vector<std::uint8_t>& rom) {
+    GenesisAttributesSkillsText result{};
+    // D82A selects these fixed strings for the upgrade preview, invalid
+    // maximum, mage-only skill, and insufficient-Karma feedback branches.
+    result.upgrade_header = read_genesis_menu_text(
+        rom, 0xC1B3BU, 21U,
+        "Genesis Attributes/Skills upgrade heading is truncated");
+    result.maximum_level_message = read_genesis_menu_text(
+        rom, 0xC1B51U, 29U,
+        "Genesis Attributes/Skills maximum-level text is truncated");
+    result.mage_only_message = read_genesis_menu_text(
+        rom, 0xC2122U, 23U,
+        "Genesis Attributes/Skills mage-only text is truncated");
+    result.insufficient_karma_message = read_genesis_menu_text(
+        rom, 0xC214EU, 22U,
+        "Genesis Attributes/Skills Karma text is truncated");
+    // D53C asks for confirmation using this source text; its two active
+    // choices are the Yes and No segments already extracted from E387E.
+    result.upgrade_prompt = read_genesis_menu_text(
+        rom, 0xC217DU, 8U,
+        "Genesis Attributes/Skills upgrade prompt is truncated");
+    return result;
+}
+
 GenesisCyberwareText read_genesis_cyberware_text(
     const std::vector<std::uint8_t>& rom) {
     GenesisCyberwareText result;

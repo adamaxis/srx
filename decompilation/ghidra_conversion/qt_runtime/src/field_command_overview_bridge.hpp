@@ -54,7 +54,6 @@ public:
     // 0x1000/0x4000, mode action is 0x2000, and Genesis Start is 0x8000.
     void advance(std::uint16_t controller_events);
     void close() noexcept;
-
     bool open() const noexcept { return view_.open; }
     const FieldCommandOverviewView& view() const noexcept { return view_; }
 
