@@ -166,6 +166,8 @@ palette-line attribute that the ROM adds when it draws FASA.
    frame set covers dim, full, sustained, dimming, and black states at 210,
    216, 240, 280, 290, and 300. Native QA saves the corresponding state
    boundaries under `build-ghidra-conversion-qt-debug/qt_runtime/boot-fasa-qa/`.
+   It also verifies that `--boot-dump-frame 373` matches the recorded first
+   FASA palette pass, so the review CLI includes the live fade state.
 8. **Was the previous screen cleared?** ROM `0x5D886` clears both planes
    before writing the FASA grid. The Qt FASA stage draws only the FASA asset;
    QA compares the whole 320x224 result with that single layer over black.

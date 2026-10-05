@@ -656,11 +656,7 @@ public:
             return 3;
         }
 
-        QImage scene(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
-        scene.fill(Qt::black);
-        QPainter painter(&scene);
-        draw_boot_scene(painter);
-        painter.end();
+        const auto scene = render_scene();
         if (!scene.save(QString::fromStdWString(output_path.wstring()))) {
             std::cerr << "boot dump: could not write "
                       << output_path.string() << '\n';
@@ -848,6 +844,21 @@ public:
         }
         if (render_scene() == fasa_full) {
             return fail("title handoff retained the previous FASA screen");
+        }
+        const auto frame_dump_path =
+            output_directory / "boot-dump-frame-373.bmp";
+        {
+            GhidraConversionWindow frame_dump_window(asset_root_);
+            if (frame_dump_window.dump_boot_frame(373U, frame_dump_path) !=
+                0) {
+                return fail("--boot-dump-frame could not render frame 373");
+            }
+        }
+        const QImage dumped_fade_frame(
+            QString::fromStdWString(frame_dump_path.wstring()));
+        if (dumped_fade_frame.convertToFormat(QImage::Format_RGB32) !=
+            first_fade_in) {
+            return fail("--boot-dump-frame skipped the FASA palette fade");
         }
         std::cout << "boot_fasa_qa=passed source_frames="
                   << state_.frame.frame_count
