@@ -1513,10 +1513,7 @@ selection, and indirect sound hook remain open.
 
 **Status:** partial. Typed prompt/result behavior, menu rendering, audio
 resource 075 mapping, source behavior-flag binding, full-frame modal ownership,
-clean field return, and extraction/loading of the scene random-index bounds
-have Debug/Release test coverage. The runtime `FFE12C` sample, independent
-Genesis frames, the actual field object trigger route, resource-048 alert
-lifetime, and captured device audio remain open.
+clean field return, and extraction/loading of scene bounds have Debug/Release test coverage. Typed `FFE12C` sampling and third-floor result text are now covered by Debug/Release world-activity QA (details: [world-activity-security-terminal-floor.md](../visual-audits/world-activity-security-terminal-floor.md)). The normal collision-to-event producer, independent Genesis frames, resource-048 stop/playback, and captured device audio remain open.
 
 ### Applied review: Start-menu Karma view and Hotel Karma spending page
 

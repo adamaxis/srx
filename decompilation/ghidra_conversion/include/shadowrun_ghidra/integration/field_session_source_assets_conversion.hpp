@@ -95,6 +95,9 @@ struct FieldSceneSourceRecord {
     // ROM 0x167AE samples this scene-specific bound into FFE12C. The offline
     // importer resolves FFDE1E and its first bundle longword into this value.
     std::optional<std::uint16_t> world_activity_random_index_bound;
+    // ROM 0x16B7C copies the resource bundle's +0x14 low byte and +0x16 word
+    // into the typed HUD/menu cursor state. Extraction resolves the bundle.
+    SceneResourceProfileFields world_activity_resource_cursor{};
     FieldMapSourceDescriptor descriptor{};
     std::vector<TerrainCollisionRectangle>
         terrain_collision_rectangles;

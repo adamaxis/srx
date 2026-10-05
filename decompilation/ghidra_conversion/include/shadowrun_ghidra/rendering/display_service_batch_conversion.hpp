@@ -76,6 +76,8 @@ struct FieldSceneSourceMetadata {
     // ROM 0x167AE samples this upper bound for FFE12C after a resource-scene
     // transition. It is direct typed host data, not a source pointer.
     std::optional<std::uint16_t> world_activity_random_index_bound;
+    // ROM 0x16B7C's HUD/menu cursor values from the selected resource bundle.
+    SceneResourceProfileFields world_activity_resource_cursor{};
     std::vector<TerrainCollisionRectangle> terrain_collision_rectangles;
     std::array<std::uint8_t, 0x1000> terrain_collision_map{};
 };

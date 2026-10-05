@@ -25,7 +25,7 @@ struct FieldSceneEntryCallbacks {
     std::function<void()> upload_scene_profile_block;
     std::function<void()> guard_world_effect_player_spawn;
     std::function<void()> step_palette_transition;
-    std::function<void(std::uint8_t)> record_pending_event;
+    std::function<void(std::uint16_t)> record_pending_event;
 };
 
 struct FieldSceneTransitionState {
@@ -36,7 +36,7 @@ struct FieldSceneTransitionState {
     std::uint16_t camera_y = 0;
     std::uint16_t camera_transition_x = 0;
     std::uint16_t camera_transition_y = 0;
-    std::uint8_t pending_event_index = 0;
+    std::uint16_t pending_event_index = 0;
     bool event_state_negative = false;
 };
 

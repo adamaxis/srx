@@ -842,7 +842,7 @@ void extract_field_session_record_assets(
             const auto bundle_offset = static_cast<std::size_t>(
                 read_big_endian_long(rom, profile_offset + 0x58U));
             if (bundle_offset == 0U || bundle_offset > rom.size() ||
-                rom.size() - bundle_offset < 4U) {
+                rom.size() - bundle_offset < 0x18U) {
                 throw std::runtime_error(
                     "world activity scene has no complete resource bundle");
             }
@@ -860,6 +860,18 @@ void extract_field_session_record_assets(
                 bound_record, root,
                 field_scene_record_directory(scene_id) +
                     "/world-activity-random-index-bound.bin");
+            const auto cursor_word = read_big_endian_word(
+                rom, bundle_offset + 0x14U);
+            const auto resource_index = read_big_endian_word(
+                rom, bundle_offset + 0x16U);
+            const std::vector<std::uint8_t> resource_cursor_record{
+                static_cast<std::uint8_t>(cursor_word),
+                static_cast<std::uint8_t>(resource_index >> 8U),
+                static_cast<std::uint8_t>(resource_index)};
+            write_host_record(
+                resource_cursor_record, root,
+                field_scene_record_directory(scene_id) +
+                    "/world-activity-resource-cursor.bin");
         }
     }
     write_host_record(scene_profiles, root,
@@ -1452,6 +1464,7 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
         emit_scene_record("terrain-collision-rectangles");
         if (scene_id >= 0x15U && scene_id < 0x2CU) {
             emit_scene_record("world-activity-random-index-bound");
+            emit_scene_record("world-activity-resource-cursor");
         }
         const auto event_relative = directory + "/event-table.bin";
         if (std::filesystem::is_regular_file(root / event_relative)) {

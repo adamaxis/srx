@@ -136,7 +136,7 @@ struct WorldActivityRequestSlot {
     std::uint8_t route_flags = 0; // +0xB0
 };
 
-struct WorldActivityRequestState {
+struct WorldActivityRoutineRequestState {
     std::uint8_t request_flag = 0; // FFE183
     std::uint8_t found_marker = 0; // FFE181
     std::uint8_t clear_80 = 0; // FFE180
@@ -149,7 +149,7 @@ struct WorldActivityRequestState {
 // 13 slots at FF0400 for +0x10 bit 0 and +0xB0 bit 7, write FFE181 0 or
 // 0xFF, publish 0x1F16A into FFDD2C, BRA 0x1E2EC.
 bool handle_world_activity_request(
-    WorldActivityRequestState& state,
+    WorldActivityRoutineRequestState& state,
     const std::array<WorldActivityRequestSlot, kWorldActivityRequestSlotCount>&
         slots,
     WorldActivityStartState& activity);

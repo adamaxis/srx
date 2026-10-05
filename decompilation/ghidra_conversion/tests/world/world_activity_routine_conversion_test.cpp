@@ -246,7 +246,7 @@ int main() {
         return 12;
     }
 
-    WorldActivityRequestState idle{0U, 0x11U, 1U, 2U, 3U, 4U};
+    WorldActivityRoutineRequestState idle{0U, 0x11U, 1U, 2U, 3U, 4U};
     WorldActivityStartState idle_activity{1U, 2U};
     std::array<WorldActivityRequestSlot, kWorldActivityRequestSlotCount> slots{};
     slots[0] = {1U, 0x80U};
@@ -258,7 +258,7 @@ int main() {
         return 13;
     }
 
-    WorldActivityRequestState missing{1U, 0U, 9U, 9U, 9U, 9U};
+    WorldActivityRoutineRequestState missing{1U, 0U, 9U, 9U, 9U, 9U};
     WorldActivityStartState missing_activity{};
     slots = {};
     slots[2] = {1U, 0U};
@@ -271,7 +271,7 @@ int main() {
         return 14;
     }
 
-    WorldActivityRequestState found{1U, 0xFFU, 1U, 1U, 1U, 1U};
+    WorldActivityRoutineRequestState found{1U, 0xFFU, 1U, 1U, 1U, 1U};
     WorldActivityStartState found_activity{};
     slots = {};
     slots[5] = {0x03U, 0x80U};

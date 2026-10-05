@@ -373,6 +373,11 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
             field_scene_resource_alias(
                 scene_id, "world.activity.random.index.bound"),
             sizeof(std::uint16_t), result.errors);
+        const auto activity_resource_cursor = read_optional_record_bytes(
+            catalog,
+            field_scene_resource_alias(
+                scene_id, "world.activity.resource.cursor"),
+            3U, result.errors);
         const bool expects_activity_bound =
             scene_id >= kFirstWorldActivityResourceScene &&
             scene_id < kWorldActivityResourceSceneEnd;
@@ -385,6 +390,16 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
                    activity_random_index_bound.has_value()) {
             result.errors.emplace_back(
                 "field-scene has an unexpected world-activity random-index bound: " +
+                std::to_string(scene_id));
+        }
+        if (expects_activity_bound && !activity_resource_cursor.has_value()) {
+            result.errors.emplace_back(
+                "field-scene world-activity resource cursor is missing: " +
+                std::to_string(scene_id));
+        } else if (!expects_activity_bound &&
+                   activity_resource_cursor.has_value()) {
+            result.errors.emplace_back(
+                "field-scene has an unexpected world-activity resource cursor: " +
                 std::to_string(scene_id));
         }
         if (!layer_a.has_value() || !layer_b.has_value() ||
@@ -423,6 +438,12 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
                     "field-scene world-activity random-index bound is invalid: " +
                     std::to_string(scene_id));
             }
+        }
+        if (activity_resource_cursor.has_value()) {
+            scene.world_activity_resource_cursor.cursor =
+                static_cast<std::int8_t>((*activity_resource_cursor)[0]);
+            scene.world_activity_resource_cursor.resource_index =
+                read_big_endian_word(*activity_resource_cursor, 1U);
         }
         scene.descriptor = decode_field_map_descriptor(*descriptor, event_table);
         scene.terrain_collision_rectangles =
@@ -484,6 +505,8 @@ std::optional<FieldSceneBufferInput> make_field_scene_input(
     input.source_metadata.event_mode_table = scene.descriptor.event_mode_table;
     input.source_metadata.world_activity_random_index_bound =
         scene.world_activity_random_index_bound;
+    input.source_metadata.world_activity_resource_cursor =
+        scene.world_activity_resource_cursor;
     input.source_metadata.terrain_collision_rectangles =
         scene.terrain_collision_rectangles;
     input.source_metadata.terrain_collision_map =

@@ -41,6 +41,7 @@
 #include "shadowrun_ghidra/world/world_effect_batch_conversion.hpp"
 #include "shadowrun_ghidra/world/world_frame_logic_conversion.hpp"
 #include "shadowrun_ghidra/world/world_scene_entity_conversion.hpp"
+#include "shadowrun_ghidra/world/world_activity_routine_conversion.hpp"
 
 #include <QImage>
 
@@ -59,6 +60,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -115,6 +117,7 @@ public:
     void set_controller_nibble(std::uint8_t dpad_nibble) noexcept;
     void set_controller_port_byte(std::uint8_t port_byte) noexcept;
     void paint(QPainter& painter) const;
+    void paint_field_scene_for_dump(QPainter& painter) const;
     bool open_command_overview_for_dump();
     bool open_attributes_skills_for_dump();
     bool attributes_skills_menu_open() const noexcept {
@@ -203,6 +206,19 @@ public:
         FieldInteractionPrompt prompt, std::uint8_t interaction_selection = 2U,
         bool interaction_suppressed = false,
         std::optional<std::uint8_t> security_floor_index = std::nullopt);
+    bool initialize_world_activity_for_dump(std::uint8_t mode_event_code,
+                                            std::uint16_t random_seed);
+    bool dispatch_selected_security_terminal_for_dump();
+    std::uint16_t field_scene_reference_for_dump() const noexcept {
+        return state_.field_scene_buffers.scene_reference;
+    }
+    const WorldActivityRoutineState& world_activity_state_for_dump() const
+        noexcept {
+        return world_activity_routine_state_;
+    }
+    std::optional<std::uint8_t> security_floor_index_for_dump() const noexcept {
+        return field_security_floor_index_;
+    }
     void begin_projected_field_transition_for_dump() noexcept;
     bool field_interaction_transition_active_for_dump() const noexcept {
         return field_movement_transition_state_.interaction_transition_pending;
@@ -545,6 +561,7 @@ private:
     bool recover_blocked_field_movement(
         const MovementProbeResult& initial_probe);
     void advance_field_scene_transition_after_modal();
+    bool prepare_runtime_field_scene(std::uint16_t scene_reference);
     std::optional<std::size_t> projected_terrain_cell() const;
     void record_field_activity_start(
         MovementModeTransitionContinuation continuation);
@@ -559,6 +576,7 @@ private:
                            QImage& destination,
                            int& origin_x,
                            int& origin_y);
+    void paint_field_scene(QPainter& painter) const;
     void paint_field_entity(QPainter& painter) const;
     void paint_field_hud_overlays(QPainter& painter) const;
     FieldHudSlotState field_hud_slot_state(std::size_t slot) const;
@@ -630,6 +648,9 @@ private:
     std::function<void(std::uint16_t)> source_audio_event_callback_;
     integration::FieldSessionBootstrapInput input_;
     integration::FieldSessionBootstrapState state_;
+    std::unique_ptr<integration::FieldSessionSourceAssets>
+        field_session_source_assets_;
+    std::unique_ptr<ConversionAssetCatalog> field_asset_catalog_;
     integration::FieldSessionBootstrapCallbacks callbacks_;
     integration::FieldRuntimeCoordinatorState field_runtime_state_;
     integration::FieldRuntimeCoordinatorCallbacks field_runtime_callbacks_;
@@ -811,10 +832,11 @@ private:
     EntityMovementModeTransitionState field_movement_transition_state_{};
     std::uint8_t field_palette_fade_steps_ = 0U;
     WorldActivityState field_world_activity_state_{};
+    WorldActivityRoutineState world_activity_routine_state_{};
     MovementModeTransitionContinuation field_activity_continuation_ =
         MovementModeTransitionContinuation::none;
     // FFE12C selects a floor label on the successful Security Terminal file
-    // branch. Its scene initialization source has not been connected yet.
+    // branch. It is sampled by the live world-activity dispatcher.
     std::optional<std::uint8_t> field_security_floor_index_;
     std::uint8_t field_projected_terrain_mark_count_ = 0;
     bool field_terrain_render_dirty_ = false;

@@ -281,7 +281,11 @@ int main() {
         make_field_scene_input(*source.assets, 0x1AU);
     if (!scene_activity_input.has_value() ||
         scene_activity_input->source_metadata
-                .world_activity_random_index_bound != 3U) {
+                .world_activity_random_index_bound != 3U ||
+        scene_activity_input->source_metadata.world_activity_resource_cursor
+                .cursor != 0x18 ||
+        scene_activity_input->source_metadata.world_activity_resource_cursor
+                .resource_index != 0U) {
         return 24;
     }
     return 0;

@@ -206,7 +206,7 @@ bool schedule_world_activity_timeout(WorldActivityTimeoutState& state) {
 }
 
 bool handle_world_activity_request(
-    WorldActivityRequestState& state,
+    WorldActivityRoutineRequestState& state,
     const std::array<WorldActivityRequestSlot, kWorldActivityRequestSlotCount>&
         slots,
     WorldActivityStartState& activity) {

@@ -100,6 +100,19 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_transition_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_transition_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# The active field event byte selects a named resource scene, samples its ROM
+# bound into a typed floor index, and carries that state through the existing
+# Security Terminal result prompt. Captures also verify full-scene replacement
+# and clearing the modal before returning to the field.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_world_activity_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-world-activity-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-world-activity-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_world_activity_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # First Aid shares the real item cell/action path, then exercises the active
 # party list, CANCEL row, RNG-backed medkit effect, result wait, and inventory
 # return against directly extracted source text and HUD assets.

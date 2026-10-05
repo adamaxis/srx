@@ -156,6 +156,7 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
                    " [--field-smoke-move-right] [--field-dump <file>]"
                    " [--field-movement-qa <output-dir>]"
                    " [--field-transition-qa <output-dir>]"
+                   " [--field-world-activity-qa <output-dir>]"
                    " [--field-secretary-dump <output-dir>]"
                    " [--field-command-dump <file>]"
                        " [--field-command-page <0..6>]"
@@ -204,6 +205,10 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
             continue;
         }
         if (argument == "--field-transition-qa" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-world-activity-qa" && index + 1 < argc) {
             ++index;
             continue;
         }
@@ -3057,6 +3062,143 @@ private:
     std::vector<std::string> presentation_boundaries_;
 };
 
+int run_field_world_activity_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    std::vector<std::uint16_t>& field_audio_events) {
+    std::filesystem::create_directories(output);
+    const auto render_field = [&field_scene] {
+        QImage image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        field_scene.paint(painter);
+        painter.end();
+        return image;
+    };
+    const auto render_field_scene = [&field_scene] {
+        QImage image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        field_scene.paint_field_scene_for_dump(painter);
+        painter.end();
+        return image;
+    };
+    const auto save = [&output](const std::filesystem::path& path,
+                                const QImage& image) {
+        return image.save(QString::fromStdWString((output / path).wstring()));
+    };
+    const auto initial = render_field();
+    if (!save("initial.bmp", initial)) {
+        std::cerr << "field world-activity QA: initial dump failed\n";
+        return 3;
+    }
+    if (!field_scene.initialize_world_activity_for_dump(2U, 0x1234U)) {
+        std::cerr << "field world-activity QA: source table, bound, or scene preparation failed\n";
+        return 3;
+    }
+    const auto& activity = field_scene.world_activity_state_for_dump();
+    const auto floor = field_scene.security_floor_index_for_dump();
+    const auto resource_scene_entry = render_field();
+    if (!save("resource-scene-entry.bmp", resource_scene_entry)) {
+        std::cerr << "field world-activity QA: resource-scene entry dump failed\n";
+        return 3;
+    }
+    for (std::uint8_t frame = 0U; frame < 30U; ++frame) {
+        field_scene.advance_frame();
+    }
+    const auto resource_scene = render_field();
+    for (std::uint8_t frame = 0U; frame < 30U; ++frame) {
+        field_scene.advance_frame();
+    }
+    const auto resource_scene_held = render_field();
+    if (activity.scene_id != 0x1AU ||
+        activity.mode != WorldActivityMode::resource_activity ||
+        activity.resource_random_index_bound != 3U ||
+        activity.selected_resource_random_index != 2U ||
+        activity.resource_marker_ordinal != 2U ||
+        activity.resource_cursor.cursor != 0x18 ||
+        activity.resource_cursor.resource_index != 0U ||
+        floor != std::optional<std::uint8_t>{2U} ||
+        field_scene.field_scene_reference_for_dump() != 0x1AU ||
+        initial.copy(0, 0, 272, 224) ==
+            resource_scene.copy(0, 0, 272, 224) ||
+        !field_hud_chrome_survives(resource_scene, asset_root) ||
+        !save("resource-scene.bmp", resource_scene) ||
+        !save("resource-scene-held.bmp", resource_scene_held)) {
+        std::cerr << "field world-activity QA: selected scene, cursor, floor, or replacement frame diverged\n";
+        return 3;
+    }
+
+    // The coordinator's pending handler reads the selected FFE12C value from
+    // runtime state rather than taking the floor as a QA argument.
+    if (!field_scene.dispatch_selected_security_terminal_for_dump()) {
+        std::cerr << "field world-activity QA: selected Security Terminal handler did not open\n";
+        return 3;
+    }
+    const auto resource_scene_before_prompt = render_field_scene();
+    if (!save("resource-scene-before-prompt.bmp",
+              resource_scene_before_prompt)) {
+        std::cerr << "field world-activity QA: pre-prompt scene dump failed\n";
+        return 3;
+    }
+    const auto terminal_menu = render_field();
+    if (field_scene.field_interaction_panel().option_count != 2U ||
+        !save("security-terminal.bmp", terminal_menu)) {
+        std::cerr << "field world-activity QA: terminal choice screen failed\n";
+        return 3;
+    }
+
+    // A high but valid active-runner Electronics skill and the fixed ROM PRNG
+    // seed exercise the successful file result.
+    field_scene.active_runner_record().skills[9] = 10U;
+    for (std::uint8_t frame = 0U; frame < 10U; ++frame) {
+        (void)field_scene.advance_field_interaction_for_dump(0U);
+    }
+    if (field_scene.advance_field_interaction_for_dump(0x4000U) !=
+        FieldInteractionAdvanceResult::prompt_advanced) {
+        std::cerr << "field world-activity QA: terminal command did not advance\n";
+        return 3;
+    }
+    const auto& result_panel = field_scene.field_interaction_panel();
+    bool third_floor_visible = false;
+    for (std::size_t index = 0U; index < result_panel.text_segment_count;
+         ++index) {
+        if (result_panel.text_segments[index].find("third floor") !=
+            std::string_view::npos) {
+            third_floor_visible = true;
+        }
+    }
+    const auto floor_result = render_field();
+    if (!third_floor_visible || !result_panel.source_complete ||
+        field_audio_events != std::vector<std::uint16_t>{0x30U} ||
+        !save("floor-result.bmp", floor_result) ||
+        !save("actual.bmp", floor_result)) {
+        std::cerr << "field world-activity QA: selected floor text, source result, or audio event diverged\n";
+        return 3;
+    }
+
+    for (std::uint8_t frame = 0U; frame < 30U; ++frame) {
+        (void)field_scene.advance_field_interaction_for_dump(0U);
+    }
+    if (field_scene.advance_field_interaction_for_dump(0x1000U) !=
+            FieldInteractionAdvanceResult::returned_to_field ||
+        field_scene.field_interaction_open()) {
+        std::cerr << "field world-activity QA: terminal page did not return to the selected scene\n";
+        return 3;
+    }
+    const auto returned_field = render_field_scene();
+    const bool return_dump_saved = save("return-field.bmp", returned_field);
+    if (returned_field != resource_scene_before_prompt ||
+        !return_dump_saved) {
+        std::cerr << "field world-activity QA: terminal UI left stale graphics over the selected scene\n";
+        return 3;
+    }
+    std::cout << "field_world_activity_qa=passed scene=0x1A bound=3 floor=2 cursor=0x18 terminal_floor_text=third-floor artifacts="
+              << output.string() << '\n';
+    return 0;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -3069,6 +3211,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_dump_path;
         std::optional<std::filesystem::path> field_movement_qa_path;
         std::optional<std::filesystem::path> field_transition_qa_path;
+        std::optional<std::filesystem::path> field_world_activity_qa_path;
         std::optional<std::filesystem::path> field_hud_qa_path;
         std::optional<std::filesystem::path> field_hotel_qa_path;
         std::optional<std::filesystem::path> field_command_dump_path;
@@ -3114,6 +3257,7 @@ int main(int argc, char** argv) {
                        " [--field-smoke-move-right] [--field-dump <file>]"
                        " [--field-movement-qa <output-dir>]"
                        " [--field-transition-qa <output-dir>]"
+                       " [--field-world-activity-qa <output-dir>]"
                        " [--field-command-dump <file>]"
                        " [--field-command-page <0..6>]"
                        " [--field-cyberware-dump <file>]"
@@ -3159,6 +3303,12 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_transition_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-world-activity-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_world_activity_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-command-reopen-smoke") {
@@ -3424,6 +3574,11 @@ int main(int argc, char** argv) {
             if (!field_scene.bootstrap(smoke_state)) {
                 std::cerr << "field smoke: " << field_scene.failure() << '\n';
                 return 3;
+            }
+            if (field_world_activity_qa_path.has_value()) {
+                return run_field_world_activity_qa(
+                    field_scene, asset_root,
+                    *field_world_activity_qa_path, field_audio_events);
             }
             if (field_transition_qa_path.has_value()) {
                 std::filesystem::create_directories(

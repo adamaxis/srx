@@ -1380,6 +1380,114 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         }
         return carry;
     };
+    field_runtime_callbacks_.initialize_world_activity_mode =
+        [this](integration::FieldRuntimeCoordinatorState& runtime) {
+            const auto& active_metadata =
+                state_.field_scene_buffers.source_metadata;
+            if (!active_metadata.available ||
+                !active_metadata.event_table_available ||
+                !field_session_source_assets_) {
+                source_boundary("field.world_activity.source_table_unavailable");
+                runtime.field_transition_requested = true;
+                return;
+            }
+
+            const auto selected_scene = resolve_world_activity_scene_id(
+                field_movement_transition_state_.mode_event_code,
+                active_metadata.event_mode_table);
+            if (!selected_scene.has_value()) {
+                source_boundary("field.world_activity.event_code_out_of_range");
+                runtime.field_transition_requested = true;
+                return;
+            }
+
+            WorldActivityRoutineInput input{};
+            input.initial_scene_id = *selected_scene;
+            input.scene_variant = runtime.field_mode;
+            input.timeout_override = runtime.scene_runtime_state;
+            input.world_flags = field_exit_world_flags_;
+            // 0x167AE clears FFF0C8 before the resource branch.
+            input.default_resource_word = 0U;
+
+            std::uint16_t preparation_scene = *selected_scene;
+            if (input.timeout_override != 0U) {
+                preparation_scene = input.timeout_override == 1U
+                                        ? 0x36U
+                                        : 0x37U;
+            }
+            if (preparation_scene <
+                field_session_source_assets_->field_scene_resources.size()) {
+                const auto& resource =
+                    field_session_source_assets_
+                        ->field_scene_resources[preparation_scene];
+                if (resource.has_value()) {
+                    input.resource_random_index_bound =
+                        resource->world_activity_random_index_bound;
+                    input.resource_cursor_source =
+                        resource->world_activity_resource_cursor;
+                }
+            }
+
+            bool prepared = false;
+            WorldActivityRoutineCallbacks activity_callbacks{};
+            activity_callbacks.schedule_world_activity_timeout = [this] {
+                source_boundary("field.world_activity.schedule_timeout");
+            };
+            activity_callbacks.publish_world_activity_descriptors = [this] {
+                source_boundary("field.world_activity.publish_descriptors");
+            };
+            activity_callbacks.snapshot_scene_state = [this] {
+                source_boundary("field.world_activity.snapshot_scene_state");
+            };
+            activity_callbacks.prepare_field_scene_buffers =
+                [this, &prepared, preparation_scene] {
+                    prepared = prepare_runtime_field_scene(preparation_scene);
+                };
+            activity_callbacks.upload_mode_word_block = [this] {
+                source_boundary("field.world_activity.upload_mode_word_block");
+            };
+            activity_callbacks.sample_source_random_bound =
+                [this](const std::uint16_t bound)
+                    -> std::optional<std::uint16_t> {
+                if (bound == 0U) {
+                    return std::nullopt;
+                }
+                const auto sample = sample_source_random_bound(
+                    field_random_seed_, bound);
+                if (sample < 0 || sample >= static_cast<std::int16_t>(bound)) {
+                    return std::nullopt;
+                }
+                return static_cast<std::uint16_t>(sample);
+            };
+            activity_callbacks.advance_source_prng = [this]()
+                -> std::optional<std::uint16_t> {
+                return advance_source_random_seed(field_random_seed_);
+            };
+
+            field_security_floor_index_.reset();
+            const auto result = run_world_activity_routine(
+                input, world_activity_routine_state_, activity_callbacks);
+            runtime.scene_id = world_activity_routine_state_.scene_id;
+            runtime.field_scene_gate = static_cast<std::uint16_t>(
+                world_activity_routine_state_.mode);
+            if (result == WorldActivityResult::resource_activity_ready) {
+                field_security_floor_index_ = static_cast<std::uint8_t>(
+                    world_activity_routine_state_
+                        .selected_resource_random_index);
+            }
+            if (!prepared) {
+                source_boundary("field.world_activity.scene_prepare_unresolved");
+                runtime.field_transition_requested = true;
+            }
+            if (result == WorldActivityResult::resource_activity_bound_unavailable ||
+                result ==
+                    WorldActivityResult::resource_activity_random_input_unavailable ||
+                result ==
+                    WorldActivityResult::resource_activity_sample_out_of_range) {
+                source_boundary("field.world_activity.resource_selection_unresolved");
+                runtime.field_transition_requested = true;
+            }
+        };
     field_runtime_callbacks_.run_field_exit_orchestrator =
         [this](integration::FieldRuntimeCoordinatorState& runtime) {
             return run_field_exit_orchestrator(runtime);
@@ -2806,6 +2914,8 @@ bool FieldSceneRuntime::bootstrap(
     command_overview_magic_physical_defense_ = MagicDefenseStripView{};
     command_overview_magic_mana_defense_ = MagicDefenseStripView{};
     state_ = integration::FieldSessionBootstrapState{};
+    field_session_source_assets_.reset();
+    field_asset_catalog_.reset();
     world_frame_state_ = WorldFrameState{};
     viewport_state_ = FieldViewportState{};
 
@@ -2853,6 +2963,10 @@ bool FieldSceneRuntime::bootstrap(
                                       ? std::optional<std::uint16_t>{0U}
                                       : std::nullopt;
     const auto& assets = *startup_state.field_session_source_assets;
+    field_session_source_assets_ =
+        std::make_unique<integration::FieldSessionSourceAssets>(assets);
+    field_asset_catalog_ = std::make_unique<ConversionAssetCatalog>(
+        startup_state.asset_catalog.catalog);
     const auto scene_reference = restored_field_state != nullptr
                                      ? restored_field_state->world_mode
                                      : kInitialFieldSceneReference;
@@ -2892,6 +3006,8 @@ bool FieldSceneRuntime::bootstrap(
     field_movement_transition_state_ = EntityMovementModeTransitionState{};
     field_palette_fade_steps_ = 0U;
     field_world_activity_state_ = WorldActivityState{};
+    world_activity_routine_state_ = WorldActivityRoutineState{};
+    field_security_floor_index_.reset();
     field_activity_continuation_ = MovementModeTransitionContinuation::none;
     field_projected_terrain_mark_count_ = 0U;
     field_terrain_render_dirty_ = false;
@@ -3251,6 +3367,68 @@ bool FieldSceneRuntime::dispatch_field_interaction_through_coordinator_for_dump(
     record_field_activity_start(continuation);
     advance_frame();
     return field_interaction_.open();
+}
+
+bool FieldSceneRuntime::initialize_world_activity_for_dump(
+    const std::uint8_t mode_event_code,
+    const std::uint16_t random_seed) {
+    if (!ready_ || !field_session_source_assets_ || !field_asset_catalog_) {
+        return false;
+    }
+
+    // This route injects the already-resolved FFFBF9 byte at the 0x167AE
+    // dispatcher. The normal movement/collision input that publishes it is
+    // deliberately outside this deterministic scene-selection check.
+    field_movement_transition_state_.mode_event_code = mode_event_code;
+    field_random_seed_ = random_seed;
+    field_runtime_state_.scene_id =
+        state_.field_scene_buffers.scene_reference;
+    field_runtime_state_.field_mode =
+        state_.field_scene_buffers.field_resource_mode;
+    field_runtime_state_.scene_runtime_state = 0U;
+    field_runtime_state_.field_scene_gate = 0U;
+    field_runtime_state_.field_transition_requested = false;
+    field_runtime_state_.scene_refresh_marker = 0;
+
+    field_runtime_callbacks_.initialize_world_activity_mode(
+        field_runtime_state_);
+    if (field_runtime_state_.field_transition_requested ||
+        world_activity_routine_state_.mode !=
+            WorldActivityMode::resource_activity ||
+        !field_security_floor_index_.has_value()) {
+        return false;
+    }
+
+    // 0x0A54 supplies the nonzero marker consumed by 0x2BD2's scene/profile
+    // re-entry branch. Exercise that normal preparation path after the
+    // dispatcher has selected and prepared the typed resource scene.
+    field_runtime_state_.scene_refresh_marker = -1;
+    advance_field_scene_transition_after_modal();
+    update_source_field_camera();
+    update_entity_render_pass(state_.render_entities,
+                              callbacks_.entity_render_pass);
+    return state_.field_scene_buffers.scene_reference ==
+               world_activity_routine_state_.scene_id &&
+           field_security_floor_index_.value() <
+               world_activity_routine_state_.resource_random_index_bound;
+}
+
+bool FieldSceneRuntime::dispatch_selected_security_terminal_for_dump() {
+    if (!ready_ || !field_security_floor_index_.has_value() ||
+        world_activity_routine_state_.mode !=
+            WorldActivityMode::resource_activity ||
+        field_interaction_.open()) {
+        return false;
+    }
+    field_activity_continuation_ =
+        MovementModeTransitionContinuation::building_security_terminal;
+    field_runtime_state_.pending_field_scene_handler = true;
+    field_runtime_state_.field_activity_lock = false;
+    field_runtime_state_.world_activity_countdown = 0U;
+    field_runtime_state_.display_service_word = 0U;
+    advance_frame();
+    return field_interaction_.open() &&
+           field_interaction_.panel().option_count == 2U;
 }
 
 bool FieldSceneRuntime::recover_blocked_field_movement(
@@ -3639,20 +3817,85 @@ void FieldSceneRuntime::update_source_field_camera() {
     }
 }
 
+bool FieldSceneRuntime::prepare_runtime_field_scene(
+    const std::uint16_t scene_reference) {
+    if (!field_session_source_assets_ || !field_asset_catalog_ ||
+        scene_reference >= kFieldSceneProfileCount) {
+        return false;
+    }
+
+    const auto input = integration::make_field_scene_input(
+        *field_session_source_assets_, scene_reference);
+    if (!input.has_value()) {
+        return false;
+    }
+    const auto alias =
+        std::string("field.maps.mode.") + std::to_string(scene_reference);
+    QImage next_field_map;
+    if (!load_image(*field_asset_catalog_, alias, next_field_map)) {
+        return false;
+    }
+
+    const bool same_scene = state_.field_scene_buffers.initialized &&
+                            state_.field_scene_buffers.scene_reference ==
+                                scene_reference;
+    const auto prior_camera_x = state_.field_scene_buffers.camera_x;
+    const auto prior_camera_y = state_.field_scene_buffers.camera_y;
+    const auto prior_runner_position = field_entity_.world_position;
+    auto next_buffers = state_.field_scene_buffers;
+    next_buffers.initialized = false;
+    if (!prepare_field_scene_buffers(next_buffers, *input, {})) {
+        return false;
+    }
+
+    if (same_scene) {
+        // A 0x2BD2 same-scene refresh redraws the active scene without
+        // resetting the controlled runner to its original entry position.
+        next_buffers.camera_x = prior_camera_x;
+        next_buffers.camera_y = prior_camera_y;
+        if (field_entity_.active) {
+            next_buffers.profile[kSceneProfileEntityPositionWord] =
+                prior_runner_position.x;
+            next_buffers.profile[kSceneProfileEntityPositionWord + 1U] =
+                prior_runner_position.y;
+            next_buffers.source_metadata.initial_field_records[0] =
+                prior_runner_position;
+        }
+    }
+
+    const auto interaction_mode =
+        select_scene_interaction_mode(scene_reference);
+    if (!interaction_mode.has_value()) {
+        return false;
+    }
+
+    state_.field_scene_buffers = std::move(next_buffers);
+    field_map_ = std::move(next_field_map);
+    state_.field_resource_mode =
+        state_.field_scene_buffers.field_resource_mode;
+    field_runtime_state_.scene_id = scene_reference;
+    field_runtime_state_.field_mode =
+        state_.field_scene_buffers.field_resource_mode;
+    field_movement_transition_state_.scene_id = scene_reference;
+    field_movement_transition_state_.world_mode = *interaction_mode;
+    field_movement_transition_state_.field_origin_x =
+        static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x);
+    world_frame_logic_state_.world_mode = scene_reference;
+    field_terrain_sample_state_ = {};
+    field_collision_marker_index_ = 0U;
+    field_camera_alignment_ready_ = false;
+    field_runtime_state_.display_dirty_flags = static_cast<std::uint8_t>(
+        field_runtime_state_.display_dirty_flags | 0x0EU);
+    state_.display_dirty_flags = static_cast<std::uint8_t>(
+        state_.display_dirty_flags | 0x0EU);
+    source_boundary("field.world_activity.scene_prepared");
+    return true;
+}
+
 void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
-    // The modal Qt loop is non-blocking, so the coordinator's 0x2BD2 call
-    // arrives while the command overview is still open. Resume its ordinary
-    // same-scene refresh only after that full-screen page has closed. Scene
-    // selection and pending event-counter writes remain explicit boundaries
-    // until their source records are available to this runtime.
-    if (field_runtime_state_.scene_refresh_marker != 0) {
-        source_boundary("field.scene.transition.profile_reentry_unresolved");
-        return;
-    }
-    if (field_movement_transition_state_.activity_source_word != 0U) {
-        source_boundary("field.scene.transition.pending_event_accounting");
-        return;
-    }
+    // The modal Qt loop is non-blocking. Keep the 0x2BD2 transition pending
+    // while the page owns the screen; once it closes, run the ROM-selected
+    // same-scene refresh or nonzero scene/profile re-entry in source order.
 
     FieldSceneTransitionState transition{};
     transition.field_transition_marker = static_cast<std::uint16_t>(
@@ -3670,7 +3913,10 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
     transition.camera_transition_y = static_cast<std::uint16_t>(
         state_.field_scene_entry.camera_transition_y);
 
-    std::vector<std::uint8_t> unavailable_event_counters;
+    const auto& collision_map =
+        state_.field_scene_buffers.source_metadata.terrain_collision_map;
+    std::vector<std::uint8_t> event_counters(collision_map.begin(),
+                                             collision_map.end());
     FieldSceneEntryCallbacks scene_callbacks{};
     scene_callbacks.step_palette_transition =
         callbacks_.advance_title_palette_fade;
@@ -3683,11 +3929,40 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
             FieldViewportPreparationState{state_.field_resource_mode},
             callbacks_.field_viewports);
     };
+    scene_callbacks.prepare_field_scene_buffers = [this] {
+        if (!prepare_runtime_field_scene(
+                state_.field_scene_buffers.scene_reference)) {
+            source_boundary("field.scene.transition.scene_prepare_unresolved");
+        }
+    };
+    scene_callbacks.apply_scene_profile_selection =
+        callbacks_.apply_scene_profile_selection;
+    scene_callbacks.record_pending_event = [this](
+                                               const std::uint16_t index) {
+        source_boundary("field.scene.transition.pending_event_recorded");
+        (void)index;
+    };
+    if (transition.field_transition_marker == 0U) {
+        transition.pending_event_index =
+            field_movement_transition_state_.activity_source_word;
+        transition.event_state_negative =
+            static_cast<std::int8_t>(
+                field_movement_transition_state_.activity_selection) < 0;
+    }
     scene_callbacks.upload_scene_profile_block =
         callbacks_.upload_scene_profile_block;
 
     ::shadowrun::ghidra_conversion::advance_field_scene_transition(
-        transition, unavailable_event_counters, scene_callbacks);
+        transition, event_counters, scene_callbacks);
+
+    auto& updated_collision_map =
+        state_.field_scene_buffers.source_metadata.terrain_collision_map;
+    std::copy(event_counters.begin(), event_counters.end(),
+              updated_collision_map.begin());
+    if (transition.field_transition_marker == 0U &&
+        transition.pending_event_index == 0U) {
+        field_movement_transition_state_.activity_source_word = 0U;
+    }
 
     state_.field_scene_entry.field_transition_marker =
         transition.field_transition_marker;
@@ -6634,6 +6909,20 @@ void FieldSceneRuntime::paint(QPainter& painter) const {
         apply_palette_fade();
         return;
     }
+    paint_field_scene(painter);
+    apply_palette_fade();
+}
+
+void FieldSceneRuntime::paint_field_scene_for_dump(
+    QPainter& painter) const {
+    painter.fillRect(0, 0, 320, 224, Qt::black);
+    if (!ready_ || field_map_.isNull()) {
+        return;
+    }
+    paint_field_scene(painter);
+}
+
+void FieldSceneRuntime::paint_field_scene(QPainter& painter) const {
     const auto& scene = state_.field_scene_buffers;
     const auto camera_x = std::max(
         0, static_cast<int>(scene.camera_x >> 4U));
@@ -6651,7 +6940,6 @@ void FieldSceneRuntime::paint(QPainter& painter) const {
     // cells. New-game keeps slots 1 and 2 inactive.
     painter.drawImage(0, 0, field_hud_);
     paint_field_hud_overlays(painter);
-    apply_palette_fade();
 }
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime
