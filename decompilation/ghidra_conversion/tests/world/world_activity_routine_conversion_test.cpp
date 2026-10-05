@@ -1,9 +1,26 @@
 #include "shadowrun_ghidra/world/world_activity_routine_conversion.hpp"
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 namespace {
+
+shadowrun::ghidra_conversion::WorldActivityRoutineCallbacks
+fixed_resource_random_callbacks(const std::uint16_t sampled_index,
+                                const std::uint16_t marker_random_word) {
+    shadowrun::ghidra_conversion::WorldActivityRoutineCallbacks callbacks{};
+    callbacks.sample_source_random_bound =
+        [sampled_index](const std::uint16_t) {
+            return std::optional<std::uint16_t>{sampled_index};
+        };
+    callbacks.advance_source_prng = [marker_random_word] {
+        return std::optional<std::uint16_t>{marker_random_word};
+    };
+    return callbacks;
+}
 
 bool expect(const bool condition) {
     return condition;
@@ -29,24 +46,111 @@ int main() {
     WorldActivityRoutineInput resource_input{};
     resource_input.initial_scene_id = 0x20U;
     resource_input.default_resource_word = 0x1234U;
-    resource_input.sampled_random_bound = 5U;
-    resource_input.advanced_prng_value = 0x0BU;
+    resource_input.resource_random_index_bound = 6U;
     resource_input.resource_cursor_source = {-2, 0x4567U};
-    resource_input.force_random_pair_two_three = true;
+    resource_input.resource_overrides.force_index_two_marker_three = true;
     WorldActivityRoutineState resource_state{};
+    std::array<std::uint8_t, 3> resource_callback_order{};
+    std::size_t resource_callback_count = 0U;
+    std::uint16_t observed_resource_bound = 0U;
+    WorldActivityRoutineCallbacks resource_callbacks{};
+    resource_callbacks.sample_source_random_bound =
+        [&](const std::uint16_t bound) {
+            observed_resource_bound = bound;
+            resource_callback_order[resource_callback_count++] = 1U;
+            return std::optional<std::uint16_t>{4U};
+        };
+    resource_callbacks.advance_source_prng = [&] {
+        resource_callback_order[resource_callback_count++] = 2U;
+        return std::optional<std::uint16_t>{0x000BU};
+    };
     int resource_uploads = 0;
+    resource_callbacks.upload_mode_word_block = [&] {
+        resource_callback_order[resource_callback_count++] = 3U;
+        ++resource_uploads;
+    };
     const auto resource_result = run_world_activity_routine(
-        resource_input, resource_state,
-        { {}, {}, {}, {}, [&] { ++resource_uploads; } });
+        resource_input, resource_state, resource_callbacks);
     if (!expect(resource_result == WorldActivityResult::resource_activity_ready &&
                 resource_state.mode == WorldActivityMode::resource_activity &&
-                resource_state.random_bound == 2U &&
-                resource_state.random_slot == 3U &&
+                resource_state.resource_random_index_bound == 6U &&
+                resource_state.selected_resource_random_index == 2U &&
+                resource_state.resource_marker_ordinal == 3U &&
                 resource_state.resource_cursor.cursor == -2 &&
                 resource_state.resource_cursor.resource_index == 0x4567U &&
                 resource_state.world_activity_effect_words_cleared &&
-                resource_uploads == 1)) {
+                resource_uploads == 1 &&
+                observed_resource_bound == 6U &&
+                resource_callback_count == 3U &&
+                resource_callback_order ==
+                    std::array<std::uint8_t, 3>{1U, 2U, 3U})) {
         return 1;
+    }
+
+    WorldActivityRoutineInput overridden_resource_input{};
+    overridden_resource_input.initial_scene_id = 0x15U;
+    overridden_resource_input.resource_random_index_bound = 5U;
+    overridden_resource_input.resource_overrides.force_index_five_marker_zero =
+        true;
+    overridden_resource_input.resource_overrides.force_index_two_marker_three =
+        true;
+    overridden_resource_input.resource_overrides.force_index_four = true;
+    WorldActivityRoutineState overridden_resource_state{};
+    const auto overridden_resource_result = run_world_activity_routine(
+        overridden_resource_input, overridden_resource_state,
+        fixed_resource_random_callbacks(4U, 0x000AU));
+    if (!expect(overridden_resource_result ==
+                    WorldActivityResult::resource_activity_ready &&
+                overridden_resource_state.resource_random_index_bound == 5U &&
+                overridden_resource_state.selected_resource_random_index == 4U &&
+                overridden_resource_state.resource_marker_ordinal == 3U)) {
+        return 16;
+    }
+
+    overridden_resource_input.resource_overrides = {};
+    overridden_resource_input.resource_overrides
+        .force_index_five_marker_zero = true;
+    overridden_resource_state = WorldActivityRoutineState{};
+    if (!expect(run_world_activity_routine(
+                    overridden_resource_input,
+                    overridden_resource_state,
+                    fixed_resource_random_callbacks(4U, 0x000AU)) ==
+                    WorldActivityResult::resource_activity_ready &&
+                overridden_resource_state.selected_resource_random_index ==
+                    5U &&
+                overridden_resource_state.resource_marker_ordinal == 0U)) {
+        return 19;
+    }
+
+    WorldActivityRoutineInput unavailable_resource_input{};
+    unavailable_resource_input.initial_scene_id = 0x15U;
+    WorldActivityRoutineState unavailable_resource_state{};
+    if (!expect(run_world_activity_routine(
+                    unavailable_resource_input,
+                    unavailable_resource_state) ==
+                    WorldActivityResult::
+                        resource_activity_bound_unavailable &&
+                unavailable_resource_state.mode ==
+                    WorldActivityMode::resource_activity)) {
+        return 17;
+    }
+
+    unavailable_resource_input.resource_random_index_bound = 5U;
+    if (!expect(run_world_activity_routine(
+                    unavailable_resource_input,
+                    unavailable_resource_state) ==
+                    WorldActivityResult::
+                        resource_activity_random_input_unavailable)) {
+        return 20;
+    }
+
+    if (!expect(run_world_activity_routine(
+                    unavailable_resource_input,
+                    unavailable_resource_state,
+                    fixed_resource_random_callbacks(5U, 0x000AU)) ==
+                    WorldActivityResult::
+                        resource_activity_sample_out_of_range)) {
+        return 18;
     }
 
     WorldActivityRoutineInput gated_input{};

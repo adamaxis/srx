@@ -61,19 +61,44 @@ WorldActivityResult run_world_activity_routine(
         if (state.scene_id < 0x2CU) {
             state.mode = WorldActivityMode::resource_activity;
             state.default_resource_word = input.default_resource_word;
-            state.random_bound = input.sampled_random_bound;
-            state.random_slot = static_cast<std::uint8_t>(
-                input.advanced_prng_value & 0x07U);
-            if (input.force_random_pair_five_zero) {
-                state.random_bound = 5U;
-                state.random_slot = 0U;
+            if (!input.resource_random_index_bound.has_value() ||
+                *input.resource_random_index_bound == 0U ||
+                *input.resource_random_index_bound > 6U) {
+                return WorldActivityResult::
+                    resource_activity_bound_unavailable;
             }
-            if (input.force_random_pair_two_three) {
-                state.random_bound = 2U;
-                state.random_slot = 3U;
+            state.resource_random_index_bound =
+                *input.resource_random_index_bound;
+            if (!callbacks.sample_source_random_bound ||
+                !callbacks.advance_source_prng) {
+                return WorldActivityResult::
+                    resource_activity_random_input_unavailable;
             }
-            if (input.force_random_bound_four) {
-                state.random_bound = 4U;
+            const auto sampled_index = callbacks.sample_source_random_bound(
+                state.resource_random_index_bound);
+            const auto marker_random_word = callbacks.advance_source_prng();
+            if (!sampled_index.has_value() ||
+                !marker_random_word.has_value()) {
+                return WorldActivityResult::
+                    resource_activity_random_input_unavailable;
+            }
+            if (*sampled_index >= state.resource_random_index_bound) {
+                return WorldActivityResult::
+                    resource_activity_sample_out_of_range;
+            }
+            state.selected_resource_random_index = *sampled_index;
+            state.resource_marker_ordinal = static_cast<std::uint8_t>(
+                *marker_random_word & 0x0007U);
+            if (input.resource_overrides.force_index_five_marker_zero) {
+                state.selected_resource_random_index = 5U;
+                state.resource_marker_ordinal = 0U;
+            }
+            if (input.resource_overrides.force_index_two_marker_three) {
+                state.selected_resource_random_index = 2U;
+                state.resource_marker_ordinal = 3U;
+            }
+            if (input.resource_overrides.force_index_four) {
+                state.selected_resource_random_index = 4U;
             }
             copy_scene_resource_cursor(state.resource_cursor,
                                        input.resource_cursor_source);

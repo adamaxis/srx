@@ -23,9 +23,18 @@ enum class WorldActivityResult {
     blocked_by_scene_gate,
     timeout_scheduled,
     resource_activity_ready,
+    resource_activity_bound_unavailable,
+    resource_activity_random_input_unavailable,
+    resource_activity_sample_out_of_range,
     scripted_activity_ready,
     world_script_selected,
     halted,
+};
+
+struct WorldActivityResourceOverrides {
+    bool force_index_five_marker_zero = false; // FFE184
+    bool force_index_two_marker_three = false; // FFE187
+    bool force_index_four = false; // FFE180
 };
 
 struct WorldActivityRoutineInput {
@@ -43,20 +52,20 @@ struct WorldActivityRoutineInput {
     std::uint16_t default_resource_word = 0;
     SceneResourceProfileFields resource_cursor_source{};
 
-    // These are the source values used by the encounter/resource branch.
-    std::uint16_t sampled_random_bound = 0;
-    std::uint8_t advanced_prng_value = 0;
-    bool force_random_pair_five_zero = false;
-    bool force_random_pair_two_three = false;
-    bool force_random_bound_four = false;
+    // ROM 0x167AE's resource branch reads the bound from the selected profile
+    // (FFF0C6), samples an index into FFE12C, then advances the PRNG again and
+    // stores its low three bits as the marker ordinal in FFE185.
+    std::optional<std::uint16_t> resource_random_index_bound;
+    WorldActivityResourceOverrides resource_overrides{};
 };
 
 struct WorldActivityRoutineState {
     std::uint16_t scene_id = 0;
     WorldActivityMode mode = WorldActivityMode::field;
     std::uint32_t world_flags = 0;
-    std::uint16_t random_bound = 0;
-    std::uint8_t random_slot = 0;
+    std::uint16_t resource_random_index_bound = 0; // FFF0C6
+    std::uint16_t selected_resource_random_index = 0; // FFE12C
+    std::uint8_t resource_marker_ordinal = 0; // FFE185
     std::uint16_t default_resource_word = 0;
     SceneResourceCursorState resource_cursor{};
     std::optional<std::size_t> selected_world_script;
@@ -75,6 +84,9 @@ struct WorldActivityRoutineCallbacks {
     std::function<void()> snapshot_scene_state;
     std::function<void()> prepare_field_scene_buffers;
     std::function<void()> upload_mode_word_block;
+    std::function<std::optional<std::uint16_t>(std::uint16_t)>
+        sample_source_random_bound;
+    std::function<std::optional<std::uint16_t>()> advance_source_prng;
 };
 
 // ROM 0x167AE: read the scene/mode byte selected by FFFBF9 from the active
