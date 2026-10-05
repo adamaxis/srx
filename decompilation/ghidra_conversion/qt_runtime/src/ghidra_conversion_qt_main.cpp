@@ -6520,38 +6520,434 @@ int main(int argc, char** argv) {
                 return 0;
             }
             if (field_posture_dump_path.has_value()) {
+                const auto capture = [&field_scene] {
+                    QImage scene(kSceneWidth, kSceneHeight,
+                                 QImage::Format_RGB32);
+                    scene.fill(Qt::black);
+                    QPainter painter(&scene);
+                    field_scene.paint(painter);
+                    painter.end();
+                    return scene;
+                };
+                const auto field_before_menu = capture();
                 if (!field_scene.open_command_overview_for_dump()) {
                     std::cerr << "field posture dump: command overview "
                                  "did not open\n";
                     return 3;
                 }
-                field_scene.open_posture_dialog_for_dump();
-                // Port bit 3 is Down; the 0x119CE dialog raises the posture
-                // on each Down edge and 0x11AE4 clamps at four.
-                for (int press = 0; press < 2; ++press) {
-                    field_scene.set_controller_port_byte(0x08U);
+                const auto frames_directory =
+                    field_posture_dump_path->parent_path() /
+                    (field_posture_dump_path->stem().string() + "-frames");
+                std::filesystem::create_directories(frames_directory);
+                const auto save_frame = [&frames_directory](
+                                            const std::string& name,
+                                            const QImage& scene) {
+                    const auto path = frames_directory / name;
+                    return scene.save(
+                        QString::fromStdWString(path.wstring()));
+                };
+                const auto posture_failure = [](const std::string& reason) {
+                    std::cerr << "field posture dump: " << reason << '\n';
+                    return 3;
+                };
+                const auto press = [&field_scene](
+                                       const std::uint8_t port_byte) {
+                    field_scene.set_controller_port_byte(port_byte);
                     field_scene.advance_frame();
                     field_scene.set_controller_port_byte(0U);
                     field_scene.advance_frame();
+                };
+                const auto region_matches_asset = [](
+                                                       const QImage& scene,
+                                                       const QImage& asset,
+                                                       const int x,
+                                                       const int y) {
+                    if (asset.isNull() || x < 0 || y < 0 ||
+                        x + asset.width() > scene.width() ||
+                        y + asset.height() > scene.height()) {
+                        return false;
+                    }
+                    const auto actual = scene.copy(
+                        x, y, asset.width(), asset.height())
+                                            .convertToFormat(
+                                                QImage::Format_RGB32);
+                    const auto expected = asset.convertToFormat(
+                        QImage::Format_RGB32);
+                    return actual == expected;
+                };
+                const auto same_outside_focus_row = [](
+                                                        const QImage& first,
+                                                        const QImage& second) {
+                    if (first.size() != second.size()) {
+                        return false;
+                    }
+                    for (int y = 0; y < first.height(); ++y) {
+                        for (int x = 0; x < first.width(); ++x) {
+                            const bool focus_row = x >= 120 && x < 168 &&
+                                                   y >= 168 && y < 176;
+                            if (!focus_row &&
+                                first.pixel(x, y) != second.pixel(x, y)) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                };
+                const auto posture_focus_asset = QImage(
+                    QString::fromStdWString(
+                        (asset_root / "menu" / "field" /
+                         "posture-focus.bmp")
+                            .wstring()));
+                if (posture_focus_asset.size() != QSize(48, 8)) {
+                    return posture_failure(
+                        "named posture focus asset is missing or has an "
+                        "unexpected size");
                 }
-                QImage posture_scene(kSceneWidth, kSceneHeight,
-                                     QImage::Format_RGB32);
-                posture_scene.fill(Qt::black);
-                QPainter posture_painter(&posture_scene);
-                field_scene.paint(posture_painter);
-                posture_painter.end();
-                if (!posture_scene.save(QString::fromStdWString(
+
+                const auto baseline_posture =
+                    field_scene.posture_dialog_value();
+                const auto press_name = [&](const std::uint8_t page,
+                                            const char* phase) {
+                    return std::string("page-") + std::to_string(page) +
+                           "-" + phase + ".bmp";
+                };
+
+                // The command overview opens on page 6. Navigate with real
+                // Left edges to page 2, then exercise Up/Down on every page
+                // whose command row is eligible for the posture focus.
+                for (int page = 6; page > 2; --page) {
+                    press(0x04U); // Left.
+                }
+                if (field_scene.command_overview_primary_page() != 2U) {
+                    return posture_failure(
+                        "could not navigate to command page 2");
+                }
+                const auto initial_combat_bars =
+                    field_scene.command_overview_combat_bars();
+                field_audio_events.clear();
+                for (std::uint8_t page = 2U; page <= 6U; ++page) {
+                    if (field_scene.command_overview_primary_page() != page) {
+                        return posture_failure(
+                            "command page changed outside its input edge");
+                    }
+                    const auto page_base = capture();
+                    if (!save_frame(press_name(page, "before-up"),
+                                    page_base)) {
+                        return posture_failure(
+                            "could not save a command page baseline");
+                    }
+                    field_audio_events.clear();
+                    press(0x01U); // Up enters posture focus.
+                    const auto focused = capture();
+                    const auto focused_frame_saved = save_frame(
+                        press_name(page, "up-focused"), focused);
+                    const auto focus_asset_matches =
+                        region_matches_asset(focused, posture_focus_asset,
+                                             120, 168);
+                    const auto page_outside_focus_matches =
+                        same_outside_focus_row(page_base, focused);
+                    if (!field_scene.posture_dialog_open() ||
+                        field_scene.command_overview_primary_page() != page ||
+                        field_scene.posture_dialog_value() != baseline_posture ||
+                        !field_audio_events.empty() ||
+                        !focus_asset_matches ||
+                        image_region_differs(page_base, focused, 176, 168,
+                                             64, 8) ||
+                        !page_outside_focus_matches ||
+                        !focused_frame_saved) {
+                        std::cerr << "field posture page="
+                                  << static_cast<unsigned>(page)
+                                  << " open="
+                                  << field_scene.posture_dialog_open()
+                                  << " actual_page="
+                                  << static_cast<unsigned>(
+                                         field_scene.command_overview_primary_page())
+                                  << " posture="
+                                  << static_cast<unsigned>(
+                                         field_scene.posture_dialog_value())
+                                  << " baseline="
+                                  << static_cast<unsigned>(baseline_posture)
+                                  << " audio=" << field_audio_events.size()
+                                  << " focus_asset=" << focus_asset_matches
+                                  << " outside_focus="
+                                  << page_outside_focus_matches
+                                  << " saved=" << focused_frame_saved << '\n';
+                        return posture_failure(
+                            "Up failed to show only the posture focus row on "
+                            "a command page");
+                    }
+
+                    if (page == 2U) {
+                        field_audio_events.clear();
+                        for (int frame = 0; frame < 30; ++frame) {
+                            field_scene.advance_frame();
+                        }
+                        const auto held_focus = capture();
+                        if (held_focus != focused ||
+                            !field_audio_events.empty() ||
+                            !save_frame("page-2-focus-held-30-frames.bmp",
+                                        held_focus)) {
+                            return posture_failure(
+                                "focus changed or played audio during its "
+                                "static 30-frame wait");
+                        }
+
+                        const auto before_right_bars =
+                            field_scene.command_overview_combat_bars();
+                        const auto first_delta_port =
+                            baseline_posture < 4U ? 0x08U : 0x04U;
+                        const auto second_delta_port =
+                            baseline_posture < 4U ? 0x04U : 0x08U;
+                        field_audio_events.clear();
+                        press(first_delta_port);
+                        const auto after_first_delta = capture();
+                        const auto first_posture = static_cast<std::uint8_t>(
+                            baseline_posture < 4U
+                                ? baseline_posture + 1U
+                                : baseline_posture - 1U);
+                        const auto after_first_bars =
+                            field_scene.command_overview_combat_bars();
+                        if (!field_scene.posture_dialog_open() ||
+                            field_scene.posture_dialog_value() !=
+                                first_posture ||
+                            after_first_bars.attack_value ==
+                                before_right_bars.attack_value ||
+                            after_first_bars.defense_value ==
+                                before_right_bars.defense_value ||
+                            !image_region_differs(focused, after_first_delta,
+                                                  144, 104, 104, 8) ||
+                            !image_region_differs(focused, after_first_delta,
+                                                  144, 112, 104, 8) ||
+                            field_audio_events !=
+                                std::vector<std::uint16_t>{0x25U} ||
+                            !save_frame("page-2-posture-adjusted.bmp",
+                                        after_first_delta)) {
+                            return posture_failure(
+                                "a horizontal posture input failed to update "
+                                "typed state, attack/defense bars, or event "
+                                "0x25");
+                        }
+
+                        press(second_delta_port);
+                        const auto restored_focus = capture();
+                        if (field_scene.posture_dialog_value() !=
+                                baseline_posture ||
+                            field_scene.command_overview_combat_bars()
+                                    .attack_value !=
+                                initial_combat_bars.attack_value ||
+                            field_scene.command_overview_combat_bars()
+                                    .defense_value !=
+                                initial_combat_bars.defense_value ||
+                            restored_focus != focused ||
+                            field_audio_events !=
+                                std::vector<std::uint16_t>{0x25U, 0x25U} ||
+                            !save_frame("page-2-posture-restored.bmp",
+                                        restored_focus)) {
+                            return posture_failure(
+                                "the opposite horizontal input failed to "
+                                "restore posture and combat pixels");
+                        }
+
+                        field_audio_events.clear();
+                        std::size_t movement_edges = 0U;
+                        for (int attempt = 0;
+                             attempt < 5 &&
+                             field_scene.posture_dialog_value() < 4U;
+                             ++attempt) {
+                            press(0x08U); // Right raises toward Full Offense.
+                            ++movement_edges;
+                        }
+                        const auto max_posture_scene = capture();
+                        const auto max_posture_bars =
+                            field_scene.command_overview_combat_bars();
+                        press(0x08U); // Clamp at 4; source still sounds.
+                        ++movement_edges;
+                        if (field_scene.posture_dialog_value() != 4U ||
+                            field_scene.command_overview_combat_bars()
+                                    .attack_value !=
+                                max_posture_bars.attack_value ||
+                            field_scene.command_overview_combat_bars()
+                                    .defense_value !=
+                                max_posture_bars.defense_value ||
+                            !image_region_differs(
+                                focused, max_posture_scene, 144, 104, 104, 8) ||
+                            !image_region_differs(
+                                focused, max_posture_scene, 144, 112, 104, 8) ||
+                            !save_frame("page-2-posture-max-clamped.bmp",
+                                        capture())) {
+                            return posture_failure(
+                                "posture did not clamp at Full Offense");
+                        }
+                        for (int attempt = 0;
+                             attempt < 5 &&
+                             field_scene.posture_dialog_value() > 0U;
+                             ++attempt) {
+                            press(0x04U); // Left lowers toward Full Defense.
+                            ++movement_edges;
+                        }
+                        const auto min_posture_scene = capture();
+                        const auto min_posture_bars =
+                            field_scene.command_overview_combat_bars();
+                        press(0x04U); // Clamp at 0; source still sounds.
+                        ++movement_edges;
+                        if (field_scene.posture_dialog_value() != 0U ||
+                            field_scene.command_overview_combat_bars()
+                                    .attack_value !=
+                                min_posture_bars.attack_value ||
+                            field_scene.command_overview_combat_bars()
+                                    .defense_value !=
+                                min_posture_bars.defense_value ||
+                            !image_region_differs(
+                                focused, min_posture_scene, 144, 104, 104, 8) ||
+                            !image_region_differs(
+                                focused, min_posture_scene, 144, 112, 104, 8) ||
+                            !save_frame("page-2-posture-min-clamped.bmp",
+                                        capture())) {
+                            return posture_failure(
+                                "posture did not clamp at Full Defense");
+                        }
+                        for (int attempt = 0;
+                             attempt < 5 &&
+                             field_scene.posture_dialog_value() <
+                                 baseline_posture;
+                             ++attempt) {
+                            press(0x08U);
+                            ++movement_edges;
+                        }
+                        if (field_scene.posture_dialog_value() !=
+                                baseline_posture ||
+                            field_scene.command_overview_combat_bars()
+                                    .attack_value !=
+                                initial_combat_bars.attack_value ||
+                            field_scene.command_overview_combat_bars()
+                                    .defense_value !=
+                                initial_combat_bars.defense_value ||
+                            field_audio_events.size() != movement_edges ||
+                            !std::all_of(field_audio_events.begin(),
+                                         field_audio_events.end(),
+                                         [](const std::uint16_t event) {
+                                             return event == 0x25U;
+                                         }) ||
+                            !image_region_differs(
+                                focused, max_posture_scene, 136, 176, 104, 8) ||
+                            !image_region_differs(
+                                focused, min_posture_scene, 136, 176, 104, 8)) {
+                            return posture_failure(
+                                "five posture values, endpoint bars, or the "
+                                "per-step audio events did not follow state");
+                        }
+                    }
+
+                    if (page == 2U) {
+                        // The source loop still honors a fresh horizontal
+                        // edge when Down arrives with that direction held.
+                        const bool increase = baseline_posture < 4U;
+                        const auto diagonal_port = static_cast<std::uint8_t>(
+                            increase ? 0x0AU : 0x06U); // Down + Right/Left.
+                        const auto restore_port = static_cast<std::uint8_t>(
+                            increase ? 0x04U : 0x08U);
+                        const auto expected_posture = static_cast<std::uint8_t>(
+                            increase ? baseline_posture + 1U
+                                     : baseline_posture - 1U);
+                        field_audio_events.clear();
+                        press(diagonal_port);
+                        const auto diagonal_focus = capture();
+                        if (!field_scene.posture_dialog_open() ||
+                            field_scene.posture_dialog_value() !=
+                                expected_posture ||
+                            field_audio_events !=
+                                std::vector<std::uint16_t>{0x25U} ||
+                            !image_region_differs(focused, diagonal_focus,
+                                                  144, 104, 104, 8) ||
+                            !image_region_differs(focused, diagonal_focus,
+                                                  144, 112, 104, 8) ||
+                            !save_frame("page-2-down-plus-horizontal.bmp",
+                                        diagonal_focus)) {
+                            return posture_failure(
+                                "Down plus a fresh horizontal edge did not "
+                                "preserve the source posture adjustment");
+                        }
+                        press(restore_port);
+                        if (field_scene.posture_dialog_value() !=
+                                baseline_posture ||
+                            capture() != focused ||
+                            field_audio_events !=
+                                std::vector<std::uint16_t>{0x25U, 0x25U}) {
+                            return posture_failure(
+                                "the diagonal posture adjustment did not "
+                                "return cleanly to its prior value");
+                        }
+                    }
+
+                    field_audio_events.clear();
+                    press(0x02U); // Down returns to the command row.
+                    const auto deselected = capture();
+                    if (field_scene.posture_dialog_open() ||
+                        field_scene.command_overview_primary_page() != page ||
+                        field_scene.posture_dialog_value() != baseline_posture ||
+                        !field_audio_events.empty() ||
+                        deselected != page_base ||
+                        !save_frame(press_name(page, "down-deselected"),
+                                    deselected)) {
+                        return posture_failure(
+                            "Down failed to deselect focus and restore the "
+                            "exact command-page composition");
+                    }
+                    if (page < 6U) {
+                        press(0x08U); // Right selects the next command row.
+                    }
+                }
+
+                const auto last_page_before_down = capture();
+                press(0x02U); // Down on a regular row must not open focus.
+                if (field_scene.posture_dialog_open() ||
+                    field_scene.command_overview_primary_page() != 6U ||
+                    capture() != last_page_before_down) {
+                    return posture_failure(
+                        "Down on an unfocused command row altered its page");
+                }
+                for (int page = 6; page > 2; --page) {
+                    press(0x04U);
+                }
+                press(0x01U); // Leave the final artifact in a real focus state.
+                const auto final_focus = capture();
+                if (!field_scene.posture_dialog_open() ||
+                    field_scene.command_overview_primary_page() != 2U ||
+                    field_scene.posture_dialog_value() != baseline_posture ||
+                    !final_focus.save(QString::fromStdWString(
                         field_posture_dump_path->wstring()))) {
-                    std::cerr << "field posture dump: could not write "
-                              << field_posture_dump_path->string() << '\n';
-                    return 3;
+                    return posture_failure(
+                        "could not save the real Up-selected posture frame");
+                }
+
+                press(0x80U); // Start leaves posture focus first.
+                if (field_scene.posture_dialog_open() ||
+                    !field_scene.command_overview_open()) {
+                    return posture_failure(
+                        "Start did not return from focus to the command row");
+                }
+                press(0x80U); // A second Start returns to the field.
+                const auto field_after_menu = capture();
+                if (field_scene.command_overview_open() ||
+                    image_region_differs(field_before_menu, field_after_menu,
+                                         0, 0, kSceneWidth, kSceneHeight) ||
+                    !save_frame("field-after-start-return.bmp",
+                                field_after_menu)) {
+                    return posture_failure(
+                        "command-menu graphics remained over the field after "
+                        "Start returned");
+                }
+                if (!save_frame("field-before-command-menu.bmp",
+                                field_before_menu)) {
+                    return posture_failure(
+                        "could not save the field baseline frame");
                 }
                 std::cout << "field_posture_dump=written path="
                           << field_posture_dump_path->string()
-                          << " posture="
-                          << static_cast<int>(
-                                 field_scene.posture_dialog_value())
-                          << '\n';
+                          << " frames=" << frames_directory.string()
+                          << " pages=2-6 focus=Up/Down posture="
+                          << static_cast<int>(baseline_posture)
+                          << " audio=0x25-per-adjustment\n";
                 return 0;
             }
             if (field_automatic_use_dump_path.has_value()) {

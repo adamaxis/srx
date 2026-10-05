@@ -39,6 +39,7 @@ struct FieldCommandOverviewView {
     bool source_tile_data_pending = false;
     bool action_dispatch_pending = false;
     bool action_dialog_pending = false;
+    bool posture_dialog_pending = false;
 };
 
 class FieldCommandOverviewBridge final {
@@ -68,12 +69,13 @@ public:
     }
 
     // The typed secondary advance arms FFF115 (-1) when the source enters
-    // the 0x119CE posture adjustment dialog. The host consumes that edge
-    // once and opens its non-blocking posture loop.
+    // the 0x119CE posture adjustment dialog. The source helper resets that
+    // gate before returning, so the host consumes the callback's one-shot
+    // view flag to open its non-blocking posture loop.
     bool take_action_dialog() noexcept {
-        const bool armed = state_.action_dialog_gate < 0;
+        const bool armed = view_.posture_dialog_pending;
         state_.action_dialog_gate = 0;
-        view_.action_dialog_pending = false;
+        view_.posture_dialog_pending = false;
         return armed;
     }
 

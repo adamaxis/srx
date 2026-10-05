@@ -289,8 +289,8 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_cyberware_empty_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
-# The 0x119CE posture dialog must raise/lower the typed posture with the
-# source clamp and keep the command shell underneath.
+# ROM 0x119CE posture focus: Up/Down on every command row, Left/Right and
+# clamping, 0x25 audio requests, static hold, exact redraw, and field return.
 add_test(NAME shadowrun_ghidra_conversion_qt_field_posture_qa
          COMMAND shadowrun_ghidra_conversion_qt
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"

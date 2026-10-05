@@ -127,6 +127,9 @@ public:
     bool command_overview_open() const noexcept {
         return command_overview_.open();
     }
+    std::uint8_t command_overview_primary_page() const noexcept {
+        return command_overview_.view().source_state.primary_page;
+    }
     bool dialogue_open() const noexcept { return field_dialogue_.open(); }
     const DialoguePanelView& dialogue_panel() const noexcept {
         return field_dialogue_.panel();
@@ -474,9 +477,6 @@ public:
     std::uint8_t posture_dialog_value() const noexcept {
         return active_runner_record().posture;
     }
-    // Presentation seam for QA dumps: enter the 0x119CE posture adjustment
-    // dialog the way the converted command loop arms it.
-    void open_posture_dialog_for_dump() noexcept { posture_dialog_active_ = true; }
     bool field_entity_visible() const noexcept {
         return field_entity_.visible;
     }

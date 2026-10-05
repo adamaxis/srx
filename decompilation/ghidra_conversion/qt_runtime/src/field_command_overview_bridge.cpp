@@ -181,7 +181,7 @@ void FieldCommandOverviewBridge::advance_secondary(
              return delta;
          },
          [this] {
-             view_.action_dialog_pending = true;
+             view_.posture_dialog_pending = true;
              source_boundary("field.command_overview.dialog_pending");
          },
          [this] {

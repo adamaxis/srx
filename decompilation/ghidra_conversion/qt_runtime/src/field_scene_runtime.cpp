@@ -3907,26 +3907,69 @@ void FieldSceneRuntime::advance_frame() {
             return;
         }
         if (command_overview_.take_action_dialog()) {
-            // 0x11506 armed the 0x119CE posture adjustment dialog. Its
-            // non-blocking host form mirrors the source loop: Down raises,
-            // Left lowers, Start exits, and 0x11AE4 clamps to 0..4.
+            // Up on command pages 2..6 arms FFF115 and enters the 0x119CE
+            // posture focus. Keep the command page selected underneath it.
             posture_dialog_active_ = true;
             source_boundary("field.posture.dialog_opened");
         }
         if (posture_dialog_active_) {
             const auto events = field_controller_sample_state_.events;
-            if ((events & 0x0800U) != 0U) {
-                adjust_runner_posture(active_runner_record(), 1);
+            bool check_increment = false;
+            bool check_decrement = false;
+            bool close_by_down = false;
+
+            // ROM 0x119CE gives a Down edge special treatment: while Left or
+            // Right is held it can still complete that horizontal adjustment;
+            // otherwise the armed FFF115 gate returns focus to the command
+            // row. With no Down edge, Right raises and Left lowers posture.
+            if ((events & 0x0200U) != 0U) {
+                if ((events & 0x0008U) != 0U) {
+                    check_increment = true;
+                } else if ((events & 0x0004U) != 0U) {
+                    check_decrement = true;
+                } else {
+                    close_by_down = true;
+                }
+            } else {
+                check_increment = true;
+            }
+
+            int posture_delta = 0;
+            if (!close_by_down && check_increment) {
+                if ((events & 0x0800U) != 0U) {
+                    posture_delta = 1;
+                } else {
+                    check_decrement = true;
+                }
+            }
+            if (!close_by_down && posture_delta == 0 && check_decrement &&
+                (events & 0x0400U) != 0U) {
+                posture_delta = -1;
+            }
+
+            if (posture_delta != 0) {
+                if (source_audio_event_callback_) {
+                    source_audio_event_callback_(0x25U);
+                }
+                (void)adjust_runner_posture(active_runner_record(),
+                                            posture_delta);
                 refresh_command_overview_combat_bars();
-                source_boundary("field.posture.dialog.raised");
-            } else if ((events & 0x0400U) != 0U) {
-                adjust_runner_posture(active_runner_record(), -1);
-                refresh_command_overview_combat_bars();
-                source_boundary("field.posture.dialog.lowered");
-            } else if ((events & 0x8000U) != 0U) {
+                source_boundary(posture_delta > 0
+                                    ? "field.posture.dialog.raised"
+                                    : "field.posture.dialog.lowered");
+                return;
+            }
+
+            if (close_by_down || (events & 0x8000U) != 0U) {
+                // The blocking source loop writes its final posture strip
+                // through 0x11AE4 with delta zero, then redraws both combat
+                // bars before restoring command navigation.
+                (void)adjust_runner_posture(active_runner_record(), 0);
                 posture_dialog_active_ = false;
                 refresh_command_overview_combat_bars();
-                source_boundary("field.posture.dialog.closed");
+                source_boundary(close_by_down
+                                    ? "field.posture.dialog.deselected"
+                                    : "field.posture.dialog.closed");
             }
             return;
         }
@@ -5688,9 +5731,10 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     draw_command_overview_text(painter, 136, 176,
                                field_menu_text_.status_names[posture]);
     if (posture_dialog_active_) {
-        // 0x119CE's dialog highlights the posture row while the source
-        // loop accepts the raise/lower edges.
-        painter.drawImage(176, 168, posture_focus_);
+        // 0x119CE writes the six-tile POSTURE focus row at CA9E (120,168).
+        // The five-state strip starts separately at CAAC (176,168), so keep
+        // it visible and replace only the static label beneath the selector.
+        painter.drawImage(120, 168, posture_focus_);
     }
 
     const auto draw_item_detail_rows =

@@ -242,21 +242,34 @@ Qt speaker output remains unmeasured, and the recruited-runner visual roster is 
 
 ### Posture (`0x11928`, `0x119CE`, `0x11ABE`, `0x11AE4`)
 
-When the command selector is `2..6`, Up enters the dedicated posture focus.
-The five source values are:
+When the command selector is `2..6`, Up enters the dedicated posture focus;
+Down with no horizontal direction held deselects it and returns to the same
+command row. Left/Right adjust the active record's posture byte (`+0x4D`),
+clamped to `0..4`. The five source values are:
 
 `Full Defense`, `Med. Defense`, `Neutral`, `Med. Offense`, `Full Offense`.
 
-Left/Right mutates the active record's byte `+0x4D`, clamped to `0..4`, then
-calls `0x11ABE`. That routine redraws the posture strip and calls `0x12CEE`
-to recompute the attack/defense source bars. This is a gameplay state used by
-the field behavior, not a decorative slider. B returns focus to the command
-bar; Start exits the command screen.
+Each horizontal change calls `0x11ABE`, which redraws the value label and calls
+`0x12CEE` to recompute the attack/defense source bars. The `0x119CE` posture
+focus image comes from the grid at `0xCA9E` (`120,168`); the separate five-state
+bar begins at `0xCAAC` (`176,168`). The focus image replaces the panel's static
+POSTURE label while preserving that bar. It is static while selected; only a
+Left/Right edge requests sound event `0x25` (`audio.effects.resource.037`,
+2.134 seconds). Down and Start close focus without a sound. A second Start
+returns from the command screen. Posture is gameplay state, not a decorative
+slider.
 
 Native status: the active posture focus, source five-state values, clamping,
 record persistence, rendering, and the normal `0x12CEE` attack/defense
 calculation are implemented. The native results match the Joshua source record
 for all five posture values (`attack 3,4,5,6,7`; `defense 19,18,17,16,15`).
+The Qt posture CTest drives real command inputs on pages 2..6, compares the
+selector pixels with the named source asset, checks a 30-frame static hold,
+tests both horizontal directions and both clamps, verifies event-0x25 cadence,
+and compares the complete command frame after Down with its pre-focus image.
+Start then returns to a full-frame field image identical to the one before the
+menu opened. These are internal renderer checks; the supplied independent
+longplay shows neighboring command pages but not this selected posture route.
 The negative `+0x56` special branch (`0x12D7C`/`0x12FA4`) and the field
 AI/combat code that consumes posture are not yet reconstructed, so their effect
 outside the audited command path remains pending.
