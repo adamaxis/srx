@@ -230,15 +230,15 @@ decrements/removes the selected phase byte only after a successful use. The
 Trade magic-item rejection, recipient/full-inventory gate, Yes/No confirmation,
 and `0x129FE` possession transfer are now connected in the Qt conversion
 through typed roster and item records. The recipient HUD-panel call at
-`0x110E8`, measured Qt speaker output for event `0x25`, and an independent Trade capture remain open.
+`0x110E8`, Windows loopback capture for this exact Trade route, and an independent Trade capture remain open.
 
 The separate Qt conversion retains the selected inventory slot while the
 First Aid state is active, accepts the source A edge for target choice, waits
 for a fresh high-byte event to dismiss the result, and returns to the same
 Inventory page. Its CTest writes `actual.bmp` and target/CANCEL/use/return
 checkpoints and checks the live HUD and one-pixel item selector. This remains
-partial while the host random seed differs from source startup, event `0x25` maps to resource 037;
-Qt speaker output remains unmeasured, and the recruited-runner visual roster is unavailable.
+partial while the host random seed differs from source startup, event `0x25` maps to resource 037 and shared audio QA starts it on the default output;
+Windows loopback for this exact First Aid route remains unrecorded, and the recruited-runner visual roster is unavailable.
 
 ### Posture (`0x11928`, `0x119CE`, `0x11ABE`, `0x11AE4`)
 
@@ -403,7 +403,7 @@ counter and source text placement. A/B/Start return to Notebook; C invokes
 `0x391A` and stays on Tips. The panel is fully cleared before replacement, and
 QA captures `actual.bmp`, another unlocked page, held animation, and all three
 returns. Event `0x25` is delivered by the mode-action path and maps to
-`audio.effects.resource.037`; Qt speaker output is unmeasured. Story-event writers and restored-save tip flags
+`audio.effects.resource.037`; shared audio QA checks decoded playback, default-output state, and duration, while Windows loopback for this route remains unrecorded. Story-event writers and restored-save tip flags
 remain pending; no independent Notebook/Tips Genesis frame is in the supplied
 longplay. The Mr. Johnsons handler at
 `0xF416` has also been audited far enough to extract its five fixed source
@@ -418,7 +418,7 @@ that Pocket Secretary options disappear on entry and that the complete inner
 panel matches the parent after B, Abort, and Start returns. The route remains
 partial: Qt draws the per-VBlank `0xE660` cells at twelve lower-bezel
 positions and uses the `0x110E8` selected-runner portrait preview. Event
-`0x25` maps to resource 037; Qt speaker output and an independent
+`0x25` maps to resource 037 and shared audio QA checks playback on the default output; Windows loopback for this route and an independent
 Genesis Dismiss Runner frame remain unverified. The separate NativePort Dismiss
 path has known source mismatches and is not used as validation. The
 deck-present Matrix path is intentionally still pending, as are restricted
@@ -489,8 +489,8 @@ of a port.
 | Hotel Karma upgrades | `0xD024` via `0xCF38` | Implemented | Hotel option opens the spend-enabled child route; source cost/limits, Yes/No mutation, Karma change, child/parent redraw, and Hotel return are covered by Qt QA |
 | Cyberware | `0x11950` | Partial | Empty branch and source bit 0..14 installed-row scan are converted; text/input service and mutation flows remain |
 | Runner switching | `0x391A` | Partial | Source type-2 wrap, eligibility/suppression gate, and no-eligible no-install behavior are converted; recruited roster data and native integration remain |
-| Pocket Secretary / Notebook | `0xC2A6`, `0xC3E6`, `0xC376`, `0xC8C8`, `0xF236`, `0xF2E2`, `0xF33E`, `0xF312`, `0x18150`, `0xC448` | Partial | Qt connects the source five-row base, Group Items empty/populated branches, Cyberdeck no-deck response, Notebook base list, and Current Run no-run wait/return. The Notebook dump checks ROM-derived coordinates and verifies replacement text clears prior rows. The Dismiss route checks fixed Abort/name placement, compact-marker state, selected-runner preview, current-runner replacement, and full inner-panel replacement on return. F312/C448 call E660 once per VBlank; Qt draws the typed random 1x2 effect in twelve lower-bezel positions and QA checks that it does not overlap child text or controls. Normal quest acquisition and restored-save FFFC22, Contacts/Shadowrunners detail handlers, Mr. Johnsons, Save/Load, deck-present Matrix, restricted-mode gates, measured Qt output for event 0x25, and independent Pocket Secretary Genesis frames remain open. Existing NativePort menu paths do not count as Qt implementation evidence. |
-| Magic | `0xFBA6`, `0x10260`, `0x10276`, `0x102EC`, `0x1055E`, `0x105E6`, `0x1088C`, `0x11190` | Partial | Qt connects the typed Magical Defense fallback and spell-panel display/browsing. Spell QA checks the corrected DBF spell-table bounds, complete 3x3 icons, selected header glyph, four metric rows, live selection/four cursor phases, command-center clearing, retained HUD/portrait, and return/reopen; independent longplay frames 000001/000002/000005 were inspected. Source cursor phase advances every seven field frames. Parent event 0x24 maps to `menu-024.flac` (2.484 s metadata), but output-device playback is unmeasured. Target/effect action and broader independent visual coverage remain open |
+| Pocket Secretary / Notebook | `0xC2A6`, `0xC3E6`, `0xC376`, `0xC8C8`, `0xF236`, `0xF2E2`, `0xF33E`, `0xF312`, `0x18150`, `0xC448` | Partial | Qt connects the source five-row base, Group Items empty/populated branches, Cyberdeck no-deck response, Notebook base list, and Current Run no-run wait/return. The Notebook dump checks ROM-derived coordinates and verifies replacement text clears prior rows. The Dismiss route checks fixed Abort/name placement, compact-marker state, selected-runner preview, current-runner replacement, and full inner-panel replacement on return. F312/C448 call E660 once per VBlank; Qt draws the typed random 1x2 effect in twelve lower-bezel positions and QA checks that it does not overlap child text or controls. Normal quest acquisition and restored-save FFFC22, Contacts/Shadowrunners detail handlers, Mr. Johnsons, Save/Load, deck-present Matrix, restricted-mode gates, Windows loopback for event 0x25 on these routes, and independent Pocket Secretary Genesis frames remain open. Shared audio QA verifies decoded playback/default-output state/duration. Existing NativePort menu paths do not count as Qt implementation evidence. |
+| Magic | `0xFBA6`, `0x10260`, `0x10276`, `0x102EC`, `0x1055E`, `0x105E6`, `0x1088C`, `0x11190` | Partial | Qt connects the typed Magical Defense fallback and spell-panel display/browsing. Spell QA checks the corrected DBF spell-table bounds, complete 3x3 icons, selected header glyph, four metric rows, live selection/four cursor phases, command-center clearing, retained HUD/portrait, and return/reopen; independent longplay frames 000001/000002/000005 were inspected. Source cursor phase advances every seven field frames. Parent event 0x24 maps to `menu-024.flac` (2.484 s metadata); shared audio QA verifies decoding, PlayingState on the default output, duration, and stop, while Windows loopback for the exact Magic route remains unrecorded. Target/effect action and broader independent visual coverage remain open |
 | Matrix/cyberdeck | source deck/program loop | Pending | Separate from Magic and command overview |
 | Field combat | source target/action loops | Pending | Posture consumers, damage, ammo/spell drain, and animation are pending |
 

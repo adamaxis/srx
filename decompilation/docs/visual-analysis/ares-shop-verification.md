@@ -9,8 +9,10 @@ confirmation, sale/refund, and protected-item paths now mutate the active
 runner and new-game wallet through typed state. The restored-save adapter still
 does not expose wallet funds. Events `0x24` and `0x25` now reach extracted
 one-shot files through the Qt playback service; their source event identity
-and file durations are recorded below. Actual Windows speaker output remains
-unmeasured, so the Ares hill remains partial. The introduction and shop were
+and file durations are recorded below. Shared audio QA decodes and starts
+events `0x24`, `0x25`, and `0x4B` on the default output and checks duration and
+stop behavior; Windows loopback for the exact shop route remains unrecorded.
+The Ares hill remains partial. The introduction and shop were
 independently reviewed against the longplay sequence around frames 5983-5994.
 
 ## Source trace
@@ -143,13 +145,15 @@ independently reviewed against the longplay sequence around frames 5983-5994.
    loop at `0x56C72..0x56CCC` requests `0x25` for selection movement; that
    byte is table-2 index 37 and maps to `audio.effects.resource.037`. Its FLAC
    is 2.134 seconds including the extractor's two-second release tail, and
-   the Qt service sends it to `QSoundEffect`. Confirm/cancel paths request
+    the Qt service sends it through `QMediaPlayer`/`QAudioOutput`.
+    Confirm/cancel paths request
    `0x24`, mapped to `audio.menu.command-024` (2.484 seconds). A
    pre-emphasized waveform comparison against longplay audio from seconds
    5980-6000 found repeated strong matches for resource 037 at 5985.289,
-   5987.022, and 5993.456. Debug/Release QA verifies that event `0x25` reaches
-   its direct asset alias; it does not capture Windows speaker output, so
-   device playback remains unverified.
+    5987.022, and 5993.456. Debug/Release QA verifies FLAC decoding,
+    `PlayingState` on the default output, duration, and stop behavior for event
+    `0x25` (along with `0x24` and `0x4B`). It does not record Windows loopback
+    for the exact shop action.
 6. **Related screen content?** The independent sequence includes the mode
    prompt, black transition, shop category, selected clips/patch details,
    and a later transaction prompt. QA also inspects the insufficient-funds,
@@ -188,5 +192,5 @@ introduction, category, selected-item, purchase failure/cancel/accept, Stim
 Patch confirmation, E-coded clips, sale/refund, protected-sale, and return
 `actual.bmp` checkpoints. The importer was run explicitly with
 `shadowrun_graphics_extract --all-assets`; extraction is not part of CTest or
-ordinary builds. Loaded-save wallet binding and an independent capture of Qt
-speaker output are still open.
+ordinary builds. Loaded-save wallet binding and Windows loopback capture for
+the shop action are still open.

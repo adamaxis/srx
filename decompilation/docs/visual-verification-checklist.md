@@ -19,8 +19,12 @@ question; do not treat a plausible screenshot as proof by itself.
    multiple frames across both active and idle input paths.
 5. **Does it have sound?** Trace the triggering event to a source sound or
    resource, then check when it starts, its measured duration, and its stop or
-   release behavior. If no source call is found, record `no call traced`; do not
-   invent a sound or duration.
+   release behavior. Verify that the host player supports the asset's stored
+   format, decodes it, reports audio available, and enters its playing state on
+   the configured output device. A resolver or event-alias assertion alone does
+   not prove playback. Capture output loopback when practical; distinguish that
+   from player-state evidence. If no source call is found, record `no call
+   traced`; do not invent a sound or duration.
 6. **Are the other visible parts of the screen also correct?** Review the full
    frame, nearby panels, HUD, text, counters, and transition state. Follow
    related controls when one anomaly could affect another.

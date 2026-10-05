@@ -587,8 +587,9 @@ add_test(NAME shadowrun_ghidra_shop_menu_runtime
          COMMAND shadowrun_ghidra_shop_menu_runtime_test)
 
 # Verify the source selector and maglock unlock events reach their extracted
-# assets without assigning aliases to unknown, silent, or lifecycle-unresolved
-# audio commands.
+# assets, the FLAC decoder loads the resource, and a mapped event starts on the
+# host audio output. Unknown, silent, or lifecycle-unresolved commands stay
+# unmapped.
 add_executable(shadowrun_ghidra_audio_playback_test
     tests/audio_playback_test.cpp
     src/audio_playback.cpp
@@ -600,9 +601,12 @@ set_target_properties(shadowrun_ghidra_audio_playback_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
     RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
 target_compile_definitions(shadowrun_ghidra_audio_playback_test PRIVATE
+    SHADOWRUN_GHIDRA_AUDIO_MENU_RESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/menu/menu-024.flac"
     SHADOWRUN_GHIDRA_AUDIO_RESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-037.flac"
     SHADOWRUN_GHIDRA_AUDIO_PASSKEY_RESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-075.flac")
 target_link_libraries(shadowrun_ghidra_audio_playback_test
     PRIVATE Qt6::Core Qt6::Multimedia)
 add_test(NAME shadowrun_ghidra_audio_playback
          COMMAND shadowrun_ghidra_audio_playback_test)
+set_tests_properties(shadowrun_ghidra_audio_playback PROPERTIES
+    SKIP_RETURN_CODE 77)

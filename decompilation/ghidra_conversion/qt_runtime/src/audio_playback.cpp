@@ -1,10 +1,30 @@
 #include "audio_playback.hpp"
 
-#include <QSoundEffect>
+#include <QAudioOutput>
+#include <QMediaPlayer>
 #include <QString>
 #include <QUrl>
 
+#include <algorithm>
+#include <filesystem>
+#include <optional>
+#include <utility>
+
 namespace shadowrun::ghidra_conversion::qt_runtime {
+
+struct AudioPlaybackService::PlaybackChannel {
+    QAudioOutput output;
+    QMediaPlayer player;
+    std::filesystem::path source_path;
+    std::uint16_t event = 0U;
+    std::uint64_t request_sequence = 0U;
+    bool has_event = false;
+
+    PlaybackChannel() {
+        output.setVolume(0.6f);
+        player.setAudioOutput(&output);
+    }
+};
 
 AudioPlaybackService::~AudioPlaybackService() = default;
 
@@ -14,13 +34,11 @@ AudioPlaybackService::AudioPlaybackService(PathResolver resolver,
     constexpr std::size_t kChannelCount = 4U;
     channels_.reserve(kChannelCount);
     for (std::size_t index = 0; index < kChannelCount; ++index) {
-        auto effect = std::make_unique<QSoundEffect>(this);
-        effect->setVolume(0.6f);
-        channels_.push_back(std::move(effect));
+        channels_.push_back(std::make_unique<PlaybackChannel>());
     }
+
     // ROM audio command ids observed in the converted service boundaries,
-    // mapped to the extracted aliases whose names carry the same command
-    // evidence (menu command 0x24, field effect 0x10, title stages 1/3).
+    // mapped to extracted FLAC aliases with source evidence.
     event_aliases_ = {
         {0x10U, "audio.field.effect-016"},
         {0x11U, "audio.intro.title.stage-1"},
@@ -33,8 +51,8 @@ AudioPlaybackService::AudioPlaybackService(PathResolver resolver,
         // The maglock unlock routine sends command 0x4B (table-2 resource 75).
         {0x4BU, "audio.effects.resource.075"},
         // 0x2C/resource 44 is a verified silent table slot and has no asset.
-        // 0x30/resource 48 is a persistent observation capture; keep it
-        // unmapped until the alert's source playback lifetime is implemented.
+        // 0x30/resource 48 remains unmapped until its source stop lifetime is
+        // understood.
     };
 }
 
@@ -50,10 +68,16 @@ void AudioPlaybackService::play_event(const std::uint16_t event) {
     if (alias.empty()) {
         return;
     }
-    play_alias(alias);
+    start_alias(alias, event);
 }
 
 void AudioPlaybackService::play_alias(const std::string_view alias) {
+    start_alias(alias, std::nullopt);
+}
+
+void AudioPlaybackService::start_alias(
+    const std::string_view alias,
+    const std::optional<std::uint16_t> event) {
     if (!resolver_) {
         return;
     }
@@ -61,14 +85,24 @@ void AudioPlaybackService::play_alias(const std::string_view alias) {
     if (path.empty() || !std::filesystem::is_regular_file(path)) {
         return;
     }
-    auto& effect = acquire_channel();
-    effect.stop();
-    effect.setSource(
-        QUrl::fromLocalFile(QString::fromStdWString(path.wstring())));
-    effect.play();
+
+    auto& channel = acquire_channel();
+    channel.player.stop();
+    if (channel.source_path != path ||
+        channel.player.error() != QMediaPlayer::NoError) {
+        channel.source_path = path;
+        channel.player.setSource(
+            QUrl::fromLocalFile(QString::fromStdWString(path.wstring())));
+    }
+    channel.player.setPosition(0);
+    channel.event = event.value_or(0U);
+    channel.has_event = event.has_value();
+    channel.request_sequence = ++request_sequence_;
+    channel.player.play();
 }
 
-QSoundEffect& AudioPlaybackService::acquire_channel() {
+AudioPlaybackService::PlaybackChannel&
+AudioPlaybackService::acquire_channel() {
     auto& channel = channels_[next_channel_];
     next_channel_ = (next_channel_ + 1U) % channels_.size();
     return *channel;
@@ -76,8 +110,43 @@ QSoundEffect& AudioPlaybackService::acquire_channel() {
 
 void AudioPlaybackService::stop_effects() {
     for (const auto& channel : channels_) {
-        channel->stop();
+        channel->player.stop();
     }
+}
+
+AudioPlaybackService::PlaybackStatus
+AudioPlaybackService::playback_status_for_event(
+    const std::uint16_t event) const {
+    const auto latest = std::max_element(
+        channels_.cbegin(), channels_.cend(),
+        [event](const auto& left, const auto& right) {
+            const bool left_matches = left->has_event && left->event == event;
+            const bool right_matches = right->has_event && right->event == event;
+            if (left_matches != right_matches) {
+                return !left_matches;
+            }
+            return left->request_sequence < right->request_sequence;
+        });
+    if (latest == channels_.cend() || !(*latest)->has_event ||
+        (*latest)->event != event) {
+        return {};
+    }
+
+    const auto& player = (*latest)->player;
+    const auto status = player.mediaStatus();
+    const bool source_ready =
+        status == QMediaPlayer::LoadedMedia ||
+        status == QMediaPlayer::BufferedMedia ||
+        status == QMediaPlayer::StalledMedia ||
+        status == QMediaPlayer::EndOfMedia;
+    return PlaybackStatus{
+        true,
+        source_ready,
+        player.hasAudio(),
+        player.playbackState() == QMediaPlayer::PlayingState,
+        player.error() != QMediaPlayer::NoError ||
+            status == QMediaPlayer::InvalidMedia,
+        static_cast<std::int64_t>(player.duration())};
 }
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime

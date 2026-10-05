@@ -158,9 +158,11 @@ selected item. That did not match the single fine outline in the longplay.
    audio event `0x25`. ROM `0x530DE` sends that byte to the audio command
    queue; it selects table-2 index 37 (`audio.effects.resource.037`, 2.134
    seconds including its release tail). Qt maps and forwards the event to
-   `QSoundEffect`. Independent longplay audio around the Ares shop has repeated
-   waveform matches for this sample; the Qt tests verify the alias route, not
-   speaker output for this specific First Aid visit. Action-button dispatch
+   `QMediaPlayer` now decodes and starts this FLAC on the default output. The
+   shared audio CTest checks `PlayingState` and the 2.133-second decoded
+   duration. Independent Ares longplay audio has repeated waveform matches for
+   resource 037; Windows loopback for this exact First Aid visit remains
+   unrecorded. Action-button dispatch
    uses `0x24`, mapped to `audio.menu.command-024` (2.484 seconds including
    its two-second release tail).
 6. **Related screen parts:** inspected the item art, equipped-cell frame,
@@ -284,9 +286,9 @@ open.
    event `0x25` at `0x12392`; confirming/cancelling requests `0x24` at
    `0x12412`. Event `0x25` maps through the shared playback service to
    `audio.effects.resource.037` (2.134 seconds including its release tail);
-   `0x24` maps to `audio.menu.command-024` (2.484 seconds). The Qt callback
-   trace and focused audio CTest verify the source event and alias route, but
-   neither captures Windows speaker output. No separate result sound is
+   `0x24` maps to `audio.menu.command-024` (2.484 seconds). The shared audio CTest also verifies that event `0x24` decodes and starts on
+   the default output with the 2.483-second duration. It does not capture
+   Windows loopback for this specific First Aid input path. No separate result sound is
    issued, and this longplay visit does not independently isolate its cursor
    cue.
 6. **Are related parts correct?** Reviewed the inventory icons and item
@@ -311,8 +313,9 @@ The focused CTests are
 `shadowrun_ghidra_conversion_qt.exe --assets decompilation/assets --field-archetype samurai --field-first-aid-dump <output-dir>`;
 it writes `actual.bmp` plus the interaction checkpoints and verifies that
 held A does not dismiss the result before a fresh controller edge. This hill stays
-`partial`: Joshua-only roster integration, host RNG seeding, measured Qt
-speaker output, and same-archetype visual support still need work.
+`partial`: Joshua-only roster integration, host RNG seeding, Windows loopback
+capture for the exact First Aid sequence, and same-archetype visual support
+still need work.
 
 ### Applied review: Seattle opening text and focus box
 
@@ -427,8 +430,9 @@ longplay frames remain the independent appearance evidence.
    audio.menu.command-024 with a 2.484-second file including its two-second
    release tail. Selector movement uses event 0x25, mapped to table-2 entry 37
    (`audio.effects.resource.037`, 2.134 seconds including its release tail).
-   A longplay audio cross-check matches that sample during the Ares shop;
-   speaker output from the Qt build remains unmeasured.
+   Independent Ares longplay audio has repeated matches for resource 037. The
+   shared audio CTest confirms the event reaches default-device `PlayingState`;
+   Windows loopback for this command-menu route remains unrecorded.
 6. **Related screen parts:** inspected the shared command background, field
    HUD, portraits, selected tab, inventory art/equipment treatment, Clips
    rows, Cyberware panel and return, and Pocket Secretary entry. QA checks
@@ -805,9 +809,10 @@ new behavior is invented.
 5. **Does sound accompany it?** `0x12988` requests event `0x25` after either
    horizontal edge; `0x129B2` requests `0x24` on confirm. Event `0x25` maps to
    `audio.effects.resource.037` (2.134 seconds including its release tail),
-   and `0x24` maps to `audio.menu.command-024` (2.484 seconds). The source
-   sample is cross-checked against the independent Ares longplay audio; this
-   Trade QA checks the event and alias path but does not capture speaker output.
+   and `0x24` maps to `audio.menu.command-024` (2.484 seconds). The source sample is cross-checked against independent Ares longplay audio.
+   The shared audio CTest verifies event `0x24` reaches default-device
+   `PlayingState`; Windows loopback for this exact Trade route remains
+   unrecorded.
 6. **Are related parts of the screen correct too?** The whole frame was
    checked for the inventory item, item detail, command shell, active runner
    HUD, Yes/No focus, and return to the inventory grid. The item remains at
@@ -983,8 +988,9 @@ new behavior is invented.
    request audio. C calls `0x391A`, which requests event `0x25`; Qt maps that
    event to `audio.effects.resource.037` (2.134 seconds including its release
    tail) and keeps the selected page open. The asset identity is checked
-   against the independent Ares longplay audio, but speaker output during this
-   Tips action remains unverified.
+   against the independent Ares longplay audio. The shared audio CTest verifies
+   event `0x25` reaches default-device `PlayingState`; Windows loopback for this
+   exact Tips action remains unrecorded.
 6. **Are related parts of the screen also correct?** The review checks both
    page text and page count, the shared lower animation, input edge behavior,
    and the parent Notebook before/after child entry. The page body reaches at
@@ -1045,7 +1051,8 @@ new behavior is invented.
    additional event. Event `0x25` maps to `audio.effects.resource.037` (2.134
    seconds including its release tail); event `0x24` maps to
    `audio.menu.command-024` (2.484 seconds). The CTest checks the event/alias
-   route, not speaker output for this screen.
+   route; the shared audio CTest verifies default-device playback for both
+   events, while Windows loopback for this exact screen remains unrecorded.
 6. **Are nearby screen parts also correct?** The review includes the parent
    Pocket Secretary, the Dismiss child, both candidate counts, each return
     path, party membership, live-record flags, active-runner HUD selection,
@@ -1323,8 +1330,9 @@ selection, and indirect sound hook remain open.
 5. **Does it have a sound or sound effect, and how long does it play?** The
    unlock command `0x4B` resolves to extracted resource 075. The FLAC is valid
    and contains 97,770 samples at 44,100 Hz, or 2.2167 seconds; the Qt resolver
-   test confirms that this event reaches that asset, though speaker output
-   has not been captured. Grenade command `0x2C` is table resource 044, which
+   test confirms that this event decodes and reaches `PlayingState` on the
+   default output. Windows loopback for the in-world unlock sequence remains
+   unrecorded. Grenade command `0x2C` is table resource 044, which
    the offline audio catalog classifies as silent and omits. Alert command
    `0x30` points to persistent resource 048; its FLAC is a 600-second
    observation capture without a verified source stop boundary. Qt leaves

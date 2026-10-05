@@ -6,23 +6,31 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
 
-class QSoundEffect;
-
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
-// Host playback for the extracted Windows audio assets. The source audio
-// event ids recorded by the converted service boundaries map to the named
-// FLAC resources through the ROM's audio command ids. Only the mappings
-// with source evidence in the alias names are wired here; unknown events
-// stay observable through the presentation boundary log instead of being
-// assigned an invented sound.
+// Host playback for extracted Windows audio assets. The converted service
+// boundaries map source event ids to named FLAC resources. QMediaPlayer is
+// used because the runtime assets are lossless FLAC; QSoundEffect rejects
+// these files on the supported Qt Windows build. Unknown events stay
+// observable through the presentation boundary log instead of receiving an
+// invented sound.
 class AudioPlaybackService final : public QObject {
 public:
+    struct PlaybackStatus {
+        bool mapped = false;
+        bool source_ready = false;
+        bool audio_available = false;
+        bool playing = false;
+        bool error = false;
+        std::int64_t duration_ms = 0;
+    };
+
     // The resolver turns a catalog alias into an absolute file path (the
     // conversion catalog owns the audio rows); a null result is a no-op.
     using PathResolver =
@@ -32,8 +40,7 @@ public:
     ~AudioPlaybackService() override;
 
     // Play the extracted resource for a source audio event id. No-op (with
-    // a logged boundary by the caller) when the event has no verified
-    // alias.
+    // a logged boundary by the caller) when the event has no verified alias.
     void play_event(std::uint16_t event);
 
     // Play a catalog alias directly (audio.menu.command-024 and friends).
@@ -43,13 +50,18 @@ public:
     void stop_effects();
 
     std::string_view alias_for_event(std::uint16_t event) const;
+    PlaybackStatus playback_status_for_event(std::uint16_t event) const;
 
 private:
-    QSoundEffect& acquire_channel();
+    struct PlaybackChannel;
+    PlaybackChannel& acquire_channel();
+    void start_alias(std::string_view alias,
+                     std::optional<std::uint16_t> event);
 
     PathResolver resolver_;
-    std::vector<std::unique_ptr<QSoundEffect>> channels_;
+    std::vector<std::unique_ptr<PlaybackChannel>> channels_;
     std::size_t next_channel_ = 0U;
+    std::uint64_t request_sequence_ = 0U;
     std::unordered_map<std::uint16_t, std::string> event_aliases_;
 };
 

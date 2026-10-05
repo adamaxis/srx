@@ -89,9 +89,10 @@ The weapon mutation menu has no item-specific animation branch: its state and
 panel redraw on the input edge. Each A dispatch requests source event `0x24`
 (the mapped 2.484-second command-confirm clip). Clips row movement requests
 event `0x25` (mapped to `audio.effects.resource.037`, 2.134 seconds including
-its release tail); Clips confirmation requests `0x24`. The Qt QA checks these
-event requests and exact parent-page redraw after the Clips child closes,
-while actual speaker output remains unmeasured. The independent
+its release tail); Clips confirmation requests `0x24`. Shared Qt audio QA
+decodes and starts events `0x24`, `0x25`, and `0x4B` on the default output and
+checks duration and stop behavior. Windows loopback capture for these exact
+inventory actions remains unrecorded. The independent
 longplay frames in section 06 (002550, 002560, 002580, 002610, 002640, 002699)
 and section 07 (000030, 000120) support the shared inventory shell, item
 selection, First Aid result, and return layout across repeated frames. None
