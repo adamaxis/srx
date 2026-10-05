@@ -368,6 +368,25 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
         const auto event_table = read_optional_record_bytes(
             catalog, field_scene_resource_alias(scene_id, "event.table"),
             kFieldMapEventTableByteCount, result.errors);
+        const auto activity_random_index_bound = read_optional_record_bytes(
+            catalog,
+            field_scene_resource_alias(
+                scene_id, "world.activity.random.index.bound"),
+            sizeof(std::uint16_t), result.errors);
+        const bool expects_activity_bound =
+            scene_id >= kFirstWorldActivityResourceScene &&
+            scene_id < kWorldActivityResourceSceneEnd;
+        if (expects_activity_bound &&
+            !activity_random_index_bound.has_value()) {
+            result.errors.emplace_back(
+                "field-scene world-activity random-index bound is missing: " +
+                std::to_string(scene_id));
+        } else if (!expects_activity_bound &&
+                   activity_random_index_bound.has_value()) {
+            result.errors.emplace_back(
+                "field-scene has an unexpected world-activity random-index bound: " +
+                std::to_string(scene_id));
+        }
         if (!layer_a.has_value() || !layer_b.has_value() ||
             !terrain_stream.has_value() || !descriptor.has_value() ||
             !collision_rectangles.has_value()) {
@@ -395,6 +414,16 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
                 read_big_endian_word(*layer_b, offset));
         }
         scene.terrain_stream_source = *terrain_stream;
+        if (activity_random_index_bound.has_value()) {
+            scene.world_activity_random_index_bound =
+                read_big_endian_word(*activity_random_index_bound, 0U);
+            if (*scene.world_activity_random_index_bound == 0U ||
+                *scene.world_activity_random_index_bound > 6U) {
+                result.errors.emplace_back(
+                    "field-scene world-activity random-index bound is invalid: " +
+                    std::to_string(scene_id));
+            }
+        }
         scene.descriptor = decode_field_map_descriptor(*descriptor, event_table);
         scene.terrain_collision_rectangles =
             decode_field_terrain_collision_rectangles(
@@ -453,6 +482,8 @@ std::optional<FieldSceneBufferInput> make_field_scene_input(
     input.source_metadata.event_table_available =
         scene.descriptor.event_table_available;
     input.source_metadata.event_mode_table = scene.descriptor.event_mode_table;
+    input.source_metadata.world_activity_random_index_bound =
+        scene.world_activity_random_index_bound;
     input.source_metadata.terrain_collision_rectangles =
         scene.terrain_collision_rectangles;
     input.source_metadata.terrain_collision_map =

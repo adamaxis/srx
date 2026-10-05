@@ -1454,9 +1454,14 @@ selection, and indirect sound hook remain open.
    selected archetype or restored record; `0xB7B8` requires bit 1 before it
    can resolve the blocked-cell interaction. The three `0x7291A` archetypes
    all carry `0x0F` there. The separate `0x44BC` default `0x05` is for spawned
-   world entities. Result pages remove the option rows; the terminal floor
-   sentence is withheld when the current field bootstrap lacks source state
-   `FFE12C`.
+   world entities. The floor source chain is now recorded: each resource-scene
+   profile `0x15..0x2B` points at a bundle through `+0x58`; the bundle's first
+   longword points to the bound consumed by `0x0D3A`, which publishes its sample
+   to `FFE12C` before `0x0D44` selects the activity. The offline importer now
+   exports all 23 bounds as individually named two-byte assets, and the typed
+   loader validates them and passes the matching bound with scene metadata.
+   The Qt activity dispatcher still does not sample that field, so the floor
+   sentence remains withheld when the field bootstrap lacks `FFE12C`.
 3. **Are the visuals themselves correct?** The presenter fills the complete
    screen, redraws the extracted shared frame, clears both source content
    wells, then draws source text and A/B/C marker assets. The first option is
@@ -1504,9 +1509,10 @@ selection, and indirect sound hook remain open.
 
 **Status:** partial. Typed prompt/result behavior, menu rendering, audio
 resource 075 mapping, source behavior-flag binding, full-frame modal ownership,
-and clean field return have Debug/Release test coverage. Independent Genesis
-frames, the actual field object trigger route, the `FFE12C` floor source,
-resource-048 alert lifetime, and captured device audio remain open.
+clean field return, and extraction/loading of the scene random-index bounds
+have Debug/Release test coverage. The runtime `FFE12C` sample, independent
+Genesis frames, the actual field object trigger route, resource-048 alert
+lifetime, and captured device audio remain open.
 
 ### Applied review: Start-menu Karma view and Hotel Karma spending page
 

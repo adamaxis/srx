@@ -832,6 +832,35 @@ void extract_field_session_record_assets(
             rom.begin() + static_cast<std::ptrdiff_t>(profile_offset),
             rom.begin() +
                 static_cast<std::ptrdiff_t>(profile_offset + 0x60U));
+
+        // ROM 0x167AE resolves FFDE1E from the selected resource-scene
+        // profile, dereferences the first bundle longword, and passes that
+        // word to 0x0D3A before publishing FFE12C. Resolve this source chain
+        // once into a named two-byte host value; the runtime never follows
+        // the profile or bundle pointer.
+        if (scene_id >= 0x15U && scene_id < 0x2CU) {
+            const auto bundle_offset = static_cast<std::size_t>(
+                read_big_endian_long(rom, profile_offset + 0x58U));
+            if (bundle_offset == 0U || bundle_offset > rom.size() ||
+                rom.size() - bundle_offset < 4U) {
+                throw std::runtime_error(
+                    "world activity scene has no complete resource bundle");
+            }
+            const auto bound_offset = static_cast<std::size_t>(
+                read_big_endian_long(rom, bundle_offset));
+            const auto bound = read_big_endian_word(rom, bound_offset);
+            if (bound == 0U || bound > 6U) {
+                throw std::runtime_error(
+                    "world activity random-index bound changed");
+            }
+            const std::vector<std::uint8_t> bound_record{
+                static_cast<std::uint8_t>(bound >> 8U),
+                static_cast<std::uint8_t>(bound)};
+            write_host_record(
+                bound_record, root,
+                field_scene_record_directory(scene_id) +
+                    "/world-activity-random-index-bound.bin");
+        }
     }
     write_host_record(scene_profiles, root,
                       "records/field/scene-profiles.bin");
@@ -1421,6 +1450,9 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
         emit_scene_record("terrain-stream");
         emit_scene_record("descriptor");
         emit_scene_record("terrain-collision-rectangles");
+        if (scene_id >= 0x15U && scene_id < 0x2CU) {
+            emit_scene_record("world-activity-random-index-bound");
+        }
         const auto event_relative = directory + "/event-table.bin";
         if (std::filesystem::is_regular_file(root / event_relative)) {
             emit_generated_state_row(

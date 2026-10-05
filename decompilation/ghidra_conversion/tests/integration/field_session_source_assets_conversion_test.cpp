@@ -72,6 +72,30 @@ int main() {
             return 19;
         }
     }
+    constexpr std::array<std::uint16_t, 0x17U> expected_activity_bounds{{
+        4U, 4U, 4U, 4U, 4U, 3U, 3U, 3U, 3U, 4U, 4U, 4U,
+        4U, 4U, 5U, 5U, 5U, 5U, 5U, 5U, 2U, 2U, 2U}};
+    for (std::size_t offset = 0U;
+         offset < expected_activity_bounds.size(); ++offset) {
+        const auto scene_id = static_cast<std::size_t>(
+            kFirstWorldActivityResourceScene + offset);
+        if (!source.assets->field_scene_resources[scene_id]
+                 ->world_activity_random_index_bound.has_value() ||
+            *source.assets->field_scene_resources[scene_id]
+                 ->world_activity_random_index_bound !=
+                expected_activity_bounds[offset]) {
+            return 23;
+        }
+    }
+    for (std::size_t scene_id = 0U;
+         scene_id < source.assets->field_scene_resources.size(); ++scene_id) {
+        if ((scene_id < kFirstWorldActivityResourceScene ||
+             scene_id >= kWorldActivityResourceSceneEnd) &&
+            source.assets->field_scene_resources[scene_id]
+                ->world_activity_random_index_bound.has_value()) {
+            return 25;
+        }
+    }
     const auto& scene55 = *source.assets->field_scene_resources[55U];
     if (scene55.descriptor.event_table_available ||
         scene55.terrain_stream_source.size() != 1984U) {
@@ -248,9 +272,17 @@ int main() {
         scene_input.source_metadata.terrain_collision_rectangles.size() !=
             kScene2TerrainCollisionRectangleCount ||
         scene_input.source_metadata.terrain_collision_map[97U] != 0x7FU ||
+        scene_input.source_metadata.world_activity_random_index_bound ||
          !scene_input.source_metadata.event_table_available ||
          scene_input.source_metadata.event_mode_table[0] != 0x14U) {
         return 11;
+    }
+    const auto scene_activity_input =
+        make_field_scene_input(*source.assets, 0x1AU);
+    if (!scene_activity_input.has_value() ||
+        scene_activity_input->source_metadata
+                .world_activity_random_index_bound != 3U) {
+        return 24;
     }
     return 0;
 }

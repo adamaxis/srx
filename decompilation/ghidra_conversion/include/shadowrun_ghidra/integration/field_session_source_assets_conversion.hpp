@@ -23,6 +23,8 @@ constexpr std::size_t kFieldSessionModeSelectionWordCount = 0x17U;
 constexpr std::size_t kFieldSceneProfileWordCount = 48U;
 constexpr std::size_t kFieldSceneProfileByteCount =
     kFieldSceneProfileWordCount * sizeof(std::uint16_t);
+constexpr std::uint16_t kFirstWorldActivityResourceScene = 0x15U;
+constexpr std::uint16_t kWorldActivityResourceSceneEnd = 0x2CU;
 constexpr std::size_t kFieldSessionTerrainLayerWordCount = 0xE10U;
 constexpr std::size_t kFieldSessionTerrainLayerByteCount =
     kFieldSessionTerrainLayerWordCount * sizeof(std::uint16_t);
@@ -90,6 +92,9 @@ struct FieldSceneSourceRecord {
     std::vector<std::uint16_t> terrain_layer_a_source;
     std::vector<std::uint16_t> terrain_layer_b_source;
     std::vector<std::uint8_t> terrain_stream_source;
+    // ROM 0x167AE samples this scene-specific bound into FFE12C. The offline
+    // importer resolves FFDE1E and its first bundle longword into this value.
+    std::optional<std::uint16_t> world_activity_random_index_bound;
     FieldMapSourceDescriptor descriptor{};
     std::vector<TerrainCollisionRectangle>
         terrain_collision_rectangles;

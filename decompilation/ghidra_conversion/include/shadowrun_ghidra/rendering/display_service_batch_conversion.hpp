@@ -73,6 +73,9 @@ struct FieldSceneSourceMetadata {
     std::uint16_t terrain_y_inclusive_lower = 0;
     bool event_table_available = false;
     std::array<std::uint8_t, 32> event_mode_table{};
+    // ROM 0x167AE samples this upper bound for FFE12C after a resource-scene
+    // transition. It is direct typed host data, not a source pointer.
+    std::optional<std::uint16_t> world_activity_random_index_bound;
     std::vector<TerrainCollisionRectangle> terrain_collision_rectangles;
     std::array<std::uint8_t, 0x1000> terrain_collision_map{};
 };
