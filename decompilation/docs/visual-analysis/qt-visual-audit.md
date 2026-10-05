@@ -1457,9 +1457,13 @@ selection, and indirect sound hook remain open.
    world entities. The floor source chain is now recorded: each resource-scene
    profile `0x15..0x2B` points at a bundle through `+0x58`; the bundle's first
    longword points to the bound consumed by `0x0D3A`, which publishes its sample
-   to `FFE12C` before `0x0D44` selects the activity. The offline importer now
-   exports all 23 bounds as individually named two-byte assets, and the typed
-   loader validates them and passes the matching bound with scene metadata.
+   to `FFE12C`. The following `0x0D44` call advances the PRNG again and writes
+   its low three bits to `FFE185`, a separate marker ordinal. Source flags
+   then override the pair in order: `FFE184` forces index/ordinal `5/0`,
+   `FFE187` forces `2/3`, and `FFE180` finally forces index `4`. The offline
+   importer now exports all 23 bounds as individually named two-byte assets;
+   the typed loader validates them and passes the matching bound with scene
+   metadata.
    The Qt activity dispatcher still does not sample that field, so the floor
    sentence remains withheld when the field bootstrap lacks `FFE12C`.
 3. **Are the visuals themselves correct?** The presenter fills the complete
