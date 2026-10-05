@@ -1439,7 +1439,48 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                                   callbacks_.entity_render_pass);
     };
     field_runtime_callbacks_.advance_palette_fade = [this] {
-        source_boundary("field.runtime.advance_palette_fade");
+        // ROM 0x16396 services effects on every field frame. When 0xB7B8
+        // projected an interaction, FFDF3A/FFDF3C hold the fade gate and its
+        // signed frame countdown; expiration publishes FFDF3E for the next
+        // coordinator pass.
+        PaletteFadeState fade{};
+        fade.active =
+            field_movement_transition_state_.interaction_transition_pending;
+        fade.remaining =
+            field_movement_transition_state_.interaction_transition_timer;
+        ::shadowrun::ghidra_conversion::advance_palette_fade(
+            fade,
+            {[this] {
+                 source_boundary("field.runtime.service_active_effects");
+             },
+             [this] {
+                 if (field_palette_fade_steps_ < 9U) {
+                     ++field_palette_fade_steps_;
+                 }
+                 source_boundary("field.runtime.step_palette_toward_black");
+             }});
+        if (fade.dirty) {
+            state_.display_dirty_flags = static_cast<std::uint8_t>(
+                state_.display_dirty_flags | 0x01U);
+            field_runtime_state_.display_dirty_flags =
+                static_cast<std::uint8_t>(
+                    field_runtime_state_.display_dirty_flags | 0x01U);
+        }
+        if (field_movement_transition_state_.interaction_transition_pending) {
+            field_movement_transition_state_.interaction_transition_timer =
+                fade.remaining;
+            field_movement_transition_state_.world_interaction_lock =
+                fade.active;
+        }
+        if (fade.completed) {
+            field_movement_transition_state_.interaction_transition_pending =
+                false;
+            field_movement_transition_state_.interaction_transition_timer =
+                fade.remaining;
+            field_movement_transition_state_.world_interaction_lock = false;
+            field_runtime_state_.field_transition_requested = true;
+            source_boundary("field.runtime.field_transition_requested");
+        }
     };
     field_runtime_callbacks_.advance_world_frame_logic = [this] {
         advance_world_frame_logic(world_frame_logic_state_,
@@ -2849,6 +2890,7 @@ bool FieldSceneRuntime::bootstrap(
     field_collision_probe_state_ = CollisionProbeState{};
     field_movement_behavior_record_ = EntityBehaviorFrameRecord{};
     field_movement_transition_state_ = EntityMovementModeTransitionState{};
+    field_palette_fade_steps_ = 0U;
     field_world_activity_state_ = WorldActivityState{};
     field_activity_continuation_ = MovementModeTransitionContinuation::none;
     field_projected_terrain_mark_count_ = 0U;
@@ -3118,6 +3160,21 @@ void FieldSceneRuntime::set_controller_port_byte(
     field_controller_nibble_ = static_cast<std::uint8_t>(port_byte & 0x0FU);
 }
 
+void FieldSceneRuntime::begin_projected_field_transition_for_dump() noexcept {
+    if (!ready_) {
+        return;
+    }
+    // This is the typed output state published by the successful 0x1651E
+    // projection in 0xB7B8. The QA route starts here so the recurring frame
+    // loop, rather than a test-only timer, owns the following 17 VBlank steps.
+    field_movement_transition_state_.interaction_transition_pending = true;
+    field_movement_transition_state_.interaction_transition_timer = 0x10U;
+    field_movement_transition_state_.world_interaction_lock = true;
+    field_runtime_state_.display_service_word = 0xFFFFU;
+    state_.display_service_word = 0xFFFFU;
+    field_palette_fade_steps_ = 0U;
+}
+
 std::optional<std::size_t> FieldSceneRuntime::projected_terrain_cell() const {
     const auto& profile = state_.field_scene_buffers.profile;
     const auto row_stride_bytes = profile[18U];
@@ -3278,6 +3335,12 @@ bool FieldSceneRuntime::recover_blocked_field_movement(
         transition_callbacks);
     if (result.mode_event_code_published) {
         source_boundary("field.world.activity.mode_event_published");
+    }
+    if (result.kind ==
+        EntityMovementModeTransitionResultKind::projected_interaction_pending) {
+        state_.display_service_word = 0xFFFFU;
+        field_runtime_state_.display_service_word = 0xFFFFU;
+        field_palette_fade_steps_ = 0U;
     }
     source_boundary("field.movement.blocked_transition");
     return (field_movement_behavior_record_.route_flags & 0x01U) != 0U;
@@ -6507,13 +6570,23 @@ void FieldSceneRuntime::paint(QPainter& painter) const {
     if (!ready_ || field_map_.isNull()) {
         return;
     }
+    const auto apply_palette_fade = [this, &painter] {
+        if (field_palette_fade_steps_ == 0U) {
+            return;
+        }
+        const auto alpha = std::min(
+            255, static_cast<int>(field_palette_fade_steps_) * 32);
+        painter.fillRect(0, 0, 320, 224, QColor(0, 0, 0, alpha));
+    };
     if (field_interaction_.open()) {
         field_interaction_.paint(painter);
+        apply_palette_fade();
         return;
     }
     if (hotel_karma_skills_.is_open()) {
         paint_attributes_skills_menu(painter,
                                      hotel_karma_skills_.controller());
+        apply_palette_fade();
         return;
     }
     if (hotel_menu_.open()) {
@@ -6526,23 +6599,28 @@ void FieldSceneRuntime::paint(QPainter& painter) const {
                    const HotelMenuPaletteLine palette_line) {
                 draw_hotel_menu_text(target, x, y, text, palette_line);
             });
+        apply_palette_fade();
         return;
     }
     if (field_mode_text_.open()) {
         field_mode_text_.paint(painter);
+        apply_palette_fade();
         return;
     }
     if (field_shop_menu_.is_open()) {
         paint_field_shop(painter);
+        apply_palette_fade();
         return;
     }
     if (field_dialogue_.open()) {
         field_dialogue_.paint(painter);
+        apply_palette_fade();
         return;
     }
     if (command_overview_.open()) {
         paint_command_overview(painter);
         if (command_overview_attributes_skills_.is_open()) {
+            apply_palette_fade();
             return;
         }
         // The field command loop updates its menu plane without replacing
@@ -6553,6 +6631,7 @@ void FieldSceneRuntime::paint(QPainter& painter) const {
             painter.drawImage(0, 0, field_hud_);
             paint_field_hud_overlays(painter);
         }
+        apply_palette_fade();
         return;
     }
     const auto& scene = state_.field_scene_buffers;
@@ -6572,6 +6651,7 @@ void FieldSceneRuntime::paint(QPainter& painter) const {
     // cells. New-game keeps slots 1 and 2 inactive.
     painter.drawImage(0, 0, field_hud_);
     paint_field_hud_overlays(painter);
+    apply_palette_fade();
 }
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime

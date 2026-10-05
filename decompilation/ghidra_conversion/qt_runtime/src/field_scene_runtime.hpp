@@ -203,6 +203,19 @@ public:
         FieldInteractionPrompt prompt, std::uint8_t interaction_selection = 2U,
         bool interaction_suppressed = false,
         std::optional<std::uint8_t> security_floor_index = std::nullopt);
+    void begin_projected_field_transition_for_dump() noexcept;
+    bool field_interaction_transition_active_for_dump() const noexcept {
+        return field_movement_transition_state_.interaction_transition_pending;
+    }
+    bool field_transition_pending_for_dump() const noexcept {
+        return field_runtime_state_.field_transition_requested;
+    }
+    std::int16_t field_interaction_transition_timer_for_dump() const noexcept {
+        return field_movement_transition_state_.interaction_transition_timer;
+    }
+    std::uint8_t field_palette_fade_steps_for_dump() const noexcept {
+        return field_palette_fade_steps_;
+    }
     FieldInteractionAdvanceResult advance_field_interaction_for_dump(
         std::uint16_t event_word) {
         return advance_field_interaction(event_word);
@@ -796,6 +809,7 @@ private:
     std::array<std::uint16_t, 10> field_entity_table_occupancy_{};
     std::array<AuxiliaryWorldEntity, 10> field_entity_table_{};
     EntityMovementModeTransitionState field_movement_transition_state_{};
+    std::uint8_t field_palette_fade_steps_ = 0U;
     WorldActivityState field_world_activity_state_{};
     MovementModeTransitionContinuation field_activity_continuation_ =
         MovementModeTransitionContinuation::none;

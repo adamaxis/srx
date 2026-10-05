@@ -88,6 +88,18 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_movement_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_movement_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# A projected interaction starts a source 0x10 countdown. 0x16396 fades on
+# even counts and publishes FFDF3E only after the signed counter falls below
+# zero; keep several full-frame captures so timer and screen clearing stay in
+# sync.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_transition_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-transition-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-transition-qa")
+set_tests_properties(shadowrun_ghidra_conversion_qt_field_transition_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # First Aid shares the real item cell/action path, then exercises the active
 # party list, CANCEL row, RNG-backed medkit effect, result wait, and inventory
 # return against directly extracted source text and HUD assets.

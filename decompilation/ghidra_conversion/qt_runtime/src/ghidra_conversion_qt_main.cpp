@@ -155,6 +155,7 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
                    " [--assets <decompilation/assets>] [--field-smoke]"
                    " [--field-smoke-move-right] [--field-dump <file>]"
                    " [--field-movement-qa <output-dir>]"
+                   " [--field-transition-qa <output-dir>]"
                    " [--field-secretary-dump <output-dir>]"
                    " [--field-command-dump <file>]"
                        " [--field-command-page <0..6>]"
@@ -199,6 +200,10 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
             continue;
         }
         if (argument == "--field-movement-qa" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-transition-qa" && index + 1 < argc) {
             ++index;
             continue;
         }
@@ -3063,6 +3068,7 @@ int main(int argc, char** argv) {
         bool intro_to_field_smoke = false;
         std::optional<std::filesystem::path> field_dump_path;
         std::optional<std::filesystem::path> field_movement_qa_path;
+        std::optional<std::filesystem::path> field_transition_qa_path;
         std::optional<std::filesystem::path> field_hud_qa_path;
         std::optional<std::filesystem::path> field_hotel_qa_path;
         std::optional<std::filesystem::path> field_command_dump_path;
@@ -3107,6 +3113,7 @@ int main(int argc, char** argv) {
                        " [--assets <decompilation/assets>] [--field-smoke]"
                        " [--field-smoke-move-right] [--field-dump <file>]"
                        " [--field-movement-qa <output-dir>]"
+                       " [--field-transition-qa <output-dir>]"
                        " [--field-command-dump <file>]"
                        " [--field-command-page <0..6>]"
                        " [--field-cyberware-dump <file>]"
@@ -3146,6 +3153,12 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_movement_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-transition-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_transition_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-command-reopen-smoke") {
@@ -3411,6 +3424,103 @@ int main(int argc, char** argv) {
             if (!field_scene.bootstrap(smoke_state)) {
                 std::cerr << "field smoke: " << field_scene.failure() << '\n';
                 return 3;
+            }
+            if (field_transition_qa_path.has_value()) {
+                std::filesystem::create_directories(
+                    *field_transition_qa_path);
+                const auto render_transition_frame = [&] {
+                    QImage image(kSceneWidth, kSceneHeight,
+                                 QImage::Format_RGB32);
+                    image.fill(Qt::black);
+                    QPainter painter(&image);
+                    field_scene.paint(painter);
+                    painter.end();
+                    return image;
+                };
+                const auto save_transition_frame =
+                    [&](const std::string_view name, QImage& image) {
+                        if (image.width() != kSceneWidth ||
+                            image.height() != kSceneHeight) {
+                            return false;
+                        }
+                        return image.save(QString::fromStdWString(
+                            ((*field_transition_qa_path) /
+                             (std::string(name) + ".bmp")).wstring()));
+                    };
+                auto initial = render_transition_frame();
+                if (count_playfield_lit(initial) < 100 ||
+                    !field_hud_chrome_survives(initial, asset_root) ||
+                    !save_transition_frame("initial", initial)) {
+                    std::cerr << "field transition QA: initial frame failed\n";
+                    return 3;
+                }
+
+                field_scene.begin_projected_field_transition_for_dump();
+                QImage fade_one;
+                QImage fade_eight;
+                QImage fade_sixteen;
+                QImage fade_seventeen;
+                for (std::uint8_t tick = 1U; tick <= 17U; ++tick) {
+                    field_scene.advance_frame();
+                    if (tick == 1U) {
+                        fade_one = render_transition_frame();
+                        if (!save_transition_frame("fade-01", fade_one)) {
+                            std::cerr << "field transition QA: frame 1 dump failed\n";
+                            return 3;
+                        }
+                    } else if (tick == 8U) {
+                        fade_eight = render_transition_frame();
+                        if (!save_transition_frame("fade-08", fade_eight)) {
+                            std::cerr << "field transition QA: frame 8 dump failed\n";
+                            return 3;
+                        }
+                        if (field_scene.field_interaction_transition_timer_for_dump() !=
+                                8U ||
+                            field_scene.field_palette_fade_steps_for_dump() !=
+                                4U) {
+                            std::cerr << "field transition QA: midpoint timer or cadence is wrong\n";
+                            return 3;
+                        }
+                    } else if (tick == 16U) {
+                        fade_sixteen = render_transition_frame();
+                        if (!save_transition_frame("fade-16", fade_sixteen)) {
+                            std::cerr << "field transition QA: frame 16 dump failed\n";
+                            return 3;
+                        }
+                        if (field_scene.field_interaction_transition_timer_for_dump() !=
+                                0U ||
+                            !field_scene.field_interaction_transition_active_for_dump() ||
+                            field_scene.field_transition_pending_for_dump()) {
+                            std::cerr << "field transition QA: completion published before signed expiry\n";
+                            return 3;
+                        }
+                    } else if (tick == 17U) {
+                        fade_seventeen = render_transition_frame();
+                        if (!save_transition_frame("fade-17", fade_seventeen)) {
+                            std::cerr << "field transition QA: frame 17 dump failed\n";
+                            return 3;
+                        }
+                        if (!save_transition_frame("actual", fade_seventeen)) {
+                            std::cerr << "field transition QA: actual dump failed\n";
+                            return 3;
+                        }
+                    }
+                }
+                if (fade_one == initial || fade_eight == fade_one ||
+                    count_playfield_lit(fade_sixteen) != 0U ||
+                    count_playfield_lit(fade_seventeen) != 0U ||
+                    field_scene.field_interaction_transition_active_for_dump() ||
+                    !field_scene.field_transition_pending_for_dump() ||
+                    field_scene.field_interaction_transition_timer_for_dump() !=
+                        -1 ||
+                    field_scene.field_palette_fade_steps_for_dump() != 9U ||
+                    !field_audio_events.empty()) {
+                    std::cerr << "field transition QA: fade pixels, expiry, or audio behavior did not match the source path\n";
+                    return 3;
+                }
+                std::cout << "field_transition_qa=passed fade_frames=17 palette_steps=9 transition_pending=yes sound_events=0 artifacts="
+                          << field_transition_qa_path->string() << '\n';
+                return 0;
             }
             if (field_movement_qa_path.has_value()) {
                 std::filesystem::create_directories(

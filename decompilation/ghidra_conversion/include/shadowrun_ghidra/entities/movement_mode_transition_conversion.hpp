@@ -51,7 +51,7 @@ struct EntityMovementModeTransitionState {
     std::uint16_t world_activity_source_word = 0; // FFDFE4
     std::uint8_t mode_event_code = 0; // FFFBF9
     bool interaction_transition_pending = false; // FFDF3A == -1
-    std::uint16_t interaction_transition_timer = 0; // FFDF3C
+    std::int16_t interaction_transition_timer = 0; // signed FFDF3C
 };
 
 struct EntityMovementModeTransitionCallbacks {
