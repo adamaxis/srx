@@ -57,12 +57,23 @@ add_test(NAME shadowrun_ghidra_conversion_qt_opening_rotor_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_opening_rotor_qa PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# The landing path uses the ROM-selected movement art until the computed Y
+# enters its narrow special-image window. Save whole-screen frames at every
+# landing event and across entry/exit from that window.
+add_test(NAME shadowrun_ghidra_conversion_qt_opening_landing_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --opening-landing-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/opening-landing-qa")
+set_tests_properties(shadowrun_ghidra_conversion_qt_opening_landing_qa PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # The Qt preset excludes the broader conversion-test glob, so retain this
 # source-contract test here alongside the end-to-end image/cadence QA.
 add_executable(shadowrun_ghidra_conversion_qt_title_intro_late_test
     ../tests/title_intro/title_intro_late_conversion_test.cpp)
 target_link_libraries(shadowrun_ghidra_conversion_qt_title_intro_late_test
-    PRIVATE shadowrun_ghidra_conversion_modules)
+    PRIVATE shadowrun_ghidra_conversion_runtime)
 add_test(NAME shadowrun_ghidra_conversion_qt_title_intro_late_qa
          COMMAND shadowrun_ghidra_conversion_qt_title_intro_late_test)
 

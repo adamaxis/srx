@@ -839,8 +839,13 @@ longplay frames remain the independent appearance evidence.
    001077, and 001080 support the upper rotor line's changing appearance.
    Native frames 1827, 1833, 1839, 1845, 1851, 1857, and 1863 cover all six
    descriptors and one repeat; Debug and Release images match byte for byte.
-   Airport placement, landing, global soundtrack timing, and other opening
-   stages remain partial.
+   The landing descriptor/position sequence now has its own full-screen
+   Debug/Release route and independent comparison at source frames 001320,
+   001380, 001410, and 001440; the eight-question review is in the
+   [airport landing audit](../visual-audits/airport-landing-descriptor.md).
+   `OPEN-05` is resolved for those sampled states. `OPEN-04` remains partial
+   because the reported rear rotor is ambiguous; global soundtrack timing
+   and other opening stages remain partial.
 
 ### Applied review: cab map and destination cursor
 

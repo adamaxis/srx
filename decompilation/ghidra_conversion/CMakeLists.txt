@@ -83,7 +83,8 @@ if (NOT SHADOWRUN_GHIDRA_QT_FRONTEND)
            test_name STREQUAL "field_runtime_coordinator" OR
            test_name STREQUAL "field_session_source_assets" OR
            test_name STREQUAL "recruited_runner_conversation" OR
-           test_name STREQUAL "startup_integration")
+           test_name STREQUAL "startup_integration" OR
+           test_name STREQUAL "title_intro_late")
             target_link_libraries(${test_target}
                 PRIVATE shadowrun_ghidra_conversion_runtime)
         else()

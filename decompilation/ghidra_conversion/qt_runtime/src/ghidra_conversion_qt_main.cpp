@@ -184,6 +184,7 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
                    " [--startup-dump <stage> <selection> <frame> <file>]"
                    " [--startup-qa <output-dir>]"
                    " [--opening-rotor-qa <output-dir>]"
+                   " [--opening-landing-qa <output-dir>]"
                    " [--intro-to-field-smoke]\n";
             return {};
         }
@@ -304,6 +305,10 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
             continue;
         }
         if (argument == "--opening-rotor-qa" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--opening-landing-qa" && index + 1 < argc) {
             ++index;
             continue;
         }
@@ -1374,6 +1379,139 @@ public:
                   << " actual="
                   << actual_path.string()
                   << '\n';
+        return 0;
+    }
+
+    int run_opening_landing_qa(
+        const std::filesystem::path& output_directory) {
+        constexpr std::uint32_t kSelection = 2U;
+        constexpr std::array<std::uint16_t, 20> kElapsedCheckpoints{{
+            225U, 549U, 550U, 585U, 586U, 612U, 675U, 676U, 732U, 747U,
+            748U, 765U, 766U, 792U, 801U, 802U, 819U, 820U, 821U, 852U}};
+
+        if (prepare_opening_dump(kSelection) != 0) {
+            return 3;
+        }
+        std::filesystem::create_directories(output_directory);
+        std::ofstream trace(output_directory / "opening-landing-qa.tsv");
+        if (!trace) {
+            std::cerr << "opening landing QA: could not write trace in "
+                      << output_directory.string() << '\n';
+            return 3;
+        }
+        trace << "elapsed\topening_frame\tstage_loop_frame\tphase\t"
+                 "next_event\tx_accumulator\ty_accumulator\tscreen_y\t"
+                 "descriptor_variant\trequest_x\trequest_y\timage\n";
+
+        std::array<QImage, kElapsedCheckpoints.size()> images{};
+        std::array<OpeningIntroSpriteRequest, kElapsedCheckpoints.size()>
+            requests{};
+        std::array<bool, kElapsedCheckpoints.size()> has_request{};
+        std::size_t sample_index = 0U;
+        const auto fail = [](const std::string_view reason) {
+            std::cerr << "opening landing QA: " << reason << '\n';
+            return 3;
+        };
+        constexpr std::uint32_t kMaxFramesAfterSelection = 10000U;
+        for (std::uint32_t frame = 0U;
+             frame < kMaxFramesAfterSelection &&
+             sample_index < kElapsedCheckpoints.size(); ++frame) {
+            if (state_.phase != StartupIntegrationPhase::opening_intro) {
+                return fail("opening ended before all landing checkpoints");
+            }
+            const auto& opening = state_.opening_intro;
+            if (opening.scene == OpeningIntroScene::airport &&
+                opening.stage == OpeningIntroStage::stage_loop) {
+                const auto& landing = opening.stage_loop.landing;
+                const auto elapsed = static_cast<std::uint16_t>(
+                    landing.current_frame - landing.animation_start_frame);
+                if (elapsed == kElapsedCheckpoints[sample_index]) {
+                    const auto scene = render_scene();
+                    if (scene.size() != QSize(kSceneWidth, kSceneHeight)) {
+                        return fail("renderer did not produce a full 320x224 frame");
+                    }
+                    const auto filename = "landing-elapsed-" +
+                                          std::to_string(elapsed) + ".bmp";
+                    const auto path = output_directory / filename;
+                    if (!scene.save(QString::fromStdWString(path.wstring()))) {
+                        return fail("could not save a full-screen landing frame");
+                    }
+                    images[sample_index] = scene;
+                    const auto movement = std::find_if(
+                        opening_sprites_.rbegin(), opening_sprites_.rend(),
+                        [](const OpeningIntroSpriteRequest& request) {
+                            return opening_intro_sprite_group(
+                                       request.sprite_descriptor)
+                                       .family ==
+                                   OpeningIntroSpriteFamily::aircraft_movement;
+                        });
+                    if (movement != opening_sprites_.rend()) {
+                        requests[sample_index] = *movement;
+                        has_request[sample_index] = true;
+                    }
+                    const auto base_y = static_cast<std::uint16_t>(
+                        landing.y_accumulator >> 8U);
+                    const auto screen_y = static_cast<std::uint16_t>(
+                        base_y + 0x28U);
+                    const auto variant = has_request[sample_index]
+                        ? opening_intro_sprite_group(
+                              requests[sample_index].sprite_descriptor)
+                              .variant
+                        : 0xFFU;
+                    trace << elapsed << '\t' << opening.source_frame << '\t'
+                          << opening.stage_loop_frame << '\t'
+                          << landing.phase << '\t' << landing.next_event_frame
+                          << '\t' << landing.x_accumulator << '\t'
+                          << landing.y_accumulator << '\t' << screen_y << '\t'
+                          << static_cast<unsigned>(variant) << '\t'
+                          << (has_request[sample_index]
+                                  ? requests[sample_index].x
+                                  : 0xFFFFU)
+                          << '\t'
+                          << (has_request[sample_index]
+                                  ? requests[sample_index].y
+                                  : 0xFFFFU)
+                          << '\t' << filename << '\n';
+                    ++sample_index;
+                }
+            }
+            if (sample_index < kElapsedCheckpoints.size()) {
+                advance_one_source_frame();
+            }
+        }
+        if (sample_index != kElapsedCheckpoints.size()) {
+            return fail("did not capture every event and threshold checkpoint");
+        }
+
+        constexpr std::array<std::uint8_t, 5> kExpectedVariants{{
+            0U, 0U, 0U, 1U, 0U}};
+        constexpr std::array<std::size_t, 5> kVariantSampleIndices{{
+            2U, 5U, 8U, 13U, 19U}};
+        for (std::size_t sample = 0U;
+             sample < kVariantSampleIndices.size(); ++sample) {
+            const auto index = kVariantSampleIndices[sample];
+            if (!has_request[index]) {
+                return fail("landing sprite is absent at an active checkpoint");
+            }
+            const auto group = opening_intro_sprite_group(
+                requests[index].sprite_descriptor);
+            if (group.family != OpeningIntroSpriteFamily::aircraft_movement ||
+                group.variant != kExpectedVariants[sample]) {
+                return fail("sprite selection does not follow the ROM Y window");
+            }
+        }
+        if (has_request[0] || has_request[1] ||
+            !images.back().save(QString::fromStdWString(
+                (output_directory / "actual.bmp").wstring())) ||
+            QImage(QString::fromStdWString(
+                (output_directory / "actual.bmp").wstring())) != images.back()) {
+            return fail("lead-in clearing or actual.bmp verification failed");
+        }
+        trace << "result\t20 full-screen checkpoints\tROM Y-window variants\t"
+                 "lead-in clear\tactual.bmp readback\n";
+        std::cout << "opening_landing_qa=passed checkpoints="
+                  << kElapsedCheckpoints.size() << " actual="
+                  << (output_directory / "actual.bmp").string() << '\n';
         return 0;
     }
 
@@ -5260,6 +5398,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> startup_dump_path;
         std::optional<std::filesystem::path> startup_qa_path;
         std::optional<std::filesystem::path> opening_rotor_qa_path;
+        std::optional<std::filesystem::path> opening_landing_qa_path;
         std::optional<std::uint32_t> opening_dump_selection;
         std::optional<std::uint32_t> opening_dump_start;
         std::optional<std::uint32_t> opening_dump_end;
@@ -5301,6 +5440,7 @@ int main(int argc, char** argv) {
                        " [--startup-dump <stage> <selection> <frame> <file>]"
                        " [--startup-qa <output-dir>]"
                        " [--opening-rotor-qa <output-dir>]"
+                       " [--opening-landing-qa <output-dir>]"
                        " [--intro-to-field-smoke]\n";
                 return 0;
             }
@@ -5512,6 +5652,11 @@ int main(int argc, char** argv) {
             if (std::string(argv[index]) == "--opening-rotor-qa" &&
                 index + 1 < argc) {
                 opening_rotor_qa_path = std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--opening-landing-qa" &&
+                index + 1 < argc) {
+                opening_landing_qa_path =
+                    std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--opening-dump-range" &&
                 index + 4 < argc) {
@@ -12947,6 +13092,9 @@ int main(int argc, char** argv) {
         }
         if (opening_rotor_qa_path.has_value()) {
             return window.run_opening_rotor_qa(*opening_rotor_qa_path);
+        }
+        if (opening_landing_qa_path.has_value()) {
+            return window.run_opening_landing_qa(*opening_landing_qa_path);
         }
         if (boot_fasa_qa_path.has_value()) {
             return window.run_boot_fasa_qa(*boot_fasa_qa_path);

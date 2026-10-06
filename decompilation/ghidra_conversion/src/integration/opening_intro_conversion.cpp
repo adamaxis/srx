@@ -640,9 +640,12 @@ const OpeningIntroSourcePlan& opening_intro_source_plan() {
             0x0024U, 0x005AU, 0x0048U, 0x0012U, 0x0024U, 0x0012U, 0x0000U}};
         for (std::size_t index = 0; index < kTitleIntroLandingPhaseCount;
              ++index) {
+            // 0x5B1B6 uses the base 0x1DF3F4 list throughout. It selects the
+            // alternate 0x1DF3FE list only while the computed Y is in
+            // 0x110..0x11E; phase index alone never changes the artwork.
             result.landing_phases[index] = {
                 sprite(OpeningIntroSpriteFamily::aircraft_movement,
-                       static_cast<std::uint8_t>(index >= 4U ? 1U : 0U)),
+                       0U),
                 dx[index], dy[index], delay[index]};
         }
 

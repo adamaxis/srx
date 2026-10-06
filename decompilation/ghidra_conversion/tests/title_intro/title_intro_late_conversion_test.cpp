@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/title_intro/title_intro_late_conversion.hpp"
+#include "shadowrun_ghidra/integration/opening_intro_conversion.hpp"
 
 #include <array>
 #include <cstdint>
@@ -150,6 +151,96 @@ int main() {
     if (sprites.size() != 1U || sprites[0].sprite_descriptor != 0x4000U ||
         sprites[0].y != 0x0110U) {
         return 14;
+    }
+
+    const auto& landing_plan = integration::opening_intro_source_plan();
+    constexpr std::array<std::uint16_t, kTitleIntroLandingPhaseCount>
+        expected_landing_dx{{0x00F1U, 0x006EU, 0x0071U, 0x002AU,
+                             0x0000U, 0x0063U, 0x0000U}};
+    constexpr std::array<std::uint16_t, kTitleIntroLandingPhaseCount>
+        expected_landing_dy{{0x0071U, 0x0000U, 0x0071U, 0x0071U,
+                             0x0038U, 0x0038U, 0x0000U}};
+    constexpr std::array<std::uint16_t, kTitleIntroLandingPhaseCount>
+        expected_landing_delay{{0x0024U, 0x005AU, 0x0048U, 0x0012U,
+                                0x0024U, 0x0012U, 0x0000U}};
+    for (std::size_t phase = 0U; phase < kTitleIntroLandingPhaseCount;
+         ++phase) {
+        const auto group = integration::opening_intro_sprite_group(
+            landing_plan.landing_phases[phase].sprite_descriptor);
+        if (group.family != integration::OpeningIntroSpriteFamily::aircraft_movement ||
+            group.variant != 0U ||
+            landing_plan.landing_phases[phase].x_delta !=
+                expected_landing_dx[phase] ||
+            landing_plan.landing_phases[phase].y_delta !=
+                expected_landing_dy[phase] ||
+            landing_plan.landing_phases[phase].delay_frames !=
+                expected_landing_delay[phase]) {
+            return 16;
+        }
+    }
+
+    constexpr std::uint16_t kLandingStartFrame = 1000U;
+    constexpr std::array<std::uint16_t, 7> kLandingEventElapsed{{
+        550U, 586U, 676U, 748U, 766U, 802U, 820U}};
+    constexpr std::array<std::uint16_t, 5> kLandingVisualElapsed{{
+        550U, 612U, 732U, 792U, 852U}};
+    constexpr std::array<std::uint16_t, 5> kLandingVisualX{{
+        0x007CU, 0x00A9U, 0x00DDU, 0x00E7U, 0x00EEU}};
+    constexpr std::array<std::uint16_t, 5> kLandingVisualY{{
+        0x00DFU, 0x00EEU, 0x0108U, 0x011CU, 0x0122U}};
+    constexpr std::array<std::uint8_t, 5> kLandingVisualVariant{{
+        0U, 0U, 0U, 1U, 0U}};
+    TitleIntroLandingState landing_path{};
+    reset_title_intro_landing(landing_path);
+    landing_path.animation_start_frame = kLandingStartFrame;
+    TitleIntroSpriteRequest landing_request{};
+    std::size_t landing_draws = 0U;
+    const auto collect_landing = [&landing_request,
+                                  &landing_draws](const auto& request) {
+        landing_request = request;
+        ++landing_draws;
+    };
+    std::size_t event_index = 0U;
+    std::size_t visual_index = 0U;
+    for (std::uint16_t elapsed = 225U; elapsed <= 852U; ++elapsed) {
+        landing_path.current_frame = static_cast<std::uint16_t>(
+            kLandingStartFrame + elapsed);
+        landing_draws = 0U;
+        advance_title_intro_landing(
+            landing_path, landing_plan.landing_phases,
+            integration::opening_intro_sprite_handle(
+                integration::OpeningIntroSpriteFamily::aircraft_movement,
+                1U),
+            collect_landing);
+
+        while (event_index < kLandingEventElapsed.size() &&
+               elapsed >= kLandingEventElapsed[event_index]) {
+            ++event_index;
+        }
+        if (landing_path.phase != event_index ||
+            (elapsed <= 549U ? landing_draws != 0U : landing_draws != 1U)) {
+            return 17;
+        }
+        if (visual_index < kLandingVisualElapsed.size() &&
+            elapsed == kLandingVisualElapsed[visual_index]) {
+            const auto group = integration::opening_intro_sprite_group(
+                landing_request.sprite_descriptor);
+            if (landing_request.x != kLandingVisualX[visual_index] ||
+                landing_request.y != kLandingVisualY[visual_index] ||
+                landing_request.palette_flags != 0x2000U ||
+                group.family !=
+                    integration::OpeningIntroSpriteFamily::aircraft_movement ||
+                group.variant != kLandingVisualVariant[visual_index]) {
+                return 18;
+            }
+            ++visual_index;
+        }
+    }
+    if (event_index != kLandingEventElapsed.size() ||
+        visual_index != kLandingVisualElapsed.size() ||
+        landing_path.next_event_frame !=
+            kLandingStartFrame + kLandingEventElapsed.back()) {
+        return 19;
     }
 
     TitleIntroEntityColorState colors{};
