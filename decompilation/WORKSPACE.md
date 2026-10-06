@@ -65,8 +65,9 @@ machine.
 ## Build output layout
 
 Every configure preset writes under the ignored repository-level `build/`
-directory. Debug, Release, Qt, IDE umbrella, and MSVC output have distinct
-paths:
+directory. Release is the normal build and launch configuration; Debug remains
+available for diagnosis and the Debug/Release validation required by a
+completed hill. Qt, IDE umbrella, and MSVC output have distinct paths:
 
 ```text
 build/

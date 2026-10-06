@@ -7,6 +7,17 @@
   },
   "configurePresets": [
     {
+      "name": "shadowrun-ide-release",
+      "displayName": "Shadowrun IDE (Release, MSYS2 UCRT64)",
+      "description": "IDE umbrella configure for separate native-port and Ghidra-conversion targets.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/ide/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe"
+      }
+    },
+    {
       "name": "shadowrun-ide-debug",
       "displayName": "Shadowrun IDE (Debug, MSYS2 UCRT64)",
       "description": "IDE umbrella configure for separate native-port and Ghidra-conversion targets.",
@@ -14,17 +25,6 @@
       "binaryDir": "${sourceDir}/build/ide/debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe"
-      }
-    },
-    {
-      "name": "shadowrun-ide-release",
-      "displayName": "Shadowrun IDE (Release, MSYS2 UCRT64)",
-      "description": "IDE umbrella release configure for separate native-port and Ghidra-conversion targets.",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/ide/release",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe"
       }
     },
@@ -38,6 +38,23 @@
     }
   ],
   "buildPresets": [
+    {
+      "name": "shadowrun-ide-ghidra-release",
+      "displayName": "Build Ghidra Conversion (IDE Release)",
+      "configurePreset": "shadowrun-ide-release",
+      "targets": ["shadowrun_ghidra_conversion_runner"]
+    },
+    {
+      "name": "shadowrun-ide-native-release",
+      "displayName": "Build Native Port (IDE Release)",
+      "configurePreset": "shadowrun-ide-release",
+      "targets": ["shadowrun_native"]
+    },
+    {
+      "name": "shadowrun-ide-all-release",
+      "displayName": "Build All IDE Targets (Release)",
+      "configurePreset": "shadowrun-ide-release"
+    },
     {
       "name": "shadowrun-ide-ghidra-debug",
       "displayName": "Build Ghidra Conversion (IDE Debug)",
@@ -64,6 +81,14 @@
     }
   ],
   "testPresets": [
+    {
+      "name": "shadowrun-ide-release",
+      "displayName": "CTest (IDE Release)",
+      "configurePreset": "shadowrun-ide-release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
     {
       "name": "shadowrun-ide-debug",
       "displayName": "CTest (IDE Debug)",

@@ -2,6 +2,110 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Shadowrun Ghidra Conversion Qt (Release)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/conversion/qt/release/shadowrun_ghidra_conversion_qt.exe",
+      "args": [
+        "--assets",
+        "${workspaceFolder}/decompilation/assets"
+      ],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "miDebuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",
+      "preLaunchTask": "Shadowrun Conversion Qt: Build (Release)",
+      "environment": [
+        {
+          "name": "PATH",
+          "value": "C:\\msys64\\ucrt64\\bin;C:\\Qt\\6.9.1\\mingw_64\\bin;${env:PATH}"
+        }
+      ],
+      "setupCommands": [
+        {
+          "description": "Enable GDB pretty-printing",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    },
+    {
+      "name": "Shadowrun Native (Release)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/native/release/shadowrun_native.exe",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}/build/native/release",
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "miDebuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",
+      "preLaunchTask": "Shadowrun: Build Native (Release)",
+      "setupCommands": [
+        {
+          "description": "Enable GDB pretty-printing",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    },
+    {
+      "name": "Shadowrun Qt Frontend (Release)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/native/qt/release/shadowrun_qt.exe",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}/build/native/qt/release",
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "miDebuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",
+      "preLaunchTask": "Shadowrun: Build Qt Frontend (Release)",
+      "environment": [
+        {
+          "name": "PATH",
+          "value": "C:\\Qt\\6.9.1\\mingw_64\\bin;C:\\msys64\\ucrt64\\bin;${env:PATH}"
+        }
+      ],
+      "setupCommands": [
+        {
+          "description": "Enable GDB pretty-printing",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    },
+    {
+      "name": "Shadowrun Ghidra Conversion Workbench (Release)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/conversion/workbench/release/shadowrun_ghidra_conversion_runner.exe",
+      "args": [
+        "--assets",
+        "${workspaceFolder}/decompilation/assets"
+      ],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "miDebuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",
+      "preLaunchTask": "Shadowrun Conversion: Build (Release)",
+      "environment": [
+        {
+          "name": "PATH",
+          "value": "C:\\msys64\\ucrt64\\bin;${env:PATH}"
+        }
+      ],
+      "setupCommands": [
+        {
+          "description": "Enable GDB pretty-printing",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    },
+    {
       "name": "Shadowrun Native (Debug)",
       "type": "cppdbg",
       "request": "launch",
@@ -66,35 +170,6 @@
         {
           "name": "PATH",
           "value": "C:\\msys64\\ucrt64\\bin;${env:PATH}"
-        }
-      ],
-      "setupCommands": [
-        {
-          "description": "Enable GDB pretty-printing",
-          "text": "-enable-pretty-printing",
-          "ignoreFailures": true
-        }
-      ]
-    },
-    {
-      "name": "Shadowrun Ghidra Conversion Qt (Release)",
-      "type": "cppdbg",
-      "request": "launch",
-      "program": "${workspaceFolder}/build/conversion/qt/release/shadowrun_ghidra_conversion_qt.exe",
-      "args": [
-        "--assets",
-        "${workspaceFolder}/decompilation/assets"
-      ],
-      "stopAtEntry": false,
-      "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
-      "externalConsole": false,
-      "MIMode": "gdb",
-      "miDebuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",
-      "preLaunchTask": "Shadowrun Conversion Qt: Build (Release)",
-      "environment": [
-        {
-          "name": "PATH",
-          "value": "C:\\msys64\\ucrt64\\bin;C:\\Qt\\6.9.1\\mingw_64\\bin;${env:PATH}"
         }
       ],
       "setupCommands": [
