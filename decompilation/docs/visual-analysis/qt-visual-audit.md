@@ -324,8 +324,71 @@ circuit layer. **Internally checked:**
 pass in Debug and Release; the test checks whole-screen pixels and timer
 cadence. **Independently visually checked:** section 01 frames listed above
 support the movement. **Reported defect resolved:** the missing upward motion
-is fixed for the tested visible range. Full-plane wrap, palette match, and the
-separate `BOOT-01`/`BOOT-02` issues remain open.
+is fixed for the tested visible range. Full-plane wrap and palette match remain
+open; `BOOT-01` remains open and `BOOT-02` is reviewed below.
+
+### Applied review: BOOT-02 title flame lifetime
+
+The pre-fix full-screen Qt title capture reproduced the reported orange flame
+at the right edge after the logo had settled. The active capture came from the
+Qt conversion renderer; the separate `NativePortShell` title guard did not
+affect it.
+
+1. **Does it look correct?** The full 320x224 QA captures show the source flame
+   on `title-sprite-last-active.bmp` at title frame 165, no flame on
+   `title-sprite-first-hidden.bmp` at frame 166, and no right-edge sprite on
+   `title-sprite-settled-900.bmp`. Independent section 01 frame 000372 shows
+   the flame at the right edge; frames 000384 and 000390 show it gone. The
+   independent video is not synchronized to source VBlanks, so it supports the
+   active-then-absent order rather than an exact host-frame correspondence.
+2. **Does the visible look match the behavioral state?** Yes. The typed
+   `TitleSpriteState::projection_visible` flag is true on the final reveal
+   pass (`logo.columns_revealed == 38`, sprite X `0x1C4`) and false on the
+   first following pass. The test also checks the settled frame at 900.
+3. **Are the visuals themselves correct?** The transient sprite is the named,
+   transparent `title.sprite.N` resource. In the visible state, it reaches the
+   right edge; after retirement, every pixel in the right-edge strip matches
+   the current circuit background. The unrelated bright/dense circuit
+   appearance remains open under `TITLE-03`.
+4. **Is it animated, and should it be?** Yes. `0x1C6A` advances through six
+   source lists, changes phase every four calls, and moves the origin by four
+   pixels per title-loop pass. `0x1A9E` calls it while `FFF1E6 <= 0x25`; after
+   the final logo-column call advances the value to `0x26`, the following pass
+   takes `0x0E34` and the projection becomes hidden. The new dumps cover the
+   last active and first inactive frames.
+5. **Does it have sound, and how long does it play?** `0x1E4E` also submits
+   command `0x5D` through `0x530DE` on its alternating reveal cadence. The
+   relationship between that request and the flame, the mapped resource, and
+   playback duration are not verified here; those remain under `BOOT-01`.
+6. **Are the other visible parts of the screen also correct?** Whole-frame
+   review covered title frames 165, 166, 300, 900, 1500, and 3000, plus the
+   native reveal scroll captures. The logo, copyright, prompt, and circuit
+   remain present; no menu controls or prior-page graphics appear. Circuit
+   brightness/texture remains a separate `TITLE-03` issue.
+7. **Do multiple frames support the interpretation?** Yes. Native frames 165,
+   166, and 900 cover the end of reveal and settled state. Independent section
+   01 frames 000372, 000384, and 000390 support the transient flame followed
+   by its removal. Debug and Release hashes match for the active, inactive,
+   and settled full-screen dumps.
+8. **Was an old UI replaced cleanly?** This is a title-layer transition, not a
+   menu page. The Qt renderer clears and redraws the complete 320x224 frame;
+   after the projection becomes inactive, the background is visible without
+   the old flame pixels.
+
+**Code changed:** the typed title sprite state now carries projection
+visibility, the source-loop coordinator retires it when the `0x1A9E` reveal
+branch ends, and the Qt renderer draws only an active projection.
+**Behavior implemented:** the flame remains through the final logo column and
+is hidden on the first frame after the reveal branch stops.
+**Internally checked:** Debug and Release `shadowrun_ghidra_conversion`
+unit tests and `shadowrun_ghidra_conversion_qt_startup_qa` pass. The QA checks
+state and full-screen pixels at frames 165, 166, and 900, saves all three BMPs,
+and confirms Debug/Release SHA-256 matches.
+**Independently visually checked:** section 01 frames 000372, 000384, and
+000390 show the active-then-absent flame sequence. Exact VBlank alignment is
+not available.
+**Reported defect resolved:** the flame no longer remains after the title
+reveal; title palette fidelity and the separate shock audio issue remain open.
 
 ### Applied review: field inventory selector
 

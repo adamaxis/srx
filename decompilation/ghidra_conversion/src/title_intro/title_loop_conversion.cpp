@@ -247,6 +247,7 @@ TitleSpriteAdvanceResult advance_title_sprite_state(TitleSpriteState& state) {
         phase_changed = true;
     }
     state.x = static_cast<std::int16_t>(state.x + 4);
+    state.projection_visible = true;
     return TitleSpriteAdvanceResult{phase_changed, true};
 }
 
@@ -347,8 +348,14 @@ TitleLoopFrameResult advance_title_loop_frame(
         }
         state.display_dirty_flags = static_cast<std::uint8_t>(
             state.display_dirty_flags | 0x02U);
-    } else if (callbacks.reset_vdp_upload_state) {
-        callbacks.reset_vdp_upload_state();
+    } else {
+        // 0x1A9E stops rebuilding the transient flame projection once the
+        // final logo column has been emitted. Retain the typed visibility
+        // state so a host renderer does not keep painting the last record.
+        state.sprite.projection_visible = false;
+        if (callbacks.reset_vdp_upload_state) {
+            callbacks.reset_vdp_upload_state();
+        }
     }
 
     const auto prompt = advance_title_prompt_schedule(state.prompt);

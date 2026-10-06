@@ -1289,6 +1289,17 @@ public:
         title_scroll_trace
             << "label\ttitle_frame\tbackground_scroll\tcircuit_phase\n";
 
+        std::ofstream title_sprite_trace(
+            output_directory / "title-sprite-lifetime-qa.tsv");
+        if (!title_sprite_trace) {
+            std::cerr << "startup qa: could not open title sprite trace in "
+                      << output_directory.string() << '\n';
+            return 3;
+        }
+        title_sprite_trace
+            << "label\ttitle_frame\tlogo_columns\tsprite_phase\tsprite_x\t"
+               "projection_visible\tright_edge_overlay_pixels\n";
+
         const auto title_background_matches =
             [this](const QImage& scene, const bool full_background) {
                 const auto circuit_alias =
@@ -1555,6 +1566,111 @@ public:
         }
 
         int title_frame = 0;
+        const auto title_right_edge_overlay_pixels =
+            [this](const QImage& scene) {
+                auto background_alias =
+                    "title.circuit.background." +
+                    std::to_string(title_loop_.circuit_lights.phase);
+                auto background = draw_asset_cache_.find(background_alias);
+                if (background == draw_asset_cache_.end()) {
+                    background_alias = "title.background";
+                    background = draw_asset_cache_.find(background_alias);
+                }
+                const auto* background_record =
+                    state_.asset_catalog.catalog.find(background_alias);
+                const auto* logo_record =
+                    state_.asset_catalog.catalog.find("title.logo");
+                const auto logo_image = draw_asset_cache_.find("title.logo");
+                const auto sprite_alias =
+                    "title.sprite." + std::to_string(
+                        title_loop_.sprite.phase % 6U);
+                const auto* sprite_record =
+                    state_.asset_catalog.catalog.find(sprite_alias);
+                const auto sprite_image =
+                    draw_asset_cache_.find(sprite_alias);
+                if (background == draw_asset_cache_.end() ||
+                    background_record == nullptr || logo_record == nullptr ||
+                    logo_image == draw_asset_cache_.end() ||
+                    sprite_record == nullptr ||
+                    sprite_image == draw_asset_cache_.end() ||
+                    background->second.height() <= 0) {
+                    return -1;
+                }
+
+                // The extracted logo ends at x=309. Its transient flame can
+                // travel beyond it, so compare that strip with the current
+                // scrolled circuit pixels to prove the projection appears
+                // before retirement and disappears afterward.
+                const auto& source = background->second;
+                const auto scroll = static_cast<int>(
+                    title_loop_.animation_timer.animation_offset %
+                    static_cast<std::uint16_t>(source.height()));
+                const auto first_x = std::min(
+                    scene.width(), std::max(
+                                       0, logo_record->origin_x +
+                                              logo_image->second.width()));
+                const auto first_y = std::max(0, sprite_record->origin_y);
+                const auto last_y = std::min(
+                    scene.height(), sprite_record->origin_y +
+                                        sprite_image->second.height());
+                int differing_pixels = 0;
+                for (int y = first_y; y < last_y; ++y) {
+                    for (int x = first_x; x < scene.width(); ++x) {
+                        const auto source_x = x - background_record->origin_x;
+                        const auto source_y = y - background_record->origin_y;
+                        if (source_x < 0 || source_x >= source.width() ||
+                            source_y < 0 || source_y >= source.height()) {
+                            continue;
+                        }
+                        const auto expected_y =
+                            (source_y + scroll) % source.height();
+                        const auto expected =
+                            source.pixelColor(source_x, expected_y);
+                        const auto actual = scene.pixelColor(x, y);
+                        if (actual.red() != expected.red() ||
+                            actual.green() != expected.green() ||
+                            actual.blue() != expected.blue()) {
+                            ++differing_pixels;
+                        }
+                    }
+                }
+                return differing_pixels;
+            };
+        const auto save_title_sprite_checkpoint =
+            [this, &output_directory, &title_sprite_trace,
+             &title_right_edge_overlay_pixels,
+             &title_frame](const char* label, const bool expected_visible) {
+                const auto scene = render_scene();
+                const auto overlay_pixels =
+                    title_right_edge_overlay_pixels(scene);
+                const auto visible = title_loop_.sprite.projection_visible;
+                if (visible != expected_visible || overlay_pixels < 0 ||
+                    (expected_visible && overlay_pixels == 0) ||
+                    (!expected_visible && overlay_pixels != 0)) {
+                    std::cerr << "startup qa: title sprite lifetime mismatch at "
+                              << label << " columns="
+                              << title_loop_.logo.columns_revealed
+                              << " x=" << title_loop_.sprite.x
+                              << " visible=" << visible
+                              << " right_edge_pixels=" << overlay_pixels
+                              << '\n';
+                    return false;
+                }
+                const auto path =
+                    output_directory / (std::string(label) + ".bmp");
+                if (!scene.save(QString::fromStdWString(path.wstring()))) {
+                    std::cerr << "startup qa: could not write "
+                              << path.string() << '\n';
+                    return false;
+                }
+                title_sprite_trace
+                    << label << '\t' << title_frame << '\t'
+                    << title_loop_.logo.columns_revealed << '\t'
+                    << title_loop_.sprite.phase << '\t'
+                    << title_loop_.sprite.x << '\t' << visible << '\t'
+                    << overlay_pixels << '\n';
+                return true;
+            };
         const auto save_title_scroll_checkpoint =
             [&](const std::string& name, const bool full_background) {
                 const auto scene = render_scene();
@@ -1609,6 +1725,34 @@ public:
             record(std::string("title.") + checkpoint.second);
         }
 
+        // 0x1A9E rebuilds the moving title-flame projection through the pass
+        // that emits column 0x25, then takes its 0x0E34 reset path after the
+        // reveal state reaches 0x26. Capture both sides of that boundary.
+        constexpr int kFinalRevealFrame = 165;
+        while (title_frame < kFinalRevealFrame &&
+               state_.phase == StartupIntegrationPhase::title_ready) {
+            if (!pump()) {
+                return fail("title sprite reveal did not reach final column");
+            }
+            ++title_frame;
+        }
+        if (title_loop_.logo.columns_revealed != kTitleLogoColumnLimit ||
+            !save_title_sprite_checkpoint("title-sprite-last-active", true)) {
+            return fail("title sprite projection did not remain through the "
+                        "final logo column");
+        }
+        record("title.sprite.last_active");
+        if (!pump()) {
+            return fail("title sprite retirement frame did not advance");
+        }
+        ++title_frame;
+        if (title_frame != kFinalRevealFrame + 1 ||
+            !save_title_sprite_checkpoint("title-sprite-first-hidden", false)) {
+            return fail("title sprite projection remained after the reveal "
+                        "branch stopped");
+        }
+        record("title.sprite.first_hidden");
+
         // The source title loop is interactive, but its complete logo/text
         // presentation is time-driven. Capture the progression before
         // pressing Start so the QA walk cannot accidentally validate only the
@@ -1629,6 +1773,15 @@ public:
             record("title.checkpoint." + std::to_string(checkpoint));
             if (!write_snapshot("title_" + std::to_string(checkpoint))) {
                 return 3;
+            }
+            if (checkpoint == 900 &&
+                !save_title_sprite_checkpoint(
+                    "title-sprite-settled-900", false)) {
+                return fail("title sprite projection reappeared in the "
+                            "settled title");
+            }
+            if (checkpoint == 900) {
+                record("title.sprite.settled_900");
             }
             if (checkpoint == 300 &&
                 !render_scene().save(QString::fromStdWString(
@@ -2985,7 +3138,7 @@ private:
         const auto* record = state_.asset_catalog.catalog.find(alias);
         const auto image = draw_asset_cache_.find(alias);
         if (record == nullptr || image == draw_asset_cache_.end() ||
-            title_loop_.sprite.x == 0x98) {
+            !title_loop_.sprite.projection_visible) {
             return;
         }
 

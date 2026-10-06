@@ -281,6 +281,13 @@ Each title-loop pass performs input/frame synchronization and then:
 cadence. The source records are terminated by `0x8000` and are expanded by
 `0x1378`; they are not six arbitrary full-screen animation frames.
 
+The `0x1A9E` branch calls `0x1C6A` on every active reveal pass, including
+passes between logo-column writes. It continues while `FFF1E6 <= 0x25`; the
+last `0x1E4E` column write advances that index to `0x26`, and the following
+loop pass takes `0x0E34` instead of rebuilding the flame projection. The Qt
+conversion state now carries that projection lifetime explicitly, so the last
+sprite record is not painted after the reveal branch stops.
+
 `0x1E4E` reads successive columns from `0x2090`, writes the title plane at the
 source name-table destination, increments `FFF1E6`, and on its sound cadence
 submits command `0x5D` through `0x530DE`. When the logo completes, `0x1C1E`

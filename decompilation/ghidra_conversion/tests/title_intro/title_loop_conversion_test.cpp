@@ -222,7 +222,7 @@ int main() {
     if (!expect(first_sprite.phase_changed &&
                 first_sprite.projection_rebuild_requested &&
                 sprite.cadence == 3 && sprite.phase == 1U &&
-                sprite.x == 0x9C)) {
+                sprite.x == 0x9C && sprite.projection_visible)) {
         return 1;
     }
     for (int frame = 0; frame < 4; ++frame) {
@@ -297,8 +297,31 @@ int main() {
                     TitleLoopFrameResult::start_requested &&
                 loop_vblanks == 1U && loop_samples == 3U &&
                 loop.logo.columns_revealed == 1U &&
-                loop.sprite.phase == 1U && loop.input_history.count == 0U &&
+                loop.sprite.phase == 1U && loop.sprite.projection_visible &&
+                loop.input_history.count == 0U &&
                 palette_steps == 1U && prompt_variants.empty())) {
+        return 1;
+    }
+
+    TitleLoopState sprite_lifetime;
+    sprite_lifetime.logo_reveal_delay = 0;
+    std::size_t upload_resets = 0;
+    TitleLoopCallbacks sprite_callbacks{};
+    sprite_callbacks.reset_vdp_upload_state = [&upload_resets] {
+        ++upload_resets;
+    };
+    for (int frame = 0; frame < 75; ++frame) {
+        advance_title_loop_frame(sprite_lifetime, sprite_callbacks);
+    }
+    if (!expect(sprite_lifetime.logo.columns_revealed ==
+                    kTitleLogoColumnLimit &&
+                sprite_lifetime.sprite.x == 0x1C4 &&
+                sprite_lifetime.sprite.projection_visible)) {
+        return 1;
+    }
+    advance_title_loop_frame(sprite_lifetime, sprite_callbacks);
+    if (!expect(!sprite_lifetime.sprite.projection_visible &&
+                upload_resets == 1U)) {
         return 1;
     }
 

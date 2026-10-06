@@ -168,6 +168,7 @@ struct TitleSpriteState {
     std::int16_t cadence = 0;
     std::uint16_t phase = 0;
     std::int16_t x = 0x98;
+    bool projection_visible = false;
 };
 
 struct TitleSpriteAdvanceResult {

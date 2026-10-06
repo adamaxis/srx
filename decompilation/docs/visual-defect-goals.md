@@ -41,7 +41,7 @@ shared acceptance gates are in the matching goal cluster below.
 | Goal | Reported issue, itemized | Evidence check and closure condition |
 |---|---|---|
 | `BOOT-01` | The shock figure has no sound when it shocks the SEGA logo, and the same effect plays at the wrong time when the Decker intro starts. | Trace both ROM sound requests and runtime triggers separately; capture the logo shock and Decker-scene entry; verify playback start, duration, and stop on the output device. |
-| `BOOT-02` | The flame decal remains on the right after the logo is fully revealed. | Independent section 01 frame 000372 still shows the flame; frame 000384 and later settled-title frames do not. Match the source transition and verify clean removal over consecutive full frames. |
+| `BOOT-02` | The flame decal remains on the right after the logo is fully revealed. | Reproduced in the pre-fix Qt full-screen title capture. The typed reveal stops at 38 columns: the last active frame shows the flame at title frame 165, the first frame after the 0x1A9E reveal branch hides it at 166, and settled frame 900 has no right-edge overlay. Debug/Release CTest checks projection state and whole-screen right-edge pixels. Independent section 01 frames 000372, 000384, and 000390 show the same active-then-absent transition. Resolved for the reported post-reveal persistence. |
 | `BOOT-03` | The animated microchip/circuit background does not move upward. | Independent section 01 frames 000390, 000396, 000420, and 000450 show changing background positions. Trace source offset, direction, cadence, and lifetime; compare a multi-frame full-screen dump. |
 | `TITLE-01` | The title's “PRESS START” label does not blink in and out. | Independent section 01 frame 000900 shows it, 000906 hides it, and 000912 shows it again. Match the ROM phase/counter and verify both phases over multiple cycles. |
 | `TITLE-02` | Pressing Start skips the transition and immediately opens New Game/Load Game. | Trace the title Start edge through the transition into Start Options; capture every transition phase and confirm inputs do not reach the destination early. The independent video has a cut at this boundary, so it does not establish transition timing. |
@@ -89,9 +89,14 @@ shared acceptance gates are in the matching goal cluster below.
   and denser in green than independent title frames 390, 396, 420, 450, and
   1500. A top-band pixel statistic is diagnostic only because the independent
   frames are compressed and their exact VBlank alignment is unknown.
-- The native `title_900.bmp` capture still has an orange sprite fragment at
-  the right edge that is absent from independent frame 000900. Its source
-  lifetime is still open under `BOOT-02`.
+- BOOT-02 was reproduced in the pre-fix full-screen Qt title capture. The
+  source-derived flame projection is visible through title frame 165
+  (`FFF1E6` reaches `0x26` after the final column), hidden on frame 166 when
+  `0x1A9E` takes the `0x0E34` reset path, and remains absent at settled frame
+  900. Debug/Release full-screen dumps match by SHA-256. Independent section
+  01 frame 000372 shows the transient flame; frames 000384 and 000390 show
+  it gone. The larger circuit brightness/texture discrepancy remains open as
+  `TITLE-03`.
 - The Qt pre-title audio callback records typed `0x16` / `0x5C` requests but
   does not call the audio player; neither command has a verified alias in the
   current playback map. Their shock identity, relationship to the Decker
@@ -142,10 +147,12 @@ upward scroll at the source-derived times; an independent section 01 sequence
 supports the visual order; audio playback is associated with the shock rather
 than startup and its duration/stop are recorded.
 
-**Status:** partial. `BOOT-03`'s source-cadenced upward circuit scroll is
-implemented and covered by the Debug/Release startup QA. `BOOT-01` and
-`BOOT-02` remain open; the full title still has the separately tracked palette
-finding below.
+**Status:** partial. `BOOT-02`'s post-reveal flame persistence is resolved with
+source-state retirement, a Debug/Release full-screen pixel check, and the
+independent frame 000372-to-000384 transition. `BOOT-03`'s source-cadenced
+upward circuit scroll is implemented and covered by the Debug/Release startup
+QA. `BOOT-01` remains open; the full title still has the separately tracked
+palette finding below.
 
 ### INTRO-02 — Push Start and title-to-start transition (`TITLE-01`, `TITLE-02`)
 
