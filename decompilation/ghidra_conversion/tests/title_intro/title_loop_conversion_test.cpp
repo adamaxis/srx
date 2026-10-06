@@ -153,10 +153,56 @@ int main() {
                         TitlePromptVariant::VariantA})) {
         return 1;
     }
-    prompt.frames_remaining = 9U;
+
+    // The first visible stretch is truncated by the source countdown
+    // boundary. Every later 64-VBlank period is 54 visible frames followed
+    // by the ten-frame blank record.
+    for (int frame = 0; frame < 33; ++frame) {
+        if (!expect(advance_title_prompt_schedule(prompt) ==
+                    std::optional<TitlePromptVariant>{
+                        TitlePromptVariant::VariantA})) {
+            return 1;
+        }
+    }
     if (!expect(advance_title_prompt_schedule(prompt) ==
                     std::optional<TitlePromptVariant>{
                         TitlePromptVariant::VariantB})) {
+        return 1;
+    }
+    for (int frame = 0; frame < 9; ++frame) {
+        if (!expect(advance_title_prompt_schedule(prompt) ==
+                    std::optional<TitlePromptVariant>{
+                        TitlePromptVariant::VariantB})) {
+            return 1;
+        }
+    }
+    if (!expect(advance_title_prompt_schedule(prompt) ==
+                    std::optional<TitlePromptVariant>{
+                        TitlePromptVariant::VariantA})) {
+        return 1;
+    }
+    for (int frame = 0; frame < 53; ++frame) {
+        if (!expect(advance_title_prompt_schedule(prompt) ==
+                    std::optional<TitlePromptVariant>{
+                        TitlePromptVariant::VariantA})) {
+            return 1;
+        }
+    }
+    if (!expect(advance_title_prompt_schedule(prompt) ==
+                    std::optional<TitlePromptVariant>{
+                        TitlePromptVariant::VariantB})) {
+        return 1;
+    }
+    for (int frame = 0; frame < 9; ++frame) {
+        if (!expect(advance_title_prompt_schedule(prompt) ==
+                    std::optional<TitlePromptVariant>{
+                        TitlePromptVariant::VariantB})) {
+            return 1;
+        }
+    }
+    if (!expect(advance_title_prompt_schedule(prompt) ==
+                    std::optional<TitlePromptVariant>{
+                        TitlePromptVariant::VariantA})) {
         return 1;
     }
     prompt.frames_remaining = 0U;

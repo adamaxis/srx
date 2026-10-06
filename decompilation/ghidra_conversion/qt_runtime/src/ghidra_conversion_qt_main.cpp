@@ -34,6 +34,7 @@
 #include <fstream>
 #include <initializer_list>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <memory>
 #include <optional>
@@ -1302,6 +1303,18 @@ public:
             << "label\ttitle_frame\tlogo_columns\tsprite_phase\tsprite_x\t"
                "projection_visible\tright_edge_overlay_pixels\n";
 
+        std::ofstream title_prompt_trace(
+            output_directory / "title-prompt-qa.tsv");
+        if (!title_prompt_trace) {
+            std::cerr << "startup qa: could not open title prompt trace in "
+                      << output_directory.string() << '\n';
+            return 3;
+        }
+        title_prompt_trace
+            << "label\ttitle_frame\tframes_remaining\tvariant\tvisible\t"
+               "prompt_foreground_pixels\tprompt_exact_matches\t"
+               "copyright_foreground_pixels\tcopyright_exact_matches\n";
+
         const auto title_background_matches =
             [this](const QImage& scene, const bool full_background) {
                 const auto circuit_alias =
@@ -1638,6 +1651,105 @@ public:
                 }
                 return differing_pixels;
             };
+
+        const auto title_text_foreground_matches =
+            [this](const QImage& scene, const int first_source_row,
+                   const int last_source_row) {
+                struct PixelMatches {
+                    int foreground = 0;
+                    int exact = 0;
+                };
+                PixelMatches matches;
+                const auto* record =
+                    state_.asset_catalog.catalog.find("title.text");
+                const auto image = draw_asset_cache_.find("title.text");
+                if (record == nullptr || image == draw_asset_cache_.end()) {
+                    return matches;
+                }
+
+                const auto& source = image->second;
+                for (int y = std::max(0, first_source_row);
+                     y < std::min(last_source_row, source.height()); ++y) {
+                    for (int x = 0; x < source.width(); ++x) {
+                        const auto source_color = source.pixelColor(x, y);
+                        if (source_color.red() == 0 &&
+                            source_color.green() == 0 &&
+                            source_color.blue() == 0) {
+                            continue;
+                        }
+                        ++matches.foreground;
+                        const auto scene_x = record->origin_x + x;
+                        const auto scene_y = record->origin_y + y;
+                        if (scene_x >= 0 && scene_x < scene.width() &&
+                            scene_y >= 0 && scene_y < scene.height() &&
+                            scene.pixelColor(scene_x, scene_y).rgb() ==
+                                source_color.rgb()) {
+                            ++matches.exact;
+                        }
+                    }
+                }
+                return matches;
+            };
+        const auto save_title_prompt_checkpoint =
+            [this, &output_directory, &title_prompt_trace,
+             &title_text_foreground_matches,
+             &title_frame](const char* label,
+                           const TitlePromptVariant expected_variant,
+                           const std::uint16_t expected_frames_remaining) {
+                const auto expected_visible =
+                    expected_variant == TitlePromptVariant::VariantA;
+                if (title_loop_.prompt.frames_remaining !=
+                        expected_frames_remaining ||
+                    title_prompt_variant_ != expected_variant ||
+                    title_prompt_visible_ != expected_visible ||
+                    !title_copyright_visible_) {
+                    std::cerr << "startup qa: title prompt state mismatch at "
+                              << label << " frame=" << title_frame
+                              << " remaining="
+                              << title_loop_.prompt.frames_remaining
+                              << " visible=" << title_prompt_visible_ << '\n';
+                    return false;
+                }
+
+                const auto scene = render_scene();
+                const auto prompt =
+                    title_text_foreground_matches(scene, 0, 7);
+                const auto copyright = title_text_foreground_matches(
+                    scene, 8, std::numeric_limits<int>::max());
+                const auto prompt_pixels_correct = expected_visible
+                    ? prompt.foreground > 0 &&
+                          prompt.exact == prompt.foreground
+                    : prompt.foreground > 0 && prompt.exact == 0;
+                if (!prompt_pixels_correct || copyright.foreground == 0 ||
+                    copyright.exact != copyright.foreground) {
+                    std::cerr << "startup qa: title prompt pixels mismatch at "
+                              << label << " frame=" << title_frame
+                              << " expected_visible=" << expected_visible
+                              << " prompt_exact=" << prompt.exact << '/'
+                              << prompt.foreground << " copyright_exact="
+                              << copyright.exact << '/'
+                              << copyright.foreground << '\n';
+                    return false;
+                }
+
+                const auto path =
+                    output_directory / (std::string(label) + ".bmp");
+                if (!scene.save(QString::fromStdWString(path.wstring()))) {
+                    std::cerr << "startup qa: could not write "
+                              << path.string() << '\n';
+                    return false;
+                }
+                title_prompt_trace
+                    << label << '\t' << title_frame << '\t'
+                    << title_loop_.prompt.frames_remaining << '\t'
+                    << (expected_variant == TitlePromptVariant::VariantA
+                            ? 'A'
+                            : 'B')
+                    << '\t' << title_prompt_visible_ << '\t'
+                    << prompt.foreground << '\t' << prompt.exact << '\t'
+                    << copyright.foreground << '\t' << copyright.exact << '\n';
+                return true;
+            };
         const auto save_title_sprite_checkpoint =
             [this, &output_directory, &title_sprite_trace,
              &title_right_edge_overlay_pixels,
@@ -1754,6 +1866,46 @@ public:
                         "branch stopped");
         }
         record("title.sprite.first_hidden");
+
+        // The prompt record is selected from the low six bits of D7 after
+        // the initial 0x0E10 countdown crosses 0x0C6C. Variant B is the blank
+        // record for ten VBlanks; A remains visible for the rest of each
+        // 64-VBlank cycle. Save full-screen samples from two complete cycles.
+        struct TitlePromptCheckpoint {
+            int frame;
+            const char* label;
+            TitlePromptVariant variant;
+            std::uint16_t frames_remaining;
+        };
+        constexpr std::array<TitlePromptCheckpoint, 5>
+            kTitlePromptCheckpoints{{
+                {422, "title-prompt-visible-first",
+                 TitlePromptVariant::VariantA, 3178},
+                {456, "title-prompt-hidden-first",
+                 TitlePromptVariant::VariantB, 3144},
+                {466, "title-prompt-visible-second",
+                 TitlePromptVariant::VariantA, 3134},
+                {520, "title-prompt-hidden-second",
+                 TitlePromptVariant::VariantB, 3080},
+                {530, "title-prompt-visible-third",
+                 TitlePromptVariant::VariantA, 3070},
+            }};
+        for (const auto& checkpoint : kTitlePromptCheckpoints) {
+            while (title_frame < checkpoint.frame &&
+                   state_.phase == StartupIntegrationPhase::title_ready) {
+                if (!pump()) {
+                    return fail("title prompt schedule did not advance");
+                }
+                ++title_frame;
+            }
+            if (state_.phase != StartupIntegrationPhase::title_ready ||
+                title_frame != checkpoint.frame ||
+                !save_title_prompt_checkpoint(
+                    checkpoint.label, checkpoint.variant,
+                    checkpoint.frames_remaining)) {
+                return fail("title prompt visibility or cadence mismatch");
+            }
+        }
 
         // The source title loop is interactive, but its complete logo/text
         // presentation is time-driven. Capture the progression before
@@ -2585,8 +2737,10 @@ private:
         title_loop_callbacks_.draw_prompt_variant =
             [this](const TitlePromptVariant variant) {
                 title_prompt_variant_ = variant;
-                const auto draw_prompt = [this](const auto&) {
-                    title_prompt_visible_ = true;
+                const auto draw_prompt = [this](
+                                             const TitleTextRenderRequest& request) {
+                    title_prompt_visible_ =
+                        request.asset == TitleTextAsset::prompt_variant_a;
                 };
                 if (variant == TitlePromptVariant::VariantB) {
                     draw_title_prompt_variant_b(draw_prompt);

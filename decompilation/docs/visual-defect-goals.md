@@ -43,7 +43,7 @@ shared acceptance gates are in the matching goal cluster below.
 | `BOOT-01` | The shock figure has no sound when it shocks the SEGA logo, and the same effect plays at the wrong time when the Decker intro starts. | Trace both ROM sound requests and runtime triggers separately; capture the logo shock and Decker-scene entry; verify playback start, duration, and stop on the output device. |
 | `BOOT-02` | The flame decal remains on the right after the logo is fully revealed. | Reproduced in the pre-fix Qt full-screen title capture. The typed reveal stops at 38 columns: the last active frame shows the flame at title frame 165, the first frame after the 0x1A9E reveal branch hides it at 166, and settled frame 900 has no right-edge overlay. Debug/Release CTest checks projection state and whole-screen right-edge pixels. Independent section 01 frames 000372, 000384, and 000390 show the same active-then-absent transition. Resolved for the reported post-reveal persistence. |
 | `BOOT-03` | The animated microchip/circuit background does not move upward. | Independent section 01 frames 000390, 000396, 000420, and 000450 show changing background positions. Trace source offset, direction, cadence, and lifetime; compare a multi-frame full-screen dump. |
-| `TITLE-01` | The title's “PRESS START” label does not blink in and out. | Independent section 01 frame 000900 shows it, 000906 hides it, and 000912 shows it again. Match the ROM phase/counter and verify both phases over multiple cycles. |
+| `TITLE-01` | The title's “PRESS START” label does not blink in and out. | Reproduced before the edit: the presenter set `title_prompt_visible_ = true` for both ROM variants. Resolved. ROM `0x1A9E` starts D7 at `0x0E10`, waits once per loop, then draws only when D7 is below `0x0C6C`; its low six bits select visible record A (`0x1F81`) or blank record B (`0x1F99`), both at `0xCA84` with palette `0x2000`. Qt now follows the selected typed text asset. Debug/Release typed and full-screen QA cover two cycles. Independent section 01 frames 000900/000906/000912 show visible/hidden/visible; their coarse 30-fps spacing supports blinking but does not establish absolute VBlank phase. Full review: [title prompt blink audit](visual-audits/title-prompt-blink.md). |
 | `TITLE-02` | Pressing Start skips the transition and immediately opens New Game/Load Game. | Trace the title Start edge through the transition into Start Options; capture every transition phase and confirm inputs do not reach the destination early. The independent video has a cut at this boundary, so it does not establish transition timing. |
 | `OPEN-01` | Opening music starts on the second screen instead of when the opening starts. | Trace each timed opening stage's sound command and playback state; compare section 02 audio/frame timing and record duration/loop/stop behavior. |
 | `OPEN-02` | In the Decker route, the head floats instead of staying attached to the character. | Identify the exact scene, actor record, and layer ownership; compare several adjacent frames and full-screen native captures. The sampled section 02 frames do not yet identify this Decker-specific state. |
@@ -165,13 +165,23 @@ New Game/Load Game.
 Start-edge transition/fade or wipe, then bind New Game/Load Game input only
 after the transition reaches its destination state.
 
+**TITLE-01 result:** the Push Start blink is resolved. ROM-derived typed state
+selects a visible 34-frame opening phase, then blank for 10 frames, followed by
+54 visible and 10 blank frames per 64-frame cycle. Five Debug/Release full
+screens check visible/blank/visible across two cycles and assert that the
+copyright row survives. Independent section 01 frames 000900, 000906, and
+000912 support the blink, but not its exact VBlank alignment. See the
+[eight-question audit](visual-audits/title-prompt-blink.md).
+
 **Done when:** dumps include visible/hidden Push Start phases, Start pressed
 and released, every transition phase, and the clean destination menu. The
 independent section 01 frames support the blink phases; the title-to-options
 transition is not shown in the supplied video and stays source-verified only
 unless another matching capture is found.
 
-**Status:** pending.
+**Status:** partial. `TITLE-01` is resolved. `TITLE-02` remains pending: the
+independent video cuts at the title-to-options transition, and its source
+transition timing still needs full-screen entry/phase/destination QA.
 
 ### TITLE-03 — Circuit background color and texture (added by full-screen audit)
 
