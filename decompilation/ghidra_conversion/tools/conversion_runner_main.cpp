@@ -143,6 +143,7 @@ int main(int argc, char** argv) {
         };
     startup_callbacks.pre_title.sample_controller =
         [&controller_samples] { ++controller_samples; };
+    startup_callbacks.pre_title.latch_controller_events = [] {};
     startup_callbacks.pre_title.step_palette_transition =
         [&palette_steps] { ++palette_steps; };
 
