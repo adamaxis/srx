@@ -126,6 +126,18 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_motel_entry_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Follow ordinary D-pad movement to scene-2 collision record 2. The source
+# record is a type-2 collision object, not a Stoker identity or event code;
+# this QA verifies its observed event-0/no-dialogue result and full-frame route.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_stoker_collision_candidate_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-stoker-collision-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-stoker-collision-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_stoker_collision_candidate_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # First Aid shares the real item cell/action path, then exercises the active
 # party list, CANCEL row, RNG-backed medkit effect, result wait, and inventory
 # return against directly extracted source text and HUD assets.

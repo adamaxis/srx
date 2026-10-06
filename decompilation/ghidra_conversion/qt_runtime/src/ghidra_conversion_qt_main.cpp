@@ -3593,6 +3593,322 @@ int run_field_motel_entry_qa(
     return 0;
 }
 
+int run_field_stoker_collision_candidate_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events) {
+    std::filesystem::create_directories(output);
+    std::error_code directory_error;
+    for (std::filesystem::directory_iterator item(output, directory_error), end;
+         !directory_error && item != end; item.increment(directory_error)) {
+        if (item->is_regular_file(directory_error) &&
+            item->path().extension() == ".bmp") {
+            std::filesystem::remove(item->path(), directory_error);
+            if (directory_error) {
+                std::cerr << "field Stoker-property QA: could not clear old "
+                          << item->path().filename().string() << ": "
+                          << directory_error.message() << '\n';
+                return 3;
+            }
+        }
+    }
+    if (directory_error) {
+        std::cerr << "field Stoker-property QA: could not inspect output: "
+                  << directory_error.message() << '\n';
+        return 3;
+    }
+
+    std::vector<std::string> saved_bmp_names;
+    const auto render = [&field_scene] {
+        QImage image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        field_scene.paint(painter);
+        painter.end();
+        return image;
+    };
+    const auto save = [&](const std::string_view name) {
+        const auto image = render();
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            !image.save(QString::fromStdWString(
+                (output / std::string(name)).wstring()))) {
+            return false;
+        }
+        saved_bmp_names.emplace_back(name);
+        return true;
+    };
+    const auto route_active = [&field_scene] {
+        return field_scene.field_scene_reference_for_dump() == 2U &&
+               !field_scene.dialogue_open() &&
+               !field_scene.field_interaction_open() &&
+               !field_scene.field_interaction_transition_active_for_dump() &&
+               !field_scene.field_transition_pending_for_dump();
+    };
+
+    const auto start = field_scene.field_entity_world_position();
+    if (field_scene.field_scene_reference_for_dump() != 2U ||
+        start.x != 0x3CE0U || start.y != 0x2D00U ||
+        field_scene.field_mode_event_code_for_dump() != 0U ||
+        !save("spawn.bmp")) {
+        std::cerr << "field Stoker-property QA: New Game field did not start "
+                     "from the traced scene-2 state (scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", position=" << start.x << ',' << start.y
+                  << ", event="
+                  << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ")\n";
+        return 3;
+    }
+
+    // Scene-2 record 2 at ROM 0x172DBE is a type-2 collision object in the
+    // east/south street, not an NPC/event identity. Follow ordinary D-pad
+    // movement to its boundary and record the projected event and dialogue
+    // state. This checks that the nearby object is not mislabeled as Stoker;
+    // the actual mode-2/event-2 trigger remains a separate unresolved route.
+    constexpr std::uint16_t east_waypoint_x = 0x5500U; // world x=0x550
+    constexpr std::uint16_t south_waypoint_y = 0x3520U; // world y=0x352
+    constexpr std::uint16_t property_approach_x = 0x5540U; // world x=0x554
+    std::uint16_t east_ticks = 0U;
+    while (east_ticks < 240U &&
+           field_scene.field_entity_world_position().x < east_waypoint_x &&
+           route_active()) {
+        field_scene.set_controller_nibble(0x08U);
+        field_scene.advance_frame();
+        ++east_ticks;
+        if (east_ticks == 16U || east_ticks == 64U || east_ticks == 128U) {
+            const auto name = "east-" + std::to_string(east_ticks) + ".bmp";
+            if (!save(name)) {
+                std::cerr << "field Stoker-property QA: east-route dump failed\n";
+                return 3;
+            }
+        }
+    }
+    const auto east_position = field_scene.field_entity_world_position();
+    if (!save("east-waypoint.bmp") || east_position.x < east_waypoint_x ||
+        !route_active()) {
+        std::cerr << "field Stoker-property QA: east street waypoint was not "
+                     "reached (ticks="
+                  << east_ticks << ", position=" << east_position.x << ','
+                  << east_position.y << ", event="
+                  << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ", scene=" << field_scene.field_scene_reference_for_dump()
+                  << ")\n";
+        return 3;
+    }
+
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    std::uint16_t south_ticks = 0U;
+    while (south_ticks < 120U &&
+           field_scene.field_entity_world_position().y < south_waypoint_y &&
+           route_active()) {
+        field_scene.set_controller_nibble(0x02U);
+        field_scene.advance_frame();
+        ++south_ticks;
+        if (south_ticks == 16U || south_ticks == 32U ||
+            south_ticks == 48U) {
+            const auto name = "south-" + std::to_string(south_ticks) + ".bmp";
+            if (!save(name)) {
+                std::cerr << "field Stoker-property QA: south-route dump failed\n";
+                return 3;
+            }
+        }
+    }
+    const auto wall_position = field_scene.field_entity_world_position();
+    if (!save("wall-approach.bmp") || !route_active() ||
+        wall_position.y < 0x3180U || wall_position.y > 0x31A0U) {
+        std::cerr << "field Stoker-property QA: did not stop at the source "
+                     "wall row before the property lane (ticks="
+                  << south_ticks << ", position=" << wall_position.x << ','
+                  << wall_position.y << ", event="
+                  << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ", scene=" << field_scene.field_scene_reference_for_dump()
+                  << ")\n";
+        return 3;
+    }
+
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    std::uint16_t bypass_left_ticks = 0U;
+    while (bypass_left_ticks < 48U &&
+           field_scene.field_entity_world_position().x > 0x5300U &&
+           route_active()) {
+        field_scene.set_controller_nibble(0x04U);
+        field_scene.advance_frame();
+        ++bypass_left_ticks;
+        if (bypass_left_ticks == 8U || bypass_left_ticks == 16U) {
+            const auto name =
+                "wall-bypass-left-" + std::to_string(bypass_left_ticks) +
+                ".bmp";
+            if (!save(name)) {
+                std::cerr << "field Stoker-property QA: wall-bypass dump failed\n";
+                return 3;
+            }
+        }
+    }
+    const auto bypass_position = field_scene.field_entity_world_position();
+    if (!save("wall-bypass-left.bmp") ||
+        bypass_position.x > 0x5340U || !route_active()) {
+        std::cerr << "field Stoker-property QA: west side of the wall lane "
+                     "was not reached (ticks="
+                  << bypass_left_ticks << ", position=" << bypass_position.x
+                  << ',' << bypass_position.y << ", scene="
+                  << field_scene.field_scene_reference_for_dump() << ")\n";
+        return 3;
+    }
+
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    std::uint16_t south_lane_ticks = 0U;
+    while (south_lane_ticks < 80U &&
+           field_scene.field_entity_world_position().y < 0x3380U &&
+           route_active()) {
+        field_scene.set_controller_nibble(0x02U);
+        field_scene.advance_frame();
+        ++south_lane_ticks;
+        if (south_lane_ticks == 8U || south_lane_ticks == 16U ||
+            south_lane_ticks == 24U) {
+            const auto name = "property-lane-south-" +
+                              std::to_string(south_lane_ticks) + ".bmp";
+            if (!save(name)) {
+                std::cerr << "field Stoker-property QA: property-lane dump failed\n";
+                return 3;
+            }
+        }
+    }
+    const auto south_lane_position = field_scene.field_entity_world_position();
+    if (!save("property-lane-south.bmp") ||
+        (south_lane_position.y < 0x3380U &&
+         !field_scene.dialogue_open()) ||
+        (!route_active() && !field_scene.dialogue_open())) {
+        std::cerr << "field Stoker-property QA: open south lane was not "
+                     "reached (ticks="
+                  << south_lane_ticks << ", position="
+                  << south_lane_position.x << ',' << south_lane_position.y
+                  << ", event="
+                  << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ", scene=" << field_scene.field_scene_reference_for_dump()
+                  << ")\n";
+        return 3;
+    }
+
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    std::uint16_t property_ticks = 0U;
+    while (property_ticks < 64U &&
+           field_scene.field_entity_world_position().x < property_approach_x &&
+           route_active()) {
+        field_scene.set_controller_nibble(0x08U);
+        field_scene.advance_frame();
+        ++property_ticks;
+        if (property_ticks == 8U || property_ticks == 16U) {
+            const auto name =
+                "property-east-" + std::to_string(property_ticks) + ".bmp";
+            if (!save(name)) {
+                std::cerr << "field Stoker-property QA: property approach "
+                             "dump failed\n";
+                return 3;
+            }
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto property_position = field_scene.field_entity_world_position();
+    // The final held-right probe attempts the source vector +0x28. Its
+    // normalized candidate is exactly the left edge of record 2 expanded by
+    // the source's 12-unit horizontal actor margin; Y=0x348 is inside the
+    // rectangle's 0x340..0x34F vertical range. This is real object contact.
+    const auto collision_candidate_x = static_cast<std::uint16_t>(
+        property_position.x + 0x0028U);
+    const auto collision_candidate_y = property_position.y;
+    const bool candidate_contacts_record_2 =
+        (collision_candidate_x >> 4U) == 0x0554U &&
+        (collision_candidate_y >> 4U) == 0x0348U;
+    const bool contact_saved = save("property-contact.bmp");
+    if (!contact_saved || !candidate_contacts_record_2 ||
+        field_scene.field_scene_reference_for_dump() != 2U ||
+        field_scene.field_mode_event_code_for_dump() != 0U ||
+        field_scene.field_projected_code_for_dump() != 0U ||
+        field_scene.dialogue_open() || field_scene.field_interaction_open() ||
+        field_scene.field_interaction_transition_active_for_dump()) {
+        std::cerr << "field Stoker-property QA: type-2 collision candidate "
+                     "did not retain its observed non-dialogue state "
+                     "(event="
+                  << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ", projected_code="
+                  << field_scene.field_projected_code_for_dump()
+                  << ", position=" << property_position.x << ','
+                  << property_position.y << ", candidate="
+                  << collision_candidate_x << ',' << collision_candidate_y
+                  << ", candidate_matches_record_2="
+                  << (candidate_contacts_record_2 ? "yes" : "no")
+                  << ", scene=" << field_scene.field_scene_reference_for_dump()
+                  << ", dialogue="
+                  << (field_scene.dialogue_open() ? "open" : "closed")
+                  << ", interaction="
+                  << (field_scene.field_interaction_open() ? "open" : "closed")
+                  << ", property_ticks=" << property_ticks << ")\n";
+        return 3;
+    }
+
+    for (std::uint8_t idle = 1U; idle <= 30U; ++idle) {
+        field_scene.advance_frame();
+        if (idle == 1U || idle == 8U || idle == 30U) {
+            const auto name = "idle-" +
+                              (idle < 10U ? std::string("0")
+                                          : std::string()) +
+                              std::to_string(idle) + ".bmp";
+            if (!save(name)) {
+                std::cerr << "field Stoker-property QA: idle frame dump failed\n";
+                return 3;
+            }
+        }
+    }
+    const bool actual_saved = save("actual.bmp");
+    std::vector<std::string> actual_bmp_names;
+    for (std::filesystem::directory_iterator item(output, directory_error), end;
+         !directory_error && item != end; item.increment(directory_error)) {
+        if (item->is_regular_file(directory_error) &&
+            item->path().extension() == ".bmp") {
+            actual_bmp_names.push_back(item->path().filename().string());
+        }
+    }
+    if (directory_error) {
+        std::cerr << "field Stoker-property QA: output list failed: "
+                  << directory_error.message() << '\n';
+        return 3;
+    }
+    std::sort(saved_bmp_names.begin(), saved_bmp_names.end());
+    std::sort(actual_bmp_names.begin(), actual_bmp_names.end());
+    const auto settled_position = field_scene.field_entity_world_position();
+    if (!actual_saved || actual_bmp_names != saved_bmp_names ||
+        field_scene.field_controller_nibble_for_dump() != 0U ||
+        settled_position.x != property_position.x ||
+        settled_position.y != property_position.y ||
+        field_scene.field_scene_reference_for_dump() != 2U ||
+        field_scene.field_mode_event_code_for_dump() != 0U ||
+        field_scene.dialogue_open() || field_scene.field_interaction_open()) {
+        std::cerr << "field Stoker-property QA: idle movement, no-dialogue "
+                     "state, or complete full-screen dump set changed\n";
+        return 3;
+    }
+
+    std::cout << "field_stoker_collision_candidate_qa=passed "
+              << "scene=2 event=0 projected_code=0 "
+              << "candidate=" << collision_candidate_x << ','
+              << collision_candidate_y
+              << " outcome=no_stoker_dialogue east_ticks=" << east_ticks
+              << " south_ticks=" << south_ticks
+              << " property_ticks=" << property_ticks
+              << " sfx_events=" << field_audio_events.size()
+              << " artifacts=" << output.string() << '\n';
+    return 0;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -3607,6 +3923,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_transition_qa_path;
         std::optional<std::filesystem::path> field_world_activity_qa_path;
         std::optional<std::filesystem::path> field_motel_entry_qa_path;
+        std::optional<std::filesystem::path> field_stoker_collision_qa_path;
         std::optional<std::filesystem::path> field_hud_qa_path;
         std::optional<std::filesystem::path> field_hotel_qa_path;
         std::optional<std::filesystem::path> field_command_dump_path;
@@ -3654,6 +3971,7 @@ int main(int argc, char** argv) {
                        " [--field-transition-qa <output-dir>]"
                        " [--field-world-activity-qa <output-dir>]"
                        " [--field-motel-entry-qa <output-dir>]"
+                       " [--field-stoker-collision-qa <output-dir>]"
                        " [--field-command-dump <file>]"
                        " [--field-command-page <0..6>]"
                        " [--field-cyberware-dump <file>]"
@@ -3711,6 +4029,12 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_motel_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-stoker-collision-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_stoker_collision_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-command-reopen-smoke") {
@@ -3990,6 +4314,11 @@ int main(int argc, char** argv) {
                     field_scene, asset_root,
                     *field_motel_entry_qa_path, field_audio_events,
                     field_source_boundaries);
+            }
+            if (field_stoker_collision_qa_path.has_value()) {
+                return run_field_stoker_collision_candidate_qa(
+                    field_scene, *field_stoker_collision_qa_path,
+                    field_audio_events);
             }
             if (field_transition_qa_path.has_value()) {
                 std::filesystem::create_directories(

@@ -1792,12 +1792,16 @@ independent magazines would contradict this ROM's `+0x4E` transitions.
    independent captures do not expose D-pad input, so they support corridor
    player placement only and do not prove the native right-turn path or exact
    sprite alignment.
-4. **Is it animated, and should it be?** The `0xC0B2` walking lists have
-   eight frames, increment `0x0200`, and period `0x1000`; one frame advances
-   per eight updates while a walking selector remains active. Heading-sector
-   changes reset the animation record, and release selects the static idle
-   list. The multi-frame native captures show the turn, stable right-facing
-   walk, and idle return.
+4. **Is it animated, and should it be?** ROM `0x5FDC` advances the selected
+   descriptor index from record `+0x18/+0x1A/+0x1C`; the `0xC0B2` lists have
+   marker `0x8008`, increment `0x0200`, and eight descriptors. ROM `0xB330` and
+   the no-`+0x4C` branch of `0xAFF2` select `0xC0B2` on behavior-transition
+   paths. That is not yet an end-to-end trace of the ordinary held-D-pad
+   selector. The Qt presenter currently forces this family on every accepted
+   movement and advances it on the modeled cadence. Independent section 04
+   frames `000900..000911` show multiple original-game field poses, but no
+   input or selector state. Treat the normal movement family and cadence as
+   unresolved under defect goal FIELD-01.
 5. **Does movement have sound?** The reviewed input, heading, vector, and
    collision chain has no direct sound call. A wider source trace for field
    footstep/audio dispatch has not established whether movement plays a cue,
@@ -1808,11 +1812,13 @@ independent magazines would contradict this ROM's `+0x4E` transitions.
    frames. This route opens no menu or dialog, so sibling panels are outside
    this hill.
 7. **Do multiple frames support the interpretation?** Independent section 04
-   frames `000064`, `000074`, `000090`, `000102`, and `000120` show the runner
-   on the corridor, crossing its edge, moving on the dark region, and reaching
-   a later bend. They establish multiple field states but have no synchronized
-   controller record. Native images at ticks 1, 4, 8, and 16 plus release
-   support the code's state progression; they are not a Genesis golden.
+   frames `000900..000911` show successive original-game poses as the runner
+   moves through the dark corridor; frames `000912..000972` continue through
+   later field states. They establish that the actor changes position and pose
+   over time, but the recording has no synchronized controller or entity
+   selector. Native images at ticks 1, 4, 8, and 16 plus release support the
+   current Qt model's state progression; they do not establish which ROM
+   animation family ordinary D-pad movement selects.
 8. **Was old UI cleared before new graphics were drawn?** This path has no
    screen replacement. Each dump starts with a fresh framebuffer, redraws the
    map and HUD, and paints only the current actor frame; inspection found no
@@ -1821,10 +1827,10 @@ independent magazines would contradict this ROM's `+0x4E` transitions.
 
 **Code changed:** added a multi-frame field movement QA route, observable typed
 movement snapshots, and a CTest. **Behavior implemented:** held right follows
-the traced table, heading slew, vector, collision, and walk-frame cadence;
+the traced heading slew, vector, collision, and current animation model;
 release returns to idle. **Internally checked:** Debug and Release CTests
-require the source-derived heading and position deltas, frame cadence, full
-frame/HUD presence, and idle reset, and write the checkpoints above.
-**Independently visually checked:** section 04 supplies repeated field states,
-but lacks the input log and the same identified scene state; exact movement
-visuals and sound remain unresolved, so this hill stays partial.
+require source-derived heading and position deltas, modeled frame cadence,
+full-frame/HUD presence, and idle reset. **Independently visually checked:**
+section 04 supplies repeated whole-frame movement states, but no synchronized
+input or selector. Ordinary D-pad animation selection and movement sound
+remain unresolved under FIELD-01, so this hill stays partial.
