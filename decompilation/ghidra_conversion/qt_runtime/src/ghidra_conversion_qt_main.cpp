@@ -53,6 +53,7 @@ using namespace shadowrun::ghidra_conversion::qt_runtime;
 constexpr int kSceneWidth = 320;
 constexpr int kSceneHeight = 224;
 constexpr int kSceneScale = 3;
+constexpr std::uint8_t kTitleStartButton = 0x80U;
 
 bool image_has_green_ink(const QImage& image, const int x, const int y,
                          const int width, const int height) {
@@ -388,6 +389,19 @@ std::uint8_t sampled_menu_byte(const int key) {
         return kStartupMenuA;
     default:
         return 0U;
+    }
+}
+
+// 0x1A9E's title break is driven by the latched Genesis Start bit. Startup
+// menus still map these keys to A; the title loop has its own input contract.
+std::uint8_t sampled_title_byte(const int key) {
+    switch (key) {
+    case Qt::Key_Space:
+    case Qt::Key_Return:
+    case Qt::Key_Enter:
+        return kTitleStartButton;
+    default:
+        return sampled_menu_byte(key);
     }
 }
 
@@ -1016,9 +1030,9 @@ public:
             return 3;
         }
 
+        pending_title_controller_word_ = static_cast<std::uint16_t>(
+            static_cast<std::uint16_t>(kTitleStartButton) << 8U);
         while (state_.phase == StartupIntegrationPhase::title_ready) {
-            pending_title_controller_word_ = static_cast<std::uint16_t>(
-                static_cast<std::uint16_t>(kStartupMenuA) << 8U);
             if (setup_frames++ >= kMaxSetupFrames) {
                 std::cerr << "startup dump: title did not accept Start\n";
                 return 3;
@@ -1068,9 +1082,9 @@ public:
                       << startup_integration_phase_name(state_.phase) << '\n';
             return 3;
         }
+        pending_title_controller_word_ = static_cast<std::uint16_t>(
+            static_cast<std::uint16_t>(kTitleStartButton) << 8U);
         while (state_.phase == StartupIntegrationPhase::title_ready) {
-            pending_title_controller_word_ = static_cast<std::uint16_t>(
-                static_cast<std::uint16_t>(kStartupMenuA) << 8U);
             if (setup_frames++ >= kMaxSetupFrames) {
                 std::cerr << "startup dump: title did not accept Start\n";
                 return 3;
@@ -1202,9 +1216,9 @@ public:
             return 3;
         }
 
+        pending_title_controller_word_ = static_cast<std::uint16_t>(
+            static_cast<std::uint16_t>(kTitleStartButton) << 8U);
         while (state_.phase == StartupIntegrationPhase::title_ready) {
-            pending_title_controller_word_ = static_cast<std::uint16_t>(
-                static_cast<std::uint16_t>(kStartupMenuA) << 8U);
             if (!pump()) {
                 std::cerr << "intro-to-field: title did not accept Start\n";
                 return 3;
@@ -1314,6 +1328,30 @@ public:
             << "label\ttitle_frame\tframes_remaining\tvariant\tvisible\t"
                "prompt_foreground_pixels\tprompt_exact_matches\t"
                "copyright_foreground_pixels\tcopyright_exact_matches\n";
+
+        std::ofstream title_exit_trace(
+            output_directory / "title-exit-fade-qa.tsv");
+        if (!title_exit_trace) {
+            std::cerr << "startup qa: could not open title exit trace in "
+                      << output_directory.string() << '\n';
+            return 3;
+        }
+        title_exit_trace
+            << "label\tframe\tfade_vblank\tpalette_pass\t"
+               "vblanks_in_pass\tactive\tcomplete\tpalette_steps\t"
+               "phase\n";
+
+        std::ofstream title_mode_entry_trace(
+            output_directory / "title-mode-entry-qa.tsv");
+        if (!title_mode_entry_trace) {
+            std::cerr << "startup qa: could not open title mode-entry trace in "
+                      << output_directory.string() << '\n';
+            return 3;
+        }
+        title_mode_entry_trace
+            << "label\tframe\tvblank\ttransactions_started\t"
+               "vblanks_in_transaction\tactive\tcomplete\tflushes\t"
+               "audio_ticks\tphase\n";
 
         const auto title_background_matches =
             [this](const QImage& scene, const bool full_background) {
@@ -1988,16 +2026,221 @@ public:
             }
         }
 
-        while (state_.phase == StartupIntegrationPhase::title_ready) {
-            pending_title_controller_word_ = static_cast<std::uint16_t>(
-                static_cast<std::uint16_t>(kStartupMenuA) << 8U);
+        const auto save_title_exit_snapshot =
+            [&](const std::string& label, const std::uint32_t fade_vblank) {
+                const auto scene = render_scene();
+                const auto path = output_directory / (label + ".bmp");
+                if (scene.size() != QSize(kSceneWidth, kSceneHeight) ||
+                    !scene.save(QString::fromStdWString(path.wstring()))) {
+                    return false;
+                }
+                title_exit_trace
+                    << label << '\t' << frames << '\t' << fade_vblank << '\t'
+                    << static_cast<unsigned>(title_loop_.exit_palette_fade
+                                                 .passes_completed)
+                    << '\t'
+                    << static_cast<unsigned>(title_loop_.exit_palette_fade
+                                                 .vblanks_in_pass)
+                    << '\t'
+                    << (title_loop_.exit_palette_fade.active ? 1 : 0) << '\t'
+                    << (title_loop_.exit_palette_fade.complete ? 1 : 0)
+                    << '\t' << title_exit_palette_steps_ << '\t'
+                    << startup_integration_phase_name(state_.phase) << '\n';
+                return true;
+            };
+        const auto image_is_black = [](const QImage& image) {
+            for (int y = 0; y < image.height(); ++y) {
+                for (int x = 0; x < image.width(); ++x) {
+                    if (image.pixelColor(x, y) != QColor(Qt::black)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        };
+
+        if (sampled_title_byte(Qt::Key_Space) != kTitleStartButton ||
+            sampled_title_byte(Qt::Key_Return) != kTitleStartButton ||
+            sampled_title_byte(Qt::Key_Enter) != kTitleStartButton ||
+            sampled_title_byte(Qt::Key_Z) != kStartupMenuA ||
+            sampled_title_byte(Qt::Key_X) != kStartupMenuB) {
+            return fail("title keys did not distinguish Start from menu A/B");
+        }
+        pending_title_controller_word_ = static_cast<std::uint16_t>(
+            static_cast<std::uint16_t>(kTitleStartButton) << 8U);
+        if (!pump() || state_.phase != StartupIntegrationPhase::title_ready ||
+            !title_loop_.exit_palette_fade.active ||
+            title_loop_.exit_palette_fade.passes_completed != 0U ||
+            title_exit_palette_steps_ != 0U ||
+            title_mode_entry_service_.active ||
+            title_mode_entry_service_.complete ||
+            !save_title_exit_snapshot("title-exit-fade-start", 0U)) {
+            return fail("Start did not begin a zero-pass title fade");
+        }
+        record("title.exit.start_requested");
+
+        const auto frozen_logo_columns = title_loop_.logo.columns_revealed;
+        const auto frozen_sprite_phase = title_loop_.sprite.phase;
+        const auto frozen_sprite_x = title_loop_.sprite.x;
+        const auto frozen_animation_offset =
+            title_loop_.animation_timer.animation_offset;
+        const auto frozen_circuit_phase = title_loop_.circuit_lights.phase;
+        const auto frozen_prompt_frames = title_loop_.prompt.frames_remaining;
+        auto previous_fade_pass = render_scene();
+        constexpr auto kExitFadeVblankCount = static_cast<std::uint32_t>(
+            kTitleExitPalettePasses * kTitleExitVblanksPerPalettePass);
+        for (std::uint32_t vblank = 1U; vblank <= kExitFadeVblankCount;
+             ++vblank) {
             if (!pump()) {
-                return fail("title did not accept Start");
+                return fail("title exit fade stopped before pass 17");
+            }
+            const auto expected_passes = static_cast<std::uint8_t>(
+                vblank / kTitleExitVblanksPerPalettePass);
+            const auto expected_vblanks_in_pass = static_cast<std::uint8_t>(
+                vblank % kTitleExitVblanksPerPalettePass);
+            const bool final_vblank = vblank == kExitFadeVblankCount;
+            if (state_.phase != StartupIntegrationPhase::title_ready ||
+                title_loop_.exit_palette_fade.passes_completed !=
+                    expected_passes ||
+                title_loop_.exit_palette_fade.vblanks_in_pass !=
+                    expected_vblanks_in_pass ||
+                title_loop_.exit_palette_fade.active == final_vblank ||
+                title_loop_.exit_palette_fade.complete != final_vblank ||
+                title_exit_palette_steps_ != expected_passes ||
+                title_loop_.logo.columns_revealed != frozen_logo_columns ||
+                title_loop_.sprite.phase != frozen_sprite_phase ||
+                title_loop_.sprite.x != frozen_sprite_x ||
+                title_loop_.animation_timer.animation_offset !=
+                    frozen_animation_offset ||
+                title_loop_.circuit_lights.phase != frozen_circuit_phase ||
+                title_loop_.prompt.frames_remaining != frozen_prompt_frames) {
+                return fail("title state or palette cadence advanced during "
+                            "the exit fade");
+            }
+
+            const auto scene = render_scene();
+            if ((vblank & 1U) != 0U) {
+                if (scene != previous_fade_pass) {
+                    return fail("title fade changed pixels before the second "
+                                "VBlank of a palette pass");
+                }
+                title_exit_trace
+                    << "vblank" << vblank << '\t' << frames << '\t' << vblank
+                    << '\t' << static_cast<unsigned>(expected_passes) << '\t'
+                    << static_cast<unsigned>(expected_vblanks_in_pass) << '\t'
+                    << (title_loop_.exit_palette_fade.active ? 1 : 0) << '\t'
+                    << (title_loop_.exit_palette_fade.complete ? 1 : 0)
+                    << '\t' << title_exit_palette_steps_ << '\t'
+                    << startup_integration_phase_name(state_.phase) << '\n';
+                continue;
+            }
+
+            if (!save_title_exit_snapshot(
+                    "title-exit-fade-pass-" +
+                        (expected_passes < 10U ? std::string("0")
+                                               : std::string()) +
+                        std::to_string(expected_passes),
+                    vblank)) {
+                return fail("could not save a full-screen title fade phase");
+            }
+            if (expected_passes < 7U && scene == previous_fade_pass) {
+                return fail("a source-visible palette pass did not darken "
+                            "the title image");
+            }
+            if (image_is_black(scene) != (expected_passes >= 7U)) {
+                return fail("title image did not reach and retain black at "
+                            "the source palette level");
+            }
+            previous_fade_pass = scene;
+        }
+        if (!title_mode_entry_service_.active ||
+            title_mode_entry_service_.transactions_started != 1U ||
+            title_mode_entry_service_.vblanks_in_transaction != 0U ||
+            title_mode_entry_transactions_ != 1U ||
+            !save_title_exit_snapshot("title-exit-fade-complete", 34U) ||
+            !image_is_black(render_scene())) {
+            return fail("completed 17-pass title fade did not hold full black");
+        }
+        record("title.exit.palette_transition_complete");
+
+        const auto save_title_mode_entry_snapshot =
+            [&](const std::string& label, const std::uint32_t vblank) {
+                const auto scene = render_scene();
+                const auto path = output_directory / (label + ".bmp");
+                if (scene.size() != QSize(kSceneWidth, kSceneHeight) ||
+                    !scene.save(QString::fromStdWString(path.wstring()))) {
+                    return false;
+                }
+                title_mode_entry_trace
+                    << label << '\t' << frames << '\t' << vblank << '\t'
+                    << static_cast<unsigned>(title_mode_entry_service_
+                                                 .transactions_started)
+                    << '\t'
+                    << static_cast<unsigned>(title_mode_entry_service_
+                                                 .vblanks_in_transaction)
+                    << '\t'
+                    << (title_mode_entry_service_.active ? 1 : 0) << '\t'
+                    << (title_mode_entry_service_.complete ? 1 : 0) << '\t'
+                    << title_mode_entry_flushes_ << '\t'
+                    << title_mode_entry_audio_ticks_ << '\t'
+                    << startup_integration_phase_name(state_.phase) << '\n';
+                return true;
+            };
+        for (std::uint32_t vblank = 1U; vblank <= 18U; ++vblank) {
+            if (!pump()) {
+                return fail("title mode-entry service stopped before 18 VBlanks");
+            }
+            const auto expected_transactions = static_cast<std::uint8_t>(
+                std::min<std::uint32_t>(
+                    1U + vblank / kTitleModeEntryVblanksPerTransaction,
+                    kTitleModeEntryAudioTransactions));
+            const auto expected_vblanks_in_transaction =
+                static_cast<std::uint8_t>(
+                    vblank % kTitleModeEntryVblanksPerTransaction);
+            const bool final_vblank = vblank == 18U;
+            const auto expected_phase = final_vblank
+                ? StartupIntegrationPhase::start_options
+                : StartupIntegrationPhase::title_ready;
+            if (state_.phase != expected_phase ||
+                title_mode_entry_service_.transactions_started !=
+                    expected_transactions ||
+                title_mode_entry_service_.vblanks_in_transaction !=
+                    expected_vblanks_in_transaction ||
+                title_mode_entry_service_.active == final_vblank ||
+                title_mode_entry_service_.complete != final_vblank ||
+                title_mode_entry_transactions_ != expected_transactions ||
+                title_mode_entry_vblanks_ != vblank ||
+                title_mode_entry_flushes_ != (final_vblank ? 1U : 0U) ||
+                title_mode_entry_audio_ticks_ != (final_vblank ? 1U : 0U)) {
+                return fail("title mode-entry command/VBlank cadence diverged "
+                            "from the source transaction sequence");
+            }
+            const auto label = final_vblank
+                ? std::string("title-mode-entry-vblank-18-start-options")
+                : std::string("title-mode-entry-vblank-") +
+                      (vblank < 10U ? std::string("0") : std::string()) +
+                      std::to_string(vblank);
+            const auto scene = render_scene();
+            if (!save_title_mode_entry_snapshot(label, vblank) ||
+                (final_vblank
+                     ? image_is_black(scene) ||
+                           !startup_shell_survives(scene)
+                     : !image_is_black(scene))) {
+                return fail("mode-entry hold or clean Start Options redraw "
+                            "failed full-screen review checks");
             }
         }
-        if (state_.phase != StartupIntegrationPhase::start_options) {
-            return fail("title did not enter Start Options");
+
+        const auto start_options_destination = render_scene();
+        if (state_.start_options.selected != StartOptionsChoice::new_game ||
+            image_is_black(start_options_destination) ||
+            !startup_shell_survives(start_options_destination) ||
+            !image_region_differs(start_options_destination, previous_fade_pass,
+                                  0, 0, kSceneWidth, kSceneHeight) ||
+            !write_snapshot("title-exit-destination-start-options")) {
+            return fail("Start Options did not cleanly replace the faded title");
         }
+        record("title.exit.destination_start_options");
         record("menu.start_options.new_game");
         if (!write_snapshot("02_start_options_new_game")) {
             return 3;
@@ -2182,6 +2425,16 @@ protected:
     }
 
     void keyPressEvent(QKeyEvent* event) override {
+        if (state_.phase == StartupIntegrationPhase::title_ready &&
+            (title_loop_.exit_palette_fade.active ||
+             title_loop_.exit_palette_fade.complete ||
+             title_mode_entry_service_.active ||
+             title_mode_entry_service_.complete)) {
+            // 0x131C waits and latches the existing controller state; it does
+            // not sample another title input while the palette is fading.
+            event->accept();
+            return;
+        }
         if (event->isAutoRepeat() &&
             state_.phase != StartupIntegrationPhase::field_ready) {
             // 0x195C publishes newly-pressed bits. Qt auto-repeat is not a
@@ -2218,7 +2471,9 @@ protected:
             }
         }
 
-        const auto sample = sampled_menu_byte(event->key());
+        const auto sample = state_.phase == StartupIntegrationPhase::title_ready
+                                ? sampled_title_byte(event->key())
+                                : sampled_menu_byte(event->key());
         if (sample == 0U) {
             QWidget::keyPressEvent(event);
             return;
@@ -2226,8 +2481,7 @@ protected:
 
         if (state_.phase == StartupIntegrationPhase::title_ready) {
             // 0x195C publishes newly pressed controller bits in the high
-            // byte. The converted title loop consumes that word at its next
-            // vblank; it owns the exit decision.
+            // byte. The ROM title loop exits on its latched Start bit.
             pending_title_controller_word_ = static_cast<std::uint16_t>(
                 pending_title_controller_word_ |
                 (static_cast<std::uint16_t>(sample) << 8U));
@@ -2339,6 +2593,11 @@ private:
                     state_.pre_title.palette_transition_passes_completed,
                     false);
             }
+        }
+        if (state_.phase == StartupIntegrationPhase::title_ready &&
+            title_loop_.exit_palette_fade.passes_completed != 0U) {
+            return transition_genesis_cram_image(
+                scene, title_loop_.exit_palette_fade.passes_completed, true);
         }
         if (state_.phase == StartupIntegrationPhase::opening_intro &&
             state_.opening_intro.scene_palette_weight != 255U) {
@@ -2809,8 +3068,34 @@ private:
         title_loop_callbacks_.reset_vdp_upload_state = [this] {
             note_presentation_boundary("title.reset_vdp_upload_state");
         };
+        title_loop_callbacks_.latch_palette_transition_events = [this] {
+            note_presentation_boundary(
+                "title.latch_palette_transition_events");
+        };
         title_loop_callbacks_.step_palette_transition = [this] {
             ++title_palette_steps_;
+            ++title_exit_palette_steps_;
+        };
+
+        title_mode_entry_callbacks_.wait_for_vblank = [this] {
+            ++title_mode_entry_vblanks_;
+            note_presentation_boundary("title.mode_entry.wait_for_vblank");
+        };
+        title_mode_entry_callbacks_.run_audio_transaction = [this](
+                                                                  const auto command) {
+            ++title_mode_entry_transactions_;
+            note_presentation_boundary(
+                command == kTitleModeEntryAudioCommand
+                    ? "title.mode_entry.audio_command_14"
+                    : "title.mode_entry.audio_command_unresolved");
+        };
+        title_mode_entry_callbacks_.flush_audio_bus = [this] {
+            ++title_mode_entry_flushes_;
+            note_presentation_boundary("title.mode_entry.flush_audio_bus");
+        };
+        title_mode_entry_callbacks_.service_audio_tick = [this] {
+            ++title_mode_entry_audio_ticks_;
+            note_presentation_boundary("title.mode_entry.service_audio_tick");
         };
     }
 
@@ -2841,10 +3126,27 @@ private:
         if (state_.phase != StartupIntegrationPhase::title_ready) {
             return;
         }
+        if (title_mode_entry_service_.complete) {
+            return;
+        }
+        if (title_mode_entry_service_.active) {
+            if (advance_title_mode_entry_service_vblank(
+                    title_mode_entry_service_,
+                    title_mode_entry_callbacks_) ==
+                    TitleModeEntryServiceResult::complete &&
+                title_loop_.controller_events.activity_timer != 0) {
+                pending_title_controller_word_ = 0U;
+                enter_start_options_integration(state_, startup_callbacks_);
+            }
+            return;
+        }
         const auto result =
             advance_title_loop_frame(title_loop_, title_loop_callbacks_);
-        if (result == TitleLoopFrameResult::start_requested) {
-            enter_start_options_integration(state_, startup_callbacks_);
+        if (result == TitleLoopFrameResult::palette_transition_complete) {
+            // 0x075E runs the six-command, 18-VBlank audio service after the
+            // title loop returns and before it enters the Start Options page.
+            begin_title_mode_entry_service(title_mode_entry_service_,
+                                           title_mode_entry_callbacks_);
         }
     }
 
@@ -3549,6 +3851,8 @@ private:
     qt_runtime::FieldSceneRuntime field_scene_runtime_;
     TitleLoopState title_loop_;
     TitleLoopCallbacks title_loop_callbacks_;
+    TitleModeEntryServiceState title_mode_entry_service_;
+    TitleModeEntryServiceCallbacks title_mode_entry_callbacks_;
     QTimer host_frame_timer_;
     QElapsedTimer host_clock_;
     std::int64_t host_frame_deadline_ns_ = 0;
@@ -3596,6 +3900,11 @@ private:
     std::uint8_t field_controller_port_byte_ = 0;
     std::uint32_t title_vblanks_ = 0;
     std::size_t title_palette_steps_ = 0;
+    std::size_t title_exit_palette_steps_ = 0;
+    std::size_t title_mode_entry_transactions_ = 0;
+    std::size_t title_mode_entry_vblanks_ = 0;
+    std::size_t title_mode_entry_flushes_ = 0;
+    std::size_t title_mode_entry_audio_ticks_ = 0;
     std::size_t resource_stream_words_ = 0;
     std::size_t horizontal_scroll_lines_ = 0;
     std::size_t title_sprite_record_builds_ = 0;

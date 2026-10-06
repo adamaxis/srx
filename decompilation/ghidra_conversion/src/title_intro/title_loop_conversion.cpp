@@ -277,6 +277,40 @@ std::optional<std::uint8_t> advance_title_circuit_lights(
 
 TitleLoopFrameResult advance_title_loop_frame(
     TitleLoopState& state, const TitleLoopCallbacks& callbacks) {
+    // Once ROM 0x1A9E leaves its interactive loop, it does not run the title
+    // animation or sample fresh input. 0x131C waits for two VBlanks per CRAM
+    // pass, then steps the palette; input-history validation happens only
+    // after all 17 passes have completed.
+    if (state.exit_palette_fade.active) {
+        if (callbacks.wait_for_vblank) {
+            callbacks.wait_for_vblank();
+        }
+        if (callbacks.latch_palette_transition_events) {
+            callbacks.latch_palette_transition_events();
+        }
+
+        ++state.exit_palette_fade.vblanks_in_pass;
+        if (state.exit_palette_fade.vblanks_in_pass ==
+            kTitleExitVblanksPerPalettePass) {
+            state.exit_palette_fade.vblanks_in_pass = 0;
+            ++state.exit_palette_fade.passes_completed;
+            if (callbacks.step_palette_transition) {
+                callbacks.step_palette_transition();
+            }
+            if (state.exit_palette_fade.passes_completed ==
+                kTitleExitPalettePasses) {
+                state.exit_palette_fade.active = false;
+                state.exit_palette_fade.complete = true;
+                finalize_title_input_sequence(state.input_history);
+                return TitleLoopFrameResult::palette_transition_complete;
+            }
+        }
+        return TitleLoopFrameResult::palette_transitioning;
+    }
+    if (state.exit_palette_fade.complete) {
+        return TitleLoopFrameResult::palette_transition_complete;
+    }
+
     // 0x1ABA samples once after setup and before the first vblank loop pass.
     // The source uses it to seed the controller edge state; it is not a title
     // input event and therefore is not recorded or latched here.
@@ -363,28 +397,73 @@ TitleLoopFrameResult advance_title_loop_frame(
         callbacks.draw_prompt_variant(*prompt);
     }
 
-    const auto finish_title_loop = [&] {
-        // The ROM takes one final controller sample after leaving the loop,
-        // then performs its palette transition and validates the seven-edge
-        // sequence. Do not feed this final sample into the edge buffer.
+    const auto begin_title_exit_transition = [&] {
+        // The ROM takes one final controller sample after leaving the loop.
+        // It then runs 0x131C's 17 palette passes before validating the
+        // seven-edge sequence. Do not feed the final sample into the buffer.
         if (callbacks.sample_controller) {
             callbacks.sample_controller();
         }
-        if (callbacks.step_palette_transition) {
-            callbacks.step_palette_transition();
-        }
-        finalize_title_input_sequence(state.input_history);
+        state.exit_palette_fade.active = true;
     };
 
-    if (state.last_controller_events.event_bits != 0U) {
-        finish_title_loop();
+    if (state.controller_events.start_latched) {
+        begin_title_exit_transition();
         return TitleLoopFrameResult::start_requested;
     }
     if (state.prompt.finished) {
-        finish_title_loop();
+        begin_title_exit_transition();
         return TitleLoopFrameResult::source_complete;
     }
     return TitleLoopFrameResult::running;
+}
+
+void begin_title_mode_entry_service(
+    TitleModeEntryServiceState& state,
+    const TitleModeEntryServiceCallbacks& callbacks) {
+    state = TitleModeEntryServiceState{};
+    state.active = true;
+    state.transactions_started = 1U;
+    if (callbacks.run_audio_transaction) {
+        callbacks.run_audio_transaction(kTitleModeEntryAudioCommand);
+    }
+}
+
+TitleModeEntryServiceResult advance_title_mode_entry_service_vblank(
+    TitleModeEntryServiceState& state,
+    const TitleModeEntryServiceCallbacks& callbacks) {
+    if (state.complete || !state.active) {
+        return state.complete ? TitleModeEntryServiceResult::complete
+                              : TitleModeEntryServiceResult::waiting;
+    }
+
+    if (callbacks.wait_for_vblank) {
+        callbacks.wait_for_vblank();
+    }
+    ++state.vblanks_in_transaction;
+    if (state.vblanks_in_transaction <
+        kTitleModeEntryVblanksPerTransaction) {
+        return TitleModeEntryServiceResult::waiting;
+    }
+
+    state.vblanks_in_transaction = 0U;
+    if (state.transactions_started < kTitleModeEntryAudioTransactions) {
+        ++state.transactions_started;
+        if (callbacks.run_audio_transaction) {
+            callbacks.run_audio_transaction(kTitleModeEntryAudioCommand);
+        }
+        return TitleModeEntryServiceResult::waiting;
+    }
+
+    if (callbacks.flush_audio_bus) {
+        callbacks.flush_audio_bus();
+    }
+    if (callbacks.service_audio_tick) {
+        callbacks.service_audio_tick();
+    }
+    state.active = false;
+    state.complete = true;
+    return TitleModeEntryServiceResult::complete;
 }
 
 } // namespace shadowrun::ghidra_conversion

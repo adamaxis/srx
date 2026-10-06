@@ -1,5 +1,6 @@
 #include "shadowrun_ghidra/title_intro/title_loop_conversion.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <vector>
 
@@ -323,13 +324,19 @@ int main() {
     std::size_t loop_vblanks = 0;
     std::size_t loop_samples = 0;
     std::size_t palette_steps = 0;
+    std::size_t palette_event_latches = 0;
     std::vector<TitlePromptVariant> prompt_variants;
     TitleLoopCallbacks loop_callbacks{};
     loop_callbacks.wait_for_vblank = [&loop_vblanks] { ++loop_vblanks; };
     loop_callbacks.sample_controller = [&loop_samples] {
         ++loop_samples;
-        return loop_samples == 2U ? static_cast<std::uint16_t>(0x4000U)
-                                  : static_cast<std::uint16_t>(0U);
+        if (loop_samples == 2U) {
+            return static_cast<std::uint16_t>(0x4000U); // A is not Start.
+        }
+        if (loop_samples == 3U) {
+            return static_cast<std::uint16_t>(0x8000U);
+        }
+        return static_cast<std::uint16_t>(0U);
     };
     loop_callbacks.draw_prompt_variant =
         [&prompt_variants](const TitlePromptVariant variant) {
@@ -338,14 +345,69 @@ int main() {
     loop_callbacks.step_palette_transition = [&palette_steps] {
         ++palette_steps;
     };
+    loop_callbacks.latch_palette_transition_events =
+        [&palette_event_latches] { ++palette_event_latches; };
 
     if (!expect(advance_title_loop_frame(loop, loop_callbacks) ==
-                    TitleLoopFrameResult::start_requested &&
-                loop_vblanks == 1U && loop_samples == 3U &&
+                    TitleLoopFrameResult::running &&
+                loop_vblanks == 1U && loop_samples == 2U &&
                 loop.logo.columns_revealed == 1U &&
                 loop.sprite.phase == 1U && loop.sprite.projection_visible &&
-                loop.input_history.count == 0U &&
-                palette_steps == 1U && prompt_variants.empty())) {
+                loop.input_history.count == 1U &&
+                !loop.exit_palette_fade.active && palette_steps == 0U &&
+                prompt_variants.empty())) {
+        return 1;
+    }
+    if (!expect(advance_title_loop_frame(loop, loop_callbacks) ==
+                    TitleLoopFrameResult::start_requested &&
+                loop_vblanks == 2U && loop_samples == 4U &&
+                loop.input_history.count == 1U &&
+                loop.exit_palette_fade.active &&
+                loop.exit_palette_fade.passes_completed == 0U &&
+                loop.exit_palette_fade.vblanks_in_pass == 0U &&
+                palette_steps == 0U && prompt_variants.empty())) {
+        return 1;
+    }
+
+    const auto paused_logo_columns = loop.logo.columns_revealed;
+    const auto paused_sprite_x = loop.sprite.x;
+    const auto paused_sprite_phase = loop.sprite.phase;
+    const auto paused_animation_offset = loop.animation_timer.animation_offset;
+    const auto paused_prompt_frames = loop.prompt.frames_remaining;
+    constexpr auto kTitleExitVblankCount = static_cast<std::uint8_t>(
+        kTitleExitPalettePasses * kTitleExitVblanksPerPalettePass);
+    for (std::uint8_t vblank = 1U; vblank <= kTitleExitVblankCount; ++vblank) {
+        const auto result = advance_title_loop_frame(loop, loop_callbacks);
+        const auto expected_passes = static_cast<std::uint8_t>(
+            vblank / kTitleExitVblanksPerPalettePass);
+        const bool final_vblank = vblank == kTitleExitVblankCount;
+        const auto expected_vblanks_in_pass = static_cast<std::uint8_t>(
+            vblank % kTitleExitVblanksPerPalettePass);
+        if (!expect(result == (final_vblank
+                                  ? TitleLoopFrameResult::
+                                        palette_transition_complete
+                                  : TitleLoopFrameResult::
+                                        palette_transitioning) &&
+                    loop_vblanks == static_cast<std::size_t>(2U + vblank) &&
+                    loop_samples == 4U &&
+                    palette_event_latches == vblank &&
+                    palette_steps == expected_passes &&
+                    loop.exit_palette_fade.passes_completed ==
+                        expected_passes &&
+                    loop.exit_palette_fade.vblanks_in_pass ==
+                        expected_vblanks_in_pass &&
+                    loop.logo.columns_revealed == paused_logo_columns &&
+                    loop.sprite.x == paused_sprite_x &&
+                    loop.sprite.phase == paused_sprite_phase &&
+                    loop.animation_timer.animation_offset ==
+                        paused_animation_offset &&
+                    loop.prompt.frames_remaining == paused_prompt_frames)) {
+            return 1;
+        }
+    }
+    if (!expect(loop.exit_palette_fade.complete &&
+                !loop.exit_palette_fade.active &&
+                loop.input_history.count == 0U && palette_steps == 17U)) {
         return 1;
     }
 
@@ -386,9 +448,77 @@ int main() {
     if (!expect(advance_title_loop_frame(
                     completed_loop, completed_callbacks) ==
                     TitleLoopFrameResult::source_complete &&
-                completed_samples == 3U && completed_palette_steps == 1U &&
-                completed_loop.prompt.finished)) {
+                completed_samples == 3U && completed_palette_steps == 0U &&
+                completed_loop.prompt.finished &&
+                completed_loop.exit_palette_fade.active)) {
         return 1;
+    }
+    for (std::uint8_t vblank = 0U; vblank < kTitleExitVblankCount; ++vblank) {
+        advance_title_loop_frame(completed_loop, completed_callbacks);
+    }
+    if (!expect(completed_loop.exit_palette_fade.complete &&
+                completed_loop.exit_palette_fade.passes_completed == 17U &&
+                completed_samples == 3U && completed_palette_steps == 17U)) {
+        return 1;
+    }
+
+    TitleModeEntryServiceState mode_entry;
+    std::size_t mode_entry_vblanks = 0;
+    std::size_t mode_entry_flushes = 0;
+    std::size_t mode_entry_audio_ticks = 0;
+    std::vector<std::uint8_t> mode_entry_commands;
+    TitleModeEntryServiceCallbacks mode_entry_callbacks{};
+    mode_entry_callbacks.wait_for_vblank = [&mode_entry_vblanks] {
+        ++mode_entry_vblanks;
+    };
+    mode_entry_callbacks.run_audio_transaction =
+        [&mode_entry_commands](const std::uint8_t command) {
+            mode_entry_commands.push_back(command);
+        };
+    mode_entry_callbacks.flush_audio_bus = [&mode_entry_flushes] {
+        ++mode_entry_flushes;
+    };
+    mode_entry_callbacks.service_audio_tick = [&mode_entry_audio_ticks] {
+        ++mode_entry_audio_ticks;
+    };
+    begin_title_mode_entry_service(mode_entry, mode_entry_callbacks);
+    if (!expect(mode_entry.active && !mode_entry.complete &&
+                mode_entry.transactions_started == 1U &&
+                mode_entry.vblanks_in_transaction == 0U &&
+                mode_entry_commands.size() == 1U &&
+                mode_entry_commands.front() == 0x14U &&
+                mode_entry_flushes == 0U && mode_entry_audio_ticks == 0U)) {
+        return 1;
+    }
+    for (std::uint8_t vblank = 1U; vblank <= 18U; ++vblank) {
+        const auto result = advance_title_mode_entry_service_vblank(
+            mode_entry, mode_entry_callbacks);
+        const auto expected_transactions = static_cast<std::uint8_t>(
+            std::min<unsigned>(
+                1U + vblank / kTitleModeEntryVblanksPerTransaction,
+                kTitleModeEntryAudioTransactions));
+        const auto expected_vblanks_in_transaction = static_cast<std::uint8_t>(
+            vblank % kTitleModeEntryVblanksPerTransaction);
+        const bool final_vblank = vblank == 18U;
+        if (!expect(result == (final_vblank
+                                  ? TitleModeEntryServiceResult::complete
+                                  : TitleModeEntryServiceResult::waiting) &&
+                    mode_entry_vblanks == vblank &&
+                    mode_entry.transactions_started == expected_transactions &&
+                    mode_entry.vblanks_in_transaction ==
+                        expected_vblanks_in_transaction &&
+                    mode_entry_commands.size() == expected_transactions &&
+                    mode_entry.active == !final_vblank &&
+                    mode_entry.complete == final_vblank &&
+                    mode_entry_flushes == (final_vblank ? 1U : 0U) &&
+                    mode_entry_audio_ticks == (final_vblank ? 1U : 0U))) {
+            return 1;
+        }
+    }
+    for (const auto command : mode_entry_commands) {
+        if (!expect(command == kTitleModeEntryAudioCommand)) {
+            return 1;
+        }
     }
     return 0;
 }

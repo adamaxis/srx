@@ -85,6 +85,11 @@ struct TitleRevealState {
 bool advance_title_reveal(TitleRevealState& state);
 
 constexpr std::size_t kTitleInputHistoryCapacity = 8;
+constexpr std::uint8_t kTitleExitPalettePasses = 17;
+constexpr std::uint8_t kTitleExitVblanksPerPalettePass = 2;
+constexpr std::uint8_t kTitleModeEntryAudioCommand = 0x14U;
+constexpr std::uint8_t kTitleModeEntryAudioTransactions = 6U;
+constexpr std::uint8_t kTitleModeEntryVblanksPerTransaction = 3U;
 
 struct TitleInputHistory {
     std::array<std::uint8_t, kTitleInputHistoryCapacity> events{};
@@ -204,6 +209,19 @@ enum class TitleLoopFrameResult {
     running,
     start_requested,
     source_complete,
+    palette_transitioning,
+    palette_transition_complete,
+};
+
+// ROM 0x131C performs 17 palette steps. Each pass calls 0x1342 with D5=1,
+// which waits for two VBlanks and latches the already sampled controller
+// state each time. The host owns one VBlank per title-loop call while this
+// typed fade state remains active.
+struct TitleExitPaletteFadeState {
+    std::uint8_t passes_completed = 0;
+    std::uint8_t vblanks_in_pass = 0;
+    bool active = false;
+    bool complete = false;
 };
 
 // The state owned by ROM 0x1A9E. Each child state remains typed and
@@ -219,6 +237,7 @@ struct TitleLoopState {
     TitleAnimationTimer animation_timer{};
     TitleInputHistory input_history{};
     ControllerEventLatchState controller_events{};
+    TitleExitPaletteFadeState exit_palette_fade{};
     TitleLogoRevealState logo{};
     TitleSpriteState sprite{};
     TitlePromptSchedule prompt{};
@@ -253,6 +272,7 @@ struct TitleLoopCallbacks {
 
     // ROM 0x1A9E's post-loop sample/palette/input finalization. The palette
     // operation is a host boundary; the input sequence itself is converted.
+    std::function<void()> latch_palette_transition_events;
     std::function<void()> step_palette_transition;
 };
 
@@ -262,5 +282,34 @@ struct TitleLoopCallbacks {
 // source state advancing while keeping that host boundary explicit.
 TitleLoopFrameResult advance_title_loop_frame(
     TitleLoopState& state, const TitleLoopCallbacks& callbacks);
+
+// ROM 0x075E calls 0x53126 after the title loop and before 0x59092. Its six
+// command-0x14 transactions each precede three VBlank waits. The command's
+// actual audio resource remains an explicit host boundary.
+struct TitleModeEntryServiceState {
+    std::uint8_t transactions_started = 0;
+    std::uint8_t vblanks_in_transaction = 0;
+    bool active = false;
+    bool complete = false;
+};
+
+struct TitleModeEntryServiceCallbacks {
+    std::function<void()> wait_for_vblank;
+    std::function<void(std::uint8_t)> run_audio_transaction;
+    std::function<void()> flush_audio_bus;
+    std::function<void()> service_audio_tick;
+};
+
+enum class TitleModeEntryServiceResult {
+    waiting,
+    complete,
+};
+
+void begin_title_mode_entry_service(
+    TitleModeEntryServiceState& state,
+    const TitleModeEntryServiceCallbacks& callbacks);
+TitleModeEntryServiceResult advance_title_mode_entry_service_vblank(
+    TitleModeEntryServiceState& state,
+    const TitleModeEntryServiceCallbacks& callbacks);
 
 } // namespace shadowrun::ghidra_conversion
