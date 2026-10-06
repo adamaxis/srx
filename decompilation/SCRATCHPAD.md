@@ -382,7 +382,7 @@ byte through the reviewed `0x1A304` helper, and enters the direct `0x55C2C`
 auxiliary state-grid update.
 
 The compact state subsystem at `0x3674`, `0x37EC`, and `0x55C2C` is now typed
-in `src/entity_state.cpp`. The implementation preserves the signed byte
+in `src/entities/entity_state.cpp`. The implementation preserves the signed byte
 phase/clamp rules, the `0x6AB3E`/`0x6AB96`/`0x6ABEE` source tables, the
 `0xF1C4`/`0xF5C4`/`0xF9C4` and `0xF3C6`/`0xF7C6`/`0xFBC6` commands, the
 `0x1232` DBF counts, the `+0x10` BSET mask, and the `+0x3A` constant write.
@@ -536,7 +536,7 @@ wrappers call their respective leaves and now execute the direct `0x4CEC`/
 verified Z80 command directly through the bus; the nested `0xAFF2 -> 0xB330`
 path is direct through its `0xABB6` checks and ROM tables.
 
-The CPU-side Z80 transport is implemented in `src/z80_transport.cpp`. It
+The CPU-side Z80 transport is implemented in `src/audio/z80_transport.cpp`. It
 preserves the `FFFC0A` gate, `A11100` bus request, the `0xFF,0x10,argument`
 packet emitted by `0x52F3C`, the separate `0x52E96`/`0x52EA2` primitives, and
 modulo-`0x40` cursor updates in the `A01B40` shared ring. `0x53126` now uses

@@ -11,10 +11,9 @@
       "displayName": "Debug (MSYS2 UCRT64)",
       "description": "Debug build using the MSYS2 UCRT64 GCC toolchain.",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build-debug",
+      "binaryDir": "${sourceDir}/../build/native/debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_C_COMPILER": "C:/msys64/ucrt64/bin/gcc.exe",
         "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe"
       }
     },
@@ -23,10 +22,9 @@
       "displayName": "Release (MSYS2 UCRT64)",
       "description": "Release build using the MSYS2 UCRT64 GCC toolchain.",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build-release",
+      "binaryDir": "${sourceDir}/../build/native/release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_C_COMPILER": "C:/msys64/ucrt64/bin/gcc.exe",
         "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe"
       }
     },
@@ -35,10 +33,9 @@
       "displayName": "Debug Qt Widgets (MSYS2 UCRT64)",
       "description": "Debug build of the QWidget framebuffer frontend using the installed Qt 6 MinGW kit.",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build-qt-debug",
+      "binaryDir": "${sourceDir}/../build/native/qt/debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_C_COMPILER": "C:/msys64/ucrt64/bin/gcc.exe",
         "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe",
         "SHADOWRUN_QT_FRONTEND": "ON",
         "CMAKE_PREFIX_PATH": "C:/Qt/6.9.1/mingw_64"
@@ -49,10 +46,9 @@
       "displayName": "Release Qt Widgets (MSYS2 UCRT64)",
       "description": "Release build of the native Qt Widgets frontend using the installed Qt 6 MinGW kit.",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build-qt-release",
+      "binaryDir": "${sourceDir}/../build/native/qt/release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_C_COMPILER": "C:/msys64/ucrt64/bin/gcc.exe",
         "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe",
         "SHADOWRUN_QT_FRONTEND": "ON",
         "CMAKE_PREFIX_PATH": "C:/Qt/6.9.1/mingw_64"
@@ -63,14 +59,14 @@
       "displayName": "Debug (MSVC)",
       "description": "Debug build using Visual Studio 2022.",
       "generator": "Visual Studio 17 2022",
-      "binaryDir": "${sourceDir}/build-msvc-debug"
+      "binaryDir": "${sourceDir}/../build/native/msvc/debug"
     },
     {
       "name": "msvc-release",
       "displayName": "Release (MSVC)",
       "description": "Release build using Visual Studio 2022.",
       "generator": "Visual Studio 17 2022",
-      "binaryDir": "${sourceDir}/build-msvc-release"
+      "binaryDir": "${sourceDir}/../build/native/msvc/release"
     }
   ],
   "buildPresets": [

@@ -240,7 +240,7 @@ palette-line attribute that the ROM adds when it draws FASA.
 7. **Do multiple frames support the interpretation?** Yes. The independent
    frame set covers dim, full, sustained, dimming, and black states at 210,
    216, 240, 280, 290, and 300. Native QA saves the corresponding state
-   boundaries under `build-ghidra-conversion-qt-debug/qt_runtime/boot-fasa-qa/`.
+   boundaries under `decompilation/ghidra_conversion/build-ghidra-conversion-qt-debug/qt_runtime/boot-fasa-qa/`.
    It also verifies that `--boot-dump-frame 373` matches the recorded first
    FASA palette pass, so the review CLI includes the live fade state.
 8. **Was the previous screen cleared?** ROM `0x5D886` clears both planes
@@ -397,7 +397,7 @@ selected item. That did not match the single fine outline in the longplay.
 
 1. **Appearance:** compared the whole 320x224 frame and the inventory crop.
    The mismatch was confined to the selected item marker. Corrected output is
-   `decompilation/ghidra_conversion/build-qt-magic-qa/qt_runtime/field-inventory-selector-qa.bmp`;
+   `build/archive/decompilation/ghidra_conversion/build-qt-magic-qa/qt_runtime/field-inventory-selector-qa.bmp`;
    section 06 frame 002560 shows the armor cell selected and equipped-cell
    treatment at once. Frames 002580, 002610, and 002640 show the medkit with
    the cursor isolated from that equipment treatment.
@@ -420,7 +420,7 @@ selected item. That did not match the single fine outline in the longplay.
    ROM `0x11624` installs equipped-cell treatment before the item glyph rows;
    the renderer order keeps the item art visible above that treatment. Fresh
    Qt selector captures are in
-   `decompilation/ghidra_conversion/build-qt-magic-qa/qt_runtime/`.
+   `build/archive/decompilation/ghidra_conversion/build-qt-magic-qa/qt_runtime/`.
 4. **Animation:** the observed focus is stationary while held. It moves when
    the selector changes and remains through the Heal-who prompt and use
    result. It is still visible in section 07 frame 000030; the field view at
@@ -522,7 +522,7 @@ open.
 ### Applied review: First Aid target, result, and return
 
 1. **Does it look correct?** Inspected the whole Qt 320x224 output at
-   `decompilation/ghidra_conversion/build-qt-magic-qa/qt_runtime/field-first-aid-qa/actual.bmp`
+   `build/archive/decompilation/ghidra_conversion/build-qt-magic-qa/qt_runtime/field-first-aid-qa/actual.bmp`
    and the named target, CANCEL, result, and return checkpoints beside it.
    Section 06 frame 002610 shows the target prompt; 002640 shows
    `Medkit used.`; 002699 shows the returned Inventory page. The selected
@@ -728,7 +728,7 @@ longplay frames remain the independent appearance evidence.
    branch writes a `Magical Defense` heading over the command/status page and
    two numeric strips. Inspected `magic_tab.bmp`, `actual.bmp`, `held.bmp`,
    and `return.bmp` under
-   `decompilation/ghidra_conversion/build-qt-magic-qa/qt_runtime/field-magic-qa/`.
+   `build/archive/decompilation/ghidra_conversion/build-qt-magic-qa/qt_runtime/field-magic-qa/`.
    The current 320x224 output follows the traced overlay positions; its match
    to an actual Genesis Magic screen remains unknown.
 2. **Behavioral state:** page-5 A now dispatches into typed
@@ -860,7 +860,7 @@ longplay frames remain the independent appearance evidence.
    map, and selected outline. Qt startup-QA frame 3146 now uses a white
    caption and the ROM Plane-A position. NativePort CLI frames 0/30/60 use
    the extracted cursor tiles; frame 60 is saved at
-   `decompilation/build-qt-debug/cab-map-tile-verified/cab-map-60.bmp`.
+   `build/archive/decompilation/build-qt-debug/cab-map-tile-verified/cab-map-60.bmp`.
    The prior cursor offset of +30,-2 was wrong
    and has been removed. The visible map extent still differs from the source
    and remains open.
@@ -1034,7 +1034,7 @@ new behavior is invented.
 ### Applied review: Automatic-use acknowledgement
 
 1. **Does it look correct?** Inspected the full 320x224 Qt output in
-   `build-qt-magic-qa/qt_runtime/field-automatic-use-qa/actual.bmp`. The green
+   `build/archive/decompilation/ghidra_conversion/build-qt-magic-qa/qt_runtime/field-automatic-use-qa/actual.bmp`. The green
    three-line message sits in the inventory detail panel while the item icon,
    right HUD, status strip, and thin item outline remain visible.
 2. **Does the current look reflect the behavioral state?** ROM `0x12168` routes
@@ -1123,7 +1123,7 @@ new behavior is invented.
 1. **Does it look correct?** Inspected `actual.bmp`,
    `group-items-populated.bmp`, `group-items-empty.bmp`, both 30-frame held
    captures, both return frames, and the adjacent Cyberdeck no-deck/return
-   frames under `build-qt-magic-qa/qt_runtime/field-secretary-qa/`. The outer
+   frames under `build/archive/decompilation/ghidra_conversion/build-qt-magic-qa/qt_runtime/field-secretary-qa/`. The outer
    Pocket Secretary frame remains around the black center. The child removes
    the parent title/options and shows only its current source rows. This is a
    same-source visual review; no independent Pocket Secretary frame is in the
@@ -1194,7 +1194,7 @@ new behavior is invented.
 ### Applied review: Notebook and Current Run no-run response
 
  1. **Does it look correct?** The corrected Qt captures are in
-    `decompilation/ghidra_conversion/build-qt-magic-qa/qt_runtime/field-secretary-qa/`:
+    `build/archive/decompilation/ghidra_conversion/build-qt-magic-qa/qt_runtime/field-secretary-qa/`:
    `notebook-menu.bmp`, `notebook-selection-1.bmp`,
    `notebook-current-run-unavailable.bmp`, `notebook-current-run-held.bmp`,
    `notebook-current-run-return.bmp`, and `notebook-return.bmp`. They establish
@@ -1300,7 +1300,7 @@ new behavior is invented.
 ### Applied review: Dismiss Runner
 
 1. **Does it look correct?** The Qt dump checkpoints are written under
-    `decompilation/ghidra_conversion/build-qt-magic-qa/qt_runtime/field-secretary-qa/`;
+    `build/archive/decompilation/ghidra_conversion/build-qt-magic-qa/qt_runtime/field-secretary-qa/`;
    the route records entry, moved selection, 30 held frames, B return,
    one-candidate layout, Abort return, Start return, and active-runner
    replacement. These show the current Qt output only. The supplied longplay
@@ -1933,7 +1933,7 @@ independent magazines would contradict this ROM's `+0x4E` transitions.
 ### Applied review: held D-pad movement and field redraw
 
 1. **Does it look correct?** Thirteen full-screen 320x224 captures in
-   `build-qt-runtime-{debug,release}/qt_runtime/field-movement-qa/` cover idle,
+   `build/archive/decompilation/build-qt-runtime-{debug,release}/qt_runtime/field-movement-qa/` cover idle,
    held-right ticks 1/4/7/8/14/16/21/28/32/35, release, and `actual.bmp`.
    The previous Qt family used the finite C0B2 transition sequence for normal
    movement; the corrected captures show the C062 stride loop without its

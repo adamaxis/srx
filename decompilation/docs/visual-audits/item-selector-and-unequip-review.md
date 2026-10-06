@@ -66,7 +66,7 @@ Qt route: `shadowrun_ghidra_conversion_qt_field_action_qa`.
 ## Full-screen files reviewed
 
 Debug files under
-`decompilation/build-qt-runtime-debug/qt_runtime/field-action-qa/`:
+`build/archive/decompilation/build-qt-runtime-debug/qt_runtime/field-action-qa/`:
 
 - `00_inventory_action_equip.bmp`, `01_inventory_action_cancel.bmp`,
   `02_inventory_action_reselected.bmp`, `03_inventory_action_unselected.bmp`,

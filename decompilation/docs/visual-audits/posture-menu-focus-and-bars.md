@@ -15,7 +15,7 @@ implemented.
   bar begins at `0xCAAC` (176,168). Horizontal changes request sound event
   `0x25`, mapped to resource 037 (2.134 seconds in the decoded asset). Up,
   Down, and Start do not request this sound.
-- Internal frames: `build-qt-runtime-debug/qt_runtime/field-posture-qa-frames/`
+- Internal frames: `build/archive/decompilation/build-qt-runtime-debug/qt_runtime/field-posture-qa-frames/`
   and corresponding Release output. The CLI `actual.bmp` is a real focused
   posture state. Frame QA compares the named focus asset, full command-page
   pixels, status, and combat-bar regions.

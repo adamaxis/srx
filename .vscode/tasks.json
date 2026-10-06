@@ -123,9 +123,9 @@
     {
       "label": "Shadowrun: Run Native (Debug)",
       "type": "process",
-      "command": "${workspaceFolder}/decompilation/build-debug/shadowrun_native.exe",
+      "command": "${workspaceFolder}/build/native/debug/shadowrun_native.exe",
       "options": {
-        "cwd": "${workspaceFolder}/decompilation/build-debug"
+        "cwd": "${workspaceFolder}/build/native/debug"
       },
       "dependsOn": ["Shadowrun: Build Native (Debug)"],
       "presentation": {
@@ -137,9 +137,9 @@
     {
       "label": "Shadowrun: Run Qt Frontend (Debug)",
       "type": "process",
-      "command": "${workspaceFolder}/decompilation/build-qt-debug/shadowrun_qt.exe",
+      "command": "${workspaceFolder}/build/native/qt/debug/shadowrun_qt.exe",
       "options": {
-        "cwd": "${workspaceFolder}/decompilation/build-qt-debug",
+        "cwd": "${workspaceFolder}/build/native/qt/debug",
         "env": {
           "PATH": "C:\\Qt\\6.9.1\\mingw_64\\bin;C:\\msys64\\ucrt64\\bin;${env:PATH}"
         }
@@ -241,7 +241,7 @@
     {
       "label": "Shadowrun Conversion Qt: Run (Release)",
       "type": "process",
-      "command": "${workspaceFolder}/decompilation/ghidra_conversion/build-ghidra-conversion-qt-release/shadowrun_ghidra_conversion_qt.exe",
+      "command": "${workspaceFolder}/build/conversion/qt/release/shadowrun_ghidra_conversion_qt.exe",
       "args": [
         "--assets",
         "${workspaceFolder}/decompilation/assets"
@@ -262,7 +262,7 @@
     {
       "label": "Shadowrun Conversion Qt: Run (Debug)",
       "type": "process",
-      "command": "${workspaceFolder}/decompilation/ghidra_conversion/build-ghidra-conversion-qt-debug/shadowrun_ghidra_conversion_qt.exe",
+      "command": "${workspaceFolder}/build/conversion/qt/debug/shadowrun_ghidra_conversion_qt.exe",
       "args": [
         "--assets",
         "${workspaceFolder}/decompilation/assets"

@@ -452,7 +452,7 @@ frame range -> sprite alias -> position/path -> layer/order -> palette/alpha
 
 It renders moving sprites individually and synchronizes their source-derived
 cadence. The WebM/FFmpeg microframe breakdown belongs only in
-`webm_ffmpeg_microframes/` as a reference-analysis artifact. It is never part
+`analysis/retired/webm_ffmpeg_microframes/` as a reference-analysis artifact. It is never part
 of the runtime asset manifest and never replaces sprite extraction.
 
 ### AudioService
@@ -552,9 +552,9 @@ decompilation/ghidra_conversion/
     title_intro,session,audio,rendering}/
   src/<domain>/ and tests/<domain>/ follow the same ownership boundaries
   one conversion archive; focused tests remain individually runnable
-decompilation/src/graphics_import.cpp
-decompilation/src/graphics_extract.cpp
-decompilation/src/audio_extract.cpp
+decompilation/src/rendering/graphics_import.cpp
+decompilation/tools/graphics_extract.cpp
+decompilation/src/audio/audio_extract.cpp
 decompilation/src/game_data_extract.cpp (or equivalent split)
   ROM -> host RGBA assets, complete audio, and typed ExtractedGameData
   no native gameplay state or runtime ROM access
@@ -562,7 +562,7 @@ decompilation/assets/
   resources.tsv plus bare runtime assets organized by semantic ownership:
     boot/ title/ intro/ movies/ menu/ field/ items/ audio/ native/
   item art is further split into weapons/first-aid/miscellaneous/magic/armor
-decompilation/webm_ffmpeg_microframes/
+decompilation/analysis/retired/webm_ffmpeg_microframes/
   isolated visual reference breakdown; never a runtime source
 ```
 

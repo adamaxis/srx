@@ -9,7 +9,7 @@ import numpy as np
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 PATH = os.path.join(ROOT, "screen-capture.webm")
-OUT = os.path.join(ROOT, "decompilation", "webm_ffmpeg_microframes")
+OUT = os.path.join(ROOT, "decompilation", "analysis", "retired", "webm_ffmpeg_microframes")
 
 
 def find_crop(img):

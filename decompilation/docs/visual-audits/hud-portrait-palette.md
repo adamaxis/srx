@@ -5,7 +5,7 @@ Primary source: US ROM `decompilation/input/shadowrun_genesis_us.bin`.
 Source path: `0x3404` field asset setup -> `0x3548` slot loop -> `0x3560`
 slot panel refresh -> `0x35D4` portrait stamp / `0x35F0` item stamp ->
 `0x3602` item attribute selector -> `0x3648` panel draw -> return at `0x3600`.
-Native view: `ghidra_conversion/qt_runtime/src/field_scene_runtime.cpp`; QA:
+Native view: `ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp`; QA:
 `shadowrun_ghidra_conversion_qt_field_hud_qa` and
 `shadowrun_ghidra_conversion_qt_field_player_action_qa`.
 

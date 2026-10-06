@@ -1,17 +1,10 @@
-# CMake/Ninja build products are regenerated per checkout.
+# Active and archived CMake output is centralized at the repository root.
 /build/
-**/build/
-**/build-*/
-**/cmake-build-*/
-/build-ide-*/
+# Legacy generated output excluded until it can be archived under /build/.
+/decompilation/build-debug/
+/decompilation/ghidra_conversion/build-ghidra-conversion-qt-debug/
 **/bin/
 **/obj/
-/decompilation/build/
-/decompilation/build-*/
-/decompilation/ghidra_conversion/build/
-/decompilation/ghidra_conversion/build-*/
-/decompilation/ghidra_conversion/build-ghidra-conversion-*/
-/decompilation/ghidra_conversion/Testing/
 **/Testing/
 
 # Generator state can also appear in ad-hoc CMake build trees.
@@ -97,5 +90,5 @@
 
 decompilation/tools/ffmpeg
 video analysis/
-/decompilation/webm_ffmpeg_microframes/capture-audio.wav
+/decompilation/analysis/retired/webm_ffmpeg_microframes/capture-audio.wav
 /deepseek.txt

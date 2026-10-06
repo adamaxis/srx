@@ -10,7 +10,7 @@ Runtime: `qt_runtime/field_scene_runtime.cpp`; QA: `shadowrun_ghidra_conversion_
 - Each ordinary field frame calls `0x16396` after camera/render updates and before world-frame logic. It services active effects, steps the palette when the countdown is even, decrements the signed counter, and publishes `FFDF3E=-1` only after the value falls below zero.
 - Starting at 16 therefore yields 17 frame updates: nine even-count palette calls, the counter reaches zero on update 16, and update 17 expires it. The next coordinator pass checks `FFDF3E` before sampling controller input.
 - The source path has no direct sound call in `0x16396`. Active-effect servicing is a separate call and is not treated as evidence of a new fade sound.
-- Debug and Release QA write `initial.bmp`, `fade-01.bmp`, `fade-08.bmp`, `fade-16.bmp`, `fade-17.bmp`, and `actual.bmp` under `build-qt-runtime-{debug,release}/qt_runtime/field-transition-qa/`.
+- Archived Debug and Release QA frames (`initial.bmp`, `fade-01.bmp`, `fade-08.bmp`, `fade-16.bmp`, `fade-17.bmp`, and `actual.bmp`) are under `build/archive/decompilation/build-qt-runtime-{debug,release}/qt_runtime/field-transition-qa/`.
 
 ## Question Pass
 

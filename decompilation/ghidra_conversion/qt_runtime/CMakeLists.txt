@@ -1,30 +1,38 @@
 find_package(Qt6 REQUIRED COMPONENTS Widgets Multimedia)
 
+set(SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/app"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/audio"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/dialogue"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/field"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/menus"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/rendering")
+
 # This is the runnable Qt host for the converted source contracts. It is a
 # child of ghidra_conversion, not a target in the native-port CMake project.
 # It deliberately does not link shadowrun_port, shadowrun_native,
 # shadowrun_qt, GenesisBus, or the native asset decoder.
 add_executable(shadowrun_ghidra_conversion_qt
-    src/ghidra_conversion_qt_main.cpp
-    src/field_scene_runtime.cpp
-    src/attributes_skills_menu_runtime.cpp
-    src/field_clips_menu_runtime.cpp
-    src/shop_menu_runtime.cpp
-    src/field_party_roster_runtime.cpp
-    src/field_menu_text_catalog.cpp
-    src/field_command_overview_bridge.cpp
-    src/genesis_image_compositor.cpp
-    src/dialogue_panel.cpp
-    src/dialogue_panel_presenter.cpp
-    src/dialogue_text_catalog.cpp
-    src/field_dialogue_runtime.cpp
-    src/hotel_menu_runtime.cpp
-    src/field_mode_text_runtime.cpp
-    src/field_interaction_runtime.cpp
-    src/audio_playback.cpp
+    src/app/ghidra_conversion_qt_main.cpp
+    src/field/field_scene_runtime.cpp
+    src/menus/attributes_skills_menu_runtime.cpp
+    src/field/field_clips_menu_runtime.cpp
+    src/menus/shop_menu_runtime.cpp
+    src/field/field_party_roster_runtime.cpp
+    src/field/field_menu_text_catalog.cpp
+    src/field/field_command_overview_bridge.cpp
+    src/rendering/genesis_image_compositor.cpp
+    src/dialogue/dialogue_panel.cpp
+    src/dialogue/dialogue_panel_presenter.cpp
+    src/dialogue/dialogue_text_catalog.cpp
+    src/dialogue/field_dialogue_runtime.cpp
+    src/menus/hotel_menu_runtime.cpp
+    src/field/field_mode_text_runtime.cpp
+    src/field/field_interaction_runtime.cpp
+    src/audio/audio_playback.cpp
 )
 target_include_directories(shadowrun_ghidra_conversion_qt
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
 set_target_properties(shadowrun_ghidra_conversion_qt PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
     RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
@@ -267,7 +275,7 @@ set_tests_properties(shadowrun_ghidra_conversion_qt_field_hotel_qa PROPERTIES
 # value, but render different detail lines. Compare fresh output from each
 # end-to-end route and require only the lower line to differ.
 add_executable(shadowrun_ghidra_conversion_qt_karma_screen_distinction_qa
-    tests/karma_screen_distinction_test.cpp)
+    tests/menus/karma_screen_distinction_test.cpp)
 target_link_libraries(
     shadowrun_ghidra_conversion_qt_karma_screen_distinction_qa
     PRIVATE Qt6::Gui)
@@ -491,22 +499,22 @@ add_test(NAME shadowrun_ghidra_first_aid_conversion
          COMMAND shadowrun_ghidra_first_aid_conversion_test)
 
 add_executable(shadowrun_ghidra_field_clips_menu_runtime_test
-    tests/field_clips_menu_runtime_test.cpp
-    src/field_clips_menu_runtime.cpp
+    tests/field/field_clips_menu_runtime_test.cpp
+    src/field/field_clips_menu_runtime.cpp
 )
 target_include_directories(shadowrun_ghidra_field_clips_menu_runtime_test
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
 target_link_libraries(shadowrun_ghidra_field_clips_menu_runtime_test
     PRIVATE shadowrun_ghidra_conversion_runtime)
 add_test(NAME shadowrun_ghidra_field_clips_menu_runtime
          COMMAND shadowrun_ghidra_field_clips_menu_runtime_test)
 
 add_executable(shadowrun_ghidra_attributes_skills_menu_runtime_test
-    tests/attributes_skills_menu_runtime_test.cpp
-    src/attributes_skills_menu_runtime.cpp
+    tests/menus/attributes_skills_menu_runtime_test.cpp
+    src/menus/attributes_skills_menu_runtime.cpp
 )
 target_include_directories(shadowrun_ghidra_attributes_skills_menu_runtime_test
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
 target_link_libraries(shadowrun_ghidra_attributes_skills_menu_runtime_test
     PRIVATE shadowrun_ghidra_conversion_runtime)
 add_test(NAME shadowrun_ghidra_attributes_skills_menu_runtime
@@ -523,22 +531,22 @@ add_test(NAME shadowrun_ghidra_cyberware_detail_conversion
          COMMAND shadowrun_ghidra_cyberware_detail_conversion_test)
 
 add_executable(shadowrun_ghidra_field_party_roster_runtime_test
-    tests/field_party_roster_runtime_test.cpp
-    src/field_party_roster_runtime.cpp
+    tests/field/field_party_roster_runtime_test.cpp
+    src/field/field_party_roster_runtime.cpp
 )
 target_include_directories(shadowrun_ghidra_field_party_roster_runtime_test
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
 target_link_libraries(shadowrun_ghidra_field_party_roster_runtime_test
     PRIVATE shadowrun_ghidra_conversion_runtime)
 add_test(NAME shadowrun_ghidra_field_party_roster_runtime
          COMMAND shadowrun_ghidra_field_party_roster_runtime_test)
 
 add_executable(shadowrun_ghidra_genesis_image_compositor_test
-    tests/genesis_image_compositor_test.cpp
-    src/genesis_image_compositor.cpp
+    tests/rendering/genesis_image_compositor_test.cpp
+    src/rendering/genesis_image_compositor.cpp
 )
 target_include_directories(shadowrun_ghidra_genesis_image_compositor_test
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
 set_target_properties(shadowrun_ghidra_genesis_image_compositor_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
     RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
@@ -549,7 +557,7 @@ add_test(NAME shadowrun_ghidra_genesis_image_compositor
          COMMAND shadowrun_ghidra_genesis_image_compositor_test)
 
 add_executable(shadowrun_ghidra_bmp_alpha_load_test
-    tests/bmp_alpha_load_test.cpp
+    tests/rendering/bmp_alpha_load_test.cpp
 )
 set_target_properties(shadowrun_ghidra_bmp_alpha_load_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
@@ -563,22 +571,22 @@ add_test(NAME shadowrun_ghidra_bmp_alpha_load
          COMMAND shadowrun_ghidra_bmp_alpha_load_test)
 
 add_executable(shadowrun_ghidra_field_command_overview_bridge_test
-    tests/field_command_overview_bridge_test.cpp
-    src/field_command_overview_bridge.cpp
+    tests/field/field_command_overview_bridge_test.cpp
+    src/field/field_command_overview_bridge.cpp
 )
 target_include_directories(shadowrun_ghidra_field_command_overview_bridge_test
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
 target_link_libraries(shadowrun_ghidra_field_command_overview_bridge_test
     PRIVATE shadowrun_ghidra_conversion_runtime)
 add_test(NAME shadowrun_ghidra_field_command_overview_bridge
          COMMAND shadowrun_ghidra_field_command_overview_bridge_test)
 
 add_executable(shadowrun_ghidra_field_menu_text_catalog_test
-    tests/field_menu_text_catalog_test.cpp
-    src/field_menu_text_catalog.cpp
+    tests/field/field_menu_text_catalog_test.cpp
+    src/field/field_menu_text_catalog.cpp
 )
 target_include_directories(shadowrun_ghidra_field_menu_text_catalog_test
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
 target_compile_definitions(shadowrun_ghidra_field_menu_text_catalog_test PRIVATE
     SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets")
 target_link_libraries(shadowrun_ghidra_field_menu_text_catalog_test
@@ -587,12 +595,12 @@ add_test(NAME shadowrun_ghidra_field_menu_text_catalog
          COMMAND shadowrun_ghidra_field_menu_text_catalog_test)
 
 add_executable(shadowrun_ghidra_dialogue_panel_test
-    tests/dialogue_panel_test.cpp
-    src/dialogue_panel.cpp
-    src/dialogue_text_catalog.cpp
+    tests/dialogue/dialogue_panel_test.cpp
+    src/dialogue/dialogue_panel.cpp
+    src/dialogue/dialogue_text_catalog.cpp
 )
 target_include_directories(shadowrun_ghidra_dialogue_panel_test
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
 target_compile_definitions(shadowrun_ghidra_dialogue_panel_test PRIVATE
     SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets")
 target_link_libraries(shadowrun_ghidra_dialogue_panel_test
@@ -601,15 +609,15 @@ add_test(NAME shadowrun_ghidra_dialogue_panel
          COMMAND shadowrun_ghidra_dialogue_panel_test)
 
 add_executable(shadowrun_ghidra_field_dialogue_runtime_test
-    tests/field_dialogue_runtime_test.cpp
-    src/field_dialogue_runtime.cpp
-    src/dialogue_panel_presenter.cpp
-    src/dialogue_panel.cpp
-    src/dialogue_text_catalog.cpp
-    src/genesis_image_compositor.cpp
+    tests/dialogue/field_dialogue_runtime_test.cpp
+    src/dialogue/field_dialogue_runtime.cpp
+    src/dialogue/dialogue_panel_presenter.cpp
+    src/dialogue/dialogue_panel.cpp
+    src/dialogue/dialogue_text_catalog.cpp
+    src/rendering/genesis_image_compositor.cpp
 )
 target_include_directories(shadowrun_ghidra_field_dialogue_runtime_test
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
 set_target_properties(shadowrun_ghidra_field_dialogue_runtime_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
     RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
@@ -622,13 +630,13 @@ add_test(NAME shadowrun_ghidra_field_dialogue_runtime
          COMMAND shadowrun_ghidra_field_dialogue_runtime_test)
 
 add_executable(shadowrun_ghidra_field_mode_text_runtime_test
-    tests/field_mode_text_runtime_test.cpp
-    src/field_mode_text_runtime.cpp
-    src/dialogue_panel_presenter.cpp
-    src/dialogue_panel.cpp
+    tests/field/field_mode_text_runtime_test.cpp
+    src/field/field_mode_text_runtime.cpp
+    src/dialogue/dialogue_panel_presenter.cpp
+    src/dialogue/dialogue_panel.cpp
 )
 target_include_directories(shadowrun_ghidra_field_mode_text_runtime_test
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
 set_target_properties(shadowrun_ghidra_field_mode_text_runtime_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
     RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
@@ -641,14 +649,14 @@ add_test(NAME shadowrun_ghidra_field_mode_text_runtime
          COMMAND shadowrun_ghidra_field_mode_text_runtime_test)
 
 add_executable(shadowrun_ghidra_field_interaction_runtime_test
-    tests/field_interaction_runtime_test.cpp
-    src/field_interaction_runtime.cpp
-    src/dialogue_panel_presenter.cpp
-    src/dialogue_panel.cpp
-    src/dialogue_text_catalog.cpp
+    tests/field/field_interaction_runtime_test.cpp
+    src/field/field_interaction_runtime.cpp
+    src/dialogue/dialogue_panel_presenter.cpp
+    src/dialogue/dialogue_panel.cpp
+    src/dialogue/dialogue_text_catalog.cpp
 )
 target_include_directories(shadowrun_ghidra_field_interaction_runtime_test
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
 set_target_properties(shadowrun_ghidra_field_interaction_runtime_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
     RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
@@ -701,11 +709,11 @@ if (WIN32)
 endif()
 
 add_executable(shadowrun_ghidra_shop_menu_runtime_test
-    tests/shop_menu_runtime_test.cpp
-    src/shop_menu_runtime.cpp
+    tests/menus/shop_menu_runtime_test.cpp
+    src/menus/shop_menu_runtime.cpp
 )
 target_include_directories(shadowrun_ghidra_shop_menu_runtime_test
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
 target_link_libraries(shadowrun_ghidra_shop_menu_runtime_test
     PRIVATE shadowrun_ghidra_conversion_runtime)
 add_test(NAME shadowrun_ghidra_shop_menu_runtime
@@ -716,11 +724,11 @@ add_test(NAME shadowrun_ghidra_shop_menu_runtime
 # host audio output. Unknown, silent, or lifecycle-unresolved commands stay
 # unmapped.
 add_executable(shadowrun_ghidra_audio_playback_test
-    tests/audio_playback_test.cpp
-    src/audio_playback.cpp
+    tests/audio/audio_playback_test.cpp
+    src/audio/audio_playback.cpp
 )
 target_include_directories(shadowrun_ghidra_audio_playback_test
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
 set_target_properties(shadowrun_ghidra_audio_playback_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
     RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"

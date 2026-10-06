@@ -1102,7 +1102,7 @@ pending-roll advancement, and row redraw. It is still reference/conversion
 code and has no dependency on the emulator's memory or VDP paths.
 
 The importer has a separate ROM-only reader at
-`src/graphics_import.cpp::read_genesis_field_entity_template()`. That reader
+`src/rendering/graphics_import.cpp::read_genesis_field_entity_template()`. That reader
 feeds extracted host assets/state; it is not the game runtime and is not a
 replacement for the source-function conversion above.
 
@@ -1773,7 +1773,7 @@ separate from menu presentation code.
 
 `0x0330` and `0x0436` are no longer represented only as bus traces. The
 native layer now exposes `StartupDisplayPlan` and `StartupTextTransfer` in
-`../include/shadowrun/boot.hpp`; `boot.cpp` implements the transformations as
+`../include/shadowrun/title_intro/boot.hpp`; `boot.cpp` implements the transformations as
 ordinary C++ data construction. `ShadowrunBoot` retains a narrow bus adapter
 for source-verification tests, while the host result is independent of Genesis
 addressed memory.

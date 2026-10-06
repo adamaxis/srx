@@ -11,7 +11,7 @@ field. The feature remains partial where noted.
   named host records.
 - Cross-check: Ghidra conversion routines and ROM address annotations in the
   conversion headers; they are not the visual authority.
-- Internal captures: `build-qt-runtime-debug/qt_runtime/field-world-activity-qa/`
+- Internal captures: `build/archive/decompilation/build-qt-runtime-debug/qt_runtime/field-world-activity-qa/`
   and the corresponding Release directory. `actual.bmp` is the third-floor
   result. Other images capture initial scene, resource-scene entry/frames,
   Security Terminal choices, and field return.

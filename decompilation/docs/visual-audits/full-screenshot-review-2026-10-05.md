@@ -226,7 +226,7 @@ hotel UI. A fixed seed is now injected only by the Hotel screenshot QA path,
 so matching Debug/Release images are reproducible. The live runtime still
 initializes its seed normally. The field renderer's full-frame layering and
 QA outputs are in
-[`field_scene_runtime.cpp`](../../ghidra_conversion/qt_runtime/src/field_scene_runtime.cpp)
+[`field_scene_runtime.cpp`](../../ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp)
 and the current `field-hotel-qa` output directories.
 
 ### Ares and older transition samples

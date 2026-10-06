@@ -11,7 +11,7 @@ if ([string]::IsNullOrWhiteSpace($RomPath)) {
     $RomPath = Join-Path $scriptRoot '..\input\shadowrun_genesis_us.bin'
 }
 if ([string]::IsNullOrWhiteSpace($BuildDir)) {
-    $BuildDir = Join-Path $scriptRoot '..\build-debug'
+    $BuildDir = Join-Path $scriptRoot '..\..\build\native\debug'
 }
 if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
     $OutputRoot = Join-Path $scriptRoot '..\assets'

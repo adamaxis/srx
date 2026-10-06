@@ -1,5 +1,8 @@
 # Shadowrun Genesis ROM reverse-engineering workspace
 
+See [`WORKSPACE.md`](WORKSPACE.md) for the directory ownership map and the
+central build-output layout.
+
 This workspace contains the first reproducible decompilation pass for:
 
 `C:\Github\shadowrun\Shadow Run (U) [!].bin`
@@ -12,7 +15,7 @@ executable. Its SHA-256 is:
 ## Current baseline
 
 The primary analysis is the standalone C++17 program in
-`src/rom_analyzer.cpp`. It reads the ROM directly, parses the big-endian
+`tools/rom_analyzer.cpp`. It reads the ROM directly, parses the big-endian
 Genesis vector table, decodes the 68000 instruction forms used on the reset
 path, follows direct calls and branches, records absolute hardware references,
 and searches for ROM pointer-table runs and printable strings.
@@ -38,13 +41,13 @@ The direct C++ analyzer writes these reports to `analysis/`:
 ## Building the direct analyzer
 
 ```powershell
-cmake -S 'C:\Github\shadowrun\decompilation' `
-  -B 'C:\Github\shadowrun\decompilation\build' `
-  -G Ninja
-cmake --build 'C:\Github\shadowrun\decompilation\build'
-& 'C:\Github\shadowrun\decompilation\build\shadowrun_rom_analyzer.exe' `
+Push-Location 'C:\Github\shadowrun\decompilation'
+cmake --preset debug
+cmake --build --preset debug-all --target shadowrun_rom_analyzer
+& '..\..\build\native\debug\shadowrun_rom_analyzer.exe' `
   'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin' `
   'C:\Github\shadowrun\decompilation\analysis'
+Pop-Location
 ```
 
 The working copy is byte-for-byte copied from the original. The safe filename
@@ -68,7 +71,7 @@ flat `export/ghidra-c/` folder.
 ## Native C++ bootstrap
 
 The first native frontend seam is implemented in
-`include/shadowrun/native_port.hpp` and `src/native_port.cpp`. It provides an
+`include/shadowrun/field/native_port.hpp` and `src/field/native_port.cpp`. It provides an
 abstract `InputState`, a generic `ScreenWriter`, and a renderer-neutral RGBA8
 software surface. The Windows target `shadowrun_native.exe` opens a 320x224
 software-rendered window, accepts arrow/Z/X/C/Enter input, and presents native
@@ -268,10 +271,10 @@ renderer-independent `terrain::probe` ports the direct `0xE7C8` bounds/status
 path and its `0xE8A0/0xE9EE/0xEA36/0xEAD2` helpers over this host grid.
 
 ```powershell
-cmake --build 'C:\Github\shadowrun\decompilation\build-debug-verify' --target shadowrun_native shadowrun_graphics_extract
+cmake --build 'C:\Github\shadowrun\build\native\debug' --target shadowrun_native shadowrun_graphics_extract
 & 'C:\Github\shadowrun\decompilation\tools\extract_assets.ps1' `
-  -BuildDir 'C:\Github\shadowrun\decompilation\build-debug-verify'
-& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_native.exe'
+  -BuildDir 'C:\Github\shadowrun\build\native\debug'
+& 'C:\Github\shadowrun\build\native\debug\shadowrun_native.exe'
 ```
 
 The C++ build never runs extraction. Run `tools/extract_assets.ps1` only when
@@ -283,37 +286,37 @@ it does not create an aggregate pack.
 To load the extracted directory explicitly from any working directory:
 
 ```powershell
-& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_native.exe' `
+& 'C:\Github\shadowrun\build\native\debug\shadowrun_native.exe' `
   'C:\Github\shadowrun\decompilation\assets'
 ```
 
 The same startup frame can be exported as a diagnostic BMP:
 
 ```powershell
-& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
+& 'C:\Github\shadowrun\build\native\debug\shadowrun_graphics_extract.exe' `
   'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin' `
-  'C:\Github\shadowrun\decompilation\build-debug-verify\startup_scene.bmp' --title
+  'C:\Github\shadowrun\build\native\debug\startup_scene.bmp' --title
 ```
 
 The recovered mode-2 field map and the exact native title-to-field frame can
 also be exported directly:
 
 ```powershell
-& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
+& 'C:\Github\shadowrun\build\native\debug\shadowrun_graphics_extract.exe' `
   'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin' `
-  'C:\Github\shadowrun\decompilation\build-debug-verify\mode2_map.bmp' --mode2-map
-& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
+  'C:\Github\shadowrun\build\native\debug\mode2_map.bmp' --mode2-map
+& 'C:\Github\shadowrun\build\native\debug\shadowrun_graphics_extract.exe' `
   'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin' `
-  'C:\Github\shadowrun\decompilation\build-debug-verify\native_field_scene.bmp' --native-field
-& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
+  'C:\Github\shadowrun\build\native\debug\native_field_scene.bmp' --native-field
+& 'C:\Github\shadowrun\build\native\debug\shadowrun_graphics_extract.exe' `
   'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin' `
-  'C:\Github\shadowrun\decompilation\build-debug-verify\entity_frame.bmp' --entity-frame
-& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
+  'C:\Github\shadowrun\build\native\debug\entity_frame.bmp' --entity-frame
+& 'C:\Github\shadowrun\build\native\debug\shadowrun_graphics_extract.exe' `
   'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin' `
-  'C:\Github\shadowrun\decompilation\build-debug-verify\field_entity_states.bmp' --field-entity-states
-& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
+  'C:\Github\shadowrun\build\native\debug\field_entity_states.bmp' --field-entity-states
+& 'C:\Github\shadowrun\build\native\debug\shadowrun_graphics_extract.exe' `
   'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin' `
-  'C:\Github\shadowrun\decompilation\build-debug-verify\field_entity_state_2.bmp' --field-entity-state 2
+  'C:\Github\shadowrun\build\native\debug\field_entity_state_2.bmp' --field-entity-state 2
 ```
 
 The dependency-free graphics converter accepts offsets recovered from the ROM
@@ -325,9 +328,9 @@ and palette locations.
 $tileOffset = 0x000000 # replace with a reviewed tile-data offset
 $tileCount = 16        # replace with the reviewed tile count
 $paletteOffset = 0x000000 # replace with a reviewed CRAM-data offset
-& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
+& 'C:\Github\shadowrun\build\native\debug\shadowrun_graphics_extract.exe' `
   'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin' `
-  'C:\Github\shadowrun\decompilation\build-debug-verify\tiles.bmp' `
+  'C:\Github\shadowrun\build\native\debug\tiles.bmp' `
   $tileOffset $tileCount $paletteOffset
 ```
 
@@ -348,13 +351,13 @@ palette-indexed.
 - The reset bootstrap constants occupy `0x02C4-0x02DD`; the region selector is
   at `0x046E`, and the 19-word VDP setup table is at `0x0D14`.
 - The indexed data tables at `0x4BB0` and `0x4C0C` are now represented in
-  `include/shadowrun/rom_layout.hpp`; `0x4BB0` resolves to eight five-word
+  `include/shadowrun/core/rom_layout.hpp`; `0x4BB0` resolves to eight five-word
   signed offset vectors rather than code addresses, matching the five passes
   of the `0x4BA0` DBF loop.
 - The four descriptor pointers at `0x4ACC` are also byte-checked and typed;
   the `0x4ADC` object path selects them with the record word `+0x0E` low bits.
 - The `0x4B9A`-`0x4BAA` object-byte scatter is translated in
-  `include/shadowrun/object_mask.hpp` and `src/object_mask.cpp`; it copies five
+  `include/shadowrun/entities/object_mask.hpp` and `src/entities/object_mask.cpp`; it copies five
   record bytes into RAM `0xFF1700` using the selected word-wrapped offsets,
   preceded by the separately translated `0x1A304` indexed clear at
   `0xFFD86C`.
@@ -509,7 +512,7 @@ palette-indexed.
   camera movement keeps the original word comparisons and edge gates, and
   changed axes dispatch to the direct `0x40E2`/`0x4018` tile refreshes.
 - The packed-data primitive at ROM `0x1610` is translated in
-  `include/shadowrun/compression.hpp` and `src/compression.cpp`. It handles
+  `include/shadowrun/core/compression.hpp` and `src/core/compression.cpp`. It handles
   literal, repeat, and overlapping back-reference records without assuming
   that the payload is graphics.
 - The PRNG and bounded random helper at ROM `0x0D44`/`0x0D3A` are translated in
@@ -585,11 +588,11 @@ palette-indexed.
   `0x55C2C` auxiliary state-grid update through typed `0x3674`/`0x37EC`
   helpers and the existing renderer-neutral `0x1232` streamer.
 - ROM `0x3674`, `0x37EC`, and `0x55C2C` are translated in
-  `src/entity_state.cpp`. Their signed byte phases, `0x6AB3E`/`0x6AB96`/
+  `src/entities/entity_state.cpp`. Their signed byte phases, `0x6AB3E`/`0x6AB96`/
   `0x6ABEE` table choices, VDP command constants, `+0x10` bit updates, and
   `+0x3A` write are preserved.
 - The proven leaf calculations used by `0x55C76` are also exposed in
-  `src/entity_state.cpp`: `0x55E62` scans the eight inline lanes, `0x55E92`
+  `src/entities/entity_state.cpp`: `0x55E62` scans the eight inline lanes, `0x55E92`
   and `0x55EB4` subtract the `0xD4D50` table modifiers, `0x55ED6` computes
   the base byte, and `0x55F20` returns both the quotient and residual form.
 - ROM `0x55C76` is directly executable as
@@ -611,7 +614,7 @@ palette-indexed.
   direct bus-backed Z80 command-ring transfer; the `0xAFF2 -> 0xB330`
   animation fallback is also direct through its `0xABB6` checks and tables.
 - ROM `0x52F3C`/`0x530DE` and the `0x52E96`/`0x52EA2` ring primitives are
-  translated in `src/z80_transport.cpp`. The CPU/Z80 handshake remains on
+  translated in `src/audio/z80_transport.cpp`. The CPU/Z80 handshake remains on
   `GenesisBus`; the `0xFF,0x10,argument` packet, byte append, separator
   packet, modulo-`0x40` cursor, and `FFFC0A` gate are directly modeled.
 - The `0x490A` entity dispatch is now bus-backed. Its reviewed no-op,
@@ -639,7 +642,7 @@ palette-indexed.
   explicit, so the palette callers pass the original initial value of one and
   receive exactly two frame/input passes.
 - The 64-entry palette transforms at ROM `0x1088` and `0x10D6` are translated
-  in `include/shadowrun/palette.hpp` and `src/palette.cpp` as renderer-neutral
+  in `include/shadowrun/rendering/palette.hpp` and `src/rendering/palette.cpp` as renderer-neutral
   word operations over the Genesis RAM palette buffers.
 - ROM `0x1368` is represented by `PaletteAnimator::copy_target_from`, which
   copies the caller's 32 longwords into the target palette buffer at `FFD8FE`.
@@ -683,7 +686,7 @@ palette-indexed.
   its lock/state/mode branches, timer/index wrap rules, animation tables, and
   direct VDP control/data writes.
 - The object-list builders at ROM `0x1378` and `0x13BE` are translated in
-  `include/shadowrun/object_list.hpp` and `src/object_list.cpp`; they preserve
+  `include/shadowrun/entities/object_list.hpp` and `src/entities/object_list.cpp`; they preserve
   the `$8000` sentinel, eight-byte output records, ordinal assignment, the
   variant-specific word-3 offset, and explicit object-count/next-output state.
 - A bus-backed form now mirrors the original `A2`/`A3` pointer loop and writes
@@ -700,7 +703,7 @@ palette-indexed.
   derives its final word from source `+0x2A << 5`, and advances the ROM's
   pointer/count fields.
 - The entity projection routine at ROM `0x5A62` is translated in
-  `include/shadowrun/entity_projection.hpp` and `src/entity_projection.cpp`;
+  `include/shadowrun/entities/entity_projection.hpp` and `src/entities/entity_projection.cpp`;
   it preserves 16-bit subtraction, signed arithmetic shifts, bit-3 rounding,
   screen-coordinate writes, and the field visibility bounds without assuming a
    renderer or prematurely naming the source fields.
@@ -711,7 +714,7 @@ palette-indexed.
   by `RawEntitySlot`; the active-slot projection phase from ROM `0x481E` is
   available as a bounded, renderer-neutral pass, including its type-specific
   list selection and `0x1378` output.
-- `GenesisMemoryBus` in `include/shadowrun/memory_bus.hpp` provides a
+- `GenesisMemoryBus` in `include/shadowrun/core/memory_bus.hpp` provides a
   transitional ROM/RAM/I/O verification space and records VDP port writes;
   native code uses `ScreenWriter`/`InputState` instead of requiring that bus.
 - The initial vector/direct pass reached 332 function entries and 6,342 decoded

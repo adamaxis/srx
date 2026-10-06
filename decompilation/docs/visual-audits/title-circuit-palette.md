@@ -129,7 +129,7 @@ The top-band green-pixel count is not used as a color target.
 
 - **Code changed:** startup QA now captures correctly numbered full-screen
   title checkpoints and asserts the copyright draw boundary in
-  `decompilation/ghidra_conversion/qt_runtime/src/ghidra_conversion_qt_main.cpp`.
+  `decompilation/ghidra_conversion/qt_runtime/src/app/ghidra_conversion_qt_main.cpp`.
 - **Behavior implemented:** the existing typed five-VBlank scroll and
   seven-phase title light schedule are now captured at correctly labeled
   title frames.

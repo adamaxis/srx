@@ -47,7 +47,7 @@ runtime machinery with explicit native state, assets, layouts, and systems.
    reference is `video analysis/long_gameplay_video.mp4` and its one-time
    `video analysis/long_gameplay_video_early_sections_ffmpeg_30fps_320x224/`
    FFmpeg dump, which contains the numbered analysis sections.
-   The older `screen-capture.webm`/`decompilation/webm_ffmpeg_microframes`
+   The older `screen-capture.webm`/`decompilation/analysis/retired/webm_ffmpeg_microframes`
    analysis is retired and is not a source for new visual claims. Until an
    independent reference is available, dump the native image and inspect it.
 
