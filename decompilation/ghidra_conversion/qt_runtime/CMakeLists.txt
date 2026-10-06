@@ -54,6 +54,18 @@ add_test(NAME shadowrun_ghidra_conversion_qt_startup_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_startup_qa PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Launch from the runtime build directory without --assets. The installed
+# executable must locate the checked-in named assets from its own path rather
+# than depending on the shell's working directory.
+add_test(NAME shadowrun_ghidra_conversion_qt_asset_autodiscovery_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --startup-dump start_options 0 0
+                 "${CMAKE_CURRENT_BINARY_DIR}/asset-autodiscovery-start-options.bmp")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_asset_autodiscovery_qa PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+    ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # The six airport rotor descriptors advance every six source frames. Capture
 # all six whole screens plus the 36-frame repeat and check the animated strip
 # against the horizontally translated, otherwise stable aircraft body.

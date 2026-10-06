@@ -19,6 +19,7 @@
 #include <QImage>
 #include <QKeyEvent>
 #include <QFont>
+#include <QMessageBox>
 #include <QPainter>
 #include <QPaintEvent>
 #include <QPoint>
@@ -146,7 +147,9 @@ bool field_shop_selector_survives(const QImage& scene, const int x) {
     return item_ink >= 8;
 }
 
-std::filesystem::path find_asset_root(int argc, char** argv) {
+std::filesystem::path find_asset_root(
+    int argc, char** argv,
+    const std::filesystem::path& executable_directory) {
     for (int index = 1; index < argc; ++index) {
         const std::string argument(argv[index]);
         if (argument == "--assets" && index + 1 < argc) {
@@ -316,8 +319,17 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
                                     argument);
     }
 
-    const std::vector<std::filesystem::path> candidates{
+    std::vector<std::filesystem::path> candidates{
         "decompilation/assets", "assets", "../assets", "../../assets"};
+    for (auto directory = executable_directory; !directory.empty();) {
+        candidates.push_back(directory / "decompilation" / "assets");
+        candidates.push_back(directory / "assets");
+        const auto parent = directory.parent_path();
+        if (parent == directory) {
+            break;
+        }
+        directory = parent;
+    }
     for (const auto& candidate : candidates) {
         if (std::filesystem::is_regular_file(candidate / "resources.tsv")) {
             return candidate;
@@ -5676,14 +5688,33 @@ int main(int argc, char** argv) {
                          "--field-cyberware-dump <file>\n";
             return 2;
         }
-        const auto asset_root = find_asset_root(argc, argv);
+        QApplication application(argc, argv);
+        const auto executable_directory = std::filesystem::path(
+            application.applicationDirPath().toStdWString());
+        const auto asset_root =
+            find_asset_root(argc, argv, executable_directory);
         if (asset_root.empty()) {
+            const auto help_requested = std::any_of(
+                argv + 1, argv + argc, [](const char* argument) {
+                    return std::string_view(argument) == "--help";
+                });
+            if (help_requested) {
+                return 0;
+            }
             std::cerr << "missing direct asset root; pass --assets "
                          "<decompilation/assets>\n";
+            if (argc == 1) {
+                QMessageBox::critical(
+                    nullptr, QStringLiteral("Shadowrun assets not found"),
+                    QStringLiteral(
+                        "The game assets could not be found beside this "
+                        "build. Keep the executable in the repository build "
+                        "tree, or launch it with --assets pointing to "
+                        "decompilation/assets."));
+            }
             return 2;
         }
 
-        QApplication application(argc, argv);
         if (field_smoke) {
             // The real startup route records the player's choice in the
             // Joshua menu state before the field handoff. The dump route
