@@ -465,7 +465,15 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                      // normal host state transition here. The panel owns the
                      // subsequent controller edges without re-entering field
                      // movement or inventing a second dialogue machine.
-                     (void)field_dialogue_.open_field_exit_prompt(selection);
+                     if (field_dialogue_.open_field_exit_prompt(selection)) {
+                         // 0x1F246 rebuilds the mode display and refreshes
+                         // its palette after preparing the prompt. The Qt
+                         // fade is only a presentation overlay, so it must
+                         // not cover the newly prepared dialogue screen.
+                         field_palette_fade_steps_ = 0U;
+                         source_boundary(
+                             "field.exit.prompt.display_palette_refreshed");
+                     }
                  },
                  [this] {
                      source_boundary("field.exit.hotel_options_unresolved");
@@ -1506,7 +1514,42 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         };
     field_runtime_callbacks_.run_field_exit_orchestrator =
         [this](integration::FieldRuntimeCoordinatorState& runtime) {
-            return run_field_exit_orchestrator(runtime);
+            const auto anchor_refresh_required =
+                run_field_exit_orchestrator(runtime);
+            source_boundary(anchor_refresh_required
+                                ? "field.exit.coordinator_anchor_refresh_required"
+                                : "field.exit.coordinator_continue_activity");
+            return anchor_refresh_required;
+        };
+    field_runtime_callbacks_.reset_field_entity_transition_words =
+        [this](integration::FieldRuntimeCoordinatorState&) {
+            // The source writes its invalid-anchor sentinel to the three
+            // actors' previous projection pairs. The native field presenter
+            // has one visible controlled actor, so invalidate that projection
+            // cache and rebuild it from the actor's typed world position.
+            field_entity_.projection = EntityProjectionState{};
+            field_entity_.visible = false;
+            field_camera_alignment_ready_ = false;
+            source_boundary(
+                "field.entities.transition_projection_invalidated");
+        };
+    field_runtime_callbacks_.snapshot_entity_anchors =
+        [this](integration::FieldRuntimeCoordinatorState&) {
+            field_entity_.projection.world_x =
+                field_entity_.world_position.x;
+            field_entity_.projection.world_y =
+                field_entity_.world_position.y;
+            state_.field_scene_entry.camera_x = static_cast<std::uint16_t>(
+                state_.field_scene_buffers.camera_x);
+            state_.field_scene_entry.camera_y = static_cast<std::uint16_t>(
+                state_.field_scene_buffers.camera_y);
+            state_.field_scene_entry.camera_transition_x =
+                static_cast<std::uint16_t>(
+                    state_.camera_transition_x);
+            state_.field_scene_entry.camera_transition_y =
+                static_cast<std::uint16_t>(
+                    state_.camera_transition_y);
+            source_boundary("field.entities.transition_anchor_snapshotted");
         };
     field_runtime_callbacks_.run_pending_field_scene_handler = [this] {
         const auto continuation = field_activity_continuation_;
@@ -1631,14 +1674,17 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         source_boundary("field.runtime.restart_field_session");
     };
     field_runtime_callbacks_.advance_field_scene_transition = [this] {
-        if (command_overview_.open() || field_interaction_.open()) {
+        if (command_overview_.open() || field_interaction_.open() ||
+            field_dialogue_.open()) {
             // The source routine returns from the blocking command loop before
             // the field transition leaf can run. The Qt bridge keeps that
             // ordering explicit while the menu owns the next host frames.
             source_boundary(
-                field_interaction_.open()
-                    ? "field.runtime.scene_transition_suspended_for_interaction"
-                    : "field.runtime.scene_transition_suspended_for_command_overview");
+                field_dialogue_.open()
+                    ? "field.runtime.scene_transition_suspended_for_dialogue"
+                    : field_interaction_.open()
+                          ? "field.runtime.scene_transition_suspended_for_interaction"
+                          : "field.runtime.scene_transition_suspended_for_command_overview");
             return;
         }
         advance_field_scene_transition_after_modal();
@@ -3251,15 +3297,12 @@ bool FieldSceneRuntime::bootstrap(
         field_entity_behavior_flags_;
     field_movement_behavior_record_.current_heading = 0U;
     field_movement_behavior_record_.target_heading = 0U;
-    const auto interaction_mode = select_scene_interaction_mode(
-        state_.field_scene_buffers.scene_reference);
-    if (!interaction_mode.has_value()) {
-        // ROM 0x167AE stop. Scene >= 0x38 is not mode 0.
-        failure_ = "ROM 0x167AE stop: scene id >= 0x38";
-        source_boundary("field.world.interaction_mode_stop");
-        return false;
-    }
-    field_movement_transition_state_.world_mode = *interaction_mode;
+    // New Game enters 0x075E with FFDF40 still clear. The scene-derived
+    // interaction mode is assigned later by 0x167AE, after a world-activity
+    // handoff. The loaded-save path also clears FFDF40 in 0x594E0 before its
+    // 0x03074/0x028C2 re-entry. Do not run the later scene-mode selector during
+    // this initial bootstrap: scene 2's motel contact depends on mode 0 here.
+    field_movement_transition_state_.world_mode = 0U;
     field_movement_transition_state_.scene_id =
         state_.field_scene_buffers.scene_reference;
     field_movement_transition_state_.field_origin_x =
@@ -3448,6 +3491,8 @@ bool FieldSceneRuntime::dispatch_selected_security_terminal_for_dump() {
 
 bool FieldSceneRuntime::recover_blocked_field_movement(
     const MovementProbeResult& initial_probe) {
+    field_movement_transition_state_.terrain_collision_code =
+        static_cast<std::uint16_t>(initial_probe.collision_code);
     field_movement_behavior_record_.current_heading =
         field_movement_state_.heading;
     field_movement_behavior_record_.target_heading = field_target_heading_;
@@ -4113,6 +4158,7 @@ void FieldSceneRuntime::advance_frame() {
             field_controller_sample_state_.events);
         if (result == FieldDialogueAdvanceResult::returned_to_field) {
             source_boundary("field.dialogue.returned_to_field");
+            advance_field_scene_transition_after_modal();
         } else if (result ==
                    FieldDialogueAdvanceResult::hotel_options_requested) {
             begin_hotel_menu();

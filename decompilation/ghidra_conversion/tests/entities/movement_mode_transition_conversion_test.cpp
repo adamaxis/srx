@@ -18,6 +18,13 @@ EntityMovementModeTransitionState make_state() {
     return state;
 }
 
+EntityMovementModeTransitionState make_state(
+    const std::uint16_t terrain_collision_code) {
+    auto state = make_state();
+    state.terrain_collision_code = terrain_collision_code;
+    return state;
+}
+
 EntityMovementModeTransitionCallbacks make_projection_callbacks(
     std::int16_t& quantized_value,
     int& projection_preparations) {
@@ -39,7 +46,7 @@ EntityMovementModeTransitionCallbacks make_projection_callbacks(
 int main() {
     {
         auto record = make_record();
-        auto state = make_state();
+        auto state = make_state(0x001FU);
         state.world_interaction_lock = true;
         const auto result = advance_entity_movement_and_mode_transition(
             record, 0x200U, 0x400U, state, {});
@@ -90,7 +97,7 @@ int main() {
                result.negative_probe_count == 1U);
     }
 
-    std::int16_t quantized_value = 0x001FU;
+    std::int16_t quantized_value = 0x0004U;
     int projection_preparations = 0;
     auto callbacks = make_projection_callbacks(
         quantized_value, projection_preparations);
@@ -127,7 +134,7 @@ int main() {
     {
         quantized_value = 0x001DU;
         auto record = make_record();
-        auto state = make_state();
+        auto state = make_state(0x001DU);
         state.activity_sequence_active = true;
         const auto result = advance_entity_movement_and_mode_transition(
             record, 0x200U, 0x400U, state, callbacks);
@@ -140,7 +147,7 @@ int main() {
     {
         quantized_value = 0x001AU;
         auto record = make_record();
-        auto state = make_state();
+        auto state = make_state(0x001AU);
         callbacks.mark_projected_terrain_cell = [] { return false; };
         const auto not_marked = advance_entity_movement_and_mode_transition(
             record, 0x200U, 0x400U, state, callbacks);
@@ -151,7 +158,7 @@ int main() {
                state.projected_terrain_event_published);
 
         record = make_record();
-        state = make_state();
+        state = make_state(0x001AU);
         callbacks.mark_projected_terrain_cell = [] { return true; };
         const auto marked = advance_entity_movement_and_mode_transition(
             record, 0x200U, 0x400U, state, callbacks);
@@ -165,9 +172,9 @@ int main() {
     }
 
     {
-        quantized_value = 3;
+        quantized_value = 0;
         auto record = make_record();
-        auto state = make_state();
+        auto state = make_state(0xFFC2U);
         state.scene_id = 0x14U;
         state.world_activity_source_word = 0xCAFEU;
         const auto result = advance_entity_movement_and_mode_transition(
@@ -175,16 +182,18 @@ int main() {
         assert(result.kind ==
                    EntityMovementModeTransitionResultKind::
                        field_dialogue_started &&
-               state.activity_selection == 3U &&
+               state.activity_selection == 2U &&
                state.activity_source_word == 0xCAFEU &&
+               result.event_code == 2U &&
+               record.projected_field_code == 0xFFC2U &&
                result.continuation ==
                    MovementModeTransitionContinuation::maglock_door_interaction);
     }
 
     {
-        quantized_value = 0x18U;
+        quantized_value = 0;
         auto record = make_record();
-        auto state = make_state();
+        auto state = make_state(0x0018U);
         const auto result = advance_entity_movement_and_mode_transition(
             record, 0x200U, 0x400U, state, callbacks);
         assert(result.kind ==
@@ -195,9 +204,9 @@ int main() {
     }
 
     {
-        quantized_value = 0x19U;
+        quantized_value = 0;
         auto record = make_record();
-        auto state = make_state();
+        auto state = make_state(0x0019U);
         state.field_transition_context = 0x13U;
         const auto result = advance_entity_movement_and_mode_transition(
             record, 0x200U, 0x400U, state, callbacks);
@@ -209,9 +218,9 @@ int main() {
     }
 
     {
-        quantized_value = 0x19U;
+        quantized_value = 0;
         auto record = make_record();
-        auto state = make_state();
+        auto state = make_state(0x0019U);
         callbacks.project_entity_world_interaction = [] { return false; };
         const auto result = advance_entity_movement_and_mode_transition(
             record, 0x200U, 0x400U, state, callbacks);
@@ -224,9 +233,9 @@ int main() {
     }
 
     {
-        quantized_value = 0x19U;
+        quantized_value = 0;
         auto record = make_record();
-        auto state = make_state();
+        auto state = make_state(0x0019U);
         state.field_global_flags = 0x10U;
         state.mode_event_code = 0x0EU;
         callbacks.prepare_mode_entry_service = [] {};

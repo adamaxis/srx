@@ -44,7 +44,8 @@ struct EntityMovementModeTransitionState {
     bool world_effect_control_bit = false; // FF FC1C bit 7
     std::array<std::int8_t, 4> directional_probe_signs{}; // FFEF10..13
     std::uint16_t field_origin_x = 0; // FFDDC6
-    std::uint16_t quantized_field_delta = 0; // FFDF64
+    std::uint16_t quantized_field_delta = 0; // return value from 0x423C
+    std::uint16_t terrain_collision_code = 0; // FFDF64, consumed by 0xB7B8
     bool projected_terrain_event_published = false; // FFE178
     std::uint8_t activity_selection = 0; // FFE16E
     std::uint16_t activity_source_word = 0; // FFE11A
@@ -61,8 +62,8 @@ struct EntityMovementModeTransitionCallbacks {
         build_collision_probe_points;
 
     // ROM 0x423C: quantize the candidate X coordinate against the active
-    // field origin. The source also prepares a Y argument, but this helper
-    // consumes D0 only; the source-derived X target is passed explicitly.
+    // field origin. Its return is separate from FFDF64, which B7B8 reads for
+    // the entity collision code and low-five-bit event selection.
     std::function<std::int16_t(std::int16_t target,
                                std::uint16_t origin)>
         quantize_field_delta;
@@ -115,7 +116,7 @@ struct EntityMovementModeTransitionResult {
 
 // ROM 0x0B7B8: consume a blocked directional movement probe, derive the
 // entity's source heading, quantize its candidate field coordinate, and route
-// the resulting event code into a typed world/mode continuation. The host
+// FFDF64's collision code into a typed world/mode continuation. The host
 // record and callbacks replace A0, FF globals, and the source code pointer in
 // FFDD2C; no ROM address is read or executed by this function.
 EntityMovementModeTransitionResult

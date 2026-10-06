@@ -234,6 +234,19 @@ public:
     std::uint8_t field_mode_event_code_for_dump() const noexcept {
         return field_movement_transition_state_.mode_event_code;
     }
+    std::uint16_t field_interaction_mode_for_dump() const noexcept {
+        return field_movement_transition_state_.world_mode;
+    }
+    std::uint8_t field_activity_selection_for_dump() const noexcept {
+        return field_movement_transition_state_.activity_selection;
+    }
+    std::uint16_t field_terrain_collision_code_for_dump() const noexcept {
+        return field_movement_transition_state_.terrain_collision_code;
+    }
+    const std::array<std::int8_t, 4>&
+    field_directional_probe_signs_for_dump() const noexcept {
+        return field_movement_transition_state_.directional_probe_signs;
+    }
     std::uint16_t field_projected_code_for_dump() const noexcept {
         return field_movement_behavior_record_.projected_field_code;
     }

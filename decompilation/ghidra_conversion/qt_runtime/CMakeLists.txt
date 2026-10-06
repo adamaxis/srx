@@ -113,17 +113,17 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_world_activity_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
-# Normal up input from the scene-2 New Game spawn must collide with the
-# source motel doorway, resolve event-table row zero, run the fade, and load
-# scene 0x14. Every checkpoint is a complete 320x224 screen dump for visual
-# review, including the movement frames before the transition.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_motel_entry_qa
+# Normal up input from the scene-2 New Game spawn reaches the motel doorway's
+# source C2 collision, event 2, and the shared Stoker dialogue. A/B input then
+# follows the source manager and Leave records back to a freshly drawn field.
+# Every checkpoint is a complete 320x224 screen dump for visual review.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_stoker_collision_to_dialogue_qa
          COMMAND shadowrun_ghidra_conversion_qt
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
-                 --field-motel-entry-qa
-                 "${CMAKE_CURRENT_BINARY_DIR}/field-motel-entry-qa")
+                 --field-stoker-collision-to-dialogue-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-stoker-collision-to-dialogue-qa")
 set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_motel_entry_qa
+    shadowrun_ghidra_conversion_qt_field_stoker_collision_to_dialogue_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Follow ordinary D-pad movement to scene-2 collision record 2. The source

@@ -56,14 +56,12 @@ separately in
 
 | Hill | ROM entry and behavior | Status | Test and dump |
 |---|---|---|---|
-| Scene-2 motel doorway to scene `0x14` | `0x075E` / `0xB7B8` / `0x16396` / `0x095E` / `0x172CDC` / `0x2BD2`; up-input collision publishes event 0 and scene-2 table row 0 selects `0x14` | partial: the route loads and redraws the destination, but its exit path and an independent Genesis frame are not defended | `shadowrun_ghidra_conversion_qt_field_motel_entry_qa`; `build-qt-runtime-{debug,release}/qt_runtime/field-motel-entry-qa/actual.bmp` plus 12 other full-frame checkpoints; eight-question audit: [motel-doorway-scene-entry.md](visual-audits/motel-doorway-scene-entry.md) |
+| Scene-2 Stoker motel doorway to shared arrival dialogue | `0x075E` / `0xB7B8` / `0x16396` / `0x1F5CA` / `0x1F65A` / `0x1F246` / `0xF4AA0` / `0x2BD2`; record 91 (`0xC2`) publishes raw `0xFFC2`/event 2, mode 2/event 2 selects Stoker, then A/B/A returns to the field | defended for the physical New Game arrival route; independent section 03 confirms the doorway/fade/panel sequence but does not log input or event state; sampled blank-panel timing and dialogue audio remain open | `shadowrun_ghidra_conversion_qt_field_stoker_collision_to_dialogue_qa`; `build-qt-runtime-{debug,release}/qt_runtime/field-stoker-collision-to-dialogue-qa/actual.bmp` plus 11 other full-frame checkpoints; eight-question audit: [motel-doorway-scene-entry.md](visual-audits/motel-doorway-scene-entry.md) |
 
 The Security Terminal floor hill above remains separate: its QA still injects
-event 2 after collision. The motel event-0 test does not open Stoker dialogue.
-The scene-2 record-2 route at ROM `0x172DBE` is also documented as a rejected
-Stoker-trigger candidate: ordinary D-pad contact produces event 0. See
+event 2 after collision. The unrelated scene-2 record-2 route at ROM
+`0x172DBE` still produces event 0 and remains a rejected Stoker candidate; see
 [`visual-audits/stoker-collision-candidate.md`](visual-audits/stoker-collision-candidate.md).
-This negative candidate audit does not close the physical mode-2/event-2 route.
 
 Rejected (must not return):
 

@@ -158,7 +158,7 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
                    " [--field-movement-qa <output-dir>]"
                    " [--field-transition-qa <output-dir>]"
                    " [--field-world-activity-qa <output-dir>]"
-                   " [--field-motel-entry-qa <output-dir>]"
+                   " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
                    " [--field-secretary-dump <output-dir>]"
                    " [--field-command-dump <file>]"
                        " [--field-command-page <0..6>]"
@@ -214,7 +214,8 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
             ++index;
             continue;
         }
-        if (argument == "--field-motel-entry-qa" && index + 1 < argc) {
+        if (argument == "--field-stoker-collision-to-dialogue-qa" &&
+            index + 1 < argc) {
             ++index;
             continue;
         }
@@ -3549,14 +3550,14 @@ int run_field_world_activity_qa(
     return 0;
 }
 
-int run_field_motel_entry_qa(
+int run_field_stoker_collision_to_dialogue_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
     const std::filesystem::path& output,
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries) {
     std::filesystem::create_directories(output);
-    constexpr std::array<std::string_view, 17> stale_or_current_frames{
+    constexpr std::array<std::string_view, 21> stale_or_current_frames{
         "actual.bmp",
         "destination-entry.bmp",
         "destination-idle-01.bmp",
@@ -3573,12 +3574,16 @@ int run_field_motel_entry_qa(
         "movement-32.bmp",
         "movement-64.bmp",
         "movement-128.bmp",
-        "spawn.bmp"};
+        "spawn.bmp",
+        "stoker-arrival-dialogue.bmp",
+        "stoker-manager-greeting.bmp",
+        "stoker-leave-notice.bmp",
+        "returned-to-field.bmp"};
     for (const auto name : stale_or_current_frames) {
         std::error_code remove_error;
         std::filesystem::remove(output / name, remove_error);
         if (remove_error) {
-            std::cerr << "field motel-entry QA: could not remove prior frame "
+            std::cerr << "Stoker collision QA: could not remove prior frame "
                       << name << ": " << remove_error.message() << '\n';
             return 3;
         }
@@ -3586,6 +3591,15 @@ int run_field_motel_entry_qa(
     const auto mode_entry_commands_before = std::count(
         source_boundaries.begin(), source_boundaries.end(),
         std::string("field.audio.mode_entry.command"));
+    const auto mode_entry_waits_before = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.audio.mode_entry.wait"));
+    const auto mode_entry_flushes_before = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.audio.mode_entry.flush"));
+    const auto mode_entry_ticks_before = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.audio.mode_entry.service"));
     const auto render_field = [&field_scene] {
         QImage image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
         image.fill(Qt::black);
@@ -3599,7 +3613,7 @@ int run_field_motel_entry_qa(
         const auto image = render_field();
         const auto path = output / (std::string(name) + ".bmp");
         if (!image.save(QString::fromStdWString(path.wstring()))) {
-            std::cerr << "field motel-entry QA: dump failed for " << name
+            std::cerr << "Stoker collision QA: dump failed for " << name
                       << '\n';
             return false;
         }
@@ -3607,7 +3621,7 @@ int run_field_motel_entry_qa(
             (expect_field_hud &&
              (!field_hud_chrome_survives(image, asset_root) ||
               count_playfield_lit(image) < 100U))) {
-            std::cerr << "field motel-entry QA: full-frame validation failed for "
+            std::cerr << "Stoker collision QA: full-frame validation failed for "
                       << name << '\n';
             return false;
         }
@@ -3615,20 +3629,27 @@ int run_field_motel_entry_qa(
     };
 
     const auto start_position = field_scene.field_entity_world_position();
-    const auto source_event_destination =
-        field_scene.state().field_scene_buffers.source_metadata
-            .event_mode_table[0];
+    const auto& collision_rectangles = field_scene.state()
+                                           .field_scene_buffers.source_metadata
+                                           .terrain_collision_rectangles;
+    const bool source_doorway_record_matches =
+        collision_rectangles.size() > 91U &&
+        collision_rectangles[91U].left == 0x03C0U &&
+        collision_rectangles[91U].right == 0x03DFU &&
+        collision_rectangles[91U].top == 0x0280U &&
+        collision_rectangles[91U].bottom == 0x029FU &&
+        collision_rectangles[91U].value == 0xC2U;
     const auto spawn_image = render_field();
     if (field_scene.field_scene_reference_for_dump() != 2U ||
         start_position.x != 0x3CE0U || start_position.y != 0x2D00U ||
-        source_event_destination != 0x14U ||
+        !source_doorway_record_matches ||
         (field_scene.field_entity_behavior_flags_for_dump() & 0x02U) == 0U ||
         spawn_image.size() != QSize(kSceneWidth, kSceneHeight) ||
         !field_hud_chrome_survives(spawn_image, asset_root) ||
         count_playfield_lit(spawn_image) < 100U ||
         !spawn_image.save(QString::fromStdWString(
             (output / "spawn.bmp").wstring()))) {
-        std::cerr << "field motel-entry QA: New Game did not start from the "
+        std::cerr << "Stoker collision QA: New Game did not start from the "
                      "source scene-2 runner state (scene="
                   << field_scene.field_scene_reference_for_dump() << ", x="
                   << start_position.x << ", y=" << start_position.y
@@ -3668,7 +3689,9 @@ int run_field_motel_entry_qa(
                        field_scene.field_interaction_transition_active_for_dump();
         if (field_scene.field_interaction_transition_active_for_dump() ||
             field_scene.field_transition_pending_for_dump() ||
-            field_scene.field_scene_reference_for_dump() != 2U) {
+            field_scene.field_scene_reference_for_dump() != 2U ||
+            field_scene.field_interaction_open() ||
+            field_scene.dialogue_open()) {
             transition_started = true;
             transition_start_frame = frame + 1U;
             transition_position_x = position.x;
@@ -3699,23 +3722,70 @@ int run_field_motel_entry_qa(
 
     if (!position_changed || !transition_started) {
         const auto position = field_scene.field_entity_world_position();
-        std::cerr << "field motel-entry QA: normal up input did not reach a "
+        std::cerr << "Stoker collision QA: normal up input did not reach a "
                      "source transition within 256 frames (scene="
                   << field_scene.field_scene_reference_for_dump() << ", x="
                   << position.x << ", y=" << position.y << ", heading="
                   << field_scene.field_entity_heading_for_dump() << ", moved="
-                  << (position_changed ? "yes" : "no") << ")\n";
+                     << (position_changed ? "yes" : "no")
+                     << ", raw_collision=0x" << std::hex
+                     << field_scene.field_terrain_collision_code_for_dump()
+                     << ", projected=0x"
+                     << field_scene.field_projected_code_for_dump() << std::dec
+                     << ", event="
+                     << static_cast<unsigned>(
+                            field_scene.field_mode_event_code_for_dump())
+                     << ", activity="
+                     << static_cast<unsigned>(
+                            field_scene.field_activity_selection_for_dump())
+                     << ", interaction="
+                     << (field_scene.field_interaction_open() ? "open"
+                                                              : "closed")
+                     << ", dialogue="
+                     << (field_scene.dialogue_open() ? "open" : "closed")
+                     << ")\n";
+        return 3;
+    }
+    const auto& doorway = collision_rectangles[91U];
+    const auto doorway_world_x = static_cast<std::uint16_t>(
+        transition_position_x >> 4U);
+    const auto doorway_world_y = static_cast<std::uint16_t>(
+        transition_position_y >> 4U);
+    const auto& route_state = field_scene.field_runtime_state_for_dump();
+    if (!source_doorway_record_matches ||
+        transition_event_code != 2U ||
+        field_scene.field_terrain_collision_code_for_dump() != 0xFFC2U ||
+        transition_projected_code != 0xFFC2U ||
+        field_scene.field_interaction_mode_for_dump() != 0U ||
+        route_state.field_mode != 2U ||
+        doorway_world_x < doorway.left - 12U ||
+        doorway_world_x > doorway.right + 12U ||
+        doorway_world_y < doorway.top - 7U ||
+        doorway_world_y > doorway.bottom + 7U ||
+        field_scene.dialogue_open() || field_scene.field_interaction_open()) {
+        std::cerr << "Stoker collision QA: normal contact did not publish the "
+                     "source doorway's raw C2/event-2 state (collision=0x"
+                  << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << ", projected=0x" << transition_projected_code
+                  << std::dec << ", event="
+                  << static_cast<unsigned>(transition_event_code)
+                  << ", world_mode="
+                  << field_scene.field_interaction_mode_for_dump()
+                  << ", field_mode=" << static_cast<unsigned>(route_state.field_mode)
+                  << ", contact=" << doorway_world_x << ',' << doorway_world_y
+                  << ")\n";
         return 3;
     }
     if (!fade_started) {
-        std::cerr << "field motel-entry QA: scene transition bypassed the "
+        std::cerr << "Stoker collision QA: physical contact bypassed the "
                      "source fade timer\n";
         return 3;
     }
     if (!field_scene.field_interaction_transition_active_for_dump() ||
         field_scene.field_interaction_transition_timer_for_dump() != 15 ||
         field_scene.field_palette_fade_steps_for_dump() != 1U) {
-        std::cerr << "field motel-entry QA: collision-frame fade state is "
+        std::cerr << "Stoker collision QA: collision-frame fade state is "
                      "unexpected (timer="
                   << field_scene.field_interaction_transition_timer_for_dump()
                   << ", palette_steps="
@@ -3748,7 +3818,7 @@ int run_field_motel_entry_qa(
                 expected_palette_steps ||
             field_scene.field_transition_pending_for_dump() !=
                 (checkpoint == 17U)) {
-            std::cerr << "field motel-entry QA: source fade counter diverged "
+            std::cerr << "Stoker collision QA: source fade counter diverged "
                          "at frame " << checkpoint << " (timer="
                       << field_scene.field_interaction_transition_timer_for_dump()
                       << ", palette_steps="
@@ -3763,150 +3833,238 @@ int run_field_motel_entry_qa(
         }
     }
 
-    for (std::uint32_t settle = 0U;
-         settle < 60U &&
-         field_scene.field_scene_reference_for_dump() != 0x14U;
-         ++settle) {
+    field_scene.set_controller_nibble(0U);
+    for (std::uint16_t settle = 0U;
+         settle < 60U && !field_scene.dialogue_open(); ++settle) {
         field_scene.advance_frame();
         ++frame;
     }
-    if (field_scene.field_scene_reference_for_dump() != 0x14U) {
+    if (!field_scene.dialogue_open()) {
+        const auto position = field_scene.field_entity_world_position();
+        std::cerr << "Stoker collision QA: source mode/event did not open its "
+                     "dialogue after the fade (scene="
+                  << field_scene.field_scene_reference_for_dump() << ", x="
+                  << position.x << ", y=" << position.y << ", mode="
+                  << field_scene.field_interaction_mode_for_dump()
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ", transition_pending="
+                  << (field_scene.field_transition_pending_for_dump()
+                          ? "yes"
+                          : "no")
+                  << ")\n";
+        return 3;
+    }
+    if (field_scene.field_transition_pending_for_dump()) {
+        std::cerr << "Stoker collision QA: coordinator left its field "
+                     "transition request armed while the dialogue owns the screen\n";
+        return 3;
+    }
+
+    {
+        std::ofstream boundaries(output / "source-boundaries.txt",
+                                 std::ios::trunc);
+        if (boundaries) {
+            for (const auto& boundary : source_boundaries) {
+                boundaries << boundary << '\n';
+            }
+        }
+    }
+
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) {
+        std::cerr << "Stoker collision QA: could not create route.tsv\n";
+        return 3;
+    }
+    trace << "stage\tframe\tscene\tx\ty\tworld_mode\tfield_mode\tevent"
+             "\traw_collision\tprojected\tactivity\ttransition_pending"
+             "\tdialogue\tpalette_steps\n";
+    const auto write_state = [&] (const std::string_view stage) {
         const auto position = field_scene.field_entity_world_position();
         const auto& runtime = field_scene.field_runtime_state_for_dump();
-        const auto& activity = field_scene.world_activity_state_for_dump();
-        std::cerr << "field motel-entry QA: collision route did not load "
-                     "source event-table destination 0x14 (scene="
-                  << field_scene.field_scene_reference_for_dump() << ", x="
-                  << position.x << ", y=" << position.y << ", interaction="
-                  << (field_scene.field_interaction_open() ? "open" : "closed")
-                  << ", dialogue="
+        trace << stage << '\t' << frame << '\t'
+              << field_scene.field_scene_reference_for_dump() << '\t'
+              << position.x << '\t' << position.y << '\t'
+              << field_scene.field_interaction_mode_for_dump() << '\t'
+              << static_cast<unsigned>(runtime.field_mode) << '\t'
+              << static_cast<unsigned>(
+                     field_scene.field_mode_event_code_for_dump()) << '\t'
+              << field_scene.field_terrain_collision_code_for_dump() << '\t'
+              << field_scene.field_projected_code_for_dump() << '\t'
+              << static_cast<unsigned>(
+                     field_scene.field_activity_selection_for_dump()) << '\t'
+              << (field_scene.field_transition_pending_for_dump() ? 1 : 0)
+              << '\t' << (field_scene.dialogue_open() ? 1 : 0) << '\t'
+              << static_cast<unsigned>(
+                     field_scene.field_palette_fade_steps_for_dump()) << '\n';
+        trace.flush();
+    };
+    write_state("stoker-arrival-dialogue");
+
+    const auto& arrival = field_scene.dialogue_panel();
+    const auto arrival_text_present = [&arrival] {
+        for (std::size_t index = 0; index < arrival.text_segment_count; ++index) {
+            if (arrival.text_segments[index].find("battered sign") !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    if (!arrival.open || !arrival.source_complete ||
+        arrival.actor_kind != DialoguePanelActorKind::field_npc ||
+        arrival.actor_name != "Stoker" ||
+        arrival.portrait_alias != "dialogue.portraits.stoker.motel" ||
+        !arrival_text_present() || !arrival.has_more ||
+        arrival.option_count != 1U ||
+        arrival.continuation_label.find("< MORE >") == std::string_view::npos ||
+        !save_frame("stoker-arrival-dialogue", false)) {
+        std::cerr << "Stoker collision QA: normal contact did not select the "
+                     "source Stoker arrival record in the shared dialogue panel\n";
+        return 3;
+    }
+    const auto arrival_image = render_field();
+    if (arrival_image.size() != QSize(kSceneWidth, kSceneHeight) ||
+        field_hud_chrome_survives(arrival_image, asset_root) ||
+        !image_has_green_ink(arrival_image, 88, 16, 216, 120)) {
+        std::cerr << "Stoker collision QA: dialogue does not replace the field "
+                     "HUD cleanly or its text is not visible\n";
+        return 3;
+    }
+
+    // Use ordinary controller bytes through the field runtime. Seed the source
+    // PRNG only to make the arrival command's normal 0..79 manager branch
+    // repeatable; no mode/event tuple or dialogue record is injected.
+    field_scene.set_source_random_seed_for_dump(0U);
+    const auto press_button = [&field_scene](const std::uint8_t port_byte) {
+        field_scene.set_controller_port_byte(port_byte);
+        field_scene.advance_frame();
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    };
+    press_button(0x40U);
+    if (!field_scene.dialogue_open() ||
+        field_scene.dialogue_panel().actor_name != "Stoker" ||
+        field_scene.dialogue_panel().option_count != 2U ||
+        field_scene.dialogue_panel().has_more ||
+        !save_frame("stoker-manager-greeting", false)) {
+        std::cerr << "Stoker collision QA: A did not advance the arrival page "
+                     "to the source manager greeting\n";
+        return 3;
+    }
+    write_state("stoker-manager-greeting");
+    const auto& manager = field_scene.dialogue_panel();
+    if (manager.options[1].source_label.find("I'll talk to you later") ==
+        std::string_view::npos) {
+        std::cerr << "Stoker collision QA: manager greeting lacks its source "
+                     "Leave choice\n";
+        return 3;
+    }
+
+    press_button(0x10U);
+    const auto& leave_notice = field_scene.dialogue_panel();
+    if (!field_scene.dialogue_open() ||
+        leave_notice.actor_name != "Stoker" ||
+        leave_notice.option_count != 0U ||
+        leave_notice.text_segment_count == 0U ||
+        !leave_notice.returns_to_field ||
+        !save_frame("stoker-leave-notice", false)) {
+        std::cerr << "Stoker collision QA: B did not select the source Leave "
+                     "route and notice\n";
+        return 3;
+    }
+    write_state("stoker-leave-notice");
+
+    press_button(0x40U);
+    field_scene.advance_frame();
+    if (field_scene.dialogue_open() ||
+        field_scene.field_transition_pending_for_dump() ||
+        field_scene.field_scene_reference_for_dump() != 2U ||
+        field_scene.field_palette_fade_steps_for_dump() != 0U) {
+        std::cerr << "Stoker collision QA: dialogue return did not resume a "
+                     "clear scene-2 field frame (dialogue="
                   << (field_scene.dialogue_open() ? "open" : "closed")
                   << ", transition_pending="
                   << (field_scene.field_transition_pending_for_dump()
                           ? "yes"
                           : "no")
-                  << ", event_code="
-                  << static_cast<unsigned>(
-                         field_scene.field_mode_event_code_for_dump())
-                  << ", projected_code="
-                  << field_scene.field_projected_code_for_dump()
-                  << ", runtime_scene=" << runtime.scene_id
-                  << ", runtime_mode=" << runtime.field_mode
-                  << ", activity_scene=" << activity.scene_id << ")\n";
-        const auto first_boundary = source_boundaries.size() > 24U
-                                        ? source_boundaries.size() - 24U
-                                        : 0U;
-        for (auto index = first_boundary;
-             index < source_boundaries.size(); ++index) {
-            std::cerr << "  boundary: " << source_boundaries[index] << '\n';
-        }
-        return 3;
-    }
-
-    // The city-door test holds Up to reach the doorway. Release it before
-    // describing any destination checkpoints as idle; the destination spawn
-    // may be against a blocking edge, which can make held input look stationary.
-    field_scene.set_controller_nibble(0U);
-    const auto destination_input_nibble =
-        field_scene.field_controller_nibble_for_dump();
-    const auto destination_entry_position =
-        field_scene.field_entity_world_position();
-    const auto destination_entry_visible = field_scene.field_entity_visible();
-    if (!save_frame("destination-entry", true)) {
-        return 3;
-    }
-    const auto print_destination_state = [&field_scene](
-                                             const std::string_view label) {
-        const auto& buffers = field_scene.state().field_scene_buffers;
-        const auto position = field_scene.field_entity_world_position();
-        std::cout << "field_motel_entry_frame=" << label
-                  << " scene=" << buffers.scene_reference
-                  << " position=" << position.x << ',' << position.y
-                  << " camera=" << buffers.camera_x << ',' << buffers.camera_y
-                  << " visible="
-                  << (field_scene.field_entity_visible() ? "yes" : "no")
-                  << '\n';
-    };
-    print_destination_state("entry");
-    for (std::uint8_t settle = 1U; settle <= 30U; ++settle) {
-        field_scene.advance_frame();
-        if (settle == 1U || settle == 8U || settle == 30U) {
-            if (!save_frame("destination-idle-" +
-                                (settle < 10U ? std::string("0")
-                                              : std::string()) +
-                                std::to_string(settle),
-                            true)) {
-                return 3;
-            }
-            print_destination_state(std::to_string(settle));
-        }
-    }
-    const auto destination_settled_position =
-        field_scene.field_entity_world_position();
-    const auto destination = render_field();
-    const bool settled_dump_saved = destination.save(QString::fromStdWString(
-        (output / "destination-settled.bmp").wstring()));
-    const bool actual_dump_saved = destination.save(QString::fromStdWString(
-        (output / "actual.bmp").wstring()));
-    const auto mode_entry_commands_after = std::count(
-        source_boundaries.begin(), source_boundaries.end(),
-        std::string("field.audio.mode_entry.command"));
-    const auto published_events = std::count(
-        source_boundaries.begin(), source_boundaries.end(),
-        std::string("field.world.activity.mode_event_published"));
-    const auto world_table_fallbacks = std::count(
-        source_boundaries.begin(), source_boundaries.end(),
-        std::string("field.exit.world_activity_table_fallback"));
-    if (destination.size() != QSize(kSceneWidth, kSceneHeight) ||
-        destination == spawn_image ||
-        !field_hud_chrome_survives(destination, asset_root) ||
-        count_playfield_lit(destination) < 100U ||
-        destination_input_nibble != 0U ||
-        field_scene.field_controller_nibble_for_dump() != 0U ||
-        destination_settled_position.x != destination_entry_position.x ||
-        destination_settled_position.y != destination_entry_position.y ||
-        field_scene.field_palette_fade_steps_for_dump() != 0U ||
-        !settled_dump_saved || !actual_dump_saved ||
-        !field_audio_events.empty() ||
-        mode_entry_commands_after - mode_entry_commands_before != 6 ||
-        published_events != 1 || world_table_fallbacks != 1 ||
-        field_scene.field_mode_event_code_for_dump() != 0U ||
-        source_event_destination != 0x14U) {
-        std::cerr << "field motel-entry QA: destination full frame, clean HUD, "
-                     "no-input position stability, source handoff, or "
-                     "audio-service boundary failed "
-                     "(SFX events=" << field_audio_events.size()
-                  << ", mode-entry commands="
-                  << mode_entry_commands_after - mode_entry_commands_before
-                  << ", published events=" << published_events
-                  << ", table fallbacks=" << world_table_fallbacks
-                  << ", event code="
-                  << static_cast<unsigned>(
-                         field_scene.field_mode_event_code_for_dump())
-                  << ", source row 0=" << source_event_destination
-                  << ", fade steps="
-                  << static_cast<unsigned>(
+                  << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", palette_steps=" << static_cast<unsigned>(
                          field_scene.field_palette_fade_steps_for_dump())
-                  << ", HUD="
-                  << (field_hud_chrome_survives(destination, asset_root)
-                          ? "valid"
-                          : "invalid")
-                  << ", lit pixels=" << count_playfield_lit(destination)
                   << ")\n";
         return 3;
     }
-
-    if (destination_entry_visible != field_scene.field_entity_visible()) {
-        std::cerr << "field motel-entry QA: runner visibility changed during "
-                     "idle destination frames (entry="
-                  << (destination_entry_visible ? "visible" : "hidden")
-                  << ", settled="
-                  << (field_scene.field_entity_visible() ? "visible" : "hidden")
-                  << ", entry_position=" << destination_entry_position.x
-                  << ',' << destination_entry_position.y << ")\n";
+    const auto returned_position = field_scene.field_entity_world_position();
+    const auto returned_image = render_field();
+    if (!save_frame("returned-to-field", true) ||
+        !returned_image.save(QString::fromStdWString(
+            (output / "actual.bmp").wstring())) ||
+        !field_hud_chrome_survives(returned_image, asset_root) ||
+        count_playfield_lit(returned_image) < 100U ||
+        field_scene.field_controller_nibble_for_dump() != 0U) {
+        std::cerr << "Stoker collision QA: return frame is incomplete or still "
+                     "contains a dialogue overlay\n";
         return 3;
     }
+    write_state("returned-to-field");
+    trace.close();
 
+    const auto mode_entry_commands_after = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.audio.mode_entry.command"));
+    const auto mode_entry_waits_after = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.audio.mode_entry.wait"));
+    const auto mode_entry_flushes_after = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.audio.mode_entry.flush"));
+    const auto mode_entry_ticks_after = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.audio.mode_entry.service"));
+    const auto mode_event_publications = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.world.activity.mode_event_published"));
+    const auto transition_projection_resets = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.entities.transition_projection_invalidated"));
+    const auto transition_anchor_snapshots = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.entities.transition_anchor_snapshotted"));
+    if (mode_entry_commands_after - mode_entry_commands_before != 6 ||
+        mode_entry_waits_after - mode_entry_waits_before != 6 ||
+        mode_entry_flushes_after - mode_entry_flushes_before != 1 ||
+        mode_entry_ticks_after - mode_entry_ticks_before != 1 ||
+        mode_event_publications != 1 || transition_projection_resets != 1 ||
+        transition_anchor_snapshots != 1) {
+        std::cerr << "Stoker collision QA: source transition service order "
+                     "was incomplete (commands="
+                  << mode_entry_commands_after - mode_entry_commands_before
+                  << ", waits="
+                  << mode_entry_waits_after - mode_entry_waits_before
+                  << ", flushes="
+                  << mode_entry_flushes_after - mode_entry_flushes_before
+                  << ", ticks="
+                  << mode_entry_ticks_after - mode_entry_ticks_before
+                  << ", events=" << mode_event_publications
+                  << ", projection_resets=" << transition_projection_resets
+                  << ", anchor_snapshots=" << transition_anchor_snapshots
+                  << ")\n";
+        return 3;
+    }
+    const auto expected_bmp_names = std::vector<std::string>{
+        "actual.bmp",
+        "doorway-trigger.bmp",
+        "fade-08.bmp",
+        "fade-16.bmp",
+        "fade-17.bmp",
+        "movement-16.bmp",
+        "movement-8.bmp",
+        "returned-to-field.bmp",
+        "spawn.bmp",
+        "stoker-arrival-dialogue.bmp",
+        "stoker-leave-notice.bmp",
+        "stoker-manager-greeting.bmp"};
     std::vector<std::string> actual_bmp_names;
     std::error_code directory_error;
     for (std::filesystem::directory_iterator item(output, directory_error), end;
@@ -3917,54 +4075,47 @@ int run_field_motel_entry_qa(
         }
     }
     if (directory_error) {
-        std::cerr << "field motel-entry QA: could not inspect frame output set: "
+        std::cerr << "Stoker collision QA: could not inspect output set: "
                   << directory_error.message() << '\n';
         return 3;
     }
     std::sort(actual_bmp_names.begin(), actual_bmp_names.end());
-    std::vector<std::string> expected_bmp_names{
-        "actual.bmp",
-        "destination-entry.bmp",
-        "destination-idle-01.bmp",
-        "destination-idle-08.bmp",
-        "destination-idle-30.bmp",
-        "destination-settled.bmp",
-        "doorway-trigger.bmp",
-        "fade-08.bmp",
-        "fade-16.bmp",
-        "fade-17.bmp",
-        "movement-16.bmp",
-        "movement-8.bmp",
-        "spawn.bmp"};
-    std::sort(expected_bmp_names.begin(), expected_bmp_names.end());
     if (actual_bmp_names != expected_bmp_names) {
-        std::cerr << "field motel-entry QA: BMP output set is stale or incomplete;"
-                     " expected 13 named full-frame checkpoints, found "
-                  << actual_bmp_names.size() << '\n';
+        std::cerr << "Stoker collision QA: expected 12 full-screen checkpoints, "
+                     "found " << actual_bmp_names.size() << '\n';
         for (const auto& name : actual_bmp_names) {
             std::cerr << "  frame: " << name << '\n';
         }
         return 3;
     }
 
-    std::cout << "field_motel_entry_qa=passed input=up frames=" << frame
-              << " transition_frame=" << transition_start_frame
-              << " transition_position=" << transition_position_x << ','
-              << transition_position_y
-              << " camera_x=" << transition_camera_x
-              << " event_code="
-              << static_cast<unsigned>(transition_event_code)
-              << " projected_code=" << transition_projected_code
-              << " center_cell_status=0x" << std::hex
-              << static_cast<unsigned>(transition_cell_status) << std::dec
-              << " destination=0x14 dialogue="
-              << (field_scene.dialogue_open() ? "open" : "closed")
-              << " sfx_events=" << field_audio_events.size()
-              << " mode_entry_commands=6 playback=boundary-only"
+    const auto position = field_scene.field_entity_world_position();
+    std::cout << "field_stoker_collision_to_dialogue_qa=passed "
+              << "input=up,a,b,a scene="
+              << field_scene.field_scene_reference_for_dump()
+              << " collision=0x" << std::hex
+              << field_scene.field_terrain_collision_code_for_dump()
+              << " projected=0x" << field_scene.field_projected_code_for_dump()
+              << std::dec << " event="
+              << static_cast<unsigned>(
+                     field_scene.field_mode_event_code_for_dump())
+              << " world_mode_after_return="
+              << field_scene.field_interaction_mode_for_dump()
+              << " position=" << position.x << ',' << position.y
+              << " returned_position=" << returned_position.x << ','
+              << returned_position.y
+              << " dialogue=arrival->manager->leave->field"
+              << " mode_entry_commands="
+              << mode_entry_commands_after - mode_entry_commands_before
+              << " mode_entry_waits="
+              << mode_entry_waits_after - mode_entry_waits_before
+              << " mode_entry_vblank_waits="
+              << (mode_entry_waits_after - mode_entry_waits_before) * 3
+              << " event_publications=" << mode_event_publications
+              << " discrete_sfx_events=" << field_audio_events.size()
               << " artifacts=" << output.string() << '\n';
     return 0;
 }
-
 int run_field_stoker_collision_candidate_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& output,
@@ -4309,7 +4460,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_movement_qa_path;
         std::optional<std::filesystem::path> field_transition_qa_path;
         std::optional<std::filesystem::path> field_world_activity_qa_path;
-        std::optional<std::filesystem::path> field_motel_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_stoker_collision_to_dialogue_qa_path;
         std::optional<std::filesystem::path> field_stoker_collision_qa_path;
         std::optional<std::filesystem::path> field_hud_qa_path;
         std::optional<std::filesystem::path> field_hotel_qa_path;
@@ -4357,7 +4509,7 @@ int main(int argc, char** argv) {
                        " [--field-movement-qa <output-dir>]"
                        " [--field-transition-qa <output-dir>]"
                        " [--field-world-activity-qa <output-dir>]"
-                       " [--field-motel-entry-qa <output-dir>]"
+                       " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
                        " [--field-stoker-collision-qa <output-dir>]"
                        " [--field-command-dump <file>]"
                        " [--field-command-page <0..6>]"
@@ -4412,10 +4564,11 @@ int main(int argc, char** argv) {
                 field_world_activity_qa_path =
                     std::filesystem::path(argv[++index]);
             }
-            if (std::string(argv[index]) == "--field-motel-entry-qa" &&
+            if (std::string(argv[index]) ==
+                    "--field-stoker-collision-to-dialogue-qa" &&
                 index + 1 < argc) {
                 field_smoke = true;
-                field_motel_entry_qa_path =
+                field_stoker_collision_to_dialogue_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-stoker-collision-qa" &&
@@ -4696,11 +4849,11 @@ int main(int argc, char** argv) {
                     field_scene, asset_root,
                     *field_world_activity_qa_path, field_audio_events);
             }
-            if (field_motel_entry_qa_path.has_value()) {
-                return run_field_motel_entry_qa(
+            if (field_stoker_collision_to_dialogue_qa_path.has_value()) {
+                return run_field_stoker_collision_to_dialogue_qa(
                     field_scene, asset_root,
-                    *field_motel_entry_qa_path, field_audio_events,
-                    field_source_boundaries);
+                    *field_stoker_collision_to_dialogue_qa_path,
+                    field_audio_events, field_source_boundaries);
             }
             if (field_stoker_collision_qa_path.has_value()) {
                 return run_field_stoker_collision_candidate_qa(

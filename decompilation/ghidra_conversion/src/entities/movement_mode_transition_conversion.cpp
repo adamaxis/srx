@@ -68,7 +68,8 @@ advance_entity_movement_and_mode_transition(
 
     // 0xBC36 leaves D4 as the selected probe direction. D5/D6 are the
     // candidate coordinates from the preceding directional collision probe;
-    // 0x423C consumes only the X argument after B7B8's source masking.
+    // 0x423C quantizes those coordinates, while the event code below is read
+    // separately from the raw FFDF64 collision result.
     if (!callbacks.build_collision_probe_points ||
         !callbacks.quantize_field_delta) {
         result.kind = EntityMovementModeTransitionResultKind::callback_unresolved;
@@ -88,10 +89,12 @@ advance_entity_movement_and_mode_transition(
     const auto quantized = callbacks.quantize_field_delta(
         static_cast<std::int16_t>(quantization_target), state.field_origin_x);
     state.quantized_field_delta = static_cast<std::uint16_t>(quantized);
-    record.projected_field_code = state.quantized_field_delta;
+    // 0xB858 reloads FFDF64 after the coordinate quantizer returns, then
+    // copies that collision result into the entity's +0xC6 field.
+    record.projected_field_code = state.terrain_collision_code;
 
     const auto event_code = static_cast<std::uint8_t>(
-        state.quantized_field_delta & 0x001FU);
+        state.terrain_collision_code & 0x001FU);
     result.event_code = event_code;
 
     const auto begin_idle =
@@ -209,7 +212,8 @@ advance_entity_movement_and_mode_transition(
         }
         state.directional_probe_signs[0] = -0x58;
         state.quantized_field_delta = 0x00A8U;
-        record.projected_field_code = state.quantized_field_delta;
+        state.terrain_collision_code = 0x00A8U;
+        record.projected_field_code = state.terrain_collision_code;
         result.event_code = 8U;
     }
 
@@ -254,7 +258,7 @@ advance_entity_movement_and_mode_transition(
             EntityMovementModeTransitionResultKind::projected_interaction_pending;
         return result;
     }
-    record.projected_field_code = state.quantized_field_delta;
+    record.projected_field_code = state.terrain_collision_code;
     result.kind =
         EntityMovementModeTransitionResultKind::projected_field_code_updated;
     return result;
