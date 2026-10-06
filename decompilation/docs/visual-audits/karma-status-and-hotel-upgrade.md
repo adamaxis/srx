@@ -21,6 +21,19 @@ give the command view a spending path it does not have.
   `CommandMenuKarmaViewRuntime` and `HotelKarmaUpgradeRuntime` wrap separate
   instances of that controller. Compile-time and runtime QA require the
   command type to reject upgrades and the Hotel type to own the upgrade flow.
+- `0xD5DC` redraws the focused row using the input text mode: initial/new
+  selection is `0x4000` (palette line 2), while movement first restores the
+  old row with `0x6000` (palette line 3). Attribute labels/values use the
+  `0xC386/0xC3A2` layout; skill labels/values use `0xC686/0xC6A2`. Essence is
+  special: focused Essence uses `+0x7E` and `+0x8E` at `0xC4C4/0xC4C8`; focused
+  Magic reads `+0x7F`. The static Essence cell is one tile left of the other
+  right-column numbers.
+- `0xD5DC` also reads the installed-cyberware word at `+0x90`. Its first set
+  bit in 5..8 writes the literal `c` marker and the derived Quickness/Strength
+  values at `0xC424/0xC428` and `0xC4A4/0xC4A8`; its first set bit in 9..11
+  writes the Body marker/value at `0xC3A4/0xC3A8`. These are short row details,
+  not prose descriptions. `0xD82A` redraws the selected lower label and
+  current Karma; the command view suppresses Hotel's next-value/cost section.
 - The command-view A action requests sound event `0x24`, mapped to
   `audio.menu.command-024` (2.484 seconds including the release tail). The
   Attributes/Skills child is silent. Hotel selection and the Hotel Karma
@@ -29,14 +42,23 @@ give the command view a spending path it does not have.
 ## Captures and tests
 
 - Command view: `qt_runtime/field-attributes-skills-view-only-qa/actual.bmp`,
-  `selection-moved.bmp`, `frame-30.bmp`, and return frames.
+  `cell-c0-r0.bmp` through `cell-c1-r9.bmp`, `focused-command-row3.bmp`,
+  `frame-30.bmp`, `cyberware-modifiers.bmp`, `cyberware-none.bmp`, and A/B/Start
+  return frames. Each image is a full 320x224 frame.
 - Hotel spending view: `qt_runtime/field-hotel-qa/karma-spend/actual.bmp`,
   `frame-30.bmp`, `prompt-yes.bmp`, `upgrade-applied.bmp`, and
   `return-options.bmp`.
 - Debug and Release pass `shadowrun_ghidra_attributes_skills_menu_runtime`,
   `shadowrun_ghidra_conversion_qt_field_attributes_skills_qa`,
+  `shadowrun_ghidra_cyberware_detail_conversion`,
   `shadowrun_ghidra_conversion_qt_field_hotel_qa`, and
   `shadowrun_ghidra_conversion_qt_karma_screen_distinction_qa`.
+- The source-rule test checks all 20 cursor/label/value mappings, both Essence
+  values, Magic, first-match cyberware modifiers, and the empty-flags case. The
+  Qt pixel QA drives all 20 cells with ordinary d-pad input; it verifies the
+  selected `#6D4992` label/value, prior-row clearing, Essence's second value,
+  conditional cyberware details, read-only runner fields, and clean A/B/Start
+  returns. Debug and Release each write 30 matching full-screen frames.
 - The pixel comparison requires the shared grid and current-Karma region to
   match and confines the generated-image difference to the lower upgrade/cost
   detail row. The runtime test separately checks that command A returns
@@ -49,23 +71,25 @@ give the command view a spending path it does not have.
 
 ## Eight verification questions
 
-1. **Does each page look correct?** Internally, the command view shows current
-   Karma and the Hotel child shows an upgrade target and cost over the shared
-   Attributes/Skills panel. No matching independent Genesis frames were
-   identified, so exact Genesis appearance remains unverified.
+1. **Does each page look correct?** The source-derived command view shows the
+   shared two-column grid, current Karma, focused row, Essence pair, and any
+   installed-cyberware details. The Hotel child shows its upgrade target and
+   cost. No matching independent Genesis frames were identified, so exact
+   Genesis appearance remains unverified.
 
-2. **Does the visible state match behavior?** Yes in the typed runtime tests.
-   Moving the command cursor only changes selection; A/B/Start return without
-   mutation. The Hotel route can open the default-Yes prompt, decline without
-   changes, or confirm the selected stat and Karma cost. A menu-row focus
-   change alone never opens either page or the upgrade prompt.
+2. **Does the visible state match behavior?** Yes in typed and pixel QA. Only
+   the currently focused cell uses palette line 2; moving restores the prior
+   row to line 3. Its name/value and the source-dependent details follow the
+   cursor and active record. Command-row focus alone does not open the page;
+   A/B/Start return without mutation. Hotel owns the preview and spend path.
 
-3. **Are the visuals correct?** The generated views keep the same full-screen
-   grid and current runner values. The command page shows no upgrade preview;
-   the Hotel page shows the selected next value and cost. Pixel QA confines
-   their generated-image difference to that lower detail row. This checks the
-   conversion against its source-derived layout, not against an independent
-   Genesis image.
+3. **Are the visuals correct?** Full-screen QA covers all 20 selectable
+   cells, the special Essence positions, modifier markers and values, and the
+   separate command/Hotel detail rows. The command page shows no upgrade
+   preview; the Hotel page shows the selected next value and cost. With equal
+   runner fixtures, pixel QA confines their difference to the lower
+   upgrade/cost row. This checks the conversion against its source-derived
+   layout, not against an independent Genesis image.
 
 4. **Should either page animate?** No page animation is indicated by these
    source paths. The command view stays pixel-identical for 30 advanced frames;
@@ -85,10 +109,12 @@ give the command view a spending path it does not have.
    active record, and the shared grid stays in place while its detail line
    reflects the active route.
 
-7. **Do multiple frames support the reading?** Internally, yes: cursor focus,
-   row movement, static hold, Hotel prompt, applied upgrade, and both parent
-   returns are captured. The longplay lacks a matching multi-frame sequence
-   for either exact page, so it does not provide independent visual support.
+7. **Do multiple frames support the reading?** Internally, yes: all 20
+   selected cells, focus without opening, static hold, populated/empty
+   cyberware, Hotel prompt, applied upgrade, and parent returns are captured.
+   Debug and Release images match. The longplay lacks a matching multi-frame
+   sequence for either exact page, so it provides no independent visual
+   support.
 
 8. **Are old controls cleared before the new page is drawn?** Yes in the
    route QA. Entry replaces the full parent composition; command return is
@@ -97,11 +123,16 @@ give the command view a spending path it does not have.
 
 ## Result
 
-- **Code changed:** the command-view QA now saves the already-checked static
-  frame-30 image so both routes have a direct still-frame checkpoint.
-- **Behavior verified:** the two routes remain separate and the command view
-  cannot spend Karma; the Hotel child owns preview, confirmation, mutation,
-  and return.
-- **Internal visual/audio verification:** Debug and Release route and runtime
-  tests pass; each page is static and cleanly replaces/restores its parent.
+- **Code changed:** the Qt presenter now connects the existing typed `0xD5DC`
+  detail conversion to the Start-menu page. It paints source-selected labels
+  and values, the Essence pair, Magic, and installed-cyberware markers and
+  modifiers. Its base composition repaints the full screen before the page.
+- **Behavior verified:** d-pad input covers all 20 cells; focus does not open
+  the page; the view-only route preserves attributes, skills, Karma, and
+  cyberware flags; A/B/Start return to a pixel-identical command shell. Hotel
+  spending remains a separate typed route.
+- **Internal visual/audio verification:** the eight-question review covers
+  every full-screen dump. Debug and Release pass all 54 Qt CTests; their 30
+  command-view images match by SHA-256. The page holds static for 30 frames;
+  only the command A action requests event `0x24`.
 - **Independent Genesis verification:** unavailable for these exact pages.

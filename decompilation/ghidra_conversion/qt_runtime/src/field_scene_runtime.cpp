@@ -22,6 +22,7 @@
 #include "shadowrun_ghidra/entities/entity_animation_player_action_conversion.hpp"
 #include "shadowrun_ghidra/menus/clips_menu_conversion.hpp"
 #include "shadowrun_ghidra/menus/menu_transfer_batch_conversion.hpp"
+#include "shadowrun_ghidra/menus/cyberware_detail_conversion.hpp"
 #include "genesis_image_compositor.hpp"
 
 #include <QPainter>
@@ -5786,24 +5787,114 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
                                ? 56 + static_cast<int>(row) * 8
                                : 104 + static_cast<int>(row - 4U) * 8;
             if (cursor.column == column && cursor.row == row) {
-                draw_hotel_menu_text(
-                    painter, x, y,
-                    field_menu_text_.attribute_skill_labels[cell.label_index],
-                    HotelMenuPaletteLine::checkout);
-                draw_hotel_menu_text(
-                    painter, column == 0U ? 136 : 280, y,
-                    std::to_string(cell.value),
-                    HotelMenuPaletteLine::checkout);
-            } else {
-                draw_command_overview_text(
-                    painter, x, y,
-                    field_menu_text_.attribute_skill_labels[cell.label_index]);
-                draw_command_overview_text(
-                    painter, column == 0U ? 136 : 280, y,
-                    std::to_string(cell.value));
+                // 0xD5DC paints the focused label and value after the base
+                // grid. Leave this cell clear here so transparent glyphs
+                // from the green base text cannot show through the purple
+                // selection layer.
+                continue;
             }
+            draw_command_overview_text(
+                painter, x, y,
+                field_menu_text_.attribute_skill_labels[cell.label_index]);
+            // The source places the static Essence value one tile to the
+            // left of the other right-column values. When Essence is focused,
+            // 0xD5DC replaces it with the live and secondary values below.
+            const auto value_x = cell.label_index == 6U
+                                     ? 272
+                                     : (column == 0U ? 136 : 280);
+            draw_command_overview_text(
+                painter, value_x, y, std::to_string(cell.value));
         }
     }
+
+    const auto draw_detail_text = [&](const int x, const int y,
+                                      const std::string_view text,
+                                      const std::uint16_t text_mode) {
+        const auto palette_line = text_mode == 0x4000U
+                                      ? HotelMenuPaletteLine::checkout
+                                      : HotelMenuPaletteLine::status_and_options;
+        draw_hotel_menu_text(painter, x, y, text, palette_line);
+    };
+    CyberwareDetailCallbacks detail_callbacks{};
+    detail_callbacks.render_selected_label =
+        [&](const CyberwareDetailLabel& label,
+            const std::uint16_t text_mode) {
+            std::size_t label_index = 0U;
+            int x = 24;
+            int y = 56;
+            if (label.section == CyberwareDetailLabelSection::attribute) {
+                label_index = label.index;
+                const auto column = static_cast<int>(label.index / 4U);
+                const auto row = static_cast<int>(label.index % 4U);
+                x = column == 0 ? 24 : 176;
+                y = 56 + row * 8;
+            } else {
+                label_index = 8U + label.index;
+                const auto column = static_cast<int>(label.index / 6U);
+                const auto row = static_cast<int>(label.index % 6U);
+                x = column == 0 ? 24 : 176;
+                y = 104 + row * 8;
+            }
+            if (label_index < field_menu_text_.attribute_skill_labels.size()) {
+                draw_detail_text(
+                    x, y, field_menu_text_.attribute_skill_labels[label_index],
+                    text_mode);
+            }
+        };
+    detail_callbacks.render_numeric_value =
+        [&](const CyberwareDetailNumericField field, const std::uint16_t value,
+            const std::uint16_t text_mode) {
+            int x = 0;
+            int y = 0;
+            switch (field) {
+            case CyberwareDetailNumericField::selected_attribute_or_skill:
+            case CyberwareDetailNumericField::magic:
+                x = cursor.column == 0U ? 136 : 280;
+                y = cursor.row < 4U
+                        ? 56 + static_cast<int>(cursor.row) * 8
+                        : 104 + static_cast<int>(cursor.row - 4U) * 8;
+                break;
+            case CyberwareDetailNumericField::essence:
+                x = 272;
+                y = 72;
+                break;
+            case CyberwareDetailNumericField::essence_secondary:
+                x = 288;
+                y = 72;
+                break;
+            case CyberwareDetailNumericField::quickness_cyberware_modifier:
+                x = 160;
+                y = 64;
+                break;
+            case CyberwareDetailNumericField::strength_cyberware_modifier:
+                x = 160;
+                y = 72;
+                break;
+            case CyberwareDetailNumericField::body_cyberware_modifier:
+                x = 160;
+                y = 56;
+                break;
+            }
+            draw_detail_text(x, y, std::to_string(value), text_mode);
+        };
+    detail_callbacks.render_cyberware_modifier_label =
+        [&](const CyberwareDetailModifierField field,
+            const std::uint16_t text_mode) {
+            const auto y = field == CyberwareDetailModifierField::body
+                               ? 56
+                               : field == CyberwareDetailModifierField::quickness
+                                     ? 64
+                                     : 72;
+            // The ROM resource at 0xC259D is the one-character cyberware
+            // marker "c". The enum identifies its stat row; it is not a
+            // visible word label.
+            draw_detail_text(144, y, "c", text_mode);
+        };
+    const auto detail_values = read_cyberware_detail_values(record);
+    (void)render_attribute_skill_detail_panel(
+        detail_values, {cursor.column, cursor.row}, 0x4000U,
+        detail_callbacks);
+
     draw_command_overview_text(
         painter, 120, 160,
         std::to_string(static_cast<unsigned>(record.auxiliary[2U])));

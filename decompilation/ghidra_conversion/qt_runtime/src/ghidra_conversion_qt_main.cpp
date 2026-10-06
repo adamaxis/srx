@@ -6205,6 +6205,9 @@ int main(int argc, char** argv) {
                 field_scene.active_runner_record().behavior_meter = 0U;
                 field_scene.active_runner_record().attributes[0U] = 1U;
                 field_scene.active_runner_record().auxiliary[2U] = 50U;
+                field_scene.active_runner_record().cyberware_flags =
+                    static_cast<std::uint16_t>((1U << 6U) | (1U << 8U) |
+                                               (1U << 9U) | (1U << 11U));
                 if (!field_scene.open_stoker_room_payment_for_dump(20U) ||
                     field_scene.field_funds_for_dump() != 0U) {
                     std::cerr << "field Hotel QA: paid-room outcome did not open\n";
@@ -8404,6 +8407,12 @@ int main(int argc, char** argv) {
                 // before command entry so derived combat bars agree too.
                 field_scene.active_runner_record().attributes[0U] = 1U;
                 field_scene.active_runner_record().auxiliary[2U] = 50U;
+                // Exercise the first-match detail branches with two installed
+                // Quickness and Body upgrades each. The lower set bits must
+                // win, matching ROM 0xD732 and 0xD7A0.
+                field_scene.active_runner_record().cyberware_flags =
+                    static_cast<std::uint16_t>((1U << 6U) | (1U << 8U) |
+                                               (1U << 9U) | (1U << 11U));
                 if (!field_scene.open_command_overview_for_dump() ||
                     field_scene.command_overview_view().source_state
                             .primary_page != 6U) {
@@ -8522,8 +8531,12 @@ int main(int argc, char** argv) {
                         1U ||
                     field_scene.active_runner_record().attributes !=
                         initial_record_copy.attributes ||
+                    field_scene.active_runner_record().skills !=
+                        initial_record_copy.skills ||
                     field_scene.active_runner_record().auxiliary !=
-                        initial_record_copy.auxiliary) {
+                        initial_record_copy.auxiliary ||
+                    field_scene.active_runner_record().cyberware_flags !=
+                        initial_record_copy.cyberware_flags) {
                     std::cerr << "field Attributes/Skills dump: Down did not "
                                  "move only the selection\n";
                     return 3;
@@ -8540,6 +8553,155 @@ int main(int argc, char** argv) {
                     0U) {
                     std::cerr << "field Attributes/Skills dump: Up did not "
                                  "restore Body selection\n";
+                    return 3;
+                }
+
+                const QColor kSelectedKarmaText(109, 73, 146);
+                int captured_cell_count = 0;
+                for (std::uint8_t column = 0U; column < 2U; ++column) {
+                    if (column == 1U) {
+                        for (std::uint8_t row = 0U; row < 9U; ++row) {
+                            press(0x01U);
+                        }
+                        press(0x08U);
+                    }
+                    for (std::uint8_t row = 0U; row < 10U; ++row) {
+                        if (row != 0U) {
+                            press(0x02U);
+                        }
+                        const auto& cursor = field_scene
+                                                 .attributes_skills_menu()
+                                                 .state()
+                                                 .cursor;
+                        if (cursor.column != column || cursor.row != row) {
+                            std::cerr << "field Attributes/Skills dump: "
+                                         "ordinary d-pad input missed cell ("
+                                      << static_cast<unsigned>(column) << ','
+                                      << static_cast<unsigned>(row) << ")\n";
+                            return 3;
+                        }
+                        const auto cell_scene = capture_scene();
+                        const auto label_x = column == 0U ? 24 : 176;
+                        const auto cell_y = row < 4U
+                                                ? 56 + static_cast<int>(row) * 8
+                                                : 104 +
+                                                      static_cast<int>(row - 4U) * 8;
+                        const auto grid = field_scene.attributes_skills_menu()
+                                              .grid(field_scene
+                                                        .active_runner_record());
+                        const auto& cell = grid[column][row];
+                        const auto value_x = cell.label_index == 6U
+                                                 ? 272
+                                                 : (column == 0U ? 136 : 280);
+                        const auto has_selected_label = image_region_has_color(
+                            cell_scene, label_x, cell_y, 120, 8,
+                            kSelectedKarmaText);
+                        const auto has_selected_value = image_region_has_color(
+                            cell_scene, value_x, cell_y, 16, 8,
+                            kSelectedKarmaText);
+                        const auto essence_secondary_is_selected =
+                            cell.label_index != 6U ||
+                            image_region_has_color(cell_scene, 288, 72, 16, 8,
+                                                   kSelectedKarmaText);
+                        bool previous_row_was_deselected = true;
+                        if (row != 0U) {
+                            const auto& previous_cell = grid[column][row - 1U];
+                            const auto previous_y = row - 1U < 4U
+                                                        ? 56 +
+                                                              static_cast<int>(row - 1U) * 8
+                                                        : 104 +
+                                                              static_cast<int>(row - 5U) * 8;
+                            const auto previous_value_x =
+                                previous_cell.label_index == 6U
+                                    ? 272
+                                    : (column == 0U ? 136 : 280);
+                            previous_row_was_deselected =
+                                !image_region_has_color(
+                                    cell_scene, label_x, previous_y, 96, 8,
+                                    kSelectedKarmaText) &&
+                                !image_region_has_color(
+                                    cell_scene, previous_value_x, previous_y,
+                                    32, 8, kSelectedKarmaText);
+                        }
+                        if (cell_scene.size() != QSize(kSceneWidth,
+                                                       kSceneHeight) ||
+                            !has_selected_label || !has_selected_value ||
+                            !essence_secondary_is_selected ||
+                            !previous_row_was_deselected) {
+                            std::cerr << "field Attributes/Skills dump: "
+                                         "cell ("
+                                      << static_cast<unsigned>(column) << ','
+                                      << static_cast<unsigned>(row)
+                                      << ") is missing its purple selected "
+                                         "label/value or second Essence "
+                                         "value (label=" << has_selected_label
+                                      << ", value=" << has_selected_value
+                                      << ", essence-second="
+                                      << essence_secondary_is_selected
+                                      << ", previous-clear="
+                                      << previous_row_was_deselected << ")\n";
+                            return 3;
+                        }
+                        const auto capture_name =
+                            "cell-c" + std::to_string(column) + "-r" +
+                            std::to_string(row);
+                        if (!save_scene(capture_name, cell_scene)) {
+                            std::cerr << "field Attributes/Skills dump: "
+                                         "could not save "
+                                      << capture_name << "\n";
+                            return 3;
+                        }
+                        ++captured_cell_count;
+                    }
+                }
+                const auto cyberware_detail_scene = capture_scene();
+                const auto has_body_marker = image_has_green_ink(
+                    cyberware_detail_scene, 144, 56, 8, 8);
+                const auto has_body_modifier = image_has_green_ink(
+                    cyberware_detail_scene, 160, 56, 16, 8);
+                const auto has_quickness_marker = image_has_green_ink(
+                    cyberware_detail_scene, 144, 64, 8, 8);
+                const auto has_quickness_modifier = image_has_green_ink(
+                    cyberware_detail_scene, 160, 64, 16, 8);
+                const auto has_strength_marker = image_has_green_ink(
+                    cyberware_detail_scene, 144, 72, 8, 8);
+                const auto has_strength_modifier = image_has_green_ink(
+                    cyberware_detail_scene, 160, 72, 16, 8);
+                const auto modifiers_saved =
+                    save_scene("cyberware-modifiers", cyberware_detail_scene);
+                if (!has_body_marker || !has_body_modifier ||
+                    !has_quickness_marker || !has_quickness_modifier ||
+                    !has_strength_marker || !has_strength_modifier ||
+                    captured_cell_count != 20 || !modifiers_saved) {
+                    std::cerr << "field Attributes/Skills dump: did not draw "
+                                 "the source-positioned Body/Quickness/"
+                                 "Strength cyberware markers and values, or "
+                                 "did not capture all 20 selectable cells (body="
+                              << has_body_marker << ',' << has_body_modifier
+                              << " quickness=" << has_quickness_marker << ','
+                              << has_quickness_modifier << " strength="
+                              << has_strength_marker << ','
+                              << has_strength_modifier << " cells="
+                              << captured_cell_count << ")\n";
+                    return 3;
+                }
+                const auto cyberware_flags =
+                    field_scene.active_runner_record().cyberware_flags;
+                field_scene.active_runner_record().cyberware_flags = 0U;
+                const auto no_cyberware_scene = capture_scene();
+                field_scene.active_runner_record().cyberware_flags =
+                    cyberware_flags;
+                if (no_cyberware_scene == cyberware_detail_scene ||
+                    image_has_green_ink(no_cyberware_scene, 144, 56, 8, 8) ||
+                    image_has_green_ink(no_cyberware_scene, 160, 56, 16, 8) ||
+                    image_has_green_ink(no_cyberware_scene, 144, 64, 8, 8) ||
+                    image_has_green_ink(no_cyberware_scene, 160, 64, 16, 8) ||
+                    image_has_green_ink(no_cyberware_scene, 144, 72, 8, 8) ||
+                    image_has_green_ink(no_cyberware_scene, 160, 72, 16, 8) ||
+                    !save_scene("cyberware-none", no_cyberware_scene)) {
+                    std::cerr << "field Attributes/Skills dump: empty "
+                                 "cyberware state did not clear the detail "
+                                 "markers or could not be saved\n";
                     return 3;
                 }
 
@@ -8560,8 +8722,12 @@ int main(int argc, char** argv) {
                     returned_scene != page_six_scene ||
                     field_scene.active_runner_record().attributes !=
                         read_only_record.attributes ||
+                    field_scene.active_runner_record().skills !=
+                        read_only_record.skills ||
                     field_scene.active_runner_record().auxiliary !=
                         read_only_record.auxiliary ||
+                    field_scene.active_runner_record().cyberware_flags !=
+                        read_only_record.cyberware_flags ||
                     !field_audio_events.empty() ||
                     !returned_scene_saved) {
                     std::cerr << "field Attributes/Skills dump: A did "
@@ -8603,8 +8769,12 @@ int main(int argc, char** argv) {
                     b_return_scene != page_six_scene ||
                     field_scene.active_runner_record().attributes !=
                         read_only_record.attributes ||
+                    field_scene.active_runner_record().skills !=
+                        read_only_record.skills ||
                     field_scene.active_runner_record().auxiliary !=
                         read_only_record.auxiliary ||
+                    field_scene.active_runner_record().cyberware_flags !=
+                        read_only_record.cyberware_flags ||
                     !field_audio_events.empty() ||
                     !save_scene("returned-command-page6-after-b",
                                 b_return_scene)) {
@@ -8635,8 +8805,12 @@ int main(int argc, char** argv) {
                     start_return_scene != page_six_scene ||
                     field_scene.active_runner_record().attributes !=
                         read_only_record.attributes ||
+                    field_scene.active_runner_record().skills !=
+                        read_only_record.skills ||
                     field_scene.active_runner_record().auxiliary !=
                         read_only_record.auxiliary ||
+                    field_scene.active_runner_record().cyberware_flags !=
+                        read_only_record.cyberware_flags ||
                     !field_audio_events.empty() ||
                     !save_scene("returned-command-page6-after-start",
                                 start_return_scene)) {
@@ -8647,7 +8821,8 @@ int main(int argc, char** argv) {
                 }
                 std::cout << "field_attributes_skills_dump=written path="
                           << field_attributes_skills_dump_path->string()
-                          << " focus_no_open=1 read_only=1 selected_cell=1 "
+                          << " focus_no_open=1 read_only=1 all_20_cells=1 "
+                             "selected_row_clears=1 cyberware_details=1 "
                              "a_b_start_return=1 clean_return=1 "
                              "static_frames=30\n";
                 return 0;

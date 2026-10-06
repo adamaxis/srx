@@ -62,8 +62,8 @@ review; it is not part of the pasted report.
 | `SOUND-02` | Moving between Pocket Secretary menu items has no navigation sound. | Trace the accepted cursor-move edge and source resource; verify one playback per accepted move, none on clamp/no-op, and the stop/duration behavior. |
 | `SEC-MAGIC` | The Magic page leaves its old text/menu content drawn over the new page. | Trace page entry/exit and panel clear/redraw; capture parent, child, return, and reopen at full screen, proving old controls appear only when the source restores them. |
 | `SEC-CYBERWARE` | Opening Cyberware hides inventory, the runner portrait, posture, and text that should remain visible. | Identify which HUD/panel regions are shared; compare complete page frames and verify child entry/return redraws shared regions exactly once. |
-| `KARMA-COLOR` | The Start-menu Attributes/Skills Karma page uses the wrong selection color. | Keep this view-only page separate from Hotel Karma spending; trace the selected row's palette and compare every selectable row against source/reference evidence. |
-| `KARMA-DETAIL` | The Start-menu Attributes/Skills Karma page omits the selected attribute/skill's detail text. | Trace row-to-detail data and placement; verify each row and confirm hover alone neither opens the page nor spends Karma. |
+| `KARMA-COLOR` | The Start-menu Attributes/Skills Karma page uses the wrong selection color. | ROM `0xD5DC` passes text mode `0x4000` for the selected row (palette line 2). The current Qt captures show `#6D4992` on all 20 selected cells and restore the prior row to green. The reported color fault is not reproduced against the traced ROM palette. No matching independent Genesis page capture is present, so visual fidelity remains unverified. |
+| `KARMA-DETAIL` | The Start-menu Attributes/Skills Karma page omits the selected attribute/skill's detail text. | Reproduced before this pass: the Qt presenter skipped the existing `0xD5DC` conversion. It now renders the selected label/value, both Essence values, Magic from `+0x7F`, and the installed-cyberware `c` markers/modifiers at source-derived positions. Debug/Release QA captures all 20 cells and checks empty/populated cyberware plus clean return. The ROM provides these labels, values, and modifiers rather than longer prose descriptions. No matching independent Genesis page capture is present; do not claim visual resolution. |
 | `CLIPS-REDRAW` | The Clips menu is drawn over its parent menu instead of replacing it cleanly. | Trace the source panel replacement/restore path; compare parent, child, confirm/cancel, and return full-screen captures, including all buttons behind the child. |
 | `POSTURE-FOCUS` | The posture bar has no selector; it should be reachable with Up/Down from the menu buttons and affect attack/defense. | Existing ROM/source and internal QA describe Up focus, Down deselection, five posture states, and attack/defense updates. Reproduce through normal play and reconcile the report with the full-screen QA capture that currently shows a selector. |
 | `INVENTORY-01` | Moving/trading items between inventory locations does not work. | Trace source/destination cell state, item constraints, confirmation/cancel, and authoritative item records; exercise the route through ordinary controls and verify both cells and stats. |
@@ -472,17 +472,40 @@ events, playback start, and durations are recorded per action.
 **Reported:** selection color is wrong and specific selected attributes/skills
 lack their detail text.
 
-**Solve:** keep the view-only Start-menu Karma page separate from the Hotel
-Karma spending page. Trace selector phases and the lower detail text by row;
-bind them to typed selection without opening the page merely on hover.
+**Source trace:** command entry `0xD01C` sets `FFF116=-1`; A/B/Start return
+through `0xD33A/0xD4A0` without mutation. `0xD5DC` draws the selected cell in
+text mode `0x4000`, with the six regular attributes, Essence's `+0x7E/+0x8E`
+pair, Magic at `+0x7F`, and skills. It reads cyberware flags at `+0x90`: the
+first set bit in 5..8 draws the literal `c` marker and Quickness/Strength
+modifier values; the first set bit in 9..11 draws the Body marker/value.
+`0xD82A` adds the lower selected label and current Karma. Hotel entry at
+`0xD024` is separate and enables the upgrade/cost preview.
+
+**Changed:** the Qt presenter now calls the typed `D5DC` conversion, paints
+the selected label/value in palette line 2, puts the two Essence values at
+their separate source positions, and draws conditional cyberware details in
+the grid's gaps. It skips the base selected cell before drawing the focus so
+transparent font pixels cannot leave a green underlay. The full-page
+background is repainted on entry; parent controls do not remain underneath.
+
+**QA:** `--field-attributes-skills-dump <dir>` writes full 320x224 images for
+each of the 20 cells, focus-only command state, 30-frame idle, populated and
+empty cyberware, A/B/Start return, and the restored command page. Each cell is
+reached with ordinary d-pad input; tests assert selected label/value color,
+previous-row clearing, Essence's second value, modifier appearance/removal,
+read-only runner state, and pixel-identical parent return. Debug and Release
+produce 30 matching images each. The 54-test Qt suites pass in both builds.
 
 **Done when:** all selectable rows and return transitions have full-screen
 dumps, source-derived selection colors/detail text, no Hotel spending controls,
 and tests proving hover does not open the page or spend Karma. Use matching
 independent video evidence if present; otherwise keep visual fidelity
-unverified.
+unverified. The supplied longplay contains no matching Attributes/Skills page.
 
-**Status:** pending current-build reproduction.
+**Status:** conversion hill defended internally. `KARMA-COLOR` is not
+reproduced against the ROM-derived palette; `KARMA-DETAIL` is implemented and
+covered by source-rule and pixel QA. Both stay visually unverified until a
+matching independent Genesis page sequence is available.
 
 ### MENU-03 — Clips child and posture selector (`CLIPS-REDRAW`, `POSTURE-FOCUS`)
 

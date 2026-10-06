@@ -116,9 +116,82 @@ int main() {
         return 6;
     }
 
+    for (std::uint8_t column = 0U; column < 2U; ++column) {
+        for (std::uint8_t row = 0U; row < 10U; ++row) {
+            labels.clear();
+            numbers.clear();
+            modifier_labels.clear();
+            const CyberwareDetailCursor cursor{column, row};
+            if (!expect(render_attribute_skill_detail_panel(
+                    values, cursor, 0x4000U, callbacks))) {
+                return 7;
+            }
+
+            const auto attribute_cell = row < 4U;
+            const auto selected_index = static_cast<std::uint8_t>(
+                attribute_cell ? column * 4U + row
+                               : column * 6U + row - 4U);
+            const auto expected_section =
+                attribute_cell ? CyberwareDetailLabelSection::attribute
+                               : CyberwareDetailLabelSection::skill;
+            const auto expected_number_count =
+                attribute_cell && selected_index == 6U ? 2U : 1U;
+            if (labels.size() != 1U ||
+                std::get<0>(labels.front()) != expected_section ||
+                std::get<1>(labels.front()) != selected_index ||
+                std::get<2>(labels.front()) != 0x4000U ||
+                numbers.size() != expected_number_count + 3U ||
+                modifier_labels.size() != 3U) {
+                return 8;
+            }
+
+            auto expected_field =
+                CyberwareDetailNumericField::selected_attribute_or_skill;
+            auto expected_value = static_cast<std::uint16_t>(0U);
+            if (!attribute_cell) {
+                expected_value = values.skills[selected_index];
+            } else if (selected_index < 6U) {
+                expected_value = values.primary_attributes[selected_index];
+            } else if (selected_index == 6U) {
+                expected_field = CyberwareDetailNumericField::essence;
+                expected_value = values.essence;
+            } else {
+                expected_field = CyberwareDetailNumericField::magic;
+                expected_value = values.magic;
+            }
+            if (std::get<0>(numbers.front()) != expected_field ||
+                std::get<1>(numbers.front()) != expected_value ||
+                std::get<2>(numbers.front()) != 0x4000U) {
+                return 9;
+            }
+            if (attribute_cell && selected_index == 6U &&
+                (std::get<0>(numbers[1]) !=
+                     CyberwareDetailNumericField::essence_secondary ||
+                 std::get<1>(numbers[1]) != values.essence_secondary ||
+                 std::get<2>(numbers[1]) != 0x4000U)) {
+                return 10;
+            }
+        }
+    }
+
+    auto no_cyberware_values = values;
+    no_cyberware_values.cyberware_flags = 0U;
+    labels.clear();
+    numbers.clear();
+    modifier_labels.clear();
+    if (!expect(render_attribute_skill_detail_panel(
+                    no_cyberware_values, {0U, 0U}, 0x4000U, callbacks) &&
+                labels.size() == 1U && numbers.size() == 1U &&
+                modifier_labels.empty() &&
+                std::get<0>(numbers.front()) ==
+                    CyberwareDetailNumericField::selected_attribute_or_skill &&
+                std::get<1>(numbers.front()) == 10U)) {
+        return 11;
+    }
+
     if (!expect(!render_attribute_skill_detail_panel(values, {2U, 0U}, 0U,
                                                        callbacks))) {
-        return 7;
+        return 12;
     }
     return 0;
 }

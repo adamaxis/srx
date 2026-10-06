@@ -481,6 +481,16 @@ target_link_libraries(shadowrun_ghidra_attributes_skills_menu_runtime_test
 add_test(NAME shadowrun_ghidra_attributes_skills_menu_runtime
          COMMAND shadowrun_ghidra_attributes_skills_menu_runtime_test)
 
+# Keep the ROM-derived selected-cell and cyberware modifier rules in the Qt
+# CTest suite as well as the full-screen presenter walk.
+add_executable(shadowrun_ghidra_cyberware_detail_conversion_test
+    ../tests/menus/cyberware_detail_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_cyberware_detail_conversion_test
+    PRIVATE shadowrun_ghidra_conversion_runtime)
+add_test(NAME shadowrun_ghidra_cyberware_detail_conversion
+         COMMAND shadowrun_ghidra_cyberware_detail_conversion_test)
+
 add_executable(shadowrun_ghidra_field_party_roster_runtime_test
     tests/field_party_roster_runtime_test.cpp
     src/field_party_roster_runtime.cpp
