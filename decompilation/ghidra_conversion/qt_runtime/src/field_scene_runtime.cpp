@@ -1790,10 +1790,7 @@ FieldHudSlotState FieldSceneRuntime::field_hud_slot_state(
     slot.primary_runner = index == field_party_roster_.active_slot();
     slot.asset_family_index =
         field_party_roster_.portrait_asset_family(index);
-    const auto palette_line = static_cast<std::uint8_t>(
-        (record.command_overview_panel_parameter & 0x6000U) >> 13U);
-    slot.item_palette_variant = static_cast<std::uint8_t>(
-        palette_line == 0U ? 0U : palette_line - 1U);
+    slot.portrait_palette_word = record.command_overview_panel_parameter;
     if ((record.cyberware_flags & 0x0008U) != 0U) {
         slot.unarmed_item_variant = 2U;
     } else if ((record.cyberware_flags & 0x0004U) != 0U) {

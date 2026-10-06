@@ -32,6 +32,22 @@ std::uint8_t magic_item_palette_variant(const FieldHudSlotState& slot) {
     return flags == 0x6000U ? 1U : 0U;
 }
 
+std::uint8_t ordinary_item_palette_variant(const FieldHudSlotState& slot) {
+    const auto flags = select_hud_glyph_attribute_flags(HudGlyphAttributeInput{
+        static_cast<std::int8_t>(slot.equipped_item_code),
+        static_cast<std::int8_t>(slot.class_code),
+        slot.equipped_inventory_slot});
+    return flags == 0x6000U ? 2U : 0U;
+}
+
+std::uint8_t portrait_palette_variant(const std::uint16_t palette_word) {
+    const auto palette_line = static_cast<std::uint8_t>(
+        (palette_word & 0x6000U) >> 13U);
+    return palette_line == 0U
+        ? 0U
+        : static_cast<std::uint8_t>(palette_line - 1U);
+}
+
 std::uint16_t slot_vram(const std::uint16_t base, const std::uint8_t slot) {
     return static_cast<std::uint16_t>(
         base + static_cast<std::uint16_t>(slot) * kFieldHudSlotVramStride);
@@ -66,14 +82,15 @@ std::vector<FieldHudOverlay> compose_field_hud_overlays(
             continue;
         }
         // The face family follows the runner's selected portrait. The item
-        // family follows the live +0x57 code and palette word; spells use the
-        // shared D4EA0 row when +0x56 is negative.
+        // family follows the runner's +0x2C word; ordinary item art follows
+        // the live +0x57/+0x56/+0x9B rule in 0x3602. Spells use the shared
+        // D4EA0 row when +0x56 is negative.
         const auto family = slots[slot].asset_family_index;
         overlays.push_back(make_overlay(FieldHudOverlayKind::portrait, slot,
                                         slot_vram(kFieldHudPortraitVram, slot),
                                         family,
-                                        magic_item_palette_variant(
-                                            slots[slot])));
+                                        portrait_palette_variant(
+                                            slots[slot].portrait_palette_word)));
         overlays.push_back(
             make_overlay(FieldHudOverlayKind::physical_bar, slot,
                          slot_vram(kFieldHudPhysicalBarVram, slot),
@@ -98,13 +115,13 @@ std::vector<FieldHudOverlay> compose_field_hud_overlays(
                              slot_vram(kFieldHudItemVram, slot),
                              static_cast<std::uint8_t>(
                                  slots[slot].equipped_item_code - 1U),
-                             slots[slot].item_palette_variant));
+                             ordinary_item_palette_variant(slots[slot])));
         } else {
             overlays.push_back(
                 make_overlay(FieldHudOverlayKind::unarmed_item, slot,
                              slot_vram(kFieldHudItemVram, slot),
                              slots[slot].unarmed_item_variant,
-                             slots[slot].item_palette_variant));
+                             ordinary_item_palette_variant(slots[slot])));
         }
         if (slots[slot].ammo_rounds < kFieldHudAmmoCounterCount) {
             overlays.push_back(make_overlay(
@@ -225,20 +242,20 @@ std::uint16_t select_hud_glyph_attribute_flags(const FieldHudPanelSlot& slot) {
 FieldHudPanelPair refresh_hud_panel_variant(
     const std::uint16_t slot_index,
     const FieldHudPanelSlot& slot) {
-    const std::uint16_t item_palette =
-        slot.palette_word != 0U ? slot.palette_word : 0x2000U;
     const std::uint16_t portrait_palette =
+        slot.palette_word != 0U ? slot.palette_word : 0x2000U;
+    const std::uint16_t item_palette =
         select_hud_glyph_attribute_flags(slot);
     if (slot_index == 0U) {
-        return {{0x86A4U, 0xF448U, 4U, 4U, item_palette},
-                {0x8694U, 0xF1C6U, 3U, 2U, portrait_palette}};
+        return {{0x86A4U, 0xF448U, 3U, 2U, item_palette},
+                {0x8694U, 0xF1C6U, 4U, 4U, portrait_palette}};
     }
     if (slot_index == 1U) {
-        return {{0x86BAU, 0xF848U, 4U, 4U, item_palette},
-                {0x86AAU, 0xF5C6U, 3U, 2U, portrait_palette}};
+        return {{0x86BAU, 0xF848U, 3U, 2U, item_palette},
+                {0x86AAU, 0xF5C6U, 4U, 4U, portrait_palette}};
     }
-    return {{0x86D0U, 0xFC48U, 4U, 4U, item_palette},
-            {0x86C0U, 0xF9C6U, 3U, 2U, portrait_palette}};
+    return {{0x86D0U, 0xFC48U, 3U, 2U, item_palette},
+            {0x86C0U, 0xF9C6U, 4U, 4U, portrait_palette}};
 }
 
 FieldHudDelayMeterPlan advance_field_hud_delay_meter(

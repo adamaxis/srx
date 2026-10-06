@@ -546,10 +546,11 @@ bool field_hud_chrome_survives(const QImage& scene,
 bool field_hud_face_family_survives(const QImage& scene,
                                     const std::filesystem::path& asset_root,
                                     const std::size_t archetype_index) {
-    // Palette selection is record-dependent, so either source variant may be
-    // correct for a given live item/class combination. Require one complete
-    // extracted face to match at the fixed F1C6 presentation location.
-    for (std::size_t palette = 0; palette < 2U; ++palette) {
+    // This family-presence check has no live record argument, so any of the
+    // three +0x2C palette assets may be the source-selected face. Record-level
+    // selection is asserted by field_hud_conversion_test and field-hud QA.
+    for (std::size_t palette = 0;
+         palette < kFieldHudPortraitPaletteVariantCount; ++palette) {
         const QImage face(QString::fromStdWString(
             (asset_root / "field" / "hud" / "party" /
              ("face-" + std::to_string(archetype_index) + "-palette-" +
@@ -11605,17 +11606,29 @@ int main(int argc, char** argv) {
                     QPainter hud_painter(&hud_frame);
                     hud_scene.paint(hud_painter);
                     hud_painter.end();
+                    const auto& runner_record =
+                        hud_scene.active_runner_record();
+                    const auto face_palette_line = static_cast<std::size_t>(
+                        (runner_record.command_overview_panel_parameter &
+                         0x6000U) >> 13U);
+                    const auto face_palette_index = face_palette_line == 0U
+                        ? 0U : face_palette_line - 1U;
+                    const auto face_asset =
+                        "field/hud/party/face-" +
+                        std::to_string(archetype) + "-palette-" +
+                        std::to_string(face_palette_index) + ".bmp";
                     if (!field_hud_chrome_survives(hud_frame, asset_root)) {
                         std::cerr << "field HUD QA: archetype "
                                   << static_cast<int>(archetype)
                                   << " lost the HUD chrome\n";
                         return 3;
                     }
-                    if (!field_hud_face_family_survives(
-                            hud_frame, asset_root, archetype)) {
+                    if (!field_hud_party_slot_asset_survives(
+                            hud_frame, asset_root, face_asset, 280, 24,
+                            QSize(32, 32))) {
                         std::cerr << "field HUD QA: archetype "
                                   << static_cast<int>(archetype)
-                                  << " rendered the wrong face family\n";
+                                  << " did not render its +0x2C face palette\n";
                         return 3;
                     }
                     const auto path = *field_hud_qa_path /
@@ -11671,20 +11684,19 @@ int main(int argc, char** argv) {
                 party_scene.set_active_party_slot_for_dump(1U);
 
                 const auto portrait_palette_for = [](const RunnerRecordFields& record) {
+                    const auto palette_line = static_cast<std::size_t>(
+                        (record.command_overview_panel_parameter & 0x6000U) >>
+                        13U);
+                    return palette_line == 0U ? 0U : palette_line - 1U;
+                };
+                const auto item_palette_for = [](const RunnerRecordFields& record) {
                     const auto flags = select_hud_glyph_attribute_flags(
                         HudGlyphAttributeInput{
                             static_cast<std::int8_t>(record.equipped_item_code),
                             static_cast<std::int8_t>(record.archetype_index),
                             record.equipped_inventory_slot});
                     return static_cast<std::size_t>(
-                        flags == 0x6000U ? 1U : 0U);
-                };
-                const auto item_palette_for = [](const RunnerRecordFields& record) {
-                    const auto line = static_cast<std::uint8_t>(
-                        (record.command_overview_panel_parameter & 0x6000U) >>
-                        13U);
-                    return static_cast<std::size_t>(
-                        line == 0U ? 0U : line - 1U);
+                        flags == 0x6000U ? 2U : 0U);
                 };
                 const auto save_party_frame =
                     [&](const std::string& directory, QImage& destination) {

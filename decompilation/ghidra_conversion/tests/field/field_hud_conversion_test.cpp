@@ -120,6 +120,7 @@ int main() {
                 active[0].kind == FieldHudOverlayKind::portrait &&
                 active[0].slot == 0U && active[0].x == 280 &&
                 active[0].y == 24 && active[0].asset_index == 0U &&
+                active[0].palette_variant == 0U &&
                 active[1].kind == FieldHudOverlayKind::physical_bar &&
                 active[1].x == 272 && active[1].y == 24 &&
                 active[1].asset_index == 5U &&
@@ -128,6 +129,7 @@ int main() {
                 active[2].asset_index == 7U &&
                 active[3].kind == FieldHudOverlayKind::item &&
                 active[3].x == 288 && active[3].y == 64 &&
+                active[3].palette_variant == 2U &&
                 active[4].kind == FieldHudOverlayKind::ammo &&
                 active[4].x == 272 && active[4].y == 72 &&
                 active[4].asset_index == 18U)) {
@@ -139,7 +141,8 @@ int main() {
     const auto unarmed = compose_field_hud_overlays(joshua);
     if (!expect(unarmed.size() == 5U &&
                 unarmed[3].kind == FieldHudOverlayKind::unarmed_item &&
-                unarmed[3].x == 288 && unarmed[3].y == 64)) {
+                unarmed[3].x == 288 && unarmed[3].y == 64 &&
+                unarmed[3].palette_variant == 0U)) {
         return 9;
     }
 
@@ -170,9 +173,8 @@ int main() {
         return 44;
     }
 
-    // Portrait art follows its runner family and 0x3602 palette. Ordinary
-    // items follow the live item code and +0x2C palette; meters and ammo stay
-    // value-indexed.
+    // Face palette follows +0x2C. Ordinary and unarmed items follow 0x3602;
+    // meters and ammo stay value-indexed.
     joshua[0].equipped_inventory_slot = 0;
     joshua[0].equipped_item_code = 1U;
     joshua[0].ammo_rounds = 18U;
@@ -181,18 +183,39 @@ int main() {
     if (!expect(family.size() == 5U &&
                 family[0].kind == FieldHudOverlayKind::portrait &&
                 family[0].asset_index == 2U &&
+                family[0].palette_variant == 0U &&
                 family[1].kind == FieldHudOverlayKind::physical_bar &&
                 family[1].asset_index == 5U &&
                 family[2].kind == FieldHudOverlayKind::mental_bar &&
                 family[2].asset_index == 7U &&
                 family[3].kind == FieldHudOverlayKind::item &&
                 family[3].asset_index == 0U &&
+                family[3].palette_variant == 2U &&
                 family[4].kind == FieldHudOverlayKind::ammo &&
                 family[4].asset_index == 18U)) {
         return 40;
     }
+    auto gator_slots = joshua;
+    gator_slots[0].portrait_palette_word = 0x2000U;
+    gator_slots[0].class_code = 1U;
+    gator_slots[0].equipped_item_code = 2U;
+    const auto gator = compose_field_hud_overlays(gator_slots);
+    if (!expect(gator[0].palette_variant == 0U &&
+                gator[3].asset_index == 1U &&
+                gator[3].palette_variant == 2U)) {
+        return 47;
+    }
+    gator_slots[0].portrait_palette_word = 0x4000U;
+    const auto portrait_line_two = compose_field_hud_overlays(gator_slots);
+    if (!expect(portrait_line_two[0].palette_variant == 1U)) {
+        return 48;
+    }
+    gator_slots[0].portrait_palette_word = 0x6000U;
+    const auto portrait_line_three = compose_field_hud_overlays(gator_slots);
+    if (!expect(portrait_line_three[0].palette_variant == 2U)) {
+        return 49;
+    }
     joshua[0].equipped_item_code = 0x0EU;
-    joshua[0].item_palette_variant = 2U;
     const auto changed_item = compose_field_hud_overlays(joshua);
     if (!expect(changed_item[3].kind == FieldHudOverlayKind::item &&
                 changed_item[3].asset_index == 0x0DU &&
@@ -207,7 +230,7 @@ int main() {
     if (!expect(cyberware_unarmed[3].kind ==
                     FieldHudOverlayKind::unarmed_item &&
                 cyberware_unarmed[3].asset_index == 2U &&
-                cyberware_unarmed[3].palette_variant == 2U)) {
+                cyberware_unarmed[3].palette_variant == 0U)) {
         return 46;
     }
 
@@ -271,11 +294,12 @@ int main() {
 
     const auto slot0 = refresh_hud_panel_variant(0, empty_panel);
     if (!expect(slot0.item.tile_base == 0x86A4U &&
-                slot0.item.nametable == 0xF448U && slot0.item.columns == 4U &&
-                slot0.item.rows == 4U && slot0.item.palette_or_flip == 0x2000U &&
+                slot0.item.nametable == 0xF448U && slot0.item.columns == 3U &&
+                slot0.item.rows == 2U && slot0.item.palette_or_flip == 0x2000U &&
                 slot0.portrait.tile_base == 0x8694U &&
                 slot0.portrait.nametable == 0xF1C6U &&
-                slot0.portrait.columns == 3U && slot0.portrait.rows == 2U)) {
+                slot0.portrait.columns == 4U && slot0.portrait.rows == 4U &&
+                slot0.portrait.palette_or_flip == 0x2000U)) {
         return 17;
     }
     FieldHudPanelSlot paletted{};
@@ -285,10 +309,12 @@ int main() {
     const auto slot2 = refresh_hud_panel_variant(2, paletted);
     if (!expect(slot2.item.tile_base == 0x86D0U &&
                 slot2.item.nametable == 0xFC48U &&
-                slot2.item.palette_or_flip == 0x4000U &&
+                slot2.item.columns == 3U && slot2.item.rows == 2U &&
+                slot2.item.palette_or_flip == 0x6000U &&
                 slot2.portrait.tile_base == 0x86C0U &&
                 slot2.portrait.nametable == 0xF9C6U &&
-                slot2.portrait.palette_or_flip == 0x6000U)) {
+                slot2.portrait.columns == 4U && slot2.portrait.rows == 4U &&
+                slot2.portrait.palette_or_flip == 0x4000U)) {
         return 18;
     }
     const auto slot1 = refresh_hud_panel_variant(1, empty_panel);

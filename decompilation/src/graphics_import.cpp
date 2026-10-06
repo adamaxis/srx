@@ -8346,13 +8346,21 @@ GenesisFieldHudLayers decode_genesis_field_hud_layers(
         }
     }
 
-    const auto palette_line_for_item = [&rom](const auto& record) {
-        const auto palette_word = read_rom_u16(
-            rom, record.record_offset + 0x2CU,
-            "Genesis field HUD item palette is truncated");
-        return palette_word == 0U
-            ? std::size_t{1U}
-            : static_cast<std::size_t>((palette_word & 0x6000U) >> 13U);
+    const auto palette_line_for_item = [](const auto& record) {
+        // 0x35D4 applies +0x2C to the portrait. The item block instead uses
+        // 0x3602, whose +0x57/+0x56/+0x9B branch matrix returns palette lines
+        // 1 or 3. This snapshot keeps that source-selected item palette.
+        if (record.active_item_code == 0U) {
+            return std::size_t{1U};
+        }
+        const auto palette_state = static_cast<std::int8_t>(
+            record.display_palette_state);
+        const auto uses_item_threshold =
+            palette_state >= 2 || record.display_state >= 0;
+        const auto use_high_palette = uses_item_threshold
+            ? record.active_item_code < 0x0FU
+            : record.active_item_code >= 6U;
+        return use_high_palette ? std::size_t{3U} : std::size_t{1U};
     };
 
     const auto make_tile_block = [&scene](std::size_t tile_base,
@@ -8479,9 +8487,12 @@ GenesisFieldHudLayers decode_genesis_field_hud_layers(
         // command screen's 8x10 portrait is a different destination and must
         // not be cropped into this field-HUD slot: doing that leaves the face
         // undersized and exposes the wrong source window.
-        const auto portrait_palette_word = read_rom_u16(
+        auto portrait_palette_word = read_rom_u16(
             rom, record.record_offset + 0x2CU,
             "Genesis field HUD portrait palette is truncated");
+        if (portrait_palette_word == 0U) {
+            portrait_palette_word = 0x2000U;
+        }
         const auto portrait_palette_line = static_cast<std::size_t>(
             (portrait_palette_word & 0x6000U) >> 13U);
         result.faces[index] = make_tile_block(
@@ -8594,7 +8605,7 @@ GenesisFieldHudPartyAssets decode_genesis_field_hud_party_assets(
     constexpr std::size_t kInventoryItemTable = 0xD4540U;
     constexpr std::size_t kInventoryItemStride = 0x30U;
     constexpr std::size_t kItemPaletteLines[] = {1U, 2U, 3U};
-    constexpr std::size_t kPortraitPaletteLines[] = {1U, 3U};
+    constexpr std::size_t kPortraitPaletteLines[] = {1U, 2U, 3U};
     constexpr std::size_t kUnarmedTables[] = {0xD1860U, 0xD186CU, 0xD1878U};
 
     const auto palette = read_genesis_command_palette_set(rom);

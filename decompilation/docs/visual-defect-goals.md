@@ -51,7 +51,7 @@ shared acceptance gates are in the matching goal cluster below.
 | `OPEN-04` | The aircraft's rear propeller does not move. | Trace its frame list, cadence, and active-scene conditions; compare a continuous independent sequence and multi-frame full-screen dump. |
 | `OPEN-05` | The aircraft lands on the building incorrectly. | Trace landing position, orientation, and layer order through the landing transition; review approach, contact, and settled frames. |
 | `TAXI-01` | The taxi-window callout is missing its top/bottom edges and appears as two parallel side lines instead of a closed white outline. | Trace the source frame/layout and redraw ownership; compare full taxi frames before and after the callout. |
-| `HUD-01` | The field portrait has unexpected color over the runner's face. | Trace runner identity, palette source, and portrait tiles; compare the same archetype and state in independent section 04/06 frames. Current QA has not yet established a same-archetype visual match. |
+| `HUD-01` | The field portrait has unexpected color over the runner's face. | Resolved for the reported Gator face-color symptom: ROM `0x35D4` applies `+0x2C` to the 4x4 face; the old Qt path used `0x3602`. Corrected assets/runtime and per-record QA select Gator line 1 (`+0x2C=0x2000`); independent section 04/06 frames support that palette. See [the eight-question portrait audit](visual-audits/hud-portrait-palette.md). Ammo remains separately tracked as `HUD-02`. |
 | `HUD-02` | Ammunition is inconsistent: the report cites 32 bullets initially, 37 on the unequipped hand, and 4 after equipping the gun. | Trace weapon identity, magazine capacity, and shared reserve through equip/unequip/fire/reload. Reconcile all three observed values against live source fields; do not assume any reported count is canonical. |
 | `FIELD-01` | Walking uses the dying/fallen animation. | ROM trace identifies C062 as the ordinary four-pose movement loop and C052 as idle; C0B2 is a separate finite behavior transition. Verify all eight selector/assets, live movement and cadence, blocked reset, release, and full-screen states. |
 | `SOUND-01` | Pocket Secretary selection/cancel sounds are absent on some screens or use the wrong sound. | Audit each source action and child page separately; verify the event, trigger condition, measured duration, and playback on the default output. |
@@ -330,25 +330,53 @@ clean return are defended in Debug and Release. Independent footage confirms
 the visible doorway/fade/dialogue order but not the controller bytes; the
 two-frame blank-panel timing and dialogue audio remain unverified.
 
-### HUD-01 — Runner portrait palette, ammo, equipment, and combat values
+### HUD-01 — Runner portrait palette
 
-**Reported:** field portrait colors look wrong; the gun shows inconsistent
-ammunition (the report cites 32 at one point, 37 while unequipped, and 4 while
-equipped); armor, weapons, and their damage values are wrong.
+**Reported:** field portrait color looks wrong.
 
-**Solve:** trace the active runner record, portrait palette, magazine/reserve
-fields, item identity, equipment changes, and stat/damage calculations. Treat
-32/37/4 as observed values to reconcile, not as assumed canonical values.
-Review equipped and unequipped states and transitions over the full HUD and
-inventory.
+**Source trace:** At `0x3560`, the face stamp is 4x4 at F1C6 and uses live
+record `+0x2C` (`0` falls back to `0x2000`). The item stamp is 3x2 at F448 and
+uses `0x3602`, whose branch reads `+0x57/+0x56/+0x9B`. The 13 selectable face
+records use palette lines 1, 2, or 3.
 
-**Done when:** the visible portrait palette and every count/stat agree with
-source record state through equip, unequip, fire/reload, and runner switching;
-tests cover data and full-screen output; independent section 04/06 frames are
-used where they show the same state. Any state absent from the recording stays
-labeled internally verified only.
+**Code changed:** typed Qt state carries the raw `+0x2C` word; offline assets
+include all three named portrait palettes; Qt selects item and unarmed palettes
+with `0x3602`; the static panel plan uses the ROM's 4x4 face and 3x2 item sizes.
 
-**Status:** pending evidence reconciliation.
+**Internally checked:** the zero-word fallback and all three face palette
+indexes have regression coverage. Debug and Release graphics, typed HUD, field
+action, and Qt QA pass. The Gator QA compares the rendered face against the
+exact asset selected from its live record. All 12 full-screen HUD captures and
+four full-screen player-action captures were reviewed; Debug/Release hashes
+match.
+
+**Independently visually checked:** section 04 frames 000900/000906/000912 and
+section 06 frames 000001/000015/000030 show the same Gator face palette. The
+full 320x224 frames were reviewed. Against the opaque 32x32 crop, line 1 has
+17.713 mean absolute RGB error, versus 34.191 for line 2 and 37.849 for line 3;
+the remaining difference is consistent with video compression.
+
+The full eight-question review and Debug/Release dump list are in
+[`visual-audits/hud-portrait-palette.md`](visual-audits/hud-portrait-palette.md).
+
+**Status:** resolved for the reported Gator face-color symptom. Recruited-party
+portrait fidelity remains unverified because no recruited HUD appears in the
+supplied recording.
+
+### HUD-02 — Ammunition state across equip and reload
+
+**Reported:** the user observed 32 bullets initially, 37 while the gun was
+unequipped, and 4 after equipping it.
+
+**Solve:** trace weapon identity, magazine capacity, shared reserve, and live
+rounds through equip, unequip, fire, and reload. Reconcile all three observed
+values against source fields without assuming they are canonical.
+
+**Current evidence:** field-action QA checks the source's empty-magazine and
+reload route, including a 0-to-6 reload and one shared clip decrement. That
+controlled result does not reconcile the reported 32/37/4 values.
+
+**Status:** pending normal-play state capture and evidence reconciliation.
 
 ### MENU-01 — Pocket Secretary navigation, Magic, and Cyberware pages (`SOUND-01/02`, `SEC-MAGIC`, `SEC-CYBERWARE`)
 

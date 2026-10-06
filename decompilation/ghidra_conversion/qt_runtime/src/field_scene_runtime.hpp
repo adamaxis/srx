@@ -783,7 +783,7 @@ private:
     std::array<QImage, kFieldHudSlotCount> field_hud_faces_{};
     std::array<QImage, kFieldHudSlotCount> field_hud_items_{};
     std::array<QImage, kFieldHudSlotCount> field_hud_unarmed_items_{};
-    std::array<std::array<QImage, kFieldHudMagicItemPaletteVariantCount>,
+    std::array<std::array<QImage, kFieldHudPortraitPaletteVariantCount>,
                kFieldHudPortraitFamilyCount>
         field_hud_party_faces_{};
     std::array<std::array<QImage, kFieldHudItemPaletteVariantCount>,

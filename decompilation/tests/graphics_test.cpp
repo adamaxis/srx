@@ -1141,6 +1141,21 @@ int main() {
                                          a.alpha == b.alpha;
                               });
         };
+        {
+            const std::array<GenesisFieldEntityTemplate, 3> hud_records{{
+                read_genesis_field_entity_template(rom, 0x7291AU),
+                read_genesis_field_entity_template(rom, 0x72A1AU),
+                read_genesis_field_entity_template(rom, 0x72B1AU),
+            }};
+            auto zero_palette_rom = rom;
+            const auto portrait_record = hud_records[0].record_offset;
+            zero_palette_rom[portrait_record + 0x2CU] = 0U;
+            zero_palette_rom[portrait_record + 0x2DU] = 0U;
+            const auto zero_palette_layers = decode_genesis_field_hud_layers(
+                zero_palette_rom, hud_records);
+            assert(same_pixels(zero_palette_layers.faces[0].pixels,
+                               native_assets.field_hud_faces[0].pixels));
+        }
         for (std::size_t spell = 0;
              spell < native_assets.field_hud_magic_item_blocks.size();
              ++spell) {
@@ -1169,6 +1184,15 @@ int main() {
             assert(same_pixels(high_palette.pixels, loaded_high.pixels));
         }
         const auto party_hud = decode_genesis_field_hud_party_assets(rom);
+        const auto gator_hud_record =
+            read_genesis_field_entity_template(rom, 0x72B1AU);
+        assert(gator_hud_record.active_item_code == 2U);
+        assert(gator_hud_record.display_state == 0);
+        assert(gator_hud_record.display_palette_state == 1U);
+        assert(same_pixels(native_assets.field_hud_faces[2].pixels,
+                           party_hud.portraits[2][0].pixels));
+        assert(same_pixels(native_assets.field_hud_item_blocks[2].pixels,
+                           party_hud.items[1][2].pixels));
         bool portrait_palette_differs = false;
         for (const auto& family : party_hud.portraits) {
             for (const auto& portrait : family) {
@@ -1180,7 +1204,8 @@ int main() {
                                    }));
             }
             portrait_palette_differs |=
-                !same_pixels(family[0].pixels, family[1].pixels);
+                !same_pixels(family[0].pixels, family[1].pixels) ||
+                !same_pixels(family[1].pixels, family[2].pixels);
         }
         assert(party_hud.portraits.size() == 13U);
         assert(portrait_palette_differs);

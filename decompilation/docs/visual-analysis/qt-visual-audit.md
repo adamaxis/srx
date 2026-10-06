@@ -1752,21 +1752,24 @@ open.
    `field-hud-qa/party-active-winston/actual.bmp`, and
    `field-hud-qa/party-ricky-unarmed/actual.bmp`. The supplied longplay frames
    000001/000017/000049 show Joshua with empty companion panels, so they do not
-   independently confirm recruited portrait appearance or alignment.
+   independently confirm recruited portrait appearance or alignment. The
+   separate Gator face palette review uses the independent section 04 and 06
+   frames documented in [`hud-portrait-palette.md`](../visual-audits/hud-portrait-palette.md).
 2. **Does the look reflect the behavioral state?** ROM `0x3404` scans the
    three fixed live-record slots. Save markers select recruited record
    families; the field controller's active slot selects the active meter
    profile without moving another runner's panel. Qt reads each typed record
-   for its +0x10 draw flag, portrait family, +0x56/+0x57 item state, +0x2C
-   item palette, +0x90 cyberware, and live meters/ammo. CTest changes the
+    for its +0x10 draw flag, portrait family and +0x2C palette, +0x56/+0x57
+    item state, +0x90 cyberware, and live meters/ammo. CTest changes the
    active runner and verifies fixed panel placement.
 3. **Are the visuals themselves correct?** The ROM trace follows +0x50/+0x54
    to the runner's 4x4 portrait, +0x57 to the ordinary item row, negative
    +0x56 to D4EA0 spell art, and D1860/D186C/D1878 to unarmed art. The
-   extracted catalog contains all 13 runner families, 50 ordinary item codes,
-   palette lines 1/2/3, and both 0x3602 portrait/spell palettes. QA checks
-   opaque source pixels at each of the three panel coordinates and checks
-   that unarmed art replaces Ricky's equipped item.
+    extracted catalog contains all 13 runner families in +0x2C palette lines
+    1/2/3, 50 ordinary item codes and three unarmed tables in lines 1/2/3, and
+    13 spell rows in both 0x3602-selected lines. The party QA checks each live
+    face/item asset at its slot. The separate player-action QA compares the
+    starter item block with the same item row at the 0x3602-selected palette.
 4. **Is it animated, and should it be?** Portraits and item icons remain
    static between record refreshes. Source `0x3674`, `0x37EC`, and `0x36FC`
    update the value bars and ammo count from live record changes; the Qt
@@ -1792,8 +1795,15 @@ open.
 
 **Status:** partial. ROM-derived named assets, fixed three-slot typed state,
 portrait/item selection, active-runner profile selection, and unequip redraw
-are connected and covered in Debug and Release. Independent recruited-party
-visual evidence and recruited hire-to-field-session handoff remain open.
+are connected and covered in Debug and Release. The reported Gator face-color
+defect is resolved: ROM record `0x72B1A` has `+0x2C=0x2000`, selecting palette
+line 1. Independent section 04 frames 000900/000906/000912 and section 06
+frames 000001/000015/000030 show the same face palette. The independent crop
+has mean absolute RGB error 17.713 against line 1, versus 34.191 against line
+2 and 37.849 against line 3 (1024 opaque pixels; video compression accounts
+for residual error). See the [eight-question audit](../visual-audits/hud-portrait-palette.md).
+Recruited-party visual evidence and recruited
+hire-to-field-session handoff remain open.
 
 ### Applied review: weapon inventory cells after equip and unequip
 

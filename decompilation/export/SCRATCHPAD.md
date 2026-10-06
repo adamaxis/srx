@@ -2320,11 +2320,12 @@ generic label or the generated C:
   `EntityActionDynamicModifierContext` now carries the table and linked index;
   if either is unavailable, the conversion reports an unresolved profile and
   does not substitute a fabricated roll count or difficulty.
-* `0x3602` computes the HUD glyph attribute word from record fields at `+0x57`,
-  `+0x9B`, and signed `+0x56`. It returns `0x2000` for the low/ordinary path
-  and `0x6000` for the highlighted path. The branch matrix is now a tested
-  `select_hud_glyph_attribute_flags` helper; the renderer wiring remains a
-  separate audit item.
+* `0x3602` computes the HUD item glyph attribute word from record fields at
+  `+0x57`, `+0x9B`, and signed `+0x56`. It returns `0x2000` for the low path
+  and `0x6000` for the highlighted path. The branch matrix is a tested
+  `select_hud_glyph_attribute_flags` helper; Qt uses it for ordinary and
+  unarmed item art. Portraits use the separate `+0x2C` word stamped by
+  `0x35D4`.
 * `0x60F4` executes `ORI #1,CCR; RTS`, so its observable result is a carry-set
   return used by the descriptor branch at `0x600E`. It is represented by the
   typed `set_sprite_descriptor_carry()` boundary rather than the former empty

@@ -17,6 +17,7 @@ constexpr std::size_t kFieldHudMagicItemCount = 13U;
 constexpr std::size_t kFieldHudMagicItemPaletteVariantCount = 2U;
 constexpr std::size_t kFieldHudItemCount = 50U;
 constexpr std::size_t kFieldHudItemPaletteVariantCount = 3U;
+constexpr std::size_t kFieldHudPortraitPaletteVariantCount = 3U;
 constexpr std::size_t kFieldHudPortraitFamilyCount = 13U;
 constexpr std::uint16_t kFieldHudPlaneBase = 0xF000U;
 constexpr std::uint16_t kFieldHudPlaneWidthTiles = 64U;
@@ -57,7 +58,8 @@ struct FieldHudOverlay {
     int x = 0;
     int y = 0;
     std::uint8_t asset_index = 0;
-    // 0x3602 selects source palette attributes 0x2000 or 0x6000.
+    // Asset-family palette index. Face indices follow +0x2C (lines 1..3);
+    // item indices follow 0x3602 (line 1 or line 3).
     std::uint8_t palette_variant = 0;
 };
 
@@ -78,9 +80,10 @@ struct FieldHudSlotState {
     // live record (+0x50/+0x54 portrait selector, +0x57 active item). Negative
     // +0x56 instead selects a shared D4EA0 spell sprite. Portraits use the
     // normalized Joshua/recruited runner family. Item art is selected by the
-    // current +0x57 code and +0x2C palette line.
+    // current +0x57 code and 0x3602 palette. The face palette comes from
+    // +0x2C, with a zero word falling back to source palette line 1.
     std::uint8_t asset_family_index = 0;
-    std::uint8_t item_palette_variant = 0;
+    std::uint16_t portrait_palette_word = 0;
     // D1860/D186C/D1878, selected by +0x90 cyberware bits.
     std::uint8_t unarmed_item_variant = 0;
 };

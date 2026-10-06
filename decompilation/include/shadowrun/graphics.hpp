@@ -697,14 +697,15 @@ struct GenesisFieldHudLayers {
 // Direct field-HUD assets for every selectable runner portrait and ordinary
 // inventory item. Runtime code indexes these named files from typed roster
 // state; it does not retain ROM pointers or emulate the 0x3404 upload buffer.
-// Portrait variants correspond to 0x3602 palette attributes 0x2000/0x6000.
-// Item variants preserve palette lines 1, 2, and 3 selected by +0x2C.
+// Face variants correspond to runner-record +0x2C palette lines 1, 2, and 3.
+// Ordinary and unarmed item variants preserve the three extracted palette
+// lines; the live 0x3602 rule selects line 1 or line 3 for field presentation.
 inline constexpr std::size_t kGenesisFieldHudJoshuaPortraitCount = 3U;
 inline constexpr std::size_t kGenesisFieldHudRecruitedPortraitCount = 10U;
 inline constexpr std::size_t kGenesisFieldHudPortraitFamilyCount =
     kGenesisFieldHudJoshuaPortraitCount +
     kGenesisFieldHudRecruitedPortraitCount;
-inline constexpr std::size_t kGenesisFieldHudPortraitPaletteVariantCount = 2U;
+inline constexpr std::size_t kGenesisFieldHudPortraitPaletteVariantCount = 3U;
 inline constexpr std::size_t kGenesisFieldHudItemPaletteVariantCount = 3U;
 inline constexpr std::size_t kGenesisFieldHudUnarmedVariantCount = 3U;
 struct GenesisFieldHudPartyAssets {
