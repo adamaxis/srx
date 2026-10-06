@@ -105,7 +105,7 @@
       "dependsOn": ["CMake: Configure (Release)"],
       "group": {
         "kind": "build",
-        "isDefault": true
+        "isDefault": false
       },
       "presentation": {
         "reveal": "always",
@@ -379,7 +379,10 @@
         }
       },
       "dependsOn": ["CMake: Configure Ghidra Conversion Qt (Release)"],
-      "group": "build",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
       "presentation": {
         "reveal": "always",
         "panel": "shared"
