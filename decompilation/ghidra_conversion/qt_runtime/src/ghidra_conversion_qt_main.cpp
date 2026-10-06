@@ -11600,6 +11600,37 @@ int main(int argc, char** argv) {
                                   << '\n';
                         return 3;
                     }
+                    LiveRunnerRecord source_runner_record{};
+                    source_runner_record.bytes =
+                        hud_state.startup_records
+                            ->joshua_archetypes[archetype]
+                            .record;
+                    const auto source_runner =
+                        read_runner_record_fields(source_runner_record);
+                    const auto* source_ammo_item = find_us_item_definition(
+                        source_runner.equipped_item_code);
+                    const auto expected_ammo =
+                        source_runner.equipped_item_code != 0U &&
+                                source_ammo_item != nullptr &&
+                                source_runner.equipped_inventory_slot >= 0 &&
+                                source_runner.ammo_rounds >
+                                    source_ammo_item->source_combat_factor
+                            ? source_ammo_item->source_combat_factor
+                            : source_runner.ammo_rounds;
+                    if (hud_scene.active_runner_record().ammo_rounds !=
+                        expected_ammo) {
+                        std::cerr << "field HUD QA: archetype "
+                                  << static_cast<int>(archetype)
+                                  << " did not apply the source 0x36FC "
+                                     "capacity refresh (expected "
+                                  << static_cast<int>(expected_ammo)
+                                  << ", got "
+                                  << static_cast<int>(hud_scene
+                                                         .active_runner_record()
+                                                         .ammo_rounds)
+                                  << ")\n";
+                        return 3;
+                    }
                     QImage hud_frame(kSceneWidth, kSceneHeight,
                                      QImage::Format_RGB32);
                     hud_frame.fill(Qt::black);
@@ -11770,24 +11801,66 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
-                auto ricky_unarmed = ricky;
-                ricky_unarmed.equipped_inventory_slot = 0x7F;
-                ricky_unarmed.equipped_item_code = 0U;
                 party_scene.set_active_party_slot_for_dump(1U);
+                auto ricky_unarmed =
+                    party_scene.field_party_records_for_dump()[1U];
+                const auto ricky_equipped_slot =
+                    ricky_unarmed.equipped_inventory_slot;
+                const auto ricky_equipped_item =
+                    ricky_unarmed.equipped_item_code;
+                std::optional<SelectedInventoryItem> ricky_item;
+                if (ricky_equipped_slot >= 0) {
+                    ricky_item = read_selected_inventory_item(
+                        ricky_unarmed,
+                        static_cast<std::uint8_t>(ricky_equipped_slot % 2),
+                        static_cast<std::uint8_t>(ricky_equipped_slot / 2));
+                }
+                const auto* ricky_item_definition =
+                    find_us_item_definition(ricky_equipped_item);
+                if (!ricky_item || ricky_item_definition == nullptr ||
+                    ricky_item->item_code != ricky_equipped_item ||
+                    toggle_selected_equipment(
+                        ricky_unarmed, *ricky_item,
+                        ricky_item_definition->source_combat_factor,
+                        ricky_item_definition->source_combat_factor) !=
+                        EquipmentMutation::unequipped ||
+                    ricky_unarmed.equipped_inventory_slot != -1 ||
+                    ricky_unarmed.equipped_item_code != 0U ||
+                    ricky_unarmed.ammo_rounds != 100U) {
+                    std::cerr << "field HUD party QA: Ricky's unarmed state "
+                                 "did not follow the live source equipment "
+                                 "record and unequip transition\n";
+                    return 3;
+                }
                 party_scene.install_party_member_for_dump(
                     1U, ricky_unarmed, "Ricky", 3U);
+                const auto& installed_ricky_unarmed =
+                    party_scene.field_party_records_for_dump()[1U];
+                const auto ricky_unarmed_ammo_y = field_hud_vram_y(
+                    static_cast<std::uint16_t>(
+                        kFieldHudAmmoVram + kFieldHudSlotVramStride));
                 QImage party_unarmed;
                 if (!save_party_frame("party-ricky-unarmed", party_unarmed) ||
+                    installed_ricky_unarmed.equipped_inventory_slot != -1 ||
+                    installed_ricky_unarmed.equipped_item_code != 0U ||
+                    installed_ricky_unarmed.ammo_rounds != 100U ||
                     !field_hud_party_slot_asset_survives(
                         party_unarmed, asset_root,
                         "field/hud/party/unarmed-item-0-palette-" +
                             std::to_string(item_palette_for(ricky_unarmed)) +
                             ".bmp",
                         288, 128, QSize(24, 16)) ||
+                    !field_hud_party_slot_asset_survives(
+                        party_unarmed, asset_root,
+                        "field/hud/ammo-counter-0.bmp",
+                        field_hud_vram_x(kFieldHudAmmoVram),
+                        ricky_unarmed_ammo_y, QSize(16, 8)) ||
                     party_equipped.copy(QRect(288, 128, 24, 16)) ==
                         party_unarmed.copy(QRect(288, 128, 24, 16))) {
-                    std::cerr << "field HUD party QA: unequipping gear left "
-                                 "the previous item image in place\n";
+                    std::cerr << "field HUD party QA: Ricky's source-style "
+                                 "unarmed state lost its percentage, drew a "
+                                 "nonzero field counter, or retained the old "
+                                 "item image\n";
                     return 3;
                 }
 

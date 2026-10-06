@@ -1800,7 +1800,30 @@ FieldHudSlotState FieldSceneRuntime::field_hud_slot_state(
 }
 
 void FieldSceneRuntime::refresh_field_hud_runner_slot() {
+    auto& records = field_party_roster_.records();
     for (std::size_t slot = 0; slot < field_hud_slots_.size(); ++slot) {
+        auto& record = records[slot];
+        // ROM 0x39F2 refreshes the three field panels, then 0x38FA calls
+        // 0x36FC for each record with D1=0. That call clamps an active
+        // clip-using item's +0x4E count to its +0x24 capacity before the
+        // resulting HUD frame is presented.
+        FieldHudAmmoMeterState ammo{};
+        ammo.slot_word = record.record_type;
+        ammo.flags_byte = static_cast<std::uint8_t>(record.flags >> 8U);
+        ammo.equipped_inventory_slot = record.equipped_inventory_slot;
+        ammo.source_type = record.equipped_item_code;
+        ammo.ammo = record.ammo_rounds;
+        ammo.clip_counts = record.inventory_phase_bytes;
+        ammo.clip_aux = record.inventory_item_codes;
+        const auto ammo_plan = advance_field_hud_ammo_meter(ammo, 0);
+        record.ammo_rounds = ammo.ammo;
+        record.equipped_inventory_slot = ammo.equipped_inventory_slot;
+        record.equipped_item_code = ammo.source_type;
+        record.inventory_phase_bytes = ammo.clip_counts;
+        record.inventory_item_codes = ammo.clip_aux;
+        if (ammo_plan.reload_assets) {
+            source_boundary("field.hud.ammo_refresh.cleared_depleted_item");
+        }
         field_hud_slots_[slot] = field_hud_slot_state(slot);
     }
 }

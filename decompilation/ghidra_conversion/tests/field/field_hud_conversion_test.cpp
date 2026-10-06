@@ -365,9 +365,21 @@ int main() {
                 ammo_plan.tiles == kFieldHudAmmoMeterTiles[6])) {
         return 25;
     }
+    ammo = FieldHudAmmoMeterState{};
+    ammo.flags_byte = 0x0FU;
+    ammo.equipped_inventory_slot = 0;
+    ammo.source_type = 2U;
+    ammo.ammo = 32U;
+    ammo_plan = advance_field_hud_ammo_meter(ammo, 0);
+    if (!expect(ammo.ammo == 12U && ammo_plan.displayed == 12U &&
+                ammo_plan.tiles == kFieldHudAmmoMeterTiles[12])) {
+        return 50;
+    }
     ammo.equipped_inventory_slot = static_cast<std::int8_t>(0x7F);
+    ammo.ammo = 37U;
     ammo_plan = advance_field_hud_ammo_meter(ammo, 1);
-    if (!expect(ammo_plan.tiles == kFieldHudAmmoMeterTiles[0])) {
+    if (!expect(ammo.ammo == 37U && ammo_plan.displayed == 0U &&
+                ammo_plan.tiles == kFieldHudAmmoMeterTiles[0])) {
         return 26;
     }
     ammo = FieldHudAmmoMeterState{};

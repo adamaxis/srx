@@ -52,7 +52,7 @@ shared acceptance gates are in the matching goal cluster below.
 | `OPEN-05` | The aircraft lands on the building incorrectly. | Trace landing position, orientation, and layer order through the landing transition; review approach, contact, and settled frames. |
 | `TAXI-01` | The taxi-window callout is missing its top/bottom edges and appears as two parallel side lines instead of a closed white outline. | Trace the source frame/layout and redraw ownership; compare full taxi frames before and after the callout. |
 | `HUD-01` | The field portrait has unexpected color over the runner's face. | Resolved for the reported Gator face-color symptom: ROM `0x35D4` applies `+0x2C` to the 4x4 face; the old Qt path used `0x3602`. Corrected assets/runtime and per-record QA select Gator line 1 (`+0x2C=0x2000`); independent section 04/06 frames support that palette. See [the eight-question portrait audit](visual-audits/hud-portrait-palette.md). Ammo remains separately tracked as `HUD-02`. |
-| `HUD-02` | Ammunition is inconsistent: the report cites 32 bullets initially, 37 on the unequipped hand, and 4 after equipping the gun. | Trace weapon identity, magazine capacity, and shared reserve through equip/unequip/fire/reload. Reconcile all three observed values against live source fields; do not assume any reported count is canonical. |
+| `HUD-02` | Ammunition is inconsistent: the report cites 32 bullets initially, 37 on the unequipped hand, and 4 after equipping the gun. | ROM Gator record `0x72B1A` starts at 32 with item code 2; the `0x39F2` field refresh reaches `0x36FC`, which clamps it to the item-2 capacity 12 at `0xD4570 + 0x24`. The Qt path applies that refresh. ROM `0x125FA`/`0x121E0` plus item code 3 capacity 11 reproduce `4/11 -> 37 -> 4`, but the ordinary unarmed field-HUD branch draws `00` while preserving the +0x4E percentage. The user's visible 37-on-hand route remains unreconciled. The former Ricky QA image used an impossible raw-template/unarmed state and is corrected to use a refreshed live record and typed unequip. See [ammo capacity audit](visual-audits/hud-ammo-capacity-refresh.md); keep the reported sequence partial until independently reconciled. |
 | `FIELD-01` | Walking uses the dying/fallen animation. | ROM trace identifies C062 as the ordinary four-pose movement loop and C052 as idle; C0B2 is a separate finite behavior transition. Verify all eight selector/assets, live movement and cadence, blocked reset, release, and full-screen states. |
 | `SOUND-01` | Pocket Secretary selection/cancel sounds are absent on some screens or use the wrong sound. | Audit each source action and child page separately; verify the event, trigger condition, measured duration, and playback on the default output. |
 | `SOUND-02` | Moving between Pocket Secretary menu items has no navigation sound. | Trace the accepted cursor-move edge and source resource; verify one playback per accepted move, none on clamp/no-op, and the stop/duration behavior. |
@@ -74,9 +74,9 @@ shared acceptance gates are in the matching goal cluster below.
 
 | Goal | Reported issue | Closure condition |
 |---|---|---|
-| `EQUIP-01` | The yellow item selector was previously reported as a thick rectangular mess instead of the game's slim yellow outline. | Verify selection state attributes and inspect full-screen equipped/unequipped frames; compare multiple independent item-menu frames and confirm the outline clears on deselection. |
+| `EQUIP-01` | The yellow item selector was previously reported as a thick rectangular mess instead of the game's slim yellow outline. | The current Qt frames contain exactly 76 `#C4BE27` pixels: a one-pixel perimeter around the 24x16 item image, with no fill. Independent section 06 frames 002560/002580/002610/002640 support the same slim marker. The debug-only 4x crop scales that one pixel to four display pixels. Current geometry is not reproducing the reported thick marker; see [the selector and redraw review](visual-audits/item-selector-and-unequip-review.md). |
 | `EQUIP-02` | A black box can remain around an item icon after equipping and unequipping it. | Exercise repeated equip/unequip and replacement; prove the icon cell restores its correct background and no stale border/graphic remains. |
-| `LOADOUT-01` | Weapon clips/ammunition were previously reported as not being tied to the weapons. | Trace each weapon's loaded count/capacity and the shared reserve separately. Current Clips QA describes a shared Universal Gun Clips reserve and weapon capacity from the item's `+0x24`; verify this against source records and normal fire/reload/equip routes before resolving the complaint. |
+| `LOADOUT-01` | Weapon clips/ammunition were previously reported as not being tied to the weapons. | ROM uses each item's `+0x24` capacity, runner `+0x4E` for loaded rounds/unequipped percentage, and one runner-wide `+0x4F` Universal Gun Clips reserve. Two weapon capacities and reload consumption are covered internally; normal combat fire/reload and an independent loaded-save transfer remain open. Do not add a per-weapon reserve unsupported by the ROM. |
 
 ### Evidence gathered for this pass
 
@@ -368,15 +368,50 @@ supplied recording.
 **Reported:** the user observed 32 bullets initially, 37 while the gun was
 unequipped, and 4 after equipping it.
 
-**Solve:** trace weapon identity, magazine capacity, shared reserve, and live
-rounds through equip, unequip, fire, and reload. Reconcile all three observed
-values against source fields without assuming they are canonical.
+**Source trace:** ROM field refresh `0x39F2` calls `0x38FA`, which iterates the
+three runner records and calls `0x36FC` with `D1=0`. For clip-using item codes
+below `0x0D`, `0x36FC` caps `+0x4E` to that item's
+`D4540 + (item_code - 1) * 0x30 + 0x24` capacity before drawing the counter.
+The Gator archetype template at `0x72B1A` has
+item code 2 and raw `+0x4E=32`; item row 2 at `0xD4570` has capacity 12. The
+ROM refresh therefore displays 12, not the unrefreshed template value 32.
+`0x125FA` converts an equipped magazine to a percentage on unequip, and
+`0x121E0` scales that percentage to the next weapon's capacity. For item code
+3, ROM capacity is 11 (`0xD45A0 + 0x24`). Four of eleven rounds
+become 37% on unequip under the source ceiling rule; 37% scales back to four
+rounds when that item is equipped again. A 12-round weapon also maps 37% to
+four by the source half-up scale. This establishes concrete source arithmetic,
+not the user's exact weapon/state. The independent recording has no matching
+equip/unequip sequence. Reserve `+0x4F` is tracked separately by `LOADOUT-01`.
 
-**Current evidence:** field-action QA checks the source's empty-magazine and
-reload route, including a 0-to-6 reload and one shared clip decrement. That
-controlled result does not reconcile the reported 32/37/4 values.
+**Code changed:** `FieldSceneRuntime::refresh_field_hud_runner_slot()` now
+applies the typed zero-delta ammo-meter refresh to each live record before
+building its HUD slot snapshot. It writes the source-clamped ammo and any
+source item-clear fields back to typed runner state.
 
-**Status:** pending normal-play state capture and evidence reconciliation.
+**Internally checked:** a typed regression asserts item code 2, 32 rounds,
+and a zero-delta refresh produce 12 and the correct counter tiles. The
+inventory-action regression checks code 3 capacity 11 and the exact
+4/11 -> 37 -> 4 equip/unequip round trip. The direct ROM-backed graphics test
+preserves Gator's raw template value 32 and asserts the item-3 capacity 11.
+Field-HUD and field-action CTests pass 2/2 in Debug and Release; graphics and
+catalog CTests pass 2/2 in both configurations. All 28 current full-screen
+field-action checkpoints were reviewed; the Debug and Release BMP hashes
+match. The route covers inventory selection, equip, cancel, unequip, weapon
+switching, reload confirmation, empty magazine, and return to the Clips parent.
+
+**Independently visually checked:** section 06 frames `002550`, `002560`,
+`002580`, `002610`, `002640`, and `002699`, plus section 07 frames `000030`
+and `000120`, were reviewed as complete 320x224 images. They show neighboring
+field HUD, inventory, Magic, and First Aid states, but none shows the reported
+weapon transfer. Independent confirmation of the precise 32/37/4 sequence is
+unavailable.
+
+**Status:** partial. The host now follows the source's initial capacity
+refresh, and ROM arithmetic explains a plausible percentage-to-rounds
+conversion. Keep the combined reported sequence open until an independent
+capture or a reproduced normal-play state identifies the weapon, capacity,
+and live values.
 
 ### MENU-01 — Pocket Secretary navigation, Magic, and Cyberware pages (`SOUND-01/02`, `SEC-MAGIC`, `SEC-CYBERWARE`)
 
@@ -460,34 +495,55 @@ full-screen images are reviewed across the complete route.
 
 **Status:** pending current-build reproduction.
 
-### EQUIP-01 and EQUIP-02 — Item selector and equip/unequip cleanup
+### EQUIP-01 — Item selector thickness; EQUIP-02 — Equip/unequip cell cleanup
 
-Trace the source selection attributes and background ownership for each item
-cell. Verify the slim selector across selected/unselected states, then repeat
-equip, unequip, and replacement while reviewing every full-screen frame for a
-black cell box or stale icon pixels.
+For `EQUIP-01`, trace the selected inventory coordinates and the source
+outline attributes separately from the equipped-item cell treatment. The
+current Qt action frames and CTest show a one-pixel `#C4BE27` edge around the
+24x16 item art; section 06 frames 002560/002580/002610/002640 show the same
+slim marker. The earlier debug-only crop is enlarged 4x and is not a
+source-size view.
 
-**Done when:** item state and selector are bound to typed inventory state;
-tests cover selection and repeated equipment changes; Debug/Release full-screen
-captures show the same clean cell after each return; a matching independent
-frame is cited or its absence is explicit.
+For `EQUIP-02`, repeat equip, unequip, and replacement, and compare the whole
+inventory grid with a freshly rendered baseline. Verify the icon, equipment
+frame, selector, other panels, and return state together.
 
-**Status:** pending current-build reproduction.
+**Done when:** source selection and equipment state are separate typed state;
+tests cover the selector perimeter and repeated equipment changes;
+Debug/Release full-screen captures show no stale cell treatment after
+unequip; and a matching independent transition is cited or explicitly
+unavailable.
+
+**Status:** `EQUIP-01` geometry is not reproduced as a current defect and is
+supported by independent frames. `EQUIP-02`'s reported stale black box is not
+reproduced in the current full-screen action route; exact independent
+equip/unequip footage remains unavailable.
 
 ### LOADOUT-01 — Weapon magazine and shared reserve relationship
 
-Resolve the reported weapon-specific clip expectation from the ROM. Current
-Clips QA says each weapon's capacity comes from its item record `+0x24` while
-the Universal Gun Clips reserve is shared in runner record `+0x4F`. Follow the
-loaded count, reserve, equip, fire, and reload across at least two weapon
-types; do not add a per-weapon reserve unless the source supports it.
+**Source finding:** equipped weapon capacity comes from its own item row at
+`D4540 + (item_code - 1) * 0x30 + 0x24`. The runner's current loaded count is in
+`+0x4E`; on unequip `0x125FA` stores its percentage in that same field, and
+switching weapons scales the percentage to the selected item's capacity at
+`0x121E0`. The reserve is a separate runner-wide Universal Gun Clips count at
+`+0x4F`, consumed by the reload handler. The traced source does not keep a
+separate spare-clip reserve for every weapon, so the native model must not
+invent one.
+
+**Current QA:** the field-action route switches between weapon rows with
+capacities 6 and 12, carries 50% across the switch, and checks that reloads
+consume the shared reserve. It also checks empty, reloaded, equipped, and
+unequipped HUD states. The normal combat firing route and an independent
+loaded-save transfer example remain open.
 
 **Done when:** visible counts agree with source state in HUD, inventory, and
 Clips; normal input can fire/reload; tests cover two capacities and reserve
 updates; full-screen output is reviewed. A matching independent loaded-save
 frame is cited or marked unavailable.
 
-**Status:** source model needs comparison to the user's reported counts.
+**Status:** source model clarified and internally exercised; partial until the
+combat fire/reload route and any matching independent loaded-save evidence are
+reviewed.
 
 ### PLAY-01 — Normal-control reachability for reported game systems
 
@@ -521,9 +577,9 @@ events remain explicitly open.
 
 ## Dependencies and sequence
 
-1. The scene-2 candidate collision QA is committed. `STOKER-01` and `FIELD-02`
-   remain open until the real building/property producer is identified and
-   tested with ordinary input; injected event tuples do not close them.
+1. `STOKER-01` is resolved for the physical scene-2 motel doorway by ordinary
+   input. `FIELD-02` remains open for general terrain recovery and other
+   building/property routes; event injection does not close those routes.
 2. Finish and verify `FIELD-01`'s source-backed movement family before using
    its screenshots as proof of field visual fidelity.
 3. `INTRO-01/02/03` cover logo, title, timed opening, aircraft, and taxi

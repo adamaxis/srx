@@ -115,6 +115,34 @@ int main() {
         return 15;
     }
 
+    // ROM item code 3 has an 11-round capacity. The source rounds 4/11 up to
+    // 37 percent on unequip, then applies 37 percent to capacity 11 and gets
+    // 4 rounds when that same weapon is equipped again.
+    RunnerRecordFields eleven_round_gun{};
+    eleven_round_gun.inventory_item_codes[0] = 3U;
+    eleven_round_gun.equipped_inventory_slot = 0;
+    eleven_round_gun.equipped_item_code = 3U;
+    eleven_round_gun.ammo_rounds = 4U;
+    const auto gun_eleven =
+        read_selected_inventory_item(eleven_round_gun, 0U, 0U);
+    if (!expect(gun_eleven &&
+                toggle_selected_equipment(eleven_round_gun, *gun_eleven,
+                                          11U, 11U) ==
+                    EquipmentMutation::unequipped &&
+                eleven_round_gun.equipped_inventory_slot == -1 &&
+                eleven_round_gun.equipped_item_code == 0U &&
+                eleven_round_gun.ammo_rounds == 37U)) {
+        return 23;
+    }
+    if (!expect(toggle_selected_equipment(eleven_round_gun, *gun_eleven,
+                                          0U, 11U) ==
+                    EquipmentMutation::equipped &&
+                eleven_round_gun.equipped_inventory_slot == 0 &&
+                eleven_round_gun.equipped_item_code == 3U &&
+                eleven_round_gun.ammo_rounds == 4U)) {
+        return 24;
+    }
+
     // Switching directly between two guns follows the same path. A one-round
     // gun at 1/7 capacity rounds up to 15%, then 15% of a 50-round weapon
     // rounds half-up to eight rounds, matching the ROM's DIVU branches.

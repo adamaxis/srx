@@ -196,6 +196,8 @@ int main() {
     assert(inventory_catalog[1].source_combat_factor == 12);
     assert(inventory_catalog[1].name == "Model 101T");
     assert(inventory_catalog[1].category == "Light Pistol");
+    assert(inventory_catalog[2].code == 3);
+    assert(inventory_catalog[2].source_combat_factor == 11);
     assert(inventory_catalog[43].code == 44);
     assert(inventory_catalog[43].name == "Armor Vest");
     const auto cyberware_catalog = read_genesis_cyberware_catalog(rom);
@@ -1187,6 +1189,7 @@ int main() {
         const auto gator_hud_record =
             read_genesis_field_entity_template(rom, 0x72B1AU);
         assert(gator_hud_record.active_item_code == 2U);
+        assert(gator_hud_record.ammo_rounds == 32U);
         assert(gator_hud_record.display_state == 0);
         assert(gator_hud_record.display_palette_state == 1U);
         assert(same_pixels(native_assets.field_hud_faces[2].pixels,
