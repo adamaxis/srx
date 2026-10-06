@@ -30,9 +30,75 @@ each changed slice. Do not mark a reported defect resolved from a same-source
 compositor, internal screenshot, or passing test alone. Record absent
 independent references as absent.
 
+## Itemized report and atomic goals
+
+The rows below preserve every distinct issue in the user's pasted report.
+`Reported` means the player observed it; it is not a claim that the current
+checkout still reproduces it. Current-build reproduction and independent
+Genesis comparison remain separate evidence fields. Detailed ROM paths and
+shared acceptance gates are in the matching goal cluster below.
+
+| Goal | Reported issue, itemized | Evidence check and closure condition |
+|---|---|---|
+| `BOOT-01` | The shock figure has no sound when it shocks the SEGA logo, and the same effect plays at the wrong time when the Decker intro starts. | Trace both ROM sound requests and runtime triggers separately; capture the logo shock and Decker-scene entry; verify playback start, duration, and stop on the output device. |
+| `BOOT-02` | The flame decal remains on the right after the logo is fully revealed. | Independent section 01 frame 000372 still shows the flame; frame 000384 and later settled-title frames do not. Match the source transition and verify clean removal over consecutive full frames. |
+| `BOOT-03` | The animated microchip/circuit background does not move upward. | Independent section 01 frames 000390, 000396, 000420, and 000450 show changing background positions. Trace source offset, direction, cadence, and lifetime; compare a multi-frame full-screen dump. |
+| `TITLE-01` | The title's “PRESS START” label does not blink in and out. | Independent section 01 frame 000900 shows it, 000906 hides it, and 000912 shows it again. Match the ROM phase/counter and verify both phases over multiple cycles. |
+| `TITLE-02` | Pressing Start skips the transition and immediately opens New Game/Load Game. | Trace the title Start edge through the transition into Start Options; capture every transition phase and confirm inputs do not reach the destination early. The independent video has a cut at this boundary, so it does not establish transition timing. |
+| `OPEN-01` | Opening music starts on the second screen instead of when the opening starts. | Trace each timed opening stage's sound command and playback state; compare section 02 audio/frame timing and record duration/loop/stop behavior. |
+| `OPEN-02` | In the Decker route, the head floats instead of staying attached to the character. | Identify the exact scene, actor record, and layer ownership; compare several adjacent frames and full-screen native captures. The sampled section 02 frames do not yet identify this Decker-specific state. |
+| `OPEN-03` | In the Decker route, the body is superimposed over another image. | Trace scene handoff and layer clearing independently from head placement; verify no old actor/background layer remains across the full frame. |
+| `OPEN-04` | The aircraft's rear propeller does not move. | Trace its frame list, cadence, and active-scene conditions; compare a continuous independent sequence and multi-frame full-screen dump. |
+| `OPEN-05` | The aircraft lands on the building incorrectly. | Trace landing position, orientation, and layer order through the landing transition; review approach, contact, and settled frames. |
+| `TAXI-01` | The taxi-window callout is missing its top/bottom edges and appears as two parallel side lines instead of a closed white outline. | Trace the source frame/layout and redraw ownership; compare full taxi frames before and after the callout. |
+| `HUD-01` | The field portrait has unexpected color over the runner's face. | Trace runner identity, palette source, and portrait tiles; compare the same archetype and state in independent section 04/06 frames. Current QA has not yet established a same-archetype visual match. |
+| `HUD-02` | Ammunition is inconsistent: the report cites 32 bullets initially, 37 on the unequipped hand, and 4 after equipping the gun. | Trace weapon identity, magazine capacity, and shared reserve through equip/unequip/fire/reload. Reconcile all three observed values against live source fields; do not assume any reported count is canonical. |
+| `FIELD-01` | Walking uses the dying/fallen animation. | ROM trace identifies C062 as the ordinary four-pose movement loop and C052 as idle; C0B2 is a separate finite behavior transition. Finish the current typed-state change and verify all directions, cadence, blocked movement, and release. |
+| `SOUND-01` | Pocket Secretary selection/cancel sounds are absent on some screens or use the wrong sound. | Audit each source action and child page separately; verify the event, trigger condition, measured duration, and playback on the default output. |
+| `SOUND-02` | Moving between Pocket Secretary menu items has no navigation sound. | Trace the accepted cursor-move edge and source resource; verify one playback per accepted move, none on clamp/no-op, and the stop/duration behavior. |
+| `SEC-MAGIC` | The Magic page leaves its old text/menu content drawn over the new page. | Trace page entry/exit and panel clear/redraw; capture parent, child, return, and reopen at full screen, proving old controls appear only when the source restores them. |
+| `SEC-CYBERWARE` | Opening Cyberware hides inventory, the runner portrait, posture, and text that should remain visible. | Identify which HUD/panel regions are shared; compare complete page frames and verify child entry/return redraws shared regions exactly once. |
+| `KARMA-COLOR` | The Start-menu Attributes/Skills Karma page uses the wrong selection color. | Keep this view-only page separate from Hotel Karma spending; trace the selected row's palette and compare every selectable row against source/reference evidence. |
+| `KARMA-DETAIL` | The Start-menu Attributes/Skills Karma page omits the selected attribute/skill's detail text. | Trace row-to-detail data and placement; verify each row and confirm hover alone neither opens the page nor spends Karma. |
+| `CLIPS-REDRAW` | The Clips menu is drawn over its parent menu instead of replacing it cleanly. | Trace the source panel replacement/restore path; compare parent, child, confirm/cancel, and return full-screen captures, including all buttons behind the child. |
+| `POSTURE-FOCUS` | The posture bar has no selector; it should be reachable with Up/Down from the menu buttons and affect attack/defense. | Existing ROM/source and internal QA describe Up focus, Down deselection, five posture states, and attack/defense updates. Reproduce through normal play and reconcile the report with the full-screen QA capture that currently shows a selector. |
+| `INVENTORY-01` | Moving/trading items between inventory locations does not work. | Trace source/destination cell state, item constraints, confirmation/cancel, and authoritative item records; exercise the route through ordinary controls and verify both cells and stats. |
+| `INVENTORY-02` | Using an item draws the runner portrait over other bars. | Trace item-use page/result/return and full redraw order; verify portrait, bars, posture, message, and inventory across all transition frames. |
+| `ITEMS-01` | Armor, weapons, and their damage values are wrong. | Reconcile named item assets and source catalog values with equip state, attack/damage calculations, and inventory/shop views; compare multiple weapons/armor states. |
+| `FIELD-02` | The runner gets stuck in terrain and cannot enter buildings. | Trace movement probes, collision margins, terrain gates, physical building records, event publication, and exits; verify contact and adjacent walkable cells through ordinary D-pad input. |
+| `STOKER-01` | The physical Stoker collision/property that should open his generic dialogue is still unidentified. | The tested New Game scene-2 record 2 at `0x172DBE` is a rejected candidate: contact produces event 0, not mode 2/event 2. Identify and test the real property through normal contact. |
+| `PLAY-01` | Shops, building item use, and maglock passkeys cannot be tested from normal Qt gameplay. | Provide source-backed, normal-control routes from field play to each named feature and back; test them end to end without injecting event tuples. |
+| `SOUND-03` | More generally, sound effects across the game are reported to play at the wrong points. | Inventory the reported and currently connected ROM sound requests, map each to a state transition, and check trigger, playback, duration, loop, and stop. Close individual sounds in their owning goals. |
+
+### Earlier reported items carried forward
+
+| Goal | Reported issue | Closure condition |
+|---|---|---|
+| `EQUIP-01` | The yellow item selector was previously reported as a thick rectangular mess instead of the game's slim yellow outline. | Verify selection state attributes and inspect full-screen equipped/unequipped frames; compare multiple independent item-menu frames and confirm the outline clears on deselection. |
+| `EQUIP-02` | A black box can remain around an item icon after equipping and unequipping it. | Exercise repeated equip/unequip and replacement; prove the icon cell restores its correct background and no stale border/graphic remains. |
+| `LOADOUT-01` | Weapon clips/ammunition were previously reported as not being tied to the weapons. | Trace each weapon's loaded count/capacity and the shared reserve separately. Current Clips QA describes a shared Universal Gun Clips reserve and weapon capacity from the item's `+0x24`; verify this against source records and normal fire/reload/equip routes before resolving the complaint. |
+
+### Evidence gathered for this pass
+
+- Independent section 01 frames were inspected in sequence. They support the
+  flame lifetime, a changing title circuit background, and visible/hidden
+  Push Start phases. The title-to-options transition is cut out of the video.
+- Independent section 02 samples show Start Options, archetype selection, and
+  later opening-story scenes. They do not yet isolate the reported Decker
+  head/body, propeller, landing, or taxi states.
+- The current Debug posture QA's full-screen `page-2-up-focused.bmp` visibly
+  contains the `POSTURE` selector and bar. That disagrees with the report from
+  normal play; the menu goal remains open until the normal route is reproduced
+  and compared.
+- Stoker candidate QA is committed, but it reaches scene-2 collision record 2
+  and correctly observes event 0/no Stoker dialogue. It rejects that object as
+  the trigger; the physical mode-2/event-2 property remains unknown.
+- FIELD-01 source correction is present as an uncommitted worktree draft. Its
+  latest native-clock/expanded-QA edits have not been rebuilt or run.
+
 ## Goals
 
-### INTRO-01 — SEGA shock and logo reveal
+### INTRO-01 — SEGA shock and logo reveal (`BOOT-01` through `BOOT-03`)
 
 **Reported:** the shock sound is missing at the logo shock and plays at the
 wrong intro point; the flame decal remains after the logo is fully revealed;
@@ -50,7 +116,7 @@ than startup and its duration/stop are recorded.
 
 **Status:** pending source/evidence audit.
 
-### INTRO-02 — Push Start and title-to-start transition
+### INTRO-02 — Push Start and title-to-start transition (`TITLE-01`, `TITLE-02`)
 
 **Reported:** Push Start does not blink, and Start skips the transition into
 New Game/Load Game.
@@ -60,13 +126,14 @@ Start-edge transition/fade or wipe, then bind New Game/Load Game input only
 after the transition reaches its destination state.
 
 **Done when:** dumps include visible/hidden Push Start phases, Start pressed
-and released, every transition phase, and the clean destination menu; the
-independent section 01 frames support the sequence and timing within the
-30-fps reference's limits.
+and released, every transition phase, and the clean destination menu. The
+independent section 01 frames support the blink phases; the title-to-options
+transition is not shown in the supplied video and stays source-verified only
+unless another matching capture is found.
 
 **Status:** pending.
 
-### INTRO-03 — Decker, aircraft, landing, and taxi frame
+### INTRO-03 — Decker, aircraft, landing, and taxi frame (`OPEN-01` through `OPEN-05`, `TAXI-01`)
 
 **Reported:** intro music starts late; a Decker head floats and a body is
 superimposed; the rear propeller is static; the aircraft lands incorrectly;
@@ -80,8 +147,9 @@ closed outline. Review the full frame for old layers surviving each handoff.
 
 **Done when:** source-derived layer state and landing sequence are represented
 as typed scene state, multi-frame dumps cover propeller motion and landing,
-independent section 02 frames support placement/order, and music timing is
-verified from the source request through playback.
+matching independent section 02 frames support placement/order, and music
+timing is verified from the source request through playback. If the Decker
+route is absent from the supplied recording, record that limitation.
 
 **Status:** pending.
 
@@ -89,14 +157,16 @@ verified from the source request through playback.
 
 **Reported:** held movement appears to use a dying/fallen pose.
 
-**Current evidence:** the Qt field movement presenter selects its extracted
-`0xC0B2` family on every accepted movement. ROM `0xB330` and the no-`+0x4C`
-branch of `0xAFF2` select `0xC0B2` during behavior transitions; this alone
-does not prove that ordinary held-D-pad movement uses that family. The
-independent section 04 frames `000900..000911` show successive field movement
-states, but the input/record selector is not captured. Resolve the runtime
-selector against the actual movement and idle source paths before changing
-the sprite family or declaring the appearance correct.
+**Current source finding:** the previous Qt runtime selected its extracted
+`0xC0B2` family on every accepted movement. ROM `0xB6DE` instead installs a
+direction selector from `0xC062` after an accepted movement step; its positive
+four-frame list loops. `0xB442` restores the directional idle selector from
+`0xC052`. `0xC0B2` is an eight-descriptor finite behavior transition selected
+by `0xB330`/`0xAFF2`, which explains the fallen final pose when it was used as
+the walk cycle. For the kind-3 runner, `0xBABC` writes `0x28` to +0xCA;
+`0x600E` sets +0x18 to `0x280` against the `0x1000` period, so the pose steps
+every seven entity updates. The section 04 recording shows multiple field
+movement poses but has no synchronized input or selector log.
 
 **Solve:** trace the active runner's selector, behavior flags, direction,
 frame index, and reset on D-pad hold/release. Compare candidate ROM families
@@ -112,7 +182,9 @@ dumps pass review; matching independent frames support the pose, or the lack
 of a precise comparison is stated. The separate collision/building goal does
 not get folded into this visual claim.
 
-**Status:** active investigation. No current-build defect fix is claimed.
+**Status:** implementation and Debug/Release verification in progress. The
+Qt change is limited to this source-backed selector/asset/timing correction;
+the independent recording still cannot identify its controller state.
 
 ### FIELD-02 — Terrain collision, building access, and physical Stoker trigger
 
@@ -144,6 +216,22 @@ an injected event tuple.
 **Status:** pending follow-up. The scene-2 candidate QA is complete; the
 actual Stoker trigger and terrain/building routes remain open.
 
+### STOKER-01 — Physical Stoker property and collision-to-dialogue route
+
+The negative-candidate QA is complete in commit `c411247cb5`: scene-2 record 2
+at `0x172DBE` produces event 0 and does not open Stoker dialogue. The real
+property that publishes mode 2/event 2 has not been located. Trace that
+property's collision record, movement/contact rule, published event, generic
+dialogue speaker properties, and return path before extending the runtime.
+
+**Done when:** ordinary field input contacts the source-confirmed property;
+typed game state publishes mode 2/event 2; the generic dialog selects Stoker
+content from speaker/event state; a Debug/Release CTest and whole-screen
+entry/dialogue/return dumps pass; no injected event tuple is used.
+
+**Status:** open. The negative candidate test is complete; the physical trigger
+is unresolved.
+
 ### HUD-01 — Runner portrait palette, ammo, equipment, and combat values
 
 **Reported:** field portrait colors look wrong; the gun shows inconsistent
@@ -164,7 +252,7 @@ labeled internally verified only.
 
 **Status:** pending evidence reconciliation.
 
-### MENU-01 — Pocket Secretary navigation, Magic, and Cyberware pages
+### MENU-01 — Pocket Secretary navigation, Magic, and Cyberware pages (`SOUND-01/02`, `SEC-MAGIC`, `SEC-CYBERWARE`)
 
 **Reported:** moving between options lacks its navigation sound; selection
 and cancel sounds are missing on some pages; Magic leaves old menu text
@@ -183,7 +271,7 @@ events, playback start, and durations are recorded per action.
 
 **Status:** pending current-build reproduction.
 
-### MENU-02 — Start-menu Attributes/Skills Karma selection
+### MENU-02 — Start-menu Attributes/Skills Karma selection (`KARMA-COLOR`, `KARMA-DETAIL`)
 
 **Reported:** selection color is wrong and specific selected attributes/skills
 lack their detail text.
@@ -200,7 +288,7 @@ unverified.
 
 **Status:** pending current-build reproduction.
 
-### MENU-03 — Clips child, posture selector, and clean page replacement
+### MENU-03 — Clips child and posture selector (`CLIPS-REDRAW`, `POSTURE-FOCUS`)
 
 **Reported:** Clips draws over its parent, and the posture bar has no selector.
 Carried-forward requirement: posture is a menu reachable with Up/Down from
@@ -246,6 +334,49 @@ full-screen images are reviewed across the complete route.
 
 **Status:** pending current-build reproduction.
 
+### EQUIP-01 and EQUIP-02 — Item selector and equip/unequip cleanup
+
+Trace the source selection attributes and background ownership for each item
+cell. Verify the slim selector across selected/unselected states, then repeat
+equip, unequip, and replacement while reviewing every full-screen frame for a
+black cell box or stale icon pixels.
+
+**Done when:** item state and selector are bound to typed inventory state;
+tests cover selection and repeated equipment changes; Debug/Release full-screen
+captures show the same clean cell after each return; a matching independent
+frame is cited or its absence is explicit.
+
+**Status:** pending current-build reproduction.
+
+### LOADOUT-01 — Weapon magazine and shared reserve relationship
+
+Resolve the reported weapon-specific clip expectation from the ROM. Current
+Clips QA says each weapon's capacity comes from its item record `+0x24` while
+the Universal Gun Clips reserve is shared in runner record `+0x4F`. Follow the
+loaded count, reserve, equip, fire, and reload across at least two weapon
+types; do not add a per-weapon reserve unless the source supports it.
+
+**Done when:** visible counts agree with source state in HUD, inventory, and
+Clips; normal input can fire/reload; tests cover two capacities and reserve
+updates; full-screen output is reviewed. A matching independent loaded-save
+frame is cited or marked unavailable.
+
+**Status:** source model needs comparison to the user's reported counts.
+
+### PLAY-01 — Normal-control reachability for reported game systems
+
+Provide end-to-end Qt input routes from field play to shops, item use inside a
+building, and maglock passkey checks, including their source-backed entry,
+result, and return transitions. Reuse the generic dialog view: speaker
+properties and the triggered event determine the prompt and choices.
+
+**Done when:** each route is reachable without injected event tuples; valid
+and invalid choices update typed game state correctly; full-screen captures
+show clean entry/result/return and adjacent field/HUD state; Debug/Release CTest
+covers the full route.
+
+**Status:** pending; depends on field collision and property/event discovery.
+
 ### AUDIO-01 — Source event placement and duration across the game
 
 **Reported:** sound effects are missing or play at the wrong times, including
@@ -264,16 +395,21 @@ events remain explicitly open.
 
 ## Dependencies and sequence
 
-1. `FIELD-01` is the current active audit: resolve the movement pose and
-   ordinary D-pad animation selector before changing it.
-2. `FIELD-02` follows with the physical building/property route; the
-   scene-2 record-2 candidate is already rejected.
-3. `INTRO-01` and `INTRO-02` cover boot/title timing before the Decker/taxi
-   continuation in `INTRO-03`.
-4. `HUD-01` supplies authoritative runner/equipment state to
-   `INVENTORY-01/02`, `MENU-03`, and building item-use routes in `FIELD-02`.
-5. `MENU-01/02/03` and inventory goals are separate screen hills; each must
-   replace old controls cleanly and be validated as its own route.
-6. `AUDIO-01` is shared tracking, but each sound is closed by the screen goal
-   that owns its trigger. Do not mark the umbrella complete while any reported
-   event remains unresolved.
+1. The scene-2 candidate collision QA is committed. `STOKER-01` and `FIELD-02`
+   remain open until the real building/property producer is identified and
+   tested with ordinary input; injected event tuples do not close them.
+2. Finish and verify `FIELD-01`'s source-backed movement family before using
+   its screenshots as proof of field visual fidelity.
+3. `INTRO-01/02/03` cover logo, title, timed opening, aircraft, and taxi
+   defects; compare consecutive whole-screen frames before changing each
+   layer or timeline.
+4. `HUD-01`, `HUD-02`, `ITEMS-01`, and `LOADOUT-01` provide authoritative
+   runner/item state to inventory, combat bars, and shop routes.
+5. `MENU-01/02/03`, `EQUIP-01/02`, and `INVENTORY-01/02` are separate screen
+   routes. Each must replace old controls cleanly and be validated in normal
+   play as well as by its focused regression route.
+6. `PLAY-01` depends on field collision/property discovery. Make each named
+   shop, building-item, and maglock route reachable without event injection.
+7. `AUDIO-01` and `SOUND-01/02/03` track source events across screens. Close
+   each sound in the goal that owns its trigger; do not mark the audio group
+   complete while any reported event remains unresolved.
