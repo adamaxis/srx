@@ -3,12 +3,24 @@
 ## Result
 
 The tested New Game route reaches the west collision margin of scene 2's ROM
-object record 2, but it publishes field event `0` and opens no Stoker dialog.
-Record 2 is a type-2 collision object; that byte is not an NPC identity or a
-dialog event number. This candidate is rejected as the physical Stoker
-trigger. The physical property that publishes mode 2/event 2 remains
-unidentified, so this audit does not defend or resolve Stoker's live collision
-route.
+terrain record 2, but it publishes field event `0` and opens no Stoker dialog.
+Record 2 is a type-2 collision rectangle at `(0x560..0x57F, 0x340..0x34F)`;
+that byte is not an NPC identity or a dialog event number. It is far east and
+south of the motel doorway shown in section 03, so this candidate is rejected
+as the Stoker trigger.
+
+The visible motel doorway maps to scene-2 terrain record 91 at ROM `0x173138`:
+`(0x3C0..0x3DF, 0x280..0x29F)`, value `0xC2`. The ROM bytes were checked
+directly. New Game starts at `(0x3CE0, 0x2D00)`; normal Up input reaches this
+door's collision margin at `(0x3CE0, 0x2A58)` and the current runtime loads
+scene `0x14` through event-table row 0. It still does not open the Stoker page
+through 30 neutral destination updates. The independent clip shows the same
+door approach in section 03 frames `000028..000054`, a fade at `000055`, a
+blank generic panel at `000080`, and Stoker's populated panel at `000082`.
+Those frames establish the visual sequence, but do not expose controller
+input or the event state. The physical property/state that selects mode 2,
+event 2 remains unresolved, so this audit does not defend or resolve Stoker's
+live collision route.
 
 ROM `0x1F65A` selects the Stoker profile and `0xF4AA0..0xF4B2C` prompt graph
 only after the field-mode/event tuple is already mode 2/event 2. The candidate
@@ -33,6 +45,14 @@ untraced.
   dialogue closed through 30 neutral destination updates. This proves that
   scene-entry path only; it is not evidence that record 2 opens the Stoker
   prompt or that event 0 is the Stoker event.
+- The separate scene-2 terrain record 91 (`0x173138`, value `0xC2`) bounds the
+  motel entrance. The New Game Up route reaches its collision margin and
+  publishes event 0 before loading scene `0x14`; the current route does not
+  open Stoker dialogue.
+- Independent section 03 frames `000028..000054` show the same doorway
+  approach, `000055` begins the fade, `000080` is a blank generic panel, and
+  `000082` shows the populated Stoker panel. No controller log or collision
+  coordinate is present in that recording.
 
 The Qt CTest uses only held and released D-pad input for this route. At the
 south wall, it also verifies that a blocked held step resets the actor to
@@ -78,11 +98,12 @@ no dialogue/menu controls are overlaid.
    concern is tracked separately rather than hidden by this collision result.
 7. **Do multiple frames support the interpretation?** Yes internally: route
    checkpoints cover movement, wall rejection/bypass, contact, and idle. The
-   independent section 03 local frames `000030`, `000060`, and `000090` show a
-   city approach, a dark transition, and the Stoker arrival prompt in sequence.
-   They do not show controller input or reveal the collision coordinate, so
-   they cannot identify this trigger. Section 04 frames `000900..000911` show
-   other original-game field states and do not depict the scene-2 candidate.
+   independent section 03 frames `000028..000055` show the doorway approach
+   and fade, and frames `000080..000082` show the blank and populated Stoker
+   pages. They do not show controller input or reveal the collision state, so
+   they cannot identify what selects event 2. Section 04 frames
+   `000900..000911` show other original-game field states and do not depict
+   the scene-2 candidate.
 8. **Was prior UI cleared?** No UI is opened on the tested candidate route.
    Freshly rendered full frames contain no stale dialogue/menu controls.
 
@@ -91,14 +112,16 @@ no dialogue/menu controls are overlaid.
 - **Code changed:** a reproducible negative-candidate QA route and named CTest
   were added. The route clears stale BMPs in its own output directory and
   verifies the exact 22-file output set.
-- **Behavior implemented:** no new Stoker behavior was implemented. The route
-  records ordinary scene-2 collision and its event-0 result.
+- **Behavior implemented:** no new Stoker behavior was implemented. The QA
+  distinguishes the unrelated east/south record 2 from the visible motel
+  doorway at record 91. Normal Up input contacts record 91, publishes event 0,
+  and reaches scene `0x14`; the independent clip proceeds to Stoker dialogue,
+  but its input/event state is not observable.
 - **Internally checked:** `shadowrun_ghidra_conversion_qt_field_stoker_collision_candidate_qa`
   passes in Debug and Release; it verifies the wall reset to C052/frame zero,
   and all 22 full-screen outputs match by SHA-256 and were reviewed.
-- **Independently visually checked:** section 03 shows a city-to-Stoker prompt
-  sequence, but does not expose input or collision state. Section 04 supports
-  field movement as a screen family. Neither matches this object, route, or
-  event state.
+- **Independently visually checked:** section 03 shows the city-door approach,
+  fade, and Stoker prompt on successive full frames. It does not expose input
+  or event state, so it cannot yet validate the native contact behavior.
 - **Reported defect resolved:** no. The actual physical mode-2/event-2
   property and its collision-to-dialogue path are still open.

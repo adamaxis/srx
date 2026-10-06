@@ -90,13 +90,16 @@ shared acceptance gates are in the matching goal cluster below.
   contains the `POSTURE` selector and bar. That disagrees with the report from
   normal play; the menu goal remains open until the normal route is reproduced
   and compared.
-- Stoker candidate QA is committed, but it reaches scene-2 collision record 2
-  and correctly observes event 0/no Stoker dialogue. It rejects that object as
-  the trigger. The separate New Game Up route reaches scene `0x14` through
-  event-table row 0 and ends with dialogue closed. Independent section 03 local
-  frames `000030`, `000060`, and `000090` show a city approach, dark transition,
-  then Stoker's arrival prompt. Their controller input and collision property
-  are not recorded; the physical event producer remains unknown.
+- Stoker candidate QA is committed, but scene-2 terrain record 2 at
+  `0x172DBE` is far east/south of the motel and correctly produces event 0 with
+  no Stoker dialogue. Scene-2 terrain record 91 at `0x173138` (`0xC2`, bounds
+  `0x3C0..0x3DF` by `0x280..0x29F`) bounds the visible motel doorway. Normal
+  New Game Up input contacts that rectangle, publishes event 0, and loads scene
+  `0x14`; dialogue remains closed through 30 neutral updates. Independent
+  section 03 frames `000028..000055` show the doorway approach and fade, while
+  `000080..000082` show the blank and populated Stoker panels. That clip does
+  not record controller input or the event state. The property/state that
+  selects mode 2/event 2 remains unresolved.
 - FIELD-01 now uses separately named C062 movement assets and typed selector/
   clock state. Debug and Release field-movement QA passes: all eight selector
   pairs, a live right-held route, five frame advances and a loop wrap over 35
@@ -250,17 +253,19 @@ actual Stoker trigger and terrain/building routes remain open.
 
 ### STOKER-01 — Physical Stoker property and collision-to-dialogue route
 
-The negative-candidate QA is complete in commit `c411247cb5`: scene-2 record 2
-at `0x172DBE` produces event 0 and does not open Stoker dialogue. The real
-property that causes the Stoker arrival prompt has not been located. ROM
-`0x1F65A` maps mode 2/event 2 to the Stoker arrival record at `0xF4AA0`; treat
-that as a source lead, not proof that either tested event-0 route is the
-trigger. The separate scene-2 event-0 route reaches scene `0x14` but the Qt QA
-ends with dialogue closed. Independent section 03 local frames `000030`,
-`000060`, and `000090` show a city approach, transition, then the arrival
-prompt, without logging controls or collision coordinates. Trace the actual
-property/contact rule, published speaker/event state, generic dialogue
-selection, and return path before extending the runtime.
+The negative-candidate QA is complete in commit `c411247cb5`: scene-2 terrain
+record 2 at `0x172DBE` is unrelated to the motel entrance and produces event 0
+without Stoker dialogue. ROM record 91 at `0x173138` (`0xC2`, bounds
+`0x3C0..0x3DF` by `0x280..0x29F`) matches the visible motel doorway. Normal
+New Game Up input contacts its collision margin, publishes event 0, and loads
+scene `0x14`; the current Qt route leaves dialogue closed through 30 neutral
+updates. The independent section 03 sequence shows the runner approaching that
+door in frames `000028..000054`, a fade in `000055`, a blank generic panel in
+`000080`, and the populated Stoker panel in `000082`. It does not log input or
+the selected event. ROM `0x1F65A` maps mode 2/event 2 to the Stoker arrival
+record at `0xF4AA0`; the state/property that publishes that tuple remains
+untraced. Follow the physical contact, any scene-entry or action gate, generic
+speaker/event selection, and return path before extending runtime behavior.
 
 **Done when:** ordinary field input contacts the source-confirmed property;
 typed game state publishes the ROM-confirmed speaker/event state; the generic
