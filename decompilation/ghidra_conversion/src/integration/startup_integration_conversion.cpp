@@ -115,6 +115,8 @@ const char* startup_integration_phase_name(
         return "pre_title";
     case StartupIntegrationPhase::title_ready:
         return "title_ready";
+    case StartupIntegrationPhase::start_options_shell:
+        return "start_options_shell";
     case StartupIntegrationPhase::start_options:
         return "start_options";
     case StartupIntegrationPhase::save_load:
@@ -268,7 +270,10 @@ StartupIntegrationEvent enter_start_options_integration(
     }
     state.event_log.emplace_back("save_roster.initialized");
     enter_start_options_menu(state.start_options, callbacks.start_options);
-    set_phase(state, callbacks, StartupIntegrationPhase::start_options);
+    // 0x10B5A -> 0x10918 clears/fills the menu planes and waits one VBlank
+    // before the source transfers the new menu tiles, grid, title, and cursor.
+    // Keep that shell-only VBlank as a visible typed phase in the host.
+    set_phase(state, callbacks, StartupIntegrationPhase::start_options_shell);
     return StartupIntegrationEvent::entered_start_options;
 }
 
@@ -281,6 +286,12 @@ StartupIntegrationEvent advance_startup_integration(
     }
 
     switch (state.phase) {
+    case StartupIntegrationPhase::start_options_shell:
+        set_phase(state, callbacks, StartupIntegrationPhase::start_options);
+        if (sampled_controller_byte == 0U) {
+            return StartupIntegrationEvent::start_options_menu_revealed;
+        }
+        [[fallthrough]];
     case StartupIntegrationPhase::start_options: {
         const auto menu_event = advance_start_options_menu(
             state.start_options, sampled_controller_byte,
@@ -314,7 +325,7 @@ StartupIntegrationEvent advance_startup_integration(
                 enter_start_options_menu(
                     state.start_options, callbacks.start_options);
                 set_phase(state, callbacks,
-                          StartupIntegrationPhase::start_options);
+                          StartupIntegrationPhase::start_options_shell);
                 return StartupIntegrationEvent::returned_to_start_options;
             }
             return StartupIntegrationEvent::waiting;

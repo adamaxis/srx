@@ -1030,16 +1030,16 @@ public:
             return 3;
         }
 
-        pending_title_controller_word_ = static_cast<std::uint16_t>(
-            static_cast<std::uint16_t>(kTitleStartButton) << 8U);
         while (state_.phase == StartupIntegrationPhase::title_ready) {
             if (setup_frames++ >= kMaxSetupFrames) {
                 std::cerr << "startup dump: title did not accept Start\n";
                 return 3;
             }
+            pending_title_controller_word_ = static_cast<std::uint16_t>(
+                static_cast<std::uint16_t>(kTitleStartButton) << 8U);
             advance_one_source_frame();
         }
-        if (state_.phase != StartupIntegrationPhase::start_options) {
+        if (state_.phase != StartupIntegrationPhase::start_options_shell) {
             std::cerr << "startup dump: phase after title="
                       << startup_integration_phase_name(state_.phase) << '\n';
             return 3;
@@ -1062,7 +1062,8 @@ public:
         return 0;
     }
 
-    int prepare_startup_menu_dump(const std::uint32_t selection) {
+    int prepare_startup_menu_dump(const std::uint32_t selection,
+                                  const bool leave_at_shell = false) {
         host_frame_timer_.stop();
         if (selection > 2U) {
             std::cerr << "startup dump: selection must be 0, 1, or 2\n";
@@ -1082,21 +1083,35 @@ public:
                       << startup_integration_phase_name(state_.phase) << '\n';
             return 3;
         }
-        pending_title_controller_word_ = static_cast<std::uint16_t>(
-            static_cast<std::uint16_t>(kTitleStartButton) << 8U);
         while (state_.phase == StartupIntegrationPhase::title_ready) {
             if (setup_frames++ >= kMaxSetupFrames) {
                 std::cerr << "startup dump: title did not accept Start\n";
                 return 3;
             }
+            pending_title_controller_word_ = static_cast<std::uint16_t>(
+                static_cast<std::uint16_t>(kTitleStartButton) << 8U);
             advance_one_source_frame();
         }
-        if (state_.phase != StartupIntegrationPhase::start_options) {
+        if (state_.phase != StartupIntegrationPhase::start_options_shell) {
             std::cerr << "startup dump: phase after title="
                       << startup_integration_phase_name(state_.phase) << '\n';
             return 3;
         }
+        if (leave_at_shell) {
+            if (selection != 0U) {
+                std::cerr << "startup dump: shell stage only supports "
+                             "selection 0\n";
+                return 3;
+            }
+            return 0;
+        }
         if (selection == 0U) {
+            advance_one_source_frame();
+            if (state_.phase != StartupIntegrationPhase::start_options) {
+                std::cerr << "startup dump: Start Options did not reveal after "
+                             "its source VBlank\n";
+                return 3;
+            }
             return 0;
         }
         advance_startup_integration(state_, kStartupMenuA, startup_callbacks_);
@@ -1115,14 +1130,18 @@ public:
                            const std::uint32_t selection,
                            const std::uint32_t target_frame,
                            const std::filesystem::path& output_path) {
-        if (scene_name != "start_options" && scene_name != "archetype" &&
-            scene_name != "opening") {
+        if (scene_name != "start_options" &&
+            scene_name != "start_options_shell" &&
+            scene_name != "archetype" && scene_name != "opening") {
             std::cerr << "startup dump: unknown stage " << scene_name
-                      << " (expected start_options, archetype, or opening)\n";
+                      << " (expected start_options, start_options_shell, "
+                         "archetype, or opening)\n";
             return 3;
         }
-        if (scene_name == "start_options") {
-            if (prepare_startup_menu_dump(0U) != 0) {
+        if (scene_name == "start_options" ||
+            scene_name == "start_options_shell") {
+            if (prepare_startup_menu_dump(
+                    0U, scene_name == "start_options_shell") != 0) {
                 return 3;
             }
             return write_startup_dump_image(
@@ -1216,15 +1235,17 @@ public:
             return 3;
         }
 
-        pending_title_controller_word_ = static_cast<std::uint16_t>(
-            static_cast<std::uint16_t>(kTitleStartButton) << 8U);
         while (state_.phase == StartupIntegrationPhase::title_ready) {
+            pending_title_controller_word_ = static_cast<std::uint16_t>(
+                static_cast<std::uint16_t>(kTitleStartButton) << 8U);
             if (!pump()) {
                 std::cerr << "intro-to-field: title did not accept Start\n";
                 return 3;
             }
         }
-        if (state_.phase != StartupIntegrationPhase::start_options) {
+        if (state_.phase != StartupIntegrationPhase::start_options_shell ||
+            !pump() ||
+            state_.phase != StartupIntegrationPhase::start_options) {
             std::cerr << "intro-to-field: phase after title="
                       << startup_integration_phase_name(state_.phase) << '\n';
             return 3;
@@ -1478,12 +1499,17 @@ public:
                 }
             }
             const auto is_startup_menu =
+                state_.phase == StartupIntegrationPhase::start_options_shell ||
                 state_.phase == StartupIntegrationPhase::start_options ||
                 state_.phase == StartupIntegrationPhase::save_load ||
                 state_.phase == StartupIntegrationPhase::joshua_archetype;
-            if (is_startup_menu && !startup_shell_survives(scene)) {
+            if (is_startup_menu &&
+                (!startup_shell_survives(scene) ||
+                 (state_.phase ==
+                      StartupIntegrationPhase::start_options_shell &&
+                  !startup_shell_only(scene)))) {
                 std::cerr << "startup qa: startup bezel/decal layer was "
-                             "not preserved for "
+                             "not preserved or shell phase was not clean for "
                           << name << '\n';
                 return false;
             }
@@ -2199,7 +2225,7 @@ public:
                     vblank % kTitleModeEntryVblanksPerTransaction);
             const bool final_vblank = vblank == 18U;
             const auto expected_phase = final_vblank
-                ? StartupIntegrationPhase::start_options
+                ? StartupIntegrationPhase::start_options_shell
                 : StartupIntegrationPhase::title_ready;
             if (state_.phase != expected_phase ||
                 title_mode_entry_service_.transactions_started !=
@@ -2216,7 +2242,7 @@ public:
                             "from the source transaction sequence");
             }
             const auto label = final_vblank
-                ? std::string("title-mode-entry-vblank-18-start-options")
+                ? std::string("title-mode-entry-vblank-18-start-options-shell")
                 : std::string("title-mode-entry-vblank-") +
                       (vblank < 10U ? std::string("0") : std::string()) +
                       std::to_string(vblank);
@@ -2229,6 +2255,11 @@ public:
                 return fail("mode-entry hold or clean Start Options redraw "
                             "failed full-screen review checks");
             }
+        }
+
+        advance_one_source_frame();
+        if (state_.phase != StartupIntegrationPhase::start_options) {
+            return fail("Start Options did not reveal after its shell VBlank");
         }
 
         const auto start_options_destination = render_scene();
@@ -2277,11 +2308,19 @@ public:
             return 3;
         }
         advance_startup_integration(state_, kStartupMenuA, startup_callbacks_);
-        if (state_.phase != StartupIntegrationPhase::start_options) {
+        if (state_.phase != StartupIntegrationPhase::start_options_shell) {
             return fail("no-save message did not return to Start Options");
         }
+        record("menu.start_options.return_shell_from_load");
+        if (!write_snapshot("06_start_options_shell_return_from_load")) {
+            return 3;
+        }
+        advance_one_source_frame();
+        if (state_.phase != StartupIntegrationPhase::start_options) {
+            return fail("Start Options shell did not reveal after Load return");
+        }
         record("menu.start_options.returned_from_load");
-        if (!write_snapshot("06_start_options_returned_from_load")) {
+        if (!write_snapshot("07_start_options_returned_from_load")) {
             return 3;
         }
 
@@ -2290,7 +2329,7 @@ public:
             return fail("New Game did not enter archetype selection");
         }
         record("menu.archetype.samurai");
-        if (!write_snapshot("07_archetype_samurai")) {
+        if (!write_snapshot("08_archetype_samurai")) {
             return 3;
         }
         advance_startup_integration(
@@ -2300,7 +2339,7 @@ public:
             return fail("archetype selector did not reach Decker");
         }
         record("menu.archetype.decker");
-        if (!write_snapshot("08_archetype_decker")) {
+        if (!write_snapshot("09_archetype_decker")) {
             return 3;
         }
         advance_startup_integration(
@@ -2310,7 +2349,7 @@ public:
             return fail("archetype selector did not reach Gator Shaman");
         }
         record("menu.archetype.gator_shaman");
-        if (!write_snapshot("09_archetype_gator_shaman")) {
+        if (!write_snapshot("10_archetype_gator_shaman")) {
             return 3;
         }
         advance_startup_integration(state_, kStartupMenuA, startup_callbacks_);
@@ -2318,7 +2357,7 @@ public:
             return fail("Gator Shaman did not start opening intro");
         }
         record("opening.initial");
-        if (!write_snapshot("10_opening_initial")) {
+        if (!write_snapshot("11_opening_initial")) {
             return 3;
         }
 
@@ -2485,6 +2524,14 @@ protected:
             pending_title_controller_word_ = static_cast<std::uint16_t>(
                 pending_title_controller_word_ |
                 (static_cast<std::uint16_t>(sample) << 8U));
+        } else if (state_.phase ==
+                   StartupIntegrationPhase::start_options_shell) {
+            // The ROM does not sample the menu until after the shell's
+            // VBlank, but a button held through that one-frame reveal is
+            // sampled on the first menu pass. Retain its current host state.
+            pending_start_options_controller_byte_ =
+                static_cast<std::uint8_t>(
+                    pending_start_options_controller_byte_ | sample);
         } else if (state_.phase == StartupIntegrationPhase::start_options ||
                    state_.phase == StartupIntegrationPhase::save_load ||
                    state_.phase == StartupIntegrationPhase::joshua_archetype) {
@@ -2497,6 +2544,18 @@ protected:
     }
 
     void keyReleaseEvent(QKeyEvent* event) override {
+        if (state_.phase == StartupIntegrationPhase::start_options_shell &&
+            !event->isAutoRepeat()) {
+            const auto released = sampled_menu_byte(event->key());
+            if (released != 0U) {
+                pending_start_options_controller_byte_ =
+                    static_cast<std::uint8_t>(
+                        pending_start_options_controller_byte_ &
+                        static_cast<std::uint8_t>(~released));
+                event->accept();
+                return;
+            }
+        }
         if (state_.phase == StartupIntegrationPhase::field_ready &&
             !event->isAutoRepeat()) {
             const auto direction_bit =
@@ -2544,6 +2603,19 @@ private:
              QPoint(250, 190)});
     }
 
+    bool startup_shell_only(const QImage& scene) const {
+        if (draw_asset_cache_.find("menu.startup.background") ==
+            draw_asset_cache_.end()) {
+            return false;
+        }
+        QImage expected(scene.size(), QImage::Format_RGB32);
+        expected.fill(Qt::black);
+        QPainter painter(&expected);
+        draw_alias(painter, "menu.startup.background");
+        painter.end();
+        return scene.convertToFormat(QImage::Format_RGB32) == expected;
+    }
+
     QImage render_scene() {
         // Genesis rebuilds the visible frame during vblank. The host has no
         // SAT/VDP, so each tick composites into an opaque 320x224 buffer and
@@ -2555,6 +2627,9 @@ private:
         QPainter scene_painter(&scene);
         if (state_.phase == StartupIntegrationPhase::pre_title) {
             draw_boot_scene(scene_painter);
+        } else if (state_.phase ==
+                   StartupIntegrationPhase::start_options_shell) {
+            draw_alias(scene_painter, "menu.startup.background");
         } else if (state_.phase == StartupIntegrationPhase::start_options ||
                    state_.phase == StartupIntegrationPhase::save_load ||
                    state_.phase == StartupIntegrationPhase::joshua_archetype) {
@@ -2613,12 +2688,17 @@ private:
         const std::filesystem::path& output_path) {
         const auto scene = render_scene();
         const auto is_startup_menu =
+            state_.phase == StartupIntegrationPhase::start_options_shell ||
             state_.phase == StartupIntegrationPhase::start_options ||
             state_.phase == StartupIntegrationPhase::save_load ||
             state_.phase == StartupIntegrationPhase::joshua_archetype;
-        if (is_startup_menu && !startup_shell_survives(scene)) {
-            std::cerr << "startup dump: startup bezel/decal layer was not "
-                         "preserved\n";
+        if (is_startup_menu &&
+            (!startup_shell_survives(scene) ||
+             (state_.phase == StartupIntegrationPhase::start_options_shell &&
+              !startup_shell_only(scene)))) {
+            std::cerr << "startup dump: startup shell was not cleanly "
+                         "present for "
+                      << scene_name << '\n';
             return 3;
         }
         if (!scene.save(QString::fromStdWString(output_path.wstring()))) {
@@ -3113,6 +3193,13 @@ private:
     void advance_one_source_frame() {
         if (state_.phase == StartupIntegrationPhase::pre_title) {
             advance_startup_boot_frame(state_, startup_callbacks_);
+            return;
+        }
+        if (state_.phase == StartupIntegrationPhase::start_options_shell) {
+            const auto sampled = pending_start_options_controller_byte_;
+            pending_start_options_controller_byte_ = 0U;
+            advance_startup_integration(state_, sampled,
+                                        startup_callbacks_);
             return;
         }
         if (state_.phase == StartupIntegrationPhase::opening_intro) {
@@ -3896,6 +3983,7 @@ private:
     std::int16_t title_sprite_x_ = 0x98;
     std::uint16_t title_controller_events_ = 0;
     std::uint16_t pending_title_controller_word_ = 0;
+    std::uint8_t pending_start_options_controller_byte_ = 0;
     std::uint8_t field_controller_nibble_ = 0;
     std::uint8_t field_controller_port_byte_ = 0;
     std::uint32_t title_vblanks_ = 0;

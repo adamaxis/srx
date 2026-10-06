@@ -162,6 +162,9 @@ StartupIntegrationCallbacks make_callbacks(
                    ? "service_audio_variant_transaction"
                    : "service_audio_fc08_select");
     };
+    callbacks.pre_title.latch_controller_events = [&observations] {
+        record(observations, "latch_controller_events");
+    };
     callbacks.pre_title.sample_controller = [&observations] {
         record(observations, "sample_controller");
     };
@@ -371,7 +374,7 @@ int main() {
             StartupIntegrationStartResult::title_ready ||
         load_state.phase != StartupIntegrationPhase::title_ready ||
         !load_state.pre_title_complete || !load_state.boot.display_ready ||
-        !load_state.boot.title_ready || load_state.boot.vblank_count != 458U ||
+        !load_state.boot.title_ready || load_state.boot.vblank_count != 560U ||
         !load_state.startup_records.has_value() ||
         !load_state.field_session_source_assets.has_value() ||
         load_state.startup_records->joshua_archetypes.size() != 3U ||
@@ -405,13 +408,18 @@ int main() {
 
     if (enter_start_options_integration(load_state, load_callbacks) !=
             StartupIntegrationEvent::entered_start_options ||
-        load_state.phase != StartupIntegrationPhase::start_options ||
+        load_state.phase != StartupIntegrationPhase::start_options_shell ||
         load_state.start_options.selected != StartOptionsChoice::new_game ||
         !load_state.save_roster_buffer.has_value() ||
         load_state.save_roster_buffer->compact_records.size() !=
             kSaveRosterTemplateCount ||
         !has_event(load_state, "save_roster.initialized")) {
         return 2;
+    }
+    if (advance_startup_integration(load_state, 0U, load_callbacks) !=
+            StartupIntegrationEvent::start_options_menu_revealed ||
+        load_state.phase != StartupIntegrationPhase::start_options) {
+        return 26;
     }
     if (advance_startup_integration(
             load_state, kStartupMenuDown, load_callbacks) !=
@@ -434,7 +442,7 @@ int main() {
     }
     if (advance_startup_integration(load_state, kStartupMenuA, load_callbacks) !=
             StartupIntegrationEvent::returned_to_start_options ||
-        load_state.phase != StartupIntegrationPhase::start_options) {
+        load_state.phase != StartupIntegrationPhase::start_options_shell) {
         return 16;
     }
 
