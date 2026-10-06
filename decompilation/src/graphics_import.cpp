@@ -5335,10 +5335,6 @@ decode_genesis_field_entity_animation_sequences(
             "Genesis field animation state list is truncated"));
         animation.state_marker = read16(
             state_list, "Genesis field animation marker is truncated");
-        if (static_cast<std::int16_t>(animation.state_marker) >= 0) {
-            throw std::runtime_error(
-                "Genesis field walking animation has no terminal marker");
-        }
         const auto frame_count = static_cast<std::size_t>(
             animation.state_marker & 0x7FFFU);
         if (frame_count == 0 || frame_count > 256U) {
@@ -5346,18 +5342,17 @@ decode_genesis_field_entity_animation_sequences(
                 "Genesis field walking animation frame count is invalid");
         }
 
-        // The kind-3 walking lists are laid out as:
-        //   0x8008 marker, auxiliary word, descriptor pointer[0..7].
-        // This is distinct from the positive-marker lists handled by the
-        // legacy single-frame decoder above.
+        // Kind-3 animation lists start with a signed/positive marker, an
+        // auxiliary word, then one descriptor pointer per low-15-bit count.
+        // C062 uses a positive looping marker (four walking poses); C0B2
+        // uses a high-bit finite transition marker (eight descriptors).
         animation.state_auxiliary_word = read16(
             state_list + 2U,
             "Genesis field animation auxiliary word is truncated");
         animation.source_timing_value = source_timing_value;
-        // ROM 0x600E copies the selected list's auxiliary word (0x0200 for
-        // the walking lists) into record +0x18; +0x1C remains the 0x1000
-        // threshold consumed by 0x5FDC. The typed conversion reads the
-        // auxiliary word as the frame increment.
+        // Kept as source metadata for audits. 0x600E interprets the list
+        // differently according to the marker sign; positive lists calculate
+        // +0x18 from the live record's +0xCA timing word.
         animation.timing_multiplier = 0x0010U;
         animation.frames.reserve(frame_count);
         for (std::size_t frame = 0; frame < frame_count; ++frame) {

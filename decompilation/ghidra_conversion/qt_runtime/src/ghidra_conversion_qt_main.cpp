@@ -3304,6 +3304,12 @@ int run_field_motel_entry_qa(
     bool transition_started = false;
     bool fade_started = false;
     std::uint32_t transition_start_frame = 0U;
+    std::uint16_t transition_position_x = 0U;
+    std::uint16_t transition_position_y = 0U;
+    std::int32_t transition_camera_x = 0;
+    std::uint8_t transition_event_code = 0U;
+    std::uint16_t transition_projected_code = 0U;
+    std::uint8_t transition_cell_status = 0U;
     std::uint32_t frame = 0U;
     for (; frame < 256U; ++frame) {
         field_scene.advance_frame();
@@ -3325,6 +3331,24 @@ int run_field_motel_entry_qa(
             field_scene.field_scene_reference_for_dump() != 2U) {
             transition_started = true;
             transition_start_frame = frame + 1U;
+            transition_position_x = position.x;
+            transition_position_y = position.y;
+            transition_camera_x = static_cast<std::int32_t>(
+                field_scene.state().field_scene_buffers.camera_x);
+            transition_event_code =
+                field_scene.field_mode_event_code_for_dump();
+            transition_projected_code =
+                field_scene.field_projected_code_for_dump();
+            const auto cell_x = static_cast<std::size_t>(position.x >> 9U);
+            const auto cell_y = static_cast<std::size_t>(position.y >> 9U);
+            const auto cell_index = cell_y * 64U + cell_x;
+            const auto& collision_map = field_scene.state()
+                                            .field_scene_buffers
+                                            .source_metadata
+                                            .terrain_collision_map;
+            if (cell_index < collision_map.size()) {
+                transition_cell_status = collision_map[cell_index];
+            }
             if (!save_frame("doorway-trigger", false)) {
                 return 3;
             }
@@ -3585,6 +3609,14 @@ int run_field_motel_entry_qa(
 
     std::cout << "field_motel_entry_qa=passed input=up frames=" << frame
               << " transition_frame=" << transition_start_frame
+              << " transition_position=" << transition_position_x << ','
+              << transition_position_y
+              << " camera_x=" << transition_camera_x
+              << " event_code="
+              << static_cast<unsigned>(transition_event_code)
+              << " projected_code=" << transition_projected_code
+              << " center_cell_status=0x" << std::hex
+              << static_cast<unsigned>(transition_cell_status) << std::dec
               << " destination=0x14 dialogue="
               << (field_scene.dialogue_open() ? "open" : "closed")
               << " sfx_events=" << field_audio_events.size()
@@ -3717,15 +3749,29 @@ int run_field_stoker_collision_candidate_qa(
         }
     }
     const auto wall_position = field_scene.field_entity_world_position();
+    const auto wall_animation_selector =
+        field_scene.field_entity_animation_selector_for_dump();
+    const bool blocked_animation_resets_to_idle =
+        !field_scene.field_entity_walking_for_dump() &&
+        field_scene.field_entity_animation_frame_for_dump() == 0U &&
+        wall_animation_selector <= 0x001CU &&
+        (wall_animation_selector & 0x0003U) == 0U;
     if (!save("wall-approach.bmp") || !route_active() ||
+        !blocked_animation_resets_to_idle ||
         wall_position.y < 0x3180U || wall_position.y > 0x31A0U) {
         std::cerr << "field Stoker-property QA: did not stop at the source "
-                     "wall row before the property lane (ticks="
+                     "wall row in C052 idle before the property lane "
+                     "(ticks="
                   << south_ticks << ", position=" << wall_position.x << ','
                   << wall_position.y << ", event="
                   << static_cast<unsigned>(
                          field_scene.field_mode_event_code_for_dump())
                   << ", scene=" << field_scene.field_scene_reference_for_dump()
+                  << ", walking="
+                  << (field_scene.field_entity_walking_for_dump() ? "yes"
+                                                                  : "no")
+                  << ", selector=" << wall_animation_selector << ", frame="
+                  << field_scene.field_entity_animation_frame_for_dump()
                   << ")\n";
         return 3;
     }
@@ -3903,6 +3949,7 @@ int run_field_stoker_collision_candidate_qa(
               << collision_candidate_y
               << " outcome=no_stoker_dialogue east_ticks=" << east_ticks
               << " south_ticks=" << south_ticks
+              << " blocked_animation=C052_idle"
               << " property_ticks=" << property_ticks
               << " sfx_events=" << field_audio_events.size()
               << " artifacts=" << output.string() << '\n';
@@ -4420,6 +4467,44 @@ int main(int argc, char** argv) {
             if (field_movement_qa_path.has_value()) {
                 std::filesystem::create_directories(
                     *field_movement_qa_path);
+                std::error_code movement_directory_error;
+                for (std::filesystem::directory_iterator item(
+                         *field_movement_qa_path, movement_directory_error),
+                     end;
+                     !movement_directory_error && item != end;
+                     item.increment(movement_directory_error)) {
+                    if (item->is_regular_file(movement_directory_error) &&
+                        item->path().extension() == ".bmp") {
+                        std::filesystem::remove(item->path(),
+                                                movement_directory_error);
+                    }
+                }
+                if (movement_directory_error) {
+                    std::cerr << "field movement QA: could not clear stale "
+                                 "BMP checkpoints: "
+                              << movement_directory_error.message() << '\n';
+                    return 3;
+                }
+                constexpr std::array<std::uint16_t, 8> expected_idle_selectors{{
+                    0x0000U, 0x0004U, 0x0008U, 0x000CU,
+                    0x0010U, 0x0014U, 0x0018U, 0x001CU}};
+                constexpr std::array<std::uint16_t, 8> expected_walk_selectors{{
+                    0x0020U, 0x0024U, 0x0028U, 0x002CU,
+                    0x0030U, 0x0034U, 0x0038U, 0x003CU}};
+                for (std::uint8_t direction = 0U; direction < 8U;
+                     ++direction) {
+                    if (select_field_entity_animation_selector(
+                            direction, false) !=
+                            expected_idle_selectors[direction] ||
+                        select_field_entity_animation_selector(
+                            direction, true) !=
+                            expected_walk_selectors[direction]) {
+                        std::cerr << "field movement QA: C052/C062 selector "
+                                     "mapping diverged at direction "
+                                  << static_cast<unsigned>(direction) << '\n';
+                        return 3;
+                    }
+                }
                 const auto render_field = [&] {
                     QImage image(kSceneWidth, kSceneHeight,
                                  QImage::Format_RGB32);
@@ -4444,6 +4529,20 @@ int main(int argc, char** argv) {
                     };
                 const auto initial_position =
                     field_scene.field_entity_world_position();
+                auto previous_animation_frame =
+                    field_scene.field_entity_animation_frame_for_dump();
+                auto previous_walking =
+                    field_scene.field_entity_walking_for_dump();
+                std::uint8_t frame_advance_count = 0U;
+                std::uint8_t frame_wrap_count = 0U;
+                std::uint8_t last_frame_advance_tick = 0U;
+                bool animation_intervals_valid = true;
+                std::array<bool, kFieldWalkAnimationFrameCount>
+                    observed_walk_frames{};
+                SceneRunnerPosition held_position_at_sixteen{};
+                std::uint16_t held_animation_frame_at_sixteen = 0U;
+                std::uint16_t held_animation_selector_at_sixteen = 0U;
+                bool held_walking_at_sixteen = false;
                 if (!save_movement_frame("idle")) {
                     std::cerr << "field movement QA: initial dump failed\n";
                     return 3;
@@ -4451,20 +4550,57 @@ int main(int argc, char** argv) {
 
                 field_scene.set_controller_nibble(0x08U);
                 std::uint16_t heading_after_eight_ticks = 0U;
-                for (std::uint8_t tick = 1U; tick <= 16U; ++tick) {
+                for (std::uint8_t tick = 1U; tick <= 35U; ++tick) {
                     field_scene.advance_frame();
                     if (tick == 8U) {
                         heading_after_eight_ticks =
                             field_scene.field_entity_heading_for_dump();
                     }
                     if (tick == 1U || tick == 4U || tick == 8U ||
-                        tick == 16U) {
+                        tick == 7U || tick == 14U || tick == 16U ||
+                        tick == 21U || tick == 28U || tick == 32U ||
+                        tick == 35U) {
                         if (!save_movement_frame(
                                 "right-held-" + std::to_string(tick))) {
                             std::cerr << "field movement QA: frame dump failed\n";
                             return 3;
                         }
                     }
+                    const auto animation_frame =
+                        field_scene.field_entity_animation_frame_for_dump();
+                    const auto walking =
+                        field_scene.field_entity_walking_for_dump();
+                    if (walking &&
+                        animation_frame < observed_walk_frames.size()) {
+                        observed_walk_frames[animation_frame] = true;
+                    }
+                    if (walking && previous_walking &&
+                        animation_frame != previous_animation_frame) {
+                        if (last_frame_advance_tick != 0U) {
+                            const auto interval = static_cast<std::uint8_t>(
+                                tick - last_frame_advance_tick);
+                            animation_intervals_valid =
+                                animation_intervals_valid && interval >= 6U &&
+                                interval <= 7U;
+                        }
+                        if (previous_animation_frame ==
+                                kFieldWalkAnimationFrameCount - 1U &&
+                            animation_frame == 0U) {
+                            ++frame_wrap_count;
+                        }
+                        last_frame_advance_tick = tick;
+                        ++frame_advance_count;
+                    }
+                    if (tick == 16U) {
+                        held_position_at_sixteen =
+                            field_scene.field_entity_world_position();
+                        held_animation_frame_at_sixteen = animation_frame;
+                        held_animation_selector_at_sixteen =
+                            field_scene.field_entity_animation_selector_for_dump();
+                        held_walking_at_sixteen = walking;
+                    }
+                    previous_animation_frame = animation_frame;
+                    previous_walking = walking;
                 }
                 const auto held_position =
                     field_scene.field_entity_world_position();
@@ -4479,10 +4615,10 @@ int main(int argc, char** argv) {
                 const auto held_walking =
                     field_scene.field_entity_walking_for_dump();
                 const auto x_delta = static_cast<std::int32_t>(
-                    held_position.x) -
+                    held_position_at_sixteen.x) -
                     static_cast<std::int32_t>(initial_position.x);
                 const auto y_delta = static_cast<std::int32_t>(
-                    held_position.y) -
+                    held_position_at_sixteen.y) -
                     static_cast<std::int32_t>(initial_position.y);
 
                 field_scene.set_controller_nibble(0U);
@@ -4495,8 +4631,15 @@ int main(int argc, char** argv) {
                 if (held_target != 0x4000U ||
                     heading_after_eight_ticks != 0x4000U ||
                     held_heading != 0x4000U || x_delta != 600 ||
-                    y_delta != -200 || held_animation_frame != 1U ||
-                    !held_walking ||
+                    y_delta != -200 || held_animation_frame_at_sixteen >= 4U ||
+                    frame_advance_count < 5U || frame_wrap_count == 0U ||
+                    !std::all_of(observed_walk_frames.begin(),
+                                 observed_walk_frames.end(),
+                                 [](const bool observed) { return observed; }) ||
+                    !animation_intervals_valid || !held_walking_at_sixteen ||
+                    held_animation_selector_at_sixteen != 0x0028U ||
+                    held_animation_frame >= kFieldWalkAnimationFrameCount ||
+                    !held_walking || held_animation_selector != 0x0028U ||
                     field_scene.field_entity_walking_for_dump() ||
                     field_scene.field_entity_animation_selector_for_dump() ==
                         held_animation_selector ||
@@ -4518,8 +4661,15 @@ int main(int argc, char** argv) {
                           << " heading_at_tick_8="
                           << heading_after_eight_ticks << " delta=" << x_delta
                           << ',' << y_delta
-                          << " walk_frame=" << held_animation_frame
+                          << " walk_frame_at_16="
+                          << held_animation_frame_at_sixteen
+                          << " walk_frame_at_35=" << held_animation_frame
+                          << " frame_advances="
+                          << static_cast<unsigned>(frame_advance_count)
+                          << " frame_wraps="
+                          << static_cast<unsigned>(frame_wrap_count)
                           << " walk_selector=" << held_animation_selector
+                          << " directions=8"
                           << " artifacts="
                           << field_movement_qa_path->string() << '\n';
                 return 0;

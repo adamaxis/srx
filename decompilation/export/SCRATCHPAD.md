@@ -259,11 +259,14 @@ through 5. `FFE186 == 3` instead chases the fixed point `(0x600, 0)` through
 the `0x4290` direction table. Dirty layer words and the interaction lock skip
 the write. The tile-edge uploads `0x4018` and `0x40E2` stay callbacks.
 
-Field walk/idle sprites follow the ROM selector tables `0xC052` and `0xC072`.
-An accepted step publishes the walking selector and copies the list auxiliary
-`0x0300` into the `0x5FDC` increment; the template period `0x1000` stays.
-`0x600E` keeps the last of the two walk poses until `0xAF6C` restarts the
-clock on a selector change. No input returns the idle table.
+Normal accepted field movement selects the positive four-pose `0xC062` loops
+through the selector written at `0xB6BA..0xB6DE`; the blocked/stopped reset at
+`0xB442` selects static directional poses from `0xC052`. For the kind-3
+runner, `0xBABC` copies the direction vector's timing word `0x0028` to +0xCA,
+and `0x600E` derives +0x18=`0x0280` against the +0x1C=`0x1000` period used by
+`0x5FDC`. The four-pose list loops; `0xC0B2` is a separate finite eight-pose
+behavior transition selected by `0xB330`/`0xAFF2`, not the ordinary walk
+cycle. No input or blocked movement returns to C052 idle.
 
 Field HUD overlays follow the `$F000` nametable writes: `0x35D4` portrait at
 `F1C6`, `0x3674` physical bar at `F1C4`, mental bar at `F3C6`, `0x35F0` item

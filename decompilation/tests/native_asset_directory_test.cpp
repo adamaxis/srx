@@ -104,7 +104,8 @@ int main() {
             } else if (kind == "text") {
                 require(alias == "menu.field.text" ||
                             alias == "dialogue.stoker.motel" ||
-                            alias == "menu.pocket_secretary.notebook.tips",
+                            alias == "menu.pocket_secretary.notebook.tips" ||
+                            alias == "dialogue.field.interactions",
                         "unexpected text resource alias: " + alias);
                 ++text_count;
             } else {
@@ -115,8 +116,8 @@ int main() {
 
         require(native_state_seen && state_count != 0U,
                 "resources.tsv must contain a native state row");
-        require(text_count == 3U,
-                "resources.tsv must contain the field, dialogue, and Notebook Tips text rows");
+        require(text_count == 4U,
+                "resources.tsv must contain field, dialogue, interaction, and Notebook Tips text rows");
         require(image_count == assets.resources.size(),
                 "manifest image rows and loaded resources differ");
         require(audio_count == 65U,

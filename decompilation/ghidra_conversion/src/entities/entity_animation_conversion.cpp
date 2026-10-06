@@ -28,10 +28,7 @@ std::uint32_t entity_kind_state_table(const std::uint16_t kind) {
 }
 
 std::uint16_t bound_field_walk_animation_frame(const std::uint16_t frame) {
-    if (frame < kFieldWalkAnimationFrameCount) {
-        return frame;
-    }
-    return kFieldWalkAnimationFrameCount - 1U;
+    return static_cast<std::uint16_t>(frame % kFieldWalkAnimationFrameCount);
 }
 
 bool advance_entity_sprite_descriptor(

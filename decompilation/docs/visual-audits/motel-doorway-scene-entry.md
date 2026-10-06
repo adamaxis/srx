@@ -17,14 +17,18 @@ Runtime: `qt_runtime/field_scene_runtime.cpp`; QA:
   the extracted heading table.
 - Normal up input moves the runner into the C0 doorway collision. The blocked
   interaction publishes event 0; active scene-2 event-table row 0 selects
-  destination scene `0x14`.
+  destination scene `0x14`. After 17 held updates, the runner is at raw
+  fixed-point position `(0x3CE0, 0x2A58)` with camera X `0x3400`; QA observes
+  event code 0 and projected code `0x20` at the transition.
 - The collision frame already includes fade update 1: signed timer 15 and one
   palette step. The source fade expires after 17 field updates. The following
   transition loads the destination buffers, clears the old fade overlay, and
   refreshes the camera/entity render state.
 - The destination runner remains at `(0x5A00, 0x0800)` with camera
   `(0x5100, 0)` and stays visible through 30 no-input updates. Dialogue stays
-  closed on this route; no Stoker text is inferred or synthesized.
+  closed through the 30 no-input updates currently covered by this QA. This
+  establishes the scene-entry result, not the trigger shown in the separate
+  Stoker arrival sequence.
 - **Review correction (2026-10-05):** the earlier `destination-idle-*` captures
   were taken while Up was still held. The runner looked stationary because the
   destination spawn is blocked, so those frames did not prove no-input idle
@@ -48,11 +52,14 @@ Runtime: `qt_runtime/field_scene_runtime.cpp`; QA:
   byte-identical.
 - Nearby independent longplay frames were checked in the supplied 30-fps
   corpus: section 02 frames `001740`/`001800` show cab destination selection;
-  section 03 frames `000300`/`000600` show Stoker dialogue and `001200` shows
-  Jump House text; section 04 frame `003000` shows a different dark field
-  corridor. None shows this scene-2 C0 doorway and scene-0x14 field entry.
-  These samples do not establish a visual match, and this check is not an
-  exhaustive scan of every video frame.
+  section 03 local frames `000030`, `000060`, and `000090` show a city
+  approach, dark transition, and Stoker arrival prompt, but do not expose the
+  controller input or exact collision coordinate. Section 03 local frames
+  `000300`/`000600` show later Stoker dialogue and `001200` shows Jump House
+  text; section 04 frame `003000` shows a different dark field corridor. No
+  checked frame identifies this exact scene-2 contact point or confirms the
+  Qt destination pixels. This check is not an exhaustive scan of every video
+  frame.
 
 ## Question pass
 

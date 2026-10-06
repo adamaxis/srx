@@ -1770,67 +1770,75 @@ independent magazines would contradict this ROM's `+0x4E` transitions.
 
 ### Applied review: held D-pad movement and field redraw
 
-1. **Does it look correct?** Native full-frame captures are in
-   `qt_runtime/field-movement-qa/`: `idle.bmp`, `right-held-1.bmp`,
-   `right-held-4.bmp`, `right-held-8.bmp`, `right-held-16.bmp`, and
-   `released-idle.bmp`; `actual.bmp` is the release-to-idle image. The player
-   stays visible as the map scrolls through
-   the lower edge of the concrete corridor into its dark field region. The
-   independent corridor sequence has a related transition, but not a proven
-   matching input or map state; exact placement remains unresolved.
+1. **Does it look correct?** Thirteen full-screen 320x224 captures in
+   `build-qt-runtime-{debug,release}/qt_runtime/field-movement-qa/` cover idle,
+   held-right ticks 1/4/7/8/14/16/21/28/32/35, release, and `actual.bmp`.
+   The previous Qt family used the finite C0B2 transition sequence for normal
+   movement; the corrected captures show the C062 stride loop without its
+   fallen terminal pose or sprite trail. The map and HUD remain visible.
 2. **Does the visible look reflect the behavioral state?** The held nibble
-   `0x08` indexes target heading `0x4000` in ROM table `0x19D2`. Native typed
-   state records the current/target headings, world position, walking flag,
-   selector, and frame. Starting at `(15584,11520)`, the eight-tick current
-   heading reaches `0x4000`; after 16 ticks the source vectors produce
-   `(16184,11320)` and the walk frame is 1. Releasing input returns to the
-   right-facing idle selector and resets its frame.
+   `0x08` selects target heading `0x4000` through `0x19D2`. Starting at
+   `(15584,11520)`, the eight-tick heading reaches `0x4000`; after 16 ticks the
+   source vector path reaches `(16184,11320)`. Accepted rightward movement
+   selects C062 selector `0x28`. Release selects the C052 right-facing idle
+   state. The regression checks all eight selector pairs, the live rightward
+   route, four-frame bounds, heading, position, repeated frame changes, a loop
+   wrap, and idle return.
 3. **Are the visuals themselves correct?** ROM `0xB530` advances the current
-   heading by `0x0800`; `0xBABC` maps it to one of the eight signed vectors at
-   `0xC002`; `0xB77E`/`0xE7C8` gate the position commit. The directional entity
-   projection and named sprite frames feed the field compositor. The
-   independent captures do not expose D-pad input, so they support corridor
-   player placement only and do not prove the native right-turn path or exact
-   sprite alignment.
-4. **Is it animated, and should it be?** ROM `0x5FDC` advances the selected
-   descriptor index from record `+0x18/+0x1A/+0x1C`; the `0xC0B2` lists have
-   marker `0x8008`, increment `0x0200`, and eight descriptors. ROM `0xB330` and
-   the no-`+0x4C` branch of `0xAFF2` select `0xC0B2` on behavior-transition
-   paths. That is not yet an end-to-end trace of the ordinary held-D-pad
-   selector. The Qt presenter currently forces this family on every accepted
-   movement and advances it on the modeled cadence. Independent section 04
-   frames `000900..000911` show multiple original-game field poses, but no
-   input or selector state. Treat the normal movement family and cadence as
-   unresolved under defect goal FIELD-01.
-5. **Does movement have sound?** The reviewed input, heading, vector, and
-   collision chain has no direct sound call. A wider source trace for field
-   footstep/audio dispatch has not established whether movement plays a cue,
-   its event ID, or its lifetime. This remains unknown; no sound is assigned.
-6. **Are related parts of the screen also correct?** Each native checkpoint
-   checks the complete 320x224 frame, visible playfield, and persistent HUD
-   chrome. The map and HUD remain visible through the movement and release
-   frames. This route opens no menu or dialog, so sibling panels are outside
-   this hill.
-7. **Do multiple frames support the interpretation?** Independent section 04
-   frames `000900..000911` show successive original-game poses as the runner
-   moves through the dark corridor; frames `000912..000972` continue through
-   later field states. They establish that the actor changes position and pose
-   over time, but the recording has no synchronized controller or entity
-   selector. Native images at ticks 1, 4, 8, and 16 plus release support the
-   current Qt model's state progression; they do not establish which ROM
-   animation family ordinary D-pad movement selects.
-8. **Was old UI cleared before new graphics were drawn?** This path has no
-   screen replacement. Each dump starts with a fresh framebuffer, redraws the
-   map and HUD, and paints only the current actor frame; inspection found no
-   doubled sprite or animation trail. Release also changes the typed selector
-   back to idle before drawing.
+   heading by `0x0800`; `0xBABC` uses the signed vector table at `0xC002`;
+   `0xB77E`/`0xE7C8` gate `0xBBE4` position commit. After an accepted step,
+   `0xB6DE` selects a direction from `0xC062`; separate named RGBA frames now
+   feed the Qt presenter. The external corridor frames support an upright
+   field actor and changing poses, but they do not match the same map or expose
+   the input/selector, so exact pixel alignment is not independently proven.
+4. **Is it animated, and should it be?** Yes. `0xC062` points to a positive
+   four-pose loop. `0x5FDC` advances +0x1E when +0x1A plus +0x18 reaches +0x1C;
+   for kind 3, `0xBABC` sets +0xCA to `0x28` and `0x600E` sets +0x18 to
+   `0x280`, against a `0x1000` period. The ratio yields six- or seven-update
+   intervals based on the starting phase; 35 held updates observe five frame
+   advances and one wrap.
+   The `0xB442` reset selects static C052 idle. C0B2 is an eight-descriptor
+   finite behavior transition installed by B330/AFF2, not the held-D-pad
+   cycle. The selector helper test covers both the C062 loop and C0B2 terminal
+   hold. The scene-2 wall route also verifies that a blocked held step returns
+   to C052 with frame zero.
+5. **Does movement have sound?** No direct sound request was found in the
+   traced heading/vector/collision path. The wider field footstep/audio path
+   is unresolved, so movement sound and duration remain unknown.
+6. **Are related parts of the screen also correct?** Every saved checkpoint
+   passes whole-frame bounds, playfield presence, and HUD-chrome checks. Review
+   included the map, sidebar, portrait, item/ammo slots, and actor. A reported
+   portrait-face palette issue is visible in this HUD and remains open under
+   HUD-01; this movement pass does not claim that portrait correct. No menu,
+   dialogue panel, duplicate HUD, or stale UI appears on this route.
+7. **Do multiple frames support the interpretation?** All thirteen Qt
+   checkpoints were inspected. Independent section 04 frames `000900`,
+   `000903`, `000906`, `000909`, `000912`, `000915`, `000918`, and `000921`
+   show multiple original-game corridor positions/poses. The video has no
+   synchronized input or selector and does not show this same map. It supports
+   the normal movement-pose family but not exact input timing or placement.
+   Debug and Release capture filenames and SHA-256 hashes match for all thirteen
+   images.
+8. **Was old UI cleared before new graphics were drawn?** The field route
+   keeps the existing map/HUD screen and replaces only the actor sprite. Each
+   capture is rendered to a fresh full frame; inspection found no old button,
+   panel, or actor graphic drawn underneath the new pose.
 
-**Code changed:** added a multi-frame field movement QA route, observable typed
-movement snapshots, and a CTest. **Behavior implemented:** held right follows
-the traced heading slew, vector, collision, and current animation model;
-release returns to idle. **Internally checked:** Debug and Release CTests
-require source-derived heading and position deltas, modeled frame cadence,
-full-frame/HUD presence, and idle reset. **Independently visually checked:**
-section 04 supplies repeated whole-frame movement states, but no synchronized
-input or selector. Ordinary D-pad animation selection and movement sound
-remain unresolved under FIELD-01, so this hill stays partial.
+**Code changed:** the Qt field presenter now loads individually named C062
+movement frames, selects C062 after accepted movement, loops the four poses at
+the source cadence, and selects C052 on idle/reset. The importer preserves the
+C0B2 behavior-transition frames as a separate asset family. **Internally
+checked:** Debug and Release field-movement and scene-2 wall CTests pass; the
+separate animation helper test passes in Debug and Release; Debug and Release
+graphics extraction tests pass. The thirteen movement frames and 22 wall-route
+frames match by SHA-256 within each configuration pair and were reviewed full
+screen.
+**Independently visually checked:** several section 04 original-game frames
+support normal movement poses, but not an exact input/selector correlation.
+**Defect status:** the source-backed C062 correction is implemented and the
+tested right-held route no longer uses the C0B2 terminal pose. A normal-input
+wall collision resets to C052/frame zero. Independent frames support a moving
+runner but do not match this map or expose selector state. Other live headings
+and exact visual alignment remain unverified; the reported defect remains open
+pending those checks. Movement sound and portrait palette remain separate open
+goals.

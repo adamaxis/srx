@@ -722,10 +722,12 @@ int main() {
     const auto field_entity_animations =
         decode_genesis_field_entity_animation_sequences(rom);
     assert(field_entity_animations.size() == 8);
-    // The hurt table behind 0xC072 and the attack table behind 0xC042 stay
-    // reachable through the explicit offset parameters so the walking
-    // extraction can be proven distinct from both instead of merely
-    // asserting metadata.
+    const auto field_movement_animations =
+        decode_genesis_field_entity_animation_sequences(
+            rom, 0x7291A, 0x62AC, 0xC062, 0x3EDC, 0x172D8A, 8);
+    assert(field_movement_animations.size() == 8);
+    // The behavior-transition table remains separate from the ordinary
+    // accepted-movement selector at 0xC062.
     const auto hurt_animations = decode_genesis_field_entity_animation_sequences(
         rom, 0x7291A, 0x62AC, 0xC072, 0x3EDC, 0x172D8A, 8);
     assert(hurt_animations.size() == 8);
@@ -736,10 +738,8 @@ int main() {
     for (std::size_t index = 0; index < field_entity_animations.size();
          ++index) {
         const auto& animation = field_entity_animations[index];
-        // ROM 0xB330/0xAFF2 select the walking lists through the 0xC0B2
-        // table (0xE8 + 4*index): an 0x8008 marker, auxiliary 0x0200, and
-        // eight descriptor pointers. The hurt lists behind 0xC072 are
-        // 0x60 + 4*index with an 0x8002 two-frame marker.
+        // ROM 0xB330/0xAFF2 select the finite C0B2 behavior-transition
+        // lists. They are eight descriptors and are not ordinary walking.
         assert(animation.state_selector ==
                static_cast<std::uint16_t>(0xE8U + index * 4U));
         assert(animation.state_marker == 0x8008);
@@ -752,8 +752,8 @@ int main() {
             assert(frame.pixels.size() ==
                    static_cast<std::size_t>(frame.width) * frame.height);
         }
-        // The walking cycle must contain more than one distinct pose or the
-        // runner would slide without a stride.
+        // The transition sequence's frame data remains available to native
+        // behavior code, but Qt field movement consumes the separate C062 art.
         const auto pixels_differ = [](const auto& left, const auto& right) {
             if (left.pixels.size() != right.pixels.size()) {
                 return true;
@@ -768,18 +768,17 @@ int main() {
             }
             return false;
         };
-        bool walking_has_distinct_frames = false;
+        bool transition_has_distinct_frames = false;
         for (std::size_t frame = 1; frame < animation.frames.size();
              ++frame) {
             if (pixels_differ(animation.frames[0], animation.frames[frame])) {
-                walking_has_distinct_frames = true;
+                transition_has_distinct_frames = true;
                 break;
             }
         }
-        assert(walking_has_distinct_frames);
+        assert(transition_has_distinct_frames);
         // 0xAFF2's +0x4C behavior path selects the 0x60 + 4*index hurt
-        // lists; the extracted walking frames must not be that pose, or the
-        // runner raises his arms whenever he moves.
+        // lists; those lists are separate from C0B2 behavior transitions.
         assert(hurt_animations[index].frames.size() == 2);
         for (const auto& walking_frame : animation.frames) {
             assert(pixels_differ(walking_frame,
@@ -788,12 +787,30 @@ int main() {
                                  hurt_animations[index].frames[1]));
         }
         // 0xB39A's weapon-timed attack pose (0xC042) is a different held
-        // frame; walking must not show the shooting pose.
+        // frame from the behavior transition.
         assert(attack_animations[index].frames.size() == 1);
         for (const auto& walking_frame : animation.frames) {
             assert(pixels_differ(walking_frame,
                                  attack_animations[index].frames[0]));
         }
+    }
+    for (std::size_t index = 0; index < field_movement_animations.size();
+         ++index) {
+        const auto& movement = field_movement_animations[index];
+        assert(movement.state_selector ==
+               static_cast<std::uint16_t>(0x20U + index * 4U));
+        assert(movement.state_marker == 4U);
+        assert(movement.state_auxiliary_word == 0x0180U);
+        assert(movement.frames.size() == 4U);
+        for (const auto& frame : movement.frames) {
+            assert(frame.width != 0U && frame.height != 0U);
+            assert(frame.pixels.size() ==
+                   static_cast<std::size_t>(frame.width) * frame.height);
+        }
+        const auto& c0b2_transition = field_entity_animations[index];
+        assert(c0b2_transition.state_selector ==
+               static_cast<std::uint16_t>(0xE8U + index * 4U));
+        assert(c0b2_transition.state_marker == 0x8008U);
     }
 
     auto native_assets = decode_genesis_native_assets(rom);

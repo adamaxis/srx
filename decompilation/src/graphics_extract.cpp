@@ -2099,6 +2099,22 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                         animation.frames[frame], "sprite", "0x5A62/0x5FDC", true);
         }
     }
+    const auto field_movement_animations =
+        shadowrun::graphics::decode_genesis_field_entity_animation_sequences(
+            rom, 0x7291A, 0x62AC, 0xC062, 0x3EDC, 0x172D8A, 8);
+    for (std::size_t direction = 0;
+         direction < field_movement_animations.size(); ++direction) {
+        const auto& animation = field_movement_animations[direction];
+        for (std::size_t frame = 0; frame < animation.frames.size(); ++frame) {
+            const auto& source = animation.frames[frame];
+            write_frame(
+                "field/entities/movement-" + std::to_string(direction) + "-" +
+                    std::to_string(frame) + ".bmp",
+                shadowrun::native::NativeEntityFrame{
+                    source.width, source.height, source.pixels},
+                "sprite", "0xB6DE/0xC062/0x600E", true);
+        }
+    }
 
     extract_field_session_record_assets(rom, root);
     manifest.flush();
@@ -2875,7 +2891,26 @@ int main(int argc, char** argv) {
             const auto frames = flatten_field_entity_animations(animations);
             const auto sheet = make_field_entity_state_sheet(frames);
             shadowrun::graphics::write_bmp32(argv[2], sheet);
-            std::cout << "field entity walking sheet: " << sheet.width << "x"
+            std::cout << "field entity behavior-transition sheet: "
+                      << sheet.width << "x" << sheet.height << " ("
+                      << frames.size() << " frames)\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 4 && std::string(argv[3]) == "--field-entity-movement") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto animations =
+                shadowrun::graphics::decode_genesis_field_entity_animation_sequences(
+                    rom, 0x7291A, 0x62AC, 0xC062, 0x3EDC, 0x172D8A, 8);
+            const auto frames = flatten_field_entity_animations(animations);
+            const auto sheet = make_field_entity_state_sheet(frames);
+            shadowrun::graphics::write_bmp32(argv[2], sheet);
+            std::cout << "field entity movement sheet: " << sheet.width << "x"
                       << sheet.height << " (" << frames.size() << " frames)\n"
                       << "output: " << argv[2] << "\n";
             return 0;
@@ -2975,6 +3010,8 @@ int main(int argc, char** argv) {
                      "--field-entity-states\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
                      "--field-entity-walking\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
+                     "--field-entity-movement\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
                      "--field-entity-state <index>\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <asset-dir> "

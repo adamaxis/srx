@@ -53,7 +53,7 @@ shared acceptance gates are in the matching goal cluster below.
 | `TAXI-01` | The taxi-window callout is missing its top/bottom edges and appears as two parallel side lines instead of a closed white outline. | Trace the source frame/layout and redraw ownership; compare full taxi frames before and after the callout. |
 | `HUD-01` | The field portrait has unexpected color over the runner's face. | Trace runner identity, palette source, and portrait tiles; compare the same archetype and state in independent section 04/06 frames. Current QA has not yet established a same-archetype visual match. |
 | `HUD-02` | Ammunition is inconsistent: the report cites 32 bullets initially, 37 on the unequipped hand, and 4 after equipping the gun. | Trace weapon identity, magazine capacity, and shared reserve through equip/unequip/fire/reload. Reconcile all three observed values against live source fields; do not assume any reported count is canonical. |
-| `FIELD-01` | Walking uses the dying/fallen animation. | ROM trace identifies C062 as the ordinary four-pose movement loop and C052 as idle; C0B2 is a separate finite behavior transition. Finish the current typed-state change and verify all directions, cadence, blocked movement, and release. |
+| `FIELD-01` | Walking uses the dying/fallen animation. | ROM trace identifies C062 as the ordinary four-pose movement loop and C052 as idle; C0B2 is a separate finite behavior transition. Verify all eight selector/assets, live movement and cadence, blocked reset, release, and full-screen states. |
 | `SOUND-01` | Pocket Secretary selection/cancel sounds are absent on some screens or use the wrong sound. | Audit each source action and child page separately; verify the event, trigger condition, measured duration, and playback on the default output. |
 | `SOUND-02` | Moving between Pocket Secretary menu items has no navigation sound. | Trace the accepted cursor-move edge and source resource; verify one playback per accepted move, none on clamp/no-op, and the stop/duration behavior. |
 | `SEC-MAGIC` | The Magic page leaves its old text/menu content drawn over the new page. | Trace page entry/exit and panel clear/redraw; capture parent, child, return, and reopen at full screen, proving old controls appear only when the source restores them. |
@@ -66,7 +66,7 @@ shared acceptance gates are in the matching goal cluster below.
 | `INVENTORY-02` | Using an item draws the runner portrait over other bars. | Trace item-use page/result/return and full redraw order; verify portrait, bars, posture, message, and inventory across all transition frames. |
 | `ITEMS-01` | Armor, weapons, and their damage values are wrong. | Reconcile named item assets and source catalog values with equip state, attack/damage calculations, and inventory/shop views; compare multiple weapons/armor states. |
 | `FIELD-02` | The runner gets stuck in terrain and cannot enter buildings. | Trace movement probes, collision margins, terrain gates, physical building records, event publication, and exits; verify contact and adjacent walkable cells through ordinary D-pad input. |
-| `STOKER-01` | The physical Stoker collision/property that should open his generic dialogue is still unidentified. | The tested New Game scene-2 record 2 at `0x172DBE` is a rejected candidate: contact produces event 0, not mode 2/event 2. Identify and test the real property through normal contact. |
+| `STOKER-01` | The physical Stoker collision/property that should open his generic dialogue is still unidentified. | The tested New Game scene-2 record 2 at `0x172DBE` is rejected: contact produces event 0 and no Stoker dialogue. ROM `0x1F65A` maps mode 2/event 2 to the Stoker arrival prompt, but the physical property that supplies the prompt event remains untraced. Test it through normal contact. |
 | `PLAY-01` | Shops, building item use, and maglock passkeys cannot be tested from normal Qt gameplay. | Provide source-backed, normal-control routes from field play to each named feature and back; test them end to end without injecting event tuples. |
 | `SOUND-03` | More generally, sound effects across the game are reported to play at the wrong points. | Inventory the reported and currently connected ROM sound requests, map each to a state transition, and check trigger, playback, duration, loop, and stop. Close individual sounds in their owning goals. |
 
@@ -92,9 +92,21 @@ shared acceptance gates are in the matching goal cluster below.
   and compared.
 - Stoker candidate QA is committed, but it reaches scene-2 collision record 2
   and correctly observes event 0/no Stoker dialogue. It rejects that object as
-  the trigger; the physical mode-2/event-2 property remains unknown.
-- FIELD-01 source correction is present as an uncommitted worktree draft. Its
-  latest native-clock/expanded-QA edits have not been rebuilt or run.
+  the trigger. The separate New Game Up route reaches scene `0x14` through
+  event-table row 0 and ends with dialogue closed. Independent section 03 local
+  frames `000030`, `000060`, and `000090` show a city approach, dark transition,
+  then Stoker's arrival prompt. Their controller input and collision property
+  are not recorded; the physical event producer remains unknown.
+- FIELD-01 now uses separately named C062 movement assets and typed selector/
+  clock state. Debug and Release field-movement QA passes: all eight selector
+  pairs, a live right-held route, five frame advances and a loop wrap over 35
+  updates, the source displacement at tick 16, and release-to-idle are checked.
+  Thirteen whole-screen frames were reviewed; the Debug/Release SHA-256 sets
+  match. The scene-2 wall route also verifies a normal blocked step returns to
+  C052/frame-zero idle; its 22 full-screen Debug/Release frames match and were
+  reviewed. Independent section 04 frames 000900-000921 support a moving
+  runner but show another map and contain no controller/selector log. Other
+  live headings, exact placement, and movement sound remain open.
 
 ## Goals
 
@@ -165,26 +177,41 @@ four-frame list loops. `0xB442` restores the directional idle selector from
 by `0xB330`/`0xAFF2`, which explains the fallen final pose when it was used as
 the walk cycle. For the kind-3 runner, `0xBABC` writes `0x28` to +0xCA;
 `0x600E` sets +0x18 to `0x280` against the `0x1000` period, so the pose steps
-every seven entity updates. The section 04 recording shows multiple field
-movement poses but has no synchronized input or selector log.
+at six- or seven-update intervals depending on phase. The section 04 recording
+shows multiple field movement poses but has no synchronized input or selector
+log.
 
-**Solve:** trace the active runner's selector, behavior flags, direction,
-frame index, and reset on D-pad hold/release. Compare candidate ROM families
-against several independent movement frames. Only then change the typed
-animation state/assets and add a regression that fails if normal movement
-selects a hurt/death/transition pose. Include idle, heading changes, blocked
-movement, and return-to-idle.
+**Implementation:** the Qt runtime now consumes separately named C062 frames
+for ordinary accepted movement and C052 frames for idle/reset. Selector,
+direction, frame index, accumulator, and period remain typed native state;
+C0B2 stays a distinct finite behavior transition. The Qt CTest checks all
+eight selector pairs, all four extracted frames, the live right-held path,
+cadence/loop wrap, movement position, and release-to-idle. Debug and Release
+full-screen output is byte-identical and has been inspected across the whole
+screen. The independent corridor sequence supports changing original-game
+movement poses but does not show this same map or input state.
+
+**Remaining:** exercise the other seven headings as live field routes. An
+existing normal-input scene-2 wall route now checks that blocked movement
+returns to C052 with frame zero in Debug and Release. Find an independent
+same-scene comparison for exact placement if available; keep that limitation
+explicit if the corpus has no match. Movement audio is a separate open
+question.
 
 **Done when:** ROM selector and cadence are documented; the Qt runtime consumes
-the corresponding named assets directly; the regression verifies selection
-and timing across multiple headings and release; Debug/Release full-screen
-dumps pass review; matching independent frames support the pose, or the lack
-of a precise comparison is stated. The separate collision/building goal does
-not get folded into this visual claim.
+the corresponding named assets directly; normal input exercises all eight
+headings, cadence, blocked reset, and release; Debug/Release full-screen dumps
+pass review; independent frames support the pose and exact-scene limits are
+recorded. The separate building/property routes do not get folded into this
+visual claim.
 
-**Status:** implementation and Debug/Release verification in progress. The
-Qt change is limited to this source-backed selector/asset/timing correction;
-the independent recording still cannot identify its controller state.
+**Status:** partial. The source-backed C062 selector/assets/clock correction
+is implemented and passes Debug/Release for a normal right-held route; all
+eight selector mappings and extracted movement families are checked. A
+separate normal-input wall route verifies blocked reset. The reported defect
+remains open until other live headings and exact-scene visual comparison are
+covered. Independent video supports movement poses but cannot identify the
+input/selector or exact map placement.
 
 ### FIELD-02 — Terrain collision, building access, and physical Stoker trigger
 
@@ -197,7 +224,12 @@ type-2 collision object. Normal D-pad contact at world `(0x554,0x348)` produces
 scene 2/event 0/projected code 0 and no Stoker dialog. It is a rejected Stoker
 trigger candidate, not an implementation of Stoker interaction. See
 [`visual-audits/stoker-collision-candidate.md`](visual-audits/stoker-collision-candidate.md).
-The physical property that publishes mode 2/event 2 remains unidentified.
+Separately, New Game Up input reaches scene `0x14` through scene-2 event-table
+row 0, with dialogue closed in the current QA. Longplay section 03 local frames
+`000030`, `000060`, and `000090` show a city approach, dark transition, and
+Stoker's arrival prompt; they do not identify the exact collision or input.
+ROM `0x1F65A` selects Stoker's arrival prompt for mode 2/event 2, but the
+physical property/event producer remains unidentified.
 
 **Solve:** compare movement probes, collision margins, terrain gates, and
 property/event publication with ROM movement callbacks at `0xB7B8` and related
@@ -220,14 +252,21 @@ actual Stoker trigger and terrain/building routes remain open.
 
 The negative-candidate QA is complete in commit `c411247cb5`: scene-2 record 2
 at `0x172DBE` produces event 0 and does not open Stoker dialogue. The real
-property that publishes mode 2/event 2 has not been located. Trace that
-property's collision record, movement/contact rule, published event, generic
-dialogue speaker properties, and return path before extending the runtime.
+property that causes the Stoker arrival prompt has not been located. ROM
+`0x1F65A` maps mode 2/event 2 to the Stoker arrival record at `0xF4AA0`; treat
+that as a source lead, not proof that either tested event-0 route is the
+trigger. The separate scene-2 event-0 route reaches scene `0x14` but the Qt QA
+ends with dialogue closed. Independent section 03 local frames `000030`,
+`000060`, and `000090` show a city approach, transition, then the arrival
+prompt, without logging controls or collision coordinates. Trace the actual
+property/contact rule, published speaker/event state, generic dialogue
+selection, and return path before extending the runtime.
 
 **Done when:** ordinary field input contacts the source-confirmed property;
-typed game state publishes mode 2/event 2; the generic dialog selects Stoker
-content from speaker/event state; a Debug/Release CTest and whole-screen
-entry/dialogue/return dumps pass; no injected event tuple is used.
+typed game state publishes the ROM-confirmed speaker/event state; the generic
+dialog selects Stoker content from that state; a Debug/Release CTest and
+whole-screen entry/dialogue/return dumps pass; no injected event tuple is
+used.
 
 **Status:** open. The negative candidate test is complete; the physical trigger
 is unresolved.

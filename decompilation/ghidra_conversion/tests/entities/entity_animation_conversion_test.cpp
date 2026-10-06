@@ -51,27 +51,39 @@ int main() {
         return 6;
     }
 
-    if (!expect(select_field_entity_animation_selector(0, false) == 0x0000U &&
-                select_field_entity_animation_selector(4, false) == 0x0010U &&
-                select_field_entity_animation_selector(0, true) == 0x00E8U &&
-                select_field_entity_animation_selector(2, true) == 0x00F0U &&
-                select_field_entity_animation_selector(7, true) == 0x0104U &&
-                entity_kind_state_table(kFieldEntityKind) == 0x00006378U &&
+    constexpr std::array<std::uint16_t, 8> expected_idle_selectors{{
+        0x0000U, 0x0004U, 0x0008U, 0x000CU,
+        0x0010U, 0x0014U, 0x0018U, 0x001CU}};
+    constexpr std::array<std::uint16_t, 8> expected_walk_selectors{{
+        0x0020U, 0x0024U, 0x0028U, 0x002CU,
+        0x0030U, 0x0034U, 0x0038U, 0x003CU}};
+    for (std::uint8_t direction = 0U; direction < 8U; ++direction) {
+        if (!expect(
+                select_field_entity_animation_selector(direction, false) ==
+                    expected_idle_selectors[direction] &&
+                select_field_entity_animation_selector(direction, true) ==
+                    expected_walk_selectors[direction])) {
+            return 7;
+        }
+    }
+    if (!expect(entity_kind_state_table(kFieldEntityKind) == 0x00006378U &&
                 entity_kind_state_table(0x000DU) == 0x00006BB8U)) {
-        return 7;
+        return 20;
     }
     if (!expect(bound_field_walk_animation_frame(0) == 0U &&
                 bound_field_walk_animation_frame(1) == 1U &&
-                bound_field_walk_animation_frame(7) == 7U &&
-                bound_field_walk_animation_frame(8) == 7U)) {
+                bound_field_walk_animation_frame(3) == 3U &&
+                bound_field_walk_animation_frame(4) == 0U &&
+                bound_field_walk_animation_frame(8) == 0U)) {
         return 8;
     }
 
-    // The 0xC0B2 walking lists use the 0x0200 increment against the 0x1000
-    // period, so the frame advances once every eight host ticks.
+    // C062 movement poses use +0xCA=0x0028, yielding a 0x0280 increment
+    // against the 0x1000 period. The initial pose advances on update seven;
+    // later intervals alternate between six and seven updates by phase.
     EntityAnimationState walk{0U, 0, kFieldWalkAnimationIncrement,
                               kFieldEntityAnimationPeriod, false};
-    for (int tick = 0; tick < 7; ++tick) {
+    for (int tick = 0; tick < 6; ++tick) {
         advance_entity_animation_accumulator(walk);
     }
     if (!expect(walk.frame == 0U && !walk.redraw_requested)) {
@@ -84,30 +96,44 @@ int main() {
     }
 
     const EntitySpriteDescriptorList walk_list{
-        static_cast<std::int16_t>(0x8008), 0x0200U,
-        {0x1000U, 0x1004U, 0x1008U, 0x100CU, 0x1010U, 0x1014U, 0x1018U,
-         0x101CU}};
+        4, 0x0180U, {0x1000U, 0x1004U, 0x1008U, 0x100CU}};
     EntitySpriteDescriptorState descriptor{
-        0x0003U, 0x00E8U, 0x01U, 0U, 0U, 0x0010U, 0U};
-    if (!expect(advance_entity_sprite_descriptor(
-                    descriptor, walk_list, 0x8002U) &&
+        0x0003U, 0x0020U, 0x01U, 0U, 0U,
+        static_cast<std::uint16_t>(kFieldWalkAnimationTimingWord), 0U};
+    if (!expect(!advance_entity_sprite_descriptor(
+                    descriptor, walk_list, 0U) &&
                 descriptor.frame == 0U &&
-                descriptor.increment == 0x0200U &&
+                descriptor.increment == kFieldWalkAnimationIncrement &&
                 (descriptor.selector & 0x8000U) == 0U &&
-                (descriptor.flags & 0x01U) == 0U &&
+                (descriptor.flags & 0x01U) == 0x01U &&
                 descriptor.descriptor == 0x1000U)) {
         return 11;
     }
 
     descriptor = EntitySpriteDescriptorState{
-        0x0003U, 0x00E8U, 0x01U, 8U, 0U, 0x0010U, 0U};
-    if (!expect(advance_entity_sprite_descriptor(
-                    descriptor, walk_list, 0x8002U) &&
-                descriptor.frame == 7U &&
-                descriptor.increment == 0x0200U &&
-                (descriptor.selector & 0x8000U) != 0U &&
-                descriptor.descriptor == 0x101CU)) {
+        0x0003U, 0x0020U, 0U, 4U, 0U,
+        static_cast<std::uint16_t>(kFieldWalkAnimationTimingWord), 0U};
+    if (!expect(!advance_entity_sprite_descriptor(
+                    descriptor, walk_list, 0U) &&
+                descriptor.frame == 0U &&
+                descriptor.increment == kFieldWalkAnimationIncrement &&
+                (descriptor.selector & 0x8000U) == 0U &&
+                descriptor.descriptor == 0x1000U)) {
         return 12;
+    }
+
+    const EntitySpriteDescriptorList transition_list{
+        static_cast<std::int16_t>(0x8008), 0x0200U,
+        {0x2000U, 0x2004U, 0x2008U, 0x200CU, 0x2010U, 0x2014U,
+         0x2018U, 0x201CU}};
+    descriptor = EntitySpriteDescriptorState{
+        0x0003U, 0x00E8U, 0U, 8U, 0U, 0x0028U, 0U};
+    if (!expect(!advance_entity_sprite_descriptor(
+                     descriptor, transition_list, 0x8002U) &&
+                descriptor.frame == 7U &&
+                (descriptor.selector & 0x8000U) != 0U &&
+                descriptor.descriptor == 0x201CU)) {
+        return 19;
     }
 
     const EntitySpriteDescriptorList positive_list{

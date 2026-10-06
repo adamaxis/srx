@@ -18,6 +18,7 @@
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/random_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_action_math_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_animation_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_animation_player_action_conversion.hpp"
 #include "shadowrun_ghidra/menus/clips_menu_conversion.hpp"
 #include "shadowrun_ghidra/menus/menu_transfer_batch_conversion.hpp"
@@ -62,7 +63,8 @@ constexpr std::string_view kFieldHudBehaviorMeterCompanionAliasPrefix =
 constexpr std::string_view kFieldHudAmmoCounterAliasPrefix =
     "field.hud.ammo.counter.";
 constexpr std::string_view kFieldEntityIdleAliasPrefix = "field.entities.idle.";
-constexpr std::string_view kFieldEntityWalkAliasPrefix = "field.entities.walk.";
+constexpr std::string_view kFieldEntityWalkAliasPrefix =
+    "field.entities.movement.";
 constexpr int kGenesisSpriteOrigin = 0x80;
 constexpr std::string_view kCommandOverviewBackgroundAlias =
     "menu.field.background";
@@ -1338,31 +1340,7 @@ void FieldSceneRuntime::configure_callbacks() {
     callbacks_.entity_render_pass.advance_animation =
         [this](RenderEntityState& entity) {
             (void)entity;
-            if (!field_entity_walking_) {
-                return;
-            }
-            advance_entity_animation_accumulator(field_entity_animation_);
-            // The 0xC0B2 walking lists carry an 0x8008 marker, an 0x0200
-            // auxiliary increment, and eight frame pointers. Mirrored
-            // direction pairs share lists, but the typed state keeps one
-            // frame sequence per heading slot.
-            const EntitySpriteDescriptorList walk_list{
-                static_cast<std::int16_t>(0x8008), 0x0200U,
-                {0U, 1U, 2U, 3U, 4U, 5U, 6U, 7U}};
-            EntitySpriteDescriptorState descriptor{
-                kFieldEntityKind,
-                field_entity_animation_selector_,
-                0U,
-                field_entity_animation_.frame,
-                static_cast<std::uint16_t>(
-                    field_entity_animation_.increment),
-                0U,
-                0U};
-            advance_entity_sprite_descriptor(descriptor, walk_list, 0U);
-            field_entity_animation_.frame = descriptor.frame;
-            field_entity_animation_.increment =
-                static_cast<std::int16_t>(descriptor.increment);
-            field_entity_animation_selector_ = descriptor.selector;
+            advance_field_actor_animation();
         };
     callbacks_.entity_render_pass.finish_entity =
         [this](RenderEntityState& entity) {
@@ -3094,7 +3072,7 @@ bool FieldSceneRuntime::bootstrap(
     field_joshua_archetype_selection_ = 0U;
     field_hud_slots_ = {};
     field_entity_animation_ = {};
-    field_entity_animation_.increment = kFieldEntityAnimationPeriod;
+    field_entity_animation_.increment = kFieldWalkAnimationIncrement;
     field_entity_animation_.period = kFieldEntityAnimationPeriod;
     field_entity_animation_selector_ =
         select_field_entity_animation_selector(0, false);
@@ -3211,8 +3189,9 @@ bool FieldSceneRuntime::bootstrap(
             source_boundary("field.bootstrap.entity_assets_missing");
             return false;
         }
-        // Load consecutive extracted frames until the catalog stops naming
-        // them; every direction must carry at least one walking frame.
+        // The ordinary movement poses come from the C062 positive-marker
+        // list, extracted as separate host files. C0B2 is a different finite
+        // behavior-transition sequence.
         std::size_t loaded_frames = 0;
         for (;;) {
             const auto walk_alias =
@@ -3238,7 +3217,7 @@ bool FieldSceneRuntime::bootstrap(
             field_entity_walk_origin_y_[direction].push_back(walk_origin_y);
             ++loaded_frames;
         }
-        if (loaded_frames == 0) {
+        if (loaded_frames != kFieldWalkAnimationFrameCount) {
             source_boundary("field.bootstrap.entity_assets_missing");
             return false;
         }
@@ -3781,15 +3760,38 @@ void FieldSceneRuntime::apply_field_entity_animation(const bool walking) {
         field_entity_.direction, walking);
     if (selector != field_entity_animation_selector_) {
         field_entity_animation_selector_ = selector;
-        field_entity_animation_.frame = 0;
-        field_entity_animation_.accumulator = 0;
+        // B6DE and B442 replace +0x16 directly. They leave +0x1A and +0x1E
+        // intact; 0x600E wraps the positive walk list or resets the single
+        // idle frame on the next entity-render pass.
         field_entity_animation_.redraw_requested = true;
-        field_entity_animation_.increment =
-            walking ? kFieldWalkAnimationIncrement
-                    : kFieldEntityAnimationPeriod;
-        field_entity_animation_.period = kFieldEntityAnimationPeriod;
     }
     field_entity_walking_ = walking;
+}
+
+void FieldSceneRuntime::advance_field_actor_animation() {
+    // Keep the actor's animation as a small native clock. The source C062
+    // positive marker wraps its four poses, while C052's one-pose idle list
+    // resolves to frame zero. BABC sets +0xCA=0x28 and 600E consequently uses
+    // this 0x0280 increment against 0x1000; no ROM list needs interpreting in
+    // the Qt runtime.
+    const auto accumulated =
+        static_cast<std::int32_t>(field_entity_animation_.accumulator) +
+        static_cast<std::int32_t>(field_entity_animation_.increment);
+    if (accumulated >= kFieldEntityAnimationPeriod) {
+        field_entity_animation_.frame = static_cast<std::uint16_t>(
+            field_entity_animation_.frame + 1U);
+        field_entity_animation_.redraw_requested = true;
+        field_entity_animation_.accumulator = static_cast<std::int16_t>(
+            accumulated - kFieldEntityAnimationPeriod);
+    } else {
+        field_entity_animation_.accumulator =
+            static_cast<std::int16_t>(accumulated);
+    }
+
+    field_entity_animation_.increment = kFieldWalkAnimationIncrement;
+    field_entity_animation_.frame = field_entity_walking_
+        ? bound_field_walk_animation_frame(field_entity_animation_.frame)
+        : 0U;
 }
 
 void FieldSceneRuntime::update_source_field_camera() {
@@ -4985,11 +4987,11 @@ void FieldSceneRuntime::paint_field_entity(QPainter& painter) const {
     const auto direction = static_cast<std::size_t>(
         field_entity_.direction % field_entity_idle_images_.size());
     const auto walking = field_entity_walking_;
-    const auto walk_frames = field_entity_walk_images_[direction].size();
-    const auto frame = walk_frames == 0
+    const auto movement_frames = field_entity_walk_images_[direction].size();
+    const auto frame = movement_frames == 0
         ? 0U
         : bound_field_walk_animation_frame(field_entity_animation_.frame) %
-              walk_frames;
+              movement_frames;
     const auto& image =
         walking ? field_entity_walk_images_[direction][frame]
                 : field_entity_idle_images_[direction];

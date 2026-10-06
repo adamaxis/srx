@@ -40,30 +40,32 @@ constexpr std::array<std::uint32_t, 16> kEntityKindStateTables{{
 constexpr std::uint16_t kFieldEntityKind = 0x0003U;
 
 // The kind-3 state block at 0x6378 is a pointer table addressed by the
-// record's +0x16 byte offset. The 0-7 heading slots resolve to these
-// families (0xB39A/0xB3FE/0xAFF2/0xB330 write the offset):
+// record's +0x16 byte offset. Normal accepted movement selects 0x20..0x3C
+// from 0xC062; 0xB442 resets to the static 0x00..0x1C poses from 0xC052.
+// Other routines select these separate families:
 //   0x00..0x1C idle (positive-marker static lists)
 //   0x40..0x5C attack pose (0xC042 table, weapon-timed one-frame hold)
 //   0x60..0x7C hurt (0xC072 table, 0x8002 two-frame lists)
 //   0x82..0x9E unarmed delayed-action pose (0xC082 table, one frame)
 //   0xA0..0xBC thrown/effect (0xC092 table, 0x8003 descriptors)
-//   0xE8..0x104 walking (0xC0B2 table, 0x8008 eight-frame lists)
+//   0xE8..0x104 behavior transition (0xC0B2 table, finite 0x8008 lists)
 constexpr std::array<std::uint16_t, 8> kFieldIdleAnimationSelectors{{
     0x0000U, 0x0004U, 0x0008U, 0x000CU, 0x0010U, 0x0014U, 0x0018U, 0x001CU}};
 constexpr std::array<std::uint16_t, 8> kFieldWalkAnimationSelectors{{
-    0x00E8U, 0x00ECU, 0x00F0U, 0x00F4U, 0x00F8U, 0x00FCU, 0x0100U, 0x0104U}};
-// ROM 0x600E copies the selected list's auxiliary word into record +0x18;
-// the walking lists carry 0x0200. Template +0x1C is the 0x1000 threshold.
-constexpr std::int16_t kFieldWalkAnimationIncrement = 0x0200;
+    0x0020U, 0x0024U, 0x0028U, 0x002CU,
+    0x0030U, 0x0034U, 0x0038U, 0x003CU}};
+// 0xBABC writes C006 (0x0028) to +0xCA. For kind 3, 0x600E multiplies
+// that value by 0x10 into +0x18; +0x1C is the 0x1000 period.
+constexpr std::int16_t kFieldWalkAnimationTimingWord = 0x0028;
+constexpr std::int16_t kFieldWalkAnimationIncrement = 0x0280;
 constexpr std::int16_t kFieldEntityAnimationPeriod = 0x1000;
-constexpr std::uint16_t kFieldWalkAnimationFrameCount = 8U;
+constexpr std::uint16_t kFieldWalkAnimationFrameCount = 4U;
 
 std::uint16_t select_field_entity_animation_selector(std::uint8_t direction,
                                                      bool walking);
 std::uint32_t entity_kind_state_table(std::uint16_t kind);
 
-// ROM 0x600E negative-list bound: after the last pose, the frame stays on
-// count-1 until 0xAF6C clears it.
+// The ordinary movement list has a positive marker and loops at its count.
 std::uint16_t bound_field_walk_animation_frame(std::uint16_t frame);
 
 struct EntitySpriteDescriptorList {

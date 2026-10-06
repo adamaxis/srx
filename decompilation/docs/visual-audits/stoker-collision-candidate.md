@@ -14,7 +14,8 @@ ROM `0x1F65A` selects the Stoker profile and `0xF4AA0..0xF4B2C` prompt graph
 only after the field-mode/event tuple is already mode 2/event 2. The candidate
 route never reaches that selector. The Qt dialogue QA that injects this tuple
 is a separate dialogue-conversion test; it is not evidence of physical
-contact.
+contact. The ROM location or property that produces the tuple is still
+untraced.
 
 ## Source route and result
 
@@ -27,12 +28,16 @@ contact.
 - The source collision/movement path at `0xB7B8` leaves the result at scene 2,
   event `0`, projected code `0`; no dialogue, interaction modal, or transition
   starts.
-- The destination event mapping is downstream: scene-2 event 0 selects scene
-  `0x14`. That is the motel-doorway fallback documented separately in
-  [motel-doorway-scene-entry.md](motel-doorway-scene-entry.md), not Stoker.
+- A separate New Game route with normal Up input publishes event 0 and selects
+  destination scene `0x14` from scene 2's event table. Its current Qt QA keeps
+  dialogue closed through 30 neutral destination updates. This proves that
+  scene-entry path only; it is not evidence that record 2 opens the Stoker
+  prompt or that event 0 is the Stoker event.
 
-The Qt CTest uses only held and released D-pad input for this route. Debug and
-Release both pass. Each run writes 22 full-screen 320x224 BMP checkpoints to
+The Qt CTest uses only held and released D-pad input for this route. At the
+south wall, it also verifies that a blocked held step resets the actor to
+C052 idle with frame index zero. Debug and Release both pass. Each run writes
+22 full-screen 320x224 BMP checkpoints to
 `build-qt-runtime-{debug,release}/qt_runtime/field-stoker-collision-qa/`:
 spawn; eastward movement and waypoint; southward wall approach; wall bypass;
 the property lane; the final contact candidate; idle frames 1, 8, and 30; and
@@ -49,29 +54,35 @@ no dialogue/menu controls are overlaid.
 2. **Does the look match behavior?** Yes for the tested conversion state: the
    actor reaches the record-2 collision margin, stays in scene 2, retains
    event/projected code 0, and opens no modal. The state is checked after the
-   contact and during 30 idle updates.
+   contact and during 30 idle updates. At the separate wall row, normal held
+   input is rejected and the typed selector/frame return to C052 idle/zero.
 3. **Are the visuals themselves correct?** The full map/HUD composition is
    internally stable through the route. Exact source pixels at this property
    are unknown because there is no matching independent frame. The moving
    actor pose is also being reviewed under defect goal `FIELD-01`; this route
    does not declare it correct.
-4. **Is it animated?** The field actor animates during held movement. Idle
-   checkpoints at frames 1, 8, and 30 keep the same position and return to a
-   static pose. The route does not exercise a Stoker/NPC animation. The source
-   cadence and ordinary movement pose remain part of `FIELD-01`.
+4. **Is it animated?** The field actor animates during held movement. At the
+   wall, a blocked step returns to a static C052 pose; idle checkpoints at
+   frames 1, 8, and 30 keep the same position. The route does not exercise a
+   Stoker/NPC animation or identify the actual property trigger. The source
+   cadence and other live headings remain part of `FIELD-01`.
 5. **Is there a sound?** This audit does not identify a collision-specific
    source sound or its lifetime. The CLI's accumulated audio-event count is
    diagnostic only; it does not prove playback or prove the absence of a
    sound.
 6. **Are other screen areas correct?** The full-screen review includes the
    complete playfield and right HUD at all 22 checkpoints. No stale page,
-   button, dialogue frame, or duplicate HUD layer appears. The actor animation
+   button, dialogue frame, or duplicate HUD layer appears. The portrait-face
+   palette issue remains open under HUD-01; this collision test does not
+   validate that portrait or the visible ammo counts. The actor animation
    concern is tracked separately rather than hidden by this collision result.
 7. **Do multiple frames support the interpretation?** Yes internally: route
    checkpoints cover movement, wall rejection/bypass, contact, and idle. The
-   independent section 04 frames `000900..000911` show multiple original-game
-   field states, but they are a corridor sequence and do not show this scene-2
-   object or the same route. They cannot prove this trigger.
+   independent section 03 local frames `000030`, `000060`, and `000090` show a
+   city approach, a dark transition, and the Stoker arrival prompt in sequence.
+   They do not show controller input or reveal the collision coordinate, so
+   they cannot identify this trigger. Section 04 frames `000900..000911` show
+   other original-game field states and do not depict the scene-2 candidate.
 8. **Was prior UI cleared?** No UI is opened on the tested candidate route.
    Freshly rendered full frames contain no stale dialogue/menu controls.
 
@@ -83,9 +94,11 @@ no dialogue/menu controls are overlaid.
 - **Behavior implemented:** no new Stoker behavior was implemented. The route
   records ordinary scene-2 collision and its event-0 result.
 - **Internally checked:** `shadowrun_ghidra_conversion_qt_field_stoker_collision_candidate_qa`
-  passes in Debug and Release; full-screen outputs match by SHA-256.
-- **Independently visually checked:** multiple independent section 04 frames
-  support field movement as a screen family, but none matches this object,
-  route, or event state.
+  passes in Debug and Release; it verifies the wall reset to C052/frame zero,
+  and all 22 full-screen outputs match by SHA-256 and were reviewed.
+- **Independently visually checked:** section 03 shows a city-to-Stoker prompt
+  sequence, but does not expose input or collision state. Section 04 supports
+  field movement as a screen family. Neither matches this object, route, or
+  event state.
 - **Reported defect resolved:** no. The actual physical mode-2/event-2
   property and its collision-to-dialogue path are still open.

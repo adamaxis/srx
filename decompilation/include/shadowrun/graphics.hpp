@@ -604,9 +604,10 @@ std::vector<RgbaImage> decode_genesis_field_entity_animation(
     std::size_t state_count = 8);
 
 struct GenesisFieldEntityAnimation {
-    // ROM 0xAFF2 writes this byte offset from 0xC072 into the kind-3 table.
+    // The source selector table writes this byte offset into the kind-3 table.
     std::uint16_t state_selector = 0;
-    // The signed 0x8002 list marker gives the number of frame descriptors.
+    // A positive marker loops after this many descriptors; a high-bit marker
+    // is a finite transition list that holds its last descriptor.
     std::uint16_t state_marker = 0;
     // The word between the marker and descriptor table is preserved without
     // assigning it a host meaning; it is part of the reviewed list layout.
@@ -618,14 +619,12 @@ struct GenesisFieldEntityAnimation {
     std::vector<RgbaImage> frames;
 };
 
-// Extract the complete kind-3 field walking table selected by ROM 0xB330's
-// 0xC0B2 entries (0xE8..0x104), the mode-5 field-motion behavior lists.
-// The sibling tables are kept distinct: 0xC042 is the weapon-timed attack
-// pose (0xB39A), 0xC072 the hurt/stagger two-frame lists (0xAFF2's +0x4C
-// path), 0xC082 the unarmed delayed-action pose, and 0xC092 the thrown/
-// effect lists whose 0x8003 descriptors are a different frame record form.
-// The native runtime consumes the resulting transparent RGBA frame sequences
-// and does not retain ROM pointers, VDP state, or palettes.
+// Decode one kind-3 selector family into transparent host frames. The default
+// 0xC0B2 family is used by behavior transitions; normal accepted field
+// movement selects the positive-marker 0xC062 family. Neighboring tables
+// remain available through the explicit offset parameter for source audits.
+// Runtime clients consume named RGBA files and typed timing/state rather than
+// retaining ROM pointers or reproducing VDP state.
 std::vector<GenesisFieldEntityAnimation>
 decode_genesis_field_entity_animation_sequences(
     const std::vector<std::uint8_t>& rom,

@@ -566,6 +566,7 @@ private:
     void configure_callbacks();
     void configure_runtime_coordinator_callbacks();
     void advance_field_movement();
+    void advance_field_actor_animation();
     void service_player_weapon_action();
     void initialize_field_entity_selection_state();
     void refresh_field_runner_state_and_assets();
@@ -817,9 +818,8 @@ private:
     std::array<QImage, 8> field_entity_idle_images_{};
     std::array<int, 8> field_entity_idle_origin_x_{};
     std::array<int, 8> field_entity_idle_origin_y_{};
-    // The 0xC0B2 walking lists carry an 0x8008 marker (eight frames per
-    // direction); the hurt lists have two and the attack pose one. Keep
-    // each direction's own frame count instead of forcing a fixed width.
+    // Ordinary accepted movement uses four looping poses from 0xC062. C0B2's
+    // eight-entry high-bit list is a separate finite behavior transition.
     std::array<std::vector<QImage>, 8> field_entity_walk_images_{};
     std::array<std::vector<int>, 8> field_entity_walk_origin_x_{};
     std::array<std::vector<int>, 8> field_entity_walk_origin_y_{};

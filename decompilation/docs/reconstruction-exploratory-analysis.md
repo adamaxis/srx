@@ -466,17 +466,29 @@ claim that field presentation is complete.
 
 ### Walking animation
 
-Walking is driven by source direction/state tables, not a host “move one frame
-every N milliseconds” animation. The source uses the animation/resource tables
-around `0xC042`, `0xC072`, `0xC082`, `0xC092`, `0xC0A2`, `0x15318`, `0x15336`,
-and the entity state/phase tables at `0x6AB3E`, `0x6AB96`, `0x6ABEE`, and
-`0x6AC46`. The field animation path also consults `0x13E58`, `0x13E7C`, and
-the timing tables at `0xD4540`/`0xD4EA0` for object-specific cadence.
+Ordinary accepted field movement uses the eight direction selectors at
+`0xC062`, which point to four-frame positive-marker loops (`0x20..0x3C`). The
+blocked/stopped reset at `0xB442` selects the static direction poses at
+`0xC052` (`0x00..0x1C`). The distinct `0xC0B2` selectors (`0xE8..0x104`) are
+finite eight-descriptor behavior transitions installed by `0xB330` and the
+immediate branch of `0xAFF2`; using those as a held-D-pad walk cycle leaves the
+actor on the transition's final pose. `0x600E` loops the positive `0xC062`
+list and calculates +0x18 from the live +0xCA timing word. For the kind-3
+runner, `0xBABC` supplies +0xCA=`0x28`, so +0x18=`0x280` against the `0x1000`
+period at +0x1C, advancing at six- or seven-update intervals according to the
+accumulator phase. Selector
+changes through `0xB6DE` do not clear the frame or accumulator; `0x600E`
+resolves the frame bound on the next render pass.
 
-The native port must select frames by the source direction and state marker,
-keep the source timer/phase, and return to that direction's idle frame when an
-accepted movement step ends. A single reused walking image or a mirrored
-frame for every direction is not source reconstruction.
+Other motion/action families remain distinct around `0xC042`, `0xC072`,
+`0xC082`, `0xC092`, `0xC0A2`, `0x15318`, `0x15336`, and the entity
+state/phase tables at `0x6AB3E`, `0x6AB96`, `0x6ABEE`, and `0x6AC46`. The field
+animation path also consults `0x13E58`, `0x13E7C`, and the timing tables at
+`0xD4540`/`0xD4EA0` for object-specific cadence.
+
+The Qt presenter now consumes separately named C062 movement frames and
+typed selector/timer state. The C0B2 transition assets remain a separate
+family and are not selected for ordinary D-pad movement.
 
 ### Area/building transitions
 
