@@ -23,6 +23,10 @@ int main(int argc, char** argv) {
         SHADOWRUN_GHIDRA_AUDIO_RESOURCE_PATH);
     const auto resource_075 = std::filesystem::path(
         SHADOWRUN_GHIDRA_AUDIO_PASSKEY_RESOURCE_PATH);
+    const auto intro_stage_1 = std::filesystem::path(
+        SHADOWRUN_GHIDRA_AUDIO_INTRO_STAGE_1_PATH);
+    const auto intro_stage_3 = std::filesystem::path(
+        SHADOWRUN_GHIDRA_AUDIO_INTRO_STAGE_3_PATH);
     std::string resolved_alias;
     std::size_t resolver_calls = 0U;
     AudioPlaybackService playback([&](const std::string_view alias) {
@@ -36,6 +40,12 @@ int main(int argc, char** argv) {
         }
         if (alias == "audio.effects.resource.075") {
             return resource_075;
+        }
+        if (alias == "audio.intro.title.stage-1") {
+            return intro_stage_1;
+        }
+        if (alias == "audio.intro.title.stage-3") {
+            return intro_stage_3;
         }
         return std::filesystem::path{};
     });
@@ -66,6 +76,20 @@ int main(int argc, char** argv) {
         std::cerr << "the extracted resource-075 FLAC is missing\n";
         return 1;
     }
+    if (playback.alias_for_event(0x10U) != "audio.intro.title.stage-1" ||
+        !std::filesystem::is_regular_file(intro_stage_1)) {
+        std::cerr << "opening command 0x10 did not select the stage-1 track\n";
+        return 1;
+    }
+    if (playback.alias_for_event(0x12U) != "audio.intro.title.stage-3" ||
+        !std::filesystem::is_regular_file(intro_stage_3)) {
+        std::cerr << "opening command 0x12 did not select the stage-3 track\n";
+        return 1;
+    }
+    if (!playback.alias_for_event(0x11U).empty()) {
+        std::cerr << "unidentified stage-2 command 0x11 was assigned a track\n";
+        return 1;
+    }
 
     if (QMediaDevices::defaultAudioOutput().isNull()) {
         std::cerr << "no default audio output is available for playback\n";
@@ -78,10 +102,12 @@ int main(int argc, char** argv) {
         std::int64_t min_duration_ms;
         std::int64_t max_duration_ms;
     };
-    constexpr std::array<PlaybackExpectation, 3> kMappedEvents{{
+    constexpr std::array<PlaybackExpectation, 5> kMappedEvents{{
+        {0x10U, "audio.intro.title.stage-1", 14800, 14900},
         {0x24U, "audio.menu.command-024", 2400, 2600},
         {0x25U, "audio.effects.resource.037", 2050, 2200},
         {0x4BU, "audio.effects.resource.075", 2100, 2300},
+        {0x12U, "audio.intro.title.stage-3", 20900, 21200},
     }};
     for (const auto& expected : kMappedEvents) {
         const auto calls_before = resolver_calls;
@@ -136,13 +162,15 @@ int main(int argc, char** argv) {
         }
     }
 
+    const auto calls_before_unknown = resolver_calls;
+    playback.play_event(0x11U);
     playback.play_event(0x2AU);
     playback.play_event(0x2CU);
     playback.play_event(0x30U);
-    if (resolver_calls != kMappedEvents.size() ||
+    if (resolver_calls != calls_before_unknown ||
         !playback.alias_for_event(0x2CU).empty() ||
         !playback.alias_for_event(0x30U).empty()) {
-        std::cerr << "an unresolved event was assigned an audio asset\n";
+        std::cerr << "an unresolved event reached an audio asset\n";
         return 1;
     }
 

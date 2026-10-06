@@ -627,12 +627,16 @@ sequence of distinct captured states are the evidence used below.
    snapshots agree with the captured sequence of lit city, darkening city,
    black, and appearing actors; the sparse 30 fps capture cannot establish an
    exact frame-for-frame timing match.
-5. **Sound:** `0x5B378` has no audio call of its own. The surrounding intro
-   route sends event `0x10` at `0x59C76` (mapped by the current host table to
-   `audio.field.effect-016`, 2.7505 seconds) and event `0x11` at `0x59C92`
-   before stage 2 (mapped to `audio.intro.title.stage-1`, 14.8337 seconds).
-   Those are entry/transition events, not a selector-specific sound. The
-   exact audible overlap with the captured box is not independently confirmed.
+5. **Sound:** `0x5B378` has no audio call of its own. ROM `0x59C72` submits
+   command `0x10` through `0x530EA` immediately before stage 1 at `0x5AF62`.
+   Before correction, Qt mapped it to `audio.field.effect-016` (2.7505 s),
+   then mapped stage-2 command `0x11` to the 14.8337-second stage-1 track.
+   The independent section 02 audio correlates that track at 2.431/2.737 s;
+   the field effect's strongest match is only 0.0682 at 24.292 s. Qt now
+   maps command `0x10` to `audio.intro.title.stage-1`. Command `0x11` remains
+   unmapped until the stage-2 resource is identified. See the [opening music
+   audit](../visual-audits/opening-music-start.md) for ROM queue bytes, player
+   playback, durations, and the remaining track-lifetime boundary.
 6. **Related screen parts:** checked the whole Seattle composition: date,
    place, three team rows, skyline, focus box, and next wilderness scene.
    The text omission, focus-frame rendering, final-box hold, and palette
@@ -786,10 +790,12 @@ longplay frames remain the independent appearance evidence.
    frame services. Compare entry, story-text, explosion, and later frames; do
    not treat a pose hold in a mismatched native/video frame pair as a cadence
    defect. Exact cross-capture VBlank alignment remains unknown.
-5. **Sound:** the route emits event 0x11, mapped to
-   audio.intro.title.stage-1 (14.8337 seconds). Later actor-event aliases
-   and whether that track is stopped or allowed to finish at each scene
-   boundary remain unresolved.
+5. **Sound:** stage 2 begins with command `0x11` immediately before
+   `0x59D7C`; its resource identity remains unresolved and it is intentionally
+   unmapped in Qt. Stage-1 music now starts on command `0x10` before
+   `0x5AF62`, supported by the independent section 02 audio match. Whether
+   the stage-1 track stops, finishes, or overlaps at the stage-2 boundary
+   remains unresolved.
 6. **Related screen parts:** checked both sides of the composition, text
    baseline, map, actor silhouettes, projectile rows, fades, and handoff to
    tri-vid. No unrelated shell is present to preserve; color-zero sprite
@@ -823,11 +829,12 @@ longplay frames remain the independent appearance evidence.
    source -0x1B8 offset threshold. The fade advances one palette step every
    two VBlanks for 34 states. The longplay supports appearance and order, not
    exact cross-capture VBlank alignment.
-5. **Sound:** tri-vid event 0x12 is emitted at 0x59CB8 and maps to
-   audio.intro.title.stage-3 (21.0048 seconds). The airport animator at
-   0x5B100 makes no direct sound request. No rotor effect is assigned without
-   a traced event; stage-track playback lifetime remains unresolved under
-   OPEN-01/SOUND-03.
+5. **Sound:** tri-vid command `0x12` is emitted at `0x59CB8` and maps to
+   `audio.intro.title.stage-3` (21.0048 seconds); the independent section 02
+   audio correlates this asset at 34.844 s. The airport animator at `0x5B100`
+   makes no direct sound request. No rotor effect is assigned without a
+   traced event; stage-2 identity and stage-track playback lifetime remain
+   unresolved under OPEN-01/SOUND-03.
 6. **Related screen parts:** reviewed plates, transparency, sprite order,
    scroll, story/landing text, blank center rows, palette handoffs, and the
    next scene. The blank-row callback at local index 0xD7 clears center text;

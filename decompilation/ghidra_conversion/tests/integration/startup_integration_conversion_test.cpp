@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -25,6 +26,13 @@ struct Observations {
         std::uint16_t stage_loop_frame = 0;
     };
 
+    struct OpeningAudioCommandSnapshot {
+        std::uint16_t command = 0U;
+        OpeningIntroStage stage = OpeningIntroStage::not_started;
+        OpeningIntroScene scene = OpeningIntroScene::seattle;
+        std::uint32_t source_frame = 0U;
+    };
+
     std::vector<std::string> callbacks;
     std::vector<StartupIntegrationPhase> phases;
     std::size_t field_ready_count = 0;
@@ -34,6 +42,7 @@ struct Observations {
     std::vector<OpeningIntroSpriteGroup> opening_sprite_groups;
     std::vector<OpeningIntroTextRequest> opening_text_requests;
     std::vector<OpeningTextTimelineEntry> opening_text_timeline;
+    std::vector<OpeningAudioCommandSnapshot> opening_audio_commands;
 };
 
 struct PaletteFadeSnapshot {
@@ -265,8 +274,12 @@ StartupIntegrationCallbacks make_callbacks(
     callbacks.opening_intro.prepare_mode_entry = [&observations] {
         record(observations, "opening_prepare_mode_entry");
     };
-    callbacks.opening_intro.service_audio_command = [&observations](
-                                                        const std::uint16_t) {
+    callbacks.opening_intro.service_audio_command =
+        [&state, &observations](const std::uint16_t command) {
+        observations.opening_audio_commands.push_back(
+            {command, state.opening_intro.stage,
+             state.opening_intro.scene,
+             state.opening_intro.source_frame});
         record(observations, "opening_service_audio_command");
     };
     callbacks.opening_intro.service_audio = [&observations] {
@@ -712,6 +725,54 @@ int main() {
         new_game_state.opening_intro.post_intro_mode != 2U ||
         new_game_state.opening_intro.post_intro_phase != 4U) {
         return 13;
+    }
+    constexpr std::array<std::uint16_t, 3> kStageAudioCommands{
+        0x10U, 0x11U, 0x12U};
+    std::size_t next_stage_command = 0U;
+    for (const auto& snapshot :
+         new_game_observations.opening_audio_commands) {
+        if (next_stage_command < kStageAudioCommands.size() &&
+            snapshot.command == kStageAudioCommands[next_stage_command]) {
+            ++next_stage_command;
+        }
+    }
+    const auto find_opening_audio_command =
+        [&new_game_observations](const std::uint16_t command) {
+            return std::find_if(
+                new_game_observations.opening_audio_commands.begin(),
+                new_game_observations.opening_audio_commands.end(),
+                [command](const auto& snapshot) {
+                    return snapshot.command == command;
+                });
+        };
+    const auto stage2_audio = find_opening_audio_command(0x11U);
+    const auto stage3_audio = find_opening_audio_command(0x12U);
+    const bool later_audio_matches_stages =
+        stage2_audio != new_game_observations.opening_audio_commands.end() &&
+        stage2_audio->stage == OpeningIntroStage::stage2_palette_fade_out &&
+        stage2_audio->scene == OpeningIntroScene::seattle &&
+        stage3_audio != new_game_observations.opening_audio_commands.end() &&
+        stage3_audio->stage ==
+            OpeningIntroStage::orchestrator_palette_fade_out &&
+        stage3_audio->scene == OpeningIntroScene::wilderness;
+    if (new_game_observations.opening_audio_commands.empty() ||
+        new_game_observations.opening_audio_commands.front().command !=
+            0x10U ||
+        new_game_observations.opening_audio_commands.front().stage !=
+            OpeningIntroStage::not_started ||
+        new_game_observations.opening_audio_commands.front().scene !=
+            OpeningIntroScene::seattle ||
+        new_game_observations.opening_audio_commands.front().source_frame !=
+            0U ||
+        next_stage_command != kStageAudioCommands.size() ||
+        !later_audio_matches_stages) {
+        std::cerr << "opening audio commands:";
+        for (const auto& snapshot :
+             new_game_observations.opening_audio_commands) {
+            std::cerr << " 0x" << std::hex << snapshot.command;
+        }
+        std::cerr << '\n';
+        return 27;
     }
     if (new_game_state.opening_intro.scene_palette_fade_vblank !=
             kStage2PaletteTransitionVblanks ||

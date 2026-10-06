@@ -37,11 +37,11 @@ AudioPlaybackService::AudioPlaybackService(PathResolver resolver,
         channels_.push_back(std::make_unique<PlaybackChannel>());
     }
 
-    // ROM audio command ids observed in the converted service boundaries,
-    // mapped to extracted FLAC aliases with source evidence.
+    // ROM opening commands 0x10/0x12 occur at the start of stages 1/3 and
+    // match those tracks in the independent capture. Stage-2 command 0x11
+    // stays unmapped until its sound identity is established.
     event_aliases_ = {
-        {0x10U, "audio.field.effect-016"},
-        {0x11U, "audio.intro.title.stage-1"},
+        {0x10U, "audio.intro.title.stage-1"},
         {0x12U, "audio.intro.title.stage-3"},
         {0x24U, "audio.menu.command-024"},
         // ROM command 0x25 is table-2 index 37. The importer emits that
