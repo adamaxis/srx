@@ -183,6 +183,7 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
                    " [--boot-fasa-qa <output-dir>]"
                    " [--startup-dump <stage> <selection> <frame> <file>]"
                    " [--startup-qa <output-dir>]"
+                   " [--opening-rotor-qa <output-dir>]"
                    " [--intro-to-field-smoke]\n";
             return {};
         }
@@ -300,6 +301,10 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
         }
         if (argument == "--opening-dump-range" && index + 4 < argc) {
             index += 4;
+            continue;
+        }
+        if (argument == "--opening-rotor-qa" && index + 1 < argc) {
+            ++index;
             continue;
         }
         throw std::invalid_argument("unknown or incomplete argument: " +
@@ -1207,6 +1212,168 @@ public:
         std::cout << "startup_range_dump=complete selection=" << selection
                   << " frames=" << start << '-' << end << " path="
                   << output_directory.string() << '\n';
+        return 0;
+    }
+
+    int run_opening_rotor_qa(
+        const std::filesystem::path& output_directory) {
+        constexpr std::uint32_t kSelection = 2U;
+        constexpr std::uint32_t kFirstSampleFrame = 1827U;
+        constexpr std::uint32_t kSampleInterval = 6U;
+        constexpr std::size_t kPhaseCount = kTitleIntroPulsePhaseCount;
+        constexpr std::size_t kSampleCount = kPhaseCount + 1U;
+        constexpr auto kLastSampleFrame =
+            kFirstSampleFrame +
+            static_cast<std::uint32_t>(kPhaseCount) * kSampleInterval;
+
+        if (prepare_opening_dump(kSelection) != 0) {
+            return 3;
+        }
+        std::filesystem::create_directories(output_directory);
+        std::ofstream trace(output_directory / "opening-rotor-qa.tsv");
+        if (!trace) {
+            std::cerr << "opening rotor QA: could not write trace in "
+                      << output_directory.string() << '\n';
+            return 3;
+        }
+        trace << "sample\topening_frame\tstage_frame\tphase\tdescriptor\t"
+                 "scroll_x\tpulse_x\timage\n";
+
+        std::array<QImage, kSampleCount> images{};
+        std::array<std::uint32_t, kSampleCount> descriptors{};
+        std::array<std::uint16_t, kSampleCount> phases{};
+        std::array<std::int16_t, kSampleCount> scroll_offsets{};
+        std::array<std::uint16_t, kSampleCount> pulse_frames{};
+        std::size_t sample_index = 0U;
+        const auto fail = [](const std::string_view reason) {
+            std::cerr << "opening rotor QA: " << reason << '\n';
+            return 3;
+        };
+
+        for (std::uint32_t frame = 0U; frame <= kLastSampleFrame; ++frame) {
+            if (state_.phase != StartupIntegrationPhase::opening_intro) {
+                return fail("opening ended before all rotor samples were captured");
+            }
+            if (sample_index < kSampleCount &&
+                frame == kFirstSampleFrame +
+                             static_cast<std::uint32_t>(sample_index) *
+                                 kSampleInterval) {
+                if (state_.opening_intro.scene != OpeningIntroScene::airport ||
+                    state_.opening_intro.stage !=
+                        OpeningIntroStage::stage_loop) {
+                    std::cerr << "opening rotor QA: frame=" << frame
+                              << " scene=" << opening_intro_scene_name(
+                                     state_.opening_intro.scene)
+                              << " stage=" << opening_intro_stage_name(
+                                     state_.opening_intro.stage)
+                              << " opening_frame="
+                              << state_.opening_intro.source_frame << '\n';
+                    return fail("rotor sample is outside the airport stage loop");
+                }
+                const auto& opening = state_.opening_intro;
+                const auto& pulse = opening.stage_loop.pulse;
+                const auto scene = render_scene();
+                if (scene.size() != QSize(kSceneWidth, kSceneHeight)) {
+                    return fail("renderer did not produce a full 320x224 frame");
+                }
+                const auto filename =
+                    "rotor-phase-" + std::to_string(sample_index) + ".bmp";
+                const auto path = output_directory / filename;
+                if (!scene.save(QString::fromStdWString(path.wstring()))) {
+                    return fail("could not save a full-screen phase image");
+                }
+                images[sample_index] = scene;
+                descriptors[sample_index] = pulse.sprite_descriptor;
+                phases[sample_index] = pulse.phase;
+                scroll_offsets[sample_index] = opening.stage_loop.scroll.x_offset;
+                pulse_frames[sample_index] = pulse.current_frame;
+                trace << sample_index << '\t' << frame << '\t'
+                      << opening.stage_loop.current_frame << '\t'
+                      << pulse.phase << '\t' << pulse.sprite_descriptor << '\t'
+                      << opening.stage_loop.scroll.x_offset << '\t'
+                      << pulse.x_offset << '\t' << filename << '\n';
+                ++sample_index;
+            }
+            if (frame < kLastSampleFrame) {
+                advance_one_source_frame();
+            }
+        }
+        if (sample_index != kSampleCount) {
+            return fail("did not capture all seven cycle checkpoints");
+        }
+        const auto actual_path = output_directory / "actual.bmp";
+        if (!images[0].save(QString::fromStdWString(actual_path.wstring())) ||
+            QImage(QString::fromStdWString(actual_path.wstring())) != images[0]) {
+            return fail("could not write the representative actual.bmp scene dump");
+        }
+
+        const auto& expected_descriptors =
+            opening_intro_source_plan().pulse_descriptors;
+        std::size_t first_phase = kPhaseCount;
+        for (std::size_t phase = 0U; phase < kPhaseCount; ++phase) {
+            if (expected_descriptors[phase] == descriptors[0]) {
+                first_phase = phase;
+                break;
+            }
+        }
+        if (first_phase == kPhaseCount) {
+            return fail("active sprite is not one of the six ROM phase assets");
+        }
+        for (std::size_t sample = 0U; sample < kSampleCount; ++sample) {
+            const auto expected_phase = (first_phase + sample) % kPhaseCount;
+            if (descriptors[sample] != expected_descriptors[expected_phase] ||
+                phases[sample] !=
+                    static_cast<std::uint16_t>((phases[0] + sample) %
+                                               kPhaseCount) ||
+                scroll_offsets[sample] != static_cast<std::int16_t>(
+                    scroll_offsets[0] - static_cast<std::int16_t>(
+                                            sample * kSampleInterval * 2U)) ||
+                (sample != 0U && pulse_frames[sample] !=
+                    static_cast<std::uint16_t>(pulse_frames[0] +
+                                               sample * kSampleInterval))) {
+                return fail("six-frame descriptor or two-pixel scroll cadence regressed");
+            }
+            if (sample > 0U && sample < kPhaseCount &&
+                descriptors[sample] == descriptors[sample - 1U]) {
+                return fail("two adjacent samples repeated a rotor phase");
+            }
+        }
+
+        const auto shifted_difference_count =
+            [](const QImage& first, const QImage& later, const int y_begin,
+               const int y_end, const int left_shift) {
+                int differences = 0;
+                for (int y = y_begin; y < y_end; ++y) {
+                    for (int x = left_shift; x < first.width(); ++x) {
+                        if (first.pixel(x, y) != later.pixel(x - left_shift, y)) {
+                            ++differences;
+                        }
+                    }
+                }
+                return differences;
+            };
+        for (std::size_t sample = 1U; sample < kPhaseCount; ++sample) {
+            const auto rotor_differences = shifted_difference_count(
+                images[sample - 1U], images[sample], 100, 112, 12);
+            const auto body_differences = shifted_difference_count(
+                images[sample - 1U], images[sample], 112, 176, 12);
+            if (rotor_differences == 0 || body_differences != 0) {
+                return fail("rotor strip did not change cleanly over a stable plane body");
+            }
+        }
+        if (shifted_difference_count(images[0], images[kPhaseCount],
+                                     100, 176, 72) != 0) {
+            return fail("rotor and plane did not return to the same appearance after 36 frames");
+        }
+
+        trace << "result\t6 distinct ROM phases\t6-frame cadence\t"
+                 "36-frame repeat\tplane body stable\n";
+        std::cout << "opening_rotor_qa=passed phases=" << kPhaseCount
+                  << " cadence=" << kSampleInterval
+                  << " cycle=" << kPhaseCount * kSampleInterval
+                  << " actual="
+                  << actual_path.string()
+                  << '\n';
         return 0;
     }
 
@@ -5092,6 +5259,7 @@ int main(int argc, char** argv) {
         std::optional<std::uint32_t> startup_dump_frame;
         std::optional<std::filesystem::path> startup_dump_path;
         std::optional<std::filesystem::path> startup_qa_path;
+        std::optional<std::filesystem::path> opening_rotor_qa_path;
         std::optional<std::uint32_t> opening_dump_selection;
         std::optional<std::uint32_t> opening_dump_start;
         std::optional<std::uint32_t> opening_dump_end;
@@ -5132,6 +5300,7 @@ int main(int argc, char** argv) {
                        " [--boot-fasa-qa <output-dir>]"
                        " [--startup-dump <stage> <selection> <frame> <file>]"
                        " [--startup-qa <output-dir>]"
+                       " [--opening-rotor-qa <output-dir>]"
                        " [--intro-to-field-smoke]\n";
                 return 0;
             }
@@ -5339,6 +5508,10 @@ int main(int argc, char** argv) {
             if (std::string(argv[index]) == "--startup-qa" &&
                 index + 1 < argc) {
                 startup_qa_path = std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--opening-rotor-qa" &&
+                index + 1 < argc) {
+                opening_rotor_qa_path = std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--opening-dump-range" &&
                 index + 4 < argc) {
@@ -12771,6 +12944,9 @@ int main(int argc, char** argv) {
         GhidraConversionWindow window(asset_root);
         if (startup_qa_path.has_value()) {
             return window.run_startup_qa(*startup_qa_path);
+        }
+        if (opening_rotor_qa_path.has_value()) {
+            return window.run_opening_rotor_qa(*opening_rotor_qa_path);
         }
         if (boot_fasa_qa_path.has_value()) {
             return window.run_boot_fasa_qa(*boot_fasa_qa_path);

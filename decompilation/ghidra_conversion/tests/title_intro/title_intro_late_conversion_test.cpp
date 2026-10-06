@@ -75,12 +75,50 @@ int main() {
         pulse.next_event_frame != 16U) {
         return 8;
     }
+    for (std::size_t phase = 1U; phase < descriptors.size(); ++phase) {
+        pulse.current_frame = pulse.next_event_frame;
+        sprites.clear();
+        advance_title_intro_pulse(pulse, descriptors,
+                                  [&sprites](const auto& request) {
+                                      sprites.push_back(request);
+                                  });
+        if (sprites.size() != 1U ||
+            sprites[0].sprite_descriptor != descriptors[phase] ||
+            sprites[0].x != 0x0044U || sprites[0].y != 0x00EFU ||
+            sprites[0].palette_flags != 0x2000U ||
+            pulse.phase != (phase + 1U) % descriptors.size() ||
+            pulse.next_event_frame != pulse.current_frame + 6U) {
+            return 9;
+        }
+    }
+    pulse.current_frame = pulse.next_event_frame;
+    sprites.clear();
+    advance_title_intro_pulse(pulse, descriptors,
+                              [&sprites](const auto& request) {
+                                  sprites.push_back(request);
+                              });
+    if (sprites.size() != 1U || sprites[0].sprite_descriptor != 0x2000U ||
+        pulse.phase != 1U || pulse.next_event_frame != 52U) {
+        return 10;
+    }
+
+    TitleIntroPulseState outside_window{-0x1BA, 10U, 0U, 0U, 0U};
+    sprites.clear();
+    advance_title_intro_pulse(outside_window, descriptors,
+                              [&sprites](const auto& request) {
+                                  sprites.push_back(request);
+                              });
+    if (!sprites.empty() || outside_window.phase != 0U ||
+        outside_window.next_event_frame != 0U ||
+        outside_window.sprite_descriptor != 0U) {
+        return 11;
+    }
 
     TitleIntroLandingState landing{};
     reset_title_intro_landing(landing);
     if (landing.x_accumulator != 0x7C00U ||
         landing.y_accumulator != 0xB700U || landing.phase != 0U) {
-        return 9;
+        return 12;
     }
     landing.current_frame = 0x226U;
     const std::array<TitleIntroLandingPhase, kTitleIntroLandingPhaseCount>
@@ -100,7 +138,7 @@ int main() {
         sprites[0].x != 0x7CU || sprites[0].y != 0x00DFU ||
         landing.phase != 1U ||
         landing.next_event_frame != 0x24AU) {
-        return 10;
+        return 13;
     }
     landing.current_frame = 0x24AU;
     landing.y_accumulator = 0xE800U;
@@ -111,14 +149,14 @@ int main() {
                                  });
     if (sprites.size() != 1U || sprites[0].sprite_descriptor != 0x4000U ||
         sprites[0].y != 0x0110U) {
-        return 11;
+        return 14;
     }
 
     TitleIntroEntityColorState colors{};
     set_title_intro_entity_color_words(colors, 2U, 0x0EEEU);
     step_title_intro_entity_color_words(colors, 2U);
     if (colors.words[2][0] != 0x0CCCU || !colors.dirty) {
-        return 12;
+        return 15;
     }
     return 0;
 }

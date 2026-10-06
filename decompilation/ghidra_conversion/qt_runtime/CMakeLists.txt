@@ -46,6 +46,26 @@ add_test(NAME shadowrun_ghidra_conversion_qt_startup_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_startup_qa PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# The six airport rotor descriptors advance every six source frames. Capture
+# all six whole screens plus the 36-frame repeat and check the animated strip
+# against the horizontally translated, otherwise stable aircraft body.
+add_test(NAME shadowrun_ghidra_conversion_qt_opening_rotor_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --opening-rotor-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/opening-rotor-qa")
+set_tests_properties(shadowrun_ghidra_conversion_qt_opening_rotor_qa PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
+# The Qt preset excludes the broader conversion-test glob, so retain this
+# source-contract test here alongside the end-to-end image/cadence QA.
+add_executable(shadowrun_ghidra_conversion_qt_title_intro_late_test
+    ../tests/title_intro/title_intro_late_conversion_test.cpp)
+target_link_libraries(shadowrun_ghidra_conversion_qt_title_intro_late_test
+    PRIVATE shadowrun_ghidra_conversion_modules)
+add_test(NAME shadowrun_ghidra_conversion_qt_title_intro_late_qa
+         COMMAND shadowrun_ghidra_conversion_qt_title_intro_late_test)
+
 # Keep the pre-title screen boundaries separate from the longer startup walk:
 # the ROM fades SEGA to black, fades FASA in, holds for 0x79 VBlanks, then
 # fades back out before the title screen replaces it.

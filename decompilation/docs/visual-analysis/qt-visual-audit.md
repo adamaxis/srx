@@ -812,31 +812,35 @@ longplay frames remain the independent appearance evidence.
    routines are 34 VBlank states each; integration QA checks all 34 snapshots
    for five transition profiles.
 3. **Visual construction:** the cockpit uses its extracted plate and separate
-   sprite layers. The airport plane uses its extracted transparent vehicle
-   plate; fresh source/native anchors 1014/1725 and 1034/1765 show matching
-   plane bounds after accounting for capture cadence. Do not reuse the old
-   “aircraft slivers” statement: it was not evidence about the plane. Rotor
-   and helicopter choreography still need an independent layer-by-layer
-   comparison.
+   sprite layers. The airport plane uses its extracted transparent body plate
+   and six separate rotor descriptor groups. Independent section 02 frames
+   001065-001080 show the upper rotor line changing while the plane travels.
+   See [the airport rotor and tail audit](../visual-audits/airport-rotor-and-aircraft-tail.md)
+   for the distinction between that rotor and the static tail detail.
 4. **Animation:** tri-vid actors, airport scroll, pulse, landing, and fades
-   have separate typed counters. The fade advances one palette step every
-   two VBlanks for 34 states. Seattle/tri-vid/airport boundary captures show
-   entry and exit, but exact longplay-to-native cadence for moving actors
-   and rotor remains unresolved.
+   have separate typed counters. The rotor descriptor changes every six
+   VBlanks, cycles six states in 36 VBlanks, and stops drawing below the
+   source -0x1B8 offset threshold. The fade advances one palette step every
+   two VBlanks for 34 states. The longplay supports appearance and order, not
+   exact cross-capture VBlank alignment.
 5. **Sound:** tri-vid event 0x12 is emitted at 0x59CB8 and maps to
-   audio.intro.title.stage-3 (21.0048 seconds). The airport callback at
-   0x5AD1A has no direct audio call. No rotor sound is assigned without a
-   traced event; playback lifetime for the stage track beyond the extracted
-   file is not established by the screenshot.
+   audio.intro.title.stage-3 (21.0048 seconds). The airport animator at
+   0x5B100 makes no direct sound request. No rotor effect is assigned without
+   a traced event; stage-track playback lifetime remains unresolved under
+   OPEN-01/SOUND-03.
 6. **Related screen parts:** reviewed plates, transparency, sprite order,
    scroll, story/landing text, blank center rows, palette handoffs, and the
-   next scene. The blank-row callback at local index 0xD7 now clears center
-   text; the six-line landing paragraph is drawn at elapsed index 0x348.
-   Native frame 2566 matches source frame 001440's paragraph.
-7. **Frame support:** multiple source and native frames support the cockpit
-   reveal/hold/fade and plane travel. The landing-text pair and plane bounds
-   support those subpaths. They do not settle helicopter/rotor timing or all
-   later scene behavior, so both intro ledger rows stay partial.
+   next scene. The blank-row callback at local index 0xD7 clears center text;
+   the six-line landing paragraph is drawn at elapsed index 0x348. Native
+   frame 2566 matches source frame 001440's paragraph. The rotor QA also
+   checks seven whole 320x224 airport frames and confirms the plane body is
+   stable after accounting for its source scroll.
+7. **Frame support:** independent frames 001065, 001068, 001071, 001074,
+   001077, and 001080 support the upper rotor line's changing appearance.
+   Native frames 1827, 1833, 1839, 1845, 1851, 1857, and 1863 cover all six
+   descriptors and one repeat; Debug and Release images match byte for byte.
+   Airport placement, landing, global soundtrack timing, and other opening
+   stages remain partial.
 
 ### Applied review: cab map and destination cursor
 
