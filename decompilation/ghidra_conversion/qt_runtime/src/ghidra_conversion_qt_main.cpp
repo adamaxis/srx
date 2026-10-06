@@ -1867,6 +1867,57 @@ public:
         }
         record("title.sprite.first_hidden");
 
+        // Keep title screenshots tied to their real source frame. In the
+        // independent section-01 capture, copyright first appears at video
+        // frame 418; the ROM draws it on title frame 254. That observed event
+        // anchors the 30-Hz reference samples to candidate 60-Hz title frames
+        // without treating the video file's frame zero as a ROM VBlank.
+        // Capture these before prompt checkpoints advance to frame 530, so a
+        // later frame cannot be mislabeled as title_300.
+        constexpr std::array<int, 12> kTitleReferenceCheckpoints{
+            198, 210, 253, 254, 258, 260, 262, 264, 266, 268, 300, 318};
+        for (const auto checkpoint : kTitleReferenceCheckpoints) {
+            while (title_frame < checkpoint &&
+                   state_.phase == StartupIntegrationPhase::title_ready) {
+                if (!pump()) {
+                    return fail("title reference checkpoint did not advance");
+                }
+                ++title_frame;
+            }
+            if (state_.phase != StartupIntegrationPhase::title_ready ||
+                title_frame != checkpoint) {
+                return fail("title reference screenshot frame was mislabeled");
+            }
+            if (checkpoint == 253 || checkpoint == 254) {
+                const auto scene = render_scene();
+                const auto copyright = title_text_foreground_matches(
+                    scene, 8, std::numeric_limits<int>::max());
+                const auto expected_visible = checkpoint == 254;
+                if (title_copyright_visible_ != expected_visible ||
+                    (expected_visible &&
+                     (copyright.foreground == 0 ||
+                      copyright.exact != copyright.foreground)) ||
+                    (!expected_visible && copyright.exact != 0)) {
+                    return fail("title copyright did not match its traced "
+                                "frame-254 draw boundary");
+                }
+            }
+            const auto label = checkpoint == 300
+                ? std::string("title_300")
+                : std::string("title-frame-") +
+                      std::to_string(checkpoint);
+            if (!save_title_scroll_checkpoint(label, false)) {
+                return fail("title reference screenshot disagrees with its "
+                            "typed scroll and light phase");
+            }
+            if (checkpoint == 300 &&
+                !render_scene().save(QString::fromStdWString(
+                    (output_directory / "actual.bmp").wstring()))) {
+                return fail("could not write the full-screen title actual.bmp");
+            }
+            record("title.reference." + std::to_string(checkpoint));
+        }
+
         // The prompt record is selected from the low six bits of D7 after
         // the initial 0x0E10 countdown crosses 0x0C6C. Variant B is the blank
         // record for ten VBlanks; A remains visible for the rest of each
@@ -1908,11 +1959,9 @@ public:
         }
 
         // The source title loop is interactive, but its complete logo/text
-        // presentation is time-driven. Capture the progression before
-        // pressing Start so the QA walk cannot accidentally validate only the
-        // first black/circuit frame seen by the old smoke path.
-        constexpr std::array<int, 4> kTitleCheckpoints{300, 900, 1500,
-                                                        3000};
+        // presentation is time-driven. Continue the long-hold captures after
+        // the earlier frame-300 and matched-reference snapshots.
+        constexpr std::array<int, 3> kTitleCheckpoints{900, 1500, 3000};
         for (const auto checkpoint : kTitleCheckpoints) {
             while (title_frame < checkpoint &&
                    state_.phase == StartupIntegrationPhase::title_ready) {
@@ -1936,11 +1985,6 @@ public:
             }
             if (checkpoint == 900) {
                 record("title.sprite.settled_900");
-            }
-            if (checkpoint == 300 &&
-                !render_scene().save(QString::fromStdWString(
-                    (output_directory / "actual.bmp").wstring()))) {
-                return fail("could not write the full-screen title actual.bmp");
             }
         }
 

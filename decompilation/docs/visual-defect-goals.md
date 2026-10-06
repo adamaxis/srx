@@ -45,6 +45,7 @@ shared acceptance gates are in the matching goal cluster below.
 | `BOOT-03` | The animated microchip/circuit background does not move upward. | Independent section 01 frames 000390, 000396, 000420, and 000450 show changing background positions. Trace source offset, direction, cadence, and lifetime; compare a multi-frame full-screen dump. |
 | `TITLE-01` | The title's “PRESS START” label does not blink in and out. | Reproduced before the edit: the presenter set `title_prompt_visible_ = true` for both ROM variants. Resolved. ROM `0x1A9E` starts D7 at `0x0E10`, waits once per loop, then draws only when D7 is below `0x0C6C`; its low six bits select visible record A (`0x1F81`) or blank record B (`0x1F99`), both at `0xCA84` with palette `0x2000`. Qt now follows the selected typed text asset. Debug/Release typed and full-screen QA cover two cycles. Independent section 01 frames 000900/000906/000912 show visible/hidden/visible; their coarse 30-fps spacing supports blinking but does not establish absolute VBlank phase. Full review: [title prompt blink audit](visual-audits/title-prompt-blink.md). |
 | `TITLE-02` | Pressing Start skips the transition and immediately opens New Game/Load Game. | Trace the title Start edge through the transition into Start Options; capture every transition phase and confirm inputs do not reach the destination early. The independent video has a cut at this boundary, so it does not establish transition timing. |
+| `TITLE-03` | The title circuit background is much brighter and denser green in the native screen than in the independent game capture. | Reproduced in matched whole-screen comparisons after correcting a mislabeled native frame. ROM tracing supports the extracted base palette and identifies a separate seven-phase light update; the compressed reference does not establish the correct brightness of thin circuit lines. Keep open until source-backed color/texture equivalence can be established without a speculative color transform. See [title circuit palette audit](visual-audits/title-circuit-palette.md). |
 | `OPEN-01` | Opening music starts on the second screen instead of when the opening starts. | Trace each timed opening stage's sound command and playback state; compare section 02 audio/frame timing and record duration/loop/stop behavior. |
 | `OPEN-02` | In the Decker route, the head floats instead of staying attached to the character. | Identify the exact scene, actor record, and layer ownership; compare several adjacent frames and full-screen native captures. The sampled section 02 frames do not yet identify this Decker-specific state. |
 | `OPEN-03` | In the Decker route, the body is superimposed over another image. | Trace scene handoff and layer clearing independently from head placement; verify no old actor/background layer remains across the full frame. |
@@ -81,14 +82,29 @@ shared acceptance gates are in the matching goal cluster below.
 ### Evidence gathered for this pass
 
 - Independent section 01 frames were inspected in sequence. They support the
-  flame lifetime, a changing title circuit background, and visible/hidden
-  Push Start phases. The title-to-options transition is cut out of the video.
-- The circuit's upward movement is now represented by the typed title offset
-  and checked at offsets 0, 1, 2, and 24 in whole-screen Qt captures. During
-  the same full-frame comparison, native title output remained much brighter
-  and denser in green than independent title frames 390, 396, 420, 450, and
-  1500. A top-band pixel statistic is diagnostic only because the independent
-  frames are compressed and their exact VBlank alignment is unknown.
+  flame lifetime, changing title circuit geometry, copyright appearance, and
+  visible/hidden Push Start phases. The title-to-options transition is cut out
+  of the video.
+- A frame-order bug invalidated the old comparison labeled `actual.bmp`:
+  prompt QA had already advanced the title to frame 530 before the checkpoint
+  labeled frame 300. The startup QA now captures the title reference sequence
+  first, writes `title_300.bmp` at actual frame 300, and records title frame,
+  scroll offset, and circuit phase in `title-scroll-qa.tsv`. Debug and Release
+  output for `actual.bmp` and `title_300.bmp` is byte-identical.
+- The independent section 01 copyright first appears at video frame 418;
+  the ROM title loop first draws it at title frame 254. This observed event is
+  used only as an alignment anchor, not as a claim that video frame zero is a
+  ROM VBlank. Candidate whole-screen pairs are 390/198, 396/210, 418/254,
+  420/258, 421/260, 422/262, 423/264, 424/266, 425/268, and 450/318
+  (video/title frames). Background geometry aligns at the same vertical
+  offset in these pairs, within one pixel on frame 424. The compressed video
+  still makes thin-line color an uncertain measure.
+- The title circuit remains visibly brighter and denser green in Qt than in
+  the independent frames after timing and scroll alignment. The ROM palette
+  trace supports the base asset colors and the known palette writer changes
+  only its separate light phase. The display difference is recorded as
+  `TITLE-03` and left unresolved rather than applying an unsupported
+  brightness transform. See the [full title circuit audit](visual-audits/title-circuit-palette.md).
 - BOOT-02 was reproduced in the pre-fix full-screen Qt title capture. The
   source-derived flame projection is visible through title frame 165
   (`FFF1E6` reaches `0x26` after the final column), hidden on frame 166 when
@@ -186,22 +202,28 @@ transition timing still needs full-screen entry/phase/destination QA.
 ### TITLE-03 — Circuit background color and texture (added by full-screen audit)
 
 **Observed:** the full-screen Qt title shows substantially more bright green
-circuit detail than the independent title frames. In the top 16 rows of the
-Debug `actual.bmp`, about 20% of pixels have green values at least 32; the
-same diagnostic on independent section 01 frame 000450 is about 2%. This is a
-triage measure, not a color-correction target, because the reference is
-compressed video and the two captures are not phase-aligned.
+circuit detail than the independent title frames. Earlier pixel statistics
+used a mislabeled Qt frame and unaligned reference frames, so those values are
+withdrawn as comparison evidence. Correctly labeled whole-screen pairs now
+align by the observed copyright transition and circuit geometry, and still
+show a mismatch; video compression remains a limit on thin-line color.
 
-**Solve:** trace the ROM background palette and the seven light phases, inspect
+**Solve:** trace the ROM background palette and seven light phases, inspect
 the offline extracted assets, and compare full frames at matched scroll and
 light states. Correct the native palette/resource mapping only when the ROM
-and independent frames support the change.
+and independent frames support the change. Do not derive a color transform
+from compressed video statistics alone.
 
 **Done when:** consecutive independent title frames and whole-screen Qt dumps
 show the same circuit geometry, brightness range, and phase behavior while
 the logo, prompt, and copyright remain in the correct layers.
 
-**Status:** pending ROM palette and matched-state audit.
+**Status:** partial. The ROM palette and phase writers are traced, and the
+frame labels and event-based reference alignment are corrected. The native
+screens remain brighter and denser green than the independent capture. ROM
+palette evidence supports the current extracted base colors, while video
+compression prevents a confident colorimetric correction. Keep the visual
+defect unresolved. See the [eight-question audit](visual-audits/title-circuit-palette.md).
 
 ### INTRO-03 — Decker, aircraft, landing, and taxi frame (`OPEN-01` through `OPEN-05`, `TAXI-01`)
 
