@@ -83,6 +83,19 @@ shared acceptance gates are in the matching goal cluster below.
 - Independent section 01 frames were inspected in sequence. They support the
   flame lifetime, a changing title circuit background, and visible/hidden
   Push Start phases. The title-to-options transition is cut out of the video.
+- The circuit's upward movement is now represented by the typed title offset
+  and checked at offsets 0, 1, 2, and 24 in whole-screen Qt captures. During
+  the same full-frame comparison, native title output remained much brighter
+  and denser in green than independent title frames 390, 396, 420, 450, and
+  1500. A top-band pixel statistic is diagnostic only because the independent
+  frames are compressed and their exact VBlank alignment is unknown.
+- The native `title_900.bmp` capture still has an orange sprite fragment at
+  the right edge that is absent from independent frame 000900. Its source
+  lifetime is still open under `BOOT-02`.
+- The Qt pre-title audio callback records typed `0x16` / `0x5C` requests but
+  does not call the audio player; neither command has a verified alias in the
+  current playback map. Their shock identity, relationship to the Decker
+  route, and durations remain open under `BOOT-01`.
 - Independent section 02 samples show Start Options, archetype selection, and
   later opening-story scenes. They do not yet isolate the reported Decker
   head/body, propeller, landing, or taxi states.
@@ -129,7 +142,10 @@ upward scroll at the source-derived times; an independent section 01 sequence
 supports the visual order; audio playback is associated with the shock rather
 than startup and its duration/stop are recorded.
 
-**Status:** pending source/evidence audit.
+**Status:** partial. `BOOT-03`'s source-cadenced upward circuit scroll is
+implemented and covered by the Debug/Release startup QA. `BOOT-01` and
+`BOOT-02` remain open; the full title still has the separately tracked palette
+finding below.
 
 ### INTRO-02 — Push Start and title-to-start transition (`TITLE-01`, `TITLE-02`)
 
@@ -147,6 +163,26 @@ transition is not shown in the supplied video and stays source-verified only
 unless another matching capture is found.
 
 **Status:** pending.
+
+### TITLE-03 — Circuit background color and texture (added by full-screen audit)
+
+**Observed:** the full-screen Qt title shows substantially more bright green
+circuit detail than the independent title frames. In the top 16 rows of the
+Debug `actual.bmp`, about 20% of pixels have green values at least 32; the
+same diagnostic on independent section 01 frame 000450 is about 2%. This is a
+triage measure, not a color-correction target, because the reference is
+compressed video and the two captures are not phase-aligned.
+
+**Solve:** trace the ROM background palette and the seven light phases, inspect
+the offline extracted assets, and compare full frames at matched scroll and
+light states. Correct the native palette/resource mapping only when the ROM
+and independent frames support the change.
+
+**Done when:** consecutive independent title frames and whole-screen Qt dumps
+show the same circuit geometry, brightness range, and phase behavior while
+the logo, prompt, and copyright remain in the correct layers.
+
+**Status:** pending ROM palette and matched-state audit.
 
 ### INTRO-03 — Decker, aircraft, landing, and taxi frame (`OPEN-01` through `OPEN-05`, `TAXI-01`)
 

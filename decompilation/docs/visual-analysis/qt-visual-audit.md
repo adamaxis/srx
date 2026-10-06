@@ -254,6 +254,79 @@ The broader boot hill remains partial until the complete pre-title sequence
 has its own defended screen audit and an independent capture that resolves
 the exact 60-Hz timing and the adjacent SEGA audio clips.
 
+### Applied review: title circuit vertical scroll
+
+The title loop already carried a typed five-frame animation offset, but the
+Qt renderer never used it. ROM bytes confirm that the offset drives the
+circuit background's vertical scroll: `0x1D7A` clears `FFDD0A/FFDD0E`,
+`0x26D0` increments `FFDD0E` and sets dirty bit 3 every five VBlanks, and
+`0x1872 -> 0x0F3C` writes the two words through the VSRAM transfer path. The
+source-derived typed value is `TitleLoopState::animation_timer.animation_offset`.
+
+1. **Does it look correct?** Independent section 01 frames 000390, 000396,
+   000420, and 000450 show the circuit lines shifting upward while the logo
+   remains fixed. A row-correspondence check on the lower circuit strip between
+   frames 000390 and 000396 finds an approximately two-pixel upward shift; the
+   longplay is sampled at 30 fps, so it cannot establish an exact VBlank count.
+   Native whole-screen checkpoints are
+   `title-scroll-00.bmp`, `title-scroll-01.bmp`, `title-scroll-02.bmp`,
+   `title-scroll-24.bmp`, and `actual.bmp` under
+   `decompilation/ghidra_conversion/build-ghidra-conversion-qt-debug/qt_runtime/startup-qa/`.
+   The direction matches. The circuit image is still visibly brighter and
+   denser than the longplay; that separately tracked palette/texture finding
+   is `TITLE-03`, and no title color match is claimed.
+2. **Does the look reflect behavioral state?** The renderer reads the
+   authoritative typed title loop offset directly. Startup QA records offset
+   zero before the loop, offset one after its first VBlank, offset two at
+   title frame 6, and offset 24 at frame 116. The timer regression test checks
+   the first update and the recurring five-VBlank interval. The user has not
+   selected a menu item at this stage.
+3. **Are the visuals themselves correct?** The source's second VSRAM word
+   changes while the first is cleared to zero. The Qt renderer translates only
+   the selected `title.circuit.background.N` layer upward; it draws the logo,
+   moving sprite, text, prompt, and copyright afterward in their existing
+   positions. The asset is only 320x224, so the host repeats it at that edge.
+   The full source plane period is not yet represented or verified.
+4. **Is it animated, and should it be?** Yes. `0x26D0` advances once on the
+   first title-loop VBlank and once every five VBlanks afterward, setting the
+   source display dirty flag each time. The offset continues while the title
+   loop runs and stops when the loop exits. Native screenshots show several
+   offsets, and the original captures show multiple later background
+   positions.
+5. **Does sound accompany it?** No sound call is present in `0x26D0` or the
+   separate `0x2634` light-phase routine. The adjacent SEGA requests `0x16` and
+   `0x5C` are a separate open audio issue; this scroll fix does not assign
+   either sound to the background.
+6. **Are related screen areas also correct?** Full 320x224 frames were
+   reviewed at offsets 0, 1, 2, and 24, then at title frames 300, 900, 1500,
+   and 3000. The foreground remains stationary while the circuit moves. The
+   full title frame also exposed the bright/dense circuit appearance under
+   `TITLE-03` and a right-edge orange sprite under `BOOT-02`. After Start, the
+   captured Start Options screen redraws its complete CRT shell without title
+   pixels or controls behind it.
+7. **Do multiple frames support the interpretation?** Yes. Independent
+   frames 000390/000396 and 000420/000450 support upward movement; frames
+   000900/000906/000912 show title hold and prompt blink; frame 001500 shows
+   the later hold. Native QA includes the four direct scroll offsets and the
+   later whole-screen title captures. Debug and Release screenshots for the
+   new offsets and selected title/menu checkpoints are byte-identical.
+8. **Was the previous screen or modal cleared?** The circuit is part of the
+   title background, not a menu overlay. On Start, the new Start Options
+   renderer draws its full device shell and menu after leaving the title
+   phase; the full-screen QA shows no old circuit, logo, or title controls
+   over the menu. Exact transition timing remains open under `TITLE-02`.
+
+**Code changed:** `draw_title()` now applies the existing typed timer to the
+named circuit background, and the startup CLI writes the scroll checkpoints
+and `actual.bmp`. **Behavior implemented:** source-timed upward movement of the
+circuit layer. **Internally checked:**
+`shadowrun_ghidra_conversion_qt_startup_qa` and `shadowrun_ghidra_conversion`
+pass in Debug and Release; the test checks whole-screen pixels and timer
+cadence. **Independently visually checked:** section 01 frames listed above
+support the movement. **Reported defect resolved:** the missing upward motion
+is fixed for the tested visible range. Full-plane wrap, palette match, and the
+separate `BOOT-01`/`BOOT-02` issues remain open.
+
 ### Applied review: field inventory selector
 
 The pre-fix NativePort page-1 dump showed several gold segments crossing the

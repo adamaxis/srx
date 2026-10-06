@@ -1279,9 +1279,104 @@ public:
         trace << "label\tphase\tboot_frame\topening_frame\tstage\tscene"
                  "\tpalette_weight\n";
 
+        std::ofstream title_scroll_trace(
+            output_directory / "title-scroll-qa.tsv");
+        if (!title_scroll_trace) {
+            std::cerr << "startup qa: could not open title scroll trace in "
+                      << output_directory.string() << '\n';
+            return 3;
+        }
+        title_scroll_trace
+            << "label\ttitle_frame\tbackground_scroll\tcircuit_phase\n";
+
+        const auto title_background_matches =
+            [this](const QImage& scene, const bool full_background) {
+                const auto circuit_alias =
+                    "title.circuit.background." +
+                    std::to_string(title_loop_.circuit_lights.phase);
+                auto background = draw_asset_cache_.find(circuit_alias);
+                if (background == draw_asset_cache_.end()) {
+                    background = draw_asset_cache_.find("title.background");
+                }
+                if (background == draw_asset_cache_.end()) {
+                    return false;
+                }
+
+                // Current title assets are screen-sized and start at (0,0).
+                // Use the catalog origin and phase alias to compare only the
+                // background-only band once foreground layers are present.
+                const auto actual_alias =
+                    draw_asset_cache_.find(circuit_alias) !=
+                            draw_asset_cache_.end()
+                        ? circuit_alias
+                        : std::string("title.background");
+                const auto* record =
+                    state_.asset_catalog.catalog.find(actual_alias);
+                if (record == nullptr || background->second.height() <= 0) {
+                    return false;
+                }
+
+                const auto& source = background->second;
+                const auto height = source.height();
+                const auto scroll = static_cast<int>(
+                    title_loop_.animation_timer.animation_offset %
+                    static_cast<std::uint16_t>(height));
+                const auto first_y = full_background
+                                         ? 0
+                                         : std::max(0, record->origin_y);
+                const auto last_y = full_background
+                                        ? scene.height()
+                                        : std::min(
+                                              scene.height(),
+                                              record->origin_y +
+                                                  std::min(16, height));
+                bool any_pixel_moved = false;
+                for (int y = first_y; y < last_y; ++y) {
+                    for (int x = 0; x < scene.width(); ++x) {
+                        const auto source_x = x - record->origin_x;
+                        const auto source_y = y - record->origin_y;
+                        if (source_x < 0 || source_x >= source.width() ||
+                            source_y < 0 || source_y >= height) {
+                            continue;
+                        }
+                        const auto expected_y = (source_y + scroll) % height;
+                        const auto expected =
+                            source.pixelColor(source_x, expected_y);
+                        const auto actual = scene.pixelColor(x, y);
+                        if (actual.red() != expected.red() ||
+                            actual.green() != expected.green() ||
+                            actual.blue() != expected.blue()) {
+                            std::cerr << "startup qa: title pixel mismatch at "
+                                      << x << ',' << y << " phase="
+                                      << static_cast<unsigned>(
+                                             title_loop_.circuit_lights.phase)
+                                      << " offset="
+                                      << title_loop_.animation_timer
+                                             .animation_offset
+                                      << " source=" << expected.red() << ','
+                                      << expected.green() << ','
+                                      << expected.blue() << " actual="
+                                      << actual.red() << ',' << actual.green()
+                                      << ',' << actual.blue() << '\n';
+                            return false;
+                        }
+                        any_pixel_moved = any_pixel_moved ||
+                            expected != source.pixelColor(source_x, source_y);
+                    }
+                }
+                return scroll == 0 || !full_background || any_pixel_moved;
+            };
+
         const auto write_snapshot = [&](const std::string& name) {
             const auto path = output_directory / (name + ".bmp");
             const auto scene = render_scene();
+            if (state_.phase == StartupIntegrationPhase::title_ready &&
+                !title_background_matches(scene, false)) {
+                std::cerr << "startup qa: title background did not follow the "
+                             "source vertical scroll for "
+                          << name << '\n';
+                return false;
+            }
             if (state_.phase == StartupIntegrationPhase::opening_intro &&
                 state_.opening_intro.seattle_outline_frame != 0U &&
                 state_.opening_intro.stage == OpeningIntroStage::schedule &&
@@ -1459,13 +1554,67 @@ public:
             return 3;
         }
 
+        int title_frame = 0;
+        const auto save_title_scroll_checkpoint =
+            [&](const std::string& name, const bool full_background) {
+                const auto scene = render_scene();
+                if (!title_background_matches(scene, full_background)) {
+                    std::cerr << "startup qa: circuit-plane pixels disagree "
+                                 "with the typed scroll at "
+                              << name << " (offset="
+                              << title_loop_.animation_timer.animation_offset
+                              << ")\n";
+                    return false;
+                }
+                const auto path = output_directory / (name + ".bmp");
+                if (!scene.save(QString::fromStdWString(path.wstring()))) {
+                    std::cerr << "startup qa: could not write "
+                              << path.string() << '\n';
+                    return false;
+                }
+                title_scroll_trace
+                    << name << '\t' << title_frame << '\t'
+                    << title_loop_.animation_timer.animation_offset << '\t'
+                    << static_cast<unsigned>(
+                           title_loop_.circuit_lights.phase)
+                    << '\n';
+                return true;
+            };
+
+        if (title_loop_.animation_timer.animation_offset != 0U ||
+            !save_title_scroll_checkpoint("title-scroll-00", true)) {
+            return fail("title setup did not start with a clear circuit scroll");
+        }
+        constexpr std::array<std::pair<int, const char*>, 3>
+            kTitleScrollCheckpoints{{{1, "title-scroll-01"},
+                                     {6, "title-scroll-02"},
+                                     {116, "title-scroll-24"}}};
+        for (const auto& checkpoint : kTitleScrollCheckpoints) {
+            while (title_frame < checkpoint.first &&
+                   state_.phase == StartupIntegrationPhase::title_ready) {
+                if (!pump()) {
+                    return fail("title scroll did not advance");
+                }
+                ++title_frame;
+            }
+            const auto expected_scroll = static_cast<std::uint16_t>(
+                ((checkpoint.first - 1) / 5) + 1);
+            if (title_loop_.animation_timer.animation_offset !=
+                    expected_scroll ||
+                !save_title_scroll_checkpoint(checkpoint.second,
+                                              checkpoint.first <= 6)) {
+                return fail("title background scroll cadence diverged from "
+                            "the five-VBlank source timer");
+            }
+            record(std::string("title.") + checkpoint.second);
+        }
+
         // The source title loop is interactive, but its complete logo/text
         // presentation is time-driven. Capture the progression before
         // pressing Start so the QA walk cannot accidentally validate only the
         // first black/circuit frame seen by the old smoke path.
         constexpr std::array<int, 4> kTitleCheckpoints{300, 900, 1500,
                                                         3000};
-        int title_frame = 0;
         for (const auto checkpoint : kTitleCheckpoints) {
             while (title_frame < checkpoint &&
                    state_.phase == StartupIntegrationPhase::title_ready) {
@@ -1480,6 +1629,11 @@ public:
             record("title.checkpoint." + std::to_string(checkpoint));
             if (!write_snapshot("title_" + std::to_string(checkpoint))) {
                 return 3;
+            }
+            if (checkpoint == 300 &&
+                !render_scene().save(QString::fromStdWString(
+                    (output_directory / "actual.bmp").wstring()))) {
+                return fail("could not write the full-screen title actual.bmp");
             }
         }
 
@@ -2269,8 +2423,9 @@ private:
         title_loop_callbacks_.publish_circuit_light_phase =
             [this](const std::uint8_t phase) { title_circuit_phase_ = phase; };
         title_loop_callbacks_.publish_animation_offset =
-            [this](const std::uint16_t offset) {
-                title_animation_offset_ = offset;
+            [this](const std::uint16_t) {
+                note_presentation_boundary(
+                    "title.circuit_background_scroll_advanced");
             };
         title_loop_callbacks_.draw_prompt_variant =
             [this](const TitlePromptVariant variant) {
@@ -2411,14 +2566,47 @@ private:
                           image->second);
     }
 
+    void draw_wrapped_vertical_alias(QPainter& painter,
+                                     const std::string_view alias,
+                                     const std::uint16_t scroll) const {
+        const auto* record = state_.asset_catalog.catalog.find(alias);
+        const auto image = draw_asset_cache_.find(std::string(alias));
+        if (record == nullptr || image == draw_asset_cache_.end() ||
+            image->second.height() <= 0) {
+            return;
+        }
+
+        // The source display service applies FFDD0E as Plane-B vertical
+        // scroll. The host has the visible 320x224 circuit resource, so repeat
+        // that named background at its lower edge as it moves upward.
+        const auto height = image->second.height();
+        const auto offset = static_cast<int>(scroll % height);
+        if (offset == 0) {
+            draw_alias(painter, alias);
+            return;
+        }
+
+        painter.save();
+        painter.setClipRect(record->origin_x, record->origin_y,
+                            image->second.width(), height);
+        const auto y = record->origin_y - offset;
+        painter.drawImage(record->origin_x, y, image->second);
+        painter.drawImage(record->origin_x, y + height, image->second);
+        painter.restore();
+    }
+
     void draw_title(QPainter& painter) const {
         const auto circuit_alias =
             "title.circuit.background." +
             std::to_string(title_loop_.circuit_lights.phase);
         if (draw_asset_cache_.find(circuit_alias) != draw_asset_cache_.end()) {
-            draw_alias(painter, circuit_alias);
+            draw_wrapped_vertical_alias(
+                painter, circuit_alias,
+                title_loop_.animation_timer.animation_offset);
         } else {
-            draw_alias(painter, "title.background");
+            draw_wrapped_vertical_alias(
+                painter, "title.background",
+                title_loop_.animation_timer.animation_offset);
         }
 
         draw_title_logo(painter);
@@ -3046,7 +3234,6 @@ private:
     bool title_completion_palette_copied_ = false;
     TitlePromptVariant title_prompt_variant_ = TitlePromptVariant::VariantA;
     std::uint8_t title_circuit_phase_ = 0;
-    std::uint16_t title_animation_offset_ = 0;
     std::uint16_t title_logo_columns_ = 0;
     std::uint16_t title_sprite_phase_ = 0;
     std::int16_t title_sprite_x_ = 0x98;

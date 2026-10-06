@@ -148,6 +148,26 @@ selects either that transaction or the `0x530FE` command-queue service. The
 host audio implementation remains an explicit boundary; no Genesis bus or
 audio-firmware emulation is added to the pre-title runtime.
 
+### Title circuit vertical scroll: `0x1D7A` -> `0x26D0` -> `0x1872` / `0x0F3C`
+
+The original ROM bytes show that title setup clears both vertical-scroll
+words, `FFDD0A` and `FFDD0E`, before entering the title loop. `0x26D0` decrements
+`FFDD2E`; when it expires, it resets that counter to four, increments `FFDD0E`,
+and marks display-service dirty bit 3. `0x1872` consumes that bit and calls
+`0x0F3C`, which writes `FFDD0A` and `FFDD0E` through the fixed VSRAM write
+command. The second word scrolls the title's circuit Plane-B image upward while
+the first word keeps the other plane stationary. The cadence is one pixel on
+the first title-loop VBlank, then one pixel every five VBlanks. Ghidra's
+`0x1A9E`, `0x26D0`, `0x1872`, and `0x0F3C` functions cross-check this read of
+the ROM bytes.
+
+The Qt renderer reads the existing typed
+`TitleLoopState::animation_timer.animation_offset` and moves only the named
+circuit background; the logo, sprites, copyright, and prompt remain in the
+foreground. Its host image is the visible 320x224 resource, so the current
+renderer repeats that image at its edge. The source plane's full wrap period
+and the background's apparent brightness against the longplay remain open.
+
 The slot-availability audit also corrected a semantic narrowing in the typed
 conversion: `0x19C54 -> 0x19C5C` preserves the raw `FFFBCC` byte because the
 source callers use it as a numeric action/HUD value. A nonzero boolean is not

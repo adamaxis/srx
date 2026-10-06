@@ -243,7 +243,23 @@ int main() {
                 timer.countdown == 4 && timer.animation_offset == 1U)) {
         return 1;
     }
-    if (!expect(!advance_title_animation_timer(timer))) {
+    for (int frame = 0; frame < 4; ++frame) {
+        if (!expect(!advance_title_animation_timer(timer))) {
+            return 1;
+        }
+    }
+    if (!expect(timer.countdown == 0 && timer.animation_offset == 1U &&
+                advance_title_animation_timer(timer) &&
+                timer.countdown == 4 && timer.animation_offset == 2U)) {
+        return 1;
+    }
+    for (int frame = 0; frame < 4; ++frame) {
+        if (!expect(!advance_title_animation_timer(timer))) {
+            return 1;
+        }
+    }
+    if (!expect(advance_title_animation_timer(timer) &&
+                timer.countdown == 4 && timer.animation_offset == 3U)) {
         return 1;
     }
 
