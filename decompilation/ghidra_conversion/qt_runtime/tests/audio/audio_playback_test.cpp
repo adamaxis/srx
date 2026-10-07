@@ -97,7 +97,7 @@ int main(int argc, char** argv) {
         return 1;
     }
     if (!playback.alias_for_event(0x11U).empty()) {
-        std::cerr << "unidentified stage-2 command 0x11 was assigned a track\n";
+        std::cerr << "silent stage-2 source pair 0x11 was assigned a track\n";
         return 1;
     }
     if (playback.alias_for_event(0x5CU) !=

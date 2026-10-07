@@ -131,4 +131,5 @@ game. The CLI `--help` path still returns its usage text.
   decoded and started on the configured default output.
 - **Reported defect resolved:** `BOOT-01` is resolved for the missing/mistimed
   shock effect. The independent clip does not supply exact VBlank phase, and
-  stage-2 opening music remains separately unresolved under `OPEN-01`.
+  the source-silent stage-2 request and opening-track lifetime remain
+  separately tracked under `OPEN-01`.

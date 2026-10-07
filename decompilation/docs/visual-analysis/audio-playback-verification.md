@@ -127,7 +127,8 @@ The current service verifies the mapped one-shot events above and two
 identified intro music assets. In the current Debug/Release runs, resource 22
 (`FF 10 16`) reported 17/31 ms startup and 2,750 ms duration; resource 92
 (`FF 10 5C`) reported 22/20 ms and 2,750 ms. The `0x16` boot callback uses the
-separate `FF 12` resource-stop operation. Stage-2 music identity and track
-lifetime, more source-event mappings, event `0x30` stop lifetime, and a
-Windows output-loopback capture remain open. Therefore the audio hill remains
-partial.
+separate `FF 12` resource-stop operation. The exact paired stage-2 request
+`FF 12 11`, `FF 10 11` produces setup/quieting writes but no YM key-on; the
+host intentionally leaves it unmapped. Opening-track stop/loop lifetime,
+more source-event mappings, event `0x30` stop lifetime, and Windows
+output-loopback capture remain open. Therefore the audio hill remains partial.

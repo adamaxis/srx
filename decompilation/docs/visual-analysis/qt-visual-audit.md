@@ -634,8 +634,9 @@ sequence of distinct captured states are the evidence used below.
    then mapped stage-2 command `0x11` to the 14.8337-second stage-1 track.
    The independent section 02 audio correlates that track at 2.431/2.737 s;
    the field effect's strongest match is only 0.0682 at 24.292 s. Qt now
-   maps command `0x10` to `audio.intro.title.stage-1`. Command `0x11` remains
-   unmapped until the stage-2 resource is identified. See the [opening music
+   maps command `0x10` to `audio.intro.title.stage-1`. The exact ROM-driven
+   `FF 12 11`/`FF 10 11` probe has no YM key-on, so stage-2 command `0x11`
+   remains intentionally unmapped. See the [opening music
    audit](../visual-audits/opening-music-start.md) for ROM queue bytes, player
    playback, durations, and the remaining track-lifetime boundary.
 6. **Related screen parts:** checked the whole Seattle composition: date,
@@ -834,8 +835,8 @@ longplay frames remain the independent appearance evidence.
    `audio.intro.title.stage-3` (21.0048 seconds); the independent section 02
    audio correlates this asset at 34.844 s. The airport animator at `0x5B100`
    makes no direct sound request. No rotor effect is assigned without a
-   traced event; stage-2 identity and stage-track playback lifetime remain
-   unresolved under OPEN-01/SOUND-03.
+   traced event; the paired stage-2 request is source-silent, while source
+   stage-track playback lifetime remains unresolved under OPEN-01/SOUND-03.
 6. **Related screen parts:** reviewed plates, transparency, sprite order,
    scroll, story/landing text, blank center rows, palette handoffs, and the
    next scene. The blank-row callback at local index 0xD7 clears center text;

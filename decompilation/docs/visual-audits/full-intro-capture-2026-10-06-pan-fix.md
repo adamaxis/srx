@@ -62,6 +62,6 @@ source-traced, whole-screen comparisons before those goals can be closed.
 
 This historical capture has no audio track and predates the boot-audio wiring.
 `BOOT-01` is now resolved by the source-timed resource-92 playback documented
-in [the boot shock audio audit](boot-shock-audio.md). Stage-2 music identity
-and lifetime remain open under `OPEN-01`; this image capture is not audio
-evidence.
+in [the boot shock audio audit](boot-shock-audio.md). The stage-2 source pair
+is silent, while opening-track lifetime remains open under `OPEN-01`; this
+image capture is not audio evidence.

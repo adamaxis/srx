@@ -39,9 +39,11 @@ AudioPlaybackService::AudioPlaybackService(PathResolver resolver,
         channels_.push_back(std::make_unique<PlaybackChannel>());
     }
 
-    // ROM opening commands 0x10/0x12 occur at the start of stages 1/3 and
-    // match those tracks in the independent capture. Stage-2 command 0x11
-    // stays unmapped until its sound identity is established.
+    // ROM 0x59C72/0x59C92/0x59CB8 send stage ids 0x10/0x11/0x12 through the
+    // gated 0x530EA command pair: FF 12 <id>, then FF 10 <id>. Independent
+    // audio matches the extracted 0x10 and 0x12 tracks. A ROM-driven probe of
+    // the exact 0x11 pair has no YM key-on, so it remains intentionally
+    // unmapped; source track-stop/lifetime behavior is still open.
     event_aliases_ = {
         {0x10U, "audio.intro.title.stage-1"},
         {0x12U, "audio.intro.title.stage-3"},
