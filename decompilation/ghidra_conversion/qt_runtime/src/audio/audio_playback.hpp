@@ -49,10 +49,6 @@ public:
     // depending on whether it uses the FF 10 or FF 12 service path.
     void stop_resource(std::uint16_t resource_id);
 
-    // Reproduce a ROM FF 10 retrigger for the same table-2 resource, without
-    // leaving overlapping host channels when the source starts it again.
-    void play_event_restarting(std::uint16_t event);
-
     // Play a catalog alias directly (audio.menu.command-024 and friends).
     void play_alias(std::string_view alias);
 

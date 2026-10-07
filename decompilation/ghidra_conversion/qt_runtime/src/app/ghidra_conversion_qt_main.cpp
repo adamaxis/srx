@@ -4247,15 +4247,16 @@ private:
                 }
                 // The 0x5D746 source path sends 0x16 through 0x530D2 as
                 // FF 12 16 (stop resource 22). Its 0x5C request uses
-                // 0x530DE's queue path, FF 10 5C (start resource 92); the
-                // repeated start requests restart the same host sound. The
-                // ordinary FF 10 use of command 0x16 remains a separate
-                // start alias; this callback must honor the direct FF 12 op.
+                // 0x530DE's queue path, FF 10 5C (start resource 92). Each
+                // FF 10 is another source start; the host voice pool lets
+                // those instances overlap and recycles one channel at a time.
+                // Ordinary FF 10 use of 0x16 remains a separate start alias;
+                // this callback must honor the direct FF 12 operation.
                 if (request.service_path ==
                     PreTitleAudioServicePath::enabled_variant_transaction) {
                     audio_playback_.stop_resource(request.command);
                 } else if (request.command == 0x005CU) {
-                    audio_playback_.play_event_restarting(request.command);
+                    audio_playback_.play_event(request.command);
                 }
                 note_presentation_boundary(
                     request.service_path ==

@@ -295,8 +295,8 @@ source-derived typed value is `TitleLoopState::animation_timer.animation_offset`
    positions.
 5. **Does sound accompany it?** No sound call is present in `0x26D0` or the
    separate `0x2634` light-phase routine. The adjacent SEGA requests `0x16` and
-   `0x5C` are a separate open audio issue; this scroll fix does not assign
-   either sound to the background.
+   `0x5C` belong to the separate boot shock sequence under `BOOT-01`; this
+   scroll fix does not assign either sound to the title background.
 6. **Are related screen areas also correct?** Full 320x224 frames were
    reviewed at offsets 0, 1, 2, and 24, then at title frames 300, 900, 1500,
    and 3000. The foreground remains stationary while the circuit moves. The
@@ -389,7 +389,7 @@ and confirms Debug/Release SHA-256 matches.
 000390 show the active-then-absent flame sequence. Exact VBlank alignment is
 not available.
 **Reported defect resolved:** the flame no longer remains after the title
-reveal; title palette fidelity and the separate shock audio issue remain open.
+reveal; title palette fidelity remains open; `BOOT-01` is resolved in the [boot shock audio audit](../visual-audits/boot-shock-audio.md).
 
 ### Applied review: field inventory selector
 

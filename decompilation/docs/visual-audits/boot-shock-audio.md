@@ -1,6 +1,7 @@
 # SEGA shock sound source and playback audit
 
-Date: 2026-10-06  
+Date: 2026-10-07
+
 Scope: `BOOT-01`, missing or mistimed audio during the SEGA lightning/shock
 sequence.
 
@@ -26,10 +27,17 @@ identify what each 68K service request does.
 
 Thus the boot caller uses `0x16` only to stop resource 22, while `0x5C` starts
 resource 92. Resource 22 is also registered as `audio.field.effect-016` for
-other `FF 10 16` start callers. The source repeats the `0x5C` start request
-through the shock window, and the host restarts the matching sound from
-position zero for each request. The boot path does not send an explicit stop
-for resource 92.
+other `FF 10 16` start callers. A 60-request ROM-driver trace, with one
+`FF 10 5C` every two VBlanks, keys six distinct YM2612 FM voices before the
+first voice is reused. Earlier voices continue across later start requests;
+`FF 10` does not stop all active copies of the same resource. The boot path
+does not send an explicit stop for resource 92.
+
+The prior Qt callback incorrectly stopped every host channel for resource 92
+before each request, leaving only a short fragment between 33 ms retriggers.
+It now submits each request as a new one-shot into a six-voice host pool;
+reusing a slot stops only that individual player. The separate `FF 12 16`
+resource-22 stop remains unchanged.
 
 ## Timing and independent reference
 
@@ -44,6 +52,11 @@ The screenshots at frames 94 and 212 show the SEGA logo, figure, and lightning;
 frame 336 is after the figure has left. No such command is issued on Decker's
 opening entry.
 
+In the offline driver probe, the repeated starts occupy YM channels 0, 1, 4,
+5, 6, and 2 before a prior channel is keyed off and reused. This is why the
+host reproduces overlapping voices instead of restarting the full resource on
+every source request.
+
 Independent section 01 frame 120 shows the same lightning around the SEGA
 logo; frame 134 shows the logo after the lightning has cleared. On the
 independent `intro_audio.wav`, resource 92 has the strongest candidate
@@ -57,14 +70,31 @@ pre-roll, so it does not prove exact VBlank-to-audio latency.
 
 `shadowrun_ghidra_audio_playback_test` exercises the real `QMediaPlayer` on the
 default output. It verifies that `0x5C` resolves to resource 92, becomes
-loaded/playing, reports a 2,750 ms duration, and can be restarted while
-leaving exactly one channel playing. It stops resource 92 and verifies zero
-active channels. It also verifies that an `FF 10 16` start resolves to
-resource 22, plays, and is stopped by the resource-22 stop operation. The
-current Debug and Release runs reported 22 ms and 20 ms start latency for
-resource 92; the test records latency but does not impose a threshold. Both
-runs reported 2,750 ms duration. The complete Debug and Release Qt CTest suites
-pass 62/62.
+loaded/playing, and reports a 2,750 ms duration. It then submits 60 requests
+at 33 ms intervals and verifies six overlapping players remain in
+`PlayingState`; the stop operation clears all six. It also verifies that an
+`FF 10 16` start resolves to resource 22, plays, and is stopped by the
+resource-22 stop operation. The targeted audio CTest passes in Debug and
+Release; each reports 2,750 ms for resource 92 and approximately 20-28 ms
+initial start latency.
+
+A Windows WASAPI loopback recording captured the Release test's default
+`Speakers (Realtek(R) Audio)` output at 44.1 kHz stereo. The repeated-shock
+window produces normalized correlation 0.370 against the first 80 ms of
+resource 92 at 12.271 s in the capture, with further peaks at 12.411, 12.541,
+12.741, 13.331, and 13.631 s. The WAV is retained under the ignored build
+artifact `build/visual-review/boot-shock-release-loopback-aligned.wav`. This
+confirms audio reached the actual Windows output mix; it is separate from the
+independent Genesis audio comparison below.
+
+I also captured the ordinary Release game executable, launched in its normal
+game mode with the extracted asset directory. Its 10-second WASAPI recording
+has repeated normalized matches to resource 92 through the startup burst: a
+0.764 match for the initial 80 ms at 1.641 s, followed by 0.40-level matches
+at 1.971, 2.371, 2.471, 2.841, 3.171, 3.301, and 3.571 s. The output RMS
+remains near 0.036 during the burst and falls below 0.005 after 4.3 s. The
+recording is `build/visual-review/boot-shock-release-game-loopback.wav` under
+the ignored build directory.
 
 The no-argument Release application was launched and its window captured at
 one, five, and thirteen seconds. It rendered the SEGA animation, stayed alive,
@@ -92,13 +122,13 @@ game. The CLI `--help` path still returns its usage text.
    drawn for audio.
 4. **Is it animated?** Yes, the figure/lightning is animated under the
    source's pre-title cadence. The audio request repeats every two captured
-   source updates during the counter-gated shock phase. Each request restarts
-   the same 2.750-second effect; the final request is allowed to finish
-   naturally.
+   source updates during the counter-gated shock phase. The six-voice native
+   pool overlaps those starts and recycles each channel individually.
 5. **Is there sound? What and how long?** Yes: table-2 resource 92, measured
-   at 2,750 ms. A retrigger stops the previous matching channel before the
-   next start. The boot caller's `0x16` is a stop operation for resource 22;
-   that resource has a separate `FF 10` start alias for other callers.
+   at 2,750 ms including the extracted release tail. WASAPI loopback confirms
+   the rapid burst reached the current Windows default output. The boot
+   caller's `0x16` is a separate stop operation for resource 22; other callers
+   can start resource 22 with `FF 10 16`.
 6. **Are the rest of the screen and prior controls correct?** The complete
    run covers the FASA/black/title handoffs, title menus, all Gator Shaman
    scenes, field handoff, and stable field hold. This slice introduces no UI;
@@ -107,7 +137,8 @@ game. The CLI `--help` path still returns its usage text.
 7. **Do multiple frames support this reading?** Yes: native frames 94, 212,
    214, and 336 span the shock requests and stop-only tail. Independent
    frames 120 and 134 bracket lightning presence. Independent audio correlation
-   supports resource 92, while ROM/Z80 tracing selects it conclusively.
+   supports resource 92; the ROM/Z80 trace selects it and shows the six-voice
+   overlap behavior.
 8. **Are old UI elements cleanly replaced?** No UI is introduced during the
    shock event. The full capture shows the black/FASA/title transitions use
    their existing full-screen redraw and contain no controls left behind.
@@ -120,17 +151,17 @@ game. The CLI `--help` path still returns its usage text.
 
 ## Result
 
-- **Code changed:** the pre-title Qt callback now applies the `FF 12` stop
-  operation for resource 22 and repeated-start `0x5C` semantics; the Release executable no
-  longer launches with a visible CUI console.
-- **Behavior implemented:** each source `0x5C` request restarts resource 92
-  during the SEGA shock window; the boot path's `0x16` stops resource 22,
-  while other `FF 10 16` callers can start its mapped asset.
-- **Independently checked:** the named resource correlates with the recorded
-  SEGA sound; the independent frames show the shock sequence. Playback was
-  decoded and started on the configured default output.
-- **Reported defect resolved:** `BOOT-01` is resolved for the missing/mistimed
-  shock effect. The independent clip does not supply exact VBlank phase, and
-  independent stage-2 silence confirmation plus Windows output loopback
-  remain separately tracked under `OPEN-01`; the 90-second ROM trace found no
-  within-stage restart for either intro track.
+- **Code changed:** each `0x5C` request now starts another host voice in a
+  six-player pool; only the selected player is stopped when that slot is
+  reused. The boot `0x16` path still applies the `FF 12` stop to resource 22.
+- **Behavior implemented:** 60 source-timed requests during the SEGA shock
+  produce overlapping playback. No `0x5C` request is issued on Decker's
+  opening entry.
+- **Independently checked:** independent Genesis frames/audio support the
+  shock event and resource identity. Debug/Release QA verifies six active Qt
+  voices, and WASAPI loopback captured repeated resource-92 matches on the
+  current Windows default output.
+- **Reported defect resolved:** `BOOT-01` is resolved for the missing sound
+  and mistimed Decker-start playback. Exact alignment to a Genesis VBlank
+  remains bounded by the 30-fps reference; unrelated opening-music questions
+  remain under `OPEN-01`.

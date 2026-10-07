@@ -33,7 +33,10 @@ AudioPlaybackService::~AudioPlaybackService() = default;
 AudioPlaybackService::AudioPlaybackService(PathResolver resolver,
                                            QObject* parent)
     : QObject(parent), resolver_(std::move(resolver)) {
-    constexpr std::size_t kChannelCount = 4U;
+    // The repeated SEGA-shock FF 10 requests occupy multiple FM voices in
+    // the ROM driver trace. Keep six host voices so those starts can overlap
+    // until a voice is reused, instead of cutting every previous copy off.
+    constexpr std::size_t kChannelCount = 6U;
     channels_.reserve(kChannelCount);
     for (std::size_t index = 0; index < kChannelCount; ++index) {
         channels_.push_back(std::make_unique<PlaybackChannel>());
@@ -89,12 +92,6 @@ void AudioPlaybackService::stop_resource(const std::uint16_t resource_id) {
             channel->player.stop();
         }
     }
-}
-
-void AudioPlaybackService::play_event_restarting(
-    const std::uint16_t event) {
-    stop_resource(event);
-    play_event(event);
 }
 
 void AudioPlaybackService::play_alias(const std::string_view alias) {
