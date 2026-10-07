@@ -43,6 +43,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -168,6 +169,7 @@ std::filesystem::path find_asset_root(
                    " [--field-world-activity-qa <output-dir>]"
                    " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
                    " [--field-ares-collision-shop-qa <output-dir>]"
+                   " [--field-scene20-physical-entry-qa <output-dir>]"
                    " [--field-secretary-dump <output-dir>]"
                    " [--field-command-dump <file>]"
                        " [--field-command-page <0..6>]"
@@ -239,6 +241,11 @@ std::filesystem::path find_asset_root(
             continue;
         }
         if (argument == "--field-ares-collision-shop-qa" &&
+            index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-scene20-physical-entry-qa" &&
             index + 1 < argc) {
             ++index;
             continue;
@@ -6086,6 +6093,637 @@ int run_field_ares_collision_shop_qa(
     return 0;
 }
 
+int run_field_scene20_physical_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Scene-20 physical-entry QA: could not clear previous "
+                     "capture directory: " << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Scene-20 physical-entry QA: could not create capture "
+                     "directory: " << output_error.message() << '\n';
+        return 3;
+    }
+    constexpr std::array<std::size_t, 2> doorway_record_indices{89U, 90U};
+    constexpr std::uint32_t doorway_rom_address = 0x173124U;
+    constexpr std::uint8_t doorway_value = 0xC0U;
+    const auto& metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    const auto& rectangles = metadata.terrain_collision_rectangles;
+    const bool doorway_records_match =
+        rectangles.size() > doorway_record_indices.back() &&
+        rectangles[89U].left == 0x00E0U &&
+        rectangles[89U].right == 0x00FFU &&
+        rectangles[89U].top == 0x0260U &&
+        rectangles[89U].bottom == 0x027FU &&
+        rectangles[89U].value == doorway_value &&
+        rectangles[90U].left == 0x0100U &&
+        rectangles[90U].right == 0x011FU &&
+        rectangles[90U].top == 0x0260U &&
+        rectangles[90U].bottom == 0x027FU &&
+        rectangles[90U].value == doorway_value &&
+        metadata.event_table_available &&
+        metadata.event_mode_table[0U] == 0x14U;
+    const auto initial_position = field_scene.field_entity_world_position();
+    if (field_scene.field_scene_reference_for_dump() != 2U ||
+        initial_position.x != 0x3CE0U || initial_position.y != 0x2D00U ||
+        !doorway_records_match) {
+        std::cerr << "Scene-20 physical-entry QA: New Game state, paired C0 "
+                     "doorway records, or event-table destination is wrong\n";
+        return 3;
+    }
+
+    const auto render = [&field_scene] {
+        QImage image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        field_scene.paint(painter);
+        painter.end();
+        return image;
+    };
+    const auto render_field_scene_only = [&field_scene] {
+        QImage image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        field_scene.paint_field_scene_for_dump(painter);
+        painter.end();
+        return image;
+    };
+    const auto save = [&render, &output](const std::string_view name) {
+        const auto image = render();
+        const auto path = output / (std::string(name) + ".bmp");
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            !image.save(QString::fromStdWString(path.wstring()))) {
+            std::cerr << "Scene-20 physical-entry QA: could not save full "
+                         "screen " << name << '\n';
+            return false;
+        }
+        return true;
+    };
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) {
+        std::cerr << "Scene-20 physical-entry QA: could not create route.tsv\n";
+        return 3;
+    }
+    trace << "stage\tframe\tscene\tx\ty\tworld_mode\tfield_mode\tevent"
+             "\traw_collision\tprojected\tfade_timer\tpalette_steps"
+             "\tinteraction\tmode_text\tshop\n";
+    std::uint32_t frame = 0U;
+    const auto write_state = [&] (const std::string_view stage) {
+        const auto position = field_scene.field_entity_world_position();
+        trace << stage << '\t' << frame << '\t'
+              << field_scene.field_scene_reference_for_dump() << '\t'
+              << position.x << '\t' << position.y << '\t'
+              << field_scene.field_interaction_mode_for_dump() << '\t'
+              << static_cast<unsigned>(
+                     field_scene.field_runtime_state_for_dump().field_mode)
+              << '\t'
+              << static_cast<unsigned>(
+                     field_scene.field_mode_event_code_for_dump())
+              << '\t' << field_scene.field_terrain_collision_code_for_dump()
+              << '\t' << field_scene.field_projected_code_for_dump() << '\t'
+              << field_scene.field_interaction_transition_timer_for_dump()
+              << '\t' << static_cast<unsigned>(
+                     field_scene.field_palette_fade_steps_for_dump())
+              << '\t' << field_scene.field_interaction_open() << '\t'
+              << field_scene.field_mode_text_open_for_dump() << '\t'
+              << field_scene.shop_menu_open() << '\n';
+        trace.flush();
+    };
+    const auto world_position = [&field_scene] {
+        const auto position = field_scene.field_entity_world_position();
+        return std::pair<std::uint16_t, std::uint16_t>{
+            static_cast<std::uint16_t>(position.x >> 4U),
+            static_cast<std::uint16_t>(position.y >> 4U)};
+    };
+    const auto field_is_live = [&field_scene] {
+        return field_scene.field_scene_reference_for_dump() == 2U &&
+               !field_scene.dialogue_open() &&
+               !field_scene.field_interaction_open() &&
+               !field_scene.field_mode_text_open_for_dump() &&
+               !field_scene.shop_menu_open() &&
+               !field_scene.field_transition_pending_for_dump();
+    };
+
+    if (!save("spawn")) {
+        return 3;
+    }
+    write_state("spawn");
+    const auto walk_to = [&](const bool horizontal, const bool increasing,
+                             const std::uint16_t target,
+                             const std::uint8_t input,
+                             const std::string_view stage,
+                             const std::uint16_t tolerance) {
+        const auto coordinate = [&] {
+            const auto position = world_position();
+            return horizontal ? position.first : position.second;
+        };
+        const auto reached = [&] {
+            return increasing ? coordinate() >= target
+                              : coordinate() <= target;
+        };
+        std::uint16_t ticks = 0U;
+        while (ticks < 500U && !reached() && field_is_live()) {
+            field_scene.set_controller_nibble(input);
+            field_scene.advance_frame();
+            ++frame;
+            ++ticks;
+            if (ticks == 32U || ticks == 96U || ticks == 160U ||
+                ticks == 224U || ticks == 320U) {
+                if (!save(std::string(stage) + "-" + std::to_string(ticks))) {
+                    return false;
+                }
+                write_state(std::string(stage) + "-" +
+                            std::to_string(ticks));
+            }
+        }
+        field_scene.set_controller_nibble(0U);
+        field_scene.advance_frame();
+        ++frame;
+        const auto settled = coordinate();
+        const auto difference = settled > target ? settled - target
+                                                 : target - settled;
+        if (!field_is_live() || !reached() || difference > tolerance ||
+            !save(stage)) {
+            const auto position = world_position();
+            std::cerr << "Scene-20 physical-entry QA: normal input did not "
+                      << "reach " << stage << " (ticks=" << ticks
+                      << ", position=" << position.first << ','
+                      << position.second << ", target=" << target << ")\n";
+            return false;
+        }
+        write_state(stage);
+        return true;
+    };
+
+    // The straight west path is blocked by the source collision wall at
+    // x=0x320. Walk through its open southern row, cross the wall, then return
+    // to the north-side alley that reaches the paired C0 entrance.
+    if (!walk_to(false, true, 0x0310U, 0x02U, "south-lane", 24U) ||
+        !walk_to(true, false, 0x0160U, 0x04U, "west-south-lane", 24U) ||
+        !walk_to(false, false, 0x02D0U, 0x01U, "north-alley", 24U) ||
+        !walk_to(true, false, 0x0100U, 0x04U, "doorway-lane", 24U)) {
+        return 3;
+    }
+
+    std::uint16_t north_ticks = 0U;
+    while (north_ticks < 180U && field_is_live()) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up hold
+        field_scene.advance_frame();
+        ++frame;
+        ++north_ticks;
+        if (north_ticks == 16U || north_ticks == 32U ||
+            north_ticks == 64U || north_ticks == 96U) {
+            if (!save("north-" + std::to_string(north_ticks))) {
+                return 3;
+            }
+        }
+        if (field_scene.field_terrain_collision_code_for_dump() == 0xFFC0U ||
+            field_scene.field_interaction_transition_active_for_dump() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.field_scene_reference_for_dump() != 2U) {
+            break;
+        }
+    }
+    const auto doorway_contact = world_position();
+    if (field_scene.field_terrain_collision_code_for_dump() != 0xFFC0U ||
+        field_scene.field_projected_code_for_dump() != 0xFFC0U ||
+        field_scene.field_mode_event_code_for_dump() != 0U ||
+        doorway_contact.first < 0x00D4U ||
+        doorway_contact.first > 0x012BU ||
+        doorway_contact.second < 0x0259U ||
+        doorway_contact.second > 0x0286U ||
+        !field_scene.field_interaction_transition_active_for_dump() ||
+        field_scene.dialogue_open() || field_scene.field_interaction_open() ||
+        field_scene.field_mode_text_open_for_dump() ||
+        field_scene.shop_menu_open() || !save("doorway-contact")) {
+        std::cerr << "Scene-20 physical-entry QA: normal Up did not contact "
+                     "the paired C0 doorway records (ticks=" << north_ticks
+                  << ", position=" << doorway_contact.first << ','
+                  << doorway_contact.second << ", raw=0x" << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << ", projected=0x"
+                  << field_scene.field_projected_code_for_dump() << std::dec
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump()) << ")\n";
+        return 3;
+    }
+    write_state("doorway-contact");
+    field_scene.set_controller_nibble(0U);
+
+    const auto fade_start_frame = frame;
+    for (const auto checkpoint : std::array<std::uint32_t, 3>{8U, 16U, 17U}) {
+        const auto frame_goal = fade_start_frame + checkpoint - 1U;
+        while (frame < frame_goal) {
+            field_scene.advance_frame();
+            ++frame;
+        }
+        const auto name = "fade-" +
+                          (checkpoint < 10U ? std::string("0") : std::string()) +
+                          std::to_string(checkpoint);
+        if (!save(name) ||
+            field_scene.field_interaction_transition_timer_for_dump() !=
+                (checkpoint == 8U ? 8 : checkpoint == 16U ? 0 : -1)) {
+            std::cerr << "Scene-20 physical-entry QA: source fade diverged at "
+                         "checkpoint " << checkpoint << '\n';
+            return 3;
+        }
+        write_state(name);
+    }
+
+    for (std::uint16_t settle = 0U;
+         settle < 120U && field_scene.field_scene_reference_for_dump() == 2U;
+         ++settle) {
+        field_scene.advance_frame();
+        ++frame;
+    }
+    const auto scene20_position = field_scene.field_entity_world_position();
+    const auto& scene20_metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    const auto expected_scene20_position =
+        scene20_metadata.initial_field_records[0U];
+    const auto scene20_image = render();
+    if (field_scene.field_scene_reference_for_dump() != 0x14U ||
+        scene20_metadata.terrain_collision_rectangles.size() != 132U ||
+        scene20_position.x != expected_scene20_position.x ||
+        scene20_position.y != expected_scene20_position.y ||
+        field_scene.dialogue_open() || field_scene.field_interaction_open() ||
+        field_scene.field_mode_text_open_for_dump() ||
+        field_scene.shop_menu_open() ||
+        field_scene.field_transition_pending_for_dump() ||
+        field_scene.field_interaction_transition_active_for_dump() ||
+        scene20_image.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !field_hud_chrome_survives(scene20_image, asset_root) ||
+        count_playfield_lit(scene20_image) < 100U ||
+        !save("scene20-entry") || !save("actual")) {
+        std::cerr << "Scene-20 physical-entry QA: event-table destination "
+                     "did not replace the complete field scene (scene="
+                  << field_scene.field_scene_reference_for_dump() << ", x="
+                  << scene20_position.x << ", y=" << scene20_position.y
+                  << ", source-x=" << expected_scene20_position.x
+                  << ", source-y=" << expected_scene20_position.y << ")\n";
+        return 3;
+    }
+    write_state("scene20-entry");
+    for (std::uint8_t tick = 0U; tick < 30U; ++tick) {
+        field_scene.advance_frame();
+        ++frame;
+        if (tick == 7U || tick == 29U) {
+            if (!save(tick == 7U ? "scene20-frame-8" : "scene20-frame-30")) {
+                return 3;
+            }
+        }
+    }
+
+    constexpr std::size_t maglock_record_index = 117U;
+    const auto& scene20_rectangles = field_scene.state()
+                                         .field_scene_buffers.source_metadata
+                                         .terrain_collision_rectangles;
+    if (scene20_rectangles.size() <= maglock_record_index ||
+        scene20_rectangles[maglock_record_index].left != 0x0460U ||
+        scene20_rectangles[maglock_record_index].right != 0x047FU ||
+        scene20_rectangles[maglock_record_index].top != 0x00E0U ||
+        scene20_rectangles[maglock_record_index].bottom != 0x00FFU ||
+        scene20_rectangles[maglock_record_index].value != 0x82U) {
+        std::cerr << "Scene-20 physical-entry QA: the selected maglock "
+                     "collision record 117 does not match its source cells\n";
+        return 3;
+    }
+    const auto scene20_is_live = [&field_scene] {
+        return field_scene.field_scene_reference_for_dump() == 0x14U &&
+               !field_scene.dialogue_open() &&
+               !field_scene.field_interaction_open() &&
+               !field_scene.field_mode_text_open_for_dump() &&
+               !field_scene.shop_menu_open() &&
+               !field_scene.field_transition_pending_for_dump() &&
+               !field_scene.field_interaction_transition_active_for_dump();
+    };
+    const auto walk_scene20_to = [&](const bool horizontal,
+                                     const bool increasing,
+                                     const std::uint16_t target,
+                                     const std::uint8_t input,
+                                     const std::string_view stage) {
+        const auto coordinate = [&] {
+            const auto position = world_position();
+            return horizontal ? position.first : position.second;
+        };
+        const auto reached = [&] {
+            return increasing ? coordinate() >= target
+                              : coordinate() <= target;
+        };
+        std::uint16_t ticks = 0U;
+        while (ticks < 500U && !reached() && scene20_is_live()) {
+            field_scene.set_controller_nibble(input);
+            field_scene.advance_frame();
+            ++frame;
+            ++ticks;
+            if (ticks == 32U || ticks == 96U || ticks == 160U ||
+                ticks == 224U || ticks == 320U) {
+                if (!save(std::string(stage) + "-" + std::to_string(ticks))) {
+                    return false;
+                }
+                write_state(std::string(stage) + "-" +
+                            std::to_string(ticks));
+            }
+        }
+        field_scene.set_controller_nibble(0U);
+        field_scene.advance_frame();
+        ++frame;
+        const auto settled = coordinate();
+        const auto difference = settled > target ? settled - target
+                                                 : target - settled;
+        if (!scene20_is_live() || !reached() || difference > 16U ||
+            !save(stage)) {
+            const auto position = world_position();
+            std::cerr << "Scene-20 physical-entry QA: normal input did not "
+                      << "reach " << stage << " (ticks=" << ticks
+                      << ", position=" << position.first << ','
+                      << position.second << ", target=" << target << ")\n";
+            return false;
+        }
+        write_state(stage);
+        return true;
+    };
+
+    // The source collision cells describe a narrow path around the central
+    // wall before record 117's physical maglock. Stay in cell centers so the
+    // player's four probes follow clear cells through the scene.
+    for (std::uint8_t tick = 0U; tick < 12U; ++tick) {
+        field_scene.set_controller_nibble(0x06U); // ordinary Down + Left
+        field_scene.advance_frame();
+        ++frame;
+        if (tick == 3U || tick == 7U) {
+            if (!save("interior-diagonal-entry-" +
+                      std::to_string(static_cast<unsigned>(tick + 1U)))) {
+                return 3;
+            }
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    ++frame;
+    if (!save("interior-diagonal-entry-12")) {
+        return 3;
+    }
+    write_state("interior-diagonal-entry-12");
+    std::uint16_t south_corridor_ticks = 0U;
+    while (south_corridor_ticks < 500U && scene20_is_live() &&
+           world_position().second < 0x0230U) {
+        const auto position = world_position();
+        const auto input = position.first < 0x058CU
+                               ? 0x0AU // Down + Right: correct west drift
+                               : position.first > 0x0594U
+                                     ? 0x06U // Down + Left: correct east drift
+                                     : 0x02U; // Down through the lane center
+        field_scene.set_controller_nibble(input);
+        field_scene.advance_frame();
+        ++frame;
+        ++south_corridor_ticks;
+        if (south_corridor_ticks == 32U || south_corridor_ticks == 96U ||
+            south_corridor_ticks == 160U || south_corridor_ticks == 224U ||
+            south_corridor_ticks == 320U) {
+            if (!save("interior-east-hall-" +
+                      std::to_string(south_corridor_ticks))) {
+                return 3;
+            }
+            write_state("interior-east-hall-" +
+                        std::to_string(south_corridor_ticks));
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    ++frame;
+    const auto south_corridor_position = world_position();
+    if (!scene20_is_live() || south_corridor_position.second < 0x0230U ||
+        south_corridor_position.first < 0x057FU ||
+        south_corridor_position.first > 0x059FU ||
+        !save("interior-east-hall")) {
+        std::cerr << "Scene-20 physical-entry QA: normal steering did not "
+                  << "follow the narrow south corridor (ticks="
+                  << south_corridor_ticks << ", position="
+                  << south_corridor_position.first << ','
+                  << south_corridor_position.second << ")\n";
+        return 3;
+    }
+    write_state("interior-east-hall");
+    if (!walk_scene20_to(true, false, 0x0528U, 0x04U,
+                         "interior-south-turn") ||
+        !walk_scene20_to(false, false, 0x011CU, 0x01U,
+                         "interior-north-hall") ||
+        !walk_scene20_to(true, false, 0x047CU, 0x04U,
+                         "maglock-approach")) {
+        return 3;
+    }
+
+    std::uint16_t maglock_ticks = 0U;
+    while (maglock_ticks < 120U && scene20_is_live()) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up hold
+        field_scene.advance_frame();
+        ++frame;
+        ++maglock_ticks;
+        if (maglock_ticks == 16U || maglock_ticks == 32U ||
+            maglock_ticks == 64U) {
+            if (!save("maglock-north-" +
+                      std::to_string(maglock_ticks))) {
+                return 3;
+            }
+        }
+        if ((field_scene.field_terrain_collision_code_for_dump() & 0x001FU) ==
+                2U ||
+            field_scene.field_interaction_open() ||
+            field_scene.field_transition_pending_for_dump()) {
+            break;
+        }
+    }
+    const auto maglock_contact = world_position();
+    const auto maglock_contact_projected_code =
+        field_scene.field_projected_code_for_dump();
+    const auto maglock_contact_terrain_code =
+        field_scene.field_terrain_collision_code_for_dump();
+    const auto maglock_contact_activity =
+        field_scene.field_activity_selection_for_dump();
+    const bool maglock_contact_is_valid =
+        maglock_contact_projected_code == 0xFF82U &&
+        maglock_contact_activity == 2U &&
+        maglock_contact.first >= 0x0454U &&
+        maglock_contact.first <= 0x048BU &&
+        maglock_contact.second >= 0x00D9U &&
+        maglock_contact.second <= 0x0106U;
+    write_state("maglock-contact");
+    if (maglock_contact_is_valid && !save("maglock-contact")) {
+        return 3;
+    }
+    field_scene.set_controller_nibble(0U);
+    for (std::uint16_t settle = 0U;
+         settle < 120U && !field_scene.field_interaction_open(); ++settle) {
+        field_scene.advance_frame();
+        ++frame;
+        if (settle == 7U || settle == 15U || settle == 31U ||
+            settle == 63U) {
+            if (!save("maglock-intro-wait-" +
+                      std::to_string(static_cast<unsigned>(settle + 1U)))) {
+                return 3;
+            }
+        }
+    }
+    const auto& maglock_panel = field_scene.field_interaction_panel();
+    if (!maglock_contact_is_valid ||
+        !field_scene.field_interaction_open() ||
+        !maglock_panel.open || !maglock_panel.source_complete ||
+        maglock_panel.actor_kind != DialoguePanelActorKind::none ||
+        maglock_panel.text_segment_count == 0U ||
+        field_scene.field_scene_reference_for_dump() != 0x14U ||
+        field_scene.field_mode_text_open_for_dump() ||
+        field_scene.shop_menu_open() || !save("maglock-introduction")) {
+        std::cerr << "Scene-20 physical-entry QA: ordinary Up did not open "
+                     "the event-2 maglock prompt (ticks=" << maglock_ticks
+                  << ", position=" << maglock_contact.first << ','
+                  << maglock_contact.second << ", contact-projected=0x"
+                  << std::hex << maglock_contact_projected_code
+                  << ", terrain=0x" << maglock_contact_terrain_code << std::dec
+                  << ", contact-activity=" << static_cast<unsigned>(
+                         maglock_contact_activity)
+                  << ", panel=" << maglock_panel.open
+                  << ", pending-handler="
+                  << field_scene.field_runtime_state_for_dump()
+                         .pending_field_scene_handler
+                  << ")\n";
+        std::ofstream boundary_log(output / "source-boundaries.txt",
+                                   std::ios::trunc);
+        if (boundary_log) {
+            for (const auto& boundary : source_boundaries) {
+                boundary_log << boundary << '\n';
+            }
+        }
+        return 3;
+    }
+    write_state("maglock-introduction");
+    for (std::uint8_t tick = 0U; tick < 10U; ++tick) {
+        field_scene.advance_frame();
+        ++frame;
+    }
+    const auto maglock_introduction = render();
+    if (maglock_introduction.size() != QSize(kSceneWidth, kSceneHeight) ||
+        field_hud_chrome_survives(maglock_introduction, asset_root) ||
+        !save("maglock-introduction-after-10-frames")) {
+        return 3;
+    }
+    field_scene.set_controller_port_byte(0x40U); // ordinary A: <MORE>
+    field_scene.advance_frame();
+    ++frame;
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    ++frame;
+    const auto& maglock_choices = field_scene.field_interaction_panel();
+    const auto maglock_choices_image = render();
+    const bool choices_are_source_complete =
+        field_scene.field_interaction_open() &&
+        maglock_choices.source_complete &&
+        maglock_choices.option_count == 3U &&
+        maglock_choices.options[0].source_label.find("Electronics") !=
+            std::string::npos &&
+        maglock_choices.options[1].source_label.find("Frag") !=
+            std::string::npos &&
+        maglock_choices.options[2].source_label.find("Walk") !=
+            std::string::npos;
+    if (!choices_are_source_complete ||
+        field_hud_chrome_survives(maglock_choices_image, asset_root) ||
+        maglock_choices_image.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !save("maglock-choices")) {
+        std::cerr << "Scene-20 physical-entry QA: ordinary A did not replace "
+                     "the doorway page with its complete three-choice screen\n";
+        return 3;
+    }
+    write_state("maglock-choices");
+    for (std::uint8_t tick = 0U; tick < 10U; ++tick) {
+        field_scene.advance_frame();
+        ++frame;
+    }
+    field_scene.set_controller_port_byte(0x20U); // ordinary C: Walk Away
+    field_scene.advance_frame();
+    ++frame;
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    ++frame;
+    const auto returned_scene20 = render();
+    const auto returned_field_only = render_field_scene_only();
+    const auto& walk_away_panel = field_scene.field_interaction_panel();
+    const bool walk_away_closed = !field_scene.field_interaction_open();
+    const bool walk_away_same_scene =
+        field_scene.field_scene_reference_for_dump() == 0x14U;
+    const bool walk_away_hud_clean =
+        field_hud_chrome_survives(returned_scene20, asset_root);
+    const bool walk_away_playfield_visible =
+        count_playfield_lit(returned_scene20) >= 100U;
+    const bool walk_away_matches_field_only =
+        returned_scene20 == returned_field_only;
+    write_state("after-walk-away-input");
+    if (!returned_scene20.save(QString::fromStdWString(
+            (output / "scene20-after-walk-away-input.bmp").wstring())) ||
+        !returned_field_only.save(QString::fromStdWString(
+            (output / "scene20-field-only-after-walk-away.bmp").wstring()))) {
+        std::cerr << "Scene-20 physical-entry QA: could not save post-choice "
+                     "full-screen frame\n";
+        return 3;
+    }
+    if (!walk_away_closed || !walk_away_same_scene || !walk_away_hud_clean ||
+        !walk_away_playfield_visible || !walk_away_matches_field_only ||
+        !save("scene20-return-after-walk-away")) {
+        std::cerr << "Scene-20 physical-entry QA: normal C did not close the "
+                     "maglock page and restore a clean interior screen "
+                     "(open=" << !walk_away_closed << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", selected=" << walk_away_panel.selected_option
+                  << ", hud=" << walk_away_hud_clean
+                  << ", playfield=" << walk_away_playfield_visible
+                  << ", field-only-pixels=" << walk_away_matches_field_only
+                  << ")\n";
+        return 3;
+    }
+    write_state("scene20-return-after-walk-away");
+
+    {
+        std::ofstream boundaries(output / "source-boundaries.txt",
+                                 std::ios::trunc);
+        if (!boundaries) {
+            std::cerr << "Scene-20 physical-entry QA: could not write "
+                         "source boundaries\n";
+            return 3;
+        }
+        for (const auto& boundary : source_boundaries) {
+            boundaries << boundary << '\n';
+        }
+    }
+    {
+        std::ofstream events(output / "audio-events.txt", std::ios::trunc);
+        if (!events) {
+            std::cerr << "Scene-20 physical-entry QA: could not write audio "
+                         "events\n";
+            return 3;
+        }
+        for (const auto event : field_audio_events) {
+            events << "0x" << std::hex << event << '\n';
+        }
+    }
+    std::cout << "field_scene20_physical_entry_qa=passed records=89,90 rom=0x"
+              << std::hex << doorway_rom_address << " destination=0x14"
+              << std::dec << " route_frames=" << frame
+              << " north_ticks=" << north_ticks << " raw=0xFFC0 event=0"
+              << " entry-x=" << scene20_position.x
+              << " entry-y=" << scene20_position.y
+              << " audio_events=" << field_audio_events.size()
+              << " artifacts=" << output.string() << '\n';
+    return 0;
+}
+
 int run_field_stoker_collision_to_dialogue_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -7000,6 +7638,8 @@ int main(int argc, char** argv) {
             field_stoker_collision_to_dialogue_qa_path;
         std::optional<std::filesystem::path>
             field_ares_collision_shop_qa_path;
+        std::optional<std::filesystem::path>
+            field_scene20_physical_entry_qa_path;
         std::optional<std::filesystem::path> field_stoker_collision_qa_path;
         std::optional<std::filesystem::path> field_hud_qa_path;
         std::optional<std::filesystem::path> field_hotel_qa_path;
@@ -7057,6 +7697,7 @@ int main(int argc, char** argv) {
                        " [--field-world-activity-qa <output-dir>]"
                        " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
                        " [--field-ares-collision-shop-qa <output-dir>]"
+                       " [--field-scene20-physical-entry-qa <output-dir>]"
                        " [--field-stoker-collision-qa <output-dir>]"
                        " [--field-command-dump <file>]"
                        " [--field-command-page <0..6>]"
@@ -7130,6 +7771,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_ares_collision_shop_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene20-physical-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene20_physical_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-stoker-collision-qa" &&
@@ -7472,6 +8120,12 @@ int main(int argc, char** argv) {
                 return run_field_ares_collision_shop_qa(
                     field_scene, asset_root,
                     *field_ares_collision_shop_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_scene20_physical_entry_qa_path.has_value()) {
+                return run_field_scene20_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_scene20_physical_entry_qa_path,
                     field_audio_events, field_source_boundaries);
             }
             if (field_stoker_collision_qa_path.has_value()) {

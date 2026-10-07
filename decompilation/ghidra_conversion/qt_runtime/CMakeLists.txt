@@ -243,6 +243,19 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_ares_collision_shop_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Ordinary D-pad input contacts the paired scene-2 C0 doorway records,
+# enters scene 0x14, walks to the scene-20 maglock, and opens its source-backed
+# choice panel. C/Walk Away returns to a clean field-only redraw. The QA writes
+# actual.bmp and clears its dedicated directory before every run.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_scene20_physical_entry_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-scene20-physical-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-scene20-physical-entry-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_scene20_physical_entry_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Follow ordinary D-pad movement to scene-2 collision record 2. The source
 # record is a type-2 collision object, not a Stoker identity or event code;
 # this QA verifies its observed event-0/no-dialogue result and full-frame route.

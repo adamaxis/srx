@@ -1683,6 +1683,11 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
     field_runtime_callbacks_.advance_world_frame_logic = [this] {
         advance_world_frame_logic(world_frame_logic_state_,
                                   world_frame_logic_callbacks_);
+        // ROM 0x1DDF0 decrements FFE11C every field frame. The native activity
+        // gate shares that typed countdown so 0x1E2E0 can accept a later
+        // doorway or terminal after the prior activity expires.
+        field_world_activity_state_.timeout = static_cast<std::uint8_t>(
+            world_frame_logic_state_.resource_countdown);
     };
     field_runtime_callbacks_.handle_mode_action_event = [this] {
         handle_field_mode_action_event();
@@ -3510,6 +3515,8 @@ bool FieldSceneRuntime::dispatch_field_interaction_through_coordinator_for_dump(
             static_cast<std::uint16_t>(continuation))) {
         return false;
     }
+    world_frame_logic_state_.resource_countdown =
+        field_world_activity_state_.timeout;
     record_field_activity_start(continuation);
     advance_frame();
     return field_interaction_.open();
@@ -3618,6 +3625,8 @@ bool FieldSceneRuntime::recover_blocked_field_movement(
                 field_world_activity_state_,
                 static_cast<std::uint16_t>(continuation));
             if (started) {
+                world_frame_logic_state_.resource_countdown =
+                    field_world_activity_state_.timeout;
                 record_field_activity_start(continuation);
             }
             return started;
@@ -3627,6 +3636,8 @@ bool FieldSceneRuntime::recover_blocked_field_movement(
             begin_world_activity(
                 field_world_activity_state_,
                 static_cast<std::uint16_t>(continuation));
+            world_frame_logic_state_.resource_countdown =
+                field_world_activity_state_.timeout;
             record_field_activity_start(continuation);
         };
     transition_callbacks.mark_projected_terrain_cell = [this] {
@@ -3732,6 +3743,16 @@ std::int16_t FieldSceneRuntime::evaluate_field_collision(
                     {}});
             field_terrain_sample_state_ = field_sample_state_from_result(
                 result.packed_sample_state);
+            // ROM 0xE83E publishes the raw in-bounds terrain sample to
+            // FFDF64 before its collision classifiers adjust the return code.
+            // 0xAC5E consumes this value on the next entity pass to release
+            // B7B8's one-shot bit after the runner has moved back onto clear
+            // terrain. Outside-map returns leave FFDF64 unchanged.
+            if (!result.state.outside_bounds_marker) {
+                field_movement_transition_state_.terrain_collision_code =
+                    static_cast<std::uint16_t>(
+                        result.state.raw_terrain_code);
+            }
             // Outside the map, 0xE7C8 returns before 0xE8A0, so FFDFE4 stays
             // at the previous sample.
             if (!result.state.outside_bounds_marker) {
@@ -3833,6 +3854,17 @@ void FieldSceneRuntime::advance_field_movement() {
         },
         policy_probe,
         [this] { source_boundary("field.movement.reset_blocked_step"); });
+
+    // ROM 0xAC5E checks FFDF64 after the terrain probe. A clear raw sample
+    // releases the entity's B7B8 retry guard so a later doorway or terminal
+    // can publish its event. Keep the other route bits intact.
+    if ((field_entity_behavior_flags_ & 0x08U) != 0U &&
+        field_movement_transition_state_.terrain_collision_code == 0U) {
+        field_movement_behavior_record_.route_flags =
+            static_cast<std::uint8_t>(
+                field_movement_behavior_record_.route_flags &
+                static_cast<std::uint8_t>(~0x20U));
+    }
 
     field_entity_.world_position.x = field_movement_state_.position_x;
     field_entity_.world_position.y = field_movement_state_.position_y;
@@ -4163,6 +4195,13 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
         field_runtime_state_.display_dirty_flags | 0x0EU);
     state_.display_dirty_flags = static_cast<std::uint8_t>(
         state_.display_dirty_flags | 0x0EU);
+    // ROM 0x08C4 clears FFDFE8 after the scene buffers and profile are
+    // rebuilt. The previous projected interaction owns this display gate
+    // through the fade, but the replacement field must release it before a
+    // later interaction handler can dispatch.
+    field_runtime_state_.display_service_word = 0U;
+    state_.display_service_word = 0U;
+    source_boundary("field.scene.transition.display_service_released");
     field_camera_alignment_ready_ = false;
     update_source_field_camera();
     update_entity_render_pass(state_.render_entities,

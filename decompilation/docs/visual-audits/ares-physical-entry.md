@@ -1,8 +1,10 @@
 # Ares Weapon Emporium physical entry audit
 
 **Status:** normal-control field entry is connected and verified in Debug and
-Release. The broader FIELD-02/PLAY-01 goals remain partial because physical
-maglock, Security Terminal, building item-use, and other building routes are
+Release. A separate scene-20 route now reaches the physical maglock prompt and
+returns with Walk Away; see [the scene-20 audit](scene20-maglock-physical-entry.md).
+The broader FIELD-02/PLAY-01 goals remain partial because maglock action
+results, Security Terminal, building item-use, and other building routes are
 not all connected.
 
 ## ROM and typed-state route

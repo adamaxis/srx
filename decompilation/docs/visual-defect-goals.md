@@ -73,9 +73,9 @@ review; it is not part of the pasted report.
 | `INVENTORY-01` | Moving/trading items between inventory locations does not work. | **Partial.** ROM has runner-to-runner Trade, not same-runner item reordering. The typed transfer and ordinary Trade controls pass Debug/Release QA when another runner is active, but New Game starts with Joshua alone and the Qt executable has no normal recruitment/loaded-save route that supplies a second recipient. Keep open for that reachability path; see [the full-screen Trade audit](visual-analysis/qt-visual-audit.md#applied-review-trade-recipient-and-transfer). |
 | `INVENTORY-02` | Using an item draws the runner portrait over other bars. | **Closed as a non-defect for the reported First Aid target/result panel.** ROM `0x123FA` redraws the selected runner's 4x4 panel at `C928` through `0x110E8`; its small portrait crosses the top of the posture strip in both Qt and independent Genesis frames 002610/002611/002630/002640. The `0x121C0` automatic-use acknowledgement does not draw that target portrait. Debug/Release full-screen routes and all transition frames were reviewed; see [item-use portrait placement audit](visual-analysis/qt-visual-audit.md#applied-review-first-aid-target-result-and-return). |
 | `ITEMS-01` | Armor, weapons, and their damage values are wrong. | **Partial.** The selected-armor detail preview now follows `0x12A8C -> 0x11352` and displays the selected D4D50 row with six-tile CF884 Wpns/Guns assets in the lower panel; Debug/Release screen checks and independent frame 002560 support its placement. The capture does not show a selected/equipped armor mismatch. Weapon detail rows now have explicit D4540 +0x25/+0x26 and CF84C asset regression coverage, but no independent selected-weapon frame is available. Combat damage values and shop/item presentation remain open; see the [selected armor preview audit](visual-audits/item-armor-detail-preview.md) and [weapon detail and magazine review](visual-audits/weapon-detail-and-magazine-switch-review.md). |
-| `FIELD-02` | The runner gets stuck in terrain and cannot enter buildings. | Scene-2 Stoker and Ares entrances now have physical normal-input routes with typed event publication, Debug/Release full-screen QA, and clean returns. General terrain recovery, maglock/Security Terminal triggers, building item use, and other building records remain open; continue tracing collision margins and adjacent walkable cells. |
+| `FIELD-02` | The runner gets stuck in terrain and cannot enter buildings. | Scene-2 Stoker, Ares, and scene-20 maglock entry now have physical normal-input routes with typed event publication, Debug/Release full-screen QA, and clean returns. General terrain recovery, maglock result branches, Security Terminal trigger, building item use, and other building records remain open; continue tracing collision margins and adjacent walkable cells. See [scene-20 maglock audit](visual-audits/scene20-maglock-physical-entry.md). |
 | `STOKER-01` | The physical Stoker collision/property that should open his generic dialogue is still unidentified. | Resolved in the normal New Game route: scene-2 record 91 at `0x173138` (`0xC2`) is reached with Up, publishes raw collision `0xFFC2` and event 2, then mode 2/event 2 selects the generic Stoker arrival panel. Debug/Release CTest, full-screen route dumps, eight-question review, and independent section 03 frames support the result. The clip confirms the door/fade/panel sequence but does not record input or event bytes. See [`visual-audits/motel-doorway-scene-entry.md`](visual-audits/motel-doorway-scene-entry.md). |
-| `PLAY-01` | Shops, building item use, and maglock passkeys cannot be tested from normal Qt gameplay. | **Partial.** The Ares Weapon Emporium is reachable from New Game by ordinary Right/Up input through scene-2 record 92/CB/event 11; A enters the shop and Start returns to a clean field. Physical maglock/passkey, Security Terminal, building item-use, and other shop routes still need normal-control entry/result/return QA without injected event tuples. See [`visual-audits/ares-physical-entry.md`](visual-audits/ares-physical-entry.md). |
+| `PLAY-01` | Shops, building item use, and maglock passkeys cannot be tested from normal Qt gameplay. | **Partial.** The Ares Weapon Emporium is reachable from New Game by ordinary Right/Up input through scene-2 record 92/CB/event 11; A enters the shop and Start returns cleanly. Ordinary controls also enter scene 20 through the paired scene-2 C0 doorway, contact maglock record 117, open its generic dialog, advance with A, and return with C/Walk Away. Passkey/Electronics/grenade outcomes, Security Terminal physical entry, building item use, and other shop/building routes still need normal-control result/return QA. See the [Ares audit](visual-audits/ares-physical-entry.md) and [scene-20 maglock audit](visual-audits/scene20-maglock-physical-entry.md). |
 | `SOUND-03` | More generally, sound effects across the game are reported to play at the wrong points. | Inventory the reported and currently connected ROM sound requests, map each to a state transition, and check trigger, playback, duration, loop, and stop. Close individual sounds in their owning goals. |
 
 ### Earlier reported items carried forward
@@ -326,31 +326,37 @@ map placement.
 ### FIELD-02 — Terrain collision, building access, and physical Stoker/Ares triggers
 
 **Reported:** movement gets stuck in terrain, buildings cannot be entered,
-and property-based systems such as building item use and maglock passkeys
-cannot be tested through normal Qt gameplay.
+and property-based systems such as building item use and maglock passkey
+outcomes cannot be tested through normal Qt gameplay.
 
 **Physical route results:** scene-2 record 91 (`0x173138`, value `0xC2`) at
 the visible motel doorway is reached with normal Up input. It publishes raw
 collision `0xFFC2`, event 2, and Stoker's mode-2/event-2 arrival prompt. Scene-2
 record 92 (`0x173142`, value `0xCB`) reaches the Ares doorway with ordinary
 Right/Up input, publishes `0xFFCB`/event 11, displays the generic Ares prompt,
-then opens the shop with A and restores the field with Start. Both routes have
-Debug/Release CTest coverage and full-screen captures without injected
-collision/event tuples. The Ares fade handoff now clears the old fade overlay
-before painting the new full-screen prompt. The distinct scene-2 record-2
-candidate at `0x172DBE` remains unrelated and still produces event 0; see
-[`visual-audits/stoker-collision-candidate.md`](visual-audits/stoker-collision-candidate.md)
-and [`visual-audits/ares-physical-entry.md`](visual-audits/ares-physical-entry.md).
-General terrain recovery, physical maglock/Security Terminal triggers,
-building item use, and other building routes remain open.
+then opens the shop with A and restores the field with Start. Paired scene-2
+records 89/90 at `0x173124` (`0xC0`) publish event 0; event-table row 0 at
+`0x172CDC` enters scene `0x14`. In scene 20, record 117 at `0x1D9724`
+(`0x82`) is reached with Up, publishes projected `0xFF82`/event 2, and opens
+the generic maglock prompt. A reveals the three source-backed choices and C
+selects Walk Away. All three physical routes have Debug/Release CTest coverage
+and full-screen captures without injected collision/event tuples. The scene-20
+route also fixed the stale B7B8 retry bit, unconnected world-activity timeout,
+and display gate left across scene re-entry. A fade handoff clears the old
+overlay before a replacement modal owns the screen. The distinct scene-2
+record-2 candidate at `0x172DBE` remains unrelated and still produces event 0;
+see the [candidate audit](visual-audits/stoker-collision-candidate.md),
+[Ares audit](visual-audits/ares-physical-entry.md), and [scene-20 maglock audit](visual-audits/scene20-maglock-physical-entry.md). General terrain
+recovery, maglock action results, Security Terminal physical entry, building
+item use, and other building routes remain open.
 
-**Solve:** compare movement probes, collision margins, terrain gates, and
-property/event publication with ROM movement callbacks at `0xB7B8` and related
-tables. Trace the actual building and Stoker collision records, then connect
-the discovered event tuple to the existing typed dialog/property handlers.
-Keep the dialog window generic; speaker properties and the triggered event
-choose its text and choices. Route shops, maglock/passkey checks, and item use
-from ordinary Qt controls only where the ROM exposes those actions.
+**Solve:** continue tracing movement probes, collision margins, terrain gates,
+and remaining property/event routes against ROM callbacks at `0xB7B8` and
+related tables. The Stoker, Ares, and scene-20 maglock entry records are now
+connected to typed handlers. Keep dialog windows generic; speaker properties
+and the triggered event choose their text and choices. Route remaining shops,
+maglock actions, and item use from ordinary Qt controls only where ROM behavior
+exposes those actions.
 
 **Done when:** each route is reachable from gameplay with normal input; a
 source-backed typed state transition, Debug/Release CTest, and full-screen
@@ -358,9 +364,11 @@ entry/result/return captures exist; adjacent terrain and HUD behavior also
 survive; Stoker's dialog is reached by the physical source property without
 an injected event tuple.
 
-**Status:** partial. `STOKER-01` is resolved for the physical motel doorway,
-and scene-2 Ares entry is now verified. General terrain recovery and the other
-building/property routes remain open.
+**Status:** partial. `STOKER-01` is resolved for the physical motel doorway;
+scene-2 Ares entry and the scene-20 maglock introduction/Walk Away route are
+verified in Qt. General terrain recovery, maglock result branches, Security
+Terminal physical entry, building item use, and other building/property
+routes remain open.
 
 ### STOKER-01 — Physical Stoker property and collision-to-dialogue route
 
@@ -712,13 +720,16 @@ and invalid choices update typed game state correctly; full-screen captures
 show clean entry/result/return and adjacent field/HUD state; Debug/Release CTest
 covers the full route.
 
-**Status:** partial. Normal Right/Up input now reaches scene-2 record 92
+**Status:** partial. Normal Right/Up input reaches scene-2 record 92
 (`0x173142`, `0xCB`), publishes mode 2/event 11, opens the generic Ares prompt,
-enters the shop with A, and returns cleanly with Start. Debug/Release route QA
-captures the field approach, fade, prompt, shop, and field return. Physical
-maglock/passkey and Security Terminal entry, building item use, restored-save
-wallet binding, and other shop/building routes remain open; see
-[`visual-audits/ares-physical-entry.md`](visual-audits/ares-physical-entry.md).
+enters the shop with A, and returns cleanly with Start. A separate ordinary
+New Game route reaches paired scene-2 C0 records 89/90, enters scene 20,
+contacts maglock record 117, opens its generic choices, and returns with
+C/Walk Away. Debug/Release route QA captures the field approach, fade, prompt,
+choices, and return. Physical passkey/Electronics/grenade result branches,
+Security Terminal entry, building item use, restored-save wallet binding, and
+other shop/building routes remain open; see the [Ares audit](visual-audits/ares-physical-entry.md)
+and [scene-20 maglock audit](visual-audits/scene20-maglock-physical-entry.md).
 
 ### AUDIO-01 — Source event placement and duration across the game
 
@@ -751,9 +762,10 @@ events remain explicitly open.
 5. `MENU-01/02/03`, `EQUIP-01/02`, and `INVENTORY-01/02` are separate screen
    routes. Each must replace old controls cleanly and be validated in normal
    play as well as by its focused regression route.
-6. `PLAY-01` depends on field collision/property discovery. Ares now has a
-   normal-control route; make each remaining named shop, building-item, and
-   maglock route reachable without event injection.
+6. `PLAY-01` depends on field collision/property discovery. Ares and the
+   scene-20 maglock introduction/Walk Away now have normal-control routes;
+   connect the remaining passkey/action results, Security Terminal, and
+   building-item routes without event injection.
 7. `AUDIO-01` and `SOUND-01/02/03` track source events across screens. Close
    each sound in the goal that owns its trigger; do not mark the audio group
    complete while any reported event remains unresolved.
