@@ -67,7 +67,16 @@ int main() {
         elevator_groups[25U].scene_ids[3] != 24U ||
         elevator_groups[26U].count != 3U ||
         elevator_groups[26U].scene_ids[0] != 26U ||
+        elevator_groups[26U].scene_ids[1] != 27U ||
         elevator_groups[26U].scene_ids[2] != 28U ||
+        elevator_groups[27U].count != 3U ||
+        elevator_groups[27U].scene_ids[0] != 26U ||
+        elevator_groups[27U].scene_ids[1] != 27U ||
+        elevator_groups[27U].scene_ids[2] != 28U ||
+        elevator_groups[28U].count != 3U ||
+        elevator_groups[28U].scene_ids[0] != 26U ||
+        elevator_groups[28U].scene_ids[1] != 27U ||
+        elevator_groups[28U].scene_ids[2] != 28U ||
         elevator_groups[30U].count != 4U ||
         elevator_groups[35U].count != 5U ||
         elevator_groups[41U].count != 2U ||

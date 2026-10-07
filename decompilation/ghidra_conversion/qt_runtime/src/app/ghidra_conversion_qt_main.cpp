@@ -5710,6 +5710,13 @@ int run_field_elevator_physical_entry_qa(
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries);
 
+int run_field_elevator_floor_group_roundtrip_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries);
+
 int run_field_security_terminal_physical_entry_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -8326,12 +8333,472 @@ int run_field_elevator_physical_entry_qa(
                   << ")\n";
         return 3;
     }
+    if (run_field_elevator_floor_group_roundtrip_qa(
+            field_scene, asset_root, output / "floor-group-roundtrip",
+            field_audio_events, source_boundaries) != 0) {
+        return 3;
+    }
     std::cout << "field_elevator_physical_entry_qa=passed trigger=scene26/event29 "
                  "records=102,103 selector_frames=17 delay=8 "
                  "destination=28 timeline_frames="
               << timeline_frame_count << " audio_events="
               << field_audio_events.size() << " artifacts="
               << selector_output.string() << '\n';
+    return 0;
+}
+
+int run_field_elevator_floor_group_roundtrip_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Elevator floor-group QA: could not clear captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output / "timeline", output_error);
+    if (output_error) {
+        std::cerr << "Elevator floor-group QA: could not create captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::ofstream manifest(output / "frames.tsv", std::ios::trunc);
+    std::ofstream timeline_manifest(output / "timeline.tsv", std::ios::trunc);
+    if (!manifest || !timeline_manifest) {
+        std::cerr << "Elevator floor-group QA: could not create manifests\n";
+        return 3;
+    }
+    manifest << "stage\tframe\tscene\tselector_open\tcurrent_floor"
+                "\tselected_floor\tanimation\tanimation_frame"
+                "\ttransition_phase\ttransition_step\ttransition_alpha"
+                "\taudio_event_count\timage\n";
+    timeline_manifest
+        << "frame\tscene\tselector_open\tcurrent_floor\tselected_floor"
+           "\tanimation\tanimation_frame\ttransition_phase"
+           "\ttransition_step\ttransition_vblanks\ttransition_alpha"
+           "\tinput\timage\n";
+
+    std::uint32_t frame = 0U;
+    std::uint32_t timeline_frame_count = 0U;
+    bool timeline_capture_ok = true;
+    auto timeline_input = std::string("neutral");
+    const auto render = [&field_scene] {
+        QImage image(kSceneWidth, kSceneHeight, QImage::Format_ARGB32);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        field_scene.paint(painter);
+        painter.end();
+        return image;
+    };
+    const auto capture_timeline_frame = [&] {
+        if (!timeline_capture_ok) {
+            return;
+        }
+        const auto name = std::string("timeline/frame-") +
+                          std::to_string(frame) + ".png";
+        const auto path = output / name;
+        const auto image = render();
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            !image.save(QString::fromStdWString(path.wstring()))) {
+            timeline_capture_ok = false;
+            return;
+        }
+        timeline_manifest
+            << frame << '\t'
+            << field_scene.field_scene_reference_for_dump() << '\t'
+            << field_scene.elevator_selector_open_for_dump() << '\t'
+            << static_cast<unsigned>(
+                   field_scene.elevator_selector_current_floor_for_dump())
+            << '\t'
+            << static_cast<unsigned>(
+                   field_scene.elevator_selector_selected_floor_for_dump())
+            << '\t' << field_scene.elevator_selector_animating_for_dump()
+            << '\t'
+            << static_cast<unsigned>(
+                   field_scene.elevator_selector_animation_frame_for_dump())
+            << '\t' << static_cast<unsigned>(
+                           field_scene.elevator_scene_transition_phase_for_dump())
+            << '\t'
+            << static_cast<unsigned>(field_scene
+                                         .elevator_scene_transition_palette_step_for_dump())
+            << '\t'
+            << static_cast<unsigned>(field_scene
+                                         .elevator_scene_transition_vblanks_for_dump())
+            << '\t'
+            << static_cast<unsigned>(field_scene
+                                         .elevator_scene_transition_fade_alpha_for_dump())
+            << '\t' << timeline_input << '\t' << name << '\n';
+        ++timeline_frame_count;
+    };
+    const auto tick_frame = [&] {
+        field_scene.advance_frame();
+        ++frame;
+        capture_timeline_frame();
+    };
+    const auto save = [&](const std::string_view stage) {
+        const auto image = render();
+        const auto name = std::string(stage) + ".bmp";
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            !image.save(QString::fromStdWString(
+                (output / name).wstring()))) {
+            return QImage{};
+        }
+        manifest << stage << '\t' << frame << '\t'
+                 << field_scene.field_scene_reference_for_dump() << '\t'
+                 << field_scene.elevator_selector_open_for_dump() << '\t'
+                 << static_cast<unsigned>(
+                        field_scene.elevator_selector_current_floor_for_dump())
+                 << '\t'
+                 << static_cast<unsigned>(
+                        field_scene.elevator_selector_selected_floor_for_dump())
+                 << '\t' << field_scene.elevator_selector_animating_for_dump()
+                 << '\t'
+                 << static_cast<unsigned>(
+                        field_scene.elevator_selector_animation_frame_for_dump())
+                 << '\t' << static_cast<unsigned>(field_scene
+                                                      .elevator_scene_transition_phase_for_dump())
+                 << '\t'
+                 << static_cast<unsigned>(field_scene
+                                              .elevator_scene_transition_palette_step_for_dump())
+                 << '\t'
+                 << static_cast<unsigned>(field_scene
+                                              .elevator_scene_transition_fade_alpha_for_dump())
+                 << '\t' << field_audio_events.size() << '\t' << name << '\n';
+        manifest.flush();
+        return image;
+    };
+    const auto tap_dpad = [&](const std::uint8_t nibble) {
+        timeline_input = nibble == 0x01U ? "dpad-up" : "dpad-down";
+        field_scene.set_controller_nibble(nibble);
+        tick_frame();
+        timeline_input = "neutral";
+        field_scene.set_controller_nibble(0U);
+        tick_frame();
+    };
+    const auto tap_button = [&](const std::uint8_t port_byte) {
+        timeline_input = port_byte == 0x40U ? "A" : "Start";
+        field_scene.set_controller_port_byte(port_byte);
+        tick_frame();
+        timeline_input = "neutral";
+        field_scene.set_controller_port_byte(0U);
+        tick_frame();
+    };
+    const auto no_modal_screen = [&field_scene] {
+        return !field_scene.dialogue_open() &&
+               !field_scene.field_interaction_open() &&
+               !field_scene.field_mode_text_open_for_dump() &&
+               !field_scene.shop_menu_open();
+    };
+
+    if (field_scene.field_scene_reference_for_dump() != 28U ||
+        field_scene.elevator_selector_open_for_dump() ||
+        field_scene.elevator_scene_transition_phase_for_dump() !=
+            ElevatorSceneTransitionPhase::idle ||
+        !no_modal_screen()) {
+        std::cerr << "Elevator floor-group QA: first route did not leave a "
+                     "stable scene-28 field\n";
+        return 3;
+    }
+    capture_timeline_frame();
+    auto stable_field = save("scene28-initial");
+    if (stable_field.isNull() ||
+        !field_hud_chrome_survives(stable_field, asset_root)) {
+        std::cerr << "Elevator floor-group QA: scene-28 starting frame is "
+                     "missing or lacks its HUD\n";
+        return 3;
+    }
+
+    const auto enter_selector = [&](const std::uint16_t scene,
+                                    const std::size_t first_record,
+                                    const std::uint8_t floor,
+                                    const std::string& label,
+                                    const QImage& parent_field) {
+        const auto& rectangles = field_scene.state()
+                                     .field_scene_buffers.source_metadata
+                                     .terrain_collision_rectangles;
+        if (field_scene.field_scene_reference_for_dump() != scene ||
+            rectangles.size() <= first_record + 1U) {
+            std::cerr << "Elevator floor-group QA: scene/record mismatch scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << " expected=" << scene
+                      << " records=" << rectangles.size()
+                      << " first_record=" << first_record << '\n';
+            return QImage{};
+        }
+        for (const auto record : {first_record, first_record + 1U}) {
+            const auto& rectangle = rectangles[record];
+            const auto offset = record == first_record ? 0U : 0x20U;
+            if (rectangle.left != 0x0080U + offset ||
+                rectangle.right != 0x009FU + offset ||
+                rectangle.top != 0x0020U || rectangle.bottom != 0x003FU ||
+                rectangle.value != 0x00DDU) {
+                std::cerr << "Elevator floor-group QA: event-29 collision "
+                             "record mismatch scene="
+                          << scene << " record=" << record << " rect="
+                          << rectangle.left << ',' << rectangle.top << ".."
+                          << rectangle.right << ',' << rectangle.bottom
+                          << " value=0x" << std::hex
+                          << static_cast<unsigned>(rectangle.value) << std::dec
+                          << '\n';
+                return QImage{};
+            }
+        }
+        const auto activity_before = static_cast<std::size_t>(std::count(
+            source_boundaries.begin(), source_boundaries.end(),
+            "field.world.activity.started"));
+        std::uint16_t movement_ticks = 0U;
+        while (movement_ticks < 120U &&
+               !field_scene.elevator_selector_open_for_dump() &&
+               field_scene.field_scene_reference_for_dump() == scene) {
+            timeline_input = "dpad-up";
+            field_scene.set_controller_nibble(0x01U);
+            tick_frame();
+            ++movement_ticks;
+        }
+        timeline_input = "neutral";
+        field_scene.set_controller_nibble(0U);
+        if (field_scene.elevator_selector_open_for_dump()) {
+            tick_frame();
+        }
+        const auto& transition =
+            field_scene.last_field_movement_transition_for_dump();
+        const auto activity_after = static_cast<std::size_t>(std::count(
+            source_boundaries.begin(), source_boundaries.end(),
+            "field.world.activity.started"));
+        if (!field_scene.elevator_selector_open_for_dump() ||
+            transition.event_code != 0x1DU ||
+            transition.continuation !=
+                MovementModeTransitionContinuation::event_29_world_activity ||
+            transition.kind !=
+                EntityMovementModeTransitionResultKind::world_activity_started ||
+            field_scene.field_scene_reference_for_dump() != scene ||
+            field_scene.elevator_selector_current_floor_for_dump() != floor ||
+            field_scene.elevator_selector_selected_floor_for_dump() != floor ||
+            activity_after <= activity_before || !no_modal_screen()) {
+            return QImage{};
+        }
+        const auto selector = save(label + "-selector-open");
+        if (selector.isNull() || selector == parent_field ||
+            !field_hud_chrome_survives(selector, asset_root) ||
+            !image_region_has_color(selector, 220, 88, 40, 48,
+                                    QColor(255, 219, 0))) {
+            return QImage{};
+        }
+        return selector;
+    };
+
+    const auto transition_down_one_floor =
+        [&](const std::uint16_t source_scene,
+            const std::uint16_t destination_scene,
+            const std::uint8_t current_floor, const std::string& label,
+            const QImage& selector_frame) {
+            if (current_floor == 0U) {
+                return QImage{};
+            }
+            tap_dpad(0x02U);
+            const auto selected_floor = static_cast<std::uint8_t>(
+                current_floor - 1U);
+            const auto feedback = save(label + "-previous-floor-feedback");
+            if (feedback.isNull() ||
+                field_scene.elevator_selector_current_floor_for_dump() !=
+                    current_floor ||
+                field_scene.elevator_selector_selected_floor_for_dump() !=
+                    selected_floor ||
+                field_scene.elevator_selector_destination_for_dump() !=
+                    destination_scene ||
+                field_scene.elevator_selector_navigation_feedback_for_dump() !=
+                    ElevatorSelectorNavigationFeedback::previous_floor_active ||
+                feedback == selector_frame) {
+                return QImage{};
+            }
+            std::uint8_t feedback_ticks = 0U;
+            while (field_scene
+                           .elevator_selector_navigation_feedback_frames_remaining_for_dump() !=
+                       0U &&
+                   feedback_ticks < kElevatorSelectorNavigationFeedbackFrameCount) {
+                tick_frame();
+                ++feedback_ticks;
+            }
+            if (field_scene.elevator_selector_navigation_feedback_for_dump() !=
+                ElevatorSelectorNavigationFeedback::previous_floor_rest) {
+                return QImage{};
+            }
+            const auto feedback_rest = save(label + "-previous-floor-rest");
+            if (feedback_rest.isNull()) {
+                return QImage{};
+            }
+            tap_button(0x40U);
+            if (!field_scene.elevator_selector_animating_for_dump() ||
+                field_scene.elevator_selector_animation_frame_for_dump() != 0U) {
+                return QImage{};
+            }
+            for (std::size_t tick = 2U;
+                 tick <= kElevatorSelectorAnimationFrameCount *
+                             kElevatorSelectorAnimationFrameDelay;
+                 ++tick) {
+                tick_frame();
+            }
+            const auto settled = save(label + "-floor-animation-settled");
+            if (settled.isNull() ||
+                field_scene.elevator_selector_current_floor_for_dump() !=
+                    selected_floor ||
+                field_scene.elevator_selector_selected_floor_for_dump() !=
+                    selected_floor ||
+                field_scene.elevator_selector_animating_for_dump()) {
+                return QImage{};
+            }
+            tap_button(0x80U);
+            if (!field_scene.elevator_selector_open_for_dump() ||
+                field_scene.elevator_scene_transition_phase_for_dump() !=
+                    ElevatorSceneTransitionPhase::fading_to_black ||
+                field_scene.elevator_scene_transition_palette_step_for_dump() !=
+                    0U ||
+                field_scene.elevator_scene_transition_vblanks_for_dump() != 1U) {
+                return QImage{};
+            }
+            for (std::uint8_t palette_step = 1U;
+                 palette_step <= kElevatorSceneTransitionPaletteStepCount;
+                 ++palette_step) {
+                if (palette_step != 1U) {
+                    tick_frame();
+                }
+                tick_frame();
+                const auto last_step =
+                    palette_step == kElevatorSceneTransitionPaletteStepCount;
+                const auto transition_matches = last_step
+                    ? field_scene.field_scene_reference_for_dump() ==
+                              destination_scene &&
+                          field_scene.elevator_scene_transition_phase_for_dump() ==
+                              ElevatorSceneTransitionPhase::fading_from_black &&
+                          field_scene.elevator_scene_transition_palette_step_for_dump() ==
+                              0U &&
+                          field_scene.elevator_scene_transition_fade_alpha_for_dump() ==
+                              255U
+                    : field_scene.field_scene_reference_for_dump() == source_scene &&
+                          field_scene.elevator_scene_transition_phase_for_dump() ==
+                              ElevatorSceneTransitionPhase::fading_to_black &&
+                          field_scene.elevator_scene_transition_palette_step_for_dump() ==
+                              palette_step &&
+                          field_scene.elevator_scene_transition_fade_alpha_for_dump() !=
+                              0U;
+                if (!transition_matches ||
+                    save(label + "-fade-out-step-" +
+                         std::to_string(palette_step))
+                        .isNull()) {
+                    return QImage{};
+                }
+            }
+            QImage expected_black(kSceneWidth, kSceneHeight,
+                                  QImage::Format_ARGB32);
+            expected_black.fill(Qt::black);
+            const auto black_handoff = save(label + "-black-handoff");
+            if (black_handoff.isNull() || black_handoff != expected_black ||
+                field_scene.field_scene_reference_for_dump() !=
+                    destination_scene ||
+                field_scene.elevator_selector_open_for_dump()) {
+                return QImage{};
+            }
+            for (std::uint8_t palette_step = 1U;
+                 palette_step <= kElevatorSceneTransitionPaletteStepCount;
+                 ++palette_step) {
+                tick_frame();
+                if (palette_step == 9U &&
+                    save(label + "-fade-in-midpoint").isNull()) {
+                    return QImage{};
+                }
+                tick_frame();
+                if (field_scene.elevator_scene_transition_palette_step_for_dump() !=
+                        palette_step ||
+                    save(label + "-fade-in-step-" +
+                         std::to_string(palette_step))
+                        .isNull()) {
+                    return QImage{};
+                }
+            }
+            const auto& metadata = field_scene.state()
+                                       .field_scene_buffers.source_metadata;
+            const auto expected_spawn = metadata.initial_field_records[0U];
+            const auto destination = save(label + "-entry");
+            const auto destination_position =
+                field_scene.field_entity_world_position();
+            if (destination.isNull() ||
+                field_scene.field_scene_reference_for_dump() !=
+                    destination_scene ||
+                field_scene.elevator_selector_open_for_dump() ||
+                field_scene.elevator_scene_transition_phase_for_dump() !=
+                    ElevatorSceneTransitionPhase::idle ||
+                field_scene.elevator_scene_transition_fade_alpha_for_dump() !=
+                    0U ||
+                destination_position.x != expected_spawn.x ||
+                destination_position.y != expected_spawn.y ||
+                !field_scene.field_entity_visible_for_dump() ||
+                !field_hud_chrome_survives(destination, asset_root) ||
+                destination == selector_frame || !no_modal_screen()) {
+                return QImage{};
+            }
+            for (std::uint8_t tick = 0U; tick < 30U; ++tick) {
+                tick_frame();
+            }
+            const auto held = save(label + "-held-30-frames");
+            return !held.isNull() && held == destination ? held : QImage{};
+        };
+
+    struct ElevatorRoute final {
+        std::uint16_t source_scene;
+        std::size_t first_collision_record;
+        std::uint8_t current_floor;
+        std::uint16_t destination_scene;
+        std::string label;
+    };
+    const std::array<ElevatorRoute, 2> return_routes{{
+        {28U, 112U, 2U, 27U, "scene28-to-scene27"},
+        {27U, 131U, 1U, 26U, "scene27-to-scene26"},
+    }};
+    for (const auto& route : return_routes) {
+        const auto selector = enter_selector(
+            route.source_scene, route.first_collision_record,
+            route.current_floor, route.label, stable_field);
+        if (selector.isNull()) {
+            std::cerr << "Elevator floor-group QA: scene "
+                      << route.source_scene
+                      << " collision did not open its current floor selector\n";
+            return 3;
+        }
+        const auto destination = transition_down_one_floor(
+            route.source_scene, route.destination_scene,
+            route.current_floor, route.label, selector);
+        if (destination.isNull()) {
+            std::cerr << "Elevator floor-group QA: scene "
+                      << route.source_scene << " did not transition to scene "
+                      << route.destination_scene << " at source cadence\n";
+            return 3;
+        }
+        stable_field = destination;
+    }
+    const auto actual = save("actual");
+    if (actual.isNull() || actual != stable_field ||
+        field_scene.field_scene_reference_for_dump() != 26U) {
+        std::cerr << "Elevator floor-group QA: final scene-26 field does not "
+                     "match the settled return state\n";
+        return 3;
+    }
+    manifest.flush();
+    timeline_manifest.flush();
+    if (!timeline_capture_ok || timeline_frame_count != frame + 1U) {
+        std::cerr << "Elevator floor-group QA: timeline missed an update (captured="
+                  << timeline_frame_count << ", expected=" << frame + 1U
+                  << ")\n";
+        return 3;
+    }
+    std::cout << "field_elevator_floor_group_roundtrip_qa=passed "
+                 "routes=scene28-to-scene27,scene27-to-scene26 "
+                 "timeline_frames="
+              << timeline_frame_count << " artifacts=" << output.string()
+              << '\n';
     return 0;
 }
 

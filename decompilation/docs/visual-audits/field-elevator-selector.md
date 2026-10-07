@@ -4,7 +4,7 @@ Date: 2026-10-07
 
 **Status: partial.** The scene-26 event-29 selector and its selected-scene
 handoff are source-traced, implemented as typed native state, and covered by
-Debug/Release QA with a full consecutive frame capture. The destination map
+Debug/Release QA with full consecutive frame captures. The destination map
 identity is still unnamed. The Qt fade follows the ROM's timing but uses a
 black overlay rather than reproducing its per-color CRAM arithmetic, and the
 route-specific audio output has not been captured with loopback.
@@ -12,13 +12,15 @@ route-specific audio output has not been captured with loopback.
 ## Source trace and native behavior
 
 The scene-26 terrain records 102 and 103 carry collision value `0xDD`. The
-ordinary field collision path publishes event 29 and enters ROM routine
-`0x58D94`, which calls the floor-selector routine at `0x58DE0`. It reads the
-current-floor state at `FFF0C8` and the selected-floor state at `FFF0CA`. The
-selector's child scene list is imported offline as
-`records/field/elevator-scene-groups.bin`; this group contains scene IDs
-26, 27, and 28. Runtime code consumes the typed scene list and named extracted
-art; it does not read the ROM or interpret ROM addresses.
+same paired trigger rectangle occurs in scene 28 records 112/113 and scene 27
+records 131/132. The ordinary field collision path publishes event 29 and
+enters ROM routine `0x58D94`, which calls the floor-selector routine at
+`0x58DE0`. It reads the current-floor state at `FFF0C8` and the selected-floor
+state at `FFF0CA`. The selector's child scene list is imported offline as
+`records/field/elevator-scene-groups.bin`; for each of scenes 26, 27, and 28,
+the group contains scene IDs 26, 27, and 28. Runtime code consumes the typed
+scene list and named extracted art; it does not read the ROM or interpret ROM
+addresses.
 
 Up and Down change the selected floor and show the corresponding active arrow
 for eight VBlanks. A starts the 17-frame floor-change animation, with each
@@ -44,13 +46,22 @@ building is assigned as the location in this audit.
 
 The Debug and Release CLI route QA captures every update from before the
 scene-26 collision, through selector input and animation, both fades, scene
-replacement, and a 30-frame stable scene-28 hold. The route includes 459
+replacement, and a 30-frame stable scene-28 hold. This first route includes 459
 consecutive 320x224 frames in `timeline/`, with state, input, palette step,
-alpha, and scene logged in `timeline.tsv`. `actual.bmp` is the open selector;
-named BMP checkpoints cover selector states, fade boundaries, the black
-handoff, scene-28 entry, and the held destination. All 23 contact sheets were
-reviewed as whole screens, and the transition boundary BMPs were inspected at
-full size.
+alpha, and scene logged in `timeline.tsv`. A second physical-input QA starts
+from scene 28, enters its paired event-29 trigger, descends to scene 27, then
+repeats through scene 27's trigger to scene 26. Its
+`floor-group-roundtrip/timeline/` capture contains 553 consecutive frames,
+including both arrow-feedback windows, floor animations, fades, black
+handoffs, scene replacements, and stable holds. It also records each scene's
+collision rectangles and verifies the destination descriptor spawn. `actual.bmp`
+is the final scene-26 field frame for this second route. Named BMP checkpoints
+cover both selector states, feedback, animation, fade boundaries, black
+handoffs, scene entries, and held destinations. All 23 sheets for the first
+route and all 28 sheets for the second route were reviewed as whole screens;
+transition and selector checkpoints were inspected at full size. These native
+captures establish route behavior and clean screen replacement, not
+independent pixel fidelity.
 
 Independent visual reference: `video analysis/long_gameplay_video.mp4`,
 approximately 8833-8837 seconds. Around 8833-8834 seconds, the selector shows
@@ -86,24 +97,27 @@ renderer match.
    2.134 seconds including its release tail. This route verifies the event
    request; exact Windows output loopback for this route has not been captured.
    No sound call is traced for Up/Down.
-6. **Are the other visible parts correct? — Yes for the captured composition.**
-   Review included the whole 320x224 view, selector art, character panel,
-   floor labels, scene map, and HUD across the transition. Party state differs
-   from the independent clip as noted above.
-7. **Do multiple frames support the interpretation? — Yes.** The QA capture
-   covers idle, navigation, feedback retirement, floor animation, fade-out,
-   black handoff, fade-in, and stable destination. The longplay supplies
-   separate selector and post-transition examples but no controller log.
-8. **Does the new UI replace the old UI cleanly? — Yes in the captured route.**
+6. **Are the other visible parts correct? — Partial.** Review included the
+   whole 320x224 view, selector art, character panel, floor labels, scene map,
+   and HUD across every transition. The captures show clean composition and no
+   leftover controls; the return-route maps have no matching independent
+   Genesis reference. Party state differs from the independent clip as noted
+   above.
+7. **Do multiple frames support the interpretation? — Yes.** The two QA
+   captures cover idle, navigation, feedback retirement, floor animation,
+   fade-out, black handoff, fade-in, and stable destinations. The longplay
+   supplies separate selector and post-transition examples but no controller
+   log. The two return routes have internal multi-frame evidence only.
+8. **Does the new UI replace the old UI cleanly? — Yes in the captured routes.**
    The selector paints its full-screen background and layers instead of
-   painting over the scene-26 field controls. The black handoff clears that
-   screen; scene 28 replaces it with its own field composition. QA confirms no
+   painting over field controls. Each black handoff clears the selector; each
+   destination replaces it with its own field composition. QA confirms no
    dialogue, shop, or prior modal remains open.
-9. **Was the whole time window reviewed? — Yes.** All 459 consecutive native
-   frames from before trigger through the 30-frame destination hold were
-   captured and reviewed through the contact sheets; transition checkpoints
-   were also inspected at full size. The independent video timestamps are
-   visual anchors only, not ROM timing measurements.
+9. **Was the whole time window reviewed? — Yes.** All 459 consecutive frames
+   from the first route and all 553 from the return routes were captured and
+   reviewed through whole-screen contact sheets; selector and transition
+   checkpoints were also inspected at full size. The independent video
+   timestamps are visual anchors only, not ROM timing measurements.
 
 ## Verification and remaining work
 
@@ -111,10 +125,11 @@ The defending Debug/Release tests are
 `shadowrun_ghidra_conversion_qt_field_elevator_physical_entry_qa` and
 `shadowrun_ghidra_field_elevator_selector_runtime`. The route QA checks source
 collision records, event 29, state transitions, event `0x25`, clean screen
-replacement, and rendered pixel regions; it writes
+replacement, and rendered pixel regions. The physical-entry test checks the
+scene-26 outbound transition and the scene-28-to-27-to-26 return loop; it writes
 `qt_runtime/field-elevator-physical-entry-qa/scene26-event29-elevator/actual.bmp`
-and the full `timeline/` capture. Debug and Release outputs are compared by
-frame name and SHA-256.
+and the `floor-group-roundtrip/actual.bmp` and consecutive `timeline/` captures.
+Debug and Release outputs are compared by frame name and SHA-256.
 
 Remaining: exact CRAM color arithmetic for this field transition, route-level
 audio loopback and measured output, a reference capture for all selector
