@@ -928,6 +928,12 @@ std::array<RgbaImage, 10> decode_genesis_field_magic_damage_bars(
 // before applying the selected action focus block.
 RgbaImage decode_genesis_field_menu_action_background(
     const std::vector<std::uint8_t>& rom);
+// ROM 0x11B58 installs CD33E for the Clips selector row.
+RgbaImage decode_genesis_field_menu_clips_background(
+    const std::vector<std::uint8_t>& rom);
+// ROM 0x11E7E installs CD37A for the nested Clips trade row.
+RgbaImage decode_genesis_field_menu_clips_trade_background(
+    const std::vector<std::uint8_t>& rom);
 // ROM 0x127B0 replaces the action row with the source Yes/No bar at CD3B6.
 RgbaImage decode_genesis_field_menu_action_confirmation_background(
     const std::vector<std::uint8_t>& rom);

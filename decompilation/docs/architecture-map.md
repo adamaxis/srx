@@ -416,9 +416,12 @@ generated offline at the ROM text-table boundary as `menu.field.text`; the
 action-detail data for Attributes, Cyberware, Magic, and Pocket Secretary
 remain explicit conversion work. The top-level Clips branch is now connected
 through a separate `FieldClipsMenuRuntime`: its four-entry selector,
-reload-confirmation state, typed ammunition mutation, and source row
-replacement are presented by `FieldSceneRuntime` without adding a second
-menu state machine. The nested recruited-recipient trade path consumes the
+reload-confirmation state, and typed ammunition mutation are presented by
+`FieldSceneRuntime` without adding a second menu state machine. The renderer
+loads separate named source rows for top-level Clips (`0xCD33E`), nested Trade
+(`0xCD37A`), and Reload confirmation (`0xCD3B6`); it no longer reuses the
+inventory action row (`0xCD302`) beneath those screens. The nested
+recruited-recipient trade path consumes the
 same typed `FieldPartyRosterRuntime` records that the field scene uses:
 `0x11DD2` recipient filtering, `0x1209A` recipient cycling, quantity
 wrap/clamp, transfer arithmetic, and the `0x11FDE` distribution branch are
@@ -433,7 +436,10 @@ deselection/reselection is tested without record mutation, and a frame-shell
 comparison ignores only the source action row and its changing caption. This
 catches a focus sprite painted over a stale five-button row, or a selector
 transition that accidentally changes the portrait, inventory, status bars, or
-other surrounding panel state. The party-roster test additionally checks
+other surrounding panel state. The Clips CLI QA also compares Debug and Release
+full-screen captures for top-level, nested Trade, confirmation, and return
+states; its source-asset comparisons remain internal checks because there is
+not yet an independent Genesis Clips capture. The party-roster test additionally checks
 new-game Joshua projection, signed save-marker activation, active-slot
 selection, and typed clip transfer without allowing the Qt presenter to
 fabricate a local party array.

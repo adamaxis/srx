@@ -88,6 +88,10 @@ constexpr std::string_view kCommandOverviewActionBackgroundAlias =
     "menu.field.action.background";
 constexpr std::string_view kCommandOverviewActionConfirmationBackgroundAlias =
     "menu.field.action.confirm.background";
+constexpr std::string_view kCommandOverviewClipsBackgroundAlias =
+    "menu.field.clips.background";
+constexpr std::string_view kCommandOverviewClipsTradeBackgroundAlias =
+    "menu.field.clips.trade.background";
 constexpr std::string_view kCommandOverviewActionFocusAliasPrefix =
     "menu.field.action.focus.";
 constexpr std::string_view kCommandOverviewActionConfirmationFocusAliasPrefix =
@@ -851,6 +855,10 @@ bool FieldSceneRuntime::load_command_overview_assets(
         !load_image(catalog,
                     kCommandOverviewActionConfirmationBackgroundAlias,
                     command_overview_action_confirmation_background_) ||
+        !load_image(catalog, kCommandOverviewClipsBackgroundAlias,
+                    command_overview_clips_background_) ||
+        !load_image(catalog, kCommandOverviewClipsTradeBackgroundAlias,
+                    command_overview_clips_trade_background_) ||
         !load_image(catalog, "menu.field.font", command_overview_font_) ||
         !load_image(catalog, "menu.field.magic.font.palette.0",
                     magic_menu_font_) ||
@@ -5639,10 +5647,10 @@ void FieldSceneRuntime::refresh_command_overview_item_detail() {
 
 void FieldSceneRuntime::paint_command_overview_clips(
     QPainter& painter) const {
-    // ROM 0x11B58/0x11E7E clears the center command plane through the shared
-    // menu-grid writer. Preserve the runner/inventory/status shell around it,
-    // but do not let the higher-mode Attributes/Skills rows leak through.
-    painter.fillRect(96, 16, 168, 144, Qt::black);
+    // ROM 0x12C36 starts at name-table C118 (screen 96,16) and clears the
+    // source 20x20 cell region. The field HUD is composed afterward as a
+    // separate shared layer.
+    painter.fillRect(96, 16, 160, 160, Qt::black);
 
     draw_command_overview_text(painter, 136, 40,
                                field_menu_text_.clips_title);
@@ -5658,14 +5666,18 @@ void FieldSceneRuntime::paint_command_overview_clips(
         }
     };
 
-    // This opaque source row replaces all five ordinary command-tab cells.
-    // It contains the four action positions plus the source trailing blank
-    // cell, so the Clips screen cannot accidentally retain Pocket Secretary.
-    painter.drawImage(kCommandOverviewClipsBackgroundX,
-                      kCommandOverviewClipsBackgroundY,
-                      command_overview_action_background_);
-
     if (command_overview_clips_.reload_confirmation_open()) {
+        // ROM 0x11D06/0x127B0 replaces CD33E with the dedicated CD3B6 Yes/No
+        // row; 0x127FC selects one of its two source focus blocks.
+        painter.drawImage(kCommandOverviewClipsBackgroundX,
+                          kCommandOverviewClipsBackgroundY,
+                          command_overview_action_confirmation_background_);
+        const auto choice_index =
+            command_overview_clips_.reload_confirmation_yes() ? 0U : 1U;
+        painter.drawImage(
+            kCommandOverviewActionConfirmationFocusX[choice_index],
+            kCommandOverviewActionConfirmationFocusY,
+            command_overview_action_confirmation_focus_[choice_index]);
         draw_lines(field_menu_text_.clips_reload_prompt, 120, 72);
         draw_command_overview_text(
             painter, 112, 200,
@@ -5676,6 +5688,10 @@ void FieldSceneRuntime::paint_command_overview_clips(
     }
 
     if (command_overview_clips_.trade_open()) {
+        // ROM 0x11E7E installs the nested trade row from CD37A.
+        painter.drawImage(kCommandOverviewClipsBackgroundX,
+                          kCommandOverviewClipsBackgroundY,
+                          command_overview_clips_trade_background_);
         // ROM 0x11E34 renders the source trade prompt, then 0x1209A updates
         // the recipient name when the nested selector moves. The source
         // D1B71 ???? text is retained only as the fallback for a record whose
@@ -5709,6 +5725,12 @@ void FieldSceneRuntime::paint_command_overview_clips(
         }
         return;
     }
+
+    // ROM 0x11B98 installs the top-level Clips row from CD33E. It has the
+    // same footprint as the inventory action row but different button art.
+    painter.drawImage(kCommandOverviewClipsBackgroundX,
+                      kCommandOverviewClipsBackgroundY,
+                      command_overview_clips_background_);
 
     switch (command_overview_clips_.message()) {
     case ClipsMenuMessage::out_of_ammo:

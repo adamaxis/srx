@@ -964,6 +964,8 @@ menu.field.service.tabs.selected.5	menu/field/service-tabs-selected-5.bmp	image	
 menu.field.service.universal.clips	menu/field/service-universal-clips.bmp	image	0	0
 menu.field.action.background	menu/field/action-background.bmp	image	0	0
 menu.field.action.confirm.background	menu/field/action-confirm-background.bmp	image	0	0
+menu.field.clips.background	menu/field/clips-background.bmp	image	0	0
+menu.field.clips.trade.background	menu/field/clips-trade-background.bmp	image	0	0
 menu.field.attributes.background	menu/field/attributes-background.bmp	image	0	0
 menu.field.inventory.boxes	menu/field/inventory-boxes.bmp	image	0	0
 menu.field.font	menu/field/font.bmp	image	0	0

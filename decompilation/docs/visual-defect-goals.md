@@ -68,7 +68,7 @@ review; it is not part of the pasted report.
 | `SEC-CYBERWARE` | Opening Cyberware hides inventory, the runner portrait, posture, and text that should remain visible. | Identify which HUD/panel regions are shared; compare complete page frames and verify child entry/return redraws shared regions exactly once. |
 | `KARMA-COLOR` | The Start-menu Attributes/Skills Karma page uses the wrong selection color. | ROM `0xD5DC` passes text mode `0x4000` for the selected row (palette line 2). The current Qt captures show `#6D4992` on all 20 selected cells and restore the prior row to green. The reported color fault is not reproduced against the traced ROM palette. No matching independent Genesis page capture is present, so visual fidelity remains unverified. |
 | `KARMA-DETAIL` | The Start-menu Attributes/Skills Karma page omits the selected attribute/skill's detail text. | Reproduced before this pass: the Qt presenter skipped the existing `0xD5DC` conversion. It now renders the selected label/value, both Essence values, Magic from `+0x7F`, and the installed-cyberware `c` markers/modifiers at source-derived positions. Debug/Release QA captures all 20 cells and checks empty/populated cyberware plus clean return. The ROM provides these labels, values, and modifiers rather than longer prose descriptions. No matching independent Genesis page capture is present; do not claim visual resolution. |
-| `CLIPS-REDRAW` | The Clips menu is drawn over its parent menu instead of replacing it cleanly. | Trace the source panel replacement/restore path; compare parent, child, confirm/cancel, and return full-screen captures, including all buttons behind the child. |
+| `CLIPS-REDRAW` | Clips reused the inventory action row for its selector/trade pages and left that four-action row visible behind reload Yes/No. | Fixed in Qt after tracing ROM row swaps and parent restore: Debug/Release full-screen QA covers top-level Clips, nested Trade, confirmation, decline, reload result, and return. Independent Genesis Clips frames remain unavailable. |
 | `POSTURE-FOCUS` | The posture bar has no selector; it should be reachable with Up/Down from the menu buttons and affect attack/defense. | Existing ROM/source and internal QA describe Up focus, Down deselection, five posture states, and attack/defense updates. Reproduce through normal play and reconcile the report with the full-screen QA capture that currently shows a selector. |
 | `INVENTORY-01` | Moving/trading items between inventory locations does not work. | Trace source/destination cell state, item constraints, confirmation/cancel, and authoritative item records; exercise the route through ordinary controls and verify both cells and stats. |
 | `INVENTORY-02` | Using an item draws the runner portrait over other bars. | Trace item-use page/result/return and full redraw order; verify portrait, bars, posture, message, and inventory across all transition frames. |
@@ -536,20 +536,28 @@ matching independent Genesis page sequence is available.
 
 ### MENU-03 — Clips child and posture selector (`CLIPS-REDRAW`, `POSTURE-FOCUS`)
 
-**Reported:** Clips draws over its parent, and the posture bar has no selector.
+**Reported:** the Clips child pages reused the wrong button rows, and the
+reload prompt left the four-action row visible behind Yes/No. The posture bar
+also has no selector.
 Carried-forward requirement: posture is a menu reachable with Up/Down from
 the menu buttons; its selection affects attack/defense and uses the proper
 selector.
 
-**Solve:** make Clips replace/restore the parent cleanly. Trace posture focus
-entry, Up/Down navigation, selector animation/attributes, selected value, and
-attack/defense consequences.
+**Solve:** use the ROM's distinct top-level Clips, nested Trade, and reload
+confirmation rows, then restore the parent cleanly on B and Cancel. Trace
+posture focus entry, Up/Down navigation, selector animation/attributes,
+selected value, and attack/defense consequences.
 
-**Done when:** parent and child frames at entry, navigation, confirm/cancel,
-and return show no doubled controls; tests check selector state and stat
-effects; full-screen frames include the entire command panel and HUD.
+**Done when:** parent, top-level Clips, nested Trade, reload No/Yes, decline,
+success, and return frames show their source-specific controls with no stale
+buttons; tests check row/focus pixels, state changes, and pixel-identical
+parent restoration. Posture also needs full-screen entry/selection/return
+frames and tests for selector state and stat effects.
 
-**Status:** pending current-build reproduction.
+**Status:** `CLIPS-REDRAW` fixed in the current Qt build and covered by Debug
+and Release full-screen QA. No matching independent Genesis Clips sequence
+has been identified, so visual fidelity remains unverified. POSTURE-FOCUS
+is still open.
 
 ### INVENTORY-01 — Move/trade item behavior
 

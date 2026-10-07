@@ -13840,7 +13840,43 @@ int main(int argc, char** argv) {
                     [&](const QImage& scene, const QImage& focus,
                         const std::size_t focus_index) {
                         const auto background = direct_asset(
-                            "action-background.bmp");
+                            "clips-background.bmp");
+                        if (background.isNull() || focus.isNull() ||
+                            focus_index >= 4U) {
+                            return false;
+                        }
+                        auto expected = background.convertToFormat(
+                            QImage::Format_RGB32);
+                        QPainter expected_painter(&expected);
+                        expected_painter.drawImage(
+                            8 + static_cast<int>(focus_index * 24U), 0,
+                            focus);
+                        expected_painter.end();
+                        return region_matches(scene, expected, 120, 184);
+                    };
+                const auto clips_confirmation_row_matches =
+                    [&](const QImage& scene, const bool yes_selected) {
+                        const auto background = direct_asset(
+                            "action-confirm-background.bmp");
+                        const auto focus = direct_asset(
+                            yes_selected ? "action-confirm-focus-0.bmp"
+                                         : "action-confirm-focus-1.bmp");
+                        if (background.isNull() || focus.isNull()) {
+                            return false;
+                        }
+                        auto expected = background.convertToFormat(
+                            QImage::Format_RGB32);
+                        QPainter expected_painter(&expected);
+                        expected_painter.drawImage(
+                            yes_selected ? 16 : 64, 0, focus);
+                        expected_painter.end();
+                        return region_matches(scene, expected, 120, 184);
+                    };
+                const auto clips_trade_row_matches =
+                    [&](const QImage& scene, const QImage& focus,
+                        const std::size_t focus_index) {
+                        const auto background = direct_asset(
+                            "clips-trade-background.bmp");
                         if (background.isNull() || focus.isNull() ||
                             focus_index >= 4U) {
                             return false;
@@ -13888,10 +13924,22 @@ int main(int argc, char** argv) {
                     direct_asset("clips-focus-1.bmp"),
                     direct_asset("clips-focus-2.bmp"),
                     direct_asset("clips-focus-3.bmp")};
+                const auto clips_trade_focus = std::array<QImage, 4>{
+                    direct_asset("clips-trade-focus-0.bmp"),
+                    direct_asset("clips-trade-focus-1.bmp"),
+                    direct_asset("clips-trade-focus-2.bmp"),
+                    direct_asset("clips-trade-focus-3.bmp")};
                 for (const auto& focus : clips_focus) {
                     if (focus.isNull()) {
                         std::cerr << "field clips dump: direct Clips focus "
                                      "asset is missing\n";
+                        return 3;
+                    }
+                }
+                for (const auto& focus : clips_trade_focus) {
+                    if (focus.isNull()) {
+                        std::cerr << "field clips dump: direct Clips trade "
+                                     "focus asset is missing\n";
                         return 3;
                     }
                 }
@@ -13924,7 +13972,8 @@ int main(int argc, char** argv) {
                 const auto initial_clips_scene = render_scene();
                 if (!clips_row_matches(initial_clips_scene, clips_focus[0], 0U) ||
                     !save_scene("00_clips_reload_selected",
-                                initial_clips_scene)) {
+                                initial_clips_scene) ||
+                    !save_scene("actual", initial_clips_scene)) {
                     std::cerr << "field clips dump: Clips row did not replace "
                                  "the five-button command row\n";
                     return 3;
@@ -13977,11 +14026,13 @@ int main(int argc, char** argv) {
                 // runner record. A can then enter the same four-entry loop
                 // again from the parent command page.
                 press(0x10U);
+                const auto clips_unselected_scene = render_scene();
                 if (field_scene.clips_menu_open() ||
                     !field_scene.command_overview_open() ||
                     !same_clip_record(field_scene.active_runner_record(),
                                       initial_record) ||
-                    !write_scene("05_clips_unselected")) {
+                    !save_scene("05_clips_unselected",
+                                clips_unselected_scene)) {
                     std::cerr << "field clips dump: B did not unselect Clips "
                                  "without mutation\n";
                     return 3;
@@ -13992,6 +14043,95 @@ int main(int argc, char** argv) {
                     !write_scene("06_clips_reopened")) {
                     std::cerr << "field clips dump: Clips could not be "
                                  "re-selected after B\n";
+                    return 3;
+                }
+
+                for (std::size_t move = 0; move < 3U; ++move) {
+                    press(0x08U);
+                }
+                if (!field_scene.clips_menu_open() ||
+                    field_scene.clips_menu_selection() != 5U) {
+                    std::cerr << "field clips dump: A Cancel route did not "
+                                 "reach the source Cancel command\n";
+                    return 3;
+                }
+                press(0x40U);
+                const auto clips_cancel_scene = render_scene();
+                if (field_scene.clips_menu_open() ||
+                    !field_scene.command_overview_open() ||
+                    clips_cancel_scene != clips_unselected_scene ||
+                    !save_scene("06a_clips_cancel_to_parent",
+                                clips_cancel_scene)) {
+                    std::cerr << "field clips dump: A Cancel did not restore "
+                                 "the clean parent command screen\n";
+                    return 3;
+                }
+                press(0x40U);
+                if (!field_scene.clips_menu_open() ||
+                    field_scene.clips_menu_selection() != 2U) {
+                    std::cerr << "field clips dump: Clips did not reopen "
+                                 "after A Cancel\n";
+                    return 3;
+                }
+
+                // Use the source Ricky save-roster template so the nested
+                // recipient screen is a typed, source-backed route rather
+                // than a fabricated runner record.
+                if (!smoke_state.startup_records.has_value()) {
+                    std::cerr << "field clips dump: source save-roster "
+                                 "templates are unavailable\n";
+                    return 3;
+                }
+                LiveRunnerRecord ricky_source{};
+                ricky_source.bytes =
+                    smoke_state.startup_records->save_roster_templates[1U]
+                        .record;
+                field_scene.install_party_member_for_dump(
+                    1U, read_runner_record_fields(ricky_source), "Ricky", 3U);
+                press(0x08U);
+                if (field_scene.clips_menu_selection() != 3U) {
+                    std::cerr << "field clips dump: Clips did not select "
+                                 "Trade for the source-backed roster route\n";
+                    return 3;
+                }
+                press(0x40U);
+                auto trade_increase_scene = render_scene();
+                if (field_scene.clips_menu_message() != ClipsMenuMessage::none ||
+                    !clips_trade_row_matches(
+                        trade_increase_scene, clips_trade_focus[0], 0U) ||
+                    !save_scene("trade-actual", trade_increase_scene) ||
+                    !save_scene("06b_clips_trade_increase_selected",
+                                trade_increase_scene)) {
+                    std::cerr << "field clips dump: nested Trade did not "
+                                 "replace the Clips row with CD37A\n";
+                    return 3;
+                }
+                press(0x08U);
+                const auto trade_decrease_scene = render_scene();
+                if (!clips_trade_row_matches(
+                        trade_decrease_scene, clips_trade_focus[1], 1U) ||
+                    !save_scene("06c_clips_trade_decrease_selected",
+                                trade_decrease_scene)) {
+                    std::cerr << "field clips dump: nested Trade focus did "
+                                 "not follow the selected command\n";
+                    return 3;
+                }
+                press(0x10U);
+                const auto trade_return_scene = render_scene();
+                if (!field_scene.clips_menu_open() ||
+                    field_scene.clips_menu_selection() != 3U ||
+                    !clips_row_matches(trade_return_scene,
+                                       clips_focus[1], 1U) ||
+                    !save_scene("06d_clips_trade_return_to_trade",
+                                trade_return_scene)) {
+                    std::cerr << "field clips dump: nested Trade did not "
+                                 "restore the top-level Clips row\n";
+                    return 3;
+                }
+                press(0x04U);
+                if (field_scene.clips_menu_selection() != 2U) {
+                    std::cerr << "field clips dump: return from nested Trade "
+                                 "did not preserve normal Clips navigation\n";
                     return 3;
                 }
 
@@ -14010,15 +14150,42 @@ int main(int argc, char** argv) {
                     expected_reload, capacity, false);
                 press(0x40U);
                 if (expected_result == ReloadResult::confirmation_required) {
+                    const auto no_confirmation_scene = render_scene();
                     if (!field_scene.clips_reload_confirmation_open() ||
-                        !write_scene("07_clips_reload_confirmation_no")) {
+                        field_scene.clips_reload_confirmation_yes() ||
+                        !clips_confirmation_row_matches(
+                            no_confirmation_scene, false) ||
+                        !save_scene("07_clips_reload_confirmation_no",
+                                    no_confirmation_scene)) {
                         std::cerr << "field clips dump: reload confirmation "
                                      "did not open\n";
                         return 3;
                     }
+                    press(0x40U);
+                    const auto no_reload_scene = render_scene();
+                    if (field_scene.clips_reload_confirmation_open() ||
+                        !same_clip_record(field_scene.active_runner_record(),
+                                          before_reload) ||
+                        !clips_row_matches(no_reload_scene, clips_focus[0], 0U) ||
+                        !save_scene("08_clips_reload_declined_no",
+                                    no_reload_scene)) {
+                        std::cerr << "field clips dump: No did not restore the "
+                                     "Clips row without reloading\n";
+                        return 3;
+                    }
+                    press(0x40U);
+                    if (!field_scene.clips_reload_confirmation_open()) {
+                        std::cerr << "field clips dump: reload confirmation "
+                                     "could not reopen after No\n";
+                        return 3;
+                    }
                     press(0x08U);
+                    const auto yes_confirmation_scene = render_scene();
                     if (!field_scene.clips_reload_confirmation_yes() ||
-                        !write_scene("08_clips_reload_confirmation_yes")) {
+                        !clips_confirmation_row_matches(
+                            yes_confirmation_scene, true) ||
+                        !save_scene("09_clips_reload_confirmation_yes",
+                                    yes_confirmation_scene)) {
                         std::cerr << "field clips dump: reload confirmation "
                                      "did not select Yes\n";
                         return 3;
@@ -14030,7 +14197,7 @@ int main(int argc, char** argv) {
                     if (confirmed_result != ReloadResult::reloaded ||
                         !same_clip_record(field_scene.active_runner_record(),
                                           expected_confirmed) ||
-                        !write_scene("09_clips_after_reload")) {
+                        !write_scene("10_clips_after_reload")) {
                         std::cerr << "field clips dump: confirmed reload did "
                                      "not match converted arithmetic\n";
                         return 3;

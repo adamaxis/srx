@@ -639,13 +639,20 @@ through the action branches at `0x11CCA`, `0x11DD2`, and `0x11FDE`.
 error/result path; it must not silently refill, disappear, or become an
 equipped weapon.
 
-The separate Qt conversion runtime now paints the complete source four-entry
-action row over the command-row location, including its trailing blank, so the
-ordinary five-button row cannot leak through under a Clips focus sprite.
-Executable QA walks every selector entry and wraparound, checks
+The separate Qt conversion runtime now uses the source-specific menu rows:
+`0xCD33E` for top-level Clips, `0xCD37A` for nested Trade, and `0xCD3B6` for
+Reload confirmation. It previously reused the ordinary inventory action row
+at `0xCD302`, leaving unrelated icons behind the Yes/No prompt. The source
+clear at `0x12C36` covers the full 20-by-20-cell center region before the new
+panel is drawn. Executable QA walks every selector entry and wraparound, checks
 deselection/reselection without record mutation, compares the surrounding
 portrait/inventory/status shell while moving, and verifies reload confirmation
-and the `0x26` load increment. The converted reload path gates non-clip items,
+and the `0x26` load increment. Debug and Release produce identical full-screen
+captures across top-level, nested, confirmation, return, and reload states.
+Those captures compare the UI with extracted ROM resources and are internal
+conversion checks; there is no independent Genesis Clips sequence in the
+supplied longplay, so visual fidelity remains unverified. The converted reload
+path gates non-clip items,
 consumes one clip, clamps loaded ammunition to the extracted item capacity, and
 emits the source `Rock & Roll, chummers!!` result. The nested trade path now
 uses the same typed three-slot party roster as the field scene: source-record

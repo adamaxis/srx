@@ -294,21 +294,34 @@ from the currently equipped item's `+0x24` value on each input step.
 
 Native status: selector bounds, source labels, extracted ammunition fields,
 action gates, exact reviewed error text, and the native transition are
-implemented in the separate Qt conversion runtime. The Clips screen replaces
-the complete five-button command row with the ROM's four-entry row plus its
-trailing blank; it is not a transparent focus overlay on the ordinary command
-tabs. Executable QA walks Reload -> Trade -> Distribute -> Cancel, verifies
-the 5 -> 2 wrap, deselection/reselection, the stable surrounding shell, and
-the reload arithmetic. The nested Trade loop follows
-`D1E24`/`0x1209A`/`0x120E4` for quantity wrapping, recipient changes, and
-`Exchange complete`; the positive top-level Distribute average follows
-`0x11FDE`/`0x12014` with the source remainder-bit rule. Reload follows
-`0x11CCA`/`0x11D86`/`0x36FC`: it gates non-clip items, asks for
-confirmation when ammunition remains, consumes one clip, clamps loaded
-ammunition to the extracted item capacity, and emits the source
-`Rock & Roll, chummers!!` result. The top-level screen is connected; the
-recruited-recipient trade presentation and an independent visual golden
-remain open.
+implemented in the separate Qt conversion runtime. ROM 0x11B98 installs
+button row CD33E for Clips, 0x11E7E installs CD37A for nested Trade, and
+0x11D06/0x127B0 replaces that row with CD3B6 for reload Yes/No. The prior Qt
+presenter reused the inventory row for these states; it now consumes three
+separately extracted named assets and paints the matching selected focus.
+The source 0x12C36 clear starts at name-table C118 (screen 96,16), covers its
+20x20-cell center region, and leaves the separately composed field HUD intact.
+
+Debug and Release CLI QA captures every top-level selector entry and wrap,
+B deselection/reselection, A Cancel, the nested Trade row and its first two
+selection states using the ROM save-roster Ricky template, reload No and Yes,
+decline without mutation, and reload success. It compares the source row and
+focus pixels, and requires the A Cancel/B parent return to match the fresh
+parent image exactly. Top-level Cancel follows 0x11C9C to the shared
+0x11928 command-row redraw. The nested Trade loop follows
+D1E24/0x1209A/0x120E4 for quantity wrapping and recipient changes; the
+positive top-level Distribute average follows 0x11FDE/0x12014 with the source
+remainder-bit rule. Reload follows 0x11CCA/0x11D86/0x36FC: it gates non-clip
+items, consumes one clip, clamps loaded ammunition to the extracted item
+capacity, and emits the source “Rock & Roll, chummers!!” result.
+
+Menu movement and Yes/No toggling request event 0x25; action/confirmation
+requests event 0x24. Shared audio QA resolves them to resources 037 and 024
+with durations 2.134 s and 2.484 s. The exact Clips route's speaker-output
+loopback has not been recorded. The supplied longplay has neighboring
+command/menu frames but no matching Clips selector, nested Trade, or reload
+confirmation sequence, so independent visual fidelity remains unverified.
+Complete loaded-save field composition also remains open.
 
 ### Attributes/Skills view and Hotel Karma upgrades (`0xD01C`, `0xD024`)
 

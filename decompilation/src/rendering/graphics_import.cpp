@@ -4029,6 +4029,32 @@ RgbaImage decode_genesis_field_menu_action_background(
         rom, pattern_vram, 0xCD302U, 15U, 2U, palette);
 }
 
+RgbaImage decode_genesis_field_menu_clips_background(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kPatternStreamOffset = 0xCAB0CU;
+    constexpr std::size_t kPatternVramOffset = 0x1E20U;
+    const auto pattern_vram = decode_genesis_1530_vram(
+        rom, kPatternStreamOffset, kPatternVramOffset);
+    const auto palette = read_genesis_command_palette_set(rom);
+    // 0x11B98 uploads CD33E as the four-button Clips row. It occupies the
+    // same 15x2 name-table footprint as the general inventory action row,
+    // but its button art is different.
+    return decode_genesis_menu_name_table_block(
+        rom, pattern_vram, 0xCD33EU, 15U, 2U, palette);
+}
+
+RgbaImage decode_genesis_field_menu_clips_trade_background(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kPatternStreamOffset = 0xCAB0CU;
+    constexpr std::size_t kPatternVramOffset = 0x1E20U;
+    const auto pattern_vram = decode_genesis_1530_vram(
+        rom, kPatternStreamOffset, kPatternVramOffset);
+    const auto palette = read_genesis_command_palette_set(rom);
+    // 0x11E7E uploads CD37A before entering the nested trade selector.
+    return decode_genesis_menu_name_table_block(
+        rom, pattern_vram, 0xCD37AU, 15U, 2U, palette);
+}
+
 RgbaImage decode_genesis_field_menu_action_confirmation_background(
     const std::vector<std::uint8_t>& rom) {
     constexpr std::size_t kPatternStreamOffset = 0xCAB0CU;

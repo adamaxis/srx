@@ -68,12 +68,12 @@ intro/sprites/trivid-right-0-9.bmp	sprite	328	127	23	2	table=0x1df238 index=0 sp
 intro/sprites/trivid-right-0-10.bmp	sprite	364	122	19	12	table=0x1df238 index=0 sprite=10 source=0x1df288 attr=0x6000	extracted
 intro/sprites/trivid-right-0-11.bmp	sprite	381	120	11	13	table=0x1df238 index=0 sprite=11 source=0x1df290 attr=0x6000	extracted
 intro/sprites/trivid-right-0-12.bmp	sprite	408	126	11	4	table=0x1df238 index=0 sprite=12 source=0x1df298 attr=0x6000	extracted
-intro/sprites/trivid-timed-0-0.bmp	sprite	120	128	24	24	table=0x5ad02 index=0 sprite=0 source=0x1df2a2 attr=0x2000	extracted
-intro/sprites/trivid-timed-0-1.bmp	sprite	128	152	13	8	table=0x5ad02 index=0 sprite=1 source=0x1df2aa attr=0x2000	extracted
-intro/sprites/trivid-timed-0-2.bmp	sprite	137	160	1	1	table=0x5ad02 index=0 sprite=2 source=0x1df2b2 attr=0x2000	extracted
-intro/sprites/trivid-timed-1-0.bmp	sprite	119	128	24	23	table=0x5ad02 index=1 sprite=0 source=0x1df2bc attr=0x2000	extracted
-intro/sprites/trivid-timed-1-1.bmp	sprite	143	136	5	9	table=0x5ad02 index=1 sprite=1 source=0x1df2c4 attr=0x2000	extracted
-intro/sprites/trivid-timed-2-0.bmp	sprite	121	128	28	19	table=0x5ad02 index=2 sprite=0 source=0x1df2ce attr=0x2000	extracted
+intro/sprites/trivid-timed-0-0.bmp	sprite	120	128	24	24	table=0x5ad02 index=0 sprite=0 source=0x1df2a2 attr=0xe000	extracted
+intro/sprites/trivid-timed-0-1.bmp	sprite	128	152	13	8	table=0x5ad02 index=0 sprite=1 source=0x1df2aa attr=0xe000	extracted
+intro/sprites/trivid-timed-0-2.bmp	sprite	137	160	1	1	table=0x5ad02 index=0 sprite=2 source=0x1df2b2 attr=0xe000	extracted
+intro/sprites/trivid-timed-1-0.bmp	sprite	119	128	24	23	table=0x5ad02 index=1 sprite=0 source=0x1df2bc attr=0xe000	extracted
+intro/sprites/trivid-timed-1-1.bmp	sprite	143	136	5	9	table=0x5ad02 index=1 sprite=1 source=0x1df2c4 attr=0xe000	extracted
+intro/sprites/trivid-timed-2-0.bmp	sprite	121	128	28	19	table=0x5ad02 index=2 sprite=0 source=0x1df2ce attr=0xe000	extracted
 intro/sprites/ambush-map-left-0-0.bmp	sprite	0	96	136	128	table=0x5b4d4 index=0 sprite=0 source=0x1e2b67 attr=0x4000	extracted
 intro/sprites/ambush-map-center-1-0.bmp	sprite	152	128	104	96	table=0x5b4d4 index=1 sprite=0 source=0x1e2ebb attr=0x0	extracted
 intro/sprites/ambush-map-right-2-0.bmp	sprite	224	56	80	72	table=0x5b4d4 index=2 sprite=0 source=0x1e2fc3 attr=0x2000	extracted
@@ -613,6 +613,8 @@ menu/field/service-tabs-selected-5.bmp	sprite	0	0	144	16	0x58B5E/0x58BB6/0xCE17E
 menu/field/service-universal-clips.bmp	sprite	0	0	24	16	0x586F6/0xCE28E/0xD29D6/0x18AC56	extracted
 menu/field/action-background.bmp	background	0	0	120	16	0x117A0	extracted
 menu/field/action-confirm-background.bmp	background	0	0	120	16	0x127B0/0xCD3B6	extracted
+menu/field/clips-background.bmp	background	0	0	120	16	0x11B58/0x11B98/0xCD33E	extracted
+menu/field/clips-trade-background.bmp	background	0	0	120	16	0x11E7E/0xCD37A	extracted
 menu/field/attributes-background.bmp	background	0	0	320	224	0x10C96	extracted
 menu/field/inventory-boxes.bmp	background	0	0	320	224	0x10F50/0x1232	extracted
 menu/field/font.bmp	sprite	0	0	128	48	0xC1064 palette-line=3	extracted

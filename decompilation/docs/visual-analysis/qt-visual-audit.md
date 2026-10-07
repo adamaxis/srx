@@ -1953,6 +1953,66 @@ reload frame is present. The source-defined active-load percentage can look
 different from a model with persistent per-weapon magazines, but adding
 independent magazines would contradict this ROM's `+0x4E` transitions.
 
+### Applied review: Clips button-row redraw and child screens
+
+1. **Does it look correct?** The full-screen frames in
+   `build/conversion/qt/{debug,release}/qt_runtime/field-clips-qa/` now show
+   three different row compositions: Clips, nested Trade, and Reload
+   confirmation. The prior runtime reused the inventory action row, leaving
+   unrelated icons behind the Yes/No prompt. The current frames match the
+   separately extracted row assets; this establishes internal consistency,
+   not an independent Genesis visual match.
+2. **Does the visible look reflect the behavioral state?** The selector is
+   driven by the typed Clips action state. The top-level cursor traverses all
+   four source commands; nested Trade changes the selected recipient action;
+   reload confirmation selects No or Yes and returns the chosen result. The
+   QA captures decline without ammunition mutation, then separately captures
+   reload and its visible counter change.
+3. **Are the visuals themselves correct?** ROM blocks `0xCD33E`, `0xCD37A`,
+   and `0xCD3B6` supply the top-level, nested Trade, and confirmation rows.
+   Their dimensions and distinct pixels are checked against the generic
+   inventory row at `0xCD302`. The focus state is checked with each row. No
+   independent Genesis Clips sequence appears in the supplied longplay, so
+   exact external visual fidelity remains open.
+4. **Is it animated, and should it be?** No timed animation is traced for
+   these button rows or their focus. They change only in response to menu
+   input and action state; Debug and Release captures show no periodic redraw
+   or animation.
+5. **Does it have a sound, and how long does it play?** Clips navigation
+   requests event `0x25`, mapped to `audio.effects.resource.037` (2.134 s).
+   Confirmation/reload requests event `0x24`, mapped to `menu-024.flac`
+   (2.484 s including the release tail). The route QA checks event requests;
+   Windows loopback for this exact interaction remains unrecorded.
+6. **Are the other visible parts of the screen also correct?** The review
+   includes the complete 320x224 frame, not only the changed row. Portraits,
+   inventory, status/HUD, and field framing remain stable while the child
+   menus change. Top-level Cancel restores its parent pixel-for-pixel, and the
+   nested return is captured separately.
+7. **Do multiple frames support the interpretation?** Fifteen named full-
+   screen states cover cursor movement/wrap, cancel/reopen, nested Trade and
+   return, No decline, Yes confirmation, and reload result. `actual.bmp` and
+   `trade-actual.bmp` are additional aliases. Debug and Release outputs match
+   byte-for-byte. These are host captures checked against extracted ROM
+   resources; no independent Genesis Clips/Trade/confirmation sequence is
+   available.
+8. **Was old UI cleared before new controls were drawn?** Yes in the tested
+   Qt path. The scene clears the source 20-by-20-cell center region before
+   drawing the child panel, and each state uses its own row resource. This
+   removes the stale four-action row from Yes/No confirmation. The A Cancel
+   parent frame is pixel-identical to its pre-entry frame, guarding against
+   leftover child controls.
+
+**Code changed:** the runtime now loads distinct CD33E, CD37A, and CD3B6
+button rows and clears the source panel region. **Behavior implemented:**
+top-level Clips, nested Trade, and reload confirmation each display their own
+ROM-defined row and focus state. **Internally checked:** Debug and Release
+route QA passes and all 17 BMP files match byte-for-byte; the CLI emits 15
+named states plus the two `actual.bmp` aliases. **Independently visually
+checked:** no exact Clips sequence is present in the supplied longplay.
+**Defect status:** the stale-row redraw defect is fixed in the current Qt
+route; Genesis visual fidelity remains unverified pending an independent
+matching capture.
+
 ### Applied review: held D-pad movement and field redraw
 
 1. **Does it look correct?** Thirteen full-screen 320x224 captures in

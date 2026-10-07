@@ -1836,6 +1836,17 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     write("menu/field/action-confirm-background.bmp",
           assets.field_menu_action_confirmation_background, "background",
           "0x127B0/0xCD3B6", false);
+    write_catalog_asset(
+        root, "menu/field/clips-background.bmp",
+        shadowrun::graphics::decode_genesis_field_menu_clips_background(rom),
+        "background", "0x11B58/0x11B98/0xCD33E", false, manifest, written,
+        missing, blank);
+    write_catalog_asset(
+        root, "menu/field/clips-trade-background.bmp",
+        shadowrun::graphics::decode_genesis_field_menu_clips_trade_background(
+            rom),
+        "background", "0x11E7E/0xCD37A", false, manifest, written, missing,
+        blank);
     write("menu/field/attributes-background.bmp",
           assets.field_menu_attributes_background, "background", "0x10C96", false);
     write("menu/field/inventory-boxes.bmp", assets.field_menu_inventory_boxes,

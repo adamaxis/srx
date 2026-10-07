@@ -732,6 +732,8 @@ private:
     std::array<QImage, 4> command_overview_action_focus_{};
     QImage command_overview_action_confirmation_background_;
     std::array<QImage, 2> command_overview_action_confirmation_focus_{};
+    QImage command_overview_clips_background_;
+    QImage command_overview_clips_trade_background_;
     std::array<QImage, 4> command_overview_clips_focus_{};
     std::array<QImage, 4> command_overview_clips_trade_focus_{};
     QImage command_overview_magic_panel_background_;

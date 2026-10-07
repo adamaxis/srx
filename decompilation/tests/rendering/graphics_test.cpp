@@ -266,6 +266,36 @@ int main() {
         decode_genesis_field_menu_action_confirmation_background(rom);
     assert(action_confirmation_background.width == 120U);
     assert(action_confirmation_background.height == 16U);
+    const auto action_background =
+        decode_genesis_field_menu_action_background(rom);
+    const auto clips_background =
+        decode_genesis_field_menu_clips_background(rom);
+    const auto clips_trade_background =
+        decode_genesis_field_menu_clips_trade_background(rom);
+    assert(clips_background.width == 120U);
+    assert(clips_background.height == 16U);
+    assert(clips_trade_background.width == 120U);
+    assert(clips_trade_background.height == 16U);
+    const auto images_differ = [](const RgbaImage& left,
+                                  const RgbaImage& right) {
+        if (left.width != right.width || left.height != right.height ||
+            left.pixels.size() != right.pixels.size()) {
+            return true;
+        }
+        for (std::size_t index = 0; index < left.pixels.size(); ++index) {
+            const auto& a = left.pixels[index];
+            const auto& b = right.pixels[index];
+            if (a.red != b.red || a.green != b.green || a.blue != b.blue ||
+                a.alpha != b.alpha) {
+                return true;
+            }
+        }
+        return false;
+    };
+    assert(images_differ(action_background, clips_background));
+    assert(images_differ(clips_background, clips_trade_background));
+    assert(images_differ(clips_trade_background,
+                         action_confirmation_background));
     const auto action_confirmation_focus =
         decode_genesis_field_menu_action_confirmation_focus(rom);
     assert(action_confirmation_focus.size() == 2U);

@@ -385,6 +385,14 @@ recipient's source name from live-record `+0x58..+0x65`, the same span copied
 by the compact-save projection; the `D1B71` `????` text remains only as a
 fallback when a record lacks that source name.
 
+The button rows are separate source resources, not interchangeable labels:
+top-level Clips installs `0xCD33E` at `0x11B98`, nested Trade installs
+`0xCD37A` at `0x11E7E`, and Reload confirmation installs `0xCD3B6` from
+`0x11D06`/`0x127B0`. The generic inventory action row is `0xCD302`. Reusing
+that row below the Yes/No caption left unrelated action icons visible; the Qt
+presenter now loads each named row independently and clears the source
+20-by-20-cell center region at `0x12C36` before redraw.
+
 The concrete field-consuming operations are in the separate
 `shadowrun_ghidra_runner_record_operations` library:
 
