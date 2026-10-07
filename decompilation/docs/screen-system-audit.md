@@ -369,11 +369,17 @@ independent Genesis visual fidelity.
 
 This handler is display-oriented: it reads the active record's fifteen-bit
 cyberware field at `+0x90` and resolves installed entries through the source
-name table.
+name table. It prepares the center name-plane grid and writes the child panel
+without clearing the complete command screen. The native presenter now
+redraws only that center content region, preserving the shared runner portrait,
+inventory, posture bar, command tab, and right HUD.
 
-Native status: bitfield extraction, source names, and installed-state display
-are implemented. Purchase/install/removal flows, if reached through another
-source path, remain to be traced.
+Native status: bitfield extraction, source names, installed-state display, and
+the shared-panel redraw are implemented. Debug/Release QA captures parent,
+child, held, return, and reopen frames, and checks shared regions plus
+pixel-identical parent restoration. No matching Genesis Cyberware capture is
+available; purchase/install/removal flows, if reached through another source
+path, remain to be traced.
 
 ## Command-screen dispatch map
 
@@ -524,7 +530,7 @@ of a port.
 | Clips | `0x11B58`, `0x11CCA`, `0x11D86`, `0x11DD2`, `0x11E7E`, `0x11FDE`, `0x12014`, `0x12062`, `0x1209A`, `0x120E4`, `0x36FC` | Partial | Source top-level/nested selectors, typed Joshua/save roster projection, +0x58 selected-runner names, ammo gates, Reload confirmation/consumption/clamp, recipient filtering/cycling, quantity wrap, clip transfer, completion message, and Distribute average are present; loaded-save field composition and final panel art remain |
 | Attributes/skills view | `0xD01C` | Implemented | Command-menu route is view-only: FFF116 sentinel, live values, selector, A/B/Start return, full redraw, and no runner mutation are covered by the Qt QA |
 | Hotel Karma upgrades | `0xD024` via `0xCF38` | Implemented | Hotel option opens the spend-enabled child route; source cost/limits, Yes/No mutation, Karma change, child/parent redraw, and Hotel return are covered by Qt QA |
-| Cyberware | `0x11950` | Partial | Empty branch and source bit 0..14 installed-row scan are converted; text/input service and mutation flows remain |
+| Cyberware | `0x11950` | Partial | Empty branch and source bit 0..14 installed-row scan use a typed model; the center child panel now preserves the shared command portrait, inventory, posture, tab, and right HUD. Debug/Release full-screen QA checks entry, 30-frame hold, return, reopen, and both populated/empty states. No independent Genesis Cyberware image or mutation flow is available |
 | Runner switching | `0x391A` | Partial | Source type-2 wrap, eligibility/suppression gate, and no-eligible no-install behavior are converted; recruited roster data and native integration remain |
 | Pocket Secretary / Notebook | `0xC2A6`, `0xC3E6`, `0xC376`, `0xC8C8`, `0xF236`, `0xF2E2`, `0xF33E`, `0xF312`, `0x18150`, `0xC448` | Partial | Qt connects the source five-row base, Group Items empty/populated branches, Cyberdeck no-deck response, Notebook base list, and Current Run no-run wait/return. The Notebook dump checks ROM-derived coordinates and verifies replacement text clears prior rows. The Dismiss route checks fixed Abort/name placement, compact-marker state, selected-runner preview, current-runner replacement, and full inner-panel replacement on return. F312/C448 call E660 once per VBlank; Qt draws the typed random 1x2 effect in twelve lower-bezel positions and QA checks that it does not overlap child text or controls. Normal quest acquisition and restored-save FFFC22, Contacts/Shadowrunners detail handlers, Mr. Johnsons, Save/Load, deck-present Matrix, restricted-mode gates, Windows loopback for event 0x25 on these routes, and independent Pocket Secretary Genesis frames remain open. Shared audio QA verifies decoded playback/default-output state/duration. Existing NativePort menu paths do not count as Qt implementation evidence. |
 | Magic | `0xFBA6`, `0x10260`, `0x10276`, `0x102EC`, `0x1055E`, `0x105E6`, `0x1088C`, `0x11190` | Partial | Qt connects the typed Magical Defense fallback and spell-panel display/browsing. Spell QA checks the corrected DBF spell-table bounds, complete 3x3 icons, selected header glyph, four metric rows, live selection/four cursor phases, command-center clearing, retained HUD/portrait, and return/reopen; independent longplay frames 000001/000002/000005 were inspected. Source cursor phase advances every seven field frames. Parent event 0x24 maps to `menu-024.flac` (2.484 s metadata); shared audio QA verifies decoding, PlayingState on the default output, duration, and stop, while Windows loopback for the exact Magic route remains unrecorded. Target/effect action and broader independent visual coverage remain open |

@@ -795,6 +795,53 @@ longplay frames remain the independent appearance evidence.
    these are Qt captures. Sections 01-07 of the independent longplay do not
    show this Magic panel. Keep the route `partial` and obtain multiple real-
    game Magic frames before making a visual-correctness claim.
+8. **Interface cleanup:** the fallback is a status-page overlay in the ROM,
+   not the spell-capable full-page Magic screen. Its 16-cell heading data
+   starts with a blank tile and replaces the `Mental 100%` row through its
+   final cell; the command frame is otherwise retained by design. The
+   spell-capable path at `0xFC22` clears Plane A before drawing its separate
+   panel. Neither route requires drawing new buttons over old command buttons.
+
+### Applied review: Cyberware shared command panel
+
+1. **Appearance:** the pre-fix Qt child frame omitted the large runner
+   portrait, inventory icons, and posture value that were visible on its
+   parent command page. After the correction, the 320x224 child frame shows
+   those shared pieces around the Cyberware title/list. Independent Genesis
+   Cyberware imagery is not present in the supplied sections.
+2. **Behavioral state:** page 4 remains selected while A enters the typed
+   `+0x90` view. The populated Gator record has bit 0 set and shows `Hand
+   Razors`; the zero-word test fixture shows `NONE`. A directional edge returns
+   to page 4 without changing runner state.
+3. **Visual construction:** ROM `0x11950` prepares the center name-plane grid
+   through `0x12C36`/`0x11900`, writes the header at `C1A2`, and emits list rows
+   from `C31C` every `0x100` bytes. Qt redraws that center panel from the named
+   command background, then draws the typed title/list. Portrait, item cells,
+   posture, selected tab, and right HUD are separate retained layers.
+4. **Animation:** the Cyberware text view has no timed animation. Thirty
+   controller-idle frames are pixel-identical to the entry screenshot.
+5. **Sound:** A dispatches the parent command event `0x24`, mapped to
+   `menu-024.flac` (`2.484` seconds including release tail). The CTest records
+   one request on entry, none during the wait/return, and one on reopen; a
+   Windows loopback capture for this route remains unrecorded.
+6. **Related screen parts:** the complete parent and child images were
+   compared. The parent portrait, 8-cell inventory area, posture row, command
+   row, and right HUD remain pixel-identical. The center old status text is
+   absent beneath the child panel.
+7. **Frame support:** Debug and Release each save parent, child, 30-frame
+   hold, return, and reopen screenshots for populated and empty `+0x90`
+   states. Matching files have identical SHA-256 hashes across configurations.
+   No independent Genesis Cyberware page appears in sections 01-07.
+8. **Interface cleanup:** the child repaints its content panel before writing
+   its own title and rows; it does not cover the inventory, posture, or command
+   buttons with a second set of controls. Return is pixel-identical to the
+   original command page, and reopening is pixel-identical to the first child
+   frame.
+
+The field list now reflects the source's shared-screen arrangement. Its native
+layout regression is closed; the overall hill remains `partial` until a
+matching Genesis Cyberware capture is available and the separate
+purchase/install/remove routes are traced.
 
 ### Applied review: wilderness story and actor sequence
 

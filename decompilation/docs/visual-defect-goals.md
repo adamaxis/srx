@@ -64,8 +64,8 @@ review; it is not part of the pasted report.
 | `FIELD-01` | Walking previously used the dying/fallen animation; leftward movement also showed the right-facing walk pose. | The fallen-pose family is separated from ordinary C062 movement. ROM direction 6 (`0xC062` selector `0x38`) shares direction-2 tiles and sets attribute `0x0800`; the Qt runtime now applies that horizontal facing to idle and walk images. Debug/Release normal-input left-route QA checks selector, heading, movement, facing, and whole-screen output. Other live headings and exact-scene visual matching remain open. |
 | `SOUND-01` | Pocket Secretary selection/cancel sounds are absent on some screens or use the wrong sound. | Audit each source action and child page separately; verify the event, trigger condition, measured duration, and playback on the default output. |
 | `SOUND-02` | Moving between Pocket Secretary menu items has no navigation sound. | Trace the accepted cursor-move edge and source resource; verify one playback per accepted move, none on clamp/no-op, and the stop/duration behavior. |
-| `SEC-MAGIC` | The Magic page leaves its old text/menu content drawn over the new page. | Trace page entry/exit and panel clear/redraw; capture parent, child, return, and reopen at full screen, proving old controls appear only when the source restores them. |
-| `SEC-CYBERWARE` | Opening Cyberware hides inventory, the runner portrait, posture, and text that should remain visible. | Identify which HUD/panel regions are shared; compare complete page frames and verify child entry/return redraws shared regions exactly once. |
+| `SEC-MAGIC` | The Magic page leaves its old text/menu content drawn over the new page. | **Closed for the spell-capable page.** ROM `0xFC22` clears Plane A before the spell panel is drawn; Qt presents the named full-page panel. Debug/Release entry, spell, force/posture, return, and reopen captures are clean, and independent section 06 frames 000001/000002/000005/000015/000020/000030 support the page and action subview without stale command controls. The separate Magical Defense fallback is a source-defined overlay on the command/status page; its Genesis appearance is not independently captured. Spell target/effect work remains under Magic. |
+| `SEC-CYBERWARE` | Opening Cyberware hides inventory, the runner portrait, posture, and text that should remain visible. | **Fixed in the Qt page projection.** The child now redraws only the center text panel, preserving the command screen's portrait, inventory, posture, selected tab, and right HUD; stale center text is cleared first. Debug/Release full-screen QA checks populated/empty rows, 30-frame hold, pixel-identical parent return, and stable reopen. No independent Genesis Cyberware frame is available; see [the shared-panel audit](visual-audits/cyberware-shared-panel.md). |
 | `KARMA-COLOR` | The Start-menu Attributes/Skills Karma page uses the wrong selection color. | ROM `0xD5DC` passes text mode `0x4000` for the selected row (palette line 2). The current Qt captures show `#6D4992` on all 20 selected cells and restore the prior row to green. The reported color fault is not reproduced against the traced ROM palette. No matching independent Genesis page capture is present, so visual fidelity remains unverified. |
 | `KARMA-DETAIL` | The Start-menu Attributes/Skills Karma page omits the selected attribute/skill's detail text. | Reproduced before this pass: the Qt presenter skipped the existing `0xD5DC` conversion. It now renders the selected label/value, both Essence values, Magic from `+0x7F`, and the installed-cyberware `c` markers/modifiers at source-derived positions. Debug/Release QA captures all 20 cells and checks empty/populated cyberware plus clean return. The ROM provides these labels, values, and modifiers rather than longer prose descriptions. No matching independent Genesis page capture is present; do not claim visual resolution. |
 | `CLIPS-REDRAW` | Clips reused the inventory action row for its selector/trade pages and left that four-action row visible behind reload Yes/No. | Fixed in Qt after tracing ROM row swaps and parent restore: Debug/Release full-screen QA covers top-level Clips, nested Trade, confirmation, decline, reload result, and return. Independent Genesis Clips frames remain unavailable. |
@@ -506,7 +506,14 @@ selection, return, and reopen; no old text/buttons survive page replacement;
 all visible areas match the relevant independent section 06 frames; audio
 events, playback start, and durations are recorded per action.
 
-**Status:** pending current-build reproduction.
+**Status:** partial. The reported stale-content defect is not reproduced in the
+spell-capable Magic page; ROM clears that page before drawing it, and the Qt
+screen replaces the command center cleanly. The Cyberware child previously
+dropped shared portrait, inventory, and posture layers; that Qt redraw defect
+is fixed and covered in Debug/Release with parent, child, held, return, and
+reopen screenshots. Pocket Secretary move/select/cancel sound routes and child
+pages remain open. Cyberware's independent Genesis appearance and route-level
+Windows loopback audio remain unverified.
 
 ### MENU-02 — Start-menu Attributes/Skills Karma selection (`KARMA-COLOR`, `KARMA-DETAIL`)
 

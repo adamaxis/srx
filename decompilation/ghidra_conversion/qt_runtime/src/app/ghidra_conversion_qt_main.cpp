@@ -11649,6 +11649,34 @@ int main(int argc, char** argv) {
                                  "not reach page 4\n";
                     return 3;
                 }
+                const auto output_directory =
+                    field_cyberware_dump_path->parent_path();
+                if (!output_directory.empty()) {
+                    std::filesystem::create_directories(output_directory);
+                }
+                const auto render_scene = [&field_scene] {
+                    QImage scene(kSceneWidth, kSceneHeight,
+                                 QImage::Format_RGB32);
+                    scene.fill(Qt::black);
+                    QPainter painter(&scene);
+                    field_scene.paint(painter);
+                    painter.end();
+                    return scene;
+                };
+                const auto save_named_scene = [&output_directory](
+                                                 const std::string_view name,
+                                                 const QImage& scene) {
+                    const auto path = output_directory /
+                        (std::string(name) + ".bmp");
+                    return scene.save(QString::fromStdWString(
+                        path.wstring()));
+                };
+                const auto command_page_scene = render_scene();
+                if (!save_named_scene("command-page", command_page_scene)) {
+                    std::cerr << "field Cyberware dump: could not write "
+                                 "the parent command page\n";
+                    return 3;
+                }
                 // The converted command loop dispatches A on page 4 to the
                 // ROM 0x11950 Cyberware view.
                 field_scene.set_controller_port_byte(0x40U);
@@ -11658,6 +11686,12 @@ int main(int argc, char** argv) {
                 if (!field_scene.cyberware_menu_open()) {
                     std::cerr << "field Cyberware dump: A did not open the "
                                  "Cyberware view\n";
+                    return 3;
+                }
+                if (field_audio_events !=
+                    std::vector<std::uint16_t>{0x24U}) {
+                    std::cerr << "field Cyberware dump: parent action did "
+                                 "not request audio event 0x24 exactly once\n";
                     return 3;
                 }
 
@@ -11677,12 +11711,7 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
-                QImage cyberware_scene(kSceneWidth, kSceneHeight,
-                                       QImage::Format_RGB32);
-                cyberware_scene.fill(Qt::black);
-                QPainter cyberware_painter(&cyberware_scene);
-                field_scene.paint(cyberware_painter);
-                cyberware_painter.end();
+                const auto cyberware_scene = render_scene();
                 const auto has_ink = [&cyberware_scene](
                                          const int left, const int top,
                                          const int right, const int bottom) {
@@ -11707,14 +11736,75 @@ int main(int argc, char** argv) {
                                  "visible at its traced destination\n";
                     return 3;
                 }
-                const auto parent = field_cyberware_dump_path->parent_path();
-                if (!parent.empty()) {
-                    std::filesystem::create_directories(parent);
+                const QImage command_panel_background(
+                    QString::fromStdWString(
+                        (asset_root / "menu" / "field" / "background.bmp")
+                            .wstring()));
+                const auto blank_panel_row_matches_background =
+                    [&cyberware_scene, &command_panel_background](
+                        const int y) {
+                        if (command_panel_background.size() !=
+                            cyberware_scene.size()) {
+                            return false;
+                        }
+                        for (int x = 96; x < 264; ++x) {
+                            if (cyberware_scene.pixel(x, y) !=
+                                command_panel_background.pixel(x, y)) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    };
+                bool stale_center_row = false;
+                for (int y = 40; y < 160; y += 8) {
+                    const bool child_text_row =
+                        (cyberware.shows_no_cyberware_message && y == 48) ||
+                        (y >= 48 && ((y - 48) % 16) == 0 &&
+                         static_cast<std::size_t>((y - 48) / 16) <
+                             expected_rows.size());
+                    if (!child_text_row &&
+                        !blank_panel_row_matches_background(y)) {
+                        stale_center_row = true;
+                        break;
+                    }
+                }
+                if (stale_center_row) {
+                    std::cerr << "field Cyberware dump: previous center "
+                                 "panel text or graphics survived redraw\n";
+                    return 3;
+                }
+                if (image_region_differs(command_page_scene, cyberware_scene,
+                                         16, 16, 64, 80) ||
+                    image_region_differs(command_page_scene, cyberware_scene,
+                                         8, 112, 80, 96) ||
+                    image_region_differs(command_page_scene, cyberware_scene,
+                                         120, 168, 144, 24) ||
+                    image_region_differs(command_page_scene, cyberware_scene,
+                                         96, 192, 168, 16) ||
+                    image_region_differs(command_page_scene, cyberware_scene,
+                                         272, 0, 48, 224)) {
+                    std::cerr << "field Cyberware dump: shared portrait, "
+                                 "inventory, posture, command row, or HUD "
+                                 "was not preserved\n";
+                    return 3;
                 }
                 if (!cyberware_scene.save(QString::fromStdWString(
                         field_cyberware_dump_path->wstring()))) {
                     std::cerr << "field Cyberware dump: could not write "
                               << field_cyberware_dump_path->string() << '\n';
+                    return 3;
+                }
+                for (int frame = 0; frame < 30; ++frame) {
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                }
+                const auto held_scene = render_scene();
+                if (held_scene != cyberware_scene ||
+                    !save_named_scene("held", held_scene) ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x24U}) {
+                    std::cerr << "field Cyberware dump: static wait changed "
+                                 "the page or requested extra audio\n";
                     return 3;
                 }
 
@@ -11724,18 +11814,40 @@ int main(int argc, char** argv) {
                 field_scene.advance_frame();
                 field_scene.set_controller_port_byte(0U);
                 field_scene.advance_frame();
+                const auto returned_command_page = render_scene();
                 if (field_scene.cyberware_menu_open() ||
                     !field_scene.command_overview_open() ||
                     field_scene.command_overview_view().source_state
-                            .primary_page != 4U) {
+                            .primary_page != 4U ||
+                    returned_command_page != command_page_scene ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x24U} ||
+                    !save_named_scene("returned-command-page",
+                                      returned_command_page)) {
                     std::cerr << "field Cyberware dump: return event did not "
-                                 "restore command page 4\n";
+                                 "restore command page 4 pixel-for-pixel\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0x40U);
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                const auto reopened_scene = render_scene();
+                if (!field_scene.cyberware_menu_open() ||
+                    reopened_scene != cyberware_scene ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x24U, 0x24U} ||
+                    !save_named_scene("reopened", reopened_scene)) {
+                    std::cerr << "field Cyberware dump: reopen left stale "
+                                 "or changed page content\n";
                     return 3;
                 }
                 std::cout << "field_cyberware_dump=written path="
                           << field_cyberware_dump_path->string()
                           << " flags=0x" << std::hex << flags << std::dec
-                          << " visible_rows=" << expected_rows.size() << '\n';
+                          << " visible_rows=" << expected_rows.size()
+                          << " shared_layers=preserved clean_return=1 "
+                             "reopen=stable\n";
                 return 0;
             }
             if (field_secretary_dump_path.has_value()) {
