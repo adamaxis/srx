@@ -4,7 +4,7 @@ This audit covers `OPEN-01`: the stage-1 opening music was heard only after
 the opening had already advanced to its second scene. It resolves the stage-2
 sound identity as silent for the source command pair and models the source
 track reset at stage transitions. Independent confirmation of stage-2 silence
-and any within-stage loop behavior remain open.
+and Windows output-loopback capture remain open.
 
 ## ROM path and host behavior
 
@@ -70,8 +70,29 @@ The eight PSG writes for each trace are the same maximum-attenuation setup
 values. Stage ID `0x11` adds no audible note sequence, unlike `0x10` and
 `0x12`; leaving it unmapped is the source-supported result. This does not
 replace the global `FF 16` stage-boundary reset. The stop boundary is now
-implemented in Qt; whether either track loops before that boundary remains
-open.
+implemented in Qt.
+
+### Stage-track lifetime probe
+
+The two audible stage commands were also traced for 90 seconds each, using the
+same paired command sequence and US ROM:
+
+```text
+python decompilation/tools/audio/extract_genesis_audio.py \
+  decompilation/input/shadowrun_genesis_us.bin \
+  build/audio-open-stage-probe/long-loop-trace \
+  --ids 16,18 --sequence 0x12,0x10 --seconds 90
+```
+
+The extractor reports `one-shot/no loop seen` for both IDs. The 90-second
+traces contain the same chip-write counts and end times as the 40-second
+traces: 906 chip writes with the final YM write at 12.833673 seconds for
+`0x10`, and 6,404 writes with the final YM write at 19.004830 seconds for
+`0x12`. No later chip writes or return to a channel's original stream start
+appears in the rest of either trace. The FLACs end two seconds after those
+final writes for the release tail, so neither intro asset needs a loop point.
+This establishes one-shot source streams in the 90-second ROM-driver probe;
+it does not establish Windows output-loopback behavior.
 
 ## Independent audio evidence
 
@@ -110,9 +131,11 @@ confirm the stage-boundary stop.
   whole-screen image in both configurations; no visual code changed in this
   audio slice and no new control, stale layer, or redraw overlap appeared.
 - Neither intro track has a row in `assets/audio/loop-points.tsv`. The source
-  clears playback channels at stage boundaries; whether either track loops
-  within its stage remains unestablished. Do not treat host file-end playback
-  as proof of the complete source lifetime.
+  trace reports each as a one-shot: chip writes stop after 12.833673 seconds
+  (`0x10`) and 19.004830 seconds (`0x12`), with no restart in 90 seconds. Qt
+  stops any remaining playback at source `FF 16` boundaries. Output loopback
+  remains unmeasured; the separate global audio hill has other unresolved
+  track lifetimes.
 
 ## Eight-question review
 
@@ -134,15 +157,15 @@ confirm the stage-boundary stop.
    wilderness, tri-vid, and airport audits.
 4. **Is it animated, and should it be?** The scene's existing animations
    continue unchanged. The source resets audio channels at stage entry/handoff.
-   The intro audio files have no declared loop points, so within-stage repeat
-   behavior remains unknown.
+   The 90-second ROM trace reports the stage-1 and stage-3 tracks as one-shots;
+   no within-stage repeat was observed.
 5. **Does it have sound, and how long does it play?** Qt starts event `0x10`
    on the default output with a 14,833 ms decoded duration and starts event
    `0x12` with a 21,004 ms duration. The ROM-driven `0x11` pair has no YM
    key-on or PSG tone sequence, so the host correctly leaves it silent. The
    source `FF 16` reset stops the preceding host track at the stage handoff.
-   QMediaPlayer status is playback evidence; output loopback and within-stage
-   loop behavior are not measured.
+   QMediaPlayer status is playback evidence; Windows output loopback and
+   independent confirmation of stage-2 silence are not measured.
 6. **Are related parts of the screen also correct?** The full dump includes
    boot/title, Start Options, archetypes, Seattle, wilderness, tri-vid,
    airport, post-intro cab map, and field/menu states. The audio-only diff
@@ -171,5 +194,6 @@ confirm the stage-boundary stop.
 - **Reported defect resolved:** the stage-1 music's late trigger is corrected,
   the exact stage-2 source pair has no audible note sequence, and stage
   transitions stop active host playback at the source reset. Keep `OPEN-01`
-  partial until stage-2 silence is independently confirmed, within-stage loop
-  behavior is established, and the relevant output route is captured.
+  partial until stage-2 silence is independently confirmed and the relevant
+  Windows output route is captured. The source probe found the stage tracks
+  are one-shots with no within-stage restart.

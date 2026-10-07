@@ -638,8 +638,7 @@ sequence of distinct captured states are the evidence used below.
    `FF 12 11`/`FF 10 11` probe has no YM key-on, so stage-2 command `0x11`
    remains intentionally unmapped. See the [opening music
    audit](../visual-audits/opening-music-start.md) for ROM queue bytes, player
-   playback, durations, the FF 16 stage-boundary stop, and remaining
-   within-stage loop behavior.
+   playback, durations, the FF 16 stage-boundary stop, and the 90-second source trace showing one-shot tracks.
 6. **Related screen parts:** checked the whole Seattle composition: date,
    place, three team rows, skyline, focus box, and next wilderness scene.
    The text omission, focus-frame rendering, final-box hold, and palette
@@ -836,9 +835,9 @@ longplay frames remain the independent appearance evidence.
    `audio.intro.title.stage-3` (21.0048 seconds); the independent section 02
    audio correlates this asset at 34.844 s. The airport animator at `0x5B100`
    makes no direct sound request. No rotor effect is assigned without a
-   traced event; the paired stage-2 request is source-silent. The FF 16
-   stage-boundary stop is wired in Qt; within-stage track loops remain
-   unresolved under OPEN-01/SOUND-03.
+   traced event; the paired stage-2 request is source-silent. The FF 16 stage-boundary stop is wired in Qt; 90-second ROM traces show no
+   within-stage restart. Independent stage-2 silence and output-loopback
+   evidence remain open under OPEN-01/SOUND-03.
 6. **Related screen parts:** reviewed plates, transparency, sprite order,
    scroll, story/landing text, blank center rows, palette handoffs, and the
    next scene. The blank-row callback at local index 0xD7 clears center text;

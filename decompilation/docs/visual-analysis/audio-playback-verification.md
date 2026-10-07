@@ -103,7 +103,8 @@ they do not establish exact emulator frame timing.
    intact; no renderer or asset-placement code changed.
 4. **Should anything animate?** The audio effects are one-shots. Each player
    plays through the extracted release tail and reaches the end of its file;
-   no loop is requested. Music-loop behavior remains open.
+   no loop is requested. The intro stage tracks are one-shots in the
+   90-second ROM trace; loops for other background music remain open.
 5. **Does it have sound, and how long does it play?** The files, output route,
    start state, duration, and stop behavior are checked for the events listed
    above. The boot path's `0x16` is specifically a stop operation, while other
@@ -130,7 +131,7 @@ identified intro music assets. In the current Debug/Release runs, resource 22
 separate `FF 12` resource-stop operation. The exact paired stage-2 request
 `FF 12 11`, `FF 10 11` produces setup/quieting writes but no YM key-on; the
 host intentionally leaves it unmapped. Source `0x53126` sends `FF 16` at
-stage boundaries, and Qt now stops all playback channels there. Within-stage
-music looping, more source-event mappings, event `0x30` stop lifetime, and
-Windows output-loopback capture remain open. Therefore the audio hill remains
-partial.
+stage boundaries, and Qt now stops all playback channels there. The intro
+tracks show no source restart in 90-second ROM traces. More source-event
+mappings, event `0x30` stop lifetime, other music loop points, and Windows
+output-loopback capture remain open. Therefore the audio hill remains partial.

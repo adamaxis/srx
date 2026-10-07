@@ -131,5 +131,6 @@ game. The CLI `--help` path still returns its usage text.
   decoded and started on the configured default output.
 - **Reported defect resolved:** `BOOT-01` is resolved for the missing/mistimed
   shock effect. The independent clip does not supply exact VBlank phase, and
-  the source-silent stage-2 request and within-stage opening-track loop
-  behavior remain separately tracked under `OPEN-01`.
+  independent stage-2 silence confirmation plus Windows output loopback
+  remain separately tracked under `OPEN-01`; the 90-second ROM trace found no
+  within-stage restart for either intro track.
