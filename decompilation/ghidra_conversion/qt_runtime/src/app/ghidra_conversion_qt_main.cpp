@@ -4173,6 +4173,15 @@ private:
                 } else {
                     ++audio_ticks_;
                 }
+                // The 0x5D746 source path sends 0x16 as a stop-only Z80
+                // command. Its 0x5C request selects table-2 resource 92;
+                // reset setup at ROM 0x07A2 enables FFFC08, so that request
+                // stops the matching resource before queuing it again.
+                if (request.command == 0x0016U) {
+                    audio_playback_.stop_event(request.command);
+                } else if (request.command == 0x005CU) {
+                    audio_playback_.play_event_restarting(request.command);
+                }
                 note_presentation_boundary(
                     request.service_path ==
                             PreTitleAudioServicePath::

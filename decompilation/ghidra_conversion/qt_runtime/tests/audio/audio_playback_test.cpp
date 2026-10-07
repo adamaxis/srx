@@ -23,6 +23,8 @@ int main(int argc, char** argv) {
         SHADOWRUN_GHIDRA_AUDIO_RESOURCE_PATH);
     const auto resource_075 = std::filesystem::path(
         SHADOWRUN_GHIDRA_AUDIO_PASSKEY_RESOURCE_PATH);
+    const auto boot_shock_resource = std::filesystem::path(
+        SHADOWRUN_GHIDRA_AUDIO_BOOT_SHOCK_RESOURCE_PATH);
     const auto intro_stage_1 = std::filesystem::path(
         SHADOWRUN_GHIDRA_AUDIO_INTRO_STAGE_1_PATH);
     const auto intro_stage_3 = std::filesystem::path(
@@ -40,6 +42,9 @@ int main(int argc, char** argv) {
         }
         if (alias == "audio.effects.resource.075") {
             return resource_075;
+        }
+        if (alias == "audio.effects.resource.092") {
+            return boot_shock_resource;
         }
         if (alias == "audio.intro.title.stage-1") {
             return intro_stage_1;
@@ -90,6 +95,16 @@ int main(int argc, char** argv) {
         std::cerr << "unidentified stage-2 command 0x11 was assigned a track\n";
         return 1;
     }
+    if (playback.alias_for_event(0x5CU) !=
+            "audio.effects.resource.092" ||
+        !std::filesystem::is_regular_file(boot_shock_resource)) {
+        std::cerr << "pre-title command 0x5C did not select resource 92\n";
+        return 1;
+    }
+    if (!playback.alias_for_event(0x16U).empty()) {
+        std::cerr << "stop-only command 0x16 was assigned a sound asset\n";
+        return 1;
+    }
 
     if (QMediaDevices::defaultAudioOutput().isNull()) {
         std::cerr << "no default audio output is available for playback\n";
@@ -102,17 +117,22 @@ int main(int argc, char** argv) {
         std::int64_t min_duration_ms;
         std::int64_t max_duration_ms;
     };
-    constexpr std::array<PlaybackExpectation, 5> kMappedEvents{{
+    constexpr std::array<PlaybackExpectation, 6> kMappedEvents{{
         {0x10U, "audio.intro.title.stage-1", 14800, 14900},
         {0x24U, "audio.menu.command-024", 2400, 2600},
         {0x25U, "audio.effects.resource.037", 2050, 2200},
         {0x4BU, "audio.effects.resource.075", 2100, 2300},
+        {0x5CU, "audio.effects.resource.092", 2700, 2800},
         {0x12U, "audio.intro.title.stage-3", 20900, 21200},
     }};
     for (const auto& expected : kMappedEvents) {
         const auto calls_before = resolver_calls;
         const auto event_started_at = std::chrono::steady_clock::now();
-        playback.play_event(expected.event);
+        if (expected.event == 0x5CU) {
+            playback.play_event_restarting(expected.event);
+        } else {
+            playback.play_event(expected.event);
+        }
         if (resolver_calls != calls_before + 1U ||
             resolved_alias != expected.alias) {
             std::cerr << "event " << expected.event
@@ -153,6 +173,41 @@ int main(int argc, char** argv) {
                   << " start_latency_ms=" << start_latency_ms
                   << " duration_ms=" << status.duration_ms << '\n';
 
+        if (expected.event == 0x5CU) {
+            if (playback.playing_channel_count_for_event(expected.event) !=
+                1U) {
+                std::cerr << "first boot-shock request did not start one channel\n";
+                return 1;
+            }
+            playback.play_event_restarting(expected.event);
+            const auto restart_deadline = std::chrono::steady_clock::now() +
+                                          std::chrono::seconds(3);
+            status = playback.playback_status_for_event(expected.event);
+            while (std::chrono::steady_clock::now() < restart_deadline &&
+                   !status.error &&
+                   !(status.source_ready && status.audio_available &&
+                     status.playing)) {
+                application.processEvents(QEventLoop::AllEvents, 20);
+                QThread::msleep(5U);
+                status = playback.playback_status_for_event(expected.event);
+            }
+            if (!status.source_ready || !status.audio_available ||
+                !status.playing || status.error ||
+                playback.playing_channel_count_for_event(expected.event) !=
+                    1U) {
+                std::cerr << "boot-shock retrigger overlapped or failed to play\n";
+                return 1;
+            }
+            playback.stop_event(expected.event);
+            application.processEvents(QEventLoop::AllEvents, 20);
+            if (playback.playback_status_for_event(expected.event).playing ||
+                playback.playing_channel_count_for_event(expected.event) !=
+                    0U) {
+                std::cerr << "boot-shock stop left a channel playing\n";
+                return 1;
+            }
+        }
+
         playback.stop_effects();
         application.processEvents(QEventLoop::AllEvents, 20);
         if (playback.playback_status_for_event(expected.event).playing) {
@@ -164,6 +219,7 @@ int main(int argc, char** argv) {
 
     const auto calls_before_unknown = resolver_calls;
     playback.play_event(0x11U);
+    playback.play_event(0x16U);
     playback.play_event(0x2AU);
     playback.play_event(0x2CU);
     playback.play_event(0x30U);

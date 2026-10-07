@@ -51,6 +51,26 @@ The source audio command `0x2E` is requested at the same terminal event. The
 Qt audio service has no alias for it, and this image capture has no audio
 track. Its identity and playback duration remain open as `OPEN-07`.
 
+## Recapture after boot audio wiring
+
+After `BOOT-01` was connected to `AudioPlaybackService`, the Release executable
+completed another full 6,782-frame run at
+`build/visual-audits/intro-full/release-boot-audio-20261006/`. Every PNG is
+byte-identical to this post-clear capture, so the audio change introduced no
+visual drift anywhere in the boot, menus, opening, field handoff, or stable
+hold. The run also exercised the pre-title audio callbacks through the entire
+sequence.
+
+For an explicit check of the earlier screenshot concern, the new capture was
+compared with the pre-clear
+`release-gator-shaman-20261006-trivid-fix/` run. The only differing frames are
+4643-4793, corresponding to opening frames 1209-1359. Each difference is
+confined to pixels x=5..87, y=99..193, where the stale left actor plate used
+to remain under the death pose. All 151 old/new frame pairs were reviewed in
+eight side-by-side contact sheets under the new capture's
+`death-pose-change-review/`. The new frames show the clear; moving projectile
+lines elsewhere in the screen are unchanged.
+
 ## Results and verification limits
 
 - **Code changed:** the source conversion now exposes a semantic left-region

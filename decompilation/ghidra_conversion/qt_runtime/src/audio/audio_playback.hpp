@@ -2,6 +2,7 @@
 
 #include <QObject>
 
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <functional>
@@ -43,6 +44,14 @@ public:
     // a logged boundary by the caller) when the event has no verified alias.
     void play_event(std::uint16_t event);
 
+    // Stop channels started by this source event. The pre-title command path
+    // uses this for stop-only ROM requests such as 0x16.
+    void stop_event(std::uint16_t event);
+
+    // Reproduce a ROM stop-then-start for the same source event, without
+    // leaving overlapping host channels when the source retriggers it.
+    void play_event_restarting(std::uint16_t event);
+
     // Play a catalog alias directly (audio.menu.command-024 and friends).
     void play_alias(std::string_view alias);
 
@@ -51,6 +60,7 @@ public:
 
     std::string_view alias_for_event(std::uint16_t event) const;
     PlaybackStatus playback_status_for_event(std::uint16_t event) const;
+    std::size_t playing_channel_count_for_event(std::uint16_t event) const;
 
 private:
     struct PlaybackChannel;

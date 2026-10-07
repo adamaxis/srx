@@ -50,7 +50,10 @@ folder/project selector in the CMake Tools status bar) and choose
 `decompilation/ghidra_conversion`, then:
 
 - select `Ghidra Conversion Qt (Release, MSYS2 UCRT64)` and use the Release
-  Qt build/run task; or
+  Qt build/run task. The executable is
+  `build/conversion/qt/release/shadowrun_ghidra_conversion_qt.exe`; launching
+  it without arguments starts the SEGA/pre-title animation and advances to
+  the title.
 - select `Ghidra Conversion Workbench (Release, MSYS2 UCRT64)` for the
   standalone conversion runner. Debug presets remain available for diagnosis.
 

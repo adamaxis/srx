@@ -43,6 +43,14 @@ target_link_libraries(shadowrun_ghidra_conversion_qt
         Qt6::Widgets
         Qt6::Multimedia
 )
+if(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    # Qt's bundled WinMain shim is built against a different MinGW runtime
+    # than this MSYS2 UCRT64 build. Select the GUI subsystem directly while
+    # retaining the normal CRT main() startup entry point.
+    target_link_options(shadowrun_ghidra_conversion_qt PRIVATE
+        "-Wl,--subsystem,windows"
+        "-Wl,-e,mainCRTStartup")
+endif()
 
 # One end-to-end startup/field QA walk. The executable writes its visual
 # checkpoints outside the asset tree so this remains a verification artifact,
@@ -794,6 +802,7 @@ target_compile_definitions(shadowrun_ghidra_audio_playback_test PRIVATE
     SHADOWRUN_GHIDRA_AUDIO_MENU_RESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/menu/menu-024.flac"
     SHADOWRUN_GHIDRA_AUDIO_RESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-037.flac"
     SHADOWRUN_GHIDRA_AUDIO_PASSKEY_RESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-075.flac"
+    SHADOWRUN_GHIDRA_AUDIO_BOOT_SHOCK_RESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-092.flac"
     SHADOWRUN_GHIDRA_AUDIO_INTRO_STAGE_1_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/intro/title-stage-1.flac"
     SHADOWRUN_GHIDRA_AUDIO_INTRO_STAGE_3_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/intro/title-stage-3.flac")
 target_link_libraries(shadowrun_ghidra_audio_playback_test

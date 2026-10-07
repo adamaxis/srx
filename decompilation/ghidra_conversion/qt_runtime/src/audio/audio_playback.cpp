@@ -48,6 +48,10 @@ AudioPlaybackService::AudioPlaybackService(PathResolver resolver,
         // zero-based entry as audio.effects.resource.037.
         {0x25U, "audio.effects.resource.037"},
         {0x29U, "audio.menu.command-029"},
+        // At the SEGA logo, 0x5C stops then starts table-2 resource 92.
+        // Command 0x16 at the adjacent source boundary is stop-only and must
+        // not be mistaken for the similarly numbered effect asset.
+        {0x5CU, "audio.effects.resource.092"},
         // The maglock unlock routine sends command 0x4B (table-2 resource 75).
         {0x4BU, "audio.effects.resource.075"},
         // 0x2C/resource 44 is a verified silent table slot and has no asset.
@@ -69,6 +73,20 @@ void AudioPlaybackService::play_event(const std::uint16_t event) {
         return;
     }
     start_alias(alias, event);
+}
+
+void AudioPlaybackService::stop_event(const std::uint16_t event) {
+    for (const auto& channel : channels_) {
+        if (channel->has_event && channel->event == event) {
+            channel->player.stop();
+        }
+    }
+}
+
+void AudioPlaybackService::play_event_restarting(
+    const std::uint16_t event) {
+    stop_event(event);
+    play_event(event);
 }
 
 void AudioPlaybackService::play_alias(const std::string_view alias) {
@@ -147,6 +165,16 @@ AudioPlaybackService::playback_status_for_event(
         player.error() != QMediaPlayer::NoError ||
             status == QMediaPlayer::InvalidMedia,
         static_cast<std::int64_t>(player.duration())};
+}
+
+std::size_t AudioPlaybackService::playing_channel_count_for_event(
+    const std::uint16_t event) const {
+    return static_cast<std::size_t>(std::count_if(
+        channels_.cbegin(), channels_.cend(), [event](const auto& channel) {
+            return channel->has_event && channel->event == event &&
+                   channel->player.playbackState() ==
+                       QMediaPlayer::PlayingState;
+        }));
 }
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime
