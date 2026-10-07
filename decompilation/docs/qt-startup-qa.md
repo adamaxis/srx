@@ -23,6 +23,9 @@ The CTest entry
 - all three Joshua choices (Samurai, Decker, and Gator Shaman);
 - opening checkpoints at source frames 300 through 3000 and every typed stage
   transition;
+- all five taxi-cursor outline phases and settled holds for both mode 4 and
+  mode 2; the full-screen assertions check all eight cursor tiles against
+  their ROM-derived Plane-A positions;
 - the opening-to-field handoff; and
 - opening, closing, and reopening the field command overview.
 

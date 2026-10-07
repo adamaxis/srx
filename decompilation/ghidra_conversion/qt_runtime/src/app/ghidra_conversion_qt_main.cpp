@@ -2797,6 +2797,68 @@ public:
                 return false;
             }
             if (state_.phase == StartupIntegrationPhase::opening_intro &&
+                state_.opening_intro.scene == OpeningIntroScene::cab_map) {
+                const auto cursor = cab_mode_selection_plan(
+                    state_.opening_intro.post_intro_mode,
+                    state_.opening_intro.post_intro_phase);
+                struct CabCursorTileSample {
+                    std::string_view name;
+                    int x_offset;
+                    int y_offset;
+                };
+                const std::array<CabCursorTileSample, 8> cursor_tiles{{
+                    {"top.left", 0, 0},
+                    {"top.middle", 8, 0},
+                    {"top.right", cursor.cursor_width - 8, 0},
+                    {"left", 0, 8},
+                    {"right", cursor.cursor_width - 8, 8},
+                    {"bottom.left", 0, cursor.cursor_height - 8},
+                    {"bottom.middle", 8, cursor.cursor_height - 8},
+                    {"bottom.right", cursor.cursor_width - 8,
+                     cursor.cursor_height - 8},
+                }};
+                for (const auto& sample : cursor_tiles) {
+                    const auto alias = std::string("intro.cab.cursor.") +
+                                       std::string(sample.name);
+                    const auto tile = draw_asset_cache_.find(alias);
+                    if (tile == draw_asset_cache_.end() ||
+                        tile->second.size() != QSize(8, 8)) {
+                        std::cerr << "startup qa: cab cursor asset missing: "
+                                  << alias << '\n';
+                        return false;
+                    }
+                    int compared_pixels = 0;
+                    for (int tile_y = 0; tile_y < 8; ++tile_y) {
+                        for (int tile_x = 0; tile_x < 8; ++tile_x) {
+                            const auto source =
+                                tile->second.pixelColor(tile_x, tile_y);
+                            if (source.alpha() == 0) {
+                                continue;
+                            }
+                            const auto screen_x = cursor.cursor_x +
+                                                  sample.x_offset + tile_x;
+                            const auto screen_y = cursor.cursor_y +
+                                                  sample.y_offset + tile_y;
+                            if (screen_x < 0 || screen_x >= scene.width() ||
+                                screen_y < 0 || screen_y >= scene.height() ||
+                                scene.pixelColor(screen_x, screen_y) != source) {
+                                std::cerr << "startup qa: cab cursor tile "
+                                             "did not render at its ROM "
+                                             "Plane-A position: "
+                                          << alias << " in " << name << '\n';
+                                return false;
+                            }
+                            ++compared_pixels;
+                        }
+                    }
+                    if (compared_pixels == 0) {
+                        std::cerr << "startup qa: cab cursor tile is empty: "
+                                  << alias << '\n';
+                        return false;
+                    }
+                }
+            }
+            if (state_.phase == StartupIntegrationPhase::opening_intro &&
                 state_.opening_intro.scene == OpeningIntroScene::cab_map &&
                 state_.opening_intro.post_intro_mode == 2U &&
                 state_.opening_intro.post_intro_caption_visible) {
@@ -2838,33 +2900,6 @@ public:
                 if (!first_letter_is_white) {
                     std::cerr << "startup qa: Redmond cab caption glyph was "
                                  "not found\n";
-                    return false;
-                }
-                const auto cursor =
-                    draw_asset_cache_.find("intro.cab.cursor.top-left");
-                int cursor_ink_matches = 0;
-                if (cursor != draw_asset_cache_.end()) {
-                    for (int y = 0; y < cursor->second.height(); ++y) {
-                        for (int x = 0; x < cursor->second.width(); ++x) {
-                            const auto source =
-                                cursor->second.pixelColor(x, y);
-                            if (source.alpha() == 0 ||
-                                (source.red() == 0 && source.green() == 0 &&
-                                 source.blue() == 0)) {
-                                continue;
-                            }
-                            const auto pixel = scene.pixelColor(
-                                caption.cursor_x + x,
-                                caption.cursor_y + y);
-                            if (pixel == source) {
-                                ++cursor_ink_matches;
-                            }
-                        }
-                    }
-                }
-                if (cursor_ink_matches < 8) {
-                    std::cerr << "startup qa: cab cursor top-left tile did "
-                                 "not render at its ROM Plane-A position\n";
                     return false;
                 }
             }
@@ -3724,6 +3759,25 @@ public:
             620U, 628U, 630U, 648U, 654U, 662U, 682U, 900U,
             1200U, 1500U, 1800U, 2100U, 2400U, 2700U, 3000U};
         std::size_t next_checkpoint = 0U;
+        struct CabCursorCheckpoint {
+            std::uint16_t post_intro_frame;
+            const char* label;
+        };
+        constexpr std::array<CabCursorCheckpoint, 12> kCabCursorCheckpoints{{
+            {0U, "mode4_phase0"},
+            {2U, "mode4_phase1"},
+            {4U, "mode4_phase2"},
+            {6U, "mode4_phase3"},
+            {8U, "mode4_phase4"},
+            {10U, "mode4_settled"},
+            {75U, "mode2_phase0"},
+            {77U, "mode2_phase1"},
+            {79U, "mode2_phase2"},
+            {81U, "mode2_phase3"},
+            {83U, "mode2_phase4"},
+            {85U, "mode2_settled"},
+        }};
+        std::size_t next_cab_cursor_checkpoint = 0U;
         auto previous_stage = opening_stage_;
         auto previous_scene = opening_scene_;
         while (state_.phase == StartupIntegrationPhase::opening_intro) {
@@ -3757,6 +3811,24 @@ public:
                 previous_stage = opening_stage_;
                 previous_scene = opening_scene_;
             }
+            if (state_.phase == StartupIntegrationPhase::opening_intro &&
+                state_.opening_intro.scene == OpeningIntroScene::cab_map &&
+                next_cab_cursor_checkpoint < kCabCursorCheckpoints.size() &&
+                state_.opening_intro.post_intro_frame ==
+                    kCabCursorCheckpoints[next_cab_cursor_checkpoint]
+                        .post_intro_frame) {
+                const auto& checkpoint =
+                    kCabCursorCheckpoints[next_cab_cursor_checkpoint];
+                record(std::string("opening.cab_cursor.") + checkpoint.label);
+                if (!write_snapshot(std::string("cab_cursor_") +
+                                    checkpoint.label)) {
+                    return 3;
+                }
+                ++next_cab_cursor_checkpoint;
+            }
+        }
+        if (next_cab_cursor_checkpoint != kCabCursorCheckpoints.size()) {
+            return fail("cab cursor shrink/hold checkpoints were incomplete");
         }
         if (state_.phase != StartupIntegrationPhase::field_ready ||
             !field_scene_runtime_.ready()) {
@@ -4991,15 +5063,15 @@ private:
                 painter.drawImage(px, py, *image);
             }
         };
-        draw_at(tile("top-left"), x, y);
-        draw_at(tile("top-right"), x + width - kTile, y);
-        draw_at(tile("bottom-left"), x, y + height - kTile);
-        draw_at(tile("bottom-right"), x + width - kTile,
+        draw_at(tile("top.left"), x, y);
+        draw_at(tile("top.right"), x + width - kTile, y);
+        draw_at(tile("bottom.left"), x, y + height - kTile);
+        draw_at(tile("bottom.right"), x + width - kTile,
                 y + height - kTile);
         for (int edge = x + kTile; edge <= x + width - 2 * kTile;
              edge += kTile) {
-            draw_at(tile("top-middle"), edge, y);
-            draw_at(tile("bottom-middle"), edge, y + height - kTile);
+            draw_at(tile("top.middle"), edge, y);
+            draw_at(tile("bottom.middle"), edge, y + height - kTile);
         }
         for (int edge = y + kTile; edge <= y + height - 2 * kTile;
              edge += kTile) {

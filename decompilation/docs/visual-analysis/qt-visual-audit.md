@@ -859,43 +859,61 @@ longplay frames remain the independent appearance evidence.
 
 ### Applied review: cab map and destination cursor
 
-1. **Appearance:** source frame 001800 shows the Redmond Barrens caption,
-   map, and selected outline. Qt startup-QA frame 3146 now uses a white
-   caption and the ROM Plane-A position. NativePort CLI frames 0/30/60 use
-   the extracted cursor tiles; frame 60 is saved at
-   `build/archive/decompilation/build-qt-debug/cab-map-tile-verified/cab-map-60.bmp`.
-   The prior cursor offset of +30,-2 was wrong
-   and has been removed. The visible map extent still differs from the source
-   and remains open.
-2. **Behavioral state:** post_intro_mode, post_intro_phase, and
-   post_intro_caption_visible drive the view. ROM 0x134D2 selects mode 2;
-   0x13726 maps through 0xD445D/0xD4464 and builds the border from 0xD4446.
-   Startup QA checks a rendered top-left cursor tile at that plan's Plane-A
-   coordinates and white ink in the caption. The NativePort regression checks
-   the first and final destination tile at the exact ROM-derived positions.
-3. **Visual construction:** the cursor is an eight-tile overlay. Its table
-   position is already in video coordinates; the separate 26x17 map plate
-   must not shift it. Caption text is written through 0xC0DA at 0xEA10.
-   The 208x136 extracted plate is drawn at (46,14); its current visible extent
-   does not match the supplied capture. Background ownership and viewport
-   placement need a full source trace before changing the plate.
-4. **Animation:** the cursor outline shrinks through five phases at two
-   VBlanks per phase, followed by mode-4/mode-2 holds and the field handoff.
-   Source frame 001800 shows the selected state; frame 001810 is black during
-   handoff. Native frame 3146 shows the final selected state and frame 3150
-   is black. The sparse capture does not establish exact wall-clock timing.
-5. **Sound:** the caption path writes text and has no separate sound call.
-   No selection or handoff cue is assigned without a traced event and
-   identified clip.
-6. **Related screen parts:** checked the caption, map, cursor, black
-   transition, and field handoff together. Cursor/map layer placement is now
-   separated, but map extent and any additional background plane remain
-   unresolved.
-7. **Frame support:** source frames 001800 and 001810/001820 show the
-   selected map followed by black; Qt frames 3146 and 3150 show the same
-   state progression. NativePort frame 60 shows the final cursor tile at the
-   traced Redmond coordinate. This supports cursor placement and exit
-   classification, not the map's full geometry or exact cadence.
+1. **Appearance:** independent section 02 frames 001729-001735 show the
+   taxi window and the closed outline shrinking to the Downtown Seattle
+   selection. Frame 001800 shows the Redmond Barrens selection. The Qt defect
+   was reproduced at startup-QA frame 3048: only two vertical sides appeared.
+   After the fix, full-screen Qt frames show a closed outline in every phase.
+   The visible map-plate extent still differs from the independent capture;
+   that separate discrepancy remains open.
+2. **Behavioral state:** typed `post_intro_mode`, `post_intro_phase`, and
+   `post_intro_caption_visible` drive the view. ROM 0x134D2 calls 0x13726 for
+   mode 4 and mode 2; 0x13726 reads the selected record through 0xD445D and
+   0xD4464 and places the border from 0xD4446. Startup QA now checks all eight
+   source tile pixels at their planned Plane-A positions in each of the five
+   phases and both settled holds. The two settled captures show the matching
+   Downtown and Redmond captions.
+3. **Visual construction:** the resource catalog names the eight images as
+   `intro.cab.cursor.top.left`, `.top.middle`, `.top.right`, `.left`,
+   `.right`, `.bottom.left`, `.bottom.middle`, and `.bottom.right`. The Qt
+   renderer used hyphens for the six multi-part names, which failed lookup;
+   only `left` and `right` resolved. It now uses the catalog's dot-separated
+   aliases. The border remains composed from the extracted source tiles. The
+   separate 208x136 map plate is still drawn at (46,14); its visible extent
+   does not match the independent capture, so its crop/ownership is not
+   changed by this fix.
+4. **Animation:** ROM 0x13726 renders five outline records and waits for two
+   VBlanks per record. ROM 0x134D2 then holds mode 4 for its 0x40 loop and
+   mode 2 for its 0x60 loop before the field handoff. A Release full-intro
+   capture contains all 182 cab-map frames from opening frames 3048-3229,
+   including both shrink sequences and holds. The independent 30-fps video
+   supports the shrinking sequence but cannot establish exact VBlank phase
+   alignment.
+5. **Sound:** no cursor/caption sound request is present in the traced
+   0x134D2/0x13726 path. No separate selection effect or duration is assigned
+   without a source event and identified clip.
+6. **Related screen parts:** reviewed the prior airport text/background, the
+   cab-map plate, both captions, the selector, and the first field screen.
+   The map scene replaces the airport scene cleanly; Downtown is replaced by
+   Redmond without stale caption text; the first field frame has no cab-map
+   outline or text. The map-plate extent discrepancy remains visible.
+7. **Frame support:** independent frames 001729-001735 show the first cursor
+   animation and Downtown hold; frame 001800 shows Redmond and 001810 shows
+   black during the handoff. The video does not log controller input, so it
+   supports the outline at multiple states but not the exact key event that
+   selected them.
+8. **Clean UI replacement:** the full capture shows the airport graphics
+   and text replaced by the cab map, the Downtown caption replaced by
+   Redmond, and the map replaced by the field HUD. No airport labels, old
+   captions, or cab-map controls remain on the next screen.
+9. **Full time window:** Debug/Release startup QA writes 130 full-screen
+   BMPs per build, including 12 new phase/hold checkpoints; all images match
+   byte for byte across configurations. A Release full-intro capture records
+   4,982 frames through 120 stable field frames. The complete affected window
+   comprises 182 cab-map frames plus those 120 field frames; every full
+   screen was reviewed. `--startup-dump opening 2 3133` writes the settled
+   Redmond `actual.bmp`, which matches the startup-QA screenshot byte for
+   byte. See the [nine-question taxi audit](../visual-audits/taxi-window-outline.md).
 
 ## Required audit passes
 
