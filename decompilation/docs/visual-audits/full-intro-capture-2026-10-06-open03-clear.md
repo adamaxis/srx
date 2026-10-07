@@ -47,9 +47,11 @@ have a black edge. The QA checks that pixel condition at opening frame 1209 and
 checks typed layer state for every remaining frame while the final pose is
 active. It confirms the full wilderness-to-tri-vid replacement as well.
 
-The source audio command `0x2E` is requested at the same terminal event. The
-Qt audio service has no alias for it, and this image capture has no audio
-track. Its identity and playback duration remain open as `OPEN-07`.
+The source audio command `0x2E` is requested at the same terminal event. ROM
+tracing shows it becomes `FF 10 2E`, a start request for table-2 slot 46. The
+ROM-backed extraction confirms slot 46 is silent/no-op, so no host audio alias
+or playback duration is expected; `OPEN-07` is closed as a non-defect. Details
+are in the [terminal audio audit](opening-terminal-audio.md).
 
 ## Recapture after boot audio wiring
 
@@ -87,8 +89,8 @@ lines elsewhere in the screen are unchanged.
   appearance in section 02 frames 730-780. Their 30-fps sampling supports the
   visual order but not exact VBlank timing.
 - **Reported defect resolved:** `OPEN-03` is resolved for the old left actor
-  plate showing beneath the death pose. `OPEN-07` remains open for command
-  `0x2E` sound identity, duration, and playback.
+  plate showing beneath the death pose. The separate `0x2E` request selects a
+  verified silent slot; no audio playback is expected.
 
 This full image capture is not audio evidence and is not an independent
 Genesis pixel golden. It does demonstrate that the current Release executable

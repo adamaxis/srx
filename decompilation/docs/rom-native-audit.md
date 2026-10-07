@@ -142,11 +142,14 @@ two generic callbacks. Before decrementing `FFDD2A`, the loop requests command
 `0x16` through `0x530D2` when the counter is below six; after the decrement it
 requests the same command again when the counter reaches zero. While the
 post-decrement counter remains above four, it requests command `0x5C` through
-`0x530DE`. The conversion preserves the service distinction: `0x530D2` uses
-the enabled `0x53112` transaction path, while `0x530DE` tests `FFFC08` and
-selects either that transaction or the `0x530FE` command-queue service. The
-host audio implementation remains an explicit boundary; no Genesis bus or
-audio-firmware emulation is added to the pre-title runtime.
+`0x530DE`. Both routines test the `FFFC0A` audio-enable flag. When enabled,
+`0x530D2` reaches `0x53112`/`0x52F5A`, which sends Z80 command `FF 12 <D0>`;
+`0x530DE` reaches `0x530FE`/`0x52F3C`, which queues `FF 10 <D0>`. Thus the
+pre-title `0x16` requests stop resource 22, while the repeated `0x5C`
+requests start table-2 resource 92. `FFFC08` is read by the separate
+`0x530EA` audio-frame routine; it does not select either of these two call
+paths. The host audio implementation remains an explicit boundary; no
+Genesis bus or audio-firmware emulation is added to the pre-title runtime.
 
 ### Title circuit vertical scroll: `0x1D7A` -> `0x26D0` -> `0x1872` / `0x0F3C`
 

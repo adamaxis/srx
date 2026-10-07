@@ -1,8 +1,9 @@
 # Michael death-pose layer clear audit
 
 Scope: `OPEN-03`, the death image appearing over the earlier wilderness actor
-plate. Visual scope is resolved; the source audio request at the same event is
-tracked separately as `OPEN-07`.
+plate. Visual scope is resolved. The source audio request at the same event is
+reviewed separately in [the terminal audio audit](opening-terminal-audio.md);
+it selects a verified silent slot, so `OPEN-07` is closed as a non-defect.
 
 ## ROM trace and implementation
 
@@ -66,12 +67,12 @@ does not recreate the source tile map at runtime.
    and 12 frames. At elapsed `0x168`, the left plate clears and the final pose
    is installed; later overlay calls are no-ops. Projectiles still move across
    the scene and are not part of the retired plate.
-5. **Does it have sound? — A source audio request is present; playback is
-   unresolved.** ROM `0x59F8E` requests command `0x2E` at the terminal event.
-   `AudioPlaybackService` has no event alias for `0x2E`, so the Qt executable
-   does not play a mapped asset. Its source identity and measured duration are
-   not established. This new audio goal is `OPEN-07`; the visual fix does not
-   claim that sound is correct.
+5. **Does it have sound? — The source request selects a silent slot.** ROM
+   `0x59F8E` sends `0x2E` as `FF 10 2E`, which selects table-2 slot 46. The
+   ROM-backed extractor produces only setup/quieting writes for slot 46; it
+   has no extracted sound asset or playback duration. Leaving it unmapped in
+   `AudioPlaybackService` is correct, and `OPEN-07` is closed as a non-defect.
+   See the [terminal audio audit](opening-terminal-audio.md).
 6. **Are the other visible parts correct? — Reviewed across the whole run.**
    The capture includes the title, menus, all story scenes, cockpit, airport,
    cab map, and field arrival. The known title-circuit brightness/density
@@ -108,5 +109,5 @@ does not recreate the source tile map at runtime.
   source supports the cleared death pose; 30-fps spacing does not establish
   exact VBlank phase.
 - **Reported defect resolved:** `OPEN-03` is resolved for the stale actor
-  plate showing under Michael's death pose. The separate `0x2E` audio request
-  remains open as `OPEN-07`.
+  plate showing under Michael's death pose. The separate `0x2E` request selects a verified silent slot;
+  `OPEN-07` is closed as a non-defect.

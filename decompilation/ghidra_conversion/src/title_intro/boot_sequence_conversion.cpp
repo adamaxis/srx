@@ -494,7 +494,7 @@ PreTitleSequenceResult advance_pre_title_sequence_frame(
                     if (state.logo_effect_counter > 4) {
                         callbacks.publish_audio_request(
                             {PreTitleAudioServicePath::
-                                 enabled_service_fc08_select,
+                                 enabled_service_queue,
                              PreTitleAudioTrigger::
                                  logo_effect_counter_above_four,
                              0x005CU});

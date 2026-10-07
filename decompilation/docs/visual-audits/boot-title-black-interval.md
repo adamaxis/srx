@@ -29,8 +29,9 @@ the Ghidra export was used only as a cross-check.
   that later arrival order is covered separately by `BOOT-04`.
 - No audio call is made during the 90-update black hold. `0x1E4E` has a
   separate command `0x5D` request on alternating logo-column calls. The
-  missing SEGA shock sound command `0x16` remains open under `BOOT-01` and is
-  not evidence about this silent interval.
+  earlier SEGA shock is handled under `BOOT-01`: `0x5C` starts resource 92
+  during the lightning window, while `0x16` follows an `FF 12` stop-resource-
+  22 operation. Neither request occurs during this title black interval.
 
 ## Native state and whole-window evidence
 
@@ -79,7 +80,7 @@ cannot measure the ROM's 60-Hz update count.
 5. **Is there sound? — No call is traced during the black hold.** The separate
    command `0x5D` occurs on alternating logo-column calls after the hold;
    source sound identity and playback duration are outside this visual slice.
-   The missing SEGA shock event remains `BOOT-01`.
+   The earlier SEGA shock event is covered separately under `BOOT-01`.
 6. **Are the other visible parts correct? — Yes in the reviewed frames.** The
    complete image has no old logo, circuit, button, text, or stray sprite over
    the black interval.

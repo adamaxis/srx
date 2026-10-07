@@ -19,6 +19,8 @@ int main(int argc, char** argv) {
     using shadowrun::ghidra_conversion::qt_runtime::AudioPlaybackService;
     const auto menu_024 = std::filesystem::path(
         SHADOWRUN_GHIDRA_AUDIO_MENU_RESOURCE_PATH);
+    const auto field_effect_016 = std::filesystem::path(
+        SHADOWRUN_GHIDRA_AUDIO_FIELD_EFFECT_016_PATH);
     const auto resource_037 = std::filesystem::path(
         SHADOWRUN_GHIDRA_AUDIO_RESOURCE_PATH);
     const auto resource_075 = std::filesystem::path(
@@ -36,6 +38,9 @@ int main(int argc, char** argv) {
         ++resolver_calls;
         if (alias == "audio.menu.command-024") {
             return menu_024;
+        }
+        if (alias == "audio.field.effect-016") {
+            return field_effect_016;
         }
         if (alias == "audio.effects.resource.037") {
             return resource_037;
@@ -101,8 +106,9 @@ int main(int argc, char** argv) {
         std::cerr << "pre-title command 0x5C did not select resource 92\n";
         return 1;
     }
-    if (!playback.alias_for_event(0x16U).empty()) {
-        std::cerr << "stop-only command 0x16 was assigned a sound asset\n";
+    if (playback.alias_for_event(0x16U) != "audio.field.effect-016" ||
+        !std::filesystem::is_regular_file(field_effect_016)) {
+        std::cerr << "FF 10 command 0x16 did not select resource 22\n";
         return 1;
     }
 
@@ -117,8 +123,9 @@ int main(int argc, char** argv) {
         std::int64_t min_duration_ms;
         std::int64_t max_duration_ms;
     };
-    constexpr std::array<PlaybackExpectation, 6> kMappedEvents{{
+    constexpr std::array<PlaybackExpectation, 7> kMappedEvents{{
         {0x10U, "audio.intro.title.stage-1", 14800, 14900},
+        {0x16U, "audio.field.effect-016", 2700, 2800},
         {0x24U, "audio.menu.command-024", 2400, 2600},
         {0x25U, "audio.effects.resource.037", 2050, 2200},
         {0x4BU, "audio.effects.resource.075", 2100, 2300},
@@ -198,12 +205,25 @@ int main(int argc, char** argv) {
                 std::cerr << "boot-shock retrigger overlapped or failed to play\n";
                 return 1;
             }
-            playback.stop_event(expected.event);
+            playback.stop_resource(expected.event);
             application.processEvents(QEventLoop::AllEvents, 20);
             if (playback.playback_status_for_event(expected.event).playing ||
                 playback.playing_channel_count_for_event(expected.event) !=
                     0U) {
                 std::cerr << "boot-shock stop left a channel playing\n";
+                return 1;
+            }
+        } else if (expected.event == 0x16U) {
+            if (playback.playing_channel_count_for_event(expected.event) !=
+                1U) {
+                std::cerr << "FF 10 command 0x16 did not start resource 22\n";
+                return 1;
+            }
+            playback.stop_resource(expected.event);
+            application.processEvents(QEventLoop::AllEvents, 20);
+            if (playback.playing_channel_count_for_event(expected.event) !=
+                0U) {
+                std::cerr << "FF 12 command 0x16 did not stop resource 22\n";
                 return 1;
             }
         }
@@ -219,12 +239,13 @@ int main(int argc, char** argv) {
 
     const auto calls_before_unknown = resolver_calls;
     playback.play_event(0x11U);
-    playback.play_event(0x16U);
+    playback.play_event(0x2EU);
     playback.play_event(0x2AU);
     playback.play_event(0x2CU);
     playback.play_event(0x30U);
     if (resolver_calls != calls_before_unknown ||
         !playback.alias_for_event(0x2CU).empty() ||
+        !playback.alias_for_event(0x2EU).empty() ||
         !playback.alias_for_event(0x30U).empty()) {
         std::cerr << "an unresolved event reached an audio asset\n";
         return 1;

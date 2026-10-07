@@ -2,9 +2,9 @@
 
 ## Scope
 
-This review covers the shared one-shot audio service for source events `0x24`,
-`0x25`, and `0x4B`. It does not cover background music, persistent event
-`0x30`, or every sound call in the ROM.
+This review covers the shared one-shot audio service for source events `0x16`,
+`0x24`, `0x25`, `0x4B`, and `0x5C`. It does not cover background music,
+persistent event `0x30`, or every sound call in the ROM.
 
 ## ROM and asset evidence
 
@@ -15,6 +15,15 @@ This review covers the shared one-shot audio service for source events `0x24`,
   2.134 seconds including the release tail.
 - Event `0x24` maps to `audio.menu.command-024`; its extracted FLAC is 2.484
   seconds including the release tail.
+- A general `FF 10 16` start selects table-2 resource 22, extracted as
+  `audio.field.effect-016` (2.7505 seconds). The pre-title caller sends the
+  same ID through `FF 12 16`, which stops resource 22; the Qt callback keeps
+  those operations separate by service path.
+- The pre-title shock caller sends `FF 10 5C`, selecting table-2 resource 92
+  (`audio.effects.resource.092`, 2.750 seconds). Its source repeats the start
+  during the lightning window; Qt stops the previous matching channel before
+  restarting the effect. See the [boot shock audio audit](../visual-audits/boot-shock-audio.md)
+  for the ROM/Z80 trace and independent longplay correlation.
 - The electromagnetic-lock unlock path submits event `0x4B`, mapped to
   resource 75; its extracted FLAC contains 97,770 samples at 44.1 kHz, or
   2.2167 seconds.
@@ -47,7 +56,7 @@ unmapped.
 ## Internal playback check
 
 `shadowrun_ghidra_audio_playback` resolves the real files, plays events
-`0x24`, `0x25`, and `0x4B` through the default Windows output device, waits for
+`0x10`, `0x12`, `0x16`, `0x24`, `0x25`, `0x4B`, and `0x5C` through the default Windows output device, waits for
 decoded audio and `PlayingState`, checks the decoded duration against each
 source file, then stops the active channels. The test skips with CTest's
 `SKIP_RETURN_CODE` only if Windows reports no default audio output. Debug and
@@ -95,10 +104,13 @@ they do not establish exact emulator frame timing.
 4. **Should anything animate?** The audio effects are one-shots. Each player
    plays through the extracted release tail and reaches the end of its file;
    no loop is requested. Music-loop behavior remains open.
-5. **Does it have sound, and how long does it play?** Yes for events `0x24`,
-   `0x25`, and `0x4B`; the files, output route, start state, duration, and stop
-   behavior are checked above. The independent capture matches resource 37
-   repeatedly. Windows output loopback remains unrecorded.
+5. **Does it have sound, and how long does it play?** The files, output route,
+   start state, duration, and stop behavior are checked for the events listed
+   above. The boot path's `0x16` is specifically a stop operation, while other
+   callers can start resource 22 with `FF 10 16`. The independent capture
+   repeatedly matches resource 37; its audio has one candidate correlation
+   for resource 92 at 4.225 seconds. Windows output loopback remains
+   unrecorded.
 6. **Are related screen parts also correct?** The Ares page, text, item art,
    cursor, and right-side HUD remain visible in the 320x224 QA frame.
 7. **Do multiple frames support the interpretation?** The independent audio
@@ -111,7 +123,11 @@ they do not establish exact emulator frame timing.
 
 ## Remaining work
 
-The current service verifies three mapped one-shot events. Music command
-playback and source loop points, more source-event mappings, event `0x30` stop
-lifetime, and a Windows output-loopback capture remain open. Therefore the
-audio hill remains partial.
+The current service verifies the mapped one-shot events above and two
+identified intro music assets. In the current Debug/Release runs, resource 22
+(`FF 10 16`) reported 17/31 ms startup and 2,750 ms duration; resource 92
+(`FF 10 5C`) reported 22/20 ms and 2,750 ms. The `0x16` boot callback uses the
+separate `FF 12` resource-stop operation. Stage-2 music identity and track
+lifetime, more source-event mappings, event `0x30` stop lifetime, and a
+Windows output-loopback capture remain open. Therefore the audio hill remains
+partial.

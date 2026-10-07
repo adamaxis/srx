@@ -12,22 +12,24 @@ identify what each 68K service request does.
 - At `0x5D7F2` and `0x5D80A`, the pre-title loop sends command `0x16` through
   `0x530D2` when the logo-effect counter is below six and when it reaches zero.
   `0x530D2` calls `0x53112`, which writes Z80 command `FF 12 16`. Z80 command
-  `0x12` stops active channels whose resource-id field equals 22; it does not
-  start the similarly named `effect-016` asset.
+  `0x12` stops active channels whose resource-id field equals 22. The same
+  command value can start resource 22 when another caller uses the `FF 10`
+  queue path; the operation depends on the service path, not the ID alone.
 - At `0x5D82E`, the loop sends command `0x5C` through `0x530DE` while the
-  post-decrement counter remains above four. Reset setup at `0x007A2` sets
-  `FFFC08=1` for this boot. The `0x530DE` route therefore sends `FF 12 5C`
-  (stop resource 92), then services the queued `FF 10 5C` request. Z80 command
-  `0x10` starts the matching table-2 resource.
+  post-decrement counter remains above four. `0x530DE` tests `FFFC0A` and,
+  when enabled, reaches `0x530FE`/`0x52F3C`, which queues `FF 10 5C`. Z80
+  command `0x10` starts the table-2 resource. `FFFC08` belongs to separate
+  routine `0x530EA`; it does not select the path from `0x530DE`.
 - Table-2 resource 92 is the extracted `audio.effects.resource.092`,
   `audio/sound-effects/resource-092.flac`. It is 44.1 kHz stereo and measures
   2,750 ms. It is distinct from `audio.field.effect-016`.
 
-Thus `0x16` is stop-only; `0x5C` is the SEGA shock sound's stop-and-start
-request. The source callback now calls `stop_event(0x16)` for the former and
-`play_event_restarting(0x5C)` for the latter. The restart operation stops all
-matching active host channels before starting one channel from position zero.
-No `0x16` audio alias is registered.
+Thus the boot caller uses `0x16` only to stop resource 22, while `0x5C` starts
+resource 92. Resource 22 is also registered as `audio.field.effect-016` for
+other `FF 10 16` start callers. The source repeats the `0x5C` start request
+through the shock window, and the host restarts the matching sound from
+position zero for each request. The boot path does not send an explicit stop
+for resource 92.
 
 ## Timing and independent reference
 
@@ -55,11 +57,14 @@ pre-roll, so it does not prove exact VBlank-to-audio latency.
 
 `shadowrun_ghidra_audio_playback_test` exercises the real `QMediaPlayer` on the
 default output. It verifies that `0x5C` resolves to resource 92, becomes
-loaded/playing, reports a 21 ms start latency and 2,750 ms duration, and can be
-restarted while leaving exactly one channel playing. It then stops the event
-and verifies zero active channels. The test also confirms `0x16` has no alias
-and does not reach the asset resolver. The complete Debug and Release Qt
-CTest suites pass 62/62.
+loaded/playing, reports a 2,750 ms duration, and can be restarted while
+leaving exactly one channel playing. It stops resource 92 and verifies zero
+active channels. It also verifies that an `FF 10 16` start resolves to
+resource 22, plays, and is stopped by the resource-22 stop operation. The
+current Debug and Release runs reported 22 ms and 20 ms start latency for
+resource 92; the test records latency but does not impose a threshold. Both
+runs reported 2,750 ms duration. The complete Debug and Release Qt CTest suites
+pass 62/62.
 
 The no-argument Release application was launched and its window captured at
 one, five, and thirteen seconds. It rendered the SEGA animation, stayed alive,
@@ -74,9 +79,12 @@ game. The CLI `--help` path still returns its usage text.
    source shock state; independent section 01 frames 120 and 134 show the
    corresponding lightning-on then lightning-off visual states.
 2. **Does appearance match behavioral state?** Yes. The typed pre-title
-   request's command and service path choose stop-only resource 22 (`0x16`)
-   versus stop-and-start resource 92 (`0x5C`). The resource-92 requests are
-   bounded by the SEGA shock counter, not the later archetype/opening input.
+   request's command and service path distinguish direct stop resource 22
+   (`0x16`, `FF 12`) from queued start resource 92 (`0x5C`, `FF 10`). The
+   repeated resource-92 start requests are bounded by the SEGA shock counter,
+   not the later archetype/opening input. Event ID `0x16` maps to resource 22
+   for `FF 10` callers, while this boot callback follows its traced `FF 12`
+   stop operation.
 3. **Are the visuals correct?** Audio wiring does not alter scene pixels. The
    new 6,782-frame Release capture is byte-identical in every frame to the
    previously reviewed post-clear run. Full-screen shock checkpoints and the
@@ -89,8 +97,8 @@ game. The CLI `--help` path still returns its usage text.
    naturally.
 5. **Is there sound? What and how long?** Yes: table-2 resource 92, measured
    at 2,750 ms. A retrigger stops the previous matching channel before the
-   next start. `0x16` is not a sound start; its source operation stops resource
-   22 only.
+   next start. The boot caller's `0x16` is a stop operation for resource 22;
+   that resource has a separate `FF 10` start alias for other callers.
 6. **Are the rest of the screen and prior controls correct?** The complete
    run covers the FASA/black/title handoffs, title menus, all Gator Shaman
    scenes, field handoff, and stable field hold. This slice introduces no UI;
@@ -112,11 +120,12 @@ game. The CLI `--help` path still returns its usage text.
 
 ## Result
 
-- **Code changed:** the pre-title Qt callback now applies stop/restart
-  semantics for the two source requests, and the Release executable no longer
-  launches with a visible CUI console.
-- **Behavior implemented:** `0x5C` plays and restarts resource 92 at the
-  source's SEGA shock requests; `0x16` remains a stop-only operation.
+- **Code changed:** the pre-title Qt callback now applies the `FF 12` stop
+  operation for resource 22 and repeated-start `0x5C` semantics; the Release executable no
+  longer launches with a visible CUI console.
+- **Behavior implemented:** each source `0x5C` request restarts resource 92
+  during the SEGA shock window; the boot path's `0x16` stops resource 22,
+  while other `FF 10 16` callers can start its mapped asset.
 - **Independently checked:** the named resource correlates with the recorded
   SEGA sound; the independent frames show the shock sequence. Playback was
   decoded and started on the configured default output.

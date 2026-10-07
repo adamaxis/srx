@@ -22,8 +22,8 @@ The US ROM is the primary source; the Ghidra export was used as a cross-check.
   finished rolling across, then arrive through three distinct palette passes.
   The title background scroll continues behind it.
 - The title loop's copyright sound request is separate from circuit arrival.
-  This path has no circuit-specific sound request. The SEGA shock sound is
-  tracked independently under `BOOT-01`.
+  This path has no circuit-specific sound request. The earlier SEGA shock
+  sound is covered under `BOOT-01` and has been resolved separately.
 
 ## Native state and capture
 
@@ -67,8 +67,8 @@ and texture discrepancy remains open as `TITLE-03`.
    loop runs. Its arrival uses three discrete palette steps at countdowns 64,
    32, and 0; it does not blink or loop through a visibility animation.
 5. **Is there sound?** No circuit sound call is traced. The separate
-   copyright sound request is not evidence of a circuit effect. The logo
-   shock sound remains open under `BOOT-01`.
+   copyright sound request is not evidence of a circuit effect. The earlier
+   logo shock sound is handled and verified under `BOOT-01`.
 6. **Are the other screen parts correct?** The complete frames were reviewed:
    the rolled logo remains visible, the black interval contains no premature
    circuit detail, and no stale buttons or prior-screen graphics cover the

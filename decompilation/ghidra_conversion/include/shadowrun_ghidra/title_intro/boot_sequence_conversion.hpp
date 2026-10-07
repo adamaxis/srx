@@ -127,11 +127,10 @@ struct PreTitleSpriteBatch {
 };
 
 enum class PreTitleAudioServicePath {
-    // 0x530D2: FFFC0A enables the direct 0x53112 transaction path.
+    // 0x530D2: FFFC0A enables 0x53112 -> 0x52F5A, which sends FF 12 <id>.
     enabled_variant_transaction,
-    // 0x530DE: FFFC0A enables service, then FFFC08 selects the direct
-    // 0x53112 transaction or the 0x530FE command-queue service.
-    enabled_service_fc08_select,
+    // 0x530DE: FFFC0A enables 0x530FE -> 0x52F3C, which sends FF 10 <id>.
+    enabled_service_queue,
 };
 
 enum class PreTitleAudioTrigger {

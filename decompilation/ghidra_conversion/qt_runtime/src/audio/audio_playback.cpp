@@ -17,8 +17,10 @@ struct AudioPlaybackService::PlaybackChannel {
     QMediaPlayer player;
     std::filesystem::path source_path;
     std::uint16_t event = 0U;
+    std::uint16_t resource_id = 0U;
     std::uint64_t request_sequence = 0U;
     bool has_event = false;
+    bool has_resource = false;
 
     PlaybackChannel() {
         output.setVolume(0.6f);
@@ -43,14 +45,18 @@ AudioPlaybackService::AudioPlaybackService(PathResolver resolver,
     event_aliases_ = {
         {0x10U, "audio.intro.title.stage-1"},
         {0x12U, "audio.intro.title.stage-3"},
+        // Event 0x16 starts table-2 resource 22 on ordinary FF 10 paths.
+        // The pre-title caller uses FF 12 with the same id to stop it.
+        {0x16U, "audio.field.effect-016"},
         {0x24U, "audio.menu.command-024"},
         // ROM command 0x25 is table-2 index 37. The importer emits that
         // zero-based entry as audio.effects.resource.037.
         {0x25U, "audio.effects.resource.037"},
         {0x29U, "audio.menu.command-029"},
-        // At the SEGA logo, 0x5C stops then starts table-2 resource 92.
-        // Command 0x16 at the adjacent source boundary is stop-only and must
-        // not be mistaken for the similarly numbered effect asset.
+        // At the SEGA logo, queued command 0x5C starts table-2 resource 92;
+        // the source repeats that start request during the shock window.
+        // The adjacent pre-title command 0x16 is FF 12 (stop resource 22),
+        // despite that id's valid FF 10 start alias above.
         {0x5CU, "audio.effects.resource.092"},
         // The maglock unlock routine sends command 0x4B (table-2 resource 75).
         {0x4BU, "audio.effects.resource.075"},
@@ -75,9 +81,9 @@ void AudioPlaybackService::play_event(const std::uint16_t event) {
     start_alias(alias, event);
 }
 
-void AudioPlaybackService::stop_event(const std::uint16_t event) {
+void AudioPlaybackService::stop_resource(const std::uint16_t resource_id) {
     for (const auto& channel : channels_) {
-        if (channel->has_event && channel->event == event) {
+        if (channel->has_resource && channel->resource_id == resource_id) {
             channel->player.stop();
         }
     }
@@ -85,7 +91,7 @@ void AudioPlaybackService::stop_event(const std::uint16_t event) {
 
 void AudioPlaybackService::play_event_restarting(
     const std::uint16_t event) {
-    stop_event(event);
+    stop_resource(event);
     play_event(event);
 }
 
@@ -115,6 +121,8 @@ void AudioPlaybackService::start_alias(
     channel.player.setPosition(0);
     channel.event = event.value_or(0U);
     channel.has_event = event.has_value();
+    channel.resource_id = event.value_or(0U);
+    channel.has_resource = event.has_value();
     channel.request_sequence = ++request_sequence_;
     channel.player.play();
 }

@@ -162,12 +162,12 @@ resolved.
    lightning at 94, strobe activation at 222, its clean next frame at 223,
    fade step 1 at 225, and the resolved figure at 255.
 5. **Does sound accompany it?** `0x5D8BA` and `0x5B2E2` make no sound call.
-   The parent `0x5D746` submits command `0x16` through `0x530D2` when its logo
-   counter is below six and again when it reaches zero, the threshold that
-   enables the strobe. It also submits command `0x5C` through `0x530DE` while
-   the counter is above four. These requests do not run once per palette fade
-   step. The extracted aliases and measured clip durations for `0x16` and
-   `0x5C` remain unresolved, so the sound identity and length are not claimed.
+   The parent `0x5D746` submits `0x16` through `0x530D2` as `FF 12 16`, which
+   stops resource 22; it submits `0x5C` through `0x530DE` as `FF 10 5C`, which
+   starts table-2 resource 92 while the counter is above four. These requests
+   do not run once per palette fade step. Resource 92's 2,750 ms playback is
+   verified; resource 22 has a separate `FF 10 16` start alias outside this
+   boot path. See the [boot shock audio audit](../visual-audits/boot-shock-audio.md).
 6. **Are related screen parts also correct?** The source frames and native
    dumps were checked across the entire black background, SEGA mark, lightning,
    and figure. At the resolved state, the full-frame assertion rejects a
@@ -228,10 +228,10 @@ palette-line attribute that the ROM adds when it draws FASA.
    establish an exact cross-capture frame offset.
 5. **Does sound accompany it?** Neither FASA palette routine nor the FASA
    install/hold path requests a sound effect, so there is no FASA event ID or
-   clip duration to assign. The preceding SEGA loop issues `0x16` and `0x5C`
-   through separate audio service paths; they are not tied to the FASA
-   transitions. The longplay WAV does not isolate those service requests or
-   establish their individual clip durations.
+   clip duration to assign. The preceding SEGA loop issues `0x16` as a
+   resource-22 stop and `0x5C` as a resource-92 start; neither is tied to the
+   FASA transitions. See the [boot shock audio audit](../visual-audits/boot-shock-audio.md)
+   for the separate playback evidence.
 6. **Are related parts also correct?** The full-frame audit checks that the
    fade begins from black, that the stable scene contains the blue logo, and
    that no old SEGA layer or control is visible. `actual.bmp` remains static
@@ -325,7 +325,7 @@ pass in Debug and Release; the test checks whole-screen pixels and timer
 cadence. **Independently visually checked:** section 01 frames listed above
 support the movement. **Reported defect resolved:** the missing upward motion
 is fixed for the tested visible range. Full-plane wrap and palette match remain
-open; `BOOT-01` remains open and `BOOT-02` is reviewed below.
+open; `BOOT-01` is resolved in the [boot shock audio audit](../visual-audits/boot-shock-audio.md), and `BOOT-02` is reviewed below.
 
 ### Applied review: BOOT-02 title flame lifetime
 
@@ -358,8 +358,9 @@ affect it.
    last active and first inactive frames.
 5. **Does it have sound, and how long does it play?** `0x1E4E` also submits
    command `0x5D` through `0x530DE` on its alternating reveal cadence. The
-   relationship between that request and the flame, the mapped resource, and
-   playback duration are not verified here; those remain under `BOOT-01`.
+   relationship between that request and the flame, its resource identity,
+   and playback duration are not verified here; that separate event mapping is
+   outside `BOOT-01`, which covers the SEGA shock sound.
 6. **Are the other visible parts of the screen also correct?** Whole-frame
    review covered title frames 165, 166, 300, 900, 1500, and 3000, plus the
    native reveal scroll captures. The logo, copyright, prompt, and circuit

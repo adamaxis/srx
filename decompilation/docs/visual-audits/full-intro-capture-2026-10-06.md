@@ -69,6 +69,9 @@ traces, adjacent full-screen comparison with the numbered independent
 section 02 frames, and a second complete native capture after any corrective
 change.
 
-The source requests SEGA boot audio events `0x16` and `0x5C`; neither has been
-connected to the Qt playback service in this build. The full frame capture
-does not record sound, so `BOOT-01` remains open.
+Historical note: this capture note was written before the boot-audio wiring
+and its path-sensitive correction. The current pre-title callback starts
+resource 92 for the `0x5C` queue requests and stops resource 22 for the `0x16`
+variant-service requests. The full frame capture itself contains no audio;
+see [the boot shock audio audit](boot-shock-audio.md) for ROM/Z80 and playback
+evidence.

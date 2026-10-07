@@ -60,6 +60,8 @@ Independent section 02 frames 000480, 000510, 000570, and 000630 support the
 Gator Shaman pan composition. Other opening scenes still need their own
 source-traced, whole-screen comparisons before those goals can be closed.
 
-The capture has no audio track. The missing SEGA shock effect and opening
-music event questions remain open under BOOT-01 and OPEN-01; a successful
-image capture is not audio evidence.
+This historical capture has no audio track and predates the boot-audio wiring.
+`BOOT-01` is now resolved by the source-timed resource-92 playback documented
+in [the boot shock audio audit](boot-shock-audio.md). Stage-2 music identity
+and lifetime remain open under `OPEN-01`; this image capture is not audio
+evidence.

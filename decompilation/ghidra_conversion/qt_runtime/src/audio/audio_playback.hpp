@@ -44,12 +44,13 @@ public:
     // a logged boundary by the caller) when the event has no verified alias.
     void play_event(std::uint16_t event);
 
-    // Stop channels started by this source event. The pre-title command path
-    // uses this for stop-only ROM requests such as 0x16.
-    void stop_event(std::uint16_t event);
+    // Stop every channel playing this source resource. This is distinct from
+    // the numeric command id: a ROM command may start or stop the same id
+    // depending on whether it uses the FF 10 or FF 12 service path.
+    void stop_resource(std::uint16_t resource_id);
 
-    // Reproduce a ROM stop-then-start for the same source event, without
-    // leaving overlapping host channels when the source retriggers it.
+    // Reproduce a ROM FF 10 retrigger for the same table-2 resource, without
+    // leaving overlapping host channels when the source starts it again.
     void play_event_restarting(std::uint16_t event);
 
     // Play a catalog alias directly (audio.menu.command-024 and friends).

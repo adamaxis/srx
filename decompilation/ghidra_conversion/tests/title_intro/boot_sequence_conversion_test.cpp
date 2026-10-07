@@ -198,7 +198,7 @@ int main() {
             return 7;
         }
         if (request.service_path ==
-                PreTitleAudioServicePath::enabled_service_fc08_select &&
+                PreTitleAudioServicePath::enabled_service_queue &&
             (request.command != 0x005CU ||
              request.trigger !=
                  PreTitleAudioTrigger::logo_effect_counter_above_four)) {
