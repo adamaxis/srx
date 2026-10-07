@@ -256,6 +256,19 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_scene20_physical_entry_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Follow the same ordinary-input route, select the visible Frag Grenade option
+# with B, and exercise the no-item result and its clean A dismissal. The New
+# Game party inventory is checked before the choice; this is not a synthetic
+# prompt or injected world event.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_scene20_grenade_no_item_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-scene20-grenade-no-item-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-scene20-grenade-no-item-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_scene20_grenade_no_item_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Follow ordinary D-pad movement to scene-2 collision record 2. The source
 # record is a type-2 collision object, not a Stoker identity or event code;
 # this QA verifies its observed event-0/no-dialogue result and full-frame route.

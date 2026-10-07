@@ -170,6 +170,7 @@ std::filesystem::path find_asset_root(
                    " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
                    " [--field-ares-collision-shop-qa <output-dir>]"
                    " [--field-scene20-physical-entry-qa <output-dir>]"
+                   " [--field-scene20-grenade-no-item-qa <output-dir>]"
                    " [--field-secretary-dump <output-dir>]"
                    " [--field-command-dump <file>]"
                        " [--field-command-page <0..6>]"
@@ -246,6 +247,11 @@ std::filesystem::path find_asset_root(
             continue;
         }
         if (argument == "--field-scene20-physical-entry-qa" &&
+            index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-scene20-grenade-no-item-qa" &&
             index + 1 < argc) {
             ++index;
             continue;
@@ -6098,7 +6104,8 @@ int run_field_scene20_physical_entry_qa(
     const std::filesystem::path& asset_root,
     const std::filesystem::path& output,
     const std::vector<std::uint16_t>& field_audio_events,
-    const std::vector<std::string>& source_boundaries) {
+    const std::vector<std::string>& source_boundaries,
+    const bool exercise_grenade_unavailable = false) {
     std::error_code output_error;
     std::filesystem::remove_all(output, output_error);
     if (output_error) {
@@ -6643,52 +6650,193 @@ int run_field_scene20_physical_entry_qa(
         return 3;
     }
     write_state("maglock-choices");
-    for (std::uint8_t tick = 0U; tick < 10U; ++tick) {
+    // The release sample after A is already the first source wait frame.
+    // Eight idle frames plus the selected-input frame complete the ten-frame
+    // delay exactly.
+    for (std::uint8_t tick = 0U; tick < 8U; ++tick) {
         field_scene.advance_frame();
         ++frame;
     }
-    field_scene.set_controller_port_byte(0x20U); // ordinary C: Walk Away
-    field_scene.advance_frame();
-    ++frame;
-    field_scene.set_controller_port_byte(0U);
-    field_scene.advance_frame();
-    ++frame;
-    const auto returned_scene20 = render();
-    const auto returned_field_only = render_field_scene_only();
-    const auto& walk_away_panel = field_scene.field_interaction_panel();
-    const bool walk_away_closed = !field_scene.field_interaction_open();
-    const bool walk_away_same_scene =
-        field_scene.field_scene_reference_for_dump() == 0x14U;
-    const bool walk_away_hud_clean =
-        field_hud_chrome_survives(returned_scene20, asset_root);
-    const bool walk_away_playfield_visible =
-        count_playfield_lit(returned_scene20) >= 100U;
-    const bool walk_away_matches_field_only =
-        returned_scene20 == returned_field_only;
-    write_state("after-walk-away-input");
-    if (!returned_scene20.save(QString::fromStdWString(
-            (output / "scene20-after-walk-away-input.bmp").wstring())) ||
-        !returned_field_only.save(QString::fromStdWString(
-            (output / "scene20-field-only-after-walk-away.bmp").wstring()))) {
-        std::cerr << "Scene-20 physical-entry QA: could not save post-choice "
-                     "full-screen frame\n";
-        return 3;
+    if (exercise_grenade_unavailable) {
+        constexpr std::uint8_t frag_grenade_code = 0x0DU;
+        const auto& party = field_scene.field_party_records_for_dump();
+        bool active_party_has_grenade = false;
+        for (std::size_t slot = 0U; slot < party.size(); ++slot) {
+            const auto& runner = party[slot];
+            if (!field_scene.field_party_slot_active_for_dump(slot) ||
+                (runner.flags & 0x0100U) == 0U) {
+                continue;
+            }
+            active_party_has_grenade = active_party_has_grenade ||
+                std::find(runner.inventory_item_codes.begin(),
+                          runner.inventory_item_codes.end(),
+                          frag_grenade_code) !=
+                    runner.inventory_item_codes.end();
+        }
+        if (active_party_has_grenade) {
+            std::cerr << "Scene-20 grenade QA: New Game party unexpectedly "
+                         "contains a Frag Grenade\n";
+            return 3;
+        }
+
+        const auto audio_count_before_action = field_audio_events.size();
+        field_scene.set_controller_port_byte(0x10U); // ordinary B: Frag Grenade
+        field_scene.advance_frame();
+        ++frame;
+        const auto grenade_choice_event =
+            field_scene.controller_event_word_for_dump();
+        const bool grenade_choice_was_a_new_b_press =
+            (grenade_choice_event & 0xFF00U) == 0x1000U;
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++frame;
+        const auto& unavailable_panel = field_scene.field_interaction_panel();
+        const auto unavailable_image = render();
+        const bool unavailable_text_matches =
+            unavailable_panel.text_segment_count == 1U &&
+            unavailable_panel.text_segments[0].find("Frag Grenade") !=
+                std::string_view::npos &&
+            unavailable_panel.text_segments[0].find("available to you") !=
+                std::string_view::npos;
+        const bool result_page_open = field_scene.field_interaction_open();
+        const bool generic_result_page =
+            unavailable_panel.kind == DialoguePanelKind::information_page &&
+            unavailable_panel.actor_kind == DialoguePanelActorKind::none;
+        const bool result_hud_hidden =
+            !field_hud_chrome_survives(unavailable_image, asset_root);
+        const bool result_audio_silent =
+            field_audio_events.size() == audio_count_before_action;
+        if (!grenade_choice_was_a_new_b_press || !result_page_open ||
+            !generic_result_page ||
+            !unavailable_panel.source_complete ||
+            unavailable_panel.option_count != 0U ||
+            !unavailable_text_matches || !result_hud_hidden ||
+            unavailable_image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            !result_audio_silent ||
+            !save("maglock-grenade-unavailable") || !save("actual")) {
+            std::cerr << "Scene-20 grenade QA: ordinary B did not show the "
+                         "source no-item result as a generic information "
+                         "page without an extra sound (open="
+                      << result_page_open << ", kind="
+                      << static_cast<unsigned>(unavailable_panel.kind)
+                      << ", actor=" << static_cast<unsigned>(
+                             unavailable_panel.actor_kind)
+                      << ", complete=" << unavailable_panel.source_complete
+                      << ", options=" << unavailable_panel.option_count
+                      << ", segments="
+                      << unavailable_panel.text_segment_count << ", text='"
+                      << (unavailable_panel.text_segment_count == 0U
+                              ? std::string_view{}
+                              : unavailable_panel.text_segments[0])
+                      << "', hud-hidden=" << result_hud_hidden
+                      << ", sampled-event=0x" << std::hex
+                      << grenade_choice_event << std::dec
+                      << ", size=" << unavailable_image.width() << 'x'
+                      << unavailable_image.height() << ", audio="
+                      << audio_count_before_action << "->"
+                      << field_audio_events.size() << ")\n";
+            return 3;
+        }
+        write_state("maglock-grenade-unavailable");
+        if (!save("maglock-grenade-result-wait-1")) {
+            return 3;
+        }
+        for (std::uint8_t tick = 1U; tick < 30U; ++tick) {
+            field_scene.advance_frame();
+            ++frame;
+            if (tick == 14U || tick == 29U) {
+                if (!save("maglock-grenade-result-wait-" +
+                          std::to_string(static_cast<unsigned>(tick + 1U)))) {
+                    return 3;
+                }
+            }
+        }
+        const auto held_unavailable_image = render();
+        if (held_unavailable_image != unavailable_image ||
+            field_audio_events.size() != audio_count_before_action ||
+            !save("maglock-grenade-result-held")) {
+            std::cerr << "Scene-20 grenade QA: source result changed during "
+                         "its 30-frame wait\n";
+            return 3;
+        }
+        write_state("maglock-grenade-result-held");
+
+        field_scene.set_controller_port_byte(0x40U); // ordinary A dismisses
+        field_scene.advance_frame();
+        ++frame;
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++frame;
+        const auto returned_scene20 = render();
+        const auto returned_field_only = render_field_scene_only();
+        const bool returned_cleanly =
+            !field_scene.field_interaction_open() &&
+            !field_scene.dialogue_open() &&
+            !field_scene.field_mode_text_open_for_dump() &&
+            !field_scene.shop_menu_open() &&
+            field_scene.field_scene_reference_for_dump() == 0x14U &&
+            field_hud_chrome_survives(returned_scene20, asset_root) &&
+            count_playfield_lit(returned_scene20) >= 100U &&
+            returned_scene20 == returned_field_only &&
+            field_audio_events.size() == audio_count_before_action;
+        write_state("scene20-return-after-grenade-unavailable");
+        if (!returned_cleanly ||
+            !returned_scene20.save(QString::fromStdWString(
+                (output / "scene20-after-grenade-unavailable.bmp").wstring())) ||
+            !returned_field_only.save(QString::fromStdWString(
+                (output / "scene20-field-only-after-grenade-unavailable.bmp")
+                    .wstring())) ||
+            !save("scene20-return-after-grenade-unavailable")) {
+            std::cerr << "Scene-20 grenade QA: A did not dismiss the result "
+                         "to the clean current field image\n";
+            return 3;
+        }
+    } else {
+        field_scene.set_controller_port_byte(0x20U); // ordinary C: Walk Away
+        field_scene.advance_frame();
+        ++frame;
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++frame;
+        const auto returned_scene20 = render();
+        const auto returned_field_only = render_field_scene_only();
+        const auto& walk_away_panel = field_scene.field_interaction_panel();
+        const bool walk_away_closed = !field_scene.field_interaction_open();
+        const bool walk_away_same_scene =
+            field_scene.field_scene_reference_for_dump() == 0x14U;
+        const bool walk_away_hud_clean =
+            field_hud_chrome_survives(returned_scene20, asset_root);
+        const bool walk_away_playfield_visible =
+            count_playfield_lit(returned_scene20) >= 100U;
+        const bool walk_away_matches_field_only =
+            returned_scene20 == returned_field_only;
+        write_state("after-walk-away-input");
+        if (!returned_scene20.save(QString::fromStdWString(
+                (output / "scene20-after-walk-away-input.bmp").wstring())) ||
+            !returned_field_only.save(QString::fromStdWString(
+                (output / "scene20-field-only-after-walk-away.bmp")
+                    .wstring()))) {
+            std::cerr << "Scene-20 physical-entry QA: could not save "
+                         "post-choice full-screen frame\n";
+            return 3;
+        }
+        if (!walk_away_closed || !walk_away_same_scene ||
+            !walk_away_hud_clean || !walk_away_playfield_visible ||
+            !walk_away_matches_field_only ||
+            !save("scene20-return-after-walk-away")) {
+            std::cerr << "Scene-20 physical-entry QA: normal C did not close "
+                         "the maglock page and restore a clean interior "
+                         "screen (open=" << !walk_away_closed << ", scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << ", selected=" << walk_away_panel.selected_option
+                      << ", hud=" << walk_away_hud_clean
+                      << ", playfield=" << walk_away_playfield_visible
+                      << ", field-only-pixels="
+                      << walk_away_matches_field_only << ")\n";
+            return 3;
+        }
+        write_state("scene20-return-after-walk-away");
     }
-    if (!walk_away_closed || !walk_away_same_scene || !walk_away_hud_clean ||
-        !walk_away_playfield_visible || !walk_away_matches_field_only ||
-        !save("scene20-return-after-walk-away")) {
-        std::cerr << "Scene-20 physical-entry QA: normal C did not close the "
-                     "maglock page and restore a clean interior screen "
-                     "(open=" << !walk_away_closed << ", scene="
-                  << field_scene.field_scene_reference_for_dump()
-                  << ", selected=" << walk_away_panel.selected_option
-                  << ", hud=" << walk_away_hud_clean
-                  << ", playfield=" << walk_away_playfield_visible
-                  << ", field-only-pixels=" << walk_away_matches_field_only
-                  << ")\n";
-        return 3;
-    }
-    write_state("scene20-return-after-walk-away");
 
     {
         std::ofstream boundaries(output / "source-boundaries.txt",
@@ -6720,6 +6868,9 @@ int run_field_scene20_physical_entry_qa(
               << " entry-x=" << scene20_position.x
               << " entry-y=" << scene20_position.y
               << " audio_events=" << field_audio_events.size()
+              << " choice=" << (exercise_grenade_unavailable
+                                      ? "frag-grenade-unavailable"
+                                      : "walk-away")
               << " artifacts=" << output.string() << '\n';
     return 0;
 }
@@ -7640,6 +7791,8 @@ int main(int argc, char** argv) {
             field_ares_collision_shop_qa_path;
         std::optional<std::filesystem::path>
             field_scene20_physical_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_scene20_grenade_no_item_qa_path;
         std::optional<std::filesystem::path> field_stoker_collision_qa_path;
         std::optional<std::filesystem::path> field_hud_qa_path;
         std::optional<std::filesystem::path> field_hotel_qa_path;
@@ -7778,6 +7931,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene20_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene20-grenade-no-item-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene20_grenade_no_item_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-stoker-collision-qa" &&
@@ -8127,6 +8287,12 @@ int main(int argc, char** argv) {
                     field_scene, asset_root,
                     *field_scene20_physical_entry_qa_path,
                     field_audio_events, field_source_boundaries);
+            }
+            if (field_scene20_grenade_no_item_qa_path.has_value()) {
+                return run_field_scene20_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_scene20_grenade_no_item_qa_path,
+                    field_audio_events, field_source_boundaries, true);
             }
             if (field_stoker_collision_qa_path.has_value()) {
                 return run_field_stoker_collision_candidate_qa(

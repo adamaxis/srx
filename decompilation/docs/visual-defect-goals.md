@@ -74,9 +74,9 @@ clarification. None changes the original report's itemization.
 | `INVENTORY-01` | Moving/trading items between inventory locations does not work. | **Partial.** ROM has runner-to-runner Trade, not same-runner item reordering. The typed transfer and ordinary Trade controls pass Debug/Release QA when another runner is active, but New Game starts with Joshua alone and the Qt executable has no normal recruitment/loaded-save route that supplies a second recipient. Keep open for that reachability path; see [the full-screen Trade audit](visual-analysis/qt-visual-audit.md#applied-review-trade-recipient-and-transfer). |
 | `INVENTORY-02` | Using an item draws the runner portrait over other bars. | **Closed as a non-defect for the reported First Aid target/result panel.** ROM `0x123FA` redraws the selected runner's 4x4 panel at `C928` through `0x110E8`; its small portrait crosses the top of the posture strip in both Qt and independent Genesis frames 002610/002611/002630/002640. The `0x121C0` automatic-use acknowledgement does not draw that target portrait. Debug/Release full-screen routes and all transition frames were reviewed; see [item-use portrait placement audit](visual-analysis/qt-visual-audit.md#applied-review-first-aid-target-result-and-return). |
 | `ITEMS-01` | Armor, weapons, and their damage values are wrong. | **Partial.** The selected-armor detail preview now follows `0x12A8C -> 0x11352` and displays the selected D4D50 row with six-tile CF884 Wpns/Guns assets in the lower panel; Debug/Release screen checks and independent frame 002560 support its placement. The capture does not show a selected/equipped armor mismatch. Weapon detail rows now have explicit D4540 +0x25/+0x26 and CF84C asset regression coverage, but no independent selected-weapon frame is available. Combat damage values and shop/item presentation remain open; see the [selected armor preview audit](visual-audits/item-armor-detail-preview.md) and [weapon detail and magazine review](visual-audits/weapon-detail-and-magazine-switch-review.md). |
-| `FIELD-02` | The runner gets stuck in terrain and cannot enter buildings. | Scene-2 Stoker, Ares, and scene-20 maglock entry now have physical normal-input routes with typed event publication, Debug/Release full-screen QA, and clean returns. General terrain recovery, maglock result branches, Security Terminal trigger, building item use, and other building records remain open; continue tracing collision margins and adjacent walkable cells. See [scene-20 maglock audit](visual-audits/scene20-maglock-physical-entry.md). |
+| `FIELD-02` | The runner gets stuck in terrain and cannot enter buildings. | Scene-2 Stoker, Ares, and scene-20 maglock entry have physical normal-input routes; the maglock no-grenade branch also returns cleanly. General terrain recovery, passkey/Electronics and grenade-consumption results, Security Terminal trigger, building item use, and other building records remain open; continue tracing collision margins and adjacent walkable cells. See [scene-20 maglock audit](visual-audits/scene20-maglock-physical-entry.md). |
 | `STOKER-01` | The physical Stoker collision/property that should open his generic dialogue is still unidentified. | Resolved in the normal New Game route: scene-2 record 91 at `0x173138` (`0xC2`) is reached with Up, publishes raw collision `0xFFC2` and event 2, then mode 2/event 2 selects the generic Stoker arrival panel. Debug/Release CTest, full-screen route dumps, eight-question review, and independent section 03 frames support the result. The clip confirms the door/fade/panel sequence but does not record input or event bytes. See [`visual-audits/motel-doorway-scene-entry.md`](visual-audits/motel-doorway-scene-entry.md). |
-| `PLAY-01` | Shops, building item use, and maglock passkeys cannot be tested from normal Qt gameplay. | **Partial.** The Ares Weapon Emporium is reachable from New Game by ordinary Right/Up input through scene-2 record 92/CB/event 11; A enters the shop and Start returns cleanly. Ordinary controls also enter scene 20 through the paired scene-2 C0 doorway, contact maglock record 117, open its generic dialog, advance with A, and return with C/Walk Away. Passkey/Electronics/grenade outcomes, Security Terminal physical entry, building item use, and other shop/building routes still need normal-control result/return QA. See the [Ares audit](visual-audits/ares-physical-entry.md) and [scene-20 maglock audit](visual-audits/scene20-maglock-physical-entry.md). |
+| `PLAY-01` | Shops, building item use, and maglock passkeys cannot be tested from normal Qt gameplay. | **Partial.** The Ares Weapon Emporium is reachable from New Game by ordinary Right/Up input through scene-2 record 92/CB/event 11; A enters the shop and Start returns cleanly. Ordinary controls enter scene 20 through the paired scene-2 C0 doorway, contact maglock record 117, and open its generic dialog. After A opens choices, B reaches the no-grenade result with the New Game party and A returns cleanly; C/Walk Away also returns. Passkey/Electronics and grenade-consumption outcomes, Security Terminal physical entry, building item use, and other shop/building routes still need normal-control result/return QA. See the [Ares audit](visual-audits/ares-physical-entry.md) and [scene-20 maglock audit](visual-audits/scene20-maglock-physical-entry.md). |
 | `SOUND-03` | More generally, sound effects across the game are reported to play at the wrong points. | Inventory the reported and currently connected ROM sound requests, map each to a state transition, and check trigger, playback, duration, loop, and stop. Close individual sounds in their owning goals. |
 | `SEC-JOHNSONS` | The Notebook Mr. Johnsons row did not have a functional child page in the Qt conversion. | **Partial.** ROM `0xF416` now has typed FFFC27-filtered rows, source-imported names/details, A/B detail waits, C event `0x25`, cursor wrapping, and clean Start return. Debug/Release QA covers all five paths and every frame of a 30-VBlank hold. All-five coverage uses diagnostic FFFC27=`0x1F`; only bit 0 has a verified story writer, other story/save bits remain open, and no matching Genesis frame is available. See [the page audit](visual-audits/notebook-mr-johnsons-page.md). |
 | `MAGIC-SPLIT` | The Magic screen differs by user type. | **Partially verified.** ROM `0xFBA6` branches to the yellow spell page for class `<2` with `+0x7F != 0`; other records get the two-bar Magical Defense overlay. Debug/Release QA uses the actual Gator Shaman (class 1, `+0x7F=6`) and unmodified Samurai (class 2, `+0x7F=0`) startup records, and the test covers the zero-resource Shaman edge plus class 2/3 fallback. Independent section 06 supports the magic-user page and nested actions, but no non-magic Defense capture was found. See [the Magic split audit](visual-audits/magic-user-screen-split.md); keep open for independent non-magic visual evidence and spell target/effect handling. |
@@ -342,16 +342,20 @@ records 89/90 at `0x173124` (`0xC0`) publish event 0; event-table row 0 at
 `0x172CDC` enters scene `0x14`. In scene 20, record 117 at `0x1D9724`
 (`0x82`) is reached with Up, publishes projected `0xFF82`/event 2, and opens
 the generic maglock prompt. A reveals the three source-backed choices and C
-selects Walk Away. All three physical routes have Debug/Release CTest coverage
-and full-screen captures without injected collision/event tuples. The scene-20
+selects Walk Away. The no-grenade choice route waits the source ten frames,
+checks that the active New Game party lacks item `0x0D`, uses ordinary B to
+show the generic unavailable-item message, waits 30 frames, and dismisses with
+A to a pixel-clean field image. All physical routes have Debug/Release CTest
+coverage and full-screen captures without injected collision/event tuples. The scene-20
 route also fixed the stale B7B8 retry bit, unconnected world-activity timeout,
 and display gate left across scene re-entry. A fade handoff clears the old
 overlay before a replacement modal owns the screen. The distinct scene-2
 record-2 candidate at `0x172DBE` remains unrelated and still produces event 0;
 see the [candidate audit](visual-audits/stoker-collision-candidate.md),
 [Ares audit](visual-audits/ares-physical-entry.md), and [scene-20 maglock audit](visual-audits/scene20-maglock-physical-entry.md). General terrain
-recovery, maglock action results, Security Terminal physical entry, building
-item use, and other building routes remain open.
+recovery, passkey/Electronics and grenade-consumption results, Security
+Terminal physical entry, building item use, and other building routes remain
+open.
 
 **Solve:** continue tracing movement probes, collision margins, terrain gates,
 and remaining property/event routes against ROM callbacks at `0xB7B8` and
@@ -369,9 +373,9 @@ an injected event tuple.
 
 **Status:** partial. `STOKER-01` is resolved for the physical motel doorway;
 scene-2 Ares entry and the scene-20 maglock introduction/Walk Away route are
-verified in Qt. General terrain recovery, maglock result branches, Security
-Terminal physical entry, building item use, and other building/property
-routes remain open.
+verified in Qt. General terrain recovery, passkey/Electronics and grenade-
+consumption results, Security Terminal physical entry, building item use, and
+other building/property routes remain open.
 
 ### STOKER-01 — Physical Stoker property and collision-to-dialogue route
 
@@ -812,10 +816,13 @@ covers the full route.
 enters the shop with A, and returns cleanly with Start. A separate ordinary
 New Game route reaches paired scene-2 C0 records 89/90, enters scene 20,
 contacts maglock record 117, opens its generic choices, and returns with
-C/Walk Away. Debug/Release route QA captures the field approach, fade, prompt,
-choices, and return. Physical passkey/Electronics/grenade result branches,
-Security Terminal entry, building item use, restored-save wallet binding, and
-other shop/building routes remain open; see the [Ares audit](visual-audits/ares-physical-entry.md)
+C/Walk Away. A separate ordinary B route selects Frag Grenade with no active
+party item `0x0D`, shows the generic unavailable-item result through its
+30-frame wait, and returns with A. Debug/Release route QA captures the field
+approach, fade, prompt, choices, result, wait, and return. Physical
+passkey/Electronics and grenade-consumption result branches, Security Terminal
+entry, building item use, restored-save wallet binding, and other
+shop/building routes remain open; see the [Ares audit](visual-audits/ares-physical-entry.md)
 and [scene-20 maglock audit](visual-audits/scene20-maglock-physical-entry.md).
 
 ### AUDIO-01 — Source event placement and duration across the game

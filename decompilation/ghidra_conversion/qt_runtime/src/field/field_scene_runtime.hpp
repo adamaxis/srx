@@ -587,6 +587,9 @@ public:
     std::uint8_t field_controller_nibble_for_dump() const noexcept {
         return field_controller_nibble_;
     }
+    std::uint16_t controller_event_word_for_dump() const noexcept {
+        return field_controller_sample_state_.events;
+    }
     const std::string& failure() const noexcept { return failure_; }
     const integration::FieldSessionBootstrapState& state() const noexcept {
         return state_;
