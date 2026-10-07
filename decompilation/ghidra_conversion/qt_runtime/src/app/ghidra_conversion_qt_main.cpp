@@ -8395,13 +8395,15 @@ int run_field_elevator_nonmember_entry_qa(
         std::array<std::uint16_t, kFieldElevatorSceneGroupMemberCount>
             group_scene_ids;
     };
-    const std::array<RouteSourceExpectation, 3U> route_expectations{{
+    const std::array<RouteSourceExpectation, 4U> route_expectations{{
         {25U, {0x3000U, 0x0600U}, 102U, 0x02E0U, 0x0300U, 4U,
          {21U, 22U, 23U, 24U, 0U}},
         {29U, {0x0A00U, 0x0500U}, 112U, 0x0080U, 0x00A0U, 3U,
          {26U, 27U, 28U, 0U, 0U}},
         {34U, {0x3800U, 0x0600U}, 85U, 0x0380U, 0x03A0U, 4U,
          {30U, 31U, 32U, 33U, 0U}},
+        {40U, {0x1600U, 0x0500U}, 70U, 0x0140U, 0x0160U, 5U,
+         {35U, 36U, 37U, 38U, 39U}},
     }};
     const auto route_expectation = std::find_if(
         route_expectations.begin(), route_expectations.end(),
@@ -10342,6 +10344,7 @@ int main(int argc, char** argv) {
                        " [--field-elevator-scene25-entry-qa <output-dir>]"
                        " [--field-elevator-scene29-entry-qa <output-dir>]"
                        " [--field-elevator-scene34-entry-qa <output-dir>]"
+                       " [--field-elevator-scene40-entry-qa <output-dir>]"
                        " [--field-security-terminal-physical-entry-qa <output-dir>]"
                        " [--field-stoker-collision-qa <output-dir>]"
                        " [--field-command-dump <file>]"
@@ -10460,6 +10463,14 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_elevator_nonmember_entry_scene = 34U;
+                field_elevator_nonmember_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-elevator-scene40-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_elevator_nonmember_entry_scene = 40U;
                 field_elevator_nonmember_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }
