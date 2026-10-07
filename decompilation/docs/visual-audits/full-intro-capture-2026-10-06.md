@@ -1,4 +1,8 @@
-# Full intro capture review
+# Full intro capture review (pre-pan-fix baseline)
+
+This is the historical baseline that reproduced OPEN-02. The corrected
+whole-run recapture is documented in
+[the post-fix intro review](full-intro-capture-2026-10-06-pan-fix.md).
 
 Date: 2026-10-06  
 Build: Release Qt executable at `build/conversion/qt/release/`  

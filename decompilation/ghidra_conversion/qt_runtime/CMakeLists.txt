@@ -88,6 +88,19 @@ add_test(NAME shadowrun_ghidra_conversion_qt_opening_landing_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_opening_landing_qa PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# During 0x59D7C the wilderness body layers pan with FFDD08/FFDD0A while the
+# Indian's head SAT advances with DD46/DD48. Verify their relative placement
+# and capture complete start/midpoint/settled screens from the Gator Shaman
+# route.
+add_test(NAME shadowrun_ghidra_conversion_qt_opening_wilderness_pan_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --opening-wilderness-pan-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/opening-wilderness-pan-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_opening_wilderness_pan_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # The Qt preset excludes the broader conversion-test glob, so retain this
 # source-contract test here alongside the end-to-end image/cadence QA.
 add_executable(shadowrun_ghidra_conversion_qt_title_intro_late_test

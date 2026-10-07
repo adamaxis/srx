@@ -192,6 +192,7 @@ std::filesystem::path find_asset_root(
                    "<title-idle-frames> <output-dir>]"
                    " [--opening-rotor-qa <output-dir>]"
                    " [--opening-landing-qa <output-dir>]"
+                   " [--opening-wilderness-pan-qa <output-dir>]"
                    " [--intro-to-field-smoke]\n";
             return {};
         }
@@ -320,6 +321,10 @@ std::filesystem::path find_asset_root(
             continue;
         }
         if (argument == "--opening-landing-qa" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--opening-wilderness-pan-qa" && index + 1 < argc) {
             ++index;
             continue;
         }
@@ -1701,6 +1706,172 @@ public:
                  "lead-in clear\tactual.bmp readback\n";
         std::cout << "opening_landing_qa=passed checkpoints="
                   << kElapsedCheckpoints.size() << " actual="
+                  << (output_directory / "actual.bmp").string() << '\n';
+        return 0;
+    }
+
+    int run_opening_wilderness_pan_qa(
+        const std::filesystem::path& output_directory) {
+        constexpr std::uint32_t kSelection = 2U;
+        constexpr std::uint16_t kPanFrames = 0x0040U;
+        constexpr std::size_t kMinimumBodyPixelMatches = 1400U;
+        constexpr std::string_view kMapRightAlias =
+            "intro.sprites.ambush.map.right.2.0";
+
+        if (prepare_opening_dump(kSelection) != 0) {
+            return 3;
+        }
+        std::filesystem::create_directories(output_directory);
+        std::ofstream trace(output_directory / "opening-wilderness-pan-qa.tsv");
+        if (!trace) {
+            std::cerr << "opening wilderness pan QA: could not write trace in "
+                      << output_directory.string() << '\n';
+            return 3;
+        }
+        trace << "sample\tpan_frame\topening_frame\tx_scroll\ty_scroll\t"
+                 "head_x\thead_y\tx_relative\ty_relative\t"
+                 "body_pixel_matches\timage\n";
+
+        const auto fail = [](const std::string_view reason) {
+            std::cerr << "opening wilderness pan QA: " << reason << '\n';
+            return 3;
+        };
+        constexpr std::uint32_t kMaxFramesToPan = 4000U;
+        std::uint32_t frames_to_pan = 0U;
+        while (state_.phase == StartupIntegrationPhase::opening_intro &&
+               (state_.opening_intro.scene != OpeningIntroScene::wilderness ||
+                state_.opening_intro.stage !=
+                    OpeningIntroStage::stage2_first_loop)) {
+            if (frames_to_pan++ >= kMaxFramesToPan) {
+                return fail("did not reach the source wilderness pan loop");
+            }
+            advance_one_source_frame();
+        }
+        if (state_.phase != StartupIntegrationPhase::opening_intro ||
+            state_.opening_intro.scene != OpeningIntroScene::wilderness ||
+            state_.opening_intro.stage !=
+                OpeningIntroStage::stage2_first_loop) {
+            return fail("opening ended before the wilderness pan loop");
+        }
+
+        const auto* map_record =
+            state_.asset_catalog.catalog.find(std::string(kMapRightAlias));
+        const auto map_image = draw_asset_cache_.find(std::string(kMapRightAlias));
+        if (map_record == nullptr || map_image == draw_asset_cache_.end() ||
+            map_image->second.isNull()) {
+            return fail("the named wilderness body asset is missing");
+        }
+        std::size_t colored_body_pixels = 0U;
+        for (int y = 0; y < map_image->second.height(); ++y) {
+            for (int x = 0; x < map_image->second.width(); ++x) {
+                const auto color = map_image->second.pixelColor(x, y);
+                if (color.alpha() != 0 &&
+                    (color.red() != 0 || color.green() != 0 ||
+                     color.blue() != 0)) {
+                    ++colored_body_pixels;
+                }
+            }
+        }
+        if (colored_body_pixels < kMinimumBodyPixelMatches ||
+            opening_entity_palette_fade_weight(1U) != 255U) {
+            return fail("the source body art is not fully visible for pixel checks");
+        }
+
+        constexpr std::array<std::uint16_t, 3> kSamples{{0U, 32U, 64U}};
+        constexpr std::array<std::string_view, 3> kNames{{
+            "pan-start", "pan-midpoint", "pan-settled"}};
+        for (std::size_t sample = 0U; sample < kSamples.size(); ++sample) {
+            const auto pan_frame = kSamples[sample];
+            if (sample != 0U) {
+                const auto previous_frame = kSamples[sample - 1U];
+                for (auto frame = previous_frame; frame < pan_frame; ++frame) {
+                    advance_one_source_frame();
+                    if (state_.phase !=
+                            StartupIntegrationPhase::opening_intro ||
+                        state_.opening_intro.scene !=
+                            OpeningIntroScene::wilderness ||
+                        state_.opening_intro.stage !=
+                            OpeningIntroStage::stage2_first_loop) {
+                        return fail("wilderness pan left its source loop early");
+                    }
+                }
+            }
+
+            const auto& opening = state_.opening_intro;
+            const auto x_relative =
+                static_cast<std::int32_t>(opening.stage2.x_phase) -
+                static_cast<std::int32_t>(opening.stage2.x_offset);
+            const auto y_relative =
+                static_cast<std::int32_t>(opening.stage2.y_phase) +
+                static_cast<std::int32_t>(opening.stage2.y_offset);
+            if (x_relative != 0x0178 || y_relative != 0x00D1 ||
+                opening.stage2.x_offset !=
+                    static_cast<std::int16_t>(-0x0040 + pan_frame) ||
+                opening.stage2.x_phase !=
+                    static_cast<std::uint16_t>(0x0138U + pan_frame)) {
+                return fail("plane scroll and head SAT coordinates diverged from the ROM pan");
+            }
+
+            const auto scene = render_scene();
+            if (scene.size() != QSize(kSceneWidth, kSceneHeight)) {
+                return fail("renderer did not produce a full 320x224 frame");
+            }
+            std::size_t body_matches = 0U;
+            const auto body_x = map_record->origin_x +
+                                opening.stage2.x_offset;
+            const auto body_y = map_record->origin_y -
+                                opening.stage2.y_offset;
+            for (int y = 0; y < map_image->second.height(); ++y) {
+                for (int x = 0; x < map_image->second.width(); ++x) {
+                    const auto expected = map_image->second.pixelColor(x, y);
+                    if (expected.alpha() == 0 ||
+                        (expected.red() == 0 && expected.green() == 0 &&
+                         expected.blue() == 0)) {
+                        continue;
+                    }
+                    const auto screen_x = body_x + x;
+                    const auto screen_y = body_y + y;
+                    if (screen_x >= 0 && screen_x < scene.width() &&
+                        screen_y >= 0 && screen_y < scene.height() &&
+                        scene.pixelColor(screen_x, screen_y) == expected) {
+                        ++body_matches;
+                    }
+                }
+            }
+            if (body_matches < kMinimumBodyPixelMatches) {
+                std::cerr << "opening wilderness pan QA: sample="
+                          << kNames[sample] << " scroll="
+                          << opening.stage2.x_offset << ','
+                          << opening.stage2.y_offset << " body matches="
+                          << body_matches << '/' << colored_body_pixels << '\n';
+                return fail("name-table body pixels did not follow the source scroll");
+            }
+
+            const auto filename = std::string(kNames[sample]) + ".bmp";
+            if (!scene.save(QString::fromStdWString(
+                    (output_directory / filename).wstring()))) {
+                return fail("could not save a full-screen pan checkpoint");
+            }
+            trace << kNames[sample] << '\t' << pan_frame << '\t'
+                  << opening.source_frame << '\t'
+                  << opening.stage2.x_offset << '\t'
+                  << opening.stage2.y_offset << '\t'
+                  << opening.stage2.x_phase << '\t'
+                  << opening.stage2.y_phase << '\t' << x_relative << '\t'
+                  << y_relative << '\t' << body_matches << '\t'
+                  << filename << '\n';
+            if (sample + 1U == kSamples.size() &&
+                (!scene.save(QString::fromStdWString(
+                     (output_directory / "actual.bmp").wstring())) ||
+                 QImage(QString::fromStdWString(
+                     (output_directory / "actual.bmp").wstring())) != scene)) {
+                return fail("settled whole-screen actual.bmp readback failed");
+            }
+        }
+
+        std::cout << "opening_wilderness_pan_qa=passed checkpoints="
+                  << kSamples.size() << " body_pixels=" << colored_body_pixels
+                  << " actual="
                   << (output_directory / "actual.bmp").string() << '\n';
         return 0;
     }
@@ -4086,6 +4257,13 @@ private:
         // from the base plate at the same points where the Genesis map write
         // replaced them, without introducing a runtime frame flipbook.
         if (opening_scene_ == OpeningIntroScene::wilderness) {
+            // 0x59D7C pans the wilderness planes with FFDD08/FFDD0A while
+            // DD46/DD48 moves the Indian's head SAT list. These extracted
+            // name-table regions retain source-plane origins, so the same
+            // scroll must move the body art or the head visibly separates.
+            painter.save();
+            painter.translate(opening.stage2.x_offset,
+                              -opening.stage2.y_offset);
             if (opening_wilderness_map_left_) {
                 draw_opening_sprite(painter, *opening_wilderness_map_left_);
             }
@@ -4106,6 +4284,7 @@ private:
                 draw_opening_sprite(
                     painter, *opening_wilderness_final_overlay_);
             }
+            painter.restore();
         }
 
         for (const auto& request : opening_sprites_) {
@@ -5716,6 +5895,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> full_intro_capture_path;
         std::optional<std::filesystem::path> opening_rotor_qa_path;
         std::optional<std::filesystem::path> opening_landing_qa_path;
+        std::optional<std::filesystem::path> opening_wilderness_pan_qa_path;
         std::optional<std::uint32_t> opening_dump_selection;
         std::optional<std::uint32_t> opening_dump_start;
         std::optional<std::uint32_t> opening_dump_end;
@@ -5760,6 +5940,7 @@ int main(int argc, char** argv) {
                        "<title-idle-frames> <output-dir>]"
                        " [--opening-rotor-qa <output-dir>]"
                        " [--opening-landing-qa <output-dir>]"
+                       " [--opening-wilderness-pan-qa <output-dir>]"
                        " [--intro-to-field-smoke]\n";
                 return 0;
             }
@@ -5984,6 +6165,11 @@ int main(int argc, char** argv) {
             if (std::string(argv[index]) == "--opening-landing-qa" &&
                 index + 1 < argc) {
                 opening_landing_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--opening-wilderness-pan-qa" &&
+                index + 1 < argc) {
+                opening_wilderness_pan_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--opening-dump-range" &&
@@ -13583,6 +13769,10 @@ int main(int argc, char** argv) {
         }
         if (opening_landing_qa_path.has_value()) {
             return window.run_opening_landing_qa(*opening_landing_qa_path);
+        }
+        if (opening_wilderness_pan_qa_path.has_value()) {
+            return window.run_opening_wilderness_pan_qa(
+                *opening_wilderness_pan_qa_path);
         }
         if (boot_fasa_qa_path.has_value()) {
             return window.run_boot_fasa_qa(*boot_fasa_qa_path);
