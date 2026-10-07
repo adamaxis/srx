@@ -73,6 +73,7 @@ enum class PocketSecretaryMenuEvent {
     mode_action,
     subview_dismissed,
     notebook_selection_moved,
+    notebook_mode_action,
     notebook_current_run_no_run,
     notebook_response_dismissed,
     notebook_returned,

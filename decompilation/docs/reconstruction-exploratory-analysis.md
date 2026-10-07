@@ -836,6 +836,18 @@ are still absent from the supplied longplay. Qt renders the shared `0xE660`
 wait animation inside the twelve source-derived lower-bezel destinations;
 independent Genesis frames are needed to verify its appearance and cadence.
 
+The Notebook loop at `0xF236` treats C separately from its row handler table:
+it calls the shared `0x391A` mode-action routine and branches back to the same
+Notebook loop. That routine requests audio event `0x25`. The Qt Notebook C
+route now issues that event while retaining its open state and selected row;
+its route QA checks the event and same-page return. The Notebook A dispatch,
+Up/Down selection, and B/Start return paths do not request audio. The Tips
+page has the same source C-to-`0x391A` event, while its page movement and
+A/B/Start return are silent. Event `0x25` resolves to the extracted
+`audio.effects.resource.037` clip (2.134 seconds including its release tail);
+default-output playback state and measured duration are covered by the shared
+audio playback QA. Route-specific Windows loopback remains unrecorded.
+
 The Tips & Clues handler at `0xF9A4` is backed by three 32-entry pointer
 tables: `0xC2716` selected by `FFFC30`, `0xC2796` by `FFFC34`, and `0xC2816`
 by `FFFC38`. It starts `FFF0B9` at `0xFF`, clears D1, then uses `BTST.L D1,D0`

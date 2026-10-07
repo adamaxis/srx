@@ -255,6 +255,11 @@ PocketSecretaryMenuEvent apply_pocket_secretary_input(
                 return PocketSecretaryMenuEvent::notebook_action_boundary;
             }
         }
+        if ((input & 0x2000U) != 0U) {
+            // ROM F236 routes C through 0x391A and resumes this same menu.
+            call_once(callbacks.handle_mode_action_event);
+            return PocketSecretaryMenuEvent::notebook_mode_action;
+        }
         return PocketSecretaryMenuEvent::waiting;
     }
 

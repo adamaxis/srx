@@ -4775,6 +4775,10 @@ void FieldSceneRuntime::advance_frame() {
                 source_boundary(
                     "field.pocket_secretary.notebook.selection_moved");
                 break;
+            case PocketSecretaryMenuEvent::notebook_mode_action:
+                source_boundary(
+                    "field.pocket_secretary.notebook.mode_action");
+                break;
             case PocketSecretaryMenuEvent::notebook_current_run_no_run:
                 source_boundary(
                     "field.pocket_secretary.notebook.current_run.unavailable");

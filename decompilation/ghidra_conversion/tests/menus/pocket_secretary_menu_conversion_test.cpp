@@ -122,12 +122,23 @@ int main() {
                 state.notebook.selection == 3U &&
                 apply_pocket_secretary_input(state, 0x0200U, {}) ==
                     PocketSecretaryMenuEvent::notebook_selection_moved &&
+                state.notebook.selection == 0U)) {
+        return 11;
+    }
+    bool notebook_mode_action_called = false;
+    if (!expect(apply_pocket_secretary_input(
+                    state, 0x2000U,
+                    {{}, {}, {}, {}, {}, [&] {
+                         notebook_mode_action_called = true;
+                     }}) ==
+                    PocketSecretaryMenuEvent::notebook_mode_action &&
+                notebook_mode_action_called && state.notebook.open &&
                 state.notebook.selection == 0U &&
                 apply_pocket_secretary_input(state, 0x8000U, {}) ==
                     PocketSecretaryMenuEvent::notebook_returned &&
                 !state.notebook.open && state.open &&
                 state.selection == 0U)) {
-        return 11;
+        return 21;
     }
 
     PocketSecretaryMenuState tips_state{};

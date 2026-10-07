@@ -442,6 +442,13 @@ the next Tips & Clues record; command `0x31` sets `FFFC27` bit 0, exposing
 Mr. Johnsons. `FFFC2A` remains clear until a runner-information event writes
 it. A restored save that omits these flags stops at an explicit boundary. The
 native screen displays the exact `0xF2E2` no-current-run response.
+The `0xF236` Notebook loop sends C through `0x391A`, which requests event
+`0x25` and returns to the same selected Notebook row. Qt now preserves that
+page/selection and emits the event; QA checks both the callback and the full
+320x224 frame. Notebook A dispatch, Up/Down, and B/Start return are silent.
+Event `0x25` maps to `audio.effects.resource.037` (2.134 seconds including
+release tail); shared audio QA verifies decoded playback, default-output state,
+and duration, but route-specific loopback remains unrecorded.
 The 96 Tips & Clues source entries are also extracted from the three
 `0xC2716`/`0xC2796`/`0xC2816` pointer tables into a named direct text asset.
 Startup `0x084E` sets `FFFC30` bit 0, and `0xF9A4` scans each group LSB-first.

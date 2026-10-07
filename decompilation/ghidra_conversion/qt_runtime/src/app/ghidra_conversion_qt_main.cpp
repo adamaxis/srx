@@ -12244,13 +12244,14 @@ int main(int argc, char** argv) {
                                  "the Notebook row\n";
                     return 3;
                 }
+                field_audio_events.clear();
                 press_secretary_button(0x40U);
                 if (!field_scene.pocket_secretary_notebook_open() ||
                     field_scene.pocket_secretary_notebook_option_count() !=
-                        3U) {
+                        3U ||
+                    !field_audio_events.empty()) {
                     std::cerr << "field secretary dump: Notebook did not "
-                                 "build the two base rows and New Game Contacts "
-                                 "row\n";
+                                 "build its rows silently on A dispatch\n";
                     return 3;
                 }
                 auto notebook_scene = render_secretary_scene();
@@ -12265,13 +12266,32 @@ int main(int argc, char** argv) {
                                  "coordinates or selected state are not visible\n";
                     return 3;
                 }
+                field_audio_events.clear();
+                press_secretary_button(0x20U); // C invokes 0x391A.
+                const auto notebook_after_mode_action =
+                    render_secretary_scene();
+                if (!field_scene.pocket_secretary_notebook_open() ||
+                    field_scene.pocket_secretary_notebook_selection() != 0U ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x25U} ||
+                    image_region_differs(notebook_scene,
+                                         notebook_after_mode_action,
+                                         32, 32, 256, 160) ||
+                    !save_secretary_scene("notebook-mode-action",
+                                          notebook_after_mode_action)) {
+                    std::cerr << "field secretary dump: Notebook C did not "
+                                 "request event 0x25 and resume the same page\n";
+                    return 3;
+                }
+                field_audio_events.clear();
                 field_scene.set_controller_port_byte(0x02U); // Down.
                 field_scene.advance_frame();
                 field_scene.set_controller_port_byte(0U);
                 field_scene.advance_frame();
-                if (field_scene.pocket_secretary_notebook_selection() != 1U) {
+                if (field_scene.pocket_secretary_notebook_selection() != 1U ||
+                    !field_audio_events.empty()) {
                     std::cerr << "field secretary dump: Notebook Down did "
-                                 "not select Tips & Clues\n";
+                                 "not silently select Tips & Clues\n";
                     return 3;
                 }
                 const auto notebook_tips_selected = render_secretary_scene();
@@ -12369,6 +12389,7 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 const auto first_tip_page = render_secretary_scene();
+                field_audio_events.clear();
                 field_scene.set_controller_port_byte(0x08U); // Right.
                 field_scene.advance_frame();
                 field_scene.set_controller_port_byte(0U);
@@ -12377,9 +12398,10 @@ int main(int argc, char** argv) {
                         1U ||
                     field_scene
                             .pocket_secretary_notebook_visible_tip_source_index(
-                                1U) != 2U) {
+                                1U) != 2U ||
+                    !field_audio_events.empty()) {
                     std::cerr << "field secretary dump: Right did not "
-                                 "select the next unlocked page\n";
+                                 "silently select the next unlocked page\n";
                     return 3;
                 }
                 auto second_tip_page = render_secretary_scene();
@@ -12401,16 +12423,18 @@ int main(int argc, char** argv) {
                         3U ||
                     field_scene
                             .pocket_secretary_notebook_visible_tip_source_index(
-                                3U) != 95U) {
+                                3U) != 95U ||
+                    !field_audio_events.empty()) {
                     std::cerr << "field secretary dump: Right did not clamp "
-                                 "at the final unlocked page\n";
+                                 "silently at the final unlocked page\n";
                     return 3;
                 }
                 press_secretary_button(0x08U);
                 if (field_scene.pocket_secretary_notebook_tips_selection() !=
-                    3U) {
+                        3U ||
+                    !field_audio_events.empty()) {
                     std::cerr << "field secretary dump: final-page clamp "
-                                 "was lost on continued Right input\n";
+                                 "was lost or sounded on continued Right input\n";
                     return 3;
                 }
                 field_audio_events.clear();
