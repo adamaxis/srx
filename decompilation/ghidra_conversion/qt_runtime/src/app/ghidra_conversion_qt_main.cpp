@@ -8385,39 +8385,58 @@ int run_field_elevator_nonmember_entry_qa(
     const auto& metadata =
         field_scene.state().field_scene_buffers.source_metadata;
     const auto& rectangles = metadata.terrain_collision_rectangles;
-    const std::array<std::uint16_t, kFieldElevatorSceneGroupMemberCount>
-        expected_scene25_group{21U, 22U, 23U, 24U, 0U};
-    const std::array<std::uint16_t, kFieldElevatorSceneGroupMemberCount>
-        expected_scene29_group{26U, 27U, 28U, 0U, 0U};
-    const auto& expected_group = scene_id == 25U
-                                     ? expected_scene25_group
-                                     : expected_scene29_group;
-    const auto expected_group_count = scene_id == 25U ? 4U : 3U;
-    const auto first_trigger_record = scene_id == 25U ? 102U : 112U;
-    const auto expected_spawn = scene_id == 25U
-                                    ? RestoredRunnerPosition{0x3000U, 0x0600U}
-                                    : RestoredRunnerPosition{0x0A00U, 0x0500U};
-    const auto trigger_x_start = scene_id == 25U ? 0x02E0U : 0x0080U;
-    const auto trigger_x_mid = scene_id == 25U ? 0x0300U : 0x00A0U;
-    if ((scene_id != 25U && scene_id != 29U) ||
-        field_scene.field_scene_reference_for_dump() != scene_id ||
-        metadata.initial_field_records[0U].x != expected_spawn.x ||
-        metadata.initial_field_records[0U].y != expected_spawn.y ||
-        source_group.count != expected_group_count ||
-        !std::equal(expected_group.begin(),
-                    expected_group.begin() + expected_group_count,
+    struct RouteSourceExpectation {
+        std::uint16_t scene_id;
+        RestoredRunnerPosition spawn;
+        std::size_t first_trigger_record;
+        std::uint16_t first_trigger_x;
+        std::uint16_t second_trigger_x;
+        std::uint8_t group_count;
+        std::array<std::uint16_t, kFieldElevatorSceneGroupMemberCount>
+            group_scene_ids;
+    };
+    const std::array<RouteSourceExpectation, 3U> route_expectations{{
+        {25U, {0x3000U, 0x0600U}, 102U, 0x02E0U, 0x0300U, 4U,
+         {21U, 22U, 23U, 24U, 0U}},
+        {29U, {0x0A00U, 0x0500U}, 112U, 0x0080U, 0x00A0U, 3U,
+         {26U, 27U, 28U, 0U, 0U}},
+        {34U, {0x3800U, 0x0600U}, 85U, 0x0380U, 0x03A0U, 4U,
+         {30U, 31U, 32U, 33U, 0U}},
+    }};
+    const auto route_expectation = std::find_if(
+        route_expectations.begin(), route_expectations.end(),
+        [scene_id](const RouteSourceExpectation& expectation) {
+            return expectation.scene_id == scene_id;
+        });
+    if (route_expectation == route_expectations.end()) {
+        std::cerr << "Non-member elevator QA: no source route expectation for "
+                     "scene "
+                  << scene_id << '\n';
+        return 3;
+    }
+    const auto& expected = *route_expectation;
+    if (field_scene.field_scene_reference_for_dump() != scene_id ||
+        metadata.initial_field_records[0U].x != expected.spawn.x ||
+        metadata.initial_field_records[0U].y != expected.spawn.y ||
+        source_group.count != expected.group_count ||
+        !std::equal(expected.group_scene_ids.begin(),
+                    expected.group_scene_ids.begin() + expected.group_count,
                     source_group.scene_ids.begin()) ||
-        rectangles.size() <= first_trigger_record + 1U ||
-        rectangles[first_trigger_record].left != trigger_x_start ||
-        rectangles[first_trigger_record].right != trigger_x_start + 0x001FU ||
-        rectangles[first_trigger_record].top != 0x0020U ||
-        rectangles[first_trigger_record].bottom != 0x003FU ||
-        rectangles[first_trigger_record].value != 0x00DDU ||
-        rectangles[first_trigger_record + 1U].left != trigger_x_mid ||
-        rectangles[first_trigger_record + 1U].right != trigger_x_mid + 0x001FU ||
-        rectangles[first_trigger_record + 1U].top != 0x0020U ||
-        rectangles[first_trigger_record + 1U].bottom != 0x003FU ||
-        rectangles[first_trigger_record + 1U].value != 0x00DDU) {
+        rectangles.size() <= expected.first_trigger_record + 1U ||
+        rectangles[expected.first_trigger_record].left !=
+            expected.first_trigger_x ||
+        rectangles[expected.first_trigger_record].right !=
+            expected.first_trigger_x + 0x001FU ||
+        rectangles[expected.first_trigger_record].top != 0x0020U ||
+        rectangles[expected.first_trigger_record].bottom != 0x003FU ||
+        rectangles[expected.first_trigger_record].value != 0x00DDU ||
+        rectangles[expected.first_trigger_record + 1U].left !=
+            expected.second_trigger_x ||
+        rectangles[expected.first_trigger_record + 1U].right !=
+            expected.second_trigger_x + 0x001FU ||
+        rectangles[expected.first_trigger_record + 1U].top != 0x0020U ||
+        rectangles[expected.first_trigger_record + 1U].bottom != 0x003FU ||
+        rectangles[expected.first_trigger_record + 1U].value != 0x00DDU) {
         std::cerr << "Non-member elevator QA: scene " << scene_id
                   << " descriptor spawn, group, or paired event-29 collision "
                      "records do not match the extracted source data\n";
@@ -8444,7 +8463,8 @@ int run_field_elevator_nonmember_entry_qa(
         std::cerr << "Non-member elevator QA: could not write timeline.tsv\n";
         return 3;
     }
-    timeline << "frame\tscene\tx\ty\tcamera_x\tcamera_y\tmode\tevent"
+    timeline << "frame\tscene\tx\ty\tcamera_x\tcamera_y\tmode"
+                "\tterrain_code\tprobe_0\tprobe_1\tprobe_2\tprobe_3\tevent"
                 "\tselector_open"
                 "\tcurrent_floor\tselected_floor\tdestination\tfeedback"
                 "\tanimation\ttransition_phase\tpalette_step\talpha"
@@ -8463,12 +8483,19 @@ int run_field_elevator_nonmember_entry_qa(
             return false;
         }
         const auto position = field_scene.field_entity_world_position();
+        const auto& probe_samples =
+            field_scene.field_terrain_sample_bytes_for_dump();
         timeline << frame << '\t'
                  << field_scene.field_scene_reference_for_dump() << '\t'
                  << position.x << '\t' << position.y << '\t'
                  << field_scene.state().field_scene_buffers.camera_x << '\t'
                  << field_scene.state().field_scene_buffers.camera_y << '\t'
                  << field_scene.field_interaction_mode_for_dump() << '\t'
+                 << field_scene.field_terrain_collision_code_for_dump() << '\t'
+                 << static_cast<unsigned>(probe_samples[0U]) << '\t'
+                 << static_cast<unsigned>(probe_samples[1U]) << '\t'
+                 << static_cast<unsigned>(probe_samples[2U]) << '\t'
+                 << static_cast<unsigned>(probe_samples[3U]) << '\t'
                  << static_cast<unsigned>(
                         field_scene.field_mode_event_code_for_dump())
                  << '\t' << field_scene.elevator_selector_open_for_dump()
@@ -8519,8 +8546,8 @@ int run_field_elevator_nonmember_entry_qa(
     };
 
     const auto initial_position = field_scene.field_entity_world_position();
-    if (initial_position.x != expected_spawn.x ||
-        initial_position.y != expected_spawn.y ||
+    if (initial_position.x != expected.spawn.x ||
+        initial_position.y != expected.spawn.y ||
         field_scene.field_interaction_mode_for_dump() != 2U ||
         field_scene.field_transition_pending_for_dump() ||
         !no_modal_screen() || !field_hud_chrome_survives(render(), asset_root) ||
@@ -8535,8 +8562,11 @@ int run_field_elevator_nonmember_entry_qa(
     while (trigger_frames < 120U &&
            !field_scene.elevator_selector_open_for_dump() &&
            field_scene.field_scene_reference_for_dump() == scene_id) {
-        input_label = "dpad-up";
-        field_scene.set_controller_nibble(0x01U);
+        const bool align_with_scene34_trigger =
+            scene_id == 34U && trigger_frames < 6U;
+        input_label = align_with_scene34_trigger ? "dpad-right" : "dpad-up";
+        field_scene.set_controller_nibble(
+            align_with_scene34_trigger ? 0x08U : 0x01U);
         if (!advance()) {
             return 3;
         }
@@ -8571,9 +8601,8 @@ int run_field_elevator_nonmember_entry_qa(
         !no_modal_screen() || selector_open == field_only ||
         !field_hud_chrome_survives(selector_open, asset_root) ||
         !save("selector-from-scene" + scene_label)) {
-        std::cerr << "Non-member elevator QA: normal Up from scene "
-                  << scene_id << " descriptor "
-                     "spawn did not open the event-29 selector at group "
+        std::cerr << "Non-member elevator QA: physical input from scene "
+                  << scene_id << " descriptor spawn did not open the event-29 selector at group "
                      "entry floor 0 (frames=" << trigger_frames
                   << ", event=" << static_cast<unsigned>(movement.event_code)
                   << ", destination="
@@ -8858,7 +8887,8 @@ int run_field_elevator_nonmember_entry_qa(
     }
     std::cout << "field_elevator_nonmember_entry_qa=passed scene="
               << scene_id << " trigger=event29 records="
-              << first_trigger_record << ',' << first_trigger_record + 1U
+              << expected.first_trigger_record << ','
+              << expected.first_trigger_record + 1U
               << " current_floor=0 destination=" << destination_scene
               << " audio_event=0x25 frames="
               << timeline_frame_count << " artifacts=" << output.string()
@@ -10311,6 +10341,7 @@ int main(int argc, char** argv) {
                        " [--field-elevator-physical-entry-qa <output-dir>]"
                        " [--field-elevator-scene25-entry-qa <output-dir>]"
                        " [--field-elevator-scene29-entry-qa <output-dir>]"
+                       " [--field-elevator-scene34-entry-qa <output-dir>]"
                        " [--field-security-terminal-physical-entry-qa <output-dir>]"
                        " [--field-stoker-collision-qa <output-dir>]"
                        " [--field-command-dump <file>]"
@@ -10421,6 +10452,14 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_elevator_nonmember_entry_scene = 29U;
+                field_elevator_nonmember_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-elevator-scene34-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_elevator_nonmember_entry_scene = 34U;
                 field_elevator_nonmember_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }

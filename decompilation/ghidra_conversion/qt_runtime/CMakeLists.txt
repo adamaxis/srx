@@ -320,6 +320,18 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_elevator_scene29_entry_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Scene 34 is the non-member entry scene for the source child-scene group
+# 30/31/32/33. Walk from its descriptor spawn into event 29, visit all four
+# floor selections, then ride to scene 31 and inspect every captured frame.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_elevator_scene34_entry_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-elevator-scene34-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-elevator-scene34-entry-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_elevator_scene34_entry_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Follow the same ordinary-input route, select the visible Frag Grenade option
 # with B, and exercise the no-item result and its clean A dismissal. The New
 # Game party inventory is checked before the choice; this is not a synthetic
