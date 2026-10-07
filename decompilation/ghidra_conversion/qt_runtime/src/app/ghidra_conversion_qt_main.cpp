@@ -10672,26 +10672,30 @@ int main(int argc, char** argv) {
                                  "did not open\n";
                     return 3;
                 }
-                // These two named QA candidates correspond to the US ROM's
-                // recruited templates at 0x72C1A + 0x100*n. Ricky's +0x3E,
-                // +0x2C, +0x50 and +0x54 are 3, 0x2000, 467674 and 20;
-                // Winston Marrs' are 4, 0x4000, 467834 and 4. The test feeds
-                // the same typed live-record fields that recruitment must
-                // install; it does not link the NativePort asset decoder.
-                RunnerRecordFields ricky_record{};
-                ricky_record.record_type = 3U;
-                ricky_record.command_overview_panel_parameter = 0x2000U;
-                ricky_record.hud_portrait_table_pointer = 467674U;
-                ricky_record.hud_portrait_table_offset = 20U;
+                if (!smoke_state.startup_records.has_value()) {
+                    std::cerr << "field secretary dump: source save-roster "
+                                 "templates are unavailable\n";
+                    return 3;
+                }
+                const auto load_save_roster_template =
+                    [&smoke_state](const std::size_t index) {
+                        LiveRunnerRecord source_record{};
+                        source_record.bytes =
+                            smoke_state.startup_records
+                                ->save_roster_templates[index]
+                                .record;
+                        return read_runner_record_fields(source_record);
+                    };
+                // Use the source records rather than duplicated portrait
+                // constants so name, HUD table, offset, and palette stay
+                // together as one recruited-runner record.
+                const auto ricky_record = load_save_roster_template(1U);
                 field_scene.install_party_member_for_dump(
-                    1U, ricky_record, "Ricky");
-                RunnerRecordFields winston_record{};
-                winston_record.record_type = 4U;
-                winston_record.command_overview_panel_parameter = 0x4000U;
-                winston_record.hud_portrait_table_pointer = 467834U;
-                winston_record.hud_portrait_table_offset = 4U;
+                    1U, ricky_record, "Ricky", 3U);
+                const auto winston_record =
+                    load_save_roster_template(2U);
                 field_scene.install_party_member_for_dump(
-                    2U, winston_record, "Winston Marrs");
+                    2U, winston_record, "Winston Marrs", 4U);
                 std::filesystem::create_directories(
                     *field_secretary_dump_path);
                 const auto render_secretary_scene = [&field_scene] {
@@ -10705,13 +10709,23 @@ int main(int argc, char** argv) {
                 };
                 const auto preview_matches_asset =
                     [&smoke_state](const QImage& scene,
-                                   const std::uint32_t table_pointer,
-                                   const std::uint16_t table_offset,
-                                   const std::size_t palette_line) {
+                                   const RunnerRecordFields& record) {
+                        constexpr std::uint16_t kPaletteLineMask = 0x6000U;
+                        if (record.hud_portrait_table_pointer == 0U ||
+                            (record.command_overview_panel_parameter &
+                             static_cast<std::uint16_t>(
+                                 ~kPaletteLineMask)) != 0U) {
+                            return false;
+                        }
+                        const auto palette_line = static_cast<std::size_t>(
+                            (record.command_overview_panel_parameter &
+                             kPaletteLineMask) >> 13U);
                         const auto alias =
                             "menu.field.runner.preview.table." +
-                            std::to_string(table_pointer) + ".offset." +
-                            std::to_string(table_offset) + ".palette." +
+                            std::to_string(record.hud_portrait_table_pointer) +
+                            ".offset." +
+                            std::to_string(record.hud_portrait_table_offset) +
+                            ".palette." +
                             std::to_string(palette_line);
                         const auto* resource =
                             smoke_state.asset_catalog.catalog.find(alias);
@@ -10724,7 +10738,7 @@ int main(int argc, char** argv) {
                             expected.height() != 32) {
                             return false;
                         }
-                        return scene.copy(QRect(120, 144, 32, 32)) ==
+                        return scene.copy(QRect(160, 144, 32, 32)) ==
                                expected.convertToFormat(
                                    QImage::Format_RGB32);
                     };
@@ -11402,7 +11416,7 @@ int main(int argc, char** argv) {
                     !image_region_differs(dismiss_parent_scene, dismiss_scene,
                                           136, 96, 8, 16) ||
                     image_region_differs(dismiss_parent_scene, dismiss_scene,
-                                         120, 144, 32, 32) ||
+                                         160, 144, 32, 32) ||
                     has_parent_option(dismiss_scene, 0) ||
                     has_parent_option(dismiss_scene, 1) ||
                     has_parent_option(dismiss_scene, 2) ||
@@ -11432,12 +11446,12 @@ int main(int argc, char** argv) {
                 if (field_scene.dismiss_runner_preview_slot() !=
                         std::optional<std::size_t>{1U} ||
                     !preview_matches_asset(dismiss_ricky_scene,
-                                           467674U, 20U, 1U) ||
+                                           ricky_record) ||
                     !image_has_green_ink(dismiss_ricky_scene, 72, 80, 8, 8) ||
                     !image_region_differs(dismiss_scene, dismiss_ricky_scene,
                                           72, 64, 8, 32) ||
                     !image_region_differs(dismiss_scene, dismiss_ricky_scene,
-                                          120, 144, 32, 32) ||
+                                          160, 144, 32, 32) ||
                     !save_secretary_scene("dismiss-runner-selection-1",
                                           dismiss_ricky_scene)) {
                     std::cerr << "field secretary dump: Dismiss cursor did "
@@ -11453,13 +11467,13 @@ int main(int argc, char** argv) {
                     field_scene.dismiss_runner_preview_slot() !=
                         std::optional<std::size_t>{2U} ||
                     !preview_matches_asset(dismiss_winston_scene,
-                                           467834U, 4U, 2U) ||
+                                           winston_record) ||
                     field_scene.dismiss_runner_effect_frames() !=
                         effect_frames_before_second_move + 2U ||
                     field_audio_events != std::vector<std::uint16_t>{0x25U} ||
                     !image_region_differs(dismiss_ricky_scene,
                                           dismiss_winston_scene,
-                                          120, 144, 32, 32) ||
+                                          160, 144, 32, 32) ||
                     !save_secretary_scene("dismiss-runner-selection-2",
                                           dismiss_winston_scene)) {
                     std::cerr << "field secretary dump: second candidate "
@@ -11475,13 +11489,13 @@ int main(int argc, char** argv) {
                     field_scene.dismiss_runner_preview_slot() !=
                         std::optional<std::size_t>{1U} ||
                     !preview_matches_asset(dismiss_ricky_again_scene,
-                                           467674U, 20U, 1U) ||
+                                           ricky_record) ||
                     field_scene.dismiss_runner_effect_frames() !=
                         effect_frames_before_reverse_move + 2U ||
                     field_audio_events != std::vector<std::uint16_t>{0x25U} ||
                     image_region_differs(dismiss_ricky_scene,
                                          dismiss_ricky_again_scene,
-                                         120, 144, 32, 32)) {
+                                         160, 144, 32, 32)) {
                     std::cerr << "field secretary dump: preview did not "
                                  "follow the cursor back to Ricky\n";
                     return 3;
@@ -11515,9 +11529,9 @@ int main(int argc, char** argv) {
                     image_region_differs(dismiss_ricky_again_scene,
                                          dismiss_scene, 24, 24, 216, 128) ||
                     image_region_differs(dismiss_ricky_again_scene,
-                                         dismiss_scene, 120, 144, 32, 32) ||
+                                         dismiss_scene, 160, 144, 32, 32) ||
                     !image_region_differs(dismiss_parent_scene, dismiss_scene,
-                                          120, 144, 32, 32) ||
+                                          160, 144, 32, 32) ||
                     !save_secretary_scene("dismiss-runner-held",
                                           dismiss_scene)) {
                     std::cerr << "field secretary dump: Dismiss child did "
@@ -12287,12 +12301,14 @@ int main(int argc, char** argv) {
                     *field_inventory_trade_dump_path);
                 auto& source = field_scene.active_runner_record();
                 constexpr std::size_t kItemSlot = 0U;
-                constexpr std::uint8_t kTradeableItemCode = 0x15U;
+                constexpr std::uint8_t kTradeableItemCode = 0x01U;
                 constexpr std::uint8_t kItemPhase = 5U;
                 source.inventory_item_codes[kItemSlot] = kTradeableItemCode;
                 source.inventory_phase_bytes[kItemSlot] = kItemPhase;
-                source.equipped_inventory_slot = -1;
-                source.equipped_item_code = 0U;
+                source.equipped_inventory_slot =
+                    static_cast<std::int8_t>(kItemSlot);
+                source.equipped_item_code = kTradeableItemCode;
+                field_scene.set_active_party_slot_for_dump(0U);
                 const auto source_before_trade = source;
 
                 const auto render_scene = [&] {
@@ -12378,6 +12394,15 @@ int main(int argc, char** argv) {
                                  "page did not become selected\n";
                     return 3;
                 }
+                const auto parent_before_no_recipient = render_scene();
+                if (!field_inventory_selector_survives(
+                        parent_before_no_recipient, 0U, 0U) ||
+                    !save_scene("trade_parent_before_no_recipient",
+                                parent_before_no_recipient)) {
+                    std::cerr << "field inventory-trade dump: initial "
+                                 "inventory parent failed\n";
+                    return 3;
+                }
 
                 const auto open_trade_action = [&] {
                     press(0x40U);
@@ -12409,18 +12434,78 @@ int main(int argc, char** argv) {
                 const auto no_recipient_scene = render_scene();
                 if (!field_inventory_selector_survives(
                         no_recipient_scene, 0U, 0U) ||
+                    no_recipient_scene != parent_before_no_recipient ||
                     !save_scene("trade_no_recipient", no_recipient_scene)) {
-                    std::cerr << "field inventory-trade dump: source return "
-                                 "or item selector failed\n";
+                    std::cerr << "field inventory-trade dump: no-recipient "
+                                 "path did not restore the exact parent screen\n";
                     return 3;
                 }
 
-                RunnerRecordFields full_recipient{};
+                if (!smoke_state.startup_records.has_value()) {
+                    std::cerr << "field inventory-trade dump: source save-"
+                                 "roster templates are unavailable\n";
+                    return 3;
+                }
+                const auto load_save_roster_template =
+                    [&smoke_state](const std::size_t index) {
+                        LiveRunnerRecord source_record{};
+                        source_record.bytes =
+                            smoke_state.startup_records
+                                ->save_roster_templates[index]
+                                .record;
+                        return read_runner_record_fields(source_record);
+                    };
+                RunnerRecordFields full_recipient =
+                    load_save_roster_template(1U);
                 full_recipient.inventory_item_codes.fill(1U);
+                auto available_recipient = load_save_roster_template(2U);
+                const auto available_recipient_slot = std::find(
+                    available_recipient.inventory_item_codes.begin(),
+                    available_recipient.inventory_item_codes.end(), 0U);
+                if (available_recipient_slot ==
+                    available_recipient.inventory_item_codes.end()) {
+                    std::cerr << "field inventory-trade dump: source roster "
+                                 "recipient has no free inventory cell\n";
+                    return 3;
+                }
+                const auto available_recipient_item_slot =
+                    static_cast<std::size_t>(
+                        available_recipient_slot -
+                        available_recipient.inventory_item_codes.begin());
+                const auto runner_preview_asset = [&asset_root](
+                                                      const RunnerRecordFields& record) {
+                    const auto palette_line = static_cast<std::size_t>(
+                        (record.command_overview_panel_parameter & 0x6000U) >>
+                        13U);
+                    const auto filename =
+                        "runner-preview-table-" +
+                        std::to_string(record.hud_portrait_table_pointer) +
+                        "-offset-" +
+                        std::to_string(record.hud_portrait_table_offset) +
+                        "-palette-" + std::to_string(palette_line) + ".bmp";
+                    return QImage(QString::fromStdWString(
+                        (asset_root / "menu" / "field" / filename).wstring()));
+                };
+                const auto full_recipient_preview =
+                    runner_preview_asset(full_recipient);
+                const auto available_recipient_preview =
+                    runner_preview_asset(available_recipient);
                 field_scene.install_party_member_for_dump(
-                    1U, full_recipient, "Stark");
+                    1U, full_recipient, "Ricky", 3U);
                 field_scene.install_party_member_for_dump(
-                    2U, RunnerRecordFields{}, "Dog");
+                    2U, available_recipient, "Winston Marrs", 4U);
+                const auto parent_before_trade = render_scene();
+                if (!field_inventory_selector_survives(
+                        parent_before_trade, 0U, 0U) ||
+                    full_recipient_preview.size() != QSize(32, 32) ||
+                    available_recipient_preview.size() != QSize(32, 32) ||
+                    full_recipient_preview == available_recipient_preview ||
+                    !save_scene("trade_parent_before_entry",
+                                parent_before_trade)) {
+                    std::cerr << "field inventory-trade dump: source roster "
+                                 "preview assets or parent screen failed\n";
+                    return 3;
+                }
                 if (!open_trade_action()) {
                     std::cerr << "field inventory-trade dump: second Trade "
                                  "action did not open\n";
@@ -12453,6 +12538,8 @@ int main(int argc, char** argv) {
                 if (!field_inventory_selector_survives(full_scene, 0U, 0U) ||
                     !has_green_ink(full_scene, QRect(120, 104, 176, 48)) ||
                     !image_region_matches(full_scene, 184, 184, no_focus) ||
+                    image_region_matches(full_scene, 160, 144,
+                                         full_recipient_preview) ||
                     confirmation_background.isNull() ||
                     full_scene.pixel(122, 185) !=
                         confirmation_background.pixel(2, 1) ||
@@ -12473,31 +12560,93 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
-                press(0x10U);
+                press(0x04U);
+                const auto full_yes_scene = render_scene();
+                if (!field_scene.inventory_trade_open() ||
+                    !field_scene.inventory_trade_recipient_full() ||
+                    !field_scene.inventory_trade_yes_selected() ||
+                    !image_region_matches(full_yes_scene, 136, 184, yes_focus) ||
+                    !has_green_ink(full_yes_scene, QRect(120, 104, 176, 48)) ||
+                    image_region_matches(full_yes_scene, 160, 144,
+                                         full_recipient_preview) ||
+                    !save_scene("trade_recipient_full_yes", full_yes_scene)) {
+                    std::cerr << "field inventory-trade dump: full-recipient "
+                                 "Yes focus or prompt redraw failed\n";
+                    return 3;
+                }
+                press(0x20U);
                 if (!field_scene.inventory_trade_open() ||
                     field_scene.inventory_trade_recipient() != 2U ||
                     field_scene.inventory_trade_recipient_full() ||
                     field_scene.inventory_trade_yes_selected()) {
                     std::cerr << "field inventory-trade dump: confirming a "
-                                 "full recipient did not advance the scan\n";
+                                 "full recipient with C did not advance the "
+                                 "scan\n";
                     return 3;
                 }
                 const auto dog_no_scene = render_scene();
                 if (!has_green_ink(dog_no_scene, QRect(152, 120, 80, 8)) ||
                     !has_green_ink(dog_no_scene, QRect(128, 128, 96, 8)) ||
+                    !image_region_matches(dog_no_scene, 160, 144,
+                                          available_recipient_preview) ||
                     !field_inventory_selector_survives(dog_no_scene, 0U, 0U) ||
                     !image_region_matches(dog_no_scene, 184, 184, no_focus) ||
-                    !save_scene("trade_recipient_dog_no", dog_no_scene)) {
+                    !save_scene("trade_recipient_winston_no", dog_no_scene)) {
                     std::cerr << "field inventory-trade dump: recipient "
-                                 "label/name or default No state failed\n";
+                                 "label/name/preview or default No state failed\n";
+                    return 3;
+                }
+                press(0x40U);
+                const auto wrapped_full_scene = render_scene();
+                const auto& party_after_no =
+                    field_scene.field_party_records_for_dump();
+                if (!field_scene.inventory_trade_open() ||
+                    field_scene.inventory_trade_recipient() != 1U ||
+                    !field_scene.inventory_trade_recipient_full() ||
+                    field_scene.inventory_trade_yes_selected() ||
+                    field_scene.inventory_action_open() ||
+                    source.inventory_item_codes[kItemSlot] !=
+                        source_before_trade.inventory_item_codes[kItemSlot] ||
+                    source.inventory_phase_bytes[kItemSlot] !=
+                        source_before_trade.inventory_phase_bytes[kItemSlot] ||
+                    source.equipped_inventory_slot !=
+                        source_before_trade.equipped_inventory_slot ||
+                    source.equipped_item_code !=
+                        source_before_trade.equipped_item_code ||
+                    party_after_no[1].inventory_item_codes !=
+                        full_recipient.inventory_item_codes ||
+                    party_after_no[2].inventory_item_codes !=
+                        available_recipient.inventory_item_codes ||
+                    party_after_no[2].inventory_phase_bytes !=
+                        available_recipient.inventory_phase_bytes ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{
+                            0x24U, 0x25U, 0x24U, 0x24U} ||
+                    wrapped_full_scene != full_scene ||
+                    !save_scene("trade_no_advances_to_full",
+                                wrapped_full_scene)) {
+                    std::cerr << "field inventory-trade dump: confirming No "
+                                 "did not preserve both records and wrap to "
+                                 "the full first recipient screen\n";
+                    return 3;
+                }
+                press(0x10U);
+                if (!field_scene.inventory_trade_open() ||
+                    field_scene.inventory_trade_recipient() != 2U ||
+                    field_scene.inventory_trade_recipient_full() ||
+                    field_scene.inventory_trade_yes_selected()) {
+                    std::cerr << "field inventory-trade dump: wrapped full "
+                                 "recipient did not advance to default No\n";
                     return 3;
                 }
                 press(0x04U);
                 const auto dog_yes_scene = render_scene();
                 if (!field_scene.inventory_trade_yes_selected() ||
                     !image_region_matches(dog_yes_scene, 136, 184, yes_focus) ||
+                    !image_region_matches(dog_yes_scene, 160, 144,
+                                          available_recipient_preview) ||
                     !has_green_ink(dog_yes_scene, QRect(112, 200, 128, 8)) ||
-                    !save_scene("trade_recipient_dog_yes", dog_yes_scene)) {
+                    !save_scene("trade_recipient_winston_yes", dog_yes_scene)) {
                     std::cerr << "field inventory-trade dump: Yes focus or "
                                  "choice text did not update\n";
                     return 3;
@@ -12509,15 +12658,26 @@ int main(int argc, char** argv) {
                 if (field_scene.inventory_trade_open() ||
                     field_scene.active_runner_record()
                             .inventory_item_codes[kItemSlot] != 0U ||
-                    traded_party[2].inventory_item_codes[0] !=
+                    traded_party[2].inventory_item_codes[
+                        available_recipient_item_slot] !=
                         kTradeableItemCode ||
-                    traded_party[2].inventory_phase_bytes[0] != kItemPhase ||
+                    traded_party[2].inventory_phase_bytes[
+                        available_recipient_item_slot] != kItemPhase ||
                     source.inventory_phase_bytes[kItemSlot] != 0U ||
+                    source.equipped_inventory_slot >= 0 ||
+                    source.equipped_item_code != 0U ||
+                    image_region_matches(traded_scene, 160, 144,
+                                         available_recipient_preview) ||
+                    image_region_matches(traded_scene, 184, 184, no_focus) ||
+                    !image_region_matches(
+                        traded_scene, 112, 184,
+                        parent_before_trade.copy(112, 184, 160, 32)) ||
                     field_audio_events != std::vector<std::uint16_t>{
-                        0x24U, 0x24U, 0x25U, 0x24U} ||
+                        0x24U, 0x25U, 0x24U, 0x24U, 0x24U, 0x25U, 0x24U} ||
                     !save_scene("trade_transferred", traded_scene)) {
                     std::cerr << "field inventory-trade dump: typed transfer, "
-                                 "item phase, audio sequence, or return failed\n";
+                                 "first free cell, stale-panel clearing, audio "
+                                 "sequence, or return failed\n";
                     return 3;
                 }
                 std::cout << "field_inventory_trade_dump=written path="

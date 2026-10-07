@@ -115,6 +115,10 @@ constexpr std::string_view kCommandOverviewDefenseBarAliasPrefix =
 // block at each of the four action-button centers.
 constexpr int kCommandOverviewActionBackgroundX = 120;
 constexpr int kCommandOverviewActionBackgroundY = 184;
+// ROM destination C928 is row 18, column 20 relative to C000 when each
+// 0x80-byte name-table row holds 64 two-byte cells: host pixel (160,144).
+constexpr int kRunnerPreviewPanelX = 160;
+constexpr int kRunnerPreviewPanelY = 144;
 constexpr std::array<int, 4> kCommandOverviewActionFocusX{{128, 152, 176,
                                                              200}};
 constexpr int kCommandOverviewActionFocusY = 184;
@@ -889,8 +893,7 @@ bool FieldSceneRuntime::load_command_overview_assets(
         if (!load_image(catalog, resource.alias, image)) {
             return false;
         }
-        dismiss_runner_preview_panels_.emplace(resource.alias,
-                                               std::move(image));
+        runner_preview_panels_.emplace(resource.alias, std::move(image));
     }
     for (std::size_t index = 0;
          index < dismiss_runner_random_grid_patterns_.size(); ++index) {
@@ -1808,6 +1811,26 @@ FieldHudSlotState FieldSceneRuntime::field_hud_slot_state(
     return slot;
 }
 
+const QImage* FieldSceneRuntime::runner_preview_panel_for_record(
+    const RunnerRecordFields& record) const {
+    constexpr std::uint16_t kPaletteLineMask = 0x6000U;
+    if ((record.command_overview_panel_parameter &
+         static_cast<std::uint16_t>(~kPaletteLineMask)) != 0U ||
+        record.hud_portrait_table_pointer == 0U) {
+        return nullptr;
+    }
+    const auto palette_line = static_cast<std::size_t>(
+        (record.command_overview_panel_parameter & kPaletteLineMask) >> 13U);
+    const auto alias =
+        "menu.field.runner.preview.table." +
+        std::to_string(record.hud_portrait_table_pointer) + ".offset." +
+        std::to_string(record.hud_portrait_table_offset) + ".palette." +
+        std::to_string(palette_line);
+    const auto preview = runner_preview_panels_.find(alias);
+    return preview == runner_preview_panels_.end() ? nullptr
+                                                   : &preview->second;
+}
+
 void FieldSceneRuntime::refresh_field_hud_runner_slot() {
     auto& records = field_party_roster_.records();
     for (std::size_t slot = 0; slot < field_hud_slots_.size(); ++slot) {
@@ -2682,7 +2705,8 @@ void FieldSceneRuntime::advance_command_overview_inventory_trade(
     }
     const auto left = (controller_events & 0x0400U) != 0U;
     const auto right = (controller_events & 0x0800U) != 0U;
-    const auto confirm = (controller_events & 0x5000U) != 0U;
+    // ROM 0x129A6..0x129FC routes A, B, and C through the same confirm path.
+    const auto confirm = (controller_events & 0x7000U) != 0U;
     if (left || right) {
         if (source_audio_event_callback_) {
             source_audio_event_callback_(0x25U);
@@ -6464,21 +6488,14 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     source_boundary(
                         "field.pocket_secretary.dismiss_runner.preview_table_unresolved");
                 } else {
-                    const auto palette_line = static_cast<std::size_t>(
-                        (panel_attributes & kPaletteLineMask) >> 13U);
-                    const auto alias =
-                        "menu.field.runner.preview.table." +
-                        std::to_string(record.hud_portrait_table_pointer) +
-                        ".offset." +
-                        std::to_string(record.hud_portrait_table_offset) +
-                        ".palette." + std::to_string(palette_line);
-                    const auto preview =
-                        dismiss_runner_preview_panels_.find(alias);
-                    if (preview == dismiss_runner_preview_panels_.end()) {
+                    const auto* preview =
+                        runner_preview_panel_for_record(record);
+                    if (preview == nullptr) {
                         source_boundary(
                             "field.pocket_secretary.dismiss_runner.preview_asset_unavailable");
                     } else {
-                        painter.drawImage(120, 144, preview->second);
+                        painter.drawImage(kRunnerPreviewPanelX,
+                                          kRunnerPreviewPanelY, *preview);
                     }
                 }
             }
@@ -6948,6 +6965,31 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             if (recipient < FieldPartyRosterRuntime::kSlotCount) {
                 draw_command_overview_text(
                     painter, 128, 128, field_party_roster_.name(recipient));
+                const auto& recipient_record =
+                    field_party_roster_.records()[recipient];
+                const auto& panel_attributes =
+                    recipient_record.command_overview_panel_parameter;
+                constexpr std::uint16_t kPaletteLineMask = 0x6000U;
+                if ((panel_attributes &
+                     static_cast<std::uint16_t>(~kPaletteLineMask)) != 0U) {
+                    source_boundary(
+                        "field.inventory.trade.preview_attributes_unresolved");
+                } else if (recipient_record.hud_portrait_table_pointer == 0U) {
+                    source_boundary(
+                        "field.inventory.trade.preview_table_unresolved");
+                } else if (const auto* preview =
+                               runner_preview_panel_for_record(
+                                   recipient_record);
+                           preview == nullptr) {
+                    source_boundary(
+                        "field.inventory.trade.preview_asset_unavailable");
+                } else {
+                    // ROM 0x1287E reaches 0x110E8 for a recipient with room;
+                    // the same typed 32x32 extracted panel used by Dismiss
+                    // Runner is projected at the source HUD coordinate.
+                    painter.drawImage(kRunnerPreviewPanelX,
+                                      kRunnerPreviewPanelY, *preview);
+                }
             }
             if (command_overview_selected_inventory_item_.has_value() &&
                 active_runner_record().equipped_inventory_slot >= 0 &&

@@ -792,7 +792,8 @@ fixed Abort row, source text positions, compact-marker removal, and active
 runner replacement. It advances the `0xE660` random two-cell effect once per
 frame and paints the persistent cells in twelve lower-bezel positions. The
 `0x110E8` preview resolves each live record's portrait table, offset, and
-palette attributes and draws its 32x32 image at `(120,144)`. Held-frame QA
+palette attributes and draws its 32x32 image at source destination `C928`,
+which maps to `(160,144)` with the `0x80`-byte tile-row stride. Held-frame QA
 checks that lamps do not cover child text, cursor, or portrait, and that the
 portrait changes with candidate selection. Event `0x25` has no identified
 alias or duration. The independent longplay contains no Dismiss Runner screen,

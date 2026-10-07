@@ -1093,53 +1093,72 @@ new behavior is invented.
 
 ### Applied review: Trade recipient and transfer
 
-1. **Does it look correct?** Inspected the complete 320x224 frames
-   `field-inventory-trade-qa/trade_recipient_full.bmp`,
-   `trade_recipient_dog_no.bmp`, `trade_recipient_dog_yes.bmp`, and
-   `trade_transferred.bmp`. The action background, choice bar, item detail,
-   and one-pixel yellow-gold outline remain visible. The recipient line and
-   full-inventory message use the traced source text positions. The screen is
-   still only partially reviewed visually because no supplied independent
-   Trade frame is available.
+1. **Does it look correct?** Inspected the complete 320x224 Trade route
+   frames in both builds: `trade_parent_before_no_recipient.bmp`,
+   `trade_no_recipient.bmp`, `trade_parent_before_entry.bmp`,
+   `trade_recipient_full.bmp`, `trade_recipient_full_yes.bmp`,
+   `trade_recipient_winston_no.bmp`, `trade_no_advances_to_full.bmp`,
+   `trade_recipient_winston_yes.bmp`, `trade_transferred.bmp`, and the
+   `actual.bmp` full-recipient alias. All ten BMPs have matching Debug/Release
+   SHA-256 hashes. The action choice,
+   item details, equipment edge, thin selector,
+   prompt, recipient name, and recipient portrait follow the test state. The
+   screen remains visually partial because the supplied longplay has no exact
+   Trade frame.
 2. **Does the look reflect the behavioral state?** ROM `0x12836` rejects
    `0x17..0x2B`; the eligible path at `0x1288E` scans the three-record ring
    for another active runner, and `0x1296A` starts each candidate on No.
    Typed state is `InventoryTradeState` plus the live
    `FieldPartyRosterRuntime` records. The Qt QA reaches no-recipient, full
-   recipient, next active recipient, Yes/No, and transferred states; it
-   verifies item code/phase and source equipment cleanup. These diagnostic
-   records are test fixtures, not normal-game party members.
+   recipient, full-recipient Yes skip, next active recipient, No wraparound,
+   Yes, and transferred states; it verifies A/B/C confirmation, unchanged
+   records while skipping,
+   the transferred item/phase, first free inventory cell, and equipped-weapon
+   cleanup. Ricky and Winston are loaded from the ROM save-roster templates;
+   Ricky's inventory is filled only to exercise the source full-recipient
+   branch.
 3. **Are the visuals correct?** ROM writes the full-recipient name/message at
    `C69E/C71E` and the eligible prompt/name at `C7A6/C820`; the Qt positions
    follow those plane addresses. The selected-item edge matches the
    independent inventory captures: a single warm-gold pixel around the item
-   art. The source also calls `0x110E8` at `C928` to draw the recipient's HUD
-   panel. Qt currently leaves the active runner's panel in place, so this
-   source-visible recipient projection is a known missing visual detail.
+   art. The source calls `0x110E8` at `C928` for the recipient's 4x4 HUD
+   panel. With the same `0x80`-byte row stride that maps the text destinations,
+   `C928` maps to `(160,144)`. Qt resolves `+0x50` table, `+0x54` offset, and
+   `+0x2C` palette bits to the direct 32x32 asset and checks every pixel
+   there. Its last row replaces the first 16 pixels of the posture strip at
+   y=168; that overlap follows the ROM destination, and no independent Trade
+   frame is available to compare it with.
 4. **Is it animated, and when?** `0x1296A` waits for VBlank between input
    samples. The source redraws the Yes/No row after Left/Right; it does not
    animate the focus during idle. The Qt QA checks the rendered image after
-   30 idle frames and captures No, Yes, next-recipient, and return states.
+   30 idle frames and captures No, full-recipient Yes, next-recipient,
+   wraparound, and return states.
 5. **Does sound accompany it?** `0x12988` requests event `0x25` after either
-   horizontal edge; `0x129B2` requests `0x24` on confirm. Event `0x25` maps to
+   horizontal edge; A, B, or C reaches `0x129B2` and requests `0x24` on
+   confirm. Event `0x25` maps to
    `audio.effects.resource.037` (2.134 seconds including its release tail),
    and `0x24` maps to `audio.menu.command-024` (2.484 seconds). The source sample is cross-checked against independent Ares longplay audio.
    The shared audio CTest verifies event `0x24` reaches default-device
    `PlayingState`; Windows loopback for this exact Trade route remains
    unrecorded.
-6. **Are related parts of the screen correct too?** The whole frame was
-   checked for the inventory item, item detail, command shell, active runner
-   HUD, Yes/No focus, and return to the inventory grid. The item remains at
-   its source slot until transfer; transfer clears it and updates the source
-   inventory view. The recipient HUD call at `0x110E8` is the related panel
-   still missing from Qt.
+6. **Are related parts of the screen correct too?** The full frame was
+   checked for active-runner HUD, source item/equipped cell, details,
+   recipient name/portrait, Yes/No focus, and parent inventory after return.
+   The item stays in its source cell through No and moves to the recipient's
+   first free cell on Yes; its source icon and equipped state then clear.
 7. **Do multiple frames support the interpretation?** Native checkpoints
-   cover a full recipient, the next recipient on No, that recipient on Yes,
-   transfer, and the one-runner no-op. Independent section 06 inventory
+   cover a full recipient on No and Yes, the next recipient on No, the No wrap
+   to the full first recipient, Yes, transfer, and the one-runner no-op.
+   Independent section 06 inventory
    frames 002550-002699 support the shared shell and selector shape, but none
    shows Trade or its recipient panel. The Trade visual status remains
-   `partial`; independent reference capture and the `0x110E8` projection are
-   outstanding.
+   `partial` pending a matching independent frame.
+8. **Was the previous screen cleared before new controls were drawn?** The
+   no-recipient frame must match the full parent inventory pixel for pixel.
+   The transfer return must remove the recipient portrait, Yes/No focus, and
+   prompt, and its lower action strip must match the pre-entry parent. The
+   complete command shell and field HUD are checked on every saved frame; no
+   old action button is left beneath a replacement row.
 
 ### Applied review: Pocket Secretary Group Items
 
@@ -1348,7 +1367,8 @@ new behavior is invented.
    how many candidates remain. The cursor starts at `(72,64)` and follows the
     selected row. Candidate selection invokes the `0x110E8` projection using
     the live record's `+0x50` table pointer, `+0x54` offset, and `+0x2C`
-    palette bits; Qt draws its decoded 32x32 portrait at `(120,144)`. QA checks
+    palette bits; Qt draws its decoded 32x32 portrait at source `C928` ->
+    `(160,144)`. QA checks
     that the portrait crop matches the selected source-derived asset. This is
     renderer-consistency evidence; no Genesis capture is available to confirm
     typography, pixel color, or alignment independently.
@@ -1377,7 +1397,9 @@ new behavior is invented.
    entry, movement, held, dismissal, return, Abort, Start, and active-runner
     replacement frames. They support the implementation's state changes,
     portrait selection, and lower-bezel animation over time. They are not independent Genesis examples;
-   the supplied longplay has no Dismiss Runner frames.
+   the supplied longplay has no Dismiss Runner frames. All 34 Debug/Release
+   screenshots match above y=200; only the expected E660 lower-bezel cells
+   vary across process runs.
 8. **Was the previous screen cleared before new controls were drawn?** The
    child painter redraws the blank panel before writing Dismiss, Who??,
    separator, Abort, names, and cursor. QA verifies the five parent option

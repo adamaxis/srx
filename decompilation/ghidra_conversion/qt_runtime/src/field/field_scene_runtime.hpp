@@ -606,6 +606,8 @@ private:
     bool load_image(const ConversionAssetCatalog& catalog,
                     std::string_view alias,
                     QImage& destination);
+    const QImage* runner_preview_panel_for_record(
+        const RunnerRecordFields& record) const;
     bool load_sprite_image(const ConversionAssetCatalog& catalog,
                            std::string_view alias,
                            QImage& destination,
@@ -828,7 +830,7 @@ private:
     QImage pocket_secretary_grid_;
     QImage hotel_options_cursor_;
     QImage hotel_checkout_cursor_;
-    std::unordered_map<std::string, QImage> dismiss_runner_preview_panels_;
+    std::unordered_map<std::string, QImage> runner_preview_panels_;
     std::array<QImage, 7> dismiss_runner_random_grid_patterns_{};
     QImage command_overview_attributes_background_;
     QImage posture_focus_;

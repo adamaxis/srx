@@ -580,7 +580,16 @@ preserve state on cancel; tests cover rearrangement and related equipment
 icons/stats; full-screen captures verify source and destination cells plus
 the surrounding interface.
 
-**Status:** pending current-build reproduction.
+**Status:** The ROM runner-to-runner Trade path is implemented and passes
+Debug/Release full-screen QA. It covers an equipped weapon, a full-recipient
+skip even when Yes is selected, A/B/C confirmation, No wraparound without
+mutation, default No/Yes choice, source-template recipient panels,
+first-free-cell transfer with phase, equipment cleanup, pixel-identical
+no-recipient return, and clean transfer return. The source destination
+`C928` is drawn at
+`(160,144)`. No exact Trade frame appears in the supplied longplay, so visual
+fidelity remains partial; a same-runner inventory reorder action has not been
+found in the traced source menu.
 
 ### INVENTORY-02 — Item use and portrait/HUD redraw
 

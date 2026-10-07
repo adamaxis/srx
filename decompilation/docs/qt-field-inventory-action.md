@@ -40,16 +40,17 @@ read ROM addresses or emulate VDP/name-table state.
   three-record ring after the active runner, skipping inactive records and the
   source runner. The Qt route consumes `FieldPartyRosterRuntime` records and
   returns without mutation when Joshua is the only active runner.
-- `0x1296A` begins each recipient on No. Left/Right toggles Yes/No; confirm on
-  No advances to the next active record. A full inventory displays the source
+- `0x1296A` begins each recipient on No. Left/Right toggles Yes/No; A, B, or
+  C confirms. Confirm on No advances to the next active record and wraps
+  through the three-slot party ring. A full inventory displays the source
   multiline message and confirmation advances to the next candidate even if
   Yes is selected. Confirm on Yes transfers to the first free slot through
   `0x129FE`, carrying ordinary item phase, clearing armor phase, and removing
   equipped source state when the selected weapon/armor moves.
 - The Qt dump installs diagnostic party records to reach full-recipient and
   transfer branches; this fixture does not invent normal-game party members.
-  The eligible-recipient branch still lacks the source `0x110E8` recipient HUD
-  panel, and no supplied independent capture shows the Trade screen.
+  The eligible-recipient branch draws the source `0x110E8` recipient HUD panel
+  from the live record. No supplied independent capture shows the Trade screen.
 
 The action background and focus blocks are direct extracted assets. The focus
 blocks are source name-table blocks and are therefore loaded as opaque images;
@@ -143,17 +144,31 @@ shadowrun_ghidra_conversion_qt.exe --assets decompilation/assets \
   --field-inventory-trade-dump <output-dir>
 ```
 
-`shadowrun_ghidra_conversion_qt_field_inventory_trade_qa` checks no-recipient
-return, active-runner ring order, full-recipient continuation, default No,
-left/right choice state, ordinary item and phase transfer, source equipment
-cleanup, the action shell, item details, the slim selector, and a 30-frame
-static interval. ROM `0x1296A` loops at VBlank and redraws Yes/No only after a
-horizontal edge; confirm requests event `0x24`, and horizontal movement
-requests `0x25`. Event `0x24` has the existing mapped clip. Event `0x25` has no
-verified alias or duration, and the callback assertion does not prove audio
-playback. The ROM also invokes `0x110E8` to draw the chosen recipient's small
-HUD panel; the current Qt screen has not projected that panel. The six BMPs
-are internal regression checkpoints, not independent Genesis comparisons.
+`shadowrun_ghidra_conversion_qt_field_inventory_trade_qa` checks a
+pixel-identical no-recipient return, active-runner ring order, full-recipient
+continuation, full-recipient Yes skip, default No, A/B/C confirmation
+including No wraparound, left/right choice state, and transfer into the
+recipient's first free cell.
+Its route fixture uses source save-roster records for Ricky and Winston and
+trades an equipped weapon, checking item and phase movement plus source
+equipment cleanup. Full-screen frames also check the action shell, source item
+details, thin selector, recipient panel, and clean return. ROM `0x1296A` loops
+at VBlank and redraws Yes/No only after a horizontal edge; A, B, or C requests
+confirm event `0x24`, and movement requests `0x25`. Event
+`0x24` maps to the existing 2.484-second clip; `0x25` maps to resource 037
+(2.134 seconds including its release tail). Route QA checks requests, while
+shared audio QA verifies decoded playback and duration; Windows loopback for
+this exact route remains unrecorded. The shared playback CTest passes in both
+Debug and Release.
+
+The ROM calls `0x110E8` for the selected recipient's 4x4 HUD panel at `C928`.
+Using the source `0x80`-byte tile-row stride, `C928` maps to host `(160,144)`;
+the typed live record's portrait table, offset, and palette select one of the
+named 32x32 extracted assets. The full-recipient path does not draw this
+panel. Debug and Release QA check exact asset pixels at the source position
+and verify that no-recipient and post-transfer routes clear child controls.
+These BMPs are internal regression checkpoints, not independent Genesis
+comparisons.
 
 The general contract for this and future interactables is itemized in
 `interactable-testing-methodology.md`.
@@ -164,10 +179,10 @@ before this hill can be called visually defended.
 
 ## Deliberate remaining boundaries
 
-The common action row and Trade's typed selection/mutation path are connected,
-but the complete field menu is not finished. Trade's recipient HUD panel
-(`0x110E8`), independent visual reference, and mapped selector-movement sound
-remain open.
+Trade's typed selection/mutation path and recipient HUD projection are
+connected and pass Debug/Release route QA. The hill remains partial because
+no independent Genesis Trade frame is present in the supplied longplay; exact
+screen appearance and route-specific output loopback remain unverified.
 
 The other command families have separate partial routes and are tracked in
 `HILLS.md`; this inventory-action audit does not count them as finished.
