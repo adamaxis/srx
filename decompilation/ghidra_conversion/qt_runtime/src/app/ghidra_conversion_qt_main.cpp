@@ -193,6 +193,7 @@ std::filesystem::path find_asset_root(
                    " [--opening-rotor-qa <output-dir>]"
                    " [--opening-landing-qa <output-dir>]"
                    " [--opening-wilderness-pan-qa <output-dir>]"
+                   " [--opening-trivid-layer-qa <output-dir>]"
                    " [--intro-to-field-smoke]\n";
             return {};
         }
@@ -325,6 +326,10 @@ std::filesystem::path find_asset_root(
             continue;
         }
         if (argument == "--opening-wilderness-pan-qa" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--opening-trivid-layer-qa" && index + 1 < argc) {
             ++index;
             continue;
         }
@@ -1871,6 +1876,309 @@ public:
 
         std::cout << "opening_wilderness_pan_qa=passed checkpoints="
                   << kSamples.size() << " body_pixels=" << colored_body_pixels
+                  << " actual="
+                  << (output_directory / "actual.bmp").string() << '\n';
+        return 0;
+    }
+
+    int run_opening_trivid_layer_qa(
+        const std::filesystem::path& output_directory) {
+        constexpr std::uint32_t kSelection = 2U;
+        constexpr std::uint16_t kStageExitLoopFrame = 0x0114U;
+        constexpr std::uint16_t kMovingMidpointLoopFrame = 0x0080U;
+
+        if (prepare_opening_dump(kSelection) != 0) {
+            return 3;
+        }
+        std::filesystem::create_directories(output_directory);
+        std::ofstream trace(output_directory / "opening-trivid-layer-qa.tsv");
+        if (!trace) {
+            std::cerr << "opening trivid layer QA: could not write trace in "
+                      << output_directory.string() << '\n';
+            return 3;
+        }
+        trace << "sample\tloop_frame\topening_frame\ttimed_phase\ttimed_x\t"
+                 "timed_y\tprojection_x\tprojection_y\tlow_plane_pixels\t"
+                 "low_hole_pixels\thigh_sprite_pixels\timage\n";
+
+        const auto fail = [](const std::string_view reason) {
+            std::cerr << "opening trivid layer QA: " << reason << '\n';
+            return 3;
+        };
+        constexpr std::uint32_t kMaxFramesToTrivid = 5000U;
+        std::uint32_t frames_to_trivid = 0U;
+        while (state_.phase == StartupIntegrationPhase::opening_intro &&
+               (state_.opening_intro.scene != OpeningIntroScene::trivid ||
+                state_.opening_intro.stage !=
+                    OpeningIntroStage::orchestrator_loop)) {
+            if (frames_to_trivid++ >= kMaxFramesToTrivid) {
+                return fail("did not reach the stable trivid orchestrator loop");
+            }
+            advance_one_source_frame();
+        }
+        if (state_.phase != StartupIntegrationPhase::opening_intro ||
+            state_.opening_intro.scene != OpeningIntroScene::trivid ||
+            state_.opening_intro.stage !=
+                OpeningIntroStage::orchestrator_loop) {
+            return fail("opening ended before the stable trivid loop");
+        }
+        // The palette-fade completion changes the typed stage before the
+        // first per-frame SAT batch is emitted. Capture the first completed
+        // orchestrator pass, after its source requests have been published.
+        advance_one_source_frame();
+        if (state_.phase != StartupIntegrationPhase::opening_intro ||
+            state_.opening_intro.scene != OpeningIntroScene::trivid ||
+            state_.opening_intro.stage !=
+                OpeningIntroStage::orchestrator_loop) {
+            return fail("trivid ended before its first published SAT batch");
+        }
+
+        const auto* background_record = state_.asset_catalog.catalog.find(
+            "intro.trivid.background");
+        const auto background =
+            draw_asset_cache_.find("intro.trivid.background");
+        if (background_record == nullptr ||
+            background == draw_asset_cache_.end() ||
+            background->second.size() != QSize(kSceneWidth, kSceneHeight)) {
+            return fail("the named 320x224 cockpit plane is missing");
+        }
+
+        const auto audit_priority_pixels = [this, &background](
+            const QImage& scene) {
+            const auto pixel_count = static_cast<std::size_t>(scene.width()) *
+                                     static_cast<std::size_t>(scene.height());
+            std::vector<bool> low_priority_coverage(pixel_count, false);
+            std::vector<QColor> low_priority_colors(pixel_count);
+            std::vector<QColor> high_priority_colors(pixel_count);
+            std::vector<bool> high_priority_coverage(pixel_count, false);
+
+            for (const auto& request : opening_sprites_) {
+                const auto group = opening_intro_sprite_group(
+                    request.sprite_descriptor);
+                if (group.family != OpeningIntroSpriteFamily::trivid_left &&
+                    group.family != OpeningIntroSpriteFamily::trivid_right &&
+                    group.family != OpeningIntroSpriteFamily::trivid_timed) {
+                    continue;
+                }
+                const bool high_priority =
+                    (request.palette_flags & 0x8000U) != 0U;
+                const auto prefix = opening_intro_sprite_alias_prefix(group);
+                for (const auto& record :
+                     state_.asset_catalog.catalog.records) {
+                    if (record.alias.rfind(prefix, 0U) != 0U) {
+                        continue;
+                    }
+                    const auto image = draw_asset_cache_.find(record.alias);
+                    if (image == draw_asset_cache_.end()) {
+                        continue;
+                    }
+                    const auto point = opening_intro_sat_draw_point(
+                        request.x, request.y, record.origin_x,
+                        record.origin_y);
+                    for (int y = 0; y < image->second.height(); ++y) {
+                        for (int x = 0; x < image->second.width(); ++x) {
+                            const auto color =
+                                image->second.pixelColor(x, y);
+                            if (color.alpha() == 0) {
+                                continue;
+                            }
+                            const auto screen_x = point.x + x;
+                            const auto screen_y = point.y + y;
+                            if (screen_x < 0 || screen_x >= scene.width() ||
+                                screen_y < 0 || screen_y >= scene.height()) {
+                                continue;
+                            }
+                            const auto index =
+                                static_cast<std::size_t>(screen_y) *
+                                    static_cast<std::size_t>(scene.width()) +
+                                static_cast<std::size_t>(screen_x);
+                            if (high_priority) {
+                                high_priority_coverage[index] = true;
+                                high_priority_colors[index] = color;
+                            } else {
+                                low_priority_coverage[index] = true;
+                                low_priority_colors[index] = color;
+                            }
+                        }
+                    }
+                }
+            }
+
+            QImage text_coverage(scene.size(), QImage::Format_ARGB32);
+            text_coverage.fill(Qt::transparent);
+            QPainter text_painter(&text_coverage);
+            for (const auto& request : opening_text_) {
+                draw_opening_text(text_painter, request);
+            }
+            text_painter.end();
+
+            std::size_t low_plane_pixels = 0U;
+            std::size_t low_hole_pixels = 0U;
+            std::size_t high_sprite_pixels = 0U;
+            for (int y = 0; y < scene.height(); ++y) {
+                for (int x = 0; x < scene.width(); ++x) {
+                    const auto background_color =
+                        background->second.pixelColor(x, y);
+                    if (text_coverage.pixelColor(x, y).alpha() != 0 ||
+                        (background_color.alpha() != 0 &&
+                         background_color.alpha() != 255)) {
+                        continue;
+                    }
+                    const auto index = static_cast<std::size_t>(y) *
+                                           static_cast<std::size_t>(
+                                               scene.width()) +
+                                       static_cast<std::size_t>(x);
+                    const auto actual = scene.pixelColor(x, y);
+                    if (low_priority_coverage[index] &&
+                        !high_priority_coverage[index]) {
+                        if (background_color.alpha() == 255) {
+                            if (actual != background_color) {
+                                return std::array<std::size_t, 3>{0U, 0U, 0U};
+                            }
+                            ++low_plane_pixels;
+                        } else {
+                            if (actual != low_priority_colors[index]) {
+                                return std::array<std::size_t, 3>{0U, 0U, 0U};
+                            }
+                            ++low_hole_pixels;
+                        }
+                    }
+                    if (high_priority_coverage[index]) {
+                        if (actual != high_priority_colors[index]) {
+                            return std::array<std::size_t, 3>{0U, 0U, 0U};
+                        }
+                        ++high_sprite_pixels;
+                    }
+                }
+            }
+            return std::array<std::size_t, 3>{low_plane_pixels,
+                                              low_hole_pixels,
+                                              high_sprite_pixels};
+        };
+
+        bool saw_low_priority = false;
+        bool saw_high_priority = false;
+        bool saw_timed_phase[4] = {false, false, false, false};
+        const auto capture = [&](const std::string_view sample) {
+            const auto& opening = state_.opening_intro;
+            bool low_request = false;
+            bool high_request = false;
+            bool timed_request = false;
+            for (const auto& request : opening_sprites_) {
+                const auto group = opening_intro_sprite_group(
+                    request.sprite_descriptor);
+                if (group.family != OpeningIntroSpriteFamily::trivid_left &&
+                    group.family != OpeningIntroSpriteFamily::trivid_right &&
+                    group.family != OpeningIntroSpriteFamily::trivid_timed) {
+                    return fail("unexpected sprite family reached the trivid scene");
+                }
+                const bool high_priority =
+                    (request.palette_flags & 0x8000U) != 0U;
+                const bool expected_high_priority =
+                    group.family != OpeningIntroSpriteFamily::trivid_right;
+                if (high_priority != expected_high_priority) {
+                    return fail("ROM sprite priority flags disagree with the SAT family");
+                }
+                high_request = high_request || high_priority;
+                low_request = low_request || !high_priority;
+                timed_request = timed_request ||
+                    group.family == OpeningIntroSpriteFamily::trivid_timed;
+            }
+            if (!low_request || !high_request ||
+                (opening.orchestrator.timed_state.phase > 0U &&
+                 !timed_request)) {
+                return fail("expected high, low, and timed source SAT requests are missing");
+            }
+            saw_low_priority = true;
+            saw_high_priority = true;
+
+            const auto scene = render_scene();
+            if (scene.size() != QSize(kSceneWidth, kSceneHeight)) {
+                return fail("renderer did not produce a full 320x224 screen");
+            }
+            const auto pixel_counts = audit_priority_pixels(scene);
+            if (pixel_counts[0] < 8U || pixel_counts[1] < 8U ||
+                pixel_counts[2] < 8U) {
+                std::cerr << "opening trivid layer QA: sample=" << sample
+                          << " low-plane pixels=" << pixel_counts[0]
+                          << " low-hole pixels=" << pixel_counts[1]
+                          << " high-sprite pixels=" << pixel_counts[2]
+                          << '\n';
+                scene.save(QString::fromStdWString(
+                    (output_directory / "priority-diagnostic.bmp").wstring()));
+                return fail("source priority was not visible at enough full-screen overlap pixels");
+            }
+
+            const auto timed_phase = opening.orchestrator.timed_state.phase;
+            const auto filename = std::string(sample) + ".bmp";
+            if (!scene.save(QString::fromStdWString(
+                    (output_directory / filename).wstring()))) {
+                return fail("could not save a full-screen trivid checkpoint");
+            }
+            trace << sample << '\t' << opening.orchestrator_loop_frame << '\t'
+                  << opening.source_frame << '\t' << timed_phase << '\t'
+                  << opening.orchestrator.timed_state.x << '\t'
+                  << opening.orchestrator.timed_state.y << '\t'
+                  << opening.orchestrator.projection_state.x_accumulator
+                  << '\t'
+                  << opening.orchestrator.projection_state.y_accumulator
+                  << '\t' << pixel_counts[0] << '\t' << pixel_counts[1]
+                  << '\t' << pixel_counts[2] << '\t' << filename << '\n';
+            if (timed_phase < 4U) {
+                saw_timed_phase[timed_phase] = true;
+            }
+            if (sample == "pre-exit" &&
+                (!scene.save(QString::fromStdWString(
+                     (output_directory / "actual.bmp").wstring())) ||
+                 QImage(QString::fromStdWString(
+                     (output_directory / "actual.bmp").wstring())) != scene)) {
+                return fail("pre-exit whole-screen actual.bmp readback failed");
+            }
+            return 0;
+        };
+
+        if (capture("stage-entry") != 0) {
+            return 3;
+        }
+        bool saw_midpoint = false;
+        bool saw_pre_exit = false;
+        while (state_.phase == StartupIntegrationPhase::opening_intro &&
+               state_.opening_intro.scene == OpeningIntroScene::trivid &&
+               state_.opening_intro.stage ==
+                   OpeningIntroStage::orchestrator_loop) {
+            const auto& opening = state_.opening_intro;
+            const auto loop_frame = opening.orchestrator_loop_frame;
+            if (loop_frame == kMovingMidpointLoopFrame && !saw_midpoint) {
+                if (capture("moving-midpoint") != 0) {
+                    return 3;
+                }
+                saw_midpoint = true;
+            }
+            if (opening.orchestrator.timed_state.phase > 0U &&
+                opening.orchestrator.timed_state.phase <= 3U &&
+                !saw_timed_phase[opening.orchestrator.timed_state.phase]) {
+                const auto label = "timed-phase-" + std::to_string(
+                    opening.orchestrator.timed_state.phase);
+                if (capture(label) != 0) {
+                    return 3;
+                }
+            }
+            if (loop_frame == kStageExitLoopFrame && !saw_pre_exit) {
+                if (capture("pre-exit") != 0) {
+                    return 3;
+                }
+                saw_pre_exit = true;
+            }
+            advance_one_source_frame();
+        }
+        if (!saw_low_priority || !saw_high_priority || !saw_midpoint ||
+            !saw_pre_exit || !saw_timed_phase[1] || !saw_timed_phase[2] ||
+            !saw_timed_phase[3]) {
+            return fail("the full source loop did not visit every expected priority/timing checkpoint");
+        }
+
+        std::cout << "opening_trivid_layer_qa=passed samples=6"
+                  << " source_priority=verified"
                   << " actual="
                   << (output_directory / "actual.bmp").string() << '\n';
         return 0;
@@ -4225,7 +4533,7 @@ private:
                        opening.stage2.x_offset, -opening.stage2.y_offset);
             break;
         case OpeningIntroScene::trivid:
-            draw_alias(painter, "intro.trivid.background");
+            draw_trivid_scene(painter);
             break;
         case OpeningIntroScene::airport:
             // background.3 is decoded at Plane-B VSCROLL 0x78. ROM FFDD0E
@@ -4287,11 +4595,33 @@ private:
             painter.restore();
         }
 
-        for (const auto& request : opening_sprites_) {
-            draw_opening_sprite(painter, request);
+        if (opening_scene_ != OpeningIntroScene::trivid) {
+            for (const auto& request : opening_sprites_) {
+                draw_opening_sprite(painter, request);
+            }
         }
         for (const auto& request : opening_text_) {
             draw_opening_text(painter, request);
+        }
+    }
+
+    void draw_trivid_scene(QPainter& painter) const {
+        // ROM 0x5AA96 installs the Plane-A map with priority bit 0x8000.
+        // The moving 0x1DF238 SAT list is low priority (0x6000); the fixed
+        // 0x1DF1D6 and timed 0x5AD02 lists are high priority (0xC000 and
+        // 0xE000). Draw the moving exterior layer behind the plane, then draw
+        // both source high-priority SAT families above it. Drawing every SAT
+        // after the plate put the moving layer in front of the character.
+        for (const auto& request : opening_sprites_) {
+            if ((request.palette_flags & 0x8000U) == 0U) {
+                draw_opening_sprite(painter, request);
+            }
+        }
+        draw_alias(painter, "intro.trivid.background");
+        for (const auto& request : opening_sprites_) {
+            if ((request.palette_flags & 0x8000U) != 0U) {
+                draw_opening_sprite(painter, request);
+            }
         }
     }
 
@@ -5896,6 +6226,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> opening_rotor_qa_path;
         std::optional<std::filesystem::path> opening_landing_qa_path;
         std::optional<std::filesystem::path> opening_wilderness_pan_qa_path;
+        std::optional<std::filesystem::path> opening_trivid_layer_qa_path;
         std::optional<std::uint32_t> opening_dump_selection;
         std::optional<std::uint32_t> opening_dump_start;
         std::optional<std::uint32_t> opening_dump_end;
@@ -5941,6 +6272,7 @@ int main(int argc, char** argv) {
                        " [--opening-rotor-qa <output-dir>]"
                        " [--opening-landing-qa <output-dir>]"
                        " [--opening-wilderness-pan-qa <output-dir>]"
+                       " [--opening-trivid-layer-qa <output-dir>]"
                        " [--intro-to-field-smoke]\n";
                 return 0;
             }
@@ -6170,6 +6502,11 @@ int main(int argc, char** argv) {
             if (std::string(argv[index]) == "--opening-wilderness-pan-qa" &&
                 index + 1 < argc) {
                 opening_wilderness_pan_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--opening-trivid-layer-qa" &&
+                index + 1 < argc) {
+                opening_trivid_layer_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--opening-dump-range" &&
@@ -13773,6 +14110,10 @@ int main(int argc, char** argv) {
         if (opening_wilderness_pan_qa_path.has_value()) {
             return window.run_opening_wilderness_pan_qa(
                 *opening_wilderness_pan_qa_path);
+        }
+        if (opening_trivid_layer_qa_path.has_value()) {
+            return window.run_opening_trivid_layer_qa(
+                *opening_trivid_layer_qa_path);
         }
         if (boot_fasa_qa_path.has_value()) {
             return window.run_boot_fasa_qa(*boot_fasa_qa_path);

@@ -7500,10 +7500,11 @@ decode_genesis_intro_sprite_resources_impl(
 
     // 0x5ACAE selects these three tri-vid SAT lists after the 0x3C lead-in.
     // The records are eight bytes each: a source list pointer followed by
-    // the signed presentation coordinates consumed by 0x5ACFA. Keep the
-    // lists separate from the projection families above so the conversion
-    // layer can select the exact six-frame phase without a composite frame.
-    add_table(trivid, "trivid-timed", 0x5AD02U, 3, 8, 0x2000U);
+    // signed presentation coordinates consumed by 0x5ACFA. That ROM call
+    // sets D6=-0x2000 (attribute word 0xE000), selecting palette line 3 and
+    // high sprite priority. Keep the lists separate from the projection
+    // families so the conversion can select each six-frame phase directly.
+    add_table(trivid, "trivid-timed", 0x5AD02U, 3, 8, 0xE000U);
 
     // 0x5B4A8 installs three independent 0x1728 name-table blocks before the
     // ambush loop begins. They are moving actor plates in the source scene,

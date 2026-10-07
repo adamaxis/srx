@@ -68,6 +68,26 @@ int main() {
     assert(atlas.pixels[4].alpha == 0);
 
     const auto rom = read_rom();
+    // ROM 0x5ACF6 writes D6=-0x2000 for the three timed tri-vid SAT lists.
+    // Preserve the resulting palette-line-3/high-priority attributes in the
+    // offline extractor so rebuilding named assets cannot recolor the timed
+    // tri-vid sprite lists with palette line 1.
+    const auto intro_sprites = decode_genesis_intro_sprite_resources(rom);
+    std::array<bool, 3> trivid_timed_lists{};
+    for (const auto& sprite : intro_sprites) {
+        if (sprite.role != "trivid-timed") {
+            continue;
+        }
+        assert(sprite.table_offset == 0x5AD02U);
+        assert(sprite.table_index < trivid_timed_lists.size());
+        assert(sprite.attr_or == 0xE000U);
+        assert(sprite.image.width > 0U && sprite.image.height > 0U);
+        assert(!sprite.image.pixels.empty());
+        trivid_timed_lists[sprite.table_index] = true;
+    }
+    assert(std::all_of(trivid_timed_lists.begin(), trivid_timed_lists.end(),
+                       [](const bool present) { return present; }));
+
     const auto stoker_portrait = decode_genesis_field_dialogue_portrait(rom, 0U);
     assert(stoker_portrait.width == 56 && stoker_portrait.height == 72);
     assert(stoker_portrait.pixels.size() ==

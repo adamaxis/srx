@@ -101,6 +101,18 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_opening_wilderness_pan_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# The ROM marks the fixed trivid-left and timed SAT lists high priority
+# (0xC000/0xE000) while the moving trivid-right list is low priority (0x6000).
+# Whole-screen QA checks these layers across the full 0x115-frame scene loop.
+add_test(NAME shadowrun_ghidra_conversion_qt_opening_trivid_layer_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --opening-trivid-layer-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/opening-trivid-layer-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_opening_trivid_layer_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # The Qt preset excludes the broader conversion-test glob, so retain this
 # source-contract test here alongside the end-to-end image/cadence QA.
 add_executable(shadowrun_ghidra_conversion_qt_title_intro_late_test
