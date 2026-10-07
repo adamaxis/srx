@@ -230,6 +230,7 @@ TitleTextAction advance_title_text_state(TitleTextState& state) {
         return TitleTextAction::ShowCopyright;
     }
     if ((state.countdown & 0x001FU) == 0) {
+        ++state.palette_steps;
         return TitleTextAction::StepPaletteTowardTarget;
     }
     return TitleTextAction::None;

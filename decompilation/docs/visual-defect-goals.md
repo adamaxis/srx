@@ -24,7 +24,7 @@ record the counter, cadence, loop duration, and start/pause/stop conditions.
 For audio, identify the ROM event/resource, verify start and stop behavior,
 and record measured duration; an alias lookup alone is not playback evidence.
 
-Apply the project's eight questions from
+Apply the project's nine questions from
 [`visual-verification-checklist.md`](visual-verification-checklist.md) to
 each changed slice. Do not mark a reported defect resolved from a same-source
 compositor, internal screenshot, or passing test alone. Record absent
@@ -42,22 +42,24 @@ review; it is not part of the pasted report.
 
 | Goal | Reported issue, itemized | Evidence check and closure condition |
 |---|---|---|
-| `BOOT-01` | The shock figure has no sound when it shocks the SEGA logo, and the same effect plays at the wrong time when the Decker intro starts. | Trace both ROM sound requests and runtime triggers separately; capture the logo shock and Decker-scene entry; verify playback start, duration, and stop on the output device. |
+| `BOOT-01` | The shock figure has no sound when it shocks the SEGA logo, and the same effect plays at the wrong time when the Decker intro starts. | ROM `0x5D746` requests audio command `0x16` at the counter-below-six and zero transitions, and command `0x5C` while the post-decrement counter is above four. Qt records these requests but does not play either event. Trace their source identities and timing separately, then verify playback start, duration, and stop on the output device. |
 | `BOOT-02` | The flame decal remains on the right after the logo is fully revealed. | Reproduced in the pre-fix Qt full-screen title capture. The typed reveal stops at 38 columns: the last active frame shows the flame at title frame 165, the first frame after the 0x1A9E reveal branch hides it at 166, and settled frame 900 has no right-edge overlay. Debug/Release CTest checks projection state and whole-screen right-edge pixels. Independent section 01 frames 000372, 000384, and 000390 show the same active-then-absent transition. Resolved for the reported post-reveal persistence. |
 | `BOOT-03` | The animated microchip/circuit background does not move upward. | Independent section 01 frames 000390, 000396, 000420, and 000450 show changing background positions. Trace source offset, direction, cadence, and lifetime; compare a multi-frame full-screen dump. |
+| `BOOT-04` | The title circuit appears before the Shadowrun logo has rolled across. | **Resolved for arrival order.** ROM `0x1E4E` completes the 38-column reveal before `0x1C1E` begins three palette steps at countdown values 64, 32, and 0. Typed palette-step state keeps the circuit black through the reveal. Debug/Release whole-screen QA checks title frames 188/189; independent section 01 frames 000384/000390 support logo-only then circuit-visible order. Brightness and texture remain separate under `TITLE-03`. See [title circuit arrival audit](visual-audits/title-circuit-arrival.md). |
 | `TITLE-01` | The title's “PRESS START” label does not blink in and out. | Reproduced before the edit: the presenter set `title_prompt_visible_ = true` for both ROM variants. Resolved. ROM `0x1A9E` starts D7 at `0x0E10`, waits once per loop, then draws only when D7 is below `0x0C6C`; its low six bits select visible record A (`0x1F81`) or blank record B (`0x1F99`), both at `0xCA84` with palette `0x2000`. Qt now follows the selected typed text asset. Debug/Release typed and full-screen QA cover two cycles. Independent section 01 frames 000900/000906/000912 show visible/hidden/visible; their coarse 30-fps spacing supports blinking but does not establish absolute VBlank phase. Full review: [title prompt blink audit](visual-audits/title-prompt-blink.md). |
 | `TITLE-02` | Pressing Start skips the transition and immediately opens New Game/Load Game. | Resolved for the reported Start route: ROM `0x1A9E` exits only on the Start latch (`0x8000`), then performs 17 palette passes after 34 VBlanks; the `0x075E` caller runs six command-`0x14` audio transactions over 18 more VBlanks before `0x59092` draws Start Options. Debug/Release QA captures every pass and hold frame, proves A alone does not exit, and checks the default New Game selection and clean destination redraw. Independent section 01 frames 001637-001643 show title-to-black and 001670-001674 show the options shell followed by text. The clip has no input/VBlank log; exact input phase remains open. Shell-to-text ordering is defended separately under `TITLE-04`, although exact 60-Hz duration is not measurable from this 30-fps capture. Audio resource/playback/duration also remain unidentified. See [title Start transition audit](visual-audits/title-start-transition.md). |
 | `TITLE-03` | The title circuit background is much brighter and denser green in the native screen than in the independent game capture. | Reproduced in matched whole-screen comparisons after correcting a mislabeled native frame. ROM tracing supports the extracted base palette and identifies a separate seven-phase light update; the compressed reference does not establish the correct brightness of thin circuit lines. Keep open until source-backed color/texture equivalence can be established without a speculative color transform. See [title circuit palette audit](visual-audits/title-circuit-palette.md). |
 | `TITLE-04` | Found during full-screen verification: the Genesis capture shows the Start Options shell without text for frames 001670-001671, then shows the text and selector from 001672; the original Qt destination rendered the complete page immediately. | Resolved for the source-supported ordering. ROM `0x10B5A` calls `0x10918`; `0x10952` clears/fills the menu display buffers and `0x1095E` waits for VBlank before menu assets, grid (`0x590B6`), heading/choices (`0x590CC`), and cursor (`0x0C376`) are drawn. Typed native `start_options_shell` renders only the bezel/background for the source-frame checkpoint, then reveals the active menu. Debug/Release QA and CLI `actual.bmp` dumps verify shell-only pixels, default New Game selection, and clean return from empty Load. Independent section 01 frames 001670-001671 show shell only, then 001672-001674 show the active menu. The 30-fps capture supports order but not exact 60-Hz display duration or time spent transferring assets. See [title Start transition audit](visual-audits/title-start-transition.md). |
 | `OPEN-01` | Opening music starts on the second screen instead of when the opening starts. | Reproduced in the prior Qt event map: ROM `0x59C72` submits command `0x10` before `0x5AF62`, but Qt played the 2.7505-second field effect; command `0x11` before stage 2 then played the 14.8337-second stage-1 track. The independent section 02 recording correlates that track at 2.431/2.737 seconds and stage 3's track at 34.844 seconds; the field effect has no strong match. The stage-1 track now maps to `0x10`; `0x11` is intentionally unmapped pending identity. Debug/Release source-order and default-output playback QA cover the source calls and identified tracks. The reported late start of stage 1 is corrected; stage-2 identity and source stop/lifetime remain open. See [`visual-audits/opening-music-start.md`](visual-audits/opening-music-start.md). |
-| `OPEN-02` | In the Decker route, the head floats instead of staying attached to the character. | Identify the exact scene, actor record, and layer ownership; compare several adjacent frames and full-screen native captures. The sampled section 02 frames do not yet identify this Decker-specific state. |
-| `OPEN-03` | In the Decker route, the body is superimposed over another image. | Trace scene handoff and layer clearing independently from head placement; verify no old actor/background layer remains across the full frame. |
-| `OPEN-04` | The aircraft's rear propeller does not move. | **Partial; not resolved.** ROM `0x5B100` selects six `helicopter` sprite groups every six frames while `DD08 >= -0x1B8`; the Qt full-screen QA and independent section 02 frames show the upper rotor strip changing. The circular tail detail is part of the static Plane-A asset and appears static in the same independent frames. The report does not identify which part it means, so do not invent a tail animation. Debug/Release QA covers the six states, 36-frame cycle, scroll and full-screen composition. See [airport rotor and aircraft tail review](visual-audits/airport-rotor-and-aircraft-tail.md). |
+| `OPEN-02` | In the Gator Shaman route, the magic-user's head floats instead of staying attached to the character. | **Reproduced** in the 6,782-frame Release capture at native frames 004190, 004340, and 004500. This is the Gator Shaman route, not Decker. Trace the actor and layer records through the ROM sequence before changing sprite placement; see [full intro capture review](visual-audits/full-intro-capture-2026-10-06.md). |
+| `OPEN-03` | Michael's death image is superimposed over another image in the opening. | Trace Michael's death event and actor lifetime, then verify the whole-screen transition clears or replaces the previous body layer. Keep it separate from the floating magic-user head. |
+| `OPEN-04` | The aircraft's rear propeller does not move. | **Resolved.** ROM `0x5B100` selects six distinct aircraft propeller sprite groups every six source frames while `DD08 >= -0x1B8`; the groups cycle every 36 frames and stop outside that travel window. Qt's typed pulse state draws those groups, and Debug/Release full-screen QA checks six distinct states, body stability, and the 36-frame return. Independent section 02 frames 001065, 001068, 001071, 001074, 001077, and 001080 show the changing propeller strip. The prior audit wrongly treated the report as ambiguous by comparing it to the static circular body detail. The reference's 30-fps sampling supports motion but not exact six-VBlank phase. See [airport propeller animation audit](visual-audits/airport-rotor-and-aircraft-tail.md). |
 | `OPEN-05` | The aircraft lands on the building incorrectly. | **Resolved for the sampled airport landing sequence.** ROM `0x5B1B6` keeps list `0x1DF3F4` as the aircraft's base art and selects alternate list `0x1DF3FE` only while computed screen Y is `0x110..0x11E`; phase index does not select the image. The host plan incorrectly assigned alternate art to phases 4-6. It now supplies base art for all seven table rows, leaving the existing typed Y-window rule authoritative. Debug/Release `shadowrun_ghidra_conversion_qt_title_intro_late_qa` checks the seven ROM `0x5B270` deltas/delays, event frames, positions, and variants. The full-screen `shadowrun_ghidra_conversion_qt_opening_landing_qa` captures 20 event/threshold checkpoints and `actual.bmp`; all 21 BMPs are 320x224 and byte-identical across configurations. Independent section 02 frames 001320/001380/001410/001440 support the four sampled art/position states: base, base, alternate, base. The 30-fps capture does not establish exact VBlank alignment. See [airport landing descriptor audit](visual-audits/airport-landing-descriptor.md). |
+| `OPEN-06` | The cockpit/TV skyline is drawn in front of the character; it should sit outside the cockpit and behind the character. | Trace the tri-vid/cockpit layer sequence and sprite priority, including the frame that introduces Michael's death image. Compare multiple full-screen frames before changing asset order. |
 | `TAXI-01` | The taxi-window callout is missing its top/bottom edges and appears as two parallel side lines instead of a closed white outline. | Trace the source frame/layout and redraw ownership; compare full taxi frames before and after the callout. |
 | `HUD-01` | The field portrait has unexpected color over the runner's face. | Resolved for the reported Gator face-color symptom: ROM `0x35D4` applies `+0x2C` to the 4x4 face; the old Qt path used `0x3602`. Corrected assets/runtime and per-record QA select Gator line 1 (`+0x2C=0x2000`); independent section 04/06 frames support that palette. See [the eight-question portrait audit](visual-audits/hud-portrait-palette.md). Ammo remains separately tracked as `HUD-02`. |
 | `HUD-02` | Ammunition is inconsistent: the report cites 32 bullets initially, 37 on the unequipped hand, and 4 after equipping the gun. | ROM Gator record `0x72B1A` starts at 32 with item code 2; the `0x39F2` field refresh reaches `0x36FC`, which clamps it to the item-2 capacity 12 at `0xD4570 + 0x24`. The Qt path applies that refresh. ROM `0x125FA`/`0x121E0` plus item code 3 capacity 11 reproduce `4/11 -> 37 -> 4`, but the ordinary unarmed field-HUD branch draws `00` while preserving the +0x4E percentage. The user's visible 37-on-hand route remains unreconciled. The former Ricky QA image used an impossible raw-template/unarmed state and is corrected to use a refreshed live record and typed unequip. See [ammo capacity audit](visual-audits/hud-ammo-capacity-refresh.md); keep the reported sequence partial until independently reconciled. |
-| `FIELD-01` | Walking uses the dying/fallen animation. | ROM trace identifies C062 as the ordinary four-pose movement loop and C052 as idle; C0B2 is a separate finite behavior transition. Verify all eight selector/assets, live movement and cadence, blocked reset, release, and full-screen states. |
+| `FIELD-01` | Walking previously used the dying/fallen animation; leftward movement also showed the right-facing walk pose. | The fallen-pose family is separated from ordinary C062 movement. ROM direction 6 (`0xC062` selector `0x38`) shares direction-2 tiles and sets attribute `0x0800`; the Qt runtime now applies that horizontal facing to idle and walk images. Debug/Release normal-input left-route QA checks selector, heading, movement, facing, and whole-screen output. Other live headings and exact-scene visual matching remain open. |
 | `SOUND-01` | Pocket Secretary selection/cancel sounds are absent on some screens or use the wrong sound. | Audit each source action and child page separately; verify the event, trigger condition, measured duration, and playback on the default output. |
 | `SOUND-02` | Moving between Pocket Secretary menu items has no navigation sound. | Trace the accepted cursor-move edge and source resource; verify one playback per accepted move, none on clamp/no-op, and the stop/duration behavior. |
 | `SEC-MAGIC` | The Magic page leaves its old text/menu content drawn over the new page. | Trace page entry/exit and panel clear/redraw; capture parent, child, return, and reopen at full screen, proving old controls appear only when the source restores them. |
@@ -152,28 +154,35 @@ review; it is not part of the pasted report.
 
 ## Goals
 
-### INTRO-01 — SEGA shock and logo reveal (`BOOT-01` through `BOOT-03`)
+### INTRO-01 — SEGA shock and logo reveal (`BOOT-01` through `BOOT-04`)
 
 **Reported:** the shock sound is missing at the logo shock and plays at the
 wrong intro point; the flame decal remains after the logo is fully revealed;
-the chip background should scroll upward but does not.
+the chip background should scroll upward but does not; the title circuit must
+stay hidden until the Shadowrun logo has rolled across.
 
-**Solve:** trace the reveal/effect layers and sound requests in the ROM; remove
-the decal at the source transition; implement the chip scroll with the source
-direction, distance, cadence, and screen lifetime; start the correct shock
-resource at the shock event and measure its duration.
+**Solve:** trace the reveal/effect layers, palette transition, and sound
+requests in the ROM; remove the decal at the source transition; implement the
+chip scroll and circuit arrival with the source direction, cadence, and screen
+lifetime; start the correct shock resource at the shock event and measure its
+duration.
 
-**Done when:** multi-frame whole-screen dumps show shock, decal removal, and
-upward scroll at the source-derived times; an independent section 01 sequence
-supports the visual order; audio playback is associated with the shock rather
-than startup and its duration/stop are recorded.
+**Done when:** full intro captures show shock, decal removal, upward scroll,
+logo reveal, and delayed circuit appearance at source-derived states; an
+independent section 01 sequence supports the visual order; audio playback is
+associated with the shock rather than startup and its duration/stop are
+recorded.
 
 **Status:** partial. `BOOT-02`'s post-reveal flame persistence is resolved with
 source-state retirement, a Debug/Release full-screen pixel check, and the
 independent frame 000372-to-000384 transition. `BOOT-03`'s source-cadenced
 upward circuit scroll is implemented and covered by the Debug/Release startup
-QA. `BOOT-01` remains open; the full title still has the separately tracked
-palette finding below.
+QA. `BOOT-04` is resolved: the native title keeps the circuit black through
+the 38-column logo reveal and uses the typed 0x1C1E palette-step counter; full
+screens at title frames 188 and 189 check the state and pixels. Independent
+section 01 frames 000384 and 000390 support the logo-only-to-circuit order.
+`BOOT-01` remains open; the title color/texture mismatch stays separate under
+`TITLE-03`.
 
 ### INTRO-02 — Push Start and title-to-start transition (`TITLE-01`, `TITLE-02`)
 
@@ -228,29 +237,30 @@ palette evidence supports the current extracted base colors, while video
 compression prevents a confident colorimetric correction. Keep the visual
 defect unresolved. See the [eight-question audit](visual-audits/title-circuit-palette.md).
 
-### INTRO-03 — Decker, aircraft, landing, and taxi frame (`OPEN-01` through `OPEN-05`, `TAXI-01`)
+### INTRO-03 — Gator Shaman, aircraft, landing, and taxi frame (`OPEN-01` through `OPEN-06`, `TAXI-01`)
 
-**Reported:** intro music starts late; a Decker head floats and a body is
-superimposed; the rear propeller is static; the aircraft lands incorrectly;
-the taxi window is drawn as two side lines instead of a complete white
-outline.
+**Reported:** intro music starts late; the Gator Shaman's head floats; the
+Michael death image is superimposed; the cockpit skyline is in front of the
+character; the rear propeller is static; the aircraft lands incorrectly; the
+taxi window is drawn as two side lines instead of a complete white outline.
 
-**Solve:** verify scene and layer ownership for the head/body, start music at
-the source scene entry, identify propeller frame/cadence, trace the landing
-position/orientation, and redraw the taxi window as the source-supported
-closed outline. Review the full frame for old layers surviving each handoff.
+**Solve:** verify Gator Shaman and Michael actor/layer ownership, put the
+cockpit skyline behind the character, start music at the source scene entry,
+trace the airport propeller cadence and landing position, and redraw the taxi
+window as a closed outline. Review the full frame for stale layers on every
+handoff.
 
 **Done when:** source-derived layer state and landing sequence are represented
-as typed scene state, multi-frame dumps cover propeller motion and landing,
-matching independent section 02 frames support placement/order, and music
-timing is verified from the source request through playback. If the Decker
-route is absent from the supplied recording, record that limitation.
+as typed scene state, full intro captures cover the actors, cockpit, propeller,
+and landing, matching independent section 02 frames support placement/order,
+and music timing is verified from the source request through playback.
 
-**Status:** partial. `OPEN-01`'s stage-1 music now starts at the stage-1 entry command; the stage-2 sound identity and track lifetime remain open. `OPEN-05` is resolved for the sampled landing trajectory and sprite-selection states (see [airport landing descriptor audit](visual-audits/airport-landing-descriptor.md)). `OPEN-02` through `OPEN-04` and `TAXI-01` remain separate goals; `OPEN-04` is partial because the reported rear rotor is ambiguous.
+**Status:** partial. `OPEN-01`'s stage-1 music now starts at stage entry; stage-2 sound identity and track lifetime remain open. `OPEN-04` is resolved for the six-phase rear propeller animation, and `OPEN-05` is resolved for the sampled landing trajectory (see the [propeller audit](visual-audits/airport-rotor-and-aircraft-tail.md) and [landing audit](visual-audits/airport-landing-descriptor.md)). `OPEN-02`, `OPEN-03`, `OPEN-06`, and `TAXI-01` remain separate goals.
 
 ### FIELD-01 — Field actor movement pose and animation
 
-**Reported:** held movement appears to use a dying/fallen pose.
+**Reported:** held movement appears to use a dying/fallen pose; movement left
+shows the right-facing walk pose.
 
 **Current source finding:** the previous Qt runtime selected its extracted
 `0xC0B2` family on every accepted movement. ROM `0xB6DE` instead installs a
@@ -264,15 +274,19 @@ at six- or seven-update intervals depending on phase. The section 04 recording
 shows multiple field movement poses but has no synchronized input or selector
 log.
 
-**Implementation:** the Qt runtime now consumes separately named C062 frames
-for ordinary accepted movement and C052 frames for idle/reset. Selector,
-direction, frame index, accumulator, and period remain typed native state;
-C0B2 stays a distinct finite behavior transition. The Qt CTest checks all
-eight selector pairs, all four extracted frames, the live right-held path,
-cadence/loop wrap, movement position, and release-to-idle. Debug and Release
-full-screen output is byte-identical and has been inspected across the whole
-screen. The independent corridor sequence supports changing original-game
-movement poses but does not show this same map or input state.
+**Implementation:** the Qt runtime consumes separately named C062 frames
+for ordinary accepted movement and C052 frames for idle/reset. ROM direction
+6 (left) sets attribute `0x0800`, which mirrors the direction-2 art; directions
+5 through 7 use the same source transform pattern. The Qt runtime now applies
+that horizontal transform to idle and walk images for directions 5 through 7.
+Selector, direction, frame index, accumulator, and period remain typed native
+state; C0B2 stays a distinct finite behavior transition. The Qt CTest checks
+all eight selector pairs, all four extracted frames, the live right-held path,
+and a normal left-held path with its source heading, selector, facing, movement,
+and release-to-idle. Debug and Release full-screen output is byte-identical
+and has been inspected across the whole screen. The independent corridor
+sequence supports changing original-game movement poses but does not show
+this same map or input state.
 
 **Remaining:** exercise the other seven headings as live field routes. An
 existing normal-input scene-2 wall route now checks that blocked movement
@@ -288,13 +302,15 @@ pass review; independent frames support the pose and exact-scene limits are
 recorded. The separate building/property routes do not get folded into this
 visual claim.
 
-**Status:** partial. The source-backed C062 selector/assets/clock correction
-is implemented and passes Debug/Release for a normal right-held route; all
-eight selector mappings and extracted movement families are checked. A
-separate normal-input wall route verifies blocked reset. The reported defect
-remains open until other live headings and exact-scene visual comparison are
-covered. Independent video supports movement poses but cannot identify the
-input/selector or exact map placement.
+**Status:** partial. The source-backed C062 selector/assets/clock and facing
+corrections are implemented. Debug/Release QA covers normal right- and
+left-held routes, all eight selector mappings, the extracted movement
+families, cadence, and release-to-idle; a separate normal-input wall route
+verifies blocked reset. The reported left-facing pose is corrected in the
+native build. The broader movement goal remains open until the other live
+headings and exact-scene visual comparison are covered. Independent video
+supports changing movement poses but cannot identify input, selector, or exact
+map placement.
 
 ### FIELD-02 — Terrain collision, building access, and physical Stoker trigger
 

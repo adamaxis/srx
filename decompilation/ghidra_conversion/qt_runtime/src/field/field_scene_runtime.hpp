@@ -569,6 +569,9 @@ public:
     std::uint16_t field_entity_animation_selector_for_dump() const noexcept {
         return field_entity_animation_selector_;
     }
+    std::uint8_t field_entity_direction_for_dump() const noexcept {
+        return field_entity_.direction;
+    }
     bool field_entity_walking_for_dump() const noexcept {
         return field_entity_walking_;
     }

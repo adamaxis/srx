@@ -38,6 +38,33 @@ question; do not treat a plausible screenshot as proof by itself.
    rendered parent or field frame; look for controls accidentally drawn over
    controls that should no longer exist.
 
+9. **Am I reviewing the whole time window?** Capture the complete affected
+   scene from its entry (including the preceding black/fade/parent state) to
+   its exit and the first stable destination state. Keep the whole screen in
+   every frame; do not substitute a crop or a few selected checkpoints for the
+   sequence. Capture every source update frame when cadence or brief overlays
+   matter, or retain a video rate that preserves the shortest relevant event.
+   Review the clip end to end, then inspect full-screen frames around each
+   transition and animation change. Keep the process alive through the expected
+   handoff and record whether it exits, stalls, or crashes.
+
+## Required capture scope
+
+For a reported visual defect, first mark the earliest state that can affect it
+and the latest state that can clear or replace it. Capture continuously across
+that interval, including related scenes and overlays that share the same
+assets or presentation layers. For an intro, this means the opening black
+frame, every logo/fade, the title/menu handoff, every story scene, and the
+destination handoff. For a menu, capture the parent, the full open/move/
+confirm/cancel/return path, and a short stable hold after return.
+
+Store the complete capture and a phase-boundary log with the audit artifacts.
+Review the entire clip for ordering, stale layers, unexpected overlays, and
+crashes before reviewing defect-specific details. Then compare the relevant
+full-screen frames with the ROM trace and independent gameplay frames. A
+focused crop may help inspect a pixel detail after the full-frame review, but
+it cannot replace or define the reviewed evidence.
+
 For each feature report these outcomes separately:
 
 - **Code changed:** identify the implementation.

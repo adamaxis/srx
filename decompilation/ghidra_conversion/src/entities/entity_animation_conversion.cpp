@@ -23,6 +23,11 @@ std::uint16_t select_field_entity_animation_selector(
                    : kFieldIdleAnimationSelectors[slot];
 }
 
+bool field_entity_animation_flips_horizontally(
+    const std::uint8_t direction) {
+    return (direction & 0x07U) >= 5U;
+}
+
 std::uint32_t entity_kind_state_table(const std::uint16_t kind) {
     return kEntityKindStateTables[static_cast<std::size_t>(kind & 0x0FU)];
 }

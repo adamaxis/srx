@@ -66,6 +66,12 @@ int main() {
             return 7;
         }
     }
+    for (std::uint8_t direction = 0U; direction < 8U; ++direction) {
+        if (!expect(field_entity_animation_flips_horizontally(direction) ==
+                    (direction >= 5U))) {
+            return 21;
+        }
+    }
     if (!expect(entity_kind_state_table(kFieldEntityKind) == 0x00006378U &&
                 entity_kind_state_table(0x000DU) == 0x00006BB8U)) {
         return 20;

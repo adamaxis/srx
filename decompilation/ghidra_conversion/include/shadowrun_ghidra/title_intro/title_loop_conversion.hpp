@@ -163,6 +163,7 @@ enum class TitleTextAction {
 struct TitleTextState {
     std::uint16_t completion_state = 0;
     std::int16_t countdown = 0x5A;
+    std::uint8_t palette_steps = 0;
 };
 
 // ROM 0x1C1E: count down the completed-logo text delay. The returned action

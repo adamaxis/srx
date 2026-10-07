@@ -3256,9 +3256,19 @@ bool FieldSceneRuntime::bootstrap(
             source_boundary("field.bootstrap.entity_assets_missing");
             return false;
         }
+        const auto horizontal_flip =
+            field_entity_animation_flips_horizontally(
+                static_cast<std::uint8_t>(direction));
+        if (horizontal_flip) {
+            field_entity_idle_images_[direction] =
+                field_entity_idle_images_[direction].flipped(
+                    Qt::Horizontal);
+        }
         // The ordinary movement poses come from the C062 positive-marker
         // list, extracted as separate host files. C0B2 is a different finite
-        // behavior-transition sequence.
+        // behavior-transition sequence. Direction 5..7 descriptor records
+        // set source attribute 0x0800; bake that facing into the native image
+        // once when loading each typed direction set.
         std::size_t loaded_frames = 0;
         for (;;) {
             const auto walk_alias =
@@ -3277,6 +3287,9 @@ bool FieldSceneRuntime::bootstrap(
                     walk_image, walk_origin_x, walk_origin_y)) {
                 source_boundary("field.bootstrap.entity_assets_missing");
                 return false;
+            }
+            if (horizontal_flip) {
+                walk_image = walk_image.flipped(Qt::Horizontal);
             }
             field_entity_walk_images_[direction].push_back(
                 std::move(walk_image));

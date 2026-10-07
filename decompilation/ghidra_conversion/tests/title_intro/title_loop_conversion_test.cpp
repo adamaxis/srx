@@ -252,15 +252,37 @@ int main() {
     }
     if (!expect(advance_title_text_state(text) ==
                     TitleTextAction::StepPaletteTowardTarget &&
-                text.countdown == 0)) {
+                text.countdown == 0 && text.palette_steps == 1U)) {
         return 1;
     }
     if (!expect(advance_title_text_state(text) ==
                     TitleTextAction::ShowCopyright &&
-                text.completion_state == 2U)) {
+                text.completion_state == 2U &&
+                text.palette_steps == 1U)) {
         return 1;
     }
     if (!expect(advance_title_text_state(text) == TitleTextAction::None)) {
+        return 1;
+    }
+
+    TitleTextState circuit_reveal{1U, 0x5AU};
+    std::uint8_t observed_palette_steps = 0U;
+    for (int frame = 0; frame < 0x5A; ++frame) {
+        if (advance_title_text_state(circuit_reveal) ==
+            TitleTextAction::StepPaletteTowardTarget) {
+            ++observed_palette_steps;
+        }
+    }
+    if (!expect(observed_palette_steps == 3U &&
+                circuit_reveal.palette_steps == 3U &&
+                circuit_reveal.completion_state == 1U &&
+                circuit_reveal.countdown == 0)) {
+        return 1;
+    }
+    if (!expect(advance_title_text_state(circuit_reveal) ==
+                    TitleTextAction::ShowCopyright &&
+                circuit_reveal.palette_steps == 3U &&
+                circuit_reveal.completion_state == 2U)) {
         return 1;
     }
 

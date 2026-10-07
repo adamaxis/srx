@@ -55,6 +55,8 @@ constexpr int kSceneWidth = 320;
 constexpr int kSceneHeight = 224;
 constexpr int kSceneScale = 3;
 constexpr std::uint8_t kTitleStartButton = 0x80U;
+constexpr std::size_t kTitleCircuitPhaseCount = 7U;
+constexpr std::size_t kTitleCircuitPaletteRevealPassCount = 3U;
 
 bool image_has_green_ink(const QImage& image, const int x, const int y,
                          const int width, const int height) {
@@ -186,6 +188,8 @@ std::filesystem::path find_asset_root(
                    " [--boot-fasa-qa <output-dir>]"
                    " [--startup-dump <stage> <selection> <frame> <file>]"
                    " [--startup-qa <output-dir>]"
+                   " [--full-intro-capture <archetype-0..2> "
+                   "<title-idle-frames> <output-dir>]"
                    " [--opening-rotor-qa <output-dir>]"
                    " [--opening-landing-qa <output-dir>]"
                    " [--intro-to-field-smoke]\n";
@@ -199,6 +203,10 @@ std::filesystem::path find_asset_root(
         }
         if (argument == "--startup-qa" && index + 1 < argc) {
             ++index;
+            continue;
+        }
+        if (argument == "--full-intro-capture" && index + 3 < argc) {
+            index += 3;
             continue;
         }
         if (argument == "--boot-fasa-qa" && index + 1 < argc) {
@@ -1232,6 +1240,176 @@ public:
         return 0;
     }
 
+    // Full temporal capture for visual audits. This follows the ordinary
+    // title -> Start Options -> New Game -> archetype -> opening -> field
+    // route, retaining every complete 320x224 source frame in sequence.
+    int dump_full_intro_capture(
+        const std::uint32_t selection,
+        const std::uint32_t title_idle_frames,
+        const std::filesystem::path& output_directory) {
+        host_frame_timer_.stop();
+        if (selection > 2U || title_idle_frames > 10000U) {
+            std::cerr << "full intro capture: archetype must be 0..2 and "
+                         "title idle frames must be at most 10000\n";
+            return 2;
+        }
+
+        std::filesystem::create_directories(output_directory);
+        std::ofstream manifest(output_directory / "frames.tsv");
+        std::ofstream boundaries(output_directory / "boundaries.tsv");
+        if (!manifest || !boundaries) {
+            std::cerr << "full intro capture: could not write audit logs in "
+                      << output_directory.string() << '\n';
+            return 3;
+        }
+        manifest << "clip_frame\tfile\tevent\tphase\tstartup_frame\t"
+                    "title_scroll\tcircuit_phase\topening_frame\tstage\t"
+                    "scene\tpalette_weight\tboundary_count\n";
+        boundaries << "clip_frame\tboundary\n";
+
+        std::uint32_t clip_frame = 0U;
+        std::size_t next_boundary = 0U;
+        const auto capture = [&](const std::string_view event) {
+            const auto scene = render_scene();
+            if (scene.size() != QSize(kSceneWidth, kSceneHeight)) {
+                std::cerr << "full intro capture: non-full-screen image at "
+                          << clip_frame << '\n';
+                return false;
+            }
+            auto frame_name = std::to_string(clip_frame);
+            if (frame_name.size() < 6U) {
+                frame_name.insert(0U, 6U - frame_name.size(), '0');
+            }
+            const auto filename = "frame-" + frame_name + ".png";
+            const auto path = output_directory / filename;
+            if (!scene.save(QString::fromStdWString(path.wstring()))) {
+                std::cerr << "full intro capture: could not write "
+                          << path.string() << '\n';
+                return false;
+            }
+            manifest << clip_frame << '\t' << filename << '\t' << event
+                     << '\t' << startup_integration_phase_name(state_.phase)
+                     << '\t' << state_.frame.frame_count << '\t'
+                     << title_loop_.animation_timer.animation_offset << '\t'
+                     << static_cast<unsigned>(title_loop_.circuit_lights.phase)
+                     << '\t' << state_.opening_intro.source_frame << '\t'
+                     << opening_intro_stage_name(state_.opening_intro.stage)
+                     << '\t'
+                     << opening_intro_scene_name(state_.opening_intro.scene)
+                     << '\t'
+                     << static_cast<unsigned>(
+                            state_.opening_intro.scene_palette_weight)
+                     << '\t' << presentation_boundaries_.size() << '\n';
+            while (next_boundary < presentation_boundaries_.size()) {
+                boundaries << clip_frame << '\t'
+                           << presentation_boundaries_[next_boundary++] << '\n';
+            }
+            ++clip_frame;
+            return static_cast<bool>(manifest) &&
+                   static_cast<bool>(boundaries);
+        };
+        const auto fail = [&](const std::string_view reason) {
+            std::cerr << "full intro capture: " << reason << '\n';
+            return 3;
+        };
+        const auto hold = [&](const std::string_view event,
+                              const std::uint32_t frame_count) {
+            for (std::uint32_t frame = 0U; frame < frame_count; ++frame) {
+                if (!capture(event)) {
+                    return false;
+                }
+                advance_one_source_frame();
+            }
+            return true;
+        };
+
+        std::uint32_t boot_frames = 0U;
+        while (state_.phase == StartupIntegrationPhase::pre_title) {
+            if (boot_frames++ >= 10000U || !hold("pre_title", 1U)) {
+                return fail("pre-title sequence did not reach the title");
+            }
+        }
+        if (state_.phase != StartupIntegrationPhase::title_ready) {
+            return fail("pre-title sequence reached an unexpected state");
+        }
+
+        if (!hold("title_idle", title_idle_frames)) {
+            return fail("title did not remain active for the requested hold");
+        }
+        if (state_.phase != StartupIntegrationPhase::title_ready) {
+            return fail("title left its interactive state before Start");
+        }
+
+        pending_title_controller_word_ = static_cast<std::uint16_t>(
+            static_cast<std::uint16_t>(kTitleStartButton) << 8U);
+        if (!capture("title_start_edge")) {
+            return fail("could not capture the Start input frame");
+        }
+        advance_one_source_frame();
+        std::uint32_t title_transition_frames = 0U;
+        while (state_.phase == StartupIntegrationPhase::title_ready) {
+            if (title_transition_frames++ >= 1000U ||
+                !hold("title_start_transition", 1U)) {
+                return fail("title transition did not reach Start Options");
+            }
+        }
+        if (state_.phase != StartupIntegrationPhase::start_options_shell ||
+            !capture("start_options_shell")) {
+            return fail("title did not produce a clean Start Options shell");
+        }
+        advance_one_source_frame();
+        if (state_.phase != StartupIntegrationPhase::start_options ||
+            !hold("start_options_new_game", 30U)) {
+            return fail("Start Options did not reveal the New Game row");
+        }
+
+        advance_startup_integration(state_, kStartupMenuA, startup_callbacks_);
+        if (state_.phase != StartupIntegrationPhase::joshua_archetype) {
+            return fail("New Game did not open archetype selection");
+        }
+        constexpr std::array<std::string_view, 3> kArchetypeNames{{
+            "samurai", "decker", "gator_shaman"}};
+        if (!hold("archetype_samurai", 30U)) {
+            return fail("could not capture Samurai selection");
+        }
+        for (std::uint32_t index = 0U; index < selection; ++index) {
+            advance_startup_integration(
+                state_, kStartupMenuDown, startup_callbacks_);
+            if (!hold(std::string("archetype_") +
+                          std::string(kArchetypeNames[index + 1U]),
+                      30U)) {
+                return fail("could not capture archetype cursor movement");
+            }
+        }
+        advance_startup_integration(state_, kStartupMenuA, startup_callbacks_);
+        if (state_.phase != StartupIntegrationPhase::opening_intro) {
+            return fail("selected archetype did not start the opening");
+        }
+
+        std::uint32_t opening_frames = 0U;
+        while (state_.phase == StartupIntegrationPhase::opening_intro) {
+            if (opening_frames++ >= 10000U || !hold("opening", 1U)) {
+                return fail("opening did not reach the field handoff");
+            }
+        }
+        if (state_.phase != StartupIntegrationPhase::field_ready ||
+            !field_scene_runtime_.ready()) {
+            return fail("opening did not publish a ready field session");
+        }
+        if (!hold("field_stable_hold", 120U)) {
+            return fail("field did not survive the two-second post-intro hold");
+        }
+
+        manifest.flush();
+        boundaries.flush();
+        std::cout << "full_intro_capture=complete archetype="
+                  << kArchetypeNames[selection]
+                  << " opening_frames=" << state_.opening_intro.source_frame
+                  << " captured_frames=" << clip_frame
+                  << " path=" << output_directory.string() << '\n';
+        return 0;
+    }
+
     int run_opening_rotor_qa(
         const std::filesystem::path& output_directory) {
         constexpr std::uint32_t kSelection = 2U;
@@ -1644,6 +1822,18 @@ public:
         title_scroll_trace
             << "label\ttitle_frame\tbackground_scroll\tcircuit_phase\n";
 
+        std::ofstream title_circuit_palette_trace(
+            output_directory / "title-circuit-palette-qa.tsv");
+        if (!title_circuit_palette_trace) {
+            std::cerr << "startup qa: could not open title circuit palette "
+                         "trace in "
+                      << output_directory.string() << '\n';
+            return 3;
+        }
+        title_circuit_palette_trace
+            << "label\ttitle_frame\tlogo_columns\tcompletion_state\t"
+               "palette_countdown\tpalette_steps\tcorner_ink_pixels\n";
+
         std::ofstream title_sprite_trace(
             output_directory / "title-sprite-lifetime-qa.tsv");
         if (!title_sprite_trace) {
@@ -1693,32 +1883,30 @@ public:
 
         const auto title_background_matches =
             [this](const QImage& scene, const bool full_background) {
-                const auto circuit_alias =
-                    "title.circuit.background." +
-                    std::to_string(title_loop_.circuit_lights.phase);
-                auto background = draw_asset_cache_.find(circuit_alias);
-                if (background == draw_asset_cache_.end()) {
-                    background = draw_asset_cache_.find("title.background");
-                }
-                if (background == draw_asset_cache_.end()) {
+                const auto phase = static_cast<std::size_t>(
+                    title_loop_.circuit_lights.phase %
+                    kTitleCircuitPhaseCount);
+                const auto passes = std::min<std::size_t>(
+                    title_loop_.text.palette_steps,
+                    kTitleCircuitPaletteRevealPassCount);
+                const auto& background =
+                    title_circuit_transition_cache_[phase][passes];
+                if (background.isNull()) {
                     return false;
                 }
 
                 // Current title assets are screen-sized and start at (0,0).
                 // Use the catalog origin and phase alias to compare only the
                 // background-only band once foreground layers are present.
-                const auto actual_alias =
-                    draw_asset_cache_.find(circuit_alias) !=
-                            draw_asset_cache_.end()
-                        ? circuit_alias
-                        : std::string("title.background");
+                const auto actual_alias = "title.circuit.background." +
+                                          std::to_string(phase);
                 const auto* record =
                     state_.asset_catalog.catalog.find(actual_alias);
-                if (record == nullptr || background->second.height() <= 0) {
+                if (record == nullptr || background.height() <= 0) {
                     return false;
                 }
 
-                const auto& source = background->second;
+                const auto& source = background;
                 const auto height = source.height();
                 const auto scroll = static_cast<int>(
                     title_loop_.animation_timer.animation_offset %
@@ -1964,14 +2152,16 @@ public:
         int title_frame = 0;
         const auto title_right_edge_overlay_pixels =
             [this](const QImage& scene) {
-                auto background_alias =
-                    "title.circuit.background." +
-                    std::to_string(title_loop_.circuit_lights.phase);
-                auto background = draw_asset_cache_.find(background_alias);
-                if (background == draw_asset_cache_.end()) {
-                    background_alias = "title.background";
-                    background = draw_asset_cache_.find(background_alias);
-                }
+                const auto phase = static_cast<std::size_t>(
+                    title_loop_.circuit_lights.phase %
+                    kTitleCircuitPhaseCount);
+                const auto background_alias =
+                    "title.circuit.background." + std::to_string(phase);
+                const auto passes = std::min<std::size_t>(
+                    title_loop_.text.palette_steps,
+                    kTitleCircuitPaletteRevealPassCount);
+                const auto& background =
+                    title_circuit_transition_cache_[phase][passes];
                 const auto* background_record =
                     state_.asset_catalog.catalog.find(background_alias);
                 const auto* logo_record =
@@ -1984,12 +2174,12 @@ public:
                     state_.asset_catalog.catalog.find(sprite_alias);
                 const auto sprite_image =
                     draw_asset_cache_.find(sprite_alias);
-                if (background == draw_asset_cache_.end() ||
-                    background_record == nullptr || logo_record == nullptr ||
+                if (background.isNull() || background_record == nullptr ||
+                    logo_record == nullptr ||
                     logo_image == draw_asset_cache_.end() ||
                     sprite_record == nullptr ||
                     sprite_image == draw_asset_cache_.end() ||
-                    background->second.height() <= 0) {
+                    background.height() <= 0) {
                     return -1;
                 }
 
@@ -1997,7 +2187,7 @@ public:
                 // travel beyond it, so compare that strip with the current
                 // scrolled circuit pixels to prove the projection appears
                 // before retirement and disappears afterward.
-                const auto& source = background->second;
+                const auto& source = background;
                 const auto scroll = static_cast<int>(
                     title_loop_.animation_timer.animation_offset %
                     static_cast<std::uint16_t>(source.height()));
@@ -2191,6 +2381,61 @@ public:
                     << '\n';
                 return true;
             };
+        const auto save_title_circuit_palette_checkpoint =
+            [&](const std::string& name, const int expected_palette_steps,
+                const std::int16_t expected_countdown) {
+                const auto scene = render_scene();
+                std::size_t corner_ink_pixels = 0;
+                for (int y = 0; y < scene.height(); ++y) {
+                    for (int x = 0; x < 13; ++x) {
+                        if (scene.pixelColor(x, y) != QColor(Qt::black)) {
+                            ++corner_ink_pixels;
+                        }
+                    }
+                }
+                const bool has_circuit_ink = corner_ink_pixels > 0U;
+                const bool expected_circuit_ink =
+                    expected_palette_steps > 0;
+                if (title_loop_.logo.columns_revealed !=
+                        kTitleLogoColumnLimit ||
+                    title_loop_.text.completion_state != 1U ||
+                    title_loop_.text.countdown != expected_countdown ||
+                    title_loop_.text.palette_steps !=
+                        expected_palette_steps ||
+                    has_circuit_ink != expected_circuit_ink ||
+                    !title_background_matches(scene, false)) {
+                    std::cerr << "startup qa: circuit reveal did not match "
+                                 "logo completion and source palette step at "
+                              << name << " frame=" << title_frame
+                              << " logo_columns="
+                              << title_loop_.logo.columns_revealed
+                              << " completion="
+                              << title_loop_.text.completion_state
+                              << " countdown="
+                              << title_loop_.text.countdown
+                              << " palette_steps="
+                              << static_cast<unsigned>(
+                                     title_loop_.text.palette_steps)
+                              << " corner_ink_pixels="
+                              << corner_ink_pixels << '\n';
+                    return false;
+                }
+                const auto path = output_directory / (name + ".bmp");
+                if (!scene.save(QString::fromStdWString(path.wstring()))) {
+                    std::cerr << "startup qa: could not write "
+                              << path.string() << '\n';
+                    return false;
+                }
+                title_circuit_palette_trace
+                    << name << '\t' << title_frame << '\t'
+                    << title_loop_.logo.columns_revealed << '\t'
+                    << title_loop_.text.completion_state << '\t'
+                    << title_loop_.text.countdown << '\t'
+                    << static_cast<unsigned>(
+                           title_loop_.text.palette_steps)
+                    << '\t' << corner_ink_pixels << '\n';
+                return true;
+            };
 
         if (title_loop_.animation_timer.animation_offset != 0U ||
             !save_title_scroll_checkpoint("title-scroll-00", true)) {
@@ -2247,6 +2492,31 @@ public:
                         "branch stopped");
         }
         record("title.sprite.first_hidden");
+
+        constexpr std::array<std::pair<int, const char*>, 2>
+            kTitleCircuitPaletteCheckpoints{{
+                {188, "title-circuit-logo-complete-before-palette"},
+                {189, "title-circuit-first-palette-step"},
+            }};
+        for (const auto& checkpoint : kTitleCircuitPaletteCheckpoints) {
+            while (title_frame < checkpoint.first &&
+                   state_.phase == StartupIntegrationPhase::title_ready) {
+                if (!pump()) {
+                    return fail("title circuit reveal checkpoint did not "
+                                "advance");
+                }
+                ++title_frame;
+            }
+            const auto has_palette_step = checkpoint.first == 189;
+            if (title_frame != checkpoint.first ||
+                !save_title_circuit_palette_checkpoint(
+                    checkpoint.second, has_palette_step ? 1 : 0,
+                    has_palette_step ? 64 : 65)) {
+                return fail("title circuit appeared outside the source "
+                            "palette transition");
+            }
+            record(std::string("title.") + checkpoint.second);
+        }
 
         // Keep title screenshots tied to their real source frame. In the
         // independent section-01 capture, copyright first appears at video
@@ -3577,7 +3847,21 @@ private:
             cache_asset("menu.field.runner.portrait." + std::to_string(index));
         }
         for (int index = 0; index < 7; ++index) {
-            cache_asset("title.circuit.background." + std::to_string(index));
+            const auto alias =
+                "title.circuit.background." + std::to_string(index);
+            cache_asset(alias);
+            const auto source = draw_asset_cache_.find(alias);
+            if (source == draw_asset_cache_.end()) {
+                continue;
+            }
+            for (std::size_t pass = 0;
+                 pass <= kTitleCircuitPaletteRevealPassCount; ++pass) {
+                title_circuit_transition_cache_[
+                    static_cast<std::size_t>(index)][pass] =
+                    transition_genesis_cram_image(
+                        source->second, static_cast<std::uint8_t>(pass),
+                        false);
+            }
         }
         for (int index = 0; index < 6; ++index) {
             cache_asset("title.sprite." + std::to_string(index));
@@ -3625,42 +3909,56 @@ private:
                           image->second);
     }
 
-    void draw_wrapped_vertical_alias(QPainter& painter,
+    void draw_wrapped_vertical_image(QPainter& painter,
                                      const std::string_view alias,
+                                     const QImage& image,
                                      const std::uint16_t scroll) const {
         const auto* record = state_.asset_catalog.catalog.find(alias);
-        const auto image = draw_asset_cache_.find(std::string(alias));
-        if (record == nullptr || image == draw_asset_cache_.end() ||
-            image->second.height() <= 0) {
+        if (record == nullptr || image.height() <= 0) {
             return;
         }
 
         // The source display service applies FFDD0E as Plane-B vertical
         // scroll. The host has the visible 320x224 circuit resource, so repeat
         // that named background at its lower edge as it moves upward.
-        const auto height = image->second.height();
+        const auto height = image.height();
         const auto offset = static_cast<int>(scroll % height);
         if (offset == 0) {
-            draw_alias(painter, alias);
+            painter.drawImage(record->origin_x, record->origin_y, image);
             return;
         }
 
         painter.save();
         painter.setClipRect(record->origin_x, record->origin_y,
-                            image->second.width(), height);
+                            image.width(), height);
         const auto y = record->origin_y - offset;
-        painter.drawImage(record->origin_x, y, image->second);
-        painter.drawImage(record->origin_x, y + height, image->second);
+        painter.drawImage(record->origin_x, y, image);
+        painter.drawImage(record->origin_x, y + height, image);
         painter.restore();
     }
 
+    void draw_wrapped_vertical_alias(QPainter& painter,
+                                     const std::string_view alias,
+                                     const std::uint16_t scroll) const {
+        const auto image = draw_asset_cache_.find(std::string(alias));
+        if (image == draw_asset_cache_.end()) {
+            return;
+        }
+        draw_wrapped_vertical_image(painter, alias, image->second, scroll);
+    }
+
     void draw_title(QPainter& painter) const {
-        const auto circuit_alias =
-            "title.circuit.background." +
-            std::to_string(title_loop_.circuit_lights.phase);
-        if (draw_asset_cache_.find(circuit_alias) != draw_asset_cache_.end()) {
-            draw_wrapped_vertical_alias(
-                painter, circuit_alias,
+        const auto phase = static_cast<std::size_t>(
+            title_loop_.circuit_lights.phase % kTitleCircuitPhaseCount);
+        const auto circuit_alias = "title.circuit.background." +
+                                   std::to_string(phase);
+        const auto passes = std::min<std::size_t>(
+            title_loop_.text.palette_steps,
+            kTitleCircuitPaletteRevealPassCount);
+        const auto& circuit = title_circuit_transition_cache_[phase][passes];
+        if (!circuit.isNull()) {
+            draw_wrapped_vertical_image(
+                painter, circuit_alias, circuit,
                 title_loop_.animation_timer.animation_offset);
         } else {
             draw_wrapped_vertical_alias(
@@ -4261,6 +4559,10 @@ private:
     QElapsedTimer host_clock_;
     std::int64_t host_frame_deadline_ns_ = 0;
     std::map<std::string, QImage> draw_asset_cache_;
+    std::array<std::array<QImage,
+                         kTitleCircuitPaletteRevealPassCount + 1U>,
+               kTitleCircuitPhaseCount>
+        title_circuit_transition_cache_{};
     OpeningIntroScene opening_scene_ = OpeningIntroScene::seattle;
     OpeningIntroStage opening_stage_ = OpeningIntroStage::not_started;
     std::vector<OpeningIntroSpriteRequest> opening_sprites_;
@@ -5409,6 +5711,9 @@ int main(int argc, char** argv) {
         std::optional<std::uint32_t> startup_dump_frame;
         std::optional<std::filesystem::path> startup_dump_path;
         std::optional<std::filesystem::path> startup_qa_path;
+        std::optional<std::uint32_t> full_intro_capture_selection;
+        std::optional<std::uint32_t> full_intro_capture_title_frames;
+        std::optional<std::filesystem::path> full_intro_capture_path;
         std::optional<std::filesystem::path> opening_rotor_qa_path;
         std::optional<std::filesystem::path> opening_landing_qa_path;
         std::optional<std::uint32_t> opening_dump_selection;
@@ -5451,6 +5756,8 @@ int main(int argc, char** argv) {
                        " [--boot-fasa-qa <output-dir>]"
                        " [--startup-dump <stage> <selection> <frame> <file>]"
                        " [--startup-qa <output-dir>]"
+                       " [--full-intro-capture <archetype-0..2> "
+                       "<title-idle-frames> <output-dir>]"
                        " [--opening-rotor-qa <output-dir>]"
                        " [--opening-landing-qa <output-dir>]"
                        " [--intro-to-field-smoke]\n";
@@ -5660,6 +5967,15 @@ int main(int argc, char** argv) {
             if (std::string(argv[index]) == "--startup-qa" &&
                 index + 1 < argc) {
                 startup_qa_path = std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--full-intro-capture" &&
+                index + 3 < argc) {
+                full_intro_capture_selection = static_cast<std::uint32_t>(
+                    std::stoul(argv[++index]));
+                full_intro_capture_title_frames = static_cast<std::uint32_t>(
+                    std::stoul(argv[++index]));
+                full_intro_capture_path =
+                    std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--opening-rotor-qa" &&
                 index + 1 < argc) {
@@ -5965,6 +6281,43 @@ int main(int argc, char** argv) {
                             ((*field_movement_qa_path) /
                              (std::string(name) + ".bmp")).wstring()));
                     };
+                std::vector<std::string> left_field_boundaries;
+                std::vector<std::uint16_t> left_field_audio_events;
+                qt_runtime::FieldSceneRuntime left_field_scene(
+                    [&left_field_boundaries](const std::string_view boundary) {
+                        left_field_boundaries.emplace_back(boundary);
+                    },
+                    [&left_field_audio_events](const std::uint16_t event) {
+                        left_field_audio_events.push_back(event);
+                    });
+                if (!left_field_scene.bootstrap(smoke_state)) {
+                    std::cerr << "field movement QA: left-route bootstrap "
+                                 "failed: "
+                              << left_field_scene.failure() << '\n';
+                    return 3;
+                }
+                const auto render_left_field = [&] {
+                    QImage image(kSceneWidth, kSceneHeight,
+                                 QImage::Format_RGB32);
+                    image.fill(Qt::black);
+                    QPainter painter(&image);
+                    left_field_scene.paint(painter);
+                    painter.end();
+                    return image;
+                };
+                const auto save_left_movement_frame =
+                    [&](const std::string_view name) {
+                        const auto image = render_left_field();
+                        if (image.width() != kSceneWidth ||
+                            image.height() != kSceneHeight ||
+                            count_playfield_lit(image) < 100 ||
+                            !field_hud_chrome_survives(image, asset_root)) {
+                            return false;
+                        }
+                        return image.save(QString::fromStdWString(
+                            ((*field_movement_qa_path) /
+                             (std::string(name) + ".bmp")).wstring()));
+                    };
                 const auto initial_position =
                     field_scene.field_entity_world_position();
                 auto previous_animation_frame =
@@ -6088,6 +6441,98 @@ int main(int argc, char** argv) {
                                  "not match the source state\n";
                     return 3;
                 }
+                const auto left_initial_position =
+                    left_field_scene.field_entity_world_position();
+                if (!save_left_movement_frame("left-idle")) {
+                    std::cerr << "field movement QA: left idle dump failed\n";
+                    return 3;
+                }
+                left_field_scene.set_controller_nibble(0x04U);
+                std::uint16_t left_heading_after_eight_ticks = 0U;
+                for (std::uint8_t tick = 1U; tick <= 35U; ++tick) {
+                    left_field_scene.advance_frame();
+                    if (tick == 8U) {
+                        left_heading_after_eight_ticks =
+                            left_field_scene.field_entity_heading_for_dump();
+                    }
+                    if (tick == 1U || tick == 4U || tick == 7U ||
+                        tick == 8U || tick == 14U || tick == 16U ||
+                        tick == 21U || tick == 28U || tick == 32U ||
+                        tick == 35U) {
+                        if (!save_left_movement_frame(
+                                "left-held-" + std::to_string(tick))) {
+                            std::cerr << "field movement QA: left frame "
+                                         "dump failed\n";
+                            return 3;
+                        }
+                    }
+                }
+                const auto left_target =
+                    left_field_scene.field_entity_target_heading_for_dump();
+                const auto left_heading =
+                    left_field_scene.field_entity_heading_for_dump();
+                const auto left_direction =
+                    left_field_scene.field_entity_direction_for_dump();
+                const auto left_selector =
+                    left_field_scene.field_entity_animation_selector_for_dump();
+                const auto left_position =
+                    left_field_scene.field_entity_world_position();
+                const auto left_walking =
+                    left_field_scene.field_entity_walking_for_dump();
+                const auto left_x_delta = static_cast<std::int32_t>(
+                    left_position.x) -
+                    static_cast<std::int32_t>(left_initial_position.x);
+                if (left_target != 0xC000U ||
+                    left_heading_after_eight_ticks != 0xC000U ||
+                    left_heading != 0xC000U || left_direction != 6U ||
+                    left_selector != 0x0038U || !left_walking ||
+                    left_x_delta >= 0 ||
+                    !field_entity_animation_flips_horizontally(
+                        left_direction) ||
+                    !left_field_audio_events.empty()) {
+                    std::cerr << "field movement QA: left input did not "
+                                 "select the source-facing C062 animation; "
+                                 "target="
+                              << left_target << " heading=" << left_heading
+                              << " heading_at_8="
+                              << left_heading_after_eight_ticks
+                              << " direction="
+                              << static_cast<unsigned>(left_direction)
+                              << " selector=" << left_selector
+                              << " walking=" << left_walking
+                              << " x_delta=" << left_x_delta << '\n';
+                    return 3;
+                }
+                left_field_scene.set_controller_nibble(0U);
+                left_field_scene.advance_frame();
+                if (!save_left_movement_frame("left-released-idle") ||
+                    left_field_scene.field_entity_walking_for_dump() ||
+                    left_field_scene.field_entity_animation_frame_for_dump() !=
+                        0U) {
+                    std::cerr << "field movement QA: left release did not "
+                                 "return to idle\n";
+                    return 3;
+                }
+                std::ofstream facing_trace(
+                    *field_movement_qa_path /
+                    "field-movement-facing-qa.tsv");
+                if (!facing_trace) {
+                    std::cerr << "field movement QA: facing trace could not "
+                                 "be written\n";
+                    return 3;
+                }
+                facing_trace
+                    << "input\ttarget_heading\theading\tdirection\t"
+                       "selector\tframe\twalking\thorizontal_flip\t"
+                       "world_x_delta\n"
+                    << "left\t" << left_target << '\t' << left_heading
+                    << '\t' << static_cast<unsigned>(left_direction) << '\t'
+                    << left_selector << '\t'
+                    << left_field_scene.field_entity_animation_frame_for_dump()
+                    << '\t' << left_walking << '\t'
+                    << field_entity_animation_flips_horizontally(
+                           left_direction)
+                    << '\t' << left_x_delta << '\n';
                 const auto& buffers =
                     field_scene.state().field_scene_buffers;
                 std::cout << "field_movement_qa=passed scene_reference="
@@ -6107,6 +6552,10 @@ int main(int argc, char** argv) {
                           << " frame_wraps="
                           << static_cast<unsigned>(frame_wrap_count)
                           << " walk_selector=" << held_animation_selector
+                          << " left_direction="
+                          << static_cast<unsigned>(left_direction)
+                          << " left_selector=" << left_selector
+                          << " left_x_delta=" << left_x_delta
                           << " directions=8"
                           << " artifacts="
                           << field_movement_qa_path->string() << '\n';
@@ -13120,6 +13569,14 @@ int main(int argc, char** argv) {
         GhidraConversionWindow window(asset_root);
         if (startup_qa_path.has_value()) {
             return window.run_startup_qa(*startup_qa_path);
+        }
+        if (full_intro_capture_selection.has_value() &&
+            full_intro_capture_title_frames.has_value() &&
+            full_intro_capture_path.has_value()) {
+            return window.dump_full_intro_capture(
+                *full_intro_capture_selection,
+                *full_intro_capture_title_frames,
+                *full_intro_capture_path);
         }
         if (opening_rotor_qa_path.has_value()) {
             return window.run_opening_rotor_qa(*opening_rotor_qa_path);

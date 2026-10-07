@@ -63,6 +63,10 @@ constexpr std::uint16_t kFieldWalkAnimationFrameCount = 4U;
 
 std::uint16_t select_field_entity_animation_selector(std::uint8_t direction,
                                                      bool walking);
+// The kind-3 C052/C062 records for directions 5..7 use the same source art
+// as directions 3..1 with descriptor attribute bit 0x0800 set. The native
+// presenter applies that facing transform to the loaded sprite image.
+bool field_entity_animation_flips_horizontally(std::uint8_t direction);
 std::uint32_t entity_kind_state_table(std::uint16_t kind);
 
 // The ordinary movement list has a positive marker and loops at its count.
