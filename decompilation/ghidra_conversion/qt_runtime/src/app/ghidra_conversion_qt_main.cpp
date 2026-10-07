@@ -10811,16 +10811,21 @@ int main(int argc, char** argv) {
                 return 0;
             }
             if (field_magic_dump_path.has_value()) {
-                // This field composition's active live record is class 1,
-                // even with the Gator startup selection. Set its typed
-                // +0x7F resource/action cap to zero to exercise the ROM's
-                // class<2 fallback branch, without fabricating a spell panel.
-                if (field_archetype != 2U) {
-                    std::cerr << "field Magic dump: Gator did not reach "
-                                 "the expected QA composition\n";
+                // ROM archetype template 0 is Samurai, class 2 with +0x7F=0.
+                // Exercise the real non-magic fallback without rewriting the
+                // active runner record. The Shaman spell-panel route has its
+                // separate source-record QA below.
+                const auto initial_record =
+                    field_scene.active_runner_record();
+                if (field_archetype != 0U ||
+                    initial_record.archetype_index != 2U ||
+                    initial_record.auxiliary[0] != 0U ||
+                    select_magic_menu_path(initial_record) !=
+                        MagicMenuPath::fallback_menu) {
+                    std::cerr << "field Magic dump: expected unmodified "
+                                 "Samurai class 2 fallback record\n";
                     return 3;
                 }
-                field_scene.active_runner_record().auxiliary[0] = 0U;
                 if (!field_scene.open_command_overview_for_dump() ||
                     !field_scene.seek_command_overview_page(5U)) {
                     std::cerr << "field Magic dump: command route did not "
@@ -10893,13 +10898,12 @@ int main(int argc, char** argv) {
                                  "portrait, or initial capture failed\n";
                     return 3;
                 }
-                const auto initial_record =
-                    field_scene.active_runner_record();
                 field_scene.set_controller_port_byte(0x40U);
                 field_scene.advance_frame();
                 field_scene.set_controller_port_byte(0U);
                 field_scene.advance_frame();
                 if (!field_scene.magic_defense_open() ||
+                    field_scene.magic_spell_interface_open() ||
                     !field_scene.command_overview_open() ||
                     field_scene.command_overview_view().source_state
                             .primary_page != 5U) {

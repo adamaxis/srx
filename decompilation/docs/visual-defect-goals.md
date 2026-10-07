@@ -79,7 +79,7 @@ clarification. None changes the original report's itemization.
 | `PLAY-01` | Shops, building item use, and maglock passkeys cannot be tested from normal Qt gameplay. | **Partial.** The Ares Weapon Emporium is reachable from New Game by ordinary Right/Up input through scene-2 record 92/CB/event 11; A enters the shop and Start returns cleanly. Ordinary controls also enter scene 20 through the paired scene-2 C0 doorway, contact maglock record 117, open its generic dialog, advance with A, and return with C/Walk Away. Passkey/Electronics/grenade outcomes, Security Terminal physical entry, building item use, and other shop/building routes still need normal-control result/return QA. See the [Ares audit](visual-audits/ares-physical-entry.md) and [scene-20 maglock audit](visual-audits/scene20-maglock-physical-entry.md). |
 | `SOUND-03` | More generally, sound effects across the game are reported to play at the wrong points. | Inventory the reported and currently connected ROM sound requests, map each to a state transition, and check trigger, playback, duration, loop, and stop. Close individual sounds in their owning goals. |
 | `SEC-JOHNSONS` | The Notebook Mr. Johnsons row did not have a functional child page in the Qt conversion. | **Partial.** ROM `0xF416` now has typed FFFC27-filtered rows, source-imported names/details, A/B detail waits, C event `0x25`, cursor wrapping, and clean Start return. Debug/Release QA covers all five paths and every frame of a 30-VBlank hold. All-five coverage uses diagnostic FFFC27=`0x1F`; only bit 0 has a verified story writer, other story/save bits remain open, and no matching Genesis frame is available. See [the page audit](visual-audits/notebook-mr-johnsons-page.md). |
-| `MAGIC-SPLIT` | The Magic screen differs by user type. | **User-provided reference:** magic users see the yellow screen with an advanced magic breakdown; non-magic users see Defenses with two bars. Keep them as distinct states and entry branches. The source condition and independent frames still need a dedicated Magic pass; existing `SEC-MAGIC` closure covers only the spell-capable stale-content issue. |
+| `MAGIC-SPLIT` | The Magic screen differs by user type. | **Partially verified.** ROM `0xFBA6` branches to the yellow spell page for class `<2` with `+0x7F != 0`; other records get the two-bar Magical Defense overlay. Debug/Release QA uses the actual Gator Shaman (class 1, `+0x7F=6`) and unmodified Samurai (class 2, `+0x7F=0`) startup records, and the test covers the zero-resource Shaman edge plus class 2/3 fallback. Independent section 06 supports the magic-user page and nested actions, but no non-magic Defense capture was found. See [the Magic split audit](visual-audits/magic-user-screen-split.md); keep open for independent non-magic visual evidence and spell target/effect handling. |
 
 ### Earlier reported items carried forward
 
@@ -501,8 +501,10 @@ and text.
 
 **User reference:** magic users see the yellow Magic screen with an advanced
 breakdown; non-magic users see the Defenses screen with two bars. Preserve
-these as separate visual states and entry branches. The exact source condition
-and matching independent frames still need their own Magic pass.
+these as separate visual states and entry branches. ROM `0xFBA6` now has a
+source trace and separate real-record Debug/Release QA; independent visuals
+support the Shaman page, but the supplied recording has no matching
+non-magic Defense frame.
 
 **Solve:** trace the Pocket Secretary root selection events and each child
 page's source draw/clear path. Bind move/select/cancel to the correct audio
@@ -551,6 +553,47 @@ fixture; story writers for bits 1..4 and loaded-save state remain unresolved.
 **Status:** partial. The supplied Genesis longplay has no matching Pocket
 Secretary visit, so the page is not independently visually verified. See
 [the nine-question page audit](visual-audits/notebook-mr-johnsons-page.md).
+
+### MENU-01C — Magic-user and non-magic Magic pages (`MAGIC-SPLIT`)
+
+**Source trace:** at ROM `0xFBA6`, class `<2` with runner byte `+0x7F`
+nonzero enters the yellow spell page; zero resource falls through to Magical
+Defense. Classes 2 and 3 go directly to that fallback. The spell route clears
+Plane A at `0xFC22`; fallback draws two separate defense strips over the
+command/status page without clearing the whole plane. Startup templates at
+`0x7291A` show Samurai class 2/`+0x7F=0`, Decker class 3/`+0x7F=0`, and Gator
+Shaman class 1/`+0x7F=6`.
+
+**Changed:** the old fallback screenshot used the Gator field composition
+with its resource byte forcibly zeroed. QA now exercises the unmodified
+Samurai record and asserts class, resource, selected route, both source-derived
+values, both bar assets, parent HUD, and clean return. The spell route remains
+separate and uses Gator's unmodified record. The conversion test also checks
+that class 3 falls back even with a nonzero resource byte.
+
+**Internally checked:** Debug/Release builds and CTests
+`shadowrun_ghidra_conversion_qt_field_magic_qa`,
+`shadowrun_ghidra_conversion_qt_field_magic_spell_qa`, and
+`shadowrun_ghidra_magic_menu_conversion` passed. All four non-magic and all 21
+spell-route Debug BMPs were reviewed full-screen; their Release SHA-256 hashes
+match. The Defense screen is static across a 30-frame wait. Spell selection
+cursor phases are captured at seven-frame intervals; the force/posture screen,
+equipped HUD icon, parent return, and reopen are also captured. Event `0x24`
+occurs once when the parent Magic page opens (resource metadata 2.484 seconds);
+no additional sound call is traced for the fallback/action loop, and this
+route's output-device playback was not measured.
+
+**Independent visual check:** section 06 longplay frames 000001/000002
+(Rockskin), 000005 (Mana Zap), 000015/000020 (force/posture), and 000030
+(equipped HUD icon) support the spell-capable states. No matching Samurai or
+Decker Defense screen occurs in the supplied longplay. The native captures
+therefore verify internal source consistency, not Genesis appearance, for the
+two-bar fallback.
+
+**Status:** partial. The incorrect QA fixture is fixed and both entry branches
+are source-tested. Keep the external non-magic visual claim open until a
+matching game capture is available; spell target/effect routing also remains
+open. See [the nine-question audit](visual-audits/magic-user-screen-split.md).
 
 ### MENU-02 — Start-menu Attributes/Skills Karma selection (`KARMA-COLOR`, `KARMA-DETAIL`)
 

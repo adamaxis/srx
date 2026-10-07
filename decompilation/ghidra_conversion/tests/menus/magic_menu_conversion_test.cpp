@@ -31,6 +31,11 @@ int main() {
                     MagicMenuPath::fallback_menu)) {
         return 3;
     }
+    shaman.archetype_index = 3U;
+    if (!expect(select_magic_menu_path(shaman) ==
+                    MagicMenuPath::fallback_menu)) {
+        return 38;
+    }
 
     MagicMenuLoopState menu_loop_state{{0U, 0U}, 14U};
     std::vector<std::uint16_t> menu_inputs{0x0C00U, 0x0300U, 0x2080U,

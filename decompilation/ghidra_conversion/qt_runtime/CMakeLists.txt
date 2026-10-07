@@ -536,16 +536,16 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_posture_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_posture_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
-# The page-5 A route has two source branches. This integration fixture uses
-# Gator's field composition and sets typed +0x7F to zero to exercise the
-# static Magical Defense fallback; it writes before/open/held/return frames.
-# It is a runtime regression artifact, not an independent Genesis golden.
+# The page-5 A route has two source branches. Exercise the fallback with
+# Samurai's unmodified source record (class 2, +0x7F = 0); the separate spell
+# test uses Gator Shaman's source record. These are runtime regression
+# artifacts, not independent Genesis goldens.
 add_test(NAME shadowrun_ghidra_conversion_qt_field_magic_qa
          COMMAND shadowrun_ghidra_conversion_qt
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
-                 --field-archetype gator
+                 --field-archetype samurai
                  --field-magic-dump
-                 "${CMAKE_CURRENT_BINARY_DIR}/field-magic-qa")
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-magic-nonmagic-qa")
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_magic_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
