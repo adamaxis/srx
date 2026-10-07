@@ -69,7 +69,7 @@ review; it is not part of the pasted report.
 | `KARMA-COLOR` | The Start-menu Attributes/Skills Karma page uses the wrong selection color. | ROM `0xD5DC` passes text mode `0x4000` for the selected row (palette line 2). The current Qt captures show `#6D4992` on all 20 selected cells and restore the prior row to green. The reported color fault is not reproduced against the traced ROM palette. No matching independent Genesis page capture is present, so visual fidelity remains unverified. |
 | `KARMA-DETAIL` | The Start-menu Attributes/Skills Karma page omits the selected attribute/skill's detail text. | Reproduced before this pass: the Qt presenter skipped the existing `0xD5DC` conversion. It now renders the selected label/value, both Essence values, Magic from `+0x7F`, and the installed-cyberware `c` markers/modifiers at source-derived positions. Debug/Release QA captures all 20 cells and checks empty/populated cyberware plus clean return. The ROM provides these labels, values, and modifiers rather than longer prose descriptions. No matching independent Genesis page capture is present; do not claim visual resolution. |
 | `CLIPS-REDRAW` | Clips reused the inventory action row for its selector/trade pages and left that four-action row visible behind reload Yes/No. | Fixed in Qt after tracing ROM row swaps and parent restore: Debug/Release full-screen QA covers top-level Clips, nested Trade, confirmation, decline, reload result, and return. Independent Genesis Clips frames remain unavailable. |
-| `POSTURE-FOCUS` | The posture bar has no selector; it should be reachable with Up/Down from the menu buttons and affect attack/defense. | Existing ROM/source and internal QA describe Up focus, Down deselection, five posture states, and attack/defense updates. Reproduce through normal play and reconcile the report with the full-screen QA capture that currently shows a selector. |
+| `POSTURE-FOCUS` | The posture bar has no selector; it should be reachable with Up/Down from the menu buttons and affect attack/defense. | Resolved in the native command-menu route: ROM `0x11506` enters posture focus on command pages 2..6; Up draws the `0x119CE` focus row, Down restores the command row, and Left/Right update `+0x4D` plus Atk/Def bars. Debug/Release full-screen QA passes. Inventory pages 0/1 use their separate inventory cursor path. No independent Genesis capture shows the focused transition, so external visual fidelity remains unverified. |
 | `INVENTORY-01` | Moving/trading items between inventory locations does not work. | Trace source/destination cell state, item constraints, confirmation/cancel, and authoritative item records; exercise the route through ordinary controls and verify both cells and stats. |
 | `INVENTORY-02` | Using an item draws the runner portrait over other bars. | Trace item-use page/result/return and full redraw order; verify portrait, bars, posture, message, and inventory across all transition frames. |
 | `ITEMS-01` | Armor, weapons, and their damage values are wrong. | Reconcile named item assets and source catalog values with equip state, attack/damage calculations, and inventory/shop views; compare multiple weapons/armor states. |
@@ -551,13 +551,21 @@ selected value, and attack/defense consequences.
 **Done when:** parent, top-level Clips, nested Trade, reload No/Yes, decline,
 success, and return frames show their source-specific controls with no stale
 buttons; tests check row/focus pixels, state changes, and pixel-identical
-parent restoration. Posture also needs full-screen entry/selection/return
-frames and tests for selector state and stat effects.
+parent restoration. Posture QA covers full-screen entry/selection/return,
+selector state, and posture-dependent combat-bar changes; independent Genesis
+focus frames remain necessary for an external visual-fidelity claim.
 
-**Status:** `CLIPS-REDRAW` fixed in the current Qt build and covered by Debug
-and Release full-screen QA. No matching independent Genesis Clips sequence
-has been identified, so visual fidelity remains unverified. POSTURE-FOCUS
-is still open.
+**Status:** `CLIPS-REDRAW` is fixed in the current Qt build and covered by
+Debug and Release full-screen QA. No matching independent Genesis Clips
+sequence has been identified, so external visual fidelity remains
+unverified. `POSTURE-FOCUS` behavior is also implemented: the ROM accepts Up
+from command pages 2..6, Down deselects, and horizontal input changes the
+five-state posture and both combat bars. The Debug and Release posture QA
+passes, including full-screen parent restoration. Inventory pages 0/1 remain
+their source-defined cursor menus. No independent Genesis posture-focus
+transition was found, so exact focused-state appearance remains unverified;
+the separate negative-equipped-slot combat path and broader combat/AI posture
+consumers remain open conversion work.
 
 ### INVENTORY-01 — Move/trade item behavior
 
