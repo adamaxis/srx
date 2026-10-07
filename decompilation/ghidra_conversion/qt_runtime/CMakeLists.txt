@@ -122,9 +122,10 @@ target_link_libraries(shadowrun_ghidra_conversion_qt_title_intro_late_test
 add_test(NAME shadowrun_ghidra_conversion_qt_title_intro_late_qa
          COMMAND shadowrun_ghidra_conversion_qt_title_intro_late_test)
 
-# Keep the pre-title screen boundaries separate from the longer startup walk:
-# the ROM fades SEGA to black, fades FASA in, holds for 0x79 VBlanks, then
-# fades back out before the title screen replaces it.
+# Keep the pre-title and first title-roll boundaries separate from the longer
+# startup walk: the ROM fades SEGA to black, fades FASA in, holds for 0x79
+# VBlanks, fades back out, then holds title on black for 0x5A updates before
+# revealing the first Shadowrun logo column.
 add_test(NAME shadowrun_ghidra_conversion_qt_boot_fasa_qa
          COMMAND shadowrun_ghidra_conversion_qt
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"

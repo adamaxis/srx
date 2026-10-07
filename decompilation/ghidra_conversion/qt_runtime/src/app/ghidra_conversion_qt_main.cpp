@@ -1008,16 +1008,129 @@ public:
             !save_snapshot("fasa_fade_out_black", "fade-out-black.bmp")) {
             return fail("FASA must be fully black before title handoff");
         }
-        advance_one_source_frame();
-        advance_one_source_frame();
+        for (std::uint32_t handoff_frame = 1U; handoff_frame <= 2U;
+             ++handoff_frame) {
+            advance_one_source_frame();
+            if (!is_black(render_scene())) {
+                return fail(
+                    "the post-FASA handoff must stay fully black before "
+                    "title setup completes");
+            }
+            const auto label = handoff_frame == 1U
+                ? "post_fasa_black_frame_1"
+                : "post_fasa_black_frame_2";
+            const auto filename = handoff_frame == 1U
+                ? "pre-title-black-frame-1.bmp"
+                : "pre-title-black-frame-2.bmp";
+            if (!save_snapshot(label, filename)) {
+                return fail("could not save the post-FASA black handoff frame");
+            }
+        }
         if (state_.phase != StartupIntegrationPhase::title_ready ||
             !state_.pre_title_complete || state_.frame.frame_count != 560U ||
             !save_snapshot("title_handoff", "title-handoff.bmp")) {
             return fail("title handoff must follow the complete 560-VBlank sequence");
         }
-        if (render_scene() == fasa_full) {
-            return fail("title handoff retained the previous FASA screen");
+        const auto title_handoff = render_scene();
+        if (title_handoff == fasa_full || !is_black(title_handoff) ||
+            title_loop_.logo_reveal_delay != 0x5AU ||
+            title_loop_.logo.columns_revealed != 0U ||
+            title_loop_.text.palette_steps != 0U) {
+            return fail(
+                "title handoff must replace FASA with a clean black hold");
         }
+
+        std::ofstream logo_roll_trace(
+            output_directory / "title-black-interval.tsv");
+        if (!logo_roll_trace) {
+            return fail("could not open the title black interval trace");
+        }
+        logo_roll_trace
+            << "title_frame\tlogo_delay\tlogo_columns\tcircuit_palette_steps\t"
+               "sprite_visible\tfull_screen_black\n";
+        const auto save_title_checkpoint = [&](const char* label,
+                                                const char* filename,
+                                                const std::uint32_t title_frame) {
+            const auto scene = render_scene();
+            const auto path = output_directory / filename;
+            if (scene.size() != QSize(kSceneWidth, kSceneHeight) ||
+                !scene.save(QString::fromStdWString(path.wstring()))) {
+                return false;
+            }
+            std::cout << "boot_title_checkpoint=" << label
+                      << " frame=" << title_frame
+                      << " path=" << path.string() << '\n';
+            return true;
+        };
+        const auto record_title_state = [&](const std::uint32_t title_frame,
+                                             const QImage& scene) {
+            logo_roll_trace << title_frame << '\t'
+                            << title_loop_.logo_reveal_delay << '\t'
+                            << title_loop_.logo.columns_revealed << '\t'
+                            << static_cast<unsigned>(
+                                   title_loop_.text.palette_steps)
+                            << '\t'
+                            << (title_loop_.sprite.projection_visible ? 1 : 0)
+                            << '\t' << (is_black(scene) ? 1 : 0) << '\n';
+        };
+        if (!save_title_checkpoint("black_start", "title-black-start.bmp",
+                                   0U)) {
+            return fail("could not save the first black title frame");
+        }
+        record_title_state(0U, title_handoff);
+        for (std::uint32_t title_frame = 1U; title_frame <= 0x5AU;
+             ++title_frame) {
+            advance_one_source_frame();
+            const auto scene = render_scene();
+            const auto expected_delay = static_cast<std::int16_t>(
+                static_cast<std::int16_t>(0x5AU) -
+                static_cast<std::int16_t>(title_frame));
+            if (state_.phase != StartupIntegrationPhase::title_ready ||
+                title_loop_.logo_reveal_delay != expected_delay ||
+                title_loop_.logo.columns_revealed != 0U ||
+                title_loop_.text.palette_steps != 0U ||
+                title_loop_.sprite.projection_visible || !is_black(scene)) {
+                return fail(
+                    "the screen must remain fully black for all 90 "
+                    "title-delay frames");
+            }
+            record_title_state(title_frame, scene);
+            if (title_frame == 1U || title_frame == 0x2DU ||
+                title_frame == 0x5AU) {
+                const auto filename = title_frame == 1U
+                    ? "title-black-frame-1.bmp"
+                    : title_frame == 0x2DU
+                        ? "title-black-frame-45.bmp"
+                        : "title-black-frame-90.bmp";
+                if (!save_title_checkpoint("black_hold", filename,
+                                           title_frame)) {
+                    return fail(
+                        "could not save a black title-delay checkpoint");
+                }
+            }
+        }
+        if (title_loop_.logo_reveal_delay != 0 ||
+            title_loop_.logo.columns_revealed != 0U ||
+            !is_black(render_scene())) {
+            return fail("the logo must remain hidden while the source delay is zero");
+        }
+        advance_one_source_frame();
+        const auto first_logo_column = render_scene();
+        if (state_.phase != StartupIntegrationPhase::title_ready ||
+            title_loop_.logo_reveal_delay != -1 ||
+            title_loop_.logo.columns_revealed != 1U ||
+            title_loop_.text.palette_steps != 0U ||
+            !title_loop_.sprite.projection_visible ||
+            is_black(first_logo_column) ||
+            !save_title_checkpoint("first_logo_column",
+                                   "title-logo-first-column.bmp",
+                                   0x5BU)) {
+            return fail(
+                "the first logo column must appear after the 90-frame "
+                "black delay");
+        }
+        record_title_state(0x5BU, first_logo_column);
+        logo_roll_trace.flush();
         const auto frame_dump_path =
             output_directory / "boot-dump-frame-373.bmp";
         {
