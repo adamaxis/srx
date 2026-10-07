@@ -192,6 +192,17 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_movement_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_movement_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Resolve a physical collision event into its native story/service/area route.
+# Full-screen normal-input route dumps below and under the Stoker QA check the
+# resulting dialogue and scene transition; this test protects route priority
+# and ensures each map reads its own event table.
+add_executable(shadowrun_ghidra_conversion_qt_field_script_route_test
+    ../tests/field/field_script_route_conversion_test.cpp)
+target_link_libraries(shadowrun_ghidra_conversion_qt_field_script_route_test
+    PRIVATE shadowrun_ghidra_conversion_modules)
+add_test(NAME shadowrun_ghidra_conversion_qt_field_script_route_qa
+         COMMAND shadowrun_ghidra_conversion_qt_field_script_route_test)
+
 # A projected interaction starts a source 0x10 countdown. 0x16396 fades on
 # even counts and publishes FFDF3E only after the signed counter falls below
 # zero; keep several full-frame captures so timer and screen clearing stay in

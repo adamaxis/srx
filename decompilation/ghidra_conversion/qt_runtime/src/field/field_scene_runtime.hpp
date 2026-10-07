@@ -23,6 +23,7 @@
 #include "shadowrun_ghidra/field/field_mode_exit_transition_finalizer_conversion.hpp"
 #include "shadowrun_ghidra/field/field_exit_orchestrator_conversion.hpp"
 #include "shadowrun_ghidra/field/field_exit_prompt_conversion.hpp"
+#include "shadowrun_ghidra/field/field_script_route_conversion.hpp"
 #include "shadowrun_ghidra/field/field_runner_state_asset_refresh_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_runtime_coordinator_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_bootstrap_conversion.hpp"
@@ -909,6 +910,7 @@ private:
     std::array<std::uint16_t, 10> field_entity_table_occupancy_{};
     std::array<AuxiliaryWorldEntity, 10> field_entity_table_{};
     EntityMovementModeTransitionState field_movement_transition_state_{};
+    std::optional<FieldScriptRoute> active_field_script_route_;
     std::uint8_t field_palette_fade_steps_ = 0U;
     bool field_world_activity_scene_entry_pending_ = false;
     WorldActivityState field_world_activity_state_{};

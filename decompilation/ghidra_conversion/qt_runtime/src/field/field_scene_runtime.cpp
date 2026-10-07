@@ -11,6 +11,7 @@
 #include "shadowrun_ghidra/field/field_resource_sequence_conversion.hpp"
 #include "shadowrun_ghidra/field/field_action_detail_text_conversion.hpp"
 #include "shadowrun_ghidra/field/field_scene_entry_conversion.hpp"
+#include "shadowrun_ghidra/field/field_script_route_conversion.hpp"
 #include "shadowrun_ghidra/field/stoker_motel_followup_commands_conversion.hpp"
 #include "shadowrun_ghidra/field/field_entity_render_batch_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
@@ -456,16 +457,31 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
     orchestrator_state.controller_flags = 0U;
     orchestrator_state.prompt_display_prepared = false;
 
+    const auto& event_metadata = state_.field_scene_buffers.source_metadata;
+    const auto event_route = resolve_field_script_route(
+        FieldScriptRouteContext{
+            static_cast<std::uint8_t>(runtime_state.scene_id),
+            static_cast<std::uint8_t>(runtime_state.field_mode),
+            field_movement_transition_state_.mode_event_code,
+            event_metadata.event_table_available,
+            event_metadata.event_mode_table});
+    active_field_script_route_ = event_route;
+
     FieldExitOrchestratorCallbacks callbacks{};
     callbacks.select_mode_entry_resource = [this] {
         source_boundary("field.exit.select_mode_entry_resource");
     };
     callbacks.select_field_exit_prompt =
-        [this, &runtime_state](FieldExitOrchestratorState& state) {
+        [this, &runtime_state, &event_route](
+            FieldExitOrchestratorState& state) {
             FieldExitPromptState prompt_state{};
+            const auto dialogue_event_code =
+                event_route.kind == FieldScriptRouteKind::dialogue
+                    ? event_route.event_code
+                    : field_movement_transition_state_.mode_event_code;
             const FieldDialogueEventContext event_context{
                 runtime_state.field_mode,
-                field_movement_transition_state_.mode_event_code,
+                dialogue_event_code,
                 field_exit_alternate_result_,
                 field_exit_world_flags_};
             const auto action = field_dialogue_event_resolver_.resolve(
@@ -496,43 +512,29 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
             return false;
         };
 
-    // Scene 2's ROM event-table row 0 maps this blocked-step event to scene
-    // 0x14. When the scene/submode prompt selector has no match, let the
-    // coordinator's normal initialize-world-activity branch consume that
-    // table row. Treating it as an unresolved mode-exit prompt aborts before
-    // the source-selected scene can be prepared.
-    const auto continues_through_motel_event_table =
-        [this, &runtime_state] {
-            const auto& metadata =
-                state_.field_scene_buffers.source_metadata;
-            if (runtime_state.scene_id != 2U ||
-                runtime_state.field_mode != 2U ||
-                field_movement_transition_state_.mode_event_code != 0U ||
-                !metadata.event_table_available) {
-                return false;
-            }
-            const auto destination = resolve_world_activity_scene_id(
-                field_movement_transition_state_.mode_event_code,
-                metadata.event_mode_table);
-            return destination == std::optional<std::uint16_t>{0x14U};
-        };
+    // Direct dialogue and service scripts take priority. Every other event
+    // uses the active map's authored event table; the coordinator's ordinary
+    // world-activity branch then prepares the selected scene. This keeps the
+    // scene-2 C0 doorway (event 0 -> scene 0x14) separate from the Stoker C2
+    // interaction and the Ares CB service.
+    const auto continues_through_area_event_table = [&event_route] {
+        return event_route.kind == FieldScriptRouteKind::area_event;
+    };
 
-    // Mode 2/event 11 is the Ares service entry at ROM 0x1FA78. The preceding
-    // generic field-dialogue selector has no speaker record for this route;
-    // its text and optional alternate result are selected by the mode-text
-    // provider below. Other mode-exit routes remain explicit boundaries.
-    const auto is_ares_shop_event = [&runtime_state, this] {
-        return runtime_state.field_mode == 2U &&
-               field_movement_transition_state_.mode_event_code == 11U;
+    // The typed route plan identifies the Ares service entry at ROM 0x1FA78.
+    // Its text and optional alternate result are selected by the mode-text
+    // provider below; other service routes remain explicit boundaries.
+    const auto is_ares_shop_event = [&event_route] {
+        return event_route.script == FieldScriptId::ares_weapon_emporium;
     };
     callbacks.prepare_field_mode_exit =
-        [this, &is_ares_shop_event, &continues_through_motel_event_table](
+        [this, &is_ares_shop_event, &continues_through_area_event_table](
                                             FieldExitOrchestratorState& state) {
         if (is_ares_shop_event()) {
             return false;
         }
-        if (continues_through_motel_event_table()) {
-            source_boundary("field.exit.world_activity_table_fallback");
+        if (continues_through_area_event_table()) {
+            source_boundary("field.exit.area_event_table_continuation");
             return false;
         }
         source_boundary("field.exit.prepare_mode_exit_unresolved");
@@ -541,9 +543,9 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
     };
     callbacks.select_field_mode_service =
         [this, &runtime_state, &is_ares_shop_event,
-         &continues_through_motel_event_table](
+         &continues_through_area_event_table](
             FieldExitOrchestratorState& state) {
-            if (continues_through_motel_event_table()) {
+            if (continues_through_area_event_table()) {
                 return false;
             }
             if (!is_ares_shop_event()) {
@@ -604,9 +606,9 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
             return true;
         };
     callbacks.finalize_field_mode_exit =
-        [this, &continues_through_motel_event_table](
+        [this, &continues_through_area_event_table](
             FieldExitOrchestratorState& state) {
-        if (continues_through_motel_event_table()) {
+        if (continues_through_area_event_table()) {
             return false;
         }
         source_boundary("field.exit.finalize_mode_exit_unresolved");
@@ -1444,9 +1446,21 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 return;
             }
 
-            const auto selected_scene = resolve_world_activity_scene_id(
-                field_movement_transition_state_.mode_event_code,
-                active_metadata.event_mode_table);
+            std::optional<std::uint16_t> selected_scene;
+            if (active_field_script_route_.has_value() &&
+                active_field_script_route_->kind ==
+                    FieldScriptRouteKind::area_event &&
+                active_field_script_route_->event_code ==
+                    field_movement_transition_state_.mode_event_code &&
+                active_field_script_route_->area_event_target.has_value()) {
+                selected_scene = static_cast<std::uint16_t>(
+                    *active_field_script_route_->area_event_target);
+            } else {
+                selected_scene = resolve_world_activity_scene_id(
+                    field_movement_transition_state_.mode_event_code,
+                    active_metadata.event_mode_table);
+            }
+            active_field_script_route_.reset();
             if (!selected_scene.has_value()) {
                 source_boundary("field.world_activity.event_code_out_of_range");
                 runtime.field_transition_requested = true;
