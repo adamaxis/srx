@@ -1994,6 +1994,185 @@ public:
         return 0;
     }
 
+    int run_opening_death_layer_qa(
+        const std::filesystem::path& output_directory) {
+        constexpr std::uint32_t kSelection = 2U;
+        constexpr std::uint32_t kDeathOverlayFrame = 1209U;
+        constexpr std::array<std::uint16_t, 12> kCheckpoints{{
+            688U, 752U, 850U, 1021U, 1093U, 1208U,
+            1209U, 1210U, 1211U, 1266U, 1354U, 1366U}};
+
+        if (prepare_opening_dump(kSelection) != 0) {
+            return 3;
+        }
+        std::filesystem::create_directories(output_directory);
+        std::ofstream trace(output_directory / "opening-death-layer-qa.tsv");
+        if (!trace) {
+            std::cerr << "opening death-layer QA: could not write trace in "
+                      << output_directory.string() << '\n';
+            return 3;
+        }
+        trace << "opening_frame\tstage\tscene\tmap_left\toverlay_variant\t"
+                 "final_overlay\tleft_edge_pixels\timage\n";
+
+        const auto fail = [](const std::string_view reason) {
+            std::cerr << "opening death-layer QA: " << reason << '\n';
+            return 3;
+        };
+        const auto left_edge_pixel_count = [](const QImage& scene) {
+            std::size_t count = 0U;
+            for (int y = 0; y < scene.height(); ++y) {
+                for (int x = 0; x < 24; ++x) {
+                    const auto color = scene.pixelColor(x, y);
+                    if (color.red() != 0 || color.green() != 0 ||
+                        color.blue() != 0) {
+                        ++count;
+                    }
+                }
+            }
+            return count;
+        };
+        const auto save_frame = [&](const QImage& scene,
+                                    const std::string& name) {
+            return scene.save(QString::fromStdWString(
+                (output_directory / name).wstring()));
+        };
+
+        std::size_t next_checkpoint = 0U;
+        std::size_t checked_death_frames = 0U;
+        bool saw_death_overlay = false;
+        bool saw_clean_trivid_entry = false;
+        constexpr std::uint32_t kMaximumOpeningFrames = 3000U;
+        for (std::uint32_t frame = 0U; frame < kMaximumOpeningFrames; ++frame) {
+            if (state_.phase != StartupIntegrationPhase::opening_intro) {
+                return fail("opening ended before the cockpit handoff");
+            }
+
+            const auto& opening = state_.opening_intro;
+            if (opening.scene == OpeningIntroScene::trivid) {
+                if (!saw_death_overlay || opening_wilderness_map_left_ ||
+                    opening_wilderness_map_center_ ||
+                    opening_wilderness_map_right_ ||
+                    opening_wilderness_overlay_ || opening_wilderness_patch_ ||
+                    opening_wilderness_final_overlay_) {
+                    return fail("wilderness art survived the cockpit scene replacement");
+                }
+                const auto scene = render_scene();
+                if (scene.size() != QSize(kSceneWidth, kSceneHeight) ||
+                    !save_frame(scene, "trivid-entry.bmp")) {
+                    return fail("could not save a full-screen cockpit entry frame");
+                }
+                trace << opening.source_frame << '\t'
+                      << opening_intro_stage_name(opening.stage) << '\t'
+                      << opening_intro_scene_name(opening.scene)
+                      << "\tcleared\t-\tno\t"
+                      << left_edge_pixel_count(scene)
+                      << "\ttrivid-entry.bmp\n";
+                saw_clean_trivid_entry = true;
+                break;
+            }
+
+            if (opening.scene == OpeningIntroScene::wilderness &&
+                opening.source_frame >= kDeathOverlayFrame &&
+                opening_wilderness_final_overlay_) {
+                if (opening_wilderness_map_left_ ||
+                    opening_wilderness_overlay_) {
+                    return fail("the source-cleared left actor plate was reintroduced during the death pose");
+                }
+                ++checked_death_frames;
+
+                if (opening.source_frame == kDeathOverlayFrame) {
+                    const auto scene = render_scene();
+                    if (scene.size() != QSize(kSceneWidth, kSceneHeight)) {
+                        return fail("renderer did not produce a full 320x224 frame");
+                    }
+                    const auto stray_pixels = left_edge_pixel_count(scene);
+                    if (stray_pixels != 0U) {
+                        std::cerr << "opening death-layer QA: opening_frame="
+                                  << opening.source_frame
+                                  << " stray_left_edge_pixels=" << stray_pixels
+                                  << '\n';
+                        return fail("the left actor plate remains visible on the frame the ROM clears it");
+                    }
+                    const auto final_group = opening_intro_sprite_group(
+                        opening_wilderness_final_overlay_->sprite_descriptor);
+                    std::size_t death_pose_pixels = 0U;
+                    for (int y = 120; y < scene.height(); ++y) {
+                        for (int x = 24; x < 184; ++x) {
+                            const auto color = scene.pixelColor(x, y);
+                            if (color.red() != 0 || color.green() != 0 ||
+                                color.blue() != 0) {
+                                ++death_pose_pixels;
+                            }
+                        }
+                    }
+                    if (opening.stage !=
+                            OpeningIntroStage::stage2_second_loop ||
+                        opening_wilderness_map_left_ ||
+                        opening_wilderness_overlay_ ||
+                        final_group.family !=
+                            OpeningIntroSpriteFamily::wilderness_final_overlay ||
+                        death_pose_pixels < 100U) {
+                        return fail("typed overlay state or death-pose pixels do not match the ROM event");
+                    }
+                    const auto actual_path = output_directory / "actual.bmp";
+                    if (!scene.save(QString::fromStdWString(
+                            actual_path.wstring())) ||
+                        QImage(QString::fromStdWString(
+                            actual_path.wstring())) != scene) {
+                        return fail("death-pose actual.bmp readback failed");
+                    }
+                    saw_death_overlay = true;
+                }
+            }
+
+            while (next_checkpoint < kCheckpoints.size() &&
+                   opening.source_frame == kCheckpoints[next_checkpoint]) {
+                const auto scene = render_scene();
+                if (scene.size() != QSize(kSceneWidth, kSceneHeight)) {
+                    return fail("checkpoint is not a full 320x224 screen");
+                }
+                const auto name = "opening-" +
+                    std::to_string(opening.source_frame) + ".bmp";
+                if (!save_frame(scene, name)) {
+                    return fail("could not save a full-screen event checkpoint");
+                }
+                const auto left_pixels = left_edge_pixel_count(scene);
+                const auto overlay_group = opening_wilderness_overlay_
+                    ? opening_intro_sprite_group(
+                          opening_wilderness_overlay_->sprite_descriptor)
+                    : OpeningIntroSpriteGroup{};
+                trace << opening.source_frame << '\t'
+                      << opening_intro_stage_name(opening.stage) << '\t'
+                      << opening_intro_scene_name(opening.scene) << '\t'
+                      << (opening_wilderness_map_left_ ? "present" : "cleared")
+                      << '\t'
+                      << (overlay_group.family ==
+                                  OpeningIntroSpriteFamily::wilderness_overlay
+                              ? std::to_string(overlay_group.variant)
+                              : "-")
+                      << '\t'
+                      << (opening_wilderness_final_overlay_ ? "yes" : "no")
+                      << '\t' << left_pixels << '\t' << name << '\n';
+                ++next_checkpoint;
+            }
+
+            advance_one_source_frame();
+        }
+
+        if (!saw_death_overlay || !saw_clean_trivid_entry ||
+            checked_death_frames == 0U ||
+            next_checkpoint != kCheckpoints.size()) {
+            return fail("did not cover the death pose, its full lifetime, and cockpit replacement");
+        }
+        std::cout << "opening_death_layer_qa=passed checkpoints="
+                  << kCheckpoints.size()
+                  << " death_frames=" << checked_death_frames
+                  << " actual="
+                  << (output_directory / "actual.bmp").string() << '\n';
+        return 0;
+    }
+
     int run_opening_trivid_layer_qa(
         const std::filesystem::path& output_directory) {
         constexpr std::uint32_t kSelection = 2U;
@@ -4216,6 +4395,13 @@ private:
             opening_wilderness_map_right_.reset();
             note_presentation_boundary("opening.clear_wilderness_right_map");
         };
+        startup_callbacks_.opening_intro.clear_wilderness_left_region =
+            [this] {
+                opening_wilderness_map_left_.reset();
+                opening_wilderness_overlay_.reset();
+                note_presentation_boundary(
+                    "opening.clear_wilderness_left_region");
+            };
         startup_callbacks_.opening_intro.render_text =
             [this](const OpeningIntroTextRequest& request) {
                 if (opening_intro_text_asset(request.text_asset) ==
@@ -4685,7 +4871,13 @@ private:
             painter.save();
             painter.translate(opening.stage2.x_offset,
                               -opening.stage2.y_offset);
-            if (opening_wilderness_map_left_) {
+            // ROM 0x5B4D4 installs the left wilderness region. The six
+            // 0x5A080 streams then replace that same 0x0600 region; drawing
+            // both images with alpha compositing leaves pixels from the old
+            // actor visible underneath the later death pose.
+            if (opening_wilderness_overlay_) {
+                draw_opening_sprite(painter, *opening_wilderness_overlay_);
+            } else if (opening_wilderness_map_left_) {
                 draw_opening_sprite(painter, *opening_wilderness_map_left_);
             }
             if (opening_wilderness_map_center_) {
@@ -4694,9 +4886,6 @@ private:
             }
             if (opening_wilderness_map_right_) {
                 draw_opening_sprite(painter, *opening_wilderness_map_right_);
-            }
-            if (opening_wilderness_overlay_) {
-                draw_opening_sprite(painter, *opening_wilderness_overlay_);
             }
             if (opening_wilderness_patch_) {
                 draw_opening_sprite(painter, *opening_wilderness_patch_);
@@ -6339,6 +6528,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> opening_rotor_qa_path;
         std::optional<std::filesystem::path> opening_landing_qa_path;
         std::optional<std::filesystem::path> opening_wilderness_pan_qa_path;
+        std::optional<std::filesystem::path> opening_death_layer_qa_path;
         std::optional<std::filesystem::path> opening_trivid_layer_qa_path;
         std::optional<std::uint32_t> opening_dump_selection;
         std::optional<std::uint32_t> opening_dump_start;
@@ -6385,6 +6575,7 @@ int main(int argc, char** argv) {
                        " [--opening-rotor-qa <output-dir>]"
                        " [--opening-landing-qa <output-dir>]"
                        " [--opening-wilderness-pan-qa <output-dir>]"
+                       " [--opening-death-layer-qa <output-dir>]"
                        " [--opening-trivid-layer-qa <output-dir>]"
                        " [--intro-to-field-smoke]\n";
                 return 0;
@@ -6615,6 +6806,11 @@ int main(int argc, char** argv) {
             if (std::string(argv[index]) == "--opening-wilderness-pan-qa" &&
                 index + 1 < argc) {
                 opening_wilderness_pan_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--opening-death-layer-qa" &&
+                index + 1 < argc) {
+                opening_death_layer_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--opening-trivid-layer-qa" &&
@@ -14223,6 +14419,10 @@ int main(int argc, char** argv) {
         if (opening_wilderness_pan_qa_path.has_value()) {
             return window.run_opening_wilderness_pan_qa(
                 *opening_wilderness_pan_qa_path);
+        }
+        if (opening_death_layer_qa_path.has_value()) {
+            return window.run_opening_death_layer_qa(
+                *opening_death_layer_qa_path);
         }
         if (opening_trivid_layer_qa_path.has_value()) {
             return window.run_opening_trivid_layer_qa(

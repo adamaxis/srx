@@ -2,7 +2,7 @@
 
 This audit covers `OPEN-05`, the reported aircraft landing on a building
 incorrectly. It records the sampled landing projection and sprite selection;
-it does not close the separate ambiguous rear-rotor report (`OPEN-04`) or the
+it does not close the separately audited six-state rear-propeller animation (`OPEN-04`) or the
 remaining opening sequence goals.
 
 ## ROM behavior

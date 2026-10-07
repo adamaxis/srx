@@ -259,6 +259,9 @@ struct OpeningIntroCallbacks {
     // after the terminal fade sequence. This is a source map clear, not a
     // missing sprite asset.
     std::function<void()> clear_wilderness_right_map;
+    // ROM 0x59FBE fills the left actor plate with the blank tile before the
+    // terminal Michael death image is installed.
+    std::function<void()> clear_wilderness_left_region;
     std::function<void(const OpeningIntroTextRequest&)> render_text;
     std::function<void(std::string_view)> source_boundary;
     std::function<bool()> stop_requested;

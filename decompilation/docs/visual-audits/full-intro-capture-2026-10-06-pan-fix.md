@@ -1,5 +1,7 @@
 # Full intro capture review after wilderness pan fix
 
+Historical status note: this capture predates the terminal death-layer clear and the later cockpit priority audit. Current full-run evidence and OPEN-03 status are in the [post-clear intro review](full-intro-capture-2026-10-06-open03-clear.md) and [death-layer audit](michael-death-layer-clear.md).
+
 Date: 2026-10-06  
 Build: Release Qt executable at build/conversion/qt/release  
 Route: Gator Shaman, 2,700 title-idle frames, complete opening, field handoff,

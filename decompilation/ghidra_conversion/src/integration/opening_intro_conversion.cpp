@@ -1315,8 +1315,12 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
              [&callbacks] {
                  source_boundary(callbacks, "0x59F8E.write_transfer_header");
              },
-             [&callbacks](const auto&) {
-                 source_boundary(callbacks, "0x59F8E.draw_transition_sprite");
+             [&callbacks] {
+                 if (callbacks.clear_wilderness_left_region) {
+                     callbacks.clear_wilderness_left_region();
+                 }
+                 source_boundary(callbacks,
+                                 "0x59F8E.clear_wilderness_left_region");
              },
              [&callbacks](const auto& request) {
                  emit_overlay_stream(callbacks, request);

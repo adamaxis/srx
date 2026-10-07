@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 int main() {
@@ -25,17 +26,22 @@ int main() {
     state.schedule.next_sprite_frame = 0x0120U;
     std::vector<std::uint16_t> audio;
     std::vector<TitleIntroSpriteStreamRequest> streams;
-    std::vector<TitleIntroTransitionSpriteRequest> transitions;
+    std::vector<std::string> presentation_order;
     int headers = 0;
 
     const TitleIntroOverlayCallbacks callbacks{
         [&audio](const std::uint16_t event) { audio.push_back(event); },
-        [&headers] { ++headers; },
-        [&transitions](const TitleIntroTransitionSpriteRequest& request) {
-            transitions.push_back(request);
+        [&headers, &presentation_order] {
+            ++headers;
+            presentation_order.push_back("header");
         },
-        [&streams](const TitleIntroSpriteStreamRequest& request) {
+        [&presentation_order] {
+            presentation_order.push_back("clear-left");
+        },
+        [&streams, &presentation_order](
+            const TitleIntroSpriteStreamRequest& request) {
             streams.push_back(request);
+            presentation_order.push_back("stream");
         },
     };
 
@@ -49,11 +55,15 @@ int main() {
     }
 
     state.current_frame = 0x0168U;
+    presentation_order.clear();
     if (advance_title_intro_overlay(state, phases, 0x9000U, callbacks) !=
             TitleIntroOverlayAdvanceResult::final_overlay_rendered ||
         audio != std::vector<std::uint16_t>{0x2EU} || headers != 1 ||
-        transitions.size() != 1U || streams.size() != 2U ||
+        presentation_order !=
+            std::vector<std::string>{"header", "clear-left", "stream"} ||
+        streams.size() != 2U ||
         streams.back().sprite_descriptor != 0x9000U ||
+        streams.back().destination_word != 0x0786U ||
         state.vertical_scroll != 0U) {
         return 3;
     }

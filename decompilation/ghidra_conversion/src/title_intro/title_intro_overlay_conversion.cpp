@@ -28,8 +28,10 @@ TitleIntroOverlayAdvanceResult advance_title_intro_overlay(
         if (callbacks.write_transfer_header) {
             callbacks.write_transfer_header();
         }
-        if (callbacks.draw_transition_sprite) {
-            callbacks.draw_transition_sprite({0x0600U, 0x0010U, 0x000FU});
+        if (callbacks.clear_wilderness_left_region) {
+            // ROM 0x59FBE-0x59FC6 fills the 17-by-16 left actor region with
+            // the blank tile before the terminal death-pose stream is sent.
+            callbacks.clear_wilderness_left_region();
         }
         if (callbacks.render_sprite_stream) {
             callbacks.render_sprite_stream(

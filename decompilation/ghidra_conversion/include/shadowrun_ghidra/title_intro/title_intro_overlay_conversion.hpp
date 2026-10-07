@@ -30,12 +30,6 @@ struct TitleIntroOverlayPhase {
     std::uint16_t delay_frames = 0;
 };
 
-struct TitleIntroTransitionSpriteRequest {
-    std::uint16_t destination_word = 0;
-    std::uint16_t columns = 0;
-    std::uint16_t rows = 0;
-};
-
 struct TitleIntroSpriteStreamRequest {
     std::uint32_t sprite_descriptor = 0;
     std::uint16_t destination_word = 0;
@@ -49,8 +43,7 @@ struct TitleIntroSpriteStreamRequest {
 struct TitleIntroOverlayCallbacks {
     std::function<void(std::uint16_t)> play_audio_event;
     std::function<void()> write_transfer_header;
-    std::function<void(const TitleIntroTransitionSpriteRequest&)>
-        draw_transition_sprite;
+    std::function<void()> clear_wilderness_left_region;
     std::function<void(const TitleIntroSpriteStreamRequest&)>
         render_sprite_stream;
 };

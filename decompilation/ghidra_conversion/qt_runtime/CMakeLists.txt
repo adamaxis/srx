@@ -101,6 +101,18 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_opening_wilderness_pan_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# The six 0x5A080 updates replace the left wilderness region. At 0x59F8E's
+# terminal event, ROM fills that region with the blank tile before drawing the
+# death pose. Verify the full-screen lifetime and the cockpit handoff.
+add_test(NAME shadowrun_ghidra_conversion_qt_opening_death_layer_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --opening-death-layer-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/opening-death-layer-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_opening_death_layer_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # The ROM marks the fixed trivid-left and timed SAT lists high priority
 # (0xC000/0xE000) while the moving trivid-right list is low priority (0x6000).
 # Whole-screen QA checks these layers across the full 0x115-frame scene loop.
@@ -121,6 +133,13 @@ target_link_libraries(shadowrun_ghidra_conversion_qt_title_intro_late_test
     PRIVATE shadowrun_ghidra_conversion_runtime)
 add_test(NAME shadowrun_ghidra_conversion_qt_title_intro_late_qa
          COMMAND shadowrun_ghidra_conversion_qt_title_intro_late_test)
+
+add_executable(shadowrun_ghidra_conversion_qt_title_intro_overlay_test
+    ../tests/title_intro/title_intro_overlay_conversion_test.cpp)
+target_link_libraries(shadowrun_ghidra_conversion_qt_title_intro_overlay_test
+    PRIVATE shadowrun_ghidra_conversion_modules)
+add_test(NAME shadowrun_ghidra_conversion_qt_title_intro_overlay_qa
+         COMMAND shadowrun_ghidra_conversion_qt_title_intro_overlay_test)
 
 # Keep the pre-title and first title-roll boundaries separate from the longer
 # startup walk: the ROM fades SEGA to black, fades FASA in, holds for 0x79
