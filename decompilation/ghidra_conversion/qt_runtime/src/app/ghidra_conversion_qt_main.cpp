@@ -10121,7 +10121,6 @@ int main(int argc, char** argv) {
                     field_scene.set_controller_port_byte(0U);
                     field_scene.advance_frame();
                 };
-
                 // Give the diagnostic runner a known valid Body increase so
                 // the same fixture can exercise both prompt choices. Seed it
                 // before command entry so derived combat bars agree too.
@@ -13092,6 +13091,14 @@ int main(int argc, char** argv) {
                     field_scene.set_controller_port_byte(0U);
                     field_scene.advance_frame();
                 };
+                const auto press_with_expected_audio =
+                    [&](const std::uint8_t port_byte,
+                        const std::uint16_t expected_event) {
+                        const auto event_count = field_audio_events.size();
+                        press(port_byte);
+                        return field_audio_events.size() == event_count + 1U &&
+                               field_audio_events.back() == expected_event;
+                    };
                 const auto same_image = [](const QImage& left,
                                            const QImage& right) {
                     if (left.size() != right.size() ||
@@ -13153,6 +13160,37 @@ int main(int argc, char** argv) {
                         (asset_root / "items" / "weapons" / "icons" /
                          name).wstring()));
                 };
+                const auto direct_armor_icon = [&](const std::uint8_t code,
+                                                   const std::uint8_t palette) {
+                    const auto name = "item-" + std::to_string(code) + "-" +
+                                      std::to_string(palette) + ".bmp";
+                    return QImage(QString::fromStdWString(
+                        (asset_root / "items" / "armor" / "icons" /
+                         name).wstring()));
+                };
+                const auto direct_miscellaneous_icon =
+                    [&](const std::uint8_t code,
+                        const std::uint8_t palette) {
+                        const auto name = "item-" + std::to_string(code) +
+                                          "-" + std::to_string(palette) +
+                                          ".bmp";
+                        return QImage(QString::fromStdWString(
+                            (asset_root / "items" / "miscellaneous" /
+                             "icons" / name).wstring()));
+                    };
+                const auto item_icon_palette = [](
+                    const RunnerRecordFields& runner) {
+                    return static_cast<std::uint8_t>(
+                        use_command_overview_alternate_icon_palette(
+                            HudGlyphAttributeInput{
+                                static_cast<std::int8_t>(
+                                    runner.equipped_item_code),
+                                static_cast<std::int8_t>(
+                                    runner.archetype_index),
+                                runner.equipped_inventory_slot})
+                            ? 1U
+                            : 0U);
+                };
                 const auto icon_interior_matches = [](
                     const QImage& scene, const QImage& icon,
                     const int origin_x, const int origin_y) {
@@ -13197,7 +13235,8 @@ int main(int argc, char** argv) {
                 };
                 const auto render_fresh_inventory_scene =
                     [&](const RunnerRecordFields& runner,
-                        const std::uint8_t primary_page) {
+                        const std::uint8_t primary_page,
+                        const std::uint8_t secondary_page) {
                         qt_runtime::FieldSceneRuntime fresh_scene(
                             [](const auto&) {});
                         if (!fresh_scene.bootstrap(smoke_state)) {
@@ -13207,8 +13246,16 @@ int main(int argc, char** argv) {
                         fresh_scene.refresh_field_hud_for_dump();
                         if (!fresh_scene.open_command_overview_for_dump() ||
                             !fresh_scene.seek_command_overview_page(
-                                primary_page)) {
+                                primary_page) ||
+                            secondary_page > 3U) {
                             return QImage{};
+                        }
+                        for (std::uint8_t row = 0U; row < secondary_page;
+                             ++row) {
+                            fresh_scene.set_controller_port_byte(0x02U);
+                            fresh_scene.advance_frame();
+                            fresh_scene.set_controller_port_byte(0U);
+                            fresh_scene.advance_frame();
                         }
                         QImage image(kSceneWidth, kSceneHeight,
                                      QImage::Format_RGB32);
@@ -13436,7 +13483,9 @@ int main(int argc, char** argv) {
                     render_fresh_inventory_scene(
                         field_scene.active_runner_record(),
                         field_scene.command_overview_view()
-                            .source_state.primary_page);
+                            .source_state.primary_page,
+                        field_scene.command_overview_view()
+                            .source_state.secondary_page);
                 const auto fresh_unequipped_scene_saved = save_scene(
                     "05_fresh_unequipped_baseline",
                     fresh_unequipped_scene);
@@ -13586,7 +13635,9 @@ int main(int argc, char** argv) {
                     render_fresh_inventory_scene(
                         field_scene.active_runner_record(),
                         field_scene.command_overview_view()
-                            .source_state.primary_page);
+                            .source_state.primary_page,
+                        field_scene.command_overview_view()
+                            .source_state.secondary_page);
                 const auto fresh_weapon_two_unequipped_scene_saved =
                     save_scene("11_fresh_weapon_2_unequipped_baseline",
                                fresh_weapon_two_unequipped_scene);
@@ -13916,14 +13967,604 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 press(0x40U);
+                const auto after_discard_scene = render_scene();
                 if (field_scene.inventory_action_open() ||
                     field_scene.discard_confirmation_open() ||
                     field_scene.active_runner_record().inventory_item_codes[0] !=
                         0U ||
-                    !write_scene("09_inventory_after_discard")) {
+                    !field_inventory_selector_survives(
+                        after_discard_scene, 0U, 0U) ||
+                    !save_scene("09_inventory_after_discard",
+                                after_discard_scene)) {
                     std::cerr << "field action dump: discard did not close "
-                                 "the converted action loop and clear the "
-                                 "source cell\n";
+                                 "the action loop, clear the source item, "
+                                 "or preserve the coordinate-based cursor\n";
+                    return 3;
+                }
+
+                // The armor branch at 0x1219C/0x121B0 toggles the selected
+                // cell's +0x6E phase while +0x76 is the authoritative
+                // equipped-armor index. Starting from a clean typed fixture,
+                // verify both transitions and full grid cleanup.
+                auto armor_runner = original_runner_record;
+                armor_runner.inventory_item_codes.fill(0U);
+                armor_runner.inventory_phase_bytes.fill(0U);
+                armor_runner.inventory_item_codes[2] = 0x2CU;
+                armor_runner.equipped_inventory_slot = -1;
+                armor_runner.equipped_item_code = 0U;
+                armor_runner.equipped_armor_index = 0U;
+                armor_runner.ammo_rounds = 0U;
+                field_scene.active_runner_record() = armor_runner;
+                field_scene.refresh_field_hud_for_dump();
+                const auto armor_cursor_audio_count =
+                    field_audio_events.size();
+                press(0x02U);
+                if (field_audio_events.size() != armor_cursor_audio_count) {
+                    std::cerr << "field action dump: inventory row movement "
+                                 "unexpectedly requested audio\n";
+                    return 3;
+                }
+                const auto armor_before_record =
+                    field_scene.active_runner_record();
+                const auto armor_before_scene = render_scene();
+                const auto armor_before_icon = direct_armor_icon(
+                    44U, item_icon_palette(armor_before_record));
+                if (field_scene.command_overview_view().source_state
+                            .primary_page != 0U ||
+                    field_scene.command_overview_view().source_state
+                            .secondary_page != 1U ||
+                    armor_before_record.inventory_item_codes[2] != 0x2CU ||
+                    armor_before_record.inventory_phase_bytes[2] != 0U ||
+                    armor_before_record.equipped_armor_index != 0U ||
+                    !field_inventory_selector_survives(armor_before_scene,
+                                                       0U, 1U) ||
+                    !icon_interior_matches(armor_before_scene,
+                                           armor_before_icon, 16, 144) ||
+                    armor_before_scene.pixelColor(11, 140) !=
+                        QColor(36, 36, 36) ||
+                    !save_scene("22_armor_before_equip",
+                                armor_before_scene)) {
+                    std::cerr << "field action dump: armor fixture, row-one "
+                                 "selection, icon, or unequipped cell was "
+                                 "incorrect\n";
+                    return 3;
+                }
+
+                if (!press_with_expected_audio(0x40U, 0x24U)) {
+                    std::cerr << "field action dump: opening armor action "
+                                 "did not request event 0x24\n";
+                    return 3;
+                }
+                const auto armor_action_scene = render_scene();
+                if (!field_scene.inventory_action_open() ||
+                    field_scene.inventory_action_selection() != 2U ||
+                    !region_matches(armor_action_scene, focus_equip, 128,
+                                    184) ||
+                    !icon_interior_matches(armor_action_scene,
+                                           armor_before_icon, 16, 144) ||
+                    !save_scene("22_armor_action_menu",
+                                armor_action_scene)) {
+                    std::cerr << "field action dump: armor action row did "
+                                 "not replace the parent controls cleanly\n";
+                    return 3;
+                }
+
+                if (!press_with_expected_audio(0x40U, 0x24U)) {
+                    std::cerr << "field action dump: armor equip did not "
+                                 "request event 0x24\n";
+                    return 3;
+                }
+                const auto& armor_equipped_record =
+                    field_scene.active_runner_record();
+                const auto armor_equipped_scene = render_scene();
+                const auto armor_equipped_icon = direct_armor_icon(
+                    44U, item_icon_palette(armor_equipped_record));
+                const auto fresh_armor_equipped_scene =
+                    render_fresh_inventory_scene(armor_equipped_record, 0U,
+                                                 1U);
+                if (field_scene.inventory_action_open() ||
+                    armor_equipped_record.equipped_armor_index != 1U ||
+                    armor_equipped_record.inventory_item_codes[2] != 0x2CU ||
+                    armor_equipped_record.inventory_phase_bytes[2] != 1U ||
+                    armor_equipped_record.equipped_inventory_slot != -1 ||
+                    armor_equipped_record.equipped_item_code != 0U ||
+                    !field_inventory_selector_survives(
+                        armor_equipped_scene, 0U, 1U) ||
+                    !icon_interior_matches(armor_equipped_scene,
+                                           armor_equipped_icon, 16, 144) ||
+                    armor_equipped_scene.pixelColor(11, 140) !=
+                        QColor(109, 109, 109) ||
+                    !same_inventory_grid(armor_equipped_scene,
+                                         fresh_armor_equipped_scene) ||
+                    !save_scene("23_fresh_armor_equipped_baseline",
+                                fresh_armor_equipped_scene) ||
+                    !save_scene("23_armor_equipped",
+                                armor_equipped_scene)) {
+                    std::cerr << "field action dump: armor equip state, icon, "
+                                 "selection, or equipped-cell redraw was "
+                                 "incorrect\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 30; ++frame) {
+                    field_scene.advance_frame();
+                }
+                const auto armor_equipped_frame30 = render_scene();
+                if (!same_image(armor_equipped_scene,
+                                armor_equipped_frame30) ||
+                    !save_scene("23_armor_equipped_frame30",
+                                armor_equipped_frame30)) {
+                    std::cerr << "field action dump: armor UI animated "
+                                 "during a 30-frame idle hold\n";
+                    return 3;
+                }
+
+                if (!press_with_expected_audio(0x40U, 0x24U)) {
+                    std::cerr << "field action dump: reopening armor action "
+                                 "did not request event 0x24\n";
+                    return 3;
+                }
+                const auto armor_unequip_action_scene = render_scene();
+                if (!field_scene.inventory_action_open() ||
+                    !region_matches(armor_unequip_action_scene, focus_equip,
+                                    128, 184) ||
+                    !save_scene("24_armor_unequip_action_menu",
+                                armor_unequip_action_scene)) {
+                    std::cerr << "field action dump: armor unequip action "
+                                 "menu did not redraw cleanly\n";
+                    return 3;
+                }
+                if (!press_with_expected_audio(0x40U, 0x24U)) {
+                    std::cerr << "field action dump: armor unequip did not "
+                                 "request event 0x24\n";
+                    return 3;
+                }
+                const auto armor_unequipped_record =
+                    field_scene.active_runner_record();
+                const auto armor_unequipped_scene = render_scene();
+                const auto armor_unequipped_icon = direct_armor_icon(
+                    44U, item_icon_palette(armor_unequipped_record));
+                const auto fresh_armor_unequipped_scene =
+                    render_fresh_inventory_scene(armor_unequipped_record, 0U,
+                                                 1U);
+                if (field_scene.inventory_action_open() ||
+                    armor_unequipped_record.equipped_armor_index != 0U ||
+                    armor_unequipped_record.inventory_item_codes[2] != 0x2CU ||
+                    armor_unequipped_record.inventory_phase_bytes[2] != 0U ||
+                    armor_unequipped_record.equipped_inventory_slot != -1 ||
+                    armor_unequipped_record.equipped_item_code != 0U ||
+                    !field_inventory_selector_survives(
+                        armor_unequipped_scene, 0U, 1U) ||
+                    !icon_interior_matches(armor_unequipped_scene,
+                                           armor_unequipped_icon, 16, 144) ||
+                    armor_unequipped_scene.pixelColor(11, 140) !=
+                        QColor(36, 36, 36) ||
+                    !same_image(armor_before_scene,
+                                armor_unequipped_scene) ||
+                    !same_inventory_grid(armor_unequipped_scene,
+                                         fresh_armor_unequipped_scene) ||
+                    !save_scene("25_fresh_armor_unequipped_baseline",
+                                fresh_armor_unequipped_scene) ||
+                    !save_scene("25_armor_unequipped",
+                                armor_unequipped_scene)) {
+                    std::cerr << "field action dump: armor unequip left stale "
+                                 "cell graphics or failed to restore the "
+                                 "fresh parent frame\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 30; ++frame) {
+                    field_scene.advance_frame();
+                }
+                const auto armor_unequipped_frame30 = render_scene();
+                if (!same_image(armor_unequipped_scene,
+                                armor_unequipped_frame30) ||
+                    !save_scene("25_armor_unequipped_frame30",
+                                armor_unequipped_frame30)) {
+                    std::cerr << "field action dump: unequipped armor UI "
+                                 "animated during an idle hold\n";
+                    return 3;
+                }
+
+                for (int cycle = 0; cycle < 2; ++cycle) {
+                    if (!press_with_expected_audio(0x40U, 0x24U)) {
+                        std::cerr << "field action dump: repeated armor "
+                                     "action open did not request event 0x24\n";
+                        return 3;
+                    }
+                    if (!field_scene.inventory_action_open()) {
+                        std::cerr << "field action dump: repeated armor "
+                                     "cycle could not open Equip\n";
+                        return 3;
+                    }
+                    if (!press_with_expected_audio(0x40U, 0x24U)) {
+                        std::cerr << "field action dump: repeated armor "
+                                     "equip did not request event 0x24\n";
+                        return 3;
+                    }
+                    if (field_scene.active_runner_record()
+                                .equipped_armor_index != 1U ||
+                        field_scene.active_runner_record()
+                                .inventory_phase_bytes[2] != 1U) {
+                        std::cerr << "field action dump: repeated armor "
+                                     "equip state diverged from ROM\n";
+                        return 3;
+                    }
+                    if (!press_with_expected_audio(0x40U, 0x24U)) {
+                        std::cerr << "field action dump: repeated armor "
+                                     "reopen did not request event 0x24\n";
+                        return 3;
+                    }
+                    if (!field_scene.inventory_action_open()) {
+                        std::cerr << "field action dump: repeated armor "
+                                     "unequip could not open Equip\n";
+                        return 3;
+                    }
+                    if (!press_with_expected_audio(0x40U, 0x24U)) {
+                        std::cerr << "field action dump: repeated armor "
+                                     "unequip did not request event 0x24\n";
+                        return 3;
+                    }
+                    if (field_scene.active_runner_record()
+                                .equipped_armor_index != 0U ||
+                        field_scene.active_runner_record()
+                                .inventory_phase_bytes[2] != 0U) {
+                        std::cerr << "field action dump: repeated armor "
+                                     "unequip state diverged from ROM\n";
+                        return 3;
+                    }
+                }
+                const auto repeated_armor_unequip_scene = render_scene();
+                if (!same_image(armor_before_scene,
+                                repeated_armor_unequip_scene) ||
+                    !same_inventory_grid(armor_unequipped_scene,
+                                         repeated_armor_unequip_scene) ||
+                    !save_scene("26_armor_unequipped_repeat",
+                                repeated_armor_unequip_scene)) {
+                    std::cerr << "field action dump: repeated armor toggles "
+                                 "left a black box, stale icon, or button\n";
+                    return 3;
+                }
+
+                // A different armor item is a source-specific two-step
+                // change: the first action clears any active +0x76 armor,
+                // then a later action equips the newly selected item.
+                field_scene.active_runner_record().inventory_item_codes[3] =
+                    0x2DU;
+                field_scene.active_runner_record().inventory_phase_bytes[3] =
+                    0U;
+                if (!press_with_expected_audio(0x40U, 0x24U) ||
+                    !field_scene.inventory_action_open() ||
+                    !press_with_expected_audio(0x40U, 0x24U) ||
+                    field_scene.active_runner_record().equipped_armor_index !=
+                        1U) {
+                    std::cerr << "field action dump: initial armor for the "
+                                 "replacement route did not equip\n";
+                    return 3;
+                }
+                const auto armor_one_before_replacement = render_scene();
+                if (!save_scene("27_armor_one_before_replacement",
+                                armor_one_before_replacement)) {
+                    std::cerr << "field action dump: armor replacement "
+                                 "preselection frame could not be saved\n";
+                    return 3;
+                }
+                const auto replacement_cursor_audio_count =
+                    field_audio_events.size();
+                press(0x08U);
+                if (field_audio_events.size() !=
+                    replacement_cursor_audio_count) {
+                    std::cerr << "field action dump: inventory column "
+                                 "movement unexpectedly requested audio\n";
+                    return 3;
+                }
+                const auto replacement_selection_record =
+                    field_scene.active_runner_record();
+                const auto replacement_selection_scene = render_scene();
+                const auto replacement_icon = direct_armor_icon(
+                    45U, item_icon_palette(replacement_selection_record));
+                if (field_scene.command_overview_view().source_state
+                            .primary_page != 1U ||
+                    field_scene.command_overview_view().source_state
+                            .secondary_page != 1U ||
+                    replacement_selection_record.inventory_item_codes[3] !=
+                        0x2DU ||
+                    replacement_selection_record.equipped_armor_index !=
+                        1U ||
+                    !field_inventory_selector_survives(
+                        replacement_selection_scene, 1U, 1U) ||
+                    !icon_interior_matches(replacement_selection_scene,
+                                           replacement_icon, 56, 144) ||
+                    !save_scene("28_armor_replacement_selected",
+                                replacement_selection_scene)) {
+                    std::cerr << "field action dump: selected replacement "
+                                 "armor or existing armor marker was wrong\n";
+                    return 3;
+                }
+                if (!press_with_expected_audio(0x40U, 0x24U) ||
+                    !field_scene.inventory_action_open() ||
+                    !press_with_expected_audio(0x40U, 0x24U)) {
+                    std::cerr << "field action dump: armor replacement "
+                                 "action row did not complete\n";
+                    return 3;
+                }
+                const auto replacement_toggled_off_record =
+                    field_scene.active_runner_record();
+                const auto replacement_toggled_off_scene = render_scene();
+                const auto fresh_replacement_toggled_off_scene =
+                    render_fresh_inventory_scene(
+                        replacement_toggled_off_record, 1U, 1U);
+                if (replacement_toggled_off_record.equipped_armor_index !=
+                        0U ||
+                    replacement_toggled_off_record.inventory_item_codes[2] !=
+                        0x2CU ||
+                    replacement_toggled_off_record.inventory_phase_bytes[2] !=
+                        1U ||
+                    replacement_toggled_off_record.inventory_item_codes[3] !=
+                        0x2DU ||
+                    replacement_toggled_off_record.inventory_phase_bytes[3] !=
+                        0U ||
+                    !field_inventory_selector_survives(
+                        replacement_toggled_off_scene, 1U, 1U) ||
+                    !icon_interior_matches(replacement_toggled_off_scene,
+                                           replacement_icon, 56, 144) ||
+                    replacement_toggled_off_scene.pixelColor(11, 140) !=
+                        QColor(36, 36, 36) ||
+                    replacement_toggled_off_scene.pixelColor(51, 140) !=
+                        QColor(36, 36, 36) ||
+                    !same_inventory_grid(replacement_toggled_off_scene,
+                                         fresh_replacement_toggled_off_scene) ||
+                    !save_scene(
+                        "29_fresh_armor_replacement_off_baseline",
+                        fresh_replacement_toggled_off_scene) ||
+                    !save_scene("29_armor_replacement_toggled_off",
+                                replacement_toggled_off_scene)) {
+                    std::cerr << "field action dump: selecting a second "
+                                 "armor did not clear the active armor and "
+                                 "redraw both cells cleanly\n";
+                    return 3;
+                }
+
+                if (!press_with_expected_audio(0x40U, 0x24U) ||
+                    !field_scene.inventory_action_open() ||
+                    !press_with_expected_audio(0x40U, 0x24U)) {
+                    std::cerr << "field action dump: second armor item "
+                                 "could not equip after clearing old armor\n";
+                    return 3;
+                }
+                const auto replacement_equipped_record =
+                    field_scene.active_runner_record();
+                const auto replacement_equipped_scene = render_scene();
+                const auto fresh_replacement_equipped_scene =
+                    render_fresh_inventory_scene(replacement_equipped_record,
+                                                 1U, 1U);
+                if (replacement_equipped_record.equipped_armor_index != 2U ||
+                    replacement_equipped_record.inventory_phase_bytes[3] !=
+                        2U ||
+                    !field_inventory_selector_survives(
+                        replacement_equipped_scene, 1U, 1U) ||
+                    !icon_interior_matches(replacement_equipped_scene,
+                                           replacement_icon, 56, 144) ||
+                    replacement_equipped_scene.pixelColor(11, 140) !=
+                        QColor(36, 36, 36) ||
+                    replacement_equipped_scene.pixelColor(51, 140) !=
+                        QColor(109, 109, 109) ||
+                    !same_inventory_grid(replacement_equipped_scene,
+                                         fresh_replacement_equipped_scene) ||
+                    !save_scene("30_fresh_armor_replacement_equipped_baseline",
+                                fresh_replacement_equipped_scene) ||
+                    !save_scene("30_armor_replacement_equipped",
+                                replacement_equipped_scene)) {
+                    std::cerr << "field action dump: replacement armor did "
+                                 "not receive the source equipment marker\n";
+                    return 3;
+                }
+
+                if (!press_with_expected_audio(0x40U, 0x24U) ||
+                    !field_scene.inventory_action_open() ||
+                    !press_with_expected_audio(0x40U, 0x24U)) {
+                    std::cerr << "field action dump: replacement armor "
+                                 "unequip did not complete\n";
+                    return 3;
+                }
+                const auto replacement_unequipped_record =
+                    field_scene.active_runner_record();
+                const auto replacement_unequipped_scene = render_scene();
+                const auto fresh_replacement_unequipped_scene =
+                    render_fresh_inventory_scene(
+                        replacement_unequipped_record, 1U, 1U);
+                if (replacement_unequipped_record.equipped_armor_index !=
+                        0U ||
+                    replacement_unequipped_record.inventory_phase_bytes[3] !=
+                        0U ||
+                    replacement_unequipped_scene.pixelColor(11, 140) !=
+                        QColor(36, 36, 36) ||
+                    replacement_unequipped_scene.pixelColor(51, 140) !=
+                        QColor(36, 36, 36) ||
+                    !same_image(replacement_toggled_off_scene,
+                                replacement_unequipped_scene) ||
+                    !same_inventory_grid(replacement_unequipped_scene,
+                                         fresh_replacement_unequipped_scene) ||
+                    !save_scene(
+                        "31_fresh_armor_replacement_unequipped_baseline",
+                        fresh_replacement_unequipped_scene) ||
+                    !save_scene("31_armor_replacement_unequipped",
+                                replacement_unequipped_scene)) {
+                    std::cerr << "field action dump: replacement armor "
+                                 "unequip did not clear both cell treatments\n";
+                    return 3;
+                }
+
+                // Item 0x15 is source gear rather than a weapon or armor. It
+                // shares the equipped-slot treatment but has its own direct
+                // miscellaneous icon asset and no magazine/armor phase.
+                auto gear_runner = original_runner_record;
+                gear_runner.inventory_item_codes.fill(0U);
+                gear_runner.inventory_phase_bytes.fill(0U);
+                gear_runner.inventory_item_codes[4] = 0x15U;
+                gear_runner.equipped_inventory_slot = -1;
+                gear_runner.equipped_item_code = 0U;
+                gear_runner.equipped_armor_index = 0U;
+                gear_runner.ammo_rounds = 0U;
+                field_scene.active_runner_record() = gear_runner;
+                field_scene.refresh_field_hud_for_dump();
+                const auto gear_cursor_audio_count = field_audio_events.size();
+                press(0x04U);
+                press(0x02U);
+                if (field_audio_events.size() != gear_cursor_audio_count) {
+                    std::cerr << "field action dump: gear cursor movement "
+                                 "unexpectedly requested audio\n";
+                    return 3;
+                }
+                const auto gear_before_record =
+                    field_scene.active_runner_record();
+                const auto gear_before_scene = render_scene();
+                const auto gear_icon = direct_miscellaneous_icon(
+                    21U, item_icon_palette(gear_before_record));
+                if (field_scene.command_overview_view().source_state
+                            .primary_page != 0U ||
+                    field_scene.command_overview_view().source_state
+                            .secondary_page != 2U ||
+                    gear_before_record.inventory_item_codes[4] != 0x15U ||
+                    gear_before_record.inventory_phase_bytes[4] != 0U ||
+                    !field_inventory_selector_survives(gear_before_scene,
+                                                       0U, 2U) ||
+                    !icon_interior_matches(gear_before_scene, gear_icon, 16,
+                                           168) ||
+                    gear_before_scene.pixelColor(11, 164) !=
+                        QColor(36, 36, 36) ||
+                    !save_scene("32_gear_before_equip", gear_before_scene)) {
+                    std::cerr << "field action dump: gear fixture, selected "
+                                 "cell, icon, or unequipped border was wrong\n";
+                    return 3;
+                }
+                if (!press_with_expected_audio(0x40U, 0x24U)) {
+                    std::cerr << "field action dump: opening gear action "
+                                 "did not request event 0x24\n";
+                    return 3;
+                }
+                const auto gear_action_scene = render_scene();
+                if (!field_scene.inventory_action_open() ||
+                    !region_matches(gear_action_scene, focus_equip, 128, 184) ||
+                    !save_scene("32_gear_action_menu", gear_action_scene) ||
+                    !press_with_expected_audio(0x40U, 0x24U)) {
+                    std::cerr << "field action dump: gear action row or "
+                                 "confirmation failed\n";
+                    return 3;
+                }
+                const auto gear_equipped_record =
+                    field_scene.active_runner_record();
+                const auto gear_equipped_scene = render_scene();
+                const auto gear_equipped_icon = direct_miscellaneous_icon(
+                    21U, item_icon_palette(gear_equipped_record));
+                const auto fresh_gear_equipped_scene =
+                    render_fresh_inventory_scene(gear_equipped_record, 0U,
+                                                 2U);
+                const auto gear_equipped_selector_matches =
+                    field_inventory_selector_survives(gear_equipped_scene,
+                                                       0U, 2U);
+                const auto gear_equipped_icon_matches =
+                    icon_interior_matches(gear_equipped_scene,
+                                          gear_equipped_icon, 16, 168);
+                const auto gear_equipped_border_color =
+                    gear_equipped_scene.pixelColor(11, 164);
+                const auto gear_equipped_grid_matches =
+                    same_inventory_grid(gear_equipped_scene,
+                                         fresh_gear_equipped_scene);
+                const auto gear_equipped_scene_saved =
+                    save_scene("33_gear_equipped", gear_equipped_scene);
+                const auto fresh_gear_equipped_scene_saved = save_scene(
+                    "33_fresh_gear_equipped_baseline",
+                    fresh_gear_equipped_scene);
+                if (field_scene.inventory_action_open() ||
+                    gear_equipped_record.equipped_inventory_slot != 4 ||
+                    gear_equipped_record.equipped_item_code != 0x15U ||
+                    gear_equipped_record.equipped_armor_index != 0U ||
+                    gear_equipped_record.inventory_item_codes[4] != 0x15U ||
+                    gear_equipped_record.inventory_phase_bytes[4] != 0U ||
+                    !gear_equipped_selector_matches ||
+                    !gear_equipped_icon_matches ||
+                    gear_equipped_border_color != QColor(109, 109, 109) ||
+                    !gear_equipped_grid_matches ||
+                    !fresh_gear_equipped_scene_saved ||
+                    !gear_equipped_scene_saved) {
+                    std::cerr << "field action dump: gear equipment state, "
+                                 "icon, or cell treatment was wrong slot="
+                              << static_cast<int>(gear_equipped_record
+                                                      .equipped_inventory_slot)
+                              << " code="
+                              << static_cast<int>(gear_equipped_record
+                                                      .equipped_item_code)
+                              << " armor="
+                              << static_cast<int>(gear_equipped_record
+                                                      .equipped_armor_index)
+                              << " phase="
+                              << static_cast<int>(gear_equipped_record
+                                                      .inventory_phase_bytes[4])
+                              << " selector="
+                              << gear_equipped_selector_matches
+                              << " icon=" << gear_equipped_icon_matches
+                              << " border="
+                              << gear_equipped_border_color.name().toStdString()
+                              << " grid=" << gear_equipped_grid_matches << '\n';
+                    return 3;
+                }
+                for (int frame = 0; frame < 30; ++frame) {
+                    field_scene.advance_frame();
+                }
+                const auto gear_equipped_frame30 = render_scene();
+                if (!same_image(gear_equipped_scene, gear_equipped_frame30) ||
+                    !save_scene("33_gear_equipped_frame30",
+                                gear_equipped_frame30)) {
+                    std::cerr << "field action dump: gear presentation "
+                                 "changed during a 30-frame hold\n";
+                    return 3;
+                }
+                if (!press_with_expected_audio(0x40U, 0x24U) ||
+                    !field_scene.inventory_action_open() ||
+                    !press_with_expected_audio(0x40U, 0x24U)) {
+                    std::cerr << "field action dump: gear unequip action "
+                                 "did not complete\n";
+                    return 3;
+                }
+                const auto gear_unequipped_record =
+                    field_scene.active_runner_record();
+                const auto gear_unequipped_scene = render_scene();
+                const auto gear_unequipped_icon = direct_miscellaneous_icon(
+                    21U, item_icon_palette(gear_unequipped_record));
+                const auto fresh_gear_unequipped_scene =
+                    render_fresh_inventory_scene(gear_unequipped_record, 0U,
+                                                 2U);
+                if (gear_unequipped_record.equipped_inventory_slot != -1 ||
+                    gear_unequipped_record.equipped_item_code != 0U ||
+                    gear_unequipped_record.inventory_item_codes[4] != 0x15U ||
+                    gear_unequipped_record.inventory_phase_bytes[4] != 0U ||
+                    !field_inventory_selector_survives(
+                        gear_unequipped_scene, 0U, 2U) ||
+                    !icon_interior_matches(gear_unequipped_scene,
+                                           gear_unequipped_icon, 16, 168) ||
+                    gear_unequipped_scene.pixelColor(11, 164) !=
+                        QColor(36, 36, 36) ||
+                    !same_image(gear_before_scene, gear_unequipped_scene) ||
+                    !same_inventory_grid(gear_unequipped_scene,
+                                         fresh_gear_unequipped_scene) ||
+                    !save_scene("34_fresh_gear_unequipped_baseline",
+                                fresh_gear_unequipped_scene) ||
+                    !save_scene("34_gear_unequipped",
+                                gear_unequipped_scene)) {
+                    std::cerr << "field action dump: gear unequip left a stale "
+                                 "cell graphic or failed to restore the "
+                                 "parent frame\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 30; ++frame) {
+                    field_scene.advance_frame();
+                }
+                const auto gear_unequipped_frame30 = render_scene();
+                if (!same_image(gear_unequipped_scene,
+                                gear_unequipped_frame30) ||
+                    !save_scene("34_gear_unequipped_frame30",
+                                gear_unequipped_frame30)) {
+                    std::cerr << "field action dump: unequipped gear "
+                                 "changed during a 30-frame hold\n";
                     return 3;
                 }
                 std::cout << "field_action_dump=written path="

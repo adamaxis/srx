@@ -119,10 +119,12 @@ std::uint8_t convert_equipped_ammo(std::uint8_t old_rounds,
                                    std::uint8_t old_factor,
                                    std::uint8_t new_factor);
 
-// ROM 0x121E0..0x12292 and 0x125FA. Weapon/gear state (+0x56/+0x57/+0x4E)
-// and armor state (+0x76 and the selected +0x6E byte) remain separate from
-// possession. Unequipping a weapon stores its loaded percentage in +0x4E;
-// equipping a later weapon converts that percentage using its own +0x24 limit.
+// ROM 0x1219C..0x12292 and 0x125FA. Weapon/gear state
+// (+0x56/+0x57/+0x4E) and armor state (+0x76 and the selected +0x6E byte)
+// remain separate from possession. Any active armor is cleared on the next
+// armor action; a following action equips the selected armor. Unequipping a
+// weapon stores its loaded percentage in +0x4E; equipping a later weapon
+// converts that percentage using its own +0x24 limit.
 EquipmentMutation toggle_selected_equipment(
     RunnerRecordFields& record,
     const SelectedInventoryItem& selected,

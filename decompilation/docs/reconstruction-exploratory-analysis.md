@@ -583,8 +583,10 @@ stores the result as a source byte. Selecting the already equipped slot writes
 `+0x56=0x7F`, clears `+0x57`, and returns the source state to “no weapon”.
 
 The armor path at `0x1219C`/`0x121B0` uses `+0x76` and the selected slot's
-`+0x6E` phase byte. A second activation clears the equipped armor state. The
-presence of an armor code in a cell alone does not equip it.
+`+0x6E` phase byte. If any armor is equipped, the next armor action clears
+`+0x76` and the selected cell's phase, even when a different armor is selected;
+a later action equips that armor. The presence of an armor code in a cell alone
+does not equip it.
 
 The selected-item detail path is a separate source classification. `0x115F2`
 calls the weapon Damage/Power writer only for codes below `0x10`. The

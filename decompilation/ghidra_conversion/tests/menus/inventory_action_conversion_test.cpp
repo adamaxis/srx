@@ -199,6 +199,30 @@ int main() {
                 record.inventory_phase_bytes[0] == 1U)) {
         return 9;
     }
+    RunnerRecordFields armor_replacement{};
+    armor_replacement.inventory_item_codes[0] = 0x2CU;
+    armor_replacement.inventory_phase_bytes[0] = 1U;
+    armor_replacement.inventory_item_codes[1] = 0x2DU;
+    armor_replacement.inventory_phase_bytes[1] = 2U;
+    armor_replacement.equipped_armor_index = 1U;
+    const auto replacement_armor =
+        read_selected_inventory_item(armor_replacement, 1U, 0U);
+    if (!expect(replacement_armor &&
+                toggle_selected_equipment(armor_replacement,
+                                          *replacement_armor, 0U, 0U) ==
+                    EquipmentMutation::armor_unequipped &&
+                armor_replacement.equipped_armor_index == 0U &&
+                armor_replacement.inventory_item_codes[0] == 0x2CU &&
+                armor_replacement.inventory_phase_bytes[0] == 1U &&
+                armor_replacement.inventory_item_codes[1] == 0x2DU &&
+                armor_replacement.inventory_phase_bytes[1] == 0U &&
+                toggle_selected_equipment(armor_replacement,
+                                          *replacement_armor, 0U, 0U) ==
+                    EquipmentMutation::armor_equipped &&
+                armor_replacement.equipped_armor_index == 2U &&
+                armor_replacement.inventory_phase_bytes[1] == 2U)) {
+        return 18;
+    }
     if (!expect(!can_discard_selected_item(SelectedInventoryItem{7U, 0x29U, 1U}) &&
                 can_trade_selected_item(0x16U) &&
                 !can_trade_selected_item(0x17U))) {

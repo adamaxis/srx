@@ -188,7 +188,11 @@ EquipmentMutation toggle_selected_equipment(
     if (branch == SelectedItemBranch::armor) {
         const auto armor_index = static_cast<std::uint8_t>(
             selected.item_code - 0x2BU);
-        if (record.equipped_armor_index == armor_index) {
+        // ROM 0x1219C tests whether any armor is equipped. If so, this action
+        // clears +0x76 and the selected cell's +0x6E phase byte, even when the
+        // selected armor differs from the currently equipped armor. A later
+        // action equips the new armor through 0x121B0.
+        if (record.equipped_armor_index != 0U) {
             record.equipped_armor_index = 0U;
             record.inventory_phase_bytes[selected.slot] = 0U;
             return EquipmentMutation::armor_unequipped;

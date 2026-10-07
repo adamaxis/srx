@@ -22,6 +22,18 @@ read ROM addresses or emulate VDP/name-table state.
   gear keeps the percentage in `+0x4E`, and equipping a later weapon converts
   it back to that weapon's rounds. `+0x4F` remains a runner-wide Universal Gun
   Clips count, rather than a per-weapon stock.
+- The armor branch at `0x1219C` checks whether any armor is equipped. If so,
+  it clears `+0x76` and the selected cell's `+0x6E` phase byte, even when the
+  selected item is a different armor; a second action equips that item through
+  `0x121B0`. The native state transition follows this two-step replacement.
+- Gear item `0x15` uses the separate miscellaneous icon family. Its equipped
+  state is carried in the typed inventory slot, and the Qt presentation selects
+  the corresponding named icon variant and equipment-cell marker. Gear does
+  not use the armor phase byte or a per-item magazine.
+- `0x11506` changes the selected inventory coordinates without a sound call;
+  `0x11592` draws from those coordinates even when the selected cell is empty.
+  The one-pixel selector is separate from item possession and from the
+  equipped-cell treatment.
 - `0x12634`/`0x1275C` enter the source Yes/No discard prompt. No is selected
   initially; possession is cleared only after Yes, with equipped weapon or
   armor state cleared with it. The protected slot-seven item branch remains
@@ -81,15 +93,18 @@ This is a diagnostic state fixture, not a claim that the normal opening save
 contains those two inventory entries. The same route reloads weapon 1 to its
 six-round capacity, consumes one of the shared clips, checks the prompt's
 No/Yes states, and verifies that Cancel removes all Clips controls before the
-command page returns. The dump writes eighteen 320x224 BMP checkpoints plus
-`actual.bmp` at the second weapon equipped with its converted 50-percent load,
-outside the asset tree, including weapon-switch, reload, unequip, and return
-frames. Each weapon checkpoint now also compares the visible HUD ammo region
-against the extracted counter tile for the live value: 3 rounds, 6 rounds, or
-the stored 50-percent state. This ties the displayed counter to the equipped
-weapon's capacity, the converted runner record, and the reload result. The
-matching CTest is
-`shadowrun_ghidra_conversion_qt_field_action_qa`.
+command page returns. The dump writes 54 full-screen 320x224 BMP checkpoints,
+including `actual.bmp` at the second weapon equipped with its converted
+50-percent load, outside the asset tree. It covers weapon switches, reload,
+discard, Clips return, armor replacement, gear equip/unequip, and parent redraw.
+Each weapon checkpoint also compares the visible HUD ammo region against the
+extracted counter tile for the live value: 3 rounds, 6 rounds, or the stored
+50-percent state. This ties the displayed counter to the equipped weapon's
+capacity, the converted runner record, and the reload result. The matching CTest
+is `shadowrun_ghidra_conversion_qt_field_action_qa`. Debug and Release each emit
+the same 54 frames and all SHA-256 hashes match. The gear route checks the
+typed-state icon variant and confirms equipped/unequipped presentations remain
+unchanged through 30 idle updates.
 
 The weapon mutation menu has no item-specific animation branch: its state and
 panel redraw on the input edge. Each A dispatch requests source event `0x24`

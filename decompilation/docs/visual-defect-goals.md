@@ -618,6 +618,17 @@ For `EQUIP-02`, repeat equip, unequip, and replacement, and compare the whole
 inventory grid with a freshly rendered baseline. Verify the icon, equipment
 frame, selector, other panels, and return state together.
 
+The expanded Debug/Release route now covers weapon 1/2, armor 1/2, and gear
+`0x15`. ROM `0x1219C` clears any active armor on the first action, even when a
+different armor is selected; `0x121B0` equips the selected armor on the next
+action. The typed mutation and unit test follow this two-step replacement. The
+gear route checks that the icon asset variant and equipped-cell marker follow
+typed equipment state. Full-screen QA verifies that the coordinate-based
+selector remains on an empty cell after discard, armor/gear holds stay static
+for 30 frames, expected action audio occurs while cursor movement stays silent,
+and each final grid matches a fresh render. All 54 Debug/Release frames match
+by SHA-256 and were reviewed as full screens for stale controls and overlap.
+
 **Done when:** source selection and equipment state are separate typed state;
 tests cover the selector perimeter and repeated equipment changes;
 Debug/Release full-screen captures show no stale cell treatment after
@@ -626,8 +637,10 @@ unavailable.
 
 **Status:** `EQUIP-01` geometry is not reproduced as a current defect and is
 supported by independent frames. `EQUIP-02`'s reported stale black box is not
-reproduced in the current full-screen action route; exact independent
-equip/unequip footage remains unavailable.
+reproduced in the current full-screen weapon, armor, or gear routes. The
+ROM-derived armor replacement mismatch is corrected and covered; an exact
+independent equip/unequip transition remains unavailable, so the black-box
+report is not marked resolved.
 
 ### LOADOUT-01 — Weapon magazine and shared reserve relationship
 

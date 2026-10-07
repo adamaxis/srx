@@ -1,111 +1,169 @@
 # Inventory Selector and Equip/Unequip Review
 
-Date: 2026-10-06
+Date: 2026-10-07
 Primary source: US ROM `decompilation/input/shadowrun_genesis_us.bin`.
 Qt route: `shadowrun_ghidra_conversion_qt_field_action_qa`.
 
-## Source and state
+## Source and typed state
 
-- ROM `0x11506` updates the selected inventory coordinates; `0x11592` builds
-  the cursor sprite from those coordinates. The selected slot is
-  `secondary_page * 2 + primary_page` in the active runner's typed inventory.
-- The cursor is a one-pixel `#C4BE27` outline on the 24x16 item image. It is
-  separate from the equipment-cell treatment installed through `0x11624` /
-  `0x11678`. Item artwork is drawn after that cell treatment so the item
-  remains visible.
-- Equip/unequip is handled by `0x12148` / `0x121E0`; the inventory row is
-  rebuilt after the nested action at `0x11928`. The Qt runtime binds these
-  operations to one typed runner record and rebuilds the field/menu frame.
+- ROM `0x11506` changes the selected inventory coordinates; `0x11592` builds
+  the cursor sprite from those coordinates. Selection is independent of
+  possession: after discarding the selected item, the cursor remains on the
+  now-empty cell. There is no item-presence gate in the traced cursor path.
+- The item cursor is a one-pixel `#C4BE27` outline on the 24x16 item image.
+  The equipped-cell treatment is separate and comes through `0x11624` / `0x11678`.
+  In the Qt scene, that cell treatment is drawn below the direct item artwork;
+  the cursor is then drawn on the selected item coordinates.
+- ROM `0x1219C` checks whether any armor is equipped. If so, it clears the
+  runner's `+0x76` armor index and the selected cell's `+0x6E` phase byte,
+  even when the selected item is a different armor. A later action takes the
+  `0x121B0` equip branch and writes the new armor index and selected phase.
+  Weapon/gear state at `+0x56/+0x57/+0x4E` remains separate.
+- The Qt runtime binds these transitions to the active typed runner record and
+  rebuilds the menu frame after the action returns through `0x11928`.
 
-## Eight-question review
+## Nine-question visual review
 
-1. **Does it look correct? Yes for the current selector.** The selected item
+1. **Does it look correct? Yes for the selector geometry.** The selected item
    perimeter measures exactly 76 `#C4BE27` pixels, the perimeter count for a
-   24x16 one-pixel rectangle. No matching-color pixels fill the interior.
-   Independent section 06 frames `002560`, `002580`, `002610`, and `002640`
-   show the same slim outline around selected inventory items. The exact
-   weapon-switch transition is absent from the independent recording.
-2. **Does the look match behavioral state? Yes.** The outline follows the
-   typed primary/secondary inventory coordinates. Pixel checks exercised
-   cells 0 and 1; source-selected cells without inventory items do not get an
-   item cursor. The equipped-slot marker is checked separately from the
-   current cursor.
-3. **Are the visuals correct? Yes for selector geometry and current cleanup.**
-   Fresh Debug frames show a single edge around the item, with the icon
-   visible. Unequipped weapon 1 and weapon 2 grids match freshly rendered
-   baselines. Repeated equip/unequip returns remove the equipped-cell
-   treatment without leaving an extra black box or stale icon.
-4. **Is it animated? No.** The cursor stays fixed while the same cell is
-   selected, including a 30-frame hold. D-pad input changes its coordinates;
-   leaving the inventory page clears it. No cursor animation counter is
-   present in the traced draw path.
-5. **Is there a sound?** Accepted menu movement requests event `0x25`, which
-   maps to resource 037 (2.134 seconds including its release tail). The item
-   action dispatch requests event `0x24` (2.484 seconds including its release
-   tail). The ROM cursor drawing routines themselves request no sound. Host
-   audio QA checks decoded playback and player state; output loopback for this
-   exact inventory visit is not recorded.
-6. **Are the other visible parts of the screen also correct? Yes for these
-   checkpoints.** I reviewed all 28 current 320x224 Debug action frames, not
-   only the item crop. Inventory, runner portrait, right HUD, detail text,
-   posture strip, action prompt, and Clips return all remain visible in their
-   expected states. No child button or text is drawn over a control that
-   should have been cleared.
-7. **Do multiple frames support the interpretation? Yes, with a stated limit.**
-   Independent section 06 frames `002560`, `002580`, `002610`, `002640`, and
-   `002699` show inventory movement, selection persistence through First Aid,
-   and return. Section 07 frame `000030` shows the result and `000120` shows
-   the later field screen. These support the outline and clearing behavior,
-   but not the precise weapon equip/unequip transition. Internal QA covers
-   equip, cancel, selection, unequip, replacement, switch, reload, and return.
-8. **Does the new UI replace the old UI cleanly? Yes.** No new page is added
-   by this selector review. The Clips child replaces the center panel; cancel
-   redraws the parent command page pixel-identically. The field HUD and
-   posture strip persist as shared interface regions.
+   24x16 one-pixel rectangle. There are no matching-color pixels inside the
+   edge. Independent section 06 frames `002560`, `002580`, `002610`, and
+   `002640` show the same slim selection marker. The selected empty-cell case
+   is source-derived and internally captured; no matching independent empty
+   cell frame was found. The exact armor switch transition is also absent from
+   the recording.
+2. **Does the look match behavioral state? Yes.** Primary and secondary
+   coordinates select the typed slot, including an empty slot after discard.
+   The equipped marker follows weapon-slot state, armor `+0x76`, or the typed
+   gear slot; it is not inferred from item possession alone. Debug/Release QA
+   checks armor codes `0x2C` and `0x2D`, gear `0x15`, their selected cells,
+   phase/state, and the source's two-step armor change.
+3. **Are the visuals themselves correct? Yes for the reviewed routes.** Direct
+   named weapon and armor icon assets match the visible icon interior. The
+   one-pixel cursor and separate equipped-cell treatment are independently
+   asserted. Weapon 1, weapon 2, armor, and gear `0x15` grids after unequip
+   match fresh renders pixel-for-pixel. Gear's direct miscellaneous icon uses
+   the asset variant selected by typed equipment state; equip and unequip
+   restore the corresponding icon and equipment-cell treatment. Repeated
+   equipment changes leave no black cell box or stale control. The previously
+   reported black artifact is not reproduced by the current routes. The
+   source-derived two-step armor replacement behavior was corrected in the
+   typed mutation.
+4. **Should anything animate? No.** The cursor and item-action redraw have no
+   animation counter in the traced path. Debug/Release QA compares full
+   equipped and unequipped armor and gear frames after 30 idle updates; they
+   remain pixel-identical.
+5. **Does it have sound?** Inventory cursor movement at `0x11506` has no
+   source sound call; QA verifies that vertical and horizontal cursor movement
+   add no event. The source action-row confirm requests event `0x24`; moving
+   within the action row uses `0x25`. Weapon, armor, and gear action routes
+   check the expected `0x24` requests. Shared audio QA decodes and starts the
+   mapped resource and checks its duration (2.484 seconds including its
+   release tail). Windows loopback for this exact inventory visit remains
+   unrecorded.
+6. **Are the other visible parts of the screen also correct? Yes for the
+   reviewed route.** All 54 Debug outputs are full 320x224 frames and were
+   inspected. The runner portrait, right HUD, item detail, posture strip,
+   action strip, Clips child, confirmation rows, and return screen retain their
+   expected state. The gear frames show its icon variant and equipment marker
+   changing with typed state, with the rest of the panel intact. Child controls
+   disappear on return; no old button or panel is left beneath the next screen.
+7. **Do multiple frames support the interpretation? Yes, with limits.** The
+   independent section 06 sequence `002550`, `002560`, `002580`, `002610`,
+   `002640`, and `002699` supports the shared inventory shell, selected
+   armor/item treatment, First Aid child, and return. Section 07 frames
+   `000030` and `000120` show the following result and field state. These do
+   not show the precise weapon, armor, or gear equip/unequip or replacement
+   input sequence.
+   Internal QA covers open, cancel, equip, idle, unequip, repeat, replacement,
+   weapon switch, reload, discard, Clips return, gear equip/unequip, and parent
+   redraw.
+8. **Does the new UI replace the old UI cleanly? Yes.** The item action row
+   replaces the lower inventory controls. Clips replaces the center panel and
+   its Cancel path restores the parent command page pixel-identically. Armor
+   action return is compared with a fresh full-screen parent render and with
+   the exact pre-equip frame.
+9. **Was the complete affected interval reviewed? Yes for the item-action
+   defect route.** The dump starts from a selected armor cell, includes the
+   action row, equip, a 30-frame hold, unequip, a second hold, repeated
+   toggles, selection of a second armor, source two-step replacement, gear
+   equip/unequip, and the final parent state. The test process exits normally.
+   The full route does not claim to cover the earlier field-to-command-menu
+   opening animation.
 
 ## Full-screen files reviewed
 
-Debug files under
-`build/archive/decompilation/build-qt-runtime-debug/qt_runtime/field-action-qa/`:
+Debug output directory:
+`build/conversion/qt/debug/qt_runtime/field-action-qa/`. Release output is
+under `build/conversion/qt/release/qt_runtime/field-action-qa/`.
 
-- `00_inventory_action_equip.bmp`, `01_inventory_action_cancel.bmp`,
-  `02_inventory_action_reselected.bmp`, `03_inventory_action_unselected.bmp`,
-  `04_inventory_action_reselected.bmp`.
-- `05_fresh_unequipped_baseline.bmp`, `05_weapon_1_unequipped.bmp`,
+- Inventory action and redraw: `00_inventory_action_equip.bmp`,
+  `01_inventory_action_cancel.bmp`, `02_inventory_action_reselected.bmp`,
+  `03_inventory_action_unselected.bmp`, `04_inventory_action_reselected.bmp`,
+  `05_fresh_unequipped_baseline.bmp`, `05_weapon_1_unequipped.bmp`,
   `05_weapon_1_unequipped_frame30.bmp`, `06_combat_bars_after_equip.bmp`,
   `07_discard_confirmation_no.bmp`, `08_discard_confirmation_yes.bmp`,
   `09_inventory_after_discard.bmp`.
-- `10_weapon_2_equipped_at_50_percent.bmp`,
+- Weapons and Clips: `10_weapon_2_equipped_at_50_percent.bmp`,
   `10_weapon_2_equipped_at_50_percent_frame30.bmp`,
   `11_fresh_weapon_2_unequipped_baseline.bmp`,
   `11_weapon_2_unequipped_at_50_percent.bmp`,
   `11_weapon_2_unequipped_at_50_percent_frame30.bmp`,
-  `12_weapon_1_reloaded_from_50_percent.bmp`.
-- `13_reload_confirmation_no.bmp`, `14_reload_confirmation_yes.bmp`,
+  `12_weapon_1_reloaded_from_50_percent.bmp`,
+  `13_reload_confirmation_no.bmp`, `14_reload_confirmation_yes.bmp`,
   `15_weapon_1_reloaded_to_capacity.bmp`,
   `16_clips_closed_parent_redraw.bmp`,
   `17_clips_cancel_clears_child_controls.bmp`,
   `18_weapon_1_unequip_redraw_repeat.bmp`,
   `19_weapon_2_equipped_full_capacity.bmp`,
-  `20_weapon_2_empty_magazine.bmp`,
-  `21_weapon_2_reloaded_to_capacity.bmp`, `actual.bmp`.
+  `20_weapon_2_empty_magazine.bmp`, `21_weapon_2_reloaded_to_capacity.bmp`,
+  `actual.bmp`.
+- Armor 1 equip/unequip: `22_armor_before_equip.bmp`,
+  `22_armor_action_menu.bmp`, `23_armor_equipped.bmp`,
+  `23_armor_equipped_frame30.bmp`,
+  `23_fresh_armor_equipped_baseline.bmp`,
+  `24_armor_unequip_action_menu.bmp`, `25_armor_unequipped.bmp`,
+  `25_armor_unequipped_frame30.bmp`,
+  `25_fresh_armor_unequipped_baseline.bmp`,
+  `26_armor_unequipped_repeat.bmp`.
+- Armor replacement: `27_armor_one_before_replacement.bmp`,
+  `28_armor_replacement_selected.bmp`,
+  `29_armor_replacement_toggled_off.bmp`,
+  `29_fresh_armor_replacement_off_baseline.bmp`,
+  `30_armor_replacement_equipped.bmp`,
+  `30_fresh_armor_replacement_equipped_baseline.bmp`,
+  `31_armor_replacement_unequipped.bmp`,
+  `31_fresh_armor_replacement_unequipped_baseline.bmp`.
+- Gear `0x15`: `32_gear_before_equip.bmp`, `32_gear_action_menu.bmp`,
+  `33_fresh_gear_equipped_baseline.bmp`, `33_gear_equipped.bmp`,
+  `33_gear_equipped_frame30.bmp`,
+  `34_fresh_gear_unequipped_baseline.bmp`, `34_gear_unequipped.bmp`,
+  `34_gear_unequipped_frame30.bmp`.
 
-The 28 matching Release BMPs have identical SHA-256 hashes. The five older
-debug-only zoom/contact images were also inspected. `item-cell-zoom.bmp` is a
-4x nearest-neighbor crop; its four display pixels per edge represent one
-source pixel and must not be read as a four-pixel outline.
+All 54 shared Debug/Release BMPs have matching SHA-256 hashes. The old
+debug-only `item-cell-zoom.bmp` is a 4x nearest-neighbor crop; each four-pixel
+display edge represents one source pixel and is not a four-pixel outline.
 
 ## Outcome
 
-- **Code changed:** no new selector code in this ammo-refresh slice; existing
-  typed Qt selector/equipment state was reviewed against the ROM and captures.
-- **Behavior implemented:** selected inventory cell, one-pixel item outline,
-  equipment treatment, and clean post-action redraw.
-- **Internally checked:** Debug/Release field-action CTest; exact pixel
-  perimeter and icon checks; whole-screen equip/unequip/child-return frames.
-- **Independently visually checked:** section 06 frames `002560`, `002580`,
-  `002610`, `002640`, `002699`; section 07 frames `000030`, `000120`.
-- **Reported defect:** the thick selector is not reproduced in the current
-  build. The current edge is one pixel at source size. The reported stale
-  black-box transition is also not reproduced by current internal route
-  comparisons; the exact independent weapon transition remains unavailable.
+- **Code changed:** the typed armor toggle now follows the ROM's any-armor
+  clear branch before equipping a different armor; Debug/Release Qt QA covers
+  its full-screen transition and gear `0x15`'s state-dependent icon asset and
+  equipment marker. The selector drawing itself did not need a new runtime
+  change.
+- **Behavior implemented:** selected coordinates persist independently from
+  possession; equipment is typed state; armor replacement is two-step; the
+  complete action strip and parent redraw are checked.
+- **Internally checked:** Debug and Release builds; the field action QA and
+  inventory action conversion test pass in both. All 54 complete frames match
+  across configurations and were reviewed as full screens. The test checks
+  direct asset pixels, exact selector geometry, audio events, 30-frame holds,
+  full-grid fresh-render matches, and complete return screens.
+- **Independently visually checked:** section 06 frames `002550`, `002560`,
+  `002580`, `002610`, `002640`, `002699`; section 07 frames `000030` and
+  `000120`. No exact armor toggle or replacement capture is available.
+- **Reported defect status:** the thick selector and stale black box are not
+  reproduced in the current full-screen routes. The selector geometry is
+  independently supported. The exact black-box equip/unequip transition is
+  still unavailable in independent footage, so `EQUIP-02` remains open rather
+  than being claimed visually resolved.
