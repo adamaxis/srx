@@ -26,6 +26,13 @@ const UsArmorCatalog& us_armor_catalog();
 const UsArmorDefinition* find_us_armor_definition(
     std::uint8_t armor_index);
 
+// ROM 0x11352 receives the selected armor action code and converts it to the
+// one-based D4D50 ordinal by subtracting 0x2B. Return that source row for the
+// selected inventory item, independent of the runner's currently equipped
+// armor.
+const UsArmorDefinition* find_us_armor_definition_for_item_code(
+    std::uint8_t item_code);
+
 // ROM 0x55E92/0x55EB4. Apply the selected one-based D4D50 modifier to the
 // low byte of a source word while preserving its high byte. These are core
 // data-bound leaves so entity resolution does not depend on a menu module.

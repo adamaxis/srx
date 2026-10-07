@@ -53,6 +53,12 @@ int main() {
         require(assets.recruited_runner_templates[0]
                         .record.inventory_item_codes[1] == 0x2DU,
                 "direct state lost recruited runner inventory");
+        require(assets.field_menu_armor_summary_bars[0].width == 48U &&
+                    assets.field_menu_armor_summary_bars[0].height == 8U,
+                "direct assets lost the six-tile armor summary strip");
+        require(assets.field_menu_armor_summary_modifiers[0].weapons == 1U &&
+                    assets.field_menu_armor_summary_modifiers[0].guns == 2U,
+                "direct state lost D4D50 armor summary modifiers");
 
         std::ifstream manifest(root / "resources.tsv", std::ios::binary);
         require(static_cast<bool>(manifest), "missing resources.tsv");

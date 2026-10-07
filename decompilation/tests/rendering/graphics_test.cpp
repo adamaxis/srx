@@ -133,6 +133,14 @@ int main() {
         "Human", "  Elf", "Dwarf", "  Orc", "Troll"}));
     assert((command_names.classes == std::array<std::string, 4>{
         "Mage   ", "Shaman ", "Samurai", "Decker "}));
+    const auto armor_summary_bars =
+        decode_genesis_field_menu_armor_summary_bars(rom);
+    assert(armor_summary_bars.size() == 9U);
+    for (const auto& bar : armor_summary_bars) {
+        assert(bar.width == 48U);
+        assert(bar.height == 8U);
+        assert(bar.pixels.size() == 48U * 8U);
+    }
     const auto command_cursor = decode_genesis_field_menu_cursor(rom);
     assert(command_cursor.width == 32U);
     assert(command_cursor.height == 24U);

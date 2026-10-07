@@ -847,11 +847,15 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     field_menu_status_names_ = std::move(assets.field_menu_status_names);
     field_menu_damage_bars_ = std::move(assets.field_menu_damage_bars);
     field_menu_drain_bars_ = std::move(assets.field_menu_drain_bars);
+    field_menu_armor_summary_bars_ =
+        std::move(assets.field_menu_armor_summary_bars);
     field_menu_detail_values_ = std::move(assets.field_menu_detail_values);
     field_menu_attack_bars_ = std::move(assets.field_menu_attack_bars);
     field_menu_defense_bars_ = std::move(assets.field_menu_defense_bars);
     field_menu_power_labels_ = std::move(assets.field_menu_power_labels);
     field_menu_armor_labels_ = std::move(assets.field_menu_armor_labels);
+    field_menu_armor_summary_modifiers_ =
+        std::move(assets.field_menu_armor_summary_modifiers);
     intro_ = std::move(assets.intro);
     IntroSceneAssets intro_assets;
     intro_assets.story_lines = std::move(intro_.story_lines);
@@ -4909,36 +4913,8 @@ void NativePortShell::render(ScreenWriter& screen) const {
                              field_menu_power_labels_[label_index]);
                     }
                 }
-                // 0x115F2 skips 0x12E9E for armor. The selected armor view
-                // keeps the source armor-specific bars: the extractor maps
-                // D4D50+$26 to Wpns and D4D50+$25 to Guns, just as the main
-                // overview's 0x11352 path does. A generic red Armor bar is
-                // not part of this selected-item screen.
-                const auto is_armor_detail = item_code >= 0x2CU &&
-                                              item_code <= 0x32U;
-                if (is_armor_detail) {
-                    write_field_menu_text(screen, 112, 80, "Wpns");
-                    if (field_entity_.weapons_bar_index <
-                        field_menu_damage_bars_.size()) {
-                        const auto& weapons_bar = field_menu_damage_bars_[
-                            field_entity_.weapons_bar_index];
-                        if (!weapons_bar.pixels.empty()) {
-                            screen.blit_rgba(168, 80, weapons_bar.width,
-                                             weapons_bar.height,
-                                             weapons_bar.pixels);
-                        }
-                    }
-                    write_field_menu_text(screen, 112, 88, "Guns");
-                    if (field_entity_.guns_bar_index <
-                        field_menu_drain_bars_.size()) {
-                        const auto& guns_bar = field_menu_drain_bars_[
-                            field_entity_.guns_bar_index];
-                        if (!guns_bar.pixels.empty()) {
-                            screen.blit_rgba(168, 88, guns_bar.width,
-                                             guns_bar.height, guns_bar.pixels);
-                        }
-                    }
-                }
+                // Armor has no upper Damage/Power rows. Its preview is
+                // written into the lower Wpns/Guns panel by 0x11352.
                 // 0x12A8C writes ammo/uses/rtng only for the selected
                 // inventory cell (include_art). Overview 0x11260 keeps
                 // Damage/Power and must not be overwritten.
@@ -5049,22 +5025,27 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 }
                 write_field_menu_text(screen, 136, 144, "Wpns");
                 write_field_menu_text(screen, 136, 152, "Guns");
-                if (field_entity_.weapons_bar_index <
-                        field_menu_damage_bars_.size()) {
-                    const auto& bar = field_menu_damage_bars_[
-                        field_entity_.weapons_bar_index];
-                    if (!bar.pixels.empty()) {
-                        screen.blit_rgba(176, 144, bar.width, bar.height,
-                                         bar.pixels);
+                if (armor_index != 0U &&
+                    armor_index <= field_menu_armor_summary_modifiers_.size()) {
+                    const auto& modifiers =
+                        field_menu_armor_summary_modifiers_[armor_index - 1U];
+                    if (modifiers.weapons <
+                        field_menu_armor_summary_bars_.size()) {
+                        const auto& bar =
+                            field_menu_armor_summary_bars_[modifiers.weapons];
+                        if (!bar.pixels.empty()) {
+                            screen.blit_rgba(176, 144, bar.width, bar.height,
+                                             bar.pixels);
+                        }
                     }
-                }
-                if (field_entity_.guns_bar_index <
-                        field_menu_drain_bars_.size()) {
-                    const auto& bar = field_menu_drain_bars_[
-                        field_entity_.guns_bar_index];
-                    if (!bar.pixels.empty()) {
-                        screen.blit_rgba(176, 152, bar.width, bar.height,
-                                         bar.pixels);
+                    if (modifiers.guns <
+                        field_menu_armor_summary_bars_.size()) {
+                        const auto& bar =
+                            field_menu_armor_summary_bars_[modifiers.guns];
+                        if (!bar.pixels.empty()) {
+                            screen.blit_rgba(176, 152, bar.width, bar.height,
+                                             bar.pixels);
+                        }
                     }
                 }
             }
@@ -5191,6 +5172,42 @@ void NativePortShell::render(ScreenWriter& screen) const {
             }
             if (field_menu_selection_ < 2U) {
                 draw_item_detail(selected_code, true);
+                if (selected_code >= 0x2CU && selected_code <= 0x32U) {
+                    const auto armor_index = static_cast<std::size_t>(
+                        selected_code - 0x2BU);
+                    const auto& armor =
+                        field_menu_armor_labels_[armor_index - 1U];
+                    for (std::size_t row = 0; row < armor.size(); ++row) {
+                        if (!armor[row].empty()) {
+                            write_field_menu_text(
+                                screen, 128, 128 +
+                                    static_cast<std::int32_t>(row * 8U),
+                                armor[row]);
+                        }
+                    }
+                    write_field_menu_text(screen, 136, 144, "Wpns");
+                    write_field_menu_text(screen, 136, 152, "Guns");
+                    const auto& modifiers =
+                        field_menu_armor_summary_modifiers_[armor_index - 1U];
+                    if (modifiers.weapons <
+                        field_menu_armor_summary_bars_.size()) {
+                        const auto& bar =
+                            field_menu_armor_summary_bars_[modifiers.weapons];
+                        if (!bar.pixels.empty()) {
+                            screen.blit_rgba(176, 144, bar.width, bar.height,
+                                             bar.pixels);
+                        }
+                    }
+                    if (modifiers.guns <
+                        field_menu_armor_summary_bars_.size()) {
+                        const auto& bar =
+                            field_menu_armor_summary_bars_[modifiers.guns];
+                        if (!bar.pixels.empty()) {
+                            screen.blit_rgba(176, 152, bar.width, bar.height,
+                                             bar.pixels);
+                        }
+                    }
+                }
             }
             // ROM 0x1170C/0x11712 emits only the currently selected command
             // or item action at plane-B address EC9C (x=112, y=200). The

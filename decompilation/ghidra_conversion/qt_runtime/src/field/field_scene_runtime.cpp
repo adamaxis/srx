@@ -104,6 +104,8 @@ constexpr std::string_view kCommandOverviewDamageBarAliasPrefix =
     "menu.field.damage.bar.";
 constexpr std::string_view kCommandOverviewDrainBarAliasPrefix =
     "menu.field.drain.bar.";
+constexpr std::string_view kCommandOverviewArmorSummaryBarAliasPrefix =
+    "menu.field.armor.summary.bar.";
 constexpr std::string_view kCommandOverviewDetailValueAliasPrefix =
     "menu.field.detail.value.";
 constexpr std::string_view kCommandOverviewAttackBarAliasPrefix =
@@ -1080,6 +1082,15 @@ bool FieldSceneRuntime::load_command_overview_assets(
             !load_sprite(std::string(kCommandOverviewDrainBarAliasPrefix) +
                              std::to_string(index),
                          command_overview_drain_bars_[index])) {
+            return false;
+        }
+    }
+    for (std::size_t index = 0;
+         index < command_overview_armor_summary_bars_.size(); ++index) {
+        if (!load_sprite(
+                std::string(kCommandOverviewArmorSummaryBarAliasPrefix) +
+                    std::to_string(index),
+                command_overview_armor_summary_bars_[index])) {
             return false;
         }
     }
@@ -6640,32 +6651,6 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 }
             }
 
-            // ROM 0x115F2 routes armor through the typed D4D50 row instead of
-            // the weapon Damage/Power path. Its +0x26/+0x25 values select the
-            // Wpns/Guns detail bars.
-            if (item_code >= 0x2CU && item_code <= 0x32U) {
-                const auto* armor = find_us_armor_definition(
-                    active_runner_record().equipped_armor_index);
-                if (armor != nullptr) {
-                    draw_command_overview_text(painter, 112, 80,
-                                                field_menu_text_.weapons_label);
-                    if (armor->secondary_modifier <
-                        command_overview_damage_bars_.size()) {
-                        painter.drawImage(
-                            168, 80,
-                            command_overview_damage_bars_[armor->secondary_modifier]);
-                    }
-                    draw_command_overview_text(painter, 112, 88,
-                                                field_menu_text_.guns_label);
-                    if (armor->primary_modifier <
-                        command_overview_drain_bars_.size()) {
-                        painter.drawImage(
-                            168, 88,
-                            command_overview_drain_bars_[armor->primary_modifier]);
-                    }
-                }
-            }
-
             if (!include_art || !selected_slot.has_value()) {
                 return;
             }
@@ -6691,8 +6676,8 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                                   command_overview_detail_values_[phase]);
             }
         };
-    const auto draw_armor_summary = [this, &painter] {
-        const auto armor_index = active_runner_record().equipped_armor_index;
+    const auto draw_armor_summary = [this, &painter](
+                                        const std::uint8_t armor_index) {
         if (armor_index != 0U && armor_index <= field_menu_text_.armor_labels.size()) {
             const auto& armor = field_menu_text_.armor_labels[armor_index - 1U];
             for (std::size_t row = 0; row < armor.size(); ++row) {
@@ -6714,13 +6699,17 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         if (armor == nullptr) {
             return;
         }
-        if (armor->secondary_modifier < command_overview_damage_bars_.size()) {
+        if (armor->secondary_modifier <
+            command_overview_armor_summary_bars_.size()) {
             painter.drawImage(176, 144,
-                              command_overview_damage_bars_[armor->secondary_modifier]);
+                              command_overview_armor_summary_bars_[
+                                  armor->secondary_modifier]);
         }
-        if (armor->primary_modifier < command_overview_drain_bars_.size()) {
+        if (armor->primary_modifier <
+            command_overview_armor_summary_bars_.size()) {
             painter.drawImage(176, 152,
-                              command_overview_drain_bars_[armor->primary_modifier]);
+                              command_overview_armor_summary_bars_[
+                                  armor->primary_modifier]);
         }
     };
 
@@ -6776,7 +6765,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 command_overview_defense_bars_[
                     command_overview_combat_bars_.defense_bar]);
         }
-        draw_armor_summary();
+        draw_armor_summary(active_runner_record().equipped_armor_index);
     } else if (!command_overview_clips_.is_open()) {
         const auto slot = view.source_state.secondary_page * 2U +
                           view.source_state.primary_page;
@@ -6791,6 +6780,18 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     painter, 128, 72,
                     field_menu_text_.item_categories[item_code - 1U]);
                 draw_item_detail_rows(item_code, slot, true);
+                // ROM 0x12A8C sends selected armor to 0x11352. It previews
+                // the selected D4D50 row in the lower armor summary at
+                // C820/C922/C92C/C9AC, then restores the equipped record.
+                // Repaint that panel from typed state rather than placing a
+                // second Wpns/Guns pair beside the selected-item text.
+                if (item_code >= 0x2CU && item_code <= 0x32U) {
+                    const auto* armor =
+                        find_us_armor_definition_for_item_code(item_code);
+                    if (armor != nullptr) {
+                        draw_armor_summary(armor->armor_index);
+                    }
+                }
             }
         }
     }

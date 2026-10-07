@@ -30,6 +30,15 @@ const UsArmorDefinition* find_us_armor_definition(
     return &kUsArmors[static_cast<std::size_t>(armor_index - 1U)];
 }
 
+const UsArmorDefinition* find_us_armor_definition_for_item_code(
+    const std::uint8_t item_code) {
+    if (item_code < 0x2CU || item_code > 0x32U) {
+        return nullptr;
+    }
+    return find_us_armor_definition(
+        static_cast<std::uint8_t>(item_code - 0x2BU));
+}
+
 namespace {
 
 std::uint16_t subtract_modifier(

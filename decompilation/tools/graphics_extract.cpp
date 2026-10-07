@@ -1982,6 +1982,9 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 "0x12F70", true);
     write_array("menu/field/drain-bar-", assets.field_menu_drain_bars, "sprite",
                 "0x12FA4", true);
+    write_array("menu/field/armor-summary-bar-",
+                assets.field_menu_armor_summary_bars, "sprite",
+                "0x11352/0xCF884", true);
     write_array("menu/field/detail-value-", assets.field_menu_detail_values, "sprite",
                 "0x13000", true);
     write_array("menu/field/attack-bar-", assets.field_menu_attack_bars, "sprite",

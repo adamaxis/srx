@@ -1711,6 +1711,13 @@ native::NativePortAssets decode_genesis_native_assets(
             drain_bars[index].width, drain_bars[index].height,
             drain_bars[index].pixels};
     }
+    const auto armor_summary_bars =
+        decode_genesis_field_menu_armor_summary_bars(rom);
+    for (std::size_t index = 0; index < armor_summary_bars.size(); ++index) {
+        assets.field_menu_armor_summary_bars[index] = {
+            armor_summary_bars[index].width, armor_summary_bars[index].height,
+            armor_summary_bars[index].pixels};
+    }
     const auto detail_values = decode_genesis_field_menu_detail_values(rom);
     for (std::size_t index = 0; index < detail_values.size(); ++index) {
         assets.field_menu_detail_values[index] = {
@@ -1742,6 +1749,9 @@ native::NativePortAssets decode_genesis_native_assets(
                 assets.field_menu_armor_labels[index][line.row] = line.text;
             }
         }
+        const auto armor_offset = 0xD4D50U + index * 0x30U;
+        assets.field_menu_armor_summary_modifiers[index] = {
+            rom[armor_offset + 0x26U], rom[armor_offset + 0x25U]};
     }
     const auto menu_status_bars =
         decode_genesis_field_menu_status_bars(rom);
@@ -2097,7 +2107,7 @@ void write_native_asset_state(const std::string& path,
         throw std::runtime_error("cannot create native asset state: " + path);
     }
     output.write("SRNS", 4);
-    write_u16(output, 4);
+    write_u16(output, 5);
     write_u16(output, 0);
 
     write_native_terrain_state(output, assets.field_terrain);
@@ -2151,6 +2161,10 @@ void write_native_asset_state(const std::string& path,
             write_pack_string(output, value,
                               "native state armor label is too long");
         }
+    }
+    for (const auto& modifiers : assets.field_menu_armor_summary_modifiers) {
+        output.put(static_cast<char>(modifiers.weapons));
+        output.put(static_cast<char>(modifiers.guns));
     }
     for (const auto& value : assets.cyberware_names) {
         write_pack_string(output, value,
@@ -4362,29 +4376,29 @@ decode_genesis_field_menu_item_art(const std::vector<std::uint8_t>& rom) {
 
 namespace {
 
-std::array<RgbaImage, 14> decode_genesis_field_menu_detail_bars(
+template <std::size_t BarCount>
+std::array<RgbaImage, BarCount> decode_genesis_field_menu_detail_bars(
     const std::vector<std::uint8_t>& rom, std::size_t table_offset,
-    const char* table_name) {
+    std::size_t bar_stride, std::size_t bar_width, const char* table_name) {
     constexpr std::size_t kPatternStreamOffset = 0xC8BB6U;
     constexpr std::size_t kPatternVramOffset = 0x5C80U;
-    constexpr std::size_t kBarCount = 14U;
-    constexpr std::size_t kBarStride = 0x0EU;
-    constexpr std::size_t kBarWidth = 7U;
+    require_bytes(rom.size() - std::min(table_offset, rom.size()),
+                  BarCount * bar_stride, table_name);
     auto pattern_vram = decode_genesis_1530_vram(
         rom, kPatternStreamOffset, kPatternVramOffset);
     // The command setup appends CF134 to VRAM at 5A80 immediately after the
-    // CAB0C upload. CF84C's seven-tile strips use those appended tiles
-    // (0x2DA..0x2E1), not the later 5C80 item-art upload.
+    // CAB0C upload. CF84C's seven-tile and CF884's six-tile strips use these
+    // appended tiles (0x2DA..0x2E1), not the later 5C80 item-art upload.
     require_bytes(rom.size() - std::min<std::size_t>(0xCF134U, rom.size()),
                   0x200U, "Genesis command bar patterns are truncated");
     std::copy_n(rom.begin() + 0xCF134U, 0x200U,
                 pattern_vram.begin() + 0x5A80U);
     const auto palette = read_genesis_command_palette_set(rom);
-    std::array<RgbaImage, kBarCount> bars{};
+    std::array<RgbaImage, BarCount> bars{};
     for (std::size_t index = 0; index < bars.size(); ++index) {
         bars[index] = decode_genesis_menu_name_table_block(
-            rom, pattern_vram, table_offset + index * kBarStride,
-            kBarWidth, 1U, palette, 0x2000U);
+            rom, pattern_vram, table_offset + index * bar_stride,
+            bar_width, 1U, palette, 0x2000U);
         if (bars[index].pixels.empty()) {
             throw std::runtime_error(table_name);
         }
@@ -4397,8 +4411,9 @@ std::array<RgbaImage, 14> decode_genesis_field_menu_detail_bars(
 std::array<RgbaImage, 14> decode_genesis_field_menu_damage_bars(
     const std::vector<std::uint8_t>& rom) {
     // 0x12F70: D6*0x0E from CF84C, written at C52A with palette line one.
-    return decode_genesis_field_menu_detail_bars(
-        rom, 0xCF84CU, "Genesis damage bar table is truncated");
+    return decode_genesis_field_menu_detail_bars<14U>(
+        rom, 0xCF84CU, 0x0EU, 7U,
+        "Genesis damage bar table is truncated");
 }
 
 std::array<RgbaImage, 23> decode_genesis_field_menu_stat_bars(
@@ -4434,8 +4449,18 @@ std::array<RgbaImage, 23> decode_genesis_field_menu_stat_bars(
 std::array<RgbaImage, 14> decode_genesis_field_menu_drain_bars(
     const std::vector<std::uint8_t>& rom) {
     // 0x12FA4: D2*0x0E from CF8F0, written at C4AA with palette line one.
-    return decode_genesis_field_menu_detail_bars(
-        rom, 0xCF8F0U, "Genesis drain bar table is truncated");
+    return decode_genesis_field_menu_detail_bars<14U>(
+        rom, 0xCF8F0U, 0x0EU, 7U,
+        "Genesis drain bar table is truncated");
+}
+
+std::array<RgbaImage, 9> decode_genesis_field_menu_armor_summary_bars(
+    const std::vector<std::uint8_t>& rom) {
+    // ROM 0x11352 scales each D4D50 modifier by 0x0C, reads CF884, and writes
+    // a six-tile row at C92C/C9AC. Both Wpns and Guns use this same table.
+    return decode_genesis_field_menu_detail_bars<9U>(
+        rom, 0xCF884U, 0x0CU, 6U,
+        "Genesis armor summary bar table is truncated");
 }
 
 std::array<RgbaImage, 256> decode_genesis_field_menu_detail_values(

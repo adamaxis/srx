@@ -264,6 +264,13 @@ struct NativeInventoryItem {
     std::string category;
 };
 
+// The two modifier bytes in one D4D50 armor record. Their order names the
+// lower command overview rows drawn by ROM 0x11352.
+struct NativeArmorSummaryModifiers {
+    std::uint8_t weapons = 0; // armor record +0x26, CF884 row index
+    std::uint8_t guns = 0;    // armor record +0x25, CF884 row index
+};
+
 struct NativeImage {
     std::uint16_t width = 0;
     std::uint16_t height = 0;
@@ -628,6 +635,9 @@ struct NativePortAssets {
     // not synthesize a percentage bar from a guessed item statistic.
     std::array<NativeImage, 14> field_menu_damage_bars{};
     std::array<NativeImage, 14> field_menu_drain_bars{};
+    // ROM 0x11352 reads six-tile armor summary strips from CF884. These are
+    // distinct from the seven-tile weapon Damage/Drain detail tables above.
+    std::array<NativeImage, 9> field_menu_armor_summary_bars{};
     std::array<NativeImage, 256> field_menu_detail_values{};
     // ROM 0x12CEE selects the 13-tile command-screen attack/defense strips
     // from CF3D4 and CF610. These are separate from the seven-tile weapon
@@ -638,6 +648,8 @@ struct NativePortAssets {
     // The seven armor records at ROM D4D50 are the exact two-row labels
     // written by the command overview's 0x11352 path.
     std::array<std::array<std::string, 2>, 7> field_menu_armor_labels{};
+    std::array<NativeArmorSummaryModifiers, 7>
+        field_menu_armor_summary_modifiers{};
     NativeIntroData intro;
     // Host RGBA of the four 0x59C5E presentation stages. Text remains a
     // separate C0DA overlay; these are the plane/SAT compositions.
@@ -1392,6 +1404,7 @@ private:
         field_menu_status_names_{};
     std::array<NativeImage, 14> field_menu_damage_bars_{};
     std::array<NativeImage, 14> field_menu_drain_bars_{};
+    std::array<NativeImage, 9> field_menu_armor_summary_bars_{};
     std::array<NativeImage, 256> field_menu_detail_values_{};
     std::array<NativeImage, 23> field_menu_attack_bars_{};
     std::array<NativeImage, 23> field_menu_defense_bars_{};
@@ -1400,6 +1413,8 @@ private:
     // preserve its two source text rows instead of substituting generic
     // Armor/Clothing labels.
     std::array<std::array<std::string, 2>, 7> field_menu_armor_labels_{};
+    std::array<NativeArmorSummaryModifiers, 7>
+        field_menu_armor_summary_modifiers_{};
     NativeIntroData intro_{};
     std::unique_ptr<IntroScene> intro_scene_;
     std::size_t start_options_selection_ = 0;

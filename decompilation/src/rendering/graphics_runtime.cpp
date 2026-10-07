@@ -222,7 +222,7 @@ native::NativePortAssets read_native_asset_directory(const std::string& root) {
     const auto version = read_pack_u16(
         input, "native asset state version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNS" ||
-        (version != 2U && version != 3U && version != 4U)) {
+        (version != 2U && version != 3U && version != 4U && version != 5U)) {
         throw std::runtime_error("invalid direct native asset state header");
     }
     (void)read_pack_u16(input, "native asset state header is truncated");
@@ -294,6 +294,14 @@ native::NativePortAssets read_native_asset_directory(const std::string& root) {
         for (auto& value : armor) {
             value = read_pack_string(
                 input, "native asset state armor label is truncated");
+        }
+    }
+    if (version >= 5U) {
+        for (auto& modifiers : assets.field_menu_armor_summary_modifiers) {
+            modifiers.weapons = read_pack_u8(
+                input, "native asset state armor modifiers are truncated");
+            modifiers.guns = read_pack_u8(
+                input, "native asset state armor modifiers are truncated");
         }
     }
     for (auto& value : assets.cyberware_names) {
@@ -661,6 +669,11 @@ native::NativePortAssets read_native_asset_directory(const std::string& root) {
             "menu/field/damage-bar-" + std::to_string(index) + ".bmp");
         assets.field_menu_drain_bars[index] = load(
             "menu/field/drain-bar-" + std::to_string(index) + ".bmp");
+    }
+    for (std::size_t index = 0;
+         index < assets.field_menu_armor_summary_bars.size(); ++index) {
+        assets.field_menu_armor_summary_bars[index] = load(
+            "menu/field/armor-summary-bar-" + std::to_string(index) + ".bmp");
     }
     for (std::size_t index = 0; index < assets.field_menu_detail_values.size(); ++index) {
         assets.field_menu_detail_values[index] = load(

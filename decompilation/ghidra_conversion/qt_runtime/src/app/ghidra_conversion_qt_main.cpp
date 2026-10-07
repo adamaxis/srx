@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/core/timing_conversion.hpp"
+#include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_action_math_conversion.hpp"
 #include "shadowrun_ghidra/menus/clips_menu_conversion.hpp"
@@ -13133,10 +13134,50 @@ int main(int argc, char** argv) {
                     }
                     return true;
                 };
+                const auto region_is_color = [](
+                    const QImage& scene, const int x, const int y,
+                    const int width, const int height,
+                    const QColor& expected) {
+                    if (x < 0 || y < 0 || width < 0 || height < 0 ||
+                        x + width > scene.width() ||
+                        y + height > scene.height()) {
+                        return false;
+                    }
+                    for (int row = y; row < y + height; ++row) {
+                        for (int column = x; column < x + width; ++column) {
+                            if (scene.pixelColor(column, row) != expected) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                };
                 const auto direct_asset = [&](const std::string& name) {
                     return QImage(QString::fromStdWString(
                         (asset_root / "menu" / "field" / name).wstring()));
                 };
+                const auto armor_summary_bars_match =
+                    [&](const QImage& scene, const std::uint8_t armor_index) {
+                        const auto* armor =
+                            find_us_armor_definition(armor_index);
+                        return armor != nullptr &&
+                               region_matches(
+                                   scene,
+                                   direct_asset(
+                                       "armor-summary-bar-" +
+                                       std::to_string(
+                                           armor->secondary_modifier) +
+                                       ".bmp"),
+                                   176, 144) &&
+                               region_matches(
+                                   scene,
+                                   direct_asset(
+                                       "armor-summary-bar-" +
+                                       std::to_string(
+                                           armor->primary_modifier) +
+                                       ".bmp"),
+                                   176, 152);
+                    };
                 const auto ammo_counter_matches = [&](
                     const QImage& scene, const std::uint8_t rounds) {
                     const auto asset_name = "ammo-counter-" +
@@ -14022,11 +14063,14 @@ int main(int argc, char** argv) {
                                            armor_before_icon, 16, 144) ||
                     armor_before_scene.pixelColor(11, 140) !=
                         QColor(36, 36, 36) ||
+                    !armor_summary_bars_match(armor_before_scene, 1U) ||
+                    !region_is_color(armor_before_scene, 112, 80, 112, 16,
+                                     QColor(0, 0, 0)) ||
                     !save_scene("22_armor_before_equip",
                                 armor_before_scene)) {
                     std::cerr << "field action dump: armor fixture, row-one "
-                                 "selection, icon, or unequipped cell was "
-                                 "incorrect\n";
+                                 "selection, preview bars, icon, or "
+                                 "unequipped cell was incorrect\n";
                     return 3;
                 }
 
@@ -14074,6 +14118,7 @@ int main(int argc, char** argv) {
                                            armor_equipped_icon, 16, 144) ||
                     armor_equipped_scene.pixelColor(11, 140) !=
                         QColor(109, 109, 109) ||
+                    !armor_summary_bars_match(armor_equipped_scene, 1U) ||
                     !same_inventory_grid(armor_equipped_scene,
                                          fresh_armor_equipped_scene) ||
                     !save_scene("23_fresh_armor_equipped_baseline",
@@ -14138,6 +14183,7 @@ int main(int argc, char** argv) {
                                            armor_unequipped_icon, 16, 144) ||
                     armor_unequipped_scene.pixelColor(11, 140) !=
                         QColor(36, 36, 36) ||
+                    !armor_summary_bars_match(armor_unequipped_scene, 1U) ||
                     !same_image(armor_before_scene,
                                 armor_unequipped_scene) ||
                     !same_inventory_grid(armor_unequipped_scene,
@@ -14241,7 +14287,9 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 const auto armor_one_before_replacement = render_scene();
-                if (!save_scene("27_armor_one_before_replacement",
+                if (!armor_summary_bars_match(
+                        armor_one_before_replacement, 1U) ||
+                    !save_scene("27_armor_one_before_replacement",
                                 armor_one_before_replacement)) {
                     std::cerr << "field action dump: armor replacement "
                                  "preselection frame could not be saved\n";
@@ -14273,10 +14321,15 @@ int main(int argc, char** argv) {
                         replacement_selection_scene, 1U, 1U) ||
                     !icon_interior_matches(replacement_selection_scene,
                                            replacement_icon, 56, 144) ||
+                    !armor_summary_bars_match(replacement_selection_scene,
+                                              2U) ||
+                    !region_is_color(replacement_selection_scene, 112, 80,
+                                     112, 16, QColor(0, 0, 0)) ||
                     !save_scene("28_armor_replacement_selected",
                                 replacement_selection_scene)) {
                     std::cerr << "field action dump: selected replacement "
-                                 "armor or existing armor marker was wrong\n";
+                                 "armor preview, selection, or existing "
+                                 "armor marker was wrong\n";
                     return 3;
                 }
                 if (!press_with_expected_audio(0x40U, 0x24U) ||
@@ -14306,6 +14359,8 @@ int main(int argc, char** argv) {
                         replacement_toggled_off_scene, 1U, 1U) ||
                     !icon_interior_matches(replacement_toggled_off_scene,
                                            replacement_icon, 56, 144) ||
+                    !armor_summary_bars_match(replacement_toggled_off_scene,
+                                              2U) ||
                     replacement_toggled_off_scene.pixelColor(11, 140) !=
                         QColor(36, 36, 36) ||
                     replacement_toggled_off_scene.pixelColor(51, 140) !=
@@ -14343,6 +14398,8 @@ int main(int argc, char** argv) {
                         replacement_equipped_scene, 1U, 1U) ||
                     !icon_interior_matches(replacement_equipped_scene,
                                            replacement_icon, 56, 144) ||
+                    !armor_summary_bars_match(replacement_equipped_scene,
+                                              2U) ||
                     replacement_equipped_scene.pixelColor(11, 140) !=
                         QColor(36, 36, 36) ||
                     replacement_equipped_scene.pixelColor(51, 140) !=
@@ -14375,6 +14432,8 @@ int main(int argc, char** argv) {
                         0U ||
                     replacement_unequipped_record.inventory_phase_bytes[3] !=
                         0U ||
+                    !armor_summary_bars_match(replacement_unequipped_scene,
+                                              2U) ||
                     replacement_unequipped_scene.pixelColor(11, 140) !=
                         QColor(36, 36, 36) ||
                     replacement_unequipped_scene.pixelColor(51, 140) !=

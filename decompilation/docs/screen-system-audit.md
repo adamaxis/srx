@@ -216,8 +216,15 @@ covered without importing ROM state into the runtime. The same isolated module
 now includes the `0x12298` active-target/CANCEL list, wrapped target cursor,
 the `0x12466`/`0x1247E` patch branches, and `0x124AE` phase consumption.
 The armor-selection leaf at `0x11352` is separately represented in
-`armor_selection_conversion`; its preview write/rollback, no-armor gate, and
-text/effect/grid ordering remain outside the native runtime.
+`armor_selection_conversion`. The Qt inventory now presents the same typed
+selection directly: item code minus `0x2B` chooses the lower armor panel at
+`C820/C922/C92C/C9AC`, while the runner's equipped `+0x76` stays unchanged.
+Both Wpns and Guns use six-tile rows from `CF884` at `0x0C` per modifier;
+these are extracted as `armor-summary-bar-0..8`, separate from the seven-tile
+weapon Damage/Drain detail tables at `CF84C` and `CF8F0`.
+Debug/Release field-action QA checks a selected Vest with no armor equipped
+and Clothing selected while Vest remains equipped. Independent frame 002560
+supports the panel placement; the differing-state comparison is still open.
 Discard now follows `0x12634`/`0x1275C`: it opens the source Yes/No
 confirmation with No selected, shows the equipped-item warning, protects item
 codes `0x29..0x2B` in slot 7, and clears the possession cell only after Yes.

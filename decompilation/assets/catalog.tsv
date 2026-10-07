@@ -891,6 +891,15 @@ menu/field/drain-bar-10.bmp	sprite	0	0	56	8	0x12FA4[10]	extracted
 menu/field/drain-bar-11.bmp	sprite	0	0	56	8	0x12FA4[11]	extracted
 menu/field/drain-bar-12.bmp	sprite	0	0	56	8	0x12FA4[12]	extracted
 menu/field/drain-bar-13.bmp	sprite	0	0	56	8	0x12FA4[13]	extracted
+menu/field/armor-summary-bar-0.bmp	sprite	0	0	48	8	0x11352/0xCF884[0]	extracted
+menu/field/armor-summary-bar-1.bmp	sprite	0	0	48	8	0x11352/0xCF884[1]	extracted
+menu/field/armor-summary-bar-2.bmp	sprite	0	0	48	8	0x11352/0xCF884[2]	extracted
+menu/field/armor-summary-bar-3.bmp	sprite	0	0	48	8	0x11352/0xCF884[3]	extracted
+menu/field/armor-summary-bar-4.bmp	sprite	0	0	48	8	0x11352/0xCF884[4]	extracted
+menu/field/armor-summary-bar-5.bmp	sprite	0	0	48	8	0x11352/0xCF884[5]	extracted
+menu/field/armor-summary-bar-6.bmp	sprite	0	0	48	8	0x11352/0xCF884[6]	extracted
+menu/field/armor-summary-bar-7.bmp	sprite	0	0	48	8	0x11352/0xCF884[7]	extracted
+menu/field/armor-summary-bar-8.bmp	sprite	0	0	48	8	0x11352/0xCF884[8]	extracted
 menu/field/detail-value-0.bmp	sprite	0	0	16	8	0x13000[0]	extracted
 menu/field/detail-value-1.bmp	sprite	0	0	16	8	0x13000[1]	extracted
 menu/field/detail-value-2.bmp	sprite	0	0	16	8	0x13000[2]	extracted

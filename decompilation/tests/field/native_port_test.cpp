@@ -947,6 +947,10 @@ int main() {
     assert(native_assets.field_menu_item_art[1].height == 40);
     assert(native_assets.field_menu_damage_bars[0].width == 56);
     assert(native_assets.field_menu_damage_bars[0].height == 8);
+    assert(native_assets.field_menu_armor_summary_bars[0].width == 48);
+    assert(native_assets.field_menu_armor_summary_bars[0].height == 8);
+    assert(native_assets.field_menu_armor_summary_modifiers[0].weapons == 1U);
+    assert(native_assets.field_menu_armor_summary_modifiers[0].guns == 2U);
     assert(native_assets.field_menu_power_labels[5] == "Light");
     assert(native_assets.protagonist_archetype_records[0]
                .attack_bar_indices_by_posture ==

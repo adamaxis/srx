@@ -1242,6 +1242,15 @@ menu.field.drain.bar.10	menu/field/drain-bar-10.bmp	image	0	0
 menu.field.drain.bar.11	menu/field/drain-bar-11.bmp	image	0	0
 menu.field.drain.bar.12	menu/field/drain-bar-12.bmp	image	0	0
 menu.field.drain.bar.13	menu/field/drain-bar-13.bmp	image	0	0
+menu.field.armor.summary.bar.0	menu/field/armor-summary-bar-0.bmp	image	0	0
+menu.field.armor.summary.bar.1	menu/field/armor-summary-bar-1.bmp	image	0	0
+menu.field.armor.summary.bar.2	menu/field/armor-summary-bar-2.bmp	image	0	0
+menu.field.armor.summary.bar.3	menu/field/armor-summary-bar-3.bmp	image	0	0
+menu.field.armor.summary.bar.4	menu/field/armor-summary-bar-4.bmp	image	0	0
+menu.field.armor.summary.bar.5	menu/field/armor-summary-bar-5.bmp	image	0	0
+menu.field.armor.summary.bar.6	menu/field/armor-summary-bar-6.bmp	image	0	0
+menu.field.armor.summary.bar.7	menu/field/armor-summary-bar-7.bmp	image	0	0
+menu.field.armor.summary.bar.8	menu/field/armor-summary-bar-8.bmp	image	0	0
 menu.field.detail.value.0	menu/field/detail-value-0.bmp	image	0	0
 menu.field.detail.value.1	menu/field/detail-value-1.bmp	image	0	0
 menu.field.detail.value.2	menu/field/detail-value-2.bmp	image	0	0

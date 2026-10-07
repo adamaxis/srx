@@ -1026,6 +1026,11 @@ std::array<RgbaImage, 14> decode_genesis_field_menu_damage_bars(
     const std::vector<std::uint8_t>& rom);
 std::array<RgbaImage, 14> decode_genesis_field_menu_drain_bars(
     const std::vector<std::uint8_t>& rom);
+// ROM 0x11352 indexes six-tile summary strips through CF884 using the
+// selected D4D50 armor record's +0x26 (Wpns) and +0x25 (Guns) bytes.
+// Preserve source indexes 0..8 so those bytes select the corresponding row.
+std::array<RgbaImage, 9> decode_genesis_field_menu_armor_summary_bars(
+    const std::vector<std::uint8_t>& rom);
 // ROM 0x12A8C selects a two-tile value from 0x6AC46 using the selected
 // inventory record's +0x6E byte. Entries are kept by source index so the
 // native command screen can render Uses/Rtng values without inventing a

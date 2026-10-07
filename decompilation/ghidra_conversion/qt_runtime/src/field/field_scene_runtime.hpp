@@ -750,6 +750,7 @@ private:
     std::array<QImage, 50> command_overview_item_details_{};
     std::array<QImage, 14> command_overview_damage_bars_{};
     std::array<QImage, 14> command_overview_drain_bars_{};
+    std::array<QImage, 9> command_overview_armor_summary_bars_{};
     std::array<QImage, 256> command_overview_detail_values_{};
     std::array<QImage, 23> command_overview_attack_bars_{};
     std::array<QImage, 23> command_overview_defense_bars_{};
