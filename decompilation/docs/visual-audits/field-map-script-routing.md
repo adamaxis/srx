@@ -20,6 +20,7 @@ records.
 | Scene 2, collision value `0xC2` at ROM `0x173138`, field mode 2/event 2 | Stoker dialogue script | `0x1F65A` selects the generic Stoker arrival dialogue; A/B advance the source prompt graph and return to the field |
 | Scene 2, collision value `0xCB` at ROM `0x173142`, field mode 2/event 11 | Ares service script | `0x1FA78` selects the Ares mode-text prompt; A opens the shop and Start returns |
 | Scene 2, paired collision values `0xC0` at ROM `0x173124` and `0x17312E`, event 0 | Active map's event table | Row 0 in `0x172CDC` selects scene `0x14` (scene 20) |
+| Scene 2, collision value `0xC1` at ROM `0x17314C`, event 1 | Active map's event table and world-activity resource selector | Row 1 in `0x172CDC` selects scene `0x1A` (scene 26); its resource bundle has bound 3 |
 | Scene 20, collision value `0x82` at ROM `0x1D9724`, event 2 | Building interaction continuation | The separate electromagnetic-lock handler `0x20E48` opens its generic prompt |
 | Scene 26, collision values `0xD8` at ROM `0x1D9E46`, event `0x18` | Direct typed Security Terminal continuation | `0xB7B8` requires two negative samples and selects `0x20EC2`; the physical-input QA opens both choices and Walk Away returns |
 | Any remaining in-range map-table event | Active map's own event table | The selected row is passed to the existing world-activity coordinator; missing/out-of-range tables remain unresolved |
@@ -36,25 +37,39 @@ events against the current map's event table. The Qt field-exit coordinator
 uses that plan to select the dialogue event code, service route, or normal
 area-event continuation. It does not interpret ROM addresses at runtime.
 
+The scene-2 C1 route is now exercised from the New Game spawn with normal
+controller input. It walks east through the open southern lane, then north
+through record 93's doorway cell, records event 1, and follows row 1 into the
+scene-26 resource activity. The source geometry explains why the approach
+cannot cross record 47's `0x7F` wall directly. The full trace, screenshots,
+and remaining visual issue are recorded in the
+[scene-2 event-1 audit](scene2-event1-scene26-route.md).
+
 ## Full-screen verification
 
-I reviewed all 68 Debug route BMPs as whole 320x224 frames: 12 Stoker frames,
-14 Ares frames, and 42 scene-20 frames. The reviewed states include the full
-map and HUD during movement, all captured fade phases, each panel/shop state,
-and the return screen. The dialogue, Ares shop, and maglock prompt replace the
-old field screen; the return captures show the field redrawn without stale
-panel controls. The fade checkpoints darken progressively and end at the
-source black handoff.
+I reviewed all 83 route BMPs as whole 320x224 frames: 12 Stoker frames, 14
+Ares frames, 42 scene-20 frames, and 15 scene-2 event-1 frames. The older
+routes include the full map and HUD during movement, captured fade phases,
+each panel/shop state, and return screens. The new route review found the
+runner covered by the opaque HUD column during a long uninterrupted eastward
+hold; the route trace still reports its native projection visibility flag as
+true. I record this mismatch as unresolved rather than accepted as visually
+correct. The
+scene-2 fade reaches black and the scene-26 destination replaces the map and
+HUD without a dialogue or shop left open. Debug and Release route BMP hashes
+match.
 
 The Ares introduction and category were also compared at full size with the
 independent longplay references `ares-introduction-5983.png` and
 `ares-shop-5985.png`. The prompt shell, green text, title, and offer layout
 agree. The recording uses a different saved runner and wallet, so portrait and
 balance differences are not treated as presentation defects. Independent
-section 03 frames `000028` through `000082` show the Stoker approach, fade,
-blank panel, and populated dialogue. They support screen order and appearance,
-not collision input or event bytes. No matching independent scene-20 maglock
-screen was found; its visual fidelity remains unverified.
+section 03 frames `000029` through `000048` show the same scene-2 map and HUD
+as the event-1 route's spawn; frames `000028` through `000082` also show the
+Stoker approach, fade, blank panel, and populated dialogue. They support map
+appearance and screen order, not event-1 collision input or the later
+eastward path. No matching independent scene-20 maglock screen or scene-26
+entry was found; those visuals remain unverified.
 
 ## Eight-question review
 
@@ -71,7 +86,9 @@ screen was found; its visual fidelity remains unverified.
 4. **Is it animated?** Field movement changes pose and position; the source
    fade has 17 updates. Stoker dialogue is input-driven. The Ares title prompt
    holds for 30 frames before input; its before/after captures are identical.
-   Scene-20 prompt/result waits follow their separate 10/30-frame paths.
+  Scene-20 prompt/result waits follow their separate 10/30-frame paths. The
+  event-1 route captures moving poses and a 30-frame static scene-26 hold;
+  exact scene-26 ambient animation cadence remains unverified.
 5. **Is there sound?** No discrete collision or Stoker dialogue sound request
    was established. The Ares prompt path has no direct sound request; shop
    sounds are covered by the shop route. Event `0x30` on successful Security
@@ -99,6 +116,8 @@ unavailable/out-of-range tables. The scene-26 checkpoint and eight-question
 review are in [security-terminal-physical-entry.md](security-terminal-physical-entry.md).
 
 This is a route-planning foundation, not complete map/path coverage. The
+scene-2 event-1 physical route is behaviorally covered but visually partial
+because of the runner/HUD overlap and missing exact Genesis comparison. The
 full descriptor-spawn route to the Security Terminal, additional
 doorway/object records, broad terrain recovery, building item use, reverse
 transitions, and world-entry one-shot conditions still need their own ROM

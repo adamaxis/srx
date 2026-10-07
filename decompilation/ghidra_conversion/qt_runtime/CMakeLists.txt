@@ -267,6 +267,19 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_scene20_physical_entry_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Normal Right then Up+Right input from New Game contacts scene-2 collision
+# record 93 (C1/event 1). Its map event-table row 1 selects resource scene
+# 0x1A; this captures the source fade and complete destination scene after the
+# typed world-activity resource selection and scene re-entry.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_scene26_event1_entry_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-scene26-event1-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-scene26-event1-entry-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_scene26_event1_entry_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Follow the same ordinary-input route, select the visible Frag Grenade option
 # with B, and exercise the no-item result and its clean A dismissal. The New
 # Game party inventory is checked before the choice; this is not a synthetic

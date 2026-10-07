@@ -172,6 +172,7 @@ std::filesystem::path find_asset_root(
                    " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
                    " [--field-ares-collision-shop-qa <output-dir>]"
                    " [--field-scene20-physical-entry-qa <output-dir>]"
+                   " [--field-scene26-event1-entry-qa <output-dir>]"
                    " [--field-security-terminal-physical-entry-qa <output-dir>]"
                    " [--field-scene20-grenade-no-item-qa <output-dir>]"
                    " [--field-secretary-dump <output-dir>]"
@@ -7271,6 +7272,428 @@ int run_field_scene20_physical_entry_qa(
     return 0;
 }
 
+int run_field_scene26_event1_physical_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Scene-26 event-1 entry QA: could not clear prior output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Scene-26 event-1 entry QA: could not create output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    constexpr std::size_t kEntryRecord = 93U;
+    constexpr std::uint32_t kEntryRecordAddress = 0x17314CU;
+    constexpr std::uint8_t kEntryCollision = 0xC1U;
+    constexpr std::uint8_t kEntryEvent = 1U;
+    constexpr std::uint8_t kDestinationScene = 0x1AU;
+    const auto& entry_metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    const auto& entry_records = entry_metadata.terrain_collision_rectangles;
+    const auto initial_position = field_scene.field_entity_world_position();
+    const bool source_entry_matches =
+        entry_records.size() > kEntryRecord &&
+        entry_records[kEntryRecord].left == 0x06E0U &&
+        entry_records[kEntryRecord].right == 0x06FFU &&
+        entry_records[kEntryRecord].top == 0x0220U &&
+        entry_records[kEntryRecord].bottom == 0x023FU &&
+        entry_records[kEntryRecord].value == kEntryCollision &&
+        entry_metadata.event_table_available &&
+        entry_metadata.event_mode_table[kEntryEvent] == kDestinationScene &&
+        field_scene.field_scene_reference_for_dump() == 2U &&
+        initial_position.x == 0x3CE0U && initial_position.y == 0x2D00U;
+    if (!source_entry_matches) {
+        std::cerr << "Scene-26 event-1 entry QA: New Game source position, "
+                     "scene-2 collision record 93, or event-table row 1 "
+                     "does not match (scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", position=" << initial_position.x << ','
+                  << initial_position.y << ", records="
+                  << entry_records.size() << ")\n";
+        return 3;
+    }
+
+    const auto render = [&field_scene] {
+        QImage image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        field_scene.paint(painter);
+        painter.end();
+        return image;
+    };
+    const auto save = [&render, &output](const std::string_view name) {
+        const auto image = render();
+        const auto path = output / (std::string(name) + ".bmp");
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            !image.save(QString::fromStdWString(path.wstring()))) {
+            std::cerr << "Scene-26 event-1 entry QA: could not save full "
+                         "screen " << name << '\n';
+            return false;
+        }
+        return true;
+    };
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) {
+        std::cerr << "Scene-26 event-1 entry QA: could not create route.tsv\n";
+        return 3;
+    }
+    trace << "stage\tframe\tscene\tx\ty\tcollision\tmode_event"
+             "\ttransition_event\tnegative_probe_count\ttransition_kind"
+             "\tactivity_scene\tactivity_mode\tresource_bound"
+             "\tresource_index\tinteraction\tdialogue\tshop"
+             "\tentity_visible\tscreen_x\tscreen_y\tcamera_x"
+             "\tcamera_y\taudio_events\n";
+    std::uint32_t frame = 0U;
+    const auto write_state = [&] (const std::string_view stage) {
+        const auto position = field_scene.field_entity_world_position();
+        const auto& transition =
+            field_scene.last_field_movement_transition_for_dump();
+        const auto& activity = field_scene.world_activity_state_for_dump();
+        trace << stage << '\t' << frame << '\t'
+              << field_scene.field_scene_reference_for_dump() << '\t'
+              << position.x << '\t' << position.y << '\t'
+              << field_scene.field_terrain_collision_code_for_dump() << '\t'
+              << static_cast<unsigned>(
+                     field_scene.field_mode_event_code_for_dump()) << '\t'
+              << static_cast<unsigned>(transition.event_code) << '\t'
+              << static_cast<unsigned>(transition.negative_probe_count) << '\t'
+              << static_cast<unsigned>(transition.kind) << '\t'
+              << activity.scene_id << '\t'
+              << static_cast<unsigned>(activity.mode) << '\t'
+              << activity.resource_random_index_bound << '\t'
+              << activity.selected_resource_random_index << '\t'
+              << field_scene.field_interaction_open() << '\t'
+              << field_scene.dialogue_open() << '\t'
+              << field_scene.shop_menu_open() << '\t'
+              << field_scene.field_entity_visible_for_dump() << '\t'
+              << field_scene.field_entity_screen_x_for_dump() << '\t'
+              << field_scene.field_entity_screen_y_for_dump() << '\t'
+              << field_scene.state().field_scene_buffers.camera_x << '\t'
+              << field_scene.state().field_scene_buffers.camera_y << '\t'
+              << field_audio_events.size() << '\n';
+        trace.flush();
+    };
+    const auto world_position = [&field_scene] {
+        const auto position = field_scene.field_entity_world_position();
+        return std::pair<std::uint16_t, std::uint16_t>{
+            static_cast<std::uint16_t>(position.x >> 4U),
+            static_cast<std::uint16_t>(position.y >> 4U)};
+    };
+    const auto field_is_live = [&field_scene] {
+        return field_scene.field_scene_reference_for_dump() == 2U &&
+               !field_scene.dialogue_open() &&
+               !field_scene.field_interaction_open() &&
+               !field_scene.field_mode_text_open_for_dump() &&
+               !field_scene.shop_menu_open() &&
+               !field_scene.field_transition_pending_for_dump() &&
+               !field_scene.field_interaction_transition_active_for_dump();
+    };
+    const auto step = [&](const std::uint8_t input) {
+        field_scene.set_controller_nibble(input);
+        field_scene.advance_frame();
+        ++frame;
+    };
+
+    if (!save("scene2-spawn")) {
+        return 3;
+    }
+    write_state("scene2-spawn");
+
+    // Source collision geometry leaves a clear eastbound lane from the New
+    // Game spawn through x=0x650. The northeast approach then reaches the
+    // open south lane below record 93 without crossing other entry records.
+    std::uint16_t east_ticks = 0U;
+    while (east_ticks < 1200U && field_is_live() &&
+           world_position().first < 0x0650U) {
+        step(0x08U); // ordinary Right
+        ++east_ticks;
+        if (east_ticks == 128U || east_ticks == 256U ||
+            east_ticks == 512U || east_ticks == 768U) {
+            if (!save("east-" + std::to_string(east_ticks))) {
+                return 3;
+            }
+        }
+        write_state("east-lane");
+    }
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    ++frame;
+    const auto east_position = world_position();
+    if (!field_is_live() || east_position.first < 0x0640U ||
+        east_position.first > 0x0668U || east_position.second < 0x02B0U ||
+        east_position.second > 0x02F0U || !save("east-lane-end")) {
+        std::cerr << "Scene-26 event-1 entry QA: normal Right did not reach "
+                     "the source eastbound lane (ticks=" << east_ticks
+                  << ", position=" << east_position.first << ','
+                  << east_position.second << ")\n";
+        return 3;
+    }
+    write_state("east-lane-end");
+
+    std::uint16_t northeast_ticks = 0U;
+    while (northeast_ticks < 160U && field_is_live() &&
+           world_position().second > 0x025CU) {
+        step(0x09U); // ordinary Up + Right
+        ++northeast_ticks;
+        if (northeast_ticks == 32U || northeast_ticks == 64U) {
+            if (!save("northeast-" + std::to_string(northeast_ticks))) {
+                return 3;
+            }
+        }
+        write_state("northeast-entry-approach");
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto south_doorway_position = world_position();
+    if (!field_is_live() || south_doorway_position.second < 0x0248U ||
+        south_doorway_position.second > 0x0260U ||
+        !save("south-of-event-wall")) {
+        std::cerr << "Scene-26 event-1 entry QA: normal diagonal approach "
+                     "did not reach the south side of record 93 (ticks="
+                  << northeast_ticks << ", position="
+                  << south_doorway_position.first << ','
+                  << south_doorway_position.second << ")\n";
+        return 3;
+    }
+    write_state("south-of-event-wall");
+
+    // Record 47 is a 0x7F wall spanning the event-1 doorway row. Record 93's
+    // narrow C1 rectangle replaces only its doorway cell. Follow the open
+    // southern lane east first, then approach north through that cell.
+    std::uint16_t doorway_lane_ticks = 0U;
+    while (doorway_lane_ticks < 120U && field_is_live() &&
+           world_position().first < 0x06E2U) {
+        step(0x08U); // ordinary Right along the south side of the wall
+        ++doorway_lane_ticks;
+        if (doorway_lane_ticks == 16U || doorway_lane_ticks == 32U) {
+            if (!save("doorway-lane-" +
+                      std::to_string(doorway_lane_ticks))) {
+                return 3;
+            }
+        }
+        write_state("south-doorway-lane");
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto doorway_lane_position = world_position();
+    if (!field_is_live() || doorway_lane_position.first < 0x06E0U ||
+        doorway_lane_position.first > 0x06F0U ||
+        doorway_lane_position.second < 0x0248U ||
+        doorway_lane_position.second > 0x0260U ||
+        !save("event1-south-doorway-lane")) {
+        std::cerr << "Scene-26 event-1 entry QA: source south doorway lane "
+                     "was blocked (ticks=" << doorway_lane_ticks
+                  << ", position=" << doorway_lane_position.first << ','
+                  << doorway_lane_position.second << ")\n";
+        return 3;
+    }
+    write_state("event1-south-doorway-lane");
+
+    std::uint16_t north_ticks = 0U;
+    while (north_ticks < 100U && field_is_live()) {
+        step(0x01U); // ordinary Up through the C1 doorway cell
+        ++north_ticks;
+        const auto& transition =
+            field_scene.last_field_movement_transition_for_dump();
+        const bool entry_touched =
+            (field_scene.field_terrain_collision_code_for_dump() & 0x001FU) ==
+                kEntryEvent ||
+            (transition.event_code == kEntryEvent &&
+             transition.mode_event_code_published) ||
+            field_scene.field_mode_event_code_for_dump() == kEntryEvent;
+        if (north_ticks == 16U || north_ticks == 32U) {
+            if (!save("north-doorway-" + std::to_string(north_ticks))) {
+                return 3;
+            }
+        }
+        write_state("north-entry-approach");
+        if (entry_touched) {
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto& movement_transition =
+        field_scene.last_field_movement_transition_for_dump();
+    const bool published_event_one =
+        movement_transition.event_code == kEntryEvent &&
+        movement_transition.mode_event_code_published &&
+        movement_transition.negative_probe_count >= 2U &&
+        field_scene.field_mode_event_code_for_dump() == kEntryEvent;
+    if (!published_event_one || !save("scene2-event1-contact")) {
+        const auto position = world_position();
+        std::cerr << "Scene-26 event-1 entry QA: normal Up did not publish "
+                     "scene-2 record-93 event 1 (northeast_ticks="
+                  << northeast_ticks << ", doorway_ticks="
+                  << doorway_lane_ticks << ", north_ticks=" << north_ticks
+                  << ", position=" << position.first
+                  << ',' << position.second << ", collision=0x" << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << std::dec << ", event="
+                  << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ")\n";
+        return 3;
+    }
+    write_state("scene2-event1-contact");
+
+    const auto contact_frame = frame;
+    for (const auto checkpoint :
+         std::array<std::uint32_t, 3>{8U, 16U, 17U}) {
+        const auto target_frame = contact_frame + checkpoint - 1U;
+        while (frame < target_frame) {
+            step(0U);
+        }
+        const auto name = std::string("fade-") +
+                          (checkpoint < 10U ? "0" : "") +
+                          std::to_string(checkpoint);
+        if (!save(name)) {
+            return 3;
+        }
+        write_state(name);
+    }
+
+    for (std::uint16_t settle = 0U;
+         settle < 180U &&
+         field_scene.field_scene_reference_for_dump() == 2U;
+         ++settle) {
+        step(0U);
+    }
+    const auto& destination_metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    const auto& activity = field_scene.world_activity_state_for_dump();
+    const auto& destination_position =
+        field_scene.field_entity_world_position();
+    const auto expected_destination_position =
+        destination_metadata.initial_field_records[0U];
+    const bool destination_loaded =
+        field_scene.field_scene_reference_for_dump() == kDestinationScene &&
+        activity.scene_id == kDestinationScene &&
+        activity.mode == WorldActivityMode::resource_activity &&
+        activity.resource_random_index_bound > 0U &&
+        activity.selected_resource_random_index <
+            activity.resource_random_index_bound &&
+        field_scene.security_floor_index_for_dump() ==
+            std::optional<std::uint8_t>{static_cast<std::uint8_t>(
+                activity.selected_resource_random_index)} &&
+        destination_metadata.terrain_collision_rectangles.size() == 133U &&
+        !destination_metadata.event_table_available &&
+        destination_position.x == expected_destination_position.x &&
+        destination_position.y == expected_destination_position.y &&
+        field_scene.field_entity_visible_for_dump() &&
+        !field_scene.dialogue_open() && !field_scene.field_interaction_open() &&
+        !field_scene.field_mode_text_open_for_dump() &&
+        !field_scene.shop_menu_open() &&
+        !field_scene.field_transition_pending_for_dump() &&
+        !field_scene.field_interaction_transition_active_for_dump();
+    const auto scene26_entry = render();
+    if (!destination_loaded ||
+        !field_hud_chrome_survives(scene26_entry, asset_root) ||
+        count_playfield_lit(scene26_entry) < 100U ||
+        !save("scene26-entry")) {
+        std::cerr << "Scene-26 event-1 entry QA: event-table target, typed "
+                     "resource selection, field spawn, or full screen did not "
+                     "load (scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", activity_scene=" << activity.scene_id
+                  << ", activity_mode="
+                  << static_cast<unsigned>(activity.mode)
+                  << ", resource_index="
+                  << activity.selected_resource_random_index << '/'
+                  << activity.resource_random_index_bound << ")\n";
+        return 3;
+    }
+    write_state("scene26-entry");
+
+    for (std::uint8_t idle = 0U; idle < 30U; ++idle) {
+        step(0U);
+        if (field_scene.field_scene_reference_for_dump() != kDestinationScene ||
+            field_scene.dialogue_open() || field_scene.field_interaction_open() ||
+            field_scene.shop_menu_open()) {
+            std::cerr << "Scene-26 event-1 entry QA: destination scene or "
+                         "screen owner changed during the 30-frame hold\n";
+            return 3;
+        }
+        if (idle == 9U || idle == 29U) {
+            const auto name = std::string("scene26-hold-") +
+                              std::to_string(idle + 1U);
+            if (!save(name)) {
+                return 3;
+            }
+            write_state(name);
+        }
+    }
+    if (!save("actual")) {
+        return 3;
+    }
+
+    const auto route_continuation = std::find(
+        source_boundaries.begin(), source_boundaries.end(),
+        "field.exit.area_event_table_continuation");
+    const auto scene_prepared = std::find(
+        source_boundaries.begin(), source_boundaries.end(),
+        "field.world_activity.scene_prepared");
+    if (route_continuation == source_boundaries.end() ||
+        scene_prepared == source_boundaries.end()) {
+        std::cerr << "Scene-26 event-1 entry QA: source area-table route or "
+                     "destination preparation boundary was not reached\n";
+        return 3;
+    }
+    {
+        std::ofstream boundaries(output / "source-boundaries.txt",
+                                 std::ios::trunc);
+        if (!boundaries) {
+            std::cerr << "Scene-26 event-1 entry QA: could not write source "
+                         "boundary trace\n";
+            return 3;
+        }
+        std::vector<std::string> unique_boundaries;
+        unique_boundaries.reserve(source_boundaries.size());
+        for (const auto& boundary : source_boundaries) {
+            if (std::find(unique_boundaries.begin(), unique_boundaries.end(),
+                          boundary) == unique_boundaries.end()) {
+                unique_boundaries.push_back(boundary);
+                boundaries << boundary << '\n';
+            }
+        }
+    }
+    {
+        std::ofstream events(output / "audio-events.txt", std::ios::trunc);
+        if (!events) {
+            std::cerr << "Scene-26 event-1 entry QA: could not write audio "
+                         "trace\n";
+            return 3;
+        }
+        events << "runtime_audio_event_count=" << field_audio_events.size()
+               << '\n';
+        for (const auto event : field_audio_events) {
+            events << "0x" << std::hex << event << '\n';
+        }
+    }
+    std::cout << "field_scene26_event1_route_behavior=passed "
+                 "visual_review=partial "
+                 "scene2_record=93 rom=0x"
+              << std::hex << kEntryRecordAddress << " collision=0xC1 "
+                 "event=1 destination=0x1A"
+              << std::dec << " east_ticks=" << east_ticks
+              << " northeast_ticks=" << northeast_ticks
+              << " doorway_lane_ticks=" << doorway_lane_ticks
+              << " north_ticks=" << north_ticks
+              << " resource_index="
+              << activity.selected_resource_random_index << '/'
+              << activity.resource_random_index_bound << " audio_events="
+              << field_audio_events.size() << " artifacts="
+              << output.string() << '\n';
+    return 0;
+}
+
 int run_field_stoker_collision_to_dialogue_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -8188,6 +8611,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_scene20_physical_entry_qa_path;
         std::optional<std::filesystem::path>
+            field_scene26_event1_entry_qa_path;
+        std::optional<std::filesystem::path>
             field_security_terminal_physical_entry_qa_path;
         std::optional<std::filesystem::path>
             field_scene20_grenade_no_item_qa_path;
@@ -8249,6 +8674,7 @@ int main(int argc, char** argv) {
                        " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
                        " [--field-ares-collision-shop-qa <output-dir>]"
                        " [--field-scene20-physical-entry-qa <output-dir>]"
+                       " [--field-scene26-event1-entry-qa <output-dir>]"
                        " [--field-security-terminal-physical-entry-qa <output-dir>]"
                        " [--field-stoker-collision-qa <output-dir>]"
                        " [--field-command-dump <file>]"
@@ -8330,6 +8756,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene20_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene26-event1-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene26_event1_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -8752,6 +9185,12 @@ int main(int argc, char** argv) {
                 return run_field_scene20_physical_entry_qa(
                     field_scene, asset_root,
                     *field_scene20_physical_entry_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_scene26_event1_entry_qa_path.has_value()) {
+                return run_field_scene26_event1_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_scene26_event1_entry_qa_path,
                     field_audio_events, field_source_boundaries);
             }
             if (field_security_terminal_physical_entry_qa_path.has_value()) {
