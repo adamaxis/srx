@@ -4320,6 +4320,9 @@ private:
             note_presentation_boundary("opening.latch_controller_events");
         };
         startup_callbacks_.opening_intro.prepare_mode_entry = [this] {
+            // ROM 0x53126 sends FF 16 here; its Z80 handler clears all active
+            // sound channels before the next opening-stage command.
+            audio_playback_.stop_all_channels();
             note_presentation_boundary("opening.prepare_mode_entry");
         };
         startup_callbacks_.opening_intro.service_audio_command =
@@ -4548,6 +4551,8 @@ private:
         };
         title_mode_entry_callbacks_.flush_audio_bus = [this] {
             ++title_mode_entry_flushes_;
+            // ROM 0x52FA0 sends FF 16, clearing the source sound channels.
+            audio_playback_.stop_all_channels();
             note_presentation_boundary("title.mode_entry.flush_audio_bus");
         };
         title_mode_entry_callbacks_.service_audio_tick = [this] {

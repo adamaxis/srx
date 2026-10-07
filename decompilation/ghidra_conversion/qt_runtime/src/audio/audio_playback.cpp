@@ -136,7 +136,7 @@ AudioPlaybackService::acquire_channel() {
     return *channel;
 }
 
-void AudioPlaybackService::stop_effects() {
+void AudioPlaybackService::stop_all_channels() {
     for (const auto& channel : channels_) {
         channel->player.stop();
     }

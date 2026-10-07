@@ -56,8 +56,9 @@ public:
     // Play a catalog alias directly (audio.menu.command-024 and friends).
     void play_alias(std::string_view alias);
 
-    // Stop every active one-shot channel.
-    void stop_effects();
+    // ROM 0x53126 ends with FF 16; the Z80 handler clears every active sound
+    // channel. Mirror that source handoff in the host playback pool.
+    void stop_all_channels();
 
     std::string_view alias_for_event(std::uint16_t event) const;
     PlaybackStatus playback_status_for_event(std::uint16_t event) const;

@@ -228,10 +228,23 @@ int main(int argc, char** argv) {
             }
         }
 
-        playback.stop_effects();
+        if (expected.event == 0x10U) {
+            playback.stop_all_channels();
+            application.processEvents(QEventLoop::AllEvents, 20);
+            const auto calls_before_silent_stage = resolver_calls;
+            playback.play_event(0x11U);
+            if (resolver_calls != calls_before_silent_stage ||
+                playback.playback_status_for_event(0x10U).playing ||
+                playback.playing_channel_count_for_event(0x10U) != 0U) {
+                std::cerr << "FF 16 stage handoff left opening audio active\n";
+                return 1;
+            }
+        }
+
+        playback.stop_all_channels();
         application.processEvents(QEventLoop::AllEvents, 20);
         if (playback.playback_status_for_event(expected.event).playing) {
-            std::cerr << "stop_effects left event " << expected.event
+            std::cerr << "stop_all_channels left event " << expected.event
                       << " playing\n";
             return 1;
         }
