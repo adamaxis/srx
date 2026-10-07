@@ -163,5 +163,6 @@ game. The CLI `--help` path still returns its usage text.
   current Windows default output.
 - **Reported defect resolved:** `BOOT-01` is resolved for the missing sound
   and mistimed Decker-start playback. Exact alignment to a Genesis VBlank
-  remains bounded by the 30-fps reference; unrelated opening-music questions
-  remain under `OPEN-01`.
+  remains bounded by the 30-fps reference; opening-music timing and stage
+  resets are covered separately in the `OPEN-01` audit. Other audio routes
+  remain under `SOUND-03`.

@@ -126,8 +126,10 @@ they do not establish exact emulator frame timing.
    above. The boot path's `0x16` is specifically a stop operation, while other
    callers can start resource 22 with `FF 10 16`. The independent longplay
    repeatedly matches resource 37 and also supports resource 92 at 4.225 s.
-   Windows output loopback captured the boot-shock resource on the current
-   default endpoint; other event-specific output captures remain open.
+   Endpoint loopback captured the boot-shock resource on the current
+   default device. Process-specific loopback on the normal Release opening
+   route captures stage 1 at opening entry, silence through stage 2, and stage
+   3 at its entry; other event-specific routes remain open.
 6. **Are related screen parts also correct?** The Ares page, text, item art,
    cursor, and right-side HUD remain visible in the 320x224 QA frame.
 7. **Do multiple frames support the interpretation?** The independent audio
@@ -151,6 +153,7 @@ loopback. The exact paired stage-2 request
 host intentionally leaves it unmapped. Source `0x53126` sends `FF 16` at
 stage boundaries, and Qt now stops all playback channels there. The intro
 tracks show no source restart in 90-second ROM traces. More source-event
-mappings, event `0x30` stop lifetime, other music loop points, and output
-loopback for the other mapped routes remain open. Therefore the audio hill
-remains partial.
+mappings, event `0x30` stop lifetime, other music loop points, and
+process/endpoint loopback for the other mapped routes remain open. The opening
+route is verified as recorded in [the OPEN-01 audit](../visual-audits/opening-music-start.md).
+Therefore the general audio hill remains partial.

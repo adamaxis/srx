@@ -25,8 +25,9 @@ The `0x5ACF6` immediate value `-0x2000` is the 16-bit attribute `0xE000`:
 palette line 3 and high sprite priority. The fixed list's `-0x4000` is
 `0xC000`, also high priority. The moving exterior list is `0x6000`, low
 priority. Ghidra corroborates these call values; the US ROM is the source.
-There is no distinct sound request in these three list routines. The opening
-music requests remain tracked separately under OPEN-01.
+There is no distinct sound request in these three list routines. The
+orchestrated opening music lifecycle is documented in the resolved OPEN-01
+audit; these sprite routines add no audio event.
 
 The Qt presenter previously drew every cockpit sprite after the plane,
 allowing the low-priority moving layer to cover the character. It now draws

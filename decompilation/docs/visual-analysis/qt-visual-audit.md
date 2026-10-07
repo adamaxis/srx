@@ -836,8 +836,10 @@ longplay frames remain the independent appearance evidence.
    audio correlates this asset at 34.844 s. The airport animator at `0x5B100`
    makes no direct sound request. No rotor effect is assigned without a
    traced event; the paired stage-2 request is source-silent. The FF 16 stage-boundary stop is wired in Qt; 90-second ROM traces show no
-   within-stage restart. Independent stage-2 silence and output-loopback
-   evidence remain open under OPEN-01/SOUND-03.
+   within-stage restart. The normal-input Release process-loopback capture
+   verifies Qt stage-1 and stage-3 playback and silence through stage 2; the
+   exact `0x11` ROM/Z80 pair has no audible notes. The supplied Genesis capture
+   does not isolate stage 2. Other event routes remain open under SOUND-03.
 6. **Related screen parts:** reviewed plates, transparency, sprite order,
    scroll, story/landing text, blank center rows, palette handoffs, and the
    next scene. The blank-row callback at local index 0xD7 clears center text;

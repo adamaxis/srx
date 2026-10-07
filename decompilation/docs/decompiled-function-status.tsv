@@ -548,7 +548,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x53094	audio bus flush append pair	ghidra_conversion::begin_bus_then_flush_append_pair	shadowrun_ghidra_audio_command_batch	partial		Typed begin then paired queue service
 0x530A0	controller access pair	ghidra_conversion::controller_access_pair	shadowrun_ghidra_audio_command_batch	partial		Typed controller begin/end pair
 0x530D2	audio enabled variant	ghidra_conversion::service_audio_if_enabled_variant	shadowrun_ghidra_audio_command_batch	partial		Typed enable gate over queue service
-0x530EA	audio command frame variant	ghidra_conversion::service_audio_command_frame_variant	shadowrun_ghidra_audio_command_batch	partial		Typed frame preparation and queue service
+0x530EA	audio command frame variant	ghidra_conversion::service_audio_command_frame_variant	shadowrun_ghidra_audio_command_batch	partial		Typed frame preparation and queue service; startup integration checks 0x10/0x11/0x12 order, and ordinary Release process-loopback confirms the stage-1/stage-3 track timing and stage-2 silence; see visual-audits/opening-music-start.md
 0x53112	audio command wrapper	ghidra_conversion::service_audio_command_wrapper	shadowrun_ghidra_audio_command_batch	partial		Named audio queue wrapper
 0x53126	mode entry audio service	ghidra_conversion::prepare_audio_mode_entry	shadowrun_ghidra_audio_command_batch	partial		Six fixed 0x14 audio transactions, each followed by source counter 2 (three vblank waits), then one audio-bus flush and one zero-command service tick; host backend remains a callback
 0x53156	audio tick wrapper	ghidra_conversion::service_audio_tick_wrapper	shadowrun_ghidra_audio_command_batch	partial		Named audio tick service boundary

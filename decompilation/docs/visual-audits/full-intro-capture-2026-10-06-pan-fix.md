@@ -63,6 +63,6 @@ source-traced, whole-screen comparisons before those goals can be closed.
 This historical capture has no audio track and predates the boot-audio wiring.
 `BOOT-01` is now resolved by the source-timed resource-92 playback documented
 in [the boot shock audio audit](boot-shock-audio.md). The stage-2 source pair
-is silent, and source `FF 16` stage-boundary stops are wired. Within-stage
-loop behavior remains open under `OPEN-01`; this image capture is not audio
-evidence.
+is silent, and source `FF 16` stage-boundary stops are wired. The opening
+audio route is verified separately in `OPEN-01`; this image capture is not
+audio evidence.

@@ -20,8 +20,8 @@ stopping at 0xD1. The resulting invariants are head-x minus x-scroll = 0x178
 and head-y plus y-scroll = 0xD1. After the first loop, stage 2 resets the
 transient sprite and animation services, runs its second 0x1F0-count story
 loop, and returns to the stage orchestrator. There is no separate sound
-request in this pan routine; the stage music requests are tracked under
-OPEN-01.
+request in this pan routine. The orchestrated stage music starts and stops are
+documented in the OPEN-01 audit; this pan routine adds no audio event.
 
 The Qt state already held the source offsets and head coordinates in typed
 OpeningIntroStage2State. The defect was in the presenter: the named persistent
@@ -78,8 +78,8 @@ source counters establish the host cadence separately.
    alternating eligible frames for 32 updates. Both stop at the source
    endpoints and remain settled through the rest of the loop.
 5. **Is there a sound?** No distinct sound call was found in the ROM pan
-   routine. Stage music is a separate OPEN-01 route; this change does not
-   claim audio verification.
+   routine. The OPEN-01 stage route is verified in its own audio audit; this
+   pan-specific review adds no audio playback evidence.
 6. **Are other screen parts correct? Reviewed.** The full intro was swept.
    OPEN-03 and OPEN-06 remain separate, unresolved cockpit goals; this fix does
    not close them.

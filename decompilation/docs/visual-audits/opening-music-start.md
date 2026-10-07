@@ -1,10 +1,13 @@
 # Opening music start audit
 
-This audit covers `OPEN-01`: the stage-1 opening music was heard only after
-the opening had already advanced to its second scene. It resolves the stage-2
-sound identity as silent for the source command pair and models the source
-track reset at stage transitions. Independent confirmation of stage-2 silence
-and Windows output-loopback capture remain open.
+This audit covers `OPEN-01`: the stage-1 opening music was reported only
+after the opening had advanced to its second scene. The Qt route now submits
+stage-1 audio at opening entry, leaves the ROM-silent stage-2 request unmapped,
+and applies the source `FF 16` reset at stage boundaries. A visible normal-key
+Release run with process-specific WASAPI loopback confirms stage-1 and stage-3
+audio and silence through the intervening stage-2 interval. The supplied
+Genesis longplay supports the two track identities, but does not isolate the
+stage-2 request or establish exact VBlank alignment.
 
 ## ROM path and host behavior
 
@@ -92,7 +95,8 @@ traces: 906 chip writes with the final YM write at 12.833673 seconds for
 appears in the rest of either trace. The FLACs end two seconds after those
 final writes for the release tail, so neither intro asset needs a loop point.
 This establishes one-shot source streams in the 90-second ROM-driver probe;
-it does not establish Windows output-loopback behavior.
+that probe itself does not establish host playback. The Release process
+capture is documented below.
 
 ## Independent audio evidence
 
@@ -112,6 +116,38 @@ capture's sparse audio correlation is not used as proof of driver behavior.
 The 30-fps capture does not establish exact VBlank alignment or independently
 confirm the stage-boundary stop.
 
+### Normal-input Release process-loopback capture
+
+The ordinary Release executable was launched with the explicit extracted asset
+directory, and the visible Qt window accepted three Return keydown/up inputs:
+`title_ready` -> `start_options` -> `joshua_archetype` -> `opening_intro`.
+No game event tuple or test-only scene entry was injected. The process-specific
+WASAPI capture is `build/visual-review/opening-release-process-loopback.wav`
+(44.1 kHz, stereo, 59.92 s); the route and capture logs are
+`build/visual-review/opening-visible-route.json` and
+`build/visual-review/opening-process-capture.stdout.log`. This Windows
+application-loopback stream includes the Qt process tree and excludes other
+applications such as VLC; it records the app render stream, not the physical
+speaker output ([Microsoft application-loopback API sample](https://learn.microsoft.com/en-us/samples/microsoft/windows-classic-samples/applicationloopbackaudio-sample/)).
+
+The opening phase title was observed at 11.588 s after capture start. The
+captured `title-stage-1.flac` waveform begins at 11.538 s, within the capture
+and title timestamp resolution. Its 0.2-0.8 s comparison windows match at
+0.99 or higher through source offset 9.75 s. Process audio drops to the
+capture noise floor by 21.76 s, about 10.2 s after stage-1 onset, consistent
+with the `FF 16` reset before the silent stage-2 pair. The process remains at
+the capture noise floor through the stage-2 interval; its measured RMS there
+is approximately `1.0e-5`.
+
+The stage-3 waveform begins at 33.938 s. Matched 0.2-0.8 s windows across
+source offsets 0-20.2 s score at least 0.93, with most above 0.98; the full
+21.0048 s asset aligns at 0.976 correlation. Its audible samples end by
+54.87 s, followed by the capture noise floor. Thus the normal Qt route starts
+the right first track at entry, stays silent for the source-silent second
+request, starts the third track at its entry, and stops after its one-shot.
+The actual process capture verifies Qt playback; the ROM/Z80 paired-command
+trace remains the evidence for the Genesis driver's lack of stage-2 notes.
+
 ## Verification
 
 - `shadowrun_ghidra_startup_integration` records opening requests and checks
@@ -123,8 +159,8 @@ confirm the stage-boundary stop.
   request. It also starts `0x10`, applies the source `FF 16` reset, and checks
   that `0x11` stays unmapped and the prior channel is no longer playing.
   Debug and Release pass. Debug measured 21 ms start latency and 14,833 ms
-  duration for `0x10`, and 23 ms / 21,004 ms for `0x12`. The test does not
-  record Windows output loopback.
+  duration for `0x10`, and 23 ms / 21,004 ms for `0x12`. The normal-control
+  Release capture above separately verifies the app's rendered audio stream.
 - `shadowrun_ghidra_conversion_qt_startup_qa` passes in Debug and Release and
   writes 118 full-screen `320x224` BMPs per configuration. All 118 names,
   dimensions, and SHA-256 hashes match across configurations. I reviewed every
@@ -133,9 +169,9 @@ confirm the stage-boundary stop.
 - Neither intro track has a row in `assets/audio/loop-points.tsv`. The source
   trace reports each as a one-shot: chip writes stop after 12.833673 seconds
   (`0x10`) and 19.004830 seconds (`0x12`), with no restart in 90 seconds. Qt
-  stops any remaining playback at source `FF 16` boundaries. Output loopback
-  remains unmeasured; the separate global audio hill has other unresolved
-  track lifetimes.
+  stops any remaining playback at source `FF 16` boundaries. Process-specific
+  loopback now verifies the normal opening route; endpoint captures for other
+  mapped routes and other global audio lifetimes remain open.
 
 ## Eight-question review
 
@@ -164,8 +200,11 @@ confirm the stage-boundary stop.
    `0x12` with a 21,004 ms duration. The ROM-driven `0x11` pair has no YM
    key-on or PSG tone sequence, so the host correctly leaves it silent. The
    source `FF 16` reset stops the preceding host track at the stage handoff.
-   QMediaPlayer status is playback evidence; Windows output loopback and
-   independent confirmation of stage-2 silence are not measured.
+   The Release process-loopback route starts the stage-1 waveform at
+   opening entry, becomes silent by 21.76 s at the stage-2 handoff, then starts
+   the stage-3 waveform at 33.938 s and returns to the capture floor after its
+   one-shot. The exact `0x11` source-pair trace has no YM key-on or PSG tone.
+   The longplay does not isolate stage-2 silence or prove VBlank timing.
 6. **Are related parts of the screen also correct?** The full dump includes
    boot/title, Start Options, archetypes, Seattle, wilderness, tri-vid,
    airport, post-intro cab map, and field/menu states. The audio-only diff
@@ -173,7 +212,9 @@ confirm the stage-boundary stop.
 7. **Do multiple frames support the interpretation?** Yes. The continuous
    independent recording has separate stage-1, wilderness, stage-3, and
    airport checkpoints. Its audio has repeated stage-1 matches at 2.431/2.737
-   s and a separate stage-3 match at 34.844 s. Timing is not VBlank-exact.
+   s and a separate stage-3 match at 34.844 s. The process-loopback capture
+   contains many aligned windows from both tracks across their playback; neither
+   capture establishes exact VBlank timing.
 8. **Does new UI replace old UI cleanly?** No UI was added. The reviewed
    full-frame transition captures show no new old-page controls or graphics
    left under a newly drawn page.
@@ -189,11 +230,13 @@ confirm the stage-boundary stop.
   FLAC playback CTest pass; all 118 full-screen startup QA images were
   reviewed.
 - **Independently checked:** section 02 audio correlations support the
-  stage-1 and stage-3 track identities and timing. The silent stage-2 result
-  is supported by a ROM-driven Z80 trace of the exact source command pair.
-- **Reported defect resolved:** the stage-1 music's late trigger is corrected,
-  the exact stage-2 source pair has no audible note sequence, and stage
-  transitions stop active host playback at the source reset. Keep `OPEN-01`
-  partial until stage-2 silence is independently confirmed and the relevant
-  Windows output route is captured. The source probe found the stage tracks
-  are one-shots with no within-stage restart.
+  stage-1 and stage-3 track identities. The ordinary Release game route's
+  process-loopback waveform confirms stage-1 at opening entry, silence through
+  the stage-2 interval, and stage-3 at its entry; the ROM-driven Z80 trace of
+  the exact `0x11` pair establishes why stage 2 is silent. The capture does
+  not represent an independent Genesis stage-2 isolation.
+- **Reported defect resolved:** the stage-1 music now starts at opening entry;
+  the ROM-silent stage-2 pair remains unmapped; source `FF 16` resets stop the
+  preceding host track; and stage 3 starts its own one-shot. The source probe
+  found no within-stage restart. Exact VBlank timing and physical speaker-path
+  fidelity are not claimed.

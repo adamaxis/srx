@@ -80,9 +80,10 @@ the lead-in expires; base art at elapsed 550, 612, and 732; alternate art at
    art turns on and off only at the computed-Y threshold. The QA includes
    pre-threshold, event, in-window, and post-window frames.
 5. **Does it have sound? — No sound call traced for this sprite helper.**
-   `0x5B1B6` issues the sprite build and does not request audio. The broader
-   opening soundtrack trigger and lifetime remain open under `OPEN-01` and
-   `AUDIO-01`; no clip or duration is assigned to the landing animation.
+   `0x5B1B6` issues the sprite build and does not request audio. The opening
+   soundtrack is covered by the resolved `OPEN-01` audit; this landing
+   animation adds no audio clip or duration. Other audio mappings and
+   lifetimes remain open under `AUDIO-01`/`SOUND-03`.
 6. **Are the other visible parts correct? — Yes in the reviewed samples.**
    Full frames include the Seattle skyline, rotor/plane layers, story text, and
    the approach-to-airport transition. The scene handoff clears the prior
