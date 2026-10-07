@@ -418,6 +418,13 @@ buildings and during combat. A blank entry under Save/Load is an intentional
 debug-menu path in the shipped ROM, not a missing label to fill with a made-up
 option.
 
+The root cursor path is source-silent: the `0xC2A6` loop advances `0xE660`,
+branches on Up/Down, and calls `0xC376` without a sound service. Event `0x24`
+is requested once by the parent command overview when A opens this page; it is
+not a movement cue. Debug/Release route QA verifies the entry request and
+silent root selection/wrap sequence. See
+[`pocket-secretary-navigation-audio.md`](visual-audits/pocket-secretary-navigation-audio.md).
+
 Native status: the `0xC2A6` panel now uses the extracted C1418 option order,
 has a five-row cursor loop in ordinary field mode, returns through B/Start,
 and sends Save/Load to the existing two-slot `0x59172` screen. Group Items now

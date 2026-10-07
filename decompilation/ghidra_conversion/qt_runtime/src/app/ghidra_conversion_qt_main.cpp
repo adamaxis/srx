@@ -11873,6 +11873,17 @@ int main(int argc, char** argv) {
                                  "did not open\n";
                     return 3;
                 }
+                if (field_audio_events !=
+                    std::vector<std::uint16_t>{0x24U}) {
+                    std::cerr << "field secretary dump: parent A did not "
+                                 "request the single page-entry event 0x24\n";
+                    return 3;
+                }
+                // ROM 0xC2A6 has no move-sound call: it advances E660,
+                // dispatches the directional edge to C376, and loops.
+                // Keep entry audio separate so every root cursor edge can
+                // assert the source's silent navigation behavior.
+                field_audio_events.clear();
                 if (!smoke_state.startup_records.has_value()) {
                     std::cerr << "field secretary dump: source save-roster "
                                  "templates are unavailable\n";
@@ -11994,9 +12005,10 @@ int main(int argc, char** argv) {
                     field_scene.set_controller_port_byte(0U);
                     field_scene.advance_frame();
                     if (field_scene.pocket_secretary_selection() !=
-                        selection) {
+                            selection ||
+                        !field_audio_events.empty()) {
                         std::cerr << "field secretary dump: Down did not "
-                                     "select source row "
+                                     "select source row silently "
                                   << static_cast<int>(selection) << '\n';
                         return 3;
                     }
@@ -12025,9 +12037,10 @@ int main(int argc, char** argv) {
                 field_scene.advance_frame();
                 field_scene.set_controller_port_byte(0U);
                 field_scene.advance_frame();
-                if (field_scene.pocket_secretary_selection() != 0U) {
+                if (field_scene.pocket_secretary_selection() != 0U ||
+                    !field_audio_events.empty()) {
                     std::cerr << "field secretary dump: Down did not wrap "
-                                 "from the fifth option to the first\n";
+                                 "silently from the fifth option to the first\n";
                     return 3;
                 }
                 secretary_scene = render_secretary_scene();
