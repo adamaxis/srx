@@ -295,6 +295,18 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_elevator_physical_entry_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Scene 25 is the non-member entry scene for the source child-scene group
+# 21/22/23/24. Walk from its descriptor spawn into event 29, visit all four
+# floor selections, then ride to scene 22 and inspect every captured frame.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_elevator_scene25_entry_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-elevator-scene25-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-elevator-scene25-entry-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_elevator_scene25_entry_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Scene 29 is the non-member entry scene for the source child-scene group
 # 26/27/28. Walk from its descriptor spawn into its paired event-29 records,
 # verify the group starts at floor index 0, then ride to scene 27 and inspect
