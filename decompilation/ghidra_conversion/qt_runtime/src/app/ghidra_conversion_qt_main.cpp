@@ -173,6 +173,7 @@ std::filesystem::path find_asset_root(
                    " [--field-ares-collision-shop-qa <output-dir>]"
                    " [--field-scene20-physical-entry-qa <output-dir>]"
                    " [--field-scene26-event1-entry-qa <output-dir>]"
+                   " [--field-elevator-physical-entry-qa <output-dir>]"
                    " [--field-security-terminal-physical-entry-qa <output-dir>]"
                    " [--field-scene20-grenade-no-item-qa <output-dir>]"
                    " [--field-secretary-dump <output-dir>]"
@@ -5695,6 +5696,20 @@ int run_field_world_activity_qa(
     return 0;
 }
 
+int run_field_scene26_event1_physical_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries);
+
+int run_field_elevator_physical_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries);
+
 int run_field_security_terminal_physical_entry_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -7694,6 +7709,632 @@ int run_field_scene26_event1_physical_entry_qa(
     return 0;
 }
 
+int run_field_elevator_physical_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    const auto route_output = output / "scene2-event1-route";
+    if (run_field_scene26_event1_physical_entry_qa(
+            field_scene, asset_root, route_output, field_audio_events,
+            source_boundaries) != 0) {
+        return 3;
+    }
+
+    const auto selector_output = output / "scene26-event29-elevator";
+    std::error_code output_error;
+    std::filesystem::remove_all(selector_output, output_error);
+    if (output_error) {
+        std::cerr << "Elevator physical-entry QA: could not clear captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(selector_output, output_error);
+    if (output_error) {
+        std::cerr << "Elevator physical-entry QA: could not create captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::ofstream manifest(selector_output / "frames.tsv", std::ios::trunc);
+    if (!manifest) {
+        std::cerr << "Elevator physical-entry QA: could not write frames.tsv\n";
+        return 3;
+    }
+    manifest << "stage\tframe\tscene\tselector_open\tcurrent_floor"
+                "\tselected_floor\tfeedback\tfeedback_frames_remaining"
+                "\tanimation\tanimation_frame\taudio_event_count"
+                "\ttransition_phase\ttransition_palette_step"
+                "\ttransition_vblanks_in_step\ttransition_alpha\timage\n";
+
+    std::error_code timeline_directory_error;
+    std::filesystem::create_directories(selector_output / "timeline",
+                                        timeline_directory_error);
+    if (timeline_directory_error) {
+        std::cerr << "Elevator physical-entry QA: could not create complete "
+                     "frame capture: "
+                  << timeline_directory_error.message() << '\n';
+        return 3;
+    }
+    std::ofstream timeline_manifest(selector_output / "timeline.tsv",
+                                    std::ios::trunc);
+    if (!timeline_manifest) {
+        std::cerr << "Elevator physical-entry QA: could not write complete "
+                     "frame manifest\n";
+        return 3;
+    }
+    timeline_manifest
+        << "frame\tscene\tselector_open\tcurrent_floor\tselected_floor"
+           "\tfeedback\tfeedback_frames_remaining\tanimation"
+           "\tanimation_frame\taudio_event_count\ttransition_phase"
+           "\ttransition_palette_step\ttransition_vblanks_in_step"
+           "\ttransition_alpha\tinput\timage\n";
+    bool timeline_capture_ok = true;
+    std::uint32_t timeline_frame_count = 0U;
+    auto timeline_input = std::string("neutral");
+
+    std::uint32_t frame = 0U;
+    const auto render = [&field_scene] {
+        QImage image(kSceneWidth, kSceneHeight, QImage::Format_ARGB32);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        field_scene.paint(painter);
+        painter.end();
+        return image;
+    };
+    const auto capture_timeline_frame = [&] {
+        if (!timeline_capture_ok) {
+            return;
+        }
+        const auto image = render();
+        const auto name = std::string("timeline/frame-") +
+                          std::to_string(frame) + ".png";
+        const auto path = selector_output / name;
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            !image.save(QString::fromStdWString(path.wstring()))) {
+            timeline_capture_ok = false;
+            return;
+        }
+        timeline_manifest
+            << frame << '\t'
+            << field_scene.field_scene_reference_for_dump() << '\t'
+            << field_scene.elevator_selector_open_for_dump() << '\t'
+            << static_cast<unsigned>(
+                   field_scene.elevator_selector_current_floor_for_dump())
+            << '\t'
+            << static_cast<unsigned>(
+                   field_scene.elevator_selector_selected_floor_for_dump())
+            << '\t'
+            << static_cast<unsigned>(field_scene
+                                         .elevator_selector_navigation_feedback_for_dump())
+            << '\t'
+            << static_cast<unsigned>(field_scene
+                                         .elevator_selector_navigation_feedback_frames_remaining_for_dump())
+            << '\t' << field_scene.elevator_selector_animating_for_dump()
+            << '\t'
+            << static_cast<unsigned>(
+                   field_scene.elevator_selector_animation_frame_for_dump())
+            << '\t' << field_audio_events.size() << '\t'
+            << static_cast<unsigned>(field_scene
+                                         .elevator_scene_transition_phase_for_dump())
+            << '\t' << static_cast<unsigned>(field_scene
+                                                 .elevator_scene_transition_palette_step_for_dump())
+            << '\t' << static_cast<unsigned>(field_scene
+                                                 .elevator_scene_transition_vblanks_for_dump())
+            << '\t' << static_cast<unsigned>(field_scene
+                                                 .elevator_scene_transition_fade_alpha_for_dump())
+            << '\t' << timeline_input << '\t' << name << '\n';
+        ++timeline_frame_count;
+    };
+    const auto tick_frame = [&] {
+        field_scene.advance_frame();
+        ++frame;
+        capture_timeline_frame();
+    };
+    const auto save = [&](const std::string_view stage) {
+        const auto image = render();
+        const auto name = std::string(stage) + ".bmp";
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            !image.save(QString::fromStdWString(
+                (selector_output / name).wstring()))) {
+            return QImage{};
+        }
+        manifest << stage << '\t' << frame << '\t'
+                 << field_scene.field_scene_reference_for_dump() << '\t'
+                 << field_scene.elevator_selector_open_for_dump() << '\t'
+                 << static_cast<unsigned>(
+                        field_scene.elevator_selector_current_floor_for_dump())
+                 << '\t'
+                 << static_cast<unsigned>(
+                        field_scene.elevator_selector_selected_floor_for_dump())
+                 << '\t'
+                 << static_cast<unsigned>(field_scene
+                                              .elevator_selector_navigation_feedback_for_dump())
+                 << '\t'
+                 << static_cast<unsigned>(field_scene
+                                              .elevator_selector_navigation_feedback_frames_remaining_for_dump())
+                 << '\t'
+                 << field_scene.elevator_selector_animating_for_dump() << '\t'
+                 << static_cast<unsigned>(
+                        field_scene.elevator_selector_animation_frame_for_dump())
+                 << '\t' << field_audio_events.size() << '\t'
+                 << static_cast<unsigned>(field_scene
+                                              .elevator_scene_transition_phase_for_dump())
+                 << '\t' << static_cast<unsigned>(field_scene
+                                                      .elevator_scene_transition_palette_step_for_dump())
+                 << '\t' << static_cast<unsigned>(field_scene
+                                                      .elevator_scene_transition_vblanks_for_dump())
+                 << '\t' << static_cast<unsigned>(field_scene
+                                                      .elevator_scene_transition_fade_alpha_for_dump())
+                 << '\t' << name << '\n';
+        manifest.flush();
+        return image;
+    };
+    const auto tap_dpad = [&](const std::uint8_t nibble) {
+        timeline_input = nibble == 0x01U ? "dpad-up"
+                         : nibble == 0x02U ? "dpad-down"
+                                           : "dpad-other";
+        field_scene.set_controller_nibble(nibble);
+        tick_frame();
+        timeline_input = "neutral";
+        field_scene.set_controller_nibble(0U);
+        tick_frame();
+    };
+    const auto tap_button = [&](const std::uint8_t port_byte) {
+        timeline_input = port_byte == 0x20U ? "B"
+                         : port_byte == 0x40U ? "A"
+                         : port_byte == 0x80U ? "Start"
+                                              : "button-other";
+        field_scene.set_controller_port_byte(port_byte);
+        tick_frame();
+        timeline_input = "neutral";
+        field_scene.set_controller_port_byte(0U);
+        tick_frame();
+    };
+    const auto no_modal_screen = [&field_scene] {
+        return !field_scene.dialogue_open() &&
+               !field_scene.field_interaction_open() &&
+               !field_scene.field_mode_text_open_for_dump() &&
+               !field_scene.shop_menu_open();
+    };
+    const auto scene26 = field_scene.field_scene_reference_for_dump() == 26U;
+    if (!scene26 || field_scene.elevator_selector_open_for_dump() ||
+        !no_modal_screen()) {
+        std::cerr << "Elevator physical-entry QA: scene-26 event route did not "
+                     "leave a live field before the elevator trigger\n";
+        return 3;
+    }
+    capture_timeline_frame();
+    const auto& source_metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    const auto& rectangles = source_metadata.terrain_collision_rectangles;
+    if (rectangles.size() <= 103U ||
+        rectangles[102U].left != 0x0080U ||
+        rectangles[102U].top != 0x0020U ||
+        rectangles[102U].right != 0x009FU ||
+        rectangles[102U].bottom != 0x003FU ||
+        rectangles[102U].value != 0x00DDU ||
+        rectangles[103U].value != 0x00DDU) {
+        std::cerr << "Elevator physical-entry QA: scene-26 event-29 source "
+                     "rectangles do not match ROM records 102-103\n";
+        return 3;
+    }
+
+    const auto activity_boundary_count_before = static_cast<std::size_t>(
+        std::count(source_boundaries.begin(), source_boundaries.end(),
+                   "field.world.activity.started"));
+    std::uint16_t trigger_ticks = 0U;
+    while (trigger_ticks < 120U &&
+           !field_scene.elevator_selector_open_for_dump() &&
+           field_scene.field_scene_reference_for_dump() == 26U) {
+        timeline_input = "dpad-up";
+        field_scene.set_controller_nibble(0x01U); // ordinary Up into 0xDD
+        tick_frame();
+        ++trigger_ticks;
+    }
+    timeline_input = "neutral";
+    field_scene.set_controller_nibble(0U);
+    if (field_scene.elevator_selector_open_for_dump()) {
+        tick_frame();
+    }
+    const auto& movement_transition =
+        field_scene.last_field_movement_transition_for_dump();
+    const auto scene26_map = [&] {
+        QImage image(kSceneWidth, kSceneHeight, QImage::Format_ARGB32);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        field_scene.paint_field_scene_for_dump(painter);
+        painter.end();
+        return image;
+    }();
+    if (!field_scene.elevator_selector_open_for_dump() ||
+        movement_transition.event_code != 0x1DU ||
+        movement_transition.continuation !=
+            MovementModeTransitionContinuation::event_29_world_activity ||
+        movement_transition.kind !=
+            EntityMovementModeTransitionResultKind::world_activity_started ||
+        !no_modal_screen() ||
+        field_scene.field_scene_reference_for_dump() != 26U ||
+        field_scene.elevator_selector_current_floor_for_dump() != 0U ||
+        field_scene.elevator_selector_selected_floor_for_dump() != 0U) {
+        std::cerr << "Elevator physical-entry QA: normal Up did not open the "
+                     "event-29 selector (ticks=" << trigger_ticks
+                  << ", scene=" << field_scene.field_scene_reference_for_dump()
+                  << ", open="
+                  << field_scene.elevator_selector_open_for_dump()
+                  << ", event="
+                  << static_cast<unsigned>(movement_transition.event_code)
+                  << ", continuation="
+                  << static_cast<unsigned>(movement_transition.continuation)
+                  << ")\n";
+        return 3;
+    }
+    const auto opening = save("selector-current-1-selected-1");
+    if (opening.isNull() ||
+        !field_hud_chrome_survives(opening, asset_root) ||
+        count_playfield_lit(opening) < 100U || opening == scene26_map) {
+        std::cerr << "Elevator physical-entry QA: full-screen selector did not "
+                     "replace the field scene cleanly\n";
+        return 3;
+    }
+    const auto steady = [&] {
+        for (std::uint8_t tick = 0U; tick < 30U; ++tick) {
+            tick_frame();
+        }
+        return save("selector-current-1-selected-1-held");
+    }();
+    if (steady.isNull() || steady != opening) {
+        std::cerr << "Elevator physical-entry QA: idle selector frame changed "
+                     "or retained a prior page\n";
+        return 3;
+    }
+
+    const auto audio_before_b = field_audio_events.size();
+    tap_button(0x20U); // source B handler 0x391A requests audio event 0x25
+    if (field_audio_events.size() != audio_before_b + 1U ||
+        field_audio_events.back() != 0x25U) {
+        std::cerr << "Elevator physical-entry QA: B did not request source "
+                     "sound event 0x25\n";
+        return 3;
+    }
+    tap_dpad(0x01U); // source event bit 8 advances one floor
+    const auto selection_feedback_active =
+        save("selector-current-1-selected-2-feedback-active");
+    if (selection_feedback_active.isNull() ||
+        field_scene.elevator_selector_navigation_feedback_for_dump() !=
+            ElevatorSelectorNavigationFeedback::next_floor_active) {
+        std::cerr << "Elevator physical-entry QA: source next-floor button "
+                     "feedback did not appear on selection\n";
+        return 3;
+    }
+    for (std::uint8_t tick = 0U; tick < 6U; ++tick) {
+        tick_frame();
+    }
+    const auto selection_feedback_last_active =
+        save("selector-current-1-selected-2-feedback-tick-7");
+    if (selection_feedback_last_active.isNull() ||
+        field_scene.elevator_selector_navigation_feedback_for_dump() !=
+            ElevatorSelectorNavigationFeedback::next_floor_active ||
+        field_scene.elevator_selector_navigation_feedback_frames_remaining_for_dump() !=
+            1U) {
+        std::cerr << "Elevator physical-entry QA: navigation feedback did not "
+                     "hold for its source eight-VBlank window\n";
+        return 3;
+    }
+    tick_frame();
+    if (field_scene.elevator_selector_navigation_feedback_for_dump() !=
+        ElevatorSelectorNavigationFeedback::next_floor_rest) {
+        std::cerr << "Elevator physical-entry QA: navigation feedback did not "
+                     "restore the source arrow state after eight VBlanks\n";
+        return 3;
+    }
+    const auto current_one_selected_two =
+        save("selector-current-1-selected-2");
+    if (current_one_selected_two.isNull() ||
+        field_scene.elevator_selector_current_floor_for_dump() != 0U ||
+        field_scene.elevator_selector_selected_floor_for_dump() != 1U) {
+        std::cerr << "Elevator physical-entry QA: selected floor label did "
+                     "not change independently of current floor\n";
+        return 3;
+    }
+    for (std::uint8_t tick = 0U; tick < 30U; ++tick) {
+        tick_frame();
+    }
+    const auto current_one_selected_two_held =
+        save("selector-current-1-selected-2-held");
+    if (current_one_selected_two_held.isNull() ||
+        current_one_selected_two_held != current_one_selected_two) {
+        std::cerr << "Elevator physical-entry QA: resting arrow feedback or "
+                     "floor labels changed during a 30-frame hold\n";
+        return 3;
+    }
+    const QRect current_floor_label_region(220, 24, 40, 40);
+    const QRect selected_floor_label_region(220, 88, 40, 48);
+    if (opening.copy(current_floor_label_region) !=
+            current_one_selected_two.copy(current_floor_label_region) ||
+        opening.copy(selected_floor_label_region) ==
+            current_one_selected_two.copy(selected_floor_label_region) ||
+        !image_region_has_color(current_one_selected_two, 220, 88, 40, 48,
+                                QColor(255, 219, 0))) {
+        std::cerr << "Elevator physical-entry QA: selection changed the "
+                     "current-floor label or left the selected-floor label "
+                     "unchanged\n";
+        return 3;
+    }
+
+    timeline_input = "A";
+    field_scene.set_controller_port_byte(0x40U); // source A starts 0x58FF8
+    tick_frame();
+    if (!field_scene.elevator_selector_animating_for_dump() ||
+        field_scene.elevator_selector_animation_frame_for_dump() != 16U) {
+        std::cerr << "Elevator physical-entry QA: A did not start the source "
+                     "17-frame elevator sequence\n";
+        return 3;
+    }
+    timeline_input = "neutral";
+    field_scene.set_controller_port_byte(0U);
+    tick_frame(); // first of eight source VBlanks on frame 16
+    const auto animation_start = save("animation-frame-16");
+    if (animation_start.isNull()) {
+        return 3;
+    }
+    for (std::size_t tick = 2U;
+         tick <= kElevatorSelectorAnimationFrameCount *
+                     kElevatorSelectorAnimationFrameDelay;
+         ++tick) {
+        tick_frame();
+        if (tick == 8U || tick == 40U || tick == 80U || tick == 128U ||
+            tick == kElevatorSelectorAnimationFrameCount *
+                       kElevatorSelectorAnimationFrameDelay) {
+            const auto checkpoint =
+                std::string("animation-tick-") + std::to_string(tick);
+            if (save(checkpoint).isNull()) {
+                return 3;
+            }
+        }
+    }
+    if (field_scene.elevator_selector_animating_for_dump() ||
+        field_scene.elevator_selector_current_floor_for_dump() != 1U ||
+        field_scene.elevator_selector_selected_floor_for_dump() != 1U) {
+        std::cerr << "Elevator physical-entry QA: one floor did not advance "
+                     "after 17 frames x 8 VBlanks\n";
+        return 3;
+    }
+    const auto current_two_selected_two =
+        save("selector-current-2-selected-2");
+    if (current_two_selected_two.isNull() ||
+        current_one_selected_two.copy(current_floor_label_region) ==
+            current_two_selected_two.copy(current_floor_label_region) ||
+        current_one_selected_two.copy(selected_floor_label_region) !=
+            current_two_selected_two.copy(selected_floor_label_region)) {
+        std::cerr << "Elevator physical-entry QA: completed lift travel did "
+                     "not update only the current-floor label\n";
+        return 3;
+    }
+    tap_dpad(0x01U);
+    const auto current_two_selected_three_feedback_active =
+        save("selector-current-2-selected-3-feedback-active");
+    if (current_two_selected_three_feedback_active.isNull() ||
+        field_scene.elevator_selector_current_floor_for_dump() != 1U ||
+        field_scene.elevator_selector_selected_floor_for_dump() != 2U ||
+        field_scene.elevator_selector_navigation_feedback_for_dump() !=
+            ElevatorSelectorNavigationFeedback::next_floor_active) {
+        std::cerr << "Elevator physical-entry QA: independently selected "
+                     "third-floor label is missing\n";
+        return 3;
+    }
+    for (std::uint8_t tick = 0U; tick < 7U; ++tick) {
+        tick_frame();
+    }
+    if (field_scene.elevator_selector_navigation_feedback_for_dump() !=
+        ElevatorSelectorNavigationFeedback::next_floor_rest) {
+        std::cerr << "Elevator physical-entry QA: second arrow response did "
+                     "not finish after the source wait\n";
+        return 3;
+    }
+    const auto current_two_selected_three_rest =
+        save("selector-current-2-selected-3");
+    if (current_two_selected_three_rest.isNull() ||
+        current_two_selected_three_rest ==
+            current_two_selected_three_feedback_active ||
+        !image_region_has_color(current_two_selected_three_rest, 220, 24, 40,
+                                40, QColor(255, 219, 0)) ||
+        !image_region_has_color(current_two_selected_three_rest, 220, 88, 40,
+                                48, QColor(255, 219, 0))) {
+        std::cerr << "Elevator physical-entry QA: current and selected floor "
+                     "digits were not both visible over resting arrows\n";
+        return 3;
+    }
+    const auto actual = save("actual");
+    if (actual.isNull() || actual != current_two_selected_three_rest) {
+        std::cerr << "Elevator physical-entry QA: CLI actual.bmp did not capture "
+                     "the stable selector scene\n";
+        return 3;
+    }
+    timeline_input = "A";
+    field_scene.set_controller_port_byte(0x40U);
+    tick_frame();
+    if (!field_scene.elevator_selector_animating_for_dump() ||
+        field_scene.elevator_selector_animation_frame_for_dump() != 16U) {
+        return 3;
+    }
+    timeline_input = "neutral";
+    field_scene.set_controller_port_byte(0U);
+    tick_frame();
+    for (std::size_t tick = 2U;
+         tick <= kElevatorSelectorAnimationFrameCount *
+                     kElevatorSelectorAnimationFrameDelay;
+         ++tick) {
+        tick_frame();
+    }
+    if (field_scene.elevator_selector_current_floor_for_dump() != 2U ||
+        field_scene.elevator_selector_selected_floor_for_dump() != 2U ||
+        field_scene.elevator_selector_animating_for_dump()) {
+        std::cerr << "Elevator physical-entry QA: third-floor preview did not "
+                     "settle at source cadence\n";
+        return 3;
+    }
+    const auto third_floor_preview = save("selector-current-3-selected-3");
+    if (third_floor_preview.isNull()) {
+        return 3;
+    }
+    tap_button(0x80U); // Start begins the source 0x131C palette fade.
+    if (!field_scene.elevator_selector_open_for_dump() ||
+        field_scene.elevator_scene_transition_phase_for_dump() !=
+            ElevatorSceneTransitionPhase::fading_to_black ||
+        field_scene.elevator_scene_transition_palette_step_for_dump() != 0U ||
+        field_scene.elevator_scene_transition_vblanks_for_dump() != 1U) {
+        std::cerr << "Elevator physical-entry QA: Start did not enter the "
+                     "source-timed destination fade\n";
+        return 3;
+    }
+    for (std::uint8_t palette_step = 1U;
+         palette_step <= kElevatorSceneTransitionPaletteStepCount;
+         ++palette_step) {
+        if (palette_step != 1U) {
+            tick_frame(); // first of the two source VBlanks for this pass
+        }
+        tick_frame(); // second VBlank advances one source palette pass
+        const auto final_fade_out =
+            palette_step == kElevatorSceneTransitionPaletteStepCount;
+        const auto transition_state_matches = final_fade_out
+            ? field_scene.field_scene_reference_for_dump() == 28U &&
+                  field_scene.elevator_scene_transition_phase_for_dump() ==
+                      ElevatorSceneTransitionPhase::fading_from_black &&
+                  field_scene.elevator_scene_transition_palette_step_for_dump() ==
+                      0U &&
+                  field_scene.elevator_scene_transition_fade_alpha_for_dump() ==
+                      255U
+            : field_scene.field_scene_reference_for_dump() == 26U &&
+                  field_scene.elevator_scene_transition_phase_for_dump() ==
+                      ElevatorSceneTransitionPhase::fading_to_black &&
+                  field_scene.elevator_scene_transition_palette_step_for_dump() ==
+                      palette_step &&
+                  field_scene.elevator_scene_transition_fade_alpha_for_dump() !=
+                      0U;
+        if (!transition_state_matches) {
+            std::cerr << "Elevator physical-entry QA: fade-out palette pass "
+                         "did not advance at the source cadence\n";
+            return 3;
+        }
+        const auto checkpoint = std::string("destination-fade-out-step-") +
+                                std::to_string(palette_step);
+        if (save(checkpoint).isNull()) {
+            return 3;
+        }
+    }
+    const auto& destination_metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    const auto destination_spawn =
+        destination_metadata.initial_field_records[0U];
+    const auto black_handoff = save("destination-black-handoff");
+    QImage expected_black(kSceneWidth, kSceneHeight, QImage::Format_ARGB32);
+    expected_black.fill(Qt::black);
+    if (black_handoff.isNull() || black_handoff != expected_black ||
+        field_scene.field_scene_reference_for_dump() != 28U ||
+        field_scene.elevator_selector_open_for_dump() ||
+        field_scene.elevator_scene_transition_phase_for_dump() !=
+            ElevatorSceneTransitionPhase::fading_from_black ||
+        field_scene.elevator_scene_transition_fade_alpha_for_dump() != 255U) {
+        std::cerr << "Elevator physical-entry QA: scene handoff did not replace "
+                     "the selector at full black\n";
+        return 3;
+    }
+    for (std::uint8_t palette_step = 1U;
+         palette_step <= kElevatorSceneTransitionPaletteStepCount;
+         ++palette_step) {
+        tick_frame(); // first source VBlank in the palette step wait
+        if (palette_step == 9U) {
+            const auto midpoint = save("destination-fade-in-midpoint");
+            if (midpoint.isNull() ||
+                field_scene.elevator_scene_transition_fade_alpha_for_dump() <
+                    100U ||
+                field_scene.elevator_scene_transition_fade_alpha_for_dump() >
+                    155U) {
+                std::cerr << "Elevator physical-entry QA: destination fade "
+                             "midpoint is outside the expected palette range\n";
+                return 3;
+            }
+        }
+        tick_frame(); // second VBlank advances one source palette pass
+        if (field_scene.elevator_scene_transition_palette_step_for_dump() !=
+            palette_step) {
+            std::cerr << "Elevator physical-entry QA: fade-in palette pass "
+                         "did not advance at the source cadence\n";
+            return 3;
+        }
+        const auto checkpoint = std::string("destination-fade-in-step-") +
+                                std::to_string(palette_step);
+        if (save(checkpoint).isNull()) {
+            return 3;
+        }
+    }
+    const auto destination_position =
+        field_scene.field_entity_world_position();
+    const auto destination = save("scene28-entry");
+    if (destination.isNull() ||
+        field_scene.field_scene_reference_for_dump() != 28U ||
+        field_scene.elevator_selector_open_for_dump() ||
+        field_scene.elevator_scene_transition_phase_for_dump() !=
+            ElevatorSceneTransitionPhase::idle ||
+        field_scene.elevator_scene_transition_fade_alpha_for_dump() != 0U ||
+        destination_position.x != destination_spawn.x ||
+        destination_position.y != destination_spawn.y ||
+        !field_scene.field_entity_visible_for_dump() ||
+        !field_hud_chrome_survives(destination, asset_root) ||
+        destination == third_floor_preview || !no_modal_screen()) {
+        std::cerr << "Elevator physical-entry QA: selected child scene did not "
+                     "replace the selector at its descriptor spawn\n";
+        return 3;
+    }
+    const auto activity_boundary_count_after = static_cast<std::size_t>(
+        std::count(source_boundaries.begin(), source_boundaries.end(),
+                   "field.world.activity.started"));
+    if (activity_boundary_count_after <= activity_boundary_count_before ||
+        std::find(source_boundaries.begin(), source_boundaries.end(),
+                  "field.elevator.selector.opened") == source_boundaries.end() ||
+        std::find(source_boundaries.begin(), source_boundaries.end(),
+                  "field.elevator.destination_loaded") ==
+            source_boundaries.end() ||
+        std::find(source_boundaries.begin(), source_boundaries.end(),
+                  "field.elevator.destination_fade_out_started") ==
+            source_boundaries.end() ||
+        std::find(source_boundaries.begin(), source_boundaries.end(),
+                  "field.elevator.destination_fade_in_started") ==
+            source_boundaries.end() ||
+        std::find(source_boundaries.begin(), source_boundaries.end(),
+                  "field.elevator.destination_fade_finished") ==
+            source_boundaries.end()) {
+        std::cerr << "Elevator physical-entry QA: source activity or native "
+                     "destination transition boundary is missing\n";
+        return 3;
+    }
+    for (std::uint8_t tick = 0U; tick < 30U; ++tick) {
+        tick_frame();
+    }
+    const auto destination_held = save("scene28-held-30-frames");
+    if (destination_held.isNull() || destination_held != destination) {
+        std::cerr << "Elevator physical-entry QA: destination frame retained "
+                     "selector graphics or changed during idle hold\n";
+        return 3;
+    }
+    timeline_manifest.flush();
+    if (!timeline_capture_ok || timeline_frame_count != frame + 1U) {
+        std::cerr << "Elevator physical-entry QA: complete timeline capture "
+                     "did not include every update (captured="
+                  << timeline_frame_count << ", expected=" << frame + 1U
+                  << ")\n";
+        return 3;
+    }
+    std::cout << "field_elevator_physical_entry_qa=passed trigger=scene26/event29 "
+                 "records=102,103 selector_frames=17 delay=8 "
+                 "destination=28 timeline_frames="
+              << timeline_frame_count << " audio_events="
+              << field_audio_events.size() << " artifacts="
+              << selector_output.string() << '\n';
+    return 0;
+}
+
 int run_field_stoker_collision_to_dialogue_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -8613,6 +9254,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_scene26_event1_entry_qa_path;
         std::optional<std::filesystem::path>
+            field_elevator_physical_entry_qa_path;
+        std::optional<std::filesystem::path>
             field_security_terminal_physical_entry_qa_path;
         std::optional<std::filesystem::path>
             field_scene20_grenade_no_item_qa_path;
@@ -8675,6 +9318,7 @@ int main(int argc, char** argv) {
                        " [--field-ares-collision-shop-qa <output-dir>]"
                        " [--field-scene20-physical-entry-qa <output-dir>]"
                        " [--field-scene26-event1-entry-qa <output-dir>]"
+                       " [--field-elevator-physical-entry-qa <output-dir>]"
                        " [--field-security-terminal-physical-entry-qa <output-dir>]"
                        " [--field-stoker-collision-qa <output-dir>]"
                        " [--field-command-dump <file>]"
@@ -8763,6 +9407,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene26_event1_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-elevator-physical-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_elevator_physical_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -9105,36 +9756,24 @@ int main(int argc, char** argv) {
                                  "scene-26 source records are unavailable\n";
                     return 3;
                 }
-                // Start this trigger QA from the ROM scene-26 descriptor and
-                // the selected New Game Joshua record. It verifies physical
-                // event entry after the map is loaded; it does not claim the
-                // incomplete overworld/building path reaches scene 26.
+                // This is a source-coordinate pre-trigger checkpoint above
+                // the Security Terminal collision, not a claim that the
+                // descriptor-spawn route is understood.
                 SaveFieldRestoreState checkpoint{};
                 checkpoint.world_mode = 26U;
-                checkpoint.camera_x =
-                    scene26->source_metadata.initial_camera_x_fixed;
-                checkpoint.camera_y =
-                    scene26->source_metadata.initial_camera_y_fixed;
+                checkpoint.camera_x = 0x1A00U;
+                checkpoint.camera_y = 0x0500U;
                 for (std::size_t slot = 0U;
                      slot < checkpoint.runner_positions.size(); ++slot) {
                     checkpoint.runner_positions[slot] =
                         RestoredRunnerPosition{
-                        scene26->source_metadata.initial_field_records[slot]
+                            scene26->source_metadata.initial_field_records[slot]
                                 .x,
-                        scene26->source_metadata.initial_field_records[slot]
+                            scene26->source_metadata.initial_field_records[slot]
                                 .y};
                 }
-                // The descriptor spawn is separated from this terminal by
-                // additional unresolved map barriers. Use a source-coordinate
-                // pre-trigger point above records 124-125; the QA still walks
-                // into the event with ordinary input and checks the signed
-                // sample gate, prompt, audio, and full-screen return.
                 checkpoint.runner_positions[0U] =
                     RestoredRunnerPosition{0x1A00U, 0x0500U};
-                // Keep the camera aligned with this checkpoint; the scene
-                // descriptor camera belongs to its separate spawn position.
-                checkpoint.camera_x = 0x1A00U;
-                checkpoint.camera_y = 0x0500U;
                 checkpoint.roster.default_record.bytes =
                     smoke_state.joshua_selection->live_joshua_record;
                 checkpoint.active_runner_slot = 0U;
@@ -9191,6 +9830,12 @@ int main(int argc, char** argv) {
                 return run_field_scene26_event1_physical_entry_qa(
                     field_scene, asset_root,
                     *field_scene26_event1_entry_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_elevator_physical_entry_qa_path.has_value()) {
+                return run_field_elevator_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_elevator_physical_entry_qa_path,
                     field_audio_events, field_source_boundaries);
             }
             if (field_security_terminal_physical_entry_qa_path.has_value()) {

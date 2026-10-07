@@ -16,6 +16,8 @@ constexpr const char* kModeSelectionAlias =
     "records.field.mode.selection.state";
 constexpr const char* kSceneProfileTableAlias =
     "records.field.scene.profiles";
+constexpr const char* kElevatorSceneGroupsAlias =
+    "records.field.elevator.scene.groups";
 constexpr const char* kFieldMovementDirectionTableAlias =
     "records.field.entity.movement.direction.table";
 constexpr const char* kFieldCollisionProbeOffsetBanksAlias =
@@ -293,6 +295,9 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
         catalog, kSceneProfileTableAlias,
         kFieldSceneProfileCount * kFieldSceneProfileByteCount,
         result.errors);
+    const auto elevator_scene_groups = read_record_bytes(
+        catalog, kElevatorSceneGroupsAlias,
+        kFieldElevatorSceneGroupTableByteCount, result.errors);
     const auto movement_direction_table = read_record_bytes(
         catalog, kFieldMovementDirectionTableAlias,
         kFieldMovementDirectionTableByteCount, result.errors);
@@ -306,7 +311,7 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
         catalog, kFieldMovementRouteTableAlias, kFieldMovementRouteByteCount,
         result.errors);
     if (!action_profiles.has_value() || !mode_selection.has_value() ||
-        !scene_profiles.has_value() ||
+        !scene_profiles.has_value() || !elevator_scene_groups.has_value() ||
         !movement_direction_table.has_value() ||
         !collision_probe_offset_banks.has_value() ||
         !controller_heading_table.has_value() ||
@@ -333,6 +338,29 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
                 offset + kFieldSceneProfileByteCount));
         assets.scene_profile_table_source[scene_id] =
             decode_scene_profile(profile_bytes);
+        const auto group_offset =
+            scene_id * kFieldElevatorSceneGroupRecordByteCount;
+        auto& group = assets.field_elevator_scene_groups[scene_id];
+        group.count = (*elevator_scene_groups)[group_offset];
+        if (group.count > kFieldElevatorSceneGroupMemberCount) {
+            result.errors.emplace_back(
+                "field elevator scene-group count is out of range: " +
+                std::to_string(scene_id));
+            return result;
+        }
+        for (std::size_t member = 0; member < group.scene_ids.size(); ++member) {
+            const auto scene_reference =
+                (*elevator_scene_groups)[group_offset + 1U + member];
+            if ((member < group.count &&
+                 scene_reference >= kFieldSceneProfileCount) ||
+                (member >= group.count && scene_reference != 0U)) {
+                result.errors.emplace_back(
+                    "field elevator scene-group member is invalid: " +
+                    std::to_string(scene_id));
+                return result;
+            }
+            group.scene_ids[member] = scene_reference;
+        }
     }
     bool rebuild_requested = true;
     assets.field_movement_direction_offsets =

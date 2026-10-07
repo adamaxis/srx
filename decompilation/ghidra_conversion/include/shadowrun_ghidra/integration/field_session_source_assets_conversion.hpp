@@ -23,6 +23,11 @@ constexpr std::size_t kFieldSessionModeSelectionWordCount = 0x17U;
 constexpr std::size_t kFieldSceneProfileWordCount = 48U;
 constexpr std::size_t kFieldSceneProfileByteCount =
     kFieldSceneProfileWordCount * sizeof(std::uint16_t);
+constexpr std::size_t kFieldElevatorSceneGroupMemberCount = 5U;
+constexpr std::size_t kFieldElevatorSceneGroupRecordByteCount =
+    1U + kFieldElevatorSceneGroupMemberCount;
+constexpr std::size_t kFieldElevatorSceneGroupTableByteCount =
+    kFieldSceneProfileCount * kFieldElevatorSceneGroupRecordByteCount;
 constexpr std::uint16_t kFirstWorldActivityResourceScene = 0x15U;
 constexpr std::uint16_t kWorldActivityResourceSceneEnd = 0x2CU;
 constexpr std::size_t kFieldSessionTerrainLayerWordCount = 0xE10U;
@@ -104,6 +109,14 @@ struct FieldSceneSourceRecord {
     std::array<std::uint8_t, 0x1000> terrain_collision_map{};
 };
 
+struct FieldElevatorSceneGroupSourceRecord {
+    // ROM 0x58DE0's child scene list, resolved offline from the selected
+    // scene profile's resource bundle. IDs are copied into typed host data;
+    // the Qt runtime never follows the profile or list pointers.
+    std::uint8_t count = 0;
+    std::array<std::uint16_t, kFieldElevatorSceneGroupMemberCount> scene_ids{};
+};
+
 // Direct source records extracted from the US ROM. These are host-owned
 // inputs for the existing field-session conversion, not a runtime ROM view.
 struct FieldSessionSourceAssets {
@@ -116,6 +129,10 @@ struct FieldSessionSourceAssets {
     // complete table as one direct host record; runtime code never follows
     // the ROM pointer table.
     FieldSceneProfileTable scene_profile_table_source{};
+    // Each scene profile may name a related group of elevator destinations.
+    // Empty rows are explicit; populated rows come from the source child list.
+    std::array<FieldElevatorSceneGroupSourceRecord, kFieldSceneProfileCount>
+        field_elevator_scene_groups{};
     // One entry for every row in ROM 0x3232. Missing entries are retained as
     // explicit optionals so a partial extraction cannot silently become a
     // fabricated field scene.

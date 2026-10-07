@@ -7741,7 +7741,122 @@ GenesisBootPatternData decode_genesis_field_magic_graphics(
     return scene;
 }
 
+GenesisBootPatternData decode_genesis_field_elevator_selector_graphics(
+    const std::vector<std::uint8_t>& rom) {
+    GenesisBootPatternData scene{
+        std::vector<std::uint8_t>(0x10000U, 0),
+        read_genesis_field_palette_set(rom, 0xD29D6U),
+    };
+    write_genesis_1530_vram(rom, 0x1B57B8U, 0x1E20U,
+                            scene.pattern_vram);
+    return scene;
+}
+
 } // namespace
+
+RgbaImage decode_genesis_field_elevator_selector_background(
+    const std::vector<std::uint8_t>& rom,
+    const std::size_t elevator_animation_frame) {
+    constexpr std::size_t kSelectorAnimationTable = 0x1B6168U;
+    constexpr std::size_t kPlane = 0xE000U;
+    constexpr std::size_t kAnimationFrameCount = 17U;
+    if (elevator_animation_frame >= kAnimationFrameCount) {
+        throw std::out_of_range(
+            "elevator selector animation frame is out of range");
+    }
+
+    // 0x58DE0 replaces Plane A with the room and draws one of the 17 source
+    // elevator-column frames. Floor numbers are separate Plane-B writers.
+    const auto scene = decode_genesis_field_elevator_selector_graphics(rom);
+
+    RgbaImage image{
+        320U, 224U,
+        std::vector<native::Rgba8>(320U * 224U,
+                                   native::Rgba8{0, 0, 0, 255}),
+    };
+    // Plane A's transparent cells expose the selector's dynamic Plane-B
+    // floor digits. 0x1728 installs the 34x28 room; 0x5906E draws animation
+    // frame zero as the 1x24 elevator column at E208.
+    blit_genesis_1728_name_table(rom, scene, image, 0x1B5D82U, 34U, 28U,
+                                 kPlane, kPlane, 0U, true);
+    blit_genesis_name_table(
+        rom, scene, image,
+        kSelectorAnimationTable + elevator_animation_frame * 0x30U,
+        1U, 24U, 0xE208U, kPlane, 0U, false);
+    return image;
+}
+
+RgbaImage decode_genesis_field_elevator_selector_floor_layer(
+    const std::vector<std::uint8_t>& rom, const std::size_t floor_index,
+    const bool selected_floor_label) {
+    constexpr std::size_t kSelectedFloorPatternTable = 0x1B60E8U;
+    constexpr std::size_t kCurrentFloorPatternTable = 0x1B6100U;
+    constexpr std::size_t kSelectorPlane = 0xC000U;
+    constexpr std::size_t kFloorCount = 5U;
+    if (floor_index >= kFloorCount) {
+        throw std::out_of_range("elevator floor index is out of range");
+    }
+    const auto scene = decode_genesis_field_elevator_selector_graphics(rom);
+    RgbaImage image{
+        320U, 224U,
+        std::vector<native::Rgba8>(320U * 224U,
+                                   native::Rgba8{0, 0, 0, 0}),
+    };
+    // ROM 0x58FA8 writes the selected destination at C7BA from 1B60E8
+    // (2x1 tiles). ROM 0x58FCC writes the current lift floor at C2BA from
+    // 1B6100 (2x2 tiles). Keep the transparent layers separate so Qt can
+    // show a new destination without falsifying the current lift state.
+    if (selected_floor_label) {
+        blit_genesis_name_table(
+            rom, scene, image,
+            kSelectedFloorPatternTable + floor_index * 4U, 2U, 1U,
+            0xC7BAU, kSelectorPlane, 0x2000U, true);
+    } else {
+        blit_genesis_name_table(
+            rom, scene, image,
+            kCurrentFloorPatternTable + floor_index * 8U, 2U, 2U,
+            0xC2BAU, kSelectorPlane, 0x2000U, true);
+    }
+    return image;
+}
+
+RgbaImage decode_genesis_field_elevator_selector_feedback_layer(
+    const std::vector<std::uint8_t>& rom,
+    const bool previous_floor_input,
+    const bool active_phase) {
+    constexpr std::size_t kSelectorPlane = 0xE000U;
+    constexpr std::size_t kFeedbackRailActiveTable = 0x1B615CU;
+    constexpr std::size_t kFeedbackRailRestTable = 0x1B6140U;
+    constexpr std::size_t kPreviousActiveTable = 0x1B6138U;
+    constexpr std::size_t kPreviousRestTable = 0x1B6154U;
+    constexpr std::size_t kNextActiveTable = 0x1B6130U;
+    constexpr std::size_t kNextRestTable = 0x1B614CU;
+
+    const auto scene = decode_genesis_field_elevator_selector_graphics(rom);
+    RgbaImage image{
+        320U, 224U,
+        std::vector<native::Rgba8>(320U * 224U,
+                                   native::Rgba8{0, 0, 0, 0}),
+    };
+    // ROM 0x58EBC paints the elevator rail plus one of two button responses,
+    // waits eight VBlanks, then paints the corresponding resting response.
+    blit_genesis_name_table(
+        rom, scene, image,
+        active_phase ? kFeedbackRailActiveTable : kFeedbackRailRestTable,
+        2U, 3U, 0xE73AU, kSelectorPlane, 0U, true);
+    if (previous_floor_input) {
+        blit_genesis_name_table(
+            rom, scene, image,
+            active_phase ? kPreviousActiveTable : kPreviousRestTable,
+            2U, 2U, 0xE8BAU, kSelectorPlane, 0U, true);
+    } else {
+        blit_genesis_name_table(
+            rom, scene, image,
+            active_phase ? kNextActiveTable : kNextRestTable,
+            2U, 2U, 0xE63AU, kSelectorPlane, 0U, true);
+    }
+    return image;
+}
 
 RgbaImage decode_genesis_field_magic_menu_font(
     const std::vector<std::uint8_t>& rom) {

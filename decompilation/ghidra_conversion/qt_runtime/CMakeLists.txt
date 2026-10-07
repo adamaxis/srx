@@ -15,6 +15,7 @@ set(SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS
 add_executable(shadowrun_ghidra_conversion_qt
     src/app/ghidra_conversion_qt_main.cpp
     src/field/field_scene_runtime.cpp
+    src/field/elevator_selector_runtime.cpp
     src/menus/attributes_skills_menu_runtime.cpp
     src/field/field_clips_menu_runtime.cpp
     src/menus/shop_menu_runtime.cpp
@@ -280,6 +281,20 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_scene26_event1_entry_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Continue the ordinary-input event-table route into scene 26, cross its ROM
+# event-29 elevator trigger, animate the two independently tracked floor
+# labels at the 17x8 cadence, then load the selected child scene through its
+# extracted profile group. Captures cover the full selector, animation, and
+# clean destination field with its HUD.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_elevator_physical_entry_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-elevator-physical-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-elevator-physical-entry-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_elevator_physical_entry_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Follow the same ordinary-input route, select the visible Frag Grenade option
 # with B, and exercise the no-item result and its clean A dismissal. The New
 # Game party inventory is checked before the choice; this is not a synthetic
@@ -531,10 +546,9 @@ set_tests_properties(shadowrun_ghidra_conversion_qt_security_terminal_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Scene 26 collision records 124-125 contain the signed event-0x18 Security
-# Terminal region. Start from a source-coordinate pre-trigger checkpoint,
-# enter it with ordinary d-pad input, show both choices, and Walk Away. This
-# verifies the physical event handler; full navigation through scene 26's
-# intervening collision barriers remains open.
+# Terminal region. Start at the ROM descriptor spawn, traverse scene-26
+# corridors and A2/82 terrain interactions with ordinary d-pad input, enter
+# the terminal, show both choices, and Walk Away.
 add_test(NAME shadowrun_ghidra_conversion_qt_security_terminal_physical_entry_qa
          COMMAND shadowrun_ghidra_conversion_qt
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
@@ -809,6 +823,20 @@ target_link_libraries(shadowrun_ghidra_field_interaction_runtime_test
     PRIVATE shadowrun_ghidra_conversion_runtime Qt6::Gui)
 add_test(NAME shadowrun_ghidra_field_interaction_runtime
          COMMAND shadowrun_ghidra_field_interaction_runtime_test)
+
+add_executable(shadowrun_ghidra_field_elevator_selector_runtime_test
+    tests/field/elevator_selector_runtime_test.cpp
+    src/field/elevator_selector_runtime.cpp
+)
+target_include_directories(shadowrun_ghidra_field_elevator_selector_runtime_test
+    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
+set_target_properties(shadowrun_ghidra_field_elevator_selector_runtime_test
+    PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
+add_test(NAME shadowrun_ghidra_field_elevator_selector_runtime
+         COMMAND shadowrun_ghidra_field_elevator_selector_runtime_test)
 
 if (WIN32)
     find_program(SHADOWRUN_GHIDRA_QT_WINDEPLOYQT

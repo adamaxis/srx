@@ -829,6 +829,9 @@ void extract_field_session_record_assets(
     // carrying a ROM pointer table.
     std::vector<std::uint8_t> scene_profiles;
     scene_profiles.reserve(shadowrun::rom::kFieldModeCount * 0x60U);
+    std::vector<std::uint8_t> elevator_scene_groups;
+    elevator_scene_groups.reserve(
+        shadowrun::rom::kFieldModeCount * 6U);
     for (std::uint16_t scene_id = 0;
          scene_id < shadowrun::rom::kFieldModeCount; ++scene_id) {
         const auto table_entry =
@@ -845,6 +848,49 @@ void extract_field_session_record_assets(
             rom.begin() + static_cast<std::ptrdiff_t>(profile_offset),
             rom.begin() +
                 static_cast<std::ptrdiff_t>(profile_offset + 0x60U));
+
+        // 0x58DE0 reads a scene group from the selected profile's +0x58
+        // resource pointer: its first longword points to a word-counted list
+        // of child scene IDs. Resolve the list now, preserving empty rows for
+        // profiles without an elevator group so the runtime consumes only
+        // typed native IDs.
+        std::array<std::uint8_t, 6U> elevator_group{};
+        const auto resource_bundle = static_cast<std::size_t>(
+            read_big_endian_long(rom, profile_offset + 0x58U));
+        if (resource_bundle != 0U && resource_bundle <= rom.size() &&
+            rom.size() - resource_bundle >= sizeof(std::uint32_t)) {
+            const auto group_offset = static_cast<std::size_t>(
+                read_big_endian_long(rom, resource_bundle));
+            if (group_offset != 0U && group_offset <= rom.size() &&
+                rom.size() - group_offset >= sizeof(std::uint16_t)) {
+                const auto count = read_big_endian_word(rom, group_offset);
+                if (count >= 2U && count <= 5U &&
+                    rom.size() - group_offset >=
+                        (1U + static_cast<std::size_t>(count)) *
+                            sizeof(std::uint16_t)) {
+                    std::array<std::uint16_t, 5U> child_scenes{};
+                    bool valid_group = true;
+                    for (std::size_t child = 0; child < count; ++child) {
+                        child_scenes[child] = read_big_endian_word(
+                            rom, group_offset +
+                                     (1U + child) * sizeof(std::uint16_t));
+                        valid_group = valid_group &&
+                            child_scenes[child] <
+                                shadowrun::rom::kFieldModeCount;
+                    }
+                    if (valid_group) {
+                        elevator_group[0] = static_cast<std::uint8_t>(count);
+                        for (std::size_t child = 0; child < count; ++child) {
+                            elevator_group[1U + child] =
+                                static_cast<std::uint8_t>(child_scenes[child]);
+                        }
+                    }
+                }
+            }
+        }
+        elevator_scene_groups.insert(elevator_scene_groups.end(),
+                                     elevator_group.begin(),
+                                     elevator_group.end());
 
         // ROM 0x167AE resolves FFDE1E from the selected resource-scene
         // profile, dereferences the first bundle longword, and passes that
@@ -889,6 +935,8 @@ void extract_field_session_record_assets(
     }
     write_host_record(scene_profiles, root,
                       "records/field/scene-profiles.bin");
+    write_host_record(elevator_scene_groups, root,
+                      "records/field/elevator-scene-groups.bin");
     // ROM 0x0BABC loads the eight signed fixed-point movement vectors from
     // 0x0C002 before 0x0B77E probes the candidate position. Keep this as one
     // direct source record; the conversion loader owns its typed pairs.
@@ -1451,6 +1499,9 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
         "records.field.scene.profiles",
         "records/field/scene-profiles.bin");
     emit_generated_state_row(
+        "records.field.elevator.scene.groups",
+        "records/field/elevator-scene-groups.bin");
+    emit_generated_state_row(
         "records.field.entity.movement.direction.table",
         "records/field/entity-movement-direction-table.bin");
     emit_generated_state_row(
@@ -1823,6 +1874,58 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         written, missing, blank);
     write("menu/field/background.bmp", assets.field_menu_background, "background",
           "0x10F50", false);
+    for (std::size_t frame = 0; frame < 17U; ++frame) {
+        write_catalog_asset(
+            root, "menu/field/elevator-selector-background-frame-" +
+                      std::to_string(frame) + ".bmp",
+            shadowrun::graphics::
+                decode_genesis_field_elevator_selector_background(rom, frame),
+            "background",
+            "0x58DE0/0x566D8/0x1530/0x1728;0x5906E frame=" +
+                std::to_string(frame),
+            false, manifest, written, missing, blank);
+    }
+    for (std::size_t floor = 0; floor < 5U; ++floor) {
+        write_catalog_asset(
+            root, "menu/field/elevator-selector-current-floor-" +
+                      std::to_string(floor) + ".bmp",
+            shadowrun::graphics::
+                decode_genesis_field_elevator_selector_floor_layer(
+                    rom, floor, false),
+            "overlay", "0x58FCC/0x1B6100",
+            false, manifest, written, missing, blank);
+        write_catalog_asset(
+            root, "menu/field/elevator-selector-selected-floor-" +
+                      std::to_string(floor) + ".bmp",
+            shadowrun::graphics::
+                decode_genesis_field_elevator_selector_floor_layer(
+                    rom, floor, true),
+            "overlay", "0x58FA8/0x1B60E8",
+            false, manifest, written, missing, blank);
+    }
+    for (const bool previous_floor_input : {true, false}) {
+        for (const bool active_phase : {true, false}) {
+            const auto direction = previous_floor_input ? "previous" : "next";
+            const auto phase = active_phase ? "active" : "rest";
+            write_catalog_asset(
+                root,
+                "menu/field/elevator-selector-feedback-" +
+                    std::string(direction) + "-" + std::string(phase) +
+                    ".bmp",
+                shadowrun::graphics::
+                    decode_genesis_field_elevator_selector_feedback_layer(
+                        rom, previous_floor_input, active_phase),
+                "overlay",
+                active_phase
+                    ? (previous_floor_input
+                           ? "0x58EBC/0x1B615C/0x1B6138/0xE8BA"
+                           : "0x58EBC/0x1B615C/0x1B6130/0xE63A")
+                    : (previous_floor_input
+                           ? "0x58F1E/0x1B6140/0x1B6154/0xE8BA"
+                           : "0x58F1E/0x1B6140/0x1B614C/0xE63A"),
+                false, manifest, written, missing, blank);
+        }
+    }
     write_catalog_asset(
         root, "menu/field/service-background.bmp",
         shadowrun::graphics::decode_genesis_field_service_background(rom),

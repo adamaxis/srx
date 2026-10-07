@@ -54,6 +54,7 @@
 #include "hotel_menu_runtime.hpp"
 #include "field_mode_text_runtime.hpp"
 #include "field_interaction_runtime.hpp"
+#include "elevator_selector_runtime.hpp"
 #include "field_menu_text_catalog.hpp"
 #include "shop_menu_runtime.hpp"
 
@@ -210,6 +211,47 @@ public:
     }
     bool field_interaction_open() const noexcept {
         return field_interaction_.open();
+    }
+    bool elevator_selector_open_for_dump() const noexcept {
+        return field_elevator_selector_.is_open();
+    }
+    bool elevator_selector_animating_for_dump() const noexcept {
+        return field_elevator_selector_.is_animating();
+    }
+    std::uint8_t elevator_selector_current_floor_for_dump() const noexcept {
+        return field_elevator_selector_.current_floor();
+    }
+    std::uint8_t elevator_selector_selected_floor_for_dump() const noexcept {
+        return field_elevator_selector_.selected_floor();
+    }
+    std::uint8_t elevator_selector_animation_frame_for_dump() const noexcept {
+        return field_elevator_selector_.animation_frame();
+    }
+    ElevatorSelectorNavigationFeedback
+    elevator_selector_navigation_feedback_for_dump() const noexcept {
+        return field_elevator_selector_.navigation_feedback();
+    }
+    std::uint8_t
+    elevator_selector_navigation_feedback_frames_remaining_for_dump()
+        const noexcept {
+        return field_elevator_selector_.navigation_feedback_frames_remaining();
+    }
+    std::uint16_t elevator_selector_destination_for_dump() const noexcept {
+        return field_elevator_selector_.selected_scene_id();
+    }
+    ElevatorSceneTransitionPhase
+    elevator_scene_transition_phase_for_dump() const noexcept {
+        return field_elevator_scene_transition_.phase();
+    }
+    std::uint8_t elevator_scene_transition_palette_step_for_dump() const noexcept {
+        return field_elevator_scene_transition_.palette_step();
+    }
+    std::uint8_t
+    elevator_scene_transition_vblanks_for_dump() const noexcept {
+        return field_elevator_scene_transition_.vblanks_in_palette_step();
+    }
+    std::uint8_t elevator_scene_transition_fade_alpha_for_dump() const noexcept {
+        return field_elevator_scene_transition_.black_overlay_alpha();
     }
     std::uint8_t field_entity_behavior_flags_for_dump() const noexcept {
         return field_entity_behavior_flags_;
@@ -689,6 +731,12 @@ private:
     void paint_command_overview_clips(QPainter& painter) const;
     void paint_field_shop(QPainter& painter) const;
     void begin_hotel_menu();
+    bool load_field_elevator_selector_assets(
+        const ConversionAssetCatalog& catalog);
+    bool open_field_elevator_selector();
+    void advance_field_elevator_selector();
+    void advance_field_elevator_scene_transition();
+    bool transition_to_elevator_destination(std::uint16_t scene_reference);
     HotelMenuEvent process_hotel_menu_events(std::uint16_t events);
     AttributesSkillsRuntimeEvent process_hotel_karma_screen_events(
         std::uint16_t events);
@@ -769,6 +817,8 @@ private:
     HotelMenuRuntime hotel_menu_{};
     FieldModeTextRuntime field_mode_text_{};
     FieldInteractionRuntime field_interaction_;
+    ElevatorSelectorRuntime field_elevator_selector_{};
+    ElevatorSceneTransitionRuntime field_elevator_scene_transition_{};
     ShopMenuController field_shop_menu_{};
     FieldDialogueEventResolver field_dialogue_event_resolver_;
     FieldPartyRosterRuntime field_party_roster_{};
@@ -781,6 +831,13 @@ private:
     QImage field_map_;
     QImage field_hud_;
     QImage field_service_background_;
+    std::array<QImage, kElevatorSelectorAnimationFrameCount>
+        field_elevator_selector_backgrounds_{};
+    std::array<QImage, kElevatorSelectorMaximumFloors>
+        field_elevator_selector_current_floor_layers_{};
+    std::array<QImage, kElevatorSelectorMaximumFloors>
+        field_elevator_selector_selected_floor_layers_{};
+    std::array<QImage, 4> field_elevator_selector_feedback_layers_{};
     QImage field_service_universal_clips_icon_;
     std::array<QImage, 6> field_service_tab_images_{};
     QImage command_overview_background_;

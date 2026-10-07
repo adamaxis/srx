@@ -67,6 +67,16 @@ constexpr std::string_view kFieldHudAmmoCounterAliasPrefix =
 constexpr std::string_view kFieldEntityIdleAliasPrefix = "field.entities.idle.";
 constexpr std::string_view kFieldEntityWalkAliasPrefix =
     "field.entities.movement.";
+constexpr std::string_view kElevatorAnimationAliasPrefix =
+    "menu.field.elevator.selector.background.frame.";
+constexpr std::string_view kElevatorCurrentFloorAliasPrefix =
+    "menu.field.elevator.selector.current.floor.";
+constexpr std::string_view kElevatorSelectedFloorAliasPrefix =
+    "menu.field.elevator.selector.selected.floor.";
+constexpr std::string_view kElevatorFeedbackAliasPrefix =
+    "menu.field.elevator.selector.feedback.";
+constexpr std::array<std::string_view, 4> kElevatorFeedbackAssetNames{{
+    "previous.active", "previous.rest", "next.active", "next.rest"}};
 constexpr int kGenesisSpriteOrigin = 0x80;
 constexpr std::string_view kCommandOverviewBackgroundAlias =
     "menu.field.background";
@@ -719,6 +729,228 @@ bool FieldSceneRuntime::load_image(
     destination = destination.convertToFormat(
         QImage::Format_ARGB32_Premultiplied);
     return true;
+}
+
+bool FieldSceneRuntime::load_field_elevator_selector_assets(
+    const ConversionAssetCatalog& catalog) {
+    for (std::size_t frame = 0U;
+         frame < field_elevator_selector_backgrounds_.size(); ++frame) {
+        const auto alias = std::string(kElevatorAnimationAliasPrefix) +
+                           std::to_string(frame);
+        if (!load_image(catalog, alias,
+                        field_elevator_selector_backgrounds_[frame]) ||
+            field_elevator_selector_backgrounds_[frame].size() !=
+                QSize(320, 224)) {
+            source_boundary("field.elevator.animation_asset_missing");
+            return false;
+        }
+    }
+    for (std::size_t floor = 0U;
+         floor < kElevatorSelectorMaximumFloors; ++floor) {
+        const auto current_alias =
+            std::string(kElevatorCurrentFloorAliasPrefix) +
+            std::to_string(floor);
+        const auto selected_alias =
+            std::string(kElevatorSelectedFloorAliasPrefix) +
+            std::to_string(floor);
+        if (!load_image(
+                catalog, current_alias,
+                field_elevator_selector_current_floor_layers_[floor]) ||
+            !load_image(
+                catalog, selected_alias,
+                field_elevator_selector_selected_floor_layers_[floor]) ||
+            field_elevator_selector_current_floor_layers_[floor].size() !=
+                QSize(320, 224) ||
+            field_elevator_selector_selected_floor_layers_[floor].size() !=
+                QSize(320, 224)) {
+            source_boundary("field.elevator.floor_label_asset_missing");
+            return false;
+        }
+    }
+    for (std::size_t index = 0U;
+         index < field_elevator_selector_feedback_layers_.size(); ++index) {
+        const auto alias = std::string(kElevatorFeedbackAliasPrefix) +
+                           std::string(kElevatorFeedbackAssetNames[index]);
+        if (!load_image(catalog, alias,
+                        field_elevator_selector_feedback_layers_[index]) ||
+            field_elevator_selector_feedback_layers_[index].size() !=
+                QSize(320, 224)) {
+            source_boundary("field.elevator.navigation_feedback_asset_missing");
+            return false;
+        }
+    }
+    return true;
+}
+
+bool FieldSceneRuntime::open_field_elevator_selector() {
+    if (!field_session_source_assets_ || field_elevator_selector_.is_open()) {
+        return false;
+    }
+    const auto scene_reference =
+        state_.field_scene_buffers.scene_reference;
+    if (scene_reference >=
+        field_session_source_assets_->field_elevator_scene_groups.size()) {
+        return false;
+    }
+    const auto& group = field_session_source_assets_
+                            ->field_elevator_scene_groups[scene_reference];
+    if (group.count < 2U ||
+        group.count > kElevatorSelectorMaximumFloors) {
+        return false;
+    }
+    auto entry_floor = std::uint8_t{0U};
+    const auto group_end =
+        group.scene_ids.begin() + static_cast<std::ptrdiff_t>(group.count);
+    const auto current = std::find(group.scene_ids.begin(), group_end,
+                                   scene_reference);
+    if (current != group_end) {
+        entry_floor = static_cast<std::uint8_t>(
+            std::distance(group.scene_ids.begin(), current));
+    }
+    if (!field_elevator_selector_.open(
+            group.scene_ids, group.count, entry_floor)) {
+        return false;
+    }
+    source_boundary("field.elevator.selector.opened");
+    return true;
+}
+
+bool FieldSceneRuntime::transition_to_elevator_destination(
+    const std::uint16_t scene_reference) {
+    if (!field_session_source_assets_ ||
+        scene_reference >=
+            field_session_source_assets_->field_scene_resources.size() ||
+        !prepare_runtime_field_scene(scene_reference)) {
+        source_boundary("field.elevator.destination_prepare_unresolved");
+        return false;
+    }
+
+    const auto spawn = state_.field_scene_buffers.source_metadata
+                           .initial_field_records[0U];
+    field_entity_.world_position = spawn;
+    field_entity_.projection = EntityProjectionState{};
+    field_entity_.visible = false;
+    field_entity_.direction = 0U;
+    field_movement_state_.position_x = spawn.x;
+    field_movement_state_.position_y = spawn.y;
+    field_movement_state_.heading = 0U;
+    field_movement_state_.movement_substate = 0U;
+    field_target_heading_ = 0U;
+    field_entity_walking_ = false;
+    field_entity_animation_ = EntityAnimationState{};
+    field_entity_animation_.increment = kFieldWalkAnimationIncrement;
+    field_entity_animation_.period = kFieldEntityAnimationPeriod;
+    field_entity_animation_selector_ =
+        select_field_entity_animation_selector(0U, false);
+    field_movement_behavior_record_.current_heading = 0U;
+    field_movement_behavior_record_.target_heading = 0U;
+    field_movement_transition_state_.terrain_collision_code = 0U;
+    field_movement_transition_state_.mode_event_code = 0U;
+    field_movement_transition_state_.activity_sequence_active = false;
+    field_movement_transition_state_.terrain_event_suppressed = false;
+    field_movement_transition_state_.scene_id = scene_reference;
+    field_movement_transition_state_.field_origin_x =
+        static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x);
+    field_movement_transition_state_.activity_source_word = 0U;
+    field_runtime_state_.scene_id = scene_reference;
+    field_runtime_state_.field_mode =
+        state_.field_scene_buffers.field_resource_mode;
+    field_runtime_state_.field_scene_gate = 0U;
+    field_runtime_state_.field_transition_requested = false;
+    field_runtime_state_.pending_field_scene_handler = false;
+    field_runtime_state_.field_activity_lock = false;
+    field_runtime_state_.world_activity_countdown = 0U;
+    world_frame_logic_state_.world_mode = scene_reference;
+    field_world_activity_scene_entry_pending_ = false;
+    field_world_activity_state_ = WorldActivityState{};
+    world_activity_routine_state_ = WorldActivityRoutineState{};
+    field_camera_alignment_ready_ = false;
+    field_palette_fade_steps_ = 0U;
+    field_runtime_state_.display_service_word = 0U;
+    state_.display_service_word = 0U;
+    update_source_field_camera();
+    update_entity_render_pass(state_.render_entities,
+                              callbacks_.entity_render_pass);
+    source_boundary("field.elevator.destination_loaded");
+    return true;
+}
+
+void FieldSceneRuntime::advance_field_elevator_selector() {
+    field_controller_latch_state_.events =
+        field_controller_sample_state_.events;
+    field_controller_latch_state_.extra_events = 0U;
+    (void)::shadowrun::ghidra_conversion::latch_controller_events(
+        field_controller_latch_state_);
+    ::shadowrun::ghidra_conversion::sample_controller_input(
+        field_controller_sample_state_, field_controller_port_byte_);
+    const auto update = field_elevator_selector_.advance(
+        field_controller_sample_state_.events);
+    if (update.selection_moved) {
+        source_boundary("field.elevator.selector.selection_moved");
+    }
+    if (update.navigation_feedback_started) {
+        source_boundary("field.elevator.selector.navigation_feedback_started");
+    }
+    if (update.navigation_feedback_finished) {
+        source_boundary("field.elevator.selector.navigation_feedback_finished");
+    }
+    if (update.sound_effect_requested) {
+        if (source_audio_event_callback_) {
+            source_audio_event_callback_(0x25U);
+        }
+        source_boundary("field.elevator.selector.source_sound_25");
+    }
+    if (update.animation_started) {
+        source_boundary("field.elevator.animation.started");
+    } else if (update.animation_frame_changed) {
+        source_boundary("field.elevator.animation.frame_changed");
+    } else if (update.animation_finished) {
+        source_boundary("field.elevator.animation.finished");
+    }
+    if (!update.confirmed) {
+        return;
+    }
+
+    const auto current_scene = state_.field_scene_buffers.scene_reference;
+    const auto destination = field_elevator_selector_.selected_scene_id();
+    source_boundary("field.elevator.selector.confirmed");
+    if (field_elevator_selector_.destination_changed() &&
+        destination != current_scene) {
+        if (field_elevator_scene_transition_.begin_fade_out()) {
+            source_boundary("field.elevator.destination_fade_out_started");
+        } else {
+            source_boundary("field.elevator.destination_transition_busy");
+        }
+        return;
+    }
+    field_elevator_selector_.close();
+    field_runtime_state_.display_service_word = 0U;
+    state_.display_service_word = 0U;
+    source_boundary("field.elevator.selector.returned_to_current_scene");
+}
+
+void FieldSceneRuntime::advance_field_elevator_scene_transition() {
+    const auto update = field_elevator_scene_transition_.advance();
+    if (update.palette_step_changed) {
+        source_boundary("field.elevator.destination_fade.palette_step");
+    }
+    if (update.destination_load_requested) {
+        const auto destination = field_elevator_selector_.selected_scene_id();
+        if (!transition_to_elevator_destination(destination)) {
+            field_elevator_scene_transition_.cancel();
+            source_boundary("field.elevator.destination_transition_reopened");
+            return;
+        }
+        field_elevator_selector_.close();
+        if (!field_elevator_scene_transition_.begin_fade_in()) {
+            field_elevator_scene_transition_.cancel();
+            source_boundary("field.elevator.destination_fade_in_unresolved");
+            return;
+        }
+        source_boundary("field.elevator.destination_fade_in_started");
+    } else if (update.completed) {
+        source_boundary("field.elevator.destination_fade_finished");
+    }
 }
 
 bool FieldSceneRuntime::load_sprite_image(
@@ -1600,6 +1832,13 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         const auto continuation = field_activity_continuation_;
         field_activity_continuation_ =
             MovementModeTransitionContinuation::none;
+        if (continuation ==
+            MovementModeTransitionContinuation::event_29_world_activity) {
+            if (!open_field_elevator_selector()) {
+                source_boundary("field.elevator.selector_open_unresolved");
+            }
+            return integration::PendingFieldSceneHandlerResult::resumed_field;
+        }
         const bool opened = field_interaction_.open(
             continuation,
             state_.field_scene_buffers.scene_reference,
@@ -1725,16 +1964,18 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
     };
     field_runtime_callbacks_.advance_field_scene_transition = [this] {
         if (command_overview_.open() || field_interaction_.open() ||
-            field_dialogue_.open()) {
+            field_dialogue_.open() || field_elevator_selector_.is_open()) {
             // The source routine returns from the blocking command loop before
             // the field transition leaf can run. The Qt bridge keeps that
             // ordering explicit while the menu owns the next host frames.
             source_boundary(
                 field_dialogue_.open()
                     ? "field.runtime.scene_transition_suspended_for_dialogue"
-                    : field_interaction_.open()
-                          ? "field.runtime.scene_transition_suspended_for_interaction"
-                          : "field.runtime.scene_transition_suspended_for_command_overview");
+                    : field_elevator_selector_.is_open()
+                          ? "field.runtime.scene_transition_suspended_for_elevator"
+                          : field_interaction_.open()
+                                ? "field.runtime.scene_transition_suspended_for_interaction"
+                                : "field.runtime.scene_transition_suspended_for_command_overview");
             return;
         }
         advance_field_scene_transition_after_modal();
@@ -3185,6 +3426,8 @@ bool FieldSceneRuntime::bootstrap(
     hotel_karma_skills_.close_to_parent();
     field_mode_text_.close();
     field_interaction_.reset_session();
+    field_elevator_selector_ = ElevatorSelectorRuntime{};
+    field_elevator_scene_transition_ = ElevatorSceneTransitionRuntime{};
     field_party_roster_.clear();
     field_menu_text_ = FieldMenuTextCatalog{};
     command_overview_resource_variant_ = ResourceVariantState{};
@@ -3290,7 +3533,9 @@ bool FieldSceneRuntime::bootstrap(
                     "menu.field.service.background",
                     field_service_background_) ||
         !load_field_hud_overlays(startup_state.asset_catalog.catalog) ||
-        !load_command_overview_assets(startup_state.asset_catalog.catalog)) {
+        !load_command_overview_assets(startup_state.asset_catalog.catalog) ||
+        !load_field_elevator_selector_assets(
+            startup_state.asset_catalog.catalog)) {
         source_boundary("field.bootstrap.direct_assets_missing");
         return false;
     }
@@ -3484,7 +3729,9 @@ void FieldSceneRuntime::record_field_activity_start(
     if (continuation ==
             MovementModeTransitionContinuation::maglock_door_interaction ||
         continuation ==
-            MovementModeTransitionContinuation::building_security_terminal) {
+            MovementModeTransitionContinuation::building_security_terminal ||
+        continuation ==
+            MovementModeTransitionContinuation::event_29_world_activity) {
         field_runtime_state_.pending_field_scene_handler = true;
     }
     // ROM 0x1E2E0/0x1E2EC stores the typed continuation in the activity
@@ -4226,6 +4473,14 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
 
 void FieldSceneRuntime::advance_frame() {
     if (!ready_) {
+        return;
+    }
+    if (field_elevator_scene_transition_.is_active()) {
+        advance_field_elevator_scene_transition();
+        return;
+    }
+    if (field_elevator_selector_.is_open()) {
+        advance_field_elevator_selector();
         return;
     }
     if (field_interaction_.open()) {
@@ -7288,13 +7543,58 @@ void FieldSceneRuntime::paint(QPainter& painter) const {
         return;
     }
     const auto apply_palette_fade = [this, &painter] {
-        if (field_palette_fade_steps_ == 0U) {
+        const auto transition_alpha = static_cast<int>(
+            field_elevator_scene_transition_.black_overlay_alpha());
+        const auto alpha = std::max(
+            transition_alpha,
+            std::min(255, static_cast<int>(field_palette_fade_steps_) * 32));
+        if (alpha == 0) {
             return;
         }
-        const auto alpha = std::min(
-            255, static_cast<int>(field_palette_fade_steps_) * 32);
         painter.fillRect(0, 0, 320, 224, QColor(0, 0, 0, alpha));
     };
+    if (field_elevator_selector_.is_open()) {
+        const auto animation_frame = static_cast<std::size_t>(
+            field_elevator_selector_.animation_frame());
+        const auto current_floor = static_cast<std::size_t>(
+            field_elevator_selector_.current_floor());
+        const auto selected_floor = static_cast<std::size_t>(
+            field_elevator_selector_.selected_floor());
+        painter.drawImage(
+            0, 0, field_elevator_selector_backgrounds_[animation_frame]);
+        switch (field_elevator_selector_.navigation_feedback()) {
+        case ElevatorSelectorNavigationFeedback::previous_floor_active:
+            painter.drawImage(0, 0,
+                              field_elevator_selector_feedback_layers_[0U]);
+            break;
+        case ElevatorSelectorNavigationFeedback::previous_floor_rest:
+            painter.drawImage(0, 0,
+                              field_elevator_selector_feedback_layers_[1U]);
+            break;
+        case ElevatorSelectorNavigationFeedback::next_floor_active:
+            painter.drawImage(0, 0,
+                              field_elevator_selector_feedback_layers_[2U]);
+            break;
+        case ElevatorSelectorNavigationFeedback::next_floor_rest:
+            painter.drawImage(0, 0,
+                              field_elevator_selector_feedback_layers_[3U]);
+            break;
+        case ElevatorSelectorNavigationFeedback::none:
+            break;
+        }
+        // The ROM writes the arrow feedback after the floor name-table
+        // updates, but the selector labels occupy the higher-priority Plane-B
+        // layer. Keep both digits visible above the temporary rail graphics.
+        painter.drawImage(
+            0, 0, field_elevator_selector_current_floor_layers_[current_floor]);
+        painter.drawImage(
+            0, 0,
+            field_elevator_selector_selected_floor_layers_[selected_floor]);
+        painter.drawImage(0, 0, field_hud_);
+        paint_field_hud_overlays(painter);
+        apply_palette_fade();
+        return;
+    }
     if (field_interaction_.open()) {
         field_interaction_.paint(painter);
         apply_palette_fade();

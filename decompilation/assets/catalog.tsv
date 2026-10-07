@@ -603,6 +603,37 @@ field/hud/ammo-counter-63.bmp	sprite	0	0	16	8	0x36FC[63]	extracted-empty
 menu/pocket-secretary/background.bmp	background	0	0	320	224	0x10A7E	extracted
 menu/pocket-secretary/grid.bmp	background	0	0	224	168	0xC3E6/0x12C5A/0xC1320/0xC1064	extracted
 menu/field/background.bmp	background	0	0	320	224	0x10F50	extracted
+menu/field/elevator-selector-background-frame-0.bmp	background	0	0	320	224	0x58DE0/0x566D8/0x1530/0x1728;0x5906E frame=0	extracted
+menu/field/elevator-selector-background-frame-1.bmp	background	0	0	320	224	0x58DE0/0x566D8/0x1530/0x1728;0x5906E frame=1	extracted
+menu/field/elevator-selector-background-frame-2.bmp	background	0	0	320	224	0x58DE0/0x566D8/0x1530/0x1728;0x5906E frame=2	extracted
+menu/field/elevator-selector-background-frame-3.bmp	background	0	0	320	224	0x58DE0/0x566D8/0x1530/0x1728;0x5906E frame=3	extracted
+menu/field/elevator-selector-background-frame-4.bmp	background	0	0	320	224	0x58DE0/0x566D8/0x1530/0x1728;0x5906E frame=4	extracted
+menu/field/elevator-selector-background-frame-5.bmp	background	0	0	320	224	0x58DE0/0x566D8/0x1530/0x1728;0x5906E frame=5	extracted
+menu/field/elevator-selector-background-frame-6.bmp	background	0	0	320	224	0x58DE0/0x566D8/0x1530/0x1728;0x5906E frame=6	extracted
+menu/field/elevator-selector-background-frame-7.bmp	background	0	0	320	224	0x58DE0/0x566D8/0x1530/0x1728;0x5906E frame=7	extracted
+menu/field/elevator-selector-background-frame-8.bmp	background	0	0	320	224	0x58DE0/0x566D8/0x1530/0x1728;0x5906E frame=8	extracted
+menu/field/elevator-selector-background-frame-9.bmp	background	0	0	320	224	0x58DE0/0x566D8/0x1530/0x1728;0x5906E frame=9	extracted
+menu/field/elevator-selector-background-frame-10.bmp	background	0	0	320	224	0x58DE0/0x566D8/0x1530/0x1728;0x5906E frame=10	extracted
+menu/field/elevator-selector-background-frame-11.bmp	background	0	0	320	224	0x58DE0/0x566D8/0x1530/0x1728;0x5906E frame=11	extracted
+menu/field/elevator-selector-background-frame-12.bmp	background	0	0	320	224	0x58DE0/0x566D8/0x1530/0x1728;0x5906E frame=12	extracted
+menu/field/elevator-selector-background-frame-13.bmp	background	0	0	320	224	0x58DE0/0x566D8/0x1530/0x1728;0x5906E frame=13	extracted
+menu/field/elevator-selector-background-frame-14.bmp	background	0	0	320	224	0x58DE0/0x566D8/0x1530/0x1728;0x5906E frame=14	extracted
+menu/field/elevator-selector-background-frame-15.bmp	background	0	0	320	224	0x58DE0/0x566D8/0x1530/0x1728;0x5906E frame=15	extracted
+menu/field/elevator-selector-background-frame-16.bmp	background	0	0	320	224	0x58DE0/0x566D8/0x1530/0x1728;0x5906E frame=16	extracted
+menu/field/elevator-selector-current-floor-0.bmp	overlay	0	0	320	224	0x58FCC/0x1B6100	extracted
+menu/field/elevator-selector-selected-floor-0.bmp	overlay	0	0	320	224	0x58FA8/0x1B60E8	extracted
+menu/field/elevator-selector-current-floor-1.bmp	overlay	0	0	320	224	0x58FCC/0x1B6100	extracted
+menu/field/elevator-selector-selected-floor-1.bmp	overlay	0	0	320	224	0x58FA8/0x1B60E8	extracted
+menu/field/elevator-selector-current-floor-2.bmp	overlay	0	0	320	224	0x58FCC/0x1B6100	extracted
+menu/field/elevator-selector-selected-floor-2.bmp	overlay	0	0	320	224	0x58FA8/0x1B60E8	extracted
+menu/field/elevator-selector-current-floor-3.bmp	overlay	0	0	320	224	0x58FCC/0x1B6100	extracted
+menu/field/elevator-selector-selected-floor-3.bmp	overlay	0	0	320	224	0x58FA8/0x1B60E8	extracted
+menu/field/elevator-selector-current-floor-4.bmp	overlay	0	0	320	224	0x58FCC/0x1B6100	extracted
+menu/field/elevator-selector-selected-floor-4.bmp	overlay	0	0	320	224	0x58FA8/0x1B60E8	extracted
+menu/field/elevator-selector-feedback-previous-active.bmp	overlay	0	0	320	224	0x58EBC/0x1B615C/0x1B6138/0xE8BA	extracted
+menu/field/elevator-selector-feedback-previous-rest.bmp	overlay	0	0	320	224	0x58F1E/0x1B6140/0x1B6154/0xE8BA	extracted
+menu/field/elevator-selector-feedback-next-active.bmp	overlay	0	0	320	224	0x58EBC/0x1B615C/0x1B6130/0xE63A	extracted
+menu/field/elevator-selector-feedback-next-rest.bmp	overlay	0	0	320	224	0x58F1E/0x1B6140/0x1B614C/0xE63A	extracted
 menu/field/service-background.bmp	background	0	0	320	224	0x10BC4/0x10918/0x1232	extracted
 menu/field/service-tabs-selected-0.bmp	sprite	0	0	144	16	0x58B5E/0x58BB6/0xCE17E/0xCE22E	extracted
 menu/field/service-tabs-selected-1.bmp	sprite	0	0	144	16	0x58B5E/0x58BB6/0xCE17E/0xCE22E	extracted

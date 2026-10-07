@@ -61,6 +61,19 @@ int main() {
         scene_profiles[2][34] != 0x2D00U) {
         return 18;
     }
+    const auto& elevator_groups = source.assets->field_elevator_scene_groups;
+    if (elevator_groups[25U].count != 4U ||
+        elevator_groups[25U].scene_ids[0] != 21U ||
+        elevator_groups[25U].scene_ids[3] != 24U ||
+        elevator_groups[26U].count != 3U ||
+        elevator_groups[26U].scene_ids[0] != 26U ||
+        elevator_groups[26U].scene_ids[2] != 28U ||
+        elevator_groups[30U].count != 4U ||
+        elevator_groups[35U].count != 5U ||
+        elevator_groups[41U].count != 2U ||
+        elevator_groups[0U].count != 0U) {
+        return 26;
+    }
     for (const auto& scene : source.assets->field_scene_resources) {
         if (!scene.has_value() ||
             scene->terrain_layer_a_source.size() !=

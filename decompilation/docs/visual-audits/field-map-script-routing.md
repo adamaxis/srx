@@ -21,6 +21,7 @@ records.
 | Scene 2, collision value `0xCB` at ROM `0x173142`, field mode 2/event 11 | Ares service script | `0x1FA78` selects the Ares mode-text prompt; A opens the shop and Start returns |
 | Scene 2, paired collision values `0xC0` at ROM `0x173124` and `0x17312E`, event 0 | Active map's event table | Row 0 in `0x172CDC` selects scene `0x14` (scene 20) |
 | Scene 2, collision value `0xC1` at ROM `0x17314C`, event 1 | Active map's event table and world-activity resource selector | Row 1 in `0x172CDC` selects scene `0x1A` (scene 26); its resource bundle has bound 3 |
+| Scene 26, terrain records 102-103, collision value `0xDD`, event 29 | Floor selector and selected-scene transition | `0x58D94` calls `0x58DE0`; the typed child scene group contains scenes 26, 27, and 28. The destination is unnamed by this trace; this is separate from the Stoker scene-2 event-2 dialogue route |
 | Scene 20, collision value `0x82` at ROM `0x1D9724`, event 2 | Building interaction continuation | The separate electromagnetic-lock handler `0x20E48` opens its generic prompt |
 | Scene 26, collision values `0xD8` at ROM `0x1D9E46`, event `0x18` | Direct typed Security Terminal continuation | `0xB7B8` requires two negative samples and selects `0x20EC2`; the physical-input QA opens both choices and Walk Away returns |
 | Any remaining in-range map-table event | Active map's own event table | The selected row is passed to the existing world-activity coordinator; missing/out-of-range tables remain unresolved |
@@ -71,7 +72,7 @@ appearance and screen order, not event-1 collision input or the later
 eastward path. No matching independent scene-20 maglock screen or scene-26
 entry was found; those visuals remain unverified.
 
-## Eight-question review
+## Nine-question review
 
 1. **Does it look correct?** The full frames show the complete field, HUD,
    fade, dialogue, shop, and return screens. Stoker and Ares screens have
@@ -101,9 +102,15 @@ entry was found; those visuals remain unverified.
    cover movement, fades, prompts, shop, and returns; independent Stoker and
    Ares samples support the corresponding screen families. The video has no
    collision log.
-8. **Was the previous screen cleared?** Yes in the reviewed routes. The new
-   full-screen owner replaces the field view, and return frames contain no
-   stale dialog or shop controls.
+8. **Does each new UI replace the old UI cleanly?** Yes in the reviewed routes.
+   The full-screen route owner replaces the field view, and return frames
+   contain no stale dialog or shop controls.
+9. **Was the whole time window reviewed?** Yes for the 83 existing route
+   captures: the complete available screenshots include movement, fade,
+   prompt/shop, and return stages. The scene-26 event-29 selector now has its
+   own 459-frame consecutive capture and nine-question review in the
+   [elevator selector audit](field-elevator-selector.md). Independent video
+   remains a visual reference, not a ROM cadence measurement.
 
 ## Verification and remaining work
 
@@ -112,8 +119,10 @@ Security Terminal physical-entry CTests pass in Debug and Release. Their BMP
 sets have matching names and SHA-256 hashes across configurations, including
 the 23 captures for scene 26. The route-policy test checks direct script
 priority, scene-2 row 0, a same-numbered event using another map's row, and
-unavailable/out-of-range tables. The scene-26 checkpoint and eight-question
+unavailable/out-of-range tables. The scene-26 checkpoint and nine-question
 review are in [security-terminal-physical-entry.md](security-terminal-physical-entry.md).
+The event-29 selector and selected-scene transition have a separate full-route
+QA and review in [field-elevator-selector.md](field-elevator-selector.md).
 
 This is a route-planning foundation, not complete map/path coverage. The
 scene-2 event-1 physical route is behaviorally covered but visually partial

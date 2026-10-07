@@ -887,6 +887,18 @@ GenesisMagicMenuText read_genesis_magic_menu_text(
 // name-table or palette dependency retained by the runtime.
 RgbaImage decode_genesis_field_menu_background(
     const std::vector<std::uint8_t>& rom);
+// ROM 0x58DE0 builds the full-screen elevator selector. The fixed backdrop
+// and animated elevator column are separate from the two independently
+// updated floor labels so the native runtime can reflect both indices.
+RgbaImage decode_genesis_field_elevator_selector_background(
+    const std::vector<std::uint8_t>& rom,
+    std::size_t elevator_animation_frame);
+RgbaImage decode_genesis_field_elevator_selector_floor_layer(
+    const std::vector<std::uint8_t>& rom, std::size_t floor_index,
+    bool selected_floor_label);
+RgbaImage decode_genesis_field_elevator_selector_feedback_layer(
+    const std::vector<std::uint8_t>& rom, bool previous_floor_input,
+    bool active_phase);
 // ROM 0x10BC4 installs the shared field-service screen: the service frame on
 // Plane A and its right-side field HUD backing on Plane B. This is an offline
 // extraction result; runtime consumers receive RGBA pixels, not VDP state.
