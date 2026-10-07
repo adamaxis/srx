@@ -34,6 +34,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <initializer_list>
 #include <iostream>
 #include <limits>
@@ -43,6 +44,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <sstream>
 #include <system_error>
 #include <utility>
 #include <vector>
@@ -170,6 +172,7 @@ std::filesystem::path find_asset_root(
                    " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
                    " [--field-ares-collision-shop-qa <output-dir>]"
                    " [--field-scene20-physical-entry-qa <output-dir>]"
+                   " [--field-security-terminal-physical-entry-qa <output-dir>]"
                    " [--field-scene20-grenade-no-item-qa <output-dir>]"
                    " [--field-secretary-dump <output-dir>]"
                    " [--field-command-dump <file>]"
@@ -247,6 +250,11 @@ std::filesystem::path find_asset_root(
             continue;
         }
         if (argument == "--field-scene20-physical-entry-qa" &&
+            index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-security-terminal-physical-entry-qa" &&
             index + 1 < argc) {
             ++index;
             continue;
@@ -5686,6 +5694,394 @@ int run_field_world_activity_qa(
     return 0;
 }
 
+int run_field_security_terminal_physical_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Security Terminal physical-entry QA: could not clear "
+                     "previous captures: " << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output / "sequence", output_error);
+    if (output_error) {
+        std::cerr << "Security Terminal physical-entry QA: could not create "
+                     "capture directory: " << output_error.message() << '\n';
+        return 3;
+    }
+
+    constexpr std::uint16_t kSecurityEvent = 0x18U;
+    constexpr std::uint16_t kSecurityCollision = 0x00D8U;
+    constexpr std::array<std::size_t, 2> kSecurityRecords{124U, 125U};
+    const auto& metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    const auto& rectangles = metadata.terrain_collision_rectangles;
+    const bool collision_records_match =
+        rectangles.size() > kSecurityRecords.back() &&
+        rectangles[124U].left == 0x0180U &&
+        rectangles[124U].right == 0x019FU &&
+        rectangles[124U].top == 0x0020U &&
+        rectangles[124U].bottom == 0x003FU &&
+        rectangles[124U].value == kSecurityCollision &&
+        rectangles[125U].left == 0x01A0U &&
+        rectangles[125U].right == 0x01BFU &&
+        rectangles[125U].top == 0x0020U &&
+        rectangles[125U].bottom == 0x003FU &&
+        rectangles[125U].value == kSecurityCollision;
+    const auto collision_cell_index = [](const std::uint16_t x,
+                                         const std::uint16_t y) {
+        return static_cast<std::size_t>(
+            ((((static_cast<std::uint32_t>(y) & 0xFFE0U) << 1U) +
+              (x >> 5U)) &
+             0x0FFFU));
+    };
+    const auto& collision_map = metadata.terrain_collision_map;
+    const bool terminal_collision_cells_match =
+        collision_map[collision_cell_index(0x0180U, 0x0020U)] ==
+            kSecurityCollision &&
+        collision_map[collision_cell_index(0x01A0U, 0x0020U)] ==
+            kSecurityCollision;
+    const auto initial_position = field_scene.field_entity_world_position();
+    if (field_scene.field_scene_reference_for_dump() != 26U ||
+        initial_position.x != 0x1A00U || initial_position.y != 0x0500U ||
+        !collision_records_match || !terminal_collision_cells_match) {
+        std::cerr << "Security Terminal physical-entry QA: scene-26 pre-trigger "
+                     "checkpoint or ROM event rectangles do not match (scene="
+                  << field_scene.field_scene_reference_for_dump() << ", runner="
+                  << initial_position.x << ',' << initial_position.y
+                  << ", expected=0x1A00,0x0500, collision_count="
+                  << rectangles.size() << ", record124=";
+        if (rectangles.size() > kSecurityRecords.back()) {
+            std::cerr << std::hex << rectangles[124U].left << ','
+                      << rectangles[124U].right << ',' << rectangles[124U].top
+                      << ',' << rectangles[124U].bottom << ','
+                      << rectangles[124U].value << "; record125="
+                      << rectangles[125U].left << ','
+                      << rectangles[125U].right << ',' << rectangles[125U].top
+                      << ',' << rectangles[125U].bottom << ','
+                      << rectangles[125U].value << std::dec;
+        }
+        std::cerr << ")\n";
+        return 3;
+    }
+
+    const auto render = [&field_scene](const bool scene_only) {
+        QImage image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        if (scene_only) {
+            field_scene.paint_field_scene_for_dump(painter);
+        } else {
+            field_scene.paint(painter);
+        }
+        painter.end();
+        return image;
+    };
+    const auto save = [&output, &render](const std::string_view name,
+                                         const bool scene_only = false) {
+        const auto image = render(scene_only);
+        const auto path = output / (std::string(name) + ".bmp");
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            !image.save(QString::fromStdWString(path.wstring()))) {
+            std::cerr << "Security Terminal physical-entry QA: could not "
+                         "save full frame " << name << '\n';
+            return false;
+        }
+        return true;
+    };
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) {
+        std::cerr << "Security Terminal physical-entry QA: could not write "
+                     "route trace\n";
+        return 3;
+    }
+    trace << "stage\tframe\tscene\tx\ty\tworld_mode\tfield_mode"
+             "\tcollision\tmode_event\tinteraction\tselected_option"
+             "\tterrain_sample_0\tterrain_sample_1\tterrain_sample_2"
+             "\tterrain_sample_3\taudio_events\ttransition_event"
+             "\tnegative_probe_count\tcontinuation\ttransition_kind"
+             "\tentity_visible"
+             "\tscreen_x\tscreen_y\tdirection\twalking\n";
+    std::uint32_t frame = 0U;
+    const auto write_state = [&] (const std::string_view stage) {
+        const auto position = field_scene.field_entity_world_position();
+        const auto& panel = field_scene.field_interaction_panel();
+        const auto& transition =
+            field_scene.last_field_movement_transition_for_dump();
+        trace << stage << '\t' << frame << '\t'
+              << field_scene.field_scene_reference_for_dump() << '\t'
+              << position.x << '\t' << position.y << '\t'
+              << field_scene.field_interaction_mode_for_dump() << '\t'
+              << static_cast<unsigned>(
+                     field_scene.field_runtime_state_for_dump().field_mode)
+              << '\t' << field_scene.field_terrain_collision_code_for_dump()
+              << '\t' << static_cast<unsigned>(
+                     field_scene.field_mode_event_code_for_dump())
+              << '\t' << field_scene.field_interaction_open() << '\t'
+              << panel.selected_option;
+        for (const auto sample :
+             field_scene.field_terrain_sample_bytes_for_dump()) {
+            trace << '\t' << static_cast<unsigned>(sample);
+        }
+        trace << '\t' << field_audio_events.size() << '\t'
+              << static_cast<unsigned>(transition.event_code) << '\t'
+              << static_cast<unsigned>(transition.negative_probe_count) << '\t'
+              << static_cast<unsigned>(transition.continuation) << '\t'
+              << static_cast<unsigned>(transition.kind) << '\t'
+              << field_scene.field_entity_visible_for_dump() << '\t'
+              << field_scene.field_entity_screen_x_for_dump() << '\t'
+              << field_scene.field_entity_screen_y_for_dump() << '\t'
+              << static_cast<unsigned>(
+                     field_scene.field_entity_direction_for_dump())
+              << '\t' << field_scene.field_entity_walking_for_dump() << '\n';
+        trace.flush();
+    };
+    const auto save_sequence_frame = [&] {
+        std::ostringstream filename;
+        filename << "frame-" << std::setw(6) << std::setfill('0') << frame
+                 << ".bmp";
+        const auto image = render(false);
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+               image.save(QString::fromStdWString(
+                   ((output / "sequence") / filename.str()).wstring()));
+    };
+    const auto position_in_scene_units = [&field_scene] {
+        const auto position = field_scene.field_entity_world_position();
+        return std::pair<std::uint16_t, std::uint16_t>{
+            static_cast<std::uint16_t>(position.x >> 4U),
+            static_cast<std::uint16_t>(position.y >> 4U)};
+    };
+
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    ++frame;
+    if (!field_scene.field_entity_visible_for_dump()) {
+        std::cerr << "Security Terminal physical-entry QA: aligned source "
+                     "checkpoint does not project the runner into the field\n";
+        return 3;
+    }
+    if (!save("scene26-entry") || !save_sequence_frame()) {
+        return 3;
+    }
+    write_state("pre-trigger-checkpoint");
+
+    const auto advance_input = [&](const std::uint8_t nibble) {
+        field_scene.set_controller_nibble(nibble);
+        field_scene.advance_frame();
+        ++frame;
+        return save_sequence_frame();
+    };
+    const auto reached_terminal_event = [&] {
+        return (field_scene.field_terrain_collision_code_for_dump() & 0x001FU) ==
+               kSecurityEvent;
+    };
+
+    // Walk north into the 0xD8 collision using normal controller input. The ROM
+    // gate requires two negative samples from this adjacent-record region.
+    std::uint16_t entry_ticks = 0U;
+    while (entry_ticks < 40U && !reached_terminal_event() &&
+           !field_scene.field_interaction_open()) {
+        if (!advance_input(0x01U)) {
+            std::cerr << "Security Terminal physical-entry QA: frame write "
+                         "failed during north approach\n";
+            return 3;
+        }
+        ++entry_ticks;
+        if (!field_scene.field_interaction_open() &&
+            !field_scene.field_entity_visible_for_dump()) {
+            std::cerr << "Security Terminal physical-entry QA: runner became "
+                         "invisible during the terminal approach\n";
+            return 3;
+        }
+        write_state("terminal-approach");
+        if (reached_terminal_event()) {
+            (void)save("terminal-contact");
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto activity_started_for_entry = std::find(
+        source_boundaries.begin(), source_boundaries.end(),
+        "field.world.activity.started");
+    const auto prompt_opened_for_entry = std::find(
+        source_boundaries.begin(), source_boundaries.end(),
+        "field.interaction.prompt_opened");
+    const auto& movement_transition =
+        field_scene.last_field_movement_transition_for_dump();
+    const bool security_terminal_transition =
+        movement_transition.event_code == kSecurityEvent &&
+        movement_transition.negative_probe_count >= 2U &&
+        movement_transition.continuation ==
+            MovementModeTransitionContinuation::building_security_terminal &&
+        movement_transition.kind ==
+            EntityMovementModeTransitionResultKind::building_reaction_started;
+    const auto& entry_panel = field_scene.field_interaction_panel();
+    const bool source_terminal_prompt_open =
+        entry_panel.open && entry_panel.source_complete &&
+        entry_panel.option_count == 2U &&
+        entry_panel.options[0U].role ==
+            DialoguePanelOptionRole::field_security_access &&
+        entry_panel.options[1U].role ==
+            DialoguePanelOptionRole::field_walk_away &&
+        activity_started_for_entry != source_boundaries.end() &&
+        prompt_opened_for_entry != source_boundaries.end() &&
+        security_terminal_transition;
+    if (field_scene.field_interaction_open() &&
+        !std::filesystem::exists(output / "terminal-contact.bmp") &&
+        !save("terminal-contact")) {
+        return 3;
+    }
+    const auto negative_sample_count = static_cast<std::size_t>(
+        movement_transition.negative_probe_count);
+    if (!security_terminal_transition && !source_terminal_prompt_open) {
+        const auto position = position_in_scene_units();
+        std::cerr << "Security Terminal physical-entry QA: normal movement "
+                     "did not touch ROM event 0x18 (position="
+                  << position.first << ',' << position.second
+                  << ", collision=0x" << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << std::dec << ", negative_samples="
+                  << negative_sample_count << ", entry_ticks=" << entry_ticks
+                  << ", prompt_open=" << field_scene.field_interaction_open()
+                  << ", event=0x" << std::hex
+                  << static_cast<unsigned>(movement_transition.event_code)
+                  << ", continuation="
+                  << static_cast<unsigned>(movement_transition.continuation)
+                  << std::dec
+                  << ")\n";
+        return 3;
+    }
+    const auto audio_before_prompt = field_audio_events.size();
+    if (!field_scene.field_interaction_open()) {
+        for (std::uint8_t wait = 0U;
+             wait < 90U && !field_scene.field_interaction_open(); ++wait) {
+            field_scene.advance_frame();
+            ++frame;
+            if (!save_sequence_frame()) {
+                std::cerr << "Security Terminal physical-entry QA: frame "
+                             "write failed while entering prompt\n";
+                return 3;
+            }
+            write_state("handler-entry");
+        }
+    }
+    if (!field_scene.field_interaction_open()) {
+        const auto& samples =
+            field_scene.field_terrain_sample_bytes_for_dump();
+        const auto started = std::find(
+            source_boundaries.begin(), source_boundaries.end(),
+            "field.world.activity.started");
+        std::cerr << "Security Terminal physical-entry QA: event 0x18 did "
+                     "not open the source Security Terminal prompt (flags=0x"
+                  << std::hex << static_cast<unsigned>(
+                         field_scene.field_entity_behavior_flags_for_dump())
+                  << ", mode=0x"
+                  << field_scene.field_interaction_mode_for_dump()
+                  << ", collision=0x"
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << std::dec << ", samples=0x" << std::hex
+                  << static_cast<unsigned>(samples[0]) << ','
+                  << static_cast<unsigned>(samples[1]) << ','
+                  << static_cast<unsigned>(samples[2]) << ','
+                  << static_cast<unsigned>(samples[3]) << std::dec
+                  << ", activity_started="
+                  << (started != source_boundaries.end())
+                  << ", pending="
+                  << field_scene.field_runtime_state_for_dump()
+                         .pending_field_scene_handler
+                  << ", transition="
+                  << field_scene.field_transition_pending_for_dump()
+                  << ")\n";
+        return 3;
+    }
+    const auto prompt_underlay = render(true);
+    const auto& panel = field_scene.field_interaction_panel();
+    const bool prompt_matches =
+        panel.open && panel.source_complete && panel.option_count == 2U &&
+        panel.options[0U].role == DialoguePanelOptionRole::field_security_access &&
+        panel.options[1U].role == DialoguePanelOptionRole::field_walk_away;
+    const auto initial_prompt_frame = render(false);
+    if (!prompt_matches || initial_prompt_frame == prompt_underlay ||
+        !save("terminal-underlay", true) || !save("terminal-prompt")) {
+        std::cerr << "Security Terminal physical-entry QA: source prompt "
+                     "state or full-screen replacement failed\n";
+        return 3;
+    }
+    write_state("terminal-prompt");
+
+    // The shared prompt delays input for ten source frames. Capture every
+    // frame and make sure the modal owns the whole screen without changing its
+    // selected choices or drawing stale field controls over them.
+    const auto prompt_frame = render(false);
+    for (std::uint8_t wait = 0U; wait < 10U; ++wait) {
+        field_scene.set_controller_nibble(0U);
+        field_scene.advance_frame();
+        ++frame;
+        if (!save_sequence_frame()) {
+            std::cerr << "Security Terminal physical-entry QA: prompt frame "
+                         "write failed\n";
+            return 3;
+        }
+        write_state("prompt-input-delay");
+    }
+    if (render(false) != prompt_frame || !save("terminal-prompt-held")) {
+        std::cerr << "Security Terminal physical-entry QA: prompt changed "
+                     "during its ten-frame source hold\n";
+        return 3;
+    }
+
+    // In 0x1F3C4 the second option is selected by mask 0x10. Its terminal
+    // command is Walk Away, which should close the modal and expose the field.
+    const auto return_result =
+        field_scene.advance_field_interaction_for_dump(0x1000U);
+    ++frame;
+    if (!save_sequence_frame() ||
+        return_result != FieldInteractionAdvanceResult::returned_to_field ||
+        field_scene.field_interaction_open() ||
+        field_audio_events.size() != audio_before_prompt) {
+        std::cerr << "Security Terminal physical-entry QA: Walk Away did not "
+                     "return without a new sound request\n";
+        return 3;
+    }
+    const auto returned_field = render(false);
+    if (!save("return-field") || returned_field != prompt_underlay ||
+        !field_hud_chrome_survives(returned_field, asset_root) ||
+        !field_scene.field_entity_visible_for_dump() ||
+        field_scene.field_mode_text_open_for_dump() ||
+        field_scene.dialogue_open() || field_scene.shop_menu_open()) {
+        std::cerr << "Security Terminal physical-entry QA: return left stale "
+                     "terminal graphics or a competing screen active\n";
+        return 3;
+    }
+    write_state("return-field");
+
+    const auto activity_started = std::find(
+        source_boundaries.begin(), source_boundaries.end(),
+        "field.world.activity.started");
+    const auto prompt_opened = std::find(
+        source_boundaries.begin(), source_boundaries.end(),
+        "field.interaction.prompt_opened");
+    if (activity_started == source_boundaries.end() ||
+        prompt_opened == source_boundaries.end() ||
+        activity_started > prompt_opened ||
+        field_scene.field_mode_event_code_for_dump() != 0U ||
+        !save("actual")) {
+        std::cerr << "Security Terminal physical-entry QA: source continuation "
+                     "order or early event-code behavior diverged\n";
+        return 3;
+    }
+    std::cout << "field_security_terminal_physical_entry_qa=passed scene=26 "
+                 "collision=0xD8 event=0x18 records=124,125 approach_ticks="
+              << entry_ticks << " negative_samples=" << negative_sample_count
+              << " prompt_options=Electronics,WalkAway prompt_hold=10 "
+                 "sound_requests=0 artifacts="
+              << output.string() << '\n';
+    return 0;
+}
+
 int run_field_ares_collision_shop_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -7792,6 +8188,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_scene20_physical_entry_qa_path;
         std::optional<std::filesystem::path>
+            field_security_terminal_physical_entry_qa_path;
+        std::optional<std::filesystem::path>
             field_scene20_grenade_no_item_qa_path;
         std::optional<std::filesystem::path> field_stoker_collision_qa_path;
         std::optional<std::filesystem::path> field_hud_qa_path;
@@ -7851,6 +8249,7 @@ int main(int argc, char** argv) {
                        " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
                        " [--field-ares-collision-shop-qa <output-dir>]"
                        " [--field-scene20-physical-entry-qa <output-dir>]"
+                       " [--field-security-terminal-physical-entry-qa <output-dir>]"
                        " [--field-stoker-collision-qa <output-dir>]"
                        " [--field-command-dump <file>]"
                        " [--field-command-page <0..6>]"
@@ -7931,6 +8330,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene20_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-security-terminal-physical-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_security_terminal_physical_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -8252,6 +8658,55 @@ int main(int argc, char** argv) {
                 std::cerr << smoke_state_error << '\n';
                 return 3;
             }
+            if (field_security_terminal_physical_entry_qa_path.has_value()) {
+                if (!smoke_state.field_session_source_assets.has_value() ||
+                    !smoke_state.joshua_selection.has_value()) {
+                    std::cerr << "Security Terminal physical-entry QA: "
+                                 "scene source or Joshua record is unavailable\n";
+                    return 3;
+                }
+                const auto scene26 = integration::make_field_scene_input(
+                    *smoke_state.field_session_source_assets, 26U);
+                if (!scene26.has_value()) {
+                    std::cerr << "Security Terminal physical-entry QA: "
+                                 "scene-26 source records are unavailable\n";
+                    return 3;
+                }
+                // Start this trigger QA from the ROM scene-26 descriptor and
+                // the selected New Game Joshua record. It verifies physical
+                // event entry after the map is loaded; it does not claim the
+                // incomplete overworld/building path reaches scene 26.
+                SaveFieldRestoreState checkpoint{};
+                checkpoint.world_mode = 26U;
+                checkpoint.camera_x =
+                    scene26->source_metadata.initial_camera_x_fixed;
+                checkpoint.camera_y =
+                    scene26->source_metadata.initial_camera_y_fixed;
+                for (std::size_t slot = 0U;
+                     slot < checkpoint.runner_positions.size(); ++slot) {
+                    checkpoint.runner_positions[slot] =
+                        RestoredRunnerPosition{
+                        scene26->source_metadata.initial_field_records[slot]
+                                .x,
+                        scene26->source_metadata.initial_field_records[slot]
+                                .y};
+                }
+                // The descriptor spawn is separated from this terminal by
+                // additional unresolved map barriers. Use a source-coordinate
+                // pre-trigger point above records 124-125; the QA still walks
+                // into the event with ordinary input and checks the signed
+                // sample gate, prompt, audio, and full-screen return.
+                checkpoint.runner_positions[0U] =
+                    RestoredRunnerPosition{0x1A00U, 0x0500U};
+                // Keep the camera aligned with this checkpoint; the scene
+                // descriptor camera belongs to its separate spawn position.
+                checkpoint.camera_x = 0x1A00U;
+                checkpoint.camera_y = 0x0500U;
+                checkpoint.roster.default_record.bytes =
+                    smoke_state.joshua_selection->live_joshua_record;
+                checkpoint.active_runner_slot = 0U;
+                smoke_state.restored_field_state = std::move(checkpoint);
+            }
             std::vector<std::uint16_t> field_audio_events;
             std::vector<std::string> field_source_boundaries;
             qt_runtime::FieldSceneRuntime field_scene(
@@ -8264,6 +8719,17 @@ int main(int argc, char** argv) {
             if (!field_scene.bootstrap(smoke_state)) {
                 std::cerr << "field smoke: " << field_scene.failure() << '\n';
                 return 3;
+            }
+            if (field_security_terminal_physical_entry_qa_path.has_value()) {
+                const auto scene26_interaction_mode =
+                    select_scene_interaction_mode(26U);
+                if (!scene26_interaction_mode.has_value()) {
+                    std::cerr << "Security Terminal physical-entry QA: "
+                                 "scene-26 interaction mode is unavailable\n";
+                    return 3;
+                }
+                field_scene.set_field_interaction_mode_for_dump(
+                    *scene26_interaction_mode);
             }
             if (field_world_activity_qa_path.has_value()) {
                 return run_field_world_activity_qa(
@@ -8286,6 +8752,12 @@ int main(int argc, char** argv) {
                 return run_field_scene20_physical_entry_qa(
                     field_scene, asset_root,
                     *field_scene20_physical_entry_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_security_terminal_physical_entry_qa_path.has_value()) {
+                return run_field_security_terminal_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_security_terminal_physical_entry_qa_path,
                     field_audio_events, field_source_boundaries);
             }
             if (field_scene20_grenade_no_item_qa_path.has_value()) {

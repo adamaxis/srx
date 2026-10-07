@@ -517,6 +517,20 @@ add_test(NAME shadowrun_ghidra_conversion_qt_security_terminal_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_security_terminal_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Scene 26 collision records 124-125 contain the signed event-0x18 Security
+# Terminal region. Start from a source-coordinate pre-trigger checkpoint,
+# enter it with ordinary d-pad input, show both choices, and Walk Away. This
+# verifies the physical event handler; full navigation through scene 26's
+# intervening collision barriers remains open.
+add_test(NAME shadowrun_ghidra_conversion_qt_security_terminal_physical_entry_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-security-terminal-physical-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-security-terminal-physical-entry-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_security_terminal_physical_entry_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Ares mode 2/event 11 must pass through the generic 30-frame prompt before
 # entering its modal service menu. This captures category/item selection,
 # insufficient funds, default-No/Yes confirmation, ordinary and E-coded

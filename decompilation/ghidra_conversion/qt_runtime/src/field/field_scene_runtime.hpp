@@ -247,6 +247,12 @@ public:
     std::uint16_t field_interaction_mode_for_dump() const noexcept {
         return field_movement_transition_state_.world_mode;
     }
+    // Scene-entry QA checkpoint: 0x03074 selects the interaction mode for
+    // the loaded field before ordinary movement resumes. Keep this setter on
+    // the dump/test surface rather than exposing a second gameplay control.
+    void set_field_interaction_mode_for_dump(std::uint16_t mode) noexcept {
+        field_movement_transition_state_.world_mode = mode;
+    }
     std::uint8_t field_activity_selection_for_dump() const noexcept {
         return field_movement_transition_state_.activity_selection;
     }
@@ -256,6 +262,10 @@ public:
     const std::array<std::int8_t, 4>&
     field_directional_probe_signs_for_dump() const noexcept {
         return field_movement_transition_state_.directional_probe_signs;
+    }
+    const std::array<std::uint8_t, 4>&
+    field_terrain_sample_bytes_for_dump() const noexcept {
+        return field_terrain_sample_state_;
     }
     std::uint16_t field_projected_code_for_dump() const noexcept {
         return field_movement_behavior_record_.projected_field_code;
@@ -598,6 +608,15 @@ public:
     const SceneRunnerPosition& field_entity_world_position() const noexcept {
         return field_entity_.world_position;
     }
+    bool field_entity_visible_for_dump() const noexcept {
+        return field_entity_.visible;
+    }
+    std::uint16_t field_entity_screen_x_for_dump() const noexcept {
+        return field_entity_.projection.screen_x;
+    }
+    std::uint16_t field_entity_screen_y_for_dump() const noexcept {
+        return field_entity_.projection.screen_y;
+    }
     std::uint16_t field_entity_heading_for_dump() const noexcept {
         return field_movement_state_.heading;
     }
@@ -615,6 +634,10 @@ public:
     }
     bool field_entity_walking_for_dump() const noexcept {
         return field_entity_walking_;
+    }
+    const EntityMovementModeTransitionResult&
+    last_field_movement_transition_for_dump() const noexcept {
+        return last_field_movement_transition_result_;
     }
 
 private:
@@ -910,6 +933,10 @@ private:
     std::array<std::uint16_t, 10> field_entity_table_occupancy_{};
     std::array<AuxiliaryWorldEntity, 10> field_entity_table_{};
     EntityMovementModeTransitionState field_movement_transition_state_{};
+    // Retain the last typed result from the blocked-movement dispatcher so
+    // route QA can inspect the source event and continuation after a modal
+    // handler has consumed its pending state.
+    EntityMovementModeTransitionResult last_field_movement_transition_result_{};
     std::optional<FieldScriptRoute> active_field_script_route_;
     std::uint8_t field_palette_fade_steps_ = 0U;
     bool field_world_activity_scene_entry_pending_ = false;

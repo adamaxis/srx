@@ -3681,6 +3681,7 @@ bool FieldSceneRuntime::recover_blocked_field_movement(
         field_movement_behavior_record_, initial_probe.candidate_x,
         initial_probe.candidate_y, field_movement_transition_state_,
         transition_callbacks);
+    last_field_movement_transition_result_ = result;
     if (result.mode_event_code_published) {
         source_boundary("field.world.activity.mode_event_published");
     }

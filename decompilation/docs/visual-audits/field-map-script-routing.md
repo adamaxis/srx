@@ -21,7 +21,8 @@ records.
 | Scene 2, collision value `0xCB` at ROM `0x173142`, field mode 2/event 11 | Ares service script | `0x1FA78` selects the Ares mode-text prompt; A opens the shop and Start returns |
 | Scene 2, paired collision values `0xC0` at ROM `0x173124` and `0x17312E`, event 0 | Active map's event table | Row 0 in `0x172CDC` selects scene `0x14` (scene 20) |
 | Scene 20, collision value `0x82` at ROM `0x1D9724`, event 2 | Building interaction continuation | The separate electromagnetic-lock handler `0x20E48` opens its generic prompt |
-| Any other in-range event | Active map's own event table | The selected row is passed to the existing world-activity coordinator; missing/out-of-range tables remain unresolved |
+| Scene 26, collision values `0xD8` at ROM `0x1D9E46`, event `0x18` | Direct typed Security Terminal continuation | `0xB7B8` requires two negative samples and selects `0x20EC2`; the physical-input QA opens both choices and Walk Away returns |
+| Any remaining in-range map-table event | Active map's own event table | The selected row is passed to the existing world-activity coordinator; missing/out-of-range tables remain unresolved |
 
 The Stoker prompt is collision-driven after New Game has placed the runner on
 scene 2. I found no ROM condition in this traced path that automatically
@@ -89,14 +90,16 @@ screen was found; its visual fidelity remains unverified.
 
 ## Verification and remaining work
 
-The focused route-policy CTest and the Stoker, Ares, and scene-20 physical
-route CTests pass in Debug and Release. The 12/14/42 BMP sets have matching
-names and SHA-256 hashes across configurations. The route-policy test checks
-direct script priority, scene-2 row 0, a same-numbered event using another
-map's row, and unavailable/out-of-range tables.
+The focused route-policy CTest and the Stoker, Ares, scene-20, and scene-26
+Security Terminal physical-entry CTests pass in Debug and Release. Their BMP
+sets have matching names and SHA-256 hashes across configurations, including
+the 23 captures for scene 26. The route-policy test checks direct script
+priority, scene-2 row 0, a same-numbered event using another map's row, and
+unavailable/out-of-range tables. The scene-26 checkpoint and eight-question
+review are in [security-terminal-physical-entry.md](security-terminal-physical-entry.md).
 
 This is a route-planning foundation, not complete map/path coverage. The
-Security Terminal collision-to-script route, additional doorway/object
-records, broad terrain recovery, building item use, reverse transitions, and
-world-entry one-shot conditions still need their own ROM traces and normal-
-input route captures.
+full descriptor-spawn route to the Security Terminal, additional
+doorway/object records, broad terrain recovery, building item use, reverse
+transitions, and world-entry one-shot conditions still need their own ROM
+traces and normal-input route captures.

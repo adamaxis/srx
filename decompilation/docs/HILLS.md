@@ -82,9 +82,19 @@ non-magic Defense capture. See the [Magic split audit](visual-audits/magic-user-
 | Scene-2 Ares doorway to generic prompt and weapon shop | `0x075E` / `0xB7B8` / `0x16396` / `0x1FA78` / `0x1F246` / `0x1F3C4` / `0x56AC0`; record 92 (`0xCB`) publishes raw `0xFFCB`/event 11; ordinary Right/Up reaches the prompt, A enters shop, Start returns | partial; Debug/Release full-screen route QA passes and every capture matches by SHA-256; Ares frames 5983/5985 support prompt/shop appearance, while physical trigger state is established by typed route checks; other buildings and entry modes remain open | `shadowrun_ghidra_conversion_qt_field_ares_collision_shop_qa`; `build/conversion/qt/{debug,release}/qt_runtime/field-ares-collision-shop-qa/`; 14 full-screen captures and eight-question audit: [ares-physical-entry.md](visual-audits/ares-physical-entry.md) |
 | Scene-2 C0 doorway to scene-20 maglock prompt, no-item result, and Walk Away | `0x075E` / `0xB7B8` / `0x16396` / `0x172CDC` / `0x1D9292` / `0x20E48` / `0x20E7A` / `0x20E92` / `0x20EC2` / `0x2BD2`; paired records 89/90 at `0x173124` (`0xC0`) publish event 0 and row 0 selects scene `0x14`; scene-20 record 117 at `0x1D9724` (`0x82`) publishes projected `0xFF82`/event 2 | partial; ordinary New Game input enters scene 20 and reaches the physical lock. A opens choices; C/Walk Away returns. B selects the no-item Frag Grenade branch, shows the generic result through the 30-frame wait, and A returns cleanly. Passkey/Electronics, grenade consumption/security, other physical branches, and exact independent maglock visuals remain open | `shadowrun_ghidra_conversion_qt_field_scene20_physical_entry_qa`; `shadowrun_ghidra_conversion_qt_field_scene20_grenade_no_item_qa`; `build/conversion/qt/{debug,release}/qt_runtime/field-scene20-{physical-entry,grenade-no-item}-qa/`; 42 and 47 full-screen captures respectively; Debug/Release BMP hashes match; eight-question audit: [scene20-maglock-physical-entry.md](visual-audits/scene20-maglock-physical-entry.md) |
 
-The Security Terminal floor hill above remains separate: its QA still injects
-event 2 after collision. The unrelated scene-2 record-2 route at ROM
-`0x172DBE` still produces event 0 and remains a rejected Stoker candidate; see
+The Security Terminal floor-result hill above remains separate: that QA still
+injects event 2 after collision. Physical event `0x18` now has partial scene-26
+coverage: ROM records 124/125 at `0x1D9E46` contain adjacent `0xD8` rectangles;
+ordinary north input reaches the typed `building_security_terminal`
+continuation, passes the two-negative-sample gate, opens both choices, and
+returns to a clean field frame. Its QA starts from a source-coordinate
+pre-trigger checkpoint because the full descriptor-spawn route crosses other
+unresolved collision barriers. No independent Genesis terminal capture was
+found, so this is conversion regression coverage, not visual-fidelity proof.
+The eight-question audit is
+[`visual-audits/security-terminal-physical-entry.md`](visual-audits/security-terminal-physical-entry.md).
+The unrelated scene-2 record-2 route at ROM `0x172DBE` still produces event 0
+and remains a rejected Stoker candidate; see
 [`visual-audits/stoker-collision-candidate.md`](visual-audits/stoker-collision-candidate.md).
 
 Rejected (must not return):
