@@ -9,6 +9,7 @@
 namespace shadowrun::ghidra_conversion {
 
 inline constexpr std::size_t kNotebookTipCount = 96U;
+inline constexpr std::size_t kNotebookMrJohnsonCount = 5U;
 
 enum class NotebookMenuOption : std::uint8_t {
     current_run,
@@ -31,6 +32,14 @@ struct NotebookMenuState {
         std::uint8_t selection = 0U;
         bool open = false;
     } tips{};
+    struct MrJohnsonsState {
+        std::array<std::uint8_t, kNotebookMrJohnsonCount>
+            visible_source_indices{};
+        std::uint8_t visible_count = 0U;
+        std::uint8_t selection = 0U;
+        bool open = false;
+        bool detail_wait = false;
+    } mr_johnsons{};
 };
 
 struct PocketSecretaryMenuState {
@@ -81,6 +90,11 @@ enum class PocketSecretaryMenuEvent {
     notebook_tips_selection_moved,
     notebook_tips_returned,
     notebook_tips_mode_action,
+    notebook_mr_johnsons_selection_moved,
+    notebook_mr_johnsons_detail_opened,
+    notebook_mr_johnsons_detail_dismissed,
+    notebook_mr_johnsons_returned,
+    notebook_mr_johnsons_mode_action,
     exited,
 };
 
@@ -117,6 +131,9 @@ void begin_pocket_secretary_notebook(
 void begin_pocket_secretary_notebook_tips(
     PocketSecretaryMenuState& state,
     const std::array<std::uint32_t, 3>& tip_flags);
+// ROM 0xF416 emits Johnson rows selected by FFFC27 bits 0..4.
+void begin_pocket_secretary_notebook_mr_johnsons(
+    PocketSecretaryMenuState& state, std::uint8_t referral_flags);
 // ROM 0xC448 always places Abort at row zero and lists active recruited
 // records from FF0200 then FF0300. The original loop refreshes E660 once per
 // VBlank; the caller owns that separate display-service boundary.

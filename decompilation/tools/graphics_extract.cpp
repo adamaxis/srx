@@ -244,6 +244,19 @@ void write_field_menu_text_catalog(
         emit("notebook.no-run." + std::to_string(index),
              assets.notebook_no_run_lines[index]);
     }
+    for (std::size_t index = 0;
+         index < assets.notebook_mr_johnson_names.size(); ++index) {
+        emit("notebook.mr-johnson.name." + std::to_string(index),
+             assets.notebook_mr_johnson_names[index]);
+    }
+    const auto mr_johnson_descriptions =
+        shadowrun::graphics::read_genesis_notebook_mr_johnson_descriptions(
+            rom);
+    for (std::size_t index = 0; index < mr_johnson_descriptions.size();
+         ++index) {
+        emit("notebook.mr-johnson.detail." + std::to_string(index),
+             escape_field_text(mr_johnson_descriptions[index]));
+    }
     const auto command_names =
         shadowrun::graphics::read_genesis_command_overview_names(rom);
     for (std::size_t index = 0; index < command_names.races.size(); ++index) {

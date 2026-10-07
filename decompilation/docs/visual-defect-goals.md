@@ -37,8 +37,9 @@ The rows below preserve every distinct issue in the user's pasted report.
 checkout still reproduces it. Current-build reproduction and independent
 Genesis comparison remain separate evidence fields. Detailed ROM paths and
 shared acceptance gates are in the matching goal cluster below.
-`TITLE-04` is an additional discrepancy found during the current full-screen
-review; it is not part of the pasted report.
+`TITLE-04` and `SEC-JOHNSONS` are additional findings from the current
+full-screen/route review; `MAGIC-SPLIT` records the user's later screen
+clarification. None changes the original report's itemization.
 
 | Goal | Reported issue, itemized | Evidence check and closure condition |
 |---|---|---|
@@ -62,7 +63,7 @@ review; it is not part of the pasted report.
 | `HUD-01` | The field portrait has unexpected color over the runner's face. | Resolved for the reported Gator face-color symptom: ROM `0x35D4` applies `+0x2C` to the 4x4 face; the old Qt path used `0x3602`. Corrected assets/runtime and per-record QA select Gator line 1 (`+0x2C=0x2000`); independent section 04/06 frames support that palette. See [the eight-question portrait audit](visual-audits/hud-portrait-palette.md). Ammo remains separately tracked as `HUD-02`. |
 | `HUD-02` | Ammunition is inconsistent: the report cites 32 bullets initially, 37 on the unequipped hand, and 4 after equipping the gun. | ROM Gator record `0x72B1A` starts at 32 with item code 2; the `0x39F2` field refresh reaches `0x36FC`, which clamps it to the item-2 capacity 12 at `0xD4570 + 0x24`. The Qt path applies that refresh. ROM `0x125FA`/`0x121E0` plus item code 3 capacity 11 reproduce `4/11 -> 37 -> 4`, but the ordinary unarmed field-HUD branch draws `00` while preserving the +0x4E percentage. The user's visible 37-on-hand route remains unreconciled. The former Ricky QA image used an impossible raw-template/unarmed state and is corrected to use a refreshed live record and typed unequip. See [ammo capacity audit](visual-audits/hud-ammo-capacity-refresh.md); keep the reported sequence partial until independently reconciled. |
 | `FIELD-01` | Walking previously used the dying/fallen animation; leftward movement also showed the right-facing walk pose. | The fallen-pose family is separated from ordinary C062 movement. ROM direction 6 (`0xC062` selector `0x38`) shares direction-2 tiles and sets attribute `0x0800`; the Qt runtime now applies that horizontal facing to idle and walk images. Debug/Release normal-input left-route QA checks selector, heading, movement, facing, and whole-screen output. Other live headings and exact-scene visual matching remain open. |
-| `SOUND-01` | Pocket Secretary selection/cancel sounds are absent on some screens or use the wrong sound. | **Partial.** Notebook C now follows `0xF236` → `0x391A` and requests event `0x25`, then resumes the same selected row. Tips C already uses that route. Notebook row movement, A child dispatch, B/Start return, Tips page movement/return, and Tips entry are source-silent. Event `0x25` maps to `audio.effects.resource.037` (2.134 seconds including release tail); shared Debug/Release audio QA verifies decoded playback, default-output state, and duration. Debug/Release Notebook route QA checks event `0x25`, retained page/selection, and full-screen image continuity. Windows loopback on this route, remaining child-page action handlers, and independent Pocket Secretary frames remain open; see [the selection/cancel audio audit](visual-audits/pocket-secretary-selection-cancel-audio.md). |
+| `SOUND-01` | Pocket Secretary selection/cancel sounds are absent on some screens or use the wrong sound. | **Partial.** Notebook C now follows `0xF236` → `0x391A` and requests event `0x25`, then resumes the same selected row. Tips C already uses that route. Notebook row movement, A child dispatch, B/Start return, Tips page movement/return, and Tips entry are source-silent. Event `0x25` maps to `audio.effects.resource.037` (2.134 seconds including release tail); shared Debug/Release audio QA verifies decoded playback, default-output state, and duration. Debug/Release Notebook route QA checks event `0x25`, retained page/selection, and full-screen continuity. Mr. Johnsons C requests the same event; its A/B details, movement, and Start return are source-silent. Route loopback, other child-page handlers, and independent Pocket Secretary frames remain open; see [the selection/cancel audio audit](visual-audits/pocket-secretary-selection-cancel-audio.md). |
 | `SOUND-02` | Moving between Pocket Secretary menu items has no navigation sound. | **Closed as a non-defect under the US ROM.** `0xC2A6` services the parent loop through VBlank/input, `0xE660`, and the `0xC376` cursor writer; it makes no sound request on Up/Down. The parent command overview requests event `0x24` once when A opens the page (2.484-second extracted clip including its release tail); that entry cue is not a navigation sound. Debug/Release route QA checks the single entry request, four accepted Down moves, and wrap to row 0 with no additional audio events. Navigation has no playback duration because no sound is requested. The root-menu screenshot series is internally reviewed, but the supplied Genesis capture has no matching Pocket Secretary visit; external visual fidelity remains unverified. See [the root navigation audio audit](visual-audits/pocket-secretary-navigation-audio.md). |
 | `SEC-MAGIC` | The Magic page leaves its old text/menu content drawn over the new page. | **Closed for the spell-capable page.** ROM `0xFC22` clears Plane A before the spell panel is drawn; Qt presents the named full-page panel. Debug/Release entry, spell, force/posture, return, and reopen captures are clean, and independent section 06 frames 000001/000002/000005/000015/000020/000030 support the page and action subview without stale command controls. The separate Magical Defense fallback is a source-defined overlay on the command/status page; its Genesis appearance is not independently captured. Spell target/effect work remains under Magic. |
 | `SEC-CYBERWARE` | Opening Cyberware hides inventory, the runner portrait, posture, and text that should remain visible. | **Fixed in the Qt page projection.** The child now redraws only the center text panel, preserving the command screen's portrait, inventory, posture, selected tab, and right HUD; stale center text is cleared first. Debug/Release full-screen QA checks populated/empty rows, 30-frame hold, pixel-identical parent return, and stable reopen. No independent Genesis Cyberware frame is available; see [the shared-panel audit](visual-audits/cyberware-shared-panel.md). |
@@ -77,6 +78,8 @@ review; it is not part of the pasted report.
 | `STOKER-01` | The physical Stoker collision/property that should open his generic dialogue is still unidentified. | Resolved in the normal New Game route: scene-2 record 91 at `0x173138` (`0xC2`) is reached with Up, publishes raw collision `0xFFC2` and event 2, then mode 2/event 2 selects the generic Stoker arrival panel. Debug/Release CTest, full-screen route dumps, eight-question review, and independent section 03 frames support the result. The clip confirms the door/fade/panel sequence but does not record input or event bytes. See [`visual-audits/motel-doorway-scene-entry.md`](visual-audits/motel-doorway-scene-entry.md). |
 | `PLAY-01` | Shops, building item use, and maglock passkeys cannot be tested from normal Qt gameplay. | **Partial.** The Ares Weapon Emporium is reachable from New Game by ordinary Right/Up input through scene-2 record 92/CB/event 11; A enters the shop and Start returns cleanly. Ordinary controls also enter scene 20 through the paired scene-2 C0 doorway, contact maglock record 117, open its generic dialog, advance with A, and return with C/Walk Away. Passkey/Electronics/grenade outcomes, Security Terminal physical entry, building item use, and other shop/building routes still need normal-control result/return QA. See the [Ares audit](visual-audits/ares-physical-entry.md) and [scene-20 maglock audit](visual-audits/scene20-maglock-physical-entry.md). |
 | `SOUND-03` | More generally, sound effects across the game are reported to play at the wrong points. | Inventory the reported and currently connected ROM sound requests, map each to a state transition, and check trigger, playback, duration, loop, and stop. Close individual sounds in their owning goals. |
+| `SEC-JOHNSONS` | The Notebook Mr. Johnsons row did not have a functional child page in the Qt conversion. | **Partial.** ROM `0xF416` now has typed FFFC27-filtered rows, source-imported names/details, A/B detail waits, C event `0x25`, cursor wrapping, and clean Start return. Debug/Release QA covers all five paths and every frame of a 30-VBlank hold. All-five coverage uses diagnostic FFFC27=`0x1F`; only bit 0 has a verified story writer, other story/save bits remain open, and no matching Genesis frame is available. See [the page audit](visual-audits/notebook-mr-johnsons-page.md). |
+| `MAGIC-SPLIT` | The Magic screen differs by user type. | **User-provided reference:** magic users see the yellow screen with an advanced magic breakdown; non-magic users see Defenses with two bars. Keep them as distinct states and entry branches. The source condition and independent frames still need a dedicated Magic pass; existing `SEC-MAGIC` closure covers only the spell-capable stale-content issue. |
 
 ### Earlier reported items carried forward
 
@@ -496,6 +499,11 @@ and cancel sounds are missing on some pages; Magic leaves old menu text
 visible over its own content; Cyberware hides inventory, portrait, posture,
 and text.
 
+**User reference:** magic users see the yellow Magic screen with an advanced
+breakdown; non-magic users see the Defenses screen with two bars. Preserve
+these as separate visual states and entry branches. The exact source condition
+and matching independent frames still need their own Magic pass.
+
 **Solve:** trace the Pocket Secretary root selection events and each child
 page's source draw/clear path. Bind move/select/cancel to the correct audio
 requests. Model Magic and Cyberware as typed pages that redraw their own
@@ -511,12 +519,38 @@ spell-capable Magic page; ROM clears that page before drawing it, and the Qt
 screen replaces the command center cleanly. The Cyberware child previously
 dropped shared portrait, inventory, and posture layers; that Qt redraw defect
 is fixed and covered in Debug/Release with parent, child, held, return, and
-reopen screenshots. Under `SOUND-01`, Notebook C now requests source event
-`0x25` and returns to its selected row; remaining child-page actions and
-route-level loopback are open. Root-menu navigation is closed as a
+reopen screenshots. Under `SOUND-01`, Notebook and Mr. Johnsons C request event `0x25`; Mr. Johnsons A/B details
+and Start are source-silent. Other child-page actions and route-level
+loopback are open. Root-menu navigation is closed as a
 non-defect under ROM: movement requests no audio, while opening the page
 requests event `0x24` once. Cyberware's independent Genesis appearance and
 route-level Windows loopback audio remain unverified.
+
+### MENU-01B — Notebook Mr. Johnsons page (`SEC-JOHNSONS`)
+
+**Gap found:** the Notebook exposed the Mr. Johnsons row, but Qt had no
+functional child page.
+
+**Source trace:** ROM `0xF416` filters five named entries by FFFC27 bits 0..4.
+A/B replace the lower panel with the selected ROM detail and wait through
+`0xF312`; the next controller input rebuilds the list. C calls `0x391A`,
+requests event `0x25`, and stays on the selected list. Start returns to
+Notebook. Only FFFC27 bit 0 currently has a verified story writer: the Stoker
+Jump House response at `0x213E2`.
+
+**Changed:** typed list/detail selection, names and descriptions imported into
+the direct text catalog, source-ordered filtering, cursor wrap, A/B wait,
+C action, Start return, and a full lower-panel clear before each page redraw.
+
+**Internally checked:** Debug/Release CTests cover the five diagnostic entries,
+all five detail returns, both list wraps, C event, Start return, and all 30
+VBlank frames of a held detail screen. Full-screen dumps include the five
+details, rebuilt lists, and parent return. The all-entry state `0x1F` is a QA
+fixture; story writers for bits 1..4 and loaded-save state remain unresolved.
+
+**Status:** partial. The supplied Genesis longplay has no matching Pocket
+Secretary visit, so the page is not independently visually verified. See
+[the nine-question page audit](visual-audits/notebook-mr-johnsons-page.md).
 
 ### MENU-02 — Start-menu Attributes/Skills Karma selection (`KARMA-COLOR`, `KARMA-DETAIL`)
 

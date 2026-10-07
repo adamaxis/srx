@@ -4805,6 +4805,20 @@ void FieldSceneRuntime::advance_frame() {
                         pocket_secretary_, notebook_tip_flags_);
                     source_boundary(
                         "field.pocket_secretary.notebook.tips.opened");
+                } else if (pocket_secretary_.notebook.selection <
+                               pocket_secretary_.notebook.option_count &&
+                           pocket_secretary_.notebook.visible_options[
+                               pocket_secretary_.notebook.selection] ==
+                               NotebookMenuOption::mr_johnsons) {
+                    if (!notebook_referral_flags_.has_value()) {
+                        source_boundary(
+                            "field.pocket_secretary.notebook.mr_johnsons.flags_unresolved");
+                        break;
+                    }
+                    begin_pocket_secretary_notebook_mr_johnsons(
+                        pocket_secretary_, *notebook_referral_flags_);
+                    source_boundary(
+                        "field.pocket_secretary.notebook.mr_johnsons.opened");
                 } else {
                     source_boundary(
                         "field.pocket_secretary.notebook.child_pending");
@@ -4821,6 +4835,28 @@ void FieldSceneRuntime::advance_frame() {
             case PocketSecretaryMenuEvent::notebook_tips_mode_action:
                 source_boundary(
                     "field.pocket_secretary.notebook.tips.mode_action");
+                break;
+            case PocketSecretaryMenuEvent::
+                notebook_mr_johnsons_selection_moved:
+                source_boundary(
+                    "field.pocket_secretary.notebook.mr_johnsons.selection_moved");
+                break;
+            case PocketSecretaryMenuEvent::notebook_mr_johnsons_detail_opened:
+                source_boundary(
+                    "field.pocket_secretary.notebook.mr_johnsons.detail_opened");
+                break;
+            case PocketSecretaryMenuEvent::
+                notebook_mr_johnsons_detail_dismissed:
+                source_boundary(
+                    "field.pocket_secretary.notebook.mr_johnsons.detail_dismissed");
+                break;
+            case PocketSecretaryMenuEvent::notebook_mr_johnsons_returned:
+                source_boundary(
+                    "field.pocket_secretary.notebook.mr_johnsons.returned");
+                break;
+            case PocketSecretaryMenuEvent::notebook_mr_johnsons_mode_action:
+                source_boundary(
+                    "field.pocket_secretary.notebook.mr_johnsons.mode_action");
                 break;
             default:
                 break;
@@ -6397,6 +6433,56 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     static_cast<std::size_t>(pattern)]);
         }
         if (pocket_secretary_.notebook.open) {
+            if (pocket_secretary_.notebook.mr_johnsons.open) {
+                const auto& page =
+                    pocket_secretary_.notebook.mr_johnsons;
+                draw_command_overview_text(
+                    painter, 88, 32, field_menu_text_.notebook_labels[4]);
+                draw_command_overview_text(
+                    painter, 72, 40,
+                    field_menu_text_.notebook_tips_separator);
+                if (page.detail_wait) {
+                    // ROM F404 writes the 28x17 lower inner-panel grid at
+                    // C306 before C0DA places the selected detail at C38C.
+                    // This clears the old list and cursor while preserving
+                    // the title/separator and shared outer frame.
+                    painter.drawImage(QRect(24, 48, 224, 136),
+                                      pocket_secretary_grid_,
+                                      QRect(0, 24, 224, 136));
+                    if (page.selection < page.visible_count) {
+                        const auto source_index =
+                            page.visible_source_indices[page.selection];
+                        if (source_index <
+                            field_menu_text_.notebook_mr_johnson_details
+                                .size()) {
+                            draw_command_overview_text(
+                                painter, 48, 56,
+                                field_menu_text_
+                                    .notebook_mr_johnson_details[source_index]);
+                        }
+                    }
+                    return;
+                }
+                for (std::size_t row = 0; row < page.visible_count; ++row) {
+                    const auto source_index =
+                        page.visible_source_indices[row];
+                    if (source_index >=
+                        field_menu_text_.notebook_mr_johnson_names.size()) {
+                        continue;
+                    }
+                    const auto y = 56 + static_cast<int>(row) * 16;
+                    draw_command_overview_text(
+                        painter, 88, y,
+                        field_menu_text_
+                            .notebook_mr_johnson_names[source_index]);
+                }
+                if (page.selection < page.visible_count) {
+                    draw_command_overview_text(
+                        painter, 72,
+                        56 + static_cast<int>(page.selection) * 16, "x");
+                }
+                return;
+            }
             if (pocket_secretary_.notebook.tips.open) {
                 const auto& tips = pocket_secretary_.notebook.tips;
                 draw_command_overview_text(

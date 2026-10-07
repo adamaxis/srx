@@ -40,6 +40,7 @@ inline constexpr std::size_t kPocketSecretaryGroupItemsEmptyLineCount = 2U;
 inline constexpr std::size_t kNotebookLabelCount = 6U;
 inline constexpr std::size_t kNotebookNoRunLineCount = 3U;
 inline constexpr std::size_t kNotebookTipCount = 96U;
+inline constexpr std::size_t kNotebookMrJohnsonCount = 5U;
 
 struct FieldMenuTextCatalog {
     std::array<std::string, kCommandOverviewLabelCount> command_labels{};
@@ -147,6 +148,10 @@ struct FieldMenuTextCatalog {
     // are intentionally not part of this static text catalog.
     std::array<std::string, kNotebookLabelCount> notebook_labels{};
     std::array<std::string, kNotebookNoRunLineCount> notebook_no_run_lines{};
+    std::array<std::string, kNotebookMrJohnsonCount>
+        notebook_mr_johnson_names{};
+    std::array<std::string, kNotebookMrJohnsonCount>
+        notebook_mr_johnson_details{};
     std::string notebook_tips_title;
     std::string notebook_tips_separator;
     std::string notebook_tips_page_count_label;

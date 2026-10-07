@@ -1069,6 +1069,22 @@ int main() {
                 "Mr. Gunderson", "Julius Strouther", "Mortimer Reed",
                 "Vigore & Jarl", "Caleb Brightmore"}));
     assert(native_assets.notebook_mr_johnson_names == mr_johnson_names);
+    const auto mr_johnson_descriptions =
+        read_genesis_notebook_mr_johnson_descriptions(rom);
+    assert((mr_johnson_descriptions ==
+            std::array<std::string, 5>{
+                "Mr. Gunderson is a\nsmall-time Johnson\nwho works out of the\n"
+                "Jump House bar in\nRedmond Barrens.",
+                "Julius Strouther is a\nmid-level Johnson who\noperates out of the\n"
+                "Matchstick nightclub\nin Downtown Seattle.",
+                "Mortimer Reed is a\nmid-level Johnson who\noperates out of The Big\n"
+                "Rhino Resturant in\nthe Penumbra District.",
+                "Vigore & Jarl offer\nmid-level runs and\nspecialize in\n"
+                "acquisitions.\n\nThey operate from the\nWanderer in the\n"
+                "Puyallup Barrens.",
+                "Caleb Brightmore is\nan upper-level Johnson\nwho specializes in\n"
+                "Matrix Runs.\n\nCan be contacted at\nIcarus Descending in\n"
+                "Downtown Seattle."}));
     assert((native_assets.notebook_tip_flags ==
             std::array<std::uint32_t, 3>{1U, 0U, 0U}));
     native_assets.notebook_tip_flags =

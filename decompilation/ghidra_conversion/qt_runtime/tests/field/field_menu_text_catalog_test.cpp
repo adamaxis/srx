@@ -118,6 +118,17 @@ int main() {
             std::array<std::string, kNotebookNoRunLineCount>{
                 " You are not currently", "engaged in a shadowrun.",
                 "     Get a job!!"} ||
+        text.catalog.notebook_mr_johnson_names !=
+            std::array<std::string, kNotebookMrJohnsonCount>{
+                "Mr. Gunderson", "Julius Strouther", "Mortimer Reed",
+                "Vigore & Jarl", "Caleb Brightmore"} ||
+        text.catalog.notebook_mr_johnson_details[0] !=
+            "Mr. Gunderson is a\nsmall-time Johnson\nwho works out of the\n"
+            "Jump House bar in\nRedmond Barrens." ||
+        text.catalog.notebook_mr_johnson_details[4] !=
+            "Caleb Brightmore is\nan upper-level Johnson\nwho specializes in\n"
+            "Matrix Runs.\n\nCan be contacted at\nIcarus Descending in\n"
+            "Downtown Seattle." ||
         text.catalog.notebook_tips_title != "Tips & Clues" ||
         text.catalog.notebook_tips_separator !=
             std::string("[") + std::string(15U, static_cast<char>(92)) ||

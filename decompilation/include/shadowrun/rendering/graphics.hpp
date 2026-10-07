@@ -435,6 +435,11 @@ read_genesis_notebook_tip_catalog(const std::vector<std::uint8_t>& rom);
 // FFFC27 bits 0..4 gate the entries at runtime.
 std::array<std::string, native::kNativeNotebookMrJohnsonCount>
 read_genesis_notebook_mr_johnson_names(const std::vector<std::uint8_t>& rom);
+// ROM 0xF416's A/B detail view clears the child panel and writes the selected
+// source entry at 0xC38C; 0x80 separators become host newlines.
+std::array<std::string, native::kNativeNotebookMrJohnsonCount>
+read_genesis_notebook_mr_johnson_descriptions(
+    const std::vector<std::uint8_t>& rom);
 
 // ROM 0xD01C loads twenty labels through the pointer table at 0xC1A2A.
 std::array<std::string,

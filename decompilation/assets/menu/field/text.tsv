@@ -123,6 +123,16 @@ notebook.label.5	Shadowrunners
 notebook.no-run.0	" You are not currently"
 notebook.no-run.1	engaged in a shadowrun.
 notebook.no-run.2	"     Get a job!!"
+notebook.mr-johnson.name.0	Mr. Gunderson
+notebook.mr-johnson.name.1	Julius Strouther
+notebook.mr-johnson.name.2	Mortimer Reed
+notebook.mr-johnson.name.3	Vigore & Jarl
+notebook.mr-johnson.name.4	Caleb Brightmore
+notebook.mr-johnson.detail.0	Mr. Gunderson is a\nsmall-time Johnson\nwho works out of the\nJump House bar in\nRedmond Barrens.
+notebook.mr-johnson.detail.1	Julius Strouther is a\nmid-level Johnson who\noperates out of the\nMatchstick nightclub\nin Downtown Seattle.
+notebook.mr-johnson.detail.2	Mortimer Reed is a\nmid-level Johnson who\noperates out of The Big\nRhino Resturant in\nthe Penumbra District.
+notebook.mr-johnson.detail.3	Vigore & Jarl offer\nmid-level runs and\nspecialize in\nacquisitions.\n\nThey operate from the\nWanderer in the\nPuyallup Barrens.
+notebook.mr-johnson.detail.4	Caleb Brightmore is\nan upper-level Johnson\nwho specializes in\nMatrix Runs.\n\nCan be contacted at\nIcarus Descending in\nDowntown Seattle.
 race.0	Human
 race.1	"  Elf"
 race.2	Dwarf

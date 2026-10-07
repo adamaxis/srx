@@ -511,6 +511,25 @@ public:
                    ? tips.visible_source_indices[page]
                    : 0xFFU;
     }
+    bool pocket_secretary_notebook_mr_johnsons_open() const noexcept {
+        return pocket_secretary_.notebook.mr_johnsons.open;
+    }
+    bool pocket_secretary_notebook_mr_johnsons_detail_waiting() const noexcept {
+        return pocket_secretary_.notebook.mr_johnsons.detail_wait;
+    }
+    std::uint8_t pocket_secretary_notebook_mr_johnsons_selection() const noexcept {
+        return pocket_secretary_.notebook.mr_johnsons.selection;
+    }
+    std::uint8_t pocket_secretary_notebook_mr_johnsons_visible_count() const noexcept {
+        return pocket_secretary_.notebook.mr_johnsons.visible_count;
+    }
+    std::uint8_t pocket_secretary_notebook_mr_johnsons_source_index(
+        std::size_t entry) const noexcept {
+        const auto& page = pocket_secretary_.notebook.mr_johnsons;
+        return entry < page.visible_count
+                   ? page.visible_source_indices[entry]
+                   : 0xFFU;
+    }
     bool notebook_tip_flags_resolved() const noexcept {
         return notebook_tip_flags_resolved_;
     }
@@ -519,6 +538,15 @@ public:
     // the full three-longword state before mutating individual tips.
     bool set_notebook_tip_unlocked(std::size_t source_index,
                                    bool unlocked) noexcept;
+    // Diagnostic route coverage uses the same five FFFC27 source bits as
+    // 0xF416. Loaded-save flags stay unresolved until restoration is modeled.
+    bool set_notebook_referral_flags_for_dump(std::uint8_t flags) noexcept {
+        if (!notebook_referral_flags_.has_value()) {
+            return false;
+        }
+        notebook_referral_flags_ = static_cast<std::uint8_t>(flags & 0x1FU);
+        return true;
+    }
     // QA seam for the source FFFC22 catalog branch. Normal play obtains this
     // word from quest-item event handling, which is not connected yet.
     void set_group_item_flags_for_dump(std::uint32_t flags) noexcept {

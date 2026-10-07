@@ -147,6 +147,11 @@ inline constexpr std::array<GenesisAddress, 5> kNotebookMrJohnsonText{
     0xC5728, 0xC5755, 0xC5766, 0xC5736, 0xC5744};
 inline constexpr std::array<std::size_t, 5> kNotebookMrJohnsonTextLengths{
     13, 16, 13, 13, 16};
+// F416 selects these multiline detail strings alongside the matching source
+// names above. Their order follows FFFC27 bits 0..4, not ROM address order.
+inline constexpr std::array<GenesisAddress, 5>
+    kNotebookMrJohnsonDescriptionText{
+        0xC5774, 0xC58D5, 0xC593F, 0xC57D2, 0xC584E};
 // New Game's setup helper at 0x59C48 initializes FFFC2C with 0x1C7F;
 // F33E tests the word only for nonzero when deciding whether Contacts is
 // visible on the fresh-game Notebook panel.

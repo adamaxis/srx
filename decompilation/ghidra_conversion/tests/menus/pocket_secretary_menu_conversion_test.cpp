@@ -200,6 +200,65 @@ int main() {
         return 19;
     }
 
+    PocketSecretaryMenuState johnsons_state{};
+    initialize_pocket_secretary_menu(johnsons_state, false, {});
+    begin_pocket_secretary_notebook(
+        johnsons_state, false, std::array<bool, 3>{false, true, false});
+    begin_pocket_secretary_notebook_mr_johnsons(johnsons_state, 0x15U);
+    const auto& johnsons = johnsons_state.notebook.mr_johnsons;
+    if (!expect(johnsons.open && johnsons.visible_count == 3U &&
+                johnsons.selection == 0U &&
+                johnsons.visible_source_indices[0] == 0U &&
+                johnsons.visible_source_indices[1] == 2U &&
+                johnsons.visible_source_indices[2] == 4U &&
+                apply_pocket_secretary_input(johnsons_state, 0x0200U, {}) ==
+                    PocketSecretaryMenuEvent::
+                        notebook_mr_johnsons_selection_moved &&
+                johnsons_state.notebook.mr_johnsons.selection == 1U &&
+                apply_pocket_secretary_input(johnsons_state, 0x0100U, {}) ==
+                    PocketSecretaryMenuEvent::
+                        notebook_mr_johnsons_selection_moved &&
+                johnsons_state.notebook.mr_johnsons.selection == 0U)) {
+        return 22;
+    }
+    if (!expect(apply_pocket_secretary_input(johnsons_state, 0x4000U, {}) ==
+                    PocketSecretaryMenuEvent::
+                        notebook_mr_johnsons_detail_opened &&
+                johnsons.detail_wait &&
+                apply_pocket_secretary_input(johnsons_state, 0U, {}) ==
+                    PocketSecretaryMenuEvent::waiting &&
+                apply_pocket_secretary_input(johnsons_state, 0x0200U, {}) ==
+                    PocketSecretaryMenuEvent::
+                        notebook_mr_johnsons_detail_dismissed &&
+                !johnsons.detail_wait && johnsons.selection == 0U)) {
+        return 23;
+    }
+    if (!expect(apply_pocket_secretary_input(johnsons_state, 0x1000U, {}) ==
+                    PocketSecretaryMenuEvent::
+                        notebook_mr_johnsons_detail_opened &&
+                apply_pocket_secretary_input(johnsons_state, 0x8000U, {}) ==
+                    PocketSecretaryMenuEvent::
+                        notebook_mr_johnsons_detail_dismissed &&
+                johnsons.open && !johnsons.detail_wait)) {
+        return 24;
+    }
+    bool johnsons_mode_action_called = false;
+    if (!expect(apply_pocket_secretary_input(
+                    johnsons_state, 0x2000U,
+                    {{}, {}, {}, {}, {}, [&] {
+                         johnsons_mode_action_called = true;
+                     }}) ==
+                    PocketSecretaryMenuEvent::
+                        notebook_mr_johnsons_mode_action &&
+                johnsons_mode_action_called && johnsons.open &&
+                johnsons.selection == 0U &&
+                apply_pocket_secretary_input(johnsons_state, 0x8000U, {}) ==
+                    PocketSecretaryMenuEvent::
+                        notebook_mr_johnsons_returned &&
+                !johnsons.open && johnsons_state.notebook.open)) {
+        return 25;
+    }
+
     PocketSecretaryMenuState extended{};
     initialize_pocket_secretary_menu(extended, true, {});
     if (!expect(extended.maximum_selection == 5U &&

@@ -1377,6 +1377,24 @@ read_genesis_notebook_mr_johnson_names(
     return result;
 }
 
+std::array<std::string, native::kNativeNotebookMrJohnsonCount>
+read_genesis_notebook_mr_johnson_descriptions(
+    const std::vector<std::uint8_t>& rom) {
+    std::array<std::string, native::kNativeNotebookMrJohnsonCount> result{};
+    for (std::size_t index = 0; index < result.size(); ++index) {
+        const auto offset = static_cast<std::size_t>(
+            rom::kNotebookMrJohnsonDescriptionText[index]);
+        if (offset >= rom.size()) {
+            throw std::out_of_range(
+                "Genesis Mr. Johnson detail text is truncated");
+        }
+        result[index] = read_genesis_multiline_text(
+            rom, offset, rom.size() - offset,
+            "Genesis Mr. Johnson detail text is truncated");
+    }
+    return result;
+}
+
 std::array<std::string,
            native::kNativeAttributeCount + native::kNativeSkillCount>
 read_genesis_attribute_skill_catalog(const std::vector<std::uint8_t>& rom) {

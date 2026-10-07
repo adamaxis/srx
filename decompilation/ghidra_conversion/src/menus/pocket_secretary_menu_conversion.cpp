@@ -94,6 +94,23 @@ void begin_pocket_secretary_notebook_tips(
     tips.open = true;
 }
 
+void begin_pocket_secretary_notebook_mr_johnsons(
+    PocketSecretaryMenuState& state, const std::uint8_t referral_flags) {
+    if (!state.open || !state.notebook.open) {
+        return;
+    }
+    auto& page = state.notebook.mr_johnsons;
+    page = NotebookMenuState::MrJohnsonsState{};
+    for (std::size_t bit = 0; bit < kNotebookMrJohnsonCount; ++bit) {
+        if ((referral_flags & (std::uint8_t{1} << bit)) == 0U) {
+            continue;
+        }
+        page.visible_source_indices[page.visible_count++] =
+            static_cast<std::uint8_t>(bit);
+    }
+    page.open = page.visible_count != 0U;
+}
+
 void begin_dismiss_runner_menu(
     DismissRunnerMenuState& state,
     const std::array<std::uint8_t, 2>& candidate_slots,
@@ -170,6 +187,58 @@ PocketSecretaryMenuEvent apply_pocket_secretary_input(
 
     if (state.notebook.open) {
         auto& notebook = state.notebook;
+        if (notebook.mr_johnsons.open) {
+            auto& page = notebook.mr_johnsons;
+            constexpr std::uint16_t kMovePrevious = 0x0100U;
+            constexpr std::uint16_t kMoveNext = 0x0200U;
+            constexpr std::uint16_t kButtonB = 0x1000U;
+            constexpr std::uint16_t kButtonC = 0x2000U;
+            constexpr std::uint16_t kButtonA = 0x4000U;
+            constexpr std::uint16_t kStart = 0x8000U;
+            if (page.detail_wait) {
+                if ((input & 0xFF00U) == 0U) {
+                    return PocketSecretaryMenuEvent::waiting;
+                }
+                page.detail_wait = false;
+                return PocketSecretaryMenuEvent::
+                    notebook_mr_johnsons_detail_dismissed;
+            }
+            if ((input & (kMovePrevious | kMoveNext)) != 0U) {
+                if (page.visible_count == 0U) {
+                    return PocketSecretaryMenuEvent::waiting;
+                }
+                const auto final_entry = static_cast<std::uint8_t>(
+                    page.visible_count - 1U);
+                if ((input & kMovePrevious) != 0U) {
+                    page.selection = page.selection == 0U
+                        ? final_entry
+                        : static_cast<std::uint8_t>(page.selection - 1U);
+                } else {
+                    page.selection = static_cast<std::uint8_t>(
+                        (page.selection + 1U) % page.visible_count);
+                }
+                return PocketSecretaryMenuEvent::
+                    notebook_mr_johnsons_selection_moved;
+            }
+            if ((input & (kButtonA | kButtonB)) != 0U) {
+                if (page.selection < page.visible_count) {
+                    page.detail_wait = true;
+                    return PocketSecretaryMenuEvent::
+                        notebook_mr_johnsons_detail_opened;
+                }
+            }
+            if ((input & kButtonC) != 0U) {
+                call_once(callbacks.handle_mode_action_event);
+                return PocketSecretaryMenuEvent::
+                    notebook_mr_johnsons_mode_action;
+            }
+            if ((input & kStart) != 0U) {
+                page.open = false;
+                return PocketSecretaryMenuEvent::
+                    notebook_mr_johnsons_returned;
+            }
+            return PocketSecretaryMenuEvent::waiting;
+        }
         if (notebook.tips.open) {
             auto& tips = notebook.tips;
             constexpr std::uint16_t kMovePrevious = 0x0400U;

@@ -11851,6 +11851,10 @@ int main(int argc, char** argv) {
                 return 0;
             }
             if (field_secretary_dump_path.has_value()) {
+                // Keep the source E660 lower-bezel animation repeatable in
+                // Debug and Release dumps. This QA seed does not establish
+                // the live game's unresolved PRNG seed source.
+                field_scene.set_source_random_seed_for_dump(0U);
                 if (!field_scene.open_command_overview_for_dump()) {
                     std::cerr << "field secretary dump: command overview "
                                  "did not open\n";
@@ -12244,11 +12248,17 @@ int main(int argc, char** argv) {
                                  "the Notebook row\n";
                     return 3;
                 }
+                if (!field_scene.set_notebook_referral_flags_for_dump(
+                        0x1FU)) {
+                    std::cerr << "field secretary dump: FFFC27 is unresolved "
+                                 "for the source-gated Johnson list\n";
+                    return 3;
+                }
                 field_audio_events.clear();
                 press_secretary_button(0x40U);
                 if (!field_scene.pocket_secretary_notebook_open() ||
                     field_scene.pocket_secretary_notebook_option_count() !=
-                        3U ||
+                        4U ||
                     !field_audio_events.empty()) {
                     std::cerr << "field secretary dump: Notebook did not "
                                  "build its rows silently on A dispatch\n";
@@ -12494,7 +12504,220 @@ int main(int argc, char** argv) {
                                  "to the clean Notebook panel silently\n";
                     return 3;
                 }
+                // Diagnostic FFFC27=0x1F exercises every source list entry.
+                // The live Stoker referral route separately proves the real
+                // command-0x31 writer for bit 0; other story writers remain
+                // unresolved and are not inferred from this fixture state.
+                field_audio_events.clear();
+                press_secretary_button(0x02U); // Contacts row.
+                press_secretary_button(0x02U); // Mr. Johnsons row.
+                if (field_scene.pocket_secretary_notebook_selection() != 3U ||
+                    !field_audio_events.empty()) {
+                    std::cerr << "field secretary dump: Notebook did not "
+                                 "select Mr. Johnsons silently\n";
+                    return 3;
+                }
+                press_secretary_button(0x40U);
+                if (!field_scene
+                         .pocket_secretary_notebook_mr_johnsons_open() ||
+                    field_scene
+                            .pocket_secretary_notebook_mr_johnsons_visible_count() !=
+                        5U ||
+                    field_scene
+                            .pocket_secretary_notebook_mr_johnsons_source_index(
+                                0U) != 0U ||
+                    field_scene
+                            .pocket_secretary_notebook_mr_johnsons_source_index(
+                                1U) != 1U ||
+                    field_scene
+                            .pocket_secretary_notebook_mr_johnsons_source_index(
+                                2U) != 2U ||
+                    field_scene
+                            .pocket_secretary_notebook_mr_johnsons_source_index(
+                                3U) != 3U ||
+                    field_scene
+                            .pocket_secretary_notebook_mr_johnsons_source_index(
+                                4U) != 4U ||
+                    !field_audio_events.empty()) {
+                    std::cerr << "field secretary dump: FFFC27 source bits "
+                                 "did not build the five-entry Johnson list\n";
+                    return 3;
+                }
+                auto johnsons_scene = render_secretary_scene();
+                if (!image_has_green_ink(johnsons_scene, 88, 32, 128, 8) ||
+                    !image_has_green_ink(johnsons_scene, 72, 40, 144, 8) ||
+                    !image_has_green_ink(johnsons_scene, 72, 56, 8, 8) ||
+                    !image_has_green_ink(johnsons_scene, 88, 56, 128, 8) ||
+                    !image_has_green_ink(johnsons_scene, 88, 72, 128, 8) ||
+                    !image_has_green_ink(johnsons_scene, 88, 88, 128, 8) ||
+                    !image_has_green_ink(johnsons_scene, 88, 104, 128, 8) ||
+                    !image_has_green_ink(johnsons_scene, 88, 120, 128, 8) ||
+                    !save_secretary_scene("notebook-mr-johnsons-list",
+                                          johnsons_scene)) {
+                    std::cerr << "field secretary dump: source Johnson names "
+                                 "or cursor were not drawn at their list rows\n";
+                    return 3;
+                }
+                field_audio_events.clear();
+                press_secretary_button(0x20U); // C invokes 0x391A.
+                const auto johnsons_after_mode_action =
+                    render_secretary_scene();
+                if (!field_scene
+                         .pocket_secretary_notebook_mr_johnsons_open() ||
+                    field_scene
+                            .pocket_secretary_notebook_mr_johnsons_selection() !=
+                        0U ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x25U} ||
+                    image_region_differs(johnsons_scene,
+                                         johnsons_after_mode_action,
+                                         32, 32, 256, 160) ||
+                    !save_secretary_scene(
+                        "notebook-mr-johnsons-mode-action",
+                        johnsons_after_mode_action)) {
+                    std::cerr << "field secretary dump: Johnsons C did not "
+                                 "request event 0x25 and resume the same list\n";
+                    return 3;
+                }
+                field_audio_events.clear();
+                for (std::uint8_t entry = 0U; entry < 5U; ++entry) {
+                    const auto list_before_detail = render_secretary_scene();
+                    const auto detail_button = entry % 2U == 0U
+                        ? 0x40U
+                        : 0x10U;
+                    press_secretary_button(detail_button);
+                    auto detail_scene = render_secretary_scene();
+                    if (!field_scene
+                             .pocket_secretary_notebook_mr_johnsons_detail_waiting() ||
+                        field_scene
+                                .pocket_secretary_notebook_mr_johnsons_selection() !=
+                            entry ||
+                        !image_has_green_ink(detail_scene, 48, 56, 192, 56) ||
+                        !image_has_green_ink(detail_scene, 88, 32, 128, 8) ||
+                        !save_secretary_scene(
+                            "notebook-mr-johnsons-detail-" +
+                                std::to_string(entry),
+                            detail_scene) ||
+                        !field_audio_events.empty()) {
+                        std::cerr << "field secretary dump: Johnson detail "
+                                     "did not replace the old list cleanly\n";
+                        return 3;
+                    }
+                    if (entry == 0U) {
+                        // F312 continues the source E660 effect during the
+                        // detail wait. Its lower-bezel cells may animate,
+                        // while the title and detail text must stay fixed.
+                        bool lower_bezel_changed = false;
+                        if (!save_secretary_scene(
+                                "notebook-mr-johnsons-detail-wait-frame-00",
+                                detail_scene)) {
+                            std::cerr << "field secretary dump: could not save detail wait entry frame\n";
+                            return 3;
+                        }
+                        for (int frame = 0; frame < 30; ++frame) {
+                            field_scene.set_controller_port_byte(0U);
+                            field_scene.advance_frame();
+                            const auto wait_frame = render_secretary_scene();
+                            lower_bezel_changed = lower_bezel_changed ||
+                                image_region_differs(detail_scene, wait_frame,
+                                                     32, 192, 256, 32);
+                            auto frame_name = std::string(
+                                "notebook-mr-johnsons-detail-wait-frame-");
+                            if (frame + 1 < 10) {
+                                frame_name += '0';
+                            }
+                            frame_name += std::to_string(frame + 1);
+                            if (!field_scene
+                                     .pocket_secretary_notebook_mr_johnsons_detail_waiting() ||
+                                field_scene
+                                        .pocket_secretary_notebook_mr_johnsons_selection() !=
+                                    0U ||
+                                image_region_differs(detail_scene, wait_frame,
+                                                     32, 32, 256, 160) ||
+                                !save_secretary_scene(frame_name, wait_frame)) {
+                                std::cerr << "field secretary dump: detail text or selection changed during F312 wait\n";
+                                return 3;
+                            }
+                        }
+                        if (!lower_bezel_changed) {
+                            std::cerr << "field secretary dump: E660 lower-bezel effect did not advance during detail wait\n";
+                            return 3;
+                        }
+                    }
+                    press_secretary_button(0x08U); // F312 detail wait return.
+                    if (field_scene
+                            .pocket_secretary_notebook_mr_johnsons_detail_waiting() ||
+                        field_scene
+                                .pocket_secretary_notebook_mr_johnsons_selection() !=
+                            entry ||
+                        !field_audio_events.empty()) {
+                        std::cerr << "field secretary dump: detail wait did "
+                                     "not rebuild the selected list row\n";
+                        return 3;
+                    }
+                    johnsons_scene = render_secretary_scene();
+                    if (image_has_green_ink(johnsons_scene, 48, 56, 24, 56) ||
+                        !image_has_green_ink(
+                            johnsons_scene, 88, 56 + entry * 16, 128, 8) ||
+                        image_region_differs(list_before_detail,
+                                             johnsons_scene,
+                                             32, 32, 256, 160) ||
+                        !save_secretary_scene(
+                            "notebook-mr-johnsons-detail-return-" +
+                                std::to_string(entry),
+                            johnsons_scene)) {
+                        std::cerr << "field secretary dump: Johnson detail "
+                                     "text survived after list reconstruction\n";
+                        return 3;
+                    }
+                    if (entry < 4U) {
+                        press_secretary_button(0x02U); // Down one source row.
+                        if (field_scene
+                                .pocket_secretary_notebook_mr_johnsons_selection() !=
+                            static_cast<std::uint8_t>(entry + 1U)) {
+                            std::cerr << "field secretary dump: Johnson "
+                                         "cursor did not follow typed selection\n";
+                            return 3;
+                        }
+                    }
+                }
+                press_secretary_button(0x02U); // Wrap from last to first.
+                press_secretary_button(0x01U); // Back to the last entry.
+                if (field_scene
+                        .pocket_secretary_notebook_mr_johnsons_selection() !=
+                        4U ||
+                    !field_audio_events.empty()) {
+                    std::cerr << "field secretary dump: Johnson list did not "
+                                 "wrap silently across its endpoints\n";
+                    return 3;
+                }
+                field_audio_events.clear();
+                press_secretary_button(0x80U); // Start returns to Notebook.
+                auto notebook_after_johnsons = render_secretary_scene();
+                if (field_scene
+                        .pocket_secretary_notebook_mr_johnsons_open() ||
+                    !field_scene.pocket_secretary_notebook_open() ||
+                    field_scene.pocket_secretary_notebook_selection() != 3U ||
+                    !image_has_green_ink(notebook_after_johnsons,
+                                         88, 104, 128, 8) ||
+                    image_has_green_ink(notebook_after_johnsons,
+                                        48, 56, 24, 56) ||
+                    !field_audio_events.empty() ||
+                    !save_secretary_scene("notebook-mr-johnsons-return",
+                                          notebook_after_johnsons)) {
+                    std::cerr << "field secretary dump: Start did not "
+                                 "rebuild the selected Notebook row cleanly\n";
+                    return 3;
+                }
                 field_scene.set_controller_port_byte(0x01U); // Up.
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0x01U); // Up.
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0x01U); // Up to row 0.
                 field_scene.advance_frame();
                 field_scene.set_controller_port_byte(0U);
                 field_scene.advance_frame();

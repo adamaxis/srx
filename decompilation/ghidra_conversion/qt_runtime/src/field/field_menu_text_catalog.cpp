@@ -112,6 +112,10 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         pocket_secretary_group_items_empty_found{};
     std::array<bool, kNotebookLabelCount> notebook_label_found{};
     std::array<bool, kNotebookNoRunLineCount> notebook_no_run_found{};
+    std::array<bool, kNotebookMrJohnsonCount>
+        notebook_mr_johnson_name_found{};
+    std::array<bool, kNotebookMrJohnsonCount>
+        notebook_mr_johnson_detail_found{};
     std::array<bool, 2> hotel_option_found{};
     std::array<bool, 2> hotel_checkout_question_found{};
     std::array<bool, 3> hotel_checkout_option_found{};
@@ -742,6 +746,28 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             }
             continue;
         }
+        if (parse_indexed_key(key, "notebook.mr-johnson.name.", index) &&
+            index < result.catalog.notebook_mr_johnson_names.size()) {
+            if (notebook_mr_johnson_name_found[index]) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else {
+                notebook_mr_johnson_name_found[index] = true;
+                result.catalog.notebook_mr_johnson_names[index] = value;
+            }
+            continue;
+        }
+        if (parse_indexed_key(key, "notebook.mr-johnson.detail.", index) &&
+            index < result.catalog.notebook_mr_johnson_details.size()) {
+            if (notebook_mr_johnson_detail_found[index]) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else {
+                notebook_mr_johnson_detail_found[index] = true;
+                result.catalog.notebook_mr_johnson_details[index] = value;
+            }
+            continue;
+        }
         if (key == "notebook.tips.title") {
             if (notebook_tips_title_found) {
                 result.errors.emplace_back(
@@ -1073,6 +1099,10 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     add_missing_entries(notebook_label_found, "notebook.label.", result.errors);
     add_missing_entries(notebook_no_run_found, "notebook.no-run.",
                         result.errors);
+    add_missing_entries(notebook_mr_johnson_name_found,
+                        "notebook.mr-johnson.name.", result.errors);
+    add_missing_entries(notebook_mr_johnson_detail_found,
+                        "notebook.mr-johnson.detail.", result.errors);
     add_missing_entries(hotel_option_found, "hotel.option.", result.errors);
     add_missing_entries(hotel_checkout_question_found,
                         "hotel.checkout-question.", result.errors);
@@ -1117,6 +1147,9 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         result.catalog.field_service_universal_clips_description);
     decode_newlines(result.catalog.magic_panel_metric_labels);
     decode_newlines(result.catalog.magic_force_posture_labels);
+    for (auto& detail : result.catalog.notebook_mr_johnson_details) {
+        decode_newlines(detail);
+    }
 
     const auto* tips_record =
         assets.find("menu.pocket_secretary.notebook.tips");
