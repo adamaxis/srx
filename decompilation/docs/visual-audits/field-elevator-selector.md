@@ -4,10 +4,14 @@ Date: 2026-10-07
 
 **Status: partial.** The scene-26 event-29 selector and its selected-scene
 handoff are source-traced, implemented as typed native state, and covered by
-Debug/Release QA with full consecutive frame captures. The destination map
-identity is still unnamed. The Qt fade follows the ROM's timing but uses a
-black overlay rather than reproducing its per-color CRAM arithmetic, and the
-route-specific audio output has not been captured with loopback.
+Debug/Release QA with full consecutive frame captures. A second route now
+physically enters scene 29's event-29 records from its descriptor spawn and
+transitions to scene 27. That route starts from a QA restore checkpoint; it does
+not establish the ordinary world-event path into scene 29 or saved-session
+floor restoration. The destination map identity is still unnamed. The Qt fade
+follows the ROM's timing but uses a black overlay rather than reproducing its
+per-color CRAM arithmetic, and the route-specific audio output has not been
+captured with loopback.
 
 ## Source trace and native behavior
 
@@ -32,32 +36,36 @@ event-29 rectangles in 23 numeric scenes, arranged as follows:
 | Trigger scenes | Source child-scene group | Physical route QA |
 |---|---|---|
 | 21, 22, 23, 24, 25 | 21, 22, 23, 24 | Not yet covered |
-| 26, 27, 28, 29 | 26, 27, 28 | Scenes 26, 27, and 28 covered; scene 29 open |
+| 26, 27, 28, 29 | 26, 27, 28 | Member loop covers 26/27/28; scene 29 has a descriptor-spawn physical-input route |
 | 30, 31, 32, 33, 34 | 30, 31, 32, 33 | Not yet covered |
 | 35, 36, 37, 38, 39, 40 | 35, 36, 37, 38, 39 | Not yet covered |
 | 41, 42, 43 | 41, 42 | Not yet covered |
 
 These are scene IDs only; this census does not identify the places. Scenes
 25, 29, 34, 40, and 43 have the event-29 trigger but are not members of their
-listed destination group. On the normal resource-scene entry path,
-`0x167AE` clears `FFF0C8` for scene IDs `0x15..0x2B` (its branch at `0x16950`
-and clear at `0x16964`), which supports member index 0 for these non-member
-entry scenes. The Qt runtime's default matches that source path. Entry through
-save restoration and physical-input QA for those scenes remain open. The
+listed destination group. On the normal resource-scene entry path, `0x167AE`
+clears `FFF0C8` for scene IDs `0x15..0x2B` (its branch at `0x16950` and clear
+at `0x16964`), which supports member index 0 for these non-member entry scenes.
+The scene-29 route starts from a fresh QA restore checkpoint seeded with scene
+29's descriptor camera and runner coordinates, then sets its scene-derived
+interaction mode through the test-only mode setter. It validates physical
+input through scene 29's trigger and the host's index-0 fallback; it does not
+exercise the ordinary `0x167AE` scene-entry path or prove saved-game floor
+restoration. Scenes 25, 34, 40, and 43 still lack physical-input QA. The
 physical return-loop QA covers only scenes 26, 27, and 28 within the 26/27/28
 group.
 
 Up and Down change the selected floor and show the corresponding active arrow
-for eight VBlanks. A starts the 17-frame floor-change animation, with each
-animation frame held for eight VBlanks. When the selected floor differs from
-the current floor, the ROM path at `0x58DB2` chooses the destination scene from
-the group and prepares it through `0x16A8E`. The scene transition runs 17
-palette steps toward black, changes scenes, then runs 17 steps toward the
-destination palette. Each palette step waits two VBlanks through `0x1342`;
-`0x131C` and `0x12F6` provide the fade directions. The native
-`ElevatorSelectorRuntime` and `ElevatorSceneTransitionRuntime` preserve these
-states and timings. The selector's A/B/Start behavior and the event-29 field
-collision are driven through the normal Qt controller path.
+for eight VBlanks. A moves the lift between the current and selected floor;
+the 17 animation frames are each held for eight VBlanks. Once the lift reaches
+the selected floor, Start begins the map transition. The ROM path at `0x58DB2`
+chooses the destination scene from the group and prepares it through `0x16A8E`.
+The scene transition runs 17 palette steps toward black, changes scenes, then
+runs 17 steps toward the destination palette. Each palette step waits two
+VBlanks through `0x1342`; `0x131C` and `0x12F6` provide the fade directions.
+The native `ElevatorSelectorRuntime` and `ElevatorSceneTransitionRuntime`
+preserve these states and timings. The selector's A/B/Start behavior and the
+event-29 field collision are driven through the normal Qt controller path.
 
 This is not the Stoker Motel route. The separately traced Stoker interaction
 is scene 2 collision `0xC2`, mode 2/event 2, which opens the generic Stoker
@@ -68,6 +76,19 @@ that string to this selector or its scene group. Neither Stokers nor an office
 building is assigned as the location in this audit.
 
 ## Full-screen capture and evidence
+
+The scene-29 route QA checks the paired source collision records 112/113 and
+starts at descriptor position `(0x0A00, 0x0500)`. Ordinary Up input enters
+event 29, opens the selector with current floor index 0, and exposes group
+destination 26. After B requests audio event `0x25`, Up selects destination 27;
+A moves the lift through 17 animation frames at eight VBlanks each, and Start
+initiates the two fades and scene change. Its full-screen timeline contains 283
+consecutive 320x224 frames, from the descriptor-spawn field through a 30-frame
+destination hold. It checks both floor labels, eight-VBlank arrow feedback,
+the full-black handoff, destination 27's descriptor spawn, HUD, and absence of
+stale modal graphics. The test uses a restored checkpoint at scene 29's
+descriptor spawn, so this is evidence for the collision/UI route rather than
+map reachability from another scene.
 
 The Debug and Release CLI route QA captures every update from before the
 scene-26 collision, through selector input and animation, both fades, scene
@@ -103,20 +124,20 @@ renderer match.
    current/selected floor labels, and screen order agree with the independent
    longplay samples. Exact color arithmetic and every animation frame do not
    have independent pixel-matched references.
-2. **Does the visible look match behavior? — Yes.** QA enters via normal Up
+2. **Does the visible look match behavior? — Yes for the tested routes.** QA enters via normal Up
    input into collision `0xDD`, records event 29, and checks current floor,
    selected floor, active arrow feedback, the A animation, and destination
-   scene. The ROM state and draw reads for `FFF0C8`/`FFF0CA` are documented
-   above.
+   scene. Scene 29 begins from a fresh QA checkpoint, so its index-0 starting
+   state does not verify the ROM's normal-entry reset or save restoration.
 3. **Are the visuals themselves correct? — Partial.** The extracted selector
    background, labels, arrows, portrait, and HUD layers are drawn in source
    order; full frames were reviewed. The independent clip supports the
    selector state but does not supply a pixel-for-pixel golden for the entire
    selector or fade. The black-overlay fade is a timed native approximation.
 4. **Should anything animate? — Yes.** Arrow feedback lasts eight VBlanks;
-   A starts 17 elevator animation frames at eight VBlanks per frame. A changed
-   floor starts the two 17-step palette fades, with two VBlanks per step.
-   Neutral holds and unchanged-floor A do not start the floor animation.
+   A moves the lift for 17 animation frames at eight VBlanks per frame. Start
+   on the reached floor begins the two 17-step palette fades, with two
+   VBlanks per step. Neutral holds do not start animation.
 5. **Does it have sound? — Yes, with a playback-evidence limit.** B requests
    source audio event `0x25`. The associated audio resource test reports
    2.134 seconds including its release tail. This route verifies the event
@@ -128,35 +149,42 @@ renderer match.
    leftover controls; the return-route maps have no matching independent
    Genesis reference. Party state differs from the independent clip as noted
    above.
-7. **Do multiple frames support the interpretation? — Yes.** The two QA
+7. **Do multiple frames support the interpretation? — Yes.** The three QA
    captures cover idle, navigation, feedback retirement, floor animation,
    fade-out, black handoff, fade-in, and stable destinations. The longplay
    supplies separate selector and post-transition examples but no controller
-   log. The two return routes have internal multi-frame evidence only.
+   log. Scene 29 and the return routes have internal multi-frame evidence only.
 8. **Does the new UI replace the old UI cleanly? — Yes in the captured routes.**
    The selector paints its full-screen background and layers instead of
    painting over field controls. Each black handoff clears the selector; each
    destination replaces it with its own field composition. QA confirms no
    dialogue, shop, or prior modal remains open.
-9. **Was the whole time window reviewed? — Yes.** All 459 consecutive frames
-   from the first route and all 553 from the return routes were captured and
-   reviewed through whole-screen contact sheets; selector and transition
-   checkpoints were also inspected at full size. The independent video
-   timestamps are visual anchors only, not ROM timing measurements.
+9. **Was the whole time window reviewed? — Yes.** The 459-frame first route,
+   553-frame return route, and 283-frame scene-29 route were captured
+   consecutively and reviewed in chronologically indexed whole-screen contact
+   sheets; selector and transition checkpoints were also inspected at full
+   size. The independent video timestamps are visual anchors only, not ROM
+   timing measurements.
 
 ## Verification and remaining work
 
 The defending Debug/Release tests are
-`shadowrun_ghidra_conversion_qt_field_elevator_physical_entry_qa` and
+`shadowrun_ghidra_conversion_qt_field_elevator_physical_entry_qa`,
+`shadowrun_ghidra_conversion_qt_field_elevator_scene29_entry_qa`, and
 `shadowrun_ghidra_field_elevator_selector_runtime`. The route QA checks source
 collision records, event 29, state transitions, event `0x25`, clean screen
-replacement, and rendered pixel regions. The physical-entry test checks the
-scene-26 outbound transition and the scene-28-to-27-to-26 return loop; it writes
+replacement, and rendered pixel regions. The physical-entry tests check the
+scene-26 outbound transition, the scene-28-to-27-to-26 return loop, and the
+scene-29 descriptor-spawn checkpoint route; the original route writes
 `qt_runtime/field-elevator-physical-entry-qa/scene26-event29-elevator/actual.bmp`
-and the `floor-group-roundtrip/actual.bmp` and consecutive `timeline/` captures.
-Debug and Release outputs are compared by frame name and SHA-256.
+plus the `floor-group-roundtrip/actual.bmp` and consecutive `timeline/`
+captures. Scene 29 writes `qt_runtime/field-elevator-scene29-entry-qa/` and its
+283-frame timeline. Debug and Release outputs are compared by frame name and
+SHA-256.
 
-Remaining: exact CRAM color arithmetic for this field transition, route-level
-audio loopback and measured output, a reference capture for all selector
-animation frames, and a source-backed name for scene 28. Do not use this route
+Remaining: physical QA for the other four event-29 groups and non-member
+trigger scenes 25/34/40/43; ordinary resource-entry and save-restore floor state
+paths; exact CRAM color arithmetic for this field transition; route-level audio
+loopback and measured output; independent references for scene 29 and all
+selector animation frames; and source-backed map names. Do not use this route
 as evidence that Stokers has an interior.

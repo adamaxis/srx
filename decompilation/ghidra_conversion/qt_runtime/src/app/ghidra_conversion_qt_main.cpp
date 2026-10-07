@@ -5710,6 +5710,13 @@ int run_field_elevator_physical_entry_qa(
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries);
 
+int run_field_elevator_scene29_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries);
+
 int run_field_elevator_floor_group_roundtrip_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -8347,6 +8354,386 @@ int run_field_elevator_physical_entry_qa(
     return 0;
 }
 
+int run_field_elevator_scene29_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Scene-29 elevator QA: could not clear captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output / "timeline", output_error);
+    if (output_error) {
+        std::cerr << "Scene-29 elevator QA: could not create captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    const auto& metadata = field_scene.state().field_scene_buffers.source_metadata;
+    const auto& rectangles = metadata.terrain_collision_rectangles;
+    if (field_scene.field_scene_reference_for_dump() != 29U ||
+        metadata.initial_field_records[0U].x != 0x0A00U ||
+        metadata.initial_field_records[0U].y != 0x0500U ||
+        rectangles.size() <= 113U ||
+        rectangles[112U].left != 0x0080U ||
+        rectangles[112U].right != 0x009FU ||
+        rectangles[112U].top != 0x0020U ||
+        rectangles[112U].bottom != 0x003FU ||
+        rectangles[112U].value != 0x00DDU ||
+        rectangles[113U].left != 0x00A0U ||
+        rectangles[113U].right != 0x00BFU ||
+        rectangles[113U].top != 0x0020U ||
+        rectangles[113U].bottom != 0x003FU ||
+        rectangles[113U].value != 0x00DDU) {
+        std::cerr << "Scene-29 elevator QA: descriptor spawn or paired "
+                     "event-29 collision records 112-113 do not match the "
+                     "extracted source data\n";
+        return 3;
+    }
+
+    const auto no_modal_screen = [&field_scene] {
+        return !field_scene.dialogue_open() &&
+               !field_scene.field_interaction_open() &&
+               !field_scene.field_mode_text_open_for_dump() &&
+               !field_scene.shop_menu_open();
+    };
+    const auto render = [&field_scene] {
+        QImage image(kSceneWidth, kSceneHeight, QImage::Format_ARGB32);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        field_scene.paint(painter);
+        painter.end();
+        return image;
+    };
+    std::ofstream timeline(output / "timeline.tsv", std::ios::trunc);
+    if (!timeline) {
+        std::cerr << "Scene-29 elevator QA: could not write timeline.tsv\n";
+        return 3;
+    }
+    timeline << "frame\tscene\tx\ty\tmode\tevent\tselector_open"
+                "\tcurrent_floor\tselected_floor\tdestination\tfeedback"
+                "\tanimation\ttransition_phase\tpalette_step\talpha"
+                "\tinput\timage\n";
+
+    std::uint32_t frame = 0U;
+    std::uint32_t timeline_frame_count = 0U;
+    std::string input_label = "neutral";
+    const auto capture = [&]() {
+        const auto image = render();
+        const auto name = std::string("timeline/frame-") +
+                          std::to_string(frame) + ".png";
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            !image.save(QString::fromStdWString(
+                (output / name).wstring()))) {
+            return false;
+        }
+        const auto position = field_scene.field_entity_world_position();
+        timeline << frame << '\t'
+                 << field_scene.field_scene_reference_for_dump() << '\t'
+                 << position.x << '\t' << position.y << '\t'
+                 << field_scene.field_interaction_mode_for_dump() << '\t'
+                 << static_cast<unsigned>(
+                        field_scene.field_mode_event_code_for_dump())
+                 << '\t' << field_scene.elevator_selector_open_for_dump()
+                 << '\t'
+                 << static_cast<unsigned>(field_scene
+                                              .elevator_selector_current_floor_for_dump())
+                 << '\t'
+                 << static_cast<unsigned>(field_scene
+                                              .elevator_selector_selected_floor_for_dump())
+                 << '\t'
+                 << field_scene.elevator_selector_destination_for_dump()
+                 << '\t'
+                 << static_cast<unsigned>(field_scene
+                                              .elevator_selector_navigation_feedback_for_dump())
+                 << '\t' << field_scene.elevator_selector_animating_for_dump()
+                 << '\t'
+                 << static_cast<unsigned>(field_scene
+                                              .elevator_scene_transition_phase_for_dump())
+                 << '\t'
+                 << static_cast<unsigned>(field_scene
+                                              .elevator_scene_transition_palette_step_for_dump())
+                 << '\t'
+                 << static_cast<unsigned>(field_scene
+                                              .elevator_scene_transition_fade_alpha_for_dump())
+                 << '\t' << input_label << '\t' << name << '\n';
+        ++timeline_frame_count;
+        return true;
+    };
+    const auto advance = [&]() {
+        field_scene.advance_frame();
+        ++frame;
+        return capture();
+    };
+    const auto save = [&](const std::string_view name) {
+        const auto image = render();
+        const auto path = output / (std::string(name) + ".bmp");
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+               image.save(QString::fromStdWString(path.wstring()));
+    };
+    const auto tap_up = [&]() {
+        input_label = "dpad-up";
+        field_scene.set_controller_nibble(0x01U);
+        const auto input_saved = advance();
+        input_label = "neutral";
+        field_scene.set_controller_nibble(0U);
+        return input_saved && advance();
+    };
+
+    const auto initial_position = field_scene.field_entity_world_position();
+    if (initial_position.x != 0x0A00U || initial_position.y != 0x0500U ||
+        field_scene.field_transition_pending_for_dump() ||
+        !no_modal_screen() || !field_hud_chrome_survives(render(), asset_root) ||
+        !save("scene29-descriptor-spawn") || !capture()) {
+        std::cerr << "Scene-29 elevator QA: source descriptor spawn did not "
+                     "produce a clean field screen\n";
+        return 3;
+    }
+
+    std::uint16_t trigger_frames = 0U;
+    while (trigger_frames < 120U &&
+           !field_scene.elevator_selector_open_for_dump() &&
+           field_scene.field_scene_reference_for_dump() == 29U) {
+        input_label = "dpad-up";
+        field_scene.set_controller_nibble(0x01U);
+        if (!advance()) {
+            return 3;
+        }
+        ++trigger_frames;
+    }
+    input_label = "neutral";
+    field_scene.set_controller_nibble(0U);
+    if (field_scene.elevator_selector_open_for_dump() && !advance()) {
+        return 3;
+    }
+    const auto& movement =
+        field_scene.last_field_movement_transition_for_dump();
+    const auto field_only = [&field_scene] {
+        QImage image(kSceneWidth, kSceneHeight, QImage::Format_ARGB32);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        field_scene.paint_field_scene_for_dump(painter);
+        painter.end();
+        return image;
+    }();
+    const auto selector_open = render();
+    if (!field_scene.elevator_selector_open_for_dump() ||
+        movement.event_code != 0x1DU ||
+        movement.continuation !=
+            MovementModeTransitionContinuation::event_29_world_activity ||
+        movement.kind !=
+            EntityMovementModeTransitionResultKind::world_activity_started ||
+        field_scene.elevator_selector_current_floor_for_dump() != 0U ||
+        field_scene.elevator_selector_selected_floor_for_dump() != 0U ||
+        field_scene.elevator_selector_destination_for_dump() != 26U ||
+        !no_modal_screen() || selector_open == field_only ||
+        !field_hud_chrome_survives(selector_open, asset_root) ||
+        !save("selector-from-scene29")) {
+        std::cerr << "Scene-29 elevator QA: normal Up from the descriptor "
+                     "spawn did not open the event-29 selector at group "
+                     "entry floor 0 (frames=" << trigger_frames
+                  << ", event=" << static_cast<unsigned>(movement.event_code)
+                  << ", destination="
+                  << field_scene.elevator_selector_destination_for_dump()
+                  << ")\n";
+        return 3;
+    }
+
+    for (std::uint8_t tick = 0U; tick < 30U; ++tick) {
+        if (!advance()) {
+            return 3;
+        }
+    }
+    const auto held_selector = render();
+    if (held_selector != selector_open || !save("selector-held-30")) {
+        std::cerr << "Scene-29 elevator QA: selector changed during its "
+                     "neutral hold\n";
+        return 3;
+    }
+
+    const auto audio_before = field_audio_events.size();
+    input_label = "B";
+    field_scene.set_controller_port_byte(0x20U);
+    const auto b_frame_saved = advance();
+    input_label = "neutral";
+    field_scene.set_controller_port_byte(0U);
+    if (!b_frame_saved || !advance() ||
+        field_audio_events.size() != audio_before + 1U ||
+        field_audio_events.back() != 0x25U) {
+        std::cerr << "Scene-29 elevator QA: B did not request source audio "
+                     "event 0x25\n";
+        return 3;
+    }
+    if (!tap_up() ||
+        field_scene.elevator_selector_current_floor_for_dump() != 0U ||
+        field_scene.elevator_selector_selected_floor_for_dump() != 1U ||
+        field_scene.elevator_selector_destination_for_dump() != 27U ||
+        field_scene.elevator_selector_navigation_feedback_for_dump() !=
+            ElevatorSelectorNavigationFeedback::next_floor_active ||
+        !save("selector-floor-27-feedback")) {
+        std::cerr << "Scene-29 elevator QA: next-floor input did not select "
+                     "scene 27 while preserving current floor 0\n";
+        return 3;
+    }
+    for (std::uint8_t tick = 0U; tick < 6U; ++tick) {
+        if (!advance()) {
+            return 3;
+        }
+    }
+    if (field_scene.elevator_selector_navigation_feedback_frames_remaining_for_dump() !=
+            1U ||
+        !save("selector-floor-27-feedback-last-tick") || !advance() ||
+        field_scene.elevator_selector_navigation_feedback_for_dump() !=
+            ElevatorSelectorNavigationFeedback::next_floor_rest ||
+        !save("selector-floor-27-selected")) {
+        std::cerr << "Scene-29 elevator QA: eight-VBlank arrow feedback did "
+                     "not return to rest\n";
+        return 3;
+    }
+
+    const auto current_floor_label_region = QRect(220, 24, 40, 40);
+    const auto selected_floor_label_region = QRect(220, 88, 40, 48);
+    const auto selected_floor = render();
+    if (selector_open.copy(current_floor_label_region) !=
+            selected_floor.copy(current_floor_label_region) ||
+        selector_open.copy(selected_floor_label_region) ==
+            selected_floor.copy(selected_floor_label_region) ||
+        !image_region_has_color(selected_floor, 220, 88, 40, 48,
+                                QColor(255, 219, 0))) {
+        std::cerr << "Scene-29 elevator QA: navigation changed the current "
+                     "floor label or failed to show the selected floor\n";
+        return 3;
+    }
+
+    input_label = "A";
+    field_scene.set_controller_port_byte(0x40U);
+    if (!advance() || !field_scene.elevator_selector_animating_for_dump() ||
+        field_scene.elevator_selector_animation_frame_for_dump() != 16U) {
+        std::cerr << "Scene-29 elevator QA: A did not start the 17-frame "
+                     "lift sequence\n";
+        return 3;
+    }
+    input_label = "neutral";
+    field_scene.set_controller_port_byte(0U);
+    if (!advance() || !save("lift-animation-start")) {
+        return 3;
+    }
+    std::uint16_t lift_frames = 0U;
+    while (lift_frames < 140U &&
+           field_scene.elevator_selector_animating_for_dump()) {
+        if (!advance()) {
+            return 3;
+        }
+        ++lift_frames;
+    }
+    if (lift_frames >= 140U ||
+        field_scene.elevator_selector_animating_for_dump() ||
+        field_scene.elevator_selector_current_floor_for_dump() != 1U ||
+        field_scene.elevator_selector_selected_floor_for_dump() != 1U ||
+        !save("selector-arrived-at-scene27-floor")) {
+        std::cerr << "Scene-29 elevator QA: lift animation did not settle "
+                     "on selected floor index 1\n";
+        return 3;
+    }
+
+    input_label = "Start";
+    field_scene.set_controller_port_byte(0x80U);
+    const auto start_saved = advance();
+    input_label = "neutral";
+    field_scene.set_controller_port_byte(0U);
+    if (!start_saved || !advance() ||
+        field_scene.elevator_scene_transition_phase_for_dump() !=
+            ElevatorSceneTransitionPhase::fading_to_black) {
+        std::cerr << "Scene-29 elevator QA: Start did not begin the "
+                     "source-timed fade after the lift arrived\n";
+        return 3;
+    }
+
+    bool black_handoff_captured = false;
+    std::uint16_t transition_frames = 0U;
+    while (transition_frames < 500U &&
+           (field_scene.field_scene_reference_for_dump() != 27U ||
+            field_scene.elevator_scene_transition_phase_for_dump() !=
+                ElevatorSceneTransitionPhase::idle)) {
+        if (!advance()) {
+            return 3;
+        }
+        ++transition_frames;
+        if (!black_handoff_captured &&
+            field_scene.field_scene_reference_for_dump() == 27U &&
+            field_scene.elevator_scene_transition_phase_for_dump() ==
+                ElevatorSceneTransitionPhase::fading_from_black &&
+            field_scene.elevator_scene_transition_fade_alpha_for_dump() ==
+                255U) {
+            QImage black(kSceneWidth, kSceneHeight, QImage::Format_ARGB32);
+            black.fill(Qt::black);
+            if (render() != black ||
+                !save("destination-black-handoff")) {
+                std::cerr << "Scene-29 elevator QA: scene change did not "
+                             "replace the selector at full black\n";
+                return 3;
+            }
+            black_handoff_captured = true;
+        }
+    }
+    const auto destination_position = field_scene.field_entity_world_position();
+    const auto destination_spawn =
+        field_scene.state().field_scene_buffers.source_metadata
+            .initial_field_records[0U];
+    const auto destination = render();
+    if (transition_frames >= 500U || !black_handoff_captured ||
+        field_scene.field_scene_reference_for_dump() != 27U ||
+        field_scene.elevator_selector_open_for_dump() || !no_modal_screen() ||
+        field_scene.elevator_scene_transition_phase_for_dump() !=
+            ElevatorSceneTransitionPhase::idle ||
+        field_scene.elevator_scene_transition_fade_alpha_for_dump() != 0U ||
+        destination_position.x != destination_spawn.x ||
+        destination_position.y != destination_spawn.y ||
+        !field_scene.field_entity_visible_for_dump() ||
+        !field_hud_chrome_survives(destination, asset_root) ||
+        destination == selector_open || !save("scene27-destination")) {
+        std::cerr << "Scene-29 elevator QA: selected scene 27 did not replace "
+                     "the selector cleanly at its descriptor spawn\n";
+        return 3;
+    }
+    for (std::uint8_t tick = 0U; tick < 30U; ++tick) {
+        if (!advance()) {
+            return 3;
+        }
+    }
+    if (render() != destination || !save("scene27-held-30")) {
+        std::cerr << "Scene-29 elevator QA: destination retained stale "
+                     "selector graphics or changed during idle\n";
+        return 3;
+    }
+    timeline.flush();
+    if (timeline_frame_count != frame + 1U ||
+        std::find(source_boundaries.begin(), source_boundaries.end(),
+                  "field.elevator.selector.opened") ==
+            source_boundaries.end() ||
+        std::find(source_boundaries.begin(), source_boundaries.end(),
+                  "field.elevator.destination_loaded") ==
+            source_boundaries.end() ||
+        std::find(source_boundaries.begin(), source_boundaries.end(),
+                  "field.elevator.destination_fade_finished") ==
+            source_boundaries.end()) {
+        std::cerr << "Scene-29 elevator QA: complete timeline or source "
+                     "transition boundary was not recorded\n";
+        return 3;
+    }
+    std::cout << "field_elevator_scene29_entry_qa=passed scene=29 "
+                 "trigger=event29 records=112,113 current_floor=0 "
+                 "destination=27 audio_event=0x25 frames="
+              << timeline_frame_count << " artifacts=" << output.string()
+              << '\n';
+    return 0;
+}
+
 int run_field_elevator_floor_group_roundtrip_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -9723,6 +10110,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_elevator_physical_entry_qa_path;
         std::optional<std::filesystem::path>
+            field_elevator_scene29_entry_qa_path;
+        std::optional<std::filesystem::path>
             field_security_terminal_physical_entry_qa_path;
         std::optional<std::filesystem::path>
             field_scene20_grenade_no_item_qa_path;
@@ -9786,6 +10175,7 @@ int main(int argc, char** argv) {
                        " [--field-scene20-physical-entry-qa <output-dir>]"
                        " [--field-scene26-event1-entry-qa <output-dir>]"
                        " [--field-elevator-physical-entry-qa <output-dir>]"
+                       " [--field-elevator-scene29-entry-qa <output-dir>]"
                        " [--field-security-terminal-physical-entry-qa <output-dir>]"
                        " [--field-stoker-collision-qa <output-dir>]"
                        " [--field-command-dump <file>]"
@@ -9881,6 +10271,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_elevator_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-elevator-scene29-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_elevator_scene29_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -10246,6 +10643,38 @@ int main(int argc, char** argv) {
                 checkpoint.active_runner_slot = 0U;
                 smoke_state.restored_field_state = std::move(checkpoint);
             }
+            if (field_elevator_scene29_entry_qa_path.has_value()) {
+                if (!smoke_state.field_session_source_assets.has_value() ||
+                    !smoke_state.joshua_selection.has_value()) {
+                    std::cerr << "Scene-29 elevator QA: scene source or "
+                                 "Joshua record is unavailable\n";
+                    return 3;
+                }
+                const auto scene29 = integration::make_field_scene_input(
+                    *smoke_state.field_session_source_assets, 29U);
+                if (!scene29.has_value()) {
+                    std::cerr << "Scene-29 elevator QA: scene-29 source "
+                                 "records are unavailable\n";
+                    return 3;
+                }
+                SaveFieldRestoreState checkpoint{};
+                checkpoint.world_mode = 29U;
+                checkpoint.camera_x =
+                    scene29->source_metadata.initial_camera_x_fixed;
+                checkpoint.camera_y =
+                    scene29->source_metadata.initial_camera_y_fixed;
+                for (std::size_t slot = 0U;
+                     slot < checkpoint.runner_positions.size(); ++slot) {
+                    const auto& spawn =
+                        scene29->source_metadata.initial_field_records[slot];
+                    checkpoint.runner_positions[slot] =
+                        RestoredRunnerPosition{spawn.x, spawn.y};
+                }
+                checkpoint.roster.default_record.bytes =
+                    smoke_state.joshua_selection->live_joshua_record;
+                checkpoint.active_runner_slot = 0U;
+                smoke_state.restored_field_state = std::move(checkpoint);
+            }
             std::vector<std::uint16_t> field_audio_events;
             std::vector<std::string> field_source_boundaries;
             qt_runtime::FieldSceneRuntime field_scene(
@@ -10269,6 +10698,17 @@ int main(int argc, char** argv) {
                 }
                 field_scene.set_field_interaction_mode_for_dump(
                     *scene26_interaction_mode);
+            }
+            if (field_elevator_scene29_entry_qa_path.has_value()) {
+                const auto scene29_interaction_mode =
+                    select_scene_interaction_mode(29U);
+                if (!scene29_interaction_mode.has_value()) {
+                    std::cerr << "Scene-29 elevator QA: scene-29 interaction "
+                                 "mode is unavailable\n";
+                    return 3;
+                }
+                field_scene.set_field_interaction_mode_for_dump(
+                    *scene29_interaction_mode);
             }
             if (field_world_activity_qa_path.has_value()) {
                 return run_field_world_activity_qa(
@@ -10303,6 +10743,12 @@ int main(int argc, char** argv) {
                 return run_field_elevator_physical_entry_qa(
                     field_scene, asset_root,
                     *field_elevator_physical_entry_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_elevator_scene29_entry_qa_path.has_value()) {
+                return run_field_elevator_scene29_entry_qa(
+                    field_scene, asset_root,
+                    *field_elevator_scene29_entry_qa_path,
                     field_audio_events, field_source_boundaries);
             }
             if (field_security_terminal_physical_entry_qa_path.has_value()) {
