@@ -4,7 +4,8 @@ Date: 2026-10-07
 
 **Status:** partial. This slice adds a typed native route policy for the
 collision events already connected to the Qt field controller. It does not
-cover every map event or establish a first-entry Stoker cutscene.
+cover every map event, all elevator groups, or establish a first-entry Stoker
+cutscene.
 
 ## ROM-derived route model
 
@@ -21,7 +22,7 @@ records.
 | Scene 2, collision value `0xCB` at ROM `0x173142`, field mode 2/event 11 | Ares service script | `0x1FA78` selects the Ares mode-text prompt; A opens the shop and Start returns |
 | Scene 2, paired collision values `0xC0` at ROM `0x173124` and `0x17312E`, event 0 | Active map's event table | Row 0 in `0x172CDC` selects scene `0x14` (scene 20) |
 | Scene 2, collision value `0xC1` at ROM `0x17314C`, event 1 | Active map's event table and world-activity resource selector | Row 1 in `0x172CDC` selects scene `0x1A` (scene 26); its resource bundle has bound 3 |
-| Scene 26, terrain records 102-103, collision value `0xDD`, event 29 | Floor selector and selected-scene transition | `0x58D94` calls `0x58DE0`; the typed child scene group contains scenes 26, 27, and 28. The destination is unnamed by this trace; this is separate from the Stoker scene-2 event-2 dialogue route |
+| Scene 26-29 family, paired `0xDD` collision rectangles, event 29 | Floor selector and selected-scene transition | `0x58D94` calls `0x58DE0`; the typed child scene group contains scenes 26, 27, and 28. Physical QA covers scenes 26-28; the scene-29 entrance and destination identity remain open. This is separate from the Stoker scene-2 event-2 dialogue route |
 | Scene 20, collision value `0x82` at ROM `0x1D9724`, event 2 | Building interaction continuation | The separate electromagnetic-lock handler `0x20E48` opens its generic prompt |
 | Scene 26, collision values `0xD8` at ROM `0x1D9E46`, event `0x18` | Direct typed Security Terminal continuation | `0xB7B8` requires two negative samples and selects `0x20EC2`; the physical-input QA opens both choices and Walk Away returns |
 | Any remaining in-range map-table event | Active map's own event table | The selected row is passed to the existing world-activity coordinator; missing/out-of-range tables remain unresolved |
@@ -31,6 +32,16 @@ scene 2. I found no ROM condition in this traced path that automatically
 walks the runner into Stoker's on first map entry. The two adjacent C0 records
 are a different doorway and select scene 20; they must not be treated as the
 Stoker greeting.
+
+The ROM-derived scene profiles and extracted collision records show four
+additional numeric event-29 groups: triggers in scenes 21-25 target the
+21-24 group; 30-34 target 30-33; 35-40 target 35-39; and 41-43 target 41-42.
+The entry scenes 25, 29, 34, 40, and 43 are not listed as child destinations.
+The runtime currently chooses group index 0 for those scenes. The resource
+scene setup at `0x167AE` clears current-floor `FFF0C8` for scene IDs
+`0x15..0x2B`, supporting that default for the normal entry path; save-restore
+state remains open. Keep those physical routes and all four groups unverified
+until their triggers and transitions are checked.
 
 The native route policy is `resolve_field_script_route()`. It names the
 Stoker dialogue and Ares service directly, then resolves all other valid

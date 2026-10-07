@@ -22,6 +22,31 @@ the group contains scene IDs 26, 27, and 28. Runtime code consumes the typed
 scene list and named extracted art; it does not read the ROM or interpret ROM
 addresses.
 
+### Source-data trigger census
+
+The offline extraction resolves each scene profile at the ROM table `0x3232`
+and the elevator child list through that profile's resource pointer at `+0x58`.
+Scanning the extracted terrain records for collision value `0xDD` finds paired
+event-29 rectangles in 23 numeric scenes, arranged as follows:
+
+| Trigger scenes | Source child-scene group | Physical route QA |
+|---|---|---|
+| 21, 22, 23, 24, 25 | 21, 22, 23, 24 | Not yet covered |
+| 26, 27, 28, 29 | 26, 27, 28 | Scenes 26, 27, and 28 covered; scene 29 open |
+| 30, 31, 32, 33, 34 | 30, 31, 32, 33 | Not yet covered |
+| 35, 36, 37, 38, 39, 40 | 35, 36, 37, 38, 39 | Not yet covered |
+| 41, 42, 43 | 41, 42 | Not yet covered |
+
+These are scene IDs only; this census does not identify the places. Scenes
+25, 29, 34, 40, and 43 have the event-29 trigger but are not members of their
+listed destination group. On the normal resource-scene entry path,
+`0x167AE` clears `FFF0C8` for scene IDs `0x15..0x2B` (its branch at `0x16950`
+and clear at `0x16964`), which supports member index 0 for these non-member
+entry scenes. The Qt runtime's default matches that source path. Entry through
+save restoration and physical-input QA for those scenes remain open. The
+physical return-loop QA covers only scenes 26, 27, and 28 within the 26/27/28
+group.
+
 Up and Down change the selected floor and show the corresponding active arrow
 for eight VBlanks. A starts the 17-frame floor-change animation, with each
 animation frame held for eight VBlanks. When the selected floor differs from
