@@ -62,6 +62,37 @@ the static circular hub in the vehicle body is a separate graphic.
 
 ## Verification and defect disposition
 
+### Full-run re-review (2026-10-07)
+
+I rechecked the primary US ROM bytes rather than relying on the earlier
+description. At `0x5B100`, `MOVE.W ($FFDD08),D0` and `CMPI.W #$FE48,D0`
+gate the sprite path at signed `DD08 >= -0x1B8`; the routine then reads a
+phase-indexed longword from the six-entry table at `0x5B180`, sets its next
+deadline to `FFDF88 + 6`, and calls `0x1378` to build the sprite records.
+The table's six pointers are `0x1DF2D8`, `0x1DF30A`, `0x1DF344`,
+`0x1DF36E`, `0x1DF3A0`, and `0x1DF3CA`. Ghidra's `fn_0005B100.cpp` agrees;
+the Qt runtime consumes the six named extracted groups through typed pulse
+state rather than interpreting those ROM addresses.
+
+The latest Release run is the complete 4,982-frame capture under
+`build/visual-review/taxi-full-intro-release/`, from pre-title through the
+field hold. I reviewed 831 full-screen samples at 10 fps across 13 contact
+sheets covering the entire run. I also reviewed every one of the 219
+consecutive full-screen frames in the active propeller window (clip frames
+3359-3577; opening frames 1727-1945) across four contact sheets. The seven
+dedicated rotor checkpoints were reviewed separately at native 320x224 size.
+They show the aircraft moving left, the rear strip changing through each of
+the six descriptor groups, and the sequence returning to its first group.
+No old title, cockpit, or menu graphics persist into the airport scene; the
+run continues through cab-map selection and reaches the field hold.
+
+The independent section 02 frames `001065`, `001068`, `001071`, `001074`,
+`001077`, and `001080` were also reviewed as complete 320x224 images. The
+aircraft changes position and the rear strip's appearance changes across
+them. This confirms visible animation, while the 30-fps recording still
+cannot establish its exact VBlank phase. The current full-run image is a
+runtime review, not an independent Genesis reference.
+
 - **Code changed:** no rotor renderer change was needed in this correction;
   the existing native typed pulse path already selects and draws the six
   source-backed groups. This audit corrects the earlier misidentification.
@@ -76,8 +107,10 @@ the static circular hub in the vehicle body is a separate graphic.
   match byte for byte and were reviewed.
 - **Independent visual check:** whole independent section 02 frames listed
   above and native opening frames `1827`, `1833`, `1839`, `1845`, `1851`,
-  `1857`, and `1863` show the propeller's appearance changing. The longplay is
-  an appearance reference, not a VBlank oracle.
+  `1857`, and `1863` show the propeller's appearance changing. All 219 frames
+  in the active animation window of the current full intro run were also
+  reviewed, in addition to the 831 full-run samples. The longplay is an
+  appearance reference, not a VBlank oracle.
 - **Reported defect resolved:** **Yes.** The reported propeller is the animated
   six-group sprite sequence, not the static circular hub. The earlier
   “ambiguous” disposition was incorrect.
