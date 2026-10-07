@@ -522,9 +522,9 @@ open.
 
 ### Applied review: First Aid target, result, and return
 
-1. **Does it look correct?** Inspected the whole Qt 320x224 output at
-   `build/archive/decompilation/ghidra_conversion/build-qt-magic-qa/qt_runtime/field-first-aid-qa/actual.bmp`
-   and the named target, CANCEL, result, and return checkpoints beside it.
+1. **Does it look correct?** Inspected all First Aid 320x224 Qt checkpoints at
+   `build/conversion/qt/debug/qt_runtime/field-first-aid-qa/` and the matching
+   Release directory. The actual.bmp alias matches the target frame exactly.
    Section 06 frame 002610 shows the target prompt; 002640 shows
    `Medkit used.`; 002699 shows the returned Inventory page. The selected
    item has the narrow gold edge in target/result and no edge after return.
@@ -546,10 +546,14 @@ open.
    `(152,112)` for the one-target case. ROM strings at `D1EEA`, `D1F03`,
    `D1F0A`, `D1F1B`, and `D1F28` supply the prompt/cancel/result text. The
    centered target face, shell, HUD, item detail, and 24x16 `#C4BE27` selector
-   remain visible. The test checks the source shell/HUD, extracted face and
-   meter assets, text regions, and selector edges. The same-archetype full
-   portrait comparison remains open because the longplay and QA use different
-   runner records.
+   remain visible. At `0x123FA`, the ROM redraws the selected runner's
+   four-by-four HUD panel by calling `0x110E8` at `C928`; the 32x32 target
+   portrait crosses the top eight pixels of the posture strip. The independent
+   frames show the same placement. This is the source-defined target panel,
+   not stale portrait artwork over unrelated bars. The test checks the source
+   shell/HUD, extracted face and meter assets, text regions, and selector
+   edges. The same-archetype full portrait comparison remains open because the
+   longplay and QA use different runner records.
 4. **Is it animated?** `0x1235C` waits for VBlank and samples input; this
    loop redraws on selection changes but has no First Aid cursor timer or
    animation counter. The Qt target frame is pixel-identical after 30 idle
@@ -575,10 +579,31 @@ open.
    direction is pressed after return.
 7. **Do multiple frames support this?** Independent frames 002610 and
    002630 show the target list on separate visits; 002611 and 002640 show the
-   used result; 002615 and 002699 show return. These support the repeated row
-   layout, selection/result transition, selector persistence/removal, and
-   static hold. They do not establish the Samurai portrait or capture Qt's
+   used result; 002615, 002650, and 002699 show return. These support the
+   repeated row layout, target-portrait placement across the posture edge,
+   selection/result transition, selector persistence/removal, and static
+   hold. They do not establish the Samurai portrait colors or capture Qt's
    acoustic output for event `0x25`.
+8. **Does the new UI replace the old UI cleanly?** The target list temporarily
+   replaces the central inventory detail area while the shared shell, HUD,
+   posture panel, and item grid remain. The target portrait occupies its
+   source panel at `C928` and intentionally overlaps the posture strip; it is
+   not residual artwork from a previous screen. `0x11928` redraws Inventory
+   after result acknowledgement, and cancel/result return frames show no
+   remaining target panel or child controls.
+9. **Was the complete affected interval reviewed?** The full-screen sequence
+   includes target, 30-frame idle, CANCEL selection, cancel return, Medkit
+   result, result acknowledgement, and Inventory return. I also reviewed the
+   separate automatic-use route's message, 30-frame idle, held, released, and
+   return frames; that path draws no target portrait. Both routes pass in
+   Debug and Release; all 13 BMPs per build are 320x224 and matching
+   Debug/Release outputs have identical SHA-256 hashes. The exact D202F
+   automatic-use message has no independent longplay frame.
+
+`INVENTORY-02` is closed as a non-defect: the small target portrait crossing
+the posture strip is present at the same place in the US-ROM capture. The
+First Aid hill remains partial for its separate RNG, speaker-loopback,
+same-archetype, and recruited-runner gaps.
 
 The focused CTests are
 `shadowrun_ghidra_conversion_qt_field_first_aid_qa`,
@@ -1056,10 +1081,12 @@ new behavior is invented.
 
 ### Applied review: Automatic-use acknowledgement
 
-1. **Does it look correct?** Inspected the full 320x224 Qt output in
-   `build/archive/decompilation/ghidra_conversion/build-qt-magic-qa/qt_runtime/field-automatic-use-qa/actual.bmp`. The green
-   three-line message sits in the inventory detail panel while the item icon,
-   right HUD, status strip, and thin item outline remain visible.
+1. **Does it look correct?** Inspected all automatic-use 320x224 Qt
+   checkpoints in `build/conversion/qt/debug/qt_runtime/field-automatic-use-qa/`
+   and the matching Release directory. The `actual.bmp` alias matches the
+   message frame. The green three-line message sits in the inventory detail
+   panel while the item icon, right HUD, status strip, and thin item outline
+   remain visible.
 2. **Does the current look reflect the behavioral state?** ROM `0x12168` routes
    codes `0x13`, `0x14`, `0x16`, and `0x18..0x2B` to `0x121C0`. The typed Qt
    state is `CommandOverviewAutomaticUseState::result_wait`; the QA dispatches
@@ -1090,6 +1117,17 @@ new behavior is invented.
    neighboring inventory/First Aid panel placement, selector persistence, and
    return. None shows the exact D202F message, so the visual status remains
    `partial` until a matching independent frame is available.
+8. **Does the new UI replace the old UI cleanly?** The acknowledgement
+   replaces the center detail panel while preserving the shared shell, HUD,
+   posture strip, item grid, and selected item. No target portrait is drawn
+   on this path. A fresh B edge returns to Inventory and clears the message;
+   no old message or action controls remain.
+9. **Was the complete affected interval reviewed?** The full-screen sequence
+   includes message entry, 30-frame idle, held input, released input, and the
+   fresh-edge return. All six BMPs per configuration are 320x224; Debug and
+   Release hashes match, and each frame was reviewed. The item code, phase,
+   equipment, audio request list, and wait state remain source-checked. No
+   independent Genesis frame shows this exact automatic-use message.
 
 ### Applied review: Trade recipient and transfer
 

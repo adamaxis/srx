@@ -71,7 +71,7 @@ review; it is not part of the pasted report.
 | `CLIPS-REDRAW` | Clips reused the inventory action row for its selector/trade pages and left that four-action row visible behind reload Yes/No. | Fixed in Qt after tracing ROM row swaps and parent restore: Debug/Release full-screen QA covers top-level Clips, nested Trade, confirmation, decline, reload result, and return. Independent Genesis Clips frames remain unavailable. |
 | `POSTURE-FOCUS` | The posture bar has no selector; it should be reachable with Up/Down from the menu buttons and affect attack/defense. | Resolved in the native command-menu route: ROM `0x11506` enters posture focus on command pages 2..6; Up draws the `0x119CE` focus row, Down restores the command row, and Left/Right update `+0x4D` plus Atk/Def bars. Debug/Release full-screen QA passes. Inventory pages 0/1 use their separate inventory cursor path. No independent Genesis capture shows the focused transition, so external visual fidelity remains unverified. |
 | `INVENTORY-01` | Moving/trading items between inventory locations does not work. | Trace source/destination cell state, item constraints, confirmation/cancel, and authoritative item records; exercise the route through ordinary controls and verify both cells and stats. |
-| `INVENTORY-02` | Using an item draws the runner portrait over other bars. | Trace item-use page/result/return and full redraw order; verify portrait, bars, posture, message, and inventory across all transition frames. |
+| `INVENTORY-02` | Using an item draws the runner portrait over other bars. | **Closed as a non-defect for the reported First Aid target/result panel.** ROM `0x123FA` redraws the selected runner's 4x4 panel at `C928` through `0x110E8`; its small portrait crosses the top of the posture strip in both Qt and independent Genesis frames 002610/002611/002630/002640. The `0x121C0` automatic-use acknowledgement does not draw that target portrait. Debug/Release full-screen routes and all transition frames were reviewed; see [item-use portrait placement audit](visual-analysis/qt-visual-audit.md#applied-review-first-aid-target-result-and-return). |
 | `ITEMS-01` | Armor, weapons, and their damage values are wrong. | Reconcile named item assets and source catalog values with equip state, attack/damage calculations, and inventory/shop views; compare multiple weapons/armor states. |
 | `FIELD-02` | The runner gets stuck in terrain and cannot enter buildings. | Trace movement probes, collision margins, terrain gates, physical building records, event publication, and exits; verify contact and adjacent walkable cells through ordinary D-pad input. |
 | `STOKER-01` | The physical Stoker collision/property that should open his generic dialogue is still unidentified. | Resolved in the normal New Game route: scene-2 record 91 at `0x173138` (`0xC2`) is reached with Up, publishes raw collision `0xFFC2` and event 2, then mode 2/event 2 selects the generic Stoker arrival panel. Debug/Release CTest, full-screen route dumps, eight-question review, and independent section 03 frames support the result. The clip confirms the door/fade/panel sequence but does not record input or event bytes. See [`visual-audits/motel-doorway-scene-entry.md`](visual-audits/motel-doorway-scene-entry.md). |
@@ -591,19 +591,31 @@ no-recipient return, and clean transfer return. The source destination
 fidelity remains partial; a same-runner inventory reorder action has not been
 found in the traced source menu.
 
-### INVENTORY-02 — Item use and portrait/HUD redraw
+### INVENTORY-02 — Item-use portrait and HUD redraw
 
-**Reported:** using an item draws the portrait over other bars.
+**Reported:** using an item draws the runner portrait over other bars.
 
-**Solve:** trace the item-use destination and full redraw order, including
-portrait, bars, posture, message, and return to inventory. Clear the old page
-before drawing the result where the ROM replaces it.
+**Source trace:** First Aid target selection at `0x12298` lists active runners.
+When the target cursor changes, `0x123FA` calls `0x110E8` with destination
+`C928`; that routine draws the selected runner's four-by-four HUD/portrait
+panel. The source leaves this target panel visible when the result text replaces
+the target list, then `0x11928` redraws Inventory on return. The small target
+portrait crosses the top edge of the posture strip by design. Utility items in
+`0x12168..0x121C0` use a different three-line acknowledgement and do not draw a
+target portrait.
 
-**Done when:** item-use action/result/return frames show each panel exactly
-once with the active runner's state; CTest checks the redraw and state change;
-full-screen images are reviewed across the complete route.
+**Verification:** Debug/Release First Aid and automatic-use CTests pass; all 13
+full-screen BMPs per build are 320x224, with matching hashes between builds.
+The target/result/return sequence was compared with independent section 06
+frames 002610/002611/002615 and 002630/002640/002699. Both show the same small
+portrait placement and clean Inventory return. The Qt fixture uses Samurai
+while the longplay uses Joshua's Gator Shaman record, so this closes placement
+and redraw behavior, not same-archetype portrait color fidelity. Full review is
+recorded in the First Aid and automatic-use sections of
+[`qt-visual-audit.md`](visual-analysis/qt-visual-audit.md#applied-review-first-aid-target-result-and-return).
 
-**Status:** pending current-build reproduction.
+**Status:** closed as a non-defect. The reported overlay is source-correct in
+First Aid; the separate automatic-use route does not draw an extra portrait.
 
 ### EQUIP-01 — Item selector thickness; EQUIP-02 — Equip/unequip cell cleanup
 
