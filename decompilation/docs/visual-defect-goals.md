@@ -70,7 +70,7 @@ review; it is not part of the pasted report.
 | `KARMA-DETAIL` | The Start-menu Attributes/Skills Karma page omits the selected attribute/skill's detail text. | Reproduced before this pass: the Qt presenter skipped the existing `0xD5DC` conversion. It now renders the selected label/value, both Essence values, Magic from `+0x7F`, and the installed-cyberware `c` markers/modifiers at source-derived positions. Debug/Release QA captures all 20 cells and checks empty/populated cyberware plus clean return. The ROM provides these labels, values, and modifiers rather than longer prose descriptions. No matching independent Genesis page capture is present; do not claim visual resolution. |
 | `CLIPS-REDRAW` | Clips reused the inventory action row for its selector/trade pages and left that four-action row visible behind reload Yes/No. | Fixed in Qt after tracing ROM row swaps and parent restore: Debug/Release full-screen QA covers top-level Clips, nested Trade, confirmation, decline, reload result, and return. Independent Genesis Clips frames remain unavailable. |
 | `POSTURE-FOCUS` | The posture bar has no selector; it should be reachable with Up/Down from the menu buttons and affect attack/defense. | Resolved in the native command-menu route: ROM `0x11506` enters posture focus on command pages 2..6; Up draws the `0x119CE` focus row, Down restores the command row, and Left/Right update `+0x4D` plus Atk/Def bars. Debug/Release full-screen QA passes. Inventory pages 0/1 use their separate inventory cursor path. No independent Genesis capture shows the focused transition, so external visual fidelity remains unverified. |
-| `INVENTORY-01` | Moving/trading items between inventory locations does not work. | Trace source/destination cell state, item constraints, confirmation/cancel, and authoritative item records; exercise the route through ordinary controls and verify both cells and stats. |
+| `INVENTORY-01` | Moving/trading items between inventory locations does not work. | **Partial.** ROM has runner-to-runner Trade, not same-runner item reordering. The typed transfer and ordinary Trade controls pass Debug/Release QA when another runner is active, but New Game starts with Joshua alone and the Qt executable has no normal recruitment/loaded-save route that supplies a second recipient. Keep open for that reachability path; see [the full-screen Trade audit](visual-analysis/qt-visual-audit.md#applied-review-trade-recipient-and-transfer). |
 | `INVENTORY-02` | Using an item draws the runner portrait over other bars. | **Closed as a non-defect for the reported First Aid target/result panel.** ROM `0x123FA` redraws the selected runner's 4x4 panel at `C928` through `0x110E8`; its small portrait crosses the top of the posture strip in both Qt and independent Genesis frames 002610/002611/002630/002640. The `0x121C0` automatic-use acknowledgement does not draw that target portrait. Debug/Release full-screen routes and all transition frames were reviewed; see [item-use portrait placement audit](visual-analysis/qt-visual-audit.md#applied-review-first-aid-target-result-and-return). |
 | `ITEMS-01` | Armor, weapons, and their damage values are wrong. | Reconcile named item assets and source catalog values with equip state, attack/damage calculations, and inventory/shop views; compare multiple weapons/armor states. |
 | `FIELD-02` | The runner gets stuck in terrain and cannot enter buildings. | Trace movement probes, collision margins, terrain gates, physical building records, event publication, and exits; verify contact and adjacent walkable cells through ordinary D-pad input. |
@@ -567,29 +567,43 @@ transition was found, so exact focused-state appearance remains unverified;
 the separate negative-equipped-slot combat path and broader combat/AI posture
 consumers remain open conversion work.
 
-### INVENTORY-01 — Move/trade item behavior
+### INVENTORY-01 — Trade between active runners
 
 **Reported:** items cannot be moved or traded between inventory locations.
 
-**Solve:** trace source cursor/cell state, source/destination validation,
-confirmation/cancel, equipment restrictions, and resulting item records. Keep
-the inventory as one authoritative typed state shared by Qt panels.
+**Source contract:** the `0x11740` inventory action row dispatches Equip,
+Discard, Trade, Cancel, and First Aid; it has no same-runner Move/Reorder
+action. Trade at `0x12836` rejects item codes `0x17..0x2B`. `0x1288E` scans
+the three live runner records after the current runner and selects another
+active recipient. `0x1296A` starts on No; confirming No or a full recipient
+advances to the next active runner, even when Yes was selected. Confirming Yes
+transfers the item and applicable phase to the recipient's first free cell via
+`0x129FE`, then clears the source cell and any matching equipped state.
 
-**Done when:** normal controls move valid items, reject invalid moves, and
-preserve state on cancel; tests cover rearrangement and related equipment
-icons/stats; full-screen captures verify source and destination cells plus
-the surrounding interface.
+**Implemented and QA-covered:** the Qt uses one typed `FieldPartyRosterRuntime`
+and one `InventoryTradeState`. The route uses ordinary controller inputs after
+the QA fixture loads source-template runner records. Debug/Release tests cover
+an equipped weapon, no recipient, full recipient with No and Yes, next runner,
+wraparound, Yes transfer to the first free cell, item phase, equipment cleanup,
+and a clean parent return. All ten 320x224 screenshots were reviewed; Debug and
+Release hashes match. The recipient portrait is placed at source destination
+`C928` -> `(160,144)`. The supplied longplay has no Trade frame, so exact
+screen fidelity remains unverified.
 
-**Status:** The ROM runner-to-runner Trade path is implemented and passes
-Debug/Release full-screen QA. It covers an equipped weapon, a full-recipient
-skip even when Yes is selected, A/B/C confirmation, No wraparound without
-mutation, default No/Yes choice, source-template recipient panels,
-first-free-cell transfer with phase, equipment cleanup, pixel-identical
-no-recipient return, and clean transfer return. The source destination
-`C928` is drawn at
-`(160,144)`. No exact Trade frame appears in the supplied longplay, so visual
-fidelity remains partial; a same-runner inventory reorder action has not been
-found in the traced source menu.
+**Current gameplay gap:** New Game activates only Joshua. The Qt executable
+does not yet connect a normal recruitment or restored-save path that activates
+a second runner, so the source-correct Trade action returns without mutation
+in a fresh game. This is why the report remains open; the diagnostic roster
+does not prove that a player can reach a recipient through normal gameplay.
+
+**Done when:** a source-backed normal route activates or restores another
+runner, then the user can Trade a valid item through the actual menu controls
+and see both typed records and panels update. Same-runner reorder is not a goal
+because the ROM does not implement that action.
+
+**Status:** trade state mutation and menu behavior are implemented and
+internally verified; overall `INVENTORY-01` remains partial on normal recipient
+reachability and independent Trade visuals.
 
 ### INVENTORY-02 — Item-use portrait and HUD redraw
 

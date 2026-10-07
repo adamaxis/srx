@@ -1197,6 +1197,19 @@ new behavior is invented.
    prompt, and its lower action strip must match the pre-entry parent. The
    complete command shell and field HUD are checked on every saved frame; no
    old action button is left beneath a replacement row.
+9. **Was the complete affected interval reviewed?** All ten full-screen
+   checkpoints were inspected after Debug and Release CTests passed; the
+   `actual.bmp` alias matches `trade_recipient_full.bmp`, and the other nine
+   frames cover parent entry, no-recipient return, full recipient No/Yes,
+   recipient advance, wraparound, successful transfer, and the parent after
+   transfer. All images are 320x224 and Debug/Release hashes match. The route
+   seeds source roster records before using ordinary D-pad/A/B/C input. A New
+   Game start currently has only Joshua active, so Trade correctly returns
+   without mutation until a second runner is active. The Qt executable has no
+   normal recruitment or restored-save path that currently creates that
+   recipient. The ROM has no same-runner item reorder action; Trade is
+   runner-to-runner only. Keep `INVENTORY-01` open for this gameplay
+   reachability gap; no independent Trade capture is available.
 
 ### Applied review: Pocket Secretary Group Items
 
