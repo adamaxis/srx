@@ -23,6 +23,27 @@ int main() {
         }
     }
 
+    // US ROM D4540 item rows 1..15. Routine 0x12F50 uses +0x25 as
+    // the CF84C Damage row; 0x13000 uses +0x26 to select the Power label.
+    // These are source values, not a host-derived damage calculation.
+    constexpr std::array<std::int8_t, 15> kRomWeaponDamageRows{{
+        0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1}};
+    constexpr std::array<std::uint8_t, 15> kRomWeaponPowerSelectors{{
+        0x04U, 0x06U, 0x06U, 0x06U, 0x0AU, 0x09U, 0x09U, 0x06U,
+        0x07U, 0x06U, 0x0AU, 0x09U, 0x08U, 0x06U, 0x0AU}};
+    constexpr std::array<std::uint8_t, 15> kRomWeaponMagazineCapacities{{
+        0x06U, 0x0CU, 0x0BU, 0x19U, 0x06U, 0x0AU, 0x0FU, 0x1EU,
+        0x1CU, 0x18U, 0x05U, 0x08U, 0x06U, 0x06U, 0x06U}};
+    for (std::size_t index = 0; index < kRomWeaponDamageRows.size(); ++index) {
+        if (catalog[index].signed_detail_asset_index !=
+                kRomWeaponDamageRows[index] ||
+            catalog[index].detail_selector != kRomWeaponPowerSelectors[index] ||
+            catalog[index].source_combat_factor !=
+                kRomWeaponMagazineCapacities[index]) {
+            return 9;
+        }
+    }
+
     if (catalog.size() != kUsItemDefinitionCount ||
         catalog.front().item_code != 1U ||
         !catalog.front().has_detail_art ||

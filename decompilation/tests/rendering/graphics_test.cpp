@@ -141,6 +141,22 @@ int main() {
         assert(bar.height == 8U);
         assert(bar.pixels.size() == 48U * 8U);
     }
+    const auto weapon_damage_bars =
+        decode_genesis_field_menu_damage_bars(rom);
+    assert(weapon_damage_bars.size() == 14U);
+    for (const auto& bar : weapon_damage_bars) {
+        assert(bar.width == 56U);
+        assert(bar.height == 8U);
+        assert(bar.pixels.size() == 56U * 8U);
+    }
+    const auto weapon_drain_bars =
+        decode_genesis_field_menu_drain_bars(rom);
+    assert(weapon_drain_bars.size() == 14U);
+    for (const auto& bar : weapon_drain_bars) {
+        assert(bar.width == 56U);
+        assert(bar.height == 8U);
+        assert(bar.pixels.size() == 56U * 8U);
+    }
     const auto command_cursor = decode_genesis_field_menu_cursor(rom);
     assert(command_cursor.width == 32U);
     assert(command_cursor.height == 24U);

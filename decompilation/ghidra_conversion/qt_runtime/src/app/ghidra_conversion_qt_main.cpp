@@ -13178,6 +13178,22 @@ int main(int argc, char** argv) {
                                        ".bmp"),
                                    176, 152);
                     };
+                const auto weapon_damage_row_matches =
+                    [&](const QImage& scene, const std::uint8_t item_code) {
+                        const auto* item = find_us_item_definition(item_code);
+                        if (item == nullptr || item_code >= 0x10U ||
+                            item->signed_detail_asset_index < 0) {
+                            return false;
+                        }
+                        return region_matches(
+                            scene,
+                            direct_asset(
+                                "damage-bar-" +
+                                std::to_string(
+                                    item->signed_detail_asset_index) +
+                                ".bmp"),
+                            168, 80);
+                    };
                 const auto ammo_counter_matches = [&](
                     const QImage& scene, const std::uint8_t rounds) {
                     const auto asset_name = "ammo-counter-" +
@@ -13411,6 +13427,7 @@ int main(int argc, char** argv) {
                 if (!region_matches(action_open_scene, focus_equip, 128, 184) ||
                     !field_inventory_selector_survives(action_open_scene, 0U,
                                                        0U) ||
+                    !weapon_damage_row_matches(action_open_scene, 1U) ||
                     !ammo_counter_matches(action_open_scene, 3U) ||
                     !icon_interior_matches(action_open_scene,
                                            weapon_one_equipped_icon, 16, 120) ||
@@ -13635,6 +13652,8 @@ int main(int argc, char** argv) {
                     weapon_two_equipped.ammo_clips != 3U ||
                     field_audio_events.size() != switch_audio_event_count + 1U ||
                     field_audio_events.back() != 0x24U ||
+                    !weapon_damage_row_matches(
+                        weapon_two_equipped_scene, 2U) ||
                     !ammo_counter_matches(weapon_two_equipped_scene, 6U) ||
                     !icon_interior_matches(weapon_two_equipped_scene,
                                            weapon_two_equipped_icon, 56, 120) ||
