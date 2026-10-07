@@ -167,6 +167,7 @@ std::filesystem::path find_asset_root(
                    " [--field-transition-qa <output-dir>]"
                    " [--field-world-activity-qa <output-dir>]"
                    " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
+                   " [--field-ares-collision-shop-qa <output-dir>]"
                    " [--field-secretary-dump <output-dir>]"
                    " [--field-command-dump <file>]"
                        " [--field-command-page <0..6>]"
@@ -233,6 +234,11 @@ std::filesystem::path find_asset_root(
             continue;
         }
         if (argument == "--field-stoker-collision-to-dialogue-qa" &&
+            index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-ares-collision-shop-qa" &&
             index + 1 < argc) {
             ++index;
             continue;
@@ -5667,6 +5673,419 @@ int run_field_world_activity_qa(
     return 0;
 }
 
+int run_field_ares_collision_shop_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::filesystem::create_directories(output);
+    std::error_code directory_error;
+    for (std::filesystem::directory_iterator item(output, directory_error), end;
+         !directory_error && item != end; item.increment(directory_error)) {
+        if (!item->is_regular_file(directory_error)) {
+            continue;
+        }
+        const auto filename = item->path().filename();
+        if (item->path().extension() == ".bmp" ||
+            item->path().extension() == ".tsv" ||
+            filename == "source-boundaries.txt" ||
+            filename == "audio-events.txt") {
+            std::filesystem::remove(item->path(), directory_error);
+            if (directory_error) {
+                std::cerr << "Ares collision QA: could not clear old artifact "
+                          << filename.string() << ": "
+                          << directory_error.message() << '\n';
+                return 3;
+            }
+        }
+    }
+    if (directory_error) {
+        std::cerr << "Ares collision QA: could not inspect output: "
+                  << directory_error.message() << '\n';
+        return 3;
+    }
+
+    constexpr std::size_t ares_collision_record_index = 92U;
+    constexpr std::uint32_t ares_collision_rom_address = 0x173142U;
+    constexpr std::uint8_t ares_collision_value = 0xCBU;
+    const auto& rectangles = field_scene.state()
+                                 .field_scene_buffers.source_metadata
+                                 .terrain_collision_rectangles;
+    const bool source_record_matches =
+        rectangles.size() > ares_collision_record_index &&
+        rectangles[ares_collision_record_index].left == 0x04C0U &&
+        rectangles[ares_collision_record_index].right == 0x04DFU &&
+        rectangles[ares_collision_record_index].top == 0x0220U &&
+        rectangles[ares_collision_record_index].bottom == 0x023FU &&
+        rectangles[ares_collision_record_index].value ==
+            ares_collision_value;
+    const auto initial_position = field_scene.field_entity_world_position();
+    if (field_scene.field_scene_reference_for_dump() != 2U ||
+        initial_position.x != 0x3CE0U || initial_position.y != 0x2D00U ||
+        field_scene.field_interaction_mode_for_dump() != 0U ||
+        field_scene.field_runtime_state_for_dump().field_mode != 2U ||
+        !source_record_matches) {
+        std::cerr << "Ares collision QA: New Game state or source record 92 "
+                     "does not match the traced scene-2 route (scene="
+                  << field_scene.field_scene_reference_for_dump() << ", x="
+                  << initial_position.x << ", y=" << initial_position.y
+                  << ", world_mode="
+                  << field_scene.field_interaction_mode_for_dump()
+                  << ", field_mode="
+                  << static_cast<unsigned>(
+                         field_scene.field_runtime_state_for_dump().field_mode)
+                  << ")\n";
+        return 3;
+    }
+
+    const auto render = [&field_scene] {
+        QImage image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        field_scene.paint(painter);
+        painter.end();
+        return image;
+    };
+    const auto save = [&](const std::string_view name,
+                          const bool require_field_hud = false) {
+        const auto image = render();
+        const auto path = output / (std::string(name) + ".bmp");
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            (require_field_hud &&
+             (!field_hud_chrome_survives(image, asset_root) ||
+              count_playfield_lit(image) < 100U)) ||
+            !image.save(QString::fromStdWString(path.wstring()))) {
+            std::cerr << "Ares collision QA: full-screen dump/validation "
+                         "failed for " << name << '\n';
+            return false;
+        }
+        return true;
+    };
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) {
+        std::cerr << "Ares collision QA: could not create route.tsv\n";
+        return 3;
+    }
+    trace << "stage\tframe\tscene\tx\ty\tworld_mode\tfield_mode\tevent"
+             "\traw_collision\tprojected\tfade_timer\tpalette_steps"
+             "\tmode_text\tshop\n";
+    std::uint32_t frame = 0U;
+    const auto write_state = [&](const std::string_view stage) {
+        const auto position = field_scene.field_entity_world_position();
+        trace << stage << '\t' << frame << '\t'
+              << field_scene.field_scene_reference_for_dump() << '\t'
+              << position.x << '\t' << position.y << '\t'
+              << field_scene.field_interaction_mode_for_dump() << '\t'
+              << static_cast<unsigned>(
+                     field_scene.field_runtime_state_for_dump().field_mode)
+              << '\t'
+              << static_cast<unsigned>(
+                     field_scene.field_mode_event_code_for_dump())
+              << '\t' << field_scene.field_terrain_collision_code_for_dump()
+              << '\t' << field_scene.field_projected_code_for_dump() << '\t'
+              << field_scene.field_interaction_transition_timer_for_dump()
+              << '\t' << static_cast<unsigned>(
+                     field_scene.field_palette_fade_steps_for_dump())
+              << '\t' << field_scene.field_mode_text_open_for_dump() << '\t'
+              << field_scene.shop_menu_open() << '\n';
+        trace.flush();
+    };
+    const auto route_is_live = [&field_scene] {
+        return field_scene.field_scene_reference_for_dump() == 2U &&
+               !field_scene.dialogue_open() &&
+               !field_scene.field_interaction_open() &&
+               !field_scene.field_mode_text_open_for_dump() &&
+               !field_scene.shop_menu_open() &&
+               !field_scene.field_interaction_transition_active_for_dump() &&
+               !field_scene.field_transition_pending_for_dump();
+    };
+    const auto world_position = [&field_scene] {
+        const auto position = field_scene.field_entity_world_position();
+        return std::pair<std::uint16_t, std::uint16_t>{
+            static_cast<std::uint16_t>(position.x >> 4U),
+            static_cast<std::uint16_t>(position.y >> 4U)};
+    };
+
+    if (!save("spawn", true)) {
+        return 3;
+    }
+    write_state("spawn");
+    const auto& door = rectangles[ares_collision_record_index];
+    // Right-to-Up heading slew moves the runner about 15 world pixels east
+    // before the vertical approach settles. Start at the doorway's west edge
+    // so all four expanded probes stay inside record 92's single tile.
+    const auto target_world_x = door.left;
+    std::uint16_t east_ticks = 0U;
+    while (east_ticks < 300U && world_position().first < target_world_x &&
+           route_is_live()) {
+        field_scene.set_controller_nibble(0x08U); // ordinary Right hold
+        field_scene.advance_frame();
+        ++frame;
+        ++east_ticks;
+        if (east_ticks == 16U || east_ticks == 64U || east_ticks == 128U) {
+            if (!save("east-" + std::to_string(east_ticks), true)) {
+                return 3;
+            }
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    ++frame;
+    const auto east_position = world_position();
+    if (!route_is_live() || east_position.first < target_world_x ||
+        !save("east-waypoint", true)) {
+        std::cerr << "Ares collision QA: normal Right input did not reach the "
+                     "doorway's east/west coordinate (ticks=" << east_ticks
+                  << ", position=" << east_position.first << ','
+                  << east_position.second << ", target-x=" << target_world_x
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ")\n";
+        return 3;
+    }
+    write_state("east-waypoint");
+
+    std::uint16_t north_ticks = 0U;
+    while (north_ticks < 240U && route_is_live()) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up hold
+        field_scene.advance_frame();
+        ++frame;
+        ++north_ticks;
+        if (north_ticks == 16U || north_ticks == 32U ||
+            north_ticks == 64U || north_ticks == 128U ||
+            north_ticks == 180U || north_ticks == 200U) {
+            if (!save("north-" + std::to_string(north_ticks), true)) {
+                return 3;
+            }
+        }
+        if (field_scene.field_terrain_collision_code_for_dump() ==
+                0xFFCBU ||
+            field_scene.field_interaction_transition_active_for_dump() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.field_mode_text_open_for_dump() ||
+            field_scene.shop_menu_open()) {
+            break;
+        }
+    }
+    const auto contact_position = world_position();
+    if (field_scene.field_terrain_collision_code_for_dump() != 0xFFCBU ||
+        field_scene.field_projected_code_for_dump() != 0xFFCBU ||
+        field_scene.field_mode_event_code_for_dump() != 11U ||
+        field_scene.field_interaction_mode_for_dump() != 0U ||
+        field_scene.field_runtime_state_for_dump().field_mode != 2U ||
+        contact_position.first < door.left - 12U ||
+        contact_position.first > door.right + 12U ||
+        contact_position.second < door.top - 7U ||
+        contact_position.second > door.bottom + 7U ||
+        !field_scene.field_interaction_transition_active_for_dump() ||
+        field_scene.dialogue_open() || field_scene.field_interaction_open() ||
+        field_scene.field_mode_text_open_for_dump() ||
+        field_scene.shop_menu_open()) {
+        std::cerr << "Ares collision QA: ordinary Up contact did not publish "
+                     "scene-2 record 92/event 11 (ticks=" << north_ticks
+                  << ", position=" << contact_position.first << ','
+                  << contact_position.second << ", raw=0x" << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << ", projected=0x"
+                  << field_scene.field_projected_code_for_dump() << std::dec
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ", world_mode="
+                  << field_scene.field_interaction_mode_for_dump()
+                  << ", field_mode=" << static_cast<unsigned>(
+                         field_scene.field_runtime_state_for_dump().field_mode)
+                  << ")\n";
+        return 3;
+    }
+    if (!save("doorway-contact")) {
+        return 3;
+    }
+    write_state("doorway-contact");
+    const auto field_audio_events_at_contact = field_audio_events.size();
+    field_scene.set_controller_nibble(0U);
+
+    const std::array<std::uint32_t, 3> fade_checkpoints{8U, 16U, 17U};
+    std::uint32_t fade_updates = 0U;
+    for (const auto checkpoint : fade_checkpoints) {
+        while (fade_updates < checkpoint - 1U) {
+            field_scene.advance_frame();
+            ++frame;
+            ++fade_updates;
+        }
+        const auto name = "fade-" +
+                          (checkpoint < 10U ? std::string("0") : std::string()) +
+                          std::to_string(checkpoint);
+        const auto expected_timer = checkpoint == 8U ? 8 :
+                                    checkpoint == 16U ? 0 : -1;
+        const auto expected_palette_steps = checkpoint == 8U ? 4U :
+                                            checkpoint == 16U ? 8U : 9U;
+        if (!save(name) ||
+            field_scene.field_interaction_transition_timer_for_dump() !=
+                expected_timer ||
+            field_scene.field_palette_fade_steps_for_dump() !=
+                expected_palette_steps ||
+            field_scene.field_transition_pending_for_dump() !=
+                (checkpoint == 17U)) {
+            std::cerr << "Ares collision QA: source fade state diverged at "
+                         "checkpoint " << checkpoint << '\n';
+            return 3;
+        }
+        write_state(name);
+    }
+
+    for (std::uint16_t settle = 0U;
+         settle < 60U && !field_scene.field_mode_text_open_for_dump();
+         ++settle) {
+        field_scene.advance_frame();
+        ++frame;
+    }
+    if (!field_scene.field_mode_text_open_for_dump() ||
+        field_scene.field_transition_pending_for_dump() ||
+        field_scene.field_scene_reference_for_dump() != 2U ||
+        field_scene.field_mode_event_code_for_dump() != 11U ||
+        field_scene.field_runtime_state_for_dump().field_mode != 2U ||
+        field_scene.dialogue_open() || field_scene.field_interaction_open()) {
+        std::cerr << "Ares collision QA: the physical event did not enter the "
+                     "mode-2/event-11 generic text prompt\n";
+        return 3;
+    }
+    const auto prompt = field_scene.field_mode_text_panel_for_dump();
+    const auto prompt_image = render();
+    const bool prompt_source_valid =
+        prompt.source_complete &&
+        prompt.actor_kind == DialoguePanelActorKind::none &&
+        prompt.portrait_alias == "field.mode.entry.ares.sprite" &&
+        prompt.text_segment_count != 0U;
+    const bool prompt_delay_valid =
+        field_scene.field_mode_text_frames_remaining_for_dump() == 30U;
+    const bool prompt_audio_silent =
+        field_audio_events.size() == field_audio_events_at_contact;
+    const bool prompt_owns_full_screen =
+        !field_hud_chrome_survives(prompt_image, asset_root);
+    const bool prompt_saved = save("ares-introduction");
+    if (!prompt_source_valid || !prompt_delay_valid || !prompt_audio_silent ||
+        !prompt_owns_full_screen || !prompt_saved) {
+        std::cerr << "Ares collision QA: event-selected prompt, 30-frame delay, "
+                     "audio boundary, or full-screen ownership is incorrect "
+                  << "(source=" << prompt_source_valid
+                  << ", delay="
+                  << field_scene.field_mode_text_frames_remaining_for_dump()
+                  << ", audio=" << field_audio_events.size() << '/'
+                  << field_audio_events_at_contact << ", hud_visible="
+                  << field_hud_chrome_survives(prompt_image, asset_root)
+                  << ", saved=" << prompt_saved << ")\n";
+        return 3;
+    }
+    write_state("ares-introduction");
+    for (std::uint8_t tick = 0U; tick < 30U; ++tick) {
+        field_scene.advance_frame();
+        ++frame;
+    }
+    const auto prompt_after_delay = render();
+    if (!field_scene.field_mode_text_open_for_dump() ||
+        field_scene.field_mode_text_frames_remaining_for_dump() != 0U ||
+        prompt_after_delay != prompt_image ||
+        !save("ares-introduction-after-30-frames")) {
+        std::cerr << "Ares collision QA: Ares prompt changed during its "
+                     "30-frame input delay\n";
+        return 3;
+    }
+
+    field_scene.set_controller_port_byte(0x40U); // ordinary A press
+    field_scene.advance_frame();
+    ++frame;
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    ++frame;
+    if (field_scene.field_mode_text_open_for_dump() ||
+        field_scene.field_scene_reference_for_dump() != 2U ||
+        !field_scene.shop_menu_open() ||
+        field_scene.shop_menu_group() != ShopActionGroup::weapons ||
+        field_scene.shop_menu_offers_active()) {
+        std::cerr << "Ares collision QA: ordinary A input did not open the "
+                     "source Ares category screen\n";
+        return 3;
+    }
+    const auto shop_image = render();
+    const QImage service_background(QString::fromStdWString(
+        (asset_root / "menu" / "field" / "service-background.bmp")
+            .wstring()));
+    if (service_background.isNull() ||
+        !image_region_differs(shop_image, service_background, 64, 128, 144,
+                              16) ||
+        !image_region_differs(shop_image, service_background, 16, 168, 240,
+                              24) ||
+        !image_has_green_ink(shop_image, 64, 144, 160, 16) ||
+        !save("ares-shop-category")) {
+        std::cerr << "Ares collision QA: shop category or full-screen entry "
+                     "draw is missing\n";
+        return 3;
+    }
+    write_state("ares-shop-category");
+
+    field_scene.set_controller_port_byte(0x80U); // ordinary Start return
+    field_scene.advance_frame();
+    ++frame;
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    ++frame;
+    const auto returned_field = render();
+    const auto repeated_return = render();
+    const auto boundary_was_seen = [&](const std::string_view expected) {
+        return std::find(source_boundaries.begin(), source_boundaries.end(),
+                         expected) != source_boundaries.end();
+    };
+    if (field_scene.shop_menu_open() ||
+        field_scene.field_mode_text_open_for_dump() ||
+        field_scene.field_scene_reference_for_dump() != 2U ||
+        !boundary_was_seen(
+            "field.mode_text_prompt.display_palette_refreshed") ||
+        !boundary_was_seen("field.shop.ares.opened") ||
+        !boundary_was_seen("field.shop.ares.returned_to_field") ||
+        !field_hud_chrome_survives(returned_field, asset_root) ||
+        count_playfield_lit(returned_field) < 100U ||
+        returned_field == shop_image || returned_field != repeated_return ||
+        !save("field-return", true)) {
+        std::cerr << "Ares collision QA: Start did not restore a clean full "
+                     "scene-2 field screen\n";
+        return 3;
+    }
+    write_state("field-return");
+
+    {
+        std::ofstream boundaries(output / "source-boundaries.txt",
+                                 std::ios::trunc);
+        if (!boundaries) {
+            std::cerr << "Ares collision QA: could not write boundary trace\n";
+            return 3;
+        }
+        for (const auto& boundary : source_boundaries) {
+            boundaries << boundary << '\n';
+        }
+    }
+    {
+        std::ofstream events(output / "audio-events.txt", std::ios::trunc);
+        if (!events) {
+            std::cerr << "Ares collision QA: could not write audio trace\n";
+            return 3;
+        }
+        for (const auto event : field_audio_events) {
+            events << "0x" << std::hex << event << '\n';
+        }
+    }
+
+    std::cout << "field_ares_collision_shop_qa=passed scene=2 record="
+              << ares_collision_record_index << " rom=0x" << std::hex
+              << ares_collision_rom_address << " collision=0xFFCB" << std::dec
+              << " event=11 east_ticks=" << east_ticks
+              << " north_ticks=" << north_ticks
+              << " prompt_delay_frames=30 audio_events="
+              << field_audio_events.size() << " artifacts=" << output.string()
+              << '\n';
+    return 0;
+}
+
 int run_field_stoker_collision_to_dialogue_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -6579,6 +6998,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_world_activity_qa_path;
         std::optional<std::filesystem::path>
             field_stoker_collision_to_dialogue_qa_path;
+        std::optional<std::filesystem::path>
+            field_ares_collision_shop_qa_path;
         std::optional<std::filesystem::path> field_stoker_collision_qa_path;
         std::optional<std::filesystem::path> field_hud_qa_path;
         std::optional<std::filesystem::path> field_hotel_qa_path;
@@ -6635,6 +7056,7 @@ int main(int argc, char** argv) {
                        " [--field-transition-qa <output-dir>]"
                        " [--field-world-activity-qa <output-dir>]"
                        " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
+                       " [--field-ares-collision-shop-qa <output-dir>]"
                        " [--field-stoker-collision-qa <output-dir>]"
                        " [--field-command-dump <file>]"
                        " [--field-command-page <0..6>]"
@@ -6701,6 +7123,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_stoker_collision_to_dialogue_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-ares-collision-shop-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_ares_collision_shop_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-stoker-collision-qa" &&
@@ -7037,6 +7466,12 @@ int main(int argc, char** argv) {
                 return run_field_stoker_collision_to_dialogue_qa(
                     field_scene, asset_root,
                     *field_stoker_collision_to_dialogue_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_ares_collision_shop_qa_path.has_value()) {
+                return run_field_ares_collision_shop_qa(
+                    field_scene, asset_root,
+                    *field_ares_collision_shop_qa_path,
                     field_audio_events, field_source_boundaries);
             }
             if (field_stoker_collision_qa_path.has_value()) {

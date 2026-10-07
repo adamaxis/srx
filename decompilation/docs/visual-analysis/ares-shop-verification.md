@@ -12,8 +12,13 @@ one-shot files through the Qt playback service; their source event identity
 and file durations are recorded below. Shared audio QA decodes and starts
 events `0x24`, `0x25`, and `0x4B` on the default output and checks duration and
 stop behavior; Windows loopback for the exact shop route remains unrecorded.
-The Ares hill remains partial. The introduction and shop were
-independently reviewed against the longplay sequence around frames 5983-5994.
+The Ares hill remains partial. The introduction and shop were independently
+reviewed against the longplay sequence around frames 5983-5994. Separate
+physical-entry QA starts at New Game and uses ordinary Right/Up input to
+contact scene-2 record 92 (`0xCB`/event 11), waits through the generic prompt,
+enters the shop with A, and returns with Start. Debug/Release captures cover
+the field approach, fade, prompt, category page, and field return; see
+[`../visual-audits/ares-physical-entry.md`](../visual-audits/ares-physical-entry.md).
 
 ## Source trace
 
@@ -24,6 +29,12 @@ independently reviewed against the longplay sequence around frames 5983-5994.
   exit orchestrator now recognizes this exact mode/event pair, holds the shop
   dispatch until the prompt returns, and opens the typed Ares shop only for
   its default result. Alternate text results return to the field.
+- Physical collision: scene-2 record 92 at `0x173142` contains bounds
+  `0x4C0..0x4DF` by `0x220..0x23F` and value `0xCB`. From the New Game spawn,
+  ordinary Right then Up contacts the expanded rectangle at `(1231,582)` and
+  publishes raw/projected `0xFFCB` with event 11. Physical-entry QA checks
+  this state without injecting collision/event tuples and captures the fade,
+  prompt, shop entry, and clean field return.
 - Prompt data: record `0x110DD2` points to text at `0x118934`, followed by the
   `0xFFFFFFFF` first-option sentinel. The prompt draws no A/B/C choices; ROM
   `0x1F3C4` waits 30 frames and returns `0xFB` on any controller event before

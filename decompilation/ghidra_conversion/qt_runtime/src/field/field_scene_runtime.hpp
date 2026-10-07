@@ -198,6 +198,15 @@ public:
         return field_mode_text_.open(
             FieldModeTextPromptContext{2U, 11U, alternate_result});
     }
+    bool field_mode_text_open_for_dump() const noexcept {
+        return field_mode_text_.open();
+    }
+    const DialoguePanelView& field_mode_text_panel_for_dump() const noexcept {
+        return field_mode_text_.panel();
+    }
+    std::uint16_t field_mode_text_frames_remaining_for_dump() const noexcept {
+        return field_mode_text_.frames_remaining();
+    }
     bool field_interaction_open() const noexcept {
         return field_interaction_.open();
     }

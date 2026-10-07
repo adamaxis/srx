@@ -567,7 +567,15 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                         FieldModeTextPromptContext{
                             source_state.scene_id, source_state.submode,
                             source_state.alternate_result});
-                    if (!prompt_opened) {
+                    if (prompt_opened) {
+                        // The source mode-text service rebuilds the display
+                        // after the field fade. The Qt fade is a presentation
+                        // overlay, so retire it when this full-screen panel
+                        // becomes the active screen owner.
+                        field_palette_fade_steps_ = 0U;
+                        source_boundary(
+                            "field.mode_text_prompt.display_palette_refreshed");
+                    } else {
                         source_boundary(
                             "field.ares_mode_text_prompt.open_failed");
                     }

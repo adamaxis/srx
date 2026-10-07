@@ -145,9 +145,15 @@ routes event-selected, with speaker properties and text supplied by their
 source records; do not assign the Ares prompt a Stoker portrait or dialogue
 record. The generic mode-text prompt has a diagnostic presenter and dump, and
 its frame and profile placement are confirmed by the 01:39:43 longplay capture.
-Its live event route remains pending. The shop presenter must redraw its owned
-panel on entry, category change, offer change, confirmation, and return so
-stale buttons or graphics cannot remain beneath the current page.
+The physical scene-2 route is now covered by
+`shadowrun_ghidra_conversion_qt_field_ares_collision_shop_qa`: ordinary
+Right/Up reaches record 92 (`0xCB`), the prompt hands control to the shop after
+A, and Start returns to the field. The eight-question screen audit records the
+full-screen prompt/shop/return review in
+[`visual-audits/ares-physical-entry.md`](visual-audits/ares-physical-entry.md).
+The shop presenter redraws its owned panel on entry, category change, offer
+change, confirmation, and return so stale buttons or graphics cannot remain
+beneath the current page.
 
 ## Verification for each screen
 

@@ -230,6 +230,19 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_stoker_collision_to_dialogue_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Ordinary Right/Up input from the New Game spawn contacts scene-2 record 92
+# (the physical Ares entrance), publishes event 11, waits through the source
+# fade and generic prompt, enters the shop with A, then verifies a clean field
+# redraw after Start. No mode/event tuple is injected.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_ares_collision_shop_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-ares-collision-shop-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-ares-collision-shop-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_ares_collision_shop_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Follow ordinary D-pad movement to scene-2 collision record 2. The source
 # record is a type-2 collision object, not a Stoker identity or event code;
 # this QA verifies its observed event-0/no-dialogue result and full-frame route.
