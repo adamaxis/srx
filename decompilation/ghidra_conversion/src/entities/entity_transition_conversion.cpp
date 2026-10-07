@@ -42,13 +42,13 @@ bool signature_changed(
            before.secondary != after.secondary;
 }
 
-// ROM 0x15318 / 0x15336. The byte selected from the source record chooses
-// between the ordinary sound/resource family and the alternate family.
-constexpr std::array<std::uint16_t, 15> kRegularSpawnResources{
+// ROM 0x15318 / 0x15336. 0x15238 submits the selected word to
+// service_audio_if_enabled; these are event IDs, not graphics resources.
+constexpr std::array<std::uint16_t, 15> kRegularSpawnAudioEvents{
     0x001CU, 0x001CU, 0x001CU, 0x001CU, 0x0051U,
     0x0051U, 0x0051U, 0x001EU, 0x001EU, 0x001EU,
     0x001DU, 0x001DU, 0x001EU, 0x001EU, 0x001EU};
-constexpr std::array<std::uint16_t, 15> kAlternateSpawnResources{
+constexpr std::array<std::uint16_t, 15> kAlternateSpawnAudioEvents{
     0x003FU, 0x003FU, 0x003FU, 0x003FU, 0x003FU,
     0x003FU, 0x003FU, 0x004AU, 0x004AU, 0x004AU,
     0x003FU, 0x003FU, 0x004AU, 0x004AU, 0x004AU};
@@ -170,8 +170,9 @@ EntitySpawnCycleResult process_entity_spawn_cycle(
     const EntitySpawnCycleSlotAllocator& allocate_slot,
     const SpawnPreparationBoundary& prepare_spawn,
     const EntitySpawnCycleEffect& refresh_world,
-    const EntitySpawnCycleResourceEffect& apply_resource_effect,
-    const EntitySpawnCycleModeEffect& apply_mode_maintenance) {
+    const EntitySpawnCycleAudioEffect& play_audio_event,
+    const EntitySpawnCycleModeEffect& apply_mode_maintenance,
+    const EntitySpawnCycleAmmoService& service_ammo) {
     EntitySpawnCycleResult result{};
     if (state.global_mode == 3U) {
         result.action = EntitySpawnCycleAction::global_mode_blocked;
@@ -186,6 +187,22 @@ EntitySpawnCycleResult process_entity_spawn_cycle(
 
     if (!behavior_gate || !behavior_gate()) {
         result.action = EntitySpawnCycleAction::behavior_gate_blocked;
+        return result;
+    }
+
+    if (!service_ammo) {
+        result.action = EntitySpawnCycleAction::ammo_service_unresolved;
+        return result;
+    }
+    result.ammo_service_action =
+        service_ammo(state.equipment, state.parent.field_0x57);
+    if (result.ammo_service_action ==
+        EntityAmmoServiceAction::weapon_service_unresolved) {
+        result.action = EntitySpawnCycleAction::ammo_service_unresolved;
+        return result;
+    }
+    if (result.ammo_service_action == EntityAmmoServiceAction::no_action) {
+        result.action = EntitySpawnCycleAction::ammo_service_inactive;
         return result;
     }
 
@@ -230,7 +247,7 @@ EntitySpawnCycleResult process_entity_spawn_cycle(
     }
 
     const auto source_type = state.parent.field_0x57;
-    if (source_type == 0U || source_type > kRegularSpawnResources.size()) {
+    if (source_type == 0U || source_type > kRegularSpawnAudioEvents.size()) {
         result.action = EntitySpawnCycleAction::invalid_source_type;
         result.primary_slot = primary_slot;
         result.secondary_slot = secondary_slot;
@@ -240,12 +257,12 @@ EntitySpawnCycleResult process_entity_spawn_cycle(
 
     const bool use_alternate_resource_table =
         (state.source_status_flags & 0x06U) != 0U;
-    const auto& resource_table = use_alternate_resource_table
-                                     ? kAlternateSpawnResources
-                                     : kRegularSpawnResources;
-    result.selected_resource_id = resource_table[source_type - 1U];
-    if (apply_resource_effect) {
-        apply_resource_effect(result.selected_resource_id);
+    const auto& audio_events = use_alternate_resource_table
+                                  ? kAlternateSpawnAudioEvents
+                                  : kRegularSpawnAudioEvents;
+    result.selected_audio_event = audio_events[source_type - 1U];
+    if (play_audio_event) {
+        play_audio_event(result.selected_audio_event);
     }
 
     const auto source_marker =

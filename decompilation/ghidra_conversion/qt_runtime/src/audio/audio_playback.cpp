@@ -53,11 +53,16 @@ AudioPlaybackService::AudioPlaybackService(PathResolver resolver,
         // Event 0x16 starts table-2 resource 22 on ordinary FF 10 paths.
         // The pre-title caller uses FF 12 with the same id to stop it.
         {0x16U, "audio.field.effect-016"},
+        // ROM 0x1514E selects spawn sounds from 0x15318/0x15336 and submits
+        // the selected event to 0x530DE. Codes 8..10 use table-2 resources
+        // 30 (ordinary) and 74 (alternate).
+        {0x1EU, "audio.effects.resource.030"},
         {0x24U, "audio.menu.command-024"},
         // ROM command 0x25 is table-2 index 37. The importer emits that
         // zero-based entry as audio.effects.resource.037.
         {0x25U, "audio.effects.resource.037"},
         {0x29U, "audio.menu.command-029"},
+        {0x4AU, "audio.effects.resource.074"},
         // At the SEGA logo, queued command 0x5C starts table-2 resource 92;
         // the source repeats that start request during the shock window.
         // The adjacent pre-title command 0x16 is FF 12 (stop resource 22),

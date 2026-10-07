@@ -3,7 +3,7 @@
 ## Scope
 
 This review covers the shared one-shot audio service for source events `0x16`,
-`0x24`, `0x25`, `0x4B`, and `0x5C`. It does not cover background music,
+`0x1E`, `0x24`, `0x25`, `0x4A`, `0x4B`, and `0x5C`. It does not cover background music,
 persistent event `0x30`, or every sound call in the ROM.
 
 ## ROM and asset evidence
@@ -28,6 +28,12 @@ persistent event `0x30`, or every sound call in the ROM.
 - The electromagnetic-lock unlock path submits event `0x4B`, mapped to
   resource 75; its extracted FLAC contains 97,770 samples at 44.1 kHz, or
   2.2167 seconds.
+- The field spawn cycle at ROM `0x1514E` selects an event from tables
+  `0x15318`/`0x15336` and submits it at `0x15238`. For action codes 8..10,
+  ordinary state sends event `0x1E` / resource 30 (2.284 seconds) and
+  alternate state sends event `0x4A` / resource 74 (2.267 seconds). These
+  durations come from their decoded FLAC sample counts; no independent
+  longplay shot has yet confirmed either sound in context.
 - The empty-ammo player action submits `0x4B` after the selected-action
   behavior gate and held-A input gate: ROM `0x14226` dispatches
   it before the delay/clip/meter update, then the successful `0xAAD2` return
@@ -58,7 +64,8 @@ unmapped.
 ## Internal playback check
 
 `shadowrun_ghidra_audio_playback` resolves the real files, plays events
-`0x10`, `0x12`, `0x16`, `0x24`, `0x25`, `0x4B`, and `0x5C` through the default Windows output device, waits for
+`0x10`, `0x12`, `0x16`, `0x1E`, `0x24`, `0x25`, `0x4A`, `0x4B`, and `0x5C`
+through the default Windows output device, waits for
 decoded audio and `PlayingState`, checks the decoded duration against each
 source file, then stops the active channels. The test skips with CTest's
 `SKIP_RETURN_CODE` only if Windows reports no default audio output. Debug and
@@ -91,6 +98,9 @@ The shared scene paths also passed Debug and Release Qt QA:
   emits full-frame images under `qt_runtime/field-shop-ares-qa/`.
 - `shadowrun_ghidra_conversion_qt_field_magic_spell_qa` exercises a menu path
   carrying event `0x24`.
+- The audio playback test separately resolves and decodes the combat spawn
+  assets for events `0x1E` and `0x4A`; it does not establish that live Qt
+  combat reaches the spawn service.
 
 The shop frame inspected at
 `field-shop-ares-qa/shop-item/actual.bmp` remains a clean 320x224 page. The
@@ -123,7 +133,9 @@ they do not establish exact emulator frame timing.
    90-second ROM trace; loops for other background music remain open.
 5. **Does it have sound, and how long does it play?** The files, output route,
    start state, duration, and stop behavior are checked for the events listed
-   above. The boot path's `0x16` is specifically a stop operation, while other
+   above. Spawn events `0x1E`/`0x4A` decode to 2.284/2.267-second one-shots;
+   their independent gameplay audio match is still missing. The boot path's
+   `0x16` is specifically a stop operation, while other
    callers can start resource 22 with `FF 10 16`. The independent longplay
    repeatedly matches resource 37 and also supports resource 92 at 4.225 s.
    Endpoint loopback captured the boot-shock resource on the current

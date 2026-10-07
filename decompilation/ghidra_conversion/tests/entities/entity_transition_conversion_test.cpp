@@ -148,6 +148,7 @@ int main() {
     EntitySpawnCycleState cycle_state{};
     cycle_state.parent = SpawnEntityParentState{
         0x1000U, 0x2000U, 0x4000U, 0x08U, 0x01U, 0x08U, 0x22U};
+    cycle_state.equipment = EntityEquipmentState{6U, 2};
     cycle_state.animation_counter = 0x0010U;
     cycle_state.global_mode = 2U;
     cycle_state.source_status_flags = 0x02U;
@@ -170,16 +171,31 @@ int main() {
         },
         [&cycle_events]() { cycle_events.push_back('p'); },
         [&cycle_events]() { cycle_events.push_back('r'); },
-        [&cycle_events](const std::uint16_t resource_id) {
-            cycle_events.push_back(resource_id == 0x4AU ? 'e' : 'x');
+        [&cycle_events](const std::uint16_t audio_event) {
+            cycle_events.push_back(audio_event == 0x4AU ? 'e' : 'x');
         },
         [&cycle_events](const std::uint16_t slot) {
             cycle_events.push_back(slot == 10U ? 'm' : 'x');
+        },
+        [&cycle_events](EntityEquipmentState& equipment,
+                        const std::uint8_t source_action_code) {
+            return service_entity_ammo(
+                equipment, source_action_code,
+                [&cycle_events, &equipment](const std::int8_t delta) {
+                    cycle_events.push_back('w');
+                    const auto adjusted =
+                        static_cast<int>(equipment.current_ammo) + delta;
+                    equipment.current_ammo = static_cast<std::uint8_t>(
+                        adjusted > 0 ? adjusted : 0);
+                });
         });
     if (expect(cycle.action == EntitySpawnCycleAction::spawned &&
+               cycle.ammo_service_action ==
+                   EntityAmmoServiceAction::delegated_to_weapon_service &&
+               cycle_state.equipment.current_ammo == 3U &&
                cycle.primary.has_value() && cycle.secondary.has_value() &&
                cycle.primary_slot == 9U && cycle.secondary_slot == 10U &&
-               cycle.selected_resource_id == 0x4AU &&
+               cycle.selected_audio_event == 0x4AU &&
                cycle.special_follow_up &&
                cycle.primary->lifecycle_state == 2U &&
                cycle.primary->saved_position_x == 0x10B0U &&
@@ -192,12 +208,14 @@ int main() {
                cycle.secondary->animation_resource == 0x28U &&
                cycle.secondary->continuation_address == 0xAC4EU &&
                cycle.secondary->record_flags == 1U &&
-               cycle_events == std::vector<char>({'g', 'a', 'r', 'p', 'a', 'e'})) != 0) {
+               cycle_events ==
+                   std::vector<char>({'g', 'w', 'a', 'r', 'p', 'a', 'e'})) != 0) {
         return 16;
     }
 
     EntitySpawnCycleState regular_state = cycle_state;
     regular_state.source_status_flags = 0U;
+    regular_state.equipment.current_ammo = 3U;
     std::vector<std::uint16_t> regular_slots{9U, 10U};
     const auto regular_cycle = process_entity_spawn_cycle(
         regular_state,
@@ -210,10 +228,96 @@ int main() {
             regular_slots.erase(regular_slots.begin());
             return slot;
         },
-        {}, {}, {}, {});
+        {}, {}, {}, {},
+        [](EntityEquipmentState& equipment,
+           const std::uint8_t source_action_code) {
+            return service_entity_ammo(
+                equipment, source_action_code,
+                [&equipment](const std::int8_t delta) {
+                    const auto adjusted =
+                        static_cast<int>(equipment.current_ammo) + delta;
+                    equipment.current_ammo = static_cast<std::uint8_t>(
+                        adjusted > 0 ? adjusted : 0);
+                });
+        });
     if (expect(regular_cycle.action == EntitySpawnCycleAction::spawned &&
-               regular_cycle.selected_resource_id == 0x001EU) != 0) {
+               regular_state.equipment.current_ammo == 0U &&
+               regular_cycle.selected_audio_event == 0x001EU) != 0) {
         return 18;
+    }
+
+    EntitySpawnCycleState unavailable_slot_state = cycle_state;
+    unavailable_slot_state.equipment.current_ammo = 6U;
+    std::vector<char> unavailable_slot_events;
+    const auto unavailable_slot = process_entity_spawn_cycle(
+        unavailable_slot_state,
+        [&unavailable_slot_events]() {
+            unavailable_slot_events.push_back('g');
+            return true;
+        },
+        [&unavailable_slot_events]() -> std::optional<std::uint16_t> {
+            unavailable_slot_events.push_back('a');
+            return std::nullopt;
+        },
+        {}, {}, {}, {},
+        [&unavailable_slot_events](EntityEquipmentState& equipment,
+                                   const std::uint8_t source_action_code) {
+            return service_entity_ammo(
+                equipment, source_action_code,
+                [&unavailable_slot_events, &equipment](
+                    const std::int8_t delta) {
+                    unavailable_slot_events.push_back('w');
+                    const auto adjusted =
+                        static_cast<int>(equipment.current_ammo) + delta;
+                    equipment.current_ammo = static_cast<std::uint8_t>(
+                        adjusted > 0 ? adjusted : 0);
+                });
+        });
+    if (expect(unavailable_slot.action ==
+                   EntitySpawnCycleAction::no_primary_slot &&
+               unavailable_slot_state.equipment.current_ammo == 3U &&
+               unavailable_slot_events ==
+                   std::vector<char>({'g', 'w', 'a'})) != 0) {
+        return 21;
+    }
+
+    EntitySpawnCycleState inactive_ammo_state = cycle_state;
+    inactive_ammo_state.equipment.current_ammo = 0U;
+    bool inactive_allocator_called = false;
+    const auto inactive_ammo = process_entity_spawn_cycle(
+        inactive_ammo_state,
+        []() { return true; },
+        [&inactive_allocator_called]() -> std::optional<std::uint16_t> {
+            inactive_allocator_called = true;
+            return 9U;
+        },
+        {}, {}, {}, {},
+        [](EntityEquipmentState& equipment,
+           const std::uint8_t source_action_code) {
+            return service_entity_ammo(
+                equipment, source_action_code, [](const std::int8_t) {});
+        });
+    if (expect(inactive_ammo.action ==
+                   EntitySpawnCycleAction::ammo_service_inactive &&
+               inactive_ammo.ammo_service_action ==
+                   EntityAmmoServiceAction::no_action &&
+               !inactive_allocator_called)) {
+        return 19;
+    }
+
+    bool unresolved_allocator_called = false;
+    const auto unresolved_ammo = process_entity_spawn_cycle(
+        cycle_state,
+        []() { return true; },
+        [&unresolved_allocator_called]() -> std::optional<std::uint16_t> {
+            unresolved_allocator_called = true;
+            return 9U;
+        },
+        {}, {}, {}, {});
+    if (expect(unresolved_ammo.action ==
+                   EntitySpawnCycleAction::ammo_service_unresolved &&
+               !unresolved_allocator_called)) {
+        return 20;
     }
 
     EntitySpawnCycleState expired_state = cycle_state;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "shadowrun_ghidra/entities/behavior_animation_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_combat_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_state_primitives_conversion.hpp"
 
 #include <array>
@@ -104,6 +105,8 @@ enum class EntitySpawnCycleAction {
     global_mode_blocked,
     animation_window_expired,
     behavior_gate_blocked,
+    ammo_service_unresolved,
+    ammo_service_inactive,
     no_primary_slot,
     no_secondary_slot,
     invalid_source_type,
@@ -112,14 +115,15 @@ enum class EntitySpawnCycleAction {
 
 struct EntitySpawnCycleState {
     SpawnEntityParentState parent{};
+    EntityEquipmentState equipment{};
     std::optional<SpawnEntityLinkedState> linked_target;
     std::uint16_t animation_counter = 0;
     std::uint8_t global_mode = 0;
     bool collision_gate_active = false;
     // The byte at A0 + 0x10. Bit 1 controls the late-window overflow latch.
     std::uint8_t entity_flags = 0;
-    // The byte selected by (A0 + 0x56) + 0x6E. Bits 1/2 select the alternate
-    // resource table and drive the world-effect marker at FFDD6D.
+    // Source status byte used by ROM 0x1514E. Bits 1/2 select the alternate
+    // audio-event table and drive the world-effect marker at FFDD6D.
     std::uint8_t source_status_flags = 0;
 };
 
@@ -127,8 +131,10 @@ using EntitySpawnCycleGate = std::function<bool()>;
 using EntitySpawnCycleSlotAllocator =
     std::function<std::optional<std::uint16_t>()>;
 using EntitySpawnCycleEffect = std::function<void()>;
-using EntitySpawnCycleResourceEffect = std::function<void(std::uint16_t)>;
+using EntitySpawnCycleAudioEffect = std::function<void(std::uint16_t)>;
 using EntitySpawnCycleModeEffect = std::function<void(std::uint16_t)>;
+using EntitySpawnCycleAmmoService =
+    std::function<EntityAmmoServiceAction(EntityEquipmentState&, std::uint8_t)>;
 
 struct EntitySpawnCycleResult {
     EntitySpawnCycleAction action =
@@ -137,14 +143,17 @@ struct EntitySpawnCycleResult {
     std::optional<SpawnEntityRecordState> secondary;
     std::optional<std::uint16_t> primary_slot;
     std::optional<std::uint16_t> secondary_slot;
-    std::uint16_t selected_resource_id = 0;
+    std::uint16_t selected_audio_event = 0;
+    EntityAmmoServiceAction ammo_service_action =
+        EntityAmmoServiceAction::no_action;
     bool overflow_latch_set = false;
     bool special_follow_up = false;
 };
 
-// ROM 0x1514E: run the source entity's spawn window. The allocator, world
-// refresh, resource effect, and mode-maintenance calls are explicit host
-// boundaries; the record initialization, clone, placement, and direction
+// ROM 0x1514E: run the source entity's spawn window. The source services ammo
+// after its gates and before allocating either record. Ammo service, allocator,
+// world refresh, audio dispatch, and mode-maintenance calls are explicit host
+// boundaries; record initialization, clone, placement, and direction
 // selection are represented as typed native state.
 EntitySpawnCycleResult process_entity_spawn_cycle(
     EntitySpawnCycleState& state,
@@ -152,8 +161,9 @@ EntitySpawnCycleResult process_entity_spawn_cycle(
     const EntitySpawnCycleSlotAllocator& allocate_slot,
     const SpawnPreparationBoundary& prepare_spawn,
     const EntitySpawnCycleEffect& refresh_world,
-    const EntitySpawnCycleResourceEffect& apply_resource_effect,
-    const EntitySpawnCycleModeEffect& apply_mode_maintenance);
+    const EntitySpawnCycleAudioEffect& play_audio_event,
+    const EntitySpawnCycleModeEffect& apply_mode_maintenance,
+    const EntitySpawnCycleAmmoService& service_ammo = {});
 
 void initialize_spawned_behavior_entity(
     SpawnedBehaviorEntity& child,

@@ -25,6 +25,10 @@ int main(int argc, char** argv) {
         SHADOWRUN_GHIDRA_AUDIO_RESOURCE_PATH);
     const auto resource_075 = std::filesystem::path(
         SHADOWRUN_GHIDRA_AUDIO_PASSKEY_RESOURCE_PATH);
+    const auto spawn_resource_030 = std::filesystem::path(
+        SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_030_PATH);
+    const auto spawn_resource_074 = std::filesystem::path(
+        SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_074_PATH);
     const auto boot_shock_resource = std::filesystem::path(
         SHADOWRUN_GHIDRA_AUDIO_BOOT_SHOCK_RESOURCE_PATH);
     const auto intro_stage_1 = std::filesystem::path(
@@ -47,6 +51,12 @@ int main(int argc, char** argv) {
         }
         if (alias == "audio.effects.resource.075") {
             return resource_075;
+        }
+        if (alias == "audio.effects.resource.030") {
+            return spawn_resource_030;
+        }
+        if (alias == "audio.effects.resource.074") {
+            return spawn_resource_074;
         }
         if (alias == "audio.effects.resource.092") {
             return boot_shock_resource;
@@ -86,6 +96,18 @@ int main(int argc, char** argv) {
         std::cerr << "the extracted resource-075 FLAC is missing\n";
         return 1;
     }
+    if (playback.alias_for_event(0x1EU) !=
+            "audio.effects.resource.030" ||
+        !std::filesystem::is_regular_file(spawn_resource_030)) {
+        std::cerr << "spawn event 0x1E did not select resource 30\n";
+        return 1;
+    }
+    if (playback.alias_for_event(0x4AU) !=
+            "audio.effects.resource.074" ||
+        !std::filesystem::is_regular_file(spawn_resource_074)) {
+        std::cerr << "spawn event 0x4A did not select resource 74\n";
+        return 1;
+    }
     if (playback.alias_for_event(0x10U) != "audio.intro.title.stage-1" ||
         !std::filesystem::is_regular_file(intro_stage_1)) {
         std::cerr << "opening command 0x10 did not select the stage-1 track\n";
@@ -123,11 +145,13 @@ int main(int argc, char** argv) {
         std::int64_t min_duration_ms;
         std::int64_t max_duration_ms;
     };
-    constexpr std::array<PlaybackExpectation, 7> kMappedEvents{{
+    constexpr std::array<PlaybackExpectation, 9> kMappedEvents{{
         {0x10U, "audio.intro.title.stage-1", 14800, 14900},
         {0x16U, "audio.field.effect-016", 2700, 2800},
         {0x24U, "audio.menu.command-024", 2400, 2600},
         {0x25U, "audio.effects.resource.037", 2050, 2200},
+        {0x1EU, "audio.effects.resource.030", 2200, 2350},
+        {0x4AU, "audio.effects.resource.074", 2200, 2350},
         {0x4BU, "audio.effects.resource.075", 2100, 2300},
         {0x5CU, "audio.effects.resource.092", 2700, 2800},
         {0x12U, "audio.intro.title.stage-3", 20900, 21200},

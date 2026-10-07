@@ -4,15 +4,21 @@ namespace shadowrun::ghidra_conversion {
 
 EntityAmmoServiceAction service_entity_ammo(
     EntityEquipmentState& state,
-    const std::function<void()>& weapon_service) {
-    if (state.current_ammo == 0U || state.equipped_item_code == 0U) {
+    const std::uint8_t source_action_code,
+    const std::function<void(std::int8_t)>& weapon_service) {
+    if (state.current_ammo == 0U || source_action_code == 0U) {
         return EntityAmmoServiceAction::no_action;
     }
 
     if (state.record_type < 3) {
-        if (weapon_service) {
-            weapon_service();
+        if (!weapon_service) {
+            return EntityAmmoServiceAction::weapon_service_unresolved;
         }
+        const auto meter_delta =
+            source_action_code >= 8U && source_action_code <= 10U
+                ? static_cast<std::int8_t>(-3)
+                : static_cast<std::int8_t>(-1);
+        weapon_service(meter_delta);
         return EntityAmmoServiceAction::delegated_to_weapon_service;
     }
 

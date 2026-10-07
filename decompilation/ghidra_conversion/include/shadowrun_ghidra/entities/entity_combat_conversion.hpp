@@ -7,22 +7,24 @@ namespace shadowrun::ghidra_conversion {
 
 struct EntityEquipmentState {
     std::uint8_t current_ammo = 0;
-    std::uint8_t equipped_item_code = 0;
     std::int16_t record_type = 0;
 };
 
 enum class EntityAmmoServiceAction {
     no_action,
     delegated_to_weapon_service,
+    weapon_service_unresolved,
     decremented,
 };
 
 // ROM 0x38AC: service one entity's current ammo value. The source delegates
-// records below type 3 to the weapon-service routine; that routine remains an
-// explicit boundary because its inventory and VDP work is a separate hill.
+// records below type 3 to the weapon-service routine with a -1 or -3 meter
+// delta; that routine remains an explicit boundary because its inventory and
+// presentation work is a separate hill.
 EntityAmmoServiceAction service_entity_ammo(
     EntityEquipmentState& state,
-    const std::function<void()>& weapon_service);
+    std::uint8_t source_action_code,
+    const std::function<void(std::int8_t)>& weapon_service);
 
 using EntityAnimationPassBoundary = std::function<void()>;
 
