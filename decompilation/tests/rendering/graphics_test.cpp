@@ -841,6 +841,25 @@ int main() {
     }
     assert(field_frame_matches_raw_source);
 
+    // ROM 0x44BC copies the default corp guard (kind 5) and pedestrian
+    // (kind 11) templates into live field entities. Their default records
+    // start at selector/frame zero; 0x600E resolves these source descriptors
+    // and the descriptor origins keep the feet anchored at the world point.
+    const auto default_guard_frame =
+        decode_genesis_field_entity_state_frame(rom, 5U, 2);
+    assert(default_guard_frame.descriptor_offset == 0x86E0A);
+    assert(default_guard_frame.image.width == 24U);
+    assert(default_guard_frame.image.height == 32U);
+    assert(default_guard_frame.origin_x == -13);
+    assert(default_guard_frame.origin_y == -26);
+    const auto default_pedestrian_frame =
+        decode_genesis_field_entity_state_frame(rom, 11U, 3);
+    assert(default_pedestrian_frame.descriptor_offset == 0xA7684);
+    assert(default_pedestrian_frame.image.width == 32U);
+    assert(default_pedestrian_frame.image.height == 32U);
+    assert(default_pedestrian_frame.origin_x == -14);
+    assert(default_pedestrian_frame.origin_y == -24);
+
     const auto field_entity_animations =
         decode_genesis_field_entity_animation_sequences(rom);
     assert(field_entity_animations.size() == 8);

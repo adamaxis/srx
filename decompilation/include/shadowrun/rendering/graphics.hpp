@@ -630,6 +630,28 @@ struct GenesisFieldEntityAnimation {
     std::vector<RgbaImage> frames;
 };
 
+struct GenesisFieldEntityStateFrame {
+    RgbaImage image;
+    std::size_t descriptor_offset = 0;
+    std::int16_t origin_x = 0;
+    std::int16_t origin_y = 0;
+};
+
+// Resolve one live field entity's kind/state/frame selection through the
+// source tables and return its ordinary host image plus the signed sprite
+// origin from the selected 0x8002 descriptor. This is an offline import
+// helper; runtime rendering consumes the resulting named image and typed
+// origin, never the ROM tables.
+GenesisFieldEntityStateFrame decode_genesis_field_entity_state_frame(
+    const std::vector<std::uint8_t>& rom,
+    std::uint16_t entity_kind,
+    int palette_line,
+    std::uint16_t state_selector = 0,
+    std::uint16_t state_index = 0,
+    std::size_t entity_state_pointer_table_offset = 0x62AC,
+    std::size_t nibble_table_offset = 0x3EDC,
+    std::size_t palette_offset = 0x172D8A);
+
 struct GenesisFieldSpawnSpriteFrame {
     RgbaImage image;
     // Cropped image's top-left relative to the source entity's +0x0A/+0x0C

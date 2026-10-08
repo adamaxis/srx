@@ -1294,6 +1294,11 @@ void write_catalog_asset(const std::filesystem::path& root,
     } else if (crop) {
         try {
             asset = crop_transparent_bounds(image);
+            // Descriptor origins locate the uncropped frame relative to its
+            // world anchor. Cropping removes transparent pixels from the
+            // image, so carry both offsets into the direct-asset catalog.
+            asset.origin_x += source_origin_x;
+            asset.origin_y += source_origin_y;
         } catch (const std::runtime_error& error) {
             if (std::string(error.what()) != "asset contains no opaque pixels") {
                 throw;
@@ -1302,12 +1307,12 @@ void write_catalog_asset(const std::filesystem::path& root,
             // (for example, an empty initial HUD counter). Preserve it as an
             // individual transparent sprite instead of silently dropping the
             // resource or treating it as a decoder failure.
-            asset = CroppedAsset{image, 0, 0};
+            asset = CroppedAsset{image, source_origin_x, source_origin_y};
             status = "extracted-empty";
             ++blank;
         }
     } else {
-        asset = CroppedAsset{image, 0, 0};
+        asset = CroppedAsset{image, source_origin_x, source_origin_y};
     }
     const auto path = root / relative_name;
     std::filesystem::create_directories(path.parent_path());
@@ -1579,6 +1584,9 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
     emit_generated_resource_row(
         "dialogue.field.interactions",
         "dialogue/field-interactions.tsv", "text");
+    emit_generated_resource_row(
+        "field.entities.default.actors",
+        "field/entities/default-actors.tsv", "state");
     std::string line;
     std::getline(catalog, line);
     while (std::getline(catalog, line)) {
@@ -2220,6 +2228,178 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                   << area->map.width << '\t' << area->map.height << '\n';
     }
     map_index.flush();
+
+    // These profile-selected lists are the only default actor populations
+    // currently traced end to end: scene 2 and scene 0x14. Read their template
+    // and position pointers offline, preserving source order and ordered byte
+    // overrides in a named host table. The game runtime never walks the ROM.
+    struct DefaultActorSceneList {
+        std::uint16_t scene_id;
+        std::size_t list_offset;
+        std::size_t expected_count;
+    };
+    struct DefaultActorRecord {
+        std::uint16_t scene_id;
+        std::uint16_t source_order;
+        std::uint16_t entity_kind;
+        std::uint16_t world_x;
+        std::uint16_t world_y;
+        std::uint8_t palette_line;
+        std::uint32_t template_offset;
+        std::uint32_t position_offset;
+        std::size_t list_offset;
+        std::string overrides;
+    };
+    constexpr std::array<DefaultActorSceneList, 2> kDefaultActorLists{{
+        {2U, 0x172D1CU, 3U},
+        {0x14U, 0x1D91DAU, 8U},
+    }};
+    const auto format_offset = [](const std::uint32_t value) {
+        std::ostringstream text;
+        text << "0x" << std::uppercase << std::hex << value;
+        return text.str();
+    };
+    std::vector<DefaultActorRecord> default_actor_records;
+    for (const auto& source_list : kDefaultActorLists) {
+        auto cursor = source_list.list_offset;
+        const auto first_record = default_actor_records.size();
+        for (std::uint16_t source_order = 0U; source_order < 32U;
+             ++source_order) {
+            const auto tagged_template =
+                read_big_endian_long(rom, cursor);
+            if (tagged_template == 0U) {
+                break;
+            }
+            const auto template_offset = tagged_template & 0x7FFFFFFFU;
+            const auto position_offset =
+                read_big_endian_long(rom, cursor + 4U);
+            if (template_offset > rom.size() ||
+                rom.size() - template_offset < 4U) {
+                throw std::runtime_error(
+                    "default field actor template pointer exceeds ROM");
+            }
+            const auto entity_kind = read_big_endian_word(rom, template_offset);
+            const auto palette_line = static_cast<std::uint8_t>(
+                (read_big_endian_word(rom, template_offset + 2U) >> 13U) &
+                0x03U);
+            DefaultActorRecord record{
+                source_list.scene_id,
+                source_order,
+                entity_kind,
+                read_big_endian_word(rom, position_offset),
+                read_big_endian_word(rom, position_offset + 2U),
+                palette_line,
+                template_offset,
+                position_offset,
+                source_list.list_offset,
+                "-",
+            };
+
+            auto next_record = cursor + 8U;
+            if (read_big_endian_long(rom, next_record) == 2U) {
+                auto pair_offset = next_record + 4U;
+                std::ostringstream overrides;
+                bool first_override = true;
+                for (;;) {
+                    const auto pair = read_big_endian_word(rom, pair_offset);
+                    if (pair == 0U) {
+                        pair_offset += 2U;
+                        break;
+                    }
+                    if (!first_override) {
+                        overrides << ',';
+                    }
+                    overrides << format_offset(pair >> 8U) << '='
+                              << format_offset(pair & 0x00FFU);
+                    first_override = false;
+                    pair_offset += 2U;
+                }
+                if (!first_override) {
+                    record.overrides = overrides.str();
+                }
+                next_record = pair_offset;
+            }
+            default_actor_records.push_back(std::move(record));
+            cursor = next_record;
+        }
+        if (default_actor_records.size() - first_record !=
+            source_list.expected_count) {
+            throw std::runtime_error(
+                "profile-selected default actor list count changed at " +
+                format_offset(static_cast<std::uint32_t>(
+                    source_list.list_offset)));
+        }
+        if (read_big_endian_long(rom, cursor) != 0U) {
+            throw std::runtime_error(
+                "profile-selected default actor list has no null sentinel");
+        }
+    }
+
+    {
+        const auto actor_table_path = root / "field/entities/default-actors.tsv";
+        std::filesystem::create_directories(actor_table_path.parent_path());
+        std::ofstream actor_table(actor_table_path, std::ios::binary);
+        if (!actor_table) {
+            throw std::runtime_error(
+                "cannot create profile-selected default actor table");
+        }
+        actor_table << "scene\tsource_order\tentity_kind\tworld_x\tworld_y"
+                       "\tpalette_line\ttemplate_offset\tposition_offset"
+                       "\tlist_offset\tordered_overrides\n";
+        for (const auto& actor : default_actor_records) {
+            actor_table << actor.scene_id << '\t' << actor.source_order << '\t'
+                        << actor.entity_kind << '\t' << actor.world_x << '\t'
+                        << actor.world_y << '\t'
+                        << static_cast<unsigned>(actor.palette_line) << '\t'
+                        << format_offset(actor.template_offset) << '\t'
+                        << format_offset(actor.position_offset) << '\t'
+                        << format_offset(static_cast<std::uint32_t>(
+                               actor.list_offset))
+                        << '\t' << actor.overrides << '\n';
+        }
+        if (!actor_table) {
+            throw std::runtime_error(
+                "cannot write profile-selected default actor table");
+        }
+    }
+
+    struct DefaultActorKindSource {
+        std::uint16_t entity_kind;
+        std::uint8_t palette_line;
+        const char* asset_name;
+        const char* label;
+    };
+    constexpr std::array<DefaultActorKindSource, 2> kDefaultActorKinds{{
+        {5U, 2U, "field/entities/actors/corp-guard-idle.bmp", "corp guard"},
+        {11U, 3U, "field/entities/actors/pedestrian-idle.bmp", "pedestrian"},
+    }};
+    for (const auto& kind_source : kDefaultActorKinds) {
+        const auto frame =
+            shadowrun::graphics::decode_genesis_field_entity_state_frame(
+                rom, kind_source.entity_kind, kind_source.palette_line);
+        const auto template_record = std::find_if(
+            default_actor_records.begin(), default_actor_records.end(),
+            [&kind_source](const DefaultActorRecord& actor) {
+                return actor.entity_kind == kind_source.entity_kind &&
+                       actor.palette_line == kind_source.palette_line;
+            });
+        if (template_record == default_actor_records.end()) {
+            throw std::runtime_error(
+                "default actor state frame has no selected scene template");
+        }
+        write_catalog_asset(
+            root, kind_source.asset_name, frame.image, "sprite",
+            "0x44BC/0x600E kind=" +
+                std::to_string(kind_source.entity_kind) + " template=" +
+                format_offset(template_record->template_offset) +
+                " descriptor=" +
+                format_offset(static_cast<std::uint32_t>(
+                    frame.descriptor_offset)) +
+                " palette-line=" +
+                std::to_string(kind_source.palette_line),
+            true, manifest, written, missing, blank, frame.origin_x,
+            frame.origin_y);
+    }
 
     for (std::size_t index = 0; index < assets.entity_frames.size(); ++index) {
         write_frame("field/entities/idle-" + std::to_string(index) + ".bmp",

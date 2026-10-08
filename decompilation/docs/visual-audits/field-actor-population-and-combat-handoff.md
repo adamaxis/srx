@@ -1,8 +1,9 @@
 # Field actor population and combat handoff audit
 
-**Status:** ROM data and entry path traced; no actor population implementation
-or visual fix is claimed yet. `LOADOUT-01` remains partial because the Qt field
-runtime still supplies no live actor collision candidates.
+**Status:** ROM data and entry path traced; the Qt runtime now draws the
+profile-selected default idle visuals for scenes 2 and `0x14`. This is partial:
+it does not implement live entity-record updates, actor movement, interaction,
+collision targets, hits, status, or damage. `LOADOUT-01` remains partial.
 
 ## Source path
 
@@ -36,8 +37,10 @@ template's first word (for example, `7` for the `eye5r 1` records) to live
 entity `+0x0E`; `0x481E` selects a sprite-source list from the separate type
 word at projection slot `FF164C+0x02`. The converted `0x481E` selector maps
 projection types 0 through 11 to source `0x5F78`, but the live population to
-projection-slot assignment has not been traced. The renderer's host-asset
-mapping, actor state, and palette for these records therefore remain unproven.
+projection-slot assignment has not been traced. The Qt default-list drawing
+path described below uses the actor kind's own `0x600E` state frame and does
+not claim that actor records map one-to-one to the ten `FF164C` projection
+slots.
 
 ## Do not confuse with scene pedestrian choices
 
@@ -93,13 +96,89 @@ frame descriptor `0x86E0A`; kind 11's is at `0x8D7C` and points to
 frame. The descriptors carry the actual image geometry and origin: the guard
 frame is 24x32 at `(-13,-26)` and the pedestrian frame is 32x32 at
 `(-14,-24)`. The template's `+0x02` word selects palette line 2 for guards and
-line 3 for pedestrians.
+line 3 for pedestrians. `0x44BC` copies that template word to entity byte
+`+0x2C`; it is separate from `0x600E`'s selector and frame-index words at
+`+0x16` and `+0x1E`. The profile overrides touch `+0x2E` or `+0x9E`, not
+those animation words, so the state-zero frame choice is supported at
+initialization. Those overrides may affect other behavior that this static
+presentation does not implement.
 
 The existing field entity catalog is not these actors: the importer currently
 decodes the live Joshua template at `0x7291A` (kind 3). `0x4658` updates the
 sixteen entity records and calls `0x481E`; `0x481E` separately refreshes ten
 projection slots from `FF164C`. Its `0x5F78` geometry must not be substituted
 for the kind-5/kind-11 animation frames or treated as their full sprite art.
+
+## Native default-actor visual slice
+
+The offline `shadowrun_graphics_extract --all-assets` step now writes
+`field/entities/default-actors.tsv` by walking the profile-selected lists at
+`0x172D1C` and `0x1D91DA`. It preserves each list's order, world position,
+template/position/list provenance, palette line, and ordered overrides. It
+also writes individually named idle images for kind 5 and kind 11 from the
+state-zero pointers at `0x827C` and `0x8D7C`. The image catalog preserves the
+signed descriptor origins `(-13,-26)` and `(-14,-24)` after transparent-edge
+cropping. The same origin handling now applies to named projectile frames:
+their source-composed frame origins are no longer discarded when the image is
+cropped.
+
+At field bootstrap, `FieldSceneRuntime` reads that named table and images. The
+scene compositor filters by the active scene, projects each world position,
+sorts by effective Y depth with the source list order as its stable tie-break,
+draws the static state-zero art, and then draws the shared field HUD over the
+playfield. It uses no ROM or VDP state at runtime. The screen-2 QA loads all
+three pedestrian records and confirms their image bounds are outside the
+initial viewport. The scene-`0x14` physical-entry QA loads eight records and
+confirms two guard sprites intersect the visible playfield; it captures the
+complete `320x224` screen at entry and after 30 frames.
+
+**Visual verification gate:**
+
+1. **Appearance:** the full native scene-`0x14` captures show two small guard
+   sprites on the map, with the runner, terrain, and right HUD intact. The
+   independent captures under
+   `video analysis/long_gameplay_video_early_sections_ffmpeg_30fps_320x224/section_03_jump_house_stoker_job_0118-0238/`
+   (`frame_003540.png`, `frame_003560.png`, `frame_003580.png`) show small
+   field characters across nearby gameplay frames. Their exact scene/list
+   identity is not established by the recording, so these are supporting
+   appearance references, not a pixel golden.
+2. **Behavioral state:** scene 2 loads three type-11 records; scene `0x14`
+   loads five type-5 and three type-11 records. The typed table carries their
+   ROM world coordinates, template-selected palette lines, and source order.
+   The visible count uses the projected, cropped frame bounds, not just the
+   projection anchor.
+3. **Visual construction:** `0x600E` selects one `0x8002` frame in each
+   default state-zero list. The extractor bakes palette line 2 or 3 and keeps
+   the descriptor origin. The full frame is reviewed after draw; the separate
+   `0x481E` projection-slot assignment remains an open source boundary.
+4. **Animation:** both state-zero lists have positive marker 1 and one frame,
+   so these initial poses are static. Other actor states, transitions, and
+   movement cadence are not implemented by this slice.
+5. **Sound:** no sound call is tied to loading or drawing these default idle
+   records. Interaction and combat sound routes remain separate and unresolved
+   where noted in their audits.
+6. **Related screen content:** whole-screen captures include terrain, the
+   runner, and the shared right HUD. Actors are drawn between the map and HUD;
+   no old menu control or prior scene panel is left over.
+7. **Multiple frames:** native `scene20-entry.bmp` and `scene20-frame-30.bmp`
+   show the same static population; independent section 03 frames 003540,
+   003560, and 003580 show related field characters. No matching Genesis
+   screenshot at these exact source positions is identified.
+8. **Prior screen cleanup:** the physical scene transition replaces the map
+   through the existing scene-load path, then renders the active HUD. Menu
+   controls are not retained over the new map; the shared HUD is intentionally
+   redrawn after actors.
+
+Release checks passed: `shadowrun_graphics_test.exe`,
+`shadowrun_ghidra_conversion_qt_field_action_qa`,
+`shadowrun_ghidra_conversion_qt_field_scene20_physical_entry_qa`, and
+`shadowrun_ghidra_conversion_qt_field_player_action_qa`. Full-screen outputs
+are under `qt_runtime/field-action-qa/`,
+`qt_runtime/field-scene20-physical-entry-qa/`, and
+`qt_runtime/field-player-action-qa/`. All 273 Release captures in those three
+folders were reviewed across 18 contact sheets; no stale menu controls or
+unexplained sprite/UI overlaps were found in those routes. These checks prove
+the converted path and source table wiring, not Genesis visual equivalence.
 
 ## Live-route reachability check
 

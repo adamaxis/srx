@@ -8440,6 +8440,16 @@ int run_field_scene20_physical_entry_qa(
         field_scene.state().field_scene_buffers.source_metadata;
     const auto expected_scene20_position =
         scene20_metadata.initial_field_records[0U];
+    if (field_scene.default_actor_count_for_dump() != 8U ||
+        field_scene.visible_default_actor_count_for_dump() != 2U) {
+        std::cerr << "Scene-20 physical-entry QA: default actor sprites did "
+                     "not match the active map's visible population (loaded="
+                  << field_scene.default_actor_count_for_dump()
+                  << ", on-screen="
+                  << field_scene.visible_default_actor_count_for_dump()
+                  << ")\n";
+        return 3;
+    }
     const auto scene20_image = render();
     if (field_scene.field_scene_reference_for_dump() != 0x14U ||
         scene20_metadata.terrain_collision_rectangles.size() != 132U ||
@@ -20802,6 +20812,18 @@ int main(int argc, char** argv) {
                 const auto write_scene = [&](const std::string_view name) {
                     return save_scene(name, render_scene());
                 };
+                const auto default_actor_scene = render_scene();
+                const auto default_actor_scene_path =
+                    *field_action_dump_path / "default-actors-initial.bmp";
+                if (field_scene.default_actor_count_for_dump() != 3U ||
+                    field_scene.visible_default_actor_count_for_dump() != 0U ||
+                    !default_actor_scene.save(QString::fromStdWString(
+                        default_actor_scene_path.wstring()))) {
+                    std::cerr << "field action dump: scene 2 default actor "
+                                 "population or initial offscreen placement "
+                                 "did not match the source positions\n";
+                    return 3;
+                }
                 const auto press = [&](const std::uint8_t port_byte) {
                     field_scene.set_controller_port_byte(port_byte);
                     field_scene.advance_frame();

@@ -825,8 +825,10 @@ sound, selects C042, and updates the HUD. It now retains both spawned records
 in source slots 9..14; the primary makes four fixed-point movement/recovery
 probes against the current map's collision data per field update, while the
 secondary advances its stationary finite effect. Terrain collision stops and
-retires the primary. Live scene actor records are not populated, so target-hit
-and linked damage behavior remain open. Eight extracted C042 poses replace the
+retires the primary. Static default actor visuals from the profile lists for
+scenes 2 and `0x14` now load as named assets and draw in the live Qt field
+compositor; they are not live actor records or weapon targets, so hit/status/
+damage behavior remains open. Eight extracted C042 poses replace the
 walk pose for the source action delay. The 261 full-screen Debug/Release action,
 menu, runner, equip, reload, and return screenshots match by SHA-256 and were
 reviewed across 17 contact sheets. Independent sections 06/07 contain no
@@ -848,18 +850,21 @@ ordinary-input reload/fire, source sound selection, C042 pose, primary movement
 against live terrain, secondary effect animation, slot retirement, and HUD
 refresh are connected to the Qt field game and internally verified. The ROM
 selects spawn effects by heading/action class rather than every individual
-weapon, so no unsupported unique-per-gun animation is being added. Live actor
-import and target hit/status/damage remain unimplemented, and no independent
-Genesis firing sample was found. LOADOUT-01 remains partial pending the full
-route review against additional item records and independent visual evidence.
+weapon, so no unsupported unique-per-gun animation is being added. Default
+scene-2/scene-`0x14` actor idle images and positions now reach the live Qt
+compositor, but actor updates, collision, and target hit/status/damage remain
+unimplemented. No independent Genesis firing sample was found. LOADOUT-01
+remains partial pending the full route review against additional item records
+and independent visual evidence.
 The weapon target blocker now has a source trace: mode transition `0x2CE0`
 selects the pending `0x1E552` actor list for its `0x13` result, which maps to
 scene `0x2F`; the list contains five named `eye5r 1` records. Two other
 pending-list pointers contain Strike Team/bodyguard/corporate-guard records.
-These are not yet extracted into runtime assets or connected to the Qt actor,
-collision, and damage path. The source trace and the distinction from the
-separate pedestrian selector table are recorded in the [actor population and
-combat handoff audit](visual-audits/field-actor-population-and-combat-handoff.md).
+These pending combat spawn lists are not yet extracted into runtime assets or
+connected to a Qt actor, collision, and damage path. They are separate from the
+new static default visuals for scenes 2 and `0x14`. The source trace and the
+distinction from the separate pedestrian selector table are recorded in the
+[actor population and combat handoff audit](visual-audits/field-actor-population-and-combat-handoff.md).
 
 ### PLAY-01 — Normal-control reachability for reported game systems
 

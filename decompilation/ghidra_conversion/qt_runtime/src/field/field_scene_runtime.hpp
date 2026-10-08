@@ -121,6 +121,8 @@ public:
     void set_controller_port_byte(std::uint8_t port_byte) noexcept;
     void paint(QPainter& painter) const;
     void paint_field_scene_for_dump(QPainter& painter) const;
+    std::size_t default_actor_count_for_dump() const noexcept;
+    std::size_t visible_default_actor_count_for_dump() const;
     bool open_command_overview_for_dump();
     bool open_attributes_skills_for_dump();
     bool attributes_skills_menu_open() const noexcept {
@@ -757,6 +759,8 @@ private:
                     QImage& destination);
     bool load_field_weapon_spawn_assets(
         const ConversionAssetCatalog& catalog);
+    bool load_field_default_actor_assets(
+        const ConversionAssetCatalog& catalog);
     const QImage* runner_preview_panel_for_record(
         const RunnerRecordFields& record) const;
     bool load_sprite_image(const ConversionAssetCatalog& catalog,
@@ -850,6 +854,18 @@ private:
         EntityAnimationState animation{};
         bool secondary_active = false;
         std::optional<std::uint16_t> secondary_slot;
+    };
+
+    struct DefaultFieldActorPresentation {
+        std::uint16_t scene_reference = 0;
+        std::uint16_t source_order = 0;
+        std::uint16_t entity_kind = 0;
+        SceneRunnerPosition world_position{};
+        std::uint8_t palette_line = 0;
+        std::uint32_t template_offset = 0;
+        std::uint32_t position_offset = 0;
+        std::uint32_t list_offset = 0;
+        std::string ordered_overrides;
     };
 
     std::function<void(std::string_view)> source_boundary_callback_;
@@ -1022,6 +1038,13 @@ private:
     std::array<QImage, 8> field_entity_attack_images_{};
     std::array<int, 8> field_entity_attack_origin_x_{};
     std::array<int, 8> field_entity_attack_origin_y_{};
+    QImage field_corp_guard_idle_image_;
+    int field_corp_guard_origin_x_ = 0;
+    int field_corp_guard_origin_y_ = 0;
+    QImage field_pedestrian_idle_image_;
+    int field_pedestrian_origin_x_ = 0;
+    int field_pedestrian_origin_y_ = 0;
+    std::vector<DefaultFieldActorPresentation> field_default_actors_;
     std::array<std::vector<QImage>, 16> field_weapon_projectile_images_{};
     std::array<std::vector<int>, 16> field_weapon_projectile_origin_x_{};
     std::array<std::vector<int>, 16> field_weapon_projectile_origin_y_{};

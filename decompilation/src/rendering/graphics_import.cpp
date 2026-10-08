@@ -5226,6 +5226,77 @@ RgbaImage decode_genesis_entity_frame(
     return image;
 }
 
+GenesisFieldEntityStateFrame decode_genesis_field_entity_state_frame(
+    const std::vector<std::uint8_t>& rom,
+    const std::uint16_t entity_kind,
+    const int palette_line,
+    const std::uint16_t state_selector,
+    const std::uint16_t state_index,
+    const std::size_t entity_state_pointer_table_offset,
+    const std::size_t nibble_table_offset,
+    const std::size_t palette_offset) {
+    const auto read16 = [&](const std::size_t offset, const char* what) {
+        require_bytes(rom.size() - std::min(offset, rom.size()), 2U, what);
+        return static_cast<std::uint16_t>(
+            (static_cast<std::uint16_t>(rom[offset]) << 8U) |
+            rom[offset + 1U]);
+    };
+    const auto read32 = [&](const std::size_t offset, const char* what) {
+        require_bytes(rom.size() - std::min(offset, rom.size()), 4U, what);
+        return (static_cast<std::uint32_t>(rom[offset]) << 24U) |
+               (static_cast<std::uint32_t>(rom[offset + 1U]) << 16U) |
+               (static_cast<std::uint32_t>(rom[offset + 2U]) << 8U) |
+               static_cast<std::uint32_t>(rom[offset + 3U]);
+    };
+
+    const auto kind_table_entry = entity_state_pointer_table_offset +
+                                  static_cast<std::size_t>(entity_kind) * 4U;
+    const auto first_pointer = static_cast<std::size_t>(read32(
+        kind_table_entry,
+        "Genesis field entity state-pointer table entry is truncated"));
+    const auto state_list = static_cast<std::size_t>(read32(
+        first_pointer + (state_selector & 0x7FFFU),
+        "Genesis field entity selected state list is truncated"));
+    const auto marker = read16(
+        state_list, "Genesis field entity state-list marker is truncated");
+    const auto frame_count = static_cast<std::size_t>(marker & 0x7FFFU);
+    if (frame_count == 0U) {
+        throw std::runtime_error(
+            "Genesis field entity state list has no image frames");
+    }
+    const auto selected_frame = state_index < frame_count
+        ? static_cast<std::size_t>(state_index)
+        : (marker & 0x8000U) != 0U ? frame_count - 1U : 0U;
+    const auto descriptor_offset = static_cast<std::size_t>(read32(
+        state_list + 4U + selected_frame * 4U,
+        "Genesis field entity frame descriptor is truncated"));
+    if (read16(descriptor_offset,
+               "Genesis field entity descriptor header is truncated") !=
+        0x8002U) {
+        throw std::runtime_error(
+            "Genesis field entity state did not resolve to an 0x8002 frame");
+    }
+    const auto signed_word = [](const std::uint16_t value) {
+        return static_cast<std::int16_t>(value < 0x8000U
+                                             ? static_cast<std::int32_t>(value)
+                                             : static_cast<std::int32_t>(value) -
+                                                   0x10000);
+    };
+
+    GenesisFieldEntityStateFrame result;
+    result.descriptor_offset = descriptor_offset;
+    result.origin_x = signed_word(read16(
+        descriptor_offset + 0x08U,
+        "Genesis field entity frame x origin is truncated"));
+    result.origin_y = signed_word(read16(
+        descriptor_offset + 0x0AU,
+        "Genesis field entity frame y origin is truncated"));
+    result.image = decode_genesis_entity_frame(
+        rom, descriptor_offset, nibble_table_offset, palette_offset, false,
+        palette_line, true);
+    return result;
+}
+
 std::vector<RgbaImage> decode_genesis_entity_animation(
     const std::vector<std::uint8_t>& rom,
     std::size_t state_block_offset,

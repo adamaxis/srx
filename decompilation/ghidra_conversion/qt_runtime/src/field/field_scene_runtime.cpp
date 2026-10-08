@@ -35,8 +35,10 @@
 #include <QRandomGenerator>
 
 #include <algorithm>
+#include <fstream>
 #include <cstdint>
 #include <filesystem>
+#include <sstream>
 #include <string>
 #include <utility>
 
@@ -1041,6 +1043,147 @@ bool FieldSceneRuntime::load_sprite_image(
     // The extraction bakes color-zero as alpha 0 and loads it through the
     // V4 BMP alpha mask. Re-deriving transparency from black pixels here
     // would punch holes in the sprites' black outlines.
+    return true;
+}
+
+bool FieldSceneRuntime::load_field_default_actor_assets(
+    const ConversionAssetCatalog& catalog) {
+    constexpr std::string_view kActorTableAlias =
+        "field.entities.default.actors";
+    constexpr std::string_view kActorTableHeader =
+        "scene\tsource_order\tentity_kind\tworld_x\tworld_y\tpalette_line"
+        "\ttemplate_offset\tposition_offset\tlist_offset"
+        "\tordered_overrides";
+    const auto* table = catalog.find(kActorTableAlias);
+    if (table == nullptr || table->kind != "state") {
+        failure_ = "missing extracted default field actor table";
+        return false;
+    }
+    std::ifstream input(table->absolute_path, std::ios::binary);
+    if (!input) {
+        failure_ = "cannot read extracted default field actor table";
+        return false;
+    }
+
+    field_default_actors_.clear();
+    field_corp_guard_idle_image_ = QImage{};
+    field_corp_guard_origin_x_ = 0;
+    field_corp_guard_origin_y_ = 0;
+    field_pedestrian_idle_image_ = QImage{};
+    field_pedestrian_origin_x_ = 0;
+    field_pedestrian_origin_y_ = 0;
+
+    std::string line;
+    if (!std::getline(input, line) || line != kActorTableHeader) {
+        failure_ = "default field actor table header is invalid";
+        return false;
+    }
+    const auto parse_number = [](const std::string& value,
+                                 const int base) -> std::uint32_t {
+        std::size_t consumed = 0U;
+        const auto parsed = std::stoul(value, &consumed, base);
+        if (consumed != value.size() || parsed > 0xFFFFFFFFUL) {
+            throw std::invalid_argument("invalid default actor number");
+        }
+        return static_cast<std::uint32_t>(parsed);
+    };
+    const auto parse_word = [&parse_number](const std::string& value) {
+        const auto parsed = parse_number(value, 10);
+        if (parsed > 0xFFFFU) {
+            throw std::out_of_range("default actor word exceeds 16 bits");
+        }
+        return static_cast<std::uint16_t>(parsed);
+    };
+    std::array<std::uint16_t, 2> scene_record_counts{};
+    bool loaded_guard = false;
+    bool loaded_pedestrian = false;
+    try {
+        while (std::getline(input, line)) {
+            if (!line.empty() && line.back() == '\r') {
+                line.pop_back();
+            }
+            if (line.empty()) {
+                continue;
+            }
+            std::vector<std::string> fields;
+            std::istringstream row(line);
+            std::string field;
+            while (std::getline(row, field, '\t')) {
+                fields.push_back(std::move(field));
+            }
+            if (fields.size() != 10U) {
+                failure_ = "default field actor table row is malformed";
+                return false;
+            }
+            DefaultFieldActorPresentation actor;
+            actor.scene_reference = parse_word(fields[0]);
+            actor.source_order = parse_word(fields[1]);
+            actor.entity_kind = parse_word(fields[2]);
+            actor.world_position.x = parse_word(fields[3]);
+            actor.world_position.y = parse_word(fields[4]);
+            const auto palette_line = parse_word(fields[5]);
+            if (palette_line > 0xFFU) {
+                failure_ = "default actor palette line exceeds one byte";
+                return false;
+            }
+            actor.palette_line = static_cast<std::uint8_t>(palette_line);
+            actor.template_offset = parse_number(fields[6], 0);
+            actor.position_offset = parse_number(fields[7], 0);
+            actor.list_offset = parse_number(fields[8], 0);
+            actor.ordered_overrides = fields[9];
+            if ((actor.entity_kind == 5U && actor.palette_line != 2U) ||
+                (actor.entity_kind == 11U && actor.palette_line != 3U) ||
+                (actor.entity_kind != 5U && actor.entity_kind != 11U)) {
+                failure_ = "default actor has an unresolved source art kind";
+                return false;
+            }
+
+            if (actor.scene_reference == 2U) {
+                if (actor.source_order != scene_record_counts[0]) {
+                    failure_ = "scene 2 default actor source order changed";
+                    return false;
+                }
+                ++scene_record_counts[0];
+            } else if (actor.scene_reference == 0x14U) {
+                if (actor.source_order != scene_record_counts[1]) {
+                    failure_ = "scene 0x14 default actor source order changed";
+                    return false;
+                }
+                ++scene_record_counts[1];
+            }
+
+            if (actor.entity_kind == 5U && !loaded_guard) {
+                if (!load_sprite_image(catalog,
+                                       "field.entities.actors.corp.guard.idle",
+                                       field_corp_guard_idle_image_,
+                                       field_corp_guard_origin_x_,
+                                       field_corp_guard_origin_y_)) {
+                    return false;
+                }
+                loaded_guard = true;
+            } else if (actor.entity_kind == 11U && !loaded_pedestrian) {
+                if (!load_sprite_image(
+                        catalog,
+                        "field.entities.actors.pedestrian.idle",
+                        field_pedestrian_idle_image_,
+                        field_pedestrian_origin_x_,
+                        field_pedestrian_origin_y_)) {
+                    return false;
+                }
+                loaded_pedestrian = true;
+            }
+            field_default_actors_.push_back(std::move(actor));
+        }
+    } catch (const std::exception& error) {
+        failure_ = std::string("cannot parse default field actor table: ") +
+                   error.what();
+        return false;
+    }
+    if (scene_record_counts[0] != 3U || scene_record_counts[1] != 8U ||
+        !loaded_guard || !loaded_pedestrian) {
+        failure_ = "default field actor table is incomplete";
+        return false;
+    }
     return true;
 }
 
@@ -3825,6 +3968,11 @@ bool FieldSceneRuntime::bootstrap(
             return false;
         }
     }
+    if (!load_field_default_actor_assets(
+            startup_state.asset_catalog.catalog)) {
+        source_boundary("field.bootstrap.default_actor_assets_missing");
+        return false;
+    }
 
     const auto result = integration::bootstrap_field_session(
         input_, state_, callbacks_);
@@ -6216,6 +6364,46 @@ void FieldSceneRuntime::paint_field_scene_entities(QPainter& painter) const {
         }
     }
 
+    const auto current_scene =
+        state_.field_scene_buffers.scene_reference;
+    for (const auto& actor : field_default_actors_) {
+        if (actor.scene_reference != current_scene) {
+            continue;
+        }
+        const QImage* image = nullptr;
+        int origin_x = 0;
+        int origin_y = 0;
+        if (actor.entity_kind == 5U) {
+            image = &field_corp_guard_idle_image_;
+            origin_x = field_corp_guard_origin_x_;
+            origin_y = field_corp_guard_origin_y_;
+        } else if (actor.entity_kind == 11U) {
+            image = &field_pedestrian_idle_image_;
+            origin_x = field_pedestrian_origin_x_;
+            origin_y = field_pedestrian_origin_y_;
+        }
+        if (image == nullptr || image->isNull()) {
+            continue;
+        }
+
+        EntityProjectionState projection{};
+        projection.world_x = actor.world_position.x;
+        projection.world_y = actor.world_position.y;
+        if (!project_entity_screen_position_standard(
+                projection, camera_x, camera_y)
+                 .visible) {
+            continue;
+        }
+        sprites.push_back(SceneSprite{
+            static_cast<std::int16_t>(actor.world_position.y),
+            static_cast<std::uint16_t>(actor.source_order + 1U),
+            static_cast<int>(projection.screen_x) - kGenesisSpriteOrigin +
+                origin_x,
+            static_cast<int>(projection.screen_y) - kGenesisSpriteOrigin +
+                origin_y,
+            image});
+    }
+
     const auto append_spawn_record =
         [this, camera_x, camera_y, &sprites](
             const SpawnEntityRecordState& record,
@@ -8467,6 +8655,61 @@ void FieldSceneRuntime::paint_field_scene_for_dump(
         return;
     }
     paint_field_scene(painter);
+}
+
+std::size_t FieldSceneRuntime::default_actor_count_for_dump() const noexcept {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    return static_cast<std::size_t>(std::count_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference](const DefaultFieldActorPresentation& actor) {
+            return actor.scene_reference == scene_reference;
+        }));
+}
+
+std::size_t FieldSceneRuntime::visible_default_actor_count_for_dump() const {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto camera_x = static_cast<std::uint16_t>(
+        state_.field_scene_buffers.camera_x);
+    const auto camera_y = static_cast<std::uint16_t>(
+        state_.field_scene_buffers.camera_y);
+    std::size_t visible = 0U;
+    for (const auto& actor : field_default_actors_) {
+        if (actor.scene_reference != scene_reference) {
+            continue;
+        }
+        const QImage* image = nullptr;
+        int origin_x = 0;
+        int origin_y = 0;
+        if (actor.entity_kind == 5U) {
+            image = &field_corp_guard_idle_image_;
+            origin_x = field_corp_guard_origin_x_;
+            origin_y = field_corp_guard_origin_y_;
+        } else if (actor.entity_kind == 11U) {
+            image = &field_pedestrian_idle_image_;
+            origin_x = field_pedestrian_origin_x_;
+            origin_y = field_pedestrian_origin_y_;
+        }
+        if (image == nullptr || image->isNull()) {
+            continue;
+        }
+        EntityProjectionState projection{};
+        projection.world_x = actor.world_position.x;
+        projection.world_y = actor.world_position.y;
+        if (!project_entity_screen_position_standard(
+                 projection, camera_x, camera_y)
+                 .visible) {
+            continue;
+        }
+        const auto left = static_cast<int>(projection.screen_x) -
+                          kGenesisSpriteOrigin + origin_x;
+        const auto top = static_cast<int>(projection.screen_y) -
+                         kGenesisSpriteOrigin + origin_y;
+        if (left < 272 && left + image->width() > 0 && top < 224 &&
+            top + image->height() > 0) {
+            ++visible;
+        }
+    }
+    return visible;
 }
 
 void FieldSceneRuntime::paint_field_scene(QPainter& painter) const {
