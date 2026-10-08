@@ -13606,6 +13606,7 @@ int main(int argc, char** argv) {
                 runner.flags = static_cast<std::uint16_t>(
                     runner.flags | 0x0100U);
                 runner.inventory_item_codes[0] = 1U;
+                runner.inventory_item_codes[1U] = 2U;
                 runner.equipped_inventory_slot = 0;
                 runner.equipped_item_code = 1U;
                 runner.ammo_rounds = 0U;
@@ -13622,6 +13623,22 @@ int main(int argc, char** argv) {
                     field_scene.paint(painter);
                     painter.end();
                     return image;
+                };
+                const auto same_full_frame = [](const QImage& left,
+                                                const QImage& right) {
+                    if (left.size() != right.size() || left.isNull() ||
+                        right.isNull()) {
+                        return false;
+                    }
+                    for (int row = 0; row < left.height(); ++row) {
+                        for (int column = 0; column < left.width(); ++column) {
+                            if (left.pixel(column, row) !=
+                                right.pixel(column, row)) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
                 };
                 const auto save_scene = [&](const std::string_view name,
                                             const QImage& image) {
@@ -13745,27 +13762,213 @@ int main(int argc, char** argv) {
                     std::cerr << "field player action dump: source-selected, held-A reload, shared clip, delay, audio, or live HUD counter did not match\n";
                     return 3;
                 }
-                field_scene.advance_frame(); // release the first A input.
-                runner.inventory_item_codes[1U] = 2U;
-                runner.equipped_inventory_slot = 1;
-                runner.equipped_item_code = 2U;
-                runner.ammo_rounds = 0U;
-                runner.animation_action_gate = 1;
-                runner.flags = static_cast<std::uint16_t>(
-                    runner.flags | 0x0300U);
-                field_scene.refresh_field_hud_for_dump();
-                field_audio_events.clear();
-                const auto weapon_two_empty = render_scene();
-                if (!save_scene("weapon-2-before", weapon_two_empty) ||
-                    runner.equipped_inventory_slot != 1 ||
-                    runner.equipped_item_code != 2U ||
-                    runner.ammo_clips != 2U ||
-                    !ammo_counter_matches(weapon_two_empty, 0)) {
-                    std::cerr << "field player action dump: second weapon was not selected with its empty magazine and shared reserve\n";
+                const auto first_reload_event_count = field_audio_events.size();
+                if (first_reload_event_count != 2U) {
+                    std::cerr << "field player action dump: first reload did not submit the two source 0x4B events\n";
                     return 3;
                 }
-                field_scene.set_controller_port_byte(0x40U);
-                field_scene.advance_frame();
+                std::ofstream action_delay_trace(
+                    *field_player_action_dump_path / "action-delay.tsv",
+                    std::ios::trunc);
+                if (!action_delay_trace) {
+                    std::cerr << "field player action dump: could not open action-delay.tsv\n";
+                    return 3;
+                }
+                action_delay_trace
+                    << "frame\tinput\taction_gate\tammo_rounds\tclip_reserve\taudio_events\n";
+                std::size_t action_delay_frames = 0U;
+                bool action_delay_visuals_stable = true;
+                while (runner.animation_action_gate >= 0 &&
+                       action_delay_frames < 256U) {
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    ++action_delay_frames;
+                    const auto delay_frame = render_scene();
+                    const auto frame_name =
+                        "action-delay-" +
+                        std::to_string(action_delay_frames);
+                    if (!save_scene(frame_name, delay_frame)) {
+                        std::cerr << "field player action dump: could not save complete action-delay frame "
+                                  << action_delay_frames << '\n';
+                        return 3;
+                    }
+                    action_delay_visuals_stable =
+                        action_delay_visuals_stable &&
+                        same_full_frame(scene, delay_frame);
+                    action_delay_trace
+                        << action_delay_frames << "\t0\t"
+                        << runner.animation_action_gate << '\t'
+                        << static_cast<unsigned>(runner.ammo_rounds) << '\t'
+                        << static_cast<unsigned>(runner.ammo_clips) << '\t'
+                        << field_audio_events.size() << '\n';
+                }
+                if (runner.animation_action_gate >= 0 ||
+                    action_delay_frames == 0U ||
+                    !action_delay_visuals_stable ||
+                    field_audio_events.size() != first_reload_event_count) {
+                    std::cerr << "field player action dump: source action delay did not expire on idle field frames with stable full-screen pixels\n";
+                    return 3;
+                }
+
+                // Model the already-empty magazine at menu entry. Firing that
+                // empties it is the next unconnected combat behavior; the
+                // weapon switch and following reload use normal field input.
+                runner.ammo_rounds = 0U;
+                field_scene.refresh_field_hud_for_dump();
+                field_audio_events.clear();
+                std::ofstream weapon_switch_trace(
+                    *field_player_action_dump_path / "weapon-switch-route.tsv",
+                    std::ios::trunc);
+                if (!weapon_switch_trace) {
+                    std::cerr << "field player action dump: could not open weapon-switch-route.tsv\n";
+                    return 3;
+                }
+                weapon_switch_trace
+                    << "frame\tphase\tinput\tmenu_page\titem_action_open\tequipped_item\tammo_rounds\tclip_reserve\taudio_events\n";
+                std::size_t weapon_switch_frame = 0U;
+                const auto capture_weapon_switch_frame =
+                    [&](const std::string_view phase,
+                        const std::uint8_t input) {
+                        const auto image = render_scene();
+                        const auto frame_name =
+                            "weapon-switch-route-" +
+                            std::to_string(weapon_switch_frame);
+                        const bool saved = save_scene(frame_name, image);
+                        weapon_switch_trace
+                            << weapon_switch_frame << '\t' << phase << '\t'
+                            << static_cast<unsigned>(input) << '\t'
+                            << static_cast<unsigned>(
+                                   field_scene.command_overview_primary_page())
+                            << '\t'
+                            << (field_scene.inventory_action_open() ? 1 : 0)
+                            << '\t'
+                            << static_cast<unsigned>(runner.equipped_item_code)
+                            << '\t'
+                            << static_cast<unsigned>(runner.ammo_rounds)
+                            << '\t'
+                            << static_cast<unsigned>(runner.ammo_clips)
+                            << '\t' << field_audio_events.size() << '\n';
+                        ++weapon_switch_frame;
+                        return saved && static_cast<bool>(weapon_switch_trace);
+                    };
+                if (!capture_weapon_switch_frame("field-before-start", 0U)) {
+                    std::cerr << "field player action dump: could not save the field before weapon switching\n";
+                    return 3;
+                }
+                const auto press_field_input = [&](const std::uint8_t input) {
+                    field_scene.set_controller_port_byte(input);
+                    field_scene.advance_frame();
+                    const bool press_saved =
+                        capture_weapon_switch_frame("pressed", input);
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    const bool release_saved =
+                        capture_weapon_switch_frame("released", 0U);
+                    return press_saved && release_saved;
+                };
+                if (!press_field_input(0x80U) ||
+                    !field_scene.command_overview_open()) {
+                    std::cerr << "field player action dump: ordinary Start input did not open the command menu\n";
+                    return 3;
+                }
+                for (int move = 0;
+                     move < 7 &&
+                     field_scene.command_overview_primary_page() != 0U;
+                     ++move) {
+                    if (!press_field_input(0x04U)) {
+                        std::cerr << "field player action dump: could not save a full-screen inventory navigation frame\n";
+                        return 3;
+                    }
+                }
+                if (field_scene.command_overview_primary_page() != 0U) {
+                    std::cerr << "field player action dump: ordinary menu input did not select inventory\n";
+                    return 3;
+                }
+                if (!press_field_input(0x08U) ||
+                    field_scene.command_overview_primary_page() != 1U) {
+                    std::cerr << "field player action dump: ordinary Right input did not select weapon 2\n";
+                    return 3;
+                }
+                if (!press_field_input(0x40U) ||
+                    !field_scene.inventory_action_open() ||
+                    field_scene.inventory_action_selection() != 2U) {
+                    std::cerr << "field player action dump: weapon 2 action row did not open from the field controller\n";
+                    return 3;
+                }
+                const auto audio_before_weapon_equip =
+                    field_audio_events.size();
+                if (!press_field_input(0x40U)) {
+                    std::cerr << "field player action dump: could not save the equip transition frames\n";
+                    return 3;
+                }
+                const auto weapon_two_menu = render_scene();
+                const bool weapon_equip_audio_ordered =
+                    field_audio_events.size() ==
+                        audio_before_weapon_equip + 1U &&
+                    field_audio_events.back() == 0x24U;
+                if (runner.equipped_inventory_slot != 1 ||
+                    runner.equipped_item_code != 2U ||
+                    runner.ammo_rounds != 0U || runner.ammo_clips != 2U ||
+                    !weapon_equip_audio_ordered ||
+                    !save_scene("weapon-2-menu-equipped", weapon_two_menu)) {
+                    std::cerr << "field player action dump: ordinary inventory selection did not equip empty weapon 2 with one source confirmation event\n";
+                    return 3;
+                }
+                if (!press_field_input(0x80U)) {
+                    std::cerr << "field player action dump: could not save the Start return frames\n";
+                    return 3;
+                }
+                const auto weapon_two_field_return = render_scene();
+                if (field_scene.command_overview_open() ||
+                    field_scene.dialogue_open() ||
+                    field_scene.hotel_menu_open() ||
+                    field_scene.inventory_action_open() ||
+                    field_scene.clips_menu_open() ||
+                    field_scene.field_interaction_open() ||
+                    !save_scene("weapon-2-field-return",
+                                weapon_two_field_return)) {
+                    std::cerr << "field player action dump: Start did not clear the weapon menu and return to the field\n";
+                    return 3;
+                }
+                bool menu_return_hold_stable = true;
+                for (std::size_t frame = 1U; frame <= 30U; ++frame) {
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    const auto hold = render_scene();
+                    menu_return_hold_stable =
+                        menu_return_hold_stable &&
+                        same_full_frame(weapon_two_field_return, hold);
+                    if (!save_scene(
+                            "weapon-switch-return-hold-" +
+                                std::to_string(frame),
+                            hold) ||
+                        field_scene.command_overview_open() ||
+                        field_scene.dialogue_open() ||
+                        field_scene.hotel_menu_open() ||
+                        field_scene.inventory_action_open() ||
+                        field_scene.clips_menu_open() ||
+                        field_scene.field_interaction_open() ||
+                        runner.ammo_rounds != 0U ||
+                        runner.ammo_clips != 2U) {
+                        std::cerr << "field player action dump: menu return hold lost the empty field state or reopened a child control\n";
+                        return 3;
+                    }
+                }
+                if (!menu_return_hold_stable ||
+                    weapon_switch_frame != 23U) {
+                    std::cerr << "field player action dump: ordinary weapon-switch route was not 23 full-screen frames with a stable return hold\n";
+                    return 3;
+                }
+                field_audio_events.clear();
+                const auto weapon_two_empty = render_scene();
+                if (runner.equipped_inventory_slot != 1 ||
+                    runner.equipped_item_code != 2U ||
+                    runner.ammo_clips != 2U ||
+                    !ammo_counter_matches(weapon_two_empty, 0) ||
+                    !save_scene("weapon-2-before", weapon_two_empty)) {
+                    std::cerr << "field player action dump: natural weapon switch did not preserve the empty magazine and shared reserve\n";
+                    return 3;
+                }
                 field_scene.set_controller_port_byte(0U);
                 field_scene.advance_frame();
                 const auto weapon_two_ready = render_scene();
@@ -13807,7 +14010,12 @@ int main(int argc, char** argv) {
                 std::cout << "field_player_action_dump=written path="
                           << output.string()
                           << " weapon1_rounds=6 weapon2_rounds=12"
-                          << " reserve_clips=1 audio_events=4\n";
+                          << " reserve_clips=1 reload_audio_events=4"
+                          << " action_delay_frames=" << action_delay_frames
+                          << " weapon_switch_route_frames="
+                          << weapon_switch_frame
+                          << " return_hold_frames=30"
+                          << " natural_weapon_switch=1\n";
                 return 0;
             }
             if (field_smoke_move_right) {

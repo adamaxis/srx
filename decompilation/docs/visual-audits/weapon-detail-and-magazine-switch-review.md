@@ -52,22 +52,28 @@ shared 50-percent transfer, and reload consumption from the shared reserve.
 
 ## Live reload action QA update
 
-The `shadowrun_ghidra_conversion_qt_field_player_action_qa` CTest now also
-drives the live `FieldSceneRuntime` A-button action. It starts with item 1
-empty and three shared clips, then checks reload to its ROM-defined capacity
-of 6 and a reserve count of 2. In the same runtime, QA seeds item 2 as the
-selected empty weapon and verifies its ordinary held-A reload reaches its own
-12-round capacity and consumes the next shared clip, leaving one. This second
-weapon setup is diagnostic state injection; the existing inventory-menu QA
-separately drives the ordinary equip route and verifies the source-derived
-3/6 -> 6/12 -> 3/6 percentage transfer.
+The `shadowrun_ghidra_conversion_qt_field_player_action_qa` CTest drives the
+live `FieldSceneRuntime` A-button action. It reloads item 1 to its ROM capacity
+of 6, then records every field update while the source `+0xDC` delay counts down
+to `-1`: 103 full-screen images for this New Game fixture, each pixel-identical
+to the post-reload frame. Because normal firing is not connected, QA seeds the
+magazine empty to represent the spent rounds, then uses ordinary Start, Left,
+Right, A, and Start controller input to select and equip item 2 through the
+field inventory menu. The same `+0x4F` reserve falls from 3 to 2 at the first
+reload and 2 to 1 at the second; the second held-A reload fills item 2 to its
+own 12-round capacity. Inventory item 2 and the empty-magazine state are
+fixtures; the equip, return, and reload transitions are live controller paths.
+The existing inventory QA separately drives the 3/6 -> 6/12 -> 3/6 percentage
+transfer.
 
-The player-action QA writes seven 320x224 full-screen frames. Debug and Release
-outputs are compared by SHA-256, and the entire Debug sequence is reviewed for
-the weapon glyph, ammo counter, map, HUD, and stale controls. This evidence
-connects the reload action to the field controller/runtime; it does not
-connect the broader fire/projectile/target/hit loop or prove an independent
-Genesis visual match.
+The player-action QA writes 165 320x224 full-screen images: nine transition
+checkpoints, all 103 action-delay updates, all 23 press/release frames in the
+weapon-switch route, and a 30-frame field-return hold. Debug and Release
+outputs are compared by SHA-256. The checkpoints and menu route were visually
+reviewed; every delay and return-hold frame also matches its stable reference
+pixel-for-pixel. This connects the weapon switch and reload to the field
+controller/runtime; it does not connect firing, projectile/target/hit
+behavior, or prove an independent Genesis visual match.
 
 ## Nine-question visual review
 
@@ -108,10 +114,11 @@ Genesis visual match.
    action rows and Clips child controls replacing their parent panel, then
    returning without stale controls. Equip/unequip and armor/gear toggles
    match fresh full-screen redraws in the existing QA.
-9. **Was the affected time window reviewed?** Yes for these static menu
-   states: all 54 checkpoints were inspected, and the source QA's 30-frame
-   equip/unequip holds are pixel-identical. This is a checkpoint set, not a
-   continuous capture of every VBlank.
+9. **Was the affected time window reviewed?** All 165 images cover the reload
+   delay, every menu press/release frame, and the field-return hold. The 103
+   delay frames and 30 return frames are pixel-identical to their respective
+   reference frame; all 23 route frames were reviewed in sequence. The paired
+   audio playback tail is not recorded by that event-spy QA.
 
 ## Status
 
