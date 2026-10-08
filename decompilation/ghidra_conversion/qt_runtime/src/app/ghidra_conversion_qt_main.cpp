@@ -8399,7 +8399,7 @@ int run_field_elevator_group_route_qa(
         std::array<std::uint16_t, kFieldElevatorSceneGroupMemberCount>
             group_scene_ids;
     };
-    const std::array<RouteSourceExpectation, 16U> route_expectations{{
+    const std::array<RouteSourceExpectation, 20U> route_expectations{{
         {21U, 0U, {0x3000U, 0x0600U}, 100U, 0x02E0U, 0x0300U, 0x0020U, 4U,
          {21U, 22U, 23U, 24U, 0U}},
         {22U, 1U, {0x3000U, 0x0600U}, 113U, 0x02E0U, 0x0300U, 0x0020U, 4U,
@@ -8412,6 +8412,14 @@ int run_field_elevator_group_route_qa(
          {21U, 22U, 23U, 24U, 0U}},
         {29U, 0U, {0x0A00U, 0x0500U}, 112U, 0x0080U, 0x00A0U, 0x0020U, 3U,
          {26U, 27U, 28U, 0U, 0U}},
+        {30U, 0U, {0x3A00U, 0x0600U}, 82U, 0x0380U, 0x03A0U, 0x0020U, 4U,
+         {30U, 31U, 32U, 33U, 0U}},
+        {31U, 1U, {0x3800U, 0x0600U}, 85U, 0x0380U, 0x03A0U, 0x0020U, 4U,
+         {30U, 31U, 32U, 33U, 0U}},
+        {32U, 2U, {0x3800U, 0x0600U}, 97U, 0x0380U, 0x03A0U, 0x0020U, 4U,
+         {30U, 31U, 32U, 33U, 0U}},
+        {33U, 3U, {0x3800U, 0x0600U}, 97U, 0x0380U, 0x03A0U, 0x0020U, 4U,
+         {30U, 31U, 32U, 33U, 0U}},
         {34U, 0U, {0x3800U, 0x0600U}, 85U, 0x0380U, 0x03A0U, 0x0020U, 4U,
          {30U, 31U, 32U, 33U, 0U}},
         {40U, 0U, {0x1600U, 0x0500U}, 70U, 0x0140U, 0x0160U, 0x0020U, 5U,
@@ -8599,11 +8607,17 @@ int run_field_elevator_group_route_qa(
     while (trigger_frames < 120U &&
            !field_scene.elevator_selector_open_for_dump() &&
            field_scene.field_scene_reference_for_dump() == scene_id) {
-        const bool align_with_scene34_trigger =
-            scene_id == 34U && trigger_frames < 6U;
-        input_label = align_with_scene34_trigger ? "dpad-right" : "dpad-up";
+        // Scenes 31-34 spawn at x=0x380, on the west edge of the paired
+        // event-29 lane. Their ROM collision rectangles place a 0x7F wall
+        // immediately west of that lane and another along its east edge; six
+        // ordinary Right updates move the runner's collision probes into the
+        // open center before the northbound approach. Scene 30's descriptor
+        // spawn is already centered at x=0x3A0.
+        const bool align_with_elevator_lane =
+            scene_id >= 31U && scene_id <= 34U && trigger_frames < 6U;
+        input_label = align_with_elevator_lane ? "dpad-right" : "dpad-up";
         field_scene.set_controller_nibble(
-            align_with_scene34_trigger ? 0x08U : 0x01U);
+            align_with_elevator_lane ? 0x08U : 0x01U);
         if (!advance()) {
             return 3;
         }
@@ -10441,6 +10455,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_elevator_nonmember_entry_qa_path;
         bool field_elevator_scene25_group_roundtrip_qa = false;
+        bool field_elevator_scene34_group_roundtrip_qa = false;
         bool field_elevator_scene40_group_roundtrip_qa = false;
         std::optional<std::filesystem::path>
             field_security_terminal_physical_entry_qa_path;
@@ -10509,6 +10524,7 @@ int main(int argc, char** argv) {
                        " [--field-elevator-scene25-entry-qa <output-dir>]"
                        " [--field-elevator-scene29-entry-qa <output-dir>]"
                        " [--field-elevator-scene34-entry-qa <output-dir>]"
+                       " [--field-elevator-scene34-group-roundtrip-qa <output-dir>]"
                        " [--field-elevator-scene40-entry-qa <output-dir>]"
                        " [--field-elevator-scene25-group-roundtrip-qa <output-dir>]"
                        " [--field-elevator-scene40-group-roundtrip-qa <output-dir>]"
@@ -10650,6 +10666,15 @@ int main(int argc, char** argv) {
                 field_elevator_nonmember_entry_qa_path =
                     std::filesystem::path(argv[++index]);
                 field_elevator_scene25_group_roundtrip_qa = true;
+            }
+            if (std::string(argv[index]) ==
+                    "--field-elevator-scene34-group-roundtrip-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_elevator_nonmember_entry_scene = 34U;
+                field_elevator_nonmember_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+                field_elevator_scene34_group_roundtrip_qa = true;
             }
             if (std::string(argv[index]) ==
                     "--field-elevator-scene40-group-roundtrip-qa" &&
@@ -11194,6 +11219,24 @@ int main(int argc, char** argv) {
                                      4U>
                         member_routes{{{22U, 2U}, {23U, 3U}, {24U, 0U},
                                        {21U, 1U}}};
+                    for (const auto& [member_scene, destination_floor] :
+                         member_routes) {
+                        route_status = run_scene_route(
+                            member_scene,
+                            *field_elevator_nonmember_entry_qa_path /
+                                ("scene" + std::to_string(member_scene) +
+                                 "-member-trigger"),
+                            destination_floor);
+                        if (route_status != 0) {
+                            return route_status;
+                        }
+                    }
+                } else if (*field_elevator_nonmember_entry_scene == 34U &&
+                           field_elevator_scene34_group_roundtrip_qa) {
+                    const std::array<std::pair<std::uint16_t, std::uint8_t>,
+                                     4U>
+                        member_routes{{{31U, 2U}, {32U, 3U}, {33U, 0U},
+                                       {30U, 1U}}};
                     for (const auto& [member_scene, destination_floor] :
                          member_routes) {
                         route_status = run_scene_route(

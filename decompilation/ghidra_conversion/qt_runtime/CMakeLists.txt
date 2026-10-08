@@ -343,6 +343,17 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_elevator_scene34_entry_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Enter the 30/31/32/33 group from scene 34, then follow source selector
+# handoffs through each member-scene event-29 trigger and back to scene 31.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_elevator_scene34_group_roundtrip_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-elevator-scene34-group-roundtrip-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-elevator-scene34-group-roundtrip-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_elevator_scene34_group_roundtrip_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Scene 40 is the non-member entry scene for the source child-scene group
 # 35/36/37/38/39. Walk north into event 29, visit every floor, then ride to 36.
 add_test(NAME shadowrun_ghidra_conversion_qt_field_elevator_scene40_entry_qa
