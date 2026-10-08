@@ -65,11 +65,12 @@ route.
 I checked the intervening transition states against the extracted collision
 rectangles. From context 3, event codes `10, 10, 9, 8` can advance the table
 through contexts `0x10, 0x12, 0x15, 0x14`, entering scenes `0x2D, 0x30, 0x2D,
-0x2F`. A further event code `8` on scene `0x2F` would be required for the
-tested mode `0x13` result, but scene `0x2F`'s terrain rectangles contain event
-code `9` only. This rules out that particular terrain-rectangle sequence;
-another source event or actor contact could still publish code `8`, but has
-not been traced.
+0x2F`. A further `0x2CE0` invocation with event code `8` would be required for
+the tested mode `0x13` result. Scene `0x2F`'s terrain rectangles contain event
+code `9` only, so they do not directly publish `8`. However, `0x2CE0` leaves
+`FFFBF9` unchanged; another transition request could reuse the prior value.
+That route has not been traced, so this rectangle check does not prove that
+mode `0x13` is unreachable.
 
 The Qt runtime does not yet provide this path: its field coordinator callback
 for `advance_field_mode_transition` is unbound, its `mode_transition_gate`
