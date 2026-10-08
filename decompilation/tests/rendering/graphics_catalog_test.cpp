@@ -70,7 +70,8 @@ int main() {
                 ? 0
                 : 1;
         }
-        if (fields[1] != "background" && fields[1] != "sprite") {
+        if (fields[1] != "background" && fields[1] != "sprite" &&
+            fields[1] != "overlay") {
             return fail("unknown asset kind for " + relative) ? 0 : 1;
         }
         if (fields[7] != "extracted" && fields[7] != "extracted-empty") {
