@@ -4,8 +4,9 @@ Date: 2026-10-07
 
 **Status:** partial. Ordinary field input now covers the scene-26 descriptor
 spawn through the A2 electromagnetic-lock introduction. A separate checkpoint
-QA covers the D8 Security Terminal modal and return. Lock actions, the path
-from their result to D8, and matching independent Genesis captures remain open.
+QA covers the D8 Security Terminal modal and return. Lock actions, the D8 route
+from the real descriptor spawn, and matching independent Genesis captures
+remain open.
 
 ## ROM trace and native state
 
@@ -46,16 +47,22 @@ branch dispatches event 2 to the generic electromagnetic-lock continuation at
 probes, the maglock continuation, activity selection 2, and the speaker-none
 generic introduction containing “sturdy door” and the MORE option.
 
-The lock action still depends on active-party state. ROM `0x20E92` uses the
-event selection to choose a lock grid or route a value below 2 to the Security
+The lock action depends on active-party state. ROM `0x20E92` uses the event
+selection to choose a lock grid or route values below 2 to the Security
 Terminal continuation at `0x20EC2`; the native handler checks passkey,
-Electronics, and Frag Grenade properties. This route does not choose an
-action, verify a successful result, or prove the field loop advances from the
-lock result to the D8 terminal records 124/125. Debug and Release CTest runs
-write 165 sequential 320x224 frames plus seven named BMPs (172 total); all
-relative-path SHA-256 hashes match. The sequential images were reviewed in 21
-chronological sheets. These are internal conversion images, not an independent
-Genesis reference.
+Electronics, and Frag Grenade properties. This route does not choose an action
+or verify a successful result. Collision records 3 and 5 place `0x7F` walls at
+`x=0x100..0x11F`, above and below record 117's A2 lane at
+`y=0x160..0x17F`; record 6 closes the lower map edge. The D8 records 124/125
+are east of that barrier at `x=0x180..0x1BF`, `y=0x20..0x3F`. The ROM geometry
+therefore places A2 in the passage toward D8. The D8 pair separately publishes
+event `0x18` directly to `0x20EC2`; its current physical-input QA starts at a
+source-coordinate checkpoint. Successful A2 action, crossing the passage,
+and reaching D8 from the descriptor spawn still need ordinary-input QA. Debug
+and Release CTest runs write 165 sequential 320x224 frames plus seven named
+BMPs (172 total); all relative-path SHA-256 hashes match. The sequential
+images were reviewed in 21 chronological sheets. These are internal
+conversion images, not an independent Genesis reference.
 
 ### Eight-question review of the descriptor route
 
@@ -129,8 +136,7 @@ Genesis reference.
 ## Remaining work
 
 Trace and implement the active-party lock choices and results from this
-descriptor route; determine whether a successful result dispatches the D8
-terminal records 124/125. Identify independent Genesis frames and trace ROM
-sound cues and durations before making visual or audio fidelity claims. The
-separate Security Terminal physical-entry QA starts from a source checkpoint
-and does not replace this route.
+descriptor route, then verify ordinary movement through the A2 passage to the
+D8 event-`0x18` trigger on the far side. Identify independent Genesis frames
+and trace ROM sound cues and durations before making visual or audio fidelity
+claims. The existing D8 physical-entry QA starts from a source checkpoint.
