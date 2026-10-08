@@ -46,7 +46,8 @@ public:
               std::uint16_t scene_id, std::uint16_t world_mode,
               bool interaction_suppressed,
               std::uint8_t interaction_selection,
-              std::optional<std::uint8_t> security_floor_index = std::nullopt);
+              std::optional<std::uint8_t> security_floor_index = std::nullopt,
+              WorldActivityTimeoutState* world_activity_timeout = nullptr);
     bool open_prompt_for_dump(FieldInteractionPrompt prompt,
                               std::uint8_t interaction_selection = 2U,
                               bool interaction_suppressed = false,
@@ -71,6 +72,8 @@ public:
     bool security_alarm_disabled() const noexcept {
         return security_alarm_disabled_;
     }
+    const WorldActivityTimeoutState& world_activity_timeout_for_dump()
+        const noexcept;
 
     void paint(QPainter& painter) const;
 
@@ -106,7 +109,8 @@ private:
     ModeTextPromptState prompt_state_{};
     DialoguePanelView panel_{};
     std::unique_ptr<WorldEffectTransitionState> alert_transition_state_;
-    std::unique_ptr<WorldActivityTimeoutState> alert_timeout_state_;
+    std::unique_ptr<WorldActivityTimeoutState> owned_alert_timeout_state_;
+    WorldActivityTimeoutState* alert_timeout_state_ = nullptr;
     std::string failure_;
     std::optional<TextKey> trailing_result_text_;
     std::uint8_t choice_grid_index_ = 0U;

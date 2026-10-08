@@ -2236,7 +2236,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             field_movement_transition_state_.world_mode,
             field_movement_transition_state_.terrain_event_suppressed,
             field_movement_transition_state_.activity_selection,
-            field_security_floor_index_);
+            field_security_floor_index_,
+            &field_world_activity_timeout_state_);
         if (!opened) {
             source_boundary("field.interaction.open_failed");
         } else {
@@ -2328,8 +2329,20 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         }
     };
     field_runtime_callbacks_.advance_world_frame_logic = [this] {
+        // FFDF84/FFDF86 are shared by the alert/timeout helper (0x1DBAA)
+        // and the per-frame dispatcher (0x1DE00). Keep one native field state
+        // authoritative while adapting its words to the world-frame model.
+        world_frame_logic_state_.world_active = static_cast<std::uint16_t>(
+            field_world_activity_timeout_state_.timeout_marker);
+        world_frame_logic_state_.cleanup_countdown = static_cast<std::int16_t>(
+            field_world_activity_timeout_state_.timeout_frames);
         advance_world_frame_logic(world_frame_logic_state_,
                                   world_frame_logic_callbacks_);
+        field_world_activity_timeout_state_.timeout_marker =
+            static_cast<std::int16_t>(world_frame_logic_state_.world_active);
+        field_world_activity_timeout_state_.timeout_frames =
+            static_cast<std::uint16_t>(
+                world_frame_logic_state_.cleanup_countdown);
         // ROM 0x1DDF0 decrements FFE11C every field frame. The native activity
         // gate shares that typed countdown so 0x1E2E0 can accept a later
         // doorway or terminal after the prior activity expires.

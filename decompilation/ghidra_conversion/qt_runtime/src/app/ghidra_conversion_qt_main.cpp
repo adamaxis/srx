@@ -176,6 +176,7 @@ std::filesystem::path find_asset_root(
                    " [--field-scene20-passkey-qa <output-dir>]"
                    " [--field-scene20-insufficient-passkey-qa <output-dir>]"
                    " [--field-scene20-electronics-no-skill-qa <output-dir>]"
+                   " [--field-scene20-electronics-alert-qa <output-dir>]"
                    " [--field-scene20-electronics-trials-qa <output-dir>]"
                    " [--field-scene26-event1-entry-qa <output-dir>]"
                    " [--field-scene26-event1-terminal-qa <output-dir>]"
@@ -274,6 +275,11 @@ std::filesystem::path find_asset_root(
             continue;
         }
         if (argument == "--field-scene20-electronics-no-skill-qa" &&
+            index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-scene20-electronics-alert-qa" &&
             index + 1 < argc) {
             ++index;
             continue;
@@ -8152,6 +8158,7 @@ enum class Scene20PhysicalEntryQaPath : std::uint8_t {
     passkey_success,
     passkey_insufficient,
     electronics_no_skill,
+    electronics_alert,
     electronics_trials,
 };
 
@@ -9108,6 +9115,7 @@ int run_field_scene20_physical_entry_qa(
         maglock_choices.options[2].source_label.find("Walk") !=
             std::string::npos &&
         ((path != Scene20PhysicalEntryQaPath::electronics_no_skill &&
+          path != Scene20PhysicalEntryQaPath::electronics_alert &&
           path != Scene20PhysicalEntryQaPath::electronics_trials) ||
          no_passkey_choices_text);
     if (!choices_are_source_complete ||
@@ -9327,6 +9335,228 @@ int run_field_scene20_physical_entry_qa(
             return 3;
         }
         write_state("scene20-return-after-electronics-no-skill");
+    } else if (path == Scene20PhysicalEntryQaPath::electronics_alert) {
+        constexpr std::uint8_t electronics_kit_code = 0x15U;
+        constexpr std::uint8_t maglock_passkey_code = 0x14U;
+        const auto& party = field_scene.field_party_records_for_dump();
+        bool active_party_has_kit = false;
+        bool active_party_has_passkey = false;
+        for (std::size_t slot = 0U; slot < party.size(); ++slot) {
+            if (!field_scene.field_party_slot_active_for_dump(slot) ||
+                (party[slot].flags & 0x0100U) == 0U) {
+                continue;
+            }
+            active_party_has_kit = active_party_has_kit ||
+                std::find(party[slot].inventory_item_codes.begin(),
+                          party[slot].inventory_item_codes.end(),
+                          electronics_kit_code) !=
+                    party[slot].inventory_item_codes.end();
+            active_party_has_passkey = active_party_has_passkey ||
+                std::find(party[slot].inventory_item_codes.begin(),
+                          party[slot].inventory_item_codes.end(),
+                          maglock_passkey_code) !=
+                    party[slot].inventory_item_codes.end();
+        }
+        const auto& decker_before = field_scene.active_runner_record();
+        const auto inventory_before = decker_before.inventory_item_codes;
+        const auto inventory_phase_before = decker_before.inventory_phase_bytes;
+        const auto collision_map_before = field_scene.state()
+            .field_scene_buffers.source_metadata.terrain_collision_map;
+        const auto audio_before = field_audio_events.size();
+        const auto& timeout_before =
+            field_scene.world_activity_timeout_for_dump();
+        if (decker_before.archetype_index != 3U ||
+            decker_before.skills[9] != 1U || active_party_has_kit ||
+            active_party_has_passkey ||
+            field_scene.field_activity_selection_for_dump() != 2U ||
+            timeout_before.timeout_marker != 0 ||
+            timeout_before.timeout_frames != 0U) {
+            std::cerr << "Scene-20 Electronics alert QA: expected a clean "
+                         "skill-1 Decker with no kit/passkey and no prior "
+                         "world timeout\n";
+            return 3;
+        }
+
+        // ROM 0x0D44/0x0D3A/0x0DBA: seed 0 produces a face below target 5,
+        // so the sole no-kit trial reaches the zero-success alert branch.
+        field_scene.set_source_random_seed_for_dump(0U);
+        field_scene.set_controller_port_byte(0x40U); // ordinary A: Electronics
+        field_scene.advance_frame();
+        ++frame;
+        const auto action_event =
+            field_scene.controller_event_word_for_dump();
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++frame;
+
+        const auto& alert_panel = field_scene.field_interaction_panel();
+        const auto alert_image = render();
+        bool mentions_failed_attempt = false;
+        bool mentions_alert_klaxon = false;
+        for (std::size_t segment = 0U;
+             segment < alert_panel.text_segment_count; ++segment) {
+            mentions_failed_attempt = mentions_failed_attempt ||
+                alert_panel.text_segments[segment].find("fragged this attempt") !=
+                    std::string_view::npos;
+            mentions_alert_klaxon = mentions_alert_klaxon ||
+                alert_panel.text_segments[segment].find("alert klaxon") !=
+                    std::string_view::npos;
+        }
+        const auto& alert_runner = field_scene.active_runner_record();
+        const auto& alert_map = field_scene.state()
+            .field_scene_buffers.source_metadata.terrain_collision_map;
+        const auto& alert_timeout =
+            field_scene.world_activity_timeout_for_dump();
+        const bool alert_state_correct =
+            alert_timeout.scene_id == 0x14U &&
+            alert_timeout.timeout_marker == -1 &&
+            alert_timeout.timeout_frames == 0x78U;
+        const bool alert_result_correct =
+            (action_event & 0xFF00U) == 0x4000U &&
+            field_scene.field_interaction_open() && alert_panel.open &&
+            alert_panel.source_complete &&
+            alert_panel.kind == DialoguePanelKind::information_page &&
+            alert_panel.actor_kind == DialoguePanelActorKind::none &&
+            alert_panel.option_count == 0U && mentions_failed_attempt &&
+            mentions_alert_klaxon &&
+            field_scene.field_activity_selection_for_dump() == 2U &&
+            alert_runner.inventory_item_codes == inventory_before &&
+            alert_runner.inventory_phase_bytes == inventory_phase_before &&
+            alert_runner.skills[9] == 1U && alert_map == collision_map_before &&
+            alert_state_correct && field_audio_events.size() == audio_before &&
+            !field_hud_chrome_survives(alert_image, asset_root) &&
+            alert_image.size() == QSize(kSceneWidth, kSceneHeight);
+        if (!alert_result_correct || !save("maglock-electronics-alert") ||
+            !save("actual")) {
+            std::cerr << "Scene-20 Electronics alert QA: the zero-success "
+                         "trial did not show the alert page with the source "
+                         "timeout and unchanged map/inventory (event=0x"
+                      << std::hex << action_event << std::dec
+                      << ", text-segments=" << alert_panel.text_segment_count
+                      << ", timeout=" << alert_state_correct
+                      << ", audio=" << audio_before << "->"
+                      << field_audio_events.size() << ")\n";
+            return 3;
+        }
+        write_state("maglock-electronics-alert");
+
+        std::ofstream alert_trace(output / "electronics-alert-state.tsv",
+                                  std::ios::trunc);
+        if (!alert_trace) {
+            std::cerr << "Scene-20 Electronics alert QA: could not write "
+                         "alert state trace\n";
+            return 3;
+        }
+        alert_trace << "stage\tscene\ttimeout_marker\ttimeout_frames"
+                       "\tworld_active\tcleanup_countdown"
+                       "\ttarget_selection_requested\taudio_events\n";
+        const auto write_alert_state = [&] (const std::string_view stage) {
+            const auto& timeout =
+                field_scene.world_activity_timeout_for_dump();
+            const auto& world = field_scene.world_frame_logic_for_dump();
+            alert_trace << stage << '\t' << timeout.scene_id << '\t'
+                        << timeout.timeout_marker << '\t'
+                        << timeout.timeout_frames << '\t'
+                        << world.world_active << '\t'
+                        << world.cleanup_countdown << '\t'
+                        << world.target_selection_requested << '\t'
+                        << field_audio_events.size() << '\n';
+            alert_trace.flush();
+        };
+        write_alert_state("result-open");
+
+        if (!save("maglock-electronics-alert-wait-1")) {
+            return 3;
+        }
+        for (std::uint8_t tick = 1U; tick < 30U; ++tick) {
+            field_scene.advance_frame();
+            ++frame;
+            if (tick == 14U || tick == 29U) {
+                if (!save("maglock-electronics-alert-wait-" +
+                          std::to_string(static_cast<unsigned>(tick + 1U)))) {
+                    return 3;
+                }
+            }
+        }
+        const auto held_alert_image = render();
+        const auto& held_alert_timeout =
+            field_scene.world_activity_timeout_for_dump();
+        if (held_alert_image != alert_image ||
+            held_alert_timeout.timeout_marker != -1 ||
+            held_alert_timeout.timeout_frames != 0x78U ||
+            field_audio_events.size() != audio_before ||
+            !save("maglock-electronics-alert-held")) {
+            std::cerr << "Scene-20 Electronics alert QA: result or scheduled "
+                         "timeout changed during the 30-frame modal wait\n";
+            return 3;
+        }
+        write_state("maglock-electronics-alert-held");
+        write_alert_state("result-held-30");
+
+        const auto target_service_before = static_cast<std::size_t>(
+            std::count(source_boundaries.begin(), source_boundaries.end(),
+                       "field.world_logic.select_entity_service_target"));
+        field_scene.set_controller_port_byte(0x40U); // ordinary A acknowledges
+        field_scene.advance_frame();
+        ++frame;
+        const auto acknowledgement_event =
+            field_scene.controller_event_word_for_dump();
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame(); // next field frame runs world logic
+        ++frame;
+
+        const auto returned_scene20 = render();
+        const auto returned_field_only = render_field_scene_only();
+        const auto& returned_timeout =
+            field_scene.world_activity_timeout_for_dump();
+        const auto& returned_world = field_scene.world_frame_logic_for_dump();
+        const auto& returned_runner = field_scene.active_runner_record();
+        const auto& returned_map = field_scene.state()
+            .field_scene_buffers.source_metadata.terrain_collision_map;
+        const auto target_service_after = static_cast<std::size_t>(
+            std::count(source_boundaries.begin(), source_boundaries.end(),
+                       "field.world_logic.select_entity_service_target"));
+        const bool alert_return_correct =
+            (acknowledgement_event & 0xFF00U) == 0x4000U &&
+            !field_scene.field_interaction_open() &&
+            !field_scene.dialogue_open() &&
+            !field_scene.field_mode_text_open_for_dump() &&
+            !field_scene.shop_menu_open() &&
+            field_scene.field_scene_reference_for_dump() == 0x14U &&
+            returned_timeout.timeout_marker == -1 &&
+            returned_timeout.timeout_frames == 0x78U &&
+            returned_world.world_active == 0xFFFFU &&
+            returned_world.cleanup_countdown == 0x78 &&
+            returned_world.target_selection_requested &&
+            target_service_after > target_service_before &&
+            returned_runner.inventory_item_codes == inventory_before &&
+            returned_runner.inventory_phase_bytes == inventory_phase_before &&
+            returned_map == collision_map_before &&
+            field_scene.field_activity_selection_for_dump() == 2U &&
+            field_audio_events.size() == audio_before &&
+            field_hud_chrome_survives(returned_scene20, asset_root) &&
+            count_playfield_lit(returned_scene20) >= 100U &&
+            returned_scene20 == returned_field_only;
+        if (!alert_return_correct ||
+            !returned_scene20.save(QString::fromStdWString(
+                (output / "scene20-after-electronics-alert.bmp").wstring())) ||
+            !returned_field_only.save(QString::fromStdWString(
+                (output / "scene20-field-only-after-electronics-alert.bmp")
+                    .wstring())) ||
+            !save("scene20-return-after-electronics-alert")) {
+            std::cerr << "Scene-20 Electronics alert QA: A did not clear "
+                         "the full-screen result while preserving the live "
+                         "timeout state (closed="
+                      << !field_scene.field_interaction_open()
+                      << ", world-active=" << returned_world.world_active
+                      << ", timeout=" << returned_timeout.timeout_frames
+                      << ", target-service=" << target_service_before << "->"
+                      << target_service_after << ", clean-frame="
+                      << (returned_scene20 == returned_field_only) << ")\n";
+            return 3;
+        }
+        write_state("scene20-return-after-electronics-alert");
+        write_alert_state("first-field-frame-after-acknowledgement");
     } else if (path ==
                Scene20PhysicalEntryQaPath::electronics_trials) {
         constexpr std::uint8_t electronics_kit_code = 0x15U;
@@ -9938,6 +10168,9 @@ int run_field_scene20_physical_entry_qa(
                                           : path == Scene20PhysicalEntryQaPath::
                                                        electronics_no_skill
                                                 ? "electronics-no-skill"
+                                          : path == Scene20PhysicalEntryQaPath::
+                                                       electronics_alert
+                                                ? "electronics-alert"
                                           : path == Scene20PhysicalEntryQaPath::
                                                        electronics_trials
                                                 ? "electronics-trials"
@@ -13098,6 +13331,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_scene20_electronics_no_skill_qa_path;
         std::optional<std::filesystem::path>
+            field_scene20_electronics_alert_qa_path;
+        std::optional<std::filesystem::path>
             field_scene20_electronics_trials_qa_path;
         std::optional<std::filesystem::path>
             field_scene26_event1_entry_qa_path;
@@ -13292,6 +13527,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene20_electronics_no_skill_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene20-electronics-alert-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene20_electronics_alert_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -13915,6 +14157,13 @@ int main(int argc, char** argv) {
                     *field_scene20_electronics_no_skill_qa_path,
                     field_audio_events, field_source_boundaries,
                     Scene20PhysicalEntryQaPath::electronics_no_skill);
+            }
+            if (field_scene20_electronics_alert_qa_path.has_value()) {
+                return run_field_scene20_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_scene20_electronics_alert_qa_path,
+                    field_audio_events, field_source_boundaries,
+                    Scene20PhysicalEntryQaPath::electronics_alert);
             }
             if (field_scene20_electronics_trials_qa_path.has_value()) {
                 return run_field_scene20_physical_entry_qa(

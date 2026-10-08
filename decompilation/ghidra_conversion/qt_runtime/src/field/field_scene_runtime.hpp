@@ -269,6 +269,13 @@ public:
     const DialoguePanelView& field_interaction_panel() const noexcept {
         return field_interaction_.panel();
     }
+    const WorldActivityTimeoutState& world_activity_timeout_for_dump()
+        const noexcept {
+        return field_world_activity_timeout_state_;
+    }
+    const WorldFrameLogicState& world_frame_logic_for_dump() const noexcept {
+        return world_frame_logic_state_;
+    }
     bool dispatch_field_interaction_through_coordinator_for_dump(
         FieldInteractionPrompt prompt, std::uint8_t interaction_selection = 2U,
         bool interaction_suppressed = false,

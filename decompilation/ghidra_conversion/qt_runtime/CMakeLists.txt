@@ -463,6 +463,19 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_scene20_electronics_no_skill_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Follow the same physical route with the New Game Decker. Seed 0 yields a
+# below-target no-kit trial; ROM 0x21692 must show the klaxon text and arm the
+# scene-0x14 timeout without changing selection, inventory, map, or audio.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_scene20_electronics_alert_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-archetype decker
+                 --field-scene20-electronics-alert-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-scene20-electronics-alert-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_scene20_electronics_alert_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # The US Decker template has Electronics 1 and no Electronics Kit. Verify
 # one partial no-kit attempt, source collision re-entry resetting selection
 # from event 2, then a QA-seeded Electronics Kit trial that opens the lock.

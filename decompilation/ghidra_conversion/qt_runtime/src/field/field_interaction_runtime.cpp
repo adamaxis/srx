@@ -58,7 +58,9 @@ FieldInteractionRuntime::FieldInteractionRuntime(
       source_audio_event_callback_(std::move(source_audio_event)),
       alert_transition_state_(
           std::make_unique<WorldEffectTransitionState>()),
-      alert_timeout_state_(std::make_unique<WorldActivityTimeoutState>()) {}
+      owned_alert_timeout_state_(
+          std::make_unique<WorldActivityTimeoutState>()),
+      alert_timeout_state_(owned_alert_timeout_state_.get()) {}
 
 FieldInteractionRuntime::~FieldInteractionRuntime() = default;
 
@@ -85,8 +87,16 @@ bool FieldInteractionRuntime::open(
     const std::uint16_t scene_id, const std::uint16_t world_mode,
     const bool interaction_suppressed,
     const std::uint8_t interaction_selection,
-    const std::optional<std::uint8_t> security_floor_index) {
+    const std::optional<std::uint8_t> security_floor_index,
+    WorldActivityTimeoutState* const world_activity_timeout) {
     security_floor_index_ = security_floor_index;
+    if (world_activity_timeout != nullptr) {
+        alert_timeout_state_ = world_activity_timeout;
+    } else {
+        *owned_alert_timeout_state_ = WorldActivityTimeoutState{};
+        alert_timeout_state_ = owned_alert_timeout_state_.get();
+    }
+    alert_timeout_state_->scene_id = scene_id;
     if (continuation == MovementModeTransitionContinuation::maglock_door_interaction) {
         FieldInteractionContinuationState state{};
         state.interaction_suppressed = interaction_suppressed;
@@ -124,6 +134,8 @@ bool FieldInteractionRuntime::open_prompt_for_dump(
     const bool interaction_suppressed,
     const std::optional<std::uint8_t> security_floor_index) {
     security_floor_index_ = security_floor_index;
+    *owned_alert_timeout_state_ = WorldActivityTimeoutState{};
+    alert_timeout_state_ = owned_alert_timeout_state_.get();
     *alert_transition_state_ = WorldEffectTransitionState{};
     alert_transition_state_->world_mode = 2U;
     FieldInteractionPrompt selected = prompt;
@@ -628,12 +640,18 @@ void FieldInteractionRuntime::close() noexcept {
 void FieldInteractionRuntime::reset_session() noexcept {
     close();
     *alert_transition_state_ = WorldEffectTransitionState{};
-    *alert_timeout_state_ = WorldActivityTimeoutState{};
+    *owned_alert_timeout_state_ = WorldActivityTimeoutState{};
+    alert_timeout_state_ = owned_alert_timeout_state_.get();
     choice_grid_index_ = 0U;
     security_floor_index_.reset();
     trailing_result_text_.reset();
     alert_latched_ = false;
     security_alarm_disabled_ = false;
+}
+
+const WorldActivityTimeoutState&
+FieldInteractionRuntime::world_activity_timeout_for_dump() const noexcept {
+    return *alert_timeout_state_;
 }
 
 void FieldInteractionRuntime::paint(QPainter& painter) const {
