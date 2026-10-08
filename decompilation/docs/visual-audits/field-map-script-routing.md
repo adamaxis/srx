@@ -8,6 +8,8 @@ cover every map event or establish a first-entry Stoker cutscene.
 
 ## ROM-derived route model
 
+The complete 56-scene/892-trigger source census, per-record coordinates, event-table bytes, numeric destination classes, and C++ cross-references are in the [field-map trigger profile](../field-map-trigger-profile.md) and its generated [scene index](../field-map-scene-profiles.tsv) / [trigger records](../field-map-trigger-records.tsv). This audit keeps the physically exercised routes and their QA status.
+
 The ROM keeps physical collision and its consequence in separate steps. The
 field movement path publishes the collision result; `0xB7B8` derives the
 event identity from that result and starts the matching interaction. Scene
