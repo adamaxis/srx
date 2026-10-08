@@ -22,6 +22,17 @@ family. Thus the ROM ties the projectile family to action class and heading,
 while the sound table is selected per action code/status. The source does not
 provide a unique projectile clip for every gun.
 
+The two spawned records have different roles. The primary keeps the
+`0x14E0A` behavior continuation and direction-derived movement offsets from
+`0x150E8`; its recovery loop probes terrain and scans active entity records
+through `0x15ABA`. On contact, `0x14E0A` enters the linked-record
+action/status path. The secondary is copied to the source spawn position,
+receives the directional sprite-list selector, and uses `0xAC4E` as its
+continuation. That continuation only checks the finite-list end marker and
+clears the active bit. It does not advance world position. The current
+three-frame Qt animation is the secondary spawn effect, not a traveling
+projectile.
+
 All sixteen direction lists use the same raw object-pattern block at ROM
 `0xE44D8`, copied by the field setup path through `0x0F5C` to VRAM `0xB000`
 (0xD00 bytes). The offline importer now follows that raw-copy path; it had
@@ -60,18 +71,20 @@ unchanged shared reserve (2), C042 pose/delay, selector 0, and HUD count. The
 Qt application routes the audio callback to playback; field QA uses an event
 spy, while the separate playback CTest checks the mapped resource and duration.
 
-This connects a visible timed secondary-spawn presentation to the field loop,
-not the complete 16-record entity/combat lifecycle. The native presenter keeps
+This connects a visible timed secondary-spawn effect to the field loop, not
+the complete 16-record entity/combat lifecycle. The native presenter keeps
 paired records outside the authoritative shared slot table and currently
-limits visible pair instances to the source's slots 9..14. It draws the source
-placement but does not yet advance projectile world position, resolve target
-acquisition/collision, apply hit effects or damage, or complete the primary
-record's combat continuation. Those remain explicit boundaries.
+limits visible pair instances to the source's slots 9..14. It draws the
+secondary at its source placement and advances its finite sprite list. It does
+not retain the primary record, run its `0x14E0A` movement/recovery probes,
+scan actual field entities, or apply the linked-record action/status result.
+Those remain explicit boundaries. The secondary effect itself has no travel
+behavior in the traced source path.
 
 ## Nine-question full-screen review
 
 1. **Does it look correct?** The actor changes from idle to a directly
-   extracted directional C042 frame. The named projectile frames now contain
+   extracted directional C042 frame. The named secondary-effect frames contain
    the ROM's source pixels and appear in full 320x224 captures. No exact
    matching Genesis firing pose was found in the reviewed longplay, so visual
    equivalence remains unconfirmed.
@@ -82,7 +95,7 @@ record's combat continuation. Those remain explicit boundaries.
    for all 52 action-delay updates.
 3. **Are the visuals correct?** Eight direction-specific regular lists and
    eight special lists come from the decoded ROM pointers and raw object atlas.
-   Full-screen captures show the second projectile frame and its removal while
+   Full-screen captures show the second spawn-effect frame and its removal while
    the map, HUD, and controls remain in the same field composition. Independent
    firing pixels remain unavailable.
 4. **Is it animated, and when?** C042 is one static actor frame. The decoded
@@ -90,7 +103,9 @@ record's combat continuation. Those remain explicit boundaries.
    for 52 updates until `+0xDC=-1`; 30 additional idle frames remain stable.
    The regular selector 0 advances 0→1→2 on the `0x1000`/`0x270F` timer and
    retires through the high-bit list marker on the third field update after
-   spawn. Another shot remains gated until movement returns to idle/walk.
+   spawn. This is the secondary spawn effect's animation; the primary
+   collision/action record's cadence remains unimplemented in Qt. Another shot
+   remains gated until movement returns to idle/walk.
 5. **What sound plays and how long?** Item 1 requests event `0x1C`, resource
    028, a one-shot measured at 2.483 s. Holding A during the action delay does
    not submit repeated events; releasing A does not stop the one-shot. Playback
@@ -99,7 +114,7 @@ record's combat continuation. Those remain explicit boundaries.
    were unavailable.
 6. **Were other screen regions checked?** QA writes the before frame, shot,
    all 52 delay images, 30 idle-hold images, and final alias. It requires a
-   whole-screen pixel change for the visible projectile frame and its removal,
+   whole-screen pixel change for the visible spawn-effect frame and its removal,
    then pixel stability for every remaining delay and hold frame. The HUD count
    is checked against its named asset; there is no stale button, menu, or
    overlay.
@@ -130,8 +145,9 @@ and measured durations. No matching independent Genesis firing frame or audio
 correlation has been found.
 
 The player A action, ammo update, source sound request/playback route, C042
-pose, and finite secondary projectile presentation are connected and
-internally verified. Shared entity-slot ownership, projectile world movement,
-target/collision/hit/damage, full combat return, and independent matching
-Genesis firing/audio evidence remain partial/open. The combat hill is not
-defended.
+pose, and finite secondary spawn-effect presentation are connected and
+internally verified. Shared entity-slot ownership, the primary record's
+movement/recovery probes, actual entity collision, linked-record action/status
+handling, full combat return, and independent matching Genesis firing/audio
+evidence remain partial/open. The secondary effect has no travel behavior in
+the traced source path. The combat hill is not defended.

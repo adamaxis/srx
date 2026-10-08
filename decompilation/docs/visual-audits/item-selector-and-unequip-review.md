@@ -1,6 +1,6 @@
 # Inventory Selector and Equip/Unequip Review
 
-Date: 2026-10-07
+Source/code audit: 2026-10-07. Full-screen re-review: 2026-10-08.
 Primary source: US ROM `decompilation/input/shadowrun_genesis_us.bin`.
 Qt route: `shadowrun_ghidra_conversion_qt_field_action_qa`.
 
@@ -143,6 +143,15 @@ under `build/conversion/qt/release/qt_runtime/field-action-qa/`.
 All 54 shared Debug/Release BMPs have matching SHA-256 hashes. The old
 debug-only `item-cell-zoom.bmp` is a 4x nearest-neighbor crop; each four-pixel
 display edge represents one source pixel and is not a four-pixel outline.
+
+On 2026-10-08, I reopened all 54 Release BMPs at their full 320x224 size,
+including the weapon, armor, and gear unequip frames, repeated toggles, fresh
+unequipped baselines, child-page return, and `actual.bmp`. The reported black
+box did not reproduce in this sequence; old controls and child overlays were
+not left over on the parent panel. The matching Debug outputs were confirmed
+by SHA-256 in the current QA set. This internal renderer comparison still
+does not provide an independent Genesis image of the exact equip/unequip
+transition, so `EQUIP-02` remains open.
 
 ## Outcome
 
