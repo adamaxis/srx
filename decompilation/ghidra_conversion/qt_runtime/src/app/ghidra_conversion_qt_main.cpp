@@ -13690,6 +13690,182 @@ int main(int argc, char** argv) {
                                  "return to idle\n";
                     return 3;
                 }
+                struct HeadingRouteCase {
+                    std::uint8_t input_nibble;
+                    std::uint16_t target_heading;
+                    std::uint8_t direction;
+                };
+                // The source input table at ROM 0x19D2 maps these remaining
+                // D-pad combinations to the six directions not exercised by
+                // the detailed right/left cadence routes above.
+                constexpr std::array<HeadingRouteCase, 6> other_headings{{
+                    {0x01U, 0x0000U, 0U}, {0x02U, 0x8000U, 4U},
+                    {0x05U, 0xE000U, 7U}, {0x06U, 0xA000U, 5U},
+                    {0x09U, 0x2000U, 1U}, {0x0AU, 0x6000U, 3U},
+                }};
+                std::ofstream heading_trace(
+                    *field_movement_qa_path / "field-movement-headings.tsv");
+                if (!heading_trace) {
+                    std::cerr << "field movement QA: heading trace could not "
+                                 "be written\n";
+                    return 3;
+                }
+                heading_trace
+                    << "input_nibble\ttarget_heading\tactual_heading\t"
+                       "direction\tselector\tframe\twalking\tflip\t"
+                       "start_x\tstart_y\tend_x\tend_y\n";
+                const auto save_heading_frame = [&](
+                    qt_runtime::FieldSceneRuntime& scene,
+                    const std::string& name) {
+                    QImage image(kSceneWidth, kSceneHeight,
+                                 QImage::Format_RGB32);
+                    image.fill(Qt::black);
+                    QPainter painter(&image);
+                    scene.paint(painter);
+                    painter.end();
+                    if (image.width() != kSceneWidth ||
+                        image.height() != kSceneHeight ||
+                        count_playfield_lit(image) < 100 ||
+                        !field_hud_chrome_survives(image, asset_root)) {
+                        return false;
+                    }
+                    return image.save(QString::fromStdWString(
+                        ((*field_movement_qa_path) / name).wstring()));
+                };
+                for (const auto& route : other_headings) {
+                    std::vector<std::string> route_boundaries;
+                    std::vector<std::uint16_t> route_audio_events;
+                    qt_runtime::FieldSceneRuntime heading_scene(
+                        [&route_boundaries](const std::string_view boundary) {
+                            route_boundaries.emplace_back(boundary);
+                        },
+                        [&route_audio_events](const std::uint16_t event) {
+                            route_audio_events.push_back(event);
+                        });
+                    if (!heading_scene.bootstrap(smoke_state)) {
+                        std::cerr << "field movement QA: heading-route "
+                                     "bootstrap failed: "
+                                  << heading_scene.failure() << '\n';
+                        return 3;
+                    }
+                    route_boundaries.clear();
+                    route_audio_events.clear();
+                    const auto start_position =
+                        heading_scene.field_entity_world_position();
+                    const auto prefix = "heading-" +
+                        std::to_string(route.direction) + "-";
+                    if (!save_heading_frame(heading_scene,
+                                            prefix + "idle.bmp")) {
+                        std::cerr << "field movement QA: heading idle dump "
+                                     "failed\n";
+                        return 3;
+                    }
+                    heading_scene.set_controller_nibble(route.input_nibble);
+                    bool aligned = false;
+                    for (std::uint8_t tick = 1U; tick <= 24U; ++tick) {
+                        heading_scene.advance_frame();
+                        if (tick == 1U &&
+                            !save_heading_frame(
+                                heading_scene, prefix + "held-1.bmp")) {
+                            std::cerr << "field movement QA: heading tick-1 "
+                                         "dump failed\n";
+                            return 3;
+                        }
+                        if (tick >= 8U &&
+                            heading_scene.field_entity_heading_for_dump() ==
+                                route.target_heading) {
+                            aligned = true;
+                            if (!save_heading_frame(
+                                    heading_scene,
+                                    prefix + "aligned.bmp")) {
+                                std::cerr << "field movement QA: aligned "
+                                             "heading dump failed\n";
+                                return 3;
+                            }
+                            break;
+                        }
+                    }
+                    const auto actual_heading =
+                        heading_scene.field_entity_heading_for_dump();
+                    const auto direction =
+                        heading_scene.field_entity_direction_for_dump();
+                    const auto selector = heading_scene
+                        .field_entity_animation_selector_for_dump();
+                    const auto frame =
+                        heading_scene.field_entity_animation_frame_for_dump();
+                    const auto walking =
+                        heading_scene.field_entity_walking_for_dump();
+                    const auto end_position =
+                        heading_scene.field_entity_world_position();
+                    const auto expected_idle =
+                        select_field_entity_animation_selector(
+                            route.direction, false);
+                    const auto expected_walk =
+                        select_field_entity_animation_selector(
+                            route.direction, true);
+                    const auto selector_matches = walking
+                        ? selector == expected_walk
+                        : selector == expected_idle;
+                    const auto expected_flip = direction >= 5U;
+                    const auto actual_flip =
+                        field_entity_animation_flips_horizontally(direction);
+                    const auto accepted_step_observed = std::find(
+                        route_boundaries.begin(), route_boundaries.end(),
+                        "field.movement.accepted_step") !=
+                        route_boundaries.end();
+                    const auto held_frame_saved = save_heading_frame(
+                        heading_scene, prefix + "held.bmp");
+                    if (!aligned || actual_heading != route.target_heading ||
+                        direction != route.direction || !selector_matches ||
+                        frame >= kFieldWalkAnimationFrameCount ||
+                        actual_flip != expected_flip ||
+                        !accepted_step_observed ||
+                        !held_frame_saved) {
+                        std::cerr << "field movement QA: live heading route "
+                                     "did not match source facing state; "
+                                     "input="
+                                  << static_cast<unsigned>(route.input_nibble)
+                                  << " target=" << route.target_heading
+                                  << " actual=" << actual_heading
+                                  << " direction="
+                                  << static_cast<unsigned>(direction)
+                                  << " selector=" << selector
+                                  << " expected_selector="
+                                  << (walking ? expected_walk : expected_idle)
+                                  << " frame=" << frame
+                                  << " walking=" << walking
+                                  << " flip=" << actual_flip
+                                  << " expected_flip=" << expected_flip
+                                  << " accepted_step="
+                                  << accepted_step_observed
+                                  << " held_frame_saved=" << held_frame_saved
+                                  << '\n';
+                        return 3;
+                    }
+                    heading_scene.set_controller_nibble(0U);
+                    heading_scene.advance_frame();
+                    if (heading_scene.field_entity_walking_for_dump() ||
+                        heading_scene.field_entity_animation_frame_for_dump() !=
+                            0U ||
+                        heading_scene.field_entity_animation_selector_for_dump() !=
+                            expected_idle ||
+                        !save_heading_frame(
+                            heading_scene, prefix + "released.bmp")) {
+                        std::cerr << "field movement QA: directional release "
+                                     "did not return to matching idle\n";
+                        return 3;
+                    }
+                    heading_trace
+                        << static_cast<unsigned>(route.input_nibble) << '\t'
+                        << route.target_heading << '\t' << actual_heading
+                        << '\t' << static_cast<unsigned>(direction) << '\t'
+                        << selector << '\t' << frame << '\t' << walking
+                        << '\t'
+                        << field_entity_animation_flips_horizontally(direction)
+                        << '\t' << start_position.x << '\t'
+                        << start_position.y << '\t' << end_position.x << '\t'
+                        << end_position.y << '\n';
+                }
                 std::ofstream facing_trace(
                     *field_movement_qa_path /
                     "field-movement-facing-qa.tsv");

@@ -59,12 +59,26 @@ have identical SHA-256 hashes between configurations. Every Debug frame was
 reviewed at 320x224, including the map, portrait, item/ammo slots, sidebar, and
 runner. No menu/dialog overlay or stale control appears.
 
+The same Release QA now drives the other six controller combinations from the
+source word table at `0x19D2`: up, down, and four diagonals. Each route starts
+from the same scene-2 field state, accepts movement through the live field
+update, aligns to its source heading, selects the matching C062 direction,
+then returns to C052 on release. `field-movement-headings.tsv` records input,
+heading, selector, frame, facing transform, and world-position change. Thirty
+additional `320x224` BMPs cover idle, first held update, aligned, held, and
+released states for all six directions. All were reviewed as full-screen
+captures; map scrolling, actor placement, and the shared HUD remain coherent,
+with no dialogue, menu, or stale UI over the field. These six new route captures
+were verified in Release; the earlier right/left captures remain byte-matched
+between Debug and Release.
+
 `shadowrun_graphics` and `shadowrun_graphics_catalog` pass in Debug and Release.
 Their checks verify the eight C062 directional selectors, marker `4`,
 auxiliary `0x0180`, four extracted frames per direction, and separate C0B2
-transition markers/assets. The Qt movement test checks the live right-held
-path; the other seven headings are covered by selector and extracted-frame
-checks, not by seven distinct live movement routes.
+transition markers/assets. The Qt movement test now exercises all eight live
+headings: right and left have extended cadence routes, while the other six
+directions have ordinary-input movement, facing, selector, full-screen, and
+release checkpoints.
 
 Blocked movement is checked in the existing scene-2 wall route of
 `shadowrun_ghidra_conversion_qt_field_stoker_collision_candidate_qa`. After
@@ -79,32 +93,36 @@ Stoker property.
 ## Eight-question visual review
 
 1. **Does it look correct?** The corrected Qt frames show the runner upright
-   through held movement. The old fallen final pose no longer appears.
+   through held movement in all eight directions. The old fallen final pose no
+   longer appears in the route captures.
 2. **Does the look match behavior?** The held-right route selects C062
-   selector `0x28`; release returns to the right-facing C052 selector. Position,
-   heading, selector, and frame are checked by the movement QA. All eight
-   selector mappings are checked; only right-facing movement is exercised as
-   a live field route in this QA.
+   selector `0x28`; the left and six additional routes select the source
+   heading's C062 selector after accepted movement. Every route verifies its
+   target/current heading, direction, selector, frame, position change, and
+   matching C052 selector on release.
 3. **Are the visuals themselves correct?** The sprite frames are decoded from
    the source descriptors selected by the ROM movement continuation. Whole
    screen review confirms actor, map, and HUD are composited together. Exact
    actor placement against an identical game scene remains unverified.
 4. **Is it animated?** Yes. The positive four-pose list loops. The source
    `0x280 / 0x1000` accumulator advances at six- or seven-update intervals,
-   depending on starting phase. The 35-update QA observes all four frames and
-   a wrap. Accepted movement uses C062; released input selects static C052
+   depending on starting phase. The 35-update right-held QA observes all four
+   frames and a wrap. Accepted movement uses C062; released input selects static C052
    idle. The separate C0B2 transition is finite. At the scene-2 wall, held
    movement is rejected and the C052 selector/frame-zero state is checked.
 5. **Is there a sound?** No direct sound request appears in the traced
    heading/vector/collision path. The wider footstep/audio dispatch is not
    resolved; cue and duration remain unknown.
 6. **Are other screen areas correct?** All saved images are whole 320x224
-   frames. The map, HUD chrome, portrait, item slots, and ammo remain present.
+   frames. Across the eight routes, the scrolling map, HUD chrome, portrait,
+   item slots, and ammo remain present.
    The portrait-face palette concern remains open under HUD-01, and the visible
    ammo/weapon counts are not evaluated here (HUD-02). No menu or dialogue is
    opened.
-7. **Do multiple frames support this interpretation?** Thirteen Qt checkpoints
-   show idle, repeated movement, loop wrap, and release. Independent section 04
+7. **Do multiple frames support this interpretation?** The right/left routes
+   show idle, repeated movement, loop wrap, and release. Thirty additional
+   full-screen frames show idle, held input, aligned heading, continued
+   movement, and release for the other six directions. Independent section 04
    frames 000900, 000903, 000906, 000909, 000912, 000915, 000918, and 000921
    show the original actor in multiple field positions/poses. The video has no
    synchronized controller or selector log and does not show this same map, so
@@ -119,13 +137,14 @@ Stoker property.
   movement and C052 on idle/reset; C0B2 is retained as a separate transition.
 - **Behavior implemented:** accepted D-pad movement shows a looping stride;
   release/rejected movement returns to its directional idle pose.
-- **Internally checked:** Debug and Release field-movement QA and graphics
-  extraction CTests pass; the full-screen Qt outputs match by SHA-256.
+- **Internally checked:** Debug/Release right/left field-movement QA and
+  graphics extraction CTests pass. The six additional live routes pass the
+  Release field-movement QA; all 30 new full-screen images were inspected.
 - **Independently checked:** section 04 frames support ordinary moving field
   poses. No matching controller/selector capture exists for exact correlation.
-- **Reported defect status:** the C062 correction is implemented; right-held
-  movement loops through its four poses, and a normal-input wall collision
-  returns to C052 idle. Independent section 04 frames support a moving runner,
-  but they do not match this map or expose selector/input state. Other live
-  headings and exact visual alignment remain open. Movement audio and broader
-  collision/building defects are separate goals.
+- **Reported defect status:** the C062 correction and all eight live heading
+  routes are implemented; right-held movement loops through its four poses,
+  and a normal-input wall collision returns to C052 idle. Independent section
+  04 frames support a moving runner, but they do not match this map or expose
+  selector/input state. Exact-scene visual alignment remains unverified.
+  Movement audio and broader collision/building defects are separate goals.

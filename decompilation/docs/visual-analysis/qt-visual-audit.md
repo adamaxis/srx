@@ -2218,9 +2218,10 @@ screen.
 **Independently visually checked:** several section 04 original-game frames
 support normal movement poses, but not an exact input/selector correlation.
 **Defect status:** the source-backed C062 correction is implemented and the
-tested right-held route no longer uses the C0B2 terminal pose. A normal-input
-wall collision resets to C052/frame zero. Independent frames support a moving
-runner but do not match this map or expose selector state. Other live headings
-and exact visual alignment remain unverified; the reported defect remains open
-pending those checks. Movement sound and portrait palette remain separate open
-goals.
+tested right-held route no longer uses the C0B2 terminal pose. Release QA now
+exercises all eight live headings; the six added routes verify accepted
+movement, source facing/selector, and release reset. A normal-input wall
+collision resets to C052/frame zero. Independent frames support a moving
+runner but do not match this map or expose selector state, so exact visual
+alignment remains unverified. Movement sound and portrait palette remain
+separate open goals.

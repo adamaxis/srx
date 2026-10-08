@@ -63,7 +63,7 @@ clarification. None changes the original report's itemization.
 | `TAXI-01` | The taxi-window callout is missing its top/bottom edges and appears as two parallel side lines instead of a closed white outline. | **Resolved for the missing horizontal edges.** `draw_cab_mode_selection()` used hyphenated aliases while `resources.tsv` names six corner/middle tiles with dot-separated aliases, so only the left/right assets loaded. The renderer now uses all eight catalog aliases. Startup QA first reproduced the missing top-left tile, then passed pixel checks for all eight tiles across five phases and both settled mode holds. Debug/Release startup-QA images match byte for byte; the full Release capture reviewed all 182 cab-map frames and 120 field-handoff hold frames. Independent section 02 frames 001729-001735 and 001800 show closed outlines at multiple map states. The visible map-plate extent still differs and exact 30-fps-to-VBlank alignment remains unknown; both stay separate from this resolved edge defect. See the [taxi outline audit](visual-audits/taxi-window-outline.md). |
 | `HUD-01` | The field portrait has unexpected color over the runner's face. | Resolved for the reported Gator face-color symptom: ROM `0x35D4` applies `+0x2C` to the 4x4 face; the old Qt path used `0x3602`. Corrected assets/runtime and per-record QA select Gator line 1 (`+0x2C=0x2000`); independent section 04/06 frames support that palette. See [the eight-question portrait audit](visual-audits/hud-portrait-palette.md). Ammo remains separately tracked as `HUD-02`. |
 | `HUD-02` | Ammunition is inconsistent: the report cites 32 bullets initially, 37 on the unequipped hand, and 4 after equipping the gun. | ROM Gator record `0x72B1A` starts at 32 with item code 2; the `0x39F2` field refresh reaches `0x36FC`, which clamps it to the item-2 capacity 12 at `0xD4570 + 0x24`. The Qt path applies that refresh. ROM `0x125FA`/`0x121E0` plus item code 3 capacity 11 reproduce `4/11 -> 37 -> 4`, but the ordinary unarmed field-HUD branch draws `00` while preserving the +0x4E percentage. The user's visible 37-on-hand route remains unreconciled. The former Ricky QA image used an impossible raw-template/unarmed state and is corrected to use a refreshed live record and typed unequip. See [ammo capacity audit](visual-audits/hud-ammo-capacity-refresh.md); keep the reported sequence partial until independently reconciled. |
-| `FIELD-01` | Walking previously used the dying/fallen animation; leftward movement also showed the right-facing walk pose. | The fallen-pose family is separated from ordinary C062 movement. ROM direction 6 (`0xC062` selector `0x38`) shares direction-2 tiles and sets attribute `0x0800`; the Qt runtime now applies that horizontal facing to idle and walk images. Debug/Release normal-input left-route QA checks selector, heading, movement, facing, and whole-screen output. Other live headings and exact-scene visual matching remain open. |
+| `FIELD-01` | Walking previously used the dying/fallen animation; leftward movement also showed the right-facing walk pose. | The fallen-pose family is separated from ordinary C062 movement. ROM direction 6 (`0xC062` selector `0x38`) shares direction-2 tiles and sets attribute `0x0800`; the Qt runtime applies that horizontal facing to idle and walk images. Release normal-input QA now exercises all eight headings, including six additional full-screen movement/release routes. Exact-scene visual matching and movement audio remain open. |
 | `SOUND-01` | Pocket Secretary selection/cancel sounds are absent on some screens or use the wrong sound. | **Partial.** Notebook C now follows `0xF236` → `0x391A` and requests event `0x25`, then resumes the same selected row. Tips C already uses that route. Notebook row movement, A child dispatch, B/Start return, Tips page movement/return, and Tips entry are source-silent. Event `0x25` maps to `audio.effects.resource.037` (2.134 seconds including release tail); shared Debug/Release audio QA verifies decoded playback, default-output state, and duration. Debug/Release Notebook route QA checks event `0x25`, retained page/selection, and full-screen continuity. Mr. Johnsons C requests the same event; its A/B details, movement, and Start return are source-silent. Route loopback, other child-page handlers, and independent Pocket Secretary frames remain open; see [the selection/cancel audio audit](visual-audits/pocket-secretary-selection-cancel-audio.md). |
 | `SOUND-02` | Moving between Pocket Secretary menu items has no navigation sound. | **Closed as a non-defect under the US ROM.** `0xC2A6` services the parent loop through VBlank/input, `0xE660`, and the `0xC376` cursor writer; it makes no sound request on Up/Down. The parent command overview requests event `0x24` once when A opens the page (2.484-second extracted clip including its release tail); that entry cue is not a navigation sound. Debug/Release route QA checks the single entry request, four accepted Down moves, and wrap to row 0 with no additional audio events. Navigation has no playback duration because no sound is requested. The root-menu screenshot series is internally reviewed, but the supplied Genesis capture has no matching Pocket Secretary visit; external visual fidelity remains unverified. See [the root navigation audio audit](visual-audits/pocket-secretary-navigation-audio.md). |
 | `SEC-MAGIC` | The Magic page leaves its old text/menu content drawn over the new page. | **Closed for the spell-capable page.** ROM `0xFC22` clears Plane A before the spell panel is drawn; Qt presents the named full-page panel. Debug/Release entry, spell, force/posture, return, and reopen captures are clean, and independent section 06 frames 000001/000002/000005/000015/000020/000030 support the page and action subview without stale command controls. The separate Magical Defense fallback is a source-defined overlay on the command/status page; its Genesis appearance is not independently captured. Spell target/effect work remains under Magic. |
@@ -153,15 +153,12 @@ clarification. None changes the original report's itemization.
   The native capture goes from full black to the populated panel; exact timing
   for the two sampled blank-panel frames remains unresolved.
 - FIELD-01 now uses separately named C062 movement assets and typed selector/
-  clock state. Debug and Release field-movement QA passes: all eight selector
-  pairs, a live right-held route, five frame advances and a loop wrap over 35
-  updates, the source displacement at tick 16, and release-to-idle are checked.
-  Thirteen whole-screen frames were reviewed; the Debug/Release SHA-256 sets
-  match. The scene-2 wall route also verifies a normal blocked step returns to
-  C052/frame-zero idle; its 22 full-screen Debug/Release frames match and were
-  reviewed. Independent section 04 frames 000900-000921 support a moving
-  runner but show another map and contain no controller/selector log. Other
-  live headings, exact placement, and movement sound remain open.
+  clock state. Right/left cadence and blocked-reset QA pass in Debug and
+  Release. A Release normal-input route now exercises all eight headings; six
+  additional routes check accepted movement, facing, selector, position change,
+  and C052 release, with 30 full-screen frames reviewed. Independent section 04
+  frames 000900-000921 support a moving runner but show another map and contain
+  no controller/selector log. Exact placement and movement sound remain open.
 
 ## Goals
 
@@ -308,18 +305,20 @@ for ordinary accepted movement and C052 frames for idle/reset. ROM direction
 that horizontal transform to idle and walk images for directions 5 through 7.
 Selector, direction, frame index, accumulator, and period remain typed native
 state; C0B2 stays a distinct finite behavior transition. The Qt CTest checks
-all eight selector pairs, all four extracted frames, the live right-held path,
-and a normal left-held path with its source heading, selector, facing, movement,
-and release-to-idle. Debug and Release full-screen output is byte-identical
-and has been inspected across the whole screen. The independent corridor
-sequence supports changing original-game movement poses but does not show
-this same map or input state.
+all eight selector pairs, all four extracted frames, and extended live
+right/left routes. Release QA additionally drives the other six source
+controller inputs through ordinary movement, verifies their target/current
+headings, directions, selectors, facing transforms, position changes, and C052
+release, and writes `field-movement-headings.tsv` plus 30 whole-screen BMPs.
+Those new frames were reviewed in full. The earlier right/left captures remain
+byte-identical between Debug and Release. The independent corridor sequence
+supports changing original-game movement poses but does not show this same map
+or input state.
 
-**Remaining:** exercise the other seven headings as live field routes. An
-existing normal-input scene-2 wall route now checks that blocked movement
-returns to C052 with frame zero in Debug and Release. Find an independent
-same-scene comparison for exact placement if available; keep that limitation
-explicit if the corpus has no match. Movement audio is a separate open
+**Remaining:** find an independent same-scene comparison for exact placement
+if available; keep that limitation explicit if the corpus has no match. The
+normal-input scene-2 wall route checks that blocked movement returns to C052
+with frame zero in Debug and Release. Movement audio is a separate open
 question.
 
 **Done when:** ROM selector and cadence are documented; the Qt runtime consumes
@@ -330,14 +329,13 @@ recorded. The separate building/property routes do not get folded into this
 visual claim.
 
 **Status:** partial. The source-backed C062 selector/assets/clock and facing
-corrections are implemented. Debug/Release QA covers normal right- and
-left-held routes, all eight selector mappings, the extracted movement
-families, cadence, and release-to-idle; a separate normal-input wall route
-verifies blocked reset. The reported left-facing pose is corrected in the
-native build. The broader movement goal remains open until the other live
-headings and exact-scene visual comparison are covered. Independent video
-supports changing movement poses but cannot identify input, selector, or exact
-map placement.
+corrections are implemented. Right/left cadence and wall-reset QA pass in
+Debug/Release; Release QA exercises all eight headings with accepted movement,
+correct C062 selectors/facing, full-screen captures, and release-to-idle. The
+reported fallen and left-facing poses are corrected in the native build.
+Independent video supports changing movement poses but cannot identify input,
+selector, or exact map placement, so the same-scene visual comparison remains
+open.
 
 ### FIELD-02 — Terrain collision, building access, and physical Stoker/Ares triggers
 
