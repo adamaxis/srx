@@ -29,9 +29,9 @@ through `0x15ABA`. On contact, `0x14E0A` enters the linked-record
 action/status path. The secondary is copied to the source spawn position,
 receives the directional sprite-list selector, and uses `0xAC4E` as its
 continuation. That continuation only checks the finite-list end marker and
-clears the active bit. It does not advance world position. The current
-three-frame Qt animation is the secondary spawn effect, not a traveling
-projectile.
+clears the active bit; it does not advance world position. The secondary's
+three-frame list is a spawn effect. The primary travels independently through
+its source offsets and terrain-recovery behavior.
 
 All sixteen direction lists use the same raw object-pattern block at ROM
 `0xE44D8`, copied by the field setup path through `0x0F5C` to VRAM `0xB000`
@@ -62,14 +62,16 @@ field-frame callback and calls `process_entity_spawn_cycle` using the decoded
 runner, equipped action, heading, status byte, and loaded ammo. The decoded
 Joshua archetype already has `+0x10=0x0F`, including the action bit; firing QA
 checks that source state rather than forcing it. The typed spawn result selects
-the direction/action-class asset list, submits event `0x1C`, and adds the
-secondary record's source-projected position and animation to the field
-presenter. Named sprite frames load from the asset catalog at bootstrap and
-draw in the actual Qt field scene. The live test uses item 1 with six rounds,
-fires through ordinary A input, then checks the typed ammo service (6->5),
-unchanged shared reserve (2), C042 pose/delay, selector 0, and HUD count. The
-Qt application routes the audio callback to playback; field QA uses an event
-spy, while the separate playback CTest checks the mapped resource and duration.
+the direction/action-class asset list and submits event `0x1C`. The Qt field
+runtime retains the primary and secondary records in source slots 9..14; the
+field update advances primary movement/recovery and the secondary finite
+animation, and the renderer sorts them with the player. Named sprite frames
+load from the asset catalog at bootstrap and draw in the actual Qt field scene.
+The live test uses item 1 with six rounds, fires through ordinary A input, then
+checks the typed ammo service (6->5), unchanged shared reserve (2), C042
+pose/delay, selector 0, and HUD count. The Qt application routes the audio
+callback to playback; field QA uses an event spy, while the separate playback
+CTest checks the mapped resource and duration.
 
 The same field QA also takes the ordinary Start/Right/A menu route to equip
 item 2, reloads it to its own 12-round capacity, waits for the reload delay to
@@ -79,91 +81,102 @@ selector 0, and the secondary effect's frame 0->1->2 retirement. The five
 additional full-screen frames show the ready state, shot, each animation tick,
 and the cleared effect with no menu controls left over.
 
-This connects a visible timed secondary-spawn effect to the field loop, not
-the complete 16-record entity/combat lifecycle. The native presenter keeps
-paired records outside the authoritative shared slot table and currently
-limits visible pair instances to the source's slots 9..14. It draws the
-secondary at its source placement and advances its finite sprite list. It does
-not retain the primary record, run its `0x14E0A` movement/recovery probes,
-scan actual field entities, or apply the linked-record action/status result.
-Those remain explicit boundaries. The secondary effect itself has no travel
-behavior in the traced source path.
+The Qt field loop now retains both typed records returned by the ordinary
+player-A spawn path. Its weapon allocator uses the source six-slot window
+9..14, assigns primary and secondary records to separate free slots, and
+releases each slot when its own source continuation ends. Every field update,
+the primary follows `0x14E0A`: it advances its extracted animation, makes four
+`0x14F50` fixed-point terrain/recovery probes against the currently loaded
+scene collision map, publishes the current `0xE7C8` boundary result, commits
+accepted movement, and enters the finite stopped tail on terrain contact or
+retry exhaustion. The secondary follows `0xAC4E` and only advances its finite
+named directional effect at its spawn point. The renderer draws player, primary,
+and secondary records in `0x5B1E`'s stable descending effective-depth order;
+source flags `0x10`/`0x40` force depth zero.
+
+This is connected movement and terrain retirement, not the complete 16-record
+entity/combat lifecycle. The current map importer has no populated live actor
+records, so collision search receives no fabricated targets; linked-record
+hit/status/damage remains an explicit boundary. The source requests event
+`0x3C` on the non-outside terrain terminal path. Its table-2 resource 60 is
+omitted from the named audio assets as a silent slot, so there is no host clip
+or measured playback duration to reproduce. The secondary effect itself has
+no travel behavior in the traced source path.
 
 ## Nine-question full-screen review
 
-1. **Does it look correct?** The actor changes from idle to a directly
-   extracted directional C042 frame. The named secondary-effect frames contain
-   the ROM's source pixels and appear in full 320x224 captures. No exact
-   matching Genesis firing pose was found in the reviewed longplay, so visual
-   equivalence remains unconfirmed.
-2. **Does the look reflect the state?** QA verifies the archetype's source
-   action flags, ordinary A input, item 1 ammo 6->5, unchanged shared reserve
-   (2), attack selector `0x40`, regular selector 0, event `0x1C`, and visible
-   ammo 05. A second ordinary menu route equips and fires item 2, checking
-   12->11, reserve 1, the same source regular list, and event `0x1C`. The first
-   weapon's animation trace records count, selector, and frame for all 52
-   action-delay updates.
-3. **Are the visuals correct?** Eight direction-specific regular lists and
-   eight special lists come from the decoded ROM pointers and raw object atlas.
-   Full-screen captures show the second spawn-effect frame and its removal while
-   the map, HUD, and controls remain in the same field composition. Independent
-   firing pixels remain unavailable.
-4. **Is it animated, and when?** C042 is one static actor frame. The decoded
-   action delay begins from the source template's `+0xDC=0` readiness and holds
-   for 52 updates until `+0xDC=-1`; 30 additional idle frames remain stable.
-   The regular selector 0 advances 0→1→2 on the `0x1000`/`0x270F` timer and
-   retires through the high-bit list marker on the third field update after
-   spawn. This is the secondary spawn effect's animation; the primary
-   collision/action record's cadence remains unimplemented in Qt. Another shot
-   remains gated until movement returns to idle/walk.
+1. **Does it look correct?** The actor changes from idle to a directly extracted
+   directional C042 frame. The primary moves away from the spawn point and stops
+   on the scene's terrain; the secondary directional effect stays at its source
+   position. No matching Genesis firing scene was identified, so equivalence is
+   not established.
+2. **Does the look reflect the behavioral state?** QA uses Joshua's decoded
+   source action flag and ordinary A input. It verifies item 1 ammo 6->5 with
+   reserve 2, then item 2 ammo 12->11 with reserve 1; checks source event `0x1C`,
+   C042 selector `0x40`, secondary selector/frame, and records primary position,
+   heading offsets, retry count, and retirement. The test does not fabricate an
+   enemy hit when the scene supplies no actor records.
+3. **Are the visuals correct?** Eight regular and eight special directional
+   lists are selected from the decoded ROM pointers and raw object atlas by
+   action class and heading. The ROM does not provide a unique projectile clip
+   per gun. The primary uses the source movement record and named extracted
+   frames; the secondary uses the stationary finite spawn-effect list.
+   Independent firing pixels remain unavailable.
+4. **Is it animated, and when?** C042 is one static actor pose held during the
+   source action delay: 52 field updates, followed by 30 stable idle holds. The
+   regular secondary selector 0 advances `0 -> 1 -> 2` on the source timer and
+   retires on the third update. The primary performs four source terrain/recovery
+   probes per field update, moves while the current collision probe permits it,
+   then selects the finite stopped tail on terrain contact. Retry exhaustion or
+   an outside-bounds result retires it. There is no live actor-hit animation yet.
 5. **What sound plays and how long?** Items 1 and 2 request event `0x1C`,
-   resource 028, a one-shot measured at 2.483 s. Holding A during the item-1
-   action delay does not submit repeated events; the item-2 trace likewise sees
-   only one event. Releasing A does not stop the one-shot. Playback state and
-   duration are checked separately by the shared Debug/Release audio CTest.
-   Live field-route loopback and independent Genesis audio correlation were
-   unavailable.
-6. **Were other screen regions checked?** QA writes the before frame, shot,
-   all 52 delay images, 30 idle-hold images, and final alias. It requires a
-   whole-screen pixel change for the visible spawn-effect frame and its removal,
-   then pixel stability for every remaining delay and hold frame. Five more
-   complete frames cover item 2 before fire, after fire, each effect frame, and
-   effect removal; the field map and HUD remain visible with no menu or stale
-   control. The HUD counts are checked against their named assets.
-7. **Do multiple frames support this interpretation?** Multiple complete
-   native frames establish the state and timing sequence. Independent section
-   06/07 footage was inspected, but it contains no identified weapon shot or
-   matching attack pose. Internal frames do not establish Genesis equivalence.
-8. **Does the page replace old UI cleanly?** The action opens no page and draws
-   no controls. The C042 image replaces the actor's idle/walk image in the
-   existing field composition; the secondary effect is removed after its finite list.
-9. **Was the whole time window reviewed?** QA starts at a full-screen loaded
-   idle frame, captures the A action, every source-delay update, and 30
-   post-delay idle frames. The item 2 route captures its ready screen, A action,
-   three effect states, and removal. Neither route covers movement cancellation
-   or the primary record's movement/collision/action-status return.
+   resource 028, a one-shot measured at 2.483 seconds. Holding A during the delay
+   does not repeat it. Terrain terminal event `0x3C` is source-requested but maps
+   to omitted silent resource 060, so it has no host clip or audible duration.
+   Mapped playback state/duration is checked by the separate Debug/Release audio
+   CTest; route loopback and independent Genesis audio correlation remain open.
+6. **Were other screen regions checked?** All full-screen output includes the
+   map, actor, HUD, selector, and right-side controls. QA captures the before/shot
+   frames, all 52 delay updates, 30 idle holds, and the item-2 equip/reload/fire
+   return route. The map and HUD remain intact as both records move and retire.
+7. **Do multiple frames support this interpretation?** All 261 Debug and
+   Release screenshots were reviewed in 17 contact sheets and matched by
+   SHA-256. Independent sections 06/07 were also reviewed, but they contain no
+   identified player firing example or matching pose. Internal native frames
+   prove route consistency, not Genesis visual fidelity.
+8. **Are new visuals cleanly redrawn?** Firing opens no page and adds no
+   controls. The C042 pose replaces the actor's field sprite; projectile images
+   follow the source entity draw order with the player. Both slots are released
+   when their own continuations end, and no projectile pixels remain in the
+   settled captures.
+9. **Was the whole time window reviewed?** QA starts from a loaded idle screen,
+   captures the action and every delay update, then captures 30 post-delay idle
+   frames. It also captures the item-2 route from equip/reload through firing and
+   cleanup. Movement cancellation and linked actor hit/damage are not covered.
 
 ## Verification and status
 
 `shadowrun_ghidra_conversion_qt_field_player_action_qa` saves 85 BMPs in its
 weapon-fire folder: before/shot, 52 action-delay frames, 30 idle-hold frames,
-and the final hold alias. `projectile-animation.tsv` records count, selector,
-frame, and whole-screen change for every delay update. It verifies the visible
-second frame, finite-list removal, stable cleared pose, HUD ammo, source flags,
-timer progression, and one event callback. All 85 Debug and Release captures
-match by SHA-256. The ordinary item 2 equip/reload/fire route adds five
-full-screen images plus `weapon-2-fire.tsv`; it verifies item-specific rounds
-12->11, reserve 1, event `0x1C`, selector 0, and finite effect retirement. All
-261 Debug and Release BMPs match by SHA-256. The graphics importer test verifies visible pixels in the
-regular list's first two frames; entity animation and transition tests pass in
-Debug and Release. The audio playback test separately checks mapped resources
-and measured durations. No matching independent Genesis firing frame or audio
-correlation has been found.
+and the final hold alias. `projectile-animation.tsv` records both records'
+counts, primary position/origin, offsets, retry count, secondary selector/frame,
+and whole-screen change for every delay update. It verifies primary movement
+and terrain retirement, the visible secondary frame, finite-list removal,
+stable cleared pose, HUD ammo, source flags, timer progression, and source audio
+events. The remaining item/action/menu/runner route supplies 176 additional
+full-screen captures. All 261 Debug and Release BMPs match by SHA-256, and all
+were reviewed in 17 contact sheets. Collision-state tests pass in Debug and
+Release, including the current-probe boundary ordering. Qt field action and
+player-action CTests pass in Debug and Release. The audio playback test checks
+mapped resources and durations. No matching independent Genesis firing frame
+or audio correlation has been found.
 
-The player A action, ammo update, source sound request/playback route, C042
-pose, and finite secondary spawn-effect presentation are connected and
-internally verified. Shared entity-slot ownership, the primary record's
-movement/recovery probes, actual entity collision, linked-record action/status
-handling, full combat return, and independent matching Genesis firing/audio
-evidence remain partial/open. The secondary effect has no travel behavior in
-the traced source path. The combat hill is not defended.
+Ordinary A input now connects the source spawn helper, ammo/HUD update, mapped
+shot sound, C042 pose, six-slot weapon allocator, primary fixed-point movement
+and live map-terrain collision, secondary finite spawn effect, slot retirement,
+and the source field depth order. The source's live actor records have not been
+imported; target selection, linked-record hit/status/damage, movement
+cancellation, and full combat return remain open. Event `0x3C` has no mapped
+audible asset, and independent firing visuals/audio are unavailable. The
+secondary effect has no travel behavior in the traced source path. LOADOUT-01
+and its combat hill remain partial, not defended.

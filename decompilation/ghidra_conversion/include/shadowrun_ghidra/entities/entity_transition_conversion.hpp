@@ -76,6 +76,7 @@ struct SpawnEntityRecordState {
     std::uint16_t saved_position_y = 0;
     std::uint8_t field_0x89 = 0;
     std::uint8_t field_0x8b = 0;
+    std::int8_t field_0x41 = 0;
     std::uint32_t continuation_address = 0;
     std::uint8_t source_marker = 0;
     std::uint16_t animation_resource = 0;

@@ -138,5 +138,45 @@ int main() {
         return 7;
     }
 
+    EntityCollisionRecoveryState source_ordered_boundary{
+        EntityFixedPointPosition{0x10000000, 0x20000000, 1, 0}, 2};
+    const auto source_ordered_result = advance_entity_collision_recovery(
+        source_ordered_boundary,
+        [](const std::int32_t x, const std::int32_t y) {
+            if (x != 0x10000100 || y != 0x20000000) {
+                return EntityTerrainProbeSample{1U, false, false};
+            }
+            return EntityTerrainProbeSample{1U, true, false};
+        },
+        EntityCollisionSearchContext{},
+        {});
+    if (expect(source_ordered_result.action ==
+                   EntityCollisionRecoveryAction::collision_search &&
+               !source_ordered_result.source_carry &&
+               source_ordered_result.terrain_boundary_active &&
+               source_ordered_result.terrain_result == 1U &&
+               source_ordered_boundary.retry_counter == 1 &&
+               source_ordered_boundary.position.world_x == 0x10000100) != 0) {
+        return 8;
+    }
+
+    EntityCollisionRecoveryState source_ordered_blocked{
+        EntityFixedPointPosition{0U, 0U, 0, 0}, 2};
+    const auto source_ordered_blocked_result =
+        advance_entity_collision_recovery(
+            source_ordered_blocked,
+            [](const std::int32_t, const std::int32_t) {
+                return EntityTerrainProbeSample{0x7FU, false, true};
+            },
+            EntityCollisionSearchContext{},
+            {});
+    if (expect(source_ordered_blocked_result.action ==
+                   EntityCollisionRecoveryAction::terrain_probe_blocked &&
+               source_ordered_blocked_result.source_carry &&
+               source_ordered_blocked_result.outside_bounds_marker &&
+               source_ordered_blocked.retry_counter == 2) != 0) {
+        return 9;
+    }
+
     return 0;
 }

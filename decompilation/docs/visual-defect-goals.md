@@ -88,7 +88,7 @@ clarification. None changes the original report's itemization.
 |---|---|---|
 | `EQUIP-01` | The yellow item selector was previously reported as a thick rectangular mess instead of the game's slim yellow outline. | The current Qt frames contain exactly 76 `#C4BE27` pixels: a one-pixel perimeter around the 24x16 item image, with no fill. Independent section 06 frames 002560/002580/002610/002640 support the same slim marker. The debug-only 4x crop scales that one pixel to four display pixels. Current geometry is not reproducing the reported thick marker; see [the selector and redraw review](visual-audits/item-selector-and-unequip-review.md). |
 | `EQUIP-02` | A black box can remain around an item icon after equipping and unequipping it. | **Open; not reproduced in current internal QA.** On 2026-10-08, all 54 full-screen Debug/Release route images were re-reviewed, including repeated weapon, armor, and gear unequip transitions against fresh baselines. No black box or old child controls reproduced. The exact transition is absent from independent Genesis footage, so the report is not claimed resolved. See [the item selector and unequip review](visual-audits/item-selector-and-unequip-review.md). |
-| `LOADOUT-01` | Weapon clips/ammunition were previously reported as not being tied to the weapons. | Each weapon's `+0x24` capacity, runner `+0x4E` loaded/percentage value, and shared `+0x4F` reserve are bound to live inventory/HUD routes. Held A reduces the equipped weapon's loaded rounds, submits its source-selected sound, and renders the directional C042 pose plus the typed secondary spawn effect's named directional animation in the Qt field loop. The ordinary item-2 menu route now reloads to 12, then fires and checks 12->11, shared reserve 1, event `0x1C`, selector 0, and finite effect removal in five full-screen frames. All 261 Debug/Release action images match; the first weapon's 85-frame sequence also checks all 52 delay updates and 30 idle holds. The source-paired records are not yet owned by the shared entity table. The primary record's `0x14E0A` movement/recovery, actual entity collision, linked-record action/status handling, and matching independent firing frames remain open. ROM action classes share regular/special directional lists; it does not support an invented unique clip per gun. The secondary `0xAC4E` animation is stationary and finite. Do not add a per-weapon reserve unsupported by the ROM; see the [weapon detail and magazine review](visual-audits/weapon-detail-and-magazine-switch-review.md) and [spawn ammo/sound audit](visual-audits/weapon-spawn-ammo-consumption.md). |
+| `LOADOUT-01` | Weapon clips/ammunition were previously reported as not being tied to the weapons. | Each weapon's `+0x24` capacity, runner `+0x4E` loaded/percentage value, and shared `+0x4F` reserve are bound to live inventory/HUD routes. Ordinary A input now runs the source spawn helper: the primary and secondary records occupy the weapon allocator's source slots 9..14, the primary moves through four live scene-terrain probes per field update, and the secondary plays its finite named directional effect. Source action class and heading select the regular/special effect family; ROM data does not support a unique projectile clip per weapon. The item-2 route reloads to 12 and fires 12->11 with reserve 1. All 261 Debug/Release full-screen captures match and were reviewed. Live actor records, target hits/status/damage, and matching independent firing frames remain open. Do not add a per-weapon reserve unsupported by the ROM; see the [weapon detail and magazine review](visual-audits/weapon-detail-and-magazine-switch-review.md) and [spawn ammo/sound audit](visual-audits/weapon-spawn-ammo-consumption.md). |
 
 ### Evidence gathered for this pass
 
@@ -803,7 +803,7 @@ ROM-derived armor replacement mismatch is corrected and covered; an exact
 independent equip/unequip transition remains unavailable, so the black-box
 report is not marked resolved.
 
-### LOADOUT-01 — Weapon magazine and shared reserve relationship
+### LOADOUT-01 - Weapon magazine and shared reserve relationship
 
 **Source finding:** equipped weapon capacity comes from its own item row at
 `D4540 + (item_code - 1) * 0x30 + 0x24`. The runner's `+0x4E` holds the loaded
@@ -811,38 +811,47 @@ round count while equipped. `0x125FA` converts that count to a percentage
 using the current weapon's capacity; the unequipped runner state retains that
 percentage in `+0x4E`, and `0x121E0` scales it to the selected weapon capacity
 on equip. The reserve is one runner-wide Universal Gun Clips count at `+0x4F`,
-consumed by the reload handler. The traced source does not keep a separate
-spare-clip reserve for every weapon, so the native model must not invent one.
+consumed by the reload handler. The source does not keep a separate spare-clip
+reserve for every weapon. The firing effect list is selected by action class
+and heading, not by a unique clip for every individual gun.
 
 **Current QA:** ordinary held-A input reloads item 1 to 6, then live Start,
 Left, Right, A, Start input equips item 2 and reloads it to 12 from the same
 runner reserve. The typed ammo percentage still transfers at 3/6 -> 6/12 ->
 3/6. A separate source-template route uses C to select Ricky and A to reload
-his active record. The field loop now routes held A on an active weapon through
-the source ammo meter operation, source status-dependent sound-event selector,
-and `0xB39A` directional C042 attack pose; it refreshes the live HUD and Qt
-audio player. Eight directly extracted C042 pose assets replace the walking
-sprite for the affected frame. Its full-screen QA saves before/attack/held
-frames and checks ammo 06->05, reserve unchanged, selector/direction, event
-`0x1C`, separately verified resource playback, and pixel-stable hold. The audio test measures playback durations for events
-`0x1C`, `0x1D`, `0x3F`, and `0x51` at 2.483, 2.817, 2.150, and 2.567 seconds.
-The complete 171-frame earlier player-action route remains covered. Item 2
-presence, spent-magazine starting state, and Ricky's roster are QA fixtures;
-their controller transitions use the live field loop. Independent footage
-sections 06/07 were reviewed, but no matching firing pose or shot was identified.
+his active record. Ordinary A on Joshua's live field record calls the typed
+spawn cycle, consumes the equipped item's rounds, submits the source-selected
+sound, selects C042, and updates the HUD. It now retains both spawned records
+in source slots 9..14; the primary makes four fixed-point movement/recovery
+probes against the current map's collision data per field update, while the
+secondary advances its stationary finite effect. Terrain collision stops and
+retires the primary. Live scene actor records are not populated, so target-hit
+and linked damage behavior remain open. Eight extracted C042 poses replace the
+walk pose for the source action delay. The 261 full-screen Debug/Release action,
+menu, runner, equip, reload, and return screenshots match by SHA-256 and were
+reviewed across 17 contact sheets. Independent sections 06/07 contain no
+identified matching firing shot or pose. Event `0x1C` maps to resource 028 and
+measures 2.483 seconds; terminal event `0x3C` maps to omitted silent resource
+060, so it has no audible host clip or duration.
 
-**Done when:** visible counts agree with typed state; normal controls produce
-the source-backed shot lifecycle, including asset, target/collision, hit
-effects, damage, and automatic reload; tests cover multiple weapon capacities
-and reserve updates; entry/action/hold/impact/return frames are reviewed
-full-screen in Debug and Release. Cite an independent matching capture or keep
-that evidence limitation explicit.
+**Done when:** equipped item capacity, loaded rounds, and shared reserve follow
+the source through equip, reload, fire, and unequip using ordinary controls;
+the item's source action code selects the correct shared action-class/heading
+effect and sound; typed state and HUD agree; tests cover multiple capacities
+and reserve updates in Debug and Release; whole-screen action/hold/return
+captures are reviewed. Keep independent Genesis comparisons explicit when no
+matching shot is present. Actor hit/damage is a separate combat boundary and
+must not be fabricated to close this ammunition goal.
 
-**Status:** partial. The live input, ammo/HUD, audio dispatch, and directional
-player pose are connected and captured. The source's paired entity allocation,
-projectile sprite-list formats, movement, target selection, collision, hit and
-damage path are not connected to gameplay; independent firing imagery/audio
-and loaded-save transfer remain unavailable.
+**Status:** partial. Magazine capacity, percentage transfer, shared reserve,
+ordinary-input reload/fire, source sound selection, C042 pose, primary movement
+against live terrain, secondary effect animation, slot retirement, and HUD
+refresh are connected to the Qt field game and internally verified. The ROM
+selects spawn effects by heading/action class rather than every individual
+weapon, so no unsupported unique-per-gun animation is being added. Live actor
+import and target hit/status/damage remain unimplemented, and no independent
+Genesis firing sample was found. LOADOUT-01 remains partial pending the full
+route review against additional item records and independent visual evidence.
 
 ### PLAY-01 — Normal-control reachability for reported game systems
 

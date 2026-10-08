@@ -13643,6 +13643,21 @@ int main(int argc, char** argv) {
                 runner.animation_action_gate = 1;
                 field_scene.refresh_field_hud_for_dump();
                 field_audio_events.clear();
+                const auto weapon_audio_is_source_valid =
+                    [](const std::vector<std::uint16_t>& events) {
+                        if (events.empty() || events.front() != 0x001CU) {
+                            return false;
+                        }
+                        std::size_t impact_events = 0U;
+                        for (const auto event : events) {
+                            if (event == 0x003CU) {
+                                ++impact_events;
+                            } else if (event != 0x001CU) {
+                                return false;
+                            }
+                        }
+                        return impact_events <= 1U;
+                    };
 
                 const auto render_scene = [&] {
                     QImage image(kSceneWidth, kSceneHeight,
@@ -13955,6 +13970,15 @@ int main(int argc, char** argv) {
                     .field_weapon_projectile_selector_for_dump();
                 const auto projectile_frame = weapon_fire_scene
                     .field_weapon_projectile_frame_for_dump();
+                const auto primary_position_before_delay =
+                    weapon_fire_scene
+                        .field_weapon_primary_position_for_dump();
+                const auto primary_spawn_position =
+                    weapon_fire_scene
+                        .field_weapon_primary_spawn_position_for_dump();
+                const auto primary_heading_offsets =
+                    weapon_fire_scene
+                        .field_weapon_primary_heading_offsets_for_dump();
                 const auto fire_attack_saved = save_weapon_fire_scene(
                     "attack", fire_actual);
                 if (weapon_fire_scene.active_runner_record().ammo_rounds !=
@@ -13970,6 +13994,11 @@ int main(int argc, char** argv) {
                         EntitySpawnCycleAction::spawned ||
                     weapon_fire_scene.field_weapon_projectile_count_for_dump() !=
                         1U ||
+                    weapon_fire_scene.field_weapon_primary_count_for_dump() !=
+                        1U ||
+                    !primary_position_before_delay.has_value() ||
+                    !primary_spawn_position.has_value() ||
+                    !primary_heading_offsets.has_value() ||
                     projectile_selector != std::optional<std::uint16_t>{0U} ||
                     projectile_frame != std::optional<std::uint16_t>{0U} ||
                     weapon_fire_audio != std::vector<std::uint16_t>{0x001CU} ||
@@ -13997,7 +14026,16 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 projectile_animation_trace
-                    << "delay_frame\tprojectile_count\tselector\tframe\tfull_screen_differs_from_attack\n";
+                    << "delay_frame\teffect_count\tselector\teffect_frame\t"
+                       "primary_count\tspawn_x\tspawn_y\tprimary_x\tprimary_y\t"
+                       "offset_x\toffset_y\tprimary_retry\t"
+                       "full_screen_differs_from_attack\n";
+                bool primary_motion_observed =
+                    primary_position_before_delay->x !=
+                        primary_spawn_position->x ||
+                    primary_position_before_delay->y !=
+                        primary_spawn_position->y;
+                bool primary_ended = false;
                 for (std::uint16_t delay_frame = 1U;
                      delay_frame <= 512U && prior_delay >= 0;
                      ++delay_frame) {
@@ -14012,18 +14050,33 @@ int main(int argc, char** argv) {
                         .field_weapon_projectile_selector_for_dump();
                     const auto visible_frame = weapon_fire_scene
                         .field_weapon_projectile_frame_for_dump();
+                    const auto primary_count = weapon_fire_scene
+                        .field_weapon_primary_count_for_dump();
+                    const auto primary_position = weapon_fire_scene
+                        .field_weapon_primary_position_for_dump();
+                    const auto primary_retry = weapon_fire_scene
+                        .field_weapon_primary_retry_count_for_dump();
+                    const auto primary_offsets = weapon_fire_scene
+                        .field_weapon_primary_heading_offsets_for_dump();
                     const auto delay_name =
                         std::string("action-delay-") +
                         std::to_string(delay_frame);
                     if (next_delay >= prior_delay ||
                         !weapon_fire_scene
                              .field_entity_attack_pose_for_dump() ||
-                        weapon_fire_audio !=
-                            std::vector<std::uint16_t>{0x001CU} ||
+                        !weapon_audio_is_source_valid(weapon_fire_audio) ||
                         !save_weapon_fire_scene(delay_name, delay_image)) {
-                        std::cerr << "field player action dump: C042 pose, action delay, HUD, or one-shot audio changed during the source +0xDC delay\n";
+                        std::cerr << "field player action dump: C042 pose, action delay, HUD, or source weapon audio changed during the source +0xDC delay\n";
                         return 3;
                     }
+                    if (primary_position.has_value() &&
+                        (primary_position->x !=
+                             primary_position_before_delay->x ||
+                         primary_position->y !=
+                             primary_position_before_delay->y)) {
+                        primary_motion_observed = true;
+                    }
+                    primary_ended = primary_ended || primary_count == 0U;
                     const bool differs_from_attack =
                         !same_full_frame(fire_actual, delay_image);
                     projectile_animation_trace
@@ -14034,6 +14087,29 @@ int main(int argc, char** argv) {
                         << '\t'
                         << (visible_frame.has_value()
                                 ? std::to_string(*visible_frame)
+                                : std::string("none"))
+                        << '\t' << primary_count << '\t'
+                        << primary_spawn_position->x << '\t'
+                        << primary_spawn_position->y << '\t'
+                        << (primary_position.has_value()
+                                ? std::to_string(primary_position->x)
+                                : std::string("none"))
+                        << '\t'
+                        << (primary_position.has_value()
+                                ? std::to_string(primary_position->y)
+                                : std::string("none"))
+                        << '\t'
+                        << (primary_offsets.has_value()
+                                ? std::to_string(
+                                      primary_offsets->horizontal)
+                                : std::string("none"))
+                        << '\t'
+                        << (primary_offsets.has_value()
+                                ? std::to_string(primary_offsets->vertical)
+                                : std::string("none"))
+                        << '\t'
+                        << (primary_retry.has_value()
+                                ? std::to_string(*primary_retry)
                                 : std::string("none"))
                         << '\t' << (differs_from_attack ? 1 : 0) << '\n';
                     // The 0x8003 list is three frames. The spawned record
@@ -14065,11 +14141,6 @@ int main(int argc, char** argv) {
                     }
                     if (delay_frame == 3U) {
                         projectile_clear_image = delay_image;
-                    } else if (delay_frame > 3U &&
-                               !same_full_frame(projectile_clear_image,
-                                                delay_image)) {
-                        std::cerr << "field player action dump: field pixels changed after the projectile list ended while C042 remained held\n";
-                        return 3;
                     }
                     fire_delay_values.push_back(next_delay);
                     prior_delay = next_delay;
@@ -14079,12 +14150,15 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 if (!projectile_first_frame_visible ||
+                    !primary_motion_observed || !primary_ended ||
                     projectile_clear_image.isNull() ||
                     same_full_frame(fire_actual, projectile_clear_image)) {
-                    std::cerr << "field player action dump: whole-screen captures did not show the projectile animation and its clean removal\n";
+                    std::cerr << "field player action dump: whole-screen captures did not show the secondary animation, primary terrain travel, and primary retirement\n";
                     return 3;
                 }
-                auto fire_hold = render_weapon_fire_scene();
+                const auto settled_weapon_image = render_weapon_fire_scene();
+                const auto settled_weapon_audio = weapon_fire_audio;
+                auto fire_hold = settled_weapon_image;
                 for (std::uint8_t hold_frame = 1U; hold_frame <= 30U;
                      ++hold_frame) {
                     weapon_fire_scene.advance_frame();
@@ -14093,9 +14167,8 @@ int main(int argc, char** argv) {
                                            std::to_string(hold_frame);
                     if (!weapon_fire_scene
                              .field_entity_attack_pose_for_dump() ||
-                        weapon_fire_audio !=
-                            std::vector<std::uint16_t>{0x001CU} ||
-                        !same_full_frame(projectile_clear_image, fire_hold) ||
+                        weapon_fire_audio != settled_weapon_audio ||
+                        !same_full_frame(settled_weapon_image, fire_hold) ||
                         !save_weapon_fire_scene(hold_name, fire_hold)) {
                         std::cerr << "field player action dump: the cleared C042 pose changed during a 30-frame idle hold or the sound repeated\n";
                         return 3;
@@ -14611,12 +14684,13 @@ int main(int argc, char** argv) {
                         1U ||
                     field_scene.field_weapon_projectile_frame_for_dump() !=
                         std::optional<std::uint16_t>{0U} ||
+                    field_scene.field_weapon_primary_count_for_dump() !=
+                        1U ||
                     runner.equipped_item_code != 2U ||
                     runner.equipped_inventory_slot != 1 ||
                     runner.ammo_rounds != 11U || runner.ammo_clips != 1U ||
                     !field_scene.field_entity_attack_pose_for_dump() ||
-                    field_audio_events !=
-                        std::vector<std::uint16_t>{0x001CU} ||
+                    !weapon_audio_is_source_valid(field_audio_events) ||
                     !ammo_counter_matches_for_slot(weapon_two_fire, 11, 0U) ||
                     !save_scene("weapon-2-fire", weapon_two_fire)) {
                     std::cerr << "field player action dump: ordinary A did not fire equipped weapon 2, consume its loaded round, select the regular directional effect, update the HUD, and request event 0x1C\n";
@@ -14648,8 +14722,7 @@ int main(int argc, char** argv) {
                         runner.ammo_rounds != 11U ||
                         runner.ammo_clips != 1U ||
                         !field_scene.field_entity_attack_pose_for_dump() ||
-                        field_audio_events !=
-                            std::vector<std::uint16_t>{0x001CU} ||
+                        !weapon_audio_is_source_valid(field_audio_events) ||
                         !ammo_counter_matches_for_slot(frame, 11, 0U)) {
                         std::cerr << "field player action dump: weapon 2's regular effect did not advance and retire without changing its magazine or replaying audio\n";
                         return 3;

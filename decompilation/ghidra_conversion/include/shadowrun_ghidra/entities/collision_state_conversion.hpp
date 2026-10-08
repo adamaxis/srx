@@ -85,10 +85,24 @@ struct EntityCollisionRecoveryResult {
     // 0x15ABA result is forwarded as-is.
     bool source_carry = false;
     std::uint16_t terrain_result = 0;
+    bool terrain_boundary_active = false;
+    bool outside_bounds_marker = false;
     std::int32_t probed_world_x = 0;
     std::int32_t probed_world_y = 0;
     std::optional<EntityCollisionSearchResult> collision_search;
 };
+
+struct EntityTerrainProbeSample {
+    std::uint16_t terrain_result = 0;
+    // FFDFE2 is written by the current E7C8 probe. 14F50 reads it after
+    // returning from that probe, so it must travel with this sample rather
+    // than being passed as a stale value from the prior field update.
+    bool terrain_boundary_active = false;
+    bool outside_bounds_marker = false;
+};
+
+using EntityTerrainProbe = std::function<EntityTerrainProbeSample(
+    std::int32_t world_x, std::int32_t world_y)>;
 
 // ROM 0x14F50: retry the fixed-point terrain position while the source
 // terrain result is empty or its boundary flag is active, decrement the
@@ -98,6 +112,16 @@ EntityCollisionRecoveryResult advance_entity_collision_recovery(
     EntityCollisionRecoveryState& state,
     bool terrain_boundary_active,
     const EntityWorldProbe& terrain_probe,
+    EntityCollisionSearchContext collision_context,
+    const std::vector<CollisionCandidate>& candidates);
+
+// Source-ordered 0x14F50 entry: evaluate terrain first, then branch using the
+// FFDFE2 marker produced by that same 0xE7C8 call. The bool overload above is
+// retained for existing isolated conversion callers that already supply an
+// explicit fixed marker; the connected field runtime uses this typed sample.
+EntityCollisionRecoveryResult advance_entity_collision_recovery(
+    EntityCollisionRecoveryState& state,
+    const EntityTerrainProbe& terrain_probe,
     EntityCollisionSearchContext collision_context,
     const std::vector<CollisionCandidate>& candidates);
 

@@ -107,13 +107,12 @@ EntityCollisionRecoveryResult advance_entity_collision_recovery(
     const std::vector<CollisionCandidate>& candidates) {
     const auto probe = probe_entity_world_position(
         state.position, terrain_probe);
-    EntityCollisionRecoveryResult result{
-        EntityCollisionRecoveryAction::terrain_probe_blocked,
-        false,
-        probe.terrain_result,
-        probe.world_x,
-        probe.world_y,
-        std::nullopt};
+    EntityCollisionRecoveryResult result{};
+    result.action = EntityCollisionRecoveryAction::terrain_probe_blocked;
+    result.terrain_result = probe.terrain_result;
+    result.terrain_boundary_active = terrain_boundary_active;
+    result.probed_world_x = probe.world_x;
+    result.probed_world_y = probe.world_y;
 
     if (probe.terrain_result != 0U && !terrain_boundary_active) {
         result.source_carry = true;
@@ -131,6 +130,53 @@ EntityCollisionRecoveryResult advance_entity_collision_recovery(
     state.position.world_y = probe.world_y;
     collision_context.probe_x = fixed_point_integer_word(probe.world_x);
     collision_context.probe_y = fixed_point_integer_word(probe.world_y);
+    result.action = EntityCollisionRecoveryAction::collision_search;
+    result.collision_search = find_colliding_entity(
+        collision_context, candidates);
+    result.source_carry = result.collision_search->source_carry;
+    return result;
+}
+
+EntityCollisionRecoveryResult advance_entity_collision_recovery(
+    EntityCollisionRecoveryState& state,
+    const EntityTerrainProbe& terrain_probe,
+    EntityCollisionSearchContext collision_context,
+    const std::vector<CollisionCandidate>& candidates) {
+    EntityCollisionRecoveryResult result{};
+    if (!terrain_probe) {
+        result.action = EntityCollisionRecoveryAction::terrain_probe_blocked;
+        result.source_carry = true;
+        return result;
+    }
+
+    result.probed_world_x = state.position.world_x +
+        static_cast<std::int32_t>(state.position.tile_offset_x) * 0x100;
+    result.probed_world_y = state.position.world_y +
+        static_cast<std::int32_t>(state.position.tile_offset_y) * 0x100;
+    const auto terrain = terrain_probe(result.probed_world_x,
+                                       result.probed_world_y);
+    result.terrain_result = terrain.terrain_result;
+    result.terrain_boundary_active = terrain.terrain_boundary_active;
+    result.outside_bounds_marker = terrain.outside_bounds_marker;
+
+    if (result.terrain_result != 0U &&
+        !result.terrain_boundary_active) {
+        result.action = EntityCollisionRecoveryAction::terrain_probe_blocked;
+        result.source_carry = true;
+        return result;
+    }
+
+    --state.retry_counter;
+    if (state.retry_counter < 0) {
+        result.action = EntityCollisionRecoveryAction::retry_exhausted;
+        result.source_carry = true;
+        return result;
+    }
+
+    state.position.world_x = result.probed_world_x;
+    state.position.world_y = result.probed_world_y;
+    collision_context.probe_x = fixed_point_integer_word(result.probed_world_x);
+    collision_context.probe_y = fixed_point_integer_word(result.probed_world_y);
     result.action = EntityCollisionRecoveryAction::collision_search;
     result.collision_search = find_colliding_entity(
         collision_context, candidates);

@@ -688,8 +688,21 @@ public:
         return field_entity_animation_selector_;
     }
     std::size_t field_weapon_projectile_count_for_dump() const noexcept {
-        return field_weapon_projectiles_.size();
+        std::size_t count = 0U;
+        for (const auto& spawn : field_weapon_projectiles_) {
+            count += spawn.secondary_active ? 1U : 0U;
+        }
+        return count;
     }
+    std::size_t field_weapon_primary_count_for_dump() const noexcept;
+    std::optional<SceneRunnerPosition>
+    field_weapon_primary_position_for_dump() const noexcept;
+    std::optional<SceneRunnerPosition>
+    field_weapon_primary_spawn_position_for_dump() const noexcept;
+    std::optional<EntityHeadingOffsets>
+    field_weapon_primary_heading_offsets_for_dump() const noexcept;
+    std::optional<std::uint8_t>
+    field_weapon_primary_retry_count_for_dump() const noexcept;
     std::optional<std::uint16_t>
     field_weapon_projectile_selector_for_dump() const noexcept;
     std::optional<std::uint16_t>
@@ -731,6 +744,13 @@ private:
         MovementModeTransitionContinuation continuation);
     std::int16_t evaluate_field_collision(std::uint16_t candidate_x,
                                           std::uint16_t candidate_y);
+    std::int16_t evaluate_field_collision(
+        std::uint16_t candidate_x,
+        std::uint16_t candidate_y,
+        EntityCollisionRecord& entity_collision_record,
+        std::array<std::uint8_t, 4>& sample_state,
+        std::uint8_t entity_behavior_flags,
+        bool publish_movement_state);
     void source_boundary(std::string_view boundary) const;
     bool load_image(const ConversionAssetCatalog& catalog,
                     std::string_view alias,
@@ -745,8 +765,7 @@ private:
                            int& origin_x,
                            int& origin_y);
     void paint_field_scene(QPainter& painter) const;
-    void paint_field_entity(QPainter& painter) const;
-    void paint_field_weapon_projectiles(QPainter& painter) const;
+    void paint_field_scene_entities(QPainter& painter) const;
     void paint_field_hud_overlays(QPainter& painter) const;
     FieldHudSlotState field_hud_slot_state(std::size_t slot) const;
     void paint_command_overview_magic(QPainter& painter) const;
@@ -820,8 +839,17 @@ private:
     };
 
     struct FieldWeaponProjectilePresentation {
+        SpawnEntityRecordState primary_record{};
+        EntityCollisionRecord primary_collision_record{};
+        EntityFixedPointPosition primary_fixed_position{};
+        SceneRunnerPosition primary_spawn_position{};
+        EntityAnimationState primary_animation{};
+        bool primary_active = false;
+        std::optional<std::uint16_t> primary_slot;
         SpawnEntityRecordState source_record{};
         EntityAnimationState animation{};
+        bool secondary_active = false;
+        std::optional<std::uint16_t> secondary_slot;
     };
 
     std::function<void(std::string_view)> source_boundary_callback_;
@@ -999,6 +1027,10 @@ private:
     std::array<std::vector<int>, 16> field_weapon_projectile_origin_y_{};
     std::vector<FieldWeaponProjectilePresentation>
         field_weapon_projectiles_;
+    // ROM 0x15A8C scans the six combat slots 9..14. These slots are separate
+    // from the ten auxiliary world-map entries in field_entity_table_.
+    std::array<bool, 6> field_weapon_slots_occupied_{};
+    bool field_weapon_collision_targets_pending_reported_ = false;
     EntitySpawnCycleResult last_field_weapon_spawn_result_{};
     // Ordinary accepted movement uses four looping poses from 0xC062. C0B2's
     // eight-entry high-bit list is a separate finite behavior transition.
@@ -1050,6 +1082,9 @@ private:
     std::uint8_t field_projected_terrain_mark_count_ = 0;
     bool field_terrain_render_dirty_ = false;
     std::array<std::uint8_t, 4> field_terrain_sample_state_{};
+    // Current outputs of the most recent source 0xE7C8 terrain probe.
+    bool field_terrain_boundary_active_ = false;
+    bool field_terrain_outside_bounds_marker_ = false;
     // FFDFE4. Index of the FF1700 collision byte selected by the last 0xE8A0
     // sample. 0x1651E clears that byte; 0xE9EE may leak A2, but the index is
     // only defined for the collision table.
