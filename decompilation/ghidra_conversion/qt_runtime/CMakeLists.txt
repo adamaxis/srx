@@ -307,6 +307,17 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_elevator_scene25_entry_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Enter the 21/22/23/24 group from scene 25, then follow source selector
+# handoffs through each member-scene event-29 trigger and back to scene 22.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_elevator_scene25_group_roundtrip_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-elevator-scene25-group-roundtrip-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-elevator-scene25-group-roundtrip-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_elevator_scene25_group_roundtrip_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Scene 29 is the non-member entry scene for the source child-scene group
 # 26/27/28. Walk from its descriptor spawn into its paired event-29 records,
 # verify the group starts at floor index 0, then ride to scene 27 and inspect

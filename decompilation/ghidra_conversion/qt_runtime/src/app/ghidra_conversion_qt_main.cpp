@@ -8399,7 +8399,15 @@ int run_field_elevator_group_route_qa(
         std::array<std::uint16_t, kFieldElevatorSceneGroupMemberCount>
             group_scene_ids;
     };
-    const std::array<RouteSourceExpectation, 12U> route_expectations{{
+    const std::array<RouteSourceExpectation, 16U> route_expectations{{
+        {21U, 0U, {0x3000U, 0x0600U}, 100U, 0x02E0U, 0x0300U, 0x0020U, 4U,
+         {21U, 22U, 23U, 24U, 0U}},
+        {22U, 1U, {0x3000U, 0x0600U}, 113U, 0x02E0U, 0x0300U, 0x0020U, 4U,
+         {21U, 22U, 23U, 24U, 0U}},
+        {23U, 2U, {0x3000U, 0x0600U}, 133U, 0x02E0U, 0x0300U, 0x0020U, 4U,
+         {21U, 22U, 23U, 24U, 0U}},
+        {24U, 3U, {0x3000U, 0x0600U}, 113U, 0x02E0U, 0x0300U, 0x0020U, 4U,
+         {21U, 22U, 23U, 24U, 0U}},
         {25U, 0U, {0x3000U, 0x0600U}, 102U, 0x02E0U, 0x0300U, 0x0020U, 4U,
          {21U, 22U, 23U, 24U, 0U}},
         {29U, 0U, {0x0A00U, 0x0500U}, 112U, 0x0080U, 0x00A0U, 0x0020U, 3U,
@@ -10432,6 +10440,7 @@ int main(int argc, char** argv) {
             field_elevator_nonmember_entry_scene;
         std::optional<std::filesystem::path>
             field_elevator_nonmember_entry_qa_path;
+        bool field_elevator_scene25_group_roundtrip_qa = false;
         bool field_elevator_scene40_group_roundtrip_qa = false;
         std::optional<std::filesystem::path>
             field_security_terminal_physical_entry_qa_path;
@@ -10501,6 +10510,7 @@ int main(int argc, char** argv) {
                        " [--field-elevator-scene29-entry-qa <output-dir>]"
                        " [--field-elevator-scene34-entry-qa <output-dir>]"
                        " [--field-elevator-scene40-entry-qa <output-dir>]"
+                       " [--field-elevator-scene25-group-roundtrip-qa <output-dir>]"
                        " [--field-elevator-scene40-group-roundtrip-qa <output-dir>]"
                        " [--field-elevator-scene43-group-roundtrip-qa <output-dir>]"
                        " [--field-security-terminal-physical-entry-qa <output-dir>]"
@@ -10631,6 +10641,15 @@ int main(int argc, char** argv) {
                 field_elevator_nonmember_entry_scene = 40U;
                 field_elevator_nonmember_entry_qa_path =
                     std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-elevator-scene25-group-roundtrip-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_elevator_nonmember_entry_scene = 25U;
+                field_elevator_nonmember_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+                field_elevator_scene25_group_roundtrip_qa = true;
             }
             if (std::string(argv[index]) ==
                     "--field-elevator-scene40-group-roundtrip-qa" &&
@@ -11157,6 +11176,24 @@ int main(int argc, char** argv) {
                                      5U>
                         member_routes{{{36U, 2U}, {37U, 3U}, {38U, 4U},
                                        {39U, 0U}, {35U, 1U}}};
+                    for (const auto& [member_scene, destination_floor] :
+                         member_routes) {
+                        route_status = run_scene_route(
+                            member_scene,
+                            *field_elevator_nonmember_entry_qa_path /
+                                ("scene" + std::to_string(member_scene) +
+                                 "-member-trigger"),
+                            destination_floor);
+                        if (route_status != 0) {
+                            return route_status;
+                        }
+                    }
+                } else if (*field_elevator_nonmember_entry_scene == 25U &&
+                           field_elevator_scene25_group_roundtrip_qa) {
+                    const std::array<std::pair<std::uint16_t, std::uint8_t>,
+                                     4U>
+                        member_routes{{{22U, 2U}, {23U, 3U}, {24U, 0U},
+                                       {21U, 1U}}};
                     for (const auto& [member_scene, destination_floor] :
                          member_routes) {
                         route_status = run_scene_route(
