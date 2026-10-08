@@ -82,6 +82,25 @@ scenes 6, 9, and `0x2C..0x31` have empty default lists. These records prove map
 population, but not movement, animation, interaction, or damageability. Do
 not treat presence in a map list as proof that an actor is a weapon target.
 
+The live template type also selects the initial animation table. `0x44BC`
+copies the template's first word into live `+0x0E`; this is kind 5 for the
+corp-guard template and kind 11 for the pedestrian template. `0x600E` indexes
+the state-pointer table at `0x62AC` with that kind, then uses the live `+0x16`
+selector and `+0x1E` frame index. The default record at `0x7361A` initializes
+both indices to zero. Kind 5's state-zero list is at `0x827C` and points to
+frame descriptor `0x86E0A`; kind 11's is at `0x8D7C` and points to
+`0xA7684`. Both state lists have marker 1, so their initial state repeats one
+frame. The descriptors carry the actual image geometry and origin: the guard
+frame is 24x32 at `(-13,-26)` and the pedestrian frame is 32x32 at
+`(-14,-24)`. The template's `+0x02` word selects palette line 2 for guards and
+line 3 for pedestrians.
+
+The existing field entity catalog is not these actors: the importer currently
+decodes the live Joshua template at `0x7291A` (kind 3). `0x4658` updates the
+sixteen entity records and calls `0x481E`; `0x481E` separately refreshes ten
+projection slots from `FF164C`. Its `0x5F78` geometry must not be substituted
+for the kind-5/kind-11 animation frames or treated as their full sprite art.
+
 ## Live-route reachability check
 
 The `0x13` result is a source mode-table result, not an ordinary scene-entry
@@ -117,16 +136,17 @@ actual event path selects it.
 
 ## Visual verification questions
 
-1. **Does each actor look correct?** Not evaluated in Qt yet; the template
-   names/type and source positions are known.
+1. **Does each actor look correct?** Not evaluated in Qt yet. ROM frame
+   descriptors and their origins are traced, but no host actor image is wired.
 2. **Does its displayed state match its behavior?** Not evaluated. Root flags,
    source slots, position, and override bytes must agree with the live record.
-3. **Are its visuals correct?** The template type and projection-slot sprite
-   selector are separate. Projection types 0 through 11 select geometry at
-   `0x5F78`; which slots these live actors occupy, and the host frame, origin,
-   and palette, still need tracing.
-4. **How does it animate?** The template creation path is traced; actor update
-   dispatch, frame cadence, and start/stop conditions are not yet connected.
+3. **Are its visuals correct?** The animation frame, palette line, and origin
+   are source-decoded for the default guard and pedestrian idle states. The
+   corresponding host images and whole-screen composition are not yet present.
+   Projection types 0 through 11 separately select geometry at `0x5F78`.
+4. **How does it animate?** The default initial state is a one-frame repeat.
+   Actor action dispatch, movement, and non-idle state transitions remain
+   unconnected.
 5. **What sound accompanies it and for how long?** No actor-specific audio call
    has been traced for these lists. Keep this open until the selected actor
    action/behavior call path is followed.
@@ -143,12 +163,12 @@ actual event path selects it.
 
 ## Next implementation slice
 
-Extract the three named actor lists and their referenced template records as
-individual host assets during the explicit asset-import step. Bind the typed
-`0x2CE0` result to the live field coordinator, instantiate actors only when
-that source transition selected their list, and feed those same live records
-to rendering and weapon collision. Then trace the collision continuation into
-hit/status/damage and actor retirement before marking combat functional. Keep
-the hill partial until Debug and Release full-screen captures cover the whole
-entry/action/return window and an independent Genesis reference is found or
-recorded as unavailable.
+In the explicit asset-import step, emit named kind-5/kind-11 initial frames
+with their source palette lines and descriptor origins, plus named typed
+default-list data for scenes 2 and `0x14`. Connect those lists to the field
+scene state and render the actors at their projected positions. Then trace
+movement/action and collision before feeding any actor into weapon targeting;
+follow hit/status/damage and retirement before calling combat functional.
+Keep the hill partial until full-screen scene captures cover entry, idle,
+action, and return and an independent Genesis comparison is found or recorded
+as unavailable.
