@@ -174,6 +174,7 @@ std::filesystem::path find_asset_root(
                    " [--field-scene20-physical-entry-qa <output-dir>]"
                    " [--field-scene26-event1-entry-qa <output-dir>]"
                    " [--field-elevator-physical-entry-qa <output-dir>]"
+                   " [--field-scene26-maglock-descriptor-route-qa <output-dir>]"
                    " [--field-security-terminal-physical-entry-qa <output-dir>]"
                    " [--field-scene20-grenade-no-item-qa <output-dir>]"
                    " [--field-secretary-dump <output-dir>]"
@@ -257,6 +258,11 @@ std::filesystem::path find_asset_root(
             continue;
         }
         if (argument == "--field-security-terminal-physical-entry-qa" &&
+            index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-scene26-maglock-descriptor-route-qa" &&
             index + 1 < argc) {
             ++index;
             continue;
@@ -5727,6 +5733,308 @@ int run_field_elevator_floor_group_roundtrip_qa(
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries);
 
+int run_field_scene26_maglock_descriptor_route_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code error;
+    std::filesystem::remove_all(output, error);
+    if (error) {
+        std::cerr << "Scene-26 descriptor route QA: cannot clear output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output / "sequence", error);
+    if (error) {
+        return 3;
+    }
+
+    constexpr std::uint16_t kScene = 26U;
+    constexpr std::uint16_t kElevatorEvent = 0x1DU;
+    constexpr std::uint16_t kMaglockEvent = 2U;
+    constexpr std::uint16_t kMaglockCollision = 0x00A2U;
+    const auto& metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    const auto& rectangles = metadata.terrain_collision_rectangles;
+    const auto spawn = field_scene.field_entity_world_position();
+    if (field_scene.field_scene_reference_for_dump() != kScene ||
+        spawn.x != 0x0A00U || spawn.y != 0x0500U ||
+        field_scene.field_interaction_mode_for_dump() != 2U ||
+        rectangles.size() <= 117U || rectangles[117U].left != 0x0100U ||
+        rectangles[117U].right != 0x011FU ||
+        rectangles[117U].top != 0x0160U ||
+        rectangles[117U].bottom != 0x017FU ||
+        rectangles[117U].value != kMaglockCollision) {
+        std::cerr << "Scene-26 descriptor route QA: descriptor spawn or ROM "
+                     "record 117 does not match\n";
+        return 3;
+    }
+
+    const auto render = [&field_scene](const bool scene_only = false) {
+        QImage image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        if (scene_only) {
+            field_scene.paint_field_scene_for_dump(painter);
+        } else {
+            field_scene.paint(painter);
+        }
+        painter.end();
+        return image;
+    };
+    const auto save = [&output, &render](const std::string_view name,
+                                         const bool scene_only = false) {
+        const auto image = render(scene_only);
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+               image.save(QString::fromStdWString(
+                   (output / (std::string(name) + ".bmp")).wstring()));
+    };
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) {
+        return 3;
+    }
+    trace << "stage\tframe\tinput\tscene\tx\ty\tworld_mode\tfield_mode"
+             "\tcollision\tactivity_selection\tevent\tnegative_probes"
+             "\tcontinuation\ttransition_kind\tselector_open"
+             "\tinteraction_open\tinteraction_options\tentity_visible"
+             "\taudio_events\n";
+    std::uint32_t frame = 0U;
+    const auto audio_start = field_audio_events.size();
+    const auto boundary_start = source_boundaries.size();
+    const auto capture = [&](const std::string_view stage,
+                             const std::string_view input) {
+        const auto image = render();
+        std::ostringstream name;
+        name << "frame-" << std::setw(6) << std::setfill('0') << frame
+             << ".bmp";
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            !image.save(QString::fromStdWString(
+                ((output / "sequence") / name.str()).wstring()))) {
+            return false;
+        }
+        const auto position = field_scene.field_entity_world_position();
+        const auto& movement =
+            field_scene.last_field_movement_transition_for_dump();
+        const auto& panel = field_scene.field_interaction_panel();
+        trace << stage << '\t' << frame << '\t' << input << '\t'
+              << field_scene.field_scene_reference_for_dump() << '\t'
+              << position.x << '\t' << position.y << '\t'
+              << field_scene.field_interaction_mode_for_dump() << '\t'
+              << static_cast<unsigned>(
+                     field_scene.field_runtime_state_for_dump().field_mode)
+              << '\t' << field_scene.field_terrain_collision_code_for_dump()
+              << '\t' << static_cast<unsigned>(
+                     field_scene.field_activity_selection_for_dump())
+              << '\t' << static_cast<unsigned>(movement.event_code) << '\t'
+              << static_cast<unsigned>(movement.negative_probe_count) << '\t'
+              << static_cast<unsigned>(movement.continuation) << '\t'
+              << static_cast<unsigned>(movement.kind) << '\t'
+              << field_scene.elevator_selector_open_for_dump() << '\t'
+              << panel.open << '\t'
+              << static_cast<unsigned>(panel.option_count) << '\t'
+              << field_scene.field_entity_visible_for_dump() << '\t'
+              << (field_audio_events.size() - audio_start) << '\n';
+        trace.flush();
+        return true;
+    };
+    const auto tick_dpad = [&](const std::uint8_t nibble,
+                               const std::string_view stage,
+                               const std::string_view input) {
+        field_scene.set_controller_nibble(nibble);
+        field_scene.advance_frame();
+        ++frame;
+        return capture(stage, input);
+    };
+
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    ++frame;
+    if (!field_scene.field_entity_visible_for_dump() ||
+        !capture("descriptor-spawn", "neutral") ||
+        !save("scene26-descriptor-spawn") ||
+        !field_hud_chrome_survives(render(), asset_root)) {
+        std::cerr << "Scene-26 descriptor route QA: spawn is not a clean field "
+                     "screen\n";
+        return 3;
+    }
+
+    // Four ordinary Right updates turn the descriptor-spawn heading into the
+    // adjacent event-0x1D elevator trigger.
+    std::uint16_t right_ticks = 0U;
+    while (right_ticks < 16U &&
+           !field_scene.elevator_selector_open_for_dump()) {
+        if (!tick_dpad(0x08U, "spawn-to-elevator", "dpad-right")) {
+            return 3;
+        }
+        ++right_ticks;
+    }
+    const auto elevator =
+        field_scene.last_field_movement_transition_for_dump();
+    if (!field_scene.elevator_selector_open_for_dump() ||
+        elevator.event_code != kElevatorEvent ||
+        elevator.continuation !=
+            MovementModeTransitionContinuation::event_29_world_activity ||
+        elevator.kind !=
+            EntityMovementModeTransitionResultKind::world_activity_started ||
+        field_scene.elevator_selector_current_floor_for_dump() !=
+            field_scene.elevator_selector_selected_floor_for_dump() ||
+        field_scene.elevator_selector_destination_for_dump() != kScene ||
+        !save("spawn-elevator-selector") ||
+        !field_hud_chrome_survives(render(), asset_root)) {
+        std::cerr << "Scene-26 descriptor route QA: Right input did not open "
+                     "the source event-0x1D selector\n";
+        return 3;
+    }
+
+    // Start keeps the current floor and returns to its field view.
+    field_scene.set_controller_port_byte(0x80U);
+    field_scene.advance_frame();
+    ++frame;
+    if (!capture("elevator-return", "start") ||
+        field_scene.elevator_selector_open_for_dump() ||
+        field_scene.field_scene_reference_for_dump() != kScene ||
+        field_scene.field_interaction_open() ||
+        !field_hud_chrome_survives(render(), asset_root) ||
+        !save("field-after-elevator")) {
+        std::cerr << "Scene-26 descriptor route QA: Start did not return to "
+                     "the current floor cleanly\n";
+        return 3;
+    }
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    ++frame;
+    if (!capture("field-after-elevator", "neutral")) {
+        return 3;
+    }
+
+    // Turn south-east to clear the elevator trigger lane, pass east of the
+    // machinery, then follow the open south corridor to the A2 door. These
+    // directional phases follow the observed collision-free route.
+    for (std::uint8_t tick = 0U; tick < 6U; ++tick) {
+        if (!tick_dpad(0x02U, "clear-elevator-trigger", "dpad-down") ||
+            field_scene.elevator_selector_open_for_dump() ||
+            field_scene.field_interaction_open()) {
+            std::cerr << "Scene-26 descriptor route QA: could not clear the "
+                         "elevator trigger lane\n";
+            return 3;
+        }
+    }
+    for (std::uint8_t tick = 0U; tick < 13U; ++tick) {
+        if (!tick_dpad(0x08U, "east-of-elevator", "dpad-right") ||
+            field_scene.elevator_selector_open_for_dump() ||
+            field_scene.field_interaction_open()) {
+            std::cerr << "Scene-26 descriptor route QA: unexpected event on "
+                         "the eastbound route\n";
+            return 3;
+        }
+    }
+    std::uint16_t south_ticks = 0U;
+    for (; south_ticks < 116U; ++south_ticks) {
+        if (!tick_dpad(0x02U, "southbound-open-corridor", "dpad-down") ||
+            field_scene.elevator_selector_open_for_dump()) {
+            std::cerr << "Scene-26 descriptor route QA: unexpected modal or "
+                         "frame failure on southbound route\n";
+            return 3;
+        }
+        if (!field_scene.field_entity_visible_for_dump()) {
+            std::cerr << "Scene-26 descriptor route QA: runner left the "
+                         "visible field before reaching A2\n";
+            return 3;
+        }
+    }
+    std::uint16_t a2_ticks = 0U;
+    while (a2_ticks < 20U && !field_scene.field_interaction_open()) {
+        if (!tick_dpad(0x08U, "cross-a2-passage", "dpad-right") ||
+            field_scene.elevator_selector_open_for_dump()) {
+            std::cerr << "Scene-26 descriptor route QA: unexpected modal or "
+                         "frame failure at the A2 passage\n";
+            return 3;
+        }
+        ++a2_ticks;
+    }
+    field_scene.set_controller_port_byte(0U);
+    const auto& movement =
+        field_scene.last_field_movement_transition_for_dump();
+    const auto& panel = field_scene.field_interaction_panel();
+    const bool source_a2_prompt =
+        field_scene.field_scene_reference_for_dump() == kScene &&
+        field_scene.field_interaction_mode_for_dump() == 2U &&
+        field_scene.field_activity_selection_for_dump() == kMaglockEvent &&
+        field_scene.field_interaction_open() && panel.source_complete &&
+        panel.actor_kind == DialoguePanelActorKind::none &&
+        panel.option_count == 1U && panel.text_segment_count != 0U &&
+        panel.text_segments[0].find("sturdy door") != std::string_view::npos &&
+        panel.options[0U].source_label.find("MORE") != std::string_view::npos &&
+        movement.event_code == kMaglockEvent &&
+        movement.negative_probe_count >= 2U &&
+        movement.continuation ==
+            MovementModeTransitionContinuation::maglock_door_interaction &&
+        movement.kind ==
+            EntityMovementModeTransitionResultKind::field_dialogue_started;
+    const auto modal_frame = render();
+    const auto field_underlay = render(true);
+    if (!source_a2_prompt || modal_frame == field_underlay ||
+        field_scene.elevator_selector_open_for_dump() ||
+        !capture("maglock-introduction", "neutral") ||
+        !save("maglock-introduction") || !save("actual")) {
+        std::cerr << "Scene-26 descriptor route QA: record 117 did not open "
+                     "the generic electromagnetic-lock introduction "
+                     "(event=" << movement.event_code << ", selection="
+                  << static_cast<unsigned>(
+                         field_scene.field_activity_selection_for_dump())
+                  << ", probes=" << static_cast<unsigned>(
+                         movement.negative_probe_count)
+                  << ", panel=" << field_scene.field_interaction_open()
+                  << ")\n";
+        return 3;
+    }
+    if (!save("maglock-field-underlay", true)) {
+        return 3;
+    }
+
+    for (std::uint8_t tick = 0U; tick < 10U; ++tick) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++frame;
+        if (!capture("maglock-introduction-hold", "neutral")) {
+            return 3;
+        }
+    }
+    if (render() != modal_frame || !field_scene.field_interaction_open() ||
+        field_scene.field_mode_text_open_for_dump() ||
+        field_scene.dialogue_open() || field_scene.shop_menu_open() ||
+        !save("maglock-introduction-held") || !save("actual")) {
+        std::cerr << "Scene-26 descriptor route QA: lock introduction did not "
+                     "remain a clean full-screen page\n";
+        return 3;
+    }
+
+    std::ofstream audio_file(output / "audio-events.txt", std::ios::trunc);
+    for (std::size_t index = audio_start;
+         index < field_audio_events.size(); ++index) {
+        audio_file << "0x" << std::hex << field_audio_events[index] << '\n';
+    }
+    std::ofstream boundary_file(output / "source-boundaries.txt",
+                                std::ios::trunc);
+    for (std::size_t index = boundary_start;
+         index < source_boundaries.size(); ++index) {
+        boundary_file << source_boundaries[index] << '\n';
+    }
+    if (!audio_file || !boundary_file) {
+        return 3;
+    }
+
+    std::cout << "field_scene26_maglock_descriptor_route_qa=passed "
+                 "scene=26 elevator_event=0x1D maglock_collision=0xA2 "
+                 "maglock_event=2 right_ticks=" << right_ticks
+              << " south_ticks=" << south_ticks << " a2_ticks=" << a2_ticks
+              << " prompt=generic_sturdy_door frames=" << frame
+              << " artifacts=" << output.string() << '\n';
+    return 0;
+}
+
 int run_field_security_terminal_physical_entry_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -10460,6 +10768,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_security_terminal_physical_entry_qa_path;
         std::optional<std::filesystem::path>
+            field_scene26_maglock_descriptor_route_qa_path;
+        std::optional<std::filesystem::path>
             field_scene20_grenade_no_item_qa_path;
         std::optional<std::filesystem::path> field_stoker_collision_qa_path;
         std::optional<std::filesystem::path> field_hud_qa_path;
@@ -10521,6 +10831,7 @@ int main(int argc, char** argv) {
                        " [--field-scene20-physical-entry-qa <output-dir>]"
                        " [--field-scene26-event1-entry-qa <output-dir>]"
                        " [--field-elevator-physical-entry-qa <output-dir>]"
+                       " [--field-scene26-maglock-descriptor-route-qa <output-dir>]"
                        " [--field-elevator-scene25-entry-qa <output-dir>]"
                        " [--field-elevator-scene29-entry-qa <output-dir>]"
                        " [--field-elevator-scene34-entry-qa <output-dir>]"
@@ -10698,6 +11009,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_security_terminal_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene26-maglock-descriptor-route-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene26_maglock_descriptor_route_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -11056,6 +11374,39 @@ int main(int argc, char** argv) {
                 checkpoint.active_runner_slot = 0U;
                 smoke_state.restored_field_state = std::move(checkpoint);
             }
+            if (field_scene26_maglock_descriptor_route_qa_path.has_value()) {
+                if (!smoke_state.field_session_source_assets.has_value() ||
+                    !smoke_state.joshua_selection.has_value()) {
+                    std::cerr << "Scene-26 descriptor route QA: scene source "
+                                 "or Joshua record is unavailable\n";
+                    return 3;
+                }
+                const auto scene26 = integration::make_field_scene_input(
+                    *smoke_state.field_session_source_assets, 26U);
+                if (!scene26.has_value()) {
+                    std::cerr << "Scene-26 descriptor route QA: scene-26 "
+                                 "source records are unavailable\n";
+                    return 3;
+                }
+                SaveFieldRestoreState descriptor_spawn{};
+                descriptor_spawn.world_mode = 26U;
+                descriptor_spawn.camera_x = static_cast<std::uint16_t>(
+                    scene26->source_metadata.initial_camera_x_fixed);
+                descriptor_spawn.camera_y = static_cast<std::uint16_t>(
+                    scene26->source_metadata.initial_camera_y_fixed);
+                for (std::size_t slot = 0U;
+                     slot < descriptor_spawn.runner_positions.size(); ++slot) {
+                    const auto& spawn =
+                        scene26->source_metadata.initial_field_records[slot];
+                    descriptor_spawn.runner_positions[slot] =
+                        RestoredRunnerPosition{spawn.x, spawn.y};
+                }
+                descriptor_spawn.roster.default_record.bytes =
+                    smoke_state.joshua_selection->live_joshua_record;
+                descriptor_spawn.active_runner_slot = 0U;
+                smoke_state.restored_field_state =
+                    std::move(descriptor_spawn);
+            }
             if (field_elevator_nonmember_entry_scene.has_value()) {
                 if (!smoke_state.field_session_source_assets.has_value() ||
                     !smoke_state.joshua_selection.has_value()) {
@@ -11105,7 +11456,8 @@ int main(int argc, char** argv) {
                 std::cerr << "field smoke: " << field_scene.failure() << '\n';
                 return 3;
             }
-            if (field_security_terminal_physical_entry_qa_path.has_value()) {
+            if (field_security_terminal_physical_entry_qa_path.has_value() ||
+                field_scene26_maglock_descriptor_route_qa_path.has_value()) {
                 const auto scene26_interaction_mode =
                     select_scene_interaction_mode(26U);
                 if (!scene26_interaction_mode.has_value()) {
@@ -11256,6 +11608,12 @@ int main(int argc, char** argv) {
                 return run_field_security_terminal_physical_entry_qa(
                     field_scene, asset_root,
                     *field_security_terminal_physical_entry_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_scene26_maglock_descriptor_route_qa_path.has_value()) {
+                return run_field_scene26_maglock_descriptor_route_qa(
+                    field_scene, asset_root,
+                    *field_scene26_maglock_descriptor_route_qa_path,
                     field_audio_events, field_source_boundaries);
             }
             if (field_scene20_grenade_no_item_qa_path.has_value()) {

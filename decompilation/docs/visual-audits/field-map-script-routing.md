@@ -23,7 +23,7 @@ records.
 | Scene 2, collision value `0xC1` at ROM `0x17314C`, event 1 | Active map's event table and world-activity resource selector | Row 1 in `0x172CDC` selects scene `0x1A` (scene 26); its resource bundle has bound 3 |
 | Scene 26-29 family, paired `0xDD` collision rectangles, event 29 | Floor selector and selected-scene transition | `0x58D94` calls `0x58DE0`; the typed child scene group contains scenes 26, 27, and 28. Physical QA covers scenes 26-29; destination identity remains open. This is separate from the Stoker scene-2 event-2 dialogue route |
 | Scene 20, collision value `0x82` at ROM `0x1D9724`, event 2 | Building interaction continuation | The separate electromagnetic-lock handler `0x20E48` opens its generic prompt |
-| Scene 26, collision record 117 (`0xA2`) at ROM `0x1D9E00`, world-mode-2 event 2 | Generic electromagnetic-lock continuation | `0xB7B8` selects `0x20E48`; descriptor-route exploration reaches its introduction after the event-`0x1D` elevator, but the lock action and route to the D8 terminal remain unverified |
+| Scene 26, collision record 117 (`0xA2`) at ROM `0x1D9E00`, world-mode-2 event 2 | Generic electromagnetic-lock continuation | `0xB7B8` selects `0x20E48`; descriptor-route CTest reaches and asserts the generic introduction after the event-`0x1D` elevator. Lock actions and traversal to the D8 terminal remain open |
 | Scene 26, collision values `0xD8` at ROM `0x1D9E46`, event `0x18` | Direct typed Security Terminal continuation | `0xB7B8` requires two negative samples and selects `0x20EC2`; the physical-input QA opens both choices and Walk Away returns |
 | Any remaining in-range map-table event | Active map's own event table | The selected row is passed to the existing world-activity coordinator; missing/out-of-range tables remain unresolved |
 
@@ -158,9 +158,12 @@ Physical trigger paths for group members 30-33 are now covered.
 This is a route-planning foundation, not complete map/path coverage. The
 scene-2 event-1 physical route is behaviorally covered but visually partial
 because of the runner/HUD overlap and missing exact Genesis comparison. The
-scene-26 descriptor route has been explored through its event-`0x1D` elevator
-and the A2 maglock introduction; lock actions and traversal from that result
-to the D8 Security Terminal remain open. Additional doorway/object records,
+scene-26 descriptor route has a reproducible 165-frame CTest through its
+event-`0x1D` elevator and asserted A2 maglock introduction; lock actions and
+traversal from that result to the D8 Security Terminal remain open. All
+sequential frames and named screens were reviewed, including selector, return,
+route, and modal redraw. Debug/Release artifacts match by SHA-256. Additional
+doorway/object records,
 broad terrain recovery, other building item use, reverse transitions, and
 world-entry one-shot conditions still need their own ROM traces and normal-input
 route captures.

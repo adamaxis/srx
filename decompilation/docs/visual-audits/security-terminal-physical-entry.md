@@ -2,10 +2,10 @@
 
 Date: 2026-10-07
 
-**Status:** partial. The scene-26 collision trigger and modal return are covered
-by ordinary field input from a source-coordinate pre-trigger checkpoint. The
-full route from the scene descriptor spawn remains unresolved, and no matching
-independent Genesis capture was found.
+**Status:** partial. Ordinary field input now covers the scene-26 descriptor
+spawn through the A2 electromagnetic-lock introduction. A separate checkpoint
+QA covers the D8 Security Terminal modal and return. Lock actions, the path
+from their result to D8, and matching independent Genesis captures remain open.
 
 ## ROM trace and native state
 
@@ -29,71 +29,69 @@ Release artifacts are under
 Debug artifacts use the matching `build/conversion/qt/debug/` path. Both runs
 produce 23 BMPs with matching SHA-256 hashes.
 
-## Descriptor-spawn route exploration
+## Descriptor-spawn route QA
 
-The separate exploratory capture starts at scene 26's map descriptor spawn.
-Ordinary input first enters the paired event-`0x1D` elevator trigger. After
-returning to the current floor, the route reaches collision record 117 at ROM
-`0x1D9E00`. Its bytes are `01 00 01 1F 01 60 01 7F 00 A2`, covering
-`x=0x100..0x11F`, `y=0x160..0x17F`, with value `0xA2`. In world mode 2, the
-`0xB952..0xB994` branch dispatches event 2 to the generic electromagnetic-lock
-continuation at `0x20E48` when `FFE17F` is clear. The final captured frame shows
-the lock introduction page. This is scene-26 map behavior, separate from the
-Stoker Motel interaction in scene 2.
+The route QA starts at scene 26's descriptor spawn `(0x0A00, 0x0500)` in
+world mode 2. Four ordinary Right updates enter the paired event-`0x1D`
+elevator trigger. Start returns to the current floor; six Down updates clear
+the elevator lane, 13 Right updates pass its machinery, and 116 Down updates
+follow the open corridor before Right crosses A2. This is scene-26 map
+behavior, separate from the Stoker Motel interaction in scene 2.
+
+The route reaches collision record 117 at ROM `0x1D9E00`. Its bytes are
+`01 00 01 1F 01 60 01 7F 00 A2`, covering `x=0x100..0x11F`,
+`y=0x160..0x17F`, with value `0xA2`. In world mode 2, the `0xB952..0xB994`
+branch dispatches event 2 to the generic electromagnetic-lock continuation at
+`0x20E48` when `FFE17F` is clear. The CTest asserts event 2, two negative
+probes, the maglock continuation, activity selection 2, and the speaker-none
+generic introduction containing “sturdy door” and the MORE option.
 
 The lock action still depends on active-party state. ROM `0x20E92` uses the
 event selection to choose a lock grid or route a value below 2 to the Security
 Terminal continuation at `0x20EC2`; the native handler checks passkey,
-Electronics, and Frag Grenade properties. This exploration did not choose an
+Electronics, and Frag Grenade properties. This route does not choose an
 action, verify a successful result, or prove the field loop advances from the
-lock result to the D8 terminal records 124/125. The 155-frame sequence is an
-exploratory artifact, not a CTest or a completed route claim. All 155 Release
-frames were reviewed as full 320x224 images in chronological sheets; the
-matching Debug frames have identical SHA-256 hashes. These are internal
-conversion images, not an independent Genesis reference.
+lock result to the D8 terminal records 124/125. Debug and Release CTest runs
+write 165 sequential 320x224 frames plus seven named BMPs (172 total); all
+relative-path SHA-256 hashes match. The sequential images were reviewed in 21
+chronological sheets. These are internal conversion images, not an independent
+Genesis reference.
 
-### Eight-question review of the exploratory capture
+### Eight-question review of the descriptor route
 
-1. **Does it look correct?** The route shows the scene-26 map, the elevator
-   selector, the return to the map, the corridor, and the generic lock page.
-   The runner approaches a vertical map edge in frames 120-154. Rechecking the
-   full images shows it on the near side of that edge; I did not establish a
-   clipping defect. Exact appearance remains unverified without a matching
-   Genesis scene.
-2. **Does the look reflect the behavioral state?** The route log shows scene
-   26 at descriptor spawn, the event-`0x1D` elevator at frame 5, return to the
-   current floor, and movement to `(3880, 6000)` by frame 154. The next image
-   is the generic electromagnetic-lock introduction. ROM record 117's `0xA2`
-   value and the mode-2 event path to `0x20E48` support that interpretation;
-   the exploratory harness did not log an event-2 state row for the final
-   prompt, so that last transition is source-correlated rather than a test
-   assertion.
+1. **Does it look correct?** The full sequence shows the scene-26 map, the
+   elevator selector, return to the map, corridor movement, and generic lock
+   page. The runner remains visible. Exact appearance is not established
+   without a matching Genesis scene.
+2. **Does the look reflect the behavioral state?** Yes for the captured host
+   route: the trace records the event-`0x1D` elevator, return to scene 26, and
+   event 2 at record 117. The CTest asserts the two negative probes and
+   `maglock_door_interaction` continuation before accepting the prompt.
 3. **Are the visuals correct?** The lock text and shared full-screen dialog
    are consistent with the source-selected generic prompt. The frame has no
    speaker portrait, matching an event/property prompt. No exact Genesis
    capture of this scene-26 lock page was found, so layout and palette fidelity
    remain open.
-4. **Is it animated, and when?** The runner changes walk pose during held
-   movement and the map scrolls along the route. The lock page is static in
-   the captured frame. Exact ROM animation cadence for this route has not
-   been compared to independent gameplay frames.
-5. **Does sound accompany it, and how long?** The recorded route's
-   `audio_events` values are zero. That records what this Qt capture emitted;
-   it does not prove ROM silence. The elevator and lock sound cues and their
-   durations remain untraced.
+4. **Is it animated, and when?** The runner changes walk pose during movement
+   and the map scrolls along the route. The lock page is identical across the
+   ten-frame hold. ROM animation cadence has not been compared with
+   independent gameplay frames.
+5. **Does sound accompany it, and how long?** The Qt route emits no audio
+   events. That records the host capture only, not ROM silence. Elevator and
+   lock cues and their durations remain untraced.
 6. **Are related screen areas correct too?** I reviewed the entire 320x224
-   sequence, including the runner, map, right HUD, elevator selector, and
-   dialogue. No separate overlay or screen corruption was visible in this
-   capture. The Debug images match Release by SHA-256.
-7. **Do multiple frames support the reading?** Yes: all 155 sequential
-   frames show the approach, event-`0x1D` selector, return, corridor movement,
-   and lock-page transition. They support the internal route interpretation;
-   they are not multiple independent Genesis examples.
-8. **Were old controls or graphics cleared?** Frame 5 replaces the map with
-   the elevator selector while retaining the HUD; frame 6 returns to the map
-   without the selector. Frame 155 replaces the map and HUD with the modal
-   dialog. No stale selector, map, or field controls remain in that dialog
-   image. This is an internal redraw observation, not a Genesis comparison.
+   sequence, including runner, map, right HUD, selector, and dialog. No extra
+   overlay or screen corruption was visible; Debug and Release outputs match
+   by hash.
+7. **Do multiple frames support the reading?** The 165-frame CTest sequence
+   captures approach, elevator interaction, return, corridor route, trigger,
+   and ten-frame prompt hold. This is one internally captured route, not
+   multiple independent Genesis examples.
+8. **Were old controls or graphics cleared?** The selector replaces the map
+   while retaining the HUD, then Start returns to the map without the
+   selector. The modal replaces map and HUD, with no stale field controls in
+   the dialog. This is an internal redraw observation, not a Genesis
+   comparison.
 
 ## Eight-question review of the checkpoint captures
 
@@ -130,9 +128,9 @@ conversion images, not an independent Genesis reference.
 
 ## Remaining work
 
-Exercise the event-`0x1D` elevator and record-117 A2 interaction from the
-descriptor route with a real active-party state; trace the post-choice return
-and determine whether a successful lock result dispatches the D8 terminal
-records 124/125. Also identify independent terminal frames before making a
-Genesis visual claim. The separate Security Terminal floor-result QA still
-injects event 2; it does not replace this physical event-`0x18` test.
+Trace and implement the active-party lock choices and results from this
+descriptor route; determine whether a successful result dispatches the D8
+terminal records 124/125. Identify independent Genesis frames and trace ROM
+sound cues and durations before making visual or audio fidelity claims. The
+separate Security Terminal physical-entry QA starts from a source checkpoint
+and does not replace this route.

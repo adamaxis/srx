@@ -652,6 +652,19 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_security_terminal_physical_entry_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Enter scene 26 at its real map descriptor spawn, take the event-0x1D elevator
+# back to the current floor, and walk to collision record 117's A2 maglock
+# prompt. The route stops at the generic introduction; door actions and the
+# D8 Security Terminal remain a separate open path.
+add_test(NAME shadowrun_ghidra_conversion_qt_scene26_maglock_descriptor_route_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-scene26-maglock-descriptor-route-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/scene26-maglock-descriptor-route-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_scene26_maglock_descriptor_route_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Ares mode 2/event 11 must pass through the generic 30-frame prompt before
 # entering its modal service menu. This captures category/item selection,
 # insufficient funds, default-No/Yes confirmation, ordinary and E-coded
