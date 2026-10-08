@@ -463,6 +463,20 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_scene20_electronics_no_skill_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# The US Decker template has Electronics 1 and no Electronics Kit. Verify
+# one partial no-kit attempt, source collision re-entry resetting selection
+# from event 2, then a QA-seeded Electronics Kit trial that opens the lock.
+# Pin source PRNG state only at tested action boundaries.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_scene20_electronics_trials_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-archetype decker
+                 --field-scene20-electronics-trials-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-scene20-electronics-trials-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_scene20_electronics_trials_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Follow ordinary D-pad movement to scene-2 collision record 2. The source
 # record is a type-2 collision object, not a Stoker identity or event code;
 # this QA verifies its observed event-0/no-dialogue result and full-frame route.

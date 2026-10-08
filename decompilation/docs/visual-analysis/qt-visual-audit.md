@@ -1792,23 +1792,33 @@ selection, and indirect sound hook remain open.
    modal and writes `return-field.bmp`; Debug/Release QA compares that entire
    image pixel-for-pixel with the pre-prompt field render.
 7. **Do multiple frames support this interpretation?** Debug/Release tests
-   exercise the `<MORE>` page, action rows, passkey success, electronics
-   outcomes, grenade inventory mutation, Security Terminal outcomes, result
-   holds, and return. No independent longplay frame showing these exact
-   object prompts or their results was identified in supplied sections
-   03/04, so the internal frames do not serve as multiple Genesis examples.
+   exercise the `<MORE>` page, action rows, passkey success, no-skill,
+   positive-skill partial and kit-assisted success, grenade availability,
+   Security Terminal outcomes, result holds, and returns. The six physical
+   scene-20 routes produce 286 full-screen BMPs per configuration; exact-hash
+   deduplication yields 77 distinct images, all reviewed in contact sheets.
+   Interaction/result/return frames were also checked at full resolution. No
+   independent longplay frame showing these exact maglock prompts or results
+   was identified in sections 03/04.
 8. **Was old UI cleared before new controls were drawn?** The shared presenter
    clears the full 320x224 surface and both content wells before drawing each
    page. The return check compares the post-modal field image with the exact
-   pre-modal image, so any dialogue text, button marker, or frame left over
-   fails the route QA. Debug/Release interaction QA asserts the selected
-   runner's bit-1 gate, but still injects the typed continuation after event
-   resolution. The actual in-world object collision trigger still needs an
-   end-to-end gameplay test.
+   field-only image at the same state, so leftover dialogue text, button
+   marker, or frame fails the route QA. Scene-20 routes now use ordinary
+   scene-2 doorway and record-117 collision input; the separate focused
+   Security Terminal prompt test still injects its typed continuation, while
+   the joined scene-26 route reaches D8 through ordinary map movement.
 
-**Status:** partial. Typed prompt/result behavior, menu rendering, audio
-resource 075 mapping, source behavior-flag binding, full-frame modal ownership,
-clean field return, and extraction/loading of scene bounds have Debug/Release test coverage. Typed `FFE12C` sampling and third-floor result text are now covered by Debug/Release world-activity QA (details: [world-activity-security-terminal-floor.md](../visual-audits/world-activity-security-terminal-floor.md)). The normal collision-to-event producer, independent Genesis frames, resource-048 stop/playback, and captured device audio remain open.
+**Status:** partial. Typed prompt/result behavior, the ordinary scene-20
+collision route, positive-skill Electronics trial branches, menu rendering,
+audio resource 075 mapping, source behavior-flag binding, full-frame modal
+ownership, clean field return, and extraction/loading of scene bounds have
+Debug/Release coverage. The kit is test-seeded, so item acquisition remains
+open. Typed `FFE12C` sampling and third-floor result text are covered by
+Debug/Release world-activity QA (details:
+[world-activity-security-terminal-floor.md](../visual-audits/world-activity-security-terminal-floor.md)).
+Other collision-to-event branches, independent maglock Genesis frames,
+resource-048 stop/playback, and captured device audio remain open.
 
 ### Applied review: Start-menu Karma view and Hotel Karma spending page
 

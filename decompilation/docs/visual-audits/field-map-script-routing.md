@@ -1,6 +1,6 @@
 # Field map event route planning
 
-Date: 2026-10-07
+Date: 2026-10-08
 
 **Status:** partial. This slice adds a typed native route policy for the
 collision events already connected to the Qt field controller. It does not
@@ -22,7 +22,7 @@ records.
 | Scene 2, paired collision values `0xC0` at ROM `0x173124` and `0x17312E`, event 0 | Active map's event table | Row 0 in `0x172CDC` selects scene `0x14` (scene 20) |
 | Scene 2, collision value `0xC1` at ROM `0x17314C`, event 1 | Active map's event table and world-activity resource selector | Row 1 in `0x172CDC` selects scene `0x1A` (scene 26); its resource bundle has bound 3 |
 | Scene 26-29 family, paired `0xDD` collision rectangles, event 29 | Floor selector and selected-scene transition | `0x58D94` calls `0x58DE0`; the typed child scene group contains scenes 26, 27, and 28. Physical QA covers scenes 26-29; destination identity remains open. This is separate from the Stoker scene-2 event-2 dialogue route |
-| Scene 20, collision value `0x82` at ROM `0x1D9724`, event 2 | Building interaction continuation | The electromagnetic-lock handler `0x20E48` opens its generic prompt. Physical QA covers quality-2 passkey success, quality-1 failure against selection 2, and the New Game Samurai no-skill Electronics branch from ordinary New Game entry. ROM `0x21692` returns the no-skill message for runner `+0x8A=0` before a random trial. Success requests `0x4B`, preserves the key, and changes map index 483 from `0x82` to `0x81`; failure/no-skill leave key/map/selection unchanged, add no action sound, and return cleanly. Exact maglock Genesis visuals, other quality values, and positive-skill Electronics outcomes remain open. |
+| Scene 20, collision value `0x82` at ROM `0x1D9724`, event 2 | Building interaction continuation | The electromagnetic-lock handler `0x20E48` opens its generic prompt. Physical QA covers quality-2 passkey success, quality-1 insufficiency, Samurai no-skill result, Decker no-kit partial result, and Decker kit-assisted success. The no-kit roll reduces selection 2->1 without sound/map change; physical recontact reloads selection 2 through `0xB994`. A QA-seeded item `0x15` plus source-seeded three-roll success then requests `0x4B`; `0x2BD2` changes map index 483 from `0x82` to `0x81` only after the result is acknowledged. No-skill/partial/insufficient branches preserve the map and add no action sound. Kit acquisition, zero-roll alert, other passkey qualities, and exact independent maglock visuals remain open. |
 | Scene 26, collision record 117 (`0xA2`) at ROM `0x1D9E00`, world-mode-2 event 2 | Generic electromagnetic-lock continuation and passkey action | `0xB7B8` reaches `0x20E48`; descriptor-route CTest seeds active runner item `0x14`/quality 2, verifies sound `0x4B`, and checks sampled map index 712 changes `0xA2` to `0xA1` before ordinary Right input crosses the passage. Traversal clears that marker from the active collision buffer |
 | Scene 26, collision record 110 (`0x82`) at ROM `0x1D9DBA`, event 2; then `0xD8` records 124/125 at `0x1D9E46`, event `0x18` | Shared maglock continuation followed by typed Security Terminal continuation | The same live passkey changes sampled map index 525 from `0x82` to `0x81`; ordinary input follows the collision grid around the `0x7E` wall into the D8 lane. `0xB7B8` requires two negative samples and selects `0x20EC2`; the descriptor-spawn route opens the Electronics/Walk Away prompt. A separate checkpoint QA remains as focused coverage |
 | Any remaining in-range map-table event | Active map's own event table | The selected row is passed to the existing world-activity coordinator; missing/out-of-range tables remain unresolved |
@@ -125,9 +125,27 @@ runner has source skill byte `+0x8A=0`; ROM `0x21692` returns table `0x11CD2A`
 (first string pointer `0x11CA59`) before random checks or an action-sound call.
 The generic no-skill Electronics result has no choices, remains pixel-
 identical through a 30-frame wait, then ordinary A returns to a clean field.
-Inventory, map, and selection remain unchanged. All 48 full-screen captures
-plus four metadata files match across Debug and Release. Positive-skill
-success/failure/kit/alert outcomes remain open.
+Inventory, map, and selection remain unchanged.
+
+The ordinary-input Decker trials route then tests both positive-skill outcomes.
+The New Game Decker has Electronics 1 and no kit. Seed `0x0006` produces one
+success against the no-kit threshold, reducing selection 2->1 and showing the
+partial-result page without sound or map mutation. After the source 30-frame
+wait and A return, ordinary Up contacts record 117 again; ROM `0xB994` reloads
+the collision event selection as 2. The QA then inserts kit item `0x15` in the
+live Decker inventory as an explicit fixture. Seed `0x0004` yields two
+successful rolls from three kit-enabled trials, selecting the success page and
+requesting `0x4B`. The map remains `0x82` through the result page and changes to
+`0x81` on A return via `0x2BD2`. The kit is test-seeded; its story acquisition
+is not connected. The zero-success alert branch and exact Genesis maglock
+visuals remain open. This route writes 56 BMPs/60 artifacts; all Debug/Release
+files match by relative-path SHA-256.
+
+Across the six physical scene-20 CTests, 286 BMPs were reviewed. Exact-hash
+deduplication yielded 77 distinct 320x224 images; each was reviewed in
+contact sheets, and the dialogue/result/return frames were checked at full
+resolution. All 286 Debug/Release BMP pairs match. These internal captures
+verify complete redraws and adjacent field/HUD state, not Genesis fidelity.
 
 The joined scene-2-to-scene-26 terminal route writes 546 whole-screen BMPs
 across the event-1 approach, 500 scene-26 movement/interaction frames, result

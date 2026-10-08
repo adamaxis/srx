@@ -176,6 +176,7 @@ std::filesystem::path find_asset_root(
                    " [--field-scene20-passkey-qa <output-dir>]"
                    " [--field-scene20-insufficient-passkey-qa <output-dir>]"
                    " [--field-scene20-electronics-no-skill-qa <output-dir>]"
+                   " [--field-scene20-electronics-trials-qa <output-dir>]"
                    " [--field-scene26-event1-entry-qa <output-dir>]"
                    " [--field-scene26-event1-terminal-qa <output-dir>]"
                    " [--field-elevator-physical-entry-qa <output-dir>]"
@@ -273,6 +274,11 @@ std::filesystem::path find_asset_root(
             continue;
         }
         if (argument == "--field-scene20-electronics-no-skill-qa" &&
+            index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-scene20-electronics-trials-qa" &&
             index + 1 < argc) {
             ++index;
             continue;
@@ -8146,6 +8152,7 @@ enum class Scene20PhysicalEntryQaPath : std::uint8_t {
     passkey_success,
     passkey_insufficient,
     electronics_no_skill,
+    electronics_trials,
 };
 
 int run_field_scene20_physical_entry_qa(
@@ -9100,7 +9107,8 @@ int run_field_scene20_physical_entry_qa(
             std::string::npos &&
         maglock_choices.options[2].source_label.find("Walk") !=
             std::string::npos &&
-        (path != Scene20PhysicalEntryQaPath::electronics_no_skill ||
+        ((path != Scene20PhysicalEntryQaPath::electronics_no_skill &&
+          path != Scene20PhysicalEntryQaPath::electronics_trials) ||
          no_passkey_choices_text);
     if (!choices_are_source_complete ||
         field_hud_chrome_survives(maglock_choices_image, asset_root) ||
@@ -9319,6 +9327,380 @@ int run_field_scene20_physical_entry_qa(
             return 3;
         }
         write_state("scene20-return-after-electronics-no-skill");
+    } else if (path ==
+               Scene20PhysicalEntryQaPath::electronics_trials) {
+        constexpr std::uint8_t electronics_kit_code = 0x15U;
+        constexpr std::uint8_t maglock_passkey_code = 0x14U;
+        const auto& party = field_scene.field_party_records_for_dump();
+        bool active_party_member_found = false;
+        bool active_party_has_kit = false;
+        bool active_party_has_passkey = false;
+        std::uint8_t best_electronics_skill = 0U;
+        for (std::size_t slot = 0U; slot < party.size(); ++slot) {
+            const auto& runner = party[slot];
+            if (!field_scene.field_party_slot_active_for_dump(slot) ||
+                (runner.flags & 0x0100U) == 0U) {
+                continue;
+            }
+            active_party_member_found = true;
+            best_electronics_skill = std::max(
+                best_electronics_skill, runner.skills[9]);
+            active_party_has_kit = active_party_has_kit ||
+                std::find(runner.inventory_item_codes.begin(),
+                          runner.inventory_item_codes.end(),
+                          electronics_kit_code) !=
+                    runner.inventory_item_codes.end();
+            active_party_has_passkey = active_party_has_passkey ||
+                std::find(runner.inventory_item_codes.begin(),
+                          runner.inventory_item_codes.end(),
+                          maglock_passkey_code) !=
+                    runner.inventory_item_codes.end();
+        }
+        const auto& decker = field_scene.active_runner_record();
+        if (!active_party_member_found || decker.archetype_index != 3U ||
+            decker.skills[9] != 1U || best_electronics_skill != 1U ||
+            active_party_has_kit || active_party_has_passkey ||
+            field_scene.field_activity_selection_for_dump() != 2U) {
+            std::cerr << "Scene-20 Electronics trials QA: expected the "
+                         "ordinary Decker class-3 record with skill 1, no "
+                         "Electronics Kit/passkey, and selection 2 (class="
+                      << static_cast<unsigned>(decker.archetype_index)
+                      << ", skill="
+                      << static_cast<unsigned>(decker.skills[9])
+                      << ", best="
+                      << static_cast<unsigned>(best_electronics_skill)
+                      << ", kit=" << active_party_has_kit
+                      << ", passkey=" << active_party_has_passkey
+                      << ", selection=" << static_cast<unsigned>(
+                             field_scene.field_activity_selection_for_dump())
+                      << ")\n";
+            return 3;
+        }
+
+        const auto count_audio = [&field_audio_events](
+                                     const std::uint16_t event) {
+            return static_cast<std::size_t>(std::count(
+                field_audio_events.begin(), field_audio_events.end(), event));
+        };
+        const auto& live_decker = field_scene.active_runner_record();
+        auto expected_inventory = live_decker.inventory_item_codes;
+        auto expected_inventory_phase = live_decker.inventory_phase_bytes;
+
+        const auto run_trial = [&](const std::string_view stage,
+                                   const bool unlocks,
+                                   const std::uint8_t selection_before,
+                                   const std::uint16_t random_seed) {
+            const auto map_before = field_scene.state()
+                .field_scene_buffers.source_metadata.terrain_collision_map;
+            const auto sound_4b_before = count_audio(0x4BU);
+            const auto sound_30_before = count_audio(0x30U);
+
+            // ROM 0x0D44/0x0D3A/0x0DBA: seed 6 yields one no-kit face 5,
+            // meeting target 5; seed 4 yields kit faces 4, 2, 4, so two of
+            // three trials meet target 3. Pin only action boundaries.
+            field_scene.set_source_random_seed_for_dump(random_seed);
+            field_scene.set_controller_port_byte(0x40U); // ordinary A
+            field_scene.advance_frame();
+            ++frame;
+            const auto action_event =
+                field_scene.controller_event_word_for_dump();
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+            ++frame;
+
+            const auto& result_panel = field_scene.field_interaction_panel();
+            const auto result_image = render();
+            const auto trial_map = field_scene.state()
+                .field_scene_buffers.source_metadata.terrain_collision_map;
+            const auto& trial_runner = field_scene.active_runner_record();
+            const auto expected_selection = unlocks
+                ? static_cast<std::uint8_t>(0xFFU)
+                : static_cast<std::uint8_t>(selection_before - 1U);
+            const auto expected_text = unlocks
+                ? std::string_view("quick work of the lock")
+                : std::string_view("This attempt at the lock eludes you");
+            // ROM 0x2BD2 applies a negative lock result to the sampled map
+            // counter only after the generic result page returns to field.
+            const bool map_state_correct = trial_map == map_before;
+            const bool action_sound_correct =
+                count_audio(0x4BU) == sound_4b_before +
+                    (unlocks ? 1U : 0U) &&
+                count_audio(0x30U) == sound_30_before;
+            const bool result_state_correct =
+                (action_event & 0xFF00U) == 0x4000U &&
+                field_scene.field_interaction_open() && result_panel.open &&
+                result_panel.source_complete &&
+                result_panel.kind == DialoguePanelKind::information_page &&
+                result_panel.actor_kind == DialoguePanelActorKind::none &&
+                result_panel.option_count == 0U &&
+                result_panel.text_segment_count == 1U &&
+                result_panel.text_segments[0].find(expected_text) !=
+                    std::string_view::npos &&
+                field_scene.field_activity_selection_for_dump() ==
+                    expected_selection &&
+                trial_runner.inventory_item_codes == expected_inventory &&
+                trial_runner.inventory_phase_bytes ==
+                    expected_inventory_phase &&
+                trial_runner.skills[9] == 1U && map_state_correct &&
+                action_sound_correct &&
+                !field_hud_chrome_survives(result_image, asset_root) &&
+                result_image.size() == QSize(kSceneWidth, kSceneHeight);
+            const auto result_stage = std::string(stage) + "-result";
+            if (!result_state_correct || !save(result_stage) ||
+                (unlocks && !save("actual"))) {
+                std::cerr << "Scene-20 Electronics trials QA: ROM trial "
+                             "did not produce the expected "
+                          << (unlocks ? "unlock" : "partial-progress")
+                          << " page (selection="
+                          << static_cast<unsigned>(
+                                 field_scene.field_activity_selection_for_dump())
+                          << ", text='"
+                          << (result_panel.text_segment_count == 0U
+                                  ? std::string_view{}
+                                  : result_panel.text_segments[0])
+                          << "', map=" << map_state_correct
+                          << " (cell483="
+                          << (map_before.size() > 483U
+                                  ? static_cast<unsigned>(map_before[483U])
+                                  : 999U)
+                          << "->"
+                          << (trial_map.size() > 483U
+                                  ? static_cast<unsigned>(trial_map[483U])
+                                  : 999U)
+                          << ", sizes=" << map_before.size() << '/'
+                          << trial_map.size() << ')'
+                          << ", 0x4B=" << sound_4b_before << "->"
+                          << count_audio(0x4BU) << ")\n";
+                return false;
+            }
+            write_state(result_stage);
+
+            const auto wait_one = std::string(stage) + "-wait-1";
+            if (!save(wait_one)) {
+                return false;
+            }
+            for (std::uint8_t tick = 1U; tick < 30U; ++tick) {
+                field_scene.advance_frame();
+                ++frame;
+                if (tick == 14U || tick == 29U) {
+                    const auto wait_name = std::string(stage) + "-wait-" +
+                        std::to_string(static_cast<unsigned>(tick + 1U));
+                    if (!save(wait_name)) {
+                        return false;
+                    }
+                }
+            }
+            const auto held_result_image = render();
+            const auto& held_map = field_scene.state()
+                .field_scene_buffers.source_metadata.terrain_collision_map;
+            const auto& held_runner = field_scene.active_runner_record();
+            if (held_result_image != result_image || held_map != trial_map ||
+                held_runner.inventory_item_codes != expected_inventory ||
+                held_runner.inventory_phase_bytes !=
+                    expected_inventory_phase ||
+                held_runner.skills[9] != 1U ||
+                field_scene.field_activity_selection_for_dump() !=
+                    expected_selection ||
+                count_audio(0x4BU) != sound_4b_before +
+                    (unlocks ? 1U : 0U) ||
+                count_audio(0x30U) != sound_30_before ||
+                !save(std::string(stage) + "-held")) {
+                std::cerr << "Scene-20 Electronics trials QA: the generic "
+                             "trial result changed or mutated state during "
+                             "its 30-frame hold\n";
+                return false;
+            }
+            write_state(std::string(stage) + "-held");
+
+            field_scene.set_controller_port_byte(0x40U); // ordinary A
+            field_scene.advance_frame();
+            ++frame;
+            const auto acknowledgement_event =
+                field_scene.controller_event_word_for_dump();
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+            ++frame;
+            const auto returned_scene20 = render();
+            const auto returned_field_only = render_field_scene_only();
+            const auto& return_runner = field_scene.active_runner_record();
+            const auto& return_map = field_scene.state()
+                .field_scene_buffers.source_metadata.terrain_collision_map;
+            bool return_map_state_correct = return_map == trial_map;
+            if (unlocks) {
+                return_map_state_correct = trial_map.size() > 483U &&
+                    return_map.size() == trial_map.size() &&
+                    trial_map[483U] == 0x82U && return_map[483U] == 0x81U;
+                for (std::size_t cell = 0U;
+                     return_map_state_correct && cell < trial_map.size();
+                     ++cell) {
+                    if (cell != 483U && return_map[cell] != trial_map[cell]) {
+                        return_map_state_correct = false;
+                    }
+                }
+            }
+            const bool returned_cleanly =
+                (acknowledgement_event & 0xFF00U) == 0x4000U &&
+                !field_scene.field_interaction_open() &&
+                !field_scene.dialogue_open() &&
+                !field_scene.field_mode_text_open_for_dump() &&
+                !field_scene.shop_menu_open() &&
+                field_scene.field_scene_reference_for_dump() == 0x14U &&
+                field_hud_chrome_survives(returned_scene20, asset_root) &&
+                count_playfield_lit(returned_scene20) >= 100U &&
+                returned_scene20 == returned_field_only &&
+                return_runner.inventory_item_codes == expected_inventory &&
+                return_runner.inventory_phase_bytes ==
+                    expected_inventory_phase &&
+                return_runner.skills[9] == 1U &&
+                return_map_state_correct &&
+                field_scene.field_activity_selection_for_dump() ==
+                    expected_selection &&
+                count_audio(0x4BU) == sound_4b_before +
+                    (unlocks ? 1U : 0U) &&
+                count_audio(0x30U) == sound_30_before;
+            const auto return_stage = std::string(stage) + "-return";
+            const auto return_full_name = return_stage + ".bmp";
+            const auto return_field_name = return_stage + "-field-only.bmp";
+            write_state(return_stage);
+            if (!returned_cleanly ||
+                !returned_scene20.save(QString::fromStdWString(
+                    (output / return_full_name).wstring())) ||
+                !returned_field_only.save(QString::fromStdWString(
+                    (output / return_field_name).wstring())) ||
+                !save(return_stage)) {
+                std::cerr << "Scene-20 Electronics trials QA: A did not "
+                             "restore a clean full-screen field after "
+                             "the " << (unlocks ? "unlock" : "partial")
+                          << " result (ack="
+                          << ((acknowledgement_event & 0xFF00U) == 0x4000U)
+                          << ", interaction=" << field_scene.field_interaction_open()
+                          << ", scene=" << field_scene.field_scene_reference_for_dump()
+                          << ", hud=" << field_hud_chrome_survives(
+                                 returned_scene20, asset_root)
+                          << ", lit=" << count_playfield_lit(returned_scene20)
+                          << ", clean-pixels="
+                          << (returned_scene20 == returned_field_only)
+                          << ", map=" << return_map_state_correct
+                          << ", selection=" << static_cast<unsigned>(
+                                 field_scene.field_activity_selection_for_dump())
+                          << ", inventory="
+                          << (return_runner.inventory_item_codes ==
+                              expected_inventory)
+                          << ", audio4b=" << count_audio(0x4BU)
+                          << ", audio30=" << count_audio(0x30U)
+                          << ", cell483="
+                          << (trial_map.size() > 483U
+                                  ? static_cast<unsigned>(trial_map[483U])
+                                  : 999U)
+                          << "->"
+                          << (return_map.size() > 483U
+                                  ? static_cast<unsigned>(return_map[483U])
+                                  : 999U) << ")\n";
+                return false;
+            }
+            write_state(return_stage);
+            return true;
+        };
+
+        if (!run_trial("electronics-no-kit-partial", false, 2U, 0x0006U)) {
+            return 3;
+        }
+
+        // The field collision dispatcher restores FFE16E from the event code
+        // on a fresh contact (ROM 0xB994); partial progress is only the current
+        // interaction's value. Seed the kit in the live QA runner record so
+        // the second physical action exercises the source's kit success path.
+        auto& decker_with_kit = field_scene.active_runner_record();
+        std::optional<std::size_t> electronics_kit_slot;
+        for (std::size_t slot = 0U;
+             slot < decker_with_kit.inventory_item_codes.size(); ++slot) {
+            if (decker_with_kit.inventory_item_codes[slot] == 0U) {
+                electronics_kit_slot = slot;
+                break;
+            }
+        }
+        if (!electronics_kit_slot.has_value()) {
+            std::cerr << "Scene-20 Electronics trials QA: Decker inventory "
+                         "has no slot for the QA Electronics Kit\n";
+            return 3;
+        }
+        decker_with_kit.inventory_item_codes[*electronics_kit_slot] =
+            electronics_kit_code;
+        decker_with_kit.inventory_phase_bytes[*electronics_kit_slot] = 0U;
+        expected_inventory = decker_with_kit.inventory_item_codes;
+        expected_inventory_phase = decker_with_kit.inventory_phase_bytes;
+
+        std::uint16_t retry_contact_ticks = 0U;
+        for (; retry_contact_ticks < 120U &&
+               !field_scene.field_interaction_open(); ++retry_contact_ticks) {
+            field_scene.set_controller_nibble(0x01U); // ordinary Up
+            field_scene.advance_frame();
+            ++frame;
+        }
+        field_scene.set_controller_nibble(0U);
+        field_scene.advance_frame();
+        ++frame;
+        const auto retry_position = world_position();
+        const auto retry_projected_code =
+            field_scene.field_projected_code_for_dump();
+        const auto retry_activity_selection =
+            field_scene.field_activity_selection_for_dump();
+        const auto& retry_intro_panel = field_scene.field_interaction_panel();
+        const auto retry_intro_image = render();
+        if (!field_scene.field_interaction_open() ||
+            field_scene.field_scene_reference_for_dump() != 0x14U ||
+            retry_projected_code != 0xFF82U ||
+            retry_activity_selection != 2U ||
+            retry_intro_panel.actor_kind != DialoguePanelActorKind::none ||
+            field_hud_chrome_survives(retry_intro_image, asset_root) ||
+            !save("electronics-retry-introduction")) {
+            std::cerr << "Scene-20 Electronics trials QA: ordinary Up did "
+                         "not reopen the same physical lock with collision "
+                         "selection 2 (ticks=" << retry_contact_ticks
+                      << ", position=" << retry_position.first << ','
+                      << retry_position.second << ", projected=0x"
+                      << std::hex << retry_projected_code << std::dec
+                      << ", selection=" << static_cast<unsigned>(
+                             retry_activity_selection) << ")\n";
+            return 3;
+        }
+        write_state("electronics-retry-introduction");
+        for (std::uint8_t tick = 0U; tick < 10U; ++tick) {
+            field_scene.advance_frame();
+            ++frame;
+        }
+        field_scene.set_controller_port_byte(0x40U); // ordinary A: <MORE>
+        field_scene.advance_frame();
+        ++frame;
+        const auto retry_more_event =
+            field_scene.controller_event_word_for_dump();
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++frame;
+        for (std::uint8_t tick = 0U; tick < 8U; ++tick) {
+            field_scene.advance_frame();
+            ++frame;
+        }
+        const auto& retry_choices = field_scene.field_interaction_panel();
+        const auto retry_choices_image = render();
+        if ((retry_more_event & 0xFF00U) != 0x4000U ||
+            !field_scene.field_interaction_open() ||
+            retry_activity_selection != 2U ||
+            retry_choices.option_count != 3U ||
+            retry_choices.options[0].source_label.find("Electronics") ==
+                std::string_view::npos ||
+            retry_choices.options[2].source_label.find("Walk") ==
+                std::string_view::npos ||
+            field_hud_chrome_survives(retry_choices_image, asset_root) ||
+            !save("electronics-retry-choices-after-8-frames")) {
+            std::cerr << "Scene-20 Electronics trials QA: retry prompt did "
+                         "not retain the source Electronics/Frag/Walk rows\n";
+            return 3;
+        }
+        write_state("electronics-retry-choices");
+        if (!run_trial("electronics-kit-success", true, 2U, 0x0004U)) {
+            return 3;
+        }
     } else if (path == Scene20PhysicalEntryQaPath::grenade_unavailable) {
         constexpr std::uint8_t frag_grenade_code = 0x0DU;
         const auto& party = field_scene.field_party_records_for_dump();
@@ -9556,6 +9938,9 @@ int run_field_scene20_physical_entry_qa(
                                           : path == Scene20PhysicalEntryQaPath::
                                                        electronics_no_skill
                                                 ? "electronics-no-skill"
+                                          : path == Scene20PhysicalEntryQaPath::
+                                                       electronics_trials
+                                                ? "electronics-trials"
                                           : path == Scene20PhysicalEntryQaPath::
                                                        passkey_success
                                                 ? "passkey-success"
@@ -12713,6 +13098,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_scene20_electronics_no_skill_qa_path;
         std::optional<std::filesystem::path>
+            field_scene20_electronics_trials_qa_path;
+        std::optional<std::filesystem::path>
             field_scene26_event1_entry_qa_path;
         std::optional<std::filesystem::path>
             field_scene26_event1_terminal_qa_path;
@@ -12905,6 +13292,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene20_electronics_no_skill_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene20-electronics-trials-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+            field_scene20_electronics_trials_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -13521,6 +13915,13 @@ int main(int argc, char** argv) {
                     *field_scene20_electronics_no_skill_qa_path,
                     field_audio_events, field_source_boundaries,
                     Scene20PhysicalEntryQaPath::electronics_no_skill);
+            }
+            if (field_scene20_electronics_trials_qa_path.has_value()) {
+                return run_field_scene20_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_scene20_electronics_trials_qa_path,
+                    field_audio_events, field_source_boundaries,
+                    Scene20PhysicalEntryQaPath::electronics_trials);
             }
             if (field_scene26_event1_entry_qa_path.has_value()) {
                 return run_field_scene26_event1_physical_entry_qa(
