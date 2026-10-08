@@ -238,6 +238,7 @@ StartupIntegrationEvent advance_startup_opening_frame(
     }
     if (result == OpeningIntroAdvanceResult::source_complete) {
         append_event(state, "opening_intro.complete");
+        state.new_game_opening_completed = true;
         set_phase(state, callbacks, StartupIntegrationPhase::field_ready);
         if (callbacks.field_ready) {
             callbacks.field_ready();

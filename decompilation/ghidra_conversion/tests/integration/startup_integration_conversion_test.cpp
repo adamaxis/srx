@@ -36,6 +36,7 @@ struct Observations {
     std::vector<std::string> callbacks;
     std::vector<StartupIntegrationPhase> phases;
     std::size_t field_ready_count = 0;
+    bool new_game_auto_walk_handoff_seen = false;
     bool resource_work_area_zeroed = false;
     JoshuaArchetypeChoice initialized_archetype =
         JoshuaArchetypeChoice::samurai;
@@ -327,7 +328,11 @@ StartupIntegrationCallbacks make_callbacks(
     callbacks.phase_changed = [&observations](const StartupIntegrationPhase phase) {
         observations.phases.push_back(phase);
     };
-    callbacks.field_ready = [&observations] { ++observations.field_ready_count; };
+    callbacks.field_ready = [&state, &observations] {
+        ++observations.field_ready_count;
+        observations.new_game_auto_walk_handoff_seen =
+            state.new_game_opening_completed;
+    };
     return callbacks;
 }
 
@@ -535,6 +540,8 @@ int main() {
         restored_state.restored_field_state->world_mode != 0x0014U ||
         restored_state.restored_field_state->camera_x != 0x1234U ||
         restored_state.restored_field_state->camera_y != 0x5678U ||
+        restored_state.new_game_opening_completed ||
+        restored_observations.new_game_auto_walk_handoff_seen ||
         !has_event(restored_state, "save_field_restore.restored")) {
         return 11;
     }
@@ -714,6 +721,8 @@ int main() {
     }
     if (!opening_completed || new_game_state.phase !=
                                   StartupIntegrationPhase::field_ready ||
+        !new_game_state.new_game_opening_completed ||
+        !new_game_observations.new_game_auto_walk_handoff_seen ||
         new_game_observations.field_ready_count != 1U ||
         !has_event(new_game_state, "opening_intro.complete") ||
         !has_event(new_game_state, "phase.field_ready") ||

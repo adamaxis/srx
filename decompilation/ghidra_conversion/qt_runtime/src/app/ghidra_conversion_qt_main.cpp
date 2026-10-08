@@ -12458,6 +12458,17 @@ int run_field_stoker_collision_to_dialogue_qa(
     const auto mode_entry_ticks_before = std::count(
         source_boundaries.begin(), source_boundaries.end(),
         std::string("field.audio.mode_entry.service"));
+    const auto auto_walk_armed_before = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.opening_auto_walk.armed"));
+    const auto auto_walk_consumed_before = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.opening_auto_walk.consumed"));
+    if (auto_walk_armed_before != 1 || auto_walk_consumed_before != 0) {
+        std::cerr << "Stoker collision QA: New Game opening handoff was not "
+                     "armed exactly once before the field route\n";
+        return 3;
+    }
     const auto render_field = [&field_scene] {
         QImage image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
         image.fill(Qt::black);
@@ -12500,6 +12511,8 @@ int run_field_stoker_collision_to_dialogue_qa(
     const auto spawn_image = render_field();
     if (field_scene.field_scene_reference_for_dump() != 2U ||
         start_position.x != 0x3CE0U || start_position.y != 0x2D00U ||
+        !field_scene.opening_auto_walk_active_for_dump() ||
+        field_scene.field_controller_nibble_for_dump() != 0U ||
         !source_doorway_record_matches ||
         (field_scene.field_entity_behavior_flags_for_dump() & 0x02U) == 0U ||
         spawn_image.size() != QSize(kSceneWidth, kSceneHeight) ||
@@ -12518,7 +12531,6 @@ int run_field_stoker_collision_to_dialogue_qa(
         return 3;
     }
 
-    field_scene.set_controller_nibble(0x01U);
     bool position_changed = false;
     bool transition_started = false;
     bool fade_started = false;
@@ -12529,9 +12541,13 @@ int run_field_stoker_collision_to_dialogue_qa(
     std::uint8_t transition_event_code = 0U;
     std::uint16_t transition_projected_code = 0U;
     std::uint8_t transition_cell_status = 0U;
+    bool controller_stayed_released = true;
     std::uint32_t frame = 0U;
     for (; frame < 256U; ++frame) {
         field_scene.advance_frame();
+        controller_stayed_released = controller_stayed_released &&
+                                     field_scene.field_controller_nibble_for_dump() ==
+                                         0U;
         const auto position = field_scene.field_entity_world_position();
         position_changed = position_changed ||
                            position.x != start_position.x ||
@@ -12578,9 +12594,10 @@ int run_field_stoker_collision_to_dialogue_qa(
         }
     }
 
-    if (!position_changed || !transition_started) {
+    if (!position_changed || !transition_started ||
+        !controller_stayed_released) {
         const auto position = field_scene.field_entity_world_position();
-        std::cerr << "Stoker collision QA: normal up input did not reach a "
+        std::cerr << "Stoker collision QA: automatic opening walk did not reach a "
                      "source transition within 256 frames (scene="
                   << field_scene.field_scene_reference_for_dump() << ", x="
                   << position.x << ", y=" << position.y << ", heading="
@@ -12713,6 +12730,15 @@ int run_field_stoker_collision_to_dialogue_qa(
                   << ")\n";
         return 3;
     }
+    const auto auto_walk_consumed_after = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.opening_auto_walk.consumed"));
+    if (field_scene.opening_auto_walk_active_for_dump() ||
+        auto_walk_consumed_after != auto_walk_consumed_before + 1) {
+        std::cerr << "Stoker collision QA: first field-exit dispatch did not "
+                     "consume the New Game auto-walk state exactly once\n";
+        return 3;
+    }
     if (field_scene.field_transition_pending_for_dump()) {
         std::cerr << "Stoker collision QA: coordinator left its field "
                      "transition request armed while the dialogue owns the screen\n";
@@ -12736,7 +12762,8 @@ int run_field_stoker_collision_to_dialogue_qa(
     }
     trace << "stage\tframe\tscene\tx\ty\tworld_mode\tfield_mode\tevent"
              "\traw_collision\tprojected\tactivity\ttransition_pending"
-             "\tdialogue\tpalette_steps\n";
+             "\tdialogue\tpalette_steps\tcontroller_nibble"
+             "\topening_auto_walk\n";
     const auto write_state = [&] (const std::string_view stage) {
         const auto position = field_scene.field_entity_world_position();
         const auto& runtime = field_scene.field_runtime_state_for_dump();
@@ -12754,7 +12781,11 @@ int run_field_stoker_collision_to_dialogue_qa(
               << (field_scene.field_transition_pending_for_dump() ? 1 : 0)
               << '\t' << (field_scene.dialogue_open() ? 1 : 0) << '\t'
               << static_cast<unsigned>(
-                     field_scene.field_palette_fade_steps_for_dump()) << '\n';
+                     field_scene.field_palette_fade_steps_for_dump()) << '\t'
+              << static_cast<unsigned>(
+                     field_scene.field_controller_nibble_for_dump()) << '\t'
+              << (field_scene.opening_auto_walk_active_for_dump() ? 1 : 0)
+              << '\n';
         trace.flush();
     };
     write_state("stoker-arrival-dialogue");
@@ -12949,7 +12980,7 @@ int run_field_stoker_collision_to_dialogue_qa(
 
     const auto position = field_scene.field_entity_world_position();
     std::cout << "field_stoker_collision_to_dialogue_qa=passed "
-              << "input=up,a,b,a scene="
+              << "movement=automatic controller=none,a,b,a scene="
               << field_scene.field_scene_reference_for_dump()
               << " collision=0x" << std::hex
               << field_scene.field_terrain_collision_code_for_dump()
@@ -13969,6 +14000,12 @@ int main(int argc, char** argv) {
                 std::cerr << smoke_state_error << '\n';
                 return 3;
             }
+            // This route starts at the field-ready boundary emitted after a
+            // completed New Game intro. Exercise the source handoff state
+            // directly so its automatic movement can be checked with no
+            // synthetic controller press.
+            smoke_state.new_game_opening_completed =
+                field_stoker_collision_to_dialogue_qa_path.has_value();
             if (field_security_terminal_physical_entry_qa_path.has_value()) {
                 if (!smoke_state.field_session_source_assets.has_value() ||
                     !smoke_state.joshua_selection.has_value()) {

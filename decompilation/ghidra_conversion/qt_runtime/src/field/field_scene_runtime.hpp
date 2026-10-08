@@ -105,6 +105,11 @@ struct MagicDefenseStripView {
     std::uint8_t bar_row = 0;
 };
 
+struct FieldOpeningAutoWalkState {
+    bool active = false;
+    std::uint16_t target_heading = 0;
+};
+
 // Composition-only adapter for the separate Ghidra-conversion Qt executable.
 // It owns no ROM view and does not duplicate converted field state. The
 // conversion bootstrap remains authoritative; this class supplies host
@@ -657,6 +662,9 @@ public:
     std::uint8_t field_controller_nibble_for_dump() const noexcept {
         return field_controller_nibble_;
     }
+    bool opening_auto_walk_active_for_dump() const noexcept {
+        return field_opening_auto_walk_.active;
+    }
     std::uint16_t controller_event_word_for_dump() const noexcept {
         return field_controller_sample_state_.events;
     }
@@ -1152,6 +1160,7 @@ private:
     std::uint8_t field_controller_nibble_ = 0;
     std::uint8_t field_controller_port_byte_ = 0;
     std::uint16_t field_target_heading_ = 0;
+    FieldOpeningAutoWalkState field_opening_auto_walk_{};
     // Typed source field corresponding to FF014C, consumed only by the
     // 0xC7F8 scene-runtime dispatcher.
     std::uint8_t field_action_counter_ = 0;

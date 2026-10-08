@@ -125,6 +125,11 @@ struct StartupIntegrationState {
 
     StartupIntegrationPhase phase = StartupIntegrationPhase::not_started;
     bool pre_title_complete = false;
+    // The 0x59C5E New Game opening leaves the source FFE18B activity marker
+    // set for the initial field route. This fact is handed to the field
+    // runtime only when that opening reaches its real field-ready boundary;
+    // loading a save does not set it.
+    bool new_game_opening_completed = false;
     std::vector<std::string> event_log;
 };
 

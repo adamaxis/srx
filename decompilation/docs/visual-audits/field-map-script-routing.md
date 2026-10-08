@@ -3,8 +3,9 @@
 Date: 2026-10-08
 
 **Status:** partial. This slice adds a typed native route policy for the
-collision events already connected to the Qt field controller. It does not
-cover every map event or establish a first-entry Stoker cutscene.
+collision events already connected to the Qt field controller and records the
+source-driven New Game auto-walk that reaches Stoker on the first field entry.
+It does not cover every map event.
 
 ## ROM-derived route model
 
@@ -29,10 +30,19 @@ records.
 | Scene 26, collision record 110 (`0x82`) at ROM `0x1D9DBA`, event 2; then `0xD8` records 124/125 at `0x1D9E46`, event `0x18` | Shared maglock continuation followed by typed Security Terminal continuation | The same live passkey changes sampled map index 525 from `0x82` to `0x81`; ordinary input follows the collision grid around the `0x7E` wall into the D8 lane. `0xB7B8` requires two negative samples and selects `0x20EC2`; the descriptor-spawn route opens the Electronics/Walk Away prompt. A separate checkpoint QA remains as focused coverage |
 | Any remaining in-range map-table event | Active map's own event table | The selected row is passed to the existing world-activity coordinator; missing/out-of-range tables remain unresolved |
 
-The Stoker prompt is collision-driven after New Game has placed the runner on
-scene 2. I found no ROM condition in this traced path that automatically
-walks the runner into Stoker's on first map entry. The two adjacent C0 records
-are a different doorway and select scene 20; they must not be treated as the
+The first Stoker approach is automatic. `0x59C5E` sets `FFE18B` before the New
+Game opening. The field entry at `0x075E` initializes the ordinary scene-2 map
+and Joshua at `(0x3CE0, 0x2D00)`. After its 31 entity-service warmup passes,
+`0xACAE` sees the still-set activity marker; `FFE18C` is zero, so the handler
+sets Joshua's target heading to zero and installs the normal field movement
+continuation `0xB574`. That continuation uses the same directional movement,
+terrain probes, and collision dispatcher as controller-driven movement. It
+reaches scene-2 record 91 (`0xC2`), where `0xB7B8` publishes event 2 and the
+ordinary fade/field-exit path selects Stoker through `0x1F5CA`/`0x1F65A`.
+After that first exit-orchestrator pass, `0x075E` clears `FFE18B`. The walk is
+therefore a one-shot scripted movement on the real map, not a unique cutscene
+animation and not a controller-input route. The C0 records at `0x173124` and
+`0x17312E` are a separate doorway that selects scene 20; they are not the
 Stoker greeting.
 
 The ROM-derived scene profiles and extracted collision records show four
@@ -63,7 +73,7 @@ events against the current map's event table. The Qt field-exit coordinator
 uses that plan to select the dialogue event code, service route, or normal
 area-event continuation. It does not interpret ROM addresses at runtime.
 
-The scene-2 C1 route is now exercised from the New Game spawn with normal
+The scene-2 C1 route is exercised from the New Game spawn with normal
 controller input. It walks east through the open southern lane, then north
 through record 93's doorway cell, records event 1, and follows row 1 into the
 scene-26 resource activity. The source geometry explains why the approach

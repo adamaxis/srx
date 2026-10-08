@@ -2182,6 +2182,12 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         };
     field_runtime_callbacks_.run_field_exit_orchestrator =
         [this](integration::FieldRuntimeCoordinatorState& runtime) {
+            if (field_opening_auto_walk_.active) {
+                // The ROM clears FFE18B after the first field-exit
+                // orchestrator pass, regardless of the selected event route.
+                field_opening_auto_walk_.active = false;
+                source_boundary("field.opening_auto_walk.consumed");
+            }
             const auto anchor_refresh_required =
                 run_field_exit_orchestrator(runtime);
             source_boundary(anchor_refresh_required
@@ -3802,6 +3808,7 @@ bool FieldSceneRuntime::bootstrap(
     field_controller_port_byte_ = 0U;
     field_random_seed_ = static_cast<std::uint16_t>(
         QRandomGenerator::global()->generate());
+    field_opening_auto_walk_ = FieldOpeningAutoWalkState{};
     field_controller_sample_state_ = ControllerSampleState{};
     field_controller_latch_state_ = ControllerLatchState{};
     field_target_heading_ = 0U;
@@ -4100,6 +4107,13 @@ bool FieldSceneRuntime::bootstrap(
     field_movement_transition_state_.field_origin_x =
         static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x);
     field_movement_transition_state_.world_activity_source_word = 0U;
+    // ROM 0x59C5E leaves FFE18B set after the New Game opening. 0xACAE
+    // consumes that startup state to begin the ordinary heading-zero field
+    // continuation (0xB574); a restored save never takes this branch.
+    field_opening_auto_walk_.active =
+        startup_state.new_game_opening_completed &&
+        restored_field_state == nullptr && scene_reference == 2U;
+    field_opening_auto_walk_.target_heading = 0U;
     field_runtime_state_ = integration::FieldRuntimeCoordinatorState{};
     field_runtime_state_.scene_id =
         state_.field_scene_buffers.scene_reference;
@@ -4113,6 +4127,9 @@ bool FieldSceneRuntime::bootstrap(
         field_movement_direction_from_heading(field_movement_state_.heading);
 
     ready_ = true;
+    if (field_opening_auto_walk_.active) {
+        source_boundary("field.opening_auto_walk.armed");
+    }
     source_boundary("field.bootstrap.ready");
     return true;
 }
@@ -4500,7 +4517,7 @@ std::int16_t FieldSceneRuntime::evaluate_field_collision(
 }
 
 void FieldSceneRuntime::advance_field_movement() {
-    if (!ready_ || !field_entity_.active || field_controller_nibble_ == 0U) {
+    if (!ready_ || !field_entity_.active) {
         // The source keeps the walking pose only while a direction is held.
         // When the controller goes idle, the heading animation returns to
         // the directional idle list instead of looping the walk cycle while
@@ -4511,8 +4528,35 @@ void FieldSceneRuntime::advance_field_movement() {
         return;
     }
 
-    const auto input = decode_field_movement_input(
-        field_controller_nibble_, field_controller_heading_table_);
+    if (field_opening_auto_walk_.active &&
+        field_movement_transition_state_.interaction_transition_pending) {
+        // Keep the startup marker alive through the fade, as the ROM does,
+        // while the projected doorway event owns the field transition.
+        apply_field_entity_animation(false);
+        return;
+    }
+
+    if (!field_opening_auto_walk_.active && field_controller_nibble_ == 0U) {
+        if (field_entity_walking_) {
+            apply_field_entity_animation(false);
+        }
+        return;
+    }
+
+    const auto input = field_opening_auto_walk_.active
+                           ? FieldMovementInputResult{
+                                 true,
+                                 field_opening_auto_walk_.target_heading,
+                                 field_movement_direction_from_heading(
+                                     field_opening_auto_walk_.target_heading),
+                                 static_cast<std::uint16_t>(
+                                     field_movement_direction_from_heading(
+                                         field_opening_auto_walk_
+                                             .target_heading) *
+                                     2U)}
+                           : decode_field_movement_input(
+                                 field_controller_nibble_,
+                                 field_controller_heading_table_);
     if (!input.valid) {
         return;
     }
@@ -6146,7 +6190,8 @@ void FieldSceneRuntime::advance_frame() {
         refresh_command_overview_item_detail();
         return;
     }
-    field_runtime_state_.field_activity_lock = state_.field_lock != 0U;
+    field_runtime_state_.field_activity_lock =
+        state_.field_lock != 0U || field_opening_auto_walk_.active;
     field_runtime_state_.world_activity_countdown =
         world_frame_logic_state_.activity_countdown;
     field_runtime_state_.display_service_word = state_.display_service_word;

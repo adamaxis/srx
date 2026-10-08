@@ -252,8 +252,9 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_world_activity_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
-# Normal up input from the scene-2 New Game spawn reaches the motel doorway's
-# source C2 collision, event 2, and the shared Stoker dialogue. A/B input then
+# The completed New Game opening starts the source heading-zero automatic walk
+# from the scene-2 spawn. It reaches the motel doorway's source C2 collision,
+# event 2, and shared Stoker dialogue without controller input. A/B input then
 # follows the source manager and Leave records back to a freshly drawn field.
 # Every checkpoint is a complete 320x224 screen dump for visual review.
 add_test(NAME shadowrun_ghidra_conversion_qt_field_stoker_collision_to_dialogue_qa
@@ -264,6 +265,21 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_stoker_collision_to_dialogue_
 set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_stoker_collision_to_dialogue_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
+# The completed 0x59C5E New Game opening must carry its one-shot automatic
+# field movement marker into the real field-ready handoff. This source-level
+# integration check complements the Qt route QA, which follows the marker
+# through scene-2 movement, collision, dialogue, and clean return.
+add_executable(shadowrun_ghidra_conversion_qt_startup_integration_test
+    ../tests/integration/startup_integration_conversion_test.cpp)
+target_link_libraries(
+    shadowrun_ghidra_conversion_qt_startup_integration_test
+    PRIVATE shadowrun_ghidra_conversion_runtime)
+target_compile_definitions(
+    shadowrun_ghidra_conversion_qt_startup_integration_test PRIVATE
+    SHADOWRUN_CONVERSION_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets")
+add_test(NAME shadowrun_ghidra_conversion_qt_startup_integration_qa
+         COMMAND shadowrun_ghidra_conversion_qt_startup_integration_test)
 
 # Ordinary Right/Up input from the New Game spawn contacts scene-2 record 92
 # (the physical Ares entrance), publishes event 11, waits through the source
