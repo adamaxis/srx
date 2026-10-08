@@ -93,10 +93,6 @@ advance_entity_movement_and_mode_transition(
     // copies that collision result into the entity's +0xC6 field.
     record.projected_field_code = state.terrain_collision_code;
 
-    const auto event_code = static_cast<std::uint8_t>(
-        state.terrain_collision_code & 0x001FU);
-    result.event_code = event_code;
-
     const auto begin_idle =
         [&](const MovementModeTransitionContinuation continuation,
             const EntityMovementModeTransitionResultKind kind) {
@@ -110,54 +106,66 @@ advance_entity_movement_and_mode_transition(
             return release_record(kind);
         };
 
-    const auto begin_unconditionally =
-        [&](const MovementModeTransitionContinuation continuation,
-            const EntityMovementModeTransitionResultKind kind) {
-            result.continuation = continuation;
-            if (!callbacks.begin_world_activity) {
-                result.kind =
-                    EntityMovementModeTransitionResultKind::callback_unresolved;
-                return result;
-            }
-            callbacks.begin_world_activity(continuation);
-            return release_record(kind);
-        };
+    if (!callbacks.dispatch_field_map_event) {
+        result.kind =
+            EntityMovementModeTransitionResultKind::callback_unresolved;
+        return result;
+    }
+    const auto decision = callbacks.dispatch_field_map_event(
+        FieldMapCollisionEventInput{
+            state.scene_id,
+            state.world_mode,
+            state.field_transition_context,
+            state.interaction_gate,
+            state.terrain_collision_code,
+            candidate_x,
+            candidate_y,
+            state.field_global_flags,
+            state.activity_sequence_active,
+            state.terrain_event_suppressed,
+            state.world_effect_control_bit});
+    result.event_code = decision.event_code;
+    state.terrain_collision_code = decision.raw_collision_code;
+    record.projected_field_code = decision.raw_collision_code;
+    if (decision.rewrite_direction_probe) {
+        state.directional_probe_signs[0] = decision.direction_probe_value;
+    }
+    if (decision.rewrite_quantized_delta) {
+        state.quantized_field_delta = decision.quantized_delta;
+    }
+    if (decision.action == FieldMapEventAction::mark_projected_terrain) {
+        state.projected_terrain_event_published =
+            decision.projected_terrain_event_published;
+    }
+    if (decision.mode_event_code_published) {
+        // This is the only policy action that publishes FFFBF9. Early source
+        // continuations intentionally leave its previous value untouched.
+        state.mode_event_code = decision.event_code;
+        result.mode_event_code_published = true;
+    }
 
-    switch (event_code) {
-    case 0x1FU:
+    switch (decision.action) {
+    case FieldMapEventAction::begin_event_31_activity:
         return begin_idle(
             MovementModeTransitionContinuation::event_31_world_activity,
             EntityMovementModeTransitionResultKind::world_activity_started);
-    case 0x1EU:
+    case FieldMapEventAction::begin_event_30_activity:
         return begin_idle(
             MovementModeTransitionContinuation::event_30_world_activity,
             EntityMovementModeTransitionResultKind::world_activity_started);
-    case 0x1DU:
-        if (!state.activity_sequence_active) {
-            return begin_idle(
-                MovementModeTransitionContinuation::event_29_world_activity,
-                EntityMovementModeTransitionResultKind::world_activity_started);
-        }
-        return release_record(
-            EntityMovementModeTransitionResultKind::projection_skipped);
-    case 0x1CU:
-        if (!state.activity_sequence_active) {
-            return begin_idle(
-                MovementModeTransitionContinuation::event_28_world_activity,
-                EntityMovementModeTransitionResultKind::world_activity_started);
-        }
-        return release_record(
-            EntityMovementModeTransitionResultKind::projection_skipped);
-    case 0x1BU:
+    case FieldMapEventAction::begin_event_29_activity:
+        return begin_idle(
+            MovementModeTransitionContinuation::event_29_world_activity,
+            EntityMovementModeTransitionResultKind::world_activity_started);
+    case FieldMapEventAction::begin_event_28_activity:
+        return begin_idle(
+            MovementModeTransitionContinuation::event_28_world_activity,
+            EntityMovementModeTransitionResultKind::world_activity_started);
+    case FieldMapEventAction::begin_event_27_activity:
         return begin_idle(
             MovementModeTransitionContinuation::event_27_world_activity,
             EntityMovementModeTransitionResultKind::world_activity_started);
-    case 0x1AU: {
-        state.projected_terrain_event_published = false;
-        if ((record.projected_field_code & 0x00FFU) != 0x00DAU &&
-            !state.world_effect_control_bit) {
-            state.projected_terrain_event_published = true;
-        }
+    case FieldMapEventAction::mark_projected_terrain:
         if (!callbacks.mark_projected_terrain_cell) {
             result.kind =
                 EntityMovementModeTransitionResultKind::callback_unresolved;
@@ -177,47 +185,27 @@ advance_entity_movement_and_mode_transition(
         callbacks.begin_world_activity(result.continuation);
         return release_record(
             EntityMovementModeTransitionResultKind::projected_terrain_marked);
-    }
-    default:
-        break;
-    }
-
-    if ((state.scene_id == 0x14U || state.world_mode == 2U) &&
-        event_code >= 2U && event_code <= 5U &&
-        !state.terrain_event_suppressed) {
+    case FieldMapEventAction::begin_maglock_interaction: {
         state.activity_source_word = state.world_activity_source_word;
-        const auto result = begin_idle(
+        const auto started = begin_idle(
             MovementModeTransitionContinuation::maglock_door_interaction,
             EntityMovementModeTransitionResultKind::field_dialogue_started);
-        // ROM 0xB994 stores the event byte left in D0 by 0x1E2E0. The other
-        // begin-activity branches return without touching FFE16E.
-        if (result.kind !=
+        // ROM 0xB994 stores the event byte left in D0 by 0x1E2E0.
+        if (started.kind !=
             EntityMovementModeTransitionResultKind::callback_unresolved) {
-            state.activity_selection = event_code;
+            state.activity_selection = decision.event_code;
         }
-        return result;
+        return started;
     }
-
-    if (event_code == 0x18U) {
+    case FieldMapEventAction::begin_security_terminal:
         return begin_idle(
             MovementModeTransitionContinuation::building_security_terminal,
             EntityMovementModeTransitionResultKind::building_reaction_started);
-    }
-
-    if (event_code == 0x19U) {
-        if (state.field_transition_context == 0x13U) {
-            return begin_idle(
-                MovementModeTransitionContinuation::event_25_world_activity,
-                EntityMovementModeTransitionResultKind::world_activity_started);
-        }
-        state.directional_probe_signs[0] = -0x58;
-        state.quantized_field_delta = 0x00A8U;
-        state.terrain_collision_code = 0x00A8U;
-        record.projected_field_code = state.terrain_collision_code;
-        result.event_code = 8U;
-    }
-
-    if ((state.field_global_flags & 0x50U) != 0U) {
+    case FieldMapEventAction::begin_event_25_activity:
+        return begin_idle(
+            MovementModeTransitionContinuation::event_25_world_activity,
+            EntityMovementModeTransitionResultKind::world_activity_started);
+    case FieldMapEventAction::begin_field_mode_exit:
         result.continuation =
             MovementModeTransitionContinuation::field_mode_exit_finalizer;
         if (!callbacks.prepare_mode_entry_service ||
@@ -230,37 +218,30 @@ advance_entity_movement_and_mode_transition(
         callbacks.begin_world_activity(result.continuation);
         return release_record(
             EntityMovementModeTransitionResultKind::mode_exit_started);
-    }
-
-    // ROM 0xBA3A is the only point in this routine that publishes FFFBF9.
-    // The early 0x1A/0x18/0x1B..0x1F activity returns intentionally leave the
-    // previous global event code intact.
-    state.mode_event_code = result.event_code;
-    result.mode_event_code_published = true;
-
-    const bool skip_projection =
-        state.world_mode == 2U && state.scene_id != 0x14U &&
-        result.event_code == 0U &&
-        (state.interaction_gate != 0U || state.activity_sequence_active);
-    if (skip_projection) {
+    case FieldMapEventAction::skip_world_interaction:
         return release_record(
             EntityMovementModeTransitionResultKind::projection_skipped);
-    }
-    if (!callbacks.project_entity_world_interaction) {
-        result.kind = EntityMovementModeTransitionResultKind::callback_unresolved;
+    case FieldMapEventAction::project_world_interaction:
+        if (!callbacks.project_entity_world_interaction) {
+            result.kind =
+                EntityMovementModeTransitionResultKind::callback_unresolved;
+            return result;
+        }
+        if (callbacks.project_entity_world_interaction()) {
+            state.interaction_transition_pending = true;
+            state.interaction_transition_timer = 0x10U;
+            state.world_interaction_lock = true;
+            result.kind = EntityMovementModeTransitionResultKind::
+                projected_interaction_pending;
+            return result;
+        }
+        record.projected_field_code = state.terrain_collision_code;
+        result.kind = EntityMovementModeTransitionResultKind::
+            projected_field_code_updated;
         return result;
     }
-    if (callbacks.project_entity_world_interaction()) {
-        state.interaction_transition_pending = true;
-        state.interaction_transition_timer = 0x10U;
-        state.world_interaction_lock = true;
-        result.kind =
-            EntityMovementModeTransitionResultKind::projected_interaction_pending;
-        return result;
-    }
-    record.projected_field_code = state.terrain_collision_code;
-    result.kind =
-        EntityMovementModeTransitionResultKind::projected_field_code_updated;
+
+    result.kind = EntityMovementModeTransitionResultKind::callback_unresolved;
     return result;
 }
 

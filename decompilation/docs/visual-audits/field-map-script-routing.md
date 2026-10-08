@@ -23,6 +23,7 @@ records.
 | Scene 2, collision value `0xC2` at ROM `0x173138`, field mode 2/event 2 | Stoker dialogue script | `0x1F65A` selects the generic Stoker arrival dialogue; A/B advance the source prompt graph and return to the field |
 | Scene 2, collision value `0xCB` at ROM `0x173142`, field mode 2/event 11 | Ares service script | `0x1FA78` selects the Ares mode-text prompt; A opens the shop and Start returns |
 | Scene 2, paired collision values `0xC0` at ROM `0x173124` and `0x17312E`, event 0 | Active map's event table | Row 0 in `0x172CDC` selects scene `0x14` (scene 20) |
+| Scene 20, record 110 at `0x1D96DE`, raw `0x00C0`, event 0 | Scene-`0x14` generic interaction | Its profile has no event table; `0x1651E` returns on event 0, so no destination or reverse transition is established. The event system retains this as `no_route`; it is not labeled an exit. |
 | Scene 2, collision value `0xC1` at ROM `0x17314C`, event 1 | Active map's event table and world-activity resource selector | Row 1 in `0x172CDC` selects scene `0x1A` (scene 26); its resource bundle has bound 3 |
 | Scene 26-29 family, paired `0xDD` collision rectangles, event 29 | Floor selector and selected-scene transition | `0x58D94` calls `0x58DE0`; the typed child scene group contains scenes 26, 27, and 28. Physical QA covers scenes 26-29; destination identity remains open. This is separate from the Stoker scene-2 event-2 dialogue route |
 | Scene 20, collision value `0x82` at ROM `0x1D9724`, event 2 | Building interaction continuation | The electromagnetic-lock handler `0x20E48` opens its generic prompt. Physical QA covers quality-2 passkey success, quality-1 insufficiency, Samurai no-skill result, Decker no-kit partial result, and Decker kit-assisted success. The no-kit roll reduces selection 2->1 without sound/map change; physical recontact reloads selection 2 through `0xB994`. A QA-seeded item `0x15` plus source-seeded three-roll success then requests `0x4B`; `0x2BD2` changes map index 483 from `0x82` to `0x81` only after the result is acknowledged. No-skill/partial/insufficient branches preserve the map and add no action sound. Kit acquisition and other passkey qualities remain open. Seed 0 now follows the ordinary scene-20 zero-roll branch: the alert page is static for 30 frames, selection/inventory/map stay unchanged, and ROM 0x1E04A schedules timeout marker -1 for 0x78 frames without a scene-20 sound request. A field frame hands world_active=0xFFFF to the 0x1DE00 entity-target selector; its downstream actor/effect boundary remains unresolved. Exact independent maglock visuals remain open. |
@@ -44,6 +45,17 @@ therefore a one-shot scripted movement on the real map, not a unique cutscene
 animation and not a controller-input route. The C0 records at `0x173124` and
 `0x17312E` are a separate doorway that selects scene 20; they are not the
 Stoker greeting.
+
+All accepted movement-collision events now enter the typed native
+`FieldMapEventSystem` before their action is executed. It owns the `0xB7B8`
+event policy and the later scene/event-table route choice, while the movement
+controller executes returned actions. The completed-intro scene-entry event
+also uses its stateful rule registry, scoped to the ROM-derived scene-2 spawn
+and limited to once per session. The registry supports future inclusive map
+coordinate rules with typed prerequisites and once-per-visit/session policies.
+This connection does not fill unresolved source routes: for example, scene-20
+record 110 C0 has no table and no proven reverse destination, as described in
+the ROM-wide profile.
 
 The ROM-derived scene profiles and extracted collision records show four
 additional numeric event-29 groups: triggers in scenes 21-25 target the

@@ -68,6 +68,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 #include <unordered_map>
 #include <utility>
 
@@ -319,6 +320,9 @@ public:
     }
     std::uint8_t field_activity_selection_for_dump() const noexcept {
         return field_movement_transition_state_.activity_selection;
+    }
+    const FieldMapEventSystem& field_map_event_system_for_dump() const noexcept {
+        return field_map_event_system_;
     }
     std::uint16_t field_terrain_collision_code_for_dump() const noexcept {
         return field_movement_transition_state_.terrain_collision_code;
@@ -764,7 +768,10 @@ private:
     bool recover_blocked_field_movement(
         const MovementProbeResult& initial_probe);
     void advance_field_scene_transition_after_modal();
+    void handle_field_map_event_activations(
+        const std::vector<FieldMapEventActivation>& activations);
     bool prepare_runtime_field_scene(std::uint16_t scene_reference);
+    void dispatch_field_map_scene_entry(std::uint16_t scene_id);
     std::optional<std::size_t> projected_terrain_cell() const;
     void record_field_activity_start(
         MovementModeTransitionContinuation continuation);
@@ -1127,6 +1134,8 @@ private:
     std::array<std::uint16_t, 10> field_entity_table_occupancy_{};
     std::array<AuxiliaryWorldEntity, 10> field_entity_table_{};
     EntityMovementModeTransitionState field_movement_transition_state_{};
+    FieldMapEventSystem field_map_event_system_;
+    std::uint32_t field_map_event_state_flags_ = 0U;
     // Retain the last typed result from the blocked-movement dispatcher so
     // route QA can inspect the source event and continuation after a modal
     // handler has consumed its pending state.

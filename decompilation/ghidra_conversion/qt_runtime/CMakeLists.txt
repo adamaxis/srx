@@ -227,6 +227,16 @@ target_link_libraries(shadowrun_ghidra_conversion_qt_field_script_route_test
 add_test(NAME shadowrun_ghidra_conversion_qt_field_script_route_qa
          COMMAND shadowrun_ghidra_conversion_qt_field_script_route_test)
 
+# All accepted collision events enter the native dispatcher; typed area rules
+# also support scene-entry and coordinate-scoped one-shot events.
+add_executable(shadowrun_ghidra_conversion_qt_field_map_event_system_test
+    ../tests/field/field_map_event_system_conversion_test.cpp)
+target_link_libraries(
+    shadowrun_ghidra_conversion_qt_field_map_event_system_test
+    PRIVATE shadowrun_ghidra_conversion_modules)
+add_test(NAME shadowrun_ghidra_conversion_qt_field_map_event_system_qa
+         COMMAND shadowrun_ghidra_conversion_qt_field_map_event_system_test)
+
 # A projected interaction starts a source 0x10 countdown. 0x16396 fades on
 # even counts and publishes FFDF3E only after the signed counter falls below
 # zero; keep several full-frame captures so timer and screen clearing stay in

@@ -45,60 +45,60 @@ def event_handler(event: int, scene: int) -> tuple[str, str, str]:
         return (
             "scene2_stoker_dialogue_override",
             "0xB7B8; 0x1F5CA; 0x1F65A",
-            "resolve_field_script_route; FieldDialogueRuntime; field_scene_runtime",
+            "FieldMapEventSystem; FieldDialogueRuntime; field_scene_runtime",
         )
     if scene == 2 and event == 11:
         return (
             "scene2_ares_service_override",
             "0xB7B8; 0x1F5CA; 0x1FA78",
-            "resolve_field_script_route; FieldActionRuntime; field_scene_runtime",
+            "FieldMapEventSystem; FieldActionRuntime; field_scene_runtime",
         )
     if 2 <= event <= 5:
         return (
             "conditional_electromagnetic_lock",
             "0xB7B8; 0x20E48",
-            "advance_entity_movement_and_mode_transition; FieldInteractionRuntime",
+            "FieldMapEventSystem; advance_entity_movement_and_mode_transition; FieldInteractionRuntime",
         )
     direct = {
         0x18: (
             "security_terminal",
             "0xB7B8; 0x20EC2",
-            "advance_entity_movement_and_mode_transition; FieldInteractionRuntime",
+            "FieldMapEventSystem; advance_entity_movement_and_mode_transition; FieldInteractionRuntime",
         ),
         0x19: (
             "conditional_event25_or_rewrite_to_event8",
             "0xB7B8; 0x53EFA",
-            "advance_entity_movement_and_mode_transition; MovementModeTransitionContinuation; resolve_field_script_route",
+            "FieldMapEventSystem; advance_entity_movement_and_mode_transition; MovementModeTransitionContinuation",
         ),
         0x1A: (
             "projected_terrain_marker_then_activity",
             "0xB7B8; 0x16760; 0x20C90",
-            "advance_entity_movement_and_mode_transition; mark_projected_terrain_cell; FieldSceneRuntime",
+            "FieldMapEventSystem; advance_entity_movement_and_mode_transition; mark_projected_terrain_cell; FieldSceneRuntime",
         ),
         0x1B: (
             "world_activity_event27",
             "0xB7B8; 0x53D5A",
-            "advance_entity_movement_and_mode_transition; MovementModeTransitionContinuation",
+            "FieldMapEventSystem; advance_entity_movement_and_mode_transition; MovementModeTransitionContinuation",
         ),
         0x1C: (
             "changed_floor_scene_handoff",
             "0xB7B8; 0x58DB2",
-            "advance_entity_movement_and_mode_transition; MovementModeTransitionContinuation",
+            "FieldMapEventSystem; advance_entity_movement_and_mode_transition; MovementModeTransitionContinuation",
         ),
         0x1D: (
             "floor_selector",
             "0xB7B8; 0x58D94",
-            "advance_entity_movement_and_mode_transition; ElevatorSelectorRuntime",
+            "FieldMapEventSystem; advance_entity_movement_and_mode_transition; ElevatorSelectorRuntime",
         ),
         0x1E: (
             "world_activity_event30",
             "0xB7B8; 0x20990",
-            "advance_entity_movement_and_mode_transition; MovementModeTransitionContinuation",
+            "FieldMapEventSystem; advance_entity_movement_and_mode_transition; MovementModeTransitionContinuation",
         ),
         0x1F: (
             "world_activity_event31",
             "0xB7B8; 0x0DB26",
-            "advance_entity_movement_and_mode_transition; MovementModeTransitionContinuation",
+            "FieldMapEventSystem; advance_entity_movement_and_mode_transition; MovementModeTransitionContinuation",
         ),
     }
     if event in direct:
@@ -106,7 +106,7 @@ def event_handler(event: int, scene: int) -> tuple[str, str, str]:
     return (
         "generic_field_event_route",
         "0xB7B8; 0x1651E; 0x1F5CA",
-        "advance_entity_movement_and_mode_transition; apply_world_map_effect; resolve_field_script_route",
+        "FieldMapEventSystem; advance_entity_movement_and_mode_transition; apply_world_map_effect; FieldMapEventSystem.resolve_script_route",
     )
 
 

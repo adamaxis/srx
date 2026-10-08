@@ -38,6 +38,10 @@ EntityMovementModeTransitionCallbacks make_projection_callbacks(
         [&](const std::int16_t, const std::uint16_t) {
             return quantized_value;
         };
+    callbacks.dispatch_field_map_event =
+        [](const FieldMapCollisionEventInput& input) {
+            return resolve_field_map_collision_event(input);
+        };
     return callbacks;
 }
 
@@ -115,7 +119,7 @@ int main() {
 
     {
         auto record = make_record();
-        auto state = make_state();
+        auto state = make_state(0x001FU);
         state.mode_event_code = 0x12U;
         const auto result = advance_entity_movement_and_mode_transition(
             record, 0x1234U, 0x5678U, state, callbacks);

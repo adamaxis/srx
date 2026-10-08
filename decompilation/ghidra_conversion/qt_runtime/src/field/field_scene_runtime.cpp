@@ -530,7 +530,7 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
     orchestrator_state.prompt_display_prepared = false;
 
     const auto& event_metadata = state_.field_scene_buffers.source_metadata;
-    const auto event_route = resolve_field_script_route(
+    const auto event_route = field_map_event_system_.resolve_script_route(
         FieldScriptRouteContext{
             static_cast<std::uint8_t>(runtime_state.scene_id),
             static_cast<std::uint8_t>(runtime_state.field_mode),
@@ -942,6 +942,7 @@ bool FieldSceneRuntime::transition_to_elevator_destination(
     update_source_field_camera();
     update_entity_render_pass(state_.render_entities,
                               callbacks_.entity_render_pass);
+    dispatch_field_map_scene_entry(scene_reference);
     source_boundary("field.elevator.destination_loaded");
     return true;
 }
@@ -3817,6 +3818,9 @@ bool FieldSceneRuntime::bootstrap(
     field_collision_probe_state_ = CollisionProbeState{};
     field_movement_behavior_record_ = EntityBehaviorFrameRecord{};
     field_movement_transition_state_ = EntityMovementModeTransitionState{};
+    field_map_event_system_ =
+        FieldMapEventSystem(default_field_map_event_rules());
+    field_map_event_state_flags_ = 0U;
     field_palette_fade_steps_ = 0U;
     field_world_activity_scene_entry_pending_ = false;
     field_world_activity_state_ = WorldActivityState{};
@@ -4110,10 +4114,7 @@ bool FieldSceneRuntime::bootstrap(
     // ROM 0x59C5E leaves FFE18B set after the New Game opening. 0xACAE
     // consumes that startup state to begin the ordinary heading-zero field
     // continuation (0xB574); a restored save never takes this branch.
-    field_opening_auto_walk_.active =
-        startup_state.new_game_opening_completed &&
-        restored_field_state == nullptr && scene_reference == 2U;
-    field_opening_auto_walk_.target_heading = 0U;
+    field_opening_auto_walk_ = FieldOpeningAutoWalkState{};
     field_runtime_state_ = integration::FieldRuntimeCoordinatorState{};
     field_runtime_state_.scene_id =
         state_.field_scene_buffers.scene_reference;
@@ -4125,6 +4126,13 @@ bool FieldSceneRuntime::bootstrap(
         state_.field_scene_buffers.scene_reference;
     field_entity_.direction =
         field_movement_direction_from_heading(field_movement_state_.heading);
+
+    if (startup_state.new_game_opening_completed &&
+        restored_field_state == nullptr) {
+        field_map_event_state_flags_ |= field_map_event_flag(
+            FieldMapEventStateFlag::new_game_opening_completed);
+    }
+    dispatch_field_map_scene_entry(scene_reference);
 
     ready_ = true;
     if (field_opening_auto_walk_.active) {
@@ -4339,6 +4347,13 @@ bool FieldSceneRuntime::recover_blocked_field_movement(
     transition_callbacks.quantize_field_delta =
         [](const std::int16_t target, const std::uint16_t origin) {
             return quantize_field_delta(target, origin);
+        };
+    transition_callbacks.dispatch_field_map_event =
+        [this](const FieldMapCollisionEventInput& input) {
+            const auto dispatch =
+                field_map_event_system_.dispatch_collision(input);
+            source_boundary("field.map_event.collision_dispatched");
+            return dispatch.decision;
         };
     transition_callbacks.begin_world_activity_if_idle =
         [this](const MovementModeTransitionContinuation continuation) {
@@ -5442,7 +5457,38 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
     update_source_field_camera();
     update_entity_render_pass(state_.render_entities,
                               callbacks_.entity_render_pass);
+    dispatch_field_map_scene_entry(
+        state_.field_scene_buffers.scene_reference);
     source_boundary("field.scene.transition.same_scene_reentered");
+}
+
+void FieldSceneRuntime::dispatch_field_map_scene_entry(
+    const std::uint16_t scene_id) {
+    field_map_event_system_.begin_scene_visit(scene_id);
+    handle_field_map_event_activations(
+        field_map_event_system_.dispatch_scene_entry(
+            FieldMapEventTriggerContext{
+                scene_id,
+                field_entity_.world_position.x,
+                field_entity_.world_position.y,
+                field_map_event_state_flags_,
+                field_entity_.active}));
+}
+
+void FieldSceneRuntime::handle_field_map_event_activations(
+    const std::vector<FieldMapEventActivation>& activations) {
+    for (const auto& activation : activations) {
+        switch (activation.action) {
+        case FieldMapEventScriptAction::start_new_game_opening_walk:
+            field_opening_auto_walk_.active = true;
+            field_opening_auto_walk_.target_heading = 0U;
+            source_boundary("field.map_event.new_game_opening_walk_started");
+            break;
+        case FieldMapEventScriptAction::dispatch_native_script:
+            source_boundary("field.map_event.native_script_handler_unresolved");
+            break;
+        }
+    }
 }
 
 void FieldSceneRuntime::advance_frame() {
@@ -6189,6 +6235,16 @@ void FieldSceneRuntime::advance_frame() {
         refresh_command_overview_combat_bars();
         refresh_command_overview_item_detail();
         return;
+    }
+    if (field_entity_.active) {
+        handle_field_map_event_activations(
+            field_map_event_system_.evaluate_actor_scope(
+                FieldMapEventTriggerContext{
+                    state_.field_scene_buffers.scene_reference,
+                    field_entity_.world_position.x,
+                    field_entity_.world_position.y,
+                    field_map_event_state_flags_,
+                    true}));
     }
     field_runtime_state_.field_activity_lock =
         state_.field_lock != 0U || field_opening_auto_walk_.active;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "shadowrun_ghidra/entities/entity_behavior_frame_service_conversion.hpp"
+#include "shadowrun_ghidra/field/field_map_event_system_conversion.hpp"
 
 #include <array>
 #include <cstdint>
@@ -67,6 +68,13 @@ struct EntityMovementModeTransitionCallbacks {
     std::function<std::int16_t(std::int16_t target,
                                std::uint16_t origin)>
         quantize_field_delta;
+
+    // The native field-event system receives every accepted collision event
+    // after the projected source collision value has been recovered. It owns
+    // the event-to-action policy; this routine only executes the typed result.
+    std::function<FieldMapEventPolicyDecision(
+        const FieldMapCollisionEventInput&)>
+        dispatch_field_map_event;
 
     // ROM 0x1E2E0 / 0x1E2EC: bind the typed continuation to an activity
     // scheduler. The source routine does not return a selection value; the

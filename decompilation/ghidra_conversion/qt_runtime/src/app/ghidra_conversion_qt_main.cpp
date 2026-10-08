@@ -12461,12 +12461,16 @@ int run_field_stoker_collision_to_dialogue_qa(
     const auto auto_walk_armed_before = std::count(
         source_boundaries.begin(), source_boundaries.end(),
         std::string("field.opening_auto_walk.armed"));
+    const auto opening_event_started_before = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.map_event.new_game_opening_walk_started"));
     const auto auto_walk_consumed_before = std::count(
         source_boundaries.begin(), source_boundaries.end(),
         std::string("field.opening_auto_walk.consumed"));
-    if (auto_walk_armed_before != 1 || auto_walk_consumed_before != 0) {
-        std::cerr << "Stoker collision QA: New Game opening handoff was not "
-                     "armed exactly once before the field route\n";
+    if (auto_walk_armed_before != 1 || opening_event_started_before != 1 ||
+        auto_walk_consumed_before != 0) {
+        std::cerr << "Stoker collision QA: New Game opening event was not "
+                     "dispatched and armed exactly once before the field route\n";
         return 3;
     }
     const auto render_field = [&field_scene] {
@@ -12733,10 +12737,21 @@ int run_field_stoker_collision_to_dialogue_qa(
     const auto auto_walk_consumed_after = std::count(
         source_boundaries.begin(), source_boundaries.end(),
         std::string("field.opening_auto_walk.consumed"));
+    const auto& map_event_system =
+        field_scene.field_map_event_system_for_dump();
+    const auto& last_map_event =
+        map_event_system.last_collision_dispatch();
     if (field_scene.opening_auto_walk_active_for_dump() ||
-        auto_walk_consumed_after != auto_walk_consumed_before + 1) {
+        auto_walk_consumed_after != auto_walk_consumed_before + 1 ||
+        map_event_system.collision_dispatch_count() == 0U ||
+        !last_map_event.has_value() ||
+        last_map_event->input.scene_id != 2U ||
+        (last_map_event->input.raw_collision_code & 0x001FU) != 2U ||
+        last_map_event->decision.action !=
+            FieldMapEventAction::project_world_interaction) {
         std::cerr << "Stoker collision QA: first field-exit dispatch did not "
-                     "consume the New Game auto-walk state exactly once\n";
+                     "consume the New Game auto-walk state exactly once or "
+                     "route its C2 contact through the map-event system\n";
         return 3;
     }
     if (field_scene.field_transition_pending_for_dump()) {
@@ -12763,7 +12778,8 @@ int run_field_stoker_collision_to_dialogue_qa(
     trace << "stage\tframe\tscene\tx\ty\tworld_mode\tfield_mode\tevent"
              "\traw_collision\tprojected\tactivity\ttransition_pending"
              "\tdialogue\tpalette_steps\tcontroller_nibble"
-             "\topening_auto_walk\n";
+             "\topening_auto_walk\tmap_event_dispatches"
+             "\tlast_event_scene\tlast_event_raw\tlast_event_action\n";
     const auto write_state = [&] (const std::string_view stage) {
         const auto position = field_scene.field_entity_world_position();
         const auto& runtime = field_scene.field_runtime_state_for_dump();
@@ -12785,6 +12801,18 @@ int run_field_stoker_collision_to_dialogue_qa(
               << static_cast<unsigned>(
                      field_scene.field_controller_nibble_for_dump()) << '\t'
               << (field_scene.opening_auto_walk_active_for_dump() ? 1 : 0)
+              << '\t' << field_scene.field_map_event_system_for_dump()
+                                .collision_dispatch_count();
+        const auto& last = field_scene.field_map_event_system_for_dump()
+                               .last_collision_dispatch();
+        if (last.has_value()) {
+            trace << '\t' << last->input.scene_id << '\t'
+                  << last->input.raw_collision_code << '\t'
+                  << static_cast<unsigned>(last->decision.action);
+        } else {
+            trace << "\t-\t-\t-";
+        }
+        trace
               << '\n';
         trace.flush();
     };

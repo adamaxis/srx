@@ -116,6 +116,40 @@ continuation `0x20C90` if the source marker condition succeeds. Events `0x1C`,
 Those are source-proven branches, but their full in-game meaning and connected
 Qt handlers are unresolved. Their full per-record locations are in the TSV.
 
+## Native event system connection
+
+`FieldMapEventSystem` is the live native route owner at the field-controller
+seam. Every accepted blocked-movement collision passed from `0xB7B8` is
+submitted as a typed event with scene, event byte, raw collision value, world
+coordinates, and the source gates. The system returns a typed action such as
+project world interaction, start a maglock, mark projected terrain, or enter a
+source activity. The movement controller executes that result; it no longer
+contains its own event-ID switch. Route selection for the active scene's event
+table also goes through the same system. Unmapped table rows stay explicit
+`no_route` results.
+
+The rule registry also supports native scene-entry and actor-within-coordinate
+rules. Each rule has a scene, optional inclusive coordinate scope, required
+typed state flags, an action, and a repeat policy (`every_match`, once per scene
+visit, or once per session). The first registered rule is the ROM-backed New
+Game opening handoff: scene 2, spawn `(0x3CE0,0x2D00)`, and the completed-intro
+marker start the normal heading-zero movement once. The restored-save path
+does not publish the intro-complete flag. This is the first connected scripted
+event; future events can be added as authored native rules without changing
+collision or movement code.
+
+One important unresolved record is scene 20 record 110 at `0x1D96DE`: raw
+`0x00C0`, event 0, source bounds `x=0x0580..0x059F`,
+`y=0x0020..0x003F`. Its profile's
+event-table pointer at `0x1D91C8` is null. The generic `0xB7B8` path publishes
+event 0 and calls `0x1651E`; the scene-`0x14` branch in `0x1651E` only writes
+its special map cells when the incoming event byte is nonzero. The shared
+projection/carry path may still run, but this record supplies no map writes or
+event-table destination. Therefore no reverse-scene transition is established.
+The native event system reports its route as `no_route`; the rectangle is not
+currently classified as an exit. The new focused CTest covers that unresolved
+classification, but there is no physical-input scene-20 C0 QA route yet.
+
 ## Event-table values in maps 0-9
 
 Only scene profiles 0-9 carry event tables. The following lists show the raw
