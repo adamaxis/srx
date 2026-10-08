@@ -14,6 +14,7 @@
 #include "shadowrun_ghidra/field/field_coordinate_conversion.hpp"
 #include "shadowrun_ghidra/field/field_movement_input_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_animation_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_transition_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_projection_conversion.hpp"
 #include "shadowrun_ghidra/entities/movement_probe_conversion.hpp"
 #include "shadowrun_ghidra/entities/movement_route_conversion.hpp"
@@ -686,6 +687,17 @@ public:
     std::uint16_t field_entity_attack_selector_for_dump() const noexcept {
         return field_entity_animation_selector_;
     }
+    std::size_t field_weapon_projectile_count_for_dump() const noexcept {
+        return field_weapon_projectiles_.size();
+    }
+    std::optional<std::uint16_t>
+    field_weapon_projectile_selector_for_dump() const noexcept;
+    std::optional<std::uint16_t>
+    field_weapon_projectile_frame_for_dump() const noexcept;
+    EntitySpawnCycleAction last_field_weapon_spawn_action_for_dump() const
+        noexcept {
+        return last_field_weapon_spawn_result_.action;
+    }
     const EntityMovementModeTransitionResult&
     last_field_movement_transition_for_dump() const noexcept {
         return last_field_movement_transition_result_;
@@ -698,6 +710,7 @@ private:
     void configure_runtime_coordinator_callbacks();
     void advance_field_movement();
     void advance_field_actor_animation();
+    void advance_field_weapon_projectiles();
     void service_player_weapon_action();
     void initialize_field_entity_selection_state();
     void refresh_field_runner_state_and_assets();
@@ -722,6 +735,8 @@ private:
     bool load_image(const ConversionAssetCatalog& catalog,
                     std::string_view alias,
                     QImage& destination);
+    bool load_field_weapon_spawn_assets(
+        const ConversionAssetCatalog& catalog);
     const QImage* runner_preview_panel_for_record(
         const RunnerRecordFields& record) const;
     bool load_sprite_image(const ConversionAssetCatalog& catalog,
@@ -731,6 +746,7 @@ private:
                            int& origin_y);
     void paint_field_scene(QPainter& painter) const;
     void paint_field_entity(QPainter& painter) const;
+    void paint_field_weapon_projectiles(QPainter& painter) const;
     void paint_field_hud_overlays(QPainter& painter) const;
     FieldHudSlotState field_hud_slot_state(std::size_t slot) const;
     void paint_command_overview_magic(QPainter& painter) const;
@@ -801,6 +817,11 @@ private:
         EntityProjectionState projection{};
         std::uint8_t direction = 0;
         bool visible = false;
+    };
+
+    struct FieldWeaponProjectilePresentation {
+        SpawnEntityRecordState source_record{};
+        EntityAnimationState animation{};
     };
 
     std::function<void(std::string_view)> source_boundary_callback_;
@@ -973,6 +994,12 @@ private:
     std::array<QImage, 8> field_entity_attack_images_{};
     std::array<int, 8> field_entity_attack_origin_x_{};
     std::array<int, 8> field_entity_attack_origin_y_{};
+    std::array<std::vector<QImage>, 16> field_weapon_projectile_images_{};
+    std::array<std::vector<int>, 16> field_weapon_projectile_origin_x_{};
+    std::array<std::vector<int>, 16> field_weapon_projectile_origin_y_{};
+    std::vector<FieldWeaponProjectilePresentation>
+        field_weapon_projectiles_;
+    EntitySpawnCycleResult last_field_weapon_spawn_result_{};
     // Ordinary accepted movement uses four looping poses from 0xC062. C0B2's
     // eight-entry high-bit list is a separate finite behavior transition.
     std::array<std::vector<QImage>, 8> field_entity_walk_images_{};
@@ -1013,6 +1040,7 @@ private:
     std::uint8_t field_palette_fade_steps_ = 0U;
     bool field_world_activity_scene_entry_pending_ = false;
     WorldActivityState field_world_activity_state_{};
+    WorldActivityTimeoutState field_world_activity_timeout_state_{};
     WorldActivityRoutineState world_activity_routine_state_{};
     MovementModeTransitionContinuation field_activity_continuation_ =
         MovementModeTransitionContinuation::none;

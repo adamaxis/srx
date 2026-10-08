@@ -4552,7 +4552,7 @@ GenesisFieldModeResources read_genesis_field_mode_resources_at(
     const auto setup_block = static_cast<std::size_t>(read_rom_u32(
         rom, record_offset + 0x34U,
         "Genesis mode-2 setup pointer is truncated"));
-    if (setup_block > rom.size() || rom.size() - setup_block < 0x20U) {
+    if (setup_block > rom.size() || rom.size() - setup_block < 0x28U) {
         throw std::out_of_range("Genesis mode-2 setup block is truncated");
     }
 
@@ -4653,6 +4653,16 @@ GenesisFieldModeResources read_genesis_field_mode_resources_at(
         static_cast<std::size_t>(read_rom_u32(
             rom, setup_block + 0x18U,
             "Genesis mode-2 pattern length is truncated")),
+        static_cast<std::size_t>(read_rom_u32(
+            rom, setup_block + 0x1CU,
+            "Genesis field object-pattern pointer is truncated")) &
+            ~std::size_t{1},
+        static_cast<std::size_t>(read_rom_u32(
+            rom, setup_block + 0x20U,
+            "Genesis field object-pattern VRAM target is truncated")),
+        static_cast<std::size_t>(read_rom_u32(
+            rom, setup_block + 0x24U,
+            "Genesis field object-pattern length is truncated")),
         metatile_stream,
         primary_tilemap,
         secondary_tilemap,
@@ -5439,6 +5449,218 @@ decode_genesis_field_entity_animation_sequences(
                 field_palette_line, true));
         }
         animations.push_back(std::move(animation));
+    }
+    return animations;
+}
+
+std::array<GenesisFieldSpawnAnimation, 16>
+decode_genesis_field_spawn_animations(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kKindZeroAnimationPointers = 0x630CU;
+    constexpr std::uint16_t kSpawnEntityPaletteAttribute = 0x4000U;
+    constexpr std::uint16_t kEndSpriteList = 0x8000U;
+    constexpr std::size_t kVramSize = 0x10000U;
+
+    const auto read16 = [&](const std::size_t offset, const char* what) {
+        require_bytes(rom.size() - std::min(offset, rom.size()), 2U, what);
+        return static_cast<std::uint16_t>(
+            (static_cast<std::uint16_t>(rom[offset]) << 8U) |
+            rom[offset + 1U]);
+    };
+    const auto read32 = [&](const std::size_t offset, const char* what) {
+        require_bytes(rom.size() - std::min(offset, rom.size()), 4U, what);
+        return (static_cast<std::uint32_t>(rom[offset]) << 24U) |
+               (static_cast<std::uint32_t>(rom[offset + 1U]) << 16U) |
+               (static_cast<std::uint32_t>(rom[offset + 2U]) << 8U) |
+               static_cast<std::uint32_t>(rom[offset + 3U]);
+    };
+
+    // Every field-mode setup record points at this same raw source block.
+    // 0x1406 sends its even pointer through 0x0F5C, not the 0x1530 resource
+    // decoder. Copy the named block into its source VRAM address only here in
+    // the offline importer; runtime rendering consumes the extracted frames.
+    const auto resources = read_genesis_field_mode_resources(rom, 0U);
+    if (resources.object_pattern_vram_offset != 0xB000U ||
+        resources.object_pattern_byte_count == 0U ||
+        resources.object_pattern_byte_count % 32U != 0U ||
+        resources.object_pattern_vram_offset > kVramSize ||
+        resources.object_pattern_byte_count >
+            kVramSize - resources.object_pattern_vram_offset) {
+        throw std::runtime_error(
+            "Genesis field object-pattern upload has an invalid VRAM range");
+    }
+    require_bytes(rom.size() - std::min(resources.object_pattern_data_offset,
+                                        rom.size()),
+                  resources.object_pattern_byte_count,
+                  "Genesis field object-pattern block is truncated");
+    std::vector<std::uint8_t> object_vram(kVramSize, 0U);
+    std::copy_n(rom.begin() + static_cast<std::ptrdiff_t>(
+                                   resources.object_pattern_data_offset),
+                resources.object_pattern_byte_count,
+                object_vram.begin() + static_cast<std::ptrdiff_t>(
+                                          resources.object_pattern_vram_offset));
+    const auto palette = read_genesis_field_palette_set(
+        rom, resources.palette_offset);
+
+    const auto decode_sprite_list = [&](const std::size_t list_offset) {
+        struct PositionedSprite {
+            std::int32_t x = 0;
+            std::int32_t y = 0;
+            std::uint8_t size = 0;
+            std::uint16_t attributes = 0;
+        };
+        std::vector<PositionedSprite> sprites;
+        auto source = list_offset;
+        for (;;) {
+            const auto x_word = read16(
+                source, "Genesis field spawn sprite-list X is truncated");
+            source += 2U;
+            if (x_word == kEndSpriteList) {
+                break;
+            }
+            const auto y_word = read16(
+                source, "Genesis field spawn sprite-list Y is truncated");
+            const auto size_word = read16(
+                source + 2U,
+                "Genesis field spawn sprite-list size is truncated");
+            const auto attributes = read16(
+                source + 4U,
+                "Genesis field spawn sprite-list attributes are truncated");
+            source += 6U;
+            sprites.push_back({static_cast<std::int16_t>(x_word),
+                               static_cast<std::int16_t>(y_word),
+                               static_cast<std::uint8_t>(size_word),
+                               static_cast<std::uint16_t>(
+                                   attributes | kSpawnEntityPaletteAttribute)});
+            if (sprites.size() > 80U) {
+                throw std::runtime_error(
+                    "Genesis field spawn sprite list exceeds its source bounds");
+            }
+        }
+
+        if (sprites.empty()) {
+            return GenesisFieldSpawnSpriteFrame{
+                RgbaImage{1U, 1U, {{0U, 0U, 0U, 0U}}}, 0, 0};
+        }
+
+        std::int32_t min_x = std::numeric_limits<std::int32_t>::max();
+        std::int32_t min_y = std::numeric_limits<std::int32_t>::max();
+        std::int32_t max_x = std::numeric_limits<std::int32_t>::min();
+        std::int32_t max_y = std::numeric_limits<std::int32_t>::min();
+        for (const auto& sprite : sprites) {
+            const auto width = static_cast<std::int32_t>(
+                ((sprite.size >> 2U) & 0x03U) + 1U) * 8;
+            const auto height = static_cast<std::int32_t>(
+                (sprite.size & 0x03U) + 1U) * 8;
+            min_x = std::min(min_x, sprite.x);
+            min_y = std::min(min_y, sprite.y);
+            max_x = std::max(max_x, sprite.x + width);
+            max_y = std::max(max_y, sprite.y + height);
+        }
+        if (max_x <= min_x || max_y <= min_y ||
+            max_x - min_x > std::numeric_limits<std::uint16_t>::max() ||
+            max_y - min_y > std::numeric_limits<std::uint16_t>::max()) {
+            throw std::runtime_error(
+                "Genesis field spawn sprite bounds are invalid");
+        }
+
+        RgbaImage image{
+            static_cast<std::uint16_t>(max_x - min_x),
+            static_cast<std::uint16_t>(max_y - min_y),
+            std::vector<native::Rgba8>(
+                static_cast<std::size_t>(max_x - min_x) *
+                    static_cast<std::size_t>(max_y - min_y),
+                native::Rgba8{0U, 0U, 0U, 0U}),
+        };
+        for (const auto& sprite : sprites) {
+            const auto attributes = sprite.attributes;
+            const auto tile_base = static_cast<std::size_t>(
+                attributes & 0x07FFU);
+            const auto palette_line = static_cast<std::size_t>(
+                (attributes >> 13U) & 0x03U);
+            const auto hflip = (attributes & 0x0800U) != 0U;
+            const auto vflip = (attributes & 0x1000U) != 0U;
+            const auto width_tiles = static_cast<std::size_t>(
+                ((sprite.size >> 2U) & 0x03U) + 1U);
+            const auto height_tiles = static_cast<std::size_t>(
+                (sprite.size & 0x03U) + 1U);
+            for (std::size_t tile_x = 0; tile_x < width_tiles; ++tile_x) {
+                for (std::size_t tile_y = 0; tile_y < height_tiles; ++tile_y) {
+                    const auto source_tile_x =
+                        hflip ? width_tiles - 1U - tile_x : tile_x;
+                    const auto source_tile_y =
+                        vflip ? height_tiles - 1U - tile_y : tile_y;
+                    const auto tile_index = tile_base +
+                        source_tile_x * height_tiles + source_tile_y;
+                    const auto tile_offset = tile_index * 32U;
+                    if (tile_offset > object_vram.size() ||
+                        object_vram.size() - tile_offset < 32U) {
+                        throw std::out_of_range(
+                            "Genesis field spawn sprite tile is outside VRAM");
+                    }
+                    const auto tile = decode_genesis_tile(
+                        object_vram.data() + tile_offset, 32U);
+                    for (std::size_t pixel_y = 0; pixel_y < 8U; ++pixel_y) {
+                        for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
+                            const auto color_index = tile.pixels[
+                                (vflip ? 7U - pixel_y : pixel_y) * 8U +
+                                (hflip ? 7U - pixel_x : pixel_x)];
+                            if (color_index == 0U) {
+                                continue;
+                            }
+                            const auto target_x =
+                                sprite.x - min_x +
+                                static_cast<std::int32_t>(tile_x * 8U +
+                                                          pixel_x);
+                            const auto target_y =
+                                sprite.y - min_y +
+                                static_cast<std::int32_t>(tile_y * 8U +
+                                                          pixel_y);
+                            image.pixels[
+                                static_cast<std::size_t>(target_y) *
+                                    image.width +
+                                static_cast<std::size_t>(target_x)] =
+                                palette[palette_line * 16U + color_index];
+                        }
+                    }
+                }
+            }
+        }
+
+        return GenesisFieldSpawnSpriteFrame{
+            std::move(image),
+            static_cast<std::int16_t>(min_x),
+            static_cast<std::int16_t>(min_y),
+        };
+    };
+
+    std::array<GenesisFieldSpawnAnimation, 16> animations{};
+    for (std::size_t direction = 0; direction < animations.size(); ++direction) {
+        const auto selector = static_cast<std::uint16_t>(direction * 4U);
+        const auto state_list = static_cast<std::size_t>(read32(
+            kKindZeroAnimationPointers + selector,
+            "Genesis field spawn direction pointer is truncated"));
+        const auto marker = read16(
+            state_list, "Genesis field spawn animation marker is truncated");
+        const auto frame_count = static_cast<std::size_t>(marker & 0x7FFFU);
+        if ((marker & 0x8000U) == 0U || frame_count == 0U ||
+            frame_count > 16U) {
+            throw std::runtime_error(
+                "Genesis field spawn animation list has an invalid marker");
+        }
+        auto& animation = animations[direction];
+        animation.selector = selector;
+        animation.state_marker = marker;
+        animation.frame_increment = read16(
+            state_list + 2U,
+            "Genesis field spawn animation cadence is truncated");
+        animation.frames.reserve(frame_count);
+        for (std::size_t frame = 0; frame < frame_count; ++frame) {
+            const auto sprite_list = static_cast<std::size_t>(read32(
+                state_list + 4U + frame * 4U,
+                "Genesis field spawn sprite-list pointer is truncated"));
+            animation.frames.push_back(decode_sprite_list(sprite_list));
+        }
     }
     return animations;
 }

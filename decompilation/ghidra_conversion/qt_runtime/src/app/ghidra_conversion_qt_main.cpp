@@ -13951,6 +13951,10 @@ int main(int argc, char** argv) {
                 weapon_fire_scene.set_controller_port_byte(0x40U);
                 weapon_fire_scene.advance_frame();
                 const auto fire_actual = render_weapon_fire_scene();
+                const auto projectile_selector = weapon_fire_scene
+                    .field_weapon_projectile_selector_for_dump();
+                const auto projectile_frame = weapon_fire_scene
+                    .field_weapon_projectile_frame_for_dump();
                 const auto fire_attack_saved = save_weapon_fire_scene(
                     "attack", fire_actual);
                 if (weapon_fire_scene.active_runner_record().ammo_rounds !=
@@ -13962,6 +13966,12 @@ int main(int argc, char** argv) {
                     !weapon_fire_scene.field_entity_attack_pose_for_dump() ||
                     weapon_fire_scene.field_entity_animation_selector_for_dump() !=
                         0x0040U ||
+                    weapon_fire_scene.last_field_weapon_spawn_action_for_dump() !=
+                        EntitySpawnCycleAction::spawned ||
+                    weapon_fire_scene.field_weapon_projectile_count_for_dump() !=
+                        1U ||
+                    projectile_selector != std::optional<std::uint16_t>{0U} ||
+                    projectile_frame != std::optional<std::uint16_t>{0U} ||
                     weapon_fire_audio != std::vector<std::uint16_t>{0x001CU} ||
                     !ammo_counter_matches_for_slot(fire_actual, 5, 0U) ||
                     weapon_fire_scene.command_overview_open() ||
@@ -13969,7 +13979,7 @@ int main(int argc, char** argv) {
                     weapon_fire_scene.hotel_menu_open() ||
                     weapon_fire_scene.field_interaction_open() ||
                     !fire_attack_saved) {
-                    std::cerr << "field player action dump: live A input did not consume one loaded round, select C042, update the HUD, and request source sound 0x1C\n";
+                    std::cerr << "field player action dump: live A input did not consume one loaded round, allocate the source projectile pair, show directional frame 0, select C042, update the HUD, and request source sound 0x1C\n";
                     return 3;
                 }
                 weapon_fire_scene.set_controller_port_byte(0U);
@@ -13977,6 +13987,17 @@ int main(int argc, char** argv) {
                 auto prior_delay = weapon_fire_scene
                                        .active_runner_record()
                                        .animation_action_gate;
+                QImage projectile_clear_image;
+                bool projectile_first_frame_visible = false;
+                std::ofstream projectile_animation_trace(
+                    weapon_fire_dump_path / "projectile-animation.tsv",
+                    std::ios::trunc);
+                if (!projectile_animation_trace) {
+                    std::cerr << "field player action dump: could not write projectile-animation.tsv\n";
+                    return 3;
+                }
+                projectile_animation_trace
+                    << "delay_frame\tprojectile_count\tselector\tframe\tfull_screen_differs_from_attack\n";
                 for (std::uint16_t delay_frame = 1U;
                      delay_frame <= 512U && prior_delay >= 0;
                      ++delay_frame) {
@@ -13985,6 +14006,12 @@ int main(int argc, char** argv) {
                     const auto next_delay = weapon_fire_scene
                                                 .active_runner_record()
                                                 .animation_action_gate;
+                    const auto projectile_count = weapon_fire_scene
+                        .field_weapon_projectile_count_for_dump();
+                    const auto visible_selector = weapon_fire_scene
+                        .field_weapon_projectile_selector_for_dump();
+                    const auto visible_frame = weapon_fire_scene
+                        .field_weapon_projectile_frame_for_dump();
                     const auto delay_name =
                         std::string("action-delay-") +
                         std::to_string(delay_frame);
@@ -13993,9 +14020,55 @@ int main(int argc, char** argv) {
                              .field_entity_attack_pose_for_dump() ||
                         weapon_fire_audio !=
                             std::vector<std::uint16_t>{0x001CU} ||
-                        !same_full_frame(fire_actual, delay_image) ||
                         !save_weapon_fire_scene(delay_name, delay_image)) {
-                        std::cerr << "field player action dump: C042 pose, HUD, or one-shot audio changed during the source +0xDC delay\n";
+                        std::cerr << "field player action dump: C042 pose, action delay, HUD, or one-shot audio changed during the source +0xDC delay\n";
+                        return 3;
+                    }
+                    const bool differs_from_attack =
+                        !same_full_frame(fire_actual, delay_image);
+                    projectile_animation_trace
+                        << delay_frame << '\t' << projectile_count << '\t'
+                        << (visible_selector.has_value()
+                                ? std::to_string(*visible_selector)
+                                : std::string("none"))
+                        << '\t'
+                        << (visible_frame.has_value()
+                                ? std::to_string(*visible_frame)
+                                : std::string("none"))
+                        << '\t' << (differs_from_attack ? 1 : 0) << '\n';
+                    // The 0x8003 list is three frames. The spawned record
+                    // begins at frame zero, then advances on the source
+                    // 0x1000/0x270F cadence and is retired by the high-bit
+                    // continuation after its final descriptor.
+                    const bool source_animation_state_matches =
+                        (delay_frame == 1U && projectile_count == 1U &&
+                         visible_frame == std::optional<std::uint16_t>{1U}) ||
+                        (delay_frame == 2U && projectile_count == 1U &&
+                         visible_frame == std::optional<std::uint16_t>{2U}) ||
+                        (delay_frame >= 3U && projectile_count == 0U &&
+                         !visible_frame.has_value());
+                    if (!source_animation_state_matches) {
+                        std::cerr << "field player action dump: projectile list state did not follow its source frame/termination sequence at delay frame "
+                                  << delay_frame << " count=" << projectile_count
+                                  << " selector="
+                                  << (visible_selector.has_value()
+                                          ? std::to_string(*visible_selector)
+                                          : std::string("none"))
+                                  << " frame="
+                                  << (visible_frame.has_value()
+                                          ? std::to_string(*visible_frame)
+                                          : std::string("none")) << '\n';
+                        return 3;
+                    }
+                    if (delay_frame == 1U) {
+                        projectile_first_frame_visible = differs_from_attack;
+                    }
+                    if (delay_frame == 3U) {
+                        projectile_clear_image = delay_image;
+                    } else if (delay_frame > 3U &&
+                               !same_full_frame(projectile_clear_image,
+                                                delay_image)) {
+                        std::cerr << "field player action dump: field pixels changed after the projectile list ended while C042 remained held\n";
                         return 3;
                     }
                     fire_delay_values.push_back(next_delay);
@@ -14003,6 +14076,12 @@ int main(int argc, char** argv) {
                 }
                 if (prior_delay >= 0 || fire_delay_values.empty()) {
                     std::cerr << "field player action dump: source action delay did not reach its negative ready state\n";
+                    return 3;
+                }
+                if (!projectile_first_frame_visible ||
+                    projectile_clear_image.isNull() ||
+                    same_full_frame(fire_actual, projectile_clear_image)) {
+                    std::cerr << "field player action dump: whole-screen captures did not show the projectile animation and its clean removal\n";
                     return 3;
                 }
                 auto fire_hold = render_weapon_fire_scene();
@@ -14016,9 +14095,9 @@ int main(int argc, char** argv) {
                              .field_entity_attack_pose_for_dump() ||
                         weapon_fire_audio !=
                             std::vector<std::uint16_t>{0x001CU} ||
-                        !same_full_frame(fire_actual, fire_hold) ||
+                        !same_full_frame(projectile_clear_image, fire_hold) ||
                         !save_weapon_fire_scene(hold_name, fire_hold)) {
-                        std::cerr << "field player action dump: the static C042 pose changed during a 30-frame idle hold or the sound repeated\n";
+                        std::cerr << "field player action dump: the cleared C042 pose changed during a 30-frame idle hold or the sound repeated\n";
                         return 3;
                     }
                 }

@@ -73,6 +73,8 @@ constexpr std::string_view kFieldEntityWalkAliasPrefix =
     "field.entities.movement.";
 constexpr std::string_view kFieldEntityAttackAliasPrefix =
     "field.entities.attack.";
+constexpr std::string_view kFieldWeaponProjectileAliasPrefix =
+    "field.weapons.projectile.";
 constexpr std::string_view kElevatorAnimationAliasPrefix =
     "menu.field.elevator.selector.background.frame.";
 constexpr std::string_view kElevatorCurrentFloorAliasPrefix =
@@ -924,7 +926,11 @@ bool FieldSceneRuntime::transition_to_elevator_destination(
     world_frame_logic_state_.world_mode = scene_reference;
     field_world_activity_scene_entry_pending_ = false;
     field_world_activity_state_ = WorldActivityState{};
+    field_world_activity_timeout_state_ = WorldActivityTimeoutState{};
+    field_world_activity_timeout_state_.scene_id = scene_reference;
     world_activity_routine_state_ = WorldActivityRoutineState{};
+    field_weapon_projectiles_.clear();
+    last_field_weapon_spawn_result_ = EntitySpawnCycleResult{};
     field_camera_alignment_ready_ = false;
     field_palette_fade_steps_ = 0U;
     field_runtime_state_.display_service_word = 0U;
@@ -1034,6 +1040,56 @@ bool FieldSceneRuntime::load_sprite_image(
     // V4 BMP alpha mask. Re-deriving transparency from black pixels here
     // would punch holes in the sprites' black outlines.
     return true;
+}
+
+bool FieldSceneRuntime::load_field_weapon_spawn_assets(
+    const ConversionAssetCatalog& catalog) {
+    for (std::size_t animation = 0;
+         animation < field_weapon_projectile_images_.size(); ++animation) {
+        auto& images = field_weapon_projectile_images_[animation];
+        auto& origin_x = field_weapon_projectile_origin_x_[animation];
+        auto& origin_y = field_weapon_projectile_origin_y_[animation];
+        images.clear();
+        origin_x.clear();
+        origin_y.clear();
+
+        const auto selector = animation * 4U;
+        const auto expected_frames = animation < 8U ? 3U : 11U;
+        for (std::size_t frame = 0; frame < expected_frames; ++frame) {
+            const auto alias =
+                std::string(kFieldWeaponProjectileAliasPrefix) +
+                std::to_string(selector) + "." + std::to_string(frame);
+            QImage image;
+            int source_origin_x = 0;
+            int source_origin_y = 0;
+            if (!load_sprite_image(catalog, alias, image,
+                                   source_origin_x, source_origin_y)) {
+                return false;
+            }
+            images.push_back(std::move(image));
+            origin_x.push_back(source_origin_x);
+            origin_y.push_back(source_origin_y);
+        }
+    }
+    return true;
+}
+
+std::optional<std::uint16_t>
+FieldSceneRuntime::field_weapon_projectile_selector_for_dump() const noexcept {
+    if (field_weapon_projectiles_.empty()) {
+        return std::nullopt;
+    }
+    return static_cast<std::uint16_t>(
+        field_weapon_projectiles_.front().source_record.animation_resource &
+        0x7FFFU);
+}
+
+std::optional<std::uint16_t>
+FieldSceneRuntime::field_weapon_projectile_frame_for_dump() const noexcept {
+    if (field_weapon_projectiles_.empty()) {
+        return std::nullopt;
+    }
+    return field_weapon_projectiles_.front().animation.frame;
 }
 
 bool FieldSceneRuntime::load_field_hud_overlays(
@@ -1941,6 +1997,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
     };
     field_runtime_callbacks_.service_entity_behavior_frames = [this] {
         service_player_weapon_action();
+        advance_field_weapon_projectiles();
         advance_field_movement();
     };
     field_runtime_callbacks_.update_field_camera = [this] {
@@ -3468,7 +3525,10 @@ bool FieldSceneRuntime::bootstrap(
     field_palette_fade_steps_ = 0U;
     field_world_activity_scene_entry_pending_ = false;
     field_world_activity_state_ = WorldActivityState{};
+    field_world_activity_timeout_state_ = WorldActivityTimeoutState{};
     world_activity_routine_state_ = WorldActivityRoutineState{};
+    field_weapon_projectiles_.clear();
+    last_field_weapon_spawn_result_ = EntitySpawnCycleResult{};
     field_security_floor_index_.reset();
     field_activity_continuation_ = MovementModeTransitionContinuation::none;
     field_projected_terrain_mark_count_ = 0U;
@@ -3602,6 +3662,8 @@ bool FieldSceneRuntime::bootstrap(
                     field_service_background_) ||
         !load_field_hud_overlays(startup_state.asset_catalog.catalog) ||
         !load_command_overview_assets(startup_state.asset_catalog.catalog) ||
+        !load_field_weapon_spawn_assets(
+            startup_state.asset_catalog.catalog) ||
         !load_field_elevator_selector_assets(
             startup_state.asset_catalog.catalog)) {
         source_boundary("field.bootstrap.direct_assets_missing");
@@ -4275,34 +4337,134 @@ void FieldSceneRuntime::service_player_weapon_action() {
         return;
     }
 
-    auto meter_delta = static_cast<std::int8_t>(-1);
-    if (runner.equipped_item_code >= 8U &&
-        runner.equipped_item_code <= 10U) {
-        meter_delta = static_cast<std::int8_t>(-3);
-    }
-    const auto ammo_before = runner.ammo_rounds;
-    const auto ammo_action = service_entity_ammo(
-        runner, meter_delta, us_item_catalog());
-    if (ammo_action != RunnerAssetOperationResult::ammo_changed ||
-        runner.ammo_rounds >= ammo_before) {
+    if (runner.equipped_inventory_slot < 0 ||
+        static_cast<std::size_t>(runner.equipped_inventory_slot) >=
+            runner.inventory_phase_bytes.size()) {
         return;
     }
 
-    std::uint8_t source_status_flags = 0U;
-    if (runner.equipped_inventory_slot >= 0 &&
-        static_cast<std::size_t>(runner.equipped_inventory_slot) <
-            runner.inventory_phase_bytes.size()) {
-        source_status_flags = runner.inventory_phase_bytes[
-            static_cast<std::size_t>(runner.equipped_inventory_slot)];
+    const auto source_status_flags = runner.inventory_phase_bytes[
+        static_cast<std::size_t>(runner.equipped_inventory_slot)];
+    EntitySpawnCycleState spawn_state{};
+    spawn_state.parent.position_x = field_movement_state_.position_x;
+    spawn_state.parent.position_y = field_movement_state_.position_y;
+    spawn_state.parent.heading = field_movement_state_.heading;
+    spawn_state.parent.flags = static_cast<std::uint8_t>(runner.flags >> 8U);
+    spawn_state.parent.field_0x56 = static_cast<std::uint8_t>(
+        runner.equipped_inventory_slot);
+    spawn_state.parent.field_0x57 = runner.equipped_item_code;
+    spawn_state.parent.field_0x9d = runner.magic_force;
+    spawn_state.equipment = EntityEquipmentState{
+        runner.ammo_rounds, static_cast<std::int16_t>(runner.record_type)};
+    spawn_state.animation_counter = field_entity_animation_selector_;
+    spawn_state.global_mode = static_cast<std::uint8_t>(
+        field_runtime_state_.field_scene_gate);
+    spawn_state.entity_flags = spawn_state.parent.flags;
+    spawn_state.source_status_flags = source_status_flags;
+
+    const auto ammo_before = runner.ammo_rounds;
+    std::uint16_t next_entity_slot = 9U;
+    const auto spawn_cycle = process_entity_spawn_cycle(
+        spawn_state,
+        [] { return true; },
+        [this, &next_entity_slot]() -> std::optional<std::uint16_t> {
+            // The ROM allocator scans six live records at slots 9..14. The
+            // converted runtime currently owns the paired visible spawn and
+            // its source-timed descriptor lifetime; hit/control-record
+            // retirement remains a separate combat boundary.
+            constexpr std::size_t kVisibleWeaponSlotPairs = 3U;
+            if (field_weapon_projectiles_.size() >=
+                kVisibleWeaponSlotPairs || next_entity_slot > 14U) {
+                return std::nullopt;
+            }
+            return next_entity_slot++;
+        },
+        [this] {
+            // 0x55640 resolves the attacker's action outcome for the primary
+            // record. Its damage/target path is not connected yet, but the
+            // boundary stays visible in the live route rather than being
+            // silently replaced with a guessed hit result.
+            source_boundary("field.combat.weapon_hit_resolution_pending");
+        },
+        [this] {
+            (void)schedule_world_activity_timeout(
+                field_world_activity_timeout_state_);
+        },
+        [this](const std::uint16_t event) {
+            if (source_audio_event_callback_) {
+                source_audio_event_callback_(event);
+            }
+        },
+        [this](const std::uint16_t) {
+            source_boundary("field.combat.mode_effect_transition_pending");
+        },
+        [this, &runner](EntityEquipmentState& equipment,
+                        const std::uint8_t source_action_code) {
+            RunnerAssetOperationResult weapon_operation =
+                RunnerAssetOperationResult::no_change;
+            const auto ammo_action = service_entity_ammo(
+                equipment, source_action_code,
+                [this, &runner, &equipment,
+                 &weapon_operation](const std::int8_t meter_delta) {
+                    weapon_operation = service_entity_ammo(
+                        runner, meter_delta, us_item_catalog());
+                    equipment.current_ammo = runner.ammo_rounds;
+                });
+
+            if (equipment.record_type >= 3) {
+                runner.ammo_rounds = equipment.current_ammo;
+                return ammo_action;
+            }
+            if (weapon_operation ==
+                RunnerAssetOperationResult::ammo_changed) {
+                return ammo_action;
+            }
+            if (weapon_operation ==
+                    RunnerAssetOperationResult::missing_source_data ||
+                weapon_operation ==
+                    RunnerAssetOperationResult::invalid_equipped_slot) {
+                return EntityAmmoServiceAction::weapon_service_unresolved;
+            }
+            return EntityAmmoServiceAction::no_action;
+        });
+    last_field_weapon_spawn_result_ = spawn_cycle;
+    if (runner.ammo_rounds != ammo_before) {
+        refresh_field_hud_runner_slot();
     }
-    const auto audio_event = select_entity_spawn_audio_event(
-        runner.equipped_item_code, source_status_flags);
+
+    if (spawn_cycle.action != EntitySpawnCycleAction::spawned ||
+        !spawn_cycle.primary.has_value() ||
+        !spawn_cycle.secondary.has_value()) {
+        if (spawn_cycle.action == EntitySpawnCycleAction::no_primary_slot ||
+            spawn_cycle.action == EntitySpawnCycleAction::no_secondary_slot) {
+            const auto fallback = dispatch_player_action_if_ready(
+                runner, us_item_catalog(), reload_callbacks);
+            if (fallback.status == PlayerActionDispatchStatus::serviced) {
+                refresh_field_hud_runner_slot();
+            }
+        }
+        return;
+    }
+
+    const auto selector = spawn_cycle.secondary->animation_resource;
+    const auto animation_index = static_cast<std::size_t>(selector / 4U);
+    if (animation_index >= field_weapon_projectile_images_.size() ||
+        field_weapon_projectile_images_[animation_index].empty()) {
+        source_boundary("field.combat.weapon_projectile_asset_missing");
+        return;
+    }
+    FieldWeaponProjectilePresentation projectile{};
+    projectile.source_record = *spawn_cycle.secondary;
+    projectile.animation.period = static_cast<std::int16_t>(
+        projectile.source_record.behavior_defaults.behavior_timer);
+    field_weapon_projectiles_.push_back(std::move(projectile));
 
     HeadingAnimationState attack_pose{};
+    const auto spawned_heading = spawn_cycle.primary->heading;
     const auto direction = field_movement_direction_from_heading(
-        field_movement_state_.heading);
+        spawned_heading);
     set_entity_heading_with_field_animation(
-        attack_pose, field_movement_state_.heading,
+        attack_pose, spawned_heading,
         runner.equipped_item_code, kFieldAttackAnimationSelectors,
         [this, &runner](const std::uint16_t delay_mode) {
             EntityDelayState delay{runner.animation_action_gate};
@@ -4324,12 +4486,7 @@ void FieldSceneRuntime::service_player_weapon_action() {
     field_entity_.direction = direction;
     field_entity_walking_ = false;
     field_entity_attack_pose_active_ = true;
-
-    if (audio_event.has_value() && source_audio_event_callback_) {
-        source_audio_event_callback_(*audio_event);
-    }
-    refresh_field_hud_runner_slot();
-    source_boundary("field.combat.player_weapon_action");
+    source_boundary("field.combat.player_weapon_spawned");
 }
 
 void FieldSceneRuntime::apply_field_entity_animation(const bool walking) {
@@ -4351,6 +4508,64 @@ void FieldSceneRuntime::apply_field_entity_animation(const bool walking) {
         field_entity_animation_.redraw_requested = true;
     }
     field_entity_walking_ = walking;
+}
+
+void FieldSceneRuntime::advance_field_weapon_projectiles() {
+    auto projectile = field_weapon_projectiles_.begin();
+    while (projectile != field_weapon_projectiles_.end()) {
+        auto& record = projectile->source_record;
+        const auto selector = static_cast<std::uint16_t>(
+            record.animation_resource & 0x7FFFU);
+        const auto animation_index = static_cast<std::size_t>(selector / 4U);
+        if ((selector & 0x0003U) != 0U ||
+            animation_index >= field_weapon_projectile_images_.size()) {
+            source_boundary("field.combat.weapon_projectile_selector_invalid");
+            projectile = field_weapon_projectiles_.erase(projectile);
+            continue;
+        }
+
+        const auto frame_count =
+            field_weapon_projectile_images_[animation_index].size();
+        if (frame_count == 0U || frame_count > 16U) {
+            source_boundary("field.combat.weapon_projectile_frames_invalid");
+            projectile = field_weapon_projectiles_.erase(projectile);
+            continue;
+        }
+
+        projectile->animation.redraw_requested = false;
+        advance_entity_animation_accumulator(projectile->animation);
+        EntitySpriteDescriptorList source_list{};
+        source_list.marker = static_cast<std::int16_t>(
+            -32768 + static_cast<std::int16_t>(frame_count));
+        source_list.auxiliary = 0x270FU;
+        source_list.frame_pointers.reserve(frame_count);
+        for (std::size_t frame = 0; frame < frame_count; ++frame) {
+            source_list.frame_pointers.push_back(
+                static_cast<std::uint32_t>(frame));
+        }
+        EntitySpriteDescriptorState source_animation{};
+        source_animation.kind =
+            record.behavior_defaults.animation_state;
+        source_animation.selector = record.animation_resource;
+        source_animation.flags = record.record_flags;
+        source_animation.frame = projectile->animation.frame;
+        source_animation.increment = static_cast<std::uint16_t>(
+            projectile->animation.increment);
+        (void)advance_entity_sprite_descriptor(
+            source_animation, source_list, 0U);
+        projectile->animation.frame = source_animation.frame;
+        projectile->animation.increment = static_cast<std::int16_t>(
+            source_animation.increment);
+        record.animation_resource = source_animation.selector;
+
+        // The source's following 0xAC4E continuation clears the entity's
+        // active bit when 0x600E marks this finite list complete.
+        if ((source_animation.selector & 0x8000U) != 0U) {
+            projectile = field_weapon_projectiles_.erase(projectile);
+            continue;
+        }
+        ++projectile;
+    }
 }
 
 void FieldSceneRuntime::advance_field_actor_animation() {
@@ -4517,6 +4732,10 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
 
     state_.field_scene_buffers = std::move(next_buffers);
     field_map_ = std::move(next_field_map);
+    if (!same_scene) {
+        field_weapon_projectiles_.clear();
+        field_world_activity_timeout_state_ = WorldActivityTimeoutState{};
+    }
     if (!same_scene && field_palette_fade_steps_ != 0U) {
         // The source scene-buffer load replaces the palette after the
         // field-transition fade. The Qt fade is a presentation overlay, so
@@ -4532,6 +4751,7 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
     field_runtime_state_.field_mode =
         state_.field_scene_buffers.field_resource_mode;
     field_movement_transition_state_.scene_id = scene_reference;
+    field_world_activity_timeout_state_.scene_id = scene_reference;
     field_movement_transition_state_.world_mode = *interaction_mode;
     field_movement_transition_state_.field_origin_x =
         static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x);
@@ -5677,6 +5897,44 @@ void FieldSceneRuntime::paint_field_entity(QPainter& painter) const {
     const auto y = static_cast<int>(field_entity_.projection.screen_y) -
                    kGenesisSpriteOrigin + origin_y;
     painter.drawImage(x, y, image);
+}
+
+void FieldSceneRuntime::paint_field_weapon_projectiles(
+    QPainter& painter) const {
+    for (const auto& projectile : field_weapon_projectiles_) {
+        const auto& record = projectile.source_record;
+        const auto animation_selector = static_cast<std::uint16_t>(
+            record.animation_resource & 0x7FFFU);
+        const auto animation_index = static_cast<std::size_t>(
+            animation_selector / 4U);
+        if (animation_index >= field_weapon_projectile_images_.size()) {
+            continue;
+        }
+        const auto& images = field_weapon_projectile_images_[animation_index];
+        const auto frame = static_cast<std::size_t>(
+            projectile.animation.frame);
+        if (frame >= images.size()) {
+            continue;
+        }
+
+        EntityProjectionState projection{};
+        projection.world_x = record.position_x;
+        projection.world_y = record.position_y;
+        const auto projected = project_entity_screen_position_standard(
+            projection,
+            static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x),
+            static_cast<std::uint16_t>(state_.field_scene_buffers.camera_y));
+        if (!projected.visible) {
+            continue;
+        }
+        const auto x = static_cast<int>(projection.screen_x) -
+                       kGenesisSpriteOrigin +
+                       field_weapon_projectile_origin_x_[animation_index][frame];
+        const auto y = static_cast<int>(projection.screen_y) -
+                       kGenesisSpriteOrigin +
+                       field_weapon_projectile_origin_y_[animation_index][frame];
+        painter.drawImage(x, y, images[frame]);
+    }
 }
 
 void FieldSceneRuntime::paint_field_hud_overlays(QPainter& painter) const {
@@ -7866,6 +8124,7 @@ void FieldSceneRuntime::paint_field_scene(QPainter& painter) const {
     const auto viewport_x = std::min(camera_x, max_x);
     const auto viewport_y = std::min(camera_y, max_y);
     painter.drawImage(0, 0, field_map_, viewport_x, viewport_y, 320, 224);
+    paint_field_weapon_projectiles(painter);
     paint_field_entity(painter);
 
     // 0x334C supplies the static chrome. 0x35D4/0x35F0/0x36FC/0x3674 stamp

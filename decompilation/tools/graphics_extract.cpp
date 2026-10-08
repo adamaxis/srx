@@ -2163,7 +2163,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
            "\tterrain_record\tsetup_block\tpalette\tpattern\tpattern_bytes"
            "\tmetatile_stream\tprimary_tilemap\tsecondary_tilemap"
            "\ttilemap_width\ttilemap_height\tmetatile_encoding"
-           "\tevent_table\tasset\timage_width\timage_height\n";
+           "\tevent_table\tobject_pattern\tobject_vram"
+           "\tobject_pattern_bytes\tasset\timage_width\timage_height\n";
     const auto write_hex = [&map_index](std::size_t value) {
         map_index << "0x" << std::uppercase << std::hex << value << std::dec;
     };
@@ -2210,7 +2211,12 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                           : "compressed-resource")
                   << '\t';
         write_hex(resources.event_table_offset);
-        map_index << "\tfield/maps/mode-" << mode_id << ".bmp\t"
+        map_index << '\t';
+        write_hex(resources.object_pattern_data_offset);
+        map_index << '\t';
+        write_hex(resources.object_pattern_vram_offset);
+        map_index << '\t' << resources.object_pattern_byte_count
+                  << "\tfield/maps/mode-" << mode_id << ".bmp\t"
                   << area->map.width << '\t' << area->map.height << '\n';
     }
     map_index.flush();
@@ -2261,6 +2267,27 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             shadowrun::native::NativeEntityFrame{
                 source.width, source.height, source.pixels},
             "sprite", "0xB39A/0xC042/0x600E", true);
+    }
+
+    // Weapon actions allocate a paired behavior/projectile record at
+    // 0x1514E. The second record selects one of the 16 direction lists in
+    // 0x62EC/0x62FC and 0x630C; export each descriptor assembly as its own
+    // host image so the field runtime never needs to decode ROM lists.
+    const auto field_spawn_animations =
+        shadowrun::graphics::decode_genesis_field_spawn_animations(rom);
+    for (const auto& animation : field_spawn_animations) {
+        for (std::size_t frame = 0; frame < animation.frames.size(); ++frame) {
+            const auto& source = animation.frames[frame];
+            const auto relative_name =
+                "field/weapons/projectile-" +
+                std::to_string(animation.selector) + "-" +
+                std::to_string(frame) + ".bmp";
+            write_catalog_asset(
+                root, relative_name, source.image, "sprite",
+                "0x1514E/0x62EC/0x62FC/0x630C/0x600E/0x622C", true,
+                manifest, written, missing, blank, source.origin_x,
+                source.origin_y);
+        }
     }
 
     extract_field_session_record_assets(rom, root);

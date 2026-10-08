@@ -34,6 +34,13 @@ int main() {
         return 3;
     }
 
+    EntityAnimationState wrapped{4U, 23612, 9999, 0x1000, false};
+    advance_entity_animation_accumulator(wrapped);
+    if (!expect(wrapped.frame == 4U && wrapped.accumulator == -31925 &&
+                !wrapped.redraw_requested)) {
+        return 24;
+    }
+
     const auto equipment = select_entity_motion_action_row(0, 3U);
     if (!expect(equipment.table == EntityMotionActionTable::EquipmentItem &&
                 equipment.one_based_action_code == 3U &&

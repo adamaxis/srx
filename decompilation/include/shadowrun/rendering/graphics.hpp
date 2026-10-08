@@ -141,6 +141,12 @@ struct GenesisMode2FieldResources {
     std::size_t palette_offset = 0;
     std::size_t pattern_data_offset = 0;
     std::size_t pattern_byte_count = 0;
+    // The field setup block also installs the shared entity/projectile atlas
+    // at VRAM $B000. This remains an offline extraction input; game runtime
+    // consumes the individually named frames produced from it.
+    std::size_t object_pattern_data_offset = 0;
+    std::size_t object_pattern_vram_offset = 0;
+    std::size_t object_pattern_byte_count = 0;
     std::size_t metatile_stream_offset = 0;
     std::size_t primary_tilemap_offset = 0;
     std::size_t secondary_tilemap_offset = 0;
@@ -624,6 +630,21 @@ struct GenesisFieldEntityAnimation {
     std::vector<RgbaImage> frames;
 };
 
+struct GenesisFieldSpawnSpriteFrame {
+    RgbaImage image;
+    // Cropped image's top-left relative to the source entity's +0x0A/+0x0C
+    // sprite origin, preserving the list placement when drawn by the host.
+    std::int16_t origin_x = 0;
+    std::int16_t origin_y = 0;
+};
+
+struct GenesisFieldSpawnAnimation {
+    std::uint16_t selector = 0;
+    std::uint16_t state_marker = 0;
+    std::uint16_t frame_increment = 0;
+    std::vector<GenesisFieldSpawnSpriteFrame> frames;
+};
+
 // Decode one kind-3 selector family into transparent host frames. The default
 // 0xC0B2 family is used by behavior transitions; normal accepted field
 // movement selects the positive-marker 0xC062 family. Neighboring tables
@@ -639,6 +660,13 @@ decode_genesis_field_entity_animation_sequences(
     std::size_t nibble_table_offset = 0x3EDC,
     std::size_t palette_offset = 0x172D8A,
     std::size_t state_count = 8);
+
+// Decode the 16 ordinary/special direction lists selected by ROM 0x62EC and
+// 0x62FC, using the shared object atlas referenced by the field setup block.
+// This is offline import only. The runtime loads the named frames and uses
+// the selector and source animation cadence as typed state.
+std::array<GenesisFieldSpawnAnimation, 16>
+decode_genesis_field_spawn_animations(const std::vector<std::uint8_t>& rom);
 
 // Reconstruct the startup scene assembled by ROM 0x1D00/0x1D58. The source
 // offsets and dimensions are the operands of that path, not guessed graphic

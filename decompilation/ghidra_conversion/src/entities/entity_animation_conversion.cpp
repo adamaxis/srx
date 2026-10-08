@@ -3,17 +3,24 @@
 namespace shadowrun::ghidra_conversion {
 
 void advance_entity_animation_accumulator(EntityAnimationState& state) {
-    const auto accumulated = static_cast<std::int32_t>(state.accumulator) +
-                             static_cast<std::int32_t>(state.increment);
-    if (static_cast<std::int32_t>(state.period) <= accumulated) {
+    // 0x5FDC uses ADD.W followed by a signed CMP.W/BLT. Preserve the source
+    // word wrap before the comparison; otherwise high-rate lists such as the
+    // 0x270F weapon descriptor cadence keep advancing through a phase where
+    // the 68000 sees a negative accumulator.
+    const auto accumulated_word = static_cast<std::uint16_t>(
+        static_cast<std::uint16_t>(state.accumulator) +
+        static_cast<std::uint16_t>(state.increment));
+    const auto accumulated = static_cast<std::int16_t>(accumulated_word);
+    if (state.period <= accumulated) {
         state.frame = static_cast<std::uint16_t>(state.frame + 1U);
         state.redraw_requested = true;
         state.accumulator = static_cast<std::int16_t>(
-            accumulated - static_cast<std::int32_t>(state.period));
+            static_cast<std::uint16_t>(accumulated_word) -
+            static_cast<std::uint16_t>(state.period));
         return;
     }
 
-    state.accumulator = static_cast<std::int16_t>(accumulated);
+    state.accumulator = accumulated;
 }
 
 std::uint16_t select_field_entity_animation_selector(

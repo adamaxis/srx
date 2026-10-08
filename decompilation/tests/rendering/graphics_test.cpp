@@ -575,12 +575,58 @@ int main() {
     assert(field_resources.palette_offset == 0x172D8A);
     assert(field_resources.pattern_data_offset == 0x166B82);
     assert(field_resources.pattern_byte_count == 0x6E20);
+    assert(field_resources.object_pattern_data_offset == 0x0E44D8);
+    assert(field_resources.object_pattern_vram_offset == 0x0B000);
+    assert(field_resources.object_pattern_byte_count == 0x0D00);
     assert(field_resources.metatile_stream_offset == 0x170102);
     assert(field_resources.primary_tilemap_offset == 0x16D9A2);
     assert(field_resources.secondary_tilemap_offset == 0x16ED52);
     assert(field_resources.tilemap_width == 60);
     assert(field_resources.tilemap_height == 42);
     assert(field_resources.event_table_offset == 0x172CDC);
+
+    // The live Qt weapon action consumes these named frames. This test keeps
+    // the offline import tied to the source's two descriptor families and the
+    // shared object-pattern upload, rather than accepting placeholder art.
+    const auto field_spawn_animations =
+        decode_genesis_field_spawn_animations(rom);
+    assert(field_spawn_animations.size() == 16U);
+    std::size_t field_spawn_frame_count = 0U;
+    std::size_t field_spawn_empty_frame_count = 0U;
+    for (std::size_t index = 0; index < field_spawn_animations.size(); ++index) {
+        const auto& animation = field_spawn_animations[index];
+        const auto special = index >= 8U;
+        assert(animation.selector == index * 4U);
+        assert(animation.state_marker ==
+               static_cast<std::uint16_t>(special ? 0x800BU : 0x8003U));
+        assert(animation.frame_increment == 0x270FU);
+        assert(animation.frames.size() == (special ? 11U : 3U));
+        for (const auto& frame : animation.frames) {
+            assert(frame.image.width > 0U && frame.image.height > 0U);
+            assert(frame.image.pixels.size() ==
+                   static_cast<std::size_t>(frame.image.width) *
+                       frame.image.height);
+            const auto has_pixels = std::any_of(
+                frame.image.pixels.begin(), frame.image.pixels.end(),
+                [](const auto& pixel) { return pixel.alpha != 0U; });
+            if (frame.image.width == 1U && frame.image.height == 1U) {
+                assert(!has_pixels);
+                ++field_spawn_empty_frame_count;
+            } else {
+                assert(has_pixels);
+            }
+            ++field_spawn_frame_count;
+        }
+    }
+    assert(field_spawn_frame_count == 112U &&
+           field_spawn_empty_frame_count == 16U);
+    for (std::size_t frame = 0; frame < 2U; ++frame) {
+        const auto& pixels = field_spawn_animations[0].frames[frame].image.pixels;
+        assert(std::any_of(pixels.begin(), pixels.end(),
+                           [](const auto& pixel) {
+                               return pixel.alpha != 0U;
+                           }));
+    }
     const std::array<std::uint8_t, 12> redmond_event_modes{
         0x14, 0x1A, 0x1A, 0x1A, 0x0D, 0x13,
         0x1A, 0x1A, 0x34, 0x1A, 0x32, 0x33,
