@@ -42,16 +42,16 @@ StokerMotelDebtPaymentOutcome resolve_stoker_motel_debt_payment(
     // update used by this command.
     adjust_runner_source_byte_triplet(state.runner_source_bytes, 1U);
 
-    // 0x21428 encodes BSET #$FF against a memory byte. The 68000 memory-bit
-    // operation uses the low three bits of the immediate, therefore this is
-    // FF018F bit 7, not a fabricated 32-bit bit-31 field.
+    // 0x21428 sets bit zero of the runner feature/status byte at FF018F.
     state.runner_feature_flags = static_cast<std::uint8_t>(
-        state.runner_feature_flags | 0x80U);
+        state.runner_feature_flags | 0x01U);
 
-    // 0x21436..0x2144A sets FFFC30 bits 0 through 4 as one source story
-    // progress update. Keep this in the shared typed follow-up state so the
-    // earlier command 0x30 observes the same story word.
-    state.followup_state.story_flags |= 0x1FU;
+    // 0x21436..0x2144A clears FFFC30 bits 0 and 1, then sets bits 2, 3,
+    // and 4. Keep the mask exact so command 0x30 and Notebook Tips observe
+    // the source's post-payment story state.
+    state.followup_state.story_flags =
+        (state.followup_state.story_flags & ~std::uint32_t{0x03U}) |
+        std::uint32_t{0x1CU};
 
     outcome.result = StokerMotelDebtPaymentResult::debt_paid;
     outcome.prompt = StokerMotelDebtPaymentPrompt::michael_package_contents;

@@ -31,8 +31,8 @@ struct StokerMotelDebtPaymentState {
     // Stoker-specific bit.
     std::uint32_t effect_marker = 0;
 
-    // Source FF018F: the runner feature/status byte. The source instruction
-    // is BSET #$FF on a memory byte, which means bit 7 on the 68000.
+    // Source FF018F: the runner feature/status byte. The paid branch sets bit
+    // zero, the cyberdeck-present flag used by the Matrix entry gate.
     std::uint8_t runner_feature_flags = 0;
 
     // Source FFFC30 and FFFC27. The insufficient-funds branch enters the

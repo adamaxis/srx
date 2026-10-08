@@ -1066,14 +1066,17 @@ so the typed conversion reuses the named Jump House referral command and its
 
 The paid path subtracts `0xFA`, calls `0x2196C`, adds `0x1F4` back, increments
 the three runner source bytes at `FF018D`, `FF028D`, and `FF038D` through
-`0x59C34`, sets `FF018F` bit 7, and sets `FFFC30` bits 0 through 4. The
+`0x59C34`, sets `FF018F` bit 0, clears `FFFC30` bits 0 and 1, and sets bits
+2, 3, and 4. The
 `0x2196C` helper reloads the pending marker from `FFDD64`; it does not use the
 prompt command value `0x05`. The conversion therefore carries that marker as
 an explicit typed input instead of inventing a Stoker-specific effect bit. It
 returns `0xF487C`, whose first text record begins `The creds roll off your
 stick...` and continues through Michael's package contents and letter
 sequence. `resolve_stoker_motel_debt_payment` now exposes those exact
-mutations as typed state; it does not emulate the source memory addresses.
+mutations as typed state; Debug/Release conversion tests check the flag masks
+and byte triplet. The live paid route and package sequence are still not
+connected; the conversion does not emulate source memory addresses.
 
 ## Recruited-runner service offer and payment: 0x21226, 0x21318, 0x21326, 0x21332
 
