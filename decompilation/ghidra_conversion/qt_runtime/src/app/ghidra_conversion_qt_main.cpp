@@ -207,6 +207,7 @@ std::filesystem::path find_asset_root(
                    " [--opening-rotor-qa <output-dir>]"
                    " [--opening-landing-qa <output-dir>]"
                    " [--opening-wilderness-pan-qa <output-dir>]"
+                   " [--opening-ambush-flash-qa <output-dir>]"
                    " [--opening-trivid-layer-qa <output-dir>]"
                    " [--intro-to-field-smoke]\n";
             return {};
@@ -374,6 +375,10 @@ std::filesystem::path find_asset_root(
             continue;
         }
         if (argument == "--opening-wilderness-pan-qa" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--opening-ambush-flash-qa" && index + 1 < argc) {
             ++index;
             continue;
         }
@@ -2038,6 +2043,298 @@ public:
         std::cout << "opening_wilderness_pan_qa=passed checkpoints="
                   << kSamples.size() << " body_pixels=" << colored_body_pixels
                   << " actual="
+                  << (output_directory / "actual.bmp").string() << '\n';
+        return 0;
+    }
+
+    int run_opening_ambush_flash_qa(
+        const std::filesystem::path& output_directory) {
+        constexpr std::uint32_t kSelection = 2U;
+        constexpr std::uint32_t kMaximumFrames = 4000U;
+        constexpr std::string_view kMapRightAlias =
+            "intro.sprites.ambush.map.right.2.0";
+
+        if (prepare_opening_dump(kSelection) != 0) {
+            return 3;
+        }
+        std::filesystem::create_directories(output_directory);
+        std::ofstream trace(output_directory / "opening-ambush-flash-qa.tsv");
+        if (!trace) {
+            std::cerr << "opening ambush flash QA: could not write trace in "
+                      << output_directory.string() << '\n';
+            return 3;
+        }
+        trace << "sample\topening_frame\tpersistent_stage\ttimed_stage\t"
+                 "palette_word\timage\n";
+        const auto fail = [](const std::string_view reason) {
+            std::cerr << "opening ambush flash QA: " << reason << '\n';
+            return 3;
+        };
+        const auto save_frame = [&](const std::string& name,
+                                    const QImage& scene) {
+            if (scene.size() != QSize(kSceneWidth, kSceneHeight) ||
+                !scene.save(QString::fromStdWString(
+                    (output_directory / name).wstring()))) {
+                return false;
+            }
+            const auto& opening = state_.opening_intro;
+            trace << name << '\t' << opening.source_frame << '\t'
+                  << opening.persistent.stage << '\t'
+                  << opening.timed.descriptor_index << '\t' << std::hex
+                  << opening.entity_colors.words[1U][0U] << std::dec << '\t'
+                  << name << '\n';
+            return true;
+        };
+
+        std::uint32_t frames = 0U;
+        while (state_.phase == StartupIntegrationPhase::opening_intro &&
+               (state_.opening_intro.scene != OpeningIntroScene::wilderness ||
+                state_.opening_intro.stage !=
+                    OpeningIntroStage::stage2_second_loop)) {
+            if (frames++ >= kMaximumFrames) {
+                return fail("did not reach the connected wilderness animation loop");
+            }
+            advance_one_source_frame();
+        }
+        while (state_.phase == StartupIntegrationPhase::opening_intro &&
+               state_.opening_intro.persistent.stage < 4U) {
+            if (frames++ >= kMaximumFrames) {
+                return fail("did not reach the source hit-flash transition");
+            }
+            advance_one_source_frame();
+        }
+        if (state_.phase != StartupIntegrationPhase::opening_intro ||
+            state_.opening_intro.scene != OpeningIntroScene::wilderness ||
+            state_.opening_intro.persistent.stage != 4U) {
+            return fail("source persistent stage 4 was skipped");
+        }
+
+        const auto* map_record =
+            state_.asset_catalog.catalog.find(std::string(kMapRightAlias));
+        const auto map_image =
+            draw_asset_cache_.find(std::string(kMapRightAlias));
+        if (map_record == nullptr || map_image == draw_asset_cache_.end() ||
+            map_image->second.isNull()) {
+            return fail("the named ambush actor layer is missing");
+        }
+        const auto before_flash = render_scene();
+        if (opening_ambush_palette_flash_active() ||
+            !save_frame("actor-before-flash.bmp", before_flash)) {
+            return fail("the pre-hit actor state was not saved cleanly");
+        }
+
+        frames = 0U;
+        while (state_.phase == StartupIntegrationPhase::opening_intro &&
+               state_.opening_intro.persistent.stage < 5U) {
+            if (frames++ >= 32U) {
+                return fail("the stage-4 palette event did not fire on schedule");
+            }
+            advance_one_source_frame();
+        }
+        if (state_.phase != StartupIntegrationPhase::opening_intro ||
+            state_.opening_intro.persistent.stage != 5U ||
+            !opening_ambush_palette_flash_active() ||
+            !opening_wilderness_map_right_ ||
+            opening_wilderness_map_center_) {
+            return fail("the source white-hit state did not connect to the renderer");
+        }
+        const auto& flash_palette =
+            state_.opening_intro.entity_colors.words[1U];
+        if (!std::all_of(flash_palette.begin(), flash_palette.end(),
+                         [](const std::uint16_t word) {
+                             return word == 0x0EEEU;
+                         })) {
+            return fail("ROM 0x5A2D0 did not publish fifteen white entries");
+        }
+
+        const auto hit_flash = render_scene();
+        if (!save_frame("actor-hit-flash.bmp", hit_flash)) {
+            return fail("could not save the full-screen hit-flash frame");
+        }
+        const QColor white(255, 255, 255);
+        const auto hit_group = opening_intro_sprite_group(
+            state_.opening_intro.persistent.current_sprite_descriptor);
+        if (hit_group.family != OpeningIntroSpriteFamily::ambush_actor) {
+            return fail("the active persistent actor handle is not the head layer");
+        }
+        std::size_t head_opaque_pixels = 0U;
+        std::size_t white_head_pixels = 0U;
+        std::size_t normal_head_pixels = 0U;
+        const auto head_prefix = opening_intro_sprite_alias_prefix(hit_group);
+        for (const auto& record : state_.asset_catalog.catalog.records) {
+            if (record.alias.rfind(head_prefix, 0) != 0) {
+                continue;
+            }
+            const auto image = draw_asset_cache_.find(record.alias);
+            if (image == draw_asset_cache_.end()) {
+                continue;
+            }
+            const auto point = opening_intro_sat_draw_point(
+                0x0178U, 0x00D1U, record.origin_x, record.origin_y);
+            for (int y = 0; y < image->second.height(); ++y) {
+                for (int x = 0; x < image->second.width(); ++x) {
+                    if (image->second.pixelColor(x, y).alpha() == 0) {
+                        continue;
+                    }
+                    const auto screen_x = point.x + x;
+                    const auto screen_y = point.y + y;
+                    if (screen_x < 0 || screen_x >= hit_flash.width() ||
+                        screen_y < 0 || screen_y >= hit_flash.height()) {
+                        continue;
+                    }
+                    ++head_opaque_pixels;
+                    const auto color = hit_flash.pixelColor(screen_x, screen_y);
+                    if (color == white) {
+                        ++white_head_pixels;
+                    }
+                    if (before_flash.pixelColor(screen_x, screen_y) != white) {
+                        ++normal_head_pixels;
+                    }
+                }
+            }
+        }
+
+        std::size_t white_body_pixels = 0U;
+        const auto body_x = map_record->origin_x +
+                            state_.opening_intro.stage2.x_offset;
+        const auto body_y = map_record->origin_y -
+                            state_.opening_intro.stage2.y_offset;
+        for (int y = 0; y < map_image->second.height(); ++y) {
+            for (int x = 0; x < map_image->second.width(); ++x) {
+                if (map_image->second.pixelColor(x, y).alpha() == 0) {
+                    continue;
+                }
+                const auto screen_x = body_x + x;
+                const auto screen_y = body_y + y;
+                if (screen_x >= 0 && screen_x < hit_flash.width() &&
+                    screen_y >= 0 && screen_y < hit_flash.height() &&
+                    hit_flash.pixelColor(screen_x, screen_y) == white) {
+                    ++white_body_pixels;
+                }
+            }
+        }
+        if (head_opaque_pixels < 20U || white_head_pixels < 20U ||
+            normal_head_pixels < 20U || white_body_pixels < 500U) {
+            const auto map_group = opening_wilderness_map_right_
+                                       ? opening_intro_sprite_group(
+                                             opening_wilderness_map_right_->sprite_descriptor)
+                                       : OpeningIntroSpriteGroup{};
+            std::cerr << "opening ambush flash QA: head white="
+                      << white_head_pixels << '/' << head_opaque_pixels
+                      << " pre-flash colored=" << normal_head_pixels
+                      << " body white=" << white_body_pixels
+                      << " map_family=" << static_cast<unsigned>(map_group.family)
+                      << " map_origin=" << map_record->origin_x << ','
+                      << map_record->origin_y << " scroll="
+                      << state_.opening_intro.stage2.x_offset << ','
+                      << state_.opening_intro.stage2.y_offset << '\n';
+            return fail("the head and actor plate did not flash together");
+        }
+        if (!hit_flash.save(QString::fromStdWString(
+                (output_directory / "actual.bmp").wstring()))) {
+            return fail("could not save the full-screen hit-flash frame");
+        }
+        const QImage actual_readback(QString::fromStdWString(
+            (output_directory / "actual.bmp").wstring()));
+        if (actual_readback.convertToFormat(QImage::Format_RGB32) !=
+            hit_flash.convertToFormat(QImage::Format_RGB32)) {
+            return fail("actual.bmp did not read back as the hit-flash scene");
+        }
+
+        frames = 0U;
+        while (state_.phase == StartupIntegrationPhase::opening_intro &&
+               state_.opening_intro.entity_colors.words[1U][0U] == 0x0EEEU) {
+            if (frames++ >= 10U) {
+                return fail("the first nine-frame CRAM step did not occur");
+            }
+            advance_one_source_frame();
+        }
+        const auto& stepped_palette =
+            state_.opening_intro.entity_colors.words[1U];
+        if (state_.phase != StartupIntegrationPhase::opening_intro ||
+            !std::all_of(stepped_palette.begin(), stepped_palette.end(),
+                         [](const std::uint16_t word) {
+                             return word == 0x0CCCU;
+                         }) ||
+            !save_frame("actor-flash-step-1.bmp", render_scene())) {
+            return fail("the first palette step was not a uniform 0xCCC gray");
+        }
+
+        frames = 0U;
+        while (state_.phase == StartupIntegrationPhase::opening_intro &&
+               state_.opening_intro.persistent.stage < 9U) {
+            if (frames++ >= 40U) {
+                return fail("the timed body effect did not start at stage 9");
+            }
+            advance_one_source_frame();
+        }
+        if (state_.phase != StartupIntegrationPhase::opening_intro ||
+            state_.opening_intro.persistent.stage != 9U) {
+            return fail("the source timed body anchor was skipped");
+        }
+
+        std::array<bool, kTitleIntroTimedSpriteCount> effect_frames{};
+        std::array<std::uint32_t, kTitleIntroTimedSpriteCount> effect_source_frames{};
+        std::uint32_t effect_updates = 0U;
+        while (std::any_of(effect_frames.begin(), effect_frames.end(),
+                           [](const bool seen) { return !seen; }) &&
+               effect_updates++ < 64U) {
+            const auto group = opening_intro_sprite_group(
+                state_.opening_intro.timed.current_sprite_descriptor);
+            if (group.family == OpeningIntroSpriteFamily::ambush_body &&
+                group.variant < effect_frames.size() &&
+                !effect_frames[group.variant]) {
+                const auto scene = render_scene();
+                const auto name = "ambush-effect-" +
+                                  std::to_string(group.variant) + ".bmp";
+                if (!save_frame(name, scene)) {
+                    return fail("could not save a timed body-effect frame");
+                }
+                effect_frames[group.variant] = true;
+                effect_source_frames[group.variant] =
+                    state_.opening_intro.source_frame;
+            }
+            advance_one_source_frame();
+        }
+        if (!std::all_of(effect_frames.begin(), effect_frames.end(),
+                         [](const bool seen) { return seen; })) {
+            return fail("the six source explosion/smoke descriptors were incomplete");
+        }
+        for (std::size_t index = 1U; index < effect_source_frames.size();
+             ++index) {
+            if (effect_source_frames[index] - effect_source_frames[index - 1U] !=
+                8U) {
+                return fail("timed explosion/smoke frames did not keep the eight-frame cadence");
+            }
+        }
+
+        frames = 0U;
+        while (state_.phase == StartupIntegrationPhase::opening_intro &&
+               state_.opening_intro.persistent.stage < 12U) {
+            if (frames++ >= 40U) {
+                return fail("the persistent actor did not reach its clear event");
+            }
+            advance_one_source_frame();
+        }
+        if (state_.phase != StartupIntegrationPhase::opening_intro ||
+            state_.opening_intro.persistent.stage != 12U ||
+            opening_wilderness_map_right_ ||
+            opening_wilderness_map_center_ ||
+            std::any_of(opening_sprites_.begin(), opening_sprites_.end(),
+                        [](const OpeningIntroSpriteRequest& request) {
+                            return opening_intro_sprite_group(request.sprite_descriptor)
+                                       .family == OpeningIntroSpriteFamily::ambush_actor;
+                        })) {
+            return fail("the source right-map and head layers were not cleanly retired");
+        }
+        const auto cleared = render_scene();
+        if (!save_frame("actor-after-clear.bmp", cleared)) {
+            return fail("could not save the complete post-hit frame");
+        }
+        std::cout << "opening_ambush_flash_qa=passed head_pixels="
+                  << white_head_pixels << '/' << head_opaque_pixels
+                  << " body_white_pixels=" << white_body_pixels
+                  << " effect_frames=" << effect_frames.size() << " actual="
                   << (output_directory / "actual.bmp").string() << '\n';
         return 0;
     }
@@ -4531,6 +4828,10 @@ private:
             opening_wilderness_map_right_.reset();
             note_presentation_boundary("opening.clear_wilderness_right_map");
         };
+        startup_callbacks_.opening_intro.clear_wilderness_center_map = [this] {
+            opening_wilderness_map_center_.reset();
+            note_presentation_boundary("opening.clear_wilderness_center_map");
+        };
         startup_callbacks_.opening_intro.clear_wilderness_left_region =
             [this] {
                 opening_wilderness_map_left_.reset();
@@ -5156,10 +5457,6 @@ private:
                     group.family == OpeningIntroSpriteFamily::background_patch) {
                     return opening_entity_palette_fade_weight(0U);
                 }
-                if (group.family ==
-                    OpeningIntroSpriteFamily::wilderness_map_right) {
-                    return opening_entity_palette_fade_weight(1U);
-                }
                 return 255U;
             }();
             for (const auto& record : state_.asset_catalog.catalog.records) {
@@ -5168,11 +5465,36 @@ private:
                 }
                 const auto image = draw_asset_cache_.find(record.alias);
                 if (image != draw_asset_cache_.end()) {
-                    const auto layer = palette_fade_weight == 255U
-                                           ? image->second
-                                           : scale_genesis_image_rgb(
-                                                 image->second,
-                                                 palette_fade_weight);
+                    QImage layer = image->second;
+                    if (group.family ==
+                            OpeningIntroSpriteFamily::wilderness_map_right &&
+                        opening_entity_palette_flash_active(1U)) {
+                        // ROM 0x5A2D0 fills palette line 1 with white, then
+                        // 0x5A328 decrements all fifteen visible entries once
+                        // every nine frames. The right map plate and the
+                        // separately drawn head SAT both use that line.
+                        // Scaling the predecoded RGB toward black made the
+                        // body disappear without the source white hit flash.
+                        layer = recolor_genesis_image_to_cram_word(
+                            image->second,
+                            opening_entity_palette_flash_color_word(1U));
+                    } else if ((group.family ==
+                                    OpeningIntroSpriteFamily::wilderness_map_center ||
+                                group.family ==
+                                    OpeningIntroSpriteFamily::background_patch) &&
+                               opening_entity_palette_flash_active(0U)) {
+                        // ROM 0x5A124/0x5A16E run the same uniform white hit
+                        // and nine-frame fade on palette line 0 for the
+                        // center attacker. Its 0x5A1BE clear targets the
+                        // center block at $0826, separate from the right
+                        // actor block at $03B8.
+                        layer = recolor_genesis_image_to_cram_word(
+                            image->second,
+                            opening_entity_palette_flash_color_word(0U));
+                    } else if (palette_fade_weight != 255U) {
+                        layer = scale_genesis_image_rgb(
+                            image->second, palette_fade_weight);
+                    }
                     painter.drawImage(record.origin_x, record.origin_y,
                                       layer);
                 }
@@ -5211,7 +5533,16 @@ private:
             }
             const auto point = opening_intro_sat_draw_point(
                 request.x, request.y, record.origin_x, record.origin_y);
-            painter.drawImage(point.x, point.y, image->second);
+            if (group.family == OpeningIntroSpriteFamily::ambush_actor &&
+                (request.palette_flags & 0x6000U) == 0x2000U &&
+                opening_entity_palette_flash_active(1U)) {
+                const auto head = recolor_genesis_image_to_cram_word(
+                    image->second,
+                    opening_entity_palette_flash_color_word(1U));
+                painter.drawImage(point.x, point.y, head);
+            } else {
+                painter.drawImage(point.x, point.y, image->second);
+            }
         }
     }
 
@@ -5226,6 +5557,43 @@ private:
         const auto blue = static_cast<std::uint16_t>((word >> 1U) & 0x07U);
         const auto level = std::min({red, green, blue});
         return static_cast<std::uint16_t>(level * 255U / 7U);
+    }
+
+    bool opening_entity_palette_flash_active(
+        const std::size_t entity_index) const {
+        const auto& opening = state_.opening_intro;
+        // The scene-entry conversion initializes the palette snapshot to
+        // 0xEEE while the scene fades in. Only the corresponding source
+        // sequence event enables the visible palette effect.
+        if (state_.phase != StartupIntegrationPhase::opening_intro ||
+            opening.scene != OpeningIntroScene::wilderness) {
+            return false;
+        }
+        if (entity_index == 0U) {
+            return opening.sequence.stage >= 5U &&
+                   opening.sequence.stage < 12U;
+        }
+        if (entity_index == 1U) {
+            return opening.persistent.stage >= 5U &&
+                   opening.persistent.stage < 12U;
+        }
+        return false;
+    }
+
+    std::uint16_t opening_entity_palette_flash_color_word(
+        const std::size_t entity_index) const {
+        if (entity_index >= state_.opening_intro.entity_colors.words.size()) {
+            return 0U;
+        }
+        return state_.opening_intro.entity_colors.words[entity_index][0U];
+    }
+
+    bool opening_ambush_palette_flash_active() const {
+        return opening_entity_palette_flash_active(1U);
+    }
+
+    std::uint16_t opening_ambush_palette_flash_color_word() const {
+        return opening_entity_palette_flash_color_word(1U);
     }
 
     void draw_opening_text(
@@ -11940,6 +12308,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> opening_rotor_qa_path;
         std::optional<std::filesystem::path> opening_landing_qa_path;
         std::optional<std::filesystem::path> opening_wilderness_pan_qa_path;
+        std::optional<std::filesystem::path> opening_ambush_flash_qa_path;
         std::optional<std::filesystem::path> opening_death_layer_qa_path;
         std::optional<std::filesystem::path> opening_trivid_layer_qa_path;
         std::optional<std::uint32_t> opening_dump_selection;
@@ -12003,6 +12372,7 @@ int main(int argc, char** argv) {
                        " [--opening-rotor-qa <output-dir>]"
                        " [--opening-landing-qa <output-dir>]"
                        " [--opening-wilderness-pan-qa <output-dir>]"
+                       " [--opening-ambush-flash-qa <output-dir>]"
                        " [--opening-death-layer-qa <output-dir>]"
                        " [--opening-trivid-layer-qa <output-dir>]"
                        " [--intro-to-field-smoke]\n";
@@ -12363,6 +12733,11 @@ int main(int argc, char** argv) {
             if (std::string(argv[index]) == "--opening-wilderness-pan-qa" &&
                 index + 1 < argc) {
                 opening_wilderness_pan_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--opening-ambush-flash-qa" &&
+                index + 1 < argc) {
+                opening_ambush_flash_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--opening-death-layer-qa" &&
@@ -21671,6 +22046,10 @@ int main(int argc, char** argv) {
         if (opening_wilderness_pan_qa_path.has_value()) {
             return window.run_opening_wilderness_pan_qa(
                 *opening_wilderness_pan_qa_path);
+        }
+        if (opening_ambush_flash_qa_path.has_value()) {
+            return window.run_opening_ambush_flash_qa(
+                *opening_ambush_flash_qa_path);
         }
         if (opening_death_layer_qa_path.has_value()) {
             return window.run_opening_death_layer_qa(

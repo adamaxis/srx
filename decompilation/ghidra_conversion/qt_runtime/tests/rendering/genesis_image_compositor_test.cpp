@@ -46,6 +46,25 @@ int main() {
         return 1;
     }
 
+    QImage palette_flash(3, 1, QImage::Format_ARGB32_Premultiplied);
+    palette_flash.fill(Qt::transparent);
+    palette_flash.setPixelColor(0, 0, QColor(182, 146, 109, 255));
+    palette_flash.setPixelColor(1, 0, QColor(80, 120, 160, 128));
+    const auto white_flash =
+        recolor_genesis_image_to_cram_word(palette_flash, 0x0EEEU);
+    const auto gray_step =
+        recolor_genesis_image_to_cram_word(palette_flash, 0x0CCCU);
+    if (!expect(white_flash.pixelColor(0, 0) == QColor(255, 255, 255, 255),
+                "0xEEE palette flash must render visible pixels white") ||
+        !expect(gray_step.pixelColor(0, 0) == QColor(219, 219, 219, 255),
+                "0xCCC palette step must render the source 3-bit gray") ||
+        !expect(white_flash.pixelColor(1, 0) == QColor(255, 255, 255, 128),
+                "palette flash must preserve partial alpha") ||
+        !expect(white_flash.pixelColor(2, 0).alpha() == 0,
+                "palette flash must preserve color-zero transparency")) {
+        return 1;
+    }
+
     QImage fasa(1, 1, QImage::Format_ARGB32_Premultiplied);
     fasa.setPixelColor(0, 0, QColor(73, 146, 219, 255));
     const auto fasa_black =

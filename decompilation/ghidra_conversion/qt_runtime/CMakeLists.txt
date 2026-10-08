@@ -110,6 +110,18 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_opening_wilderness_pan_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# ROM 0x5A2D0 replaces all fifteen colors on palette line 1 with white, then
+# 0x5A328 steps them once every nine frames. The head SAT and right actor plate
+# share this palette while the six timed body/smoke frames continue separately.
+add_test(NAME shadowrun_ghidra_conversion_qt_opening_ambush_flash_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --opening-ambush-flash-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/opening-ambush-flash-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_opening_ambush_flash_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # The six 0x5A080 updates replace the left wilderness region. At 0x59F8E's
 # terminal event, ROM fills that region with the blank tile before drawing the
 # death pose. Verify the full-screen lifetime and the cockpit handoff.

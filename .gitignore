@@ -3,6 +3,7 @@
 # Legacy generated output excluded until it can be archived under /build/.
 /decompilation/build-debug/
 /decompilation/ghidra_conversion/build-ghidra-conversion-qt-debug/
+/decompilation/ghidra_conversion/build-ghidra-conversion-qt-release/
 **/bin/
 **/obj/
 **/Testing/

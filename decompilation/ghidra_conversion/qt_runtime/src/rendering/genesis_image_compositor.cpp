@@ -48,6 +48,38 @@ QImage scale_genesis_image_rgb(const QImage& image,
     return faded;
 }
 
+QImage recolor_genesis_image_to_cram_word(const QImage& image,
+                                          const std::uint16_t color_word) {
+    if (image.isNull()) {
+        return image;
+    }
+
+    const auto expand_component = [](const std::uint16_t component) {
+        return static_cast<int>((component << 5U) | (component << 2U) |
+                                (component >> 1U));
+    };
+    // Genesis CRAM words store red, green, and blue in bits 9..11, 5..7,
+    // and 1..3 respectively. Their three-bit channels expand exactly to the
+    // same 0..255 values used by the offline graphics importer.
+    const QColor color(
+        expand_component(static_cast<std::uint16_t>((color_word >> 9U) & 7U)),
+        expand_component(static_cast<std::uint16_t>((color_word >> 5U) & 7U)),
+        expand_component(static_cast<std::uint16_t>((color_word >> 1U) & 7U)));
+    auto recolored = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    for (int y = 0; y < recolored.height(); ++y) {
+        for (int x = 0; x < recolored.width(); ++x) {
+            auto pixel = recolored.pixelColor(x, y);
+            if (pixel.alpha() == 0) {
+                continue;
+            }
+            pixel.setRgb(color.red(), color.green(), color.blue(),
+                         pixel.alpha());
+            recolored.setPixelColor(x, y, pixel);
+        }
+    }
+    return recolored;
+}
+
 QImage transition_genesis_cram_image(const QImage& image,
                                      const std::uint8_t passes_completed,
                                      const bool toward_black) {

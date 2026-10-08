@@ -1345,8 +1345,8 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
                  begin_title_intro_timed_sprites(state.timed, x, y);
              },
              [&callbacks](const auto&) {
-                 if (callbacks.clear_wilderness_right_map) {
-                     callbacks.clear_wilderness_right_map();
+                 if (callbacks.clear_wilderness_center_map) {
+                     callbacks.clear_wilderness_center_map();
                  }
                  source_boundary(callbacks, "0x5A1BE.sequence_final_overlay");
              },

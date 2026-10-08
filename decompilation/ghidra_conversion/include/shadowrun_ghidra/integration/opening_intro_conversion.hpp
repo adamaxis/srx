@@ -255,10 +255,13 @@ struct OpeningIntroCallbacks {
     std::function<void(OpeningIntroStage)> stage_changed;
     std::function<void(OpeningIntroScene)> scene_changed;
     std::function<void(const OpeningIntroSpriteRequest&)> draw_sprite;
-    // ROM 0x5A252/0x5A0B2 fill the right initial map block at $03B8/$3B8
-    // after the terminal fade sequence. This is a source map clear, not a
-    // missing sprite asset.
+    // ROM 0x5A252/0x5A350 fill the right actor block at $03B8 after its
+    // persistent hit sequence. This is a source map clear, not a missing
+    // sprite asset.
     std::function<void()> clear_wilderness_right_map;
+    // ROM 0x5A0B2/0x5A1BE fill the center actor block at $0826 after its
+    // separate sequence. Keep this clear independent from the right actor.
+    std::function<void()> clear_wilderness_center_map;
     // ROM 0x59FBE fills the left actor plate with the blank tile before the
     // terminal Michael death image is installed.
     std::function<void()> clear_wilderness_left_region;
