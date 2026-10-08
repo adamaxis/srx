@@ -2244,6 +2244,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::uint16_t entity_kind;
         std::uint16_t world_x;
         std::uint16_t world_y;
+        std::uint16_t initial_heading;
         std::uint8_t palette_line;
         std::uint32_t template_offset;
         std::uint32_t position_offset;
@@ -2288,6 +2289,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 entity_kind,
                 read_big_endian_word(rom, position_offset),
                 read_big_endian_word(rom, position_offset + 2U),
+                read_big_endian_word(rom, 0x7361AU + 0x2EU),
                 palette_line,
                 template_offset,
                 position_offset,
@@ -2309,8 +2311,20 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     if (!first_override) {
                         overrides << ',';
                     }
-                    overrides << format_offset(pair >> 8U) << '='
-                              << format_offset(pair & 0x00FFU);
+                    const auto byte_offset =
+                        static_cast<std::uint8_t>(pair >> 8U);
+                    const auto byte_value =
+                        static_cast<std::uint8_t>(pair & 0x00FFU);
+                    overrides << format_offset(byte_offset) << '='
+                              << format_offset(byte_value);
+                    if (byte_offset == 0x2EU) {
+                        record.initial_heading = static_cast<std::uint16_t>(
+                            (static_cast<std::uint16_t>(byte_value) << 8U) |
+                            (record.initial_heading & 0x00FFU));
+                    } else if (byte_offset == 0x2FU) {
+                        record.initial_heading = static_cast<std::uint16_t>(
+                            (record.initial_heading & 0xFF00U) | byte_value);
+                    }
                     first_override = false;
                     pair_offset += 2U;
                 }
@@ -2344,12 +2358,13 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 "cannot create profile-selected default actor table");
         }
         actor_table << "scene\tsource_order\tentity_kind\tworld_x\tworld_y"
-                       "\tpalette_line\ttemplate_offset\tposition_offset"
+                       "\tinitial_heading\tpalette_line\ttemplate_offset\tposition_offset"
                        "\tlist_offset\tordered_overrides\n";
         for (const auto& actor : default_actor_records) {
             actor_table << actor.scene_id << '\t' << actor.source_order << '\t'
                         << actor.entity_kind << '\t' << actor.world_x << '\t'
                         << actor.world_y << '\t'
+                        << actor.initial_heading << '\t'
                         << static_cast<unsigned>(actor.palette_line) << '\t'
                         << format_offset(actor.template_offset) << '\t'
                         << format_offset(actor.position_offset) << '\t'
@@ -2366,17 +2381,27 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     struct DefaultActorKindSource {
         std::uint16_t entity_kind;
         std::uint8_t palette_line;
-        const char* asset_name;
+        const char* asset_stem;
         const char* label;
     };
     constexpr std::array<DefaultActorKindSource, 2> kDefaultActorKinds{{
-        {5U, 2U, "field/entities/actors/corp-guard-idle.bmp", "corp guard"},
-        {11U, 3U, "field/entities/actors/pedestrian-idle.bmp", "pedestrian"},
+        {5U, 2U, "field/entities/actors/corp-guard", "corp guard"},
+        {11U, 3U, "field/entities/actors/pedestrian", "pedestrian"},
     }};
+    constexpr std::size_t kIdleSelectorTableOffset = 0xC052U;
+    constexpr std::size_t kEntrySelectorTableOffset = 0xC0B2U;
+    std::array<bool, 8> used_actor_directions{};
+    for (const auto& actor : default_actor_records) {
+        auto rotated = static_cast<std::uint16_t>(
+            static_cast<std::uint16_t>(actor.initial_heading << 3U) |
+            (actor.initial_heading >> 13U));
+        if ((rotated & 0x8000U) != 0U) {
+            rotated = static_cast<std::uint16_t>(rotated + 1U);
+        }
+        used_actor_directions[rotated & 0x0007U] = true;
+    }
     for (const auto& kind_source : kDefaultActorKinds) {
-        const auto frame =
-            shadowrun::graphics::decode_genesis_field_entity_state_frame(
-                rom, kind_source.entity_kind, kind_source.palette_line);
+        const auto asset_stem = std::string(kind_source.asset_stem);
         const auto template_record = std::find_if(
             default_actor_records.begin(), default_actor_records.end(),
             [&kind_source](const DefaultActorRecord& actor) {
@@ -2387,18 +2412,78 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             throw std::runtime_error(
                 "default actor state frame has no selected scene template");
         }
-        write_catalog_asset(
-            root, kind_source.asset_name, frame.image, "sprite",
-            "0x44BC/0x600E kind=" +
-                std::to_string(kind_source.entity_kind) + " template=" +
-                format_offset(template_record->template_offset) +
-                " descriptor=" +
-                format_offset(static_cast<std::uint32_t>(
-                    frame.descriptor_offset)) +
-                " palette-line=" +
-                std::to_string(kind_source.palette_line),
-            true, manifest, written, missing, blank, frame.origin_x,
-            frame.origin_y);
+        for (std::size_t direction = 0; direction < used_actor_directions.size();
+             ++direction) {
+            if (!used_actor_directions[direction]) {
+                continue;
+            }
+            const auto idle_selector = read_big_endian_word(
+                rom, kIdleSelectorTableOffset + direction * 2U);
+            const auto idle_frame =
+                shadowrun::graphics::decode_genesis_field_entity_state_frame(
+                    rom, kind_source.entity_kind, kind_source.palette_line,
+                    idle_selector);
+            const auto idle_name = asset_stem +
+                                   (direction == 0U
+                                        ? std::string("-idle.bmp")
+                                        : "-idle-dir-" +
+                                              std::to_string(direction) +
+                                              ".bmp");
+            write_catalog_asset(
+                root, idle_name, idle_frame.image, "sprite",
+                "0xB45C/0xC052/0x600E kind=" +
+                    std::to_string(kind_source.entity_kind) + " template=" +
+                    format_offset(template_record->template_offset) +
+                    " descriptor=" +
+                    format_offset(static_cast<std::uint32_t>(
+                        idle_frame.descriptor_offset)) +
+                    " selector=" + format_offset(idle_selector) +
+                    " palette-line=" +
+                    std::to_string(kind_source.palette_line),
+                true, manifest, written, missing, blank,
+                idle_frame.origin_x, idle_frame.origin_y);
+
+            const auto entry_selector = read_big_endian_word(
+                rom, kEntrySelectorTableOffset + direction * 2U);
+            const auto kind_state_pointer = static_cast<std::size_t>(
+                read_big_endian_long(
+                    rom, 0x62ACU +
+                             static_cast<std::size_t>(kind_source.entity_kind) *
+                                 4U));
+            const auto entry_list = static_cast<std::size_t>(
+                read_big_endian_long(rom, kind_state_pointer + entry_selector));
+            if (read_big_endian_word(rom, entry_list) != 0x8002U) {
+                throw std::runtime_error(
+                    "profile-selected default actor entry animation is not "
+                    "the traced two-frame list");
+            }
+            for (std::uint16_t frame_index = 0U; frame_index < 2U;
+                 ++frame_index) {
+                const auto frame =
+                    shadowrun::graphics::decode_genesis_field_entity_state_frame(
+                        rom, kind_source.entity_kind,
+                        kind_source.palette_line, entry_selector, frame_index);
+                const auto entry_name =
+                asset_stem + "-entry-dir-" +
+                    std::to_string(direction) + "-frame-" +
+                    std::to_string(frame_index) + ".bmp";
+                write_catalog_asset(
+                    root, entry_name, frame.image, "sprite",
+                    "0xB330/0xC0B2/0x5FDC/0x600E kind=" +
+                        std::to_string(kind_source.entity_kind) +
+                        " template=" +
+                        format_offset(template_record->template_offset) +
+                        " descriptor=" +
+                        format_offset(static_cast<std::uint32_t>(
+                            frame.descriptor_offset)) +
+                        " selector=" + format_offset(entry_selector) +
+                        " frame=" + std::to_string(frame_index) +
+                        " palette-line=" +
+                        std::to_string(kind_source.palette_line),
+                    true, manifest, written, missing, blank, frame.origin_x,
+                    frame.origin_y);
+            }
+        }
     }
 
     for (std::size_t index = 0; index < assets.entity_frames.size(); ++index) {

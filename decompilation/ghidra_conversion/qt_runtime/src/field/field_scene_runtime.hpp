@@ -8,6 +8,7 @@
 #include "shadowrun_ghidra/entities/collision_state_conversion.hpp"
 #include "shadowrun_ghidra/entities/collision_probe_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_behavior_frame_service_conversion.hpp"
+#include "field_actor_runtime.hpp"
 #include "shadowrun_ghidra/field/field_camera_conversion.hpp"
 #include "shadowrun_ghidra/field/field_hud_conversion.hpp"
 #include "shadowrun_ghidra/field/field_viewport_conversion.hpp"
@@ -123,6 +124,12 @@ public:
     void paint_field_scene_for_dump(QPainter& painter) const;
     std::size_t default_actor_count_for_dump() const noexcept;
     std::size_t visible_default_actor_count_for_dump() const;
+    std::size_t default_actor_transition_started_count_for_dump() const noexcept;
+    std::size_t default_actor_transition_complete_count_for_dump() const noexcept;
+    std::optional<std::uint8_t> default_actor_direction_for_dump(
+        std::uint16_t source_order) const noexcept;
+    std::optional<std::uint8_t> default_actor_animation_frame_for_dump(
+        std::uint16_t source_order) const noexcept;
     bool open_command_overview_for_dump();
     bool open_attributes_skills_for_dump();
     bool attributes_skills_menu_open() const noexcept {
@@ -719,6 +726,8 @@ public:
     }
 
 private:
+    struct DefaultFieldActorPresentation;
+    struct DefaultActorSpriteView;
     FieldInteractionAdvanceResult advance_field_interaction(
         std::uint16_t event_word);
     void configure_callbacks();
@@ -761,6 +770,10 @@ private:
         const ConversionAssetCatalog& catalog);
     bool load_field_default_actor_assets(
         const ConversionAssetCatalog& catalog);
+    void initialize_default_field_actors(std::uint16_t scene_reference);
+    void advance_default_field_actors();
+    DefaultActorSpriteView default_actor_sprite_view(
+        const DefaultFieldActorPresentation& actor) const;
     const QImage* runner_preview_panel_for_record(
         const RunnerRecordFields& record) const;
     bool load_sprite_image(const ConversionAssetCatalog& catalog,
@@ -861,11 +874,28 @@ private:
         std::uint16_t source_order = 0;
         std::uint16_t entity_kind = 0;
         SceneRunnerPosition world_position{};
+        std::uint16_t initial_heading = 0;
         std::uint8_t palette_line = 0;
         std::uint32_t template_offset = 0;
         std::uint32_t position_offset = 0;
         std::uint32_t list_offset = 0;
         std::string ordered_overrides;
+        FieldActorBehaviorState behavior{};
+    };
+
+    struct DefaultActorArtwork {
+        std::array<QImage, 8> idle_images{};
+        std::array<int, 8> idle_origin_x{};
+        std::array<int, 8> idle_origin_y{};
+        std::array<std::array<QImage, 2>, 8> entry_images{};
+        std::array<std::array<int, 2>, 8> entry_origin_x{};
+        std::array<std::array<int, 2>, 8> entry_origin_y{};
+    };
+
+    struct DefaultActorSpriteView {
+        const QImage* image = nullptr;
+        int origin_x = 0;
+        int origin_y = 0;
     };
 
     std::function<void(std::string_view)> source_boundary_callback_;
@@ -1038,12 +1068,7 @@ private:
     std::array<QImage, 8> field_entity_attack_images_{};
     std::array<int, 8> field_entity_attack_origin_x_{};
     std::array<int, 8> field_entity_attack_origin_y_{};
-    QImage field_corp_guard_idle_image_;
-    int field_corp_guard_origin_x_ = 0;
-    int field_corp_guard_origin_y_ = 0;
-    QImage field_pedestrian_idle_image_;
-    int field_pedestrian_origin_x_ = 0;
-    int field_pedestrian_origin_y_ = 0;
+    std::array<DefaultActorArtwork, 2> field_default_actor_artwork_{};
     std::vector<DefaultFieldActorPresentation> field_default_actors_;
     std::array<std::vector<QImage>, 16> field_weapon_projectile_images_{};
     std::array<std::vector<int>, 16> field_weapon_projectile_origin_x_{};

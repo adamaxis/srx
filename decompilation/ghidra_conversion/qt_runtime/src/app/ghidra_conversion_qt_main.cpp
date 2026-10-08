@@ -8247,8 +8247,8 @@ int run_field_scene20_physical_entry_qa(
         painter.end();
         return image;
     };
-    const auto save = [&render, &output](const std::string_view name) {
-        const auto image = render();
+    const auto save_image = [&output](const std::string_view name,
+                                      const QImage& image) {
         const auto path = output / (std::string(name) + ".bmp");
         if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
             !image.save(QString::fromStdWString(path.wstring()))) {
@@ -8257,6 +8257,9 @@ int run_field_scene20_physical_entry_qa(
             return false;
         }
         return true;
+    };
+    const auto save = [&render, &save_image](const std::string_view name) {
+        return save_image(name, render());
     };
     std::ofstream trace(output / "route.tsv", std::ios::trunc);
     if (!trace) {
@@ -8476,14 +8479,106 @@ int run_field_scene20_physical_entry_qa(
     if (seeded_passkey_slot.has_value()) {
         write_state("fixture-passkey-seeded-in-active-runner");
     }
+    const auto actor_direction_order_3 =
+        field_scene.default_actor_direction_for_dump(3U);
+    const auto actor_direction_order_4 =
+        field_scene.default_actor_direction_for_dump(4U);
+    if (actor_direction_order_3 != std::optional<std::uint8_t>{2U} ||
+        actor_direction_order_4 != std::optional<std::uint8_t>{6U}) {
+        std::cerr << "Scene-20 physical-entry QA: source heading overrides "
+                     "did not select the two directional guard poses\n";
+        return 3;
+    }
+    const auto actor_audio_event_count = [&field_audio_events](
+                                             const std::uint16_t event) {
+        return static_cast<std::size_t>(std::count(
+            field_audio_events.begin(), field_audio_events.end(), event));
+    };
+    const auto actor_audio_2e_at_entry = actor_audio_event_count(0x2EU);
+    const auto actor_audio_2f_at_entry = actor_audio_event_count(0x2FU);
+    std::ofstream actor_animation_trace(output / "actor-animation.tsv",
+                                        std::ios::trunc);
+    if (!actor_animation_trace) {
+        std::cerr << "Scene-20 physical-entry QA: actor animation trace "
+                     "could not be written\n";
+        return 3;
+    }
+    actor_animation_trace
+        << "frame\ttransitions_started\ttransitions_complete\t"
+           "order_3_direction\torder_3_frame\torder_4_direction\t"
+           "order_4_frame\taudio_2e_count\taudio_2f_count\n";
+    const auto record_actor_animation = [&](const std::uint16_t elapsed) {
+        const auto order_3_frame =
+            field_scene.default_actor_animation_frame_for_dump(3U);
+        const auto order_4_frame =
+            field_scene.default_actor_animation_frame_for_dump(4U);
+        if (!order_3_frame.has_value() || !order_4_frame.has_value()) {
+            return false;
+        }
+        actor_animation_trace
+            << elapsed << '\t'
+            << field_scene.default_actor_transition_started_count_for_dump()
+            << '\t'
+            << field_scene.default_actor_transition_complete_count_for_dump()
+            << '\t' << static_cast<unsigned>(*actor_direction_order_3) << '\t'
+            << static_cast<unsigned>(*order_3_frame) << '\t'
+            << static_cast<unsigned>(*actor_direction_order_4) << '\t'
+            << static_cast<unsigned>(*order_4_frame) << '\t'
+            << actor_audio_event_count(0x2EU) << '\t'
+            << actor_audio_event_count(0x2FU) << '\n';
+        return static_cast<bool>(actor_animation_trace);
+    };
+    if (!record_actor_animation(0U)) {
+        return 3;
+    }
+    QImage actor_frame_8;
+    QImage actor_frame_30;
+    QImage actor_frame_40;
     for (std::uint8_t tick = 0U; tick < 30U; ++tick) {
         field_scene.advance_frame();
         ++frame;
         if (tick == 7U || tick == 29U) {
-            if (!save(tick == 7U ? "scene20-frame-8" : "scene20-frame-30")) {
+            auto& animation_frame = tick == 7U ? actor_frame_8 : actor_frame_30;
+            animation_frame = render();
+            if (!save_image(
+                    tick == 7U ? "scene20-frame-8" : "scene20-frame-30",
+                    animation_frame)) {
+                return 3;
+            }
+            if (!record_actor_animation(
+                    static_cast<std::uint16_t>(tick + 1U))) {
                 return 3;
             }
         }
+    }
+    if (field_scene.default_actor_transition_started_count_for_dump() != 8U) {
+        std::cerr << "Scene-20 physical-entry QA: not all eight default actors "
+                     "entered their finite behavior animation within 30 ticks\n";
+        return 3;
+    }
+    for (std::uint8_t tick = 30U; tick < 40U; ++tick) {
+        field_scene.advance_frame();
+        ++frame;
+    }
+    if (field_scene.default_actor_transition_complete_count_for_dump() != 8U ||
+        actor_audio_event_count(0x2EU) <= actor_audio_2e_at_entry ||
+        actor_audio_event_count(0x2FU) <= actor_audio_2f_at_entry ||
+        field_scene.dialogue_open() || field_scene.command_overview_open() ||
+        field_scene.field_interaction_open() || field_scene.shop_menu_open() ||
+        !record_actor_animation(40U)) {
+        std::cerr << "Scene-20 physical-entry QA: actor transition completion, "
+                     "source cue requests, or clean full-screen field state "
+                     "did not hold after 40 ticks\n";
+        return 3;
+    }
+    actor_frame_40 = render();
+    if (!save_image("scene20-frame-40", actor_frame_40) ||
+        actor_frame_30 == scene20_image || actor_frame_8 == actor_frame_30 ||
+        actor_frame_30 != actor_frame_40) {
+        std::cerr << "Scene-20 physical-entry QA: the actor pose sequence did "
+                     "not change the full-screen pixels by frame 30 and then "
+                     "hold its terminal frame without leaving stale graphics\n";
+        return 3;
     }
 
     constexpr std::size_t maglock_record_index = 117U;
@@ -13014,6 +13109,10 @@ int main(int argc, char** argv) {
                 std::cerr << "field smoke: " << field_scene.failure() << '\n';
                 return 3;
             }
+            // Per-route QA event assertions begin after field startup. Actor
+            // entry cues during the 31 bootstrap ticks are checked by the
+            // scene-actor route and must not masquerade as input-driven audio.
+            field_audio_events.clear();
             if (field_security_terminal_physical_entry_qa_path.has_value() ||
                 field_scene26_maglock_descriptor_route_qa_path.has_value()) {
                 const auto scene26_interaction_mode =
@@ -13373,6 +13472,7 @@ int main(int argc, char** argv) {
                               << left_field_scene.failure() << '\n';
                     return 3;
                 }
+                left_field_audio_events.clear();
                 const auto render_left_field = [&] {
                     QImage image(kSceneWidth, kSceneHeight,
                                  QImage::Format_RGB32);
@@ -13938,6 +14038,10 @@ int main(int argc, char** argv) {
                               << weapon_fire_scene.failure() << '\n';
                     return 3;
                 }
+                // Bootstrap now services profile-selected actor transitions,
+                // which may request their own silent source cues. Keep this
+                // vector scoped to the player weapon action below.
+                weapon_fire_audio.clear();
                 auto& fire_runner = weapon_fire_scene.active_runner_record();
                 if ((fire_runner.flags & 0x0300U) != 0x0300U) {
                     std::cerr << "field player action dump: source Joshua record does not carry the active action flags\n";
@@ -14412,6 +14516,9 @@ int main(int argc, char** argv) {
                               << runner_switch_scene.failure() << '\n';
                     return 3;
                 }
+                // Actor transition cues belong to bootstrap. This route only
+                // asserts the later runner-switch event sequence.
+                runner_switch_audio.clear();
                 LiveRunnerRecord ricky_source{};
                 ricky_source.bytes =
                     smoke_state.startup_records->save_roster_templates[1U]

@@ -1,9 +1,11 @@
 # Field actor population and combat handoff audit
 
-**Status:** ROM data and entry path traced; the Qt runtime now draws the
-profile-selected default idle visuals for scenes 2 and `0x14`. This is partial:
-it does not implement live entity-record updates, actor movement, interaction,
-collision targets, hits, status, or damage. `LOADOUT-01` remains partial.
+**Status:** ROM population, initial behavior entry, direction, animation, and
+sound-request paths are traced for the profile-selected actors in scenes 2 and
+`0x14`. The Qt runtime advances their typed initial transition during field
+bootstrap and normal field updates. This remains partial: post-transition
+behavior, actor movement, interaction, collision targets, hits, status, and
+damage are not implemented. `LOADOUT-01` remains partial.
 
 ## Source path
 
@@ -100,8 +102,29 @@ line 3 for pedestrians. `0x44BC` copies that template word to entity byte
 `+0x2C`; it is separate from `0x600E`'s selector and frame-index words at
 `+0x16` and `+0x1E`. The profile overrides touch `+0x2E` or `+0x9E`, not
 those animation words, so the state-zero frame choice is supported at
-initialization. Those overrides may affect other behavior that this static
-presentation does not implement.
+initialization. Those overrides may affect later live behavior that this
+initial transition slice does not implement.
+
+The entry behavior is separate from ordinary directional walking. `0xA8EA`
+services the default records before the field camera and render pass;
+`0xAC84` sends records with the default behavior flags through `0x13904`.
+For the supported default-record path, `0x13904` subtracts the initial
+`+0xB6` delay (the low nibble of the source PRNG result, 0 through 15), then
+checks the zero `+0x16` animation selector and zero `+0x9C` state. It sets the
+entry flag and calls `0xB330`. `0xB330` requests the kind-indexed cue from
+`0xB05E`, selects the directional C0B2 list, and resets the animation state.
+Kind 5 requests event `0x2E`; kind 11 requests `0x2F`. The audio tables map
+these to silent table-2 slots 46 and 47, so the source makes a request but no
+audible sample or playback duration is defined for either cue.
+
+The selected C0B2 lists for the used directions are finite two-frame lists
+(`0x8002` marker, `0x0200` increment, `0x1000` period). The initial idle
+increment contributes a `-16` accumulator carry on the activation frame;
+then each transition pose remains for nine field updates. The final pose stays
+selected while the 20-count behavior timer is serviced; the next zero check
+completes on the 21st update after activation. This covers only the observed
+initial transition. `0xAB02` and later action, movement, collision, and damage
+branches are outside this native slice.
 
 The existing field entity catalog is not these actors: the importer currently
 decodes the live Joshua template at `0x7291A` (kind 3). `0x4658` updates the
@@ -109,76 +132,41 @@ sixteen entity records and calls `0x481E`; `0x481E` separately refreshes ten
 projection slots from `FF164C`. Its `0x5F78` geometry must not be substituted
 for the kind-5/kind-11 animation frames or treated as their full sprite art.
 
-## Native default-actor visual slice
+## Native default-actor transition slice
 
-The offline `shadowrun_graphics_extract --all-assets` step now writes
+The offline `shadowrun_graphics_extract --all-assets` step writes
 `field/entities/default-actors.tsv` by walking the profile-selected lists at
-`0x172D1C` and `0x1D91DA`. It preserves each list's order, world position,
-template/position/list provenance, palette line, and ordered overrides. It
-also writes individually named idle images for kind 5 and kind 11 from the
-state-zero pointers at `0x827C` and `0x8D7C`. The image catalog preserves the
-signed descriptor origins `(-13,-26)` and `(-14,-24)` after transparent-edge
-cropping. The same origin handling now applies to named projectile frames:
-their source-composed frame origins are no longer discarded when the image is
-cropped.
+`0x172D1C` and `0x1D91DA`. It preserves list order, world position,
+template/position/list provenance, palette line, source heading, and ordered
+overrides. It writes individually named idle images and two C0B2 transition
+frames for each kind and direction used by these lists. Scene 2 uses direction
+0; scene `0x14` also uses directions 2 and 6 because source-order records 3 and
+4 override heading at `+0x2E`. Images preserve signed descriptor origins and
+are direct assets consumed by the runtime; no ROM or VDP state is used at
+runtime.
 
-At field bootstrap, `FieldSceneRuntime` reads that named table and images. The
-scene compositor filters by the active scene, projects each world position,
-sorts by effective Y depth with the source list order as its stable tie-break,
-draws the static state-zero art, and then draws the shared field HUD over the
-playfield. It uses no ROM or VDP state at runtime. The screen-2 QA loads all
-three pedestrian records and confirms their image bounds are outside the
-initial viewport. The scene-`0x14` physical-entry QA loads eight records and
-confirms two guard sprites intersect the visible playfield; it captures the
-complete `320x224` screen at entry and after 30 frames.
+`FieldSceneRuntime` initializes actor behavior after loading those assets and
+before `bootstrap_field_session` enters its 31-frame warmup. Each bootstrap
+entity-service tick and each normal field behavior-service tick advances the
+same `FieldActorBehaviorState`. The scene compositor projects actors, sorts by
+effective Y depth with source order as the stable tie-break, draws the active
+idle or transition image, then redraws the shared HUD over the playfield.
+The scene-`0x14` route checks all eight records, the direction overrides, all
+eight transition starts and completions, both source cue requests, and a clean
+whole-screen HUD/menu state. It writes actor-state checkpoints at entry and
+frames 8, 30, and 40. Its pixel assertion confirms the screen changes by frame
+30 and then holds the final pose at frame 40; the first transition image can
+match the idle image and therefore need not change pixels at frame 8.
 
-**Visual verification gate:**
-
-1. **Appearance:** the full native scene-`0x14` captures show two small guard
-   sprites on the map, with the runner, terrain, and right HUD intact. The
-   independent captures under
-   `video analysis/long_gameplay_video_early_sections_ffmpeg_30fps_320x224/section_03_jump_house_stoker_job_0118-0238/`
-   (`frame_003540.png`, `frame_003560.png`, `frame_003580.png`) show small
-   field characters across nearby gameplay frames. Their exact scene/list
-   identity is not established by the recording, so these are supporting
-   appearance references, not a pixel golden.
-2. **Behavioral state:** scene 2 loads three type-11 records; scene `0x14`
-   loads five type-5 and three type-11 records. The typed table carries their
-   ROM world coordinates, template-selected palette lines, and source order.
-   The visible count uses the projected, cropped frame bounds, not just the
-   projection anchor.
-3. **Visual construction:** `0x600E` selects one `0x8002` frame in each
-   default state-zero list. The extractor bakes palette line 2 or 3 and keeps
-   the descriptor origin. The full frame is reviewed after draw; the separate
-   `0x481E` projection-slot assignment remains an open source boundary.
-4. **Animation:** both state-zero lists have positive marker 1 and one frame,
-   so these initial poses are static. Other actor states, transitions, and
-   movement cadence are not implemented by this slice.
-5. **Sound:** no sound call is tied to loading or drawing these default idle
-   records. Interaction and combat sound routes remain separate and unresolved
-   where noted in their audits.
-6. **Related screen content:** whole-screen captures include terrain, the
-   runner, and the shared right HUD. Actors are drawn between the map and HUD;
-   no old menu control or prior scene panel is left over.
-7. **Multiple frames:** native `scene20-entry.bmp` and `scene20-frame-30.bmp`
-   show the same static population; independent section 03 frames 003540,
-   003560, and 003580 show related field characters. No matching Genesis
-   screenshot at these exact source positions is identified.
-8. **Prior screen cleanup:** the physical scene transition replaces the map
-   through the existing scene-load path, then renders the active HUD. Menu
-   controls are not retained over the new map; the shared HUD is intentionally
-   redrawn after actors.
-
-Release checks passed: `shadowrun_graphics_test.exe`,
-`shadowrun_ghidra_conversion_qt_field_action_qa`,
-`shadowrun_ghidra_conversion_qt_field_scene20_physical_entry_qa`, and
-`shadowrun_ghidra_conversion_qt_field_player_action_qa`. Full-screen outputs
-are under `qt_runtime/field-action-qa/`,
-`qt_runtime/field-scene20-physical-entry-qa/`, and
-`qt_runtime/field-player-action-qa/`. All 273 Release captures in those three
-folders were reviewed across 18 contact sheets; no stale menu controls or
-unexplained sprite/UI overlaps were found in those routes. These checks prove
-the converted path and source table wiring, not Genesis visual equivalence.
+Release checks passed: `shadowrun_ghidra_conversion_qt_field_actor_runtime_qa`,
+`shadowrun_ghidra_conversion_qt_field_scene20_physical_entry_qa`,
+`shadowrun_ghidra_conversion_qt_field_action_qa`, and
+`shadowrun_ghidra_conversion_qt_field_player_action_qa`. All 43 full-screen
+scene-20 route captures were reviewed across four contact sheets. The actor
+sequence changes only the expected field sprites; no stale menu or dialogue
+controls remain, and the shared HUD stays intact. The route outputs include
+`actor-animation.tsv` and `scene20-frame-40.bmp`. This validates native
+transition behavior and clean composition, not Genesis visual equivalence.
 
 ## Live-route reachability check
 
@@ -207,60 +195,47 @@ result, and its entity-population callback remains an explicit source
 boundary. The coordinator's current `field_mode` value comes from the scene
 resource mode, so it cannot stand in for `FFFBF9`. Separately, the two
 profile-selected default lists at `0x172D1C` and `0x1D91DA` are extracted as
-named typed data and their state-zero images are drawn by the live Qt field
-compositor. That presentation does not allocate or update the ROM's live
-entity records. Keep special list `0x1E552` separate until an actual event
-path selects it.
+named typed data and their state-zero and initial-transition images are drawn
+by the live Qt field compositor. That presentation does not allocate or update
+the ROM's live entity records. Keep special list `0x1E552` separate until an
+actual event path selects it.
 
 ## Visual verification questions
 
-1. **Does each actor look correct?** The Release scene-`0x14` full-screen
-   captures show the two currently visible guard images on the map, with the
-   runner, terrain, and right HUD intact. This checks the decoded state-zero
-   art and placement path, not exact Genesis pixels.
-2. **Does its displayed state match its behavior?** The loaded population,
-   source order, world positions, kinds, palette lines, and override bytes
-   match the profile lists. The `0x600E` selector/frame words start at zero;
-   the renderer currently holds that initial pose because live actor updates
-   are not connected.
-3. **Are its visuals correct?** The selected descriptors, RGBA images,
-   palette lines, and signed origins are source-decoded. The two named images
-   are composed in the entire field screen. `0x481E`'s separate projection
-   slot assignment remains unresolved and is not claimed as this actor layer.
-4. **How does it animate?** Each initial state list has one frame. The static
-   idle art therefore holds in the current Qt path. Actor callbacks, movement
-   cadence, transitions, and later poses still need a ROM trace and native
-   implementation.
-5. **What sound accompanies it and for how long?** No sound request is tied to
-   loading or drawing these default entries. Actor action and behavior calls
-   have not been followed far enough to identify any later sound or duration.
-6. **Are the rest of the screen and state correct?** All 273 Release captures
-   in the field-action, player-action, and scene-`0x14` entry QA folders were
-   reviewed across 18 contact sheets. The map, runner, HUD, and neighboring
-   controls were checked with the actor pass.
-7. **Do multiple independent frames support the interpretation?** Native
-   `scene20-entry.bmp` and `scene20-frame-30.bmp` show the same static
-   population. Independent section 03 frames `003540`, `003560`, and `003580`
-   show small field characters, but do not establish the same scene/list or
-   exact actor identities.
-8. **Are old graphics or controls left under new ones?** The actors enter the
-   field sprite pass between the map and shared HUD. The reviewed whole-screen
-   captures show no stale menu panel or overdrawn menu controls in these
-   tested routes.
-9. **Are there enough frames across the animation and transition?** The
-   initial one-frame hold is sampled at entry and after 30 updates. That is
-   not enough for actor animation, movement, interaction, combat, or
-   retirement; those states are not implemented in this slice.
+1. **Does it look correct?** Full-screen captures show the visible guards at
+   their source-projected positions, with no opaque crop box around either
+   sprite. The independent longplay has only supporting field-character
+   examples; it does not identify this exact scene or pose.
+2. **Does the current image reflect behavior?** The actor trace ties source
+   directions 2 and 6 to records 3 and 4. It records eight starts, eight
+   completions, and the two visible guards' animation frame at every captured
+   checkpoint.
+3. **Are the visuals correct?** Named assets use the traced kind, selector,
+   palette, descriptor, frame, and signed origin. The exact live projection
+   slot assignment through `0x481E` remains unresolved.
+4. **Is it animated, and when?** The entry delay is 0–15 field updates; each
+   of two C0B2 frames lasts nine updates. The final frame stays selected
+   through the 21-update behavior check. Later actor states are still open.
+5. **Is there a sound effect, and how long?** Entry requests `0x2E` or `0x2F`
+   by actor kind. Both map to silent slots, so neither has audible playback
+   duration. Other actor sounds are unresolved.
+6. **Are the rest of the screen and state correct?** All 43 full-screen
+   scene-20 route captures were reviewed across four sheets. Map, runner, HUD,
+   and prompt/menu state were checked together.
+7. **Do multiple frames support the interpretation?** The route includes
+   entry and frames 8, 30, and 40, with matching typed state checkpoints.
+   Frame 30 differs from entry; frame 40 matches frame 30 after all transitions
+   complete. No same-scene Genesis visual golden is available.
+8. **Are new graphics drawn over stale UI?** Scene loading replaces the map;
+   actors draw in the map's entity pass; the HUD is redrawn afterwards. The
+   full-screen route confirms the previous panel and controls are gone.
 
 ## Next implementation slice
 
-The named default-list data and kind-5/kind-11 idle images are now extracted
-and connected to the Qt field compositor. Next, trace the ROM's per-frame
-entity update at `0x4658`, the kind-specific action dispatch, and how these
-template records acquire their behavior callbacks. Convert only the traced
-state transitions, cadence, and movement into typed native actor state. Trace
-actor collision/action dispatch before adding any actor to weapon targeting;
-follow hit/status/damage and retirement before calling combat functional.
-Keep the hill partial until full-screen scene captures cover entry, idle,
-action, and return and an independent Genesis comparison is found or recorded
-as unavailable.
+The named default-list data and the initial idle-to-C0B2 transition now reach
+the Qt field compositor. Next, trace the other `0x13904` branches, the
+post-transition `0xAB02` path, the live `0x4658` record update, and
+kind-specific action dispatch. Add only source-backed states and keep actor
+targeting outside combat until collision, hit, damage, and retirement paths
+are traced and connected. The hill remains partial; exact independent Genesis
+captures for these scene actors are not identified.
