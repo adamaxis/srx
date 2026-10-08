@@ -14548,9 +14548,150 @@ int main(int argc, char** argv) {
                     std::cerr << "field player action dump: weapon 2 did not reload to its own 12-round capacity from the shared runner reserve\n";
                     return 3;
                 }
+
+                // Fire the second equipped weapon through the same ordinary
+                // field input route. Source action code 2 keeps the regular
+                // directional spawn family, but its own loaded magazine must
+                // lose a round and the action's audio table must be serviced.
+                field_audio_events.clear();
+                std::size_t weapon_two_ready_delay = 0U;
+                while (runner.animation_action_gate >= 0 &&
+                       weapon_two_ready_delay < 120U) {
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    ++weapon_two_ready_delay;
+                    if (runner.ammo_rounds != 12U ||
+                        runner.ammo_clips != 1U ||
+                        !field_audio_events.empty() ||
+                        field_scene.command_overview_open() ||
+                        field_scene.dialogue_open() ||
+                        field_scene.inventory_action_open() ||
+                        field_scene.clips_menu_open()) {
+                        std::cerr << "field player action dump: weapon 2 changed while waiting for its reload action delay to finish\n";
+                        return 3;
+                    }
+                }
+                const auto weapon_two_ready_before_fire = render_scene();
+                if (runner.animation_action_gate >= 0 ||
+                    !ammo_counter_matches_for_slot(
+                        weapon_two_ready_before_fire, 12, 0U) ||
+                    !save_scene("weapon-2-ready-before-fire",
+                                weapon_two_ready_before_fire)) {
+                    std::cerr << "field player action dump: weapon 2 did not reach a clean full-magazine ready state\n";
+                    return 3;
+                }
+
+                std::ofstream weapon_two_fire_trace(
+                    *field_player_action_dump_path /
+                        "weapon-2-fire.tsv",
+                    std::ios::trunc);
+                if (!weapon_two_fire_trace) {
+                    std::cerr << "field player action dump: could not open weapon-2-fire.tsv\n";
+                    return 3;
+                }
+                weapon_two_fire_trace
+                    << "frame\tinput\tselector\tanimation_frame\t"
+                       "effect_count\tammo_rounds\tclip_reserve\t"
+                       "audio_events\n"
+                    << "ready\t0\t-1\t-1\t0\t12\t1\t0\n";
+                field_scene.set_controller_port_byte(0x40U);
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                const auto weapon_two_fire = render_scene();
+                const auto weapon_two_selector =
+                    field_scene.field_weapon_projectile_selector_for_dump();
+                const bool weapon_two_regular_selector =
+                    weapon_two_selector.has_value() &&
+                    *weapon_two_selector <= 0x001CU &&
+                    (*weapon_two_selector & 0x0003U) == 0U;
+                if (field_scene.last_field_weapon_spawn_action_for_dump() !=
+                        EntitySpawnCycleAction::spawned ||
+                    !weapon_two_regular_selector ||
+                    field_scene.field_weapon_projectile_count_for_dump() !=
+                        1U ||
+                    field_scene.field_weapon_projectile_frame_for_dump() !=
+                        std::optional<std::uint16_t>{0U} ||
+                    runner.equipped_item_code != 2U ||
+                    runner.equipped_inventory_slot != 1 ||
+                    runner.ammo_rounds != 11U || runner.ammo_clips != 1U ||
+                    !field_scene.field_entity_attack_pose_for_dump() ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x001CU} ||
+                    !ammo_counter_matches_for_slot(weapon_two_fire, 11, 0U) ||
+                    !save_scene("weapon-2-fire", weapon_two_fire)) {
+                    std::cerr << "field player action dump: ordinary A did not fire equipped weapon 2, consume its loaded round, select the regular directional effect, update the HUD, and request event 0x1C\n";
+                    return 3;
+                }
+                weapon_two_fire_trace
+                    << "shot\t64\t" << *weapon_two_selector << "\t0\t1\t"
+                    << static_cast<unsigned>(runner.ammo_rounds) << "\t"
+                    << static_cast<unsigned>(runner.ammo_clips) << "\t"
+                    << field_audio_events.size() << '\n';
+
+                QImage weapon_two_effect_clear;
+                bool weapon_two_effect_frame_visible = false;
+                for (std::uint16_t delay_frame = 1U; delay_frame <= 3U;
+                     ++delay_frame) {
+                    field_scene.advance_frame();
+                    const auto frame = render_scene();
+                    const auto effect_count =
+                        field_scene.field_weapon_projectile_count_for_dump();
+                    const auto animation_frame =
+                        field_scene.field_weapon_projectile_frame_for_dump();
+                    const bool expected_animation_state =
+                        (delay_frame < 3U && effect_count == 1U &&
+                         animation_frame ==
+                             std::optional<std::uint16_t>{delay_frame}) ||
+                        (delay_frame == 3U && effect_count == 0U &&
+                         !animation_frame.has_value());
+                    if (!expected_animation_state ||
+                        runner.ammo_rounds != 11U ||
+                        runner.ammo_clips != 1U ||
+                        !field_scene.field_entity_attack_pose_for_dump() ||
+                        field_audio_events !=
+                            std::vector<std::uint16_t>{0x001CU} ||
+                        !ammo_counter_matches_for_slot(frame, 11, 0U)) {
+                        std::cerr << "field player action dump: weapon 2's regular effect did not advance and retire without changing its magazine or replaying audio\n";
+                        return 3;
+                    }
+                    const auto frame_name =
+                        "weapon-2-fire-delay-" +
+                        std::to_string(delay_frame);
+                    if (!save_scene(frame_name, frame)) {
+                        std::cerr << "field player action dump: could not save a weapon 2 fire animation frame\n";
+                        return 3;
+                    }
+                    if (delay_frame == 1U) {
+                        weapon_two_effect_frame_visible =
+                            !same_full_frame(weapon_two_fire, frame);
+                    }
+                    if (delay_frame == 3U) {
+                        weapon_two_effect_clear = frame;
+                    }
+                    weapon_two_fire_trace
+                        << "delay-" << delay_frame << "\t0\t"
+                        << *weapon_two_selector << '\t'
+                        << (animation_frame.has_value()
+                                ? static_cast<int>(*animation_frame)
+                                : -1)
+                        << '\t' << effect_count << '\t'
+                        << static_cast<unsigned>(runner.ammo_rounds) << '\t'
+                        << static_cast<unsigned>(runner.ammo_clips) << '\t'
+                        << field_audio_events.size() << '\n';
+                }
+                if (!weapon_two_effect_frame_visible ||
+                    weapon_two_effect_clear.isNull() ||
+                    same_full_frame(weapon_two_fire,
+                                    weapon_two_effect_clear) ||
+                    !weapon_two_fire_trace) {
+                    std::cerr << "field player action dump: weapon 2's full-screen effect frames did not visibly advance and clear\n";
+                    return 3;
+                }
+
                 std::cout << "field_player_action_dump=written path="
                           << output.string()
                           << " weapon1_rounds=6 weapon2_rounds=12"
+                          << " weapon2_fire_rounds=11"
                           << " reserve_clips=1 reload_audio_events=4"
                           << " action_delay_frames=" << action_delay_frames
                           << " weapon_switch_route_frames="

@@ -18,9 +18,9 @@ The paired secondary record selects one of sixteen direction lists from
 `0x630C`: selectors `0x00..0x1C` are the regular three-frame (`0x8003`) family,
 and `0x20..0x3C` are the special eleven-frame (`0x800B`) family. Action codes
 8..10 select the special family; the other supported codes use the regular
-family. Thus the ROM ties the projectile family to action class and heading,
-while the sound table is selected per action code/status. The source does not
-provide a unique projectile clip for every gun.
+family. Thus the ROM ties the directional spawn-effect list to action class
+and heading, while the sound table is selected per action code/status. The
+source does not provide a unique projectile clip for every gun.
 
 The two spawned records have different roles. The primary keeps the
 `0x14E0A` behavior continuation and direction-derived movement offsets from
@@ -71,6 +71,14 @@ unchanged shared reserve (2), C042 pose/delay, selector 0, and HUD count. The
 Qt application routes the audio callback to playback; field QA uses an event
 spy, while the separate playback CTest checks the mapped resource and duration.
 
+The same field QA also takes the ordinary Start/Right/A menu route to equip
+item 2, reloads it to its own 12-round capacity, waits for the reload delay to
+finish, then fires through ordinary A input. It checks 12->11 in item 2's
+loaded magazine, unchanged shared reserve (1), sound event `0x1C`, regular
+selector 0, and the secondary effect's frame 0->1->2 retirement. The five
+additional full-screen frames show the ready state, shot, each animation tick,
+and the cleared effect with no menu controls left over.
+
 This connects a visible timed secondary-spawn effect to the field loop, not
 the complete 16-record entity/combat lifecycle. The native presenter keeps
 paired records outside the authoritative shared slot table and currently
@@ -90,9 +98,11 @@ behavior in the traced source path.
    equivalence remains unconfirmed.
 2. **Does the look reflect the state?** QA verifies the archetype's source
    action flags, ordinary A input, item 1 ammo 6->5, unchanged shared reserve
-   (2), attack selector `0x40`, regular projectile selector 0, event `0x1C`,
-   and visible ammo 05. Its animation trace records count, selector, and frame
-   for all 52 action-delay updates.
+   (2), attack selector `0x40`, regular selector 0, event `0x1C`, and visible
+   ammo 05. A second ordinary menu route equips and fires item 2, checking
+   12->11, reserve 1, the same source regular list, and event `0x1C`. The first
+   weapon's animation trace records count, selector, and frame for all 52
+   action-delay updates.
 3. **Are the visuals correct?** Eight direction-specific regular lists and
    eight special lists come from the decoded ROM pointers and raw object atlas.
    Full-screen captures show the second spawn-effect frame and its removal while
@@ -106,29 +116,32 @@ behavior in the traced source path.
    spawn. This is the secondary spawn effect's animation; the primary
    collision/action record's cadence remains unimplemented in Qt. Another shot
    remains gated until movement returns to idle/walk.
-5. **What sound plays and how long?** Item 1 requests event `0x1C`, resource
-   028, a one-shot measured at 2.483 s. Holding A during the action delay does
-   not submit repeated events; releasing A does not stop the one-shot. Playback
-   state and duration are checked separately by the shared Debug/Release audio
-   CTest. Live field-route loopback and independent Genesis audio correlation
-   were unavailable.
+5. **What sound plays and how long?** Items 1 and 2 request event `0x1C`,
+   resource 028, a one-shot measured at 2.483 s. Holding A during the item-1
+   action delay does not submit repeated events; the item-2 trace likewise sees
+   only one event. Releasing A does not stop the one-shot. Playback state and
+   duration are checked separately by the shared Debug/Release audio CTest.
+   Live field-route loopback and independent Genesis audio correlation were
+   unavailable.
 6. **Were other screen regions checked?** QA writes the before frame, shot,
    all 52 delay images, 30 idle-hold images, and final alias. It requires a
    whole-screen pixel change for the visible spawn-effect frame and its removal,
-   then pixel stability for every remaining delay and hold frame. The HUD count
-   is checked against its named asset; there is no stale button, menu, or
-   overlay.
+   then pixel stability for every remaining delay and hold frame. Five more
+   complete frames cover item 2 before fire, after fire, each effect frame, and
+   effect removal; the field map and HUD remain visible with no menu or stale
+   control. The HUD counts are checked against their named assets.
 7. **Do multiple frames support this interpretation?** Multiple complete
    native frames establish the state and timing sequence. Independent section
    06/07 footage was inspected, but it contains no identified weapon shot or
    matching attack pose. Internal frames do not establish Genesis equivalence.
 8. **Does the page replace old UI cleanly?** The action opens no page and draws
    no controls. The C042 image replaces the actor's idle/walk image in the
-   existing field composition; the projectile is removed after its finite list.
+   existing field composition; the secondary effect is removed after its finite list.
 9. **Was the whole time window reviewed?** QA starts at a full-screen loaded
    idle frame, captures the A action, every source-delay update, and 30
-   post-delay idle frames. It does not cover movement cancellation, projectile
-   travel/impact, or combat return; those source/gameplay paths remain open.
+   post-delay idle frames. The item 2 route captures its ready screen, A action,
+   three effect states, and removal. Neither route covers movement cancellation
+   or the primary record's movement/collision/action-status return.
 
 ## Verification and status
 
@@ -138,7 +151,10 @@ and the final hold alias. `projectile-animation.tsv` records count, selector,
 frame, and whole-screen change for every delay update. It verifies the visible
 second frame, finite-list removal, stable cleared pose, HUD ammo, source flags,
 timer progression, and one event callback. All 85 Debug and Release captures
-match by SHA-256. The graphics importer test verifies visible pixels in the
+match by SHA-256. The ordinary item 2 equip/reload/fire route adds five
+full-screen images plus `weapon-2-fire.tsv`; it verifies item-specific rounds
+12->11, reserve 1, event `0x1C`, selector 0, and finite effect retirement. All
+261 Debug and Release BMPs match by SHA-256. The graphics importer test verifies visible pixels in the
 regular list's first two frames; entity animation and transition tests pass in
 Debug and Release. The audio playback test separately checks mapped resources
 and measured durations. No matching independent Genesis firing frame or audio
