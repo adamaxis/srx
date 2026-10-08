@@ -2514,11 +2514,17 @@ RgbaImage decode_genesis_field_mode_profile_sprite(
         if (descriptor == 0U) {
             break;
         }
-        // The source uses a DBF-style byte counter. A descriptor value of
-        // zero therefore still emits once; the low five bits encode
-        // count-minus-one, not the final tile count.
-        const auto repeat_count =
-            static_cast<std::size_t>(descriptor & 0x1FU) + 1U;
+        // The two source branches use different terminal conditions:
+        // 0x1728's stepped descriptors stop after BGE (low-five-bits + 1
+        // writes), while same-delta descriptors stop after BGT (at least
+        // one write, otherwise exactly the low-five-bits). Treating both
+        // forms as count-minus-one shifts later portrait tiles across rows.
+        const auto encoded_count =
+            static_cast<std::size_t>(descriptor & 0x1FU);
+        const auto repeat_count = descriptor > 0xC0U
+                                      ? std::max<std::size_t>(1U,
+                                                              encoded_count)
+                                      : encoded_count + 1U;
         if (descriptor > 0xC0U) {
             const auto delta = (descriptor & 0x20U) != 0U
                                    ? read_stream_word(cursor)

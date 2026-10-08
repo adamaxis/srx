@@ -93,6 +93,33 @@ int main() {
     assert(stoker_portrait.pixels.size() ==
            static_cast<std::size_t>(stoker_portrait.width) *
                stoker_portrait.height);
+    // In ROM 0x1728, the stepped descriptor at 0x122420 ends with BGE,
+    // while the following same-delta descriptor ends with BGT. This pixel
+    // is in the next row, after that one-tile repeat; using the stepped
+    // descriptor's count-minus-one rule for both branches scrambles the face.
+    const auto repeated_descriptor_tile =
+        1U * 7U + 6U; // tile 13: the single output from descriptor 0xE1
+    const auto next_stepped_tile =
+        2U * 7U; // tile 14: the first output from the following 0xA5 run
+    bool next_tile_differs_from_repeated_tile = false;
+    for (std::size_t y = 0; y < 8U; ++y) {
+        for (std::size_t x = 0; x < 8U; ++x) {
+            const auto& repeated_pixel = stoker_portrait.pixels[
+                ((repeated_descriptor_tile / 7U) * 8U + y) *
+                    stoker_portrait.width +
+                (repeated_descriptor_tile % 7U) * 8U + x];
+            const auto& next_pixel = stoker_portrait.pixels[
+                ((next_stepped_tile / 7U) * 8U + y) *
+                    stoker_portrait.width +
+                (next_stepped_tile % 7U) * 8U + x];
+            next_tile_differs_from_repeated_tile |=
+                repeated_pixel.red != next_pixel.red ||
+                repeated_pixel.green != next_pixel.green ||
+                repeated_pixel.blue != next_pixel.blue ||
+                repeated_pixel.alpha != next_pixel.alpha;
+        }
+    }
+    assert(next_tile_differs_from_repeated_tile);
     const auto stoker_opaque = std::count_if(
         stoker_portrait.pixels.begin(), stoker_portrait.pixels.end(),
         [](const auto& pixel) { return pixel.alpha != 0U; });

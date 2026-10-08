@@ -6,7 +6,8 @@ Primary source trace: US ROM opening marker (`0x59C5E`), New Game field loop
 and entity action/movement path (`0x075E`, `0xACAE`, `0xB574`, `0xBADE`,
 `0xB7B8`, `0x16396`, `0x1F5CA`, `0x1F65A`, `0x1F246`, `0x1F3C4`, `0x2BD2`),
 scene-2 terrain record 91 (`0x173138`), Stoker prompt records
-(`0xF4AA0..0xF4B2C`), and profile/portrait records (`0x121FA0`, `0x122420`).
+(`0xF4AA0..0xF4B2C`), profile/portrait records (`0x121FA0`, `0x122420`),
+and the shared `0x1728` sprite-stream writer.
 Ghidra output was used only as a cross-check. Runtime code represents the
 startup action as typed field state and uses the ordinary native movement,
 collision, event, and shared dialogue systems; it does not execute ROM code or
@@ -93,23 +94,49 @@ or palette are correct. The video route's input/archetype state is also not
 logged, so movement timing and portrait-color comparisons are not treated as
 same-state matches.
 
+## Portrait extraction correction
+
+ROM `0x1F292` loads Stoker's profile at `0x121FA0`, decodes pattern stream
+`0x1287C6`, then sends the 7x9 tile stream at `0x122420` to `0x1728`. The
+stepped-descriptor branch ends each run with `BGE`, so its count is the low
+five bits plus one. The same-delta branch ends with `BGT`, so it emits one
+tile when the encoded count is zero or one, and otherwise emits the encoded
+count. The previous importer used the stepped count for both branches. The
+first same-delta descriptor (`0xE1`) therefore emitted an extra tile and
+shifted later portrait tiles into the wrong cells.
+
+The offline importer now follows those two distinct terminal conditions. The
+`shadowrun_graphics` CTest checks that the tile after descriptor `0xE1` is not
+a duplicate of its one-tile run. The named Stoker portrait was regenerated
+with the explicit `shadowrun_graphics_extract --all-assets` step. A full Qt
+`manager-package` dump is at
+`build/conversion/qt/release/qt_runtime/field-dialogue-qa/manager-package/actual.bmp`.
+At its 56x72 portrait crop, it matches independent longplay frames 000082,
+000301, and 000601 at the same `(16,32)` placement with mean absolute RGB
+error 8.91, 8.57, and 8.56 per channel. Those frames show the opening text,
+manager options, and debt question; all include the same corrected Stoker
+portrait. The screenshot remains video-derived, so the small per-pixel color
+differences include capture compression.
+
 ## Nine-question visual review
 
 1. **Does it look correct?** The automatic door approach, dark transition,
-   and generic Stoker panel agree with independent section 03 frames. The clip
-   has no controller log; the no-input interpretation comes from the ROM trace
-   and native runtime state checks. Qt currently skips the sampled two-frame
-   blank-shell interval; its ROM-derived duration is unresolved.
+   generic Stoker panel, and corrected portrait agree with independent section
+   03 frames. The clip has no controller log; the no-input interpretation
+   comes from the ROM trace and native runtime state checks. Qt currently skips
+   the sampled two-frame blank-shell interval; its ROM-derived duration is
+   unresolved.
 2. **Does the look reflect behavior?** Yes for the tested route. The completed
    New Game opening arms heading-zero movement while the controller stays
    released. The actor reaches record 91, raw collision `0xFFC2` publishes
    event 2, and the mode-2/event-2 selector opens the Stoker arrival content.
    Controller A/B advances through the source manager and Leave records.
    Return clears the panel and transition request.
-3. **Are the visuals correct?** The doorway, panel frame, portrait, green text,
-   and continuation region match the independent screen family at the reviewed
-   size. The exact transition timing and same-archetype HUD portrait palette
-   are not resolved here; the latter remains `HUD-01`.
+3. **Are the visuals correct?** The doorway, panel frame, ROM-corrected Stoker
+   portrait tile layout, green text, and continuation region match the
+   independent screen family at the reviewed size. The exact transition timing
+   and same-archetype HUD portrait palette are not resolved here; the latter
+   remains `HUD-01`.
 4. **Is it animated?** The actor changes position and uses the ordinary field
    walk poses during the automatic movement. There is no separate opening
    movement animation. The Stoker speaker uses a single 56x72 portrait
@@ -134,9 +161,9 @@ same-state matches.
 7. **Do multiple frames support the interpretation?** Yes. Native entry,
    automatic movement, collision, three fade phases, three dialogue states,
    and return frames are checked. Independent frames cover five approach
-   samples, the fade, two blank-panel samples, and the populated Stoker panel.
-   The clip lacks input/event evidence, so the behavior claim is
-   ROM- and native-state-backed.
+   samples, the fade, two blank-panel samples, and Stoker's opening, manager,
+   and debt pages (000082, 000301, and 000601). The clip lacks input/event
+   evidence, so the behavior claim is ROM- and native-state-backed.
 8. **Was the previous UI hidden or redrawn before the new one?** Yes. The
    shared full-screen panel is drawn without the field HUD; after Leave, the
    field screen is re-entered and redrawn before the QA accepts the return.
