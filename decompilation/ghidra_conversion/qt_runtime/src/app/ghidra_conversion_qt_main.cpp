@@ -13899,9 +13899,195 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
-                // Model the already-empty magazine at menu entry. Firing that
-                // empties it is the next unconnected combat behavior; the
-                // weapon switch and following reload use normal field input.
+                const auto weapon_fire_dump_path =
+                    *field_player_action_dump_path / "weapon-fire";
+                std::filesystem::create_directories(weapon_fire_dump_path);
+                std::vector<std::uint16_t> weapon_fire_audio;
+                qt_runtime::FieldSceneRuntime weapon_fire_scene(
+                    [](const std::string_view) {},
+                    [&weapon_fire_audio](const std::uint16_t event) {
+                        weapon_fire_audio.push_back(event);
+                    });
+                if (!weapon_fire_scene.bootstrap(smoke_state)) {
+                    std::cerr << "field player action dump: weapon-fire field bootstrap failed: "
+                              << weapon_fire_scene.failure() << '\n';
+                    return 3;
+                }
+                auto& fire_runner = weapon_fire_scene.active_runner_record();
+                if ((fire_runner.flags & 0x0300U) != 0x0300U) {
+                    std::cerr << "field player action dump: source Joshua record does not carry the active action flags\n";
+                    return 3;
+                }
+                fire_runner.inventory_item_codes[0] = 1U;
+                fire_runner.equipped_inventory_slot = 0;
+                fire_runner.equipped_item_code = 1U;
+                fire_runner.ammo_rounds = 6U;
+                fire_runner.ammo_clips = 2U;
+                weapon_fire_scene.refresh_field_hud_for_dump();
+                const auto render_weapon_fire_scene = [&] {
+                    QImage image(kSceneWidth, kSceneHeight,
+                                 QImage::Format_RGB32);
+                    image.fill(Qt::black);
+                    QPainter painter(&image);
+                    weapon_fire_scene.paint(painter);
+                    painter.end();
+                    return image;
+                };
+                const auto save_weapon_fire_scene =
+                    [&](const std::string_view name, const QImage& image) {
+                        return image.save(QString::fromStdWString(
+                            (weapon_fire_dump_path /
+                             (std::string(name) + ".bmp")).wstring()));
+                    };
+                const auto fire_before = render_weapon_fire_scene();
+                if (weapon_fire_scene.field_entity_attack_pose_for_dump() ||
+                    fire_runner.ammo_rounds != 6U ||
+                    !save_weapon_fire_scene("before", fire_before)) {
+                    std::cerr << "field player action dump: could not capture a clean, loaded weapon before firing\n";
+                    return 3;
+                }
+                const auto fire_before_selector = weapon_fire_scene
+                                                      .field_entity_animation_selector_for_dump();
+                weapon_fire_scene.set_controller_port_byte(0x40U);
+                weapon_fire_scene.advance_frame();
+                const auto fire_actual = render_weapon_fire_scene();
+                const auto fire_attack_saved = save_weapon_fire_scene(
+                    "attack", fire_actual);
+                if (weapon_fire_scene.active_runner_record().ammo_rounds !=
+                        5U ||
+                    weapon_fire_scene.active_runner_record().ammo_clips !=
+                        2U ||
+                    weapon_fire_scene.active_runner_record()
+                            .animation_action_gate <= 0 ||
+                    !weapon_fire_scene.field_entity_attack_pose_for_dump() ||
+                    weapon_fire_scene.field_entity_animation_selector_for_dump() !=
+                        0x0040U ||
+                    weapon_fire_audio != std::vector<std::uint16_t>{0x001CU} ||
+                    !ammo_counter_matches_for_slot(fire_actual, 5, 0U) ||
+                    weapon_fire_scene.command_overview_open() ||
+                    weapon_fire_scene.dialogue_open() ||
+                    weapon_fire_scene.hotel_menu_open() ||
+                    weapon_fire_scene.field_interaction_open() ||
+                    !fire_attack_saved) {
+                    std::cerr << "field player action dump: live A input did not consume one loaded round, select C042, update the HUD, and request source sound 0x1C\n";
+                    return 3;
+                }
+                weapon_fire_scene.set_controller_port_byte(0U);
+                std::vector<std::int16_t> fire_delay_values;
+                auto prior_delay = weapon_fire_scene
+                                       .active_runner_record()
+                                       .animation_action_gate;
+                for (std::uint16_t delay_frame = 1U;
+                     delay_frame <= 512U && prior_delay >= 0;
+                     ++delay_frame) {
+                    weapon_fire_scene.advance_frame();
+                    const auto delay_image = render_weapon_fire_scene();
+                    const auto next_delay = weapon_fire_scene
+                                                .active_runner_record()
+                                                .animation_action_gate;
+                    const auto delay_name =
+                        std::string("action-delay-") +
+                        std::to_string(delay_frame);
+                    if (next_delay >= prior_delay ||
+                        !weapon_fire_scene
+                             .field_entity_attack_pose_for_dump() ||
+                        weapon_fire_audio !=
+                            std::vector<std::uint16_t>{0x001CU} ||
+                        !same_full_frame(fire_actual, delay_image) ||
+                        !save_weapon_fire_scene(delay_name, delay_image)) {
+                        std::cerr << "field player action dump: C042 pose, HUD, or one-shot audio changed during the source +0xDC delay\n";
+                        return 3;
+                    }
+                    fire_delay_values.push_back(next_delay);
+                    prior_delay = next_delay;
+                }
+                if (prior_delay >= 0 || fire_delay_values.empty()) {
+                    std::cerr << "field player action dump: source action delay did not reach its negative ready state\n";
+                    return 3;
+                }
+                auto fire_hold = render_weapon_fire_scene();
+                for (std::uint8_t hold_frame = 1U; hold_frame <= 30U;
+                     ++hold_frame) {
+                    weapon_fire_scene.advance_frame();
+                    fire_hold = render_weapon_fire_scene();
+                    const auto hold_name = std::string("hold-") +
+                                           std::to_string(hold_frame);
+                    if (!weapon_fire_scene
+                             .field_entity_attack_pose_for_dump() ||
+                        weapon_fire_audio !=
+                            std::vector<std::uint16_t>{0x001CU} ||
+                        !same_full_frame(fire_actual, fire_hold) ||
+                        !save_weapon_fire_scene(hold_name, fire_hold)) {
+                        std::cerr << "field player action dump: the static C042 pose changed during a 30-frame idle hold or the sound repeated\n";
+                        return 3;
+                    }
+                }
+                if (!save_weapon_fire_scene("hold", fire_hold)) {
+                    std::cerr << "field player action dump: final attack-pose hold frame was not saved\n";
+                    return 3;
+                }
+                std::ofstream weapon_fire_trace(
+                    weapon_fire_dump_path / "weapon-fire.tsv",
+                    std::ios::trunc);
+                if (!weapon_fire_trace) {
+                    std::cerr << "field player action dump: could not write weapon-fire.tsv\n";
+                    return 3;
+                }
+                weapon_fire_trace
+                    << "frame\tinput\tselector\tammo_rounds\tclip_reserve\taction_gate\taudio_events\tsource_record_flags\n"
+                    << "before\t0\t" << fire_before_selector
+                    << '\t' << 6 << '\t' << 2 << "\t0\t0\t"
+                    << fire_runner.flags << '\n'
+                    << "shot\t64\t"
+                    << weapon_fire_scene
+                           .field_entity_animation_selector_for_dump()
+                    << '\t'
+                    << static_cast<unsigned>(
+                           weapon_fire_scene.active_runner_record().ammo_rounds)
+                    << '\t'
+                    << static_cast<unsigned>(
+                           weapon_fire_scene.active_runner_record().ammo_clips)
+                    << '\t'
+                    << weapon_fire_scene.active_runner_record()
+                           .animation_action_gate
+                    << '\t' << weapon_fire_audio.size() << '\t'
+                    << fire_runner.flags << '\n';
+                for (std::size_t delay_frame = 0U;
+                     delay_frame < fire_delay_values.size(); ++delay_frame) {
+                    weapon_fire_trace
+                        << "action-delay-" << delay_frame + 1U << "\t0\t"
+                        << weapon_fire_scene
+                               .field_entity_animation_selector_for_dump()
+                        << '\t'
+                        << static_cast<unsigned>(fire_runner.ammo_rounds)
+                        << '\t'
+                        << static_cast<unsigned>(fire_runner.ammo_clips)
+                        << '\t' << fire_delay_values[delay_frame] << '\t'
+                        << weapon_fire_audio.size() << '\t'
+                        << fire_runner.flags << '\n';
+                }
+                weapon_fire_trace
+                    << "hold-30\t0\t"
+                    << weapon_fire_scene
+                           .field_entity_animation_selector_for_dump()
+                    << '\t'
+                    << static_cast<unsigned>(
+                           weapon_fire_scene.active_runner_record().ammo_rounds)
+                    << '\t'
+                    << static_cast<unsigned>(
+                           weapon_fire_scene.active_runner_record().ammo_clips)
+                    << '\t'
+                    << weapon_fire_scene.active_runner_record()
+                           .animation_action_gate
+                    << '\t' << weapon_fire_audio.size() << '\t'
+                    << fire_runner.flags << '\n';
+                if (!weapon_fire_trace) {
+                    std::cerr << "field player action dump: weapon-fire.tsv write failed\n";
+                    return 3;
+                }
+
+                // Model the already-empty magazine at menu entry for the
+                // normal-input weapon-switch and follow-up reload route.
                 runner.ammo_rounds = 0U;
                 field_scene.refresh_field_hud_for_dump();
                 field_audio_events.clear();

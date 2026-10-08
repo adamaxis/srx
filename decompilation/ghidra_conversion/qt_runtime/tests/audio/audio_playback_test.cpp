@@ -12,6 +12,7 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <utility>
 
 int main(int argc, char** argv) {
     QCoreApplication application(argc, argv);
@@ -25,10 +26,18 @@ int main(int argc, char** argv) {
         SHADOWRUN_GHIDRA_AUDIO_RESOURCE_PATH);
     const auto resource_075 = std::filesystem::path(
         SHADOWRUN_GHIDRA_AUDIO_PASSKEY_RESOURCE_PATH);
+    const auto spawn_resource_028 = std::filesystem::path(
+        SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_028_PATH);
+    const auto spawn_resource_029 = std::filesystem::path(
+        SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_029_PATH);
     const auto spawn_resource_030 = std::filesystem::path(
         SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_030_PATH);
+    const auto spawn_resource_063 = std::filesystem::path(
+        SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_063_PATH);
     const auto spawn_resource_074 = std::filesystem::path(
         SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_074_PATH);
+    const auto spawn_resource_081 = std::filesystem::path(
+        SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_081_PATH);
     const auto boot_shock_resource = std::filesystem::path(
         SHADOWRUN_GHIDRA_AUDIO_BOOT_SHOCK_RESOURCE_PATH);
     const auto intro_stage_1 = std::filesystem::path(
@@ -52,11 +61,23 @@ int main(int argc, char** argv) {
         if (alias == "audio.effects.resource.075") {
             return resource_075;
         }
+        if (alias == "audio.effects.resource.028") {
+            return spawn_resource_028;
+        }
+        if (alias == "audio.effects.resource.029") {
+            return spawn_resource_029;
+        }
         if (alias == "audio.effects.resource.030") {
             return spawn_resource_030;
         }
+        if (alias == "audio.effects.resource.063") {
+            return spawn_resource_063;
+        }
         if (alias == "audio.effects.resource.074") {
             return spawn_resource_074;
+        }
+        if (alias == "audio.effects.resource.081") {
+            return spawn_resource_081;
         }
         if (alias == "audio.effects.resource.092") {
             return boot_shock_resource;
@@ -95,6 +116,24 @@ int main(int argc, char** argv) {
     if (!std::filesystem::is_regular_file(resource_075)) {
         std::cerr << "the extracted resource-075 FLAC is missing\n";
         return 1;
+    }
+    const std::array<std::pair<std::uint16_t, std::filesystem::path>, 5>
+        spawn_sound_files{{
+            {0x1CU, spawn_resource_028}, {0x1DU, spawn_resource_029},
+            {0x3FU, spawn_resource_063}, {0x51U, spawn_resource_081},
+            {0x1EU, spawn_resource_030}}};
+    constexpr std::array<std::string_view, 5> kSpawnSoundAliases{{
+        "audio.effects.resource.028", "audio.effects.resource.029",
+        "audio.effects.resource.063", "audio.effects.resource.081",
+        "audio.effects.resource.030"}};
+    for (std::size_t index = 0; index < spawn_sound_files.size(); ++index) {
+        const auto [event, path] = spawn_sound_files[index];
+        if (playback.alias_for_event(event) != kSpawnSoundAliases[index] ||
+            !std::filesystem::is_regular_file(path)) {
+            std::cerr << "spawn action event " << event
+                      << " did not select its extracted source resource\n";
+            return 1;
+        }
     }
     if (playback.alias_for_event(0x1EU) !=
             "audio.effects.resource.030" ||
@@ -145,14 +184,18 @@ int main(int argc, char** argv) {
         std::int64_t min_duration_ms;
         std::int64_t max_duration_ms;
     };
-    constexpr std::array<PlaybackExpectation, 9> kMappedEvents{{
+    constexpr std::array<PlaybackExpectation, 13> kMappedEvents{{
         {0x10U, "audio.intro.title.stage-1", 14800, 14900},
         {0x16U, "audio.field.effect-016", 2700, 2800},
         {0x24U, "audio.menu.command-024", 2400, 2600},
         {0x25U, "audio.effects.resource.037", 2050, 2200},
+        {0x1CU, "audio.effects.resource.028", 2450, 2510},
+        {0x1DU, "audio.effects.resource.029", 2780, 2850},
         {0x1EU, "audio.effects.resource.030", 2200, 2350},
+        {0x3FU, "audio.effects.resource.063", 2120, 2180},
         {0x4AU, "audio.effects.resource.074", 2200, 2350},
         {0x4BU, "audio.effects.resource.075", 2100, 2300},
+        {0x51U, "audio.effects.resource.081", 2530, 2600},
         {0x5CU, "audio.effects.resource.092", 2700, 2800},
         {0x12U, "audio.intro.title.stage-3", 20900, 21200},
     }};

@@ -50,98 +50,94 @@ shared 50-percent transfer, and reload consumption from the shared reserve.
   54 Debug screens were reviewed at full screen size; each corresponding
   Release file has the same SHA-256 hash.
 
-## Live reload action QA update
+## Live field action QA update
 
 The `shadowrun_ghidra_conversion_qt_field_player_action_qa` CTest drives the
 live `FieldSceneRuntime` input path. It reloads item 1 to its ROM capacity of
 6, then records every field update while source `+0xDC` counts down to `-1`:
-103 full-screen images for this New Game fixture, each pixel-identical to the
-post-reload frame. Because normal firing is not connected, QA seeds the
-magazine empty to represent spent rounds, then uses ordinary Start, Left,
-Right, A, and Start controller input to select and equip item 2 through the
-field inventory menu. The same `+0x4F` reserve falls from 3 to 2 at the first
-reload and 2 to 1 at the second; held A reloads item 2 to its own 12-round
-capacity. Item 2's inventory presence and empty magazine are fixtures; equip,
-return, and reload use live field input. The existing inventory QA separately
-drives the 3/6 -> 6/12 -> 3/6 percentage transfer.
+103 full-screen images, each pixel-identical to the post-reload frame. Ordinary
+Start, Left, Right, A, and Start input selects and equips item 2 through the
+field inventory menu; its next A reloads to 12. The shared `+0x4F` reserve
+falls 3->2->1. The existing inventory QA separately drives 3/6 -> 6/12 ->
+3/6 percentage transfer.
 
-ROM `0x391A` also requests event `0x25`, scans the three typed `+0x10` records,
-then redraws the field asset grid and HUD. With only Joshua active, ordinary C
-requests `0x25` and leaves him active; the source profile already supplies
-his action marker. A second route installs Ricky from the named save-roster
-template into the test field, presses C through the normal controller path,
-and verifies that slot 1 becomes active and receives the selection marker.
-Releasing C does not repeat the event. Ordinary held A then reloads Ricky's
-active record to 6 rounds and reduces his shared reserve from 3 to 2. Normal
-story recruitment and save loading into the Qt game loop remain open; Ricky is
-test roster setup, not a claimed gameplay recruitment path.
+Held A now reaches the live field action service when the active runner has an
+eligible weapon record. The service consumes the typed magazine meter,
+selects the regular/alternate event from the equipped item's source status,
+submits it to the Qt audio callback, applies the ROM `0xB39A` direction selector
+and `+0xDC` delay, and refreshes the HUD. Eight named C042 one-frame assets
+replace the player walk image while the attack pose is active. This remains a
+partial shot route: the source's paired entity allocation and secondary
+`0x8003`/`0x800B` animation format are not yet rendered or advanced, and no
+projectile target, collision, hit effect, or damage is applied.
 
-The QA writes 171 320x224 full-screen images: 10 action/menu checkpoints, all
-103 action-delay updates, all 23 press/release frames in the weapon-switch
-route, a 30-frame field-return hold, and five source-template runner C/A frames.
-Debug and Release outputs match by SHA-256. All menu route frames and the five
-runner/action frames were reviewed; all delay and return-hold images match
-their stable frame pixel-for-pixel. The normal field input now binds C
-selection to the active typed runner record used by the A action and its HUD.
-The remaining source target/fade/animation subcalls are not claimed complete.
+The weapon-fire QA drives ordinary A input in the game loop and saves the
+whole 320x224 before, attack, and held frames. It checks item 1 ammo 06->05,
+unchanged shared reserve, active player/pose selector 0x40/direction, source
+event 0x1C, a live HUD count of 05, and a byte-identical held frame. All three
+frames were reviewed full-screen for unrelated field/HUD changes and stale
+controls. Independent section 06 and 07 full frames were reviewed; no matching
+firing pose or projectile event could be identified. This establishes the Qt
+integration and source-backed action state, not Genesis visual equivalence.
+
+The separate C route installs Ricky from the named source save-roster template,
+then selects his active record through ordinary controller input; A reloads
+that record to 6 rounds and reduces his reserve 3->2. Ricky's roster and item
+2's presence are QA fixtures, not claimed story recruitment or inventory
+acquisition.
+
+The earlier 171-image route covers 10 action/menu checkpoints, all 103 reload
+delay updates, 23 weapon-switch press/release frames, 30 field-return hold
+frames, and five C/A runner frames. Debug and Release output hashes match.
+The per-image difference and stability assertions cover the delay and return
+holds.
 
 ## Nine-question visual review
 
-1. **Does it look correct?** The displayed rows occupy the source-derived
-   Damage row position and use a full 56x8 asset. The Qt row is internally
-   compared against the named extracted CF84C row. No selected-weapon Damage
-   screenshot exists in the independent longplay, so independent placement
-   confirmation remains unavailable.
-2. **Does appearance match behavior?** For the tested states, the visible row
-   follows the selected item's `+0x25`, Power follows `+0x26`, and each
-   runner's ammo counter follows its equipped record. The Ricky route shows
-   his counter changing from `00` to `06` after C selects slot 1 and ordinary
-   A reloads that record; Joshua's ammunition remains unchanged. Item 2's
-   inventory presence and the spent-magazine states are QA setup.
-3. **Are the visuals correct?** The asset source and mapping are checked
-   against CF84C and the D4540 table. The source-defined CF8F0 Drain assets
-   remain separate. This is internal source/renderer verification, not an
-   independent Genesis golden for a selected weapon.
-4. **Is it animated?** The item Damage/Power rows are static. ROM `0x391A`
-   calls the entity animation triplet when C switches or attempts a switch.
-   The 103 `+0xDC` delay updates in the reload QA remain pixel-identical; no
-   reload pose or independent attack-animation cadence has been established.
-5. **Is there a sound?** No sound call is present in the item-row draw path.
-   ROM `0x391A` requests event `0x25` on C, and successful reload requests
-   `0x4B` twice. Their mapped files are 2.134 s and 2.2167 s respectively.
-   Shared Debug/Release audio QA checks decode/playback; this route records
-   event IDs/order but has no Windows loopback, so audible retrigger and
-   combined duration remain unmeasured.
-6. **Were neighboring screen regions checked?** Yes. The 54 earlier
-   field-action captures and the complete player-action set include portrait
-   and HUD, item cells, details, action buttons, Clips result, armor, gear,
-   source-template runner, and field return.
-   No stale buttons or unrelated graphics were left over the new state.
-7. **Do multiple frames support the interpretation?** Internal frames cover
-   item 1 and 2, equip/unequip, ammo percentage, reload result, C with no
-   eligible companion, C selecting source-template Ricky, C release, active
-   Ricky reload, and 30-frame holds. Independent section 06 frames `002550`,
-   `002560`, `002580`, `002610`, `002640`, and `002699` show neighboring
-   command/inventory states but no weapon load transfer or C switch.
-8. **Does the page replace prior UI cleanly?** The full-screen route shows
-   action rows and Clips child controls replacing their parent panel, then
-   returning without stale controls. Equip/unequip and armor/gear toggles
-   match fresh full-screen redraws in the existing QA.
-9. **Was the affected time window reviewed?** All 171 images cover the reload
-   delay, every menu press/release frame, the field-return hold, and five
-   source-template runner action frames. The 103 delay frames and 30 return frames
-   are pixel-identical to their stable reference; all 23 menu frames and five
-   runner frames were reviewed. The paired audio output tail is not recorded
-   by that event-spy QA.
+1. **Does it look correct?** The Damage row remains a source-derived 56x8
+   asset. The firing route changes the actor to the directional C042 image;
+   no matching independent firing frame exists, so that appearance remains
+   unconfirmed against Genesis.
+2. **Does appearance match behavior?** The displayed item values follow
+   `+0x25/+0x26`; the live fire action follows source flags and A input, spends
+   one round (06->05), and changes the HUD count. The shared reserve remains
+   unchanged until reload.
+3. **Are the visuals correct?** Damage/Power and the separate Drain resources
+   retain their source lookups. Eight directional C042 frames are individually
+   extracted and replace the actor image. Whole-screen internal QA checks the
+   unchanged map, other HUD counters, and UI; this is not an independent
+   Genesis firing golden.
+4. **Is it animated?** Damage/Power are static. C042 is a one-frame pose held
+   for all 52 decoded `+0xDC` updates; 30 idle frames after expiry remain
+   stable. Movement returns the actor to its walk/idle selection. Paired
+   projectile animation and cadence are still unconnected.
+5. **What sound plays and how long?** C runner selection requests `0x25`, and
+   successful reload requests `0x4B` twice (2.134 s and 2.217 s mapped files).
+   Item 1 A action requests `0x1C` / resource 028 (2.483 s measured). Shared
+   Debug/Release audio QA verifies playback and durations; live field loopback
+   and independent Genesis firing audio remain unavailable.
+6. **Were related screen regions checked?** The 171-image route covers
+   inventory, detail rows, Clips, equipment, runner selection, field return,
+   and full-screen reload delay. The new 85-image fire route checks the full
+   field and HUD on every timer/hold frame. The attack pose replaces the actor
+   image; it does not cover adjacent controls or add a stale overlay.
+7. **Do multiple frames support the interpretation?** The native route stores
+   before, shot, every delay, and 30 idle-hold screens. Independent sections
+   06/07 were reviewed, but no exact attack pose, ammo consumption, or shot
+   sequence was found.
+8. **Does the page replace prior UI cleanly?** Fire does not open a page. The
+   existing field UI remains stable while the actor image changes; item/menu
+   redraw and return behavior remain covered by the separate inventory QA.
+9. **Was the affected time window reviewed?** All 52 action-delay updates and
+   30 post-delay hold frames are saved as full screens and asserted pixel-equal
+   to the attack frame. The 171-frame reload/menu route was also reviewed.
+   Projectile/impact and movement-cancel timing remain unverified.
 
 ## Status
 
 The source does not define a spare-clip reserve per weapon: `+0x4F` is shared
 by the runner, and switching normalizes the active magazine through runner
 `+0x4E`. Each weapon still has its own capacity, and that capacity controls
-the loaded count after equip/reload. The typed mapping, natural inventory
-switch, and live field reload action are covered; `LOADOUT-01` remains partial
-until normal combat fire/projectile behavior and a matching independent
-loaded-save example are reviewed.
+the loaded count after equip/reload. The typed mapping, inventory switch, reload, and initial live A-button ammo/audio/pose route are covered. `LOADOUT-01` remains partial until the paired source entities, projectile movement/rendering, target/collision/hit/damage behavior, and a matching independent firing example are reviewed.
 `ITEMS-01` remains partial for combat damage values, shops, and independent
 weapon-detail visual evidence.

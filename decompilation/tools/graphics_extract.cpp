@@ -2245,6 +2245,23 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 "sprite", "0xB6DE/0xC062/0x600E", true);
         }
     }
+    const auto field_attack_animations =
+        shadowrun::graphics::decode_genesis_field_entity_animation_sequences(
+            rom, 0x7291A, 0x62AC, 0xC042, 0x3EDC, 0x172D8A, 8);
+    for (std::size_t direction = 0;
+         direction < field_attack_animations.size(); ++direction) {
+        const auto& animation = field_attack_animations[direction];
+        if (animation.frames.size() != 1U) {
+            throw std::runtime_error(
+                "source C042 attack pose did not resolve to one frame");
+        }
+        const auto& source = animation.frames.front();
+        write_frame(
+            "field/entities/attack-" + std::to_string(direction) + ".bmp",
+            shadowrun::native::NativeEntityFrame{
+                source.width, source.height, source.pixels},
+            "sprite", "0xB39A/0xC042/0x600E", true);
+    }
 
     extract_field_session_record_assets(rom, root);
     manifest.flush();

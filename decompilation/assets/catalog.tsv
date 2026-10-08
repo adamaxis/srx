@@ -1457,3 +1457,11 @@ field/entities/movement-7-0.bmp	sprite	0	0	22	30	0xB6DE/0xC062/0x600E	extracted
 field/entities/movement-7-1.bmp	sprite	0	0	26	32	0xB6DE/0xC062/0x600E	extracted
 field/entities/movement-7-2.bmp	sprite	0	0	20	30	0xB6DE/0xC062/0x600E	extracted
 field/entities/movement-7-3.bmp	sprite	0	0	21	30	0xB6DE/0xC062/0x600E	extracted
+field/entities/attack-0.bmp	sprite	0	0	19	32	0xB39A/0xC042/0x600E	extracted
+field/entities/attack-1.bmp	sprite	0	2	29	30	0xB39A/0xC042/0x600E	extracted
+field/entities/attack-2.bmp	sprite	0	2	31	29	0xB39A/0xC042/0x600E	extracted
+field/entities/attack-3.bmp	sprite	0	3	16	29	0xB39A/0xC042/0x600E	extracted
+field/entities/attack-4.bmp	sprite	0	0	22	32	0xB39A/0xC042/0x600E	extracted
+field/entities/attack-5.bmp	sprite	0	3	16	29	0xB39A/0xC042/0x600E	extracted
+field/entities/attack-6.bmp	sprite	0	2	31	29	0xB39A/0xC042/0x600E	extracted
+field/entities/attack-7.bmp	sprite	0	2	29	30	0xB39A/0xC042/0x600E	extracted

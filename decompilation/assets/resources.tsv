@@ -1809,6 +1809,14 @@ field.entities.movement.7.0	field/entities/movement-7-0.bmp	image	0	0
 field.entities.movement.7.1	field/entities/movement-7-1.bmp	image	0	0
 field.entities.movement.7.2	field/entities/movement-7-2.bmp	image	0	0
 field.entities.movement.7.3	field/entities/movement-7-3.bmp	image	0	0
+field.entities.attack.0	field/entities/attack-0.bmp	image	0	0
+field.entities.attack.1	field/entities/attack-1.bmp	image	0	2
+field.entities.attack.2	field/entities/attack-2.bmp	image	0	2
+field.entities.attack.3	field/entities/attack-3.bmp	image	0	3
+field.entities.attack.4	field/entities/attack-4.bmp	image	0	0
+field.entities.attack.5	field/entities/attack-5.bmp	image	0	3
+field.entities.attack.6	field/entities/attack-6.bmp	image	0	2
+field.entities.attack.7	field/entities/attack-7.bmp	image	0	2
 audio.music.resource.000	audio/music/resource-000.flac	audio	0	0
 audio.music.resource.001	audio/music/resource-001.flac	audio	0	0
 audio.music.resource.002	audio/music/resource-002.flac	audio	0	0

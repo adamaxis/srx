@@ -54,6 +54,9 @@ constexpr std::array<std::uint16_t, 8> kFieldIdleAnimationSelectors{{
 constexpr std::array<std::uint16_t, 8> kFieldWalkAnimationSelectors{{
     0x0020U, 0x0024U, 0x0028U, 0x002CU,
     0x0030U, 0x0034U, 0x0038U, 0x003CU}};
+constexpr std::array<std::uint16_t, 8> kFieldAttackAnimationSelectors{{
+    0x0040U, 0x0044U, 0x0048U, 0x004CU,
+    0x0050U, 0x0054U, 0x0058U, 0x005CU}};
 // 0xBABC writes C006 (0x0028) to +0xCA. For kind 3, 0x600E multiplies
 // that value by 0x10 into +0x18; +0x1C is the 0x1000 period.
 constexpr std::int16_t kFieldWalkAnimationTimingWord = 0x0028;

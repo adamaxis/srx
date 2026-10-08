@@ -1037,6 +1037,20 @@ target_link_libraries(shadowrun_ghidra_shop_menu_runtime_test
 add_test(NAME shadowrun_ghidra_shop_menu_runtime
          COMMAND shadowrun_ghidra_shop_menu_runtime_test)
 
+# Keep the native ammo/spawn contracts in the Qt CTest suite too. The field
+# action dump proves the live A-button wiring; these tests guard the typed
+# source tables and ammo/paired-slot ordering independently of the presenter.
+foreach(SHADOWRUN_GHIDRA_ENTITY_TEST IN ITEMS entity_combat entity_transition)
+    add_executable(shadowrun_ghidra_${SHADOWRUN_GHIDRA_ENTITY_TEST}_test
+        ../tests/entities/${SHADOWRUN_GHIDRA_ENTITY_TEST}_conversion_test.cpp
+    )
+    target_link_libraries(
+        shadowrun_ghidra_${SHADOWRUN_GHIDRA_ENTITY_TEST}_test
+        PRIVATE shadowrun_ghidra_conversion_modules)
+    add_test(NAME shadowrun_ghidra_${SHADOWRUN_GHIDRA_ENTITY_TEST}
+             COMMAND shadowrun_ghidra_${SHADOWRUN_GHIDRA_ENTITY_TEST}_test)
+endforeach()
+
 # Verify the source selector and maglock unlock events reach their extracted
 # assets, the FLAC decoder loads the resource, and a mapped event starts on the
 # host audio output. Unknown, silent, or lifecycle-unresolved commands stay
@@ -1056,8 +1070,12 @@ target_compile_definitions(shadowrun_ghidra_audio_playback_test PRIVATE
     SHADOWRUN_GHIDRA_AUDIO_FIELD_EFFECT_016_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/field/effect-016.flac"
     SHADOWRUN_GHIDRA_AUDIO_RESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-037.flac"
     SHADOWRUN_GHIDRA_AUDIO_PASSKEY_RESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-075.flac"
+    SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_028_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-028.flac"
+    SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_029_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-029.flac"
     SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_030_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-030.flac"
+    SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_063_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-063.flac"
     SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_074_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-074.flac"
+    SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_081_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-081.flac"
     SHADOWRUN_GHIDRA_AUDIO_BOOT_SHOCK_RESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-092.flac"
     SHADOWRUN_GHIDRA_AUDIO_INTRO_STAGE_1_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/intro/title-stage-1.flac"
     SHADOWRUN_GHIDRA_AUDIO_INTRO_STAGE_3_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/intro/title-stage-3.flac")

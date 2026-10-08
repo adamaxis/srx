@@ -54,9 +54,13 @@ AudioPlaybackService::AudioPlaybackService(PathResolver resolver,
         // The pre-title caller uses FF 12 with the same id to stop it.
         {0x16U, "audio.field.effect-016"},
         // ROM 0x1514E selects spawn sounds from 0x15318/0x15336 and submits
-        // the selected event to 0x530DE. Codes 8..10 use table-2 resources
-        // 30 (ordinary) and 74 (alternate).
+        // the selected event to 0x530DE. The regular action table selects
+        // resources 28, 81, 30, and 29; its alternate table selects 63 or 74.
+        {0x1CU, "audio.effects.resource.028"},
+        {0x1DU, "audio.effects.resource.029"},
         {0x1EU, "audio.effects.resource.030"},
+        {0x3FU, "audio.effects.resource.063"},
+        {0x51U, "audio.effects.resource.081"},
         {0x24U, "audio.menu.command-024"},
         // ROM command 0x25 is table-2 index 37. The importer emits that
         // zero-based entry as audio.effects.resource.037.

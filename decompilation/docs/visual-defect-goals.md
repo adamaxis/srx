@@ -88,7 +88,7 @@ clarification. None changes the original report's itemization.
 |---|---|---|
 | `EQUIP-01` | The yellow item selector was previously reported as a thick rectangular mess instead of the game's slim yellow outline. | The current Qt frames contain exactly 76 `#C4BE27` pixels: a one-pixel perimeter around the 24x16 item image, with no fill. Independent section 06 frames 002560/002580/002610/002640 support the same slim marker. The debug-only 4x crop scales that one pixel to four display pixels. Current geometry is not reproducing the reported thick marker; see [the selector and redraw review](visual-audits/item-selector-and-unequip-review.md). |
 | `EQUIP-02` | A black box can remain around an item icon after equipping and unequipping it. | Exercise repeated equip/unequip and replacement; prove the icon cell restores its correct background and no stale border/graphic remains. |
-| `LOADOUT-01` | Weapon clips/ammunition were previously reported as not being tied to the weapons. | ROM uses each item's `+0x24` magazine capacity, runner `+0x4E` for loaded rounds or the unequipped load percentage, and one runner-wide `+0x4F` Universal Gun Clips reserve. Field action QA sends ordinary held-A input through `FieldSceneRuntime`: item 1 reloads to 6; after its source delay, QA seeds the magazine empty to represent the still-unconnected firing path, then normal Start/Left/Right/A/Start input equips item 2 and normal A input reloads it to 12. A second live-input route installs the source Ricky save-roster template, selects his active record with C, then reloads that record with A; C requests source event `0x25`, and reload consumes one shared clip with two `0x4B` submissions. The dump has 171 full-screen frames: 10 action/menu checkpoints, all 103 action-delay updates, the complete 23-frame weapon-switch route, 30 return-hold frames, and five active-runner C/A frames. Timer/hold frames are pixel-identical and Debug/Release images match by SHA-256. The typed `0x38AC` spawn-cycle ammo service and its source-selected audio have separate Debug/Release unit coverage. Normal firing/spawn connection, projectile/target/hit rendering, independent firing/reload frames/audio, story-driven recruitment, and loaded-save transfer remain open. Do not add a per-weapon reserve unsupported by the ROM; see the [weapon detail and magazine review](visual-audits/weapon-detail-and-magazine-switch-review.md) and [spawn ammo/sound audit](visual-audits/weapon-spawn-ammo-consumption.md). |
+| `LOADOUT-01` | Weapon clips/ammunition were previously reported as not being tied to the weapons. | Each weapon's `+0x24` capacity, runner `+0x4E` loaded/percentage value, and shared `+0x4F` reserve are bound to live inventory/HUD routes. Held A now reduces loaded ammo, submits the source-selected sound, and renders the directional C042 player pose through the field loop. Full-screen QA checks before/attack/hold and the HUD; Debug/Release audio QA measures all four regular/alternate source spawn events. The actual spawned pair, projectile animation/rendering, target/collision, hit/damage path, and matching independent firing frame remain open. Do not add a per-weapon reserve unsupported by the ROM; see the [weapon detail and magazine review](visual-audits/weapon-detail-and-magazine-switch-review.md) and [spawn ammo/sound audit](visual-audits/weapon-spawn-ammo-consumption.md). |
 
 ### Evidence gathered for this pass
 
@@ -814,36 +814,35 @@ on equip. The reserve is one runner-wide Universal Gun Clips count at `+0x4F`,
 consumed by the reload handler. The traced source does not keep a separate
 spare-clip reserve for every weapon, so the native model must not invent one.
 
-**Current QA:** ordinary held-A field input reloads item 1 to its 6-round
-capacity. For a full source-delay interval, the QA saves all 103 New Game
-fixture updates until signed `+0xDC` reaches `-1`; every 320x224 frame matches
-the post-reload frame pixel-for-pixel. Because normal firing is still
-unconnected, QA seeds item 1's magazine empty and uses ordinary Start, Left,
-Right, A, and Start input to equip item 2 through the live field inventory
-menu. A then reloads item 2 to its 12-round capacity, consuming the next clip
-from the same reserve. A second route installs the source Ricky save-roster
-template in the test field, uses ordinary C input to select his active record,
-then ordinary A input to reload it. With no eligible companion, C leaves
-Joshua active and still requests event `0x25`; with Ricky in the roster, C
-changes the active slot and selection marker before A reloads his item 1.
-The dump contains 10 action/menu checkpoints, all 103 action-delay updates,
-all 23 menu press/release frames, a 30-frame field-return hold, and five
-source-template runner C/A frames: 171 full-screen images. Delay and return-hold
-frames are pixel-identical; Debug and Release outputs match by SHA-256. Item 2
-presence, both empty-magazine states, and Ricky's test roster installation
-are fixture setup; C selection, equip, return, and reload use normal
-controller input. The existing inventory QA separately covers
-3/6 -> 6/12 -> 3/6 percentage transfer. Story-driven recruitment and an
-independent loaded-save transfer example remain open.
+**Current QA:** ordinary held-A input reloads item 1 to 6, then live Start,
+Left, Right, A, Start input equips item 2 and reloads it to 12 from the same
+runner reserve. The typed ammo percentage still transfers at 3/6 -> 6/12 ->
+3/6. A separate source-template route uses C to select Ricky and A to reload
+his active record. The field loop now routes held A on an active weapon through
+the source ammo meter operation, source status-dependent sound-event selector,
+and `0xB39A` directional C042 attack pose; it refreshes the live HUD and Qt
+audio player. Eight directly extracted C042 pose assets replace the walking
+sprite for the affected frame. Its full-screen QA saves before/attack/held
+frames and checks ammo 06->05, reserve unchanged, selector/direction, event
+`0x1C`, separately verified resource playback, and pixel-stable hold. The audio test measures playback durations for events
+`0x1C`, `0x1D`, `0x3F`, and `0x51` at 2.483, 2.817, 2.150, and 2.567 seconds.
+The complete 171-frame earlier player-action route remains covered. Item 2
+presence, spent-magazine starting state, and Ricky's roster are QA fixtures;
+their controller transitions use the live field loop. Independent footage
+sections 06/07 were reviewed, but no matching firing pose or shot was identified.
 
-**Done when:** visible counts agree with source state in HUD, inventory, and
-Clips; normal input can fire/reload; tests cover two capacities and reserve
-updates; full-screen output is reviewed. A matching independent loaded-save
-frame is cited or marked unavailable.
+**Done when:** visible counts agree with typed state; normal controls produce
+the source-backed shot lifecycle, including asset, target/collision, hit
+effects, damage, and automatic reload; tests cover multiple weapon capacities
+and reserve updates; entry/action/hold/impact/return frames are reviewed
+full-screen in Debug and Release. Cite an independent matching capture or keep
+that evidence limitation explicit.
 
-**Status:** source model clarified and internally exercised; partial until the
-combat fire/reload route and any matching independent loaded-save evidence are
-reviewed.
+**Status:** partial. The live input, ammo/HUD, audio dispatch, and directional
+player pose are connected and captured. The source's paired entity allocation,
+projectile sprite-list formats, movement, target selection, collision, hit and
+damage path are not connected to gameplay; independent firing imagery/audio
+and loaded-save transfer remain unavailable.
 
 ### PLAY-01 — Normal-control reachability for reported game systems
 

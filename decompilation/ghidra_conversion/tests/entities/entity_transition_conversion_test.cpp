@@ -15,6 +15,15 @@ int expect(const bool condition) {
 
 int main() {
     using namespace shadowrun::ghidra_conversion;
+    if (expect(select_entity_spawn_audio_event(1U, 0U) == 0x1CU) != 0 ||
+        expect(select_entity_spawn_audio_event(8U, 0U) == 0x1EU) != 0 ||
+        expect(select_entity_spawn_audio_event(11U, 0U) == 0x1DU) != 0 ||
+        expect(select_entity_spawn_audio_event(1U, 0x02U) == 0x3FU) != 0 ||
+        expect(select_entity_spawn_audio_event(8U, 0x02U) == 0x4AU) != 0 ||
+        expect(!select_entity_spawn_audio_event(0U, 0U).has_value()) != 0 ||
+        expect(!select_entity_spawn_audio_event(16U, 0U).has_value()) != 0) {
+        return 26;
+    }
     const std::array<std::uint16_t, 8> c042_animations{
         0x4000, 0x4002, 0x4004, 0x4006,
         0x4008, 0x400A, 0x400C, 0x400E};

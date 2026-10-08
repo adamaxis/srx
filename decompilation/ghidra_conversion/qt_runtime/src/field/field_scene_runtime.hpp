@@ -680,6 +680,12 @@ public:
     bool field_entity_walking_for_dump() const noexcept {
         return field_entity_walking_;
     }
+    bool field_entity_attack_pose_for_dump() const noexcept {
+        return field_entity_attack_pose_active_;
+    }
+    std::uint16_t field_entity_attack_selector_for_dump() const noexcept {
+        return field_entity_animation_selector_;
+    }
     const EntityMovementModeTransitionResult&
     last_field_movement_transition_for_dump() const noexcept {
         return last_field_movement_transition_result_;
@@ -964,6 +970,9 @@ private:
     std::array<QImage, 8> field_entity_idle_images_{};
     std::array<int, 8> field_entity_idle_origin_x_{};
     std::array<int, 8> field_entity_idle_origin_y_{};
+    std::array<QImage, 8> field_entity_attack_images_{};
+    std::array<int, 8> field_entity_attack_origin_x_{};
+    std::array<int, 8> field_entity_attack_origin_y_{};
     // Ordinary accepted movement uses four looping poses from 0xC062. C0B2's
     // eight-entry high-bit list is a separate finite behavior transition.
     std::array<std::vector<QImage>, 8> field_entity_walk_images_{};
@@ -972,6 +981,8 @@ private:
     EntityAnimationState field_entity_animation_{};
     std::uint16_t field_entity_animation_selector_ = 0;
     bool field_entity_walking_ = false;
+    bool field_entity_attack_pose_active_ = false;
+    std::uint8_t field_entity_attack_direction_ = 0U;
     std::array<MovementOffset, integration::kFieldMovementDirectionCount>
         field_movement_direction_offsets_{};
     CollisionProbeOffsetBank field_collision_probe_offset_banks_{};

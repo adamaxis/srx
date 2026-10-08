@@ -20,6 +20,10 @@
 #include "shadowrun_ghidra/core/random_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_action_math_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_animation_conversion.hpp"
+#include "shadowrun_ghidra/entities/heading_animation_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_delay_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_combat_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_transition_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_animation_player_action_conversion.hpp"
 #include "shadowrun_ghidra/menus/clips_menu_conversion.hpp"
 #include "shadowrun_ghidra/menus/menu_transfer_batch_conversion.hpp"
@@ -67,6 +71,8 @@ constexpr std::string_view kFieldHudAmmoCounterAliasPrefix =
 constexpr std::string_view kFieldEntityIdleAliasPrefix = "field.entities.idle.";
 constexpr std::string_view kFieldEntityWalkAliasPrefix =
     "field.entities.movement.";
+constexpr std::string_view kFieldEntityAttackAliasPrefix =
+    "field.entities.attack.";
 constexpr std::string_view kElevatorAnimationAliasPrefix =
     "menu.field.elevator.selector.background.frame.";
 constexpr std::string_view kElevatorCurrentFloorAliasPrefix =
@@ -891,6 +897,7 @@ bool FieldSceneRuntime::transition_to_elevator_destination(
     field_movement_state_.movement_substate = 0U;
     field_target_heading_ = 0U;
     field_entity_walking_ = false;
+    field_entity_attack_pose_active_ = false;
     field_entity_animation_ = EntityAnimationState{};
     field_entity_animation_.increment = kFieldWalkAnimationIncrement;
     field_entity_animation_.period = kFieldEntityAnimationPeriod;
@@ -3517,6 +3524,7 @@ bool FieldSceneRuntime::bootstrap(
     field_entity_animation_selector_ =
         select_field_entity_animation_selector(0, false);
     field_entity_walking_ = false;
+    field_entity_attack_pose_active_ = false;
     input_ = integration::FieldSessionBootstrapInput{};
     input_.action_selection_profile_source =
         assets.action_selection_profile_source;
@@ -3637,6 +3645,21 @@ bool FieldSceneRuntime::bootstrap(
         if (horizontal_flip) {
             field_entity_idle_images_[direction] =
                 field_entity_idle_images_[direction].flipped(
+                    Qt::Horizontal);
+        }
+        const auto attack_alias = std::string(kFieldEntityAttackAliasPrefix) +
+                                  std::to_string(direction);
+        if (!load_sprite_image(
+                startup_state.asset_catalog.catalog, attack_alias,
+                field_entity_attack_images_[direction],
+                field_entity_attack_origin_x_[direction],
+                field_entity_attack_origin_y_[direction])) {
+            source_boundary("field.bootstrap.entity_assets_missing");
+            return false;
+        }
+        if (horizontal_flip) {
+            field_entity_attack_images_[direction] =
+                field_entity_attack_images_[direction].flipped(
                     Qt::Horizontal);
         }
         // The ordinary movement poses come from the C062 positive-marker
@@ -4222,29 +4245,102 @@ void FieldSceneRuntime::service_player_weapon_action() {
         return;
     }
 
-    // ROM 0xACAE also requires held A (FFDD22 bit 6) before entering the
-    // spawn-cycle/action branch. The full projectile/target cycle remains a
-    // separate implementation boundary; this path handles only the source
-    // empty-ammo result after that action request has reached 0xAAD2.
-    if (runner.equipped_item_code == 0U || runner.equipped_item_code > 14U ||
+    // ROM 0xACAE routes action codes 1..12 through the weapon spawn/ammo
+    // service. Codes 13..15 use the separate effect-record path at 0x15646.
+    if (runner.equipped_item_code == 0U || runner.equipped_item_code > 12U ||
         (runner.flags & 0x0100U) == 0U) {
         return;
     }
 
-    const auto result = dispatch_player_action_if_ready(
-        runner, us_item_catalog(),
-        {[this](const std::uint16_t event) {
+    const PlayerActionDispatchCallbacks reload_callbacks{
+        [this](const std::uint16_t event) {
             if (source_audio_event_callback_) {
                 source_audio_event_callback_(event);
             }
-        }});
-    if (result.status == PlayerActionDispatchStatus::serviced) {
-        refresh_field_hud_runner_slot();
-        source_boundary("field.combat.player_auto_reload");
+        }};
+    if (runner.ammo_rounds == 0U) {
+        const auto reload = dispatch_player_action_if_ready(
+            runner, us_item_catalog(), reload_callbacks);
+        if (reload.status == PlayerActionDispatchStatus::serviced) {
+            refresh_field_hud_runner_slot();
+            source_boundary("field.combat.player_auto_reload");
+        }
+        return;
     }
+
+    // 0x1514E refuses another spawn while the source +0x16 animation window
+    // is past 0x3C. B39A installs C042 selectors 0x40..0x5C, so movement must
+    // return the runner to idle/walk before another shot can enter the window.
+    if ((field_entity_animation_selector_ & 0x07FFU) > 0x003CU) {
+        return;
+    }
+
+    auto meter_delta = static_cast<std::int8_t>(-1);
+    if (runner.equipped_item_code >= 8U &&
+        runner.equipped_item_code <= 10U) {
+        meter_delta = static_cast<std::int8_t>(-3);
+    }
+    const auto ammo_before = runner.ammo_rounds;
+    const auto ammo_action = service_entity_ammo(
+        runner, meter_delta, us_item_catalog());
+    if (ammo_action != RunnerAssetOperationResult::ammo_changed ||
+        runner.ammo_rounds >= ammo_before) {
+        return;
+    }
+
+    std::uint8_t source_status_flags = 0U;
+    if (runner.equipped_inventory_slot >= 0 &&
+        static_cast<std::size_t>(runner.equipped_inventory_slot) <
+            runner.inventory_phase_bytes.size()) {
+        source_status_flags = runner.inventory_phase_bytes[
+            static_cast<std::size_t>(runner.equipped_inventory_slot)];
+    }
+    const auto audio_event = select_entity_spawn_audio_event(
+        runner.equipped_item_code, source_status_flags);
+
+    HeadingAnimationState attack_pose{};
+    const auto direction = field_movement_direction_from_heading(
+        field_movement_state_.heading);
+    set_entity_heading_with_field_animation(
+        attack_pose, field_movement_state_.heading,
+        runner.equipped_item_code, kFieldAttackAnimationSelectors,
+        [this, &runner](const std::uint16_t delay_mode) {
+            EntityDelayState delay{runner.animation_action_gate};
+            update_entity_animation_delay(
+                delay,
+                EntityDelayAttributes{runner.attributes[1U],
+                                      runner.attributes[4U],
+                                      runner.cyberware_flags},
+                decode_entity_delay_scale(delay_mode));
+            runner.animation_action_gate = delay.animation_delay;
+        },
+        [this] {
+            field_entity_animation_.accumulator = 0;
+            field_entity_animation_.frame = 0U;
+            field_entity_animation_.redraw_requested = true;
+        });
+    field_entity_animation_selector_ = attack_pose.direction_animation;
+    field_entity_attack_direction_ = direction;
+    field_entity_.direction = direction;
+    field_entity_walking_ = false;
+    field_entity_attack_pose_active_ = true;
+
+    if (audio_event.has_value() && source_audio_event_callback_) {
+        source_audio_event_callback_(*audio_event);
+    }
+    refresh_field_hud_runner_slot();
+    source_boundary("field.combat.player_weapon_action");
 }
 
 void FieldSceneRuntime::apply_field_entity_animation(const bool walking) {
+    if (walking) {
+        // Accepted movement replaces the one-frame C042 pose with the source
+        // C062 walking list. Idle field frames leave the attack pose selected
+        // until the source movement path chooses another list.
+        field_entity_attack_pose_active_ = false;
+    } else if (field_entity_attack_pose_active_) {
+        return;
+    }
     const auto selector = select_field_entity_animation_selector(
         field_entity_.direction, walking);
     if (selector != field_entity_animation_selector_) {
@@ -4258,6 +4354,13 @@ void FieldSceneRuntime::apply_field_entity_animation(const bool walking) {
 }
 
 void FieldSceneRuntime::advance_field_actor_animation() {
+    if (field_entity_attack_pose_active_) {
+        // C042 entries are static held poses. 0xABFC owns the source action
+        // delay; the host render cadence must not turn this into a walk loop.
+        field_entity_animation_.frame = 0U;
+        field_entity_animation_.accumulator = 0;
+        return;
+    }
     // Keep the actor's animation as a small native clock. The source C062
     // positive marker wraps its four poses, while C052's one-pose idle list
     // resolves to frame zero. BABC sets +0xCA=0x28 and 600E consequently uses
@@ -5548,22 +5651,27 @@ void FieldSceneRuntime::paint_field_entity(QPainter& painter) const {
         return;
     }
     const auto direction = static_cast<std::size_t>(
-        field_entity_.direction % field_entity_idle_images_.size());
+        (field_entity_attack_pose_active_ ? field_entity_attack_direction_
+                                          : field_entity_.direction) %
+        field_entity_idle_images_.size());
     const auto walking = field_entity_walking_;
     const auto movement_frames = field_entity_walk_images_[direction].size();
     const auto frame = movement_frames == 0
         ? 0U
         : bound_field_walk_animation_frame(field_entity_animation_.frame) %
               movement_frames;
-    const auto& image =
-        walking ? field_entity_walk_images_[direction][frame]
-                : field_entity_idle_images_[direction];
-    const auto origin_x =
-        walking ? field_entity_walk_origin_x_[direction][frame]
-                : field_entity_idle_origin_x_[direction];
-    const auto origin_y =
-        walking ? field_entity_walk_origin_y_[direction][frame]
-                : field_entity_idle_origin_y_[direction];
+    const auto& image = field_entity_attack_pose_active_
+        ? field_entity_attack_images_[direction]
+        : walking ? field_entity_walk_images_[direction][frame]
+                  : field_entity_idle_images_[direction];
+    const auto origin_x = field_entity_attack_pose_active_
+        ? field_entity_attack_origin_x_[direction]
+        : walking ? field_entity_walk_origin_x_[direction][frame]
+                  : field_entity_idle_origin_x_[direction];
+    const auto origin_y = field_entity_attack_pose_active_
+        ? field_entity_attack_origin_y_[direction]
+        : walking ? field_entity_walk_origin_y_[direction][frame]
+                  : field_entity_idle_origin_y_[direction];
     const auto x = static_cast<int>(field_entity_.projection.screen_x) -
                    kGenesisSpriteOrigin + origin_x;
     const auto y = static_cast<int>(field_entity_.projection.screen_y) -

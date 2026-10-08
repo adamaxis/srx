@@ -136,6 +136,13 @@ using EntitySpawnCycleModeEffect = std::function<void(std::uint16_t)>;
 using EntitySpawnCycleAmmoService =
     std::function<EntityAmmoServiceAction(EntityEquipmentState&, std::uint8_t)>;
 
+// ROM 0x15318/0x15336: select the sound request for an equipped action code
+// and its source inventory phase flags. This is also used by the live field
+// input route before the spawned-record presentation lifecycle is complete.
+std::optional<std::uint16_t> select_entity_spawn_audio_event(
+    std::uint8_t source_action_code,
+    std::uint8_t source_status_flags);
+
 struct EntitySpawnCycleResult {
     EntitySpawnCycleAction action =
         EntitySpawnCycleAction::global_mode_blocked;

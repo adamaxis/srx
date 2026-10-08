@@ -88,6 +88,21 @@ std::optional<SpawnedBehaviorEntity> spawn_related_child_if_needed(
 
 } // namespace
 
+std::optional<std::uint16_t> select_entity_spawn_audio_event(
+    const std::uint8_t source_action_code,
+    const std::uint8_t source_status_flags) {
+    if (source_action_code == 0U ||
+        source_action_code > kRegularSpawnAudioEvents.size()) {
+        return std::nullopt;
+    }
+    const bool use_alternate_resource_table =
+        (source_status_flags & 0x06U) != 0U;
+    const auto& audio_events = use_alternate_resource_table
+                                  ? kAlternateSpawnAudioEvents
+                                  : kRegularSpawnAudioEvents;
+    return audio_events[source_action_code - 1U];
+}
+
 void initialize_entity_spawn_record(
     SpawnEntityRecordState& child,
     const SpawnEntityParentState& parent,
@@ -255,12 +270,8 @@ EntitySpawnCycleResult process_entity_spawn_cycle(
         return result;
     }
 
-    const bool use_alternate_resource_table =
-        (state.source_status_flags & 0x06U) != 0U;
-    const auto& audio_events = use_alternate_resource_table
-                                  ? kAlternateSpawnAudioEvents
-                                  : kRegularSpawnAudioEvents;
-    result.selected_audio_event = audio_events[source_type - 1U];
+    result.selected_audio_event = select_entity_spawn_audio_event(
+        source_type, state.source_status_flags).value_or(0U);
     if (play_audio_event) {
         play_audio_event(result.selected_audio_event);
     }
