@@ -2,11 +2,10 @@
 
 Date: 2026-10-07
 
-**Status:** partial. Ordinary field input now covers the scene-26 descriptor
-spawn, the event-0x1D elevator, active-party passkey success, the A2 map-event
-counter update, and movement through the passage. A separate checkpoint QA
-covers the D8 Security Terminal modal and return. The route beyond A2, D8 entry
-from the real descriptor spawn, other lock outcomes, and matching independent
+**Status:** partial. Descriptor-spawn QA now follows ordinary field input
+through the event-0x1D elevator, record-117 A2 lock, record-110 second maglock,
+and the D8 event-0x18 Security Terminal prompt. The QA fixture seeds one
+passkey in Joshua's live record. Other lock outcomes and matching independent
 Genesis captures remain open.
 
 ## ROM trace and native state
@@ -66,24 +65,36 @@ index into the typed world-activity state, and the interaction return resumes
 `0x2BD2`. In this route, sampled map index 712 changes from `0xA2` to `0xA1`.
 That is the state transition which allows ordinary Right input to carry the
 runner from `(0x0F50, 0x1770)` through the passage to `(0x1220, 0x1770)` in 18
-updates. The route stops there; it does not claim the D8 terminal is reachable
-from that position.
+updates. Crossing clears that event marker from the active collision buffer;
+the later route checks the actual traversable map rather than expecting the
+old buffer slot to remain `0xA1`.
 
-Debug and Release each write 217 sequential 320x224 frames, 13 named BMPs,
-and route, collision-delta, source-boundary, and audio logs. All 234 artifacts
-match by relative-path SHA-256. Fourteen chronological contact sheets and
-full-resolution key screens were inspected. `actual.bmp` shows the runner past
-the A2 passage.
+The route then reaches record 110 at ROM `0x1D9DBA`, a second value-`0x82`
+maglock with bounds `x=0x1A0..0x1BF`, `y=0x100..0x11F`, and event 2. The same
+live passkey opens sampled map index 525 (`0x82 -> 0x81`) and requests `0x4B`
+again. From that door, ordinary input follows the 64x64 collision map around
+the `0x7E` wall: row 6 to column 16, north through row 2, then west into the
+D8 trigger lane. Records 124/125 at ROM `0x1D9E46` publish event `0x18` after
+two negative probes and select `building_security_terminal`. The route opens
+the source Electronics/Walk Away prompt from the descriptor spawn; it no
+longer relies on the checkpoint-only QA for reachability.
+
+Debug and Release each write 500 sequential 320x224 frames, 22 named BMPs,
+and seven route, collision-map, source-boundary, and audio files. All 529
+CTest artifacts match by relative-path SHA-256. Ten chronological contact
+sheets and full-resolution prompt, result, return, and terminal screens were
+inspected. `actual.bmp` is the held D8 Security Terminal prompt.
 
 ### Eight-question review of the descriptor route
 
 1. **Does it look correct?** The reviewed frames show the scene-26 map,
-elevator selector, field return, corridor approach, lock prompt, passkey result,
-and runner beyond the A2 lane. This confirms a clean internal composition; it
-does not establish the exact Genesis appearance.
+   elevator selector, both lock prompts/results, the passage and corridor, and
+   the D8 terminal prompt. This confirms a clean internal composition; it does
+   not establish the exact Genesis appearance.
 2. **Does the look reflect the behavioral state?** Yes for this host route. The
-trace records event 2, two negative probes, active selection `0xFF`, map cell
-712 changing from `0xA2` to `0xA1`, and the runner crossing to x=`0x1220`.
+   trace records both event-2 locks, two negative probes at each, map cells 712
+   and 525 changing from `0xA2` to `0xA1` and `0x82` to `0x81`, then event
+   `0x18` with two negative probes at the terminal.
 3. **Are the visuals correct?** The lock prompt and passkey result are generic
 speaker-none full-screen pages with the source text and no choices on the
 result. Debug and Release match. No independent Genesis image of this scene-26
@@ -94,17 +105,21 @@ cadence. The introduction holds static for ten frames and the result for its
 30-frame wait. No independent capture is available to check exact Genesis
 cadence here.
 5. **Does sound accompany it, and how long?** Passkey success requests event
-`0x4B` once. It resolves to extracted resource 075, whose FLAC contains 97,770
-samples at 44,100 Hz (2.217 seconds). The route verifies the request, not
-speaker loopback or the hardware playback tail.
+   `0x4B` once per successful passkey use (two requests total). It resolves to
+   extracted resource 075, whose FLAC contains 97,770 samples at 44,100 Hz
+   (2.217 seconds). The route verifies the requests, not speaker loopback or
+   the hardware playback tail. The terminal prompt's sound cue and stop
+   lifetime remain untraced.
 6. **Are related screen areas also correct?** The review includes the entire
-320x224 image: map, actor, right HUD, elevator selector, lock page, and result.
-The runner stays visible along the corridor and passage, with no clipping or
-screen-wide corruption found in the host captures.
+   320x224 image across the elevator, both locks, passage, corridor, and
+   terminal. The runner remains visible in these host captures; no screen-wide
+   corruption or stale controls were found. This says nothing about the
+   separate scene-2 event-1 HUD overlap.
 7. **Do multiple frames support the interpretation?** Yes for the internal
-route: all 217 sequential frames were reviewed, including all 18 crossing
-updates and the ten- and 30-frame modal holds. This is one route, not multiple
-independent Genesis examples.
+   route: all 500 sequential frames were reviewed, including both passages,
+   each ten-frame introduction hold, both 30-frame result waits, and the
+   terminal entry. This is one route, not multiple independent Genesis
+   examples.
 8. **Are new controls drawn over stale graphics?** No in these captures. The
 elevator selector replaces the map and Start restores the field. Both lock
 pages replace the map and HUD. After acknowledgement, the field render equals
@@ -145,10 +160,9 @@ the field-only render, so no old modal controls remain over the map.
 
 ## Remaining work
 
-Trace a collision-backed route beyond the A2 passage before attempting the D8
-event-`0x18` trigger; collision-record geometry alone is not enough to assert
-reachability. Exercise passkey failure, insufficient quality, Electronics,
-and other active-party lock outcomes as source evidence permits. The D8
-physical-input QA still starts from a source-coordinate checkpoint. Find
-independent Genesis frames for scene 26 and trace sound playback/stop behavior
-before making stronger visual or audio-fidelity claims.
+Exercise passkey failure, insufficient quality, Electronics, and other
+active-party lock outcomes as source evidence permits. Find independent Genesis
+frames for scene 26 and trace terminal sound playback/stop behavior before
+making stronger visual or audio-fidelity claims. This route begins at scene 26;
+it does not verify the preceding scene-2 resource-scene entry or a full
+story-driven path from New Game.

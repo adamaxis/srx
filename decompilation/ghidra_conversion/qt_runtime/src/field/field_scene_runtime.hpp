@@ -665,6 +665,9 @@ public:
     std::uint16_t field_entity_target_heading_for_dump() const noexcept {
         return field_target_heading_;
     }
+    const FieldCameraFollowState& field_camera_follow_for_dump() const noexcept {
+        return field_camera_follow_;
+    }
     std::uint16_t field_entity_animation_frame_for_dump() const noexcept {
         return field_entity_animation_.frame;
     }
@@ -698,6 +701,7 @@ private:
         integration::FieldRuntimeCoordinatorState& runtime_state);
     bool project_field_world_interaction();
     void update_source_field_camera();
+    void service_pending_field_viewports();
     void apply_field_entity_animation(bool walking);
     bool recover_blocked_field_movement(
         const MovementProbeResult& initial_probe);

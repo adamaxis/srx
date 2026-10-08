@@ -5756,6 +5756,7 @@ int run_field_scene26_maglock_descriptor_route_qa(
     constexpr std::uint16_t kElevatorEvent = 0x1DU;
     constexpr std::uint16_t kMaglockEvent = 2U;
     constexpr std::uint16_t kMaglockCollision = 0x00A2U;
+    constexpr std::uint16_t kSecondaryMaglockCollision = 0x0082U;
     const auto& metadata =
         field_scene.state().field_scene_buffers.source_metadata;
     const auto& rectangles = metadata.terrain_collision_rectangles;
@@ -5767,9 +5768,14 @@ int run_field_scene26_maglock_descriptor_route_qa(
         rectangles[117U].right != 0x011FU ||
         rectangles[117U].top != 0x0160U ||
         rectangles[117U].bottom != 0x017FU ||
-        rectangles[117U].value != kMaglockCollision) {
+        rectangles[117U].value != kMaglockCollision ||
+        rectangles.size() <= 110U || rectangles[110U].left != 0x01A0U ||
+        rectangles[110U].right != 0x01BFU ||
+        rectangles[110U].top != 0x0100U ||
+        rectangles[110U].bottom != 0x011FU ||
+        rectangles[110U].value != kSecondaryMaglockCollision) {
         std::cerr << "Scene-26 descriptor route QA: descriptor spawn or ROM "
-                     "record 117 does not match\n";
+                     "maglock records 110/117 do not match\n";
         return 3;
     }
 
@@ -5841,6 +5847,40 @@ int run_field_scene26_maglock_descriptor_route_qa(
                image.save(QString::fromStdWString(
                    (output / (std::string(name) + ".bmp")).wstring()));
     };
+    const auto dump_collision_map = [&field_scene, &output](
+                                       const std::string_view name) {
+        const auto& collision_map =
+            field_scene.state().field_scene_buffers.source_metadata
+                .terrain_collision_map;
+        if (collision_map.size() != 64U * 64U) {
+            return false;
+        }
+        std::ofstream map_file(
+            output / (std::string(name) + ".tsv"), std::ios::trunc);
+        if (!map_file) {
+            return false;
+        }
+        map_file << "row/col";
+        for (std::size_t column = 0U; column < 64U; ++column) {
+            map_file << '\t' << column;
+        }
+        map_file << '\n' << std::hex << std::setfill('0');
+        for (std::size_t row = 0U; row < 64U; ++row) {
+            map_file << std::dec << row;
+            for (std::size_t column = 0U; column < 64U; ++column) {
+                map_file << '\t' << std::hex << std::setw(2)
+                         << static_cast<unsigned>(
+                                collision_map[row * 64U + column]);
+            }
+            map_file << '\n';
+        }
+        return static_cast<bool>(map_file);
+    };
+    if (!dump_collision_map("terrain-collision-map-at-entry")) {
+        std::cerr << "Scene-26 descriptor route QA: collision map is not a "
+                     "64x64 grid or could not be captured\n";
+        return 3;
+    }
     std::ofstream trace(output / "route.tsv", std::ios::trunc);
     if (!trace) {
         return 3;
@@ -5849,6 +5889,10 @@ int run_field_scene26_maglock_descriptor_route_qa(
              "\tcollision\tactivity_selection\tevent\tnegative_probes"
              "\tcontinuation\ttransition_kind\tselector_open"
              "\tinteraction_open\tinteraction_options\tentity_visible"
+             "\tscreen_x\tscreen_y\tcamera_x\tcamera_y\theading"
+             "\ttarget_heading\tcamera_min_x\tcamera_max_x"
+             "\tcamera_step_x\tcamera_layer_x_dirty"
+             "\tcamera_layer_y_dirty\tcamera_interaction_locked"
              "\taudio_events\n";
     std::uint32_t frame = 0U;
     const auto audio_start = field_audio_events.size();
@@ -5885,6 +5929,22 @@ int run_field_scene26_maglock_descriptor_route_qa(
               << panel.open << '\t'
               << static_cast<unsigned>(panel.option_count) << '\t'
               << field_scene.field_entity_visible_for_dump() << '\t'
+              << field_scene.field_entity_screen_x_for_dump() << '\t'
+              << field_scene.field_entity_screen_y_for_dump() << '\t'
+              << field_scene.state().field_scene_buffers.camera_x << '\t'
+              << field_scene.state().field_scene_buffers.camera_y << '\t'
+              << field_scene.field_entity_heading_for_dump() << '\t'
+              << field_scene.field_entity_target_heading_for_dump() << '\t'
+              << field_scene.field_camera_follow_for_dump().minimum_x << '\t'
+              << field_scene.field_camera_follow_for_dump().maximum_x << '\t'
+              << static_cast<int>(field_scene.field_camera_follow_for_dump()
+                                      .horizontal_step) << '\t'
+              << field_scene.field_camera_follow_for_dump().layer_x_dirty
+              << '\t'
+              << field_scene.field_camera_follow_for_dump().layer_y_dirty
+              << '\t'
+              << field_scene.field_camera_follow_for_dump()
+                     .interaction_locked << '\t'
               << (field_audio_events.size() - audio_start) << '\n';
         trace.flush();
         return true;
@@ -6222,6 +6282,428 @@ int run_field_scene26_maglock_descriptor_route_qa(
         return 3;
     }
 
+    // ROM scene-26 record 110 is a second value-0x82 maglock. Follow the
+    // clear 64x64 collision-map cells from the A2 passage to that trigger,
+    // then continue via the north corridor to records 124/125 (D8). The
+    // route is grounded in the extracted scene collision records and the
+    // B952/B9A8 event branches; every movement step still uses the controller.
+    const auto walk_to = [&](const std::uint8_t nibble,
+                             const std::string_view stage,
+                             const std::string_view input,
+                             const auto& reached,
+                             const std::uint16_t max_ticks)
+        -> std::optional<std::uint16_t> {
+        std::uint16_t ticks = 0U;
+        while (!reached() && ticks < max_ticks) {
+            if (!tick_dpad(nibble, stage, input) ||
+                field_scene.field_interaction_open() ||
+                field_scene.elevator_selector_open_for_dump()) {
+                return std::nullopt;
+            }
+            ++ticks;
+        }
+        return reached() ? std::optional<std::uint16_t>{ticks}
+                         : std::nullopt;
+    };
+    auto route_position = field_scene.field_entity_world_position();
+    const auto east_to_secondary_lane = walk_to(
+        0x08U, "route-to-secondary-maglock-east", "dpad-right",
+        [&] {
+            return field_scene.field_entity_world_position().x >= 0x1380U;
+        },
+        40U);
+    const auto north_to_secondary_lane = east_to_secondary_lane
+        ? walk_to(0x01U, "route-to-secondary-maglock-north", "dpad-up",
+                  [&] {
+                      return field_scene.field_entity_world_position().y <=
+                             0x13A0U;
+                  },
+                  60U)
+        : std::nullopt;
+    const auto east_to_secondary_door = north_to_secondary_lane
+        ? walk_to(0x08U, "approach-secondary-maglock", "dpad-right",
+                  [&] {
+                      return field_scene.field_entity_world_position().x >=
+                             0x1A20U;
+                  },
+                  60U)
+        : std::nullopt;
+    if (!east_to_secondary_lane || !north_to_secondary_lane ||
+        !east_to_secondary_door) {
+        route_position = field_scene.field_entity_world_position();
+        std::cerr << "Scene-26 descriptor route QA: collision-map route to "
+                     "record 110 failed (position="
+                  << route_position.x << ',' << route_position.y << ")\n";
+        return 3;
+    }
+
+    std::uint16_t secondary_maglock_ticks = 0U;
+    while (secondary_maglock_ticks < 32U &&
+           !field_scene.field_interaction_open()) {
+        if (!tick_dpad(0x01U, "enter-secondary-maglock", "dpad-up") ||
+            field_scene.elevator_selector_open_for_dump()) {
+            std::cerr << "Scene-26 descriptor route QA: unexpected route "
+                         "transition approaching record 110\n";
+            return 3;
+        }
+        ++secondary_maglock_ticks;
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto secondary_position =
+        field_scene.field_entity_world_position();
+    const auto& secondary_movement =
+        field_scene.last_field_movement_transition_for_dump();
+    const auto& secondary_panel = field_scene.field_interaction_panel();
+    const bool source_secondary_maglock_prompt =
+        field_scene.field_scene_reference_for_dump() == kScene &&
+        field_scene.field_interaction_mode_for_dump() == 2U &&
+        field_scene.field_activity_selection_for_dump() == kMaglockEvent &&
+        field_scene.field_interaction_open() && secondary_panel.source_complete &&
+        secondary_panel.actor_kind == DialoguePanelActorKind::none &&
+        secondary_panel.option_count == 1U &&
+        secondary_panel.text_segment_count != 0U &&
+        secondary_panel.text_segments[0].find("sturdy door") !=
+            std::string_view::npos &&
+        secondary_panel.options[0U].source_label.find("MORE") !=
+            std::string_view::npos &&
+        secondary_movement.event_code == kMaglockEvent &&
+        secondary_movement.negative_probe_count >= 2U &&
+        secondary_movement.continuation ==
+            MovementModeTransitionContinuation::maglock_door_interaction &&
+        secondary_movement.kind ==
+            EntityMovementModeTransitionResultKind::field_dialogue_started &&
+        (secondary_position.x >> 4U) >= 0x01A0U &&
+        (secondary_position.x >> 4U) <= 0x01BFU &&
+        (secondary_position.y >> 4U) >= 0x0120U &&
+        (secondary_position.y >> 4U) <= 0x013FU;
+    const auto secondary_modal_frame = render();
+    if (!source_secondary_maglock_prompt ||
+        secondary_modal_frame == render(true) ||
+        field_hud_chrome_survives(secondary_modal_frame, asset_root) ||
+        !capture("secondary-maglock-introduction", "neutral") ||
+        !save("secondary-maglock-introduction") ||
+        !save("actual")) {
+        std::cerr << "Scene-26 descriptor route QA: record 110 did not open "
+                     "the source generic maglock prompt (event="
+                  << secondary_movement.event_code << ", probes="
+                  << static_cast<unsigned>(
+                         secondary_movement.negative_probe_count)
+                  << ", runner=" << secondary_position.x << ','
+                  << secondary_position.y << ")\n";
+        return 3;
+    }
+    for (std::uint8_t tick = 0U; tick < 10U; ++tick) {
+        field_scene.set_controller_nibble(0U);
+        field_scene.advance_frame();
+        ++frame;
+        if (!capture("secondary-maglock-introduction-hold", "neutral")) {
+            return 3;
+        }
+    }
+    if (render() != secondary_modal_frame ||
+        !save("secondary-maglock-introduction-held")) {
+        std::cerr << "Scene-26 descriptor route QA: second lock prompt "
+                     "changed during its source 10-frame hold\n";
+        return 3;
+    }
+
+    // 0x21628 leaves the passkey in its live runner slot after the first
+    // success, so the same source property is checked at record 110.
+    if (field_scene.active_runner_record().inventory_item_codes[*passkey_slot] !=
+            kMaglockPasskeyItem ||
+        field_scene.active_runner_record().inventory_phase_bytes[*passkey_slot] !=
+            kPasskeyQuality) {
+        std::cerr << "Scene-26 descriptor route QA: first passkey use changed "
+                     "the source inventory record\n";
+        return 3;
+    }
+    const auto collision_map_before_secondary_passkey =
+        field_scene.state().field_scene_buffers.source_metadata
+            .terrain_collision_map;
+    const auto audio_before_secondary_passkey = field_audio_events.size();
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame();
+    ++frame;
+    if (!capture("secondary-passkey-action", "a")) {
+        return 3;
+    }
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    ++frame;
+    if (!capture("secondary-passkey-result-wait-1", "neutral")) {
+        return 3;
+    }
+    const auto& secondary_result_panel =
+        field_scene.field_interaction_panel();
+    const auto secondary_result_image = render();
+    const bool secondary_result_text =
+        secondary_result_panel.text_segment_count >= 3U &&
+        secondary_result_panel.text_segments[0].find("Maglock Passkey") !=
+            std::string_view::npos &&
+        secondary_result_panel.text_segments[2].find("door has been disabled") !=
+            std::string_view::npos;
+    if (!field_scene.field_interaction_open() ||
+        !secondary_result_panel.open ||
+        !secondary_result_panel.source_complete ||
+        secondary_result_panel.kind != DialoguePanelKind::information_page ||
+        secondary_result_panel.actor_kind != DialoguePanelActorKind::none ||
+        secondary_result_panel.option_count != 0U ||
+        !secondary_result_text ||
+        field_scene.field_activity_selection_for_dump() != 0xFFU ||
+        field_audio_events.size() != audio_before_secondary_passkey + 1U ||
+        field_audio_events.back() != 0x4BU ||
+        secondary_result_image == secondary_modal_frame ||
+        field_hud_chrome_survives(secondary_result_image, asset_root) ||
+        !save("secondary-passkey-result") || !save("actual")) {
+        std::cerr << "Scene-26 descriptor route QA: second passkey action "
+                     "did not resolve through the shared source handler\n";
+        return 3;
+    }
+    for (std::uint8_t wait_frame = 2U; wait_frame <= 30U; ++wait_frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++frame;
+        if (!capture("secondary-passkey-result-wait", "neutral")) {
+            return 3;
+        }
+        if (wait_frame == 15U || wait_frame == 30U) {
+            const auto held_result = render();
+            if (held_result != secondary_result_image ||
+                !save(wait_frame == 15U
+                          ? "secondary-passkey-result-wait-15"
+                          : "secondary-passkey-result-wait-30")) {
+                std::cerr << "Scene-26 descriptor route QA: second passkey "
+                             "result changed during its source 30-frame wait\n";
+                return 3;
+            }
+        }
+    }
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame();
+    ++frame;
+    if (!capture("secondary-passkey-result-acknowledged", "a")) {
+        return 3;
+    }
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    ++frame;
+    if (!capture("secondary-passkey-field-return", "neutral")) {
+        return 3;
+    }
+    field_scene.advance_frame();
+    ++frame;
+    if (!capture("secondary-passkey-event-state-settled", "neutral")) {
+        return 3;
+    }
+    const auto& collision_map_after_secondary_passkey =
+        field_scene.state().field_scene_buffers.source_metadata
+            .terrain_collision_map;
+    std::vector<std::tuple<std::size_t, std::uint8_t, std::uint8_t>>
+        secondary_collision_map_changes;
+    const auto secondary_map_count = std::min(
+        collision_map_before_secondary_passkey.size(),
+        collision_map_after_secondary_passkey.size());
+    for (std::size_t index = 0U; index < secondary_map_count; ++index) {
+        if (collision_map_before_secondary_passkey[index] !=
+            collision_map_after_secondary_passkey[index]) {
+            secondary_collision_map_changes.emplace_back(
+                index, collision_map_before_secondary_passkey[index],
+                collision_map_after_secondary_passkey[index]);
+        }
+    }
+    const auto secondary_map_index = static_cast<std::size_t>(
+        ((((0x0100U & 0xFFE0U) << 1U) + (0x01A0U >> 5U)) & 0x0FFFU));
+    const bool secondary_maglock_opened =
+        secondary_collision_map_changes.size() == 1U &&
+        std::get<0>(secondary_collision_map_changes.front()) ==
+            secondary_map_index &&
+        std::get<1>(secondary_collision_map_changes.front()) ==
+            kSecondaryMaglockCollision &&
+        std::get<2>(secondary_collision_map_changes.front()) == 0x0081U;
+    const auto field_after_secondary_passkey = render();
+    const bool secondary_field_has_no_modal =
+        !field_scene.field_interaction_open() && !field_scene.dialogue_open() &&
+        !field_scene.field_mode_text_open_for_dump() &&
+        !field_scene.shop_menu_open();
+    const bool secondary_field_entity_visible =
+        field_scene.field_entity_visible_for_dump();
+    const bool secondary_field_hud_survives =
+        field_hud_chrome_survives(field_after_secondary_passkey, asset_root);
+    const bool secondary_field_matches_field_only =
+        field_after_secondary_passkey == render(true);
+    const bool secondary_passkey_audio_correct =
+        field_audio_events.size() == audio_before_secondary_passkey + 1U;
+    const bool secondary_field_saved =
+        save("field-after-secondary-passkey") &&
+        save("field-after-secondary-passkey-field-only", true);
+    if (!secondary_field_has_no_modal ||
+        !secondary_field_entity_visible || !secondary_field_hud_survives ||
+        !secondary_field_matches_field_only || !secondary_maglock_opened ||
+        !secondary_passkey_audio_correct || !secondary_field_saved) {
+        std::cerr << "Scene-26 descriptor route QA: second field return did "
+                     "not redraw cleanly and advance record 110 from 0x82 "
+                     "to 0x81 (changed cells="
+                  << secondary_collision_map_changes.size()
+                  << ", expected index=" << secondary_map_index
+                  << ", audio=" << audio_before_secondary_passkey << "->"
+                  << field_audio_events.size();
+        if (!secondary_collision_map_changes.empty()) {
+            const auto [index, before, after] =
+                secondary_collision_map_changes.front();
+            std::cerr << ", delta=" << index << ":0x" << std::hex
+                      << static_cast<unsigned>(before) << "->0x"
+                      << static_cast<unsigned>(after) << std::dec;
+        }
+        std::cerr << ", interaction="
+                  << field_scene.field_interaction_open()
+                  << ", visible="
+                  << field_scene.field_entity_visible_for_dump()
+                  << ", screen="
+                  << field_scene.field_entity_screen_x_for_dump() << ','
+                  << field_scene.field_entity_screen_y_for_dump()
+                  << ", camera="
+                  << field_scene.state().field_scene_buffers.camera_x << ','
+                  << field_scene.state().field_scene_buffers.camera_y
+                  << ", clean_return="
+                  << secondary_field_matches_field_only
+                  << ", no_modal=" << secondary_field_has_no_modal
+                  << ", hud=" << secondary_field_hud_survives
+                  << ", map_opened=" << secondary_maglock_opened
+                  << ", audio=" << secondary_passkey_audio_correct
+                  << ", saved=" << secondary_field_saved << ")\n";
+        return 3;
+    }
+    {
+        std::ofstream event_delta(
+            output / "secondary-maglock-collision-map-delta.tsv",
+            std::ios::trunc);
+        if (!event_delta) {
+            return 3;
+        }
+        event_delta << "map_index\tbefore\tafter\n";
+        for (const auto& [index, before, after] :
+             secondary_collision_map_changes) {
+            event_delta << index << "\t0x" << std::hex
+                        << static_cast<unsigned>(before) << "\t0x"
+                        << static_cast<unsigned>(after) << std::dec << '\n';
+        }
+    }
+    if (!dump_collision_map("terrain-collision-map-before-d8")) {
+        std::cerr << "Scene-26 descriptor route QA: current collision map "
+                     "could not be captured before the D8 route\n";
+        return 3;
+    }
+
+    // Records 124/125 place the D8 trigger in projected-grid rows 1-2,
+    // columns 12-13. The collision map routes around the 0x7E cells along
+    // row 6 to column 16, north through row 2, then west to column 13. The
+    // intermediate targets allow the source heading turn to finish before a
+    // probe reaches the wall.
+    const auto north_through_secondary_door = walk_to(
+        0x01U, "north-through-secondary-maglock", "dpad-up",
+        [&] {
+            return field_scene.field_entity_world_position().y <= 0x0D80U;
+        },
+        40U);
+    const auto east_to_terminal_corridor = north_through_secondary_door
+        ? walk_to(0x08U, "east-corridor-to-terminal", "dpad-right",
+                  [&] {
+                      return field_scene.field_entity_world_position().x >=
+                             0x2000U;
+                  },
+                  60U)
+        : std::nullopt;
+    const auto north_to_terminal_lane = east_to_terminal_corridor
+        ? walk_to(0x01U, "north-corridor-to-terminal", "dpad-up",
+                  [&] {
+                      return field_scene.field_entity_world_position().y <=
+                             0x0640U;
+                  },
+                  100U)
+        : std::nullopt;
+    const auto west_to_terminal_lane = north_to_terminal_lane
+        ? walk_to(0x04U, "align-terminal-trigger-lane", "dpad-left",
+                  [&] {
+                      return field_scene.field_entity_world_position().x <=
+                             0x1B80U;
+                  },
+                  40U)
+        : std::nullopt;
+    if (!north_through_secondary_door || !east_to_terminal_corridor ||
+        !north_to_terminal_lane || !west_to_terminal_lane) {
+        route_position = field_scene.field_entity_world_position();
+        std::cerr << "Scene-26 descriptor route QA: collision-map route to "
+                     "the D8 approach failed (position="
+                  << route_position.x << ',' << route_position.y << ")\n";
+        return 3;
+    }
+
+    std::uint16_t terminal_entry_ticks = 0U;
+    while (terminal_entry_ticks < 32U &&
+           !field_scene.field_interaction_open()) {
+        if (!tick_dpad(0x01U, "enter-d8-security-terminal", "dpad-up") ||
+            field_scene.elevator_selector_open_for_dump()) {
+            std::cerr << "Scene-26 descriptor route QA: unexpected transition "
+                         "approaching the D8 Security Terminal\n";
+            return 3;
+        }
+        ++terminal_entry_ticks;
+    }
+    field_scene.set_controller_nibble(0U);
+    route_position = field_scene.field_entity_world_position();
+    const auto& terminal_movement =
+        field_scene.last_field_movement_transition_for_dump();
+    const auto& terminal_panel = field_scene.field_interaction_panel();
+    const bool source_terminal_prompt =
+        field_scene.field_scene_reference_for_dump() == kScene &&
+        field_scene.field_interaction_mode_for_dump() == 2U &&
+        field_scene.field_interaction_open() && terminal_panel.open &&
+        terminal_panel.source_complete && terminal_panel.option_count == 2U &&
+        terminal_panel.options[0U].role ==
+            DialoguePanelOptionRole::field_security_access &&
+        terminal_panel.options[1U].role ==
+            DialoguePanelOptionRole::field_walk_away &&
+        terminal_movement.event_code == 0x18U &&
+        terminal_movement.negative_probe_count >= 2U &&
+        terminal_movement.continuation ==
+            MovementModeTransitionContinuation::building_security_terminal &&
+        terminal_movement.kind ==
+            EntityMovementModeTransitionResultKind::building_reaction_started &&
+        (route_position.x >> 4U) >= 0x01A0U &&
+        (route_position.x >> 4U) <= 0x01BFU &&
+        (route_position.y >> 4U) >= 0x0020U &&
+        (route_position.y >> 4U) <= 0x005FU;
+    const auto terminal_modal_frame = render();
+    if (!source_terminal_prompt || terminal_modal_frame == render(true) ||
+        field_hud_chrome_survives(terminal_modal_frame, asset_root) ||
+        !save("security-terminal-from-descriptor-spawn") ||
+        !capture("security-terminal-from-descriptor-spawn", "neutral") ||
+        !save("actual")) {
+        std::cerr << "Scene-26 descriptor route QA: normal map path did not "
+                     "reach the D8 event-0x18 Security Terminal (event="
+                  << terminal_movement.event_code << ", probes="
+                  << static_cast<unsigned>(
+                         terminal_movement.negative_probe_count)
+                  << ", runner=" << route_position.x << ','
+                  << route_position.y << ")\n";
+        return 3;
+    }
+    for (std::uint8_t tick = 0U; tick < 10U; ++tick) {
+        field_scene.set_controller_nibble(0U);
+        field_scene.advance_frame();
+        ++frame;
+        if (!capture("security-terminal-introduction-hold", "neutral")) {
+            return 3;
+        }
+    }
+    if (render() != terminal_modal_frame ||
+        field_scene.dialogue_open() || field_scene.shop_menu_open() ||
+        !save("security-terminal-introduction-held") || !save("actual")) {
+        std::cerr << "Scene-26 descriptor route QA: terminal prompt changed "
+                     "during its source 10-frame hold or left stale UI\n";
+        return 3;
+    }
+
     std::ofstream audio_file(output / "audio-events.txt", std::ios::trunc);
     for (std::size_t index = audio_start;
          index < field_audio_events.size(); ++index) {
@@ -6241,10 +6723,13 @@ int run_field_scene26_maglock_descriptor_route_qa(
                  "scene=26 elevator_event=0x1D maglock_collision=0xA2 "
                  "maglock_event=2 passkey_item=0x14 quality="
               << static_cast<unsigned>(kPasskeyQuality)
-              << " map_counter=A2->A1 right_ticks=" << right_ticks
+              << " map_counter=A2->A1,82->81 right_ticks=" << right_ticks
               << " south_ticks=" << south_ticks << " a2_ticks=" << a2_ticks
               << " passage_ticks=" << passage_ticks
+              << " secondary_maglock_ticks=" << secondary_maglock_ticks
+              << " terminal_entry_ticks=" << terminal_entry_ticks
               << " prompt=generic_sturdy_door passkey_result=door_disabled "
+                 "terminal_prompt=source_event_0x18 "
                  "frames=" << frame
               << " artifacts=" << output.string() << '\n';
     return 0;
@@ -6603,12 +7088,12 @@ int run_field_security_terminal_physical_entry_qa(
         return 3;
     }
     const auto returned_field = render(false);
-    if (!save("return-field") || returned_field != prompt_underlay ||
+    if (!save("return-field") || returned_field != render(true) ||
         !field_hud_chrome_survives(returned_field, asset_root) ||
         !field_scene.field_entity_visible_for_dump() ||
         field_scene.field_mode_text_open_for_dump() ||
         field_scene.dialogue_open() || field_scene.shop_menu_open()) {
-        std::cerr << "Security Terminal physical-entry QA: return left stale "
+        std::cerr << "Security Terminal physical-entry QA: return retained "
                      "terminal graphics or a competing screen active\n";
         return 3;
     }

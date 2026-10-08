@@ -674,9 +674,11 @@ bool FieldSceneRuntime::project_field_world_interaction() {
     }
     if (effect.world_effect_x_dirty) {
         field_camera_follow_.layer_x_dirty = true;
+        viewport_state_.normal_render_pending = 1U;
     }
     if (effect.world_effect_y_dirty) {
         field_camera_follow_.layer_y_dirty = true;
+        viewport_state_.alternate_render_pending = 1U;
     }
     if (effect.world_effect_x_dirty || effect.world_effect_y_dirty) {
         auto& layer = effect.world_effect_y_dirty
@@ -1888,6 +1890,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
     field_runtime_callbacks_.update_entity_render_pass = [this] {
         update_entity_render_pass(state_.render_entities,
                                   callbacks_.entity_render_pass);
+        service_pending_field_viewports();
     };
     field_runtime_callbacks_.advance_palette_fade = [this] {
         // ROM 0x16396 services effects on every field frame. When 0xB7B8
@@ -4281,6 +4284,21 @@ void FieldSceneRuntime::update_source_field_camera() {
             column_edge, {[this](const FieldTileColumnEdgeRequest&) {
                 source_boundary("field.camera.column_edge");
             }});
+    }
+}
+
+void FieldSceneRuntime::service_pending_field_viewports() {
+    // ROM 0x1872 runs from the VBlank entry and services FFE100/FFE102 after
+    // the field-camera pass. The Qt host commits the requested viewport
+    // redraw after projecting entities, then paints the scene from its native
+    // map and state on the next frame.
+    if (viewport_state_.normal_render_pending != 0U &&
+        callbacks_.field_viewports.render_normal_viewport) {
+        callbacks_.field_viewports.render_normal_viewport();
+    }
+    if (viewport_state_.alternate_render_pending != 0U &&
+        callbacks_.field_viewports.render_alternate_viewport) {
+        callbacks_.field_viewports.render_alternate_viewport();
     }
 }
 

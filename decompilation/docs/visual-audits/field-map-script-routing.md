@@ -23,8 +23,8 @@ records.
 | Scene 2, collision value `0xC1` at ROM `0x17314C`, event 1 | Active map's event table and world-activity resource selector | Row 1 in `0x172CDC` selects scene `0x1A` (scene 26); its resource bundle has bound 3 |
 | Scene 26-29 family, paired `0xDD` collision rectangles, event 29 | Floor selector and selected-scene transition | `0x58D94` calls `0x58DE0`; the typed child scene group contains scenes 26, 27, and 28. Physical QA covers scenes 26-29; destination identity remains open. This is separate from the Stoker scene-2 event-2 dialogue route |
 | Scene 20, collision value `0x82` at ROM `0x1D9724`, event 2 | Building interaction continuation | The separate electromagnetic-lock handler `0x20E48` opens its generic prompt |
-| Scene 26, collision record 117 (`0xA2`) at ROM `0x1D9E00`, world-mode-2 event 2 | Generic electromagnetic-lock continuation and passkey action | `0xB7B8` reaches `0x20E48`; descriptor-route CTest seeds active runner item `0x14`/quality 2, verifies sound `0x4B`, and checks sampled map index 712 changes `0xA2` to `0xA1` before 18 ordinary Right updates cross the passage. The path beyond A2 to D8 remains unverified |
-| Scene 26, collision values `0xD8` at ROM `0x1D9E46`, event `0x18` | Direct typed Security Terminal continuation | `0xB7B8` requires two negative samples and selects `0x20EC2`; the physical-input QA opens both choices and Walk Away from a source-coordinate checkpoint. Its route from beyond the A2 passage remains unverified |
+| Scene 26, collision record 117 (`0xA2`) at ROM `0x1D9E00`, world-mode-2 event 2 | Generic electromagnetic-lock continuation and passkey action | `0xB7B8` reaches `0x20E48`; descriptor-route CTest seeds active runner item `0x14`/quality 2, verifies sound `0x4B`, and checks sampled map index 712 changes `0xA2` to `0xA1` before ordinary Right input crosses the passage. Traversal clears that marker from the active collision buffer |
+| Scene 26, collision record 110 (`0x82`) at ROM `0x1D9DBA`, event 2; then `0xD8` records 124/125 at `0x1D9E46`, event `0x18` | Shared maglock continuation followed by typed Security Terminal continuation | The same live passkey changes sampled map index 525 from `0x82` to `0x81`; ordinary input follows the collision grid around the `0x7E` wall into the D8 lane. `0xB7B8` requires two negative samples and selects `0x20EC2`; the descriptor-spawn route opens the Electronics/Walk Away prompt. A separate checkpoint QA remains as focused coverage |
 | Any remaining in-range map-table event | Active map's own event table | The selected row is passed to the existing world-activity coordinator; missing/out-of-range tables remain unresolved |
 
 The Stoker prompt is collision-driven after New Game has placed the runner on
@@ -74,14 +74,25 @@ and remaining visual issue are recorded in the
 I reviewed all 83 route BMPs as whole 320x224 frames: 12 Stoker frames, 14
 Ares frames, 42 scene-20 frames, and 15 scene-2 event-1 frames. The older
 routes include the full map and HUD during movement, captured fade phases,
-each panel/shop state, and return screens. The new route review found the
-runner covered by the opaque HUD column during a long uninterrupted eastward
-hold; the route trace still reports its native projection visibility flag as
-true. I record this mismatch as unresolved rather than accepted as visually
-correct. The
+each panel/shop state, and return screens. The scene-2 event-1 route review
+found the runner covered by the opaque HUD column during a long uninterrupted
+eastward hold; the route trace still reports its native projection visibility
+flag as true. I record this mismatch as unresolved rather than accepted as
+visually correct. The
 scene-2 fade reaches black and the scene-26 destination replaces the map and
 HUD without a dialogue or shop left open. Debug and Release route BMP hashes
 match.
+
+The separate scene-26 descriptor route produces 500 sequential 320x224 frames
+from spawn through the D8 Security Terminal prompt, covering both passkey doors
+and the collision-backed corridor between them. All ten chronological contact
+sheets and full-resolution named screens were reviewed; the Debug/Release sets
+contain 529 matching CTest artifacts. In these captures the runner remains in
+the viewport. The QA's logged projection includes the source `0x80` origin,
+which `paint_field_entity()` subtracts before drawing; those raw numbers cannot
+be compared directly with the 320x224 image bounds. This corrects an earlier
+misreading of the second-lock return frame. Independent scene-26 Genesis
+frames are still absent.
 
 The Ares introduction and category were also compared at full size with the
 independent longplay references `ares-introduction-5983.png` and
@@ -158,13 +169,14 @@ Physical trigger paths for group members 30-33 are now covered.
 This is a route-planning foundation, not complete map/path coverage. The
 scene-2 event-1 physical route is behaviorally covered but visually partial
 because of the runner/HUD overlap and missing exact Genesis comparison. Scene
-26 now has a 217-frame descriptor-spawn CTest: elevator return, A2 generic
-introduction, a fixture-backed passkey success, the ROM-driven map-cell
-`0xA2` to `0xA1` update, and ordinary-input crossing to x=`0x1220`. All
-sequence frames and named screens were inspected in fourteen contact sheets
-and at full resolution where needed; the 234 Debug/Release artifacts match by
-relative-path SHA-256. The A2 passage is verified, but the route from there to
-the D8 event-`0x18` trigger is still unknown and must be sourced from collision
-and pathway data. Additional doorway/object records, broad terrain recovery,
-other building item use, reverse transitions, and world-entry one-shot
-conditions still need ROM traces and normal-input route captures.
+26 now has a 500-frame descriptor-spawn CTest: elevator return, A2 and record
+110 maglock prompts, fixture-backed passkey successes, map-cell changes
+`0xA2 -> 0xA1` and `0x82 -> 0x81`, passage crossing, and ordinary-input entry
+to the D8 event-`0x18` terminal prompt. All sequence frames and named screens
+were inspected across ten contact sheets and at full resolution where needed;
+the 529 Debug/Release CTest artifacts match by relative-path SHA-256. The QA
+seeds the passkey and starts in scene 26, so it does not prove the prior
+scene-2 resource entry or story-driven access. Additional doorway/object
+records, broad terrain recovery, other building item use, reverse transitions,
+and world-entry one-shot conditions still need ROM traces and normal-input
+route captures.
