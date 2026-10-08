@@ -46,6 +46,7 @@
 #include <string_view>
 #include <sstream>
 #include <system_error>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -5772,6 +5773,55 @@ int run_field_scene26_maglock_descriptor_route_qa(
         return 3;
     }
 
+    // The source passkey handler (ROM 0x21628) scans only live party slots,
+    // then compares item +0x6E against the active event's selection. Give the
+    // active Joshua record one explicit QA passkey with quality 2; all route,
+    // interaction, result, and passage inputs remain ordinary controller
+    // input.
+    constexpr std::uint8_t kMaglockPasskeyItem = 0x14U;
+    constexpr std::uint8_t kPasskeyQuality = 2U;
+    const auto active_slot = field_scene.field_active_party_slot_for_dump();
+    if (!field_scene.field_party_slot_active_for_dump(active_slot) ||
+        (field_scene.active_runner_record().flags & 0x0100U) == 0U) {
+        std::cerr << "Scene-26 passkey route QA: no live active runner record\n";
+        return 3;
+    }
+    for (std::size_t slot = 0U;
+         slot < field_scene.field_party_records_for_dump().size(); ++slot) {
+        const auto& party_member =
+            field_scene.field_party_records_for_dump()[slot];
+        if (!field_scene.field_party_slot_active_for_dump(slot) ||
+            (party_member.flags & 0x0100U) == 0U) {
+            continue;
+        }
+        if (std::find(party_member.inventory_item_codes.begin(),
+                      party_member.inventory_item_codes.end(),
+                      kMaglockPasskeyItem) !=
+            party_member.inventory_item_codes.end()) {
+            std::cerr << "Scene-26 passkey route QA: New Game party already "
+                         "has a Maglock Passkey\n";
+            return 3;
+        }
+    }
+    std::optional<std::size_t> passkey_slot;
+    for (std::size_t slot = 0U;
+         slot < field_scene.active_runner_record().inventory_item_codes.size();
+         ++slot) {
+        if (field_scene.active_runner_record().inventory_item_codes[slot] ==
+            0U) {
+            passkey_slot = slot;
+            break;
+        }
+    }
+    if (!passkey_slot.has_value()) {
+        std::cerr << "Scene-26 passkey route QA: active runner inventory is full\n";
+        return 3;
+    }
+    field_scene.active_runner_record().inventory_item_codes[*passkey_slot] =
+        kMaglockPasskeyItem;
+    field_scene.active_runner_record().inventory_phase_bytes[*passkey_slot] =
+        kPasskeyQuality;
+
     const auto render = [&field_scene](const bool scene_only = false) {
         QImage image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
         image.fill(Qt::black);
@@ -6011,6 +6061,167 @@ int run_field_scene26_maglock_descriptor_route_qa(
         return 3;
     }
 
+    // A successful passkey action makes FFE16E negative. ROM 0x2C1A..0x2C34
+    // then advances the sampled FF1700 map-event counter on field return,
+    // which is the source-side state that should open this A2 passage.
+    const auto collision_map_before_passkey =
+        field_scene.state().field_scene_buffers.source_metadata
+            .terrain_collision_map;
+    const auto audio_before_passkey = field_audio_events.size();
+    field_scene.set_controller_port_byte(0x40U); // ordinary A: passkey action
+    field_scene.advance_frame();
+    ++frame;
+    if (!capture("maglock-passkey-action", "a")) {
+        return 3;
+    }
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    ++frame;
+    if (!capture("maglock-passkey-result-wait-1", "neutral")) {
+        return 3;
+    }
+    const auto& passkey_result_panel = field_scene.field_interaction_panel();
+    const auto passkey_result_image = render();
+    const bool passkey_result_text =
+        passkey_result_panel.text_segment_count >= 3U &&
+        passkey_result_panel.text_segments[0].find("Maglock Passkey") !=
+            std::string_view::npos &&
+        passkey_result_panel.text_segments[2].find("door has been disabled") !=
+            std::string_view::npos;
+    if (!field_scene.field_interaction_open() ||
+        !passkey_result_panel.open || !passkey_result_panel.source_complete ||
+        passkey_result_panel.kind != DialoguePanelKind::information_page ||
+        passkey_result_panel.actor_kind != DialoguePanelActorKind::none ||
+        passkey_result_panel.option_count != 0U || !passkey_result_text ||
+        field_scene.field_activity_selection_for_dump() != 0xFFU ||
+        field_audio_events.size() != audio_before_passkey + 1U ||
+        field_audio_events.back() != 0x4BU ||
+        passkey_result_image == modal_frame ||
+        field_hud_chrome_survives(passkey_result_image, asset_root) ||
+        !save("maglock-passkey-result") ||
+        !save("actual")) {
+        std::cerr << "Scene-26 passkey route QA: source passkey action did not "
+                     "show its disabled-door result, negative selection, and "
+                     "0x4B sound (selection="
+                  << static_cast<unsigned>(
+                         field_scene.field_activity_selection_for_dump())
+                  << ", audio=" << audio_before_passkey << "->"
+                  << field_audio_events.size() << ")\n";
+        return 3;
+    }
+    for (std::uint8_t wait_frame = 2U; wait_frame <= 30U; ++wait_frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++frame;
+        if (!capture("maglock-passkey-result-wait", "neutral")) {
+            return 3;
+        }
+        if (wait_frame == 15U || wait_frame == 30U) {
+            const auto held_result = render();
+            if (held_result != passkey_result_image ||
+                !save(wait_frame == 15U
+                          ? "maglock-passkey-result-wait-15"
+                          : "maglock-passkey-result-wait-30")) {
+                std::cerr << "Scene-26 passkey route QA: result page changed "
+                             "during its source 30-frame acknowledgement wait\n";
+                return 3;
+            }
+        }
+    }
+    field_scene.set_controller_port_byte(0x40U); // ordinary A: acknowledge
+    field_scene.advance_frame();
+    ++frame;
+    if (!capture("maglock-passkey-result-acknowledged", "a")) {
+        return 3;
+    }
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    ++frame;
+    if (!capture("maglock-passkey-field-return", "neutral")) {
+        return 3;
+    }
+    // The source field coordinator commits the negative event result after
+    // the modal has released the screen. Give that ordinary field frame its
+    // own capture before attempting movement.
+    field_scene.advance_frame();
+    ++frame;
+    if (!capture("maglock-passkey-event-state-settled", "neutral")) {
+        return 3;
+    }
+    const auto& collision_map_after_passkey =
+        field_scene.state().field_scene_buffers.source_metadata
+            .terrain_collision_map;
+    std::vector<std::tuple<std::size_t, std::uint8_t, std::uint8_t>>
+        collision_map_changes;
+    const auto map_count = std::min(collision_map_before_passkey.size(),
+                                    collision_map_after_passkey.size());
+    for (std::size_t index = 0U; index < map_count; ++index) {
+        if (collision_map_before_passkey[index] !=
+            collision_map_after_passkey[index]) {
+            collision_map_changes.emplace_back(
+                index, collision_map_before_passkey[index],
+                collision_map_after_passkey[index]);
+        }
+    }
+    const bool one_a2_event_advanced =
+        collision_map_changes.size() == 1U &&
+        std::get<1>(collision_map_changes.front()) == kMaglockCollision &&
+        std::get<2>(collision_map_changes.front()) == 0x00A1U;
+    const auto field_after_passkey = render();
+    if (field_scene.field_interaction_open() ||
+        field_scene.dialogue_open() ||
+        field_scene.field_mode_text_open_for_dump() ||
+        field_scene.shop_menu_open() ||
+        !field_scene.field_entity_visible_for_dump() ||
+        !field_hud_chrome_survives(field_after_passkey, asset_root) ||
+        field_after_passkey != render(true) || !one_a2_event_advanced ||
+        field_audio_events.size() != audio_before_passkey + 1U ||
+        !save("field-after-passkey") ||
+        !save("field-after-passkey-field-only", true)) {
+        std::cerr << "Scene-26 passkey route QA: field return did not redraw "
+                     "cleanly and advance exactly the sampled A2 map cell "
+                     "from 0xA2 to 0xA1 (changed cells="
+                  << collision_map_changes.size() << ")\n";
+        return 3;
+    }
+    {
+        std::ofstream event_delta(output / "collision-map-delta.tsv",
+                                  std::ios::trunc);
+        if (!event_delta) {
+            return 3;
+        }
+        event_delta << "map_index\tbefore\tafter\n";
+        for (const auto& [index, before, after] : collision_map_changes) {
+            event_delta << index << "\t0x" << std::hex
+                        << static_cast<unsigned>(before) << "\t0x"
+                        << static_cast<unsigned>(after) << std::dec << '\n';
+        }
+    }
+    std::uint16_t passage_ticks = 0U;
+    while (field_scene.field_entity_world_position().x < 0x1200U &&
+           passage_ticks < 180U) {
+        if (!tick_dpad(0x08U, "passkey-open-a2-passage", "dpad-right") ||
+            field_scene.field_interaction_open() ||
+            field_scene.elevator_selector_open_for_dump()) {
+            std::cerr << "Scene-26 passkey route QA: ordinary Right did not "
+                         "continue through the A2 passage cleanly\n";
+            return 3;
+        }
+        ++passage_ticks;
+    }
+    const auto passage_position = field_scene.field_entity_world_position();
+    if (passage_position.x < 0x1200U ||
+        passage_position.y < 0x1600U || passage_position.y > 0x17FFU ||
+        !field_scene.field_entity_visible_for_dump() ||
+        !field_hud_chrome_survives(render(), asset_root) ||
+        !capture("a2-passage-crossed", "neutral") ||
+        !save("a2-passage-crossed") || !save("actual")) {
+        std::cerr << "Scene-26 passkey route QA: runner did not cross the "
+                     "A2 passage in its source lane (position="
+                  << passage_position.x << ',' << passage_position.y << ")\n";
+        return 3;
+    }
+
     std::ofstream audio_file(output / "audio-events.txt", std::ios::trunc);
     for (std::size_t index = audio_start;
          index < field_audio_events.size(); ++index) {
@@ -6028,9 +6239,13 @@ int run_field_scene26_maglock_descriptor_route_qa(
 
     std::cout << "field_scene26_maglock_descriptor_route_qa=passed "
                  "scene=26 elevator_event=0x1D maglock_collision=0xA2 "
-                 "maglock_event=2 right_ticks=" << right_ticks
+                 "maglock_event=2 passkey_item=0x14 quality="
+              << static_cast<unsigned>(kPasskeyQuality)
+              << " map_counter=A2->A1 right_ticks=" << right_ticks
               << " south_ticks=" << south_ticks << " a2_ticks=" << a2_ticks
-              << " prompt=generic_sturdy_door frames=" << frame
+              << " passage_ticks=" << passage_ticks
+              << " prompt=generic_sturdy_door passkey_result=door_disabled "
+                 "frames=" << frame
               << " artifacts=" << output.string() << '\n';
     return 0;
 }

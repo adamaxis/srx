@@ -653,9 +653,9 @@ set_tests_properties(
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Enter scene 26 at its real map descriptor spawn, take the event-0x1D elevator
-# back to the current floor, and walk to collision record 117's A2 maglock
-# prompt. The route stops at the generic introduction; door actions and the
-# D8 Security Terminal remain a separate open path.
+# back to the current floor, use an active-party passkey at record 117's A2
+# maglock, and cross the updated passage with ordinary Right input. The route
+# stops before the D8 Security Terminal path.
 add_test(NAME shadowrun_ghidra_conversion_qt_scene26_maglock_descriptor_route_qa
          COMMAND shadowrun_ghidra_conversion_qt
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"

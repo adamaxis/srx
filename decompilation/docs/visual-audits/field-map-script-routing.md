@@ -23,8 +23,8 @@ records.
 | Scene 2, collision value `0xC1` at ROM `0x17314C`, event 1 | Active map's event table and world-activity resource selector | Row 1 in `0x172CDC` selects scene `0x1A` (scene 26); its resource bundle has bound 3 |
 | Scene 26-29 family, paired `0xDD` collision rectangles, event 29 | Floor selector and selected-scene transition | `0x58D94` calls `0x58DE0`; the typed child scene group contains scenes 26, 27, and 28. Physical QA covers scenes 26-29; destination identity remains open. This is separate from the Stoker scene-2 event-2 dialogue route |
 | Scene 20, collision value `0x82` at ROM `0x1D9724`, event 2 | Building interaction continuation | The separate electromagnetic-lock handler `0x20E48` opens its generic prompt |
-| Scene 26, collision record 117 (`0xA2`) at ROM `0x1D9E00`, world-mode-2 event 2 | Generic electromagnetic-lock continuation | `0xB7B8` selects `0x20E48`; descriptor-route CTest reaches and asserts the generic introduction after the event-`0x1D` elevator. Source rectangles place A2 in the only gap through the x=`0x100..0x11F` wall before D8; lock results and passage traversal remain unverified |
-| Scene 26, collision values `0xD8` at ROM `0x1D9E46`, event `0x18` | Direct typed Security Terminal continuation | `0xB7B8` requires two negative samples and selects `0x20EC2`; the physical-input QA opens both choices and Walk Away returns from a checkpoint. Record 124/125 is east of the A2 wall passage; ordinary reachability from descriptor spawn remains unverified |
+| Scene 26, collision record 117 (`0xA2`) at ROM `0x1D9E00`, world-mode-2 event 2 | Generic electromagnetic-lock continuation and passkey action | `0xB7B8` reaches `0x20E48`; descriptor-route CTest seeds active runner item `0x14`/quality 2, verifies sound `0x4B`, and checks sampled map index 712 changes `0xA2` to `0xA1` before 18 ordinary Right updates cross the passage. The path beyond A2 to D8 remains unverified |
+| Scene 26, collision values `0xD8` at ROM `0x1D9E46`, event `0x18` | Direct typed Security Terminal continuation | `0xB7B8` requires two negative samples and selects `0x20EC2`; the physical-input QA opens both choices and Walk Away from a source-coordinate checkpoint. Its route from beyond the A2 passage remains unverified |
 | Any remaining in-range map-table event | Active map's own event table | The selected row is passed to the existing world-activity coordinator; missing/out-of-range tables remain unresolved |
 
 The Stoker prompt is collision-driven after New Game has placed the runner on
@@ -157,15 +157,14 @@ Physical trigger paths for group members 30-33 are now covered.
 
 This is a route-planning foundation, not complete map/path coverage. The
 scene-2 event-1 physical route is behaviorally covered but visually partial
-because of the runner/HUD overlap and missing exact Genesis comparison. The
-scene-26 A2 route has a reproducible 165-frame CTest through its event-`0x1D`
-elevator and asserted maglock introduction; lock actions remain open. Collision
-records place the A2 lane in the only gap through the wall separating the
-descriptor spawn from the D8 event-`0x18` trigger. Successful unlock, ordinary
-crossing, and D8 entry from the spawn have not yet been captured. All
-sequential frames and named screens were reviewed, including selector, return,
-route, and modal redraw. Debug/Release artifacts match by SHA-256. Additional
-doorway/object records,
-broad terrain recovery, other building item use, reverse transitions, and
-world-entry one-shot conditions still need their own ROM traces and normal-input
-route captures.
+because of the runner/HUD overlap and missing exact Genesis comparison. Scene
+26 now has a 217-frame descriptor-spawn CTest: elevator return, A2 generic
+introduction, a fixture-backed passkey success, the ROM-driven map-cell
+`0xA2` to `0xA1` update, and ordinary-input crossing to x=`0x1220`. All
+sequence frames and named screens were inspected in fourteen contact sheets
+and at full resolution where needed; the 234 Debug/Release artifacts match by
+relative-path SHA-256. The A2 passage is verified, but the route from there to
+the D8 event-`0x18` trigger is still unknown and must be sourced from collision
+and pathway data. Additional doorway/object records, broad terrain recovery,
+other building item use, reverse transitions, and world-entry one-shot
+conditions still need ROM traces and normal-input route captures.

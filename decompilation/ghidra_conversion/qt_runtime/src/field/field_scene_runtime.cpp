@@ -4020,6 +4020,11 @@ std::int16_t FieldSceneRuntime::evaluate_field_collision(
             if (!result.state.outside_bounds_marker) {
                 field_collision_marker_index_ =
                     result.state.sample.selected_tile_index;
+                // ROM 0xE8A0 publishes the selected map byte as FFDFE4.
+                // B994 copies it to FFE11A when a mode-2 event is entered;
+                // 0x2C1A then uses that index to advance a negative result.
+                field_movement_transition_state_.world_activity_source_word =
+                    field_collision_marker_index_;
             }
             return CollisionEvaluation{
                 result.code, result.packed_sample_state};
@@ -5301,10 +5306,13 @@ FieldSceneRuntime::advance_field_interaction(
     if (result == FieldInteractionAdvanceResult::returned_to_field) {
         // The source re-enters the field renderer after the prompt callback.
         // This host redraw replaces its full 320x224 image and consumes the
-        // coordinator's display-service marker here.
+        // coordinator's display-service marker here. ROM 0x2BD2 also commits
+        // a negative interaction result to the sampled field event counter;
+        // passkey success uses FFE16E = 0xFF to advance the A2 door cell.
         state_.display_service_word = 0U;
         field_runtime_state_.display_service_word = 0U;
         source_boundary("field.interaction.returned_to_field");
+        advance_field_scene_transition_after_modal();
     }
     refresh_field_hud_runner_slot();
     return result;
