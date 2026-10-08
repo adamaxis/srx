@@ -400,6 +400,19 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_scene20_grenade_no_item_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Follow the same physical map route with one QA-only passkey in the active
+# runner's live inventory. Ordinary A must disable record 117's lock, request
+# sound 0x4B, preserve the item, update the map counter, and return without a
+# leftover modal or HUD layer drawn over the field.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_scene20_passkey_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-scene20-passkey-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-scene20-passkey-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_scene20_passkey_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Follow ordinary D-pad movement to scene-2 collision record 2. The source
 # record is a type-2 collision object, not a Stoker identity or event code;
 # this QA verifies its observed event-0/no-dialogue result and full-frame route.

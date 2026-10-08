@@ -74,9 +74,9 @@ clarification. None changes the original report's itemization.
 | `INVENTORY-01` | Moving/trading items between inventory locations does not work. | **Partial.** ROM has runner-to-runner Trade, not same-runner item reordering. The typed transfer and ordinary Trade controls pass Debug/Release QA when another runner is active, but New Game starts with Joshua alone and the Qt executable has no normal recruitment/loaded-save route that supplies a second recipient. Keep open for that reachability path; see [the full-screen Trade audit](visual-analysis/qt-visual-audit.md#applied-review-trade-recipient-and-transfer). |
 | `INVENTORY-02` | Using an item draws the runner portrait over other bars. | **Closed as a non-defect for the reported First Aid target/result panel.** ROM `0x123FA` redraws the selected runner's 4x4 panel at `C928` through `0x110E8`; its small portrait crosses the top of the posture strip in both Qt and independent Genesis frames 002610/002611/002630/002640. The `0x121C0` automatic-use acknowledgement does not draw that target portrait. Debug/Release full-screen routes and all transition frames were reviewed; see [item-use portrait placement audit](visual-analysis/qt-visual-audit.md#applied-review-first-aid-target-result-and-return). |
 | `ITEMS-01` | Armor, weapons, and their damage values are wrong. | **Partial.** The selected-armor detail preview now follows `0x12A8C -> 0x11352` and displays the selected D4D50 row with six-tile CF884 Wpns/Guns assets in the lower panel; Debug/Release screen checks and independent frame 002560 support its placement. The capture does not show a selected/equipped armor mismatch. Weapon detail rows now have explicit D4540 +0x25/+0x26 and CF84C asset regression coverage, but no independent selected-weapon frame is available. Combat damage values and shop/item presentation remain open; see the [selected armor preview audit](visual-audits/item-armor-detail-preview.md) and [weapon detail and magazine review](visual-audits/weapon-detail-and-magazine-switch-review.md). |
-| `FIELD-02` | The runner gets stuck in terrain and cannot enter buildings. | **Partial.** A typed scene-aware route policy keeps the Stoker C2 dialogue, Ares CB service, and C0 scene-20 doorway distinct, then routes other events through the active map table. Physical Stoker/Ares/maglock routes pass Debug/Release capture review. General terrain recovery, Security Terminal collision-to-script, maglock result branches, building item use, and other doorway records remain open. See [field map route audit](visual-audits/field-map-script-routing.md). |
+| `FIELD-02` | The runner gets stuck in terrain and cannot enter buildings. | **Partial.** A typed scene-aware route policy keeps the Stoker C2 dialogue, Ares CB service, and C0 scene-20 doorway distinct, then routes other events through the active map table. Debug/Release physical routes cover Stoker, Ares, the scene-20 maglock, both scene-26 passkey doors, and the D8 Security Terminal prompt. Passkey success is tested with a QA-seeded live item; this does not prove how gameplay awards the passkey. General terrain recovery, passkey failure/quality, Electronics and grenade-consumption results, building item use, and other doorway records remain open. See [field map route audit](visual-audits/field-map-script-routing.md). |
 | `STOKER-01` | The physical Stoker collision/property that should open his generic dialogue is still unidentified. | Resolved in the normal New Game route: scene-2 record 91 at `0x173138` (`0xC2`) is reached with Up, publishes raw collision `0xFFC2` and event 2, then mode 2/event 2 selects the generic Stoker arrival panel. Debug/Release CTest, full-screen route dumps, eight-question review, and independent section 03 frames support the result. The clip confirms the door/fade/panel sequence but does not record input or event bytes. See [`visual-audits/motel-doorway-scene-entry.md`](visual-audits/motel-doorway-scene-entry.md). |
-| `PLAY-01` | Shops, building item use, and maglock passkeys cannot be tested from normal Qt gameplay. | **Partial.** Stoker, Ares, and the scene-20 maglock entry have ordinary-input routes; the shared policy resolves known direct scripts and per-map event-table rows. Passkey/Electronics and grenade-consumption outcomes, physical Security Terminal entry, building item use, and other building routes remain open. See the [field map route audit](visual-audits/field-map-script-routing.md), [Ares audit](visual-audits/ares-physical-entry.md), and [scene-20 maglock audit](visual-audits/scene20-maglock-physical-entry.md). |
+| `PLAY-01` | Shops, building item use, and maglock passkeys cannot be tested from normal Qt gameplay. | **Partial.** Stoker and Ares have ordinary-input routes. Scene 20's physical lock route now verifies passkey success with a QA-seeded live Joshua item, and scene 26 reaches both passkey doors and the D8 terminal prompt from its descriptor spawn. These checks do not establish passkey acquisition from the story. Electronics outcomes, passkey failure/quality, grenade consumption, building item use, and the terminal's world-activity result from ordinary selection remain open. See the [field map route audit](visual-audits/field-map-script-routing.md), [Ares audit](visual-audits/ares-physical-entry.md), and [scene-20 maglock audit](visual-audits/scene20-maglock-physical-entry.md). |
 | `SOUND-03` | More generally, sound effects across the game are reported to play at the wrong points. | Inventory the reported and currently connected ROM sound requests, map each to a state transition, and check trigger, playback, duration, loop, and stop. Close individual sounds in their owning goals. |
 | `SEC-JOHNSONS` | The Notebook Mr. Johnsons row did not have a functional child page in the Qt conversion. | **Partial.** ROM `0xF416` now has typed FFFC27-filtered rows, source-imported names/details, A/B detail waits, C event `0x25`, cursor wrapping, and clean Start return. Debug/Release QA covers all five paths and every frame of a 30-VBlank hold. All-five coverage uses diagnostic FFFC27=`0x1F`; only bit 0 has a verified story writer, other story/save bits remain open, and no matching Genesis frame is available. See [the page audit](visual-audits/notebook-mr-johnsons-page.md). |
 | `MAGIC-SPLIT` | The Magic screen differs by user type. | **Partially verified.** ROM `0xFBA6` branches to the yellow spell page for class `<2` with `+0x7F != 0`; other records get the two-bar Magical Defense overlay. Debug/Release QA uses the actual Gator Shaman (class 1, `+0x7F=6`) and unmodified Samurai (class 2, `+0x7F=0`) startup records, and the test covers the zero-resource Shaman edge plus class 2/3 fallback. Independent section 06 supports the magic-user page and nested actions, but no non-magic Defense capture was found. See [the Magic split audit](visual-audits/magic-user-screen-split.md); keep open for independent non-magic visual evidence and spell target/effect handling. |
@@ -332,7 +332,7 @@ map placement.
 and property-based systems such as building item use and maglock passkey
 outcomes cannot be tested through normal Qt gameplay.
 
-**Typed route policy:** `resolve_field_script_route()` identifies the scene-2 Stoker dialogue and Ares service before consulting the active map event table. It preserves the C0 doorway's row-0 destination (`0x14`) and uses each other scene's own table for same-numbered events. This is a route-planning layer; it does not yet cover the Security Terminal trigger or every map record. See the [full-screen route audit](visual-audits/field-map-script-routing.md).
+**Typed route policy:** `resolve_field_script_route()` identifies the scene-2 Stoker dialogue and Ares service before consulting the active map event table. It preserves the C0 doorway's row-0 destination (`0x14`) and uses each other scene's own table for same-numbered events. Scene 26's physical D8 trigger now opens the typed Security Terminal prompt from its descriptor spawn, but the terminal's world-activity result still lacks an ordinary-input route. Other map records remain open. See the [full-screen route audit](visual-audits/field-map-script-routing.md).
 
 **Physical route results:** scene-2 record 91 (`0x173138`, value `0xC2`) at
 the visible motel doorway is reached with normal Up input. It publishes raw
@@ -347,17 +347,23 @@ the generic maglock prompt. A reveals the three source-backed choices and C
 selects Walk Away. The no-grenade choice route waits the source ten frames,
 checks that the active New Game party lacks item `0x0D`, uses ordinary B to
 show the generic unavailable-item message, waits 30 frames, and dismisses with
-A to a pixel-clean field image. All physical routes have Debug/Release CTest
-coverage and full-screen captures without injected collision/event tuples. The scene-20
-route also fixed the stale B7B8 retry bit, unconnected world-activity timeout,
-and display gate left across scene re-entry. A fade handoff clears the old
-overlay before a replacement modal owns the screen. The distinct scene-2
-record-2 candidate at `0x172DBE` remains unrelated and still produces event 0;
-see the [candidate audit](visual-audits/stoker-collision-candidate.md),
-[Ares audit](visual-audits/ares-physical-entry.md), and [scene-20 maglock audit](visual-audits/scene20-maglock-physical-entry.md). General terrain
-recovery, passkey/Electronics and grenade-consumption results, Security
-Terminal physical entry, building item use, and other building routes remain
-open.
+A to a pixel-clean field image. A third route seeds active Joshua with a
+quality-2 passkey, then uses ordinary A at the physical lock. The source result
+requests `0x4B`, preserves the item, changes map index 483 from `0x82` to
+`0x81`, waits 30 frames, and returns to a clean field-only image. It writes 45
+full-screen BMPs; all 49 Debug/Release artifacts match by SHA-256. Scene 26's
+descriptor-spawn route separately uses a QA-seeded passkey at records 117 and
+110, crosses both passages, and reaches the D8 Security Terminal prompt. These
+routes verify the action and trigger paths, not how story gameplay awards a
+passkey. The scene-20 route also fixed the stale B7B8 retry bit, unconnected
+world-activity timeout, and display gate left across scene re-entry. A fade
+handoff clears the old overlay before a replacement modal owns the screen.
+The distinct scene-2 record-2 candidate at `0x172DBE` remains unrelated and
+still produces event 0; see the [candidate audit](visual-audits/stoker-collision-candidate.md),
+[Ares audit](visual-audits/ares-physical-entry.md), and [scene-20 maglock audit](visual-audits/scene20-maglock-physical-entry.md).
+General terrain recovery, passkey failure/quality, Electronics and grenade-
+consumption results, the terminal's world-activity outcome, building item use,
+and other building routes remain open.
 
 **Solve:** continue tracing movement probes, collision margins, terrain gates,
 and remaining property/event routes against ROM callbacks at `0xB7B8` and
@@ -373,11 +379,14 @@ entry/result/return captures exist; adjacent terrain and HUD behavior also
 survive; Stoker's dialog is reached by the physical source property without
 an injected event tuple.
 
-**Status:** partial. `STOKER-01` is resolved for the physical motel doorway; scene-2 Ares entry and the scene-20 maglock introduction/Walk Away route are verified in Qt. The typed map-route policy is implemented and covered by CTest, but full map/path coverage remains incomplete. General terrain recovery, Security Terminal physical entry, passkey/Electronics and grenade-consumption results, building item use, and other building/property routes remain open.
-scene-2 Ares entry and the scene-20 maglock introduction/Walk Away route are
-verified in Qt. General terrain recovery, passkey/Electronics and grenade-
-consumption results, Security Terminal physical entry, building item use, and
-other building/property routes remain open.
+**Status:** partial. `STOKER-01` is resolved for the physical motel doorway;
+scene-2 Ares entry and scene-20 Walk Away, no-item grenade, and QA-seeded
+passkey-success routes are verified in Qt. Scene 26 reaches its two passkey
+doors and the D8 terminal prompt from the descriptor spawn with a QA-seeded
+passkey. Full map/path coverage remains incomplete. General terrain recovery,
+passkey failure/quality, Electronics and grenade-consumption results, the
+terminal's world-activity outcome, building item use, and other
+building/property routes remain open.
 
 ### STOKER-01 — Physical Stoker property and collision-to-dialogue route
 
@@ -820,11 +829,16 @@ New Game route reaches paired scene-2 C0 records 89/90, enters scene 20,
 contacts maglock record 117, opens its generic choices, and returns with
 C/Walk Away. A separate ordinary B route selects Frag Grenade with no active
 party item `0x0D`, shows the generic unavailable-item result through its
-30-frame wait, and returns with A. Debug/Release route QA captures the field
-approach, fade, prompt, choices, result, wait, and return. Physical
-passkey/Electronics and grenade-consumption result branches, Security Terminal
-entry, building item use, restored-save wallet binding, and other
-shop/building routes remain open; see the [Ares audit](visual-audits/ares-physical-entry.md)
+30-frame wait, and returns with A. A third physical route seeds a quality-2
+passkey in Joshua's live record: ordinary A displays the passkey result,
+requests `0x4B`, leaves the item intact, changes map index 483 from `0x82` to
+`0x81`, and returns to the clean field. Debug/Release each write 45 full-screen
+BMPs; all 49 artifacts match by SHA-256. Scene 26 separately reaches the D8
+terminal prompt after two QA-seeded passkey successes. These tests do not prove
+story-driven passkey acquisition. Electronics and grenade-consumption result
+branches, the terminal's world-activity outcome, building item use,
+restored-save wallet binding, and other shop/building routes remain open; see
+the [Ares audit](visual-audits/ares-physical-entry.md)
 and [scene-20 maglock audit](visual-audits/scene20-maglock-physical-entry.md).
 
 ### AUDIO-01 — Source event placement and duration across the game
@@ -858,10 +872,11 @@ events remain explicitly open.
 5. `MENU-01/02/03`, `EQUIP-01/02`, and `INVENTORY-01/02` are separate screen
    routes. Each must replace old controls cleanly and be validated in normal
    play as well as by its focused regression route.
-6. `PLAY-01` depends on field collision/property discovery. Ares and the
-   scene-20 maglock introduction/Walk Away now have normal-control routes;
-   connect the remaining passkey/action results, Security Terminal, and
-   building-item routes without event injection.
+6. `PLAY-01` depends on field collision/property discovery. Ares and scene-20
+   passkey success now have normal-control routes with an explicit QA-seeded
+   item; connect story-driven passkey acquisition, remaining action results,
+   the Security Terminal outcome, and building-item routes without event
+   injection.
 7. `AUDIO-01` and `SOUND-01/02/03` track source events across screens. Close
    each sound in the goal that owns its trigger; do not mark the audio group
    complete while any reported event remains unresolved.

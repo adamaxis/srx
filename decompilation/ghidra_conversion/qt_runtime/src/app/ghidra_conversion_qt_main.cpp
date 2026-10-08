@@ -173,6 +173,7 @@ std::filesystem::path find_asset_root(
                    " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
                    " [--field-ares-collision-shop-qa <output-dir>]"
                    " [--field-scene20-physical-entry-qa <output-dir>]"
+                   " [--field-scene20-passkey-qa <output-dir>]"
                    " [--field-scene26-event1-entry-qa <output-dir>]"
                    " [--field-elevator-physical-entry-qa <output-dir>]"
                    " [--field-scene26-maglock-descriptor-route-qa <output-dir>]"
@@ -255,6 +256,10 @@ std::filesystem::path find_asset_root(
         }
         if (argument == "--field-scene20-physical-entry-qa" &&
             index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-scene20-passkey-qa" && index + 1 < argc) {
             ++index;
             continue;
         }
@@ -7536,13 +7541,20 @@ int run_field_ares_collision_shop_qa(
     return 0;
 }
 
+enum class Scene20PhysicalEntryQaPath : std::uint8_t {
+    walk_away,
+    grenade_unavailable,
+    passkey_success,
+};
+
 int run_field_scene20_physical_entry_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
     const std::filesystem::path& output,
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries,
-    const bool exercise_grenade_unavailable = false) {
+    const Scene20PhysicalEntryQaPath path =
+        Scene20PhysicalEntryQaPath::walk_away) {
     std::error_code output_error;
     std::filesystem::remove_all(output, output_error);
     if (output_error) {
@@ -7583,6 +7595,53 @@ int run_field_scene20_physical_entry_qa(
         std::cerr << "Scene-20 physical-entry QA: New Game state, paired C0 "
                      "doorway records, or event-table destination is wrong\n";
         return 3;
+    }
+
+    std::optional<std::size_t> seeded_passkey_slot;
+    constexpr std::uint8_t kPasskeyItemCode = 0x14U;
+    constexpr std::uint8_t kPasskeyQuality = 2U;
+    if (path == Scene20PhysicalEntryQaPath::passkey_success) {
+        const auto active_slot =
+            field_scene.field_active_party_slot_for_dump();
+        if (!field_scene.field_party_slot_active_for_dump(active_slot) ||
+            (field_scene.active_runner_record().flags & 0x0100U) == 0U) {
+            std::cerr << "Scene-20 passkey QA: active runner record is not live\n";
+            return 3;
+        }
+        for (std::size_t runner_slot = 0U;
+             runner_slot < field_scene.field_party_records_for_dump().size();
+             ++runner_slot) {
+            const auto& runner =
+                field_scene.field_party_records_for_dump()[runner_slot];
+            if (field_scene.field_party_slot_active_for_dump(runner_slot) &&
+                (runner.flags & 0x0100U) != 0U &&
+                std::find(runner.inventory_item_codes.begin(),
+                          runner.inventory_item_codes.end(),
+                          kPasskeyItemCode) !=
+                    runner.inventory_item_codes.end()) {
+                std::cerr << "Scene-20 passkey QA: New Game fixture already "
+                             "contains a passkey\n";
+                return 3;
+            }
+        }
+        auto& active_runner = field_scene.active_runner_record();
+        for (std::size_t inventory_slot = 0U;
+             inventory_slot < active_runner.inventory_item_codes.size();
+             ++inventory_slot) {
+            if (active_runner.inventory_item_codes[inventory_slot] == 0U) {
+                seeded_passkey_slot = inventory_slot;
+                break;
+            }
+        }
+        if (!seeded_passkey_slot.has_value()) {
+            std::cerr << "Scene-20 passkey QA: active runner has no free "
+                         "inventory slot\n";
+            return 3;
+        }
+        active_runner.inventory_item_codes[*seeded_passkey_slot] =
+            kPasskeyItemCode;
+        active_runner.inventory_phase_bytes[*seeded_passkey_slot] =
+            kPasskeyQuality;
     }
 
     const auto render = [&field_scene] {
@@ -7817,6 +7876,9 @@ int run_field_scene20_physical_entry_qa(
         return 3;
     }
     write_state("scene20-entry");
+    if (seeded_passkey_slot.has_value()) {
+        write_state("fixture-passkey-seeded-in-active-runner");
+    }
     for (std::uint8_t tick = 0U; tick < 30U; ++tick) {
         field_scene.advance_frame();
         ++frame;
@@ -8060,6 +8122,178 @@ int run_field_scene20_physical_entry_qa(
         !save("maglock-introduction-after-10-frames")) {
         return 3;
     }
+    if (path == Scene20PhysicalEntryQaPath::passkey_success) {
+        const auto collision_map_before = field_scene.state()
+                                              .field_scene_buffers
+                                              .source_metadata
+                                              .terrain_collision_map;
+        const auto audio_count_before = field_audio_events.size();
+        field_scene.set_controller_port_byte(0x40U); // ordinary A: <MORE>
+        field_scene.advance_frame();
+        ++frame;
+        const auto passkey_action_event =
+            field_scene.controller_event_word_for_dump();
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++frame;
+        const auto& result_panel = field_scene.field_interaction_panel();
+        const auto result_image = render();
+        const bool result_text_matches =
+            result_panel.text_segment_count == 3U &&
+            result_panel.text_segments[0].find("Your Maglock Passkey") !=
+                std::string_view::npos &&
+            result_panel.text_segments[2].find("door has been disabled") !=
+                std::string_view::npos;
+        if ((passkey_action_event & 0xFF00U) != 0x4000U ||
+            !field_scene.field_interaction_open() || !result_panel.open ||
+            !result_panel.source_complete ||
+            result_panel.kind != DialoguePanelKind::information_page ||
+            result_panel.actor_kind != DialoguePanelActorKind::none ||
+            result_panel.option_count != 0U || !result_text_matches ||
+            field_scene.field_activity_selection_for_dump() != 0xFFU ||
+            field_audio_events.size() != audio_count_before + 1U ||
+            field_audio_events.back() != 0x4BU ||
+            result_image == maglock_introduction ||
+            field_hud_chrome_survives(result_image, asset_root) ||
+            !save("maglock-passkey-result") || !save("actual")) {
+            std::cerr << "Scene-20 passkey QA: normal A did not produce the "
+                         "ROM passkey result (event=0x" << std::hex
+                      << passkey_action_event << std::dec << ", selection="
+                      << static_cast<unsigned>(
+                             field_scene.field_activity_selection_for_dump())
+                      << ", audio=" << audio_count_before << "->"
+                      << field_audio_events.size() << ")\n";
+            return 3;
+        }
+        write_state("maglock-passkey-result");
+        if (!save("maglock-passkey-result-wait-1")) {
+            return 3;
+        }
+        for (std::uint8_t wait_frame = 2U; wait_frame <= 30U; ++wait_frame) {
+            field_scene.advance_frame();
+            ++frame;
+            if (wait_frame == 15U || wait_frame == 30U) {
+                const auto held_result = render();
+                if (held_result != result_image ||
+                    !save(wait_frame == 15U
+                              ? "maglock-passkey-result-wait-15"
+                              : "maglock-passkey-result-wait-30")) {
+                    std::cerr << "Scene-20 passkey QA: result changed during "
+                                 "the source 30-frame wait\n";
+                    return 3;
+                }
+            }
+        }
+        field_scene.set_controller_port_byte(0x40U); // ordinary A dismisses
+        field_scene.advance_frame();
+        ++frame;
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++frame;
+        field_scene.advance_frame();
+        ++frame;
+
+        const auto collision_map_after = field_scene.state()
+                                             .field_scene_buffers
+                                             .source_metadata
+                                             .terrain_collision_map;
+        std::vector<std::tuple<std::size_t, std::uint8_t, std::uint8_t>>
+            collision_map_changes;
+        if (collision_map_before.size() == collision_map_after.size()) {
+            for (std::size_t index = 0U; index < collision_map_before.size();
+                 ++index) {
+                if (collision_map_before[index] != collision_map_after[index]) {
+                    collision_map_changes.emplace_back(
+                        index, collision_map_before[index],
+                        collision_map_after[index]);
+                }
+            }
+        }
+        const bool one_passkey_marker_advanced =
+            collision_map_before.size() == collision_map_after.size() &&
+            collision_map_changes.size() == 1U &&
+            std::get<1>(collision_map_changes.front()) == 0x82U &&
+            std::get<2>(collision_map_changes.front()) == 0x81U;
+        const auto returned_scene20 = render();
+        const auto returned_field_only = render_field_scene_only();
+        const auto& active_runner = field_scene.active_runner_record();
+        const bool passkey_remains_in_live_inventory =
+            seeded_passkey_slot.has_value() &&
+            active_runner.inventory_item_codes[*seeded_passkey_slot] ==
+                kPasskeyItemCode &&
+            active_runner.inventory_phase_bytes[*seeded_passkey_slot] ==
+                kPasskeyQuality;
+        const bool returned_cleanly =
+            !field_scene.field_interaction_open() &&
+            !field_scene.dialogue_open() &&
+            !field_scene.field_mode_text_open_for_dump() &&
+            !field_scene.shop_menu_open() &&
+            field_scene.field_scene_reference_for_dump() == 0x14U &&
+            field_scene.field_entity_visible_for_dump() &&
+            field_hud_chrome_survives(returned_scene20, asset_root) &&
+            count_playfield_lit(returned_scene20) >= 100U &&
+            returned_scene20 == returned_field_only;
+        write_state("scene20-return-after-passkey");
+        if (!returned_cleanly || !one_passkey_marker_advanced ||
+            !passkey_remains_in_live_inventory ||
+            field_audio_events.size() != audio_count_before + 1U ||
+            !returned_scene20.save(QString::fromStdWString(
+                (output / "scene20-after-passkey.bmp").wstring())) ||
+            !returned_field_only.save(QString::fromStdWString(
+                (output / "scene20-field-only-after-passkey.bmp").wstring())) ||
+            !save("scene20-return-after-passkey")) {
+            std::cerr << "Scene-20 passkey QA: acknowledgement did not "
+                         "return to a clean field and advance one 0x82->0x81 "
+                         "collision cell (changes="
+                      << collision_map_changes.size() << ", clean="
+                      << returned_cleanly << ", inventory="
+                      << passkey_remains_in_live_inventory << ", audio="
+                      << field_audio_events.size() << ")\n";
+            return 3;
+        }
+        {
+            std::ofstream event_delta(
+                output / "passkey-collision-map-delta.tsv", std::ios::trunc);
+            if (!event_delta) {
+                return 3;
+            }
+            event_delta << "map_index\tbefore\tafter\n";
+            for (const auto& [index, before, after] : collision_map_changes) {
+                event_delta << index << "\t0x" << std::hex
+                            << static_cast<unsigned>(before) << "\t0x"
+                            << static_cast<unsigned>(after) << std::dec << '\n';
+            }
+        }
+        {
+            std::ofstream boundaries(output / "source-boundaries.txt",
+                                     std::ios::trunc);
+            if (!boundaries) {
+                return 3;
+            }
+            for (const auto& boundary : source_boundaries) {
+                boundaries << boundary << '\n';
+            }
+        }
+        {
+            std::ofstream events(output / "audio-events.txt", std::ios::trunc);
+            if (!events) {
+                return 3;
+            }
+            for (const auto event : field_audio_events) {
+                events << "0x" << std::hex << event << '\n';
+            }
+        }
+        std::cout << "field_scene20_physical_entry_qa=passed records=89,90 "
+                     "rom=0x"
+                  << std::hex << doorway_rom_address << " destination=0x14"
+                  << std::dec << " route_frames=" << frame
+                  << " north_ticks=" << north_ticks
+                  << " raw=0xFFC0 event=0 audio_events="
+                  << field_audio_events.size()
+                  << " choice=passkey-success artifacts=" << output.string()
+                  << '\n';
+        return 0;
+    }
     field_scene.set_controller_port_byte(0x40U); // ordinary A: <MORE>
     field_scene.advance_frame();
     ++frame;
@@ -8094,7 +8328,7 @@ int run_field_scene20_physical_entry_qa(
         field_scene.advance_frame();
         ++frame;
     }
-    if (exercise_grenade_unavailable) {
+    if (path == Scene20PhysicalEntryQaPath::grenade_unavailable) {
         constexpr std::uint8_t frag_grenade_code = 0x0DU;
         const auto& party = field_scene.field_party_records_for_dump();
         bool active_party_has_grenade = false;
@@ -8305,7 +8539,8 @@ int run_field_scene20_physical_entry_qa(
               << " entry-x=" << scene20_position.x
               << " entry-y=" << scene20_position.y
               << " audio_events=" << field_audio_events.size()
-              << " choice=" << (exercise_grenade_unavailable
+              << " choice=" << (path ==
+                                        Scene20PhysicalEntryQaPath::grenade_unavailable
                                       ? "frag-grenade-unavailable"
                                       : "walk-away")
               << " artifacts=" << output.string() << '\n';
@@ -11455,6 +11690,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_scene20_physical_entry_qa_path;
         std::optional<std::filesystem::path>
+            field_scene20_passkey_qa_path;
+        std::optional<std::filesystem::path>
             field_scene26_event1_entry_qa_path;
         std::optional<std::filesystem::path>
             field_elevator_physical_entry_qa_path;
@@ -11529,6 +11766,7 @@ int main(int argc, char** argv) {
                        " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
                        " [--field-ares-collision-shop-qa <output-dir>]"
                        " [--field-scene20-physical-entry-qa <output-dir>]"
+                       " [--field-scene20-passkey-qa <output-dir>]"
                        " [--field-scene26-event1-entry-qa <output-dir>]"
                        " [--field-elevator-physical-entry-qa <output-dir>]"
                        " [--field-scene26-maglock-descriptor-route-qa <output-dir>]"
@@ -11621,6 +11859,12 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene20_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-scene20-passkey-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene20_passkey_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -12202,6 +12446,12 @@ int main(int argc, char** argv) {
                     *field_scene20_physical_entry_qa_path,
                     field_audio_events, field_source_boundaries);
             }
+            if (field_scene20_passkey_qa_path.has_value()) {
+                return run_field_scene20_physical_entry_qa(
+                    field_scene, asset_root, *field_scene20_passkey_qa_path,
+                    field_audio_events, field_source_boundaries,
+                    Scene20PhysicalEntryQaPath::passkey_success);
+            }
             if (field_scene26_event1_entry_qa_path.has_value()) {
                 return run_field_scene26_event1_physical_entry_qa(
                     field_scene, asset_root,
@@ -12320,7 +12570,8 @@ int main(int argc, char** argv) {
                 return run_field_scene20_physical_entry_qa(
                     field_scene, asset_root,
                     *field_scene20_grenade_no_item_qa_path,
-                    field_audio_events, field_source_boundaries, true);
+                    field_audio_events, field_source_boundaries,
+                    Scene20PhysicalEntryQaPath::grenade_unavailable);
             }
             if (field_stoker_collision_qa_path.has_value()) {
                 return run_field_stoker_collision_candidate_qa(
