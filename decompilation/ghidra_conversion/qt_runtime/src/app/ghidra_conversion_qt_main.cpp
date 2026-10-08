@@ -174,6 +174,7 @@ std::filesystem::path find_asset_root(
                    " [--field-ares-collision-shop-qa <output-dir>]"
                    " [--field-scene20-physical-entry-qa <output-dir>]"
                    " [--field-scene20-passkey-qa <output-dir>]"
+                   " [--field-scene20-insufficient-passkey-qa <output-dir>]"
                    " [--field-scene26-event1-entry-qa <output-dir>]"
                    " [--field-scene26-event1-terminal-qa <output-dir>]"
                    " [--field-elevator-physical-entry-qa <output-dir>]"
@@ -262,6 +263,11 @@ std::filesystem::path find_asset_root(
             continue;
         }
         if (argument == "--field-scene20-passkey-qa" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-scene20-insufficient-passkey-qa" &&
+            index + 1 < argc) {
             ++index;
             continue;
         }
@@ -8132,6 +8138,7 @@ enum class Scene20PhysicalEntryQaPath : std::uint8_t {
     walk_away,
     grenade_unavailable,
     passkey_success,
+    passkey_insufficient,
 };
 
 int run_field_scene20_physical_entry_qa(
@@ -8142,6 +8149,8 @@ int run_field_scene20_physical_entry_qa(
     const std::vector<std::string>& source_boundaries,
     const Scene20PhysicalEntryQaPath path =
         Scene20PhysicalEntryQaPath::walk_away) {
+    // Stabilize random NPC/action timing across Debug and Release captures.
+    field_scene.set_source_random_seed_for_dump(0U);
     std::error_code output_error;
     std::filesystem::remove_all(output, output_error);
     if (output_error) {
@@ -8187,7 +8196,12 @@ int run_field_scene20_physical_entry_qa(
     std::optional<std::size_t> seeded_passkey_slot;
     constexpr std::uint8_t kPasskeyItemCode = 0x14U;
     constexpr std::uint8_t kPasskeyQuality = 2U;
-    if (path == Scene20PhysicalEntryQaPath::passkey_success) {
+    const auto seeded_passkey_quality =
+        path == Scene20PhysicalEntryQaPath::passkey_insufficient
+            ? static_cast<std::uint8_t>(kPasskeyQuality - 1U)
+            : kPasskeyQuality;
+    if (path == Scene20PhysicalEntryQaPath::passkey_success ||
+        path == Scene20PhysicalEntryQaPath::passkey_insufficient) {
         const auto active_slot =
             field_scene.field_active_party_slot_for_dump();
         if (!field_scene.field_party_slot_active_for_dump(active_slot) ||
@@ -8228,7 +8242,7 @@ int run_field_scene20_physical_entry_qa(
         active_runner.inventory_item_codes[*seeded_passkey_slot] =
             kPasskeyItemCode;
         active_runner.inventory_phase_bytes[*seeded_passkey_slot] =
-            kPasskeyQuality;
+            seeded_passkey_quality;
     }
 
     const auto render = [&field_scene] {
@@ -8814,6 +8828,9 @@ int run_field_scene20_physical_entry_qa(
         !save("maglock-introduction-after-10-frames")) {
         return 3;
     }
+    std::array<std::uint8_t, 4096U>
+        insufficient_passkey_collision_map_before{};
+    std::size_t insufficient_passkey_audio_count = 0U;
     if (path == Scene20PhysicalEntryQaPath::passkey_success) {
         const auto collision_map_before = field_scene.state()
                                               .field_scene_buffers
@@ -8986,12 +9003,69 @@ int run_field_scene20_physical_entry_qa(
                   << '\n';
         return 0;
     }
-    field_scene.set_controller_port_byte(0x40U); // ordinary A: <MORE>
-    field_scene.advance_frame();
-    ++frame;
-    field_scene.set_controller_port_byte(0U);
-    field_scene.advance_frame();
-    ++frame;
+    if (path == Scene20PhysicalEntryQaPath::passkey_insufficient) {
+        const auto audio_before_insufficient_passkey =
+            field_audio_events.size();
+        insufficient_passkey_audio_count = audio_before_insufficient_passkey;
+        insufficient_passkey_collision_map_before = field_scene.state()
+            .field_scene_buffers.source_metadata.terrain_collision_map;
+        field_scene.set_controller_port_byte(0x40U); // ordinary A: <MORE>
+        field_scene.advance_frame();
+        ++frame;
+        const auto passkey_action_event =
+            field_scene.controller_event_word_for_dump();
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++frame;
+        const auto& insufficient_panel = field_scene.field_interaction_panel();
+        const auto insufficient_image = render();
+        const auto& active_runner = field_scene.active_runner_record();
+        const bool insufficient_quality_text =
+            insufficient_panel.text_segment_count == 1U &&
+            insufficient_panel.text_segments[0].find(
+                "not sophisticated enough") != std::string_view::npos;
+        const bool live_passkey_unchanged =
+            seeded_passkey_slot.has_value() &&
+            active_runner.inventory_item_codes[*seeded_passkey_slot] ==
+                kPasskeyItemCode &&
+            active_runner.inventory_phase_bytes[*seeded_passkey_slot] ==
+                seeded_passkey_quality;
+        if ((passkey_action_event & 0xFF00U) != 0x4000U ||
+            !field_scene.field_interaction_open() ||
+            !insufficient_panel.open || !insufficient_panel.source_complete ||
+            insufficient_panel.option_count != 3U ||
+            !insufficient_quality_text ||
+            field_scene.field_activity_selection_for_dump() != 2U ||
+            !live_passkey_unchanged ||
+            field_audio_events.size() != audio_before_insufficient_passkey ||
+            field_hud_chrome_survives(insufficient_image, asset_root) ||
+            insufficient_image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            !save("maglock-insufficient-passkey-choices") ||
+            !save("actual")) {
+            std::cerr << "Scene-20 insufficient-passkey QA: normal A did not "
+                         "retain the source three-choice prompt for a "
+                         "quality-1 key against selection 2 (event=0x"
+                      << std::hex << passkey_action_event << std::dec
+                      << ", open=" << field_scene.field_interaction_open()
+                      << ", options=" << insufficient_panel.option_count
+                      << ", segments="
+                      << insufficient_panel.text_segment_count
+                      << ", selection=" << static_cast<unsigned>(
+                             field_scene.field_activity_selection_for_dump())
+                      << ", inventory=" << live_passkey_unchanged
+                      << ", audio=" << audio_before_insufficient_passkey
+                      << "->" << field_audio_events.size() << ")\n";
+            return 3;
+        }
+        write_state("maglock-insufficient-passkey-choices");
+    } else {
+        field_scene.set_controller_port_byte(0x40U); // ordinary A: <MORE>
+        field_scene.advance_frame();
+        ++frame;
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++frame;
+    }
     const auto& maglock_choices = field_scene.field_interaction_panel();
     const auto maglock_choices_image = render();
     const bool choices_are_source_complete =
@@ -9019,6 +9093,17 @@ int run_field_scene20_physical_entry_qa(
     for (std::uint8_t tick = 0U; tick < 8U; ++tick) {
         field_scene.advance_frame();
         ++frame;
+    }
+    if (path == Scene20PhysicalEntryQaPath::passkey_insufficient) {
+        const auto held_choices_image = render();
+        if (held_choices_image != maglock_choices_image ||
+            field_audio_events.size() != insufficient_passkey_audio_count ||
+            !save("maglock-insufficient-passkey-choices-after-8-frames")) {
+            std::cerr << "Scene-20 insufficient-passkey QA: the generic "
+                         "three-choice prompt changed during its idle hold "
+                         "or emitted an action sound\n";
+            return 3;
+        }
     }
     if (path == Scene20PhysicalEntryQaPath::grenade_unavailable) {
         constexpr std::uint8_t frag_grenade_code = 0x0DU;
@@ -9173,6 +9258,21 @@ int run_field_scene20_physical_entry_qa(
             count_playfield_lit(returned_scene20) >= 100U;
         const bool walk_away_matches_field_only =
             returned_scene20 == returned_field_only;
+        const auto& active_runner = field_scene.active_runner_record();
+        const bool insufficient_passkey_remains_unchanged =
+            path != Scene20PhysicalEntryQaPath::passkey_insufficient ||
+            (seeded_passkey_slot.has_value() &&
+             active_runner.inventory_item_codes[*seeded_passkey_slot] ==
+                 kPasskeyItemCode &&
+             active_runner.inventory_phase_bytes[*seeded_passkey_slot] ==
+                 seeded_passkey_quality);
+        const auto& collision_map_after_walk_away = field_scene.state()
+            .field_scene_buffers.source_metadata.terrain_collision_map;
+        const bool insufficient_passkey_left_world_unchanged =
+            path != Scene20PhysicalEntryQaPath::passkey_insufficient ||
+            (collision_map_after_walk_away ==
+                 insufficient_passkey_collision_map_before &&
+             field_audio_events.size() == insufficient_passkey_audio_count);
         write_state("after-walk-away-input");
         if (!returned_scene20.save(QString::fromStdWString(
                 (output / "scene20-after-walk-away-input.bmp").wstring())) ||
@@ -9186,6 +9286,8 @@ int run_field_scene20_physical_entry_qa(
         if (!walk_away_closed || !walk_away_same_scene ||
             !walk_away_hud_clean || !walk_away_playfield_visible ||
             !walk_away_matches_field_only ||
+            !insufficient_passkey_remains_unchanged ||
+            !insufficient_passkey_left_world_unchanged ||
             !save("scene20-return-after-walk-away")) {
             std::cerr << "Scene-20 physical-entry QA: normal C did not close "
                          "the maglock page and restore a clean interior "
@@ -9233,8 +9335,14 @@ int run_field_scene20_physical_entry_qa(
               << " audio_events=" << field_audio_events.size()
               << " choice=" << (path ==
                                         Scene20PhysicalEntryQaPath::grenade_unavailable
-                                      ? "frag-grenade-unavailable"
-                                      : "walk-away")
+                                    ? "frag-grenade-unavailable"
+                                    : path == Scene20PhysicalEntryQaPath::
+                                                 passkey_insufficient
+                                          ? "insufficient-passkey-walk-away"
+                                          : path == Scene20PhysicalEntryQaPath::
+                                                       passkey_success
+                                                ? "passkey-success"
+                                                : "walk-away")
               << " artifacts=" << output.string() << '\n';
     return 0;
 }
@@ -12384,6 +12492,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_scene20_passkey_qa_path;
         std::optional<std::filesystem::path>
+            field_scene20_insufficient_passkey_qa_path;
+        std::optional<std::filesystem::path>
             field_scene26_event1_entry_qa_path;
         std::optional<std::filesystem::path>
             field_scene26_event1_terminal_qa_path;
@@ -12562,6 +12672,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene20_passkey_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene20-insufficient-passkey-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene20_insufficient_passkey_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -13164,6 +13281,13 @@ int main(int argc, char** argv) {
                     field_scene, asset_root, *field_scene20_passkey_qa_path,
                     field_audio_events, field_source_boundaries,
                     Scene20PhysicalEntryQaPath::passkey_success);
+            }
+            if (field_scene20_insufficient_passkey_qa_path.has_value()) {
+                return run_field_scene20_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_scene20_insufficient_passkey_qa_path,
+                    field_audio_events, field_source_boundaries,
+                    Scene20PhysicalEntryQaPath::passkey_insufficient);
             }
             if (field_scene26_event1_entry_qa_path.has_value()) {
                 return run_field_scene26_event1_physical_entry_qa(

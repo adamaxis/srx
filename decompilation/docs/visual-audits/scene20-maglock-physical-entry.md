@@ -1,15 +1,16 @@
 # Scene-20 Maglock Physical Entry Audit
 
-Date: 2026-10-07
+Date: 2026-10-08
 
 **Status:** physical scene entry, maglock prompt, A continuation, C/Walk Away,
-B/no-grenade result, and QA-seeded passkey success are connected and pass
-Debug/Release QA. The passkey test seeds item `0x14` at quality 2 in Joshua's
-live inventory; it does not verify the story route that grants it. The exact
-scene-20 maglock screen has no matching independent capture in the reviewed
-longplay corpus; do not claim independent visual fidelity. Passkey
-failure/quality, Electronics, grenade consumption/security effects, Security
-Terminal outcomes, and other building outcomes remain separate.
+B/no-grenade result, QA-seeded passkey success, and one QA-seeded insufficient-
+quality outcome are connected and pass Debug/Release QA. The key tests seed
+item `0x14` in Joshua's live inventory; they do not verify the story route
+that grants it. The exact scene-20 maglock screen has no matching independent
+capture in the reviewed longplay corpus; do not claim independent visual
+fidelity. Other passkey qualities and branches, Electronics, grenade
+consumption/security effects, Security Terminal outcomes, and other building
+outcomes remain separate.
 
 ## ROM route and native state
 
@@ -48,6 +49,17 @@ map index 483 from `0x82` to `0x81`. After the source 30-frame result wait, A
 returns to the field. The full 320x224 return image matches the current
 field-only image, with the actor and HUD visible and no old dialog controls.
 
+The `shadowrun_ghidra_conversion_qt_field_scene20_insufficient_passkey_qa`
+route follows the same ordinary doorway and lock path with QA-only key quality
+1 against the source interaction selection 2. ROM `0x21628` accepts a key
+when its `+0x6E` quality is at least the current selection; this key fails
+that comparison. Ordinary A leaves the key, quality, activity selection, and
+collision map unchanged, adds no action sound, and retains the generic
+three-choice prompt with the source insufficient-quality text. Ordinary C
+then returns to the clean field. The prompt's initial and eight-frame-held
+images are byte-identical. This covers one failure quality at this physical
+lock; it does not establish other quality values or story-driven acquisition.
+
 The dialog remains the shared generic field panel. The no-passkey property
 selects its introduction text; A (`0x40`) advances to the three source-backed
 choices; C (`0x20`) selects Walk Away and closes the panel. A second ordinary
@@ -59,19 +71,25 @@ state.
 
 ## Eight-question full-screen review
 
-1. **Does it look correct?** I reviewed all 47 B-route and 42 C-route
-   320x224 BMPs across the doorway approach, fade, entry, corridors, lock
-   contact, introduction, choices, no-item result, wait, and return. I also
-   reviewed all 45 passkey-route BMPs, including its result, timed hold, and
-   field return. They show complete game screens rather than crops. The field
-   HUD is present during play and absent under the full-screen dialog. Text
+1. **Does it look correct?** I reviewed all 47 named B-route checkpoints plus
+   `actual.bmp`, and all 42 named C-route checkpoints plus `actual.bmp`, at
+   320x224 across the doorway approach, fade, entry, corridors, lock contact,
+   introduction, choices, no-item result, wait, and return. I also
+   reviewed the success route's 45 named checkpoints plus `actual.bmp`, and
+   the insufficient-quality route's 44 named checkpoints plus `actual.bmp`,
+   including the result/timed hold and prompt/idle hold/return. They show complete
+   game screens rather than crops. The field HUD is present during play and
+   absent under the full-screen dialog. Text
    stays inside the shared panel; each result replaces the prior page.
 2. **Does the appearance reflect the behavioral state?** The route trace
    records scene 2, the `0xC0` doorway contact and 17-frame fade, scene 20 at
    its descriptor position, record-117 contact with projected `0xFF82`, the
    open source-complete introduction, the three choice labels, a newly pressed
    B edge (`0x1000` high byte), no active-party Frag Grenade, the generic
-   information result, and the closed panel after A. The passkey route records
+   information result, and the closed panel after A. The insufficient-quality
+   route records a live quality-1 key against selection 2, a newly pressed A
+   edge, three retained choices, unchanged key and collision map, no new
+   action sound, and a closed panel after C. The passkey route records
    a QA-seeded live item `0x14`/quality 2, A input, activity selection `0xFF`,
    sound request `0x4B`, unchanged inventory, and map index 483 changing
    `0x82 -> 0x81`. The story route that grants the key remains open. These
@@ -85,30 +103,39 @@ state.
    independent maglock introduction or choice frame was found, so its exact
    text/layout fidelity remains open.
 4. **Is it animated, and when?** The no-item and passkey results are static
-   during their source 30-frame waits: frames 1, 15, and 30 and the held frame have identical
-   pixels. The field actor moves and changes walking pose while a direction is
-   held. ROM-backed animation uses the four-pose
+   during their source 30-frame waits: frames 1, 15, and 30 and the held frame
+   have identical pixels. The insufficient-quality choices stay byte-identical
+   across an eight-frame idle hold, and the introduction is unchanged across
+   its ten-frame display delay. The field actor moves and changes walking pose
+   while a direction is held. ROM-backed animation uses the four-pose
    walk list (`0xC062`) with the `0xBABC` increment `0x0280` against period
    `0x1000`; the one-pose idle list (`0xC052`) returns to frame 0. The scene-20
    idle images at entry, frame 8, and frame 30 are byte-identical, so no idle
    animation plays in this sample. Exact Genesis input/frame phase is not
    available from the longplay.
-5. **Does sound accompany it?** Walk Away and no-item grenade routes issue no
-   sound request. Passkey success requests `0x4B`, which resolves to extracted
-   resource 075 with 97,770 samples at 44,100 Hz (2.217 seconds). The route
+5. **Does sound accompany it?** Walk Away, no-item grenade, and insufficient-
+   quality A/C routes add no action-sound request. Passkey success requests
+   `0x4B`, which resolves to extracted resource 075 with 97,770 samples at
+   44,100 Hz (2.217 seconds). The route
    checks the request, not speaker loopback or the hardware playback tail.
    Electronics and grenade-consumption effects remain separate.
 6. **Are other screen areas correct too?** The review includes the full
    field, right HUD, fade, corridor, dialog border, portrait well, text well,
-   and every option row. Debug and Release outputs match for all 47 B-route,
-   42 C-route, and 45 passkey-route BMPs. The 38 same-named pre-result screens
-   are also pixel-identical between the B and C routes.
+   and every option row. Debug and Release output trees match by relative-path
+   SHA-256: 47 B-route captures/52 artifacts, 42 C-route captures/47
+   artifacts, 45 passkey-success captures/51 artifacts, and 44
+   insufficient-quality captures/49 artifacts. The 38 same-named pre-result
+   screens are also pixel-identical between the B and C routes.
 7. **Do multiple frames support the interpretation?** The C route writes 42
-   full frames, the B route writes 47, and the passkey route writes 45. Its
-   Debug/Release outputs match across all 49 artifacts. Contact sheets and
-   full-resolution result/return images were reviewed; the result is unchanged
-   at frames 1, 15, and 30. Longplay frames 03/002100..002175 and 05/000600
-   support the shared dialog family, not the exact maglock event.
+   full frames, the B route writes 47, the success route writes 45, and the
+   insufficient-quality route writes 44 named checkpoints. Each also writes
+   `actual.bmp`. The low-quality route captures the introduction, prompt,
+   eight-frame hold, and return. Its Debug/Release outputs match across all
+   49 artifacts.
+   Contact sheets and full-resolution result/return images were reviewed; the
+   no-item and success results are unchanged at frames 1, 15, and 30. Longplay
+   frames 03/002100..002175 and 05/000600 support the shared dialog family,
+   not the exact maglock event.
 8. **Were old controls or graphics cleared?** The introduction replaces the
    field composition; A replaces it with choices or, when the passkey
    succeeds, a result page. Result pages contain no old choice rows. After A,
@@ -123,15 +150,23 @@ Run `shadowrun_ghidra_conversion_qt --assets decompilation/assets` with
 `--field-scene20-physical-entry-qa <output-dir>` for C/Walk Away,
 `--field-scene20-grenade-no-item-qa <output-dir>` for B/no-item, or
 `--field-scene20-passkey-qa <output-dir>` for QA-seeded passkey success.
+Use `--field-scene20-insufficient-passkey-qa <output-dir>` for a quality-1
+physical passkey route.
 CTest names are `shadowrun_ghidra_conversion_qt_field_scene20_physical_entry_qa`,
 `shadowrun_ghidra_conversion_qt_field_scene20_grenade_no_item_qa`, and
-`shadowrun_ghidra_conversion_qt_field_scene20_passkey_qa`. Each QA owns and
-refreshes its named output directory before writing.
+`shadowrun_ghidra_conversion_qt_field_scene20_passkey_qa`, and
+`shadowrun_ghidra_conversion_qt_field_scene20_insufficient_passkey_qa`. Each
+QA owns and refreshes its named output directory before writing.
 
 Debug and Release outputs are under
-`build/conversion/qt/{debug,release}/qt_runtime/field-scene20-physical-entry-qa/`,
-`field-scene20-grenade-no-item-qa/`, and `field-scene20-passkey-qa/`. The 42
-C-route BMPs, 47 B-route BMPs, and 45 passkey-route BMPs match by SHA-256
-across configurations. The native captures verify the implementation route
-and redraw behavior; they are not a visual golden for the Genesis maglock
-scene.
+Artifacts are under
+`decompilation/ghidra_conversion/build-ghidra-conversion-qt-{debug,release}/qt_runtime/`,
+in the four `field-scene20-*-qa/` output folders. The C-route has 42 named
+checkpoints plus `actual.bmp` (47 artifacts); the B-route has 47 named
+checkpoints plus `actual.bmp` (52 artifacts). Passkey success has 45 named
+checkpoints plus `actual.bmp` (51 artifacts), while the insufficient-quality
+route has 44 named checkpoints plus `actual.bmp` (49 artifacts). Every
+relative-path SHA-256 matches between Debug and Release. The QA fixes the
+source random seed at zero for repeatable actor timing; this is test-only.
+These native captures verify the implementation route and redraw behavior;
+they are not a visual golden for the Genesis maglock scene.

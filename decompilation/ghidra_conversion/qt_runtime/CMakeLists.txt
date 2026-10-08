@@ -436,6 +436,19 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_scene20_passkey_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Follow the same physical route with a QA-only quality-1 passkey. ROM 0x21628
+# compares key quality with the current selection (2 here), so ordinary A must
+# retain the generic three-choice prompt, leave the key and map untouched, and
+# request no unlock sound before Walk Away returns to the field.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_scene20_insufficient_passkey_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-scene20-insufficient-passkey-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-scene20-insufficient-passkey-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_scene20_insufficient_passkey_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Follow ordinary D-pad movement to scene-2 collision record 2. The source
 # record is a type-2 collision object, not a Stoker identity or event code;
 # this QA verifies its observed event-0/no-dialogue result and full-frame route.
