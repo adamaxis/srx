@@ -852,6 +852,14 @@ weapon, so no unsupported unique-per-gun animation is being added. Live actor
 import and target hit/status/damage remain unimplemented, and no independent
 Genesis firing sample was found. LOADOUT-01 remains partial pending the full
 route review against additional item records and independent visual evidence.
+The weapon target blocker now has a source trace: mode transition `0x2CE0`
+selects the pending `0x1E552` actor list for its `0x13` result, which maps to
+scene `0x2F`; the list contains five named `eye5r 1` records. Two other
+pending-list pointers contain Strike Team/bodyguard/corporate-guard records.
+These are not yet extracted into runtime assets or connected to the Qt actor,
+collision, and damage path. The source trace and the distinction from the
+separate pedestrian selector table are recorded in the [actor population and
+combat handoff audit](visual-audits/field-actor-population-and-combat-handoff.md).
 
 ### PLAY-01 — Normal-control reachability for reported game systems
 
