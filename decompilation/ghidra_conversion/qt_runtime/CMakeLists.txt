@@ -182,9 +182,10 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_action_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_action_qa PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
-# Empty magazines consume one shared clip through the typed player action
-# path, then update the named live HUD counter tile. The dump is a route
-# checkpoint, not an independent Genesis visual reference.
+# Empty magazines reload through the live FieldSceneRuntime A-button path.
+# The current weapon supplies its own capacity while the runner-wide clip
+# reserve decreases; this dump is internal route evidence, not an independent
+# Genesis visual reference.
 add_test(NAME shadowrun_ghidra_conversion_qt_field_player_action_qa
          COMMAND shadowrun_ghidra_conversion_qt
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"

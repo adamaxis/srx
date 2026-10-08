@@ -1,6 +1,6 @@
 # Weapon Detail and Magazine Switch Review
 
-Date: 2026-10-07
+Date: 2026-10-08
 Primary source: US ROM `decompilation/input/shadowrun_genesis_us.bin`.
 Independent visual source: `video analysis/long_gameplay_video.mp4` and its
 section 06/07 FFmpeg frames.
@@ -27,13 +27,16 @@ Direct US-ROM bytes for item records 1 through 15 were checked at
 the corresponding source paths.
 
 The ammo complaint needs a precise source distinction. Each weapon's capacity
-comes from its own `+0x24`. The active runner's `+0x4E` stores loaded rounds;
-when unequipped, `0x125FA` stores a percentage in the inventory item's `+0x6E`
-phase byte, and `0x121E0` scales that percentage to the next weapon's
-capacity. Spare `+0x4F` Universal Gun Clips are one runner-wide reserve. The
-US ROM does not keep separate spare-clip reserves for each weapon. Existing
-Qt QA exercises weapon 1 at 3/6, weapon 2 at 6/12, the shared 50-percent
-transfer, and reload consumption from the shared reserve.
+comes from its own `+0x24`. The active runner's `+0x4E` stores loaded rounds.
+ROM `0x125FA` reads and clears that same runner byte, converts the loaded
+rounds to a percentage using the current weapon capacity, and returns the
+percentage to its caller. The unequipped state keeps that normalized value in
+runner `+0x4E`; `0x121E0` scales it to the selected weapon's capacity when a
+weapon is equipped. The percentage is not stored in each inventory item's
+`+0x6E` phase byte. Spare `+0x4F` Universal Gun Clips are one runner-wide
+reserve. The US ROM does not keep a separate spare-clip reserve for each
+weapon. Existing Qt QA exercises weapon 1 at 3/6, weapon 2 at 6/12, the
+shared 50-percent transfer, and reload consumption from the shared reserve.
 
 ## Code and verification added
 
@@ -46,6 +49,25 @@ transfer, and reload consumption from the shared reserve.
 - Debug and Release Qt field-action QA each produced 54 full-screen BMPs. All
   54 Debug screens were reviewed at full screen size; each corresponding
   Release file has the same SHA-256 hash.
+
+## Live reload action QA update
+
+The `shadowrun_ghidra_conversion_qt_field_player_action_qa` CTest now also
+drives the live `FieldSceneRuntime` A-button action. It starts with item 1
+empty and three shared clips, then checks reload to its ROM-defined capacity
+of 6 and a reserve count of 2. In the same runtime, QA seeds item 2 as the
+selected empty weapon and verifies its ordinary held-A reload reaches its own
+12-round capacity and consumes the next shared clip, leaving one. This second
+weapon setup is diagnostic state injection; the existing inventory-menu QA
+separately drives the ordinary equip route and verifies the source-derived
+3/6 -> 6/12 -> 3/6 percentage transfer.
+
+The player-action QA writes seven 320x224 full-screen frames. Debug and Release
+outputs are compared by SHA-256, and the entire Debug sequence is reviewed for
+the weapon glyph, ammo counter, map, HUD, and stale controls. This evidence
+connects the reload action to the field controller/runtime; it does not
+connect the broader fire/projectile/target/hit loop or prove an independent
+Genesis visual match.
 
 ## Nine-question visual review
 
@@ -93,10 +115,12 @@ transfer, and reload consumption from the shared reserve.
 
 ## Status
 
-No gameplay behavior was changed in this slice; the existing source-based
-mapping now has explicit regression coverage. The report that each weapon
-needs a separate spare-clip reserve is not supported by the US ROM. Per-weapon
-loaded state and shared-reserve reload behavior are internally exercised, but
-`LOADOUT-01` remains partial until normal combat fire/reload and a matching
-independent loaded-save example are reviewed. `ITEMS-01` remains partial for
-combat damage values, shops, and independent weapon-detail visual evidence.
+The source does not define a spare-clip reserve per weapon: `+0x4F` is shared
+by the runner, and switching normalizes the active magazine through runner
+`+0x4E`. Each weapon still has its own capacity, and that capacity controls
+the loaded count after equip/reload. The typed mapping, natural inventory
+switch, and live field reload action are covered; `LOADOUT-01` remains partial
+until normal combat fire/projectile behavior and a matching independent
+loaded-save example are reviewed.
+`ITEMS-01` remains partial for combat damage values, shops, and independent
+weapon-detail visual evidence.

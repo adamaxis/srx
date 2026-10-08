@@ -13745,8 +13745,69 @@ int main(int argc, char** argv) {
                     std::cerr << "field player action dump: source-selected, held-A reload, shared clip, delay, audio, or live HUD counter did not match\n";
                     return 3;
                 }
+                field_scene.advance_frame(); // release the first A input.
+                runner.inventory_item_codes[1U] = 2U;
+                runner.equipped_inventory_slot = 1;
+                runner.equipped_item_code = 2U;
+                runner.ammo_rounds = 0U;
+                runner.animation_action_gate = 1;
+                runner.flags = static_cast<std::uint16_t>(
+                    runner.flags | 0x0300U);
+                field_scene.refresh_field_hud_for_dump();
+                field_audio_events.clear();
+                const auto weapon_two_empty = render_scene();
+                if (!save_scene("weapon-2-before", weapon_two_empty) ||
+                    runner.equipped_inventory_slot != 1 ||
+                    runner.equipped_item_code != 2U ||
+                    runner.ammo_clips != 2U ||
+                    !ammo_counter_matches(weapon_two_empty, 0)) {
+                    std::cerr << "field player action dump: second weapon was not selected with its empty magazine and shared reserve\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0x40U);
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                const auto weapon_two_ready = render_scene();
+                if (runner.ammo_rounds != 0U || runner.ammo_clips != 2U ||
+                    runner.animation_action_gate >= 0 ||
+                    !field_audio_events.empty() ||
+                    !ammo_counter_matches(weapon_two_ready, 0) ||
+                    !save_scene("weapon-2-ready-idle", weapon_two_ready)) {
+                    std::cerr << "field player action dump: second weapon reloaded without a fresh held-A action\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0x40U);
+                field_scene.advance_frame();
+                field_scene.set_controller_port_byte(0U);
+                const auto weapon_two_reload = render_scene();
+                const bool second_audio_ordered =
+                    field_audio_events ==
+                    std::vector<std::uint16_t>{0x4BU, 0x4BU};
+                const bool weapon_two_source_valid =
+                    item_catalog.size() >= 2U &&
+                    item_catalog[1U].item_code == 2U &&
+                    item_catalog[1U].source_combat_factor == 12U;
+                if (runner.ammo_rounds != 12U || runner.ammo_clips != 1U ||
+                    runner.equipped_inventory_slot != 1 ||
+                    runner.equipped_item_code != 2U ||
+                    runner.animation_action_gate <= 0 ||
+                    !second_audio_ordered || !weapon_two_source_valid ||
+                    !ammo_counter_matches(weapon_two_reload, 12) ||
+                    field_scene.command_overview_open() ||
+                    field_scene.dialogue_open() ||
+                    field_scene.hotel_menu_open() ||
+                    field_scene.inventory_action_open() ||
+                    field_scene.clips_menu_open() ||
+                    field_scene.field_interaction_open() ||
+                    !save_scene("weapon-2-actual", weapon_two_reload)) {
+                    std::cerr << "field player action dump: weapon 2 did not reload to its own 12-round capacity from the shared runner reserve\n";
+                    return 3;
+                }
                 std::cout << "field_player_action_dump=written path="
-                          << output.string() << " clips=2 rounds=6 audio=2\n";
+                          << output.string()
+                          << " weapon1_rounds=6 weapon2_rounds=12"
+                          << " reserve_clips=1 audio_events=4\n";
                 return 0;
             }
             if (field_smoke_move_right) {

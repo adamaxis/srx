@@ -88,7 +88,7 @@ clarification. None changes the original report's itemization.
 |---|---|---|
 | `EQUIP-01` | The yellow item selector was previously reported as a thick rectangular mess instead of the game's slim yellow outline. | The current Qt frames contain exactly 76 `#C4BE27` pixels: a one-pixel perimeter around the 24x16 item image, with no fill. Independent section 06 frames 002560/002580/002610/002640 support the same slim marker. The debug-only 4x crop scales that one pixel to four display pixels. Current geometry is not reproducing the reported thick marker; see [the selector and redraw review](visual-audits/item-selector-and-unequip-review.md). |
 | `EQUIP-02` | A black box can remain around an item icon after equipping and unequipping it. | Exercise repeated equip/unequip and replacement; prove the icon cell restores its correct background and no stale border/graphic remains. |
-| `LOADOUT-01` | Weapon clips/ammunition were previously reported as not being tied to the weapons. | ROM uses each item's `+0x24` capacity, runner `+0x4E` for loaded rounds/unequipped percentage, and one runner-wide `+0x4F` Universal Gun Clips reserve. The typed `0x38AC` service now runs at the `0x1514E` spawn-cycle point after source gates and before record allocation; codes 8..10 send a -3 ammo-meter delta, other player actions send -1, and non-runner records decrement one round. Its source event table now routes `0x1E`/`0x4A` to extracted resources 30/74 with Debug/Release audio playback coverage. The normal Qt firing/target/render path, independent firing frames/audio, and loaded-save transfer remain open. Do not add a per-weapon reserve unsupported by the ROM; see the [weapon detail and magazine review](visual-audits/weapon-detail-and-magazine-switch-review.md) and [spawn ammo/sound audit](visual-audits/weapon-spawn-ammo-consumption.md). |
+| `LOADOUT-01` | Weapon clips/ammunition were previously reported as not being tied to the weapons. | ROM uses each item's `+0x24` magazine capacity, runner `+0x4E` for loaded rounds or the unequipped load percentage, and one runner-wide `+0x4F` Universal Gun Clips reserve. Field action QA now uses ordinary held-A reload input in the live `FieldSceneRuntime`: one seeded weapon reloads to 6, then a QA-seeded second weapon reloads to 12, consuming the same reserve from 3 to 1. The second weapon state is seeded, so this does not prove normal combat fire or a natural weapon-switch route. The typed `0x38AC` spawn-cycle ammo service and its source-selected audio have separate Debug/Release unit coverage. Normal Qt firing/projectile/target/hit rendering, independent firing frames/audio, and loaded-save transfer remain open. Do not add a per-weapon reserve unsupported by the ROM; see the [weapon detail and magazine review](visual-audits/weapon-detail-and-magazine-switch-review.md) and [spawn ammo/sound audit](visual-audits/weapon-spawn-ammo-consumption.md). |
 
 ### Evidence gathered for this pass
 
@@ -806,19 +806,23 @@ report is not marked resolved.
 ### LOADOUT-01 — Weapon magazine and shared reserve relationship
 
 **Source finding:** equipped weapon capacity comes from its own item row at
-`D4540 + (item_code - 1) * 0x30 + 0x24`. The runner's current loaded count is in
-`+0x4E`; on unequip `0x125FA` stores its percentage in that same field, and
-switching weapons scales the percentage to the selected item's capacity at
-`0x121E0`. The reserve is a separate runner-wide Universal Gun Clips count at
-`+0x4F`, consumed by the reload handler. The traced source does not keep a
-separate spare-clip reserve for every weapon, so the native model must not
-invent one.
+`D4540 + (item_code - 1) * 0x30 + 0x24`. The runner's `+0x4E` holds the loaded
+round count while equipped. `0x125FA` converts that count to a percentage
+using the current weapon's capacity; the unequipped runner state retains that
+percentage in `+0x4E`, and `0x121E0` scales it to the selected weapon capacity
+on equip. The reserve is one runner-wide Universal Gun Clips count at `+0x4F`,
+consumed by the reload handler. The traced source does not keep a separate
+spare-clip reserve for every weapon, so the native model must not invent one.
 
-**Current QA:** the field-action route switches between weapon rows with
-capacities 6 and 12, carries 50% across the switch, and checks that reloads
-consume the shared reserve. It also checks empty, reloaded, equipped, and
-unequipped HUD states. The normal combat firing route and an independent
-loaded-save transfer example remain open.
+**Current QA:** the live field-action A-button route reloads a QA-seeded empty
+item 1 magazine to its 6-round capacity, consuming one clip. It then seeds
+item 2 as the active empty weapon in the same runtime and reloads it to its
+12-round capacity, consuming the next clip from that same reserve. The existing
+inventory route separately covers the source's 3/6 -> 6/12 -> 3/6 percentage
+transfer through ordinary item selection. The second weapon in the new player
+action QA is seeded directly; it does not demonstrate the ordinary combat
+entry, firing, or a natural weapon-switch path. An independent loaded-save
+transfer example remains open.
 
 **Done when:** visible counts agree with source state in HUD, inventory, and
 Clips; normal input can fire/reload; tests cover two capacities and reserve
