@@ -297,13 +297,15 @@ event-table lookup remains the separate `0x167AE` conversion and is not
 pretended to be a return value from the timer helper. The active-entity
 selection path `0x0C7F8 -> 0x0C802 -> 0x0391A`, which supplies the live
 `+0x10` bit-1 state required for the negative-collision branch, is now
-connected in the separate Qt composition through the typed `RunnerSwitchState`:
-source types `0, 1, 2` are installed, Joshua starts active in slot zero, and
-the converted `0x391A` walk publishes the bit-1 marker even when the recruited
-primary/secondary slots are not active. The Qt callback also runs the already
+connected in the Qt composition through typed `RunnerSwitchState` and the
+active `FieldPartyRosterRuntime` record. Source types `0, 1, 2` are installed;
+ordinary C input requests event `0x25`, moves the transient bit-1 marker to an
+eligible source-template runner, and refreshes the selected record/HUD.
+Debug/Release field-action QA verifies C selection of Ricky followed by a normal
+held-A reload against that record. The Qt callback also runs the already
 converted `0xC64C` finalizer, whose `0xC802` refresh remains typed and bounded.
-The recruited roster-selection path is still unresolved, so the composition
-does not invent active companions. `0x1651E` now runs from the blocked-movement
+Story recruitment/save loading and the source target/fade/animation tail remain
+open; the composition does not invent active companions. `0x1651E` now runs from the blocked-movement
 callback. `0x167AE` publishes FFDF40 as mode 1, 2, or 3 from the scene id
 (`< 0x15`, `< 0x2C`, `< 0x38`); scene `>= 0x38` stays the source `stop`.
 The Qt bootstrap now returns that stop instead of writing world mode 0.

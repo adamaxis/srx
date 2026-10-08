@@ -1860,63 +1860,66 @@ remains unverified until matching independent frames are available.
    320x224 native frames show the field and runner HUD intact while the ammo
    display changes from `00` to `06` and `12`.
 2. **Does the visible look match the behavioral state?** Source-gated reloads
-   require selected-action bit `+0x10`, held A (FFDD22 bit 6), empty ammo
+   require the active record's `+0x10` bit 1, held A (FFDD22 bit 6), empty ammo
    `+0x4E`, shared clips `+0x4F` above zero, and negative signed `+0xDC`.
-   Debug/Release QA checks the unselected and released-A gates, item 1's
-   6-round reload, and item 2's 12-round reload. The first reload is live
-   controller input. For the second, QA seeds item 1 empty to represent the
-   still-unconnected firing path, then reaches item 2 through ordinary
-   Start/Left/Right/A/Start inventory input and reloads it with ordinary A.
-   Item 2's inventory presence and the empty-magazine condition are fixtures;
-   equip, return, and reload are live `FieldSceneRuntime` transitions. The QA
-   explicitly sets bit `+0x10` because live combat entry is still open.
+   Debug/Release QA checks unselected/released-A behavior, item 1's 6-round
+   reload, and item 2's 12-round reload. The New Game profile supplies
+   Joshua's action marker; QA no longer writes bit 1 directly. With no other
+   eligible runner, ordinary C keeps Joshua active and requests source event
+   `0x25`. A separate route installs the source Ricky save-roster template,
+   presses C through normal field input, verifies Ricky becomes the active
+   record and receives the selection marker, then reloads his empty item 1
+   with ordinary held A. Item 2 presence and both empty magazines are test
+   setup; the C selection, equip, return, and reload transitions use live
+   `FieldSceneRuntime` input. Normal firing and story-driven recruitment
+   remain open.
 3. **Are the visuals correct?** The counter is checked against named extracted
    count assets and the weapon HUD against named weapon assets. The full field,
    HUD, menu, return, and stale-control regions were inspected. Debug and
    Release captures match by SHA-256. Those are native regression checks, not
    proof of Genesis placement, palette, or weapon-icon fidelity.
 4. **Is it animated, and when?** ROM signed `+0xDC` advances once per active
-   field behavior frame and is rearmed after the action. The 103 idle updates
-   for this fixture are captured; every full frame is pixel-identical to the
-   reload result. No separate reload pose or cadence has been established.
-   Attack/target sprite animation remains unconnected.
-5. **Is there a sound, and how long does it play?** The successful reload
-   submits event `0x4B` twice (`0x14226` and the `0xACAE` success tail).
-   Resource 075 has 97,770 samples at 44.1 kHz, or 2.2167 seconds. Shared
-   audio QA checks decoded playback for one event; this route checks the two
-   event IDs and order. There is no output-loopback capture of the paired
-   submissions, so audible retrigger/overlap and combined duration remain
-   unknown.
+   field behavior frame and is rearmed after the action. All 103 idle updates
+   for this fixture are captured and pixel-identical to the reload result.
+   ROM `0x391A` also runs the entity animation triplet on C. This conversion
+   does not yet implement the complete source target/fade/animation tail; no
+   independent reload pose or attack cadence is established.
+5. **Is there a sound, and how long does it play?** ROM `0x391A` sends event
+   `0x25`; successful reload submits `0x4B` twice (`0x14226` and the `0xACAE`
+   success tail). Their mapped files are 2.134 and 2.2167 seconds. Shared
+   audio QA checks decoded playback; this route checks event IDs and order.
+   There is no output-loopback capture of these exact C and paired reload
+   submissions, so audible retrigger/overlap remains unknown.
 6. **Are neighboring screen regions also correct?** The full frames include
-   field, map, runner, face, bars, weapon HUD, menu, and return. The inventory
-   panel replaces the field view and is cleared before return; no stale button
-   or control was visible in the reviewed route. Reserve values are checked in
-   typed state.
+   field, map, runner portraits, bars, each runner's ammo counter, menu, and
+   return. The inventory panel replaces the field view and is cleared before
+   return; no stale button/control appeared in the reviewed route. Ricky's
+   counter changes in his own HUD slot after his active record reloads.
 7. **Do multiple frames support this interpretation?** Yes for native state
-   transitions: empty/denied/reloaded states, both capacities, and the full
-   weapon-switch route are represented. Independent longplay frames show
-   neighboring ammo/menu states but not this reload; independent reload
-   evidence is still absent.
+   transitions: empty/denied/reloaded states, both weapon capacities, no-runner
+   C, Ricky C selection/release/reload, and the full weapon-switch route are
+   represented. Independent longplay frames show neighboring ammo/menu states
+   but not this reload or C switch.
 8. **Was old UI cleared before new UI appeared?** The normal inventory route
    opens the command menu, selects item 2, equips it, then closes with Start.
    QA asserts all command, dialogue, Hotel, inventory-action, Clips, and field
    interaction controls are closed on return. The captured field frame has no
    stale menu overlay.
 9. **Were multiple frames and the full affected window reviewed?** The dump
-   contains 165 full-screen images: nine transition checkpoints, all 103
-   action-delay updates, 23 frames covering every press/release in the menu
-   route, and 30 frames after returning to the field. All checkpoints and
-   route frames were visually reviewed; all 103 delay frames and all 30 return
-   frames were also checked pixel-for-pixel against their stable reference
-   frame. Debug/Release images match by SHA-256. This covers visual timing for
-   the captured window, not the paired audio output tail or Genesis timing.
+   contains 171 full-screen images: 10 action/menu checkpoints, all 103
+   action-delay updates, 23 menu press/release frames, a 30-frame field-return
+   hold, and five source-template runner C/A frames. All menu and runner frames were
+   visually reviewed; all delay and return-hold frames match their stable
+   image pixel-for-pixel. Debug/Release files match by SHA-256. This covers
+   the captured visual window, not paired audio output or Genesis timing.
 
-**Status:** partial. Selected-action and held-A gates, both weapon capacities,
-shared-clip consumption, action delay, audio event submissions, natural
-inventory switching, menu redraw/return, and HUD projection are exercised
-through `FieldSceneRuntime`. Combat entry into that state, weapon firing,
-target selection, collision, damage, full attack animation, and independent
-reload/audio captures remain open.
+**Status:** partial. Active-runner selection via C now updates the typed party
+record and feeds the ordinary held-A action; both weapon capacities,
+shared-clip consumption, action delay, event submissions, inventory switching,
+menu redraw/return, and per-runner HUD counters are exercised through
+`FieldSceneRuntime`. The source target/fade/animation tail, story-driven
+recruitment, weapon firing, target selection, collision, damage, and
+independent reload/audio captures remain open.
 
 ### Applied review: three-slot field-party HUD
 

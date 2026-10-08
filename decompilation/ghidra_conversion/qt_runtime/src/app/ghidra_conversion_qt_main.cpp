@@ -13646,14 +13646,19 @@ int main(int argc, char** argv) {
                         ((*field_player_action_dump_path) /
                          (std::string(name) + ".bmp")).wstring()));
                 };
-                const auto ammo_counter_matches = [&](const QImage& image,
-                                                     const int rounds) {
+                const auto ammo_counter_matches_for_slot =
+                    [&](const QImage& image, const int rounds,
+                        const std::size_t slot) {
                     const auto counter = QImage(QString::fromStdWString(
                         (asset_root / "field" / "hud" /
                          ("ammo-counter-" + std::to_string(rounds) +
                           ".bmp")).wstring()));
-                    const int x = field_hud_vram_x(kFieldHudAmmoVram);
-                    const int y = field_hud_vram_y(kFieldHudAmmoVram);
+                    const auto slot_vram = static_cast<std::uint16_t>(
+                        kFieldHudAmmoVram +
+                        static_cast<std::uint16_t>(slot) *
+                            kFieldHudSlotVramStride);
+                    const int x = field_hud_vram_x(slot_vram);
+                    const int y = field_hud_vram_y(slot_vram);
                     if (counter.isNull() || x < 0 || y < 0 ||
                         x + counter.width() > image.width() ||
                         y + counter.height() > image.height()) {
@@ -13669,6 +13674,11 @@ int main(int argc, char** argv) {
                     }
                     return true;
                 };
+                const auto ammo_counter_matches =
+                    [&](const QImage& image, const int rounds) {
+                        return ammo_counter_matches_for_slot(image, rounds,
+                                                             0U);
+                    };
                 const auto weapon_glyph_matches = [&](const QImage& image) {
                     const auto item = QImage(QString::fromStdWString(
                         (asset_root / "field" / "hud" /
@@ -13716,22 +13726,72 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
-                runner.flags = static_cast<std::uint16_t>(
-                    runner.flags | 0x0200U);
+                std::ofstream action_entry_trace(
+                    *field_player_action_dump_path / "action-entry.tsv",
+                    std::ios::trunc);
+                if (!action_entry_trace) {
+                    std::cerr << "field player action dump: could not open action-entry.tsv\n";
+                    return 3;
+                }
+                action_entry_trace
+                    << "phase\tcontroller_port_byte\tactive_slot\taction_marker\tflags_high\tammo_rounds\tclip_reserve\taction_gate\taudio_events\n";
+                action_entry_trace
+                    << "before-C\t0\t"
+                    << field_scene.field_active_party_slot_for_dump() << '\t'
+                    << ((runner.flags & 0x0200U) != 0U ? 1 : 0) << '\t'
+                    << static_cast<unsigned>(runner.flags >> 8U) << '\t'
+                    << static_cast<unsigned>(runner.ammo_rounds) << '\t'
+                    << static_cast<unsigned>(runner.ammo_clips) << '\t'
+                    << runner.animation_action_gate << '\t'
+                    << field_audio_events.size() << '\n';
+                field_scene.set_controller_port_byte(0x20U);
+                field_scene.advance_frame();
+                const auto no_runner_c_attempt = render_scene();
+                action_entry_trace
+                    << "C-pressed\t32\t"
+                    << field_scene.field_active_party_slot_for_dump() << '\t'
+                    << ((runner.flags & 0x0200U) != 0U ? 1 : 0) << '\t'
+                    << static_cast<unsigned>(runner.flags >> 8U) << '\t'
+                    << static_cast<unsigned>(runner.ammo_rounds) << '\t'
+                    << static_cast<unsigned>(runner.ammo_clips) << '\t'
+                    << runner.animation_action_gate << '\t'
+                    << field_audio_events.size() << '\n';
+                if (field_scene.field_active_party_slot_for_dump() != 0U ||
+                    !field_scene.field_party_slot_active_for_dump(0U) ||
+                    field_scene.field_party_slot_active_for_dump(1U) ||
+                    runner.ammo_rounds != 0U || runner.ammo_clips != 3U ||
+                    field_audio_events != std::vector<std::uint16_t>{0x25U} ||
+                    !save_scene("no-runner-c-attempt-frame",
+                                no_runner_c_attempt)) {
+                    std::cerr << "field player action dump: C with no other eligible runner changed party state, consumed ammunition, or missed source event 0x25\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0U);
                 field_scene.advance_frame();
                 const auto ready_idle = render_scene();
+                action_entry_trace
+                    << "C-released\t0\t"
+                    << field_scene.field_active_party_slot_for_dump() << '\t'
+                    << ((runner.flags & 0x0200U) != 0U ? 1 : 0) << '\t'
+                    << static_cast<unsigned>(runner.flags >> 8U) << '\t'
+                    << static_cast<unsigned>(runner.ammo_rounds) << '\t'
+                    << static_cast<unsigned>(runner.ammo_clips) << '\t'
+                    << runner.animation_action_gate << '\t'
+                    << field_audio_events.size() << '\n';
                 if (field_scene.active_runner_record().ammo_rounds != 0U ||
                     field_scene.active_runner_record().ammo_clips != 3U ||
+                    field_scene.field_active_party_slot_for_dump() != 0U ||
                     field_scene.active_runner_record().animation_action_gate >=
                         0 ||
-                    !field_audio_events.empty() ||
+                    field_audio_events != std::vector<std::uint16_t>{0x25U} ||
                     !ammo_counter_matches(ready_idle, 0) ||
                     !weapon_glyph_matches(ready_idle) ||
-                    !save_scene("ready-idle-frame", ready_idle)) {
-                    std::cerr << "field player action dump: idle selected runner reloaded without held A\n";
+                    !save_scene("no-runner-c-released-frame", ready_idle)) {
+                    std::cerr << "field player action dump: C release changed the no-other-runner state or reloaded without held A\n";
                     return 3;
                 }
 
+                field_audio_events.clear();
                 field_scene.set_controller_port_byte(0x40U);
                 field_scene.advance_frame();
                 field_scene.set_controller_port_byte(0U);
@@ -13959,6 +14019,193 @@ int main(int argc, char** argv) {
                     std::cerr << "field player action dump: ordinary weapon-switch route was not 23 full-screen frames with a stable return hold\n";
                     return 3;
                 }
+
+                if (!smoke_state.startup_records.has_value()) {
+                    std::cerr << "field player action dump: source save-roster templates are unavailable for live runner-switch coverage\n";
+                    return 3;
+                }
+                std::vector<std::uint16_t> runner_switch_audio;
+                qt_runtime::FieldSceneRuntime runner_switch_scene(
+                    [](const std::string_view) {},
+                    [&runner_switch_audio](const std::uint16_t event) {
+                        runner_switch_audio.push_back(event);
+                    });
+                if (!runner_switch_scene.bootstrap(smoke_state)) {
+                    std::cerr << "field player action dump: runner-switch field bootstrap failed: "
+                              << runner_switch_scene.failure() << '\n';
+                    return 3;
+                }
+                LiveRunnerRecord ricky_source{};
+                ricky_source.bytes =
+                    smoke_state.startup_records->save_roster_templates[1U]
+                        .record;
+                auto ricky = read_runner_record_fields(ricky_source);
+                ricky.flags = static_cast<std::uint16_t>(
+                    ricky.flags & ~0x0200U);
+                ricky.inventory_item_codes[0] = 1U;
+                ricky.equipped_inventory_slot = 0;
+                ricky.equipped_item_code = 1U;
+                ricky.ammo_rounds = 0U;
+                ricky.ammo_clips = 3U;
+                ricky.animation_action_gate = 1;
+                runner_switch_scene.install_party_member_for_dump(
+                    1U, ricky, "Ricky", 3U);
+                const auto joshua_before_runner_switch =
+                    runner_switch_scene.field_party_records_for_dump()[0U];
+                const auto render_runner_switch_scene = [&] {
+                    QImage image(kSceneWidth, kSceneHeight,
+                                 QImage::Format_RGB32);
+                    image.fill(Qt::black);
+                    QPainter painter(&image);
+                    runner_switch_scene.paint(painter);
+                    painter.end();
+                    return image;
+                };
+                const auto save_runner_switch_scene =
+                    [&](const std::string_view name) {
+                        return render_runner_switch_scene().save(
+                            QString::fromStdWString(
+                                ((*field_player_action_dump_path) /
+                                 (std::string(name) + ".bmp"))
+                                    .wstring()));
+                    };
+                std::ofstream runner_switch_trace(
+                    *field_player_action_dump_path / "active-runner-route.tsv",
+                    std::ios::trunc);
+                if (!runner_switch_trace ||
+                    runner_switch_scene.field_active_party_slot_for_dump() !=
+                        0U ||
+                    !runner_switch_scene.field_party_slot_active_for_dump(
+                        1U) ||
+                    (runner_switch_scene.field_party_records_for_dump()[1U]
+                         .flags & 0x0200U) != 0U ||
+                    !save_runner_switch_scene("active-runner-before-c")) {
+                    std::cerr << "field player action dump: source-template Ricky did not enter as an active, unselected secondary record\n";
+                    return 3;
+                }
+                runner_switch_trace
+                    << "phase\tcontroller_port_byte\tactive_slot\t"
+                       "joshua_flags_high\tricky_flags_high\tricky_ammo\t"
+                       "ricky_clips\taction_gate\taudio_events\n";
+                const auto trace_runner_switch =
+                    [&](const std::string_view phase,
+                        const std::uint8_t input) {
+                        const auto& records =
+                            runner_switch_scene.field_party_records_for_dump();
+                        const auto saved = save_runner_switch_scene(
+                            "active-runner-" + std::string(phase));
+                        runner_switch_trace
+                            << phase << '\t'
+                            << static_cast<unsigned>(input) << '\t'
+                            << runner_switch_scene
+                                   .field_active_party_slot_for_dump()
+                            << '\t'
+                            << static_cast<unsigned>(records[0U].flags >> 8U)
+                            << '\t'
+                            << static_cast<unsigned>(records[1U].flags >> 8U)
+                            << '\t'
+                            << static_cast<unsigned>(records[1U].ammo_rounds)
+                            << '\t'
+                            << static_cast<unsigned>(records[1U].ammo_clips)
+                            << '\t'
+                            << records[1U].animation_action_gate << '\t'
+                            << runner_switch_audio.size() << '\n';
+                        return saved &&
+                               static_cast<bool>(runner_switch_trace);
+                    };
+                if (!trace_runner_switch("before-c", 0U)) {
+                    std::cerr << "field player action dump: could not save the recruited-runner field before C input\n";
+                    return 3;
+                }
+                runner_switch_scene.set_controller_port_byte(0x20U);
+                runner_switch_scene.advance_frame();
+                if (runner_switch_scene.field_active_party_slot_for_dump() !=
+                        1U ||
+                    (runner_switch_scene.active_runner_record().flags &
+                     0x0200U) == 0U ||
+                    (runner_switch_scene.field_party_records_for_dump()[0U]
+                         .flags & 0x0200U) != 0U ||
+                    runner_switch_audio !=
+                        std::vector<std::uint16_t>{0x25U} ||
+                    !trace_runner_switch("ricky-selected", 0x20U)) {
+                    std::cerr << "field player action dump: ordinary C input did not select source-template Ricky, move the transient selection marker, and request event 0x25\n";
+                    return 3;
+                }
+                runner_switch_scene.set_controller_port_byte(0U);
+                runner_switch_scene.advance_frame();
+                if (runner_switch_scene.field_active_party_slot_for_dump() !=
+                        1U ||
+                    runner_switch_audio !=
+                        std::vector<std::uint16_t>{0x25U} ||
+                    !trace_runner_switch("ricky-c-released", 0U)) {
+                    std::cerr << "field player action dump: C release changed the active runner or repeated its source event\n";
+                    return 3;
+                }
+                runner_switch_scene.set_controller_port_byte(0x40U);
+                runner_switch_scene.advance_frame();
+                const auto ricky_reload_frame =
+                    render_runner_switch_scene();
+                const auto ricky_reload_trace_saved =
+                    trace_runner_switch("ricky-reloaded", 0x40U);
+                if (runner_switch_scene.field_active_party_slot_for_dump() !=
+                        1U ||
+                    runner_switch_scene.active_runner_record().ammo_rounds !=
+                        6U ||
+                    runner_switch_scene.active_runner_record().ammo_clips !=
+                        2U ||
+                    runner_switch_scene.field_party_records_for_dump()[0U]
+                            .ammo_rounds !=
+                        joshua_before_runner_switch.ammo_rounds ||
+                    runner_switch_scene.field_party_records_for_dump()[0U]
+                            .ammo_clips !=
+                        joshua_before_runner_switch.ammo_clips ||
+                    runner_switch_audio != std::vector<std::uint16_t>{
+                                               0x25U, 0x4BU, 0x4BU} ||
+                    !ammo_counter_matches_for_slot(ricky_reload_frame, 6,
+                                                   1U) ||
+                    !ricky_reload_trace_saved) {
+                    std::cerr << "field player action dump: after C selection, held A reload mismatch: slot="
+                              << runner_switch_scene
+                                     .field_active_party_slot_for_dump()
+                              << " rounds="
+                              << static_cast<unsigned>(
+                                     runner_switch_scene
+                                         .active_runner_record()
+                                         .ammo_rounds)
+                              << " clips="
+                              << static_cast<unsigned>(
+                                     runner_switch_scene
+                                         .active_runner_record()
+                                         .ammo_clips)
+                              << " flags_high="
+                              << static_cast<unsigned>(
+                                     runner_switch_scene
+                                         .active_runner_record()
+                                         .flags >> 8U)
+                              << " gate="
+                              << runner_switch_scene
+                                     .active_runner_record()
+                                     .animation_action_gate
+                              << " audio_events="
+                              << runner_switch_audio.size()
+                              << " hud_counter_matches="
+                              << (ammo_counter_matches_for_slot(
+                                      ricky_reload_frame, 6, 1U)
+                                      ? 1
+                                      : 0)
+                              << '\n';
+                    return 3;
+                }
+                runner_switch_scene.set_controller_port_byte(0U);
+                runner_switch_scene.advance_frame();
+                if (runner_switch_scene.field_active_party_slot_for_dump() !=
+                        1U ||
+                    runner_switch_scene.active_runner_record().ammo_rounds !=
+                        6U ||
+                    !trace_runner_switch("ricky-a-released", 0U)) {
+                    std::cerr << "field player action dump: released A changed the selected runner's serviced reload result\n";
+                    return 3;
+                }
                 field_audio_events.clear();
                 const auto weapon_two_empty = render_scene();
                 if (runner.equipped_inventory_slot != 1 ||
@@ -14014,6 +14261,7 @@ int main(int argc, char** argv) {
                           << " action_delay_frames=" << action_delay_frames
                           << " weapon_switch_route_frames="
                           << weapon_switch_frame
+                          << " active_runner_route_frames=5"
                           << " return_hold_frames=30"
                           << " natural_weapon_switch=1\n";
                 return 0;

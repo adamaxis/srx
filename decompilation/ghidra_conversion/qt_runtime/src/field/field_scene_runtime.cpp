@@ -382,13 +382,26 @@ void FieldSceneRuntime::source_boundary(
 }
 
 void FieldSceneRuntime::initialize_field_entity_selection_state() {
-    // ROM 0x42B0 publishes the three field-record types in slot order. The
-    // current new-game composition has Joshua in slot zero; the recruited
-    // primary and secondary slots remain inactive until their own source
-    // selection path is connected.
-    field_entity_selection_state_ = RunnerSwitchState{
-        {{0U, field_entity_behavior_flags_}, {1U, 0U}, {2U, 0U}}, 0U,
-        false};
+    // ROM 0x42B0 publishes the three field-record types in slot order. Seed
+    // their selection flags from the same typed records used by the field HUD
+    // so the C-button selection action and combat gate share authoritative
+    // runner state.
+    field_entity_selection_state_ = RunnerSwitchState{};
+    const auto& records = field_party_roster_.records();
+    field_entity_selection_state_.records.reserve(records.size());
+    for (std::size_t slot = 0; slot < records.size(); ++slot) {
+        auto selection_flags = static_cast<std::uint8_t>(
+            records[slot].flags >> 8U);
+        if (!field_party_roster_.slot_active(slot)) {
+            selection_flags = static_cast<std::uint8_t>(
+                selection_flags & ~0x01U);
+        }
+        field_entity_selection_state_.records.push_back(
+            RunnerSwitchRecord{static_cast<std::uint16_t>(slot),
+                               selection_flags});
+    }
+    field_entity_selection_state_.active_index =
+        field_party_roster_.active_slot();
     field_movement_behavior_record_.behavior_flags =
         field_entity_behavior_flags_;
     field_runner_refresh_state_ = FieldRunnerRefreshState{};
@@ -421,7 +434,43 @@ void FieldSceneRuntime::refresh_field_runner_state_and_assets() {
 }
 
 void FieldSceneRuntime::handle_field_mode_action_event() {
+    field_entity_selection_state_.active_index =
+        field_party_roster_.active_slot();
+    const auto& runner_records = field_party_roster_.records();
+    for (std::size_t slot = 0;
+         slot < field_entity_selection_state_.records.size() &&
+         slot < runner_records.size();
+         ++slot) {
+        auto selection_flags = static_cast<std::uint8_t>(
+            runner_records[slot].flags >> 8U);
+        if (!field_party_roster_.slot_active(slot)) {
+            selection_flags = static_cast<std::uint8_t>(
+                selection_flags & ~0x01U);
+        }
+        field_entity_selection_state_.records[slot].flags = selection_flags;
+    }
     const auto decision = advance_runner_switch(field_entity_selection_state_);
+    const auto selected_slot = field_entity_selection_state_.active_index;
+    if (selected_slot < runner_records.size() &&
+        field_party_roster_.slot_active(selected_slot)) {
+        field_party_roster_.set_active_slot(selected_slot);
+    }
+    auto& mutable_runner_records = field_party_roster_.records();
+    for (std::size_t slot = 0;
+         slot < field_entity_selection_state_.records.size() &&
+         slot < mutable_runner_records.size();
+         ++slot) {
+        if (!field_party_roster_.slot_active(slot)) {
+            continue;
+        }
+        auto& runner = mutable_runner_records[slot];
+        runner.flags = static_cast<std::uint16_t>(
+            (runner.flags & 0x00FFU) |
+            (static_cast<std::uint16_t>(field_entity_selection_state_
+                                            .records[slot]
+                                            .flags)
+             << 8U));
+    }
     if (field_entity_selection_state_.active_index <
         field_entity_selection_state_.records.size()) {
         field_entity_behavior_flags_ = static_cast<std::uint8_t>(
@@ -431,6 +480,9 @@ void FieldSceneRuntime::handle_field_mode_action_event() {
     }
     field_movement_behavior_record_.behavior_flags =
         field_entity_behavior_flags_;
+    field_entity_.projection.sprite_offset_y =
+        active_runner_record().projection_word_08;
+    refresh_field_hud_runner_slot();
     source_boundary("field.entities.handle_mode_action_event");
     if (decision.result == RunnerSwitchResult::switched) {
         source_boundary("field.entities.active_runner_changed");
@@ -1946,6 +1998,11 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             world_frame_logic_state_.resource_countdown);
     };
     field_runtime_callbacks_.handle_mode_action_event = [this] {
+        if (source_audio_event_callback_) {
+            // ROM 0x391A requests event 0x25 on the field C-button runner
+            // selection path.
+            source_audio_event_callback_(0x25U);
+        }
         handle_field_mode_action_event();
     };
     field_runtime_callbacks_.run_fixed_audio_transaction =
