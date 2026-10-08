@@ -175,6 +175,7 @@ std::filesystem::path find_asset_root(
                    " [--field-scene20-physical-entry-qa <output-dir>]"
                    " [--field-scene20-passkey-qa <output-dir>]"
                    " [--field-scene20-insufficient-passkey-qa <output-dir>]"
+                   " [--field-scene20-electronics-no-skill-qa <output-dir>]"
                    " [--field-scene26-event1-entry-qa <output-dir>]"
                    " [--field-scene26-event1-terminal-qa <output-dir>]"
                    " [--field-elevator-physical-entry-qa <output-dir>]"
@@ -267,6 +268,11 @@ std::filesystem::path find_asset_root(
             continue;
         }
         if (argument == "--field-scene20-insufficient-passkey-qa" &&
+            index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-scene20-electronics-no-skill-qa" &&
             index + 1 < argc) {
             ++index;
             continue;
@@ -8139,6 +8145,7 @@ enum class Scene20PhysicalEntryQaPath : std::uint8_t {
     grenade_unavailable,
     passkey_success,
     passkey_insufficient,
+    electronics_no_skill,
 };
 
 int run_field_scene20_physical_entry_qa(
@@ -8831,6 +8838,13 @@ int run_field_scene20_physical_entry_qa(
     std::array<std::uint8_t, 4096U>
         insufficient_passkey_collision_map_before{};
     std::size_t insufficient_passkey_audio_count = 0U;
+    std::array<std::uint8_t, 4096U>
+        electronics_no_skill_collision_map_before{};
+    std::optional<std::array<std::uint8_t, kRunnerRecordInventorySlots>>
+        electronics_no_skill_inventory_items_before;
+    std::optional<std::array<std::uint8_t, kRunnerRecordInventorySlots>>
+        electronics_no_skill_inventory_phase_before;
+    std::size_t electronics_no_skill_audio_count = 0U;
     if (path == Scene20PhysicalEntryQaPath::passkey_success) {
         const auto collision_map_before = field_scene.state()
                                               .field_scene_buffers
@@ -9068,6 +9082,14 @@ int run_field_scene20_physical_entry_qa(
     }
     const auto& maglock_choices = field_scene.field_interaction_panel();
     const auto maglock_choices_image = render();
+    bool no_passkey_choices_text = false;
+    for (std::size_t segment = 0U;
+         segment < maglock_choices.text_segment_count; ++segment) {
+        no_passkey_choices_text = no_passkey_choices_text ||
+            maglock_choices.text_segments[segment].find(
+                "Since you do not have a Maglock Passkey") !=
+                std::string_view::npos;
+    }
     const bool choices_are_source_complete =
         field_scene.field_interaction_open() &&
         maglock_choices.source_complete &&
@@ -9077,7 +9099,9 @@ int run_field_scene20_physical_entry_qa(
         maglock_choices.options[1].source_label.find("Frag") !=
             std::string::npos &&
         maglock_choices.options[2].source_label.find("Walk") !=
-            std::string::npos;
+            std::string::npos &&
+        (path != Scene20PhysicalEntryQaPath::electronics_no_skill ||
+         no_passkey_choices_text);
     if (!choices_are_source_complete ||
         field_hud_chrome_survives(maglock_choices_image, asset_root) ||
         maglock_choices_image.size() != QSize(kSceneWidth, kSceneHeight) ||
@@ -9105,7 +9129,197 @@ int run_field_scene20_physical_entry_qa(
             return 3;
         }
     }
-    if (path == Scene20PhysicalEntryQaPath::grenade_unavailable) {
+    if (path == Scene20PhysicalEntryQaPath::electronics_no_skill) {
+        const auto& party = field_scene.field_party_records_for_dump();
+        bool active_party_member_found = false;
+        bool active_party_has_electronics_skill = false;
+        for (std::size_t slot = 0U; slot < party.size(); ++slot) {
+            const auto& runner = party[slot];
+            if (!field_scene.field_party_slot_active_for_dump(slot) ||
+                (runner.flags & 0x0100U) == 0U) {
+                continue;
+            }
+            active_party_member_found = true;
+            active_party_has_electronics_skill =
+                active_party_has_electronics_skill || runner.skills[9] != 0U;
+        }
+        const auto& active_runner = field_scene.active_runner_record();
+        if (!active_party_member_found || active_party_has_electronics_skill ||
+            active_runner.archetype_index != 2U ||
+            active_runner.skills[9] != 0U ||
+            field_scene.field_activity_selection_for_dump() != 2U) {
+            std::cerr << "Scene-20 Electronics QA: expected the source "
+                         "Samurai class-2 record with no active Electronics skill "
+                         "against selection 2 (archetype="
+                      << static_cast<unsigned>(active_runner.archetype_index)
+                      << ", skill=" << static_cast<unsigned>(
+                             active_runner.skills[9])
+                      << ", selection=" << static_cast<unsigned>(
+                             field_scene.field_activity_selection_for_dump())
+                      << ")\n";
+            return 3;
+        }
+        electronics_no_skill_inventory_items_before =
+            active_runner.inventory_item_codes;
+        electronics_no_skill_inventory_phase_before =
+            active_runner.inventory_phase_bytes;
+        electronics_no_skill_collision_map_before = field_scene.state()
+            .field_scene_buffers.source_metadata.terrain_collision_map;
+        electronics_no_skill_audio_count = field_audio_events.size();
+
+        field_scene.set_controller_port_byte(0x40U); // ordinary A: Electronics
+        field_scene.advance_frame();
+        ++frame;
+        const auto electronics_choice_event =
+            field_scene.controller_event_word_for_dump();
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++frame;
+        const auto& no_skill_panel = field_scene.field_interaction_panel();
+        const auto no_skill_image = render();
+        const auto& no_skill_runner = field_scene.active_runner_record();
+        const bool no_skill_text_matches =
+            no_skill_panel.text_segment_count == 1U &&
+            no_skill_panel.text_segments[0].find(
+                "not skilled in Electronics") != std::string_view::npos;
+        const bool no_skill_inventory_unchanged =
+            electronics_no_skill_inventory_items_before.has_value() &&
+            electronics_no_skill_inventory_phase_before.has_value() &&
+            no_skill_runner.inventory_item_codes ==
+                *electronics_no_skill_inventory_items_before &&
+            no_skill_runner.inventory_phase_bytes ==
+                *electronics_no_skill_inventory_phase_before;
+        const auto& no_skill_collision_map_after_action = field_scene.state()
+            .field_scene_buffers.source_metadata.terrain_collision_map;
+        const bool no_skill_world_unchanged =
+            no_skill_collision_map_after_action ==
+                electronics_no_skill_collision_map_before &&
+            field_scene.field_activity_selection_for_dump() == 2U;
+        const bool no_skill_action_silent =
+            field_audio_events.size() == electronics_no_skill_audio_count;
+        if ((electronics_choice_event & 0xFF00U) != 0x4000U ||
+            !field_scene.field_interaction_open() || !no_skill_panel.open ||
+            !no_skill_panel.source_complete ||
+            no_skill_panel.kind != DialoguePanelKind::information_page ||
+            no_skill_panel.actor_kind != DialoguePanelActorKind::none ||
+            no_skill_panel.option_count != 0U || !no_skill_text_matches ||
+            !no_skill_inventory_unchanged || !no_skill_world_unchanged ||
+            !no_skill_action_silent ||
+            field_hud_chrome_survives(no_skill_image, asset_root) ||
+            no_skill_image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            !save("maglock-electronics-no-skill") || !save("actual")) {
+            std::cerr << "Scene-20 Electronics QA: ordinary A did not show "
+                         "the source no-skill information page without "
+                         "mutating the runner/map or adding a sound (event=0x"
+                      << std::hex << electronics_choice_event << std::dec
+                      << ", open=" << field_scene.field_interaction_open()
+                      << ", options=" << no_skill_panel.option_count
+                      << ", text='"
+                      << (no_skill_panel.text_segment_count == 0U
+                              ? std::string_view{}
+                              : no_skill_panel.text_segments[0])
+                      << "', inventory=" << no_skill_inventory_unchanged
+                      << ", map=" << no_skill_world_unchanged
+                      << ", audio=" << electronics_no_skill_audio_count
+                      << "->" << field_audio_events.size() << ")\n";
+            return 3;
+        }
+        write_state("maglock-electronics-no-skill");
+        if (!save("maglock-electronics-no-skill-wait-1")) {
+            return 3;
+        }
+        for (std::uint8_t tick = 1U; tick < 30U; ++tick) {
+            field_scene.advance_frame();
+            ++frame;
+            if (tick == 14U || tick == 29U) {
+                if (!save("maglock-electronics-no-skill-wait-" +
+                          std::to_string(static_cast<unsigned>(tick + 1U)))) {
+                    return 3;
+                }
+            }
+        }
+        const auto held_no_skill_image = render();
+        const auto& no_skill_collision_map_after_wait = field_scene.state()
+            .field_scene_buffers.source_metadata.terrain_collision_map;
+        const auto& no_skill_runner_after_wait =
+            field_scene.active_runner_record();
+        if (held_no_skill_image != no_skill_image ||
+            field_audio_events.size() != electronics_no_skill_audio_count ||
+            no_skill_collision_map_after_wait !=
+                electronics_no_skill_collision_map_before ||
+            !electronics_no_skill_inventory_items_before.has_value() ||
+            !electronics_no_skill_inventory_phase_before.has_value() ||
+            no_skill_runner_after_wait.inventory_item_codes !=
+                *electronics_no_skill_inventory_items_before ||
+            no_skill_runner_after_wait.inventory_phase_bytes !=
+                *electronics_no_skill_inventory_phase_before ||
+            !save("maglock-electronics-no-skill-held")) {
+            std::cerr << "Scene-20 Electronics QA: source no-skill result "
+                         "changed during its 30-frame wait or mutated world "
+                         "state\n";
+            return 3;
+        }
+        write_state("maglock-electronics-no-skill-held");
+
+        field_scene.set_controller_port_byte(0x40U); // ordinary A acknowledges
+        field_scene.advance_frame();
+        ++frame;
+        const auto acknowledgement_event =
+            field_scene.controller_event_word_for_dump();
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++frame;
+        const auto returned_scene20 = render();
+        const auto returned_field_only = render_field_scene_only();
+        const auto& acknowledgement_panel =
+            field_scene.field_interaction_panel();
+        const auto& returned_runner = field_scene.active_runner_record();
+        const auto& returned_collision_map = field_scene.state()
+            .field_scene_buffers.source_metadata.terrain_collision_map;
+        const bool result_closed_cleanly =
+            (acknowledgement_event & 0xFF00U) == 0x4000U &&
+            !field_scene.field_interaction_open() &&
+            !field_scene.dialogue_open() &&
+            !field_scene.field_mode_text_open_for_dump() &&
+            !field_scene.shop_menu_open() &&
+            field_scene.field_scene_reference_for_dump() == 0x14U &&
+            !acknowledgement_panel.open &&
+            field_hud_chrome_survives(returned_scene20, asset_root) &&
+            count_playfield_lit(returned_scene20) >= 100U &&
+            returned_scene20 == returned_field_only &&
+            returned_runner.inventory_item_codes ==
+                *electronics_no_skill_inventory_items_before &&
+            returned_runner.inventory_phase_bytes ==
+                *electronics_no_skill_inventory_phase_before &&
+            returned_runner.skills[9] == 0U &&
+            returned_collision_map == electronics_no_skill_collision_map_before &&
+            field_scene.field_activity_selection_for_dump() == 2U &&
+            field_audio_events.size() == electronics_no_skill_audio_count;
+        write_state("after-electronics-no-skill-acknowledgement");
+        if (!result_closed_cleanly ||
+            !returned_scene20.save(QString::fromStdWString(
+                (output /
+                 "scene20-after-electronics-no-skill-acknowledgement.bmp")
+                    .wstring())) ||
+            !returned_field_only.save(QString::fromStdWString(
+                (output / "scene20-field-only-after-electronics-no-skill.bmp")
+                    .wstring())) ||
+            !save("scene20-return-after-electronics-no-skill")) {
+            std::cerr << "Scene-20 Electronics QA: ordinary A did not close "
+                         "the generic result page and restore a clean field "
+                         "screen (event=0x"
+                      << std::hex << acknowledgement_event << std::dec
+                      << ", closed=" << !field_scene.field_interaction_open()
+                      << ", scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << ", clean-frame="
+                      << (returned_scene20 == returned_field_only)
+                      << ", audio=" << electronics_no_skill_audio_count
+                      << "->" << field_audio_events.size() << ")\n";
+            return 3;
+        }
+        write_state("scene20-return-after-electronics-no-skill");
+    } else if (path == Scene20PhysicalEntryQaPath::grenade_unavailable) {
         constexpr std::uint8_t frag_grenade_code = 0x0DU;
         const auto& party = field_scene.field_party_records_for_dump();
         bool active_party_has_grenade = false;
@@ -9289,9 +9503,9 @@ int run_field_scene20_physical_entry_qa(
             !insufficient_passkey_remains_unchanged ||
             !insufficient_passkey_left_world_unchanged ||
             !save("scene20-return-after-walk-away")) {
-            std::cerr << "Scene-20 physical-entry QA: normal C did not close "
-                         "the maglock page and restore a clean interior "
-                         "screen (open=" << !walk_away_closed << ", scene="
+            std::cerr << "Scene-20 physical-entry QA: normal exit input did "
+                         "not close the maglock page and restore a clean "
+                         "interior screen (open=" << !walk_away_closed << ", scene="
                       << field_scene.field_scene_reference_for_dump()
                       << ", selected=" << walk_away_panel.selected_option
                       << ", hud=" << walk_away_hud_clean
@@ -9339,6 +9553,9 @@ int run_field_scene20_physical_entry_qa(
                                     : path == Scene20PhysicalEntryQaPath::
                                                  passkey_insufficient
                                           ? "insufficient-passkey-walk-away"
+                                          : path == Scene20PhysicalEntryQaPath::
+                                                       electronics_no_skill
+                                                ? "electronics-no-skill"
                                           : path == Scene20PhysicalEntryQaPath::
                                                        passkey_success
                                                 ? "passkey-success"
@@ -12494,6 +12711,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_scene20_insufficient_passkey_qa_path;
         std::optional<std::filesystem::path>
+            field_scene20_electronics_no_skill_qa_path;
+        std::optional<std::filesystem::path>
             field_scene26_event1_entry_qa_path;
         std::optional<std::filesystem::path>
             field_scene26_event1_terminal_qa_path;
@@ -12679,6 +12898,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene20_insufficient_passkey_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene20-electronics-no-skill-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene20_electronics_no_skill_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -13288,6 +13514,13 @@ int main(int argc, char** argv) {
                     *field_scene20_insufficient_passkey_qa_path,
                     field_audio_events, field_source_boundaries,
                     Scene20PhysicalEntryQaPath::passkey_insufficient);
+            }
+            if (field_scene20_electronics_no_skill_qa_path.has_value()) {
+                return run_field_scene20_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_scene20_electronics_no_skill_qa_path,
+                    field_audio_events, field_source_boundaries,
+                    Scene20PhysicalEntryQaPath::electronics_no_skill);
             }
             if (field_scene26_event1_entry_qa_path.has_value()) {
                 return run_field_scene26_event1_physical_entry_qa(

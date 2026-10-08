@@ -449,6 +449,20 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_scene20_insufficient_passkey_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# The US ROM's Samurai template at 0x7291A has Electronics 0 at +0x8A. Follow
+# its normal C0 doorway route; ROM 0x21692 must show the no-skill result
+# without running the random trial, changing the map/inventory, or adding a
+# sound.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_scene20_electronics_no_skill_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-archetype samurai
+                 --field-scene20-electronics-no-skill-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-scene20-electronics-no-skill-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_scene20_electronics_no_skill_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Follow ordinary D-pad movement to scene-2 collision record 2. The source
 # record is a type-2 collision object, not a Stoker identity or event code;
 # this QA verifies its observed event-0/no-dialogue result and full-frame route.
