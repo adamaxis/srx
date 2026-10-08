@@ -200,53 +200,66 @@ code `9` only, so they do not directly publish `8`. However, `0x2CE0` leaves
 That route has not been traced, so this rectangle check does not prove that
 mode `0x13` is unreachable.
 
-The Qt runtime does not yet provide this path: its field coordinator callback
-for `advance_field_mode_transition` is unbound, its `mode_transition_gate`
-does not receive the scene classifier result, and its entity-population
-callback remains an explicit source boundary. The coordinator's current
-`field_mode` value is populated from the scene resource mode, so it cannot
-stand in for `FFFBF9`. The profile-selected list bytes and referenced template
-names/positions above are source-decoded, but this is not runtime population.
-Next, trace live-record defaults and entity-state tables, extract named host
-actor frames during the explicit import step, and connect typed scene records
-to the renderer. Trace actor collision/action dispatch before adding those
-same records as weapon targets. Keep special list `0x1E552` separate until an
-actual event path selects it.
+The Qt runtime still does not provide the generic mode-`0x13` activity path:
+its field coordinator callback for `advance_field_mode_transition` is
+unbound, its `mode_transition_gate` does not receive the scene classifier
+result, and its entity-population callback remains an explicit source
+boundary. The coordinator's current `field_mode` value comes from the scene
+resource mode, so it cannot stand in for `FFFBF9`. Separately, the two
+profile-selected default lists at `0x172D1C` and `0x1D91DA` are extracted as
+named typed data and their state-zero images are drawn by the live Qt field
+compositor. That presentation does not allocate or update the ROM's live
+entity records. Keep special list `0x1E552` separate until an actual event
+path selects it.
 
 ## Visual verification questions
 
-1. **Does each actor look correct?** Not evaluated in Qt yet. ROM frame
-   descriptors and their origins are traced, but no host actor image is wired.
-2. **Does its displayed state match its behavior?** Not evaluated. Root flags,
-   source slots, position, and override bytes must agree with the live record.
-3. **Are its visuals correct?** The animation frame, palette line, and origin
-   are source-decoded for the default guard and pedestrian idle states. The
-   corresponding host images and whole-screen composition are not yet present.
-   Projection types 0 through 11 separately select geometry at `0x5F78`.
-4. **How does it animate?** The default initial state is a one-frame repeat.
-   Actor action dispatch, movement, and non-idle state transitions remain
-   unconnected.
-5. **What sound accompanies it and for how long?** No actor-specific audio call
-   has been traced for these lists. Keep this open until the selected actor
-   action/behavior call path is followed.
-6. **Are the rest of the screen and state correct?** Not yet verified. Future
-   QA must review the map, HUD, player, all actors, and return/cleanup frames.
-7. **Do multiple independent frames support the interpretation?** A matching
-   Genesis scene-`0x2F` actor sequence has not been checked in this audit. ROM
-   source proves the record selection, not its rendered appearance.
-8. **Are old graphics or controls left under new ones?** Actor composition is
-   not implemented; full-scene comparison is required after integration.
-9. **Are there enough frames across the animation and transition?** Not yet.
-   Capture entry, each source animation phase, idle holds, combat contact,
-   retirement, and return, then compare all available independent captures.
+1. **Does each actor look correct?** The Release scene-`0x14` full-screen
+   captures show the two currently visible guard images on the map, with the
+   runner, terrain, and right HUD intact. This checks the decoded state-zero
+   art and placement path, not exact Genesis pixels.
+2. **Does its displayed state match its behavior?** The loaded population,
+   source order, world positions, kinds, palette lines, and override bytes
+   match the profile lists. The `0x600E` selector/frame words start at zero;
+   the renderer currently holds that initial pose because live actor updates
+   are not connected.
+3. **Are its visuals correct?** The selected descriptors, RGBA images,
+   palette lines, and signed origins are source-decoded. The two named images
+   are composed in the entire field screen. `0x481E`'s separate projection
+   slot assignment remains unresolved and is not claimed as this actor layer.
+4. **How does it animate?** Each initial state list has one frame. The static
+   idle art therefore holds in the current Qt path. Actor callbacks, movement
+   cadence, transitions, and later poses still need a ROM trace and native
+   implementation.
+5. **What sound accompanies it and for how long?** No sound request is tied to
+   loading or drawing these default entries. Actor action and behavior calls
+   have not been followed far enough to identify any later sound or duration.
+6. **Are the rest of the screen and state correct?** All 273 Release captures
+   in the field-action, player-action, and scene-`0x14` entry QA folders were
+   reviewed across 18 contact sheets. The map, runner, HUD, and neighboring
+   controls were checked with the actor pass.
+7. **Do multiple independent frames support the interpretation?** Native
+   `scene20-entry.bmp` and `scene20-frame-30.bmp` show the same static
+   population. Independent section 03 frames `003540`, `003560`, and `003580`
+   show small field characters, but do not establish the same scene/list or
+   exact actor identities.
+8. **Are old graphics or controls left under new ones?** The actors enter the
+   field sprite pass between the map and shared HUD. The reviewed whole-screen
+   captures show no stale menu panel or overdrawn menu controls in these
+   tested routes.
+9. **Are there enough frames across the animation and transition?** The
+   initial one-frame hold is sampled at entry and after 30 updates. That is
+   not enough for actor animation, movement, interaction, combat, or
+   retirement; those states are not implemented in this slice.
 
 ## Next implementation slice
 
-In the explicit asset-import step, emit named kind-5/kind-11 initial frames
-with their source palette lines and descriptor origins, plus named typed
-default-list data for scenes 2 and `0x14`. Connect those lists to the field
-scene state and render the actors at their projected positions. Then trace
-movement/action and collision before feeding any actor into weapon targeting;
+The named default-list data and kind-5/kind-11 idle images are now extracted
+and connected to the Qt field compositor. Next, trace the ROM's per-frame
+entity update at `0x4658`, the kind-specific action dispatch, and how these
+template records acquire their behavior callbacks. Convert only the traced
+state transitions, cadence, and movement into typed native actor state. Trace
+actor collision/action dispatch before adding any actor to weapon targeting;
 follow hit/status/damage and retirement before calling combat functional.
 Keep the hill partial until full-screen scene captures cover entry, idle,
 action, and return and an independent Genesis comparison is found or recorded
