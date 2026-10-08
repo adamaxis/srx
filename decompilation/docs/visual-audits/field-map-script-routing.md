@@ -4,8 +4,7 @@ Date: 2026-10-07
 
 **Status:** partial. This slice adds a typed native route policy for the
 collision events already connected to the Qt field controller. It does not
-cover every map event, all elevator groups, or establish a first-entry Stoker
-cutscene.
+cover every map event or establish a first-entry Stoker cutscene.
 
 ## ROM-derived route model
 
@@ -24,6 +23,7 @@ records.
 | Scene 2, collision value `0xC1` at ROM `0x17314C`, event 1 | Active map's event table and world-activity resource selector | Row 1 in `0x172CDC` selects scene `0x1A` (scene 26); its resource bundle has bound 3 |
 | Scene 26-29 family, paired `0xDD` collision rectangles, event 29 | Floor selector and selected-scene transition | `0x58D94` calls `0x58DE0`; the typed child scene group contains scenes 26, 27, and 28. Physical QA covers scenes 26-29; destination identity remains open. This is separate from the Stoker scene-2 event-2 dialogue route |
 | Scene 20, collision value `0x82` at ROM `0x1D9724`, event 2 | Building interaction continuation | The separate electromagnetic-lock handler `0x20E48` opens its generic prompt |
+| Scene 26, collision record 117 (`0xA2`) at ROM `0x1D9E00`, world-mode-2 event 2 | Generic electromagnetic-lock continuation | `0xB7B8` selects `0x20E48`; descriptor-route exploration reaches its introduction after the event-`0x1D` elevator, but the lock action and route to the D8 terminal remain unverified |
 | Scene 26, collision values `0xD8` at ROM `0x1D9E46`, event `0x18` | Direct typed Security Terminal continuation | `0xB7B8` requires two negative samples and selects `0x20EC2`; the physical-input QA opens both choices and Walk Away returns |
 | Any remaining in-range map-table event | Active map's own event table | The selected row is passed to the existing world-activity coordinator; missing/out-of-range tables remain unresolved |
 
@@ -41,15 +41,19 @@ The runtime currently chooses group index 0 for those scenes. Descriptor-spawn
 checkpoint QA physically reaches event 29 from scenes 25, 34, and 40. Scene 25
 continues through `25->22->23->24->21->22`, physically entering each member
 trigger in group 21-24 and carrying the floor index through each handoff. The
-scene-40 route continues through `40->36->37->38->39->35->36`, physically entering
-every member trigger in group 35-39 and carrying the selected floor across the
+scene-34 route continues through `34->31->32->33->30->31`, physically entering
+all four member triggers in group 30-33. Scenes 31-33 need six ordinary Right
+updates to align with the collision-defined trigger lane before Up reaches
+event 29; scene 30 is centered at spawn and uses Up. The scene-40 route
+continues through `40->36->37->38->39->35->36`, physically entering every
+member trigger in group 35-39 and carrying the selected floor across the
 handoffs. Scene 43 starts a chained `43->42->41->42` route that physically
 tests both member-scene triggers in group 41-42. Scene 29 has separate trigger
 QA for group 26-28. The initial non-member routes use a test-only interaction
 mode setter and do not verify the ordinary resource-scene entry path. The
 resource setup at `0x167AE` clears current-floor `FFF0C8` for scene IDs
 `0x15..0x2B`, supporting index 0 on normal entry; saved-floor restoration
-remains open. Member-scene routes 30-33 remain unverified.
+remains open.
 
 The native route policy is `resolve_field_script_route()`. It names the
 Stoker dialogue and Ares service directly, then resolves all other valid
@@ -145,16 +149,18 @@ scenes 26-29, descriptor-spawn checkpoints 25, 29, 34, 40, and 43, and chained
 member-scene routes `25->22->23->24->21->22`,
 `40->36->37->38->39->35->36`, and `43->42->41->42`, with a nine-question
 review in [field-elevator-selector.md](field-elevator-selector.md). The
-1,858-frame scene-25 group route, 2,332-frame scene-40 group route, and
-988-frame scene-43 group route match across Debug/Release by relative-path
-SHA-256; their full timelines were reviewed in 48, 63, and 25 chronological
-whole-screen sheets, respectively. Physical trigger paths for member scenes
-30-33 remain open.
+1,858-frame scene-25 group route, 1,856-frame scene-34 group route,
+2,332-frame scene-40 group route, and 988-frame scene-43 group route match
+across Debug/Release by relative-path SHA-256. Their full timelines were
+reviewed in 48, 48, 63, and 25 chronological whole-screen sheets, respectively.
+Physical trigger paths for group members 30-33 are now covered.
 
 This is a route-planning foundation, not complete map/path coverage. The
 scene-2 event-1 physical route is behaviorally covered but visually partial
 because of the runner/HUD overlap and missing exact Genesis comparison. The
-full descriptor-spawn route to the Security Terminal, additional
-doorway/object records, broad terrain recovery, building item use, reverse
-transitions, and world-entry one-shot conditions still need their own ROM
-traces and normal-input route captures.
+scene-26 descriptor route has been explored through its event-`0x1D` elevator
+and the A2 maglock introduction; lock actions and traversal from that result
+to the D8 Security Terminal remain open. Additional doorway/object records,
+broad terrain recovery, other building item use, reverse transitions, and
+world-entry one-shot conditions still need their own ROM traces and normal-input
+route captures.

@@ -638,9 +638,11 @@ set_tests_properties(shadowrun_ghidra_conversion_qt_security_terminal_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Scene 26 collision records 124-125 contain the signed event-0x18 Security
-# Terminal region. Start at the ROM descriptor spawn, traverse scene-26
-# corridors and A2/82 terrain interactions with ordinary d-pad input, enter
-# the terminal, show both choices, and Walk Away.
+# Terminal region. Start at the source-coordinate pre-trigger checkpoint
+# (0x1A00,0x0500), approach with ordinary Up input, show both choices, and Walk
+# Away. Descriptor-spawn exploration reaches the event-0x1D elevator and then
+# the A2/event-2 electromagnetic-lock introduction; its action result and the
+# path from there to the D8 terminal remain unverified.
 add_test(NAME shadowrun_ghidra_conversion_qt_security_terminal_physical_entry_qa
          COMMAND shadowrun_ghidra_conversion_qt
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
