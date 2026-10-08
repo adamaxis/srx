@@ -677,6 +677,19 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_scene26_maglock_descriptor_route_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Keep one FieldSceneRuntime alive across the normal scene-2 event-1 handoff,
+# the physical scene-26 route, and the D8 Security Terminal result. This checks
+# that the floor selected at 0x167AE survives traversal into 0x20EC2. Only the
+# passkey, Electronics skill, and PRNG result are QA fixtures.
+add_test(NAME shadowrun_ghidra_conversion_qt_scene26_event1_terminal_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-scene26-event1-terminal-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/scene26-event1-terminal-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_scene26_event1_terminal_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Ares mode 2/event 11 must pass through the generic 30-frame prompt before
 # entering its modal service menu. This captures category/item selection,
 # insufficient funds, default-No/Yes confirmation, ordinary and E-coded

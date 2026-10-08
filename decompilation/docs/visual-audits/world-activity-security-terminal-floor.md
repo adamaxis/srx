@@ -32,8 +32,10 @@ field. The feature remains partial where noted.
    host seed `0x1234`, the source-shaped PRNG callbacks publish
    `FFE12C = 2` and `FFE185 = 2`; the successful result text says “third
    floor.” QA compares each typed field and the resulting visible text. The
-   physical collision that writes the resolved event code is outside this
-   QA path.
+   physical collision that writes this focused QA's resolved event code is
+   outside this test; the separate event-1 route verifies normal collision-to-
+   resource-scene entry and the selected-floor handoff to the physical D8
+   terminal.
 
 3. **Are the visuals correct? — Unknown against Genesis.** Runtime loads the
    named scene map and cursor metadata, then uses the existing Security
@@ -93,6 +95,9 @@ field. The feature remains partial where noted.
 - **Reported defect resolved:** no visual defect-resolution claim; independent
   pixel evidence is unavailable.
 
-The feature stays partial because the normal collision-to-event-code producer,
-the source animation cadence, persistent sound stop behavior, and independent
-Genesis visual frames remain open.
+The dedicated dispatcher QA still injects its resolved event byte, while the
+joined scene-2 event-1 route now verifies one normal collision-to-resource-
+scene path through the physical D8 terminal and selected-floor result. The
+feature stays partial because other collision-to-event routes, exact source
+animation cadence, persistent sound stop behavior, the scene-2 runner/HUD
+overlap, and independent Genesis visual frames remain open.

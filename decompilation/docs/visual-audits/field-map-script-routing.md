@@ -69,6 +69,16 @@ cannot cross record 47's `0x7F` wall directly. The full trace, screenshots,
 and remaining visual issue are recorded in the
 [scene-2 event-1 audit](scene2-event1-scene26-route.md).
 
+The end-to-end `shadowrun_ghidra_conversion_qt_scene26_event1_terminal_qa`
+keeps that same runtime alive after the event-1 handoff, traverses scene 26 to
+the physical D8 event-`0x18` trigger, and resolves Electronics through the
+existing terminal handler. The entry selects floor index 0 from a bound of 3;
+the result displays “first floor” after the test's explicit passkey, skill, and
+PRNG fixtures. This joins the normal map event, resource setup, physical map
+route, and terminal result without adding a runtime subsystem. The
+question-by-question review is in
+[the scene-26 event-1 terminal audit](scene26-event1-terminal-route.md).
+
 ## Full-screen verification
 
 I reviewed all 83 route BMPs as whole 320x224 frames: 12 Stoker frames, 14
@@ -101,6 +111,13 @@ field image with no modal or stale controls. Debug/Release outputs match by
 relative-path SHA-256 across all 49 artifacts. The route verifies passkey use
 at the physical trigger; it does not verify story-driven passkey acquisition
 or independent Genesis visuals for this lock.
+
+The joined scene-2-to-scene-26 terminal route writes 546 whole-screen BMPs
+across the event-1 approach, 500 scene-26 movement/interaction frames, result
+holds, and field return. All 557 test artifacts match across Debug and Release.
+The separate event-1 screenshots match the earlier route exactly; the new
+scene-26 sequence was reviewed again because its animation phases differ from
+the descriptor-spawn route. The known scene-2 runner/HUD overlap remains open.
 
 The Ares introduction and category were also compared at full size with the
 independent longplay references `ares-introduction-5983.png` and

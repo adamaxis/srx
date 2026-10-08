@@ -175,6 +175,7 @@ std::filesystem::path find_asset_root(
                    " [--field-scene20-physical-entry-qa <output-dir>]"
                    " [--field-scene20-passkey-qa <output-dir>]"
                    " [--field-scene26-event1-entry-qa <output-dir>]"
+                   " [--field-scene26-event1-terminal-qa <output-dir>]"
                    " [--field-elevator-physical-entry-qa <output-dir>]"
                    " [--field-scene26-maglock-descriptor-route-qa <output-dir>]"
                    " [--field-security-terminal-physical-entry-qa <output-dir>]"
@@ -260,6 +261,11 @@ std::filesystem::path find_asset_root(
             continue;
         }
         if (argument == "--field-scene20-passkey-qa" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-scene26-event1-terminal-qa" &&
+            index + 1 < argc) {
             ++index;
             continue;
         }
@@ -6740,6 +6746,190 @@ int run_field_scene26_maglock_descriptor_route_qa(
     return 0;
 }
 
+int run_field_scene26_event1_terminal_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Scene-26 event-1 terminal QA: could not clear output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        return 3;
+    }
+
+    // Keep one FieldSceneRuntime alive across the normal scene-2 collision,
+    // map-event selection, scene-26 route, and terminal result. Only the
+    // inventory, skill, and PRNG values below are test fixtures; all map and
+    // menu transitions use ordinary controller input.
+    const auto entry_output = output / "scene2-event1-entry";
+    if (run_field_scene26_event1_physical_entry_qa(
+            field_scene, asset_root, entry_output, field_audio_events,
+            source_boundaries) != 0) {
+        return 3;
+    }
+    const auto selected_floor = field_scene.security_floor_index_for_dump();
+    const auto& activity = field_scene.world_activity_state_for_dump();
+    if (field_scene.field_scene_reference_for_dump() != 26U ||
+        !selected_floor.has_value() || *selected_floor != 0U ||
+        activity.mode != WorldActivityMode::resource_activity ||
+        activity.scene_id != 26U ||
+        activity.resource_random_index_bound != 3U ||
+        activity.selected_resource_random_index != *selected_floor ||
+        field_scene.field_entity_world_position().x != 0x0A00U ||
+        field_scene.field_entity_world_position().y != 0x0500U) {
+        std::cerr << "Scene-26 event-1 terminal QA: ordinary entry did not "
+                     "preserve the selected resource-floor state\n";
+        return 3;
+    }
+
+    const auto physical_route_output = output / "scene26-physical-route";
+    if (run_field_scene26_maglock_descriptor_route_qa(
+            field_scene, asset_root, physical_route_output,
+            field_audio_events, source_boundaries) != 0) {
+        return 3;
+    }
+    if (!field_scene.field_interaction_open() ||
+        field_scene.security_floor_index_for_dump() != selected_floor) {
+        std::cerr << "Scene-26 event-1 terminal QA: physical route lost the "
+                     "selected floor before the Security Terminal prompt\n";
+        return 3;
+    }
+
+    const auto render = [&field_scene](const bool field_only = false) {
+        QImage frame(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        frame.fill(Qt::black);
+        QPainter painter(&frame);
+        if (field_only) {
+            field_scene.paint_field_scene_for_dump(painter);
+        } else {
+            field_scene.paint(painter);
+        }
+        painter.end();
+        return frame;
+    };
+    const auto save = [&output](const std::string_view name,
+                                const QImage& frame) {
+        return frame.size() == QSize(kSceneWidth, kSceneHeight) &&
+               frame.save(QString::fromStdWString(
+                   (output / (std::string(name) + ".bmp")).wstring()));
+    };
+
+    const auto terminal_prompt = render();
+    if (!save("terminal-prompt-before-electronics", terminal_prompt)) {
+        return 3;
+    }
+    // Match the deterministic terminal-result route's explicit source inputs.
+    field_scene.active_runner_record().skills[9U] = 10U;
+    field_scene.set_source_random_seed_for_dump(0x1234U);
+    const auto audio_before_access = field_audio_events.size();
+    for (std::uint8_t wait = 1U; wait <= 10U; ++wait) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        if (render() != terminal_prompt) {
+            std::cerr << "Scene-26 event-1 terminal QA: prompt changed during "
+                         "its source ten-frame input delay\n";
+            return 3;
+        }
+        if ((wait == 1U || wait == 10U) &&
+            !save(wait == 1U ? "terminal-prompt-wait-1"
+                             : "terminal-prompt-wait-10",
+                  render())) {
+            return 3;
+        }
+    }
+    field_scene.set_controller_port_byte(0x40U); // ordinary A: Electronics
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+
+    const auto& result_panel = field_scene.field_interaction_panel();
+    bool first_floor_visible = false;
+    for (std::size_t segment = 0U;
+         segment < result_panel.text_segment_count; ++segment) {
+        first_floor_visible = first_floor_visible ||
+            result_panel.text_segments[segment].find("first floor") !=
+                std::string_view::npos;
+    }
+    const auto floor_result = render();
+    if (!field_scene.field_interaction_open() || !result_panel.open ||
+        !result_panel.source_complete ||
+        result_panel.kind != DialoguePanelKind::information_page ||
+        result_panel.actor_kind != DialoguePanelActorKind::none ||
+        result_panel.option_count != 0U || !first_floor_visible ||
+        field_audio_events.size() != audio_before_access + 1U ||
+        field_audio_events.back() != 0x30U ||
+        floor_result == terminal_prompt ||
+        field_hud_chrome_survives(floor_result, asset_root) ||
+        !save("security-terminal-first-floor-result", floor_result) ||
+        !save("actual", floor_result)) {
+        std::cerr << "Scene-26 event-1 terminal QA: Electronics did not use "
+                     "the selected floor in its successful result (floor="
+                  << static_cast<unsigned>(*selected_floor) << ", audio="
+                  << audio_before_access << "->" << field_audio_events.size()
+                  << ")\n";
+        return 3;
+    }
+
+    for (std::uint8_t wait = 1U; wait <= 30U; ++wait) {
+        field_scene.advance_frame();
+        if (render() != floor_result) {
+            std::cerr << "Scene-26 event-1 terminal QA: result changed during "
+                         "its source 30-frame hold\n";
+            return 3;
+        }
+        if ((wait == 1U || wait == 15U || wait == 30U) &&
+            !save(wait == 1U ? "first-floor-result-wait-1"
+                 : wait == 15U ? "first-floor-result-wait-15"
+                               : "first-floor-result-wait-30",
+                  render())) {
+            return 3;
+        }
+    }
+    field_scene.set_controller_port_byte(0x40U); // ordinary A dismisses
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    field_scene.advance_frame();
+    const auto returned_field = render();
+    if (field_scene.field_interaction_open() ||
+        field_scene.field_scene_reference_for_dump() != 26U ||
+        field_scene.security_floor_index_for_dump() != selected_floor ||
+        !field_scene.field_entity_visible_for_dump() ||
+        !field_hud_chrome_survives(returned_field, asset_root) ||
+        returned_field != render(true) ||
+        !save("scene26-return-after-terminal", returned_field)) {
+        std::cerr << "Scene-26 event-1 terminal QA: acknowledgement did not "
+                     "return to a clean selected scene\n";
+        return 3;
+    }
+
+    std::ofstream route_state(output / "selected-floor-route.tsv",
+                              std::ios::trunc);
+    if (!route_state) {
+        return 3;
+    }
+    route_state << "scene2_collision_event\tmap_row\tresource_scene\t"
+                   "resource_bound\tselected_floor\tterminal_event\t"
+                   "terminal_sound_request\n"
+                << "1\t1\t0x1A\t3\t"
+                << static_cast<unsigned>(*selected_floor)
+                << "\t0x18\t0x30\n";
+    std::cout << "field_scene26_event1_terminal_qa=passed "
+                 "collision_event=1 resource_scene=0x1A floor="
+              << static_cast<unsigned>(*selected_floor)
+              << " terminal_event=0x18 outcome=first-floor audio=0x30 "
+                 "passkey_and_skill=qa-seeded artifacts="
+              << output.string() << '\n';
+    return 0;
+}
+
 int run_field_security_terminal_physical_entry_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -11694,6 +11884,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_scene26_event1_entry_qa_path;
         std::optional<std::filesystem::path>
+            field_scene26_event1_terminal_qa_path;
+        std::optional<std::filesystem::path>
             field_elevator_physical_entry_qa_path;
         std::optional<std::uint16_t>
             field_elevator_nonmember_entry_scene;
@@ -11768,6 +11960,7 @@ int main(int argc, char** argv) {
                        " [--field-scene20-physical-entry-qa <output-dir>]"
                        " [--field-scene20-passkey-qa <output-dir>]"
                        " [--field-scene26-event1-entry-qa <output-dir>]"
+                       " [--field-scene26-event1-terminal-qa <output-dir>]"
                        " [--field-elevator-physical-entry-qa <output-dir>]"
                        " [--field-scene26-maglock-descriptor-route-qa <output-dir>]"
                        " [--field-elevator-scene25-entry-qa <output-dir>]"
@@ -11872,6 +12065,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene26_event1_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene26-event1-terminal-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene26_event1_terminal_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -12558,6 +12758,12 @@ int main(int argc, char** argv) {
                 return run_field_security_terminal_physical_entry_qa(
                     field_scene, asset_root,
                     *field_security_terminal_physical_entry_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_scene26_event1_terminal_qa_path.has_value()) {
+                return run_field_scene26_event1_terminal_qa(
+                    field_scene, asset_root,
+                    *field_scene26_event1_terminal_qa_path,
                     field_audio_events, field_source_boundaries);
             }
             if (field_scene26_maglock_descriptor_route_qa_path.has_value()) {
