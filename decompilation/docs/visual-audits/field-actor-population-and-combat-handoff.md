@@ -52,6 +52,35 @@ scene pedestrian list at `0x1EDECC` contains overrides at record bytes
 preserve order because later writes can replace an earlier value at the same
 offset.
 
+## Live-route reachability check
+
+The `0x13` result is a source mode-table result, not an ordinary scene-entry
+spawn rule. ROM `0x2CE0` consumes `FFFBF9` as the event column and `FFFC10` as
+the transition context. `0x2A94` initializes that context to `3` for mode 9;
+`0x136DE` clears it for scene 6; `0x03032` supplies the alternate-scene gate.
+The typed conversion test's `FFFBF9=8`, `FFFC10=0x14` pair does select mode
+`0x13` and scene `0x2F`, but it is only a table test, not a reproduced player
+route.
+
+I checked the intervening transition states against the extracted collision
+rectangles. From context 3, event codes `10, 10, 9, 8` can advance the table
+through contexts `0x10, 0x12, 0x15, 0x14`, entering scenes `0x2D, 0x30, 0x2D,
+0x2F`. A further event code `8` on scene `0x2F` would be required for the
+tested mode `0x13` result, but scene `0x2F`'s terrain rectangles contain event
+code `9` only. This rules out that particular terrain-rectangle sequence;
+another source event or actor contact could still publish code `8`, but has
+not been traced.
+
+The Qt runtime does not yet provide this path: its field coordinator callback
+for `advance_field_mode_transition` is unbound, its `mode_transition_gate`
+does not receive the scene classifier result, and its entity-population
+callback remains an explicit source boundary. The coordinator's current
+`field_mode` value is populated from the scene resource mode, so it cannot
+stand in for `FFFBF9`. Before using list `0x1E552` as weapon targets, trace an
+actual event path into it, split the live event/context/gate values into typed
+state, and connect its named actor assets to both the renderer and collision
+query.
+
 ## Visual verification questions
 
 1. **Does each actor look correct?** Not evaluated in Qt yet; the template
