@@ -76,7 +76,7 @@ clarification. None changes the original report's itemization.
 | `INVENTORY-02` | Using an item draws the runner portrait over other bars. | **Closed as a non-defect for the reported First Aid target/result panel.** ROM `0x123FA` redraws the selected runner's 4x4 panel at `C928` through `0x110E8`; its small portrait crosses the top of the posture strip in both Qt and independent Genesis frames 002610/002611/002630/002640. The `0x121C0` automatic-use acknowledgement does not draw that target portrait. Debug/Release full-screen routes and all transition frames were reviewed; see [item-use portrait placement audit](visual-analysis/qt-visual-audit.md#applied-review-first-aid-target-result-and-return). |
 | `ITEMS-01` | Armor, weapons, and their damage values are wrong. | **Partial.** The selected-armor detail preview now follows `0x12A8C -> 0x11352` and displays the selected D4D50 row with six-tile CF884 Wpns/Guns assets in the lower panel; Debug/Release screen checks and independent frame 002560 support its placement. The capture does not show a selected/equipped armor mismatch. Weapon detail rows now have explicit D4540 +0x25/+0x26 and CF84C asset regression coverage, but no independent selected-weapon frame is available. Combat damage values and shop/item presentation remain open; see the [selected armor preview audit](visual-audits/item-armor-detail-preview.md) and [weapon detail and magazine review](visual-audits/weapon-detail-and-magazine-switch-review.md). |
 | `FIELD-02` | The runner gets stuck in terrain and cannot enter buildings. | **Partial.** A typed scene-aware route policy keeps the Stoker C2 dialogue, Ares CB service, and C0 scene-20 doorway distinct, then routes other events through the active map table. Debug/Release physical routes cover Stoker, Ares, the scene-20 maglock, both scene-26 passkey doors, and the D8 Security Terminal prompt. Passkey success is tested with a QA-seeded live item; this does not prove how gameplay awards the passkey. General terrain recovery, passkey failure/quality, Electronics and grenade-consumption results, building item use, and other doorway records remain open. See [field map route audit](visual-audits/field-map-script-routing.md). |
-| `STOKER-01` | The physical Stoker collision/property that should open his generic dialogue is still unidentified. | Resolved in the normal New Game route: scene-2 record 91 at `0x173138` (`0xC2`) is reached with Up, publishes raw collision `0xFFC2` and event 2, then mode 2/event 2 selects the generic Stoker arrival panel. Debug/Release CTest, full-screen route dumps, eight-question review, and independent section 03 frames support the result. The clip confirms the door/fade/panel sequence but does not record input or event bytes. See [`visual-audits/motel-doorway-scene-entry.md`](visual-audits/motel-doorway-scene-entry.md). |
+| `STOKER-01` | The physical Stoker collision/property that should open his generic dialogue is still unidentified. | Resolved in the normal New Game route: scene-2 record 91 at `0x173138` (`0xC2`) is reached with Up, publishes raw collision `0xFFC2` and event 2, then mode 2/event 2 selects the generic Stoker arrival panel. Debug/Release CTest, full-screen route dumps, nine-question review, and independent section 03 frames support the result. The clip confirms the door/fade/panel sequence but does not record input or event bytes. See [`visual-audits/motel-doorway-scene-entry.md`](visual-audits/motel-doorway-scene-entry.md) and the [connected Hotel route audit](visual-audits/stoker-room-to-hotel-karma-route.md). |
 | `PLAY-01` | Shops, building item use, and maglock passkeys cannot be tested from normal Qt gameplay. | **Partial.** Stoker and Ares have ordinary-input routes. Scene 20 verifies passkey success with a QA-seeded live Joshua item. A joined route follows scene-2 event 1 through normal resource-scene entry, the scene-26 physical map path, and the D8 Security Terminal first-floor result; passkey, Electronics skill, and PRNG are QA fixtures. Story-driven passkey acquisition, other Electronics outcomes, passkey failure/quality, grenade consumption, other building-item routes, independent Genesis visuals, and the scene-2 runner/HUD overlap remain open. See the [field map route audit](visual-audits/field-map-script-routing.md), [scene-26 terminal route audit](visual-audits/scene26-event1-terminal-route.md), [Ares audit](visual-audits/ares-physical-entry.md), and [scene-20 maglock audit](visual-audits/scene20-maglock-physical-entry.md). |
 | `SOUND-03` | More generally, sound effects across the game are reported to play at the wrong points. | Inventory the reported and currently connected ROM sound requests, map each to a state transition, and check trigger, playback, duration, loop, and stop. Close individual sounds in their owning goals. |
 | `SEC-JOHNSONS` | The Notebook Mr. Johnsons row did not have a functional child page in the Qt conversion. | **Partial.** ROM `0xF416` now has typed FFFC27-filtered rows, source-imported names/details, A/B detail waits, C event `0x25`, cursor wrapping, and clean Start return. Debug/Release QA covers all five paths and every frame of a 30-VBlank hold. All-five coverage uses diagnostic FFFC27=`0x1F`; only bit 0 has a verified story writer, other story/save bits remain open, and no matching Genesis frame is available. See [the page audit](visual-audits/notebook-mr-johnsons-page.md). |
@@ -349,8 +349,14 @@ outcomes cannot be tested through normal Qt gameplay.
 
 **Physical route results:** scene-2 record 91 (`0x173138`, value `0xC2`) at
 the visible motel doorway is reached with normal Up input. It publishes raw
-collision `0xFFC2`, event 2, and Stoker's mode-2/event-2 arrival prompt. Scene-2
-record 92 (`0x173142`, value `0xCB`) reaches the Ares doorway with ordinary
+collision `0xFFC2`, event 2, and Stoker's mode-2/event-2 arrival prompt. The
+connected Hotel route continues from this physical doorway: ordinary A
+input opens the manager's room offer, pays the 20-nuyen source charge from the
+New Game wallet, dismisses the paid message into Hotel status, enters the
+distinct Hotel Karma upgrade page, and checks out back to scene 2. The route
+does not load a motel interior map. Independent Hotel screenshots remain
+unavailable; see the [nine-question route audit](visual-audits/stoker-room-to-hotel-karma-route.md). Scene-2 record 92 (`0x173142`, value `0xCB`) reaches the Ares
+doorway with ordinary
 Right/Up input, publishes `0xFFCB`/event 11, displays the generic Ares prompt,
 then opens the shop with A and restores the field with Start. Paired scene-2
 records 89/90 at `0x173124` (`0xC0`) publish event 0; event-table row 0 at
@@ -835,8 +841,13 @@ and invalid choices update typed game state correctly; full-screen captures
 show clean entry/result/return and adjacent field/HUD state; Debug/Release CTest
 covers the full route.
 
-**Status:** partial. Normal Right/Up input reaches scene-2 record 92
-(`0x173142`, `0xCB`), publishes mode 2/event 11, opens the generic Ares prompt,
+**Status:** partial. Ordinary Up input from New Game reaches the physical
+Stoker doorway, resolves the manager room offer, charges the source 20 nuyen,
+enters Hotel status/options, spends Karma through the distinct Hotel upgrade
+page, and checks out back to scene 2. The Hotel QA captures this whole route
+with normal controller-port input. Independent Hotel imagery and restored-
+save wallet binding remain open. Normal Right/Up input also reaches scene-2
+record 92 (`0x173142`, `0xCB`), publishes mode 2/event 11, opens the generic Ares prompt,
 enters the shop with A, and returns cleanly with Start. A separate ordinary
 New Game route reaches paired scene-2 C0 records 89/90, enters scene 20,
 contacts maglock record 117, opens its generic choices, and returns with

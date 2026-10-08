@@ -521,8 +521,11 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_hud_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_hud_qa PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
-# The paid-room result must enter its full-screen Hotel status/options route,
-# and checkout must redraw both its prompt and the returning field scene.
+# Follow normal New Game field controls from the physical Stoker C2 doorway
+# through its room offer/payment, Hotel status/options, Hotel Karma spending,
+# and checkout. The 223-frame whole-screen capture starts at field spawn and
+# includes a 30-frame stable field return. The route does not inject dialogue,
+# payment results, or menu state.
 add_test(NAME shadowrun_ghidra_conversion_qt_field_hotel_qa
          COMMAND shadowrun_ghidra_conversion_qt
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"

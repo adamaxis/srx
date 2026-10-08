@@ -286,27 +286,39 @@ at an explicit boundary because the `0x1E1FC` effect sequence is not
 connected. The host uses the source bounded-random algorithm, but its field
 seed is currently initialized by Qt. The three-option package state seen in
 independent section 03 frame 000300 has no traced live property condition and
-is not substituted for the two-option record. Exact source tile placement,
-the Hotel Options Qt presentation after a room payment, and the debt-payment
-result still need integration work and independent Qt image dumps. The separate
-`qt_runtime/field_dialogue_runtime.*` seam now connects the converted field
-exit orchestrator to the shared panel without duplicating field state or
-putting ROM pointers in the runtime. Its controller path preserves the
-source A/B/C priority and title-only wait semantics. The diagnostic
-`--field-dialogue-dump arrival-manager` path exercises the arrival command
-and emits its manager result. The hill remains `partial` until package-state
-selection, rare-effect handling, real field placement, and independent visual
-defense exist.
+still has no traced live property condition and does not replace the
+two-option record. The `qt_runtime/field_dialogue_runtime.*` seam connects the
+converted field-exit orchestrator to the shared panel without duplicating
+field state or putting ROM pointers in the runtime. Its controller path
+preserves source A/B/C priority and title-only wait semantics.
+
+The Hotel handoff is now covered from ordinary New Game field input. Scene-2
+record 91 (`0x173138`, `0xC2`) opens Stoker arrival; A resolves the bounded
+manager branch, A opens the room offer, and A pays the source 20-nuyen charge
+from the live field wallet. ROM `0x21458` writes the reduced balance and sets
+`FFF10D` negative; after the paid message, the `0x1F65A` caller enters Hotel
+Options at `0xCF38`. `FieldSceneRuntime::advance_frame()` carries the same
+typed party records through Hotel status, the separate Hotel Karma upgrade
+page, checkout, and the field redraw. The Stoker property has no interior map;
+Hotel is presented as its source menus. The Debug/Release Hotel QA follows
+this whole route with controller-port input and writes 223 consecutive
+320x224 frames, including the initial spawn and a 30-frame field hold after
+checkout. A deterministic PRNG seed selects the manager branch and
+stabilizes the Hotel animation; the production PRNG seed remains unresolved.
+The complete route also confirms the source manager choice and payment feed
+the existing generic dialogue and Hotel controllers rather than starting
+those systems from diagnostic helpers. Independent Hotel screenshots remain
+unavailable, so exact Hotel visual fidelity stays open. The hill remains
+`partial` until package-state selection, rare-effect handling, other field
+placement, and independent visual defense exist.
 No other field-exit profile is allowed to borrow Stoker's portrait or text
 aliases.
 
-The typed room-payment command `0x21458` now uses the field wallet and source
+The typed room-payment command `0x21458` uses the field wallet and source
 20-nuyen charge. It opens the corresponding insufficient-funds or paid
 message, preserves the wallet on failure, and deducts the charge on success.
-After the paid message, the controller requests Hotel Options; that Qt screen
-is not yet connected. Restored-save wallet state is unavailable, so the Qt
-controller stops at a source boundary instead of guessing a balance for a
-loaded game.
+Restored-save wallet state is unavailable, so the Qt controller stops at a
+source boundary instead of guessing a balance for a loaded game.
 
 The manager-package C option now dispatches source command `0x30` through the
 typed follow-up resolver: it sets bit 1 of `FFFC30` and opens the F4E8C debt

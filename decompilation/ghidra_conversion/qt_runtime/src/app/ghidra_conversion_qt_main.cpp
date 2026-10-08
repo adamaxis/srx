@@ -14044,11 +14044,6 @@ int main(int argc, char** argv) {
                 field_scene.active_runner_record().cyberware_flags =
                     static_cast<std::uint16_t>((1U << 6U) | (1U << 8U) |
                                                (1U << 9U) | (1U << 11U));
-                if (!field_scene.open_stoker_room_payment_for_dump(20U) ||
-                    field_scene.field_funds_for_dump() != 0U) {
-                    std::cerr << "field Hotel QA: paid-room outcome did not open\n";
-                    return 3;
-                }
                 const auto capture = [&field_scene](
                                          const std::filesystem::path& path) {
                     QImage image(kSceneWidth, kSceneHeight,
@@ -14067,18 +14062,194 @@ int main(int argc, char** argv) {
                     }
                     return image;
                 };
-                if (capture(output / "paid-dialogue" / "actual.bmp").isNull() ||
-                    field_scene.advance_stoker_dialogue_for_dump(0x4000U) !=
-                        FieldDialogueAdvanceResult::hotel_options_requested ||
-                    !field_scene.hotel_menu_open() ||
+                std::uint32_t route_frame = 0U;
+                bool sequence_capture_failed = false;
+                const auto advance_field_frame = [&field_scene,
+                                                  &route_frame,
+                                                  &sequence_capture_failed,
+                                                  &capture, &output]() {
+                    field_scene.advance_frame();
+                    ++route_frame;
+                    auto frame_name = std::to_string(route_frame);
+                    if (frame_name.size() < 4U) {
+                        frame_name.insert(0U, 4U - frame_name.size(), '0');
+                    }
+                    const bool frame_saved =
+                        !capture(output / "sequence" /
+                                 ("frame-" + frame_name + ".bmp")).isNull();
+                    sequence_capture_failed = sequence_capture_failed ||
+                                              !frame_saved;
+                };
+                const auto press_button = [&field_scene,
+                                           &advance_field_frame](
+                                              const std::uint8_t port_byte) {
+                    field_scene.set_controller_port_byte(port_byte);
+                    advance_field_frame();
+                    field_scene.set_controller_port_byte(0U);
+                    advance_field_frame();
+                };
+                const auto spawn = field_scene.field_entity_world_position();
+                const auto& source_collision_rectangles = field_scene.state()
+                    .field_scene_buffers.source_metadata
+                    .terrain_collision_rectangles;
+                if (field_scene.field_scene_reference_for_dump() != 2U ||
+                    spawn.x != 0x3CE0U || spawn.y != 0x2D00U ||
+                    source_collision_rectangles.size() <= 91U ||
+                    source_collision_rectangles[91U].value != 0xC2U ||
+                    field_scene.field_funds_for_dump() != 20U) {
+                    std::cerr << "field Hotel QA: fresh New Game does not have the source Stoker doorway and 20-nuyen wallet\n";
+                    return 3;
+                }
+                std::ofstream route(output / "physical-route.tsv",
+                                    std::ios::trunc);
+                if (!route) {
+                    std::cerr << "field Hotel QA: could not create physical-route.tsv\n";
+                    return 3;
+                }
+                route << "stage\tinput\tframe\tscene\tx\ty\traw_collision\tevent\tfunds\thotel_phase\tkarma_open\n";
+                const auto mark_route = [&](const std::string_view stage,
+                                            const std::string_view input) {
+                    const auto position =
+                        field_scene.field_entity_world_position();
+                    route << stage << '\t' << input << '\t'
+                          << route_frame << '\t'
+                          << field_scene.field_scene_reference_for_dump()
+                          << '\t' << position.x << '\t' << position.y << '\t'
+                          << field_scene.field_terrain_collision_code_for_dump()
+                          << '\t' << static_cast<unsigned>(
+                                 field_scene.field_mode_event_code_for_dump())
+                          << '\t' << field_scene.field_funds_for_dump().value_or(
+                                 std::numeric_limits<std::uint32_t>::max())
+                          << '\t' << static_cast<unsigned>(
+                                 field_scene.hotel_menu_phase())
+                          << '\t' << (field_scene.hotel_karma_screen_open() ? 1 : 0)
+                          << '\n';
+                    route.flush();
+                };
+                if (capture(output / "spawn" / "actual.bmp").isNull()) {
+                    std::cerr << "field Hotel QA: could not capture New Game field spawn\n";
+                    return 3;
+                }
+                if (capture(output / "sequence" / "frame-0000.bmp").isNull()) {
+                    std::cerr << "field Hotel QA: could not capture the initial full-screen sequence frame\n";
+                    return 3;
+                }
+                mark_route("spawn", "none");
+
+                // Follow the real scene-2 C2 doorway route with ordinary Up
+                // input. No event, collision, or prompt state is injected.
+                field_scene.set_controller_nibble(0x01U);
+                bool doorway_contact = false;
+                for (std::uint32_t step = 0U; step < 256U; ++step) {
+                    advance_field_frame();
+                    if (field_scene.field_interaction_transition_active_for_dump() ||
+                        field_scene.field_transition_pending_for_dump() ||
+                        field_scene.dialogue_open()) {
+                        doorway_contact = true;
+                        break;
+                    }
+                    if (step == 7U || step == 15U || step == 31U ||
+                        step == 63U || step == 127U) {
+                        const auto sample = capture(
+                            output / "approach" /
+                            ("up-" + std::to_string(step + 1U) + ".bmp"));
+                        if (sample.isNull()) {
+                            std::cerr << "field Hotel QA: could not capture the Stoker approach frame\n";
+                            return 3;
+                        }
+                    }
+                }
+                field_scene.set_controller_nibble(0U);
+                if (!doorway_contact ||
+                    field_scene.field_terrain_collision_code_for_dump() !=
+                        0xFFC2U ||
+                    field_scene.field_mode_event_code_for_dump() != 2U ||
+                    field_scene.field_runtime_state_for_dump().field_mode !=
+                        2U ||
+                    capture(output / "doorway-trigger" / "actual.bmp").isNull()) {
+                    std::cerr << "field Hotel QA: ordinary Up did not reach scene-2 Stoker collision record 91\n";
+                    return 3;
+                }
+                mark_route("stoker-collision-record-91", "Up");
+                const auto collision_frame = route_frame;
+                for (const auto checkpoint : {8U, 16U, 17U}) {
+                    const auto target = collision_frame + checkpoint - 1U;
+                    while (route_frame < target) {
+                        advance_field_frame();
+                    }
+                    if (capture(output / "fade" /
+                                ("frame-" + std::to_string(checkpoint) +
+                                 ".bmp")).isNull()) {
+                        std::cerr << "field Hotel QA: could not capture the Stoker fade checkpoint\n";
+                        return 3;
+                    }
+                }
+                for (std::uint32_t step = 0U;
+                     step < 60U && !field_scene.dialogue_open(); ++step) {
+                    advance_field_frame();
+                }
+                const auto& arrival = field_scene.dialogue_panel();
+                bool arrival_text_matches = false;
+                for (std::size_t line = 0U;
+                     line < arrival.text_segment_count; ++line) {
+                    arrival_text_matches = arrival_text_matches ||
+                        arrival.text_segments[line].find("battered sign") !=
+                            std::string_view::npos;
+                }
+                if (!field_scene.dialogue_open() || !arrival.source_complete ||
+                    arrival.actor_name != "Stoker" || !arrival.has_more ||
+                    !arrival_text_matches ||
+                    capture(output / "stoker-arrival" / "actual.bmp").isNull()) {
+                    std::cerr << "field Hotel QA: the physical event did not select the generic Stoker arrival dialogue\n";
+                    return 3;
+                }
+                mark_route("stoker-arrival", "Up released; transition complete");
+                field_scene.set_source_random_seed_for_dump(0U);
+                press_button(0x40U); // A: resolve the source 0xE9 arrival.
+                if (!field_scene.dialogue_open() ||
+                    field_scene.dialogue_panel().actor_name != "Stoker" ||
+                    field_scene.dialogue_panel().option_count != 2U ||
+                    capture(output / "manager" / "actual.bmp").isNull()) {
+                    std::cerr << "field Hotel QA: ordinary A did not take the deterministic 0..79 manager branch\n";
+                    return 3;
+                }
+                mark_route("manager-greeting", "A");
+                // Re-seed only the lower-bezel Hotel animation fixture after
+                // the source arrival roll has selected its ordinary branch.
+                field_scene.set_source_random_seed_for_dump(0x51A7U);
+                press_button(0x40U); // A: rent a room.
+                if (!field_scene.dialogue_open() ||
+                    field_scene.dialogue_panel().option_count != 2U ||
+                    field_scene.dialogue_panel().text_segment_count == 0U ||
+                    field_scene.dialogue_panel().text_segments[0].find("20$") ==
+                        std::string_view::npos ||
+                    capture(output / "room-offer" / "actual.bmp").isNull()) {
+                    std::cerr << "field Hotel QA: manager A did not open the source 20-nuyen room offer\n";
+                    return 3;
+                }
+                mark_route("room-offer", "A");
+                press_button(0x40U); // A: pay through the live field wallet.
+                if (!field_scene.dialogue_open() ||
+                    field_scene.field_funds_for_dump() != 0U ||
+                    field_scene.dialogue_panel().option_count != 0U ||
+                    field_scene.dialogue_panel().text_segment_count == 0U ||
+                    field_scene.dialogue_panel().text_segments[0].find("own towels") ==
+                        std::string_view::npos ||
+                    capture(output / "paid-dialogue" / "actual.bmp").isNull()) {
+                    std::cerr << "field Hotel QA: room payment did not deduct 20 nuyen and open the paid message\n";
+                    return 3;
+                }
+                mark_route("room-paid", "A");
+                press_button(0x40U); // A: source caller enters Hotel Options.
+                if (!field_scene.hotel_menu_open() ||
                     field_scene.dialogue_open() ||
                     field_scene.hotel_menu_phase() !=
                         HotelMenuPhase::entity_status ||
-                    field_scene.active_runner_record().behavior_meter !=
-                        10U) {
-                    std::cerr << "field Hotel QA: paid dialogue did not transfer into Hotel status\n";
+                    field_scene.active_runner_record().behavior_meter != 10U) {
+                    std::cerr << "field Hotel QA: paid message did not connect into the live Hotel status menu\n";
                     return 3;
                 }
+                mark_route("hotel-status", "A");
                 auto status = capture(output / "status" / "actual.bmp");
                 if (status.isNull() ||
                     !image_has_green_ink(status, 88, 40, 48, 8) ||
@@ -14099,17 +14270,17 @@ int main(int argc, char** argv) {
                     std::cerr << "field Hotel QA: stale field HUD remains over Hotel screen\n";
                     return 3;
                 }
+                const auto status_animation_at_entry =
+                    field_scene.hotel_animation_frames();
                 for (int frame = 0; frame < 30; ++frame) {
-                    if (field_scene.advance_hotel_menu_for_dump(0U) !=
-                        HotelMenuEvent::waiting) {
-                        std::cerr << "field Hotel QA: status page left without input\n";
-                        return 3;
-                    }
+                    advance_field_frame();
                 }
                 const auto status_frame_30 =
                     capture(output / "status-frame-30" / "actual.bmp");
+                mark_route("hotel-status-frame-30", "30 idle frames");
                 if (status_frame_30.isNull() ||
-                    field_scene.hotel_animation_frames() != 30U ||
+                    field_scene.hotel_animation_frames() !=
+                        status_animation_at_entry + 30U ||
                     image_region_differs(status, status_frame_30,
                                          24, 24, 224, 168) ||
                     !image_region_differs(status, status_frame_30,
@@ -14118,13 +14289,13 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
-                if (field_scene.advance_hotel_menu_for_dump(0x4000U) !=
-                        HotelMenuEvent::status_acknowledged ||
-                    field_scene.hotel_menu_phase() != HotelMenuPhase::options ||
+                press_button(0x40U); // A acknowledges Hotel status.
+                if (field_scene.hotel_menu_phase() != HotelMenuPhase::options ||
                     field_scene.hotel_option_selection() != 0U) {
                     std::cerr << "field Hotel QA: status acknowledgement did not open the options page\n";
                     return 3;
                 }
+                mark_route("hotel-options", "A");
                 const auto options_default =
                     capture(output / "options" / "actual.bmp");
                 if (options_default.isNull() ||
@@ -14140,9 +14311,8 @@ int main(int argc, char** argv) {
                 const auto hotel_record_before_upgrade =
                     field_scene.active_runner_record();
                 field_audio_events.clear();
-                if (field_scene.advance_hotel_menu_for_dump(0x4000U) !=
-                        HotelMenuEvent::karma_screen_opened ||
-                    !field_scene.hotel_karma_screen_open() ||
+                press_button(0x40U); // A opens the Hotel Karma child.
+                if (!field_scene.hotel_karma_screen_open() ||
                     !field_scene.hotel_menu_open() ||
                     field_scene.hotel_menu_phase() !=
                         HotelMenuPhase::options ||
@@ -14153,6 +14323,7 @@ int main(int argc, char** argv) {
                     std::cerr << "field Hotel QA: Karma Screen did not enter the separate upgrade route\n";
                     return 3;
                 }
+                mark_route("hotel-karma-upgrade", "A");
                 auto karma_spend = capture(output / "karma-spend" /
                                            "actual.bmp");
                 if (karma_spend.isNull() ||
@@ -14169,11 +14340,7 @@ int main(int argc, char** argv) {
                 const auto parent_animation_at_entry =
                     field_scene.hotel_animation_frames();
                 for (int frame = 0; frame < 30; ++frame) {
-                    if (field_scene.advance_hotel_karma_screen_for_dump(0U) !=
-                        AttributesSkillsRuntimeEvent::no_change) {
-                        std::cerr << "field Hotel QA: Karma page left during idle frames\n";
-                        return 3;
-                    }
+                    advance_field_frame();
                 }
                 if (capture(output / "karma-spend" / "frame-30.bmp") !=
                         karma_spend ||
@@ -14182,9 +14349,8 @@ int main(int argc, char** argv) {
                     std::cerr << "field Hotel QA: Karma screen or suspended Hotel animation changed without input\n";
                     return 3;
                 }
-                if (field_scene.advance_hotel_karma_screen_for_dump(0x4000U) !=
-                        AttributesSkillsRuntimeEvent::upgrade_prompt_opened ||
-                    !field_scene.hotel_karma_screen().upgrade_prompt_open() ||
+                press_button(0x40U); // A opens the default-Yes upgrade prompt.
+                if (!field_scene.hotel_karma_screen().upgrade_prompt_open() ||
                     field_scene.active_runner_record().attributes !=
                         hotel_record_before_upgrade.attributes ||
                     field_scene.active_runner_record().auxiliary !=
@@ -14200,12 +14366,15 @@ int main(int argc, char** argv) {
                     std::cerr << "field Hotel QA: prompt text or choices are missing\n";
                     return 3;
                 }
-                if (field_scene.advance_hotel_karma_screen_for_dump(0x0200U) !=
-                        AttributesSkillsRuntimeEvent::upgrade_prompt_moved ||
-                    field_scene.hotel_karma_screen()
+                press_button(0x02U); // Down selects No.
+                if (field_scene.hotel_karma_screen()
                             .upgrade_prompt_selection() != 1U ||
-                    field_scene.advance_hotel_karma_screen_for_dump(0x1000U) !=
-                        AttributesSkillsRuntimeEvent::upgrade_declined ||
+                    !field_scene.hotel_karma_screen().upgrade_prompt_open()) {
+                    std::cerr << "field Hotel QA: Down did not select No on the upgrade prompt\n";
+                    return 3;
+                }
+                press_button(0x10U); // B declines the upgrade.
+                if (field_scene.hotel_karma_screen().upgrade_prompt_open() ||
                     field_scene.active_runner_record().attributes !=
                         hotel_record_before_upgrade.attributes ||
                     field_scene.active_runner_record().auxiliary !=
@@ -14213,10 +14382,13 @@ int main(int argc, char** argv) {
                     std::cerr << "field Hotel QA: No mutated the runner or failed to move the choice cursor\n";
                     return 3;
                 }
-                if (field_scene.advance_hotel_karma_screen_for_dump(0x4000U) !=
-                        AttributesSkillsRuntimeEvent::upgrade_prompt_opened ||
-                    field_scene.advance_hotel_karma_screen_for_dump(0x4000U) !=
-                        AttributesSkillsRuntimeEvent::upgrade_applied ||
+                press_button(0x40U); // A reopens the default-Yes prompt.
+                if (!field_scene.hotel_karma_screen().upgrade_prompt_open()) {
+                    std::cerr << "field Hotel QA: A did not reopen the upgrade prompt\n";
+                    return 3;
+                }
+                press_button(0x40U); // A confirms Body +1 and spends Karma.
+                if (field_scene.hotel_karma_screen().upgrade_prompt_open() ||
                     field_scene.active_runner_record().attributes[0U] != 2U ||
                     field_scene.active_runner_record().auxiliary[2U] != 48U ||
                     capture(output / "karma-spend" / "upgrade-applied.bmp")
@@ -14224,14 +14396,15 @@ int main(int argc, char** argv) {
                     std::cerr << "field Hotel QA: Yes did not spend Karma and increase Body\n";
                     return 3;
                 }
-                if (field_scene.advance_hotel_karma_screen_for_dump(0x8000U) !=
-                        AttributesSkillsRuntimeEvent::returned_to_parent ||
-                    field_scene.hotel_karma_screen_open() ||
+                mark_route("karma-spent", "A on Body upgrade");
+                press_button(0x80U); // Start returns to Hotel Options.
+                if (field_scene.hotel_karma_screen_open() ||
                     !field_scene.hotel_menu_open() ||
                     field_scene.hotel_option_selection() != 0U) {
                     std::cerr << "field Hotel QA: Start did not return to Hotel Options\n";
                     return 3;
                 }
+                mark_route("hotel-options-after-karma", "Start");
                 const auto karma_return = capture(
                     output / "karma-spend" / "return-options.bmp");
                 if (!image_has_green_ink(karma_return, 88, 72, 160, 8) ||
@@ -14245,11 +14418,7 @@ int main(int argc, char** argv) {
                 const auto option_frames_after_karma =
                     field_scene.hotel_animation_frames();
                 for (int frame = 0; frame < 30; ++frame) {
-                    if (field_scene.advance_hotel_menu_for_dump(0U) !=
-                        HotelMenuEvent::waiting) {
-                        std::cerr << "field Hotel QA: options page left without input\n";
-                        return 3;
-                    }
+                    advance_field_frame();
                 }
                 const auto options_frame_30 = capture(
                     output / "options-frame-30" / "actual.bmp");
@@ -14265,9 +14434,8 @@ int main(int argc, char** argv) {
                     std::cerr << "field Hotel QA: E660 should animate the lower grid once per options wait frame\n";
                     return 3;
                 }
-                if (field_scene.advance_hotel_menu_for_dump(0x0200U) !=
-                        HotelMenuEvent::selection_moved ||
-                    field_scene.hotel_option_selection() != 1U) {
+                press_button(0x02U); // Down selects Check Out.
+                if (field_scene.hotel_option_selection() != 1U) {
                     std::cerr << "field Hotel QA: Down did not select Check Out\n";
                     return 3;
                 }
@@ -14281,13 +14449,13 @@ int main(int argc, char** argv) {
                     std::cerr << "field Hotel QA: source's 8x8 selection arrow did not move between options\n";
                     return 3;
                 }
-                if (field_scene.advance_hotel_menu_for_dump(0x4000U) !=
-                        HotelMenuEvent::checkout_opened ||
-                    field_scene.hotel_menu_phase() != HotelMenuPhase::checkout ||
+                press_button(0x40U); // A opens Check Out with No selected.
+                if (field_scene.hotel_menu_phase() != HotelMenuPhase::checkout ||
                     field_scene.hotel_checkout_selection() != 1U) {
                     std::cerr << "field Hotel QA: checkout did not open with No selected\n";
                     return 3;
                 }
+                mark_route("checkout-no", "Down, A");
                 const auto checkout_no =
                     capture(output / "checkout-no" / "actual.bmp");
                 if (checkout_no.isNull() ||
@@ -14307,11 +14475,7 @@ int main(int argc, char** argv) {
                 const auto checkout_animation_frame_count =
                     field_scene.hotel_animation_frames();
                 for (int frame = 0; frame < 30; ++frame) {
-                    if (field_scene.advance_hotel_menu_for_dump(0U) !=
-                        HotelMenuEvent::waiting) {
-                        std::cerr << "field Hotel QA: checkout prompt left without input\n";
-                        return 3;
-                    }
+                    advance_field_frame();
                 }
                 const auto checkout_no_frame_30 = capture(
                     output / "checkout-no-frame-30" / "actual.bmp");
@@ -14323,9 +14487,8 @@ int main(int argc, char** argv) {
                     std::cerr << "field Hotel QA: nested checkout prompt should hold without E660\n";
                     return 3;
                 }
-                if (field_scene.advance_hotel_menu_for_dump(0x4000U) !=
-                        HotelMenuEvent::stayed_at_hotel ||
-                    field_scene.hotel_menu_phase() != HotelMenuPhase::options ||
+                press_button(0x40U); // A confirms default No and stays.
+                if (field_scene.hotel_menu_phase() != HotelMenuPhase::options ||
                     field_scene.hotel_option_selection() != 0U) {
                     std::cerr << "field Hotel QA: default No did not return to the first Hotel option\n";
                     return 3;
@@ -14341,15 +14504,19 @@ int main(int argc, char** argv) {
                     std::cerr << "field Hotel QA: No left checkout text under the Hotel options\n";
                     return 3;
                 }
-                if (field_scene.advance_hotel_menu_for_dump(
-                        0x0200U | 0x4000U) != HotelMenuEvent::checkout_opened ||
-                    field_scene.hotel_checkout_selection() != 1U ||
-                    field_scene.advance_hotel_menu_for_dump(0x0100U) !=
-                        HotelMenuEvent::selection_moved ||
+                press_button(0x02U); // Down selects Check Out.
+                press_button(0x40U); // A opens the checkout prompt.
+                if (field_scene.hotel_checkout_selection() != 1U) {
+                    std::cerr << "field Hotel QA: second checkout prompt did not default to No\n";
+                    return 3;
+                }
+                press_button(0x01U); // Up selects Yes.
+                if (
                     field_scene.hotel_checkout_selection() != 0U) {
                     std::cerr << "field Hotel QA: same-frame move/confirm order or checkout wrap is incorrect\n";
                     return 3;
                 }
+                mark_route("checkout-yes", "Up");
                 const auto checkout_yes =
                     capture(output / "checkout-yes" / "actual.bmp");
                 if (checkout_yes.isNull() ||
@@ -14360,9 +14527,8 @@ int main(int argc, char** argv) {
                     std::cerr << "field Hotel QA: checkout cursor did not move from No to Yes\n";
                     return 3;
                 }
-                if (field_scene.advance_hotel_menu_for_dump(0x1000U) !=
-                        HotelMenuEvent::checked_out ||
-                    field_scene.hotel_menu_open() ||
+                press_button(0x10U); // B confirms Yes and checks out.
+                if (field_scene.hotel_menu_open() ||
                     field_scene.dialogue_open() || !field_audio_events.empty()) {
                     std::cerr << "field Hotel QA: Yes did not return to the field or Hotel emitted unexpected audio\n";
                     return 3;
@@ -14373,6 +14539,40 @@ int main(int argc, char** argv) {
                     !image_region_differs(returned_field, black_reference,
                                           0, 0, 320, 224)) {
                     std::cerr << "field Hotel QA: checkout did not redraw the field scene\n";
+                    return 3;
+                }
+                QImage field_only(kSceneWidth, kSceneHeight,
+                                  QImage::Format_RGB32);
+                field_only.fill(Qt::black);
+                QPainter field_only_painter(&field_only);
+                field_scene.paint_field_scene_for_dump(field_only_painter);
+                field_only_painter.end();
+                if (returned_field != field_only) {
+                    std::cerr << "field Hotel QA: checkout left Hotel graphics over the source field redraw\n";
+                    return 3;
+                }
+                for (std::uint32_t frame = 0U; frame < 30U; ++frame) {
+                    advance_field_frame();
+                }
+                const auto returned_field_frame_30 = capture(
+                    output / "returned-field-frame-30" / "actual.bmp");
+                QImage field_only_frame_30(kSceneWidth, kSceneHeight,
+                                           QImage::Format_RGB32);
+                field_only_frame_30.fill(Qt::black);
+                QPainter field_only_frame_30_painter(&field_only_frame_30);
+                field_scene.paint_field_scene_for_dump(
+                    field_only_frame_30_painter);
+                field_only_frame_30_painter.end();
+                if (route_frame != 222U || returned_field_frame_30.isNull() ||
+                    returned_field_frame_30 != field_only_frame_30) {
+                    std::cerr << "field Hotel QA: returned field did not stay clean through the 30-frame destination hold\n";
+                    return 3;
+                }
+                mark_route("hotel-checkout-returned-to-field",
+                           "B on Yes; 30 idle frames");
+                route.close();
+                if (sequence_capture_failed) {
+                    std::cerr << "field Hotel QA: one or more sequential full-screen frames could not be written\n";
                     return 3;
                 }
                 std::cout << "field_hotel_qa=passed path="
