@@ -4,7 +4,9 @@ Date: 2026-10-08
 
 Primary source trace: US ROM opening marker (`0x59C5E`), New Game field loop
 and entity action/movement path (`0x075E`, `0xACAE`, `0xB574`, `0xBADE`,
-`0xB7B8`, `0x16396`, `0x1F5CA`, `0x1F65A`, `0x1F246`, `0x1F3C4`, `0x2BD2`),
+`0xB7B8`, `0x16396`, indexed title-service dispatch (`0x53A78`), Stoker
+service entry (`0x53AB6`), `0x1F5CA`, `0x1F65A`, `0x1F246`, `0x1F3C4`,
+`0x2BD2`),
 scene-2 terrain record 91 (`0x173138`), Stoker prompt records
 (`0xF4AA0..0xF4B2C`), profile/portrait records (`0x121FA0`, `0x122420`),
 and the shared `0x1728` sprite-stream writer.
@@ -41,14 +43,22 @@ Release builds.
   one-shot movement is complete; the Stoker interaction itself continues in
   scene 2. There is no separate motel interior or dedicated opening walk
   animation.
-- The shared `0x1F246`/`0x1F3C4` dialogue route presents Stoker's direct 56x72
-  portrait and text catalog record. A on `< MORE >` executes the ordinary
-  arrival command `0xE9`. Its source random sample 0..79 chooses the manager
-  greeting; the QA fixes the source PRNG seed only to make that normal branch
-  repeatable. B chooses the second visible manager option and opens the Leave
-  notice. A dismisses it, performs same-scene `0x2BD2` re-entry, refreshes the
-  native field actor projection, and returns to scene 2 with no old dialogue
-  pixels or pending transition request.
+- The indexed service loop at `0x53A78` runs before the generic mode/event
+  selector. Its first Stoker service is selected for scene 2/event 2 while
+  FFFC1E bit 0 and FFF0D5 are clear. The native handler resolves typed story
+  state at that point: the first visit opens the special sign/arrival page,
+  and a later unpaid visit starts at the three-choice manager page. A on the
+  first page opens the same manager offer, including the option to collect
+  Michael's belongings; C opens the debt question and B opens the Jump House
+  referral. The ordinary manager arrival command `0xE9` remains on the generic
+  path for motel visits after the debt and package story is complete. The
+  present route QA follows first arrival through the offer, debt question,
+  referral, and clean return. Typed state tests cover the repeat offer and the
+  ordinary-motel result; the live paid-debt/package handoff is still open.
+- Shared `0x1F246`/`0x1F3C4` presents Stoker's 56x72 portrait and text catalog
+  record. Dismissing the referral performs same-scene `0x2BD2` re-entry,
+  refreshes the native field actor projection, and returns to scene 2 with no
+  old dialogue pixels or pending transition request.
 - Scene-2 record 2 at `0x172DBE` is a separate, rejected candidate. It remains
   far east/south of the motel and its normal contact produces event 0. It is
   not part of the positive Stoker route; see
@@ -56,10 +66,11 @@ Release builds.
 
 ## Full-screen and independent frame review
 
-The QA writes exactly twelve full 320x224 BMPs: `spawn`, `movement-8`,
+The QA writes exactly thirteen full 320x224 BMPs: `spawn`, `movement-8`,
 `movement-16`, `doorway-trigger`, `fade-08`, `fade-16`, `fade-17`,
-`stoker-arrival-dialogue`, `stoker-manager-greeting`, `stoker-leave-notice`,
-`returned-to-field`, and `actual`. It also writes `route.tsv` and
+`stoker-arrival-dialogue`, `stoker-manager-package-offer`,
+`stoker-debt-question`, `stoker-jump-house-referral`, `returned-to-field`,
+and `actual`. It also writes `route.tsv` and
 `source-boundaries.txt`. Stale BMPs from earlier probes are removed before the
 exact output-set check. Debug and Release outputs are compared by file name and
 SHA-256 after both runs.
@@ -71,9 +82,10 @@ input remains released on every movement update. The doorway frame
 shows a blocked contact without a new modal. Fade checkpoints 08, 16, and 17
 show a progressive darkening, full black, and the completed fade. The next
 frame is the shared Stoker panel. Its portrait and green text are visible, the
-field HUD is absent, and `< MORE >` appears in its lower region. The manager
-frame replaces the first page with two A/B options; the Leave frame removes
-those options and displays its text. The returned frame restores the map,
+field HUD is absent, and the A-button marker appears beside `< MORE >`. The
+manager frame replaces the first page with A/B/C choices, including Michael's
+package offer; the debt and referral pages replace the choices with their own
+source text. The returned frame restores the map,
 runner, and right HUD with no leftover dialogue shell or text. No second set of
 controls is drawn over the old screen.
 
@@ -82,7 +94,8 @@ Independent source visuals were reviewed from the supplied longplay at full
 `000054` show the approach; `000055` shows the dark transition; `000080` and
 `000081` show the blank shared panel; `000082` shows the populated Stoker
 portrait/text/`< MORE >` panel. The native panel's dimensions, text placement,
-portrait, and continuation region match that screen family. The recording has
+portrait, A-button marker, and continuation region match that screen family.
+The recording has
 no controller or collision log, so it supports appearance and sequence, not the
 meaning of the input or event byte. It samples a blank panel twice before
 text appears, whereas the current Qt route moves from full black directly to
@@ -121,20 +134,25 @@ differences include capture compression.
 ## Nine-question visual review
 
 1. **Does it look correct?** The automatic door approach, dark transition,
-   generic Stoker panel, and corrected portrait agree with independent section
-   03 frames. The clip has no controller log; the no-input interpretation
-   comes from the ROM trace and native runtime state checks. Qt currently skips
-   the sampled two-frame blank-shell interval; its ROM-derived duration is
+   corrected Stoker portrait, opening page, A-button marker on `< MORE >`, and
+   three-choice manager offer match the relevant independent section 03
+   captures. The clip has no controller log; the no-input interpretation comes
+   from the ROM trace and native runtime state checks. Qt still skips the
+   sampled two-frame blank-shell interval; its ROM-derived duration is
    unresolved.
-2. **Does the look reflect behavior?** Yes for the tested route. The completed
-   New Game opening arms heading-zero movement while the controller stays
-   released. The actor reaches record 91, raw collision `0xFFC2` publishes
-   event 2, and the mode-2/event-2 selector opens the Stoker arrival content.
-   Controller A/B advances through the source manager and Leave records.
-   Return clears the panel and transition request.
+2. **Does the look reflect behavior?** The completed New Game opening arms
+   heading-zero movement while the controller stays released. The actor
+   reaches record 91, raw collision `0xFFC2` publishes event 2, and the event
+   system resolves the Stoker script through indexed title service `0x53A78`.
+   The first entry opens the special page; A opens the three-choice package
+   offer, C opens the debt question, and B opens the Jump House referral.
+   Typed state tests select the offer on an unpaid repeat and ordinary motel
+   service only when both debt-paid and package-collected flags are set. The
+   live payment/collection writers are not connected yet.
 3. **Are the visuals correct?** The doorway, panel frame, ROM-corrected Stoker
-   portrait tile layout, green text, and continuation region match the
-   independent screen family at the reviewed size. The exact transition timing
+   portrait tile layout, green text, A-button marker, three-choice labels, and
+   continuation region match the independent screen family at the reviewed
+   size. The exact transition timing
    and same-archetype HUD portrait palette are not resolved here; the latter
    remains `HUD-01`.
 4. **Is it animated?** The actor changes position and uses the ordinary field
@@ -159,19 +177,20 @@ differences include capture compression.
    portrait is left under the new panel. The visible field portrait/ammo state
    remains outside this goal and is tracked separately.
 7. **Do multiple frames support the interpretation?** Yes. Native entry,
-   automatic movement, collision, three fade phases, three dialogue states,
-   and return frames are checked. Independent frames cover five approach
-   samples, the fade, two blank-panel samples, and Stoker's opening, manager,
-   and debt pages (000082, 000301, and 000601). The clip lacks input/event
-   evidence, so the behavior claim is ROM- and native-state-backed.
+   automatic movement, collision, three fade phases, opening, manager offer,
+   debt, referral, and return frames are checked. Independent frames cover
+   five approach samples, the fade, two blank-panel samples, Stoker's opening
+   (000082), manager offer (000301), debt (000601), and referral
+   (000690/000750/000780/000840). The clip lacks input/event evidence, so the
+   behavior claim is ROM- and native-state-backed.
 8. **Was the previous UI hidden or redrawn before the new one?** Yes. The
-   shared full-screen panel is drawn without the field HUD; after Leave, the
-   field screen is re-entered and redrawn before the QA accepts the return.
+   shared full-screen panel is drawn without the field HUD; after referral,
+   the field screen is re-entered and redrawn before the QA accepts the return.
    Whole-frame review shows no buttons or graphics from the previous screen
    underneath either state.
-9. **Was the whole available sequence reviewed?** Yes. All twelve native
+9. **Was the whole available sequence reviewed?** Yes. All thirteen native
    full-screen captures were checked, including the two movement frames,
-   collision, fade, dialogue replacement, and clean field return. The
+   collision, fade, each dialogue replacement, and clean field return. The
    independent video samples were inspected at full resolution; it supports
    screen appearance and sequence, not input state or exact frame cadence.
 
@@ -180,25 +199,29 @@ differences include capture compression.
 - **Code changed:** the startup coordinator carries completed New Game opening
   state into the field runtime; typed field state arms heading-zero automatic
   movement for that route only, runs it through existing movement/collision,
-  and consumes it after the first field-exit orchestrator pass. Loaded saves
-  and ordinary field QA bootstraps do not arm it.
+  and consumes it after the first field-exit orchestrator pass. The typed map
+  event route invokes the indexed Stoker title service and story-entry state.
+  Loaded saves and ordinary field QA bootstraps do not arm the opening walk.
 - **Behavior implemented:** New Game reaches the ROM C2 doorway with zero
-  controller input, publishes event 2, and opens the generic Stoker arrival
-  record. Ordinary A/B/A input follows arrival, manager Leave, and clean
-  return. No event tuple or prompt is injected.
+  controller input, publishes event 2, and opens the first Stoker page. A
+  enters the three-choice Michael-package offer; C opens the debt question; B
+  opens the Jump House referral; A returns to the clean field. The typed entry
+  resolver selects the repeat offer and completed-story motel actions. Live
+  payment and package collection still need connection.
 - **Internally checked:** the startup integration and Stoker route CTests both
   pass in Debug and Release. They assert the completed-opening handoff,
   zero-input movement, collision bounds, raw and projected codes, mode/event
-  state, fade counters, the typed speaker, portrait alias and text, A/B
-  choices, transition suspension, audio-service transaction counts, and
-  whole-screen return. All 14 output files (12 BMPs, `route.tsv`, and
-  `source-boundaries.txt`) have matching Debug/Release SHA-256 hashes. Every
-  Release BMP was opened and reviewed at full size; identical Debug hashes
-  confirm those pixels match.
-- **Independently visually checked:** section 03 frames `000028..000055` and
-  `000080..000082` support the door/fade/panel appearance and order. They do
-  not reveal controller input, collision data, or the source event. The sampled
-  blank-shell timing remains open.
+  state, indexed service selection, fade counters, the typed speaker, portrait
+  alias and text, A/B/C choices, the continuation marker, transition
+  suspension, audio-service transaction counts, and whole-screen return. The
+  route writes 13 BMPs plus `route.tsv` and `source-boundaries.txt`. Every
+  Release BMP was opened and reviewed at full size; all 13 Debug and Release
+  BMP SHA-256 hashes match.
+- **Independently visually checked:** section 03 frames `000028..000055`,
+  `000080..000082`, `000301`, `000601`, and `000690/000750/000780/000840`
+  support the door/fade/panel appearance and the Stoker dialogue pages. They
+  do not reveal controller input, collision data, or the source event. The
+  sampled blank-shell timing remains open.
 - **Reported defect resolved:** the physical scene-2 Stoker collision and
   automatic New Game arrival route are connected in the Qt conversion. General
   building access, same-archetype HUD palette/ammo, exact blank-shell timing,

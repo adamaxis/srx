@@ -7,6 +7,7 @@
 #include "shadowrun_ghidra/field/stoker_motel_arrival_command_conversion.hpp"
 #include "shadowrun_ghidra/field/stoker_motel_debt_payment_conversion.hpp"
 #include "shadowrun_ghidra/field/stoker_motel_followup_commands_conversion.hpp"
+#include "shadowrun_ghidra/field/stoker_motel_prompt_conversion.hpp"
 #include "shadowrun_ghidra/field/stoker_motel_room_payment_conversion.hpp"
 
 #include <cstdint>
@@ -82,6 +83,12 @@ public:
     bool open_stoker_prompt_for_dump(StokerMotelPromptId prompt);
     bool open_stoker_arrival_result_for_dump(std::uint8_t random_roll);
 
+    // Entry used by the typed scene-2/event-2 story service. The opening page
+    // continues directly to the three-choice manager offer; repeat unpaid
+    // entries begin at that offer, and completed collection uses ordinary
+    // motel service.
+    bool open_stoker_story_entry(StokerMotelStoryEntryAction action);
+
     FieldDialogueAdvanceResult advance_controller_events(
         std::uint16_t event_word);
 
@@ -112,6 +119,7 @@ private:
         debt_payment_callback_;
     std::function<std::optional<StokerMotelFollowupOutcome>(
         StokerMotelFollowupCommand)> followup_command_callback_;
+    bool opening_intro_package_offer_follows_ = false;
     std::string failure_;
     std::string boundary_reason_;
     bool assets_loaded_ = false;

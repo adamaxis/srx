@@ -948,6 +948,7 @@ private:
     ElevatorSceneTransitionRuntime field_elevator_scene_transition_{};
     ShopMenuController field_shop_menu_{};
     FieldDialogueEventResolver field_dialogue_event_resolver_;
+    StokerMotelStoryState stoker_motel_story_state_{};
     FieldPartyRosterRuntime field_party_roster_{};
     DismissRunnerMenuState dismiss_runner_{};
     RandomGridEffectState dismiss_runner_random_grid_effect_{};

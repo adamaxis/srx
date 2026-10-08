@@ -264,8 +264,9 @@ set_tests_properties(
 
 # The completed New Game opening starts the source heading-zero automatic walk
 # from the scene-2 spawn. It reaches the motel doorway's source C2 collision,
-# event 2, and shared Stoker dialogue without controller input. A/B input then
-# follows the source manager and Leave records back to a freshly drawn field.
+# event 2, and indexed Stoker title service without controller input. A opens
+# the manager's three-choice Michael-package offer, C opens the debt question,
+# B opens the Jump House referral, and A returns to a freshly drawn field.
 # Every checkpoint is a complete 320x224 screen dump for visual review.
 add_test(NAME shadowrun_ghidra_conversion_qt_field_stoker_collision_to_dialogue_qa
          COMMAND shadowrun_ghidra_conversion_qt

@@ -227,6 +227,7 @@ void DialoguePanelPresenter::paint(QPainter& painter,
     }
 
     if (panel.has_more && !panel.continuation_label.empty()) {
+        painter.drawImage(16, 152, option_markers_[0]);
         draw_wrapped_segment(painter, 48, 159, panel.continuation_label, 32,
                              2, dialogue_green);
         return;

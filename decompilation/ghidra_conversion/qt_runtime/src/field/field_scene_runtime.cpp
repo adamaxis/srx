@@ -543,6 +543,36 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
     callbacks.select_mode_entry_resource = [this] {
         source_boundary("field.exit.select_mode_entry_resource");
     };
+    callbacks.run_indexed_title_services =
+        [this, &event_route](FieldExitOrchestratorState& state) {
+            // ROM 0x53A78 invokes indexed title service 0 before the generic
+            // 0x1F65A selector. Its Stoker service is active for scene 2,
+            // event 2 while FFFC1E bit 0 is clear and FFF0D5 is zero. Keep
+            // that story branch in the event path so repeat visits retain
+            // the package offer until collection is complete.
+            if (event_route.script !=
+                    FieldScriptId::stoker_motel_interaction ||
+                field_exit_alternate_result_ != 0 ||
+                (field_exit_world_flags_ & 0x01U) != 0U) {
+                return false;
+            }
+
+            const auto entry_action = resolve_stoker_motel_story_entry(
+                stoker_motel_story_state_);
+            if (entry_action == StokerMotelStoryEntryAction::ordinary_motel) {
+                return false;
+            }
+
+            if (!field_dialogue_.open_stoker_story_entry(entry_action)) {
+                source_boundary("field.dialogue.stoker_story_entry_unresolved");
+            } else {
+                field_palette_fade_steps_ = 0U;
+                source_boundary(
+                    "field.exit.prompt.display_palette_refreshed");
+            }
+            state.caller_exit_status = -1;
+            return true;
+        };
     callbacks.select_field_exit_prompt =
         [this, &runtime_state, &event_route](
             FieldExitOrchestratorState& state) {
@@ -3841,6 +3871,7 @@ bool FieldSceneRuntime::bootstrap(
     field_entity_behavior_flags_ = 0U;
     field_exit_alternate_result_ = 0;
     field_exit_world_flags_ = 0U;
+    stoker_motel_story_state_ = StokerMotelStoryState{};
     field_entity_selection_state_ = RunnerSwitchState{};
     field_runner_refresh_state_ = FieldRunnerRefreshState{};
     field_mode_exit_transition_state_ = FieldModeExitTransitionState{};

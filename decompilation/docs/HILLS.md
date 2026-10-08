@@ -90,9 +90,14 @@ non-magic Defense capture. See the [Magic split audit](visual-audits/magic-user-
 The Stoker 7x9 portrait stream now follows the separate `BGT` repeated-tile
 and `BGE` stepped-tile counts from ROM `0x1728`; Debug/Release graphics tests
 guard the formerly duplicated tile, and the corrected image was reviewed
-against independent section 03 frames 000082, 000301, and 000601. The dialogue
-hill remains partial because the live story-service and paid-package sequence
-are not yet connected. See [the Stoker scene audit](visual-audits/motel-doorway-scene-entry.md).
+against independent section 03 frames 000082, 000301, and 000601. The first
+arrival and three-choice package offer now run through the indexed title
+service and typed map-event route; the C debt question and B Jump House
+referral are connected. Typed state resolves unpaid repeat visits to the
+offer and both completed flags to ordinary motel service. The dialogue hill
+remains partial because live debt payment, package collection, and save-state
+restoration are not yet connected. See [the Stoker scene
+audit](visual-audits/motel-doorway-scene-entry.md).
 
 The Security Terminal floor-result hill above remains separate: that QA still
 injects a resolved activity event after collision. Physical event `0x18` now

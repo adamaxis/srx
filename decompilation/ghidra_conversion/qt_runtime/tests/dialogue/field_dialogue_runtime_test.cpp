@@ -691,6 +691,48 @@ int main() {
         return 70;
     }
 
+    if (!expect(runtime.open_stoker_story_entry(
+                    StokerMotelStoryEntryAction::opening_dialogue)) ||
+        !expect(runtime.panel().text_segments[0].find("battered sign") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().has_more) ||
+        !expect(runtime.panel().continuation_label.find("MORE") !=
+                std::string_view::npos)) {
+        return 71;
+    }
+    QImage arrival_scene(320, 224, QImage::Format_RGB32);
+    arrival_scene.fill(Qt::black);
+    QPainter arrival_painter(&arrival_scene);
+    runtime.paint(arrival_painter);
+    arrival_painter.end();
+    if (!expect(matches_overlay(arrival_scene, button_a, 16, 152))) {
+        return 74;
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 3U) ||
+        !expect(runtime.panel().options[2].source_label.find(
+                    "Michael's stuff") != std::string_view::npos)) {
+        return 71;
+    }
+    if (!expect(runtime.advance_controller_events(0x1000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().text_segments[0].find("seeing you") !=
+                std::string_view::npos) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(runtime.open_stoker_story_entry(
+                    StokerMotelStoryEntryAction::package_offer)) ||
+        !expect(runtime.panel().option_count == 3U)) {
+        return 72;
+    }
+    if (!expect(runtime.open_stoker_story_entry(
+                    StokerMotelStoryEntryAction::ordinary_motel)) ||
+        !expect(runtime.panel().option_count == 2U)) {
+        return 73;
+    }
+    runtime.close();
+
     // A different source can supply its resolved speaker/event view without
     // inheriting Stoker content. Repainting fewer options removes the old
     // bottom row and selector before applying the source-selected frame mode.

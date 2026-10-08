@@ -48,6 +48,18 @@ StokerMotelPromptView make_sentinel(const StokerMotelPromptId id,
 
 } // namespace
 
+StokerMotelStoryEntryAction resolve_stoker_motel_story_entry(
+    StokerMotelStoryState& state) noexcept {
+    if (state.michael_debt_paid && state.michael_package_collected) {
+        return StokerMotelStoryEntryAction::ordinary_motel;
+    }
+    if (!state.opening_dialogue_seen) {
+        state.opening_dialogue_seen = true;
+        return StokerMotelStoryEntryAction::opening_dialogue;
+    }
+    return StokerMotelStoryEntryAction::package_offer;
+}
+
 StokerMotelPromptView make_stoker_motel_prompt(
     const StokerMotelPromptId id) {
     StokerMotelPromptView view;

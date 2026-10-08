@@ -12415,7 +12415,7 @@ int run_field_stoker_collision_to_dialogue_qa(
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries) {
     std::filesystem::create_directories(output);
-    constexpr std::array<std::string_view, 21> stale_or_current_frames{
+    constexpr std::array<std::string_view, 24> stale_or_current_frames{
         "actual.bmp",
         "destination-entry.bmp",
         "destination-idle-01.bmp",
@@ -12434,7 +12434,10 @@ int run_field_stoker_collision_to_dialogue_qa(
         "movement-128.bmp",
         "spawn.bmp",
         "stoker-arrival-dialogue.bmp",
+        "stoker-debt-question.bmp",
+        "stoker-jump-house-referral.bmp",
         "stoker-manager-greeting.bmp",
+        "stoker-manager-package-offer.bmp",
         "stoker-leave-notice.bmp",
         "returned-to-field.bmp"};
     for (const auto name : stale_or_current_frames) {
@@ -12849,10 +12852,9 @@ int run_field_stoker_collision_to_dialogue_qa(
         return 3;
     }
 
-    // Use ordinary controller bytes through the field runtime. Seed the source
-    // PRNG only to make the arrival command's normal 0..79 manager branch
-    // repeatable; no mode/event tuple or dialogue record is injected.
-    field_scene.set_source_random_seed_for_dump(0U);
+    // Use ordinary controller bytes through the field runtime. The indexed
+    // Stoker title service supplies the first-visit page and package offer;
+    // no mode/event tuple or dialogue record is injected.
     const auto press_button = [&field_scene](const std::uint8_t port_byte) {
         field_scene.set_controller_port_byte(port_byte);
         field_scene.advance_frame();
@@ -12862,35 +12864,52 @@ int run_field_stoker_collision_to_dialogue_qa(
     press_button(0x40U);
     if (!field_scene.dialogue_open() ||
         field_scene.dialogue_panel().actor_name != "Stoker" ||
-        field_scene.dialogue_panel().option_count != 2U ||
+        field_scene.dialogue_panel().option_count != 3U ||
         field_scene.dialogue_panel().has_more ||
-        !save_frame("stoker-manager-greeting", false)) {
+        !save_frame("stoker-manager-package-offer", false)) {
         std::cerr << "Stoker collision QA: A did not advance the arrival page "
-                     "to the source manager greeting\n";
+                     "to the three-choice manager offer\n";
         return 3;
     }
-    write_state("stoker-manager-greeting");
+    write_state("stoker-manager-package-offer");
     const auto& manager = field_scene.dialogue_panel();
     if (manager.options[1].source_label.find("I'll talk to you later") ==
-        std::string_view::npos) {
-        std::cerr << "Stoker collision QA: manager greeting lacks its source "
-                     "Leave choice\n";
+            std::string_view::npos ||
+        manager.options[2].source_label.find("Michael's stuff") ==
+            std::string_view::npos) {
+        std::cerr << "Stoker collision QA: manager package offer lacks its "
+                     "source Leave or Michael's-stuff choice\n";
         return 3;
     }
 
-    press_button(0x10U);
-    const auto& leave_notice = field_scene.dialogue_panel();
+    press_button(0x20U);
+    const auto& debt_question = field_scene.dialogue_panel();
     if (!field_scene.dialogue_open() ||
-        leave_notice.actor_name != "Stoker" ||
-        leave_notice.option_count != 0U ||
-        leave_notice.text_segment_count == 0U ||
-        !leave_notice.returns_to_field ||
-        !save_frame("stoker-leave-notice", false)) {
-        std::cerr << "Stoker collision QA: B did not select the source Leave "
-                     "route and notice\n";
+        debt_question.actor_name != "Stoker" ||
+        debt_question.option_count != 2U ||
+        debt_question.text_segment_count == 0U ||
+        debt_question.text_segments[0].find("Michael's brother") ==
+            std::string_view::npos ||
+        !save_frame("stoker-debt-question", false)) {
+        std::cerr << "Stoker collision QA: C did not open the source debt "
+                     "question from the live three-choice offer\n";
         return 3;
     }
-    write_state("stoker-leave-notice");
+    write_state("stoker-debt-question");
+
+    press_button(0x10U);
+    const auto& referral = field_scene.dialogue_panel();
+    if (!field_scene.dialogue_open() || referral.actor_name != "Stoker" ||
+        referral.option_count != 0U || referral.text_segment_count == 0U ||
+        referral.text_segments[0].find("Jump House") ==
+            std::string_view::npos ||
+        !referral.returns_to_field ||
+        !save_frame("stoker-jump-house-referral", false)) {
+        std::cerr << "Stoker collision QA: B did not select the source Jump "
+                     "House referral route\n";
+        return 3;
+    }
+    write_state("stoker-jump-house-referral");
 
     press_button(0x40U);
     field_scene.advance_frame();
@@ -12980,8 +12999,9 @@ int run_field_stoker_collision_to_dialogue_qa(
         "returned-to-field.bmp",
         "spawn.bmp",
         "stoker-arrival-dialogue.bmp",
-        "stoker-leave-notice.bmp",
-        "stoker-manager-greeting.bmp"};
+        "stoker-debt-question.bmp",
+        "stoker-jump-house-referral.bmp",
+        "stoker-manager-package-offer.bmp"};
     std::vector<std::string> actual_bmp_names;
     std::error_code directory_error;
     for (std::filesystem::directory_iterator item(output, directory_error), end;
@@ -12998,7 +13018,7 @@ int run_field_stoker_collision_to_dialogue_qa(
     }
     std::sort(actual_bmp_names.begin(), actual_bmp_names.end());
     if (actual_bmp_names != expected_bmp_names) {
-        std::cerr << "Stoker collision QA: expected 12 full-screen checkpoints, "
+        std::cerr << "Stoker collision QA: expected 13 full-screen checkpoints, "
                      "found " << actual_bmp_names.size() << '\n';
         for (const auto& name : actual_bmp_names) {
             std::cerr << "  frame: " << name << '\n';
@@ -13021,7 +13041,7 @@ int run_field_stoker_collision_to_dialogue_qa(
               << " position=" << position.x << ',' << position.y
               << " returned_position=" << returned_position.x << ','
               << returned_position.y
-              << " dialogue=arrival->manager->leave->field"
+              << " dialogue=opening->manager-package->debt->referral->field"
               << " mode_entry_commands="
               << mode_entry_commands_after - mode_entry_commands_before
               << " mode_entry_waits="

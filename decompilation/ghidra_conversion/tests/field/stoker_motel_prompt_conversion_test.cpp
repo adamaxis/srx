@@ -17,6 +17,29 @@ bool expect(const bool condition, const char* message) {
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
+    StokerMotelStoryState story_state{};
+    if (!expect(resolve_stoker_motel_story_entry(story_state) ==
+                    StokerMotelStoryEntryAction::opening_dialogue &&
+                    story_state.opening_dialogue_seen,
+                "first Stoker visit did not select its opening dialogue") ||
+        !expect(resolve_stoker_motel_story_entry(story_state) ==
+                    StokerMotelStoryEntryAction::package_offer,
+                "repeat Stoker visit lost the Michael package offer")) {
+        return 6;
+    }
+    story_state.michael_debt_paid = true;
+    if (!expect(resolve_stoker_motel_story_entry(story_state) ==
+                    StokerMotelStoryEntryAction::package_offer,
+                "paid debt skipped the still-uncollected package")) {
+        return 7;
+    }
+    story_state.michael_package_collected = true;
+    if (!expect(resolve_stoker_motel_story_entry(story_state) ==
+                    StokerMotelStoryEntryAction::ordinary_motel,
+                "Stoker did not return to ordinary motel service after collection")) {
+        return 8;
+    }
+
     const auto arrival = make_stoker_motel_prompt(
         StokerMotelPromptId::arrival);
     if (!expect(arrival.title_alias == "stoker.motel.arrival.title" &&

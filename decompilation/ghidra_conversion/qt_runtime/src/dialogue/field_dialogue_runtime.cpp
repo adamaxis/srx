@@ -92,6 +92,7 @@ bool FieldDialogueRuntime::load_assets(const ConversionAssetCatalog& assets) {
 
 bool FieldDialogueRuntime::open_field_exit_prompt(
     const FieldExitPromptSelection& selection) {
+    opening_intro_package_offer_follows_ = false;
     if (selection.resource_profile != FieldExitResourceProfile::stoker_motel) {
         return open_source_boundary(
             "field exit selected a prompt profile without a converted dialogue asset");
@@ -106,7 +107,28 @@ bool FieldDialogueRuntime::open_field_exit_prompt(
 
 bool FieldDialogueRuntime::open_stoker_prompt_for_dump(
     const StokerMotelPromptId prompt) {
+    opening_intro_package_offer_follows_ = false;
     return open_stoker_prompt(prompt);
+}
+
+bool FieldDialogueRuntime::open_stoker_story_entry(
+    const StokerMotelStoryEntryAction action) {
+    opening_intro_package_offer_follows_ = false;
+    switch (action) {
+    case StokerMotelStoryEntryAction::opening_dialogue:
+        opening_intro_package_offer_follows_ = true;
+        if (open_stoker_prompt(StokerMotelPromptId::arrival)) {
+            return true;
+        }
+        opening_intro_package_offer_follows_ = false;
+        return false;
+    case StokerMotelStoryEntryAction::package_offer:
+        return open_stoker_prompt(
+            StokerMotelPromptId::manager_greeting_with_package);
+    case StokerMotelStoryEntryAction::ordinary_motel:
+        return open_stoker_prompt(StokerMotelPromptId::manager_greeting);
+    }
+    return open_source_boundary("Stoker story entry action is not represented");
 }
 
 bool FieldDialogueRuntime::open_stoker_arrival_result_for_dump(
@@ -164,6 +186,7 @@ bool FieldDialogueRuntime::open_source_boundary(std::string reason) {
     panel_.source_boundary_reason = boundary_reason_;
     active_prompt_ = StokerMotelPromptId::source_boundary;
     hotel_options_menu_follows_ = false;
+    opening_intro_package_offer_follows_ = false;
     if (source_boundary_callback_) {
         source_boundary_callback_(panel_.source_boundary_reason);
     }
@@ -221,6 +244,14 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         return FieldDialogueAdvanceResult::source_boundary;
     }
     if (*command == StokerMotelPromptCommand::resolve_arrival) {
+        if (opening_intro_package_offer_follows_) {
+            opening_intro_package_offer_follows_ = false;
+            if (!open_stoker_prompt(
+                    StokerMotelPromptId::manager_greeting_with_package)) {
+                return FieldDialogueAdvanceResult::source_boundary;
+            }
+            return FieldDialogueAdvanceResult::prompt_advanced;
+        }
         const auto result = resolve_stoker_motel_arrival_command(
             arrival_command_callbacks_);
         if (result == StokerMotelArrivalCommandResult::manager_greeting) {
@@ -356,6 +387,7 @@ void FieldDialogueRuntime::close() noexcept {
     active_prompt_ = StokerMotelPromptId::source_boundary;
     boundary_reason_.clear();
     hotel_options_menu_follows_ = false;
+    opening_intro_package_offer_follows_ = false;
 }
 
 void FieldDialogueRuntime::paint(QPainter& painter) const {
