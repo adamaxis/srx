@@ -31,9 +31,13 @@ The decoded ROM records are:
 | `0x1E628` | Three Strike Team templates and one corp guard | `0F00,0500`; `1080,0500`; `0200,0500`; `0300,0780` |
 
 The names and positions above come from the ROM template/list records, not
-guesses based on a screenshot. Template type `7` selects source sprite path
-`0x5F78` in `0x481E`. The renderer's host-asset mapping for those templates
-still needs a source cross-check before drawing them.
+guesses based on a screenshot. Keep two fields distinct: `0x44BC` copies the
+template's first word (for example, `7` for the `eye5r 1` records) to live
+entity `+0x0E`; `0x481E` selects a sprite-source list from the separate type
+word at projection slot `FF164C+0x02`. The converted `0x481E` selector maps
+projection types 0 through 11 to source `0x5F78`, but the live population to
+projection-slot assignment has not been traced. The renderer's host-asset
+mapping, actor state, and palette for these records therefore remain unproven.
 
 ## Do not confuse with scene pedestrian choices
 
@@ -51,6 +55,32 @@ scene pedestrian list at `0x1EDECC` contains overrides at record bytes
 `0x9E`, `0x2E`, and `0x9E` before its zero terminator. An extractor must
 preserve order because later writes can replace an earlier value at the same
 offset.
+
+The scene's default template list is a separate population source. Profile
+entries at `0x323A` (scene 2, profile `0x172C80`) and `0x3282` (scene `0x14`,
+profile `0x1D917A`) supply the long at word offsets 21–22 (`FFDDF0`) consumed
+by the final `0x43B6` call to `0x4466`:
+
+| Scene | Profile-selected list | Template | Position list | World position | Ordered byte override |
+|---|---:|---:|---:|---:|---|
+| 2 | `0x172D1C` | `0x1D6988` pedestrian | `0x172D58` | `0x3480,0x2200` | `+0x9E=0x20` |
+| 2 | `0x172D1C` | `0x1D6988` pedestrian | `0x172D68` | `0x5300,0x3700` | `+0x9E=0x20` |
+| 2 | `0x172D1C` | `0x1D6988` pedestrian | `0x172D78` | `0x6280,0x1900` | `+0x9E=0x20` |
+| `0x14` | `0x1D91DA` | `0x1D6A1C` corp guard | `0x1D9248` | `0x0600,0x1100` | none |
+| `0x14` | `0x1D91DA` | `0x1D6A1C` corp guard | `0x1D9252` | `0x0600,0x2300` | none |
+| `0x14` | `0x1D91DA` | `0x1D6A1C` corp guard | `0x1D925C` | `0x0800,0x3500` | none |
+| `0x14` | `0x1D91DA` | `0x1D6A1C` corp guard | `0x1D9266` | `0x5400,0x0A00` | `+0x2E=0x40` |
+| `0x14` | `0x1D91DA` | `0x1D6A1C` corp guard | `0x1D926C` | `0x6080,0x0A00` | `+0x2E=0xC0` |
+| `0x14` | `0x1D91DA` | `0x1D6988` pedestrian | `0x1D922E` | `0x1600,0x0580` | none |
+| `0x14` | `0x1D91DA` | `0x1D6988` pedestrian | `0x1D9238` | `0x3680,0x1800` | none |
+| `0x14` | `0x1D91DA` | `0x1D6988` pedestrian | `0x1D923E` | `0x0B00,0x2A80` | none |
+
+The list sentinel is `0x172D4C` for scene 2 and `0x1D922A` for scene `0x14`.
+The optional override marker is a 32-bit value `2`, followed by byte-offset /
+byte-value pairs and a zero word; preserve the pair order. The tested alternate
+scenes 6, 9, and `0x2C..0x31` have empty default lists. These records prove map
+population, but not movement, animation, interaction, or damageability. Do
+not treat presence in a map list as proof that an actor is a weapon target.
 
 ## Live-route reachability check
 
@@ -77,19 +107,24 @@ for `advance_field_mode_transition` is unbound, its `mode_transition_gate`
 does not receive the scene classifier result, and its entity-population
 callback remains an explicit source boundary. The coordinator's current
 `field_mode` value is populated from the scene resource mode, so it cannot
-stand in for `FFFBF9`. Before using list `0x1E552` as weapon targets, trace an
-actual event path into it, split the live event/context/gate values into typed
-state, and connect its named actor assets to both the renderer and collision
-query.
+stand in for `FFFBF9`. The profile-selected list bytes and referenced template
+names/positions above are source-decoded, but this is not runtime population.
+Next, trace live-record defaults and entity-state tables, extract named host
+actor frames during the explicit import step, and connect typed scene records
+to the renderer. Trace actor collision/action dispatch before adding those
+same records as weapon targets. Keep special list `0x1E552` separate until an
+actual event path selects it.
 
 ## Visual verification questions
 
 1. **Does each actor look correct?** Not evaluated in Qt yet; the template
-   names/type and the source sprite-selection path are known.
+   names/type and source positions are known.
 2. **Does its displayed state match its behavior?** Not evaluated. Root flags,
    source slots, position, and override bytes must agree with the live record.
-3. **Are its visuals correct?** The ROM points type `7` through sprite source
-   `0x5F78`; host frame/origin/palette selection still needs tracing.
+3. **Are its visuals correct?** The template type and projection-slot sprite
+   selector are separate. Projection types 0 through 11 select geometry at
+   `0x5F78`; which slots these live actors occupy, and the host frame, origin,
+   and palette, still need tracing.
 4. **How does it animate?** The template creation path is traced; actor update
    dispatch, frame cadence, and start/stop conditions are not yet connected.
 5. **What sound accompanies it and for how long?** No actor-specific audio call

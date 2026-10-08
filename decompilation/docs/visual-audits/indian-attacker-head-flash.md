@@ -104,11 +104,15 @@ supports appearance and ordering; it does not establish exact VBlank phase.
    event; the black head submission lasts through that frame, then stops on
    the next call. These are automatic intro transitions, not input-triggered
    animations.
-5. **Does it have sound? Unknown for host playback and duration.** ROM calls
-   events `0x2F` and `0x46` at the two attacker hit transitions. Neither event
-   has a verified host audio alias in `AudioPlaybackService`, and no exact
-   playback capture or duration was established here. This remains tracked
-   under `SOUND-03`; no sound or length is inferred.
+5. **Does it have sound? No audible clip is present in the ROM resources.**
+   The hit paths request events `0x2F` and `0x46`; the audio command path sends
+   them to table-2 slots 47 and 70. The ROM-backed extractor produced nine
+   chip writes for each slot in a five-second trace: PSG attenuation and YM
+   setup/mode writes, with no tone sequence or YM key-on. Neither slot has an
+   extracted host asset, consistent with the catalog's silent/no-op entries.
+   There is no audible playback duration to reproduce, so no host alias is
+   needed for these two requests. Other game audio remains tracked under
+   `SOUND-03`.
 6. **Are the other visible parts of the screen also correct? Yes for the
    reviewed window.** The full-screen route shows the center block clearing
    independently while the Indian attacker stays visible, then shows the
@@ -147,6 +151,11 @@ supports appearance and ordering; it does not establish exact VBlank phase.
 - **Independently visually checked:** Genesis section 02 frames 000630-000720
   and the complete post-fix native Release route. The Genesis recording does
   not establish exact VBlank alignment or audio playback.
+- **Audio source checked:** requests `0x2F` and `0x46` select silent table-2
+  slots 47 and 70. A five-second ROM-backed extraction found setup/quieting
+  writes only and no audible clip or duration; leaving them unmapped in the
+  host service is correct.
 - **Reported defect resolved:** `OPEN-08` is resolved for the ROM-supported
   shared head/body fade and retirement. A separate head-explosion animation is
-  not present in this ROM sequence. Source audio calls remain under `SOUND-03`.
+  not present in this ROM sequence. The two hit-transition audio requests are
+  verified silent; unrelated sound defects remain under `SOUND-03`.
