@@ -2276,6 +2276,7 @@ public:
         std::array<bool, kTitleIntroTimedSpriteCount> effect_frames{};
         std::array<std::uint32_t, kTitleIntroTimedSpriteCount> effect_source_frames{};
         std::uint32_t effect_updates = 0U;
+        bool final_head_fade_saved = false;
         while (std::any_of(effect_frames.begin(), effect_frames.end(),
                            [](const bool seen) { return !seen; }) &&
                effect_updates++ < 64U) {
@@ -2295,9 +2296,34 @@ public:
                     state_.opening_intro.source_frame;
             }
             advance_one_source_frame();
+            if (!final_head_fade_saved &&
+                state_.opening_intro.persistent.stage == 12U) {
+                const auto final_head = std::find_if(
+                    opening_sprites_.begin(), opening_sprites_.end(),
+                    [](const OpeningIntroSpriteRequest& request) {
+                        return opening_intro_sprite_group(
+                                   request.sprite_descriptor)
+                                   .family ==
+                               OpeningIntroSpriteFamily::ambush_actor;
+                    });
+                const auto& final_palette =
+                    state_.opening_intro.entity_colors.words[1U];
+                if (final_head == opening_sprites_.end() ||
+                    !opening_ambush_palette_flash_active() ||
+                    !std::all_of(final_palette.begin(), final_palette.end(),
+                                 [](const std::uint16_t word) {
+                                     return word == 0U;
+                                 }) ||
+                    !save_frame("actor-final-head-fade.bmp",
+                                render_scene())) {
+                    return fail("stage 12 did not draw the head with its final black palette before returning");
+                }
+                final_head_fade_saved = true;
+            }
         }
         if (!std::all_of(effect_frames.begin(), effect_frames.end(),
-                         [](const bool seen) { return seen; })) {
+                         [](const bool seen) { return seen; }) ||
+            !final_head_fade_saved) {
             return fail("the six source explosion/smoke descriptors were incomplete");
         }
         for (std::size_t index = 1U; index < effect_source_frames.size();
@@ -5574,8 +5600,11 @@ private:
                    opening.sequence.stage < 12U;
         }
         if (entity_index == 1U) {
+            // The 0x5A34E fall-through clears the right map and still submits
+            // the persistent head once with line 1 at 0x000. The next frame
+            // returns at 0x5A25A without another SAT submission.
             return opening.persistent.stage >= 5U &&
-                   opening.persistent.stage < 12U;
+                   opening.persistent.stage <= 12U;
         }
         return false;
     }
