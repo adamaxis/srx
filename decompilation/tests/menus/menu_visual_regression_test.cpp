@@ -254,25 +254,6 @@ SoftwareScreen source_field_menu_reference(const NativePortAssets& assets,
                            assets.field_menu_power_labels[label_index]);
             }
         }
-        const auto is_armor_detail = item_code >= 0x2CU && item_code <= 0x32U;
-        if (is_armor_detail) {
-            // Source 0x115F2 skips the weapon detail helper for armor. The
-            // selected armor page writes the same Wpns/Guns rows as the
-            // source armor overview, using the live armor record's +0x26/+0x25
-            // indexes rather than the selected item's generic damage byte.
-            write_text(112, 80, "Wpns");
-            if (record.weapons_bar_index < assets.field_menu_damage_bars.size()) {
-                const auto& bar = assets.field_menu_damage_bars[
-                    record.weapons_bar_index];
-                expected.blit_rgba(168, 80, bar.width, bar.height, bar.pixels);
-            }
-            write_text(112, 88, "Guns");
-            if (record.guns_bar_index < assets.field_menu_drain_bars.size()) {
-                const auto& bar = assets.field_menu_drain_bars[
-                    record.guns_bar_index];
-                expected.blit_rgba(168, 88, bar.width, bar.height, bar.pixels);
-            }
-        }
         const auto detail_label = include_art
             ? source_item_detail_label_for_test(item_code)
             : std::string_view{};
@@ -338,13 +319,21 @@ SoftwareScreen source_field_menu_reference(const NativePortAssets& assets,
         }
         write_text(136, 144, "Wpns");
         write_text(136, 152, "Guns");
-        if (record.weapons_bar_index < assets.field_menu_damage_bars.size()) {
-            const auto& bar = assets.field_menu_damage_bars[record.weapons_bar_index];
-            expected.blit_rgba(176, 144, bar.width, bar.height, bar.pixels);
-        }
-        if (record.guns_bar_index < assets.field_menu_drain_bars.size()) {
-            const auto& bar = assets.field_menu_drain_bars[record.guns_bar_index];
-            expected.blit_rgba(176, 152, bar.width, bar.height, bar.pixels);
+        if (record.equipped_armor_index != 0U &&
+            record.equipped_armor_index <=
+                assets.field_menu_armor_summary_modifiers.size()) {
+            const auto& modifiers = assets.field_menu_armor_summary_modifiers[
+                record.equipped_armor_index - 1U];
+            if (modifiers.weapons < assets.field_menu_armor_summary_bars.size()) {
+                const auto& bar = assets.field_menu_armor_summary_bars[
+                    modifiers.weapons];
+                expected.blit_rgba(176, 144, bar.width, bar.height, bar.pixels);
+            }
+            if (modifiers.guns < assets.field_menu_armor_summary_bars.size()) {
+                const auto& bar = assets.field_menu_armor_summary_bars[
+                    modifiers.guns];
+                expected.blit_rgba(176, 152, bar.width, bar.height, bar.pixels);
+            }
         }
     }
 
@@ -398,7 +387,45 @@ SoftwareScreen source_field_menu_reference(const NativePortAssets& assets,
         draw_inventory_selector_outline(expected, selection, row);
         const auto slot = row * 2U + selection;
         if (slot < record.inventory_item_codes.size()) {
-            draw_item_detail(record.inventory_item_codes[slot], true);
+            const auto item_code = record.inventory_item_codes[slot];
+            draw_item_detail(item_code, true);
+            if (item_code >= 0x2CU && item_code <= 0x32U) {
+                // 0x12A8C -> 0x11352 temporarily previews the selected
+                // D4D50 armor row in the lower panel. The selected armor
+                // replaces the equipped summary at these same coordinates;
+                // no Wpns/Guns pair is drawn beside the upper item detail.
+                const auto armor_row = static_cast<std::size_t>(
+                    item_code - 0x2CU);
+                if (armor_row < assets.field_menu_armor_labels.size()) {
+                    const auto& armor = assets.field_menu_armor_labels[armor_row];
+                    for (std::size_t line = 0; line < armor.size(); ++line) {
+                        write_text(128,
+                                   128 + static_cast<std::int32_t>(line * 8U),
+                                   armor[line]);
+                    }
+                }
+                write_text(136, 144, "Wpns");
+                write_text(136, 152, "Guns");
+                if (armor_row <
+                    assets.field_menu_armor_summary_modifiers.size()) {
+                    const auto& modifiers =
+                        assets.field_menu_armor_summary_modifiers[armor_row];
+                    if (modifiers.weapons <
+                        assets.field_menu_armor_summary_bars.size()) {
+                        const auto& bar = assets.field_menu_armor_summary_bars[
+                            modifiers.weapons];
+                        expected.blit_rgba(176, 144, bar.width, bar.height,
+                                           bar.pixels);
+                    }
+                    if (modifiers.guns <
+                        assets.field_menu_armor_summary_bars.size()) {
+                        const auto& bar = assets.field_menu_armor_summary_bars[
+                            modifiers.guns];
+                        expected.blit_rgba(176, 152, bar.width, bar.height,
+                                           bar.pixels);
+                    }
+                }
+            }
         }
     }
     constexpr std::array<std::string_view, 7> labels{{

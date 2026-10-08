@@ -32,6 +32,9 @@ The test covers:
 - the one-pixel `#C4BE27` inventory selection outline at occupied and empty
   cells, positioned by the `0x11592` selector state and checked independently
   of the `0x11624` equipment borders; and
+- equipped-armor Wpns/Guns rows selected from D4D50 and drawn from the six-tile
+  CF884 armor-summary table; selected armor previews use the same table with
+  the row chosen by the selected item code; and
 - the source command font at the runner, status, item, and combat-label
   destinations.
 
@@ -56,4 +59,6 @@ ctest --preset debug --output-on-failure -R shadowrun_menu_visual_regression
 When a source resource or record mapping changes, the test fails with the
 affected case, mismatch count, and artifact paths. Do not weaken it to a
 single "some pixel exists" assertion or approve a new menu screenshot without
-checking the corresponding source writer and extracted asset.
+checking the corresponding source writer and extracted asset. The expected
+compositor keeps armor-summary strips separate from weapon Damage and Drain
+rows, matching the `0x11352` source path.
