@@ -39,14 +39,16 @@ additional numeric event-29 groups: triggers in scenes 21-25 target the
 The entry scenes 25, 29, 34, 40, and 43 are not listed as child destinations.
 The runtime currently chooses group index 0 for those scenes. Descriptor-spawn
 checkpoint QA physically reaches event 29 from scenes 25, 34, and 40 and checks
-all destinations in their respective 21-24, 30-33, and 35-39 groups. Scene 43
-starts a chained 43-to-42-to-41-to-42 route that physically tests both
-member-scene triggers in group 41-42. Scene 29 has separate trigger QA for
-group 26-28. The initial non-member routes use a test-only interaction mode
-setter and do not verify the ordinary resource-scene entry path. The
+all destinations in their respective 21-24, 30-33, and 35-39 groups. The scene
+40 route continues through `40->36->37->38->39->35->36`, physically entering
+every member trigger in group 35-39 and carrying the selected floor across the
+handoffs. Scene 43 starts a chained `43->42->41->42` route that physically
+tests both member-scene triggers in group 41-42. Scene 29 has separate trigger
+QA for group 26-28. The initial non-member routes use a test-only interaction
+mode setter and do not verify the ordinary resource-scene entry path. The
 resource setup at `0x167AE` clears current-floor `FFF0C8` for scene IDs
 `0x15..0x2B`, supporting index 0 on normal entry; saved-floor restoration
-remains open. Member-scene routes 21-24, 30-33, and 35-39 remain unverified.
+remains open. Member-scene routes 21-24 and 30-33 remain unverified.
 
 The native route policy is `resolve_field_script_route()`. It names the
 Stoker dialogue and Ares service directly, then resolves all other valid
@@ -138,13 +140,13 @@ priority, scene-2 row 0, a same-numbered event using another map's row, and
 unavailable/out-of-range tables. The scene-26 checkpoint and nine-question
 review are in [security-terminal-physical-entry.md](security-terminal-physical-entry.md).
 The event-29 selector and selected-scene transition have full-route QA from
-scenes 26-29, descriptor-spawn checkpoints 25, 29, 34, and 40, and a chained
-43-to-42-to-41-to-42 member-scene route, with a nine-question review in
-[field-elevator-selector.md](field-elevator-selector.md). Scene 34's 330-frame
-Debug/Release outputs match by SHA-256; scene 40's 340-frame outputs also
-match. The 988-frame 43/42/41 group route matches across Debug/Release and had
-25 chronological whole-screen sheets reviewed. Physical trigger paths for
-member scenes 21-24, 30-33, and 35-39 remain open.
+scenes 26-29, descriptor-spawn checkpoints 25, 29, 34, 40, and 43, and chained
+member-scene routes `40->36->37->38->39->35->36` and `43->42->41->42`, with a
+nine-question review in [field-elevator-selector.md](field-elevator-selector.md).
+The 2,332-frame scene-40 group route and 988-frame scene-43 group route match
+across Debug/Release by relative-path SHA-256; their full timelines were
+reviewed in 63 and 25 chronological whole-screen sheets. Physical trigger
+paths for member scenes 21-24 and 30-33 remain open.
 
 This is a route-planning foundation, not complete map/path coverage. The
 scene-2 event-1 physical route is behaviorally covered but visually partial
