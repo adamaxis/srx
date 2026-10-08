@@ -22,7 +22,7 @@ records.
 | Scene 2, collision value `0xCB` at ROM `0x173142`, field mode 2/event 11 | Ares service script | `0x1FA78` selects the Ares mode-text prompt; A opens the shop and Start returns |
 | Scene 2, paired collision values `0xC0` at ROM `0x173124` and `0x17312E`, event 0 | Active map's event table | Row 0 in `0x172CDC` selects scene `0x14` (scene 20) |
 | Scene 2, collision value `0xC1` at ROM `0x17314C`, event 1 | Active map's event table and world-activity resource selector | Row 1 in `0x172CDC` selects scene `0x1A` (scene 26); its resource bundle has bound 3 |
-| Scene 26-29 family, paired `0xDD` collision rectangles, event 29 | Floor selector and selected-scene transition | `0x58D94` calls `0x58DE0`; the typed child scene group contains scenes 26, 27, and 28. Physical QA covers scenes 26-28; the scene-29 entrance and destination identity remain open. This is separate from the Stoker scene-2 event-2 dialogue route |
+| Scene 26-29 family, paired `0xDD` collision rectangles, event 29 | Floor selector and selected-scene transition | `0x58D94` calls `0x58DE0`; the typed child scene group contains scenes 26, 27, and 28. Physical QA covers scenes 26-29; destination identity remains open. This is separate from the Stoker scene-2 event-2 dialogue route |
 | Scene 20, collision value `0x82` at ROM `0x1D9724`, event 2 | Building interaction continuation | The separate electromagnetic-lock handler `0x20E48` opens its generic prompt |
 | Scene 26, collision values `0xD8` at ROM `0x1D9E46`, event `0x18` | Direct typed Security Terminal continuation | `0xB7B8` requires two negative samples and selects `0x20EC2`; the physical-input QA opens both choices and Walk Away returns |
 | Any remaining in-range map-table event | Active map's own event table | The selected row is passed to the existing world-activity coordinator; missing/out-of-range tables remain unresolved |
@@ -38,15 +38,15 @@ additional numeric event-29 groups: triggers in scenes 21-25 target the
 21-24 group; 30-34 target 30-33; 35-40 target 35-39; and 41-43 target 41-42.
 The entry scenes 25, 29, 34, 40, and 43 are not listed as child destinations.
 The runtime currently chooses group index 0 for those scenes. Descriptor-spawn
-checkpoint QA physically reaches event 29 from scenes 25, 34, 40, and 43 and
-checks all destinations in their respective 21-24, 30-33, 35-39, and 41-42
-groups; scene 29 has separate trigger QA for group 26-28. These routes use a
-test-only interaction mode setter and do not verify the ordinary resource-scene
-entry path. The
+checkpoint QA physically reaches event 29 from scenes 25, 34, and 40 and checks
+all destinations in their respective 21-24, 30-33, and 35-39 groups. Scene 43
+starts a chained 43-to-42-to-41-to-42 route that physically tests both
+member-scene triggers in group 41-42. Scene 29 has separate trigger QA for
+group 26-28. The initial non-member routes use a test-only interaction mode
+setter and do not verify the ordinary resource-scene entry path. The
 resource setup at `0x167AE` clears current-floor `FFF0C8` for scene IDs
 `0x15..0x2B`, supporting index 0 on normal entry; saved-floor restoration
-remains open. Member-scene routes 21-24, 30-33, 35-39, and 41-42 remain
-unverified.
+remains open. Member-scene routes 21-24, 30-33, and 35-39 remain unverified.
 
 The native route policy is `resolve_field_script_route()`. It names the
 Stoker dialogue and Ares service directly, then resolves all other valid
@@ -138,13 +138,13 @@ priority, scene-2 row 0, a same-numbered event using another map's row, and
 unavailable/out-of-range tables. The scene-26 checkpoint and nine-question
 review are in [security-terminal-physical-entry.md](security-terminal-physical-entry.md).
 The event-29 selector and selected-scene transition have full-route QA from
-scenes 26-29 and descriptor-spawn checkpoints 25, 29, 34, 40, and 43, with a
-nine-question review in
+scenes 26-29, descriptor-spawn checkpoints 25, 29, 34, and 40, and a chained
+43-to-42-to-41-to-42 member-scene route, with a nine-question review in
 [field-elevator-selector.md](field-elevator-selector.md). Scene 34's 330-frame
 Debug/Release outputs match by SHA-256; scene 40's 340-frame outputs also
-match. Scene 43's 335-frame output matches across Debug/Release and has its own
-nine-sheet whole-screen review. Physical trigger paths for member scenes
-21-24, 30-33, 35-39, and 41-42 remain open.
+match. The 988-frame 43/42/41 group route matches across Debug/Release and had
+25 chronological whole-screen sheets reviewed. Physical trigger paths for
+member scenes 21-24, 30-33, and 35-39 remain open.
 
 This is a route-planning foundation, not complete map/path coverage. The
 scene-2 event-1 physical route is behaviorally covered but visually partial

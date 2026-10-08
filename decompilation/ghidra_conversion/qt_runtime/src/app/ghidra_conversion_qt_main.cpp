@@ -5710,7 +5710,7 @@ int run_field_elevator_physical_entry_qa(
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries);
 
-int run_field_elevator_nonmember_entry_qa(
+int run_field_elevator_group_route_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
     const std::filesystem::path& output,
@@ -8360,7 +8360,7 @@ int run_field_elevator_physical_entry_qa(
     return 0;
 }
 
-int run_field_elevator_nonmember_entry_qa(
+int run_field_elevator_group_route_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
     const std::filesystem::path& output,
@@ -8371,13 +8371,13 @@ int run_field_elevator_nonmember_entry_qa(
     std::error_code output_error;
     std::filesystem::remove_all(output, output_error);
     if (output_error) {
-        std::cerr << "Scene-29 elevator QA: could not clear captures: "
+        std::cerr << "Elevator group route QA: could not clear captures: "
                   << output_error.message() << '\n';
         return 3;
     }
     std::filesystem::create_directories(output / "timeline", output_error);
     if (output_error) {
-        std::cerr << "Scene-29 elevator QA: could not create captures: "
+        std::cerr << "Elevator group route QA: could not create captures: "
                   << output_error.message() << '\n';
         return 3;
     }
@@ -8387,6 +8387,7 @@ int run_field_elevator_nonmember_entry_qa(
     const auto& rectangles = metadata.terrain_collision_rectangles;
     struct RouteSourceExpectation {
         std::uint16_t scene_id;
+        std::uint8_t current_floor;
         RestoredRunnerPosition spawn;
         std::size_t first_trigger_record;
         std::uint16_t first_trigger_x;
@@ -8396,16 +8397,20 @@ int run_field_elevator_nonmember_entry_qa(
         std::array<std::uint16_t, kFieldElevatorSceneGroupMemberCount>
             group_scene_ids;
     };
-    const std::array<RouteSourceExpectation, 5U> route_expectations{{
-        {25U, {0x3000U, 0x0600U}, 102U, 0x02E0U, 0x0300U, 0x0020U, 4U,
+    const std::array<RouteSourceExpectation, 7U> route_expectations{{
+        {25U, 0U, {0x3000U, 0x0600U}, 102U, 0x02E0U, 0x0300U, 0x0020U, 4U,
          {21U, 22U, 23U, 24U, 0U}},
-        {29U, {0x0A00U, 0x0500U}, 112U, 0x0080U, 0x00A0U, 0x0020U, 3U,
+        {29U, 0U, {0x0A00U, 0x0500U}, 112U, 0x0080U, 0x00A0U, 0x0020U, 3U,
          {26U, 27U, 28U, 0U, 0U}},
-        {34U, {0x3800U, 0x0600U}, 85U, 0x0380U, 0x03A0U, 0x0020U, 4U,
+        {34U, 0U, {0x3800U, 0x0600U}, 85U, 0x0380U, 0x03A0U, 0x0020U, 4U,
          {30U, 31U, 32U, 33U, 0U}},
-        {40U, {0x1600U, 0x0500U}, 70U, 0x0140U, 0x0160U, 0x0020U, 5U,
+        {40U, 0U, {0x1600U, 0x0500U}, 70U, 0x0140U, 0x0160U, 0x0020U, 5U,
          {35U, 36U, 37U, 38U, 39U}},
-        {43U, {0x0500U, 0x2300U}, 76U, 0x0020U, 0x0040U, 0x01E0U, 2U,
+        {41U, 0U, {0x0500U, 0x2300U}, 79U, 0x0020U, 0x0040U, 0x01C0U, 2U,
+         {41U, 42U, 0U, 0U, 0U}},
+        {42U, 1U, {0x0500U, 0x2300U}, 76U, 0x0020U, 0x0040U, 0x01E0U, 2U,
+         {41U, 42U, 0U, 0U, 0U}},
+        {43U, 0U, {0x0500U, 0x2300U}, 76U, 0x0020U, 0x0040U, 0x01E0U, 2U,
          {41U, 42U, 0U, 0U, 0U}},
     }};
     const auto route_expectation = std::find_if(
@@ -8414,7 +8419,7 @@ int run_field_elevator_nonmember_entry_qa(
             return expectation.scene_id == scene_id;
         });
     if (route_expectation == route_expectations.end()) {
-        std::cerr << "Non-member elevator QA: no source route expectation for "
+        std::cerr << "Elevator group route QA: no source route expectation for "
                      "scene "
                   << scene_id << '\n';
         return 3;
@@ -8445,7 +8450,7 @@ int run_field_elevator_nonmember_entry_qa(
         rectangles[expected.first_trigger_record + 1U].bottom !=
             expected.trigger_y + 0x001FU ||
         rectangles[expected.first_trigger_record + 1U].value != 0x00DDU) {
-        std::cerr << "Non-member elevator QA: scene " << scene_id
+        std::cerr << "Elevator group route QA: scene " << scene_id
                   << " descriptor spawn, group, or paired event-29 collision "
                      "records do not match the extracted source data\n";
         return 3;
@@ -8468,14 +8473,15 @@ int run_field_elevator_nonmember_entry_qa(
     };
     std::ofstream timeline(output / "timeline.tsv", std::ios::trunc);
     if (!timeline) {
-        std::cerr << "Non-member elevator QA: could not write timeline.tsv\n";
+        std::cerr << "Elevator group route QA: could not write timeline.tsv\n";
         return 3;
     }
     timeline << "frame\tscene\tx\ty\tcamera_x\tcamera_y\tmode"
                 "\tterrain_code\tprobe_0\tprobe_1\tprobe_2\tprobe_3\tevent"
                 "\tselector_open"
                 "\tcurrent_floor\tselected_floor\tdestination\tfeedback"
-                "\tanimation\ttransition_phase\tpalette_step\talpha"
+                "\tanimation\tanimation_frame\ttransition_phase"
+                "\tpalette_step\talpha"
                 "\tinput\timage\n";
 
     std::uint32_t frame = 0U;
@@ -8521,6 +8527,9 @@ int run_field_elevator_nonmember_entry_qa(
                  << '\t' << field_scene.elevator_selector_animating_for_dump()
                  << '\t'
                  << static_cast<unsigned>(field_scene
+                                              .elevator_selector_animation_frame_for_dump())
+                 << '\t'
+                 << static_cast<unsigned>(field_scene
                                               .elevator_scene_transition_phase_for_dump())
                  << '\t'
                  << static_cast<unsigned>(field_scene
@@ -8560,7 +8569,7 @@ int run_field_elevator_nonmember_entry_qa(
         field_scene.field_transition_pending_for_dump() ||
         !no_modal_screen() || !field_hud_chrome_survives(render(), asset_root) ||
         !save("scene" + scene_label + "-descriptor-spawn") || !capture()) {
-        std::cerr << "Non-member elevator QA: scene " << scene_id
+        std::cerr << "Elevator group route QA: scene " << scene_id
                   << " source descriptor spawn did not produce a clean field "
                      "screen\n";
         return 3;
@@ -8602,16 +8611,20 @@ int run_field_elevator_nonmember_entry_qa(
             MovementModeTransitionContinuation::event_29_world_activity ||
         movement.kind !=
             EntityMovementModeTransitionResultKind::world_activity_started ||
-        field_scene.elevator_selector_current_floor_for_dump() != 0U ||
-        field_scene.elevator_selector_selected_floor_for_dump() != 0U ||
+        field_scene.elevator_selector_current_floor_for_dump() !=
+            expected.current_floor ||
+        field_scene.elevator_selector_selected_floor_for_dump() !=
+            expected.current_floor ||
         field_scene.elevator_selector_destination_for_dump() !=
-            source_group.scene_ids[0U] ||
+            source_group.scene_ids[expected.current_floor] ||
         !no_modal_screen() || selector_open == field_only ||
         !field_hud_chrome_survives(selector_open, asset_root) ||
         !save("selector-from-scene" + scene_label)) {
-        std::cerr << "Non-member elevator QA: physical input from scene "
+        std::cerr << "Elevator group route QA: physical input from scene "
                   << scene_id << " descriptor spawn did not open the event-29 selector at group "
-                     "entry floor 0 (frames=" << trigger_frames
+                     "entry floor "
+                  << static_cast<unsigned>(expected.current_floor)
+                  << " (frames=" << trigger_frames
                   << ", event=" << static_cast<unsigned>(movement.event_code)
                   << ", destination="
                   << field_scene.elevator_selector_destination_for_dump()
@@ -8626,7 +8639,7 @@ int run_field_elevator_nonmember_entry_qa(
     }
     const auto held_selector = render();
     if (held_selector != selector_open || !save("selector-held-30")) {
-        std::cerr << "Non-member elevator QA: selector changed during its "
+        std::cerr << "Elevator group route QA: selector changed during its "
                      "neutral hold\n";
         return 3;
     }
@@ -8640,20 +8653,22 @@ int run_field_elevator_nonmember_entry_qa(
     if (!b_frame_saved || !advance() ||
         field_audio_events.size() != audio_before + 1U ||
         field_audio_events.back() != 0x25U) {
-        std::cerr << "Non-member elevator QA: B did not request source audio "
+        std::cerr << "Elevator group route QA: B did not request source audio "
                      "event 0x25\n";
         return 3;
     }
     QImage first_selected_floor;
-    for (std::uint8_t floor = 1U; floor < source_group.count; ++floor) {
+    for (std::uint8_t floor = 1U;
+         expected.current_floor == 0U && floor < source_group.count; ++floor) {
         if (!tap_dpad(0x01U, "dpad-up") ||
-            field_scene.elevator_selector_current_floor_for_dump() != 0U ||
+            field_scene.elevator_selector_current_floor_for_dump() !=
+                expected.current_floor ||
             field_scene.elevator_selector_selected_floor_for_dump() != floor ||
             field_scene.elevator_selector_destination_for_dump() !=
                 source_group.scene_ids[floor] ||
             field_scene.elevator_selector_navigation_feedback_for_dump() !=
                 ElevatorSelectorNavigationFeedback::next_floor_active) {
-            std::cerr << "Non-member elevator QA: Up did not select source "
+            std::cerr << "Elevator group route QA: Up did not select source "
                          "group index " << static_cast<unsigned>(floor)
                       << " in scene " << scene_id << '\n';
             return 3;
@@ -8683,23 +8698,69 @@ int run_field_elevator_nonmember_entry_qa(
             field_scene.elevator_selector_navigation_feedback_for_dump() !=
                 ElevatorSelectorNavigationFeedback::next_floor_rest ||
             !save(rest_name)) {
-            std::cerr << "Non-member elevator QA: Up feedback did not retire "
+            std::cerr << "Elevator group route QA: Up feedback did not retire "
+                         "after eight VBlanks\n";
+            return 3;
+        }
+    }
+
+    if (expected.current_floor != 0U) {
+        constexpr std::uint8_t destination_floor = 0U;
+        if (expected.current_floor != 1U || source_group.count != 2U ||
+            !tap_dpad(0x02U, "dpad-down") ||
+            field_scene.elevator_selector_current_floor_for_dump() !=
+                expected.current_floor ||
+            field_scene.elevator_selector_selected_floor_for_dump() !=
+                destination_floor ||
+            field_scene.elevator_selector_destination_for_dump() !=
+                source_group.scene_ids[destination_floor] ||
+            field_scene.elevator_selector_navigation_feedback_for_dump() !=
+                ElevatorSelectorNavigationFeedback::previous_floor_active) {
+            std::cerr << "Elevator group route QA: Down did not select floor "
+                         "one from member scene " << scene_id << '\n';
+            return 3;
+        }
+        first_selected_floor = render();
+        const auto destination_label =
+            std::to_string(source_group.scene_ids[destination_floor]);
+        const auto feedback_name =
+            "selector-destination-" + destination_label + "-feedback";
+        const auto last_feedback_name =
+            "selector-destination-" + destination_label + "-feedback-last";
+        const auto rest_name =
+            "selector-destination-" + destination_label + "-selected";
+        if (!save(feedback_name)) {
+            return 3;
+        }
+        for (std::uint8_t tick = 0U; tick < 6U; ++tick) {
+            if (!advance()) {
+                return 3;
+            }
+        }
+        if (field_scene.elevator_selector_navigation_feedback_frames_remaining_for_dump() !=
+                1U ||
+            !save(last_feedback_name) || !advance() ||
+            field_scene.elevator_selector_navigation_feedback_for_dump() !=
+                ElevatorSelectorNavigationFeedback::previous_floor_rest ||
+            !save(rest_name)) {
+            std::cerr << "Elevator group route QA: Down feedback did not retire "
                          "after eight VBlanks\n";
             return 3;
         }
     }
 
     for (std::uint8_t floor = static_cast<std::uint8_t>(source_group.count - 1U);
-         floor > 1U; --floor) {
+         expected.current_floor == 0U && floor > 1U; --floor) {
         if (!tap_dpad(0x02U, "dpad-down") ||
-            field_scene.elevator_selector_current_floor_for_dump() != 0U ||
+            field_scene.elevator_selector_current_floor_for_dump() !=
+                expected.current_floor ||
             field_scene.elevator_selector_selected_floor_for_dump() !=
                 static_cast<std::uint8_t>(floor - 1U) ||
             field_scene.elevator_selector_destination_for_dump() !=
                 source_group.scene_ids[floor - 1U] ||
             field_scene.elevator_selector_navigation_feedback_for_dump() !=
                 ElevatorSelectorNavigationFeedback::previous_floor_active) {
-            std::cerr << "Non-member elevator QA: Down did not return through "
+            std::cerr << "Elevator group route QA: Down did not return through "
                          "the source floor list\n";
             return 3;
         }
@@ -8713,7 +8774,7 @@ int run_field_elevator_nonmember_entry_qa(
             !advance() ||
             field_scene.elevator_selector_navigation_feedback_for_dump() !=
                 ElevatorSelectorNavigationFeedback::previous_floor_rest) {
-            std::cerr << "Non-member elevator QA: Down feedback did not retire "
+            std::cerr << "Elevator group route QA: Down feedback did not retire "
                          "after eight VBlanks\n";
             return 3;
         }
@@ -8729,22 +8790,32 @@ int run_field_elevator_nonmember_entry_qa(
             first_selected_floor.copy(selected_floor_label_region) ||
         !image_region_has_color(first_selected_floor, 220, 88, 40, 48,
                                 QColor(255, 219, 0))) {
-        std::cerr << "Non-member elevator QA: navigation changed the current "
+        std::cerr << "Elevator group route QA: navigation changed the current "
                      "floor label or failed to show the selected floor\n";
         return 3;
     }
 
+    const auto destination_floor = static_cast<std::uint8_t>(
+        expected.current_floor == 0U ? 1U : 0U);
+    const auto initial_lift_animation_frame = static_cast<std::uint8_t>(
+        destination_floor > expected.current_floor ? 16U : 0U);
     input_label = "A";
     field_scene.set_controller_port_byte(0x40U);
     if (!advance() || !field_scene.elevator_selector_animating_for_dump() ||
-        field_scene.elevator_selector_animation_frame_for_dump() != 16U) {
-        std::cerr << "Non-member elevator QA: A did not start the 17-frame "
-                     "lift sequence\n";
+        field_scene.elevator_selector_animation_frame_for_dump() !=
+            initial_lift_animation_frame) {
+        std::cerr << "Elevator group route QA: A did not start the 17-frame "
+                     "lift sequence at the source-direction frame "
+                  << static_cast<unsigned>(initial_lift_animation_frame)
+                  << '\n';
         return 3;
     }
     input_label = "neutral";
     field_scene.set_controller_port_byte(0U);
-    if (!advance() || !save("lift-animation-start")) {
+    if (!advance() ||
+        field_scene.elevator_selector_animation_frame_for_dump() !=
+            initial_lift_animation_frame ||
+        !save("lift-animation-start")) {
         return 3;
     }
     std::uint16_t lift_frames = 0U;
@@ -8757,13 +8828,16 @@ int run_field_elevator_nonmember_entry_qa(
     }
     if (lift_frames >= 140U ||
         field_scene.elevator_selector_animating_for_dump() ||
-        field_scene.elevator_selector_current_floor_for_dump() != 1U ||
-        field_scene.elevator_selector_selected_floor_for_dump() != 1U ||
+        field_scene.elevator_selector_current_floor_for_dump() !=
+            destination_floor ||
+        field_scene.elevator_selector_selected_floor_for_dump() !=
+            destination_floor ||
         field_scene.elevator_selector_destination_for_dump() !=
-            source_group.scene_ids[1U] ||
+            source_group.scene_ids[destination_floor] ||
         !save("selector-arrived-at-selected-floor")) {
-        std::cerr << "Non-member elevator QA: lift animation did not settle "
-                     "on selected floor index 1\n";
+        std::cerr << "Elevator group route QA: lift animation did not settle "
+                     "on selected floor index "
+                  << static_cast<unsigned>(destination_floor) << '\n';
         return 3;
     }
 
@@ -8775,14 +8849,14 @@ int run_field_elevator_nonmember_entry_qa(
     if (!start_saved || !advance() ||
         field_scene.elevator_scene_transition_phase_for_dump() !=
             ElevatorSceneTransitionPhase::fading_to_black) {
-        std::cerr << "Non-member elevator QA: Start did not begin the "
+        std::cerr << "Elevator group route QA: Start did not begin the "
                      "source-timed fade after the lift arrived\n";
         return 3;
     }
 
     bool black_handoff_captured = false;
     std::uint16_t transition_frames = 0U;
-    const auto destination_scene = source_group.scene_ids[1U];
+    const auto destination_scene = source_group.scene_ids[destination_floor];
     while (transition_frames < 500U &&
            (field_scene.field_scene_reference_for_dump() != destination_scene ||
             field_scene.elevator_scene_transition_phase_for_dump() !=
@@ -8801,7 +8875,7 @@ int run_field_elevator_nonmember_entry_qa(
             black.fill(Qt::black);
             if (render() != black ||
                 !save("destination-black-handoff")) {
-                std::cerr << "Non-member elevator QA: scene change did not "
+                std::cerr << "Elevator group route QA: scene change did not "
                              "replace the selector at full black\n";
                 return 3;
             }
@@ -8826,7 +8900,7 @@ int run_field_elevator_nonmember_entry_qa(
         entry_after_fade == selector_open ||
         !save("scene" + std::to_string(destination_scene) +
               "-entry-after-fade")) {
-        std::cerr << "Non-member elevator QA: selected scene "
+        std::cerr << "Elevator group route QA: selected scene "
                   << destination_scene
                   << " did not replace the selector cleanly at its descriptor "
                      "spawn\n";
@@ -8868,7 +8942,7 @@ int run_field_elevator_nonmember_entry_qa(
         field_scene.field_entity_world_position().y != destination_spawn.y ||
         !no_modal_screen() || !field_hud_chrome_survives(destination, asset_root) ||
         !save("scene" + std::to_string(destination_scene) + "-destination")) {
-        std::cerr << "Non-member elevator QA: destination camera did not settle "
+        std::cerr << "Elevator group route QA: destination camera did not settle "
                      "to a clean, stable field screen\n";
         return 3;
     }
@@ -8879,8 +8953,12 @@ int run_field_elevator_nonmember_entry_qa(
     }
     if (render() != destination ||
         !save("scene" + std::to_string(destination_scene) + "-held-30")) {
-        std::cerr << "Non-member elevator QA: destination retained stale "
+        std::cerr << "Elevator group route QA: destination retained stale "
                      "selector graphics or changed during idle\n";
+        return 3;
+    }
+    if (!save("actual")) {
+        std::cerr << "Elevator group route QA: could not write actual.bmp\n";
         return 3;
     }
     timeline.flush();
@@ -8894,15 +8972,17 @@ int run_field_elevator_nonmember_entry_qa(
         std::find(source_boundaries.begin(), source_boundaries.end(),
                   "field.elevator.destination_fade_finished") ==
             source_boundaries.end()) {
-        std::cerr << "Non-member elevator QA: complete timeline or source "
+        std::cerr << "Elevator group route QA: complete timeline or source "
                      "transition boundary was not recorded\n";
         return 3;
     }
-    std::cout << "field_elevator_nonmember_entry_qa=passed scene="
+    std::cout << "field_elevator_group_route_qa=passed scene="
               << scene_id << " trigger=event29 records="
               << expected.first_trigger_record << ','
               << expected.first_trigger_record + 1U
-              << " current_floor=0 destination=" << destination_scene
+              << " current_floor="
+              << static_cast<unsigned>(expected.current_floor)
+              << " destination=" << destination_scene
               << " audio_event=0x25 frames="
               << timeline_frame_count << " artifacts=" << output.string()
               << '\n';
@@ -10356,7 +10436,7 @@ int main(int argc, char** argv) {
                        " [--field-elevator-scene29-entry-qa <output-dir>]"
                        " [--field-elevator-scene34-entry-qa <output-dir>]"
                        " [--field-elevator-scene40-entry-qa <output-dir>]"
-                       " [--field-elevator-scene43-entry-qa <output-dir>]"
+                       " [--field-elevator-scene43-group-roundtrip-qa <output-dir>]"
                        " [--field-security-terminal-physical-entry-qa <output-dir>]"
                        " [--field-stoker-collision-qa <output-dir>]"
                        " [--field-command-dump <file>]"
@@ -10487,7 +10567,7 @@ int main(int argc, char** argv) {
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
-                    "--field-elevator-scene43-entry-qa" &&
+                    "--field-elevator-scene43-group-roundtrip-qa" &&
                 index + 1 < argc) {
                 field_smoke = true;
                 field_elevator_nonmember_entry_scene = 43U;
@@ -10860,7 +10940,7 @@ int main(int argc, char** argv) {
             if (field_elevator_nonmember_entry_scene.has_value()) {
                 if (!smoke_state.field_session_source_assets.has_value() ||
                     !smoke_state.joshua_selection.has_value()) {
-                    std::cerr << "Non-member elevator QA: scene source or "
+                    std::cerr << "Elevator group route QA: scene source or "
                                  "Joshua record is unavailable\n";
                     return 3;
                 }
@@ -10868,7 +10948,7 @@ int main(int argc, char** argv) {
                     *smoke_state.field_session_source_assets,
                     *field_elevator_nonmember_entry_scene);
                 if (!scene_input.has_value()) {
-                    std::cerr << "Non-member elevator QA: source records for "
+                    std::cerr << "Elevator group route QA: source records for "
                                  "scene "
                               << *field_elevator_nonmember_entry_scene
                               << " are unavailable\n";
@@ -10921,7 +11001,7 @@ int main(int argc, char** argv) {
                 const auto interaction_mode = select_scene_interaction_mode(
                     *field_elevator_nonmember_entry_scene);
                 if (!interaction_mode.has_value()) {
-                    std::cerr << "Non-member elevator QA: scene interaction "
+                    std::cerr << "Elevator group route QA: scene interaction "
                                  "mode is unavailable\n";
                     return 3;
                 }
@@ -10966,13 +11046,34 @@ int main(int argc, char** argv) {
             if (field_elevator_nonmember_entry_qa_path.has_value()) {
                 const auto& source_assets =
                     *smoke_state.field_session_source_assets;
-                return run_field_elevator_nonmember_entry_qa(
-                    field_scene, asset_root,
-                    *field_elevator_nonmember_entry_qa_path,
+                const auto run_scene_route =
+                    [&](const std::uint16_t route_scene,
+                        const std::filesystem::path& route_output) {
+                        return run_field_elevator_group_route_qa(
+                            field_scene, asset_root, route_output, route_scene,
+                            source_assets.field_elevator_scene_groups[
+                                route_scene],
+                            field_audio_events, field_source_boundaries);
+                    };
+                auto route_status = run_scene_route(
                     *field_elevator_nonmember_entry_scene,
-                    source_assets.field_elevator_scene_groups[
-                        *field_elevator_nonmember_entry_scene],
-                    field_audio_events, field_source_boundaries);
+                    *field_elevator_nonmember_entry_qa_path);
+                if (route_status != 0 ||
+                    *field_elevator_nonmember_entry_scene != 43U) {
+                    return route_status;
+                }
+                for (const auto member_scene :
+                     std::array<std::uint16_t, 2U>{{42U, 41U}}) {
+                    route_status = run_scene_route(
+                        member_scene,
+                        *field_elevator_nonmember_entry_qa_path /
+                            ("scene" + std::to_string(member_scene) +
+                             "-member-trigger"));
+                    if (route_status != 0) {
+                        return route_status;
+                    }
+                }
+                return 0;
             }
             if (field_security_terminal_physical_entry_qa_path.has_value()) {
                 return run_field_security_terminal_physical_entry_qa(

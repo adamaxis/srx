@@ -343,15 +343,15 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_elevator_scene40_entry_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
-# Scene 43 is the non-member entry scene for the source child-scene group
-# 41/42. Walk north into event 29, visit both floors, then ride to 42.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_elevator_scene43_entry_qa
+# Scene 43 enters the 41/42 group; continue through both member-scene triggers
+# to verify the source current-floor index and the complete group round trip.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_elevator_scene43_group_roundtrip_qa
          COMMAND shadowrun_ghidra_conversion_qt
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
-                 --field-elevator-scene43-entry-qa
-                 "${CMAKE_CURRENT_BINARY_DIR}/field-elevator-scene43-entry-qa")
+                 --field-elevator-scene43-group-roundtrip-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-elevator-scene43-group-roundtrip-qa")
 set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_elevator_scene43_entry_qa
+    shadowrun_ghidra_conversion_qt_field_elevator_scene43_group_roundtrip_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Follow the same ordinary-input route, select the visible Frag Grenade option
