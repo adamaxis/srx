@@ -160,10 +160,11 @@ access.
   movement, upgrade eligibility, and karma spending remain native state.
 - `gameplay/scripts/magic.lua` declares the 13 spell IDs in the ROM
   `D4EA0` name-table order. The extractor keys each ROM name and description
-  with that semantic ID; the field text catalog validates the ordered menu
-  and binds labels back to spell codes. The runner's spell table still filters
-  which entries are available, and force, posture, cursor timing, and spell
-  effects remain native state.
+  with that semantic ID. It also declares seven IDs for the two Magic panel
+  variants' shared labels and headings. The field text catalog validates the
+  ordered lists and binds copy back to the typed presenter; the runner's spell
+  table still filters available spells, and force, posture, cursor timing, and
+  spell effects remain native state.
 - `gameplay/scripts/hotel.lua` declares stable choice IDs for the Hotel
   Options and checkout cursor menus. `FieldSceneRuntime` loads both menu
   definitions through `GameScriptRuntime::menu`, validates their source order,

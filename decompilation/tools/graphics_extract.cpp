@@ -269,7 +269,6 @@ write_field_service_routes(
     }
     // ROM 0xFBA6 passes C89C0 to the encoded-title writer as the fallback
     // heading. Keep the source's leading space for its original cell offset.
-    emit("magic.defense.title", " Magical Defense");
     const auto magic_text =
         shadowrun::graphics::read_genesis_magic_menu_text(rom);
     if (magic_text.spell_names.size() != kMagicSpellIds.size() ||
@@ -277,10 +276,6 @@ write_field_service_routes(
         throw std::runtime_error(
             "Magic spell text count no longer matches its stable IDs");
     }
-    emit("magic.heading.force-posture", magic_text.set_force_and_posture);
-    emit("magic.label.success", magic_text.success_label);
-    emit("magic.label.force", magic_text.force_label);
-    emit("magic.label.availability", magic_text.availability_label);
     const auto escape_newlines = [](std::string value) {
         std::size_t position = 0U;
         while ((position = value.find('\n', position)) != std::string::npos) {
@@ -289,10 +284,21 @@ write_field_service_routes(
         }
         return value;
     };
-    emit("magic.panel.metric-labels",
-         escape_newlines(magic_text.panel_metric_labels));
-    emit("magic.panel.force-posture-labels",
-         escape_newlines(magic_text.force_posture_labels));
+    constexpr std::array<std::string_view, 7> kMagicPanelTextIds{{
+        "defense_title", "force_posture_heading", "success_label",
+        "force_label", "availability_label", "panel_metric_labels",
+        "panel_force_posture_labels"}};
+    const std::array<std::string, 7> magic_panel_text{{
+        " Magical Defense", magic_text.set_force_and_posture,
+        magic_text.success_label, magic_text.force_label,
+        magic_text.availability_label,
+        escape_newlines(magic_text.panel_metric_labels),
+        escape_newlines(magic_text.force_posture_labels)}};
+    for (std::size_t index = 0; index < kMagicPanelTextIds.size(); ++index) {
+        emit("magic.panel.text.option." +
+                 std::string(kMagicPanelTextIds[index]),
+             magic_panel_text[index]);
+    }
     for (std::size_t index = 0; index < magic_text.spell_names.size();
          ++index) {
         const auto spell_id = std::string(kMagicSpellIds[index]);
@@ -1602,7 +1608,8 @@ void write_asset_readme(const std::filesystem::path& root) {
               "`gameplay/scripts/startup.lua` provide cursor-menu choice IDs; "
               "`gameplay/scripts/clips.lua` provides selector and text IDs; "
               "`gameplay/scripts/ui.lua` provides shared confirmation choices. "
-              "`gameplay/scripts/magic.lua` provides ROM-ordered spell IDs. "
+              "`gameplay/scripts/magic.lua` provides ROM-ordered spell and "
+              "Magic panel text IDs. "
               "Separately traced cinematic resources belong under movies/<scene>; "
               "they must not be mixed into intro or field assets.\n\n"
            << "Audio is emitted here only as complete Windows-playable lossless "

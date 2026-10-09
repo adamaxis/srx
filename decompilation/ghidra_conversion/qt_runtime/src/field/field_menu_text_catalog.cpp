@@ -64,6 +64,11 @@ constexpr std::array<std::string_view, kMagicSpellTextCount> kMagicSpellIds{{
     "flame_dart", "flame_bolt", "hellblast", "invisibility", "sleep",
     "stink", "super_barrier", "mana_zap", "mana_blast", "mana_storm",
     "rockskin", "heal_wounds", "confusion"}};
+constexpr std::array<std::string_view, kMagicPanelTextCount>
+    kMagicPanelTextIds{{
+        "defense_title", "force_posture_heading", "success_label",
+        "force_label", "availability_label", "panel_metric_labels",
+        "panel_force_posture_labels"}};
 
 constexpr std::string_view kMagicSpellOptionPrefix =
     "magic.spells.option.";
@@ -121,6 +126,18 @@ bool is_item_display_text_label_key(const std::string_view key) {
            std::find(kItemDisplayTextIds.begin(), kItemDisplayTextIds.end(),
                      key.substr(kTextPrefix.size())) !=
                kItemDisplayTextIds.end();
+}
+
+bool has_magic_panel_text_label_prefix(const std::string_view key) {
+    return key.rfind("magic.panel.text.option.", 0U) == 0U;
+}
+
+bool is_magic_panel_text_label_key(const std::string_view key) {
+    constexpr std::string_view kTextPrefix = "magic.panel.text.option.";
+    return key.rfind(kTextPrefix, 0U) == 0U &&
+           std::find(kMagicPanelTextIds.begin(), kMagicPanelTextIds.end(),
+                     key.substr(kTextPrefix.size())) !=
+               kMagicPanelTextIds.end();
 }
 
 bool is_clips_menu_label_key(const std::string_view key) {
@@ -216,6 +233,7 @@ bool is_field_menu_text_key(const std::string& key) {
         "notebook.mr-johnson.name.",
         "notebook.mr-johnson.detail.", "notebook.tip.",
         "magic.spells.option.", "magic.spells.description.",
+        "magic.panel.text.option.",
         "items.text.option.", "items.display.option.",
         "attributes_skills.text.option.",
     };
@@ -229,10 +247,6 @@ bool is_field_menu_text_key(const std::string& key) {
         "metric.defense", "metric.damage", "metric.drain", "metric.none",
         "metric.no-armor", "metric.weapons", "metric.guns", "metric.power",
         "cyberware.empty",
-        "magic.defense.title",
-        "magic.heading.force-posture", "magic.label.success",
-        "magic.label.force", "magic.label.availability",
-        "magic.panel.metric-labels", "magic.panel.force-posture-labels",
         "dismiss.separator", "notebook.tips.title",
         "notebook.tips.separator", "notebook.tips.page-count",
         "notebook.tips.page-number-clear", "notebook.options.title",
@@ -440,13 +454,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     bool guns_found = false;
     bool power_metric_found = false;
     bool cyberware_empty_found = false;
-    bool magic_defense_title_found = false;
-    bool magic_force_posture_heading_found = false;
-    bool magic_success_label_found = false;
-    bool magic_force_label_found = false;
-    bool magic_availability_label_found = false;
-    bool magic_panel_metric_labels_found = false;
-    bool magic_force_posture_labels_found = false;
     bool dismiss_runner_separator_found = false;
     std::array<std::string, kConfirmationChoiceCount> confirmation_labels{};
     load_script_menu_labels(
@@ -516,6 +523,18 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         kMagicSpellIds, magic_spell_names, result.errors, nullptr,
         &result.catalog.magic_spell_ids);
     result.catalog.magic_spell_names = std::move(magic_spell_names);
+    std::array<std::string, kMagicPanelTextCount> magic_panel_text{};
+    load_script_menu_labels(
+        scripts, "magic", "panel_text_entries", "magic.panel.text",
+        "catalog", kMagicPanelTextIds, magic_panel_text, result.errors,
+        nullptr, &result.catalog.magic_panel_text_ids);
+    result.catalog.magic_defense_title = magic_panel_text[0];
+    result.catalog.magic_force_posture_heading = magic_panel_text[1];
+    result.catalog.magic_success_label = magic_panel_text[2];
+    result.catalog.magic_force_label = magic_panel_text[3];
+    result.catalog.magic_availability_label = magic_panel_text[4];
+    result.catalog.magic_panel_metric_labels = magic_panel_text[5];
+    result.catalog.magic_force_posture_labels = magic_panel_text[6];
     load_script_menu_labels(
         scripts, "clips", "commands", "clips", "commands",
         kClipsCommandIds, result.catalog.clips_commands, result.errors);
@@ -594,6 +613,13 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             if (!is_item_display_text_label_key(key)) {
                 result.errors.emplace_back(
                     "unknown item display text label key: " + key);
+            }
+            continue;
+        }
+        if (has_magic_panel_text_label_prefix(key)) {
+            if (!is_magic_panel_text_label_key(key)) {
+                result.errors.emplace_back(
+                    "unknown Magic panel text label key: " + key);
             }
             continue;
         }
@@ -736,27 +762,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             parse_named("cyberware.empty",
                         result.catalog.cyberware_empty_message,
                         cyberware_empty_found) ||
-            parse_named("magic.defense.title",
-                        result.catalog.magic_defense_title,
-                        magic_defense_title_found) ||
-            parse_named("magic.heading.force-posture",
-                        result.catalog.magic_force_posture_heading,
-                        magic_force_posture_heading_found) ||
-            parse_named("magic.label.success",
-                        result.catalog.magic_success_label,
-                        magic_success_label_found) ||
-            parse_named("magic.label.force",
-                        result.catalog.magic_force_label,
-                        magic_force_label_found) ||
-            parse_named("magic.label.availability",
-                        result.catalog.magic_availability_label,
-                        magic_availability_label_found) ||
-            parse_named("magic.panel.metric-labels",
-                        result.catalog.magic_panel_metric_labels,
-                        magic_panel_metric_labels_found) ||
-            parse_named("magic.panel.force-posture-labels",
-                        result.catalog.magic_force_posture_labels,
-                        magic_force_posture_labels_found) ||
             parse_named("dismiss.separator",
                         result.catalog.dismiss_runner_separator,
                         dismiss_runner_separator_found)) {
@@ -972,17 +977,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     require_named("metric.guns", guns_found);
     require_named("metric.power", power_metric_found);
     require_named("cyberware.empty", cyberware_empty_found);
-    require_named("magic.defense.title", magic_defense_title_found);
-    require_named("magic.heading.force-posture",
-                  magic_force_posture_heading_found);
-    require_named("magic.label.success", magic_success_label_found);
-    require_named("magic.label.force", magic_force_label_found);
-    require_named("magic.label.availability",
-                  magic_availability_label_found);
-    require_named("magic.panel.metric-labels",
-                  magic_panel_metric_labels_found);
-    require_named("magic.panel.force-posture-labels",
-                  magic_force_posture_labels_found);
     require_named("dismiss.separator", dismiss_runner_separator_found);
     require_named("notebook.tips.title", notebook_tips_title_found);
     require_named("notebook.tips.separator", notebook_tips_separator_found);

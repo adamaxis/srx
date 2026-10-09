@@ -49,6 +49,10 @@ int main() {
         "Flame Dart", "Flame Bolt", "Hellblast", "Invisibility", "Sleep",
         "Stink", "Super Barrier", "Mana Zap", "Mana Blast", "Mana Storm",
         "Rockskin", "Heal Wounds", "Confusion"}};
+    const std::array<std::string, kMagicPanelTextCount> expected_magic_panel_text_ids{{
+        "defense_title", "force_posture_heading", "success_label",
+        "force_label", "availability_label", "panel_metric_labels",
+        "panel_force_posture_labels"}};
     const std::array<std::string, kClipsTextCount> expected_clips_text_ids{{
         "header_title", "header_separator", "counter_label",
         "trade_prompt_action", "trade_prompt_clips_to",
@@ -180,6 +184,11 @@ int main() {
         text.catalog.magic_success_label != "Success" ||
         text.catalog.magic_force_label != "Force" ||
         text.catalog.magic_availability_label != "Damage" ||
+        text.catalog.magic_panel_text_ids != expected_magic_panel_text_ids ||
+        text.catalog.magic_panel_metric_labels !=
+            "Success\n\nDrain\n\nDefense\n  vs. Phys\n\n  vs. Mana" ||
+        text.catalog.magic_force_posture_labels !=
+            "Force\n\n\nPosture" ||
         text.catalog.magic_spell_ids != expected_magic_spell_ids ||
         text.catalog.magic_spell_names != expected_magic_spell_names ||
         text.catalog.magic_spell_descriptions[0] !=

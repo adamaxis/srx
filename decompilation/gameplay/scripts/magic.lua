@@ -20,4 +20,18 @@ function Magic.spells()
     }
 end
 
+-- Shared Magic panel text. Runner archetype determines which native panel is
+-- shown; both variants resolve their copy from this source-backed catalog.
+function Magic.panel_text_entries()
+    return {
+        "defense_title",
+        "force_posture_heading",
+        "success_label",
+        "force_label",
+        "availability_label",
+        "panel_metric_labels",
+        "panel_force_posture_labels",
+    }
+end
+
 return Magic

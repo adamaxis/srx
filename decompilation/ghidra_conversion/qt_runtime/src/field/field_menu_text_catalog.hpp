@@ -45,6 +45,7 @@ inline constexpr std::size_t kCyberwareEntryCount = 15U;
 inline constexpr std::size_t kCyberdeckUnavailableLineCount = 3U;
 inline constexpr std::size_t kDismissRunnerLabelCount = 3U;
 inline constexpr std::size_t kMagicSpellTextCount = 13U;
+inline constexpr std::size_t kMagicPanelTextCount = 7U;
 inline constexpr std::size_t kFieldServiceTitleCount = 12U;
 inline constexpr std::size_t kFieldServiceActionTitleCount = 32U;
 inline constexpr std::size_t kPocketSecretaryGroupItemCount = 15U;
@@ -137,6 +138,7 @@ struct FieldMenuTextCatalog {
     std::string magic_availability_label;
     std::string magic_panel_metric_labels;
     std::string magic_force_posture_labels;
+    std::array<std::string, kMagicPanelTextCount> magic_panel_text_ids{};
     std::array<std::string, kMagicSpellTextCount> magic_spell_ids{};
     std::array<std::string, kMagicSpellTextCount> magic_spell_names{};
     std::array<std::string, kMagicSpellTextCount> magic_spell_descriptions{};
