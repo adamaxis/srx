@@ -356,43 +356,62 @@ write_field_service_routes(
         emit(std::string(kClipsTradeCommandTextKeys[index]),
              clips_text.trade_commands[index]);
     }
+    const auto emit_clips_text = [&emit](const std::string_view id,
+                                         const std::string& text) {
+        emit("clips.text.option." + std::string(id), text);
+    };
+    emit_clips_text("header_title", clips_text.title);
+    emit_clips_text("header_separator", clips_text.separator);
+    emit_clips_text("counter_label", clips_text.counter_label);
+    constexpr std::array<std::string_view, 3> kTradePromptIds{{
+        "trade_prompt_action", "trade_prompt_clips_to",
+        "trade_prompt_recipient"}};
     for (std::size_t index = 0; index < clips_text.trade_prompt.size();
          ++index) {
-        emit("clips.trade-prompt." + std::to_string(index),
-             clips_text.trade_prompt[index]);
+        emit_clips_text(kTradePromptIds[index],
+                        clips_text.trade_prompt[index]);
     }
+    constexpr std::array<std::string_view, 2> kExchangeCompleteIds{{
+        "exchange_complete_first", "exchange_complete_second"}};
     for (std::size_t index = 0; index < clips_text.exchange_complete.size();
          ++index) {
-        emit("clips.exchange-complete." + std::to_string(index),
-             clips_text.exchange_complete[index]);
+        emit_clips_text(kExchangeCompleteIds[index],
+                        clips_text.exchange_complete[index]);
     }
-    emit("clips.title", clips_text.title);
-    emit("clips.separator", clips_text.separator);
-    emit("clips.counter", clips_text.counter_label);
+    constexpr std::array<std::string_view, 3> kReloadPromptIds{{
+        "reload_prompt_ammo_remaining", "reload_prompt_ammo_suffix",
+        "reload_prompt_question"}};
     for (std::size_t index = 0; index < clips_text.reload_prompt.size();
          ++index) {
-        emit("clips.reload." + std::to_string(index),
-             clips_text.reload_prompt[index]);
+        emit_clips_text(kReloadPromptIds[index],
+                        clips_text.reload_prompt[index]);
     }
+    constexpr std::array<std::string_view, 2> kReloadSuccessIds{{
+        "reload_success_first", "reload_success_second"}};
     for (std::size_t index = 0; index < clips_text.reload_success.size();
          ++index) {
-        emit("clips.success." + std::to_string(index),
-             clips_text.reload_success[index]);
+        emit_clips_text(kReloadSuccessIds[index],
+                        clips_text.reload_success[index]);
     }
+    constexpr std::array<std::string_view, 2> kOutOfAmmoIds{{
+        "out_of_ammo_name_suffix", "out_of_ammo_clips"}};
     for (std::size_t index = 0; index < clips_text.out_of_ammo.size();
          ++index) {
-        emit("clips.out-of-ammo." + std::to_string(index),
-             clips_text.out_of_ammo[index]);
+        emit_clips_text(kOutOfAmmoIds[index], clips_text.out_of_ammo[index]);
     }
+    constexpr std::array<std::string_view, 3> kItemWithoutClipsIds{{
+        "item_without_clips_first", "item_without_clips_second",
+        "item_without_clips_third"}};
     for (std::size_t index = 0;
          index < clips_text.item_does_not_use_clips.size(); ++index) {
-        emit("clips.item-no-clips." + std::to_string(index),
-             clips_text.item_does_not_use_clips[index]);
+        emit_clips_text(kItemWithoutClipsIds[index],
+                        clips_text.item_does_not_use_clips[index]);
     }
+    constexpr std::array<std::string_view, 3> kNoPartyIds{{
+        "no_party_first", "no_party_second", "no_party_third"}};
     for (std::size_t index = 0; index < clips_text.no_party_members.size();
          ++index) {
-        emit("clips.no-party." + std::to_string(index),
-             clips_text.no_party_members[index]);
+        emit_clips_text(kNoPartyIds[index], clips_text.no_party_members[index]);
     }
     for (std::size_t index = 0; index < assets.field_menu_power_labels.size();
          ++index) {
@@ -1544,9 +1563,9 @@ void write_asset_readme(const std::filesystem::path& root) {
               "text, and item descriptions are emitted as "
               "`dialogue/script-text.lua` and consumed by the gameplay script "
               "runtime. `gameplay/scripts/hotel.lua`, "
-              "`gameplay/scripts/pocket_secretary.lua`, "
-              "`gameplay/scripts/clips.lua`, and "
+              "`gameplay/scripts/pocket_secretary.lua`, and "
               "`gameplay/scripts/startup.lua` provide cursor-menu choice IDs; "
+              "`gameplay/scripts/clips.lua` provides selector and text IDs; "
               "`gameplay/scripts/ui.lua` provides shared confirmation choices. "
               "`gameplay/scripts/magic.lua` provides ROM-ordered spell IDs. "
               "Separately traced cinematic resources belong under movies/<scene>; "

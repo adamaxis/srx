@@ -180,9 +180,11 @@ access.
   the sole owner of page selection, focus, rendering, and action dispatch.
 - `gameplay/scripts/clips.lua` declares the top-level Reload/Trade/Distribute/
   Cancel choices and the nested Increase/Decrease/Trade/Recipient choices.
-  The field menu catalog validates both lists against the native action order
-  and resolves their ROM labels from the shared Lua text table. Cursor, reload,
-  trade, ammunition, and runner-record state remain native.
+  It also declares stable IDs for the Clips panel labels, reload/trade prompts,
+  and status messages. The field menu catalog validates all three lists
+  against ROM order and resolves the extracted copy from the shared Lua text
+  table. Cursor, reload, trade, ammunition, and runner-record state remain
+  native.
 - `gameplay/scripts/ui.lua` declares the shared Yes/No confirmation menu in
   ROM order. The field text catalog binds its extracted labels, and the Ares
   shop and inventory discard paths use the selected stable ID when applying
@@ -202,9 +204,9 @@ access.
   and 32 fixed-width shop action headings by stable Lua IDs, field-menu labels
   and feedback, all 96 Notebook Tips,
   startup and save/load copy, shop category headings and transaction copy,
-  item names/categories/details, and the special clips text. Native presenters
-  resolve those keys through the Lua runtime and validate the full field-menu
-  key set at bootstrap. The
+  item names/categories/details, and Clips prompts/status copy by stable IDs.
+  Native presenters resolve those keys through the Lua runtime and validate
+  the full field-menu key set at bootstrap. The
   generated `menu/field/service-routes.tsv` now contains only numeric service
   destinations used as routing data.
 - Future `quests/` and `scenes/` modules should call the same `game` facade.

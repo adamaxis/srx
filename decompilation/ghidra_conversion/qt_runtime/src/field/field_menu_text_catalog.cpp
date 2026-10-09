@@ -16,6 +16,17 @@ constexpr std::array<std::string_view, kFieldMenuClipsCommandCount>
 constexpr std::array<std::string_view, kFieldMenuClipsCommandCount>
     kClipsTradeCommandIds{{"increase_clips", "decrease_clips", "trade_clips",
                            "change_recipient"}};
+constexpr std::array<std::string_view, kClipsTextCount> kClipsTextIds{{
+    "header_title", "header_separator", "counter_label",
+    "trade_prompt_action", "trade_prompt_clips_to",
+    "trade_prompt_recipient", "exchange_complete_first",
+    "exchange_complete_second", "reload_prompt_ammo_remaining",
+    "reload_prompt_ammo_suffix", "reload_prompt_question",
+    "reload_success_first", "reload_success_second",
+    "out_of_ammo_name_suffix", "out_of_ammo_clips",
+    "item_without_clips_first", "item_without_clips_second",
+    "item_without_clips_third", "no_party_first", "no_party_second",
+    "no_party_third"}};
 constexpr std::array<std::string_view, kNotebookChoiceCount>
     kNotebookChoiceIds{{"current_run", "tips_and_clues", "contacts",
                         "mr_johnsons", "shadowrunners"}};
@@ -46,7 +57,8 @@ bool magic_spell_index(const std::string_view id, std::size_t& index) {
 
 bool has_clips_menu_label_prefix(const std::string_view key) {
     return key.rfind("clips.option.", 0U) == 0U ||
-           key.rfind("clips.trade.option.", 0U) == 0U;
+           key.rfind("clips.trade.option.", 0U) == 0U ||
+           key.rfind("clips.text.option.", 0U) == 0U;
 }
 
 bool is_clips_menu_label_key(const std::string_view key) {
@@ -62,6 +74,12 @@ bool is_clips_menu_label_key(const std::string_view key) {
                          kClipsTradeCommandIds.end(),
                          key.substr(kTradeCommandPrefix.size())) !=
                kClipsTradeCommandIds.end();
+    }
+    constexpr std::string_view kTextPrefix = "clips.text.option.";
+    if (key.rfind(kTextPrefix, 0U) == 0U) {
+        return std::find(kClipsTextIds.begin(), kClipsTextIds.end(),
+                         key.substr(kTextPrefix.size())) !=
+               kClipsTextIds.end();
     }
     return false;
 }
@@ -180,8 +198,8 @@ bool is_field_menu_text_key(const std::string& key) {
         "attributes.upgrade.insufficient-karma", "attributes.upgrade.prompt",
         "first-aid.prompt", "first-aid.label", "first-aid.cancel",
         "first-aid.not-injured", "first-aid.slap-patch-used",
-        "first-aid.medkit-used", "clips.title", "clips.separator",
-        "clips.counter", "cyberware.empty", "magic.defense.title",
+        "first-aid.medkit-used", "cyberware.empty",
+        "magic.defense.title",
         "magic.heading.force-posture", "magic.label.success",
         "magic.label.force", "magic.label.availability",
         "magic.panel.metric-labels", "magic.panel.force-posture-labels",
@@ -390,13 +408,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::array<std::array<bool, kFieldMenuArmorRowCount>,
                kFieldMenuArmorCount>
         armor_found{};
-    std::array<bool, 3> clips_trade_prompt_found{};
-    std::array<bool, 2> clips_exchange_complete_found{};
-    std::array<bool, 3> clips_reload_found{};
-    std::array<bool, 2> clips_success_found{};
-    std::array<bool, 2> clips_out_of_ammo_found{};
-    std::array<bool, 3> clips_item_no_clips_found{};
-    std::array<bool, 3> clips_no_party_found{};
     bool physical_found = false;
     bool mental_found = false;
     bool attack_found = false;
@@ -422,9 +433,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     bool first_aid_not_injured_found = false;
     bool first_aid_slap_patch_used_found = false;
     bool first_aid_medkit_used_found = false;
-    bool clips_title_found = false;
-    bool clips_separator_found = false;
-    bool clips_counter_found = false;
     bool cyberware_empty_found = false;
     bool magic_defense_title_found = false;
     bool magic_force_posture_heading_found = false;
@@ -458,6 +466,28 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         scripts, "clips", "trade_commands", "clips.trade", "commands",
         kClipsTradeCommandIds, result.catalog.clips_trade_commands,
         result.errors);
+    std::array<std::string, kClipsTextCount> clips_text{};
+    load_script_menu_labels(
+        scripts, "clips", "text_entries", "clips.text", "catalog",
+        kClipsTextIds, clips_text, result.errors, nullptr,
+        &result.catalog.clips_text_ids);
+    result.catalog.clips_title = clips_text[0];
+    result.catalog.clips_separator = clips_text[1];
+    result.catalog.clips_counter_label = clips_text[2];
+    std::copy_n(clips_text.begin() + 3, 3,
+                result.catalog.clips_trade_prompt.begin());
+    std::copy_n(clips_text.begin() + 6, 2,
+                result.catalog.clips_exchange_complete.begin());
+    std::copy_n(clips_text.begin() + 8, 3,
+                result.catalog.clips_reload_prompt.begin());
+    std::copy_n(clips_text.begin() + 11, 2,
+                result.catalog.clips_reload_success.begin());
+    std::copy_n(clips_text.begin() + 13, 2,
+                result.catalog.clips_out_of_ammo.begin());
+    std::copy_n(clips_text.begin() + 15, 3,
+                result.catalog.clips_item_no_clips.begin());
+    std::copy_n(clips_text.begin() + 18, 3,
+                result.catalog.clips_no_party.begin());
     std::array<std::string, kNotebookChoiceCount> notebook_choice_labels{};
     std::string notebook_title;
     load_script_menu_labels(
@@ -600,28 +630,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             }
             continue;
         }
-        if (parse_indexed_key(key, "clips.trade-prompt.", index) &&
-            index < result.catalog.clips_trade_prompt.size()) {
-            if (clips_trade_prompt_found[index]) {
-                result.errors.emplace_back("duplicate field menu text row: " +
-                                          key);
-            } else {
-                clips_trade_prompt_found[index] = true;
-                result.catalog.clips_trade_prompt[index] = value;
-            }
-            continue;
-        }
-        if (parse_indexed_key(key, "clips.exchange-complete.", index) &&
-            index < result.catalog.clips_exchange_complete.size()) {
-            if (clips_exchange_complete_found[index]) {
-                result.errors.emplace_back("duplicate field menu text row: " +
-                                          key);
-            } else {
-                clips_exchange_complete_found[index] = true;
-                result.catalog.clips_exchange_complete[index] = value;
-            }
-            continue;
-        }
         const auto parse_named = [&](const char* expected,
                                      std::string& destination,
                                      bool& found) {
@@ -715,12 +723,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             parse_named("first-aid.medkit-used",
                         result.catalog.first_aid_medkit_used,
                         first_aid_medkit_used_found) ||
-            parse_named("clips.title", result.catalog.clips_title,
-                        clips_title_found) ||
-            parse_named("clips.separator", result.catalog.clips_separator,
-                        clips_separator_found) ||
-            parse_named("clips.counter", result.catalog.clips_counter_label,
-                        clips_counter_found) ||
             parse_named("cyberware.empty",
                         result.catalog.cyberware_empty_message,
                         cyberware_empty_found) ||
@@ -928,61 +930,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             }
             continue;
         }
-        if (parse_indexed_key(key, "clips.reload.", index) &&
-            index < result.catalog.clips_reload_prompt.size()) {
-            if (clips_reload_found[index]) {
-                result.errors.emplace_back("duplicate field menu text row: " +
-                                          key);
-            } else {
-                clips_reload_found[index] = true;
-                result.catalog.clips_reload_prompt[index] = value;
-            }
-            continue;
-        }
-        if (parse_indexed_key(key, "clips.success.", index) &&
-            index < result.catalog.clips_reload_success.size()) {
-            if (clips_success_found[index]) {
-                result.errors.emplace_back("duplicate field menu text row: " +
-                                          key);
-            } else {
-                clips_success_found[index] = true;
-                result.catalog.clips_reload_success[index] = value;
-            }
-            continue;
-        }
-        if (parse_indexed_key(key, "clips.out-of-ammo.", index) &&
-            index < result.catalog.clips_out_of_ammo.size()) {
-            if (clips_out_of_ammo_found[index]) {
-                result.errors.emplace_back("duplicate field menu text row: " +
-                                          key);
-            } else {
-                clips_out_of_ammo_found[index] = true;
-                result.catalog.clips_out_of_ammo[index] = value;
-            }
-            continue;
-        }
-        if (parse_indexed_key(key, "clips.item-no-clips.", index) &&
-            index < result.catalog.clips_item_no_clips.size()) {
-            if (clips_item_no_clips_found[index]) {
-                result.errors.emplace_back("duplicate field menu text row: " +
-                                          key);
-            } else {
-                clips_item_no_clips_found[index] = true;
-                result.catalog.clips_item_no_clips[index] = value;
-            }
-            continue;
-        }
-        if (parse_indexed_key(key, "clips.no-party.", index) &&
-            index < result.catalog.clips_no_party.size()) {
-            if (clips_no_party_found[index]) {
-                result.errors.emplace_back("duplicate field menu text row: " +
-                                          key);
-            } else {
-                clips_no_party_found[index] = true;
-                result.catalog.clips_no_party[index] = value;
-            }
-            continue;
-        }
         if (parse_indexed_key(key, "power.", index) &&
             index < result.catalog.power_labels.size()) {
             if (power_found[index]) {
@@ -1025,10 +972,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                         result.errors);
     add_missing_entries(cyberware_entry_found, "cyberware.entry.",
                         result.errors);
-    add_missing_entries(clips_trade_prompt_found, "clips.trade-prompt.",
-                        result.errors);
-    add_missing_entries(clips_exchange_complete_found,
-                        "clips.exchange-complete.", result.errors);
     const auto require_named = [&result](const char* key, const bool found) {
         if (!found) {
             result.errors.emplace_back(
@@ -1075,9 +1018,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     require_named("first-aid.slap-patch-used",
                   first_aid_slap_patch_used_found);
     require_named("first-aid.medkit-used", first_aid_medkit_used_found);
-    require_named("clips.title", clips_title_found);
-    require_named("clips.separator", clips_separator_found);
-    require_named("clips.counter", clips_counter_found);
     require_named("cyberware.empty", cyberware_empty_found);
     require_named("magic.defense.title", magic_defense_title_found);
     require_named("magic.heading.force-posture",
@@ -1097,14 +1037,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                   notebook_tips_page_count_found);
     require_named("notebook.tips.page-number-clear",
                   notebook_tips_page_number_clear_found);
-    add_missing_entries(clips_reload_found, "clips.reload.", result.errors);
-    add_missing_entries(clips_success_found, "clips.success.", result.errors);
-    add_missing_entries(clips_out_of_ammo_found, "clips.out-of-ammo.",
-                       result.errors);
-    add_missing_entries(clips_item_no_clips_found, "clips.item-no-clips.",
-                       result.errors);
-    add_missing_entries(clips_no_party_found, "clips.no-party.",
-                       result.errors);
     add_missing_entries(power_found, "power.", result.errors);
     for (std::size_t armor = 0; armor < armor_found.size(); ++armor) {
         for (std::size_t row = 0; row < armor_found[armor].size(); ++row) {

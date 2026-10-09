@@ -49,6 +49,45 @@ int main() {
         "Flame Dart", "Flame Bolt", "Hellblast", "Invisibility", "Sleep",
         "Stink", "Super Barrier", "Mana Zap", "Mana Blast", "Mana Storm",
         "Rockskin", "Heal Wounds", "Confusion"}};
+    const std::array<std::string, kClipsTextCount> expected_clips_text_ids{{
+        "header_title", "header_separator", "counter_label",
+        "trade_prompt_action", "trade_prompt_clips_to",
+        "trade_prompt_recipient", "exchange_complete_first",
+        "exchange_complete_second", "reload_prompt_ammo_remaining",
+        "reload_prompt_ammo_suffix", "reload_prompt_question",
+        "reload_success_first", "reload_success_second",
+        "out_of_ammo_name_suffix", "out_of_ammo_clips",
+        "item_without_clips_first", "item_without_clips_second",
+        "item_without_clips_third", "no_party_first", "no_party_second",
+        "no_party_third"}};
+    const std::array<std::string, kClipsTextCount> actual_clips_text{{
+        text.catalog.clips_title, text.catalog.clips_separator,
+        text.catalog.clips_counter_label,
+        text.catalog.clips_trade_prompt[0],
+        text.catalog.clips_trade_prompt[1],
+        text.catalog.clips_trade_prompt[2],
+        text.catalog.clips_exchange_complete[0],
+        text.catalog.clips_exchange_complete[1],
+        text.catalog.clips_reload_prompt[0],
+        text.catalog.clips_reload_prompt[1],
+        text.catalog.clips_reload_prompt[2],
+        text.catalog.clips_reload_success[0],
+        text.catalog.clips_reload_success[1],
+        text.catalog.clips_out_of_ammo[0],
+        text.catalog.clips_out_of_ammo[1],
+        text.catalog.clips_item_no_clips[0],
+        text.catalog.clips_item_no_clips[1],
+        text.catalog.clips_item_no_clips[2],
+        text.catalog.clips_no_party[0],
+        text.catalog.clips_no_party[1],
+        text.catalog.clips_no_party[2]}};
+    const std::array<std::string, kClipsTextCount> expected_clips_text{{
+        "    CLIPS", std::string("   [") + std::string(6U, '\\'),
+        "  Clips", "Trade", "clips to", "  ????", "Exchange", "complete",
+        "You still have", "  ammo left.", "   Reload?", "Rock & Roll,",
+        " chummers!!", "  is out of", " ammo clips!", "This item",
+        " does not", "use clips!!", " You have no", "party members",
+        "to trade with."}};
     if (!text.catalog.field_service_titles[0].empty() ||
         !text.catalog.field_service_titles[1].empty() ||
         text.catalog.field_service_title_destinations[1] != 0xC110U ||
@@ -184,6 +223,8 @@ int main() {
             std::array<std::string, kFieldMenuClipsCommandCount>{
                 "Increase Clips", "Decrease Clips", "Trade Clips",
                 "Change Recipient"} ||
+        text.catalog.clips_text_ids != expected_clips_text_ids ||
+        actual_clips_text != expected_clips_text ||
          text.catalog.clips_trade_prompt[0] != "Trade" ||
          text.catalog.clips_trade_prompt[1] != "clips to" ||
          text.catalog.clips_trade_prompt[2] != "  ????" ||
