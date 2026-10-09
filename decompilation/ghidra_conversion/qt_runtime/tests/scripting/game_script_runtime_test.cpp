@@ -175,7 +175,7 @@ int main() {
     const auto* pocket_secretary_title =
         scripts.dialogue_text("pocket_secretary.root.title");
     const auto* pocket_secretary_separator =
-        scripts.dialogue_text("pocket_secretary.root.separator");
+        scripts.dialogue_text("pocket_secretary.root.text.option.separator");
     constexpr std::array<std::string_view, 5> kPocketSecretaryFieldChoiceIds{{
         "notebook", "group_items", "cyberdeck", "dismiss_runner",
         "save_load"}};
@@ -208,7 +208,8 @@ int main() {
     }
 
     const auto notebook_options = scripts.menu(
-        "pocket_secretary", "notebook", "notebook", "options");
+        "pocket_secretary", "notebook", "pocket_secretary.notebook",
+        "options");
     constexpr std::array<std::string_view, 5> kNotebookChoiceIds{{
         "current_run", "tips_and_clues", "contacts", "mr_johnsons",
         "shadowrunners"}};

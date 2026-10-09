@@ -9026,7 +9026,17 @@ int run_field_scene20_physical_entry_qa(
                   << ", terrain=0x" << maglock_contact_terrain_code << std::dec
                   << ", contact-activity=" << static_cast<unsigned>(
                          maglock_contact_activity)
+                  << ", contact-valid=" << maglock_contact_is_valid
                   << ", panel=" << maglock_panel.open
+                  << ", complete=" << maglock_panel.source_complete
+                  << ", actor=" << static_cast<unsigned>(
+                         maglock_panel.actor_kind)
+                  << ", text-segments=" << static_cast<unsigned>(
+                         maglock_panel.text_segment_count)
+                  << ", panel-reason=" << maglock_panel.source_boundary_reason
+                  << ", scene=" << field_scene.field_scene_reference_for_dump()
+                  << ", mode-text=" << field_scene.field_mode_text_open_for_dump()
+                  << ", shop=" << field_scene.shop_menu_open()
                   << ", pending-handler="
                   << field_scene.field_runtime_state_for_dump()
                          .pending_field_scene_handler

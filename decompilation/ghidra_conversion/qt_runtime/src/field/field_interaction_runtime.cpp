@@ -9,6 +9,7 @@
 #include <optional>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 namespace {
@@ -24,12 +25,8 @@ constexpr std::uint8_t kFragGrenadeItem = 0x0DU;
 
 enum class FieldInteractionRuntime::TextKey : std::uint32_t {
     door_title = 1U,
-    more = 2U,
     no_passkey = 3U,
     insufficient_passkey = 4U,
-    use_electronics = 5U,
-    use_grenade = 6U,
-    walk_away = 7U,
     passkey_result = 8U,
     electronics_no_skill = 9U,
     electronics_success = 10U,
@@ -72,6 +69,47 @@ bool FieldInteractionRuntime::load_assets(
         failure_ = "Lua field-interaction text is not loaded";
         return false;
     }
+
+    const auto load_menu = [this](
+        const std::string_view function, const std::string_view profile,
+        const std::string_view menu_id,
+        const std::vector<std::string_view>& expected_choices)
+        -> std::optional<scripting::ScriptMenuDefinition> {
+        auto menu = script_runtime_->menu("field_interactions", function,
+                                          profile, menu_id);
+        if (!menu.has_value() ||
+            menu->choices.size() != expected_choices.size()) {
+            failure_ = "Lua field-interaction menu is missing or incomplete";
+            return std::nullopt;
+        }
+        for (std::size_t index = 0; index < expected_choices.size(); ++index) {
+            const auto& choice = menu->choices[index];
+            if (choice.id != expected_choices[index] ||
+                script_runtime_->dialogue_text(choice.label_key) == nullptr) {
+                failure_ = "Lua field-interaction menu order or label is invalid";
+                return std::nullopt;
+            }
+        }
+        return menu;
+    };
+
+    maglock_intro_menu_ = load_menu("maglock_intro", "field.maglock",
+                                    "door", {"more"});
+    maglock_actions_menu_ = load_menu(
+        "maglock_actions", "field.interaction", "maglock_actions",
+        {"electronics", "grenade", "walk-away"});
+    security_actions_menu_ = load_menu(
+        "security_terminal_actions", "field.interaction", "security_actions",
+        {"electronics", "walk-away"});
+    if (!maglock_intro_menu_.has_value() ||
+        !maglock_actions_menu_.has_value() ||
+        !security_actions_menu_.has_value()) {
+        if (failure_.empty()) {
+            failure_ = "Lua field-interaction menus are incomplete";
+        }
+        return false;
+    }
+
     assets_loaded_ = presenter_.load_assets(assets);
     if (!assets_loaded_) {
         failure_ = presenter_.failure();
@@ -173,11 +211,15 @@ void FieldInteractionRuntime::build_prompt(
     } else if (prompt == FieldInteractionPrompt::electromagnetic_lock_door) {
         prompt_ = ModeTextPromptDescriptor{};
         prompt_.title_text = static_cast<std::uint32_t>(TextKey::door_title);
-        prompt_.first_option = ModeTextPromptOption{
-            static_cast<std::uint32_t>(TextKey::more), true};
-        prompt_.commands[0] = 0x10U; // ROM mode command for 0x21628.
+        if (!maglock_intro_menu_.has_value() ||
+            !configure_menu_choices(*maglock_intro_menu_)) {
+            return;
+        }
     } else if (prompt == FieldInteractionPrompt::building_security_terminal) {
         build_security_choice_prompt();
+    }
+    if (!failure_.empty()) {
+        return;
     }
     prompt_state_ = ModeTextPromptState{};
     (void)advance_mode_text_prompt(
@@ -216,34 +258,73 @@ void FieldInteractionRuntime::build_door_choice_prompt(
     prompt_.title_text = static_cast<std::uint32_t>(
         has_any_maglock_passkey ? TextKey::insufficient_passkey
                                 : TextKey::no_passkey);
-    prompt_.first_option = ModeTextPromptOption{
-        static_cast<std::uint32_t>(TextKey::use_electronics), true};
-    prompt_.second_option = ModeTextPromptOption{
-        static_cast<std::uint32_t>(TextKey::use_grenade), true};
-    prompt_.third_option = ModeTextPromptOption{
-        static_cast<std::uint32_t>(TextKey::walk_away), true};
-    prompt_.commands = {kUseElectronicsCommand, kUseFragGrenadeCommand,
-                        kTerminalCommand};
+    if (!maglock_actions_menu_.has_value()) {
+        failure_ = "Lua maglock action choices are not loaded";
+        return;
+    }
+    (void)configure_menu_choices(*maglock_actions_menu_);
 }
 
 void FieldInteractionRuntime::build_security_choice_prompt() {
     prompt_ = ModeTextPromptDescriptor{};
     prompt_.title_text = static_cast<std::uint32_t>(TextKey::security_title);
-    prompt_.first_option = ModeTextPromptOption{
-        static_cast<std::uint32_t>(TextKey::use_electronics), true};
-    prompt_.second_option = ModeTextPromptOption{
-        static_cast<std::uint32_t>(TextKey::walk_away), true};
-    prompt_.commands = {kUseSecurityTerminalCommand, kTerminalCommand, 0U};
+    if (!security_actions_menu_.has_value()) {
+        failure_ = "Lua Security Terminal choices are not loaded";
+        return;
+    }
+    (void)configure_menu_choices(*security_actions_menu_);
 }
 
 void FieldInteractionRuntime::build_result_prompt(const TextKey text_key) {
     trailing_result_text_.reset();
+    active_menu_.reset();
     prompt_ = ModeTextPromptDescriptor{};
     prompt_.title_text = static_cast<std::uint32_t>(text_key);
     prompt_.first_option = ModeTextPromptOption{0U, false};
     prompt_.second_option = ModeTextPromptOption{0U, false};
     prompt_.third_option = ModeTextPromptOption{0U, false};
     prompt_.first_option_is_exit_sentinel = true;
+}
+
+bool FieldInteractionRuntime::configure_menu_choices(
+    const scripting::ScriptMenuDefinition& menu) {
+    if (menu.choices.empty() || menu.choices.size() > 3U) {
+        failure_ = "Lua field-interaction menu exceeds the source three-choice limit";
+        return false;
+    }
+    active_menu_ = menu;
+    prompt_.commands = {};
+    for (std::size_t index = 0; index < menu.choices.size(); ++index) {
+        const auto& id = menu.choices[index].id;
+        std::uint32_t command = 0U;
+        if (id == "more" && menu.id == "door") {
+            command = 0x10U; // ROM mode command for 0x21628.
+        } else if (id == "electronics" &&
+                   menu.id == "security_actions") {
+            command = kUseSecurityTerminalCommand;
+        } else if (id == "electronics") {
+            command = kUseElectronicsCommand;
+        } else if (id == "grenade") {
+            command = kUseFragGrenadeCommand;
+        } else if (id == "walk-away") {
+            command = kTerminalCommand;
+        } else {
+            failure_ = "Lua field-interaction menu contains an unknown action ID";
+            active_menu_.reset();
+            return false;
+        }
+        const ModeTextPromptOption option{
+            static_cast<std::uint32_t>(index + 1U), true};
+        if (index == 0U) {
+            prompt_.first_option = option;
+        } else if (index == 1U) {
+            prompt_.second_option = option;
+        } else {
+            prompt_.third_option = option;
+        }
+        prompt_.commands[index] = command;
+    }
+    return true;
 }
 
 void FieldInteractionRuntime::add_text(const std::string_view text) {
@@ -277,27 +358,42 @@ void FieldInteractionRuntime::add_option(
         return;
     }
     const auto index = panel_.option_count++;
+    if (!active_menu_.has_value() || key == 0U ||
+        key > active_menu_->choices.size()) {
+        panel_.source_complete = false;
+        panel_.source_boundary_reason =
+            "field interaction option is missing its Lua choice ID";
+        return;
+    }
+    const auto& choice = active_menu_->choices[key - 1U];
     DialoguePanelOptionRole option_role = DialoguePanelOptionRole::field_continue;
     DialoguePanelCommand command = DialoguePanelCommand::field_continue;
-    if (key == static_cast<std::uint32_t>(TextKey::use_electronics)) {
-        const bool security_prompt =
-            prompt_.title_text ==
-            static_cast<std::uint32_t>(TextKey::security_title);
+    if (choice.id == "electronics") {
+        const bool security_prompt = active_menu_->id == "security_actions";
         option_role = security_prompt
                           ? DialoguePanelOptionRole::field_security_access
                           : DialoguePanelOptionRole::field_use_electronics;
         command = security_prompt
                       ? DialoguePanelCommand::field_security_access
                       : DialoguePanelCommand::field_use_electronics;
-    } else if (key == static_cast<std::uint32_t>(TextKey::use_grenade)) {
+    } else if (choice.id == "grenade") {
         option_role = DialoguePanelOptionRole::field_use_grenade;
         command = DialoguePanelCommand::field_use_grenade;
-    } else if (key == static_cast<std::uint32_t>(TextKey::walk_away)) {
+    } else if (choice.id == "walk-away") {
         option_role = DialoguePanelOptionRole::field_walk_away;
         command = DialoguePanelCommand::field_walk_away;
     }
-    auto source_label = resolve_text(key);
-    if (key == static_cast<std::uint32_t>(TextKey::more)) {
+    const auto* label = script_runtime_ != nullptr
+                            ? script_runtime_->dialogue_text(choice.label_key)
+                            : nullptr;
+    if (label == nullptr) {
+        panel_.source_complete = false;
+        panel_.source_boundary_reason =
+            "field interaction Lua choice label is missing";
+        return;
+    }
+    auto source_label = std::string_view(*label);
+    if (choice.id == "more") {
         // This source record has an empty first text well and puts < MORE > in
         // the lower well. It is a row label here, so keep only that second
         // segment instead of drawing the separator as a literal character.
@@ -315,16 +411,9 @@ std::string_view FieldInteractionRuntime::resolve_text(
     std::string_view alias;
     switch (static_cast<TextKey>(key)) {
     case TextKey::door_title: alias = "field.maglock.door.title"; break;
-    case TextKey::more: alias = "field.maglock.more"; break;
     case TextKey::no_passkey: alias = "field.maglock.no-passkey"; break;
     case TextKey::insufficient_passkey:
         alias = "field.maglock.insufficient-passkey"; break;
-    case TextKey::use_electronics:
-        alias = "field.interaction.option.electronics"; break;
-    case TextKey::use_grenade:
-        alias = "field.maglock.option.grenade"; break;
-    case TextKey::walk_away:
-        alias = "field.interaction.option.walk-away"; break;
     case TextKey::passkey_result:
         alias = "field.maglock.passkey.result"; break;
     case TextKey::electronics_no_skill:
@@ -639,6 +728,7 @@ void FieldInteractionRuntime::close() noexcept {
     panel_ = DialoguePanelView{};
     prompt_ = ModeTextPromptDescriptor{};
     prompt_state_ = ModeTextPromptState{};
+    active_menu_.reset();
 }
 
 void FieldInteractionRuntime::reset_session() noexcept {

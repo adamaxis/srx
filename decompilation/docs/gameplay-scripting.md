@@ -121,6 +121,11 @@ access.
   policy belong to the native event runner; a matched event starts a Lua
   coroutine, which requests heading-zero player movement through the shared
   actor service and waits for the native operation to finish.
+- `gameplay/scripts/field_interactions.lua` declares the ordered choices for
+  the shared Maglock and Security Terminal prompts. The native interaction
+  controller maps these stable choice IDs to source commands and retains the
+  passkey, Electronics, grenade, alarm, and map-state rules; labels resolve
+  through the ROM-derived text table.
 - `gameplay/scripts/motel.lua` contains one shared motel interaction, not a
   script for every named building. It adds the base choices and collects the
   optional `motel_manager_choices()` hook from quest modules in stable
@@ -238,7 +243,8 @@ presenters. Stoker, field interaction, Ares mode-event paragraphs, Hotel text,
 startup menu text/choices, Pocket Secretary root choices/labels,
 command-overview root choices/labels, Clips selector choices/labels, Notebook
 option IDs/labels, shared confirmation choices/labels, Magic spell
-IDs/names/descriptions, and shop service/action-heading IDs are Lua content.
+IDs/names/descriptions, field-object prompt choices, and shop
+service/action-heading IDs are Lua content.
 Script dialogue menus carry
 their text profile and optional speaker into one generic panel projection;
 menu choices use generic presentation roles. Hotel cursor-menu choices come

@@ -85,6 +85,8 @@ private:
     void build_door_choice_prompt(bool has_any_maglock_passkey);
     void build_security_choice_prompt();
     void build_result_prompt(TextKey text_key);
+    bool configure_menu_choices(
+        const scripting::ScriptMenuDefinition& menu);
     void dispatch_command(std::uint32_t command,
                          std::array<RunnerRecordFields, 3>& party,
                          const std::array<bool, 3>& active_slots,
@@ -105,6 +107,10 @@ private:
     std::function<void(std::string_view)> source_boundary_callback_;
     std::function<void(std::uint16_t)> source_audio_event_callback_;
     scripting::GameScriptRuntime* script_runtime_ = nullptr;
+    std::optional<scripting::ScriptMenuDefinition> maglock_intro_menu_;
+    std::optional<scripting::ScriptMenuDefinition> maglock_actions_menu_;
+    std::optional<scripting::ScriptMenuDefinition> security_actions_menu_;
+    std::optional<scripting::ScriptMenuDefinition> active_menu_;
     DialoguePanelPresenter presenter_;
     ModeTextPromptDescriptor prompt_{};
     ModeTextPromptState prompt_state_{};
