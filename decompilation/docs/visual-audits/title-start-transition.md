@@ -45,7 +45,7 @@ The recording contains no controller input log or Genesis VBlank counter, so
 it establishes the visual sequence, not the exact point of the Start edge or
 60-Hz phase.
 
-Debug and Release Qt startup QA each write 126 matching current BMPs. Every
+Debug and Release Qt startup QA each write 134 matching current BMPs. Every
 current image is 320x224 and has the same SHA-256 in both configurations. The
 exit-specific set includes the title before transition, all 17 palette-pass
 frames, the completed black frame, all 18 mode-entry-service frames, and the
@@ -65,9 +65,9 @@ The Debug output directory also contains 16 older `seattle-outline-window`
 white-outline experiment BMPs not produced by this startup CTest. They are
 reviewed separately in
 [`full-screenshot-review-2026-10-05.md`](full-screenshot-review-2026-10-05.md)
-and are excluded from the 126-image cross-configuration comparison.
+and are excluded from the 134-image cross-configuration comparison.
 
-## Eight-question visual review
+## Visual review checklist
 
 1. **Does it look correct? — Yes for the Start transition and shell-to-text
    order.** The independent sequence contains a title fade, a black hold, two
@@ -100,7 +100,7 @@ and are excluded from the 126-image cross-configuration comparison.
    duration, and output-device playback have not been verified. The Qt QA
    records service boundaries only; it does not claim the original is silent.
 6. **Are the rest of the screen and related elements correct? — Reviewed.**
-   All 126 whole-screen startup QA images were checked, including title and
+   All 134 whole-screen startup QA images were scanned, including title and
    boot states, every fade/service checkpoint, opening transition, shell,
    active menus, and the empty-save return. The title clears before the shell
    appears; the no-save message clears before the shell is redrawn.
@@ -114,6 +114,10 @@ and are excluded from the 126-image cross-configuration comparison.
    text or cursor is drawn; the next full redraw shows only Start Options.
    Returning from the empty Load result clears that message before the shell
    and then the menu return.
+9. **Was the complete screenshot sequence reviewed? — Yes.** The six contact
+   sheets cover every current startup QA BMP; key menu, return, and intro
+   frames were checked individually so selector and overdraw issues remain
+   legible at native artifact resolution.
 
 ## Verification and outcome
 
@@ -132,8 +136,10 @@ and are excluded from the 126-image cross-configuration comparison.
   `shadowrun_ghidra_conversion_qt_field_stoker_collision_to_dialogue_qa`
   passed in Debug and Release; the full Qt CTest suite passed 53/53 in both
   configurations. The typed `shadowrun_ghidra_conversion` CTest also passed in
-  Debug and Release. The 126 current startup images match across
-  configurations, have 320x224 BMP dimensions, and were reviewed at full size.
+  Debug and Release. The 134 current startup images match across
+  configurations and have 320x224 BMP dimensions. All were scanned as contact
+  sheets; 17 relevant menu/route checkpoints were individually reviewed at
+  full size for the Lua key-binding slice.
   The title QA asserts all 17 palette steps, no early destination entry, all
   six transactions, all 18 service waits, black hold, menu selection, and clean
   full-frame replacement.
@@ -145,3 +151,24 @@ and are excluded from the 126-image cross-configuration comparison.
   implemented and defended; the capture cannot establish exact 60-Hz display
   duration. Idle-timeout continuation and command-`0x14` audio identity and
   playback remain open.
+
+## Startup menu text bindings (2026-10-09)
+
+`startup.lua` now returns explicit title and per-choice text keys for Options,
+Save/Load slots, and archetype selection. The runtime validates the optional
+title and ordered label list against the returned stable choice IDs. Cursor
+state, page transitions, and rendering remain in the native startup
+controller. The ROM-derived wording remains in the keyed Lua text resource at
+`assets/dialogue/script-text.lua`; this change binds each menu entry to that
+source copy instead of duplicating text or constructing key names in C++.
+
+For this content-only change, appearance, current selection, selector and
+portrait details, related screen regions, and clean full-panel replacement
+were reviewed across the complete screenshot set. The startup pages remain
+static; text-key binding does not change animation cadence or sound behavior.
+The independent 30-fps capture supports the multi-frame title-to-menu order,
+but does not establish menu sound duration or every 60-Hz animation state. All
+134 Debug and Release QA images have matching hashes; all were scanned as
+contact sheets and 17 menu/route checkpoints were inspected individually at
+full size. This is internal consistency evidence, not independent proof of
+Genesis visual fidelity for every choice route.

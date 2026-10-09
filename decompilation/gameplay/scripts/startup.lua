@@ -3,15 +3,25 @@
 local Startup = {}
 
 function Startup.options()
-    return { "new_game", "load_game" }
+    return { "new_game", "load_game" }, "startup.options.title", {
+        "startup.option.new_game",
+        "startup.option.load_game",
+    }
 end
 
 function Startup.save_slots()
-    return { "slot_one", "slot_two" }
+    return { "slot_one", "slot_two" }, nil, {
+        "startup.option.slot_one",
+        "startup.option.slot_two",
+    }
 end
 
 function Startup.archetypes()
-    return { "samurai", "decker", "gator_shaman" }
+    return { "samurai", "decker", "gator_shaman" }, nil, {
+        "startup.option.samurai",
+        "startup.option.decker",
+        "startup.option.gator_shaman",
+    }
 end
 
 -- ROM-derived title, archetype, and save/load copy lives in the shared text

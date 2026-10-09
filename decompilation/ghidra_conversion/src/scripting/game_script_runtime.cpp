@@ -330,6 +330,34 @@ bool parse_menu_choices(lua_State* state, const int index,
     return true;
 }
 
+bool parse_explicit_menu_text_keys(lua_State* state,
+                                   const int title_key_index,
+                                   const int label_keys_index,
+                                   ScriptMenuDefinition& menu) {
+    if (!lua_isnil(state, title_key_index)) {
+        if (!read_string(state, title_key_index, menu.title_key) ||
+            !valid_identifier(menu.title_key)) {
+            return false;
+        }
+    }
+    if (!lua_istable(state, label_keys_index) ||
+        lua_rawlen(state, label_keys_index) != menu.choices.size()) {
+        return false;
+    }
+    for (std::size_t index = 0; index < menu.choices.size(); ++index) {
+        auto& label_key = menu.choices[index].label_key;
+        lua_rawgeti(state, label_keys_index,
+                    static_cast<lua_Integer>(index + 1U));
+        const bool valid = read_string(state, -1, label_key) &&
+                           valid_identifier(label_key);
+        lua_pop(state, 1);
+        if (!valid) {
+            return false;
+        }
+    }
+    return true;
+}
+
 } // namespace
 
 struct GameScriptRuntime::Impl {
@@ -1773,7 +1801,7 @@ std::optional<ScriptMenuDefinition> GameScriptRuntime::menu(
     }
     lua_remove(state, -2);
     ScopedInstructionBudget instruction_budget(state);
-    if (lua_pcall(state, 0, 1, 0) != LUA_OK) {
+    if (lua_pcall(state, 0, 3, 0) != LUA_OK) {
         impl_->failure = std::string(module) + "." + std::string(function) +
                          ": " + stack_error(state);
         lua_pop(state, 1);
@@ -1781,15 +1809,26 @@ std::optional<ScriptMenuDefinition> GameScriptRuntime::menu(
     }
 
     ScriptMenuDefinition definition;
-    if (!parse_menu_choices(state, -1, menu_id, text_profile,
+    const bool explicit_text_keys = !lua_isnil(state, -2) ||
+                                    !lua_isnil(state, -1);
+    if (!parse_menu_choices(state, -3, menu_id, text_profile,
                             impl_->location_speaker_id, definition,
-                            kMaximumMenuCatalogChoices)) {
-        lua_pop(state, 1);
+                            kMaximumMenuCatalogChoices,
+                            !explicit_text_keys)) {
+        lua_pop(state, 3);
         impl_->failure = std::string(module) + "." + std::string(function) +
                          " must return unique choice ids";
         return std::nullopt;
     }
-    lua_pop(state, 1);
+    if (explicit_text_keys &&
+        !parse_explicit_menu_text_keys(state, -2, -1, definition)) {
+        lua_pop(state, 3);
+        impl_->failure = std::string(module) + "." +
+                         std::string(function) +
+                         " returned text keys that do not match its choices";
+        return std::nullopt;
+    }
+    lua_pop(state, 3);
     impl_->failure.clear();
     return definition;
 }

@@ -141,6 +141,13 @@ access.
 
 ## Content organization
 
+Static menu functions can return three Lua values: the ordered stable choice
+IDs, an optional title key, and the ordered label keys. The runtime validates
+that the label count matches the choices. This lets each menu script provide
+its exact ROM-derived text bindings instead of relying on C++ to compose key
+names. Startup menus now use this form; other static menus are being migrated
+from the older convention incrementally.
+
 - `gameplay/scripts/field_events.lua` contains source-traced map trigger
   declarations and the New Game scene handler. Trigger detection and repeat
   policy belong to the native event runner; a matched event starts a Lua
@@ -256,15 +263,16 @@ access.
   result. Cursor timing, default-No state, sound, and item/wallet effects
   remain native.
 - `gameplay/scripts/startup.lua` declares the ordered New Game/Load Game,
-  Save Slot, and archetype choices. The title-screen presenter validates each
-  list against its typed native menu state and resolves its labels from the
-  shared Lua text table. The same module binds semantic text IDs for the title,
-  separators, archetype headings, and save/load feedback. The startup renderer
-  keeps source-derived row placement; input cadence and menu transitions
-  remain in C++. It also maps 22 typed opening-story caption IDs to Lua text
-  keys. The offline importer reads those separate `0xFF`-terminated ROM
-  records at `0x5B7D8..0x5BA4B`; the native intro schedule still chooses their
-  timing, row, and palette.
+  Save Slot, and archetype choices, with explicit optional title and ordered
+  label keys returned from those Lua menu functions. The title-screen
+  presenter validates each list against its typed native menu state and
+  resolves the labels from the shared Lua text table. The same module binds
+  semantic text IDs for the title, separators, archetype headings, and
+  save/load feedback. The startup renderer keeps source-derived row placement;
+  input cadence and menu transitions remain in C++. It also maps 22 typed
+  opening-story caption IDs to Lua text keys. The offline importer reads those
+  separate `0xFF`-terminated ROM records at `0x5B7D8..0x5BA4B`; the native intro
+  schedule still chooses their timing, row, and palette.
 - `assets/dialogue/script-text.lua` is the ROM-derived shared text table for
   opening-story captions, Stoker dialogue, field object interactions, Ares
   mode-event paragraphs, Hotel menu/status text,

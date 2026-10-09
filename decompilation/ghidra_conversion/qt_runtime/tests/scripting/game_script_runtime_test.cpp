@@ -217,6 +217,8 @@ int main() {
     const auto* startup_save_success =
         scripts.dialogue_text("startup.message.save_success.2");
     if (!expect(startup_options.has_value() &&
+                    startup_options->title_key ==
+                        "startup.options.title" &&
                     startup_options->choices.size() == 2U &&
                     startup_options->choices[0].id == "new_game" &&
                     startup_options->choices[0].label_key ==
@@ -225,14 +227,25 @@ int main() {
                     startup_options->choices[1].label_key ==
                         "startup.option.load_game" &&
                     startup_save_slots.has_value() &&
+                    startup_save_slots->title_key.empty() &&
                     startup_save_slots->choices.size() == 2U &&
                     startup_save_slots->choices[0].id == "slot_one" &&
+                    startup_save_slots->choices[0].label_key ==
+                        "startup.option.slot_one" &&
                     startup_save_slots->choices[1].id == "slot_two" &&
+                    startup_save_slots->choices[1].label_key ==
+                        "startup.option.slot_two" &&
                     startup_archetypes.has_value() &&
                     startup_archetypes->choices.size() == 3U &&
                     startup_archetypes->choices[0].id == "samurai" &&
+                    startup_archetypes->choices[0].label_key ==
+                        "startup.option.samurai" &&
                     startup_archetypes->choices[1].id == "decker" &&
+                    startup_archetypes->choices[1].label_key ==
+                        "startup.option.decker" &&
                     startup_archetypes->choices[2].id == "gator_shaman" &&
+                    startup_archetypes->choices[2].label_key ==
+                        "startup.option.gator_shaman" &&
                     startup_text_keys.has_value() &&
                     startup_text_keys->size() == 13U &&
                     startup_text_key_matches(
