@@ -55,6 +55,9 @@ constexpr std::array<std::string_view, kItemDisplayTextCount>
 constexpr std::array<std::string_view, kNotebookChoiceCount>
     kNotebookChoiceIds{{"current_run", "tips_and_clues", "contacts",
                         "mr_johnsons", "shadowrunners"}};
+constexpr std::array<std::string_view, 5> kPocketSecretaryRootChoiceIds{{
+    "notebook", "group_items", "cyberdeck", "dismiss_runner",
+    "save_load"}};
 constexpr std::array<std::string_view, kConfirmationChoiceCount>
     kConfirmationChoiceIds{{"yes", "no"}};
 constexpr std::array<std::string_view, kInventoryActionChoiceCount>
@@ -87,6 +90,29 @@ constexpr std::array<std::string_view, kFieldMenuClassNameCount>
 constexpr std::array<std::string_view, kFieldMenuStatusNameCount>
     kCommandOverviewPostureIds{{"full_defense", "medium_defense", "neutral",
                                 "medium_offense", "full_offense"}};
+constexpr std::array<std::string_view, kDismissRunnerLabelCount>
+    kDismissRunnerTextIds{{"dismiss", "who_question", "abort"}};
+constexpr std::array<std::string_view, 1> kDismissSeparatorTextIds{{
+    "separator"}};
+constexpr std::array<std::string_view, kCyberdeckUnavailableLineCount>
+    kPocketSecretaryCyberdeckTextIds{{"no_deck_first", "no_deck_second",
+                                      "look_for_deck"}};
+constexpr std::array<std::string_view, kPocketSecretaryGroupItemCount>
+    kPocketSecretaryGroupItemTextIds{{
+        "prototype_cyberheart", "indian_lands_visa", "feathered_scale",
+        "hell_hound_pelt", "gargoyle_horn", "gift_lady_gillian",
+        "gift_red_buffalo_woman", "landmark_map", "map_overlay",
+        "current_run_package", "security_pass", "weapon_permit",
+        "eye_fiver_ear_cuff", "halloweener_patch", "ork_armband"}};
+constexpr std::array<std::string_view,
+                     kPocketSecretaryGroupItemsEmptyLineCount>
+    kPocketSecretaryGroupItemsEmptyTextIds{{"first_line", "second_line"}};
+constexpr std::array<std::string_view, kNotebookNoRunLineCount>
+    kNotebookNoRunTextIds{{"first_line", "second_line", "last_line"}};
+constexpr std::array<std::string_view, kNotebookMrJohnsonCount>
+    kNotebookMrJohnsonTextIds{{"gunderson", "julius_strouther",
+                               "mortimer_reed", "vigore_and_jarl",
+                               "caleb_brightmore"}};
 
 constexpr std::string_view kMagicSpellOptionPrefix =
     "magic.spells.option.";
@@ -237,20 +263,57 @@ bool is_clips_menu_label_key(const std::string_view key) {
     return false;
 }
 
-bool has_notebook_menu_label_prefix(const std::string_view key) {
-    return key.rfind("notebook.option.", 0U) == 0U ||
-           key == "notebook.options.title";
+template <std::size_t N>
+bool has_semantic_label_key(const std::string_view key,
+                            const std::string_view prefix,
+                            const std::array<std::string_view, N>& ids) {
+    return key.rfind(prefix, 0U) == 0U &&
+           std::find(ids.begin(), ids.end(), key.substr(prefix.size())) !=
+               ids.end();
 }
 
-bool is_notebook_menu_label_key(const std::string_view key) {
-    if (key == "notebook.options.title") {
+bool has_pocket_secretary_text_label_prefix(const std::string_view key) {
+    return key.rfind("pocket_secretary.", 0U) == 0U;
+}
+
+bool is_pocket_secretary_text_label_key(const std::string_view key) {
+    if (key == "pocket_secretary.root.title" ||
+        key == "pocket_secretary.notebook.options.title") {
         return true;
     }
-    constexpr std::string_view kChoicePrefix = "notebook.option.";
-    return key.rfind(kChoicePrefix, 0U) == 0U &&
-           std::find(kNotebookChoiceIds.begin(), kNotebookChoiceIds.end(),
-                     key.substr(kChoicePrefix.size())) !=
-               kNotebookChoiceIds.end();
+    return has_semantic_label_key(
+               key, "pocket_secretary.option.",
+               kPocketSecretaryRootChoiceIds) ||
+           has_semantic_label_key(
+               key, "pocket_secretary.root.text.option.",
+               kDismissSeparatorTextIds) ||
+           has_semantic_label_key(
+               key, "pocket_secretary.dismiss.option.",
+               kDismissRunnerTextIds) ||
+           has_semantic_label_key(
+               key, "pocket_secretary.dismiss.text.option.",
+               kDismissSeparatorTextIds) ||
+           has_semantic_label_key(
+               key, "pocket_secretary.cyberdeck.option.",
+               kPocketSecretaryCyberdeckTextIds) ||
+           has_semantic_label_key(
+               key, "pocket_secretary.group_item.option.",
+               kPocketSecretaryGroupItemTextIds) ||
+           has_semantic_label_key(
+               key, "pocket_secretary.group_items.empty.option.",
+               kPocketSecretaryGroupItemsEmptyTextIds) ||
+           has_semantic_label_key(
+               key, "pocket_secretary.notebook.option.",
+               kNotebookChoiceIds) ||
+           has_semantic_label_key(
+               key, "pocket_secretary.notebook.no_run.option.",
+               kNotebookNoRunTextIds) ||
+           has_semantic_label_key(
+               key, "pocket_secretary.notebook.mr_johnson.name.option.",
+               kNotebookMrJohnsonTextIds) ||
+           has_semantic_label_key(
+               key, "pocket_secretary.notebook.mr_johnson.detail.option.",
+               kNotebookMrJohnsonTextIds);
 }
 
 bool has_confirmation_menu_label_prefix(const std::string_view key) {
@@ -300,11 +363,7 @@ void add_missing_entries(const std::array<bool, N>& found, const char* prefix,
 bool is_field_menu_text_key(const std::string& key) {
     static constexpr const char* prefixes[]{
         "runner.", "archetype.",
-        "clips.", "dismiss.label.", "pocket-secretary.cyberdeck.line.",
-        "pocket-secretary.group-item.", "pocket-secretary.group-items.empty.",
-        "ui.option.", "notebook.option.", "notebook.no-run.",
-        "notebook.mr-johnson.name.",
-        "notebook.mr-johnson.detail.", "notebook.tip.",
+        "clips.", "notebook.tip.", "pocket_secretary.", "ui.option.",
         "magic.spells.option.", "magic.spells.description.",
         "magic.panel.text.option.", "cyberware.text.option.",
         "items.text.option.", "items.display.option.",
@@ -320,9 +379,8 @@ bool is_field_menu_text_key(const std::string& key) {
         }
     }
     static constexpr const char* exact_keys[]{
-        "dismiss.separator", "notebook.tips.title",
-        "notebook.tips.separator", "notebook.tips.page-count",
-        "notebook.tips.page-number-clear", "notebook.options.title",
+        "notebook.tips.title", "notebook.tips.separator",
+        "notebook.tips.page-count", "notebook.tips.page-number-clear",
     };
     for (const auto* expected : exact_keys) {
         if (key == expected) {
@@ -493,24 +551,11 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::array<bool, kMagicSpellTextCount> magic_spell_description_found{};
     std::array<bool, kFieldServiceTitleCount>
         field_service_title_destination_found{};
-    std::array<bool, kCyberdeckUnavailableLineCount>
-        pocket_secretary_cyberdeck_line_found{};
-    std::array<bool, kPocketSecretaryGroupItemCount>
-        pocket_secretary_group_item_found{};
-    std::array<bool, kPocketSecretaryGroupItemsEmptyLineCount>
-        pocket_secretary_group_items_empty_found{};
-    std::array<bool, kNotebookNoRunLineCount> notebook_no_run_found{};
-    std::array<bool, kNotebookMrJohnsonCount>
-        notebook_mr_johnson_name_found{};
-    std::array<bool, kNotebookMrJohnsonCount>
-        notebook_mr_johnson_detail_found{};
     std::array<bool, kNotebookTipCount> notebook_tip_found{};
     bool notebook_tips_title_found = false;
     bool notebook_tips_separator_found = false;
     bool notebook_tips_page_count_found = false;
     bool notebook_tips_page_number_clear_found = false;
-    std::array<bool, kDismissRunnerLabelCount> dismiss_runner_label_found{};
-    bool dismiss_runner_separator_found = false;
     std::array<std::string, kConfirmationChoiceCount> confirmation_labels{};
     load_script_menu_labels(
         scripts, "ui", "confirmation", "ui", "confirmation",
@@ -668,12 +713,81 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::array<std::string, kNotebookChoiceCount> notebook_choice_labels{};
     std::string notebook_title;
     load_script_menu_labels(
-        scripts, "pocket_secretary", "notebook", "notebook", "options",
+        scripts, "pocket_secretary", "notebook",
+        "pocket_secretary.notebook", "options",
         kNotebookChoiceIds, notebook_choice_labels, result.errors,
-        &notebook_title);
+        &notebook_title, &result.catalog.notebook_choice_ids);
     result.catalog.notebook_labels[0] = std::move(notebook_title);
     std::copy(notebook_choice_labels.begin(), notebook_choice_labels.end(),
               result.catalog.notebook_labels.begin() + 1);
+    std::array<std::string, kDismissRunnerLabelCount> dismiss_labels{};
+    load_script_menu_labels(
+        scripts, "pocket_secretary", "dismiss_options",
+        "pocket_secretary.dismiss", "options", kDismissRunnerTextIds,
+        dismiss_labels, result.errors, nullptr,
+        &result.catalog.dismiss_runner_choice_ids);
+    result.catalog.dismiss_runner_labels = std::move(dismiss_labels);
+    std::array<std::string, 1> dismiss_separator_text{};
+    std::array<std::string, 1> dismiss_separator_ids{};
+    load_script_menu_labels(
+        scripts, "pocket_secretary", "dismiss_separator_text",
+        "pocket_secretary.dismiss.text", "catalog",
+        kDismissSeparatorTextIds, dismiss_separator_text, result.errors,
+        nullptr, &dismiss_separator_ids);
+    result.catalog.dismiss_runner_separator = dismiss_separator_text[0];
+    result.catalog.dismiss_runner_separator_text_id =
+        dismiss_separator_ids[0];
+    std::array<std::string, kCyberdeckUnavailableLineCount>
+        cyberdeck_unavailable_text{};
+    load_script_menu_labels(
+        scripts, "pocket_secretary", "cyberdeck_unavailable_lines",
+        "pocket_secretary.cyberdeck", "catalog",
+        kPocketSecretaryCyberdeckTextIds, cyberdeck_unavailable_text,
+        result.errors, nullptr,
+        &result.catalog.pocket_secretary_cyberdeck_text_ids);
+    result.catalog.pocket_secretary_cyberdeck_unavailable_lines =
+        std::move(cyberdeck_unavailable_text);
+    std::array<std::string, kPocketSecretaryGroupItemCount>
+        group_item_names{};
+    load_script_menu_labels(
+        scripts, "pocket_secretary", "group_item_names",
+        "pocket_secretary.group_item", "catalog",
+        kPocketSecretaryGroupItemTextIds, group_item_names, result.errors,
+        nullptr, &result.catalog.pocket_secretary_group_item_text_ids);
+    result.catalog.pocket_secretary_group_item_names =
+        std::move(group_item_names);
+    std::array<std::string, kPocketSecretaryGroupItemsEmptyLineCount>
+        group_items_empty_text{};
+    load_script_menu_labels(
+        scripts, "pocket_secretary", "group_items_empty_lines",
+        "pocket_secretary.group_items.empty", "catalog",
+        kPocketSecretaryGroupItemsEmptyTextIds, group_items_empty_text,
+        result.errors, nullptr,
+        &result.catalog.pocket_secretary_group_items_empty_text_ids);
+    result.catalog.pocket_secretary_group_items_empty_lines =
+        std::move(group_items_empty_text);
+    std::array<std::string, kNotebookNoRunLineCount> notebook_no_run_text{};
+    load_script_menu_labels(
+        scripts, "pocket_secretary", "notebook_no_run_lines",
+        "pocket_secretary.notebook.no_run", "catalog",
+        kNotebookNoRunTextIds, notebook_no_run_text, result.errors, nullptr,
+        &result.catalog.notebook_no_run_text_ids);
+    result.catalog.notebook_no_run_lines = std::move(notebook_no_run_text);
+    std::array<std::string, kNotebookMrJohnsonCount> mr_johnson_names{};
+    load_script_menu_labels(
+        scripts, "pocket_secretary", "mr_johnson_contacts",
+        "pocket_secretary.notebook.mr_johnson.name", "catalog",
+        kNotebookMrJohnsonTextIds, mr_johnson_names, result.errors, nullptr,
+        &result.catalog.notebook_mr_johnson_name_text_ids);
+    result.catalog.notebook_mr_johnson_names = std::move(mr_johnson_names);
+    std::array<std::string, kNotebookMrJohnsonCount> mr_johnson_details{};
+    load_script_menu_labels(
+        scripts, "pocket_secretary", "mr_johnson_details",
+        "pocket_secretary.notebook.mr_johnson.detail", "catalog",
+        kNotebookMrJohnsonTextIds, mr_johnson_details, result.errors, nullptr,
+        &result.catalog.notebook_mr_johnson_detail_text_ids);
+    result.catalog.notebook_mr_johnson_details =
+        std::move(mr_johnson_details);
     for (const auto& [key, value] : text_rows) {
         if (has_confirmation_menu_label_prefix(key)) {
             if (!is_confirmation_menu_label_key(key)) {
@@ -696,10 +810,10 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             }
             continue;
         }
-        if (has_notebook_menu_label_prefix(key)) {
-            if (!is_notebook_menu_label_key(key)) {
+        if (has_pocket_secretary_text_label_prefix(key)) {
+            if (!is_pocket_secretary_text_label_key(key)) {
                 result.errors.emplace_back(
-                    "unknown Notebook menu label key: " + key);
+                    "unknown Pocket Secretary text label key: " + key);
             }
             continue;
         }
@@ -805,95 +919,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             }
             return true;
         };
-        if (parse_named("dismiss.separator",
-                        result.catalog.dismiss_runner_separator,
-                        dismiss_runner_separator_found)) {
-            continue;
-        }
-        if (parse_indexed_key(key, "dismiss.label.", index) &&
-            index < result.catalog.dismiss_runner_labels.size()) {
-            if (dismiss_runner_label_found[index]) {
-                result.errors.emplace_back(
-                    "duplicate field menu text row: " + key);
-            } else {
-                dismiss_runner_label_found[index] = true;
-                result.catalog.dismiss_runner_labels[index] = value;
-            }
-            continue;
-        }
-        if (parse_indexed_key(key, "pocket-secretary.cyberdeck.line.",
-                              index) &&
-            index < result.catalog
-                        .pocket_secretary_cyberdeck_unavailable_lines.size()) {
-            if (pocket_secretary_cyberdeck_line_found[index]) {
-                result.errors.emplace_back(
-                    "duplicate field menu text row: " + key);
-            } else {
-                pocket_secretary_cyberdeck_line_found[index] = true;
-                result.catalog
-                    .pocket_secretary_cyberdeck_unavailable_lines[index] =
-                    value;
-            }
-            continue;
-        }
-        if (parse_indexed_key(key, "pocket-secretary.group-item.", index) &&
-            index < result.catalog.pocket_secretary_group_item_names.size()) {
-            if (pocket_secretary_group_item_found[index]) {
-                result.errors.emplace_back(
-                    "duplicate field menu text row: " + key);
-            } else {
-                pocket_secretary_group_item_found[index] = true;
-                result.catalog.pocket_secretary_group_item_names[index] = value;
-            }
-            continue;
-        }
-        if (parse_indexed_key(key, "pocket-secretary.group-items.empty.",
-                              index) &&
-            index < result.catalog
-                        .pocket_secretary_group_items_empty_lines.size()) {
-            if (pocket_secretary_group_items_empty_found[index]) {
-                result.errors.emplace_back(
-                    "duplicate field menu text row: " + key);
-            } else {
-                pocket_secretary_group_items_empty_found[index] = true;
-                result.catalog.pocket_secretary_group_items_empty_lines[index] =
-                    value;
-            }
-            continue;
-        }
-        if (parse_indexed_key(key, "notebook.no-run.", index) &&
-            index < result.catalog.notebook_no_run_lines.size()) {
-            if (notebook_no_run_found[index]) {
-                result.errors.emplace_back(
-                    "duplicate field menu text row: " + key);
-            } else {
-                notebook_no_run_found[index] = true;
-                result.catalog.notebook_no_run_lines[index] = value;
-            }
-            continue;
-        }
-        if (parse_indexed_key(key, "notebook.mr-johnson.name.", index) &&
-            index < result.catalog.notebook_mr_johnson_names.size()) {
-            if (notebook_mr_johnson_name_found[index]) {
-                result.errors.emplace_back(
-                    "duplicate field menu text row: " + key);
-            } else {
-                notebook_mr_johnson_name_found[index] = true;
-                result.catalog.notebook_mr_johnson_names[index] = value;
-            }
-            continue;
-        }
-        if (parse_indexed_key(key, "notebook.mr-johnson.detail.", index) &&
-            index < result.catalog.notebook_mr_johnson_details.size()) {
-            if (notebook_mr_johnson_detail_found[index]) {
-                result.errors.emplace_back(
-                    "duplicate field menu text row: " + key);
-            } else {
-                notebook_mr_johnson_detail_found[index] = true;
-                result.catalog.notebook_mr_johnson_details[index] = value;
-            }
-            continue;
-        }
         if (parse_indexed_key(key, "notebook.tip.", index) &&
             index < result.catalog.notebook_tips.size()) {
             if (notebook_tip_found[index]) {
@@ -1001,7 +1026,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                 "missing field menu text row: " + std::string(key));
         }
     };
-    require_named("dismiss.separator", dismiss_runner_separator_found);
     require_named("notebook.tips.title", notebook_tips_title_found);
     require_named("notebook.tips.separator", notebook_tips_separator_found);
     require_named("notebook.tips.page-count",
@@ -1016,23 +1040,9 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                 std::string(kMagicSpellIds[index]));
         }
     }
-    add_missing_entries(pocket_secretary_cyberdeck_line_found,
-                        "pocket-secretary.cyberdeck.line.", result.errors);
-    add_missing_entries(pocket_secretary_group_item_found,
-                        "pocket-secretary.group-item.", result.errors);
-    add_missing_entries(pocket_secretary_group_items_empty_found,
-                        "pocket-secretary.group-items.empty.", result.errors);
-    add_missing_entries(notebook_no_run_found, "notebook.no-run.",
-                        result.errors);
-    add_missing_entries(notebook_mr_johnson_name_found,
-                        "notebook.mr-johnson.name.", result.errors);
-    add_missing_entries(notebook_mr_johnson_detail_found,
-                        "notebook.mr-johnson.detail.", result.errors);
     add_missing_entries(notebook_tip_found, "notebook.tip.", result.errors);
     add_missing_entries(field_service_title_destination_found,
                         "field-service.title-destination.", result.errors);
-    add_missing_entries(dismiss_runner_label_found, "dismiss.label.",
-                        result.errors);
     const auto decode_newlines = [](std::string& value) {
         std::size_t position = 0U;
         while ((position = value.find("\\n", position)) !=

@@ -176,13 +176,15 @@ access.
   transitions, and the separate Hotel Karma spending screen.
 - `gameplay/scripts/pocket_secretary.lua` declares the five stable IDs for the
   field Pocket Secretary root menu and all five possible Notebook rows in ROM
-  order. `FieldSceneRuntime` validates both lists and uses the Notebook IDs
-  when dispatching the selected row; the text catalog resolves their ROM
-  labels from `assets/dialogue/script-text.lua`. Native state still applies
-  the three story-flag row gates and owns cursor movement, selection cadence,
-  drawing, and child-page behavior. Save/Load and the extended six-row caller
-  remain explicit boundaries; the Notebook page state and actions remain
-  native.
+  order. It also names the dismiss choices, cyberdeck warning lines, grouped
+  item rows, empty-run message, and Mr. Johnson contact/detail entries; the
+  root panel separator is a named text entry as well.
+  `FieldSceneRuntime` validates the lists and uses Notebook IDs when dispatching
+  the selected row; the text catalog resolves the ROM labels from
+  `assets/dialogue/script-text.lua`. Native state still applies the three
+  story-flag row gates and owns cursor movement, selection cadence, drawing,
+  and child-page behavior. Save/Load and the extended six-row caller remain
+  explicit boundaries; the Notebook page state and actions remain native.
 - `gameplay/scripts/command_overview.lua` declares the seven stable IDs for the
   in-game command root in ROM order, including the two distinct Inventory
   columns, plus the metatype, class, and five posture labels used by its runner

@@ -6805,8 +6805,17 @@ bool FieldSceneRuntime::load_pocket_secretary_menu_content() {
         return fail(
             "Pocket Secretary Lua menu does not match its source rows");
     }
+    const auto root_text_definition = game_scripts_.menu(
+        "pocket_secretary", "root_text_entries",
+        "pocket_secretary.root.text", "catalog");
+    if (!root_text_definition.has_value() ||
+        root_text_definition->choices.size() != 1U ||
+        root_text_definition->choices[0].id != "separator") {
+        return fail("Pocket Secretary root separator script entry is invalid");
+    }
     const auto notebook_definition = game_scripts_.menu(
-        "pocket_secretary", "notebook", "notebook", "options");
+        "pocket_secretary", "notebook", "pocket_secretary.notebook",
+        "options");
     if (!notebook_definition.has_value()) {
         return fail(game_scripts_.failure().empty()
                         ? "Pocket Secretary Notebook menu script is unavailable"
@@ -6818,7 +6827,7 @@ bool FieldSceneRuntime::load_pocket_secretary_menu_content() {
     }
     const auto* title = game_scripts_.dialogue_text(definition->title_key);
     const auto* separator = game_scripts_.dialogue_text(
-        "pocket_secretary.root.separator");
+        root_text_definition->choices[0].label_key);
     if (title == nullptr || separator == nullptr) {
         return fail("Pocket Secretary root title or separator text is missing");
     }

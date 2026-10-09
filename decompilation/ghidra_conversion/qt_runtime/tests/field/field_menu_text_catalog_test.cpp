@@ -52,6 +52,57 @@ int main() {
         expected_field_metric_text_ids{{
             "physical", "mental", "attack", "defense", "damage", "drain",
             "none", "no_armor", "weapons", "guns", "power"}};
+    const std::array<std::string, kDismissRunnerLabelCount>
+        expected_dismiss_runner_choice_ids{{
+            "dismiss", "who_question", "abort"}};
+    const std::array<std::string, kCyberdeckUnavailableLineCount>
+        expected_cyberdeck_text_ids{{
+            "no_deck_first", "no_deck_second", "look_for_deck"}};
+    const std::array<std::string, kPocketSecretaryGroupItemCount>
+        expected_group_item_text_ids{{
+            "prototype_cyberheart", "indian_lands_visa", "feathered_scale",
+            "hell_hound_pelt", "gargoyle_horn", "gift_lady_gillian",
+            "gift_red_buffalo_woman", "landmark_map", "map_overlay",
+            "current_run_package", "security_pass", "weapon_permit",
+            "eye_fiver_ear_cuff", "halloweener_patch", "ork_armband"}};
+    const std::array<std::string, kPocketSecretaryGroupItemCount>
+        expected_group_item_names{{
+            "Prototype Cyber-heart", "Indian Lands Visa", "Feathered Scale",
+            "Hell Hound Pelt", "Gargoyle Horn", "Gift for Lady Gillian",
+            "Gift for Red Buffalo Woman", "Landmark Map", "Map Overlay",
+            "Package for current run", "Security Pass", "Weapon Permit",
+            "Eye-Fiver Ear Cuff", "Halloweener Patch", "Ork Armband"}};
+    const std::array<std::string, kPocketSecretaryGroupItemsEmptyLineCount>
+        expected_group_items_empty_text_ids{{"first_line", "second_line"}};
+    const std::array<std::string, kNotebookChoiceCount>
+        expected_notebook_choice_ids{{
+            "current_run", "tips_and_clues", "contacts", "mr_johnsons",
+            "shadowrunners"}};
+    const std::array<std::string, kNotebookNoRunLineCount>
+        expected_notebook_no_run_text_ids{{
+            "first_line", "second_line", "last_line"}};
+    const std::array<std::string, kNotebookMrJohnsonCount>
+        expected_johnson_text_ids{{
+            "gunderson", "julius_strouther", "mortimer_reed",
+            "vigore_and_jarl", "caleb_brightmore"}};
+    const std::array<std::string, kNotebookMrJohnsonCount>
+        expected_johnson_names{{
+            "Mr. Gunderson", "Julius Strouther", "Mortimer Reed",
+            "Vigore & Jarl", "Caleb Brightmore"}};
+    const std::array<std::string, kNotebookMrJohnsonCount>
+        expected_johnson_details{{
+            "Mr. Gunderson is a\nsmall-time Johnson\nwho works out of the\n"
+            "Jump House bar in\nRedmond Barrens.",
+            "Julius Strouther is a\nmid-level Johnson who\noperates out of the\n"
+            "Matchstick nightclub\nin Downtown Seattle.",
+            "Mortimer Reed is a\nmid-level Johnson who\noperates out of The Big\n"
+            "Rhino Resturant in\nthe Penumbra District.",
+            "Vigore & Jarl offer\nmid-level runs and\nspecialize in\n"
+            "acquisitions.\n\nThey operate from the\nWanderer in the\n"
+            "Puyallup Barrens.",
+            "Caleb Brightmore is\nan upper-level Johnson\nwho specializes in\n"
+            "Matrix Runs.\n\nCan be contacted at\nIcarus Descending in\n"
+            "Downtown Seattle."}};
     const std::array<std::string, kFieldMenuRaceNameCount>
         expected_race_text_ids{{"human", "elf", "dwarf", "orc", "troll"}};
     const std::array<std::string, kFieldMenuClassNameCount>
@@ -167,6 +218,22 @@ int main() {
         !text.catalog.field_service_universal_clips_description.empty() ||
         text.catalog.field_metric_text_ids !=
             expected_field_metric_text_ids ||
+        text.catalog.dismiss_runner_choice_ids !=
+            expected_dismiss_runner_choice_ids ||
+        text.catalog.dismiss_runner_separator_text_id != "separator" ||
+        text.catalog.pocket_secretary_cyberdeck_text_ids !=
+            expected_cyberdeck_text_ids ||
+        text.catalog.pocket_secretary_group_item_text_ids !=
+            expected_group_item_text_ids ||
+        text.catalog.pocket_secretary_group_items_empty_text_ids !=
+            expected_group_items_empty_text_ids ||
+        text.catalog.notebook_choice_ids != expected_notebook_choice_ids ||
+        text.catalog.notebook_no_run_text_ids !=
+            expected_notebook_no_run_text_ids ||
+        text.catalog.notebook_mr_johnson_name_text_ids !=
+            expected_johnson_text_ids ||
+        text.catalog.notebook_mr_johnson_detail_text_ids !=
+            expected_johnson_text_ids ||
         text.catalog.race_text_ids != expected_race_text_ids ||
         text.catalog.class_text_ids != expected_class_text_ids ||
         text.catalog.status_text_ids != expected_posture_text_ids ||
@@ -232,10 +299,8 @@ int main() {
         text.catalog.pocket_secretary_cyberdeck_unavailable_lines !=
             std::array<std::string, kCyberdeckUnavailableLineCount>{
                 " You do not have", "  a cyberdeck!!", " Keep looking."} ||
-        text.catalog.pocket_secretary_group_item_names[0] !=
-            "Prototype Cyber-heart" ||
-        text.catalog.pocket_secretary_group_item_names[14] !=
-            "Ork Armband" ||
+        text.catalog.pocket_secretary_group_item_names !=
+            expected_group_item_names ||
         text.catalog.pocket_secretary_group_items_empty_lines !=
             std::array<std::string,
                        kPocketSecretaryGroupItemsEmptyLineCount>{
@@ -248,17 +313,8 @@ int main() {
             std::array<std::string, kNotebookNoRunLineCount>{
                 " You are not currently", "engaged in a shadowrun.",
                 "     Get a job!!"} ||
-        text.catalog.notebook_mr_johnson_names !=
-            std::array<std::string, kNotebookMrJohnsonCount>{
-                "Mr. Gunderson", "Julius Strouther", "Mortimer Reed",
-                "Vigore & Jarl", "Caleb Brightmore"} ||
-        text.catalog.notebook_mr_johnson_details[0] !=
-            "Mr. Gunderson is a\nsmall-time Johnson\nwho works out of the\n"
-            "Jump House bar in\nRedmond Barrens." ||
-        text.catalog.notebook_mr_johnson_details[4] !=
-            "Caleb Brightmore is\nan upper-level Johnson\nwho specializes in\n"
-            "Matrix Runs.\n\nCan be contacted at\nIcarus Descending in\n"
-            "Downtown Seattle." ||
+        text.catalog.notebook_mr_johnson_names != expected_johnson_names ||
+        text.catalog.notebook_mr_johnson_details != expected_johnson_details ||
         text.catalog.notebook_tips_title != "Tips & Clues" ||
         text.catalog.notebook_tips_separator !=
             std::string("[") + std::string(15U, static_cast<char>(92)) ||

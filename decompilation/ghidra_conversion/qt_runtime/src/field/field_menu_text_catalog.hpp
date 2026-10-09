@@ -160,23 +160,39 @@ struct FieldMenuTextCatalog {
     std::string field_service_universal_clips_description;
     std::array<std::string, kCyberdeckUnavailableLineCount>
         pocket_secretary_cyberdeck_unavailable_lines{};
+    std::array<std::string, kCyberdeckUnavailableLineCount>
+        pocket_secretary_cyberdeck_text_ids{};
     std::array<std::string, kPocketSecretaryGroupItemCount>
         pocket_secretary_group_item_names{};
+    std::array<std::string, kPocketSecretaryGroupItemCount>
+        pocket_secretary_group_item_text_ids{};
     std::array<std::string, kPocketSecretaryGroupItemsEmptyLineCount>
         pocket_secretary_group_items_empty_lines{};
+    std::array<std::string, kPocketSecretaryGroupItemsEmptyLineCount>
+        pocket_secretary_group_items_empty_text_ids{};
     // ROM 0xC448 fixed text. The Dismiss separator has 12 backslashes,
     // unlike the Pocket Secretary separator's 10.
     std::array<std::string, kDismissRunnerLabelCount>
         dismiss_runner_labels{};
+    std::array<std::string, kDismissRunnerLabelCount>
+        dismiss_runner_choice_ids{};
     std::string dismiss_runner_separator;
+    std::string dismiss_runner_separator_text_id;
     // ROM F33E/F2E2 host text. Event gates are typed field-session state and
     // are intentionally not part of this static text catalog.
     std::array<std::string, kNotebookLabelCount> notebook_labels{};
+    std::array<std::string, kNotebookChoiceCount> notebook_choice_ids{};
     std::array<std::string, kNotebookNoRunLineCount> notebook_no_run_lines{};
+    std::array<std::string, kNotebookNoRunLineCount>
+        notebook_no_run_text_ids{};
     std::array<std::string, kNotebookMrJohnsonCount>
         notebook_mr_johnson_names{};
     std::array<std::string, kNotebookMrJohnsonCount>
+        notebook_mr_johnson_name_text_ids{};
+    std::array<std::string, kNotebookMrJohnsonCount>
         notebook_mr_johnson_details{};
+    std::array<std::string, kNotebookMrJohnsonCount>
+        notebook_mr_johnson_detail_text_ids{};
     std::string notebook_tips_title;
     std::string notebook_tips_separator;
     std::string notebook_tips_page_count_label;

@@ -149,30 +149,46 @@ write_field_service_routes(
     };
     const auto cyberdeck_unavailable_text =
         shadowrun::graphics::read_genesis_cyberdeck_unavailable_text(rom);
+    constexpr std::array<std::string_view, 3> kCyberdeckTextIds{{
+        "no_deck_first", "no_deck_second", "look_for_deck"}};
     for (std::size_t index = 0;
          index < cyberdeck_unavailable_text.size(); ++index) {
-        emit("pocket-secretary.cyberdeck.line." + std::to_string(index),
+        emit("pocket_secretary.cyberdeck.option." +
+                 std::string(kCyberdeckTextIds[index]),
              cyberdeck_unavailable_text[index]);
     }
     const auto group_item_names =
         shadowrun::graphics::read_genesis_group_item_catalog(rom);
+    constexpr std::array<std::string_view, 15> kGroupItemTextIds{{
+        "prototype_cyberheart", "indian_lands_visa", "feathered_scale",
+        "hell_hound_pelt", "gargoyle_horn", "gift_lady_gillian",
+        "gift_red_buffalo_woman", "landmark_map", "map_overlay",
+        "current_run_package", "security_pass", "weapon_permit",
+        "eye_fiver_ear_cuff", "halloweener_patch", "ork_armband"}};
     for (std::size_t index = 0; index < group_item_names.size(); ++index) {
-        emit("pocket-secretary.group-item." + std::to_string(index),
+        emit("pocket_secretary.group_item.option." +
+                 std::string(kGroupItemTextIds[index]),
              group_item_names[index]);
     }
     const auto group_items_empty_text =
         shadowrun::graphics::read_genesis_group_items_empty_text(rom);
+    constexpr std::array<std::string_view, 2> kGroupItemsEmptyTextIds{{
+        "first_line", "second_line"}};
     for (std::size_t index = 0; index < group_items_empty_text.size(); ++index) {
-        emit("pocket-secretary.group-items.empty." + std::to_string(index),
+        emit("pocket_secretary.group_items.empty.option." +
+                 std::string(kGroupItemsEmptyTextIds[index]),
              group_items_empty_text[index]);
     }
     const auto dismiss_runner_labels =
         shadowrun::graphics::read_genesis_dismiss_runner_labels(rom);
+    constexpr std::array<std::string_view, 3> kDismissRunnerTextIds{{
+        "dismiss", "who_question", "abort"}};
     for (std::size_t index = 0; index < dismiss_runner_labels.size(); ++index) {
-        emit("dismiss.label." + std::to_string(index),
+        emit("pocket_secretary.dismiss.option." +
+                 std::string(kDismissRunnerTextIds[index]),
              dismiss_runner_labels[index]);
     }
-    emit("dismiss.separator",
+    emit("pocket_secretary.dismiss.text.option.separator",
          shadowrun::graphics::read_genesis_dismiss_runner_separator(rom));
     const auto notebook_tips_text =
         shadowrun::graphics::read_genesis_notebook_tips_text(rom);
@@ -182,25 +198,32 @@ write_field_service_routes(
     emit("notebook.tips.page-number-clear",
          notebook_tips_text.page_number_clear);
     constexpr std::array<std::string_view, 6> kNotebookLabelKeys{{
-        "notebook.options.title",
-        "notebook.option.current_run",
-        "notebook.option.tips_and_clues",
-        "notebook.option.contacts",
-        "notebook.option.mr_johnsons",
-        "notebook.option.shadowrunners",
+        "pocket_secretary.notebook.options.title",
+        "pocket_secretary.notebook.option.current_run",
+        "pocket_secretary.notebook.option.tips_and_clues",
+        "pocket_secretary.notebook.option.contacts",
+        "pocket_secretary.notebook.option.mr_johnsons",
+        "pocket_secretary.notebook.option.shadowrunners",
     }};
     for (std::size_t index = 0; index < assets.notebook_labels.size(); ++index) {
         emit(std::string(kNotebookLabelKeys[index]),
              assets.notebook_labels[index]);
     }
+    constexpr std::array<std::string_view, 3> kNotebookNoRunTextIds{{
+        "first_line", "second_line", "last_line"}};
     for (std::size_t index = 0; index < assets.notebook_no_run_lines.size();
          ++index) {
-        emit("notebook.no-run." + std::to_string(index),
+        emit("pocket_secretary.notebook.no_run.option." +
+                 std::string(kNotebookNoRunTextIds[index]),
              assets.notebook_no_run_lines[index]);
     }
+    constexpr std::array<std::string_view, 5> kMrJohnsonTextIds{{
+        "gunderson", "julius_strouther", "mortimer_reed",
+        "vigore_and_jarl", "caleb_brightmore"}};
     for (std::size_t index = 0;
          index < assets.notebook_mr_johnson_names.size(); ++index) {
-        emit("notebook.mr-johnson.name." + std::to_string(index),
+        emit("pocket_secretary.notebook.mr_johnson.name.option." +
+                 std::string(kMrJohnsonTextIds[index]),
              assets.notebook_mr_johnson_names[index]);
     }
     const auto mr_johnson_descriptions =
@@ -208,7 +231,8 @@ write_field_service_routes(
             rom);
     for (std::size_t index = 0; index < mr_johnson_descriptions.size();
          ++index) {
-        emit("notebook.mr-johnson.detail." + std::to_string(index),
+        emit("pocket_secretary.notebook.mr_johnson.detail.option." +
+                 std::string(kMrJohnsonTextIds[index]),
              escape_field_text(mr_johnson_descriptions[index]));
     }
     const auto command_names =
@@ -859,7 +883,7 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         shadowrun::graphics::read_genesis_pocket_secretary_text(rom);
     write_text_entry("pocket_secretary.root.title",
                      pocket_secretary_text.title);
-    write_text_entry("pocket_secretary.root.separator",
+    write_text_entry("pocket_secretary.root.text.option.separator",
                      pocket_secretary_text.separator);
     constexpr std::array<std::string_view, 5> kPocketSecretaryFieldChoiceIds{{
         "notebook", "group_items", "cyberdeck", "dismiss_runner",
@@ -1628,7 +1652,8 @@ void write_asset_readme(const std::filesystem::path& root) {
               "grouped under dialogue/panel, with speaker portraits under "
               "dialogue/portraits. ROM-derived Stoker and field interaction "
               "text, Hotel menu and status text, Ares mode-event dialogue, "
-              "Pocket Secretary root/Notebook menu text, field-service titles, shop "
+              "Pocket Secretary menu and child-page text, field-service "
+              "titles, shop "
               "text, and item descriptions are emitted as "
               "`dialogue/script-text.lua` and consumed by the gameplay script "
               "runtime. `gameplay/scripts/hotel.lua`, "
