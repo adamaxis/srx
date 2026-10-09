@@ -139,10 +139,9 @@ void HotelMenuRuntime::reset_page_effect() noexcept {
 
 void HotelMenuRuntime::advance_animation(std::uint16_t& random_seed) {
     // ROM 0xEF08 waits through 0xF312, which calls E660 each VBlank. The
-    // Hotel Options wait loop also calls E660 at 0xCF94; nested checkout at
-    // 0xDA6A has its own wait loop and does not advance the effect.
-    if (phase_ == HotelMenuPhase::closed ||
-        phase_ == HotelMenuPhase::checkout) {
+    // Hotel Options and checkout wait loops both call E660 (0xCF94 and
+    // 0xDABA respectively). The Hotel Karma child pauses the parent loop.
+    if (phase_ == HotelMenuPhase::closed) {
         return;
     }
     advance_random_grid_effect(
@@ -323,7 +322,9 @@ void HotelMenuRuntime::paint(
     }
     if (!checkout_cursor.isNull()) {
         painter.drawImage(
-            104, 96 + static_cast<int>(checkout_state_.selection) * 8,
+            // C3B2 doubles FFF0DC for this cursor table because FFF0FC is
+            // clear. The No row is two text rows below Yes (E387E).
+            104, 96 + static_cast<int>(checkout_state_.selection) * 16,
             checkout_cursor);
     }
 }

@@ -17515,7 +17515,9 @@ int main(int argc, char** argv) {
                     !image_region_has_color(checkout_no, 128, 112, 64, 8,
                                             QColor(109, 73, 146)) ||
                     image_has_green_ink(checkout_no, 88, 72, 160, 16) ||
-                    !image_region_has_color(checkout_no, 104, 104, 8, 8,
+                    !image_region_has_color(checkout_no, 104, 112, 8, 8,
+                                            QColor(109, 73, 146)) ||
+                    image_region_has_color(checkout_no, 104, 104, 8, 8,
                                             QColor(109, 73, 146)) ||
                     image_has_green_ink(checkout_no, 72, 48, 160, 8)) {
                     std::cerr << "field Hotel QA: checkout text or old options clear is incorrect\n";
@@ -17530,10 +17532,12 @@ int main(int argc, char** argv) {
                     output / "checkout-no-frame-30" / "actual.bmp");
                 if (checkout_no_frame_30.isNull() ||
                     field_scene.hotel_animation_frames() !=
-                        checkout_animation_frame_count ||
+                        checkout_animation_frame_count + 30U ||
                     image_region_differs(checkout_no, checkout_no_frame_30,
-                                         0, 0, 320, 224)) {
-                    std::cerr << "field Hotel QA: nested checkout prompt should hold without E660\n";
+                                         24, 24, 224, 168) ||
+                    !image_region_differs(checkout_no, checkout_no_frame_30,
+                                          24, 192, 224, 32)) {
+                    std::cerr << "field Hotel QA: checkout should advance E660 in the lower bezel without moving its text\n";
                     return 3;
                 }
                 press_button(0x40U); // A confirms default No and stays.
@@ -17571,8 +17575,10 @@ int main(int argc, char** argv) {
                 if (checkout_yes.isNull() ||
                     !image_region_has_color(checkout_yes, 104, 96, 8, 8,
                                             QColor(109, 73, 146)) ||
+                    image_region_has_color(checkout_yes, 104, 112, 8, 8,
+                                            QColor(109, 73, 146)) ||
                     !image_region_differs(checkout_no, checkout_yes,
-                                          104, 96, 8, 16)) {
+                                          104, 96, 8, 24)) {
                     std::cerr << "field Hotel QA: checkout cursor did not move from No to Yes\n";
                     return 3;
                 }

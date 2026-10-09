@@ -1370,7 +1370,10 @@ stub: it writes the prompt grid, renders
 accepts source controller bits `0x0E`, `0x0C`, or `0x0D`. Selecting Yes causes
 the original routine to unwind both its handler and Hotel-menu return frames;
 the native conversion returns `checked_out`/`returned_to_field` instead of
-reproducing that stack manipulation.
+reproducing that stack manipulation. Its input loop also calls `0xE660` at
+`0xDABA` on every wait frame. The cursor table at `0xC61A` advances by two
+name-table rows per selection: `0xC3B2` doubles the selection index while
+`FFF0FC` is clear, matching the Yes/No text rows at `0xE387E`.
 
 The native names are `run_hotel_options_menu()`,
 `prepare_hotel_options_display()`, and `run_hotel_checkout_prompt()`. Their

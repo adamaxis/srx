@@ -97,12 +97,12 @@ an independent Genesis visual oracle.
    the Qt route assertions. No independent Hotel screenshot is available to
    verify its exact pixel placement, palette, or text appearance.
 4. **Does it animate as expected? — Yes for the traced native cadence.** The
-   Hotel status/options wait loop calls `0xE660` once per loop update; Debug
-   and Release checks 30 updates, stable text, and change confined to the
-   lower bezel. The Hotel Karma child suspends that parent animation and stays
-   static; nested checkout also stays static. The QA fixture seed stabilizes
-   the random bezel art. Independent footage does not establish Hotel
-   animation timing.
+   Hotel status/options and checkout wait loops call `0xE660` once per update;
+   Debug and Release check 30 updates, stable text, and change confined to the
+   lower bezel. The Hotel Karma child suspends its parent animation and stays
+   static. Checkout's `0xDABA` call advances the bezel while its question and
+   selection remain fixed. The QA fixture seed stabilizes the random bezel
+   art. Independent footage does not establish Hotel animation timing.
 5. **Does it have sound? — Unknown for the complete route.** The traced room
    payment leaf at `0x21458` contains no direct sound request. The indirect
    field-exit audio hook and any associated playback duration remain
@@ -136,7 +136,10 @@ an independent Genesis visual oracle.
 
 ## Verification outcome
 
-- **Code changed:** the Hotel QA now follows the physical doorway and normal
+- **Code changed:** checkout now advances its ROM-matched lower-bezel effect
+  and places the No selector on the second text row, matching the two-row
+  stride derived from `0xC376`/`0xC3B2` and the `0xE387E` Yes/No text.
+- **Code changed:** the Hotel QA follows the physical doorway and normal
   input through the live `FieldSceneRuntime`, dialogue, payment, Hotel,
   Karma, and checkout handlers; no test helper injects a dialogue, payment
   result, or menu state.
