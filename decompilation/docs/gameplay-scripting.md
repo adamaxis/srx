@@ -222,10 +222,10 @@ access.
 - `gameplay/scripts/clips.lua` declares the top-level Reload/Trade/Distribute/
   Cancel choices and the nested Increase/Decrease/Trade/Recipient choices.
   It also declares stable IDs for the Clips panel labels, reload/trade prompts,
-  and status messages. The field menu catalog validates all three lists
-  against ROM order and resolves the extracted copy from the shared Lua text
-  table. Cursor, reload, trade, ammunition, and runner-record state remain
-  native.
+  and status messages. The field menu catalog reads these IDs in Lua order and
+  resolves the extracted copy from the shared Lua text table; QA checks that
+  order against the ROM. Cursor, reload, trade, ammunition, and runner-record
+  state remain native.
 - `gameplay/scripts/ui.lua` declares the shared Yes/No confirmation menu in
   ROM order and the shared field-stat caption IDs. The field text catalog
   takes those IDs from Lua without a second runtime list in C++; script and

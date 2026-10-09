@@ -11,22 +11,6 @@
 namespace shadowrun::ghidra_conversion::qt_runtime {
 namespace {
 
-constexpr std::array<std::string_view, kFieldMenuClipsCommandCount>
-    kClipsCommandIds{{"reload", "trade", "distribute", "cancel"}};
-constexpr std::array<std::string_view, kFieldMenuClipsCommandCount>
-    kClipsTradeCommandIds{{"increase_clips", "decrease_clips", "trade_clips",
-                           "change_recipient"}};
-constexpr std::array<std::string_view, kClipsTextCount> kClipsTextIds{{
-    "header_title", "header_separator", "counter_label",
-    "trade_prompt_action", "trade_prompt_clips_to",
-    "trade_prompt_recipient", "exchange_complete_first",
-    "exchange_complete_second", "reload_prompt_ammo_remaining",
-    "reload_prompt_ammo_suffix", "reload_prompt_question",
-    "reload_success_first", "reload_success_second",
-    "out_of_ammo_name_suffix", "out_of_ammo_clips",
-    "item_without_clips_first", "item_without_clips_second",
-    "item_without_clips_third", "no_party_first", "no_party_second",
-    "no_party_third"}};
 constexpr std::array<std::string_view, kAttributesSkillsTextCount>
     kAttributesSkillsTextIds{{
         "body", "quickness", "strength", "charisma", "intelligence",
@@ -228,25 +212,23 @@ bool is_command_overview_text_label_key(const std::string_view key) {
                kCommandOverviewPostureIds.end();
 }
 
-bool is_clips_menu_label_key(const std::string_view key) {
+bool is_clips_menu_label_key(
+    const std::string_view key,
+    const std::array<std::string, kFieldMenuClipsCommandCount>& commands,
+    const std::array<std::string, kFieldMenuClipsCommandCount>& trade_commands,
+    const std::array<std::string, kClipsTextCount>& text_ids) {
     constexpr std::string_view kCommandPrefix = "clips.option.";
     constexpr std::string_view kTradeCommandPrefix = "clips.trade.option.";
     if (key.rfind(kCommandPrefix, 0U) == 0U) {
-        return std::find(kClipsCommandIds.begin(), kClipsCommandIds.end(),
-                         key.substr(kCommandPrefix.size())) !=
-               kClipsCommandIds.end();
+        return has_menu_choice_id(commands, key.substr(kCommandPrefix.size()));
     }
     if (key.rfind(kTradeCommandPrefix, 0U) == 0U) {
-        return std::find(kClipsTradeCommandIds.begin(),
-                         kClipsTradeCommandIds.end(),
-                         key.substr(kTradeCommandPrefix.size())) !=
-               kClipsTradeCommandIds.end();
+        return has_menu_choice_id(
+            trade_commands, key.substr(kTradeCommandPrefix.size()));
     }
     constexpr std::string_view kTextPrefix = "clips.text.option.";
     if (key.rfind(kTextPrefix, 0U) == 0U) {
-        return std::find(kClipsTextIds.begin(), kClipsTextIds.end(),
-                         key.substr(kTextPrefix.size())) !=
-               kClipsTextIds.end();
+        return has_menu_choice_id(text_ids, key.substr(kTextPrefix.size()));
     }
     return false;
 }
@@ -721,17 +703,21 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     result.catalog.cyberware_empty_message = cyberware_text[2];
     std::copy_n(cyberware_text.begin() + 3, kCyberwareEntryCount,
                 result.catalog.cyberware_entries.begin());
+    std::array<std::string, kFieldMenuClipsCommandCount> clips_command_ids{};
     load_script_menu_labels(
         scripts, "clips", "commands", "clips", "commands",
-        kClipsCommandIds, result.catalog.clips_commands, result.errors);
+        result.catalog.clips_commands, result.errors, nullptr,
+        &clips_command_ids);
+    std::array<std::string, kFieldMenuClipsCommandCount>
+        clips_trade_command_ids{};
     load_script_menu_labels(
         scripts, "clips", "trade_commands", "clips.trade", "commands",
-        kClipsTradeCommandIds, result.catalog.clips_trade_commands,
-        result.errors);
+        result.catalog.clips_trade_commands, result.errors, nullptr,
+        &clips_trade_command_ids);
     std::array<std::string, kClipsTextCount> clips_text{};
     load_script_menu_labels(
         scripts, "clips", "text_entries", "clips.text", "catalog",
-        kClipsTextIds, clips_text, result.errors, nullptr,
+        clips_text, result.errors, nullptr,
         &result.catalog.clips_text_ids);
     result.catalog.clips_title = clips_text[0];
     result.catalog.clips_separator = clips_text[1];
@@ -900,7 +886,9 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             continue;
         }
         if (has_clips_menu_label_prefix(key)) {
-            if (!is_clips_menu_label_key(key)) {
+            if (!is_clips_menu_label_key(
+                    key, clips_command_ids, clips_trade_command_ids,
+                    result.catalog.clips_text_ids)) {
                 result.errors.emplace_back(
                     "unknown Clips menu label key: " + key);
             }
