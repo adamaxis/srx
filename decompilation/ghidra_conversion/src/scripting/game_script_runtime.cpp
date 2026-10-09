@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
+#include "shadowrun_ghidra/world/world_activity_routine_conversion.hpp"
 
 extern "C" {
 #include "lauxlib.h"
@@ -104,6 +105,87 @@ bool read_field_integer(lua_State* state, const int table_index,
     const bool valid = read_integer(state, -1, maximum, value);
     lua_pop(state, 1);
     return valid;
+}
+
+bool read_field_boolean(lua_State* state, const int table_index,
+                        const char* field, bool& value) {
+    lua_getfield(state, table_index, field);
+    const bool valid = lua_isboolean(state, -1) != 0;
+    if (valid) {
+        value = lua_toboolean(state, -1) != 0;
+    }
+    lua_pop(state, 1);
+    return valid;
+}
+
+bool read_field_signed_integer(lua_State* state, const int table_index,
+                               const char* field, const int minimum,
+                               const int maximum, int& value) {
+    lua_getfield(state, table_index, field);
+    const bool valid = lua_isinteger(state, -1) != 0 &&
+                       lua_tointeger(state, -1) >= minimum &&
+                       lua_tointeger(state, -1) <= maximum;
+    if (valid) {
+        value = static_cast<int>(lua_tointeger(state, -1));
+    }
+    lua_pop(state, 1);
+    return valid;
+}
+
+std::string collision_event_name(const FieldCollisionEventCode event_code) {
+    if (event_code == FieldCollisionEventCode::no_event) {
+        return "no_event";
+    }
+    return "event_" + std::to_string(
+                           field_collision_event_value(event_code));
+}
+
+bool parse_collision_event_name(const std::string_view name,
+                                FieldCollisionEventCode& event_code) {
+    if (name == "no_event") {
+        event_code = FieldCollisionEventCode::no_event;
+        return true;
+    }
+    for (std::uint8_t value = 0U; value < 32U; ++value) {
+        const auto candidate = "event_" + std::to_string(value);
+        if (name == candidate) {
+            event_code = static_cast<FieldCollisionEventCode>(value);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool field_map_event_action(const std::string_view name,
+                            FieldMapEventAction& action) {
+    if (name == "project_world_interaction") {
+        action = FieldMapEventAction::project_world_interaction;
+    } else if (name == "skip_world_interaction") {
+        action = FieldMapEventAction::skip_world_interaction;
+    } else if (name == "begin_event_31_activity") {
+        action = FieldMapEventAction::begin_event_31_activity;
+    } else if (name == "begin_event_30_activity") {
+        action = FieldMapEventAction::begin_event_30_activity;
+    } else if (name == "begin_event_29_activity") {
+        action = FieldMapEventAction::begin_event_29_activity;
+    } else if (name == "begin_event_28_activity") {
+        action = FieldMapEventAction::begin_event_28_activity;
+    } else if (name == "begin_event_27_activity") {
+        action = FieldMapEventAction::begin_event_27_activity;
+    } else if (name == "mark_projected_terrain") {
+        action = FieldMapEventAction::mark_projected_terrain;
+    } else if (name == "begin_maglock_interaction") {
+        action = FieldMapEventAction::begin_maglock_interaction;
+    } else if (name == "begin_security_terminal") {
+        action = FieldMapEventAction::begin_security_terminal;
+    } else if (name == "begin_event_25_activity") {
+        action = FieldMapEventAction::begin_event_25_activity;
+    } else if (name == "begin_field_mode_exit") {
+        action = FieldMapEventAction::begin_field_mode_exit;
+    } else {
+        return false;
+    }
+    return true;
 }
 
 bool valid_identifier(const std::string_view value) {
@@ -1145,6 +1227,244 @@ const std::string* GameScriptRuntime::dialogue_text(
 const std::unordered_map<std::string, std::string>&
 GameScriptRuntime::dialogue_text_entries() const noexcept {
     return impl_->dialogue_texts;
+}
+
+std::optional<FieldScriptRoute>
+GameScriptRuntime::resolve_field_location_route(
+    const FieldScriptRouteContext& context) {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "Lua runtime is unavailable for field location routing";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<FieldScriptRoute> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("building")) {
+        return fail("building.lua module is missing");
+    }
+    lua_getfield(state, -1, "resolve_field_location_route");
+    if (!lua_isfunction(state, -1)) {
+        return fail("building.lua route function is missing");
+    }
+
+    lua_createtable(state, 0, 5);
+    const auto input_index = lua_absindex(state, -1);
+    lua_pushboolean(
+        state,
+        context.scene_id == field_scene_id_value(
+                                FieldSceneId::stoker_motel_street));
+    lua_setfield(state, input_index, "stoker_motel_street");
+    lua_pushboolean(
+        state, context.field_mode == field_exit_mode_value(
+                                         FieldExitMode::building_interaction));
+    lua_setfield(state, input_index, "building_interaction_mode");
+    const auto event_code_value =
+        field_collision_event_value(context.event_code);
+    const auto event_code_name = collision_event_name(context.event_code);
+    lua_pushlstring(state, event_code_name.c_str(), event_code_name.size());
+    lua_setfield(state, input_index, "event_code");
+    lua_pushinteger(state, event_code_value);
+    lua_setfield(state, input_index, "event_index");
+    lua_pushboolean(state, context.event_table_available);
+    lua_setfield(state, input_index, "event_table_available");
+    lua_createtable(state,
+                    static_cast<int>(context.event_table.size()), 0);
+    const auto table_index = lua_absindex(state, -1);
+    for (std::size_t index = 0U; index < context.event_table.size(); ++index) {
+        lua_pushinteger(state, context.event_table[index]);
+        lua_rawseti(state, table_index,
+                    static_cast<lua_Integer>(index + 1U));
+    }
+    lua_setfield(state, input_index, "event_table");
+
+    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+        return fail("building.lua field location route failed");
+    }
+    if (!lua_istable(state, -1)) {
+        return fail("building.lua field location route returned no decision");
+    }
+    const auto result_index = lua_absindex(state, -1);
+    std::string kind_name;
+    std::string script_name;
+    std::string resolved_event_code_name;
+    FieldCollisionEventCode event_code = FieldCollisionEventCode::event_0;
+    if (!read_field_string(state, result_index, "kind", kind_name) ||
+        !read_field_string(state, result_index, "script", script_name) ||
+        !read_field_string(state, result_index, "event_code",
+                           resolved_event_code_name) ||
+        !parse_collision_event_name(resolved_event_code_name, event_code)) {
+        return fail("building.lua field location route has invalid fields");
+    }
+
+    std::optional<std::uint8_t> target_scene;
+    lua_getfield(state, result_index, "area_event_target");
+    if (!lua_isnil(state, -1)) {
+        std::uint32_t value = 0U;
+        const bool valid = read_integer(state, -1, 0xFFU, value);
+        lua_pop(state, 1);
+        if (!valid) {
+            return fail("building.lua route has an invalid area event target");
+        }
+        target_scene = static_cast<std::uint8_t>(value);
+    } else {
+        lua_pop(state, 1);
+    }
+
+    FieldScriptRoute route{};
+    route.event_code = field_collision_event_value(event_code);
+    route.area_event_target = target_scene;
+    const bool no_target = !target_scene.has_value();
+    if (kind_name == "no_route" && script_name == "none" && no_target) {
+        route.kind = FieldScriptRouteKind::no_route;
+        route.script = FieldScriptId::none;
+    } else if (kind_name == "dialogue" &&
+               script_name == "stoker_motel_interaction" && no_target) {
+        route.kind = FieldScriptRouteKind::dialogue;
+        route.script = FieldScriptId::stoker_motel_interaction;
+    } else if (kind_name == "field_service" &&
+               script_name == "ares_weapon_emporium" && no_target) {
+        route.kind = FieldScriptRouteKind::field_service;
+        route.script = FieldScriptId::ares_weapon_emporium;
+    } else if (kind_name == "area_event" &&
+               script_name == "area_event_table" && target_scene) {
+        route.kind = FieldScriptRouteKind::area_event;
+        route.script = FieldScriptId::area_event_table;
+    } else {
+        return fail("building.lua route returned an unknown action");
+    }
+
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return route;
+}
+
+std::optional<FieldMapEventPolicyDecision>
+GameScriptRuntime::resolve_field_collision_event(
+    const FieldMapCollisionEventInput& input) {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "Lua runtime is unavailable for field collision policy";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<FieldMapEventPolicyDecision> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("field_events")) {
+        return fail("field_events.lua module is missing");
+    }
+    lua_getfield(state, -1, "resolve_collision");
+    if (!lua_isfunction(state, -1)) {
+        return fail("field_events.resolve_collision is missing");
+    }
+
+    lua_createtable(state, 0, 11);
+    const auto input_index = lua_absindex(state, -1);
+    const auto source_event_code =
+        field_collision_event_code(input.raw_collision_code);
+    const auto source_event_name = collision_event_name(source_event_code);
+    lua_pushlstring(state, source_event_name.c_str(),
+                    source_event_name.size());
+    lua_setfield(state, input_index, "event_code");
+    lua_pushinteger(state, input.raw_collision_code);
+    lua_setfield(state, input_index, "raw_collision_code");
+    lua_pushinteger(state, input.scene_id);
+    lua_setfield(state, input_index, "scene_id");
+    lua_pushboolean(
+        state, input.world_mode == static_cast<std::uint16_t>(
+                                       WorldActivityMode::resource_activity));
+    lua_setfield(state, input_index, "interaction_mode");
+    lua_pushboolean(
+        state, input.scene_id == field_scene_id_value(FieldSceneId::scene_20));
+    lua_setfield(state, input_index, "scene_20");
+    lua_pushboolean(
+        state, input.field_transition_context ==
+                   static_cast<std::uint16_t>(
+                       FieldTransitionContext::event_25_special));
+    lua_setfield(state, input_index, "transition_context_25");
+    lua_pushboolean(state,
+                    field_mode_exit_requested(input.field_global_flags));
+    lua_setfield(state, input_index, "field_mode_exit_requested");
+    lua_pushboolean(state, input.interaction_gate != 0U);
+    lua_setfield(state, input_index, "interaction_gate_active");
+    lua_pushboolean(state, input.activity_sequence_active);
+    lua_setfield(state, input_index, "activity_sequence_active");
+    lua_pushboolean(state, input.terrain_event_suppressed);
+    lua_setfield(state, input_index, "terrain_event_suppressed");
+    lua_pushboolean(state, input.world_effect_control_bit);
+    lua_setfield(state, input_index, "world_effect_control_bit");
+
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+        return fail("field_events.resolve_collision failed");
+    }
+    if (!lua_istable(state, -1)) {
+        return fail("field_events.resolve_collision returned no decision");
+    }
+    const auto result_index = lua_absindex(state, -1);
+    std::string action_name;
+    std::string event_code_name;
+    std::uint32_t raw_collision_code = 0U;
+    std::uint32_t quantized_delta = 0U;
+    int direction_probe_value = 0;
+    FieldMapEventAction action{};
+    FieldCollisionEventCode event_code = FieldCollisionEventCode::event_0;
+    bool mode_event_code_published = false;
+    bool projected_terrain_event_published = false;
+    bool rewrite_direction_probe = false;
+    bool rewrite_quantized_delta = false;
+    const bool valid =
+        read_field_string(state, result_index, "action", action_name) &&
+        field_map_event_action(action_name, action) &&
+        read_field_string(state, result_index, "event_code",
+                          event_code_name) &&
+        parse_collision_event_name(event_code_name, event_code) &&
+        read_field_integer(state, result_index, "raw_collision_code",
+                           65535U, raw_collision_code) &&
+        read_field_boolean(state, result_index, "mode_event_code_published",
+                           mode_event_code_published) &&
+        read_field_boolean(state, result_index,
+                           "projected_terrain_event_published",
+                           projected_terrain_event_published) &&
+        read_field_boolean(state, result_index, "rewrite_direction_probe",
+                           rewrite_direction_probe) &&
+        read_field_signed_integer(state, result_index,
+                                  "direction_probe_value", -128, 127,
+                                  direction_probe_value) &&
+        read_field_boolean(state, result_index, "rewrite_quantized_delta",
+                           rewrite_quantized_delta) &&
+        read_field_integer(state, result_index, "quantized_delta", 65535U,
+                           quantized_delta);
+    if (!valid) {
+        return fail("field_events.resolve_collision returned invalid fields");
+    }
+
+    FieldMapEventPolicyDecision decision{};
+    decision.action = action;
+    decision.source_event_code = source_event_code;
+    decision.event_code = event_code;
+    decision.raw_collision_code =
+        static_cast<std::uint16_t>(raw_collision_code);
+    decision.mode_event_code_published = mode_event_code_published;
+    decision.projected_terrain_event_published =
+        projected_terrain_event_published;
+    decision.rewrite_direction_probe = rewrite_direction_probe;
+    decision.direction_probe_value =
+        static_cast<std::int8_t>(direction_probe_value);
+    decision.rewrite_quantized_delta = rewrite_quantized_delta;
+    decision.quantized_delta = static_cast<std::uint16_t>(quantized_delta);
+
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return decision;
 }
 
 std::optional<std::vector<FieldMapEventRule>>

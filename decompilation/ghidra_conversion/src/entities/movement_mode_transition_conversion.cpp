@@ -111,7 +111,7 @@ advance_entity_movement_and_mode_transition(
             EntityMovementModeTransitionResultKind::callback_unresolved;
         return result;
     }
-    const auto decision = callbacks.dispatch_field_map_event(
+    const auto decision_result = callbacks.dispatch_field_map_event(
         FieldMapCollisionEventInput{
             state.scene_id,
             state.world_mode,
@@ -124,7 +124,13 @@ advance_entity_movement_and_mode_transition(
             state.activity_sequence_active,
             state.terrain_event_suppressed,
             state.world_effect_control_bit});
-    result.event_code = decision.event_code;
+    if (!decision_result) {
+        result.kind = EntityMovementModeTransitionResultKind::
+            callback_unresolved;
+        return result;
+    }
+    const auto& decision = *decision_result;
+    result.event_code = field_collision_event_value(decision.event_code);
     state.terrain_collision_code = decision.raw_collision_code;
     record.projected_field_code = decision.raw_collision_code;
     if (decision.rewrite_direction_probe) {
@@ -140,7 +146,7 @@ advance_entity_movement_and_mode_transition(
     if (decision.mode_event_code_published) {
         // This is the only policy action that publishes FFFBF9. Early source
         // continuations intentionally leave its previous value untouched.
-        state.mode_event_code = decision.event_code;
+        state.mode_event_code = field_collision_event_value(decision.event_code);
         result.mode_event_code_published = true;
     }
 
@@ -193,7 +199,8 @@ advance_entity_movement_and_mode_transition(
         // ROM 0xB994 stores the event byte left in D0 by 0x1E2E0.
         if (started.kind !=
             EntityMovementModeTransitionResultKind::callback_unresolved) {
-            state.activity_selection = decision.event_code;
+            state.activity_selection =
+                field_collision_event_value(decision.event_code);
         }
         return started;
     }

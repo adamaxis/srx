@@ -371,7 +371,7 @@ open.
 and property-based systems such as building item use and maglock passkey
 outcomes cannot be tested through normal Qt gameplay.
 
-**Typed route policy:** `resolve_field_script_route()` identifies the scene-2 Stoker dialogue and Ares service before consulting the active map event table. It preserves the C0 doorway's row-0 destination (`0x14`) and uses each other scene's own table for same-numbered events. Scene 26's physical D8 trigger now opens the typed Security Terminal prompt from its descriptor spawn, but the terminal's world-activity result still lacks an ordinary-input route. Other map records remain open. See the [full-screen route audit](visual-audits/field-map-script-routing.md).
+**Lua map-event and location routing:** `field_events.lua:resolve_collision()` selects a named action for each accepted collision event, and `building.lua:resolve_field_location_route()` selects the scene-2 Stoker/Ares routes or reads the active map's ROM event-table row. The scene-2 C0 doorway selects numeric scene 20; event 1 selects scene 26. Scenes without an event table return `no_route`. Scene 26's physical D8 trigger opens the typed Security Terminal prompt from its descriptor spawn. Elevator floor-group destination policy and downstream activity results still use native route logic, and complete building entry/exit coverage remains open. See the [full-screen route audit](visual-audits/field-map-script-routing.md).
 
 **Physical route results:** scene-2 record 91 (`0x173138`, value `0xC2`) at
 the visible motel doorway is reached with normal Up input. It publishes raw

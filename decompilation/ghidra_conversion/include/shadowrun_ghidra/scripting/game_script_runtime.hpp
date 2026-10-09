@@ -353,6 +353,10 @@ public:
     const std::string* dialogue_text(std::string_view key) const;
     const std::unordered_map<std::string, std::string>&
     dialogue_text_entries() const noexcept;
+    std::optional<FieldScriptRoute> resolve_field_location_route(
+        const FieldScriptRouteContext& context);
+    std::optional<FieldMapEventPolicyDecision> resolve_field_collision_event(
+        const FieldMapCollisionEventInput& input);
     std::optional<std::vector<FieldMapEventRule>> map_event_rules();
     void set_story_state(const StoryFacts& facts);
     void set_story_fact_accessors(StoryFactReader read,

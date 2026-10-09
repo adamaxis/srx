@@ -29,6 +29,22 @@ enum class FieldMapEventAction {
     begin_field_mode_exit,
 };
 
+enum class FieldTransitionContext : std::uint16_t {
+    event_25_special = 19,
+};
+
+enum class FieldModeExitGate : std::uint8_t {
+    signal_a = 16,
+    signal_b = 64,
+};
+
+constexpr bool field_mode_exit_requested(
+    const std::uint8_t global_flags) noexcept {
+    constexpr auto mask = static_cast<std::uint8_t>(FieldModeExitGate::signal_a) |
+                          static_cast<std::uint8_t>(FieldModeExitGate::signal_b);
+    return (global_flags & mask) != 0U;
+}
+
 struct FieldMapCollisionEventInput {
     std::uint16_t scene_id = 0;
     std::uint16_t world_mode = 0;
@@ -46,8 +62,9 @@ struct FieldMapCollisionEventInput {
 struct FieldMapEventPolicyDecision {
     FieldMapEventAction action =
         FieldMapEventAction::project_world_interaction;
-    std::uint8_t source_event_code = 0;
-    std::uint8_t event_code = 0;
+    FieldCollisionEventCode source_event_code =
+        FieldCollisionEventCode::event_0;
+    FieldCollisionEventCode event_code = FieldCollisionEventCode::event_0;
     std::uint16_t raw_collision_code = 0;
     bool mode_event_code_published = false;
     bool projected_terrain_event_published = false;
@@ -56,9 +73,6 @@ struct FieldMapEventPolicyDecision {
     bool rewrite_quantized_delta = false;
     std::uint16_t quantized_delta = 0;
 };
-
-FieldMapEventPolicyDecision resolve_field_map_collision_event(
-    const FieldMapCollisionEventInput& input) noexcept;
 
 enum class FieldMapEventTrigger {
     scene_entry,
@@ -140,10 +154,9 @@ public:
     std::vector<FieldMapEventActivation> evaluate_actor_scope(
         const FieldMapEventTriggerContext& context);
 
-    FieldMapCollisionEventDispatch dispatch_collision(
-        const FieldMapCollisionEventInput& input) noexcept;
-    FieldScriptRoute resolve_script_route(
-        const FieldScriptRouteContext& context) const noexcept;
+    FieldMapCollisionEventDispatch record_collision(
+        const FieldMapCollisionEventInput& input,
+        const FieldMapEventPolicyDecision& decision) noexcept;
 
     std::uint32_t collision_dispatch_count() const noexcept {
         return collision_dispatch_count_;

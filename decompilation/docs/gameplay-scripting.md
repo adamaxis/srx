@@ -125,6 +125,19 @@ matching portrait asset key. The shared native mode-text prompt owns the
 source-derived title-only display, 30-frame wait, and controller return; it no
 longer chooses among Ares paragraphs or hardcodes the Ares logo.
 
+`gameplay/scripts/field_events.lua` evaluates each accepted field collision
+from named event-code enums and typed scene/mode/story facts. It returns a
+named action; C++ validates the result and executes the corresponding movement,
+dialogue, terrain, or activity service. `gameplay/scripts/building.lua` is the
+shared location-route script. The native map loader supplies the active scene,
+mode, event, and ROM-imported event-table bytes; Lua selects the direct
+scene-2 Stoker/Ares routes or the active event-table destination. For example,
+scene-2 event 0 selects numeric scene 20 and event 1 selects numeric scene 26
+from the source table. C++ loads the typed destination. Unknown place names and
+reverse doors without source destinations remain unresolved. Floor-selector
+destination groups and several downstream activity results still have native
+route logic and remain to be moved behind Lua scripts.
+
 ROM-derived Stoker and field-interaction dialogue strings are imported into
 `assets/dialogue/script-text.lua` as a keyed Lua text table. The shared dialogue
 and field-interaction controllers resolve those keys through
@@ -317,8 +330,9 @@ animation cadence, the extracted NPC entry animations, finite weapon-list
 animation, and projectile movement/recovery policy. For projectiles, native
 services return terrain samples and the typed active-entity scan result; C++
 applies Lua's record snapshot, draws named assets, and plays requested audio.
-Map-event recovery, route-table reads, and world-position commit remain native
-services. The current field scene has no live collision candidates, so the
+Map-event recovery and world-position commit remain native services; the
+building route reads the named event-table facts and selects the destination in
+Lua. The current field scene has no live collision candidates, so the
 linked hit/status/damage continuation remains an explicit boundary. Most NPC
 behavior and the full 16-record population remain unconnected.
 

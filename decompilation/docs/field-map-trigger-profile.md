@@ -96,17 +96,17 @@ These are routes established by ROM collision records and dispatcher flow.
 Scene numbers are kept numeric when the ROM evidence does not identify a
 place-name or an interior.
 
-| Starting map/record | ROM event and route | Result established by ROM | Current native connection |
+| Starting map/record | ROM event and route | Result established by ROM | Current Lua/native connection |
 |---|---|---|---|
-| Scene 2, records 89/90 at `0x173124` / `0x17312E`, raw `0x00C0`, event 0 | Scene 2 event-table row 0 at `0x172CDC` is `0x14` | Selects numeric field scene 20; entry then encounters the scene-20 interaction geometry. No place-name is inferred from the byte. | Connected through `resolve_field_script_route` and `run_world_activity_routine`; physical New Game route reaches the scene-20 map and record 117. |
-| Scene 2, record 91 at `0x173138`, raw `0x00C2`, event 2 | Story route override, despite table row 2 being `0x1A` | The completed New Game opening leaves `FFE18B` set; after field warmup, the normal movement continuation heads to this collision without controller input. The route opens Stoker arrival dialogue in scene 2. Hotel/karma interactions remain in scene 2; this is not a separate Stoker interior. Later entry phases depend on `FFFC1E` and the typed debt/package story state. | `FieldMapEventSystem` dispatches the physical C2 collision to the Stoker script, then the indexed title service resolves the arrival, manager offer, debt/payment handoff, and ordinary-motel state. Debug/Release QA connects New Game arrival through payment/handoff and clean return using a 250-nuyen test wallet. Typed story tests cover the unpaid repeat offer and completed-story ordinary motel. Restored-save story state and a physical repeat-entry route remain open. |
+| Scene 2, records 89/90 at `0x173124` / `0x17312E`, raw `0x00C0`, event 0 | Scene 2 event-table row 0 at `0x172CDC` is `0x14` | Selects numeric field scene 20; entry then encounters the scene-20 interaction geometry. No place-name is inferred from the byte. | `building.lua` selects ROM row 0 and `run_world_activity_routine` loads scene 20; physical New Game route reaches record 117. |
+| Scene 2, record 91 at `0x173138`, raw `0x00C2`, event 2 | Story route override, despite table row 2 being `0x1A` | The completed New Game opening leaves `FFE18B` set; after field warmup, the normal movement continuation heads to this collision without controller input. The route opens Stoker arrival dialogue in scene 2. Hotel/karma interactions remain in scene 2; this is not a separate Stoker interior. Later entry phases depend on `FFFC1E` and the typed debt/package story state. | `building.lua` selects the same-map Stoker dialogue route; indexed title service and shared motel/quest scripts resolve arrival, manager offer, debt/payment handoff, and ordinary-motel state. Debug/Release QA connects New Game arrival through payment/handoff and clean return using a 250-nuyen test wallet. Typed story tests cover the unpaid repeat offer and completed-story ordinary motel. Restored-save story state and a physical repeat-entry route remain open. |
 | Scene 2, record 92 at `0x173142`, raw `0x00CB`, event 11 | Service route override, despite table row 11 being `0x33` | Opens the Ares service prompt; A opens the shop. | Connected to field-mode service and shop; physical scene-2 route has QA coverage. |
-| Scene 2, record 93 at `0x17314C`, raw `0x00C1`, event 1 | Scene 2 event-table row 1 at `0x172CDD` is `0x1A` | Selects resource-activity scene 26. The profile bound/cursor and the resource-scene preparation control the following state. | Connected through the world-activity coordinator; ordinary input route reaches scene 26. The end-to-end terminal path uses explicit QA fixtures for passkey, skill, and PRNG. |
-| Scene 20, record 117 at `0x1D9724`, raw `0x0082`, event 2 | `0xB7B8` selects `0x20E48` under the scene-`0x14`/world-mode gate | Electromagnetic-lock prompt. A successful passkey/electronics path changes collision cell 483 from `0x82` to `0x81` after result acknowledgement. | Connected to `FieldInteractionRuntime`; several physical branches have Debug/Release route coverage. Story acquisition and exact independent Genesis prompt/result captures remain open. |
+| Scene 2, record 93 at `0x17314C`, raw `0x00C1`, event 1 | Scene 2 event-table row 1 at `0x172CDD` is `0x1A` | Selects resource-activity scene 26. The profile bound/cursor and the resource-scene preparation control the following state. | `building.lua` selects ROM row 1 and the world-activity coordinator enters scene 26. The end-to-end terminal path uses explicit QA fixtures for passkey, skill, and PRNG. |
+| Scene 20, record 117 at `0x1D9724`, raw `0x0082`, event 2 | `field_events.lua` selects the maglock action under the scene/world-mode gate | Electromagnetic-lock prompt. A successful passkey/electronics path changes collision cell 483 from `0x82` to `0x81` after result acknowledgement. | Lua selects the action; `FieldInteractionRuntime` executes it. Several physical branches have Debug/Release route coverage. Story acquisition and exact independent Genesis prompt/result captures remain open. |
 | Scene 26, record 117 at `0x1D9E00`, raw `0x00A2`, event 2; record 110 at `0x1D9DBA`, raw `0x0082`, event 2 | Same conditional electromagnetic-lock continuation | Successful passkey action updates the sampled passage cells (`0xA2 -> 0xA1` and `0x82 -> 0x81`), after which ordinary movement crosses the lanes. | Connected to the shared maglock handling; physical route QA covers both gates with QA-seeded passkey state. |
 | Scene 26, records 124/125 at `0x1D9E46` / `0x1D9E50`, raw `0x00D8`, event `0x18` | Direct `0x20EC2` branch | Security Terminal prompt. Its outcome is a separate world-activity result path, not an elevator and not the scene-2 event-1 destination. | Prompt and joined physical route are connected. Source result handling has focused QA; story item/skill state and independent Genesis result capture remain open. |
-| Scenes 21-25, 26-29, 30-34, 35-40, and 41-43; event `0x1D` (`0xDD` raw) | Direct `0x58D94` floor-selector branch; the profile's elevator group supplies child scene IDs | Groups are `[21,22,23,24]`, `[26,27,28]`, `[30,31,32,33]`, `[35,36,37,38,39]`, and `[41,42]`. Trigger scenes 25, 29, 34, 40, and 43 are not members of their child groups. Destinations remain numeric scene IDs. | Typed selector and selected-scene handoff are connected. Physical group routes are recorded in [the elevator audit](visual-audits/field-elevator-selector.md); ordinary event entry to all starting scenes and saved-floor restoration remain open. |
-| Scene 4, record 96 at `0x15BDF6`, raw `0x00DB`, event `0x1B` | Direct `0x53D5A` world-activity continuation | Source selects the event-27 continuation; the table row is bypassed. Its complete downstream behavior is not established. | Typed event continuation exists; Qt has no corresponding pending field-scene handler binding yet. |
+| Scenes 21-25, 26-29, 30-34, 35-40, and 41-43; event `0x1D` (`0xDD` raw) | `field_events.lua` selects the event-29 floor-selector action; the profile's elevator group supplies child scene IDs | Groups are `[21,22,23,24]`, `[26,27,28]`, `[30,31,32,33]`, `[35,36,37,38,39]`, and `[41,42]`. Trigger scenes 25, 29, 34, 40, and 43 are not members of their child groups. Destinations remain numeric scene IDs. | Typed selector and selected-scene handoff are connected, but floor-group destination selection remains native. Physical group routes are recorded in [the elevator audit](visual-audits/field-elevator-selector.md); ordinary event entry to all starting scenes and saved-floor restoration remain open. |
+| Scene 4, record 96 at `0x15BDF6`, raw `0x00DB`, event `0x1B` | `field_events.lua` selects the event-27 world-activity continuation | Source selects the event-27 continuation; the table row is bypassed. Its complete downstream behavior is not established. | Lua selects the typed continuation; Qt has no corresponding pending field-scene handler binding yet. |
 | Scene 47, record 62 at `0x1D54B0`, raw `0x00B9`, event `0x19` | If `FFFC10 == 0x13`, direct `0x53EFA`; otherwise rewrite the collision result to `0x00A8`/event 8 | The route depends on field-transition context. The raw event-table row 25 is not a fixed destination; the rewrite path continues as event 8. | Typed dispatcher branch exists. This scene/context route is not physically exercised in the current Qt field runtime. |
 
 The event `0x1A` rectangles (168 records, raw `0xDA`) are projected-terrain
@@ -116,27 +116,37 @@ continuation `0x20C90` if the source marker condition succeeds. Events `0x1C`,
 Those are source-proven branches, but their full in-game meaning and connected
 Qt handlers are unresolved. Their full per-record locations are in the TSV.
 
-## Native event system connection
+## Lua event system connection
 
-`FieldMapEventSystem` is the live native route owner at the field-controller
-seam. Every accepted blocked-movement collision passed from `0xB7B8` is
-submitted as a typed event with scene, event byte, raw collision value, world
-coordinates, and the source gates. The system returns a typed action such as
+`field_events.lua` owns live collision policy at the field-controller seam.
+Every accepted blocked-movement collision passed from the ROM movement path
+becomes a typed event with a named `FieldCollisionEventCode`, scene/mode facts,
+world coordinates, and source-gate facts. Lua returns a named action such as
 project world interaction, start a maglock, mark projected terrain, or enter a
-source activity. The movement controller executes that result; it no longer
-contains its own event-ID switch. Route selection for the active scene's event
-table also goes through the same system. Unmapped table rows stay explicit
-`no_route` results.
+source activity. `GameScriptRuntime` validates the action into
+`FieldMapEventAction`; the native movement controller applies that result
+through its engine services. `FieldMapEventSystem` records the input and
+validated decision for stateful event tracking and QA, but no longer chooses
+the collision action.
 
-The rule registry also supports native scene-entry and actor-within-coordinate
-rules. Each rule has a scene, optional inclusive coordinate scope, required
-typed state flags, an action, and a repeat policy (`every_match`, once per scene
+After the ROM field-exit path begins, `building.lua` owns location route
+selection. The native host passes the current scene/mode/event enum and the
+extracted 32-byte event table as read-only facts. Lua applies the Stoker and
+Ares scene-2 overrides or selects the byte at the active event index. The
+typed result carries that numeric scene/activity target to the native world
+activity executor. This keeps the destination choice in Lua while preserving
+the ROM table as source data and the C++ scene loader as the host service.
+Invalid or absent table routes remain explicit `no_route` results.
+
+The scene-entry registry consumes Lua-authored rules from `field_events.lua`.
+Each rule names a scene, optional inclusive coordinate scope, required typed
+state flags, an action, and a repeat policy (`every_match`, once per scene
 visit, or once per session). The first registered rule is the ROM-backed New
 Game opening handoff: scene 2, spawn `(0x3CE0,0x2D00)`, and the completed-intro
 marker start the normal heading-zero movement once. The restored-save path
-does not publish the intro-complete flag. This is the first connected scripted
-event; future events can be added as authored native rules without changing
-collision or movement code.
+does not publish the intro-complete flag. The native registry tracks trigger
+lifetime and dispatches the Lua handler; future scene triggers are authored in
+Lua and can use the same collision/movement seam.
 
 One important unresolved record is scene 20 record 110 at `0x1D96DE`: raw
 `0x00C0`, event 0, source bounds `x=0x0580..0x059F`,
@@ -146,7 +156,7 @@ event 0 and calls `0x1651E`; the scene-`0x14` branch in `0x1651E` only writes
 its special map cells when the incoming event byte is nonzero. The shared
 projection/carry path may still run, but this record supplies no map writes or
 event-table destination. Therefore no reverse-scene transition is established.
-The native event system reports its route as `no_route`; the rectangle is not
+`building.lua` reports the route as `no_route`; the rectangle is not
 currently classified as an exit. The new focused CTest covers that unresolved
 classification, but there is no physical-input scene-20 C0 QA route yet.
 
@@ -188,7 +198,7 @@ diagnostic bytes, marked as bypassed by the dispatcher.
 | `0xB7B8` event dispatcher | [`advance_entity_movement_and_mode_transition`](../ghidra_conversion/src/entities/movement_mode_transition_conversion.cpp); typed continuation enum is in `movement_mode_transition_conversion.hpp` |
 | `0x1651E` projected world interaction | [`apply_world_map_effect`](../ghidra_conversion/src/world/world_scene_entity_conversion.cpp) |
 | `0x167AE` table byte to field/resource/scripted activity | [`resolve_world_activity_scene_id`](../ghidra_conversion/src/world/world_activity_routine_conversion.cpp) and [`run_world_activity_routine`](../ghidra_conversion/src/world/world_activity_routine_conversion.cpp) |
-| `0x1F5CA` exit and event-route orchestration | [`run_field_exit_orchestrator`](../ghidra_conversion/src/field/field_exit_orchestrator_conversion.cpp), with story/service policy in [`resolve_field_script_route`](../ghidra_conversion/src/field/field_script_route_conversion.cpp) |
+| `0x1F5CA` exit and event-route orchestration | [`run_field_exit_orchestrator`](../ghidra_conversion/src/field/field_exit_orchestrator_conversion.cpp); collision policy in [`field_events.lua`](../gameplay/scripts/field_events.lua), location route policy in [`building.lua`](../gameplay/scripts/building.lua), adapted by `GameScriptRuntime` |
 | `0x20E48` maglock / `0x20EC2` Security Terminal | [`FieldInteractionRuntime`](../ghidra_conversion/qt_runtime/src/field/field_interaction_runtime.cpp), reached through the field scene controller |
 | `0x58D94` floor selector / `0x58DB2` handoff | [`ElevatorSelectorRuntime`](../ghidra_conversion/qt_runtime/src/field/elevator_selector_runtime.cpp) and [`FieldSceneRuntime`](../ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp) |
 | Live Qt route selection and world-activity callback | [`FieldSceneRuntime::run_field_exit_orchestrator`](../ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp) and the coordinator callback setup in that file |

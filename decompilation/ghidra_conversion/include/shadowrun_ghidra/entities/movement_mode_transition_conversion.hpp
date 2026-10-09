@@ -6,6 +6,7 @@
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <optional>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -69,10 +70,9 @@ struct EntityMovementModeTransitionCallbacks {
                                std::uint16_t origin)>
         quantize_field_delta;
 
-    // The native field-event system receives every accepted collision event
-    // after the projected source collision value has been recovered. It owns
-    // the event-to-action policy; this routine only executes the typed result.
-    std::function<FieldMapEventPolicyDecision(
+    // The Lua field-event policy receives every accepted collision event.
+    // Native movement executes its typed result through engine services.
+    std::function<std::optional<FieldMapEventPolicyDecision>(
         const FieldMapCollisionEventInput&)>
         dispatch_field_map_event;
 

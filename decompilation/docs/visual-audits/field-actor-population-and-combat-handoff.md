@@ -177,6 +177,16 @@ these lists. Scene 2 uses direction
 are direct assets consumed by the runtime; no ROM or VDP state is used at
 runtime.
 
+The runtime population is never inferred from gameplay-video frames. The
+extracted rows are ROM list entries with named `corp_guard` or `pedestrian`
+templates, source positions, and initial behavior data; no corpse-specific
+template or death-state placement is present in this table. New Game's first
+scene-2 entry keeps those three profile rows inactive, as the ROM lifecycle
+does. A later scene entry may activate only the rows belonging to that scene.
+Until the actor death/drop path is connected, these live profile rows must not
+be converted into dead-body scenery or supplemented with actors seen in a
+longplay.
+
 New Game's `0x075E` setup enters scene 2 and performs its warmup without the
 later `0x02900 -> 0x04388 -> 0x043B6` world-frame list-finalization path. The
 Qt bootstrap therefore keeps extracted scene-2 definitions inactive and draws

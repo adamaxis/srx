@@ -25,6 +25,34 @@ EntityMovementModeTransitionState make_state(
     return state;
 }
 
+FieldMapEventPolicyDecision make_script_decision(
+    const FieldMapCollisionEventInput& input,
+    const FieldMapEventAction action,
+    const std::optional<FieldCollisionEventCode> event_code = std::nullopt,
+    const std::optional<std::uint16_t> raw_collision_code = std::nullopt,
+    const bool mode_event_code_published = false,
+    const bool projected_terrain_event_published = false,
+    const bool rewrite_direction_probe = false,
+    const std::int8_t direction_probe_value = 0,
+    const bool rewrite_quantized_delta = false,
+    const std::uint16_t quantized_delta = 0U) {
+    FieldMapEventPolicyDecision decision{};
+    decision.action = action;
+    decision.source_event_code =
+        field_collision_event_code(input.raw_collision_code);
+    decision.event_code = event_code.value_or(decision.source_event_code);
+    decision.raw_collision_code =
+        raw_collision_code.value_or(input.raw_collision_code);
+    decision.mode_event_code_published = mode_event_code_published;
+    decision.projected_terrain_event_published =
+        projected_terrain_event_published;
+    decision.rewrite_direction_probe = rewrite_direction_probe;
+    decision.direction_probe_value = direction_probe_value;
+    decision.rewrite_quantized_delta = rewrite_quantized_delta;
+    decision.quantized_delta = quantized_delta;
+    return decision;
+}
+
 EntityMovementModeTransitionCallbacks make_projection_callbacks(
     std::int16_t& quantized_value,
     int& projection_preparations) {
@@ -39,8 +67,10 @@ EntityMovementModeTransitionCallbacks make_projection_callbacks(
             return quantized_value;
         };
     callbacks.dispatch_field_map_event =
-        [](const FieldMapCollisionEventInput& input) {
-            return resolve_field_map_collision_event(input);
+        [](const FieldMapCollisionEventInput& input)
+            -> std::optional<FieldMapEventPolicyDecision> {
+            return make_script_decision(
+                input, FieldMapEventAction::project_world_interaction);
         };
     return callbacks;
 }
@@ -121,6 +151,12 @@ int main() {
         auto record = make_record();
         auto state = make_state(0x001FU);
         state.mode_event_code = 0x12U;
+        callbacks.dispatch_field_map_event = [](
+            const FieldMapCollisionEventInput& input)
+            -> std::optional<FieldMapEventPolicyDecision> {
+            return make_script_decision(
+                input, FieldMapEventAction::begin_event_31_activity);
+        };
         const auto result = advance_entity_movement_and_mode_transition(
             record, 0x1234U, 0x5678U, state, callbacks);
         assert(result.kind ==
@@ -140,6 +176,12 @@ int main() {
         auto record = make_record();
         auto state = make_state(0x001DU);
         state.activity_sequence_active = true;
+        callbacks.dispatch_field_map_event = [](
+            const FieldMapCollisionEventInput& input)
+            -> std::optional<FieldMapEventPolicyDecision> {
+            return make_script_decision(
+                input, FieldMapEventAction::skip_world_interaction);
+        };
         const auto result = advance_entity_movement_and_mode_transition(
             record, 0x200U, 0x400U, state, callbacks);
         assert(result.kind ==
@@ -152,6 +194,13 @@ int main() {
         quantized_value = 0x001AU;
         auto record = make_record();
         auto state = make_state(0x001AU);
+        callbacks.dispatch_field_map_event = [](
+            const FieldMapCollisionEventInput& input)
+            -> std::optional<FieldMapEventPolicyDecision> {
+            return make_script_decision(
+                input, FieldMapEventAction::mark_projected_terrain,
+                std::nullopt, std::nullopt, false, true);
+        };
         callbacks.mark_projected_terrain_cell = [] { return false; };
         const auto not_marked = advance_entity_movement_and_mode_transition(
             record, 0x200U, 0x400U, state, callbacks);
@@ -181,6 +230,13 @@ int main() {
         auto state = make_state(0xFFC2U);
         state.scene_id = 0x14U;
         state.world_activity_source_word = 0xCAFEU;
+        callbacks.dispatch_field_map_event = [](
+            const FieldMapCollisionEventInput& input)
+            -> std::optional<FieldMapEventPolicyDecision> {
+            return make_script_decision(
+                input, FieldMapEventAction::begin_maglock_interaction,
+                FieldCollisionEventCode::event_2);
+        };
         const auto result = advance_entity_movement_and_mode_transition(
             record, 0x200U, 0x400U, state, callbacks);
         assert(result.kind ==
@@ -198,6 +254,12 @@ int main() {
         quantized_value = 0;
         auto record = make_record();
         auto state = make_state(0x0018U);
+        callbacks.dispatch_field_map_event = [](
+            const FieldMapCollisionEventInput& input)
+            -> std::optional<FieldMapEventPolicyDecision> {
+            return make_script_decision(
+                input, FieldMapEventAction::begin_security_terminal);
+        };
         const auto result = advance_entity_movement_and_mode_transition(
             record, 0x200U, 0x400U, state, callbacks);
         assert(result.kind ==
@@ -212,6 +274,12 @@ int main() {
         auto record = make_record();
         auto state = make_state(0x0019U);
         state.field_transition_context = 0x13U;
+        callbacks.dispatch_field_map_event = [](
+            const FieldMapCollisionEventInput& input)
+            -> std::optional<FieldMapEventPolicyDecision> {
+            return make_script_decision(
+                input, FieldMapEventAction::begin_event_25_activity);
+        };
         const auto result = advance_entity_movement_and_mode_transition(
             record, 0x200U, 0x400U, state, callbacks);
         assert(result.kind ==
@@ -226,6 +294,14 @@ int main() {
         auto record = make_record();
         auto state = make_state(0x0019U);
         callbacks.project_entity_world_interaction = [] { return false; };
+        callbacks.dispatch_field_map_event = [](
+            const FieldMapCollisionEventInput& input)
+            -> std::optional<FieldMapEventPolicyDecision> {
+            return make_script_decision(
+                input, FieldMapEventAction::project_world_interaction,
+                FieldCollisionEventCode::event_8, 168U, true, false, true,
+                -88, true, 168U);
+        };
         const auto result = advance_entity_movement_and_mode_transition(
             record, 0x200U, 0x400U, state, callbacks);
         assert(result.kind == EntityMovementModeTransitionResultKind::
@@ -243,6 +319,12 @@ int main() {
         state.field_global_flags = 0x10U;
         state.mode_event_code = 0x0EU;
         callbacks.prepare_mode_entry_service = [] {};
+        callbacks.dispatch_field_map_event = [](
+            const FieldMapCollisionEventInput& input)
+            -> std::optional<FieldMapEventPolicyDecision> {
+            return make_script_decision(
+                input, FieldMapEventAction::begin_field_mode_exit);
+        };
         const auto result = advance_entity_movement_and_mode_transition(
             record, 0x200U, 0x400U, state, callbacks);
         assert(result.kind ==
@@ -274,6 +356,13 @@ int main() {
         auto state = make_state();
         state.world_mode = 2U;
         state.interaction_gate = 1U;
+        callbacks.dispatch_field_map_event = [](
+            const FieldMapCollisionEventInput& input)
+            -> std::optional<FieldMapEventPolicyDecision> {
+            return make_script_decision(
+                input, FieldMapEventAction::skip_world_interaction,
+                std::nullopt, std::nullopt, true);
+        };
         const auto result = advance_entity_movement_and_mode_transition(
             record, 0x200U, 0x400U, state, callbacks);
         assert(result.kind ==

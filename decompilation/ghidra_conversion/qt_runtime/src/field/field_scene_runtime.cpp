@@ -576,13 +576,20 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
     orchestrator_state.prompt_display_prepared = false;
 
     const auto& event_metadata = state_.field_scene_buffers.source_metadata;
-    const auto event_route = field_map_event_system_.resolve_script_route(
+    const auto resolved_event_route = game_scripts_.resolve_field_location_route(
         FieldScriptRouteContext{
             static_cast<std::uint8_t>(runtime_state.scene_id),
             static_cast<std::uint8_t>(runtime_state.field_mode),
-            field_movement_transition_state_.mode_event_code,
+            field_collision_event_code_from_id(
+                field_movement_transition_state_.mode_event_code),
             event_metadata.event_table_available,
             event_metadata.event_mode_table});
+    FieldScriptRoute event_route{};
+    if (resolved_event_route.has_value()) {
+        event_route = *resolved_event_route;
+    } else {
+        source_boundary("field.exit.building_route_script_failed");
+    }
     active_field_script_route_ = event_route;
 
     FieldExitOrchestratorCallbacks callbacks{};
@@ -2290,14 +2297,11 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 active_field_script_route_->area_event_target.has_value()) {
                 selected_scene = static_cast<std::uint16_t>(
                     *active_field_script_route_->area_event_target);
-            } else {
-                selected_scene = resolve_world_activity_scene_id(
-                    field_movement_transition_state_.mode_event_code,
-                    active_metadata.event_mode_table);
             }
             active_field_script_route_.reset();
             if (!selected_scene.has_value()) {
-                source_boundary("field.world_activity.event_code_out_of_range");
+                source_boundary(
+                    "field.world_activity.building_route_missing");
                 runtime.field_transition_requested = true;
                 return;
             }
@@ -4678,10 +4682,18 @@ bool FieldSceneRuntime::recover_blocked_field_movement(
         };
     transition_callbacks.dispatch_field_map_event =
         [this](const FieldMapCollisionEventInput& input) {
+            const auto decision =
+                game_scripts_.resolve_field_collision_event(input);
+            if (!decision) {
+                failure_ = game_scripts_.failure();
+                source_boundary("field.map_event.lua_policy_failed");
+                return std::optional<FieldMapEventPolicyDecision>{};
+            }
             const auto dispatch =
-                field_map_event_system_.dispatch_collision(input);
+                field_map_event_system_.record_collision(input, *decision);
             source_boundary("field.map_event.collision_dispatched");
-            return dispatch.decision;
+            return std::optional<FieldMapEventPolicyDecision>{
+                dispatch.decision};
         };
     transition_callbacks.begin_world_activity_if_idle =
         [this](const MovementModeTransitionContinuation continuation) {

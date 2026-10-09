@@ -117,11 +117,17 @@ int main() {
 
     {
         FieldMapEventSystem system;
-        auto decision = system.dispatch_collision(
-            {0x14U, 1U, 0U, 0U, 0x00C0U, 0x5800U, 0x0200U,
-             0U, false, false, false});
+        const FieldMapCollisionEventInput input{
+            20U, 1U, 0U, 0U, 192U, 0x5800U, 0x0200U,
+            0U, false, false, false};
+        FieldMapEventPolicyDecision policy{};
+        policy.source_event_code = FieldCollisionEventCode::event_0;
+        policy.event_code = FieldCollisionEventCode::event_0;
+        policy.raw_collision_code = input.raw_collision_code;
+        auto decision = system.record_collision(input, policy);
         if (!expect(decision.sequence == 1U &&
-                        decision.decision.event_code == 0U &&
+                        decision.decision.event_code ==
+                            FieldCollisionEventCode::event_0 &&
                         decision.decision.action ==
                             FieldMapEventAction::project_world_interaction &&
                         system.collision_dispatch_count() == 1U &&
@@ -132,45 +138,40 @@ int main() {
             return 1;
         }
 
-        decision = system.dispatch_collision(
-            {0x14U, 1U, 0U, 0U, 0x0082U, 0x4718U, 0x1048U,
-             0U, false, false, false});
+        const FieldMapCollisionEventInput maglock_input{
+            20U, 1U, 0U, 0U, 130U, 0x4718U, 0x1048U,
+            0U, false, false, false};
+        policy.action = FieldMapEventAction::begin_maglock_interaction;
+        policy.source_event_code = FieldCollisionEventCode::event_2;
+        policy.event_code = FieldCollisionEventCode::event_2;
+        policy.raw_collision_code = maglock_input.raw_collision_code;
+        decision = system.record_collision(maglock_input, policy);
         if (!expect(decision.decision.action ==
                         FieldMapEventAction::begin_maglock_interaction &&
-                        decision.decision.event_code == 2U,
-                    "scene-20 collision must select the maglock handler")) {
+                        decision.decision.event_code ==
+                            FieldCollisionEventCode::event_2,
+                    "event system must record the script's maglock decision")) {
             return 1;
         }
 
-        decision = system.dispatch_collision(
-            {47U, 1U, 0U, 0U, 0x00B9U, 0x1000U, 0x1000U,
-             0U, false, false, false});
-        if (!expect(decision.decision.event_code == 8U &&
-                        decision.decision.raw_collision_code == 0x00A8U &&
+        const FieldMapCollisionEventInput rewritten_input{
+            47U, 1U, 0U, 0U, 185U, 0x1000U, 0x1000U,
+            0U, false, false, false};
+        policy.action = FieldMapEventAction::project_world_interaction;
+        policy.source_event_code = FieldCollisionEventCode::event_25;
+        policy.event_code = FieldCollisionEventCode::event_8;
+        policy.raw_collision_code = 168U;
+        policy.rewrite_direction_probe = true;
+        policy.direction_probe_value = -88;
+        policy.rewrite_quantized_delta = true;
+        policy.quantized_delta = 168U;
+        decision = system.record_collision(rewritten_input, policy);
+        if (!expect(decision.decision.event_code ==
+                            FieldCollisionEventCode::event_8 &&
+                        decision.decision.raw_collision_code == 168U &&
                         decision.decision.rewrite_direction_probe &&
                         decision.decision.rewrite_quantized_delta,
-                    "context-free event 25 must preserve its event-8 rewrite")) {
-            return 1;
-        }
-    }
-
-    {
-        FieldMapEventSystem system;
-        std::array<std::uint8_t, 32> scene2_table{};
-        scene2_table[0] = 0x14U;
-        const auto scene2_door = system.resolve_script_route(
-            {2U, 2U, 0U, true, scene2_table});
-        if (!expect(scene2_door.kind == FieldScriptRouteKind::area_event &&
-                        scene2_door.area_event_target ==
-                            std::optional<std::uint8_t>{0x14U},
-                    "scene-2 collision must resolve through its authored row")) {
-            return 1;
-        }
-        const auto scene20_unmapped = system.resolve_script_route(
-            {0x14U, 1U, 0U, false, {}});
-        if (!expect(scene20_unmapped.kind ==
-                        FieldScriptRouteKind::no_route,
-                    "scene-20 event 0 must remain unresolved without a table")) {
+                    "event system must record Lua's event-code rewrite")) {
             return 1;
         }
     }

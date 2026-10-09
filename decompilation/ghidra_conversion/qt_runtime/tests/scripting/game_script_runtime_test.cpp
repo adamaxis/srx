@@ -34,6 +34,267 @@ int main() {
         return 1;
     }
 
+    FieldScriptRouteContext scene2_location{};
+    scene2_location.scene_id = 2U;
+    scene2_location.field_mode = 2U;
+    scene2_location.event_table_available = true;
+    scene2_location.event_table[0] = 20U;
+    scene2_location.event_table[1] = 26U;
+    scene2_location.event_table[2] = 26U;
+    scene2_location.event_table[11] = 51U;
+    scene2_location.event_code = FieldCollisionEventCode::event_2;
+    const auto stoker_route =
+        scripts.resolve_field_location_route(scene2_location);
+    scene2_location.event_code = FieldCollisionEventCode::event_11;
+    const auto ares_route =
+        scripts.resolve_field_location_route(scene2_location);
+    scene2_location.event_code = FieldCollisionEventCode::event_0;
+    const auto scene20_route =
+        scripts.resolve_field_location_route(scene2_location);
+    scene2_location.event_code = FieldCollisionEventCode::event_1;
+    const auto scene26_route =
+        scripts.resolve_field_location_route(scene2_location);
+    scene2_location.event_code = FieldCollisionEventCode::no_event;
+    const auto missing_event_route =
+        scripts.resolve_field_location_route(scene2_location);
+
+    FieldScriptRouteContext unmapped_location{};
+    unmapped_location.scene_id = 20U;
+    unmapped_location.field_mode = 2U;
+    const auto unmapped_route =
+        scripts.resolve_field_location_route(unmapped_location);
+
+    FieldScriptRouteContext other_map_location{};
+    other_map_location.scene_id = 4U;
+    other_map_location.field_mode = 4U;
+    other_map_location.event_code = FieldCollisionEventCode::event_2;
+    other_map_location.event_table_available = true;
+    other_map_location.event_table[2] = 13U;
+    const auto other_map_route =
+        scripts.resolve_field_location_route(other_map_location);
+    other_map_location.event_table_available = false;
+    const auto missing_table_route =
+        scripts.resolve_field_location_route(other_map_location);
+
+    if (!expect(
+            stoker_route.has_value() &&
+                stoker_route->kind == FieldScriptRouteKind::dialogue &&
+                stoker_route->script ==
+                    FieldScriptId::stoker_motel_interaction &&
+                !stoker_route->area_event_target.has_value() &&
+                ares_route.has_value() &&
+                ares_route->kind == FieldScriptRouteKind::field_service &&
+                ares_route->script == FieldScriptId::ares_weapon_emporium &&
+                scene20_route.has_value() &&
+                scene20_route->kind == FieldScriptRouteKind::area_event &&
+                scene20_route->area_event_target == 20U &&
+                scene26_route.has_value() &&
+                scene26_route->kind == FieldScriptRouteKind::area_event &&
+                scene26_route->area_event_target == 26U &&
+                missing_event_route.has_value() &&
+                missing_event_route->kind == FieldScriptRouteKind::no_route &&
+                missing_event_route->event_code == 255U &&
+                unmapped_route.has_value() &&
+                unmapped_route->kind == FieldScriptRouteKind::no_route &&
+                !unmapped_route->area_event_target.has_value() &&
+                other_map_route.has_value() &&
+                other_map_route->kind == FieldScriptRouteKind::area_event &&
+                other_map_route->area_event_target == 13U &&
+                missing_table_route.has_value() &&
+                missing_table_route->kind == FieldScriptRouteKind::no_route,
+            "Lua did not resolve ROM-backed field location routes")) {
+        std::cerr << scripts.failure() << '\n';
+        return 2;
+    }
+
+    const auto collision = [](
+                                const FieldCollisionEventCode event_code,
+                                const std::uint16_t scene_id = 0U) {
+        FieldMapCollisionEventInput input{};
+        input.scene_id = scene_id;
+        input.raw_collision_code =
+            field_collision_event_value(event_code);
+        return input;
+    };
+    const auto resolves_as = [&scripts](
+                                 const FieldMapCollisionEventInput& input,
+                                 const FieldMapEventAction action) {
+        const auto decision = scripts.resolve_field_collision_event(input);
+        return decision.has_value() && decision->action == action;
+    };
+
+    auto collision_input = collision(FieldCollisionEventCode::event_31);
+    auto collision_decision =
+        scripts.resolve_field_collision_event(collision_input);
+    if (!expect(collision_decision.has_value() &&
+                    collision_decision->action ==
+                        FieldMapEventAction::begin_event_31_activity &&
+                    collision_decision->source_event_code ==
+                        FieldCollisionEventCode::event_31 &&
+                    collision_decision->event_code ==
+                        FieldCollisionEventCode::event_31,
+                "Lua must map event 31 to its typed activity action")) {
+        std::cerr << scripts.failure() << '\n';
+        return 3;
+    }
+    collision_input = collision(FieldCollisionEventCode::event_30);
+    if (!expect(resolves_as(
+                    collision_input,
+                    FieldMapEventAction::begin_event_30_activity),
+                "Lua must map event 30 to its typed activity action")) {
+        std::cerr << scripts.failure() << '\n';
+        return 4;
+    }
+    collision_input = collision(FieldCollisionEventCode::event_27);
+    if (!expect(resolves_as(
+                    collision_input,
+                    FieldMapEventAction::begin_event_27_activity),
+                "Lua must map event 27 to its typed activity action")) {
+        std::cerr << scripts.failure() << '\n';
+        return 5;
+    }
+    collision_input = collision(FieldCollisionEventCode::event_28);
+    if (!expect(resolves_as(
+                    collision_input,
+                    FieldMapEventAction::begin_event_28_activity),
+                "Lua must begin an idle event-28 transition")) {
+        std::cerr << scripts.failure() << '\n';
+        return 6;
+    }
+    collision_input = collision(FieldCollisionEventCode::event_29);
+    if (!expect(resolves_as(
+                    collision_input,
+                    FieldMapEventAction::begin_event_29_activity),
+                "Lua must begin an idle event-29 transition")) {
+        std::cerr << scripts.failure() << '\n';
+        return 7;
+    }
+    collision_input.activity_sequence_active = true;
+    if (!expect(resolves_as(
+                    collision_input,
+                    FieldMapEventAction::skip_world_interaction),
+                "Lua must suppress a second event-29 activity")) {
+        std::cerr << scripts.failure() << '\n';
+        return 8;
+    }
+    collision_input = collision(FieldCollisionEventCode::event_28);
+    collision_input.activity_sequence_active = true;
+    if (!expect(resolves_as(
+                    collision_input,
+                    FieldMapEventAction::skip_world_interaction),
+                "Lua must suppress event 28 during an activity")) {
+        std::cerr << scripts.failure() << '\n';
+        return 9;
+    }
+    collision_input = collision(FieldCollisionEventCode::event_26);
+    collision_input.raw_collision_code = 218U;
+    collision_decision =
+        scripts.resolve_field_collision_event(collision_input);
+    if (!expect(collision_decision.has_value() &&
+                    collision_decision->action ==
+                        FieldMapEventAction::mark_projected_terrain &&
+                    !collision_decision->projected_terrain_event_published,
+                "Lua must retain the source terrain-marker suppression")) {
+        std::cerr << scripts.failure() << '\n';
+        return 10;
+    }
+    collision_input.raw_collision_code = 26U;
+    collision_input.world_effect_control_bit = true;
+    collision_decision =
+        scripts.resolve_field_collision_event(collision_input);
+    if (!expect(collision_decision.has_value() &&
+                    !collision_decision->projected_terrain_event_published,
+                "Lua must honor the world-effect terrain suppression")) {
+        std::cerr << scripts.failure() << '\n';
+        return 11;
+    }
+    constexpr std::array<FieldCollisionEventCode, 4> maglock_events{
+        FieldCollisionEventCode::event_2,
+        FieldCollisionEventCode::event_3,
+        FieldCollisionEventCode::event_4,
+        FieldCollisionEventCode::event_5,
+    };
+    for (const auto event_code : maglock_events) {
+        collision_input = collision(event_code, 20U);
+        if (!expect(resolves_as(
+                        collision_input,
+                        FieldMapEventAction::begin_maglock_interaction),
+                    "Lua must route each scene-20 lock code to the maglock handler")) {
+            std::cerr << scripts.failure() << '\n';
+            return 12;
+        }
+    }
+    collision_input = collision(FieldCollisionEventCode::event_4, 20U);
+    collision_input.terrain_event_suppressed = true;
+    if (!expect(resolves_as(
+                    collision_input,
+                    FieldMapEventAction::project_world_interaction),
+                "Lua must honor terrain suppression before maglock dispatch")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    collision_input = collision(FieldCollisionEventCode::event_24);
+    if (!expect(resolves_as(
+                    collision_input,
+                    FieldMapEventAction::begin_security_terminal),
+                "Lua must route event 24 to the security terminal")) {
+        std::cerr << scripts.failure() << '\n';
+        return 14;
+    }
+    collision_input = collision(FieldCollisionEventCode::event_25);
+    collision_input.field_transition_context = 19U;
+    collision_decision =
+        scripts.resolve_field_collision_event(collision_input);
+    if (!expect(collision_decision.has_value() &&
+                    collision_decision->action ==
+                        FieldMapEventAction::begin_event_25_activity,
+                "Lua must select event-25 activity in its source context")) {
+        std::cerr << scripts.failure() << '\n';
+        return 15;
+    }
+    collision_input.field_transition_context = 0U;
+    collision_decision =
+        scripts.resolve_field_collision_event(collision_input);
+    if (!expect(collision_decision.has_value() &&
+                    collision_decision->action ==
+                        FieldMapEventAction::project_world_interaction &&
+                    collision_decision->event_code ==
+                        FieldCollisionEventCode::event_8 &&
+                    collision_decision->raw_collision_code == 168U &&
+                    collision_decision->rewrite_direction_probe &&
+                    collision_decision->direction_probe_value == -88 &&
+                    collision_decision->rewrite_quantized_delta &&
+                    collision_decision->quantized_delta == 168U,
+                "Lua must preserve the context-free event-25 rewrite")) {
+        std::cerr << scripts.failure() << '\n';
+        return 16;
+    }
+    collision_input = collision(FieldCollisionEventCode::event_0);
+    collision_input.world_mode = 2U;
+    collision_input.interaction_gate = 1U;
+    collision_decision =
+        scripts.resolve_field_collision_event(collision_input);
+    if (!expect(collision_decision.has_value() &&
+                    collision_decision->action ==
+                        FieldMapEventAction::skip_world_interaction &&
+                    collision_decision->mode_event_code_published,
+                "Lua must suppress gated generic interactions")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    collision_input = collision(FieldCollisionEventCode::event_1);
+    collision_input.field_global_flags = 80U;
+    collision_decision =
+        scripts.resolve_field_collision_event(collision_input);
+    if (!expect(collision_decision.has_value() &&
+                    collision_decision->action ==
+                        FieldMapEventAction::begin_field_mode_exit &&
+                    !collision_decision->mode_event_code_published,
+                "Lua must select field-mode exit from the typed state fact")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
     const auto actor_context = [](
                                    const std::string_view profile_id,
                                    const std::string_view instance_id,
