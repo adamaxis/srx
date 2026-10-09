@@ -105,6 +105,25 @@ struct ScriptFieldModeContext {
     std::int8_t alternate_result = 0;
 };
 
+enum class ScriptActorActionKind : std::uint8_t {
+    none,
+    item,
+    spell,
+};
+
+// A read-only snapshot of source-derived actor identity and current entry
+// state. Lua receives this as one named context table so packages can make
+// decisions from explicit native state without owning the entity record.
+struct ScriptActorBehaviorContext {
+    std::string_view profile_id;
+    std::uint16_t entity_kind = 0;
+    ScriptActorActionKind action_kind = ScriptActorActionKind::none;
+    std::uint8_t action_code = 0;
+    std::uint8_t entry_delay = 0;
+    bool entry_started = false;
+    bool entry_complete = false;
+};
+
 struct ScriptActorBehaviorDecision {
     enum class Action {
         hold,
@@ -176,8 +195,7 @@ public:
                               std::string_view speaker_id = {});
     void set_field_mode_context(ScriptFieldModeContext context) noexcept;
     std::optional<ScriptActorBehaviorDecision> actor_behavior_decision(
-        std::uint16_t entity_kind, std::uint8_t initial_action_code,
-        std::uint8_t entry_delay, bool entry_started, bool entry_complete);
+        const ScriptActorBehaviorContext& context);
     std::optional<std::string> call_string(
         std::string_view module, std::string_view function);
     // Read an ordered, unique ID array that has no display labels.

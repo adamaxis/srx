@@ -8836,24 +8836,33 @@ int run_field_scene20_physical_entry_qa(
                      "could not be written\n";
         return 3;
     }
-    actor_package_trace << "source_order\tpackage_id\tweapon_item_id\n";
+    actor_package_trace
+        << "source_order\tprofile_id\tpackage_id\tweapon_item_id\n";
     for (std::uint16_t source_order = 0U; source_order < 8U;
          ++source_order) {
+        const auto profile_id =
+            field_scene.default_actor_script_profile_for_dump(source_order);
         const auto package =
             field_scene.default_actor_ai_package_for_dump(source_order);
         const auto weapon_item =
             field_scene.default_actor_weapon_item_for_dump(source_order);
         const auto is_guard = source_order < 5U;
+        const auto expected_profile = is_guard
+            ? "corp_guard_k05_item06"
+            : "pedestrian_k0b_none00";
         const auto expected_package = is_guard
             ? "corp_security.max_power_heavy_pistol"
             : "pedestrian.no_active_action";
-        if (!package.has_value() || *package != expected_package ||
+        if (!profile_id.has_value() || *profile_id != expected_profile ||
+            !package.has_value() || *package != expected_package ||
             (is_guard && weapon_item != std::optional<std::uint8_t>{6U}) ||
             (!is_guard && weapon_item.has_value())) {
             std::cerr << "Scene-20 physical-entry QA: Lua actor package "
-                         "did not match ROM kind/action code at source order "
+                         "did not match ROM profile/action at source order "
                       << source_order << " (package="
                       << (package.has_value() ? *package : "missing")
+                      << ", profile="
+                      << (profile_id.has_value() ? *profile_id : "missing")
                       << ", weapon=";
             if (weapon_item.has_value()) {
                 std::cerr << static_cast<unsigned>(*weapon_item);
@@ -8863,7 +8872,8 @@ int run_field_scene20_physical_entry_qa(
             std::cerr << ")\n";
             return 3;
         }
-        actor_package_trace << source_order << '\t' << *package << '\t';
+        actor_package_trace << source_order << '\t' << *profile_id << '\t'
+                            << *package << '\t';
         if (weapon_item.has_value()) {
             actor_package_trace << static_cast<unsigned>(*weapon_item);
         } else {

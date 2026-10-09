@@ -149,6 +149,8 @@ public:
         std::uint16_t source_order) const noexcept;
     std::optional<std::uint8_t> default_actor_animation_frame_for_dump(
         std::uint16_t source_order) const noexcept;
+    std::optional<std::string> default_actor_script_profile_for_dump(
+        std::uint16_t source_order) const;
     std::optional<std::string> default_actor_ai_package_for_dump(
         std::uint16_t source_order) const;
     std::optional<std::uint8_t> default_actor_weapon_item_for_dump(
@@ -935,6 +937,9 @@ private:
         std::uint16_t scene_reference = 0;
         std::uint16_t source_order = 0;
         std::uint16_t entity_kind = 0;
+        std::string script_profile_id;
+        scripting::ScriptActorActionKind action_kind =
+            scripting::ScriptActorActionKind::none;
         std::uint8_t initial_action_code = 0;
         SceneRunnerPosition world_position{};
         std::uint16_t initial_heading = 0;

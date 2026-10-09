@@ -1111,7 +1111,8 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
     constexpr std::string_view kActorTableAlias =
         "field.entities.default.actors";
     constexpr std::string_view kActorTableHeader =
-        "scene\tsource_order\tentity_kind\tinitial_action_code"
+        "scene\tsource_order\tentity_kind\tprofile_id\taction_kind"
+        "\tinitial_action_code"
         "\tworld_x\tworld_y\tinitial_heading\tpalette_line"
         "\ttemplate_offset\tposition_offset\tlist_offset"
         "\tordered_overrides";
@@ -1165,7 +1166,7 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
             while (std::getline(row, field, '\t')) {
                 fields.push_back(std::move(field));
             }
-            if (fields.size() != 12U) {
+            if (fields.size() != 14U) {
                 failure_ = "default field actor table row is malformed";
                 return false;
             }
@@ -1173,26 +1174,50 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
             actor.scene_reference = parse_word(fields[0]);
             actor.source_order = parse_word(fields[1]);
             actor.entity_kind = parse_word(fields[2]);
-            const auto initial_action_code = parse_word(fields[3]);
+            actor.script_profile_id = fields[3];
+            if (actor.script_profile_id.empty()) {
+                failure_ = "default actor Lua profile identity is empty";
+                return false;
+            }
+            if (fields[4] == "none") {
+                actor.action_kind =
+                    scripting::ScriptActorActionKind::none;
+            } else if (fields[4] == "item") {
+                actor.action_kind =
+                    scripting::ScriptActorActionKind::item;
+            } else if (fields[4] == "spell") {
+                actor.action_kind =
+                    scripting::ScriptActorActionKind::spell;
+            } else {
+                failure_ = "default actor action kind is not recognized";
+                return false;
+            }
+            const auto initial_action_code = parse_word(fields[5]);
             if (initial_action_code > 0xFFU) {
                 failure_ = "default actor action code exceeds one byte";
                 return false;
             }
             actor.initial_action_code =
                 static_cast<std::uint8_t>(initial_action_code);
-            actor.world_position.x = parse_word(fields[4]);
-            actor.world_position.y = parse_word(fields[5]);
-            actor.initial_heading = parse_word(fields[6]);
-            const auto palette_line = parse_word(fields[7]);
+            if ((actor.action_kind ==
+                     scripting::ScriptActorActionKind::none) !=
+                (actor.initial_action_code == 0U)) {
+                failure_ = "default actor action kind/code disagree";
+                return false;
+            }
+            actor.world_position.x = parse_word(fields[6]);
+            actor.world_position.y = parse_word(fields[7]);
+            actor.initial_heading = parse_word(fields[8]);
+            const auto palette_line = parse_word(fields[9]);
             if (palette_line > 0xFFU) {
                 failure_ = "default actor palette line exceeds one byte";
                 return false;
             }
             actor.palette_line = static_cast<std::uint8_t>(palette_line);
-            actor.template_offset = parse_number(fields[8], 0);
-            actor.position_offset = parse_number(fields[9], 0);
-            actor.list_offset = parse_number(fields[10], 0);
-            actor.ordered_overrides = fields[11];
+            actor.template_offset = parse_number(fields[10], 0);
+            actor.position_offset = parse_number(fields[11], 0);
+            actor.list_offset = parse_number(fields[12], 0);
+            actor.ordered_overrides = fields[13];
             if ((actor.entity_kind == 5U && actor.palette_line != 2U) ||
                 (actor.entity_kind == 11U && actor.palette_line != 3U) ||
                 (actor.entity_kind != 5U && actor.entity_kind != 11U)) {
@@ -1287,8 +1312,15 @@ void FieldSceneRuntime::initialize_default_field_actors(
         actor.behavior = make_field_actor_behavior_state(
             actor.entity_kind, actor.initial_heading, initial_delay);
         const auto decision = game_scripts_.actor_behavior_decision(
-            actor.entity_kind, actor.initial_action_code,
-            actor.behavior.behavior_timer, false, false);
+            scripting::ScriptActorBehaviorContext{
+                actor.script_profile_id,
+                actor.entity_kind,
+                actor.action_kind,
+                actor.initial_action_code,
+                actor.behavior.behavior_timer,
+                false,
+                false,
+            });
         if (!decision.has_value()) {
             failure_ = game_scripts_.failure();
             source_boundary("field.actor.lua_package_failed");
@@ -1307,10 +1339,15 @@ void FieldSceneRuntime::advance_default_field_actors() {
             continue;
         }
         const auto decision = game_scripts_.actor_behavior_decision(
-            actor.entity_kind, actor.initial_action_code,
-            actor.behavior.behavior_timer,
-            actor.behavior.transition_started,
-            actor.behavior.transition_complete);
+            scripting::ScriptActorBehaviorContext{
+                actor.script_profile_id,
+                actor.entity_kind,
+                actor.action_kind,
+                actor.initial_action_code,
+                actor.behavior.behavior_timer,
+                actor.behavior.transition_started,
+                actor.behavior.transition_complete,
+            });
         if (!decision.has_value()) {
             failure_ = game_scripts_.failure();
             source_boundary("field.actor.lua_behavior_failed");
@@ -9648,6 +9685,24 @@ FieldSceneRuntime::default_actor_animation_frame_for_dump(
                ? std::nullopt
                : std::optional<std::uint8_t>{
                      actor->behavior.animation_frame};
+}
+
+std::optional<std::string>
+FieldSceneRuntime::default_actor_script_profile_for_dump(
+    const std::uint16_t source_order) const {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.scene_reference == scene_reference &&
+                   candidate.active &&
+                   candidate.source_order == source_order;
+        });
+    return actor == field_default_actors_.end() ||
+                   actor->script_profile_id.empty()
+               ? std::nullopt
+               : std::optional<std::string>{actor->script_profile_id};
 }
 
 std::optional<std::string>

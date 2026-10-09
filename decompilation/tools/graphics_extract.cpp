@@ -2724,6 +2724,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::uint16_t scene_id;
         std::uint16_t source_order;
         std::uint16_t entity_kind;
+        std::string profile_id;
+        std::string action_kind;
         std::uint8_t initial_action_code;
         std::uint16_t world_x;
         std::uint16_t world_y;
@@ -2743,6 +2745,43 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         text << "0x" << std::uppercase << std::hex << value;
         return text.str();
     };
+    const auto format_byte = [](const std::uint32_t value) {
+        std::ostringstream text;
+        text << std::nouppercase << std::hex << std::setw(2)
+             << std::setfill('0') << value;
+        return text.str();
+    };
+    const auto make_actor_profile_id = [&format_byte](
+        const std::vector<std::uint8_t>& source_rom,
+        const std::size_t template_offset, const std::uint16_t entity_kind,
+        const std::string_view action_kind,
+        const std::uint8_t action_code) {
+        std::string slug;
+        bool previous_was_separator = false;
+        for (std::size_t index = 0; index < 13U; ++index) {
+            auto character = source_rom[template_offset + 0x0AU + index];
+            if (character >= 'A' && character <= 'Z') {
+                character = static_cast<std::uint8_t>(character - 'A' + 'a');
+            }
+            if ((character >= 'a' && character <= 'z') ||
+                (character >= '0' && character <= '9')) {
+                slug.push_back(static_cast<char>(character));
+                previous_was_separator = false;
+            } else if (!slug.empty() && !previous_was_separator) {
+                slug.push_back('_');
+                previous_was_separator = true;
+            }
+        }
+        while (!slug.empty() && slug.back() == '_') {
+            slug.pop_back();
+        }
+        if (slug.empty()) {
+            throw std::runtime_error(
+                "default actor template has no script-safe profile name");
+        }
+        return slug + "_k" + format_byte(entity_kind) + "_" +
+               std::string(action_kind) + format_byte(action_code);
+    };
     std::vector<DefaultActorRecord> default_actor_records;
     for (const auto& source_list : kDefaultActorLists) {
         auto cursor = source_list.list_offset;
@@ -2758,15 +2797,24 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             const auto position_offset =
                 read_big_endian_long(rom, cursor + 4U);
             if (template_offset > rom.size() ||
-                rom.size() - template_offset < 10U) {
+                rom.size() - template_offset < 0x4AU) {
                 throw std::runtime_error(
                     "default field actor template pointer exceeds ROM");
             }
             const auto entity_kind = read_big_endian_word(rom, template_offset);
+            const auto action_table_selector = rom[template_offset + 8U];
             // ROM 0x44BC copies template byte +9 into live entity +0x57.
             // This is the one-based active item/action code used by the
             // entity behavior and item-row selectors; it is not an AI guess.
             const auto initial_action_code = rom[template_offset + 9U];
+            const auto action_kind = initial_action_code == 0U
+                ? std::string("none")
+                : ((action_table_selector & 0x80U) != 0U
+                       ? std::string("spell")
+                       : std::string("item"));
+            const auto profile_id = make_actor_profile_id(
+                rom, template_offset, entity_kind, action_kind,
+                initial_action_code);
             const auto palette_line = static_cast<std::uint8_t>(
                 (read_big_endian_word(rom, template_offset + 2U) >> 13U) &
                 0x03U);
@@ -2774,6 +2822,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 source_list.scene_id,
                 source_order,
                 entity_kind,
+                profile_id,
+                action_kind,
                 initial_action_code,
                 read_big_endian_word(rom, position_offset),
                 read_big_endian_word(rom, position_offset + 2U),
@@ -2845,13 +2895,15 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             throw std::runtime_error(
                 "cannot create profile-selected default actor table");
         }
-        actor_table << "scene\tsource_order\tentity_kind\tinitial_action_code"
+        actor_table << "scene\tsource_order\tentity_kind\tprofile_id"
+                       "\taction_kind\tinitial_action_code"
                        "\tworld_x\tworld_y"
                        "\tinitial_heading\tpalette_line\ttemplate_offset\tposition_offset"
                        "\tlist_offset\tordered_overrides\n";
         for (const auto& actor : default_actor_records) {
             actor_table << actor.scene_id << '\t' << actor.source_order << '\t'
-                        << actor.entity_kind << '\t'
+                        << actor.entity_kind << '\t' << actor.profile_id
+                        << '\t' << actor.action_kind << '\t'
                         << static_cast<unsigned>(actor.initial_action_code)
                         << '\t' << actor.world_x << '\t'
                         << actor.world_y << '\t'

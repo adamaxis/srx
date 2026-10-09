@@ -1332,13 +1332,15 @@ void GameScriptRuntime::set_field_mode_context(
 
 std::optional<ScriptActorBehaviorDecision>
 GameScriptRuntime::actor_behavior_decision(
-    const std::uint16_t entity_kind,
-    const std::uint8_t initial_action_code,
-    const std::uint8_t entry_delay, const bool entry_started,
-    const bool entry_complete) {
+    const ScriptActorBehaviorContext& context) {
     auto* state = impl_->state;
-    if (state == nullptr) {
+    if (state == nullptr || !valid_identifier(context.profile_id)) {
         impl_->failure = "gameplay Lua actor AI state is unavailable";
+        return std::nullopt;
+    }
+    if ((context.action_kind == ScriptActorActionKind::none) !=
+        (context.action_code == 0U)) {
+        impl_->failure = "gameplay Lua actor action source is inconsistent";
         return std::nullopt;
     }
     const auto stack_base = lua_gettop(state);
@@ -1356,13 +1358,38 @@ GameScriptRuntime::actor_behavior_decision(
         return fail("actor_ai.behavior must be a Lua function");
     }
     lua_remove(state, -2);
-    lua_pushinteger(state, entity_kind);
-    lua_pushinteger(state, initial_action_code);
-    lua_pushinteger(state, entry_delay);
-    lua_pushboolean(state, entry_started);
-    lua_pushboolean(state, entry_complete);
+    std::string_view action_kind;
+    switch (context.action_kind) {
+    case ScriptActorActionKind::none:
+        action_kind = "none";
+        break;
+    case ScriptActorActionKind::item:
+        action_kind = "item";
+        break;
+    case ScriptActorActionKind::spell:
+        action_kind = "spell";
+        break;
+    default:
+        return fail("gameplay Lua actor action kind is invalid");
+    }
+    lua_createtable(state, 0, 7);
+    lua_pushlstring(state, context.profile_id.data(),
+                    context.profile_id.size());
+    lua_setfield(state, -2, "profile_id");
+    lua_pushinteger(state, context.entity_kind);
+    lua_setfield(state, -2, "entity_kind");
+    lua_pushlstring(state, action_kind.data(), action_kind.size());
+    lua_setfield(state, -2, "action_kind");
+    lua_pushinteger(state, context.action_code);
+    lua_setfield(state, -2, "action_code");
+    lua_pushinteger(state, context.entry_delay);
+    lua_setfield(state, -2, "entry_delay");
+    lua_pushboolean(state, context.entry_started);
+    lua_setfield(state, -2, "entry_started");
+    lua_pushboolean(state, context.entry_complete);
+    lua_setfield(state, -2, "entry_complete");
     ScopedInstructionBudget instruction_budget(state);
-    if (lua_pcall(state, 5, 1, 0) != LUA_OK) {
+    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
         return fail("actor_ai.behavior: " + stack_error(state));
     }
     if (!lua_istable(state, -1)) {
@@ -1372,10 +1399,26 @@ GameScriptRuntime::actor_behavior_decision(
     const auto decision_table = lua_absindex(state, -1);
     ScriptActorBehaviorDecision decision;
     std::string action;
+    std::string returned_profile_id;
+    std::string returned_action_kind;
+    std::uint32_t returned_action_code = 0U;
     if (!read_field_string(state, decision_table, "package_id",
                            decision.package_id) ||
         !valid_identifier(decision.package_id) ||
-        !read_field_string(state, decision_table, "action", action) ||
+        !read_field_string(state, decision_table, "profile_id",
+                           returned_profile_id) ||
+        !read_field_string(state, decision_table, "action_kind",
+                           returned_action_kind) ||
+        !read_field_integer(state, decision_table, "action_code", 0xFFU,
+                            returned_action_code)) {
+        return fail("actor_ai.behavior returned an incomplete decision");
+    }
+    if (returned_profile_id != context.profile_id ||
+        returned_action_kind != action_kind ||
+        returned_action_code != context.action_code) {
+        return fail("actor_ai.behavior decision changed source profile data");
+    }
+    if (!read_field_string(state, decision_table, "action", action) ||
         !read_field_string(state, decision_table, "animation",
                            decision.animation_id)) {
         return fail("actor_ai.behavior returned an incomplete decision");
@@ -1403,18 +1446,24 @@ GameScriptRuntime::actor_behavior_decision(
     if (lua_type(state, -1) != LUA_TNIL) {
         std::uint32_t item_id = 0U;
         if (!read_integer(state, -1, 50U, item_id) || item_id == 0U ||
-            item_id != initial_action_code) {
+            context.action_kind != ScriptActorActionKind::item ||
+            item_id != context.action_code) {
             return fail("actor_ai.behavior returned an invalid weapon item");
         }
         decision.weapon_item_id = static_cast<std::uint8_t>(item_id);
     }
     lua_pop(state, 1);
+    if (context.action_kind == ScriptActorActionKind::item &&
+        !decision.weapon_item_id.has_value()) {
+        return fail("actor_ai.behavior omitted the source item action");
+    }
     lua_pop(state, 1);
 
     const bool begins_entry = decision.action ==
         ScriptActorBehaviorDecision::Action::play_entry_animation;
     if ((begins_entry &&
-         (entry_delay != 0U || entry_started || entry_complete ||
+         (context.entry_delay != 0U || context.entry_started ||
+          context.entry_complete ||
           !decision.audio_event.has_value())) ||
         (!begins_entry && decision.audio_event.has_value())) {
         return fail("actor_ai.behavior action disagrees with native state");

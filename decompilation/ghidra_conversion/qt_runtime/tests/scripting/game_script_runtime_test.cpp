@@ -33,16 +33,24 @@ int main() {
         return 1;
     }
 
-    const auto guard_wait =
-        scripts.actor_behavior_decision(5U, 6U, 1U, false, false);
-    const auto guard_entry =
-        scripts.actor_behavior_decision(5U, 6U, 0U, false, false);
-    const auto pedestrian_entry =
-        scripts.actor_behavior_decision(11U, 0U, 0U, false, false);
-    const auto guard_hold =
-        scripts.actor_behavior_decision(5U, 6U, 0U, true, false);
-    const auto unsupported_guard_action =
-        scripts.actor_behavior_decision(5U, 5U, 0U, false, false);
+    const auto guard_wait = scripts.actor_behavior_decision(
+        {"corp_guard_k05_item06", 5U, ScriptActorActionKind::item, 6U,
+         1U, false, false});
+    const auto guard_entry = scripts.actor_behavior_decision(
+        {"corp_guard_k05_item06", 5U, ScriptActorActionKind::item, 6U,
+         0U, false, false});
+    const auto pedestrian_entry = scripts.actor_behavior_decision(
+        {"pedestrian_k0b_none00", 11U, ScriptActorActionKind::none, 0U,
+         0U, false, false});
+    const auto guard_hold = scripts.actor_behavior_decision(
+        {"corp_guard_k05_item06", 5U, ScriptActorActionKind::item, 6U,
+         0U, true, false});
+    const auto unsupported_guard_action = scripts.actor_behavior_decision(
+        {"corp_guard_k05_item06", 5U, ScriptActorActionKind::item, 5U,
+         0U, false, false});
+    const auto unsupported_profile = scripts.actor_behavior_decision(
+        {"corp_guard_k05_item06", 11U, ScriptActorActionKind::item, 6U,
+         0U, false, false});
     if (!expect(
             guard_wait.has_value() &&
                 guard_wait->package_id ==
@@ -69,7 +77,8 @@ int main() {
                     ScriptActorBehaviorDecision::Action::hold &&
                 guard_hold->weapon_item_id == 6U &&
                 !guard_hold->audio_event.has_value() &&
-                !unsupported_guard_action.has_value(),
+                !unsupported_guard_action.has_value() &&
+                !unsupported_profile.has_value(),
             "Lua actor packages did not resolve the ROM action/equipment state")) {
         std::cerr << scripts.failure() << '\n';
         return 15;

@@ -2,8 +2,9 @@
 
 **Status:** ROM population, initial behavior entry, direction, animation,
 action/item codes, and sound-request paths are traced for the profile-selected
-actors in scenes 2 and `0x14`. A Lua package is selected from actor kind and
-the ROM-seeded action code; native C++ executes its finite entry animation.
+actors in scenes 2 and `0x14`. Lua selects a package by stable source-template
+profile ID and the ROM-seeded item/spell/none action class and code; native
+C++ executes its finite entry animation.
 New Game bootstrap does not activate the scene-2 profile list. Scene changes
 activate the supported list for the destination. This remains partial:
 post-entry behavior, actor movement, interaction, collision targets, hits,
@@ -135,16 +136,24 @@ completes on the 21st update after activation. This covers only the observed
 initial transition. `0xAB02` and later action, movement, collision, and damage
 branches are outside this native slice.
 
-The Qt actor service passes kind and the initial `+0x57` code to
-`gameplay/scripts/actor_ai.lua`. Lua selects
-`corp_security.max_power_heavy_pistol` for kind 5/action 6 and
-`pedestrian.no_active_action` for kind 11/action 0. The script result
-identifies weapon item 6 for the guard package; the host verifies it matches
-the source action code, stores the package/loadout on the active actor, and
-executes the script-selected entry animation and event request. Current
-scene-`0x14` QA checks all eight live package assignments and writes
-`actor-packages.tsv`. This does not yet implement gun firing, target
-selection, or combat results.
+The offline actor table now gives each active record a stable Lua profile ID
+built from the source template name, entity kind, action-table class, and
+action code. It also classifies the template byte at `+8`: a clear sign bit
+selects the D4540 item-action table, a set sign bit selects the D4EA0 spell
+table, and code zero means no active action. Those are typed data inputs; the
+profile ID contains no runtime ROM address.
+
+The Qt actor service passes that identity, action class/code, and current
+entry state to `gameplay/scripts/actor_ai.lua` as one named context table. Lua
+selects the `corp_guard_k05_item06` package for the kind-5 guard and
+`pedestrian_k0b_none00` for the kind-11 pedestrian. The guard package binds
+item 6 (Max-Power / Heavy Pistol); the pedestrian has no active item action.
+Each package owns the source-supported initial entry decision, animation
+request, and sound-event request. Native C++ executes the timed clip and audio
+request. Scene-`0x14` QA checks all eight package assignments and writes
+`actor-packages.tsv`. Targeting, attack decisions, actual NPC weapon firing,
+movement, collision outcomes, and damage are not implemented by these
+profiles yet.
 
 The existing field entity catalog is not these actors: the importer currently
 decodes the live Joshua template at `0x7291A` (kind 3). `0x4658` updates the
@@ -157,8 +166,9 @@ for the kind-5/kind-11 animation frames or treated as their full sprite art.
 The offline `shadowrun_graphics_extract --all-assets` step writes
 `field/entities/default-actors.tsv` by walking the profile-selected lists at
 `0x172D1C` and `0x1D91DA`. It preserves list order, world position,
-template/position/list provenance, initial action/item code, palette line,
-source heading, and ordered overrides. It writes individually named idle
+template/position/list provenance, source-derived Lua profile ID, item/spell/
+none action class and code, palette line, source heading, and ordered
+overrides. It writes individually named idle
 images and two C0B2 transition frames for each kind and direction used by
 these lists. Scene 2 uses direction
 0; scene `0x14` also uses directions 2 and 6 because source-order records 3 and
@@ -234,11 +244,11 @@ actual event path selects it.
    longplay has supporting field-character examples but does not identify
    this exact scene or pose.
 2. **Does the current image reflect behavior?** The trace ties source
-   directions 2 and 6 to records 3 and 4. Lua maps the five kind-5/action-6
-   records to the Max-Power guard package and the three kind-11/action-0
-   records to the pedestrian package. It records eight starts, eight
-   completions, and the two visible guards' animation frame at each captured
-   checkpoint.
+   directions 2 and 6 to records 3 and 4. The typed table supplies five
+   `corp_guard_k05_item06` records (item action 6) and three
+   `pedestrian_k0b_none00` records (no action); Lua resolves all eight to their
+   matching packages. QA records eight starts, eight completions, and the two
+   visible guards' animation frame at each captured checkpoint.
 3. **Are the visuals correct?** Named assets use the traced kind, selector,
    palette, descriptor, frame, and signed origin. The exact live projection
    slot assignment through `0x481E` remains unresolved.
