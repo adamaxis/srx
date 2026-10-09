@@ -164,6 +164,9 @@ public:
     void set_field_mode_context(ScriptFieldModeContext context) noexcept;
     std::optional<std::string> call_string(
         std::string_view module, std::string_view function);
+    // Read an ordered, unique ID array that has no display labels.
+    std::optional<std::vector<std::string>> string_list(
+        std::string_view module, std::string_view function);
     std::optional<ScriptStringMap> string_map(
         std::string_view module, std::string_view function);
     std::optional<ScriptSpeakerProfile> speaker_profile(

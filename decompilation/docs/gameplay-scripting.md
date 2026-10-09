@@ -146,17 +146,21 @@ access.
 
 ## Content organization
 
-Static menu functions can return three Lua values: the ordered stable choice
-IDs, an optional title key, and the ordered label keys. The runtime validates
-that the label count matches the choices. This lets each menu script provide
-its exact ROM-derived text bindings instead of relying on C++ to compose key
-names. Startup menus now use this form; the archetype menu also maps each
-stable archetype ID to its extracted portrait asset in Lua. Native menu state
-selects the ID and the shared presenter loads that portrait. The archetype
-screen currently has no visible stat rows: starting attributes continue to
-come from the selected extracted ROM record, rather than a second Lua copy.
-Other static menus are being migrated from the older convention
-incrementally.
+Static menu and display-catalog functions return three Lua values: ordered
+stable IDs, an optional title key, and ordered label keys. The runtime requires
+the label table and validates that its size matches the IDs; it no longer
+builds label keys in C++. Ordered ID-only lists use the separate `string_list`
+API, so command IDs cannot accidentally be treated as display menus. This
+keeps the motel quest hook and inventory action list data-only while Lua
+supplies every visible Pocket Secretary and command-overview label. Dynamic
+building menus still pass stable IDs through `game.ui.menu`; Lua resolves their
+titles and labels from the location content profile.
+
+Startup Lua maps archetype IDs to their extracted portrait assets. Dialogue
+Lua maps speaker IDs to their portrait aliases, and both feed the shared
+presenter. The archetype selection screen currently has no visible stat rows:
+starting attributes continue to come from the selected extracted ROM record,
+rather than a second Lua copy.
 
 - `gameplay/scripts/field_events.lua` contains source-traced map trigger
   declarations and the New Game scene handler. Trigger detection and repeat

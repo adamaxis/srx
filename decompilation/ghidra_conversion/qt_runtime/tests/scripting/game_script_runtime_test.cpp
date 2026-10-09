@@ -850,22 +850,29 @@ int main() {
     }
 
     const auto inventory_actions =
-        scripts.menu("items", "inventory_actions", "items",
-                     "inventory_actions");
+        scripts.string_list("items", "inventory_actions");
     constexpr std::array<std::string_view, 4> kInventoryActionIds{{
         "equip_or_use", "discard", "trade", "cancel"}};
     bool inventory_action_rows_match = inventory_actions.has_value() &&
-        inventory_actions->choices.size() == kInventoryActionIds.size();
+        inventory_actions->size() == kInventoryActionIds.size();
     if (inventory_action_rows_match) {
         for (std::size_t index = 0; index < kInventoryActionIds.size();
              ++index) {
             inventory_action_rows_match = inventory_action_rows_match &&
-                inventory_actions->choices[index].id ==
-                    kInventoryActionIds[index];
+                (*inventory_actions)[index] == kInventoryActionIds[index];
         }
     }
     if (!expect(inventory_action_rows_match,
                 "Lua inventory action IDs changed source order")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    const auto inferred_inventory_menu = scripts.menu(
+        "items", "inventory_actions", "items", "inventory_actions");
+    if (!expect(!inferred_inventory_menu.has_value() &&
+                    scripts.failure().find("explicit text keys") !=
+                        std::string::npos,
+                "ID-only inventory actions were accepted as a display menu")) {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }
@@ -1386,15 +1393,9 @@ int main() {
     scripts.set_story_state(completed);
     scripts.set_location_context("motel", "stoker_motel");
     const auto manager =
-        scripts.menu("motel", "manager_choices", "stoker.motel");
-    if (!expect(manager.has_value() && manager->choices.size() == 2U &&
-                    manager->text_profile == "stoker.motel" &&
-                    manager->speaker_id.empty() &&
-                    manager->title_key == "stoker.motel.manager.title" &&
-                    manager->choices[0].id == "crash" &&
-                    manager->choices[0].label_key ==
-                        "stoker.motel.option.crash" &&
-                    manager->choices[1].id == "leave",
+        scripts.string_list("motel", "manager_choices");
+    if (!expect(manager.has_value() && manager->size() == 2U &&
+                    (*manager)[0] == "crash" && (*manager)[1] == "leave",
                 "ordinary manager menu does not have its two source choices")) {
         std::cerr << scripts.failure() << '\n';
         return 9;
@@ -1402,35 +1403,35 @@ int main() {
     scripts.set_story_state(repeat_visit);
     scripts.set_location_context("motel", "downtown_motel");
     const auto ordinary_motel_manager =
-        scripts.menu("motel", "manager_choices", "stoker.motel");
+        scripts.string_list("motel", "manager_choices");
     if (!expect(ordinary_motel_manager.has_value() &&
-                    ordinary_motel_manager->choices.size() == 2U,
+                    ordinary_motel_manager->size() == 2U,
                 "Michael quest hook leaked into another motel")) {
         return 10;
     }
     scripts.set_location_context("motel", "stoker_motel");
     const auto package_manager =
-        scripts.menu("motel", "manager_choices", "stoker.motel");
+        scripts.string_list("motel", "manager_choices");
     if (!expect(package_manager.has_value() &&
-                    package_manager->choices.size() == 3U &&
-                    package_manager->choices[2].id == "package",
+                    package_manager->size() == 3U &&
+                    (*package_manager)[2] == "package",
                 "unpaid manager menu lacks the package choice")) {
         std::cerr << scripts.failure() << '\n';
         return 10;
     }
     scripts.set_story_state(paid_but_not_collected);
     const auto paid_package_manager =
-        scripts.menu("motel", "manager_choices", "stoker.motel");
+        scripts.string_list("motel", "manager_choices");
     if (!expect(paid_package_manager.has_value() &&
-                    paid_package_manager->choices.size() == 3U,
+                    paid_package_manager->size() == 3U,
                 "debt payment prematurely removed the uncollected package")) {
         return 11;
     }
     scripts.set_story_state(completed);
     const auto completed_package_manager =
-        scripts.menu("motel", "manager_choices", "stoker.motel");
+        scripts.string_list("motel", "manager_choices");
     if (!expect(completed_package_manager.has_value() &&
-                    completed_package_manager->choices.size() == 2U,
+                    completed_package_manager->size() == 2U,
                 "completed package facts did not remove the special choice")) {
         return 12;
     }

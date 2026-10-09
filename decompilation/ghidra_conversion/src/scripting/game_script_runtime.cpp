@@ -292,8 +292,7 @@ bool parse_menu_choices(lua_State* state, const int index,
                         const std::string_view speaker_id,
                         ScriptMenuDefinition& menu,
                         const std::size_t maximum_choices =
-                            kMaximumMenuChoices,
-                        const bool derive_text_keys = true) {
+                            kMaximumMenuChoices) {
     if (!lua_istable(state, index) || !valid_identifier(menu_id) ||
         !valid_identifier(text_profile)) {
         return false;
@@ -305,10 +304,6 @@ bool parse_menu_choices(lua_State* state, const int index,
     menu.id = std::string(menu_id);
     menu.text_profile = std::string(text_profile);
     menu.speaker_id = std::string(speaker_id);
-    if (derive_text_keys) {
-        menu.title_key = std::string(text_profile) + "." +
-                         std::string(menu_id) + ".title";
-    }
     menu.choices.reserve(count);
     std::set<std::string> choice_ids;
     for (std::size_t choice_index = 1U; choice_index <= count;
@@ -320,10 +315,6 @@ bool parse_menu_choices(lua_State* state, const int index,
         lua_pop(state, 1);
         if (!valid || !choice_ids.insert(choice.id).second) {
             return false;
-        }
-        if (derive_text_keys) {
-            choice.label_key =
-                std::string(text_profile) + ".option." + choice.id;
         }
         menu.choices.push_back(std::move(choice));
     }
@@ -578,7 +569,7 @@ struct GameScriptRuntime::Impl {
             !parse_menu_choices(lua, 2, menu_id,
                                 self->location_text_profile,
                                 self->location_speaker_id, menu,
-                                kMaximumMenuChoices, false)) {
+                                kMaximumMenuChoices)) {
             self->bridge_failure =
                 "game.ui.menu expects a menu name and unique stable choice ids in a profiled location";
             lua_pushnil(lua);
@@ -1377,6 +1368,72 @@ std::optional<std::string> GameScriptRuntime::call_string(
     return result;
 }
 
+std::optional<std::vector<std::string>> GameScriptRuntime::string_list(
+    const std::string_view module, const std::string_view function) {
+    auto* state = impl_->state;
+    if (!valid_identifier(function)) {
+        impl_->failure = "invalid gameplay script list function";
+        return std::nullopt;
+    }
+    if (!impl_->push_module(module)) {
+        impl_->failure = "gameplay script module is missing: " +
+                         std::string(module);
+        return std::nullopt;
+    }
+    lua_getfield(state, -1, std::string(function).c_str());
+    if (!lua_isfunction(state, -1)) {
+        lua_pop(state, 2);
+        impl_->failure = "script list function is missing: " +
+                         std::string(module) + "." + std::string(function);
+        return std::nullopt;
+    }
+    lua_remove(state, -2);
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 0, 1, 0) != LUA_OK) {
+        impl_->failure = std::string(module) + "." + std::string(function) +
+                         ": " + stack_error(state);
+        lua_pop(state, 1);
+        return std::nullopt;
+    }
+    if (!lua_istable(state, -1)) {
+        lua_pop(state, 1);
+        impl_->failure = std::string(module) + "." + std::string(function) +
+                         " must return an ordered ID list";
+        return std::nullopt;
+    }
+
+    const auto count = lua_rawlen(state, -1);
+    if (count > kMaximumMenuCatalogChoices) {
+        lua_pop(state, 1);
+        impl_->failure = std::string(module) + "." + std::string(function) +
+                         " returned too many IDs";
+        return std::nullopt;
+    }
+    std::vector<std::string> result;
+    result.reserve(count);
+    std::set<std::string> unique_ids;
+    bool valid = true;
+    for (std::size_t index = 1U; index <= count; ++index) {
+        lua_rawgeti(state, -1, static_cast<lua_Integer>(index));
+        std::string id;
+        valid = read_string(state, -1, id) && valid_identifier(id) &&
+                unique_ids.insert(id).second;
+        lua_pop(state, 1);
+        if (!valid) {
+            break;
+        }
+        result.push_back(std::move(id));
+    }
+    lua_pop(state, 1);
+    if (!valid) {
+        impl_->failure = std::string(module) + "." + std::string(function) +
+                         " returned an invalid, duplicate, or empty ID";
+        return std::nullopt;
+    }
+    impl_->failure.clear();
+    return result;
+}
+
 ScriptTaskStep GameScriptRuntime::start_task(
     const std::string_view module, const std::string_view function) {
     auto* state = impl_->state;
@@ -1809,23 +1866,19 @@ std::optional<ScriptMenuDefinition> GameScriptRuntime::menu(
     }
 
     ScriptMenuDefinition definition;
-    const bool explicit_text_keys = !lua_isnil(state, -2) ||
-                                    !lua_isnil(state, -1);
     if (!parse_menu_choices(state, -3, menu_id, text_profile,
                             impl_->location_speaker_id, definition,
-                            kMaximumMenuCatalogChoices,
-                            !explicit_text_keys)) {
+                            kMaximumMenuCatalogChoices)) {
         lua_pop(state, 3);
         impl_->failure = std::string(module) + "." + std::string(function) +
                          " must return unique choice ids";
         return std::nullopt;
     }
-    if (explicit_text_keys &&
-        !parse_explicit_menu_text_keys(state, -2, -1, definition)) {
+    if (!parse_explicit_menu_text_keys(state, -2, -1, definition)) {
         lua_pop(state, 3);
         impl_->failure = std::string(module) + "." +
                          std::string(function) +
-                         " returned text keys that do not match its choices";
+                         " must return explicit text keys matching its choices";
         return std::nullopt;
     }
     lua_pop(state, 3);

@@ -434,34 +434,33 @@ void load_script_menu_labels(
 }
 
 template <std::size_t N>
-void load_script_menu_choice_ids(
+void load_script_id_list(
     shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts,
     const std::string_view module, const std::string_view function,
-    const std::string_view text_profile, const std::string_view menu_id,
     std::array<std::string, N>& choice_ids,
     std::vector<std::string>& errors) {
-    const auto menu = scripts.menu(module, function, text_profile, menu_id);
-    if (!menu.has_value()) {
-        errors.emplace_back("Lua menu is unavailable: " +
+    const auto ids = scripts.string_list(module, function);
+    if (!ids.has_value()) {
+        errors.emplace_back("Lua ID list is unavailable: " +
                             std::string(function) + ": " + scripts.failure());
         return;
     }
-    if (menu->choices.size() != N) {
-        errors.emplace_back("Lua menu has the wrong choice count: " +
+    if (ids->size() != N) {
+        errors.emplace_back("Lua ID list has the wrong count: " +
                             std::string(function));
         return;
     }
     for (std::size_t index = 0; index < N; ++index) {
-        const auto& choice = menu->choices[index];
         const auto seen_end = choice_ids.begin() +
                               static_cast<std::ptrdiff_t>(index);
-        if (choice.id.empty() ||
-            std::find(choice_ids.begin(), seen_end, choice.id) != seen_end) {
-            errors.emplace_back("Lua menu contains an empty or duplicate "
-                                "choice id: " + std::string(function));
+        if ((*ids)[index].empty() ||
+            std::find(choice_ids.begin(), seen_end, (*ids)[index]) !=
+                seen_end) {
+            errors.emplace_back("Lua ID list contains an empty or duplicate "
+                                "id: " + std::string(function));
             return;
         }
-        choice_ids[index] = choice.id;
+        choice_ids[index] = (*ids)[index];
     }
 }
 
@@ -472,8 +471,8 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts) {
     FieldMenuTextLoadResult result;
     std::array<std::string, 5> pocket_secretary_root_choice_ids{};
-    load_script_menu_choice_ids(
-        scripts, "pocket_secretary", "root", "pocket_secretary", "root",
+    load_script_id_list(
+        scripts, "pocket_secretary", "root",
         pocket_secretary_root_choice_ids, result.errors);
     std::array<std::string, 1> pocket_secretary_root_text_ids{};
     std::array<std::string, 1> pocket_secretary_root_text{};
@@ -598,9 +597,8 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         result.errors, nullptr,
         &result.catalog.status_text_ids);
     result.catalog.status_names = std::move(posture_labels);
-    load_script_menu_choice_ids(
-        scripts, "items", "inventory_actions", "items",
-        "inventory_actions",
+    load_script_id_list(
+        scripts, "items", "inventory_actions",
         result.catalog.inventory_action_choice_ids, result.errors);
     std::array<std::string, kItemUiTextCount> item_ui_text{};
     load_script_menu_labels(
