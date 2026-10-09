@@ -1111,8 +1111,8 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
     constexpr std::string_view kActorTableAlias =
         "field.entities.default.actors";
     constexpr std::string_view kActorTableHeader =
-        "scene\tsource_order\tentity_kind\tworld_x\tworld_y\tinitial_heading"
-        "\tpalette_line"
+        "scene\tsource_order\tentity_kind\tinitial_action_code"
+        "\tworld_x\tworld_y\tinitial_heading\tpalette_line"
         "\ttemplate_offset\tposition_offset\tlist_offset"
         "\tordered_overrides";
     const auto* table = catalog.find(kActorTableAlias);
@@ -1165,7 +1165,7 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
             while (std::getline(row, field, '\t')) {
                 fields.push_back(std::move(field));
             }
-            if (fields.size() != 11U) {
+            if (fields.size() != 12U) {
                 failure_ = "default field actor table row is malformed";
                 return false;
             }
@@ -1173,19 +1173,26 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
             actor.scene_reference = parse_word(fields[0]);
             actor.source_order = parse_word(fields[1]);
             actor.entity_kind = parse_word(fields[2]);
-            actor.world_position.x = parse_word(fields[3]);
-            actor.world_position.y = parse_word(fields[4]);
-            actor.initial_heading = parse_word(fields[5]);
-            const auto palette_line = parse_word(fields[6]);
+            const auto initial_action_code = parse_word(fields[3]);
+            if (initial_action_code > 0xFFU) {
+                failure_ = "default actor action code exceeds one byte";
+                return false;
+            }
+            actor.initial_action_code =
+                static_cast<std::uint8_t>(initial_action_code);
+            actor.world_position.x = parse_word(fields[4]);
+            actor.world_position.y = parse_word(fields[5]);
+            actor.initial_heading = parse_word(fields[6]);
+            const auto palette_line = parse_word(fields[7]);
             if (palette_line > 0xFFU) {
                 failure_ = "default actor palette line exceeds one byte";
                 return false;
             }
             actor.palette_line = static_cast<std::uint8_t>(palette_line);
-            actor.template_offset = parse_number(fields[7], 0);
-            actor.position_offset = parse_number(fields[8], 0);
-            actor.list_offset = parse_number(fields[9], 0);
-            actor.ordered_overrides = fields[10];
+            actor.template_offset = parse_number(fields[8], 0);
+            actor.position_offset = parse_number(fields[9], 0);
+            actor.list_offset = parse_number(fields[10], 0);
+            actor.ordered_overrides = fields[11];
             if ((actor.entity_kind == 5U && actor.palette_line != 2U) ||
                 (actor.entity_kind == 11U && actor.palette_line != 3U) ||
                 (actor.entity_kind != 5U && actor.entity_kind != 11U)) {
@@ -1268,23 +1275,55 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
 void FieldSceneRuntime::initialize_default_field_actors(
     const std::uint16_t scene_reference) {
     for (auto& actor : field_default_actors_) {
+        actor.active = false;
+        actor.ai_package_id.clear();
+        actor.ai_weapon_item_id.reset();
         if (actor.scene_reference != scene_reference) {
             continue;
         }
+        actor.active = true;
         const auto initial_delay = static_cast<std::uint8_t>(
             advance_source_random_seed(field_random_seed_) & 0x000FU);
         actor.behavior = make_field_actor_behavior_state(
             actor.entity_kind, actor.initial_heading, initial_delay);
+        const auto decision = game_scripts_.actor_behavior_decision(
+            actor.entity_kind, actor.initial_action_code,
+            actor.behavior.behavior_timer, false, false);
+        if (!decision.has_value()) {
+            failure_ = game_scripts_.failure();
+            source_boundary("field.actor.lua_package_failed");
+            actor.active = false;
+            continue;
+        }
+        actor.ai_package_id = decision->package_id;
+        actor.ai_weapon_item_id = decision->weapon_item_id;
     }
 }
 
 void FieldSceneRuntime::advance_default_field_actors() {
     const auto current_scene = state_.field_scene_buffers.scene_reference;
     for (auto& actor : field_default_actors_) {
-        if (actor.scene_reference != current_scene) {
+        if (!actor.active || actor.scene_reference != current_scene) {
             continue;
         }
-        const auto update = advance_field_actor_behavior(actor.behavior);
+        const auto decision = game_scripts_.actor_behavior_decision(
+            actor.entity_kind, actor.initial_action_code,
+            actor.behavior.behavior_timer,
+            actor.behavior.transition_started,
+            actor.behavior.transition_complete);
+        if (!decision.has_value()) {
+            failure_ = game_scripts_.failure();
+            source_boundary("field.actor.lua_behavior_failed");
+            actor.active = false;
+            continue;
+        }
+        actor.ai_package_id = decision->package_id;
+        actor.ai_weapon_item_id = decision->weapon_item_id;
+        const bool start_entry_animation = decision->action ==
+            scripting::ScriptActorBehaviorDecision::Action::
+                play_entry_animation;
+        const auto update = advance_field_actor_behavior(
+            actor.behavior, start_entry_animation, decision->audio_event);
         if (update.audio_event.has_value() && source_audio_event_callback_) {
             source_audio_event_callback_(*update.audio_event);
         }
@@ -1294,7 +1333,8 @@ void FieldSceneRuntime::advance_default_field_actors() {
 FieldSceneRuntime::DefaultActorSpriteView
 FieldSceneRuntime::default_actor_sprite_view(
     const DefaultFieldActorPresentation& actor) const {
-    if (actor.entity_kind != 5U && actor.entity_kind != 11U) {
+    if (!actor.active ||
+        (actor.entity_kind != 5U && actor.entity_kind != 11U)) {
         return {};
     }
     const auto kind_index = actor.entity_kind == 5U ? 0U : 1U;
@@ -4258,8 +4298,6 @@ bool FieldSceneRuntime::bootstrap(
         source_boundary("field.bootstrap.default_actor_assets_missing");
         return false;
     }
-    initialize_default_field_actors(scene_reference);
-
     const auto result = integration::bootstrap_field_session(
         input_, state_, callbacks_);
     if (result != integration::FieldSessionBootstrapResult::field_ready) {
@@ -9547,7 +9585,7 @@ std::size_t FieldSceneRuntime::default_actor_count_for_dump() const noexcept {
     return static_cast<std::size_t>(std::count_if(
         field_default_actors_.begin(), field_default_actors_.end(),
         [scene_reference](const DefaultFieldActorPresentation& actor) {
-            return actor.scene_reference == scene_reference;
+            return actor.active && actor.scene_reference == scene_reference;
         }));
 }
 
@@ -9559,6 +9597,7 @@ FieldSceneRuntime::default_actor_transition_started_count_for_dump() const
         field_default_actors_.begin(), field_default_actors_.end(),
         [scene_reference](const DefaultFieldActorPresentation& actor) {
             return actor.scene_reference == scene_reference &&
+                   actor.active &&
                    actor.behavior.transition_started;
         }));
 }
@@ -9571,6 +9610,7 @@ FieldSceneRuntime::default_actor_transition_complete_count_for_dump() const
         field_default_actors_.begin(), field_default_actors_.end(),
         [scene_reference](const DefaultFieldActorPresentation& actor) {
             return actor.scene_reference == scene_reference &&
+                   actor.active &&
                    actor.behavior.transition_complete;
         }));
 }
@@ -9584,6 +9624,7 @@ FieldSceneRuntime::default_actor_direction_for_dump(
         [scene_reference, source_order](
             const DefaultFieldActorPresentation& candidate) {
             return candidate.scene_reference == scene_reference &&
+                   candidate.active &&
                    candidate.source_order == source_order;
         });
     return actor == field_default_actors_.end()
@@ -9600,12 +9641,48 @@ FieldSceneRuntime::default_actor_animation_frame_for_dump(
         [scene_reference, source_order](
             const DefaultFieldActorPresentation& candidate) {
             return candidate.scene_reference == scene_reference &&
+                   candidate.active &&
                    candidate.source_order == source_order;
         });
     return actor == field_default_actors_.end()
                ? std::nullopt
                : std::optional<std::uint8_t>{
                      actor->behavior.animation_frame};
+}
+
+std::optional<std::string>
+FieldSceneRuntime::default_actor_ai_package_for_dump(
+    const std::uint16_t source_order) const {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.scene_reference == scene_reference &&
+                   candidate.active &&
+                   candidate.source_order == source_order;
+        });
+    return actor == field_default_actors_.end() ||
+                   actor->ai_package_id.empty()
+               ? std::nullopt
+               : std::optional<std::string>{actor->ai_package_id};
+}
+
+std::optional<std::uint8_t>
+FieldSceneRuntime::default_actor_weapon_item_for_dump(
+    const std::uint16_t source_order) const noexcept {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.scene_reference == scene_reference &&
+                   candidate.active &&
+                   candidate.source_order == source_order;
+        });
+    return actor == field_default_actors_.end()
+               ? std::nullopt
+               : actor->ai_weapon_item_id;
 }
 
 std::size_t FieldSceneRuntime::visible_default_actor_count_for_dump() const {

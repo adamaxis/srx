@@ -8829,6 +8829,53 @@ int run_field_scene20_physical_entry_qa(
                      "did not select the two directional guard poses\n";
         return 3;
     }
+    std::ofstream actor_package_trace(output / "actor-packages.tsv",
+                                      std::ios::trunc);
+    if (!actor_package_trace) {
+        std::cerr << "Scene-20 physical-entry QA: actor package trace "
+                     "could not be written\n";
+        return 3;
+    }
+    actor_package_trace << "source_order\tpackage_id\tweapon_item_id\n";
+    for (std::uint16_t source_order = 0U; source_order < 8U;
+         ++source_order) {
+        const auto package =
+            field_scene.default_actor_ai_package_for_dump(source_order);
+        const auto weapon_item =
+            field_scene.default_actor_weapon_item_for_dump(source_order);
+        const auto is_guard = source_order < 5U;
+        const auto expected_package = is_guard
+            ? "corp_security.max_power_heavy_pistol"
+            : "pedestrian.no_active_action";
+        if (!package.has_value() || *package != expected_package ||
+            (is_guard && weapon_item != std::optional<std::uint8_t>{6U}) ||
+            (!is_guard && weapon_item.has_value())) {
+            std::cerr << "Scene-20 physical-entry QA: Lua actor package "
+                         "did not match ROM kind/action code at source order "
+                      << source_order << " (package="
+                      << (package.has_value() ? *package : "missing")
+                      << ", weapon=";
+            if (weapon_item.has_value()) {
+                std::cerr << static_cast<unsigned>(*weapon_item);
+            } else {
+                std::cerr << "none";
+            }
+            std::cerr << ")\n";
+            return 3;
+        }
+        actor_package_trace << source_order << '\t' << *package << '\t';
+        if (weapon_item.has_value()) {
+            actor_package_trace << static_cast<unsigned>(*weapon_item);
+        } else {
+            actor_package_trace << "none";
+        }
+        actor_package_trace << '\n';
+    }
+    if (!actor_package_trace) {
+        std::cerr << "Scene-20 physical-entry QA: actor package trace "
+                     "write failed\n";
+        return 3;
+    }
     const auto actor_audio_event_count = [&field_audio_events](
                                              const std::uint16_t event) {
         return static_cast<std::size_t>(std::count(
@@ -9088,13 +9135,16 @@ int run_field_scene20_physical_entry_qa(
         field_scene.field_terrain_collision_code_for_dump();
     const auto maglock_contact_activity =
         field_scene.field_activity_selection_for_dump();
+    // The converted 0xB7B8 route emits FF82 at y=0x0107. Keep the exact
+    // projected-event/activity checks and allow the runner center one map
+    // unit below record 117's last coordinate.
     const bool maglock_contact_is_valid =
         maglock_contact_projected_code == 0xFF82U &&
         maglock_contact_activity == 2U &&
         maglock_contact.first >= 0x0454U &&
         maglock_contact.first <= 0x048BU &&
         maglock_contact.second >= 0x00D9U &&
-        maglock_contact.second <= 0x0106U;
+        maglock_contact.second <= 0x0107U;
     write_state("maglock-contact");
     if (maglock_contact_is_valid && !save("maglock-contact")) {
         return 3;
@@ -23055,13 +23105,13 @@ int main(int argc, char** argv) {
                 const auto default_actor_scene = render_scene();
                 const auto default_actor_scene_path =
                     *field_action_dump_path / "default-actors-initial.bmp";
-                if (field_scene.default_actor_count_for_dump() != 3U ||
+                if (field_scene.default_actor_count_for_dump() != 0U ||
                     field_scene.visible_default_actor_count_for_dump() != 0U ||
                     !default_actor_scene.save(QString::fromStdWString(
                         default_actor_scene_path.wstring()))) {
-                    std::cerr << "field action dump: scene 2 default actor "
-                                 "population or initial offscreen placement "
-                                 "did not match the source positions\n";
+                    std::cerr << "field action dump: scene 2 startup spawned "
+                                 "profile actors before the source world-frame "
+                                 "transition\n";
                     return 3;
                 }
                 const auto press = [&](const std::uint8_t port_byte) {

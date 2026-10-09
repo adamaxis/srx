@@ -2724,6 +2724,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::uint16_t scene_id;
         std::uint16_t source_order;
         std::uint16_t entity_kind;
+        std::uint8_t initial_action_code;
         std::uint16_t world_x;
         std::uint16_t world_y;
         std::uint16_t initial_heading;
@@ -2757,11 +2758,15 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             const auto position_offset =
                 read_big_endian_long(rom, cursor + 4U);
             if (template_offset > rom.size() ||
-                rom.size() - template_offset < 4U) {
+                rom.size() - template_offset < 10U) {
                 throw std::runtime_error(
                     "default field actor template pointer exceeds ROM");
             }
             const auto entity_kind = read_big_endian_word(rom, template_offset);
+            // ROM 0x44BC copies template byte +9 into live entity +0x57.
+            // This is the one-based active item/action code used by the
+            // entity behavior and item-row selectors; it is not an AI guess.
+            const auto initial_action_code = rom[template_offset + 9U];
             const auto palette_line = static_cast<std::uint8_t>(
                 (read_big_endian_word(rom, template_offset + 2U) >> 13U) &
                 0x03U);
@@ -2769,6 +2774,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 source_list.scene_id,
                 source_order,
                 entity_kind,
+                initial_action_code,
                 read_big_endian_word(rom, position_offset),
                 read_big_endian_word(rom, position_offset + 2U),
                 read_big_endian_word(rom, 0x7361AU + 0x2EU),
@@ -2839,12 +2845,15 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             throw std::runtime_error(
                 "cannot create profile-selected default actor table");
         }
-        actor_table << "scene\tsource_order\tentity_kind\tworld_x\tworld_y"
+        actor_table << "scene\tsource_order\tentity_kind\tinitial_action_code"
+                       "\tworld_x\tworld_y"
                        "\tinitial_heading\tpalette_line\ttemplate_offset\tposition_offset"
                        "\tlist_offset\tordered_overrides\n";
         for (const auto& actor : default_actor_records) {
             actor_table << actor.scene_id << '\t' << actor.source_order << '\t'
-                        << actor.entity_kind << '\t' << actor.world_x << '\t'
+                        << actor.entity_kind << '\t'
+                        << static_cast<unsigned>(actor.initial_action_code)
+                        << '\t' << actor.world_x << '\t'
                         << actor.world_y << '\t'
                         << actor.initial_heading << '\t'
                         << static_cast<unsigned>(actor.palette_line) << '\t'

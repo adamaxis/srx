@@ -139,10 +139,10 @@ pages by stable runner and topic IDs. The shared panel projection resolves
 those IDs through Lua while source-derived transition state remains typed
 native C++. The projection is covered by conversion QA, but the runner
 conversation still has no live field/roster entry route.
-Actor placement, destination movement, scripted animation, item operations,
-audio playback, additional speaker/event profiles, and save restoration are
-not connected yet. The runner has no `io`, `os`, `debug`, or package-loader
-access.
+General cutscene actor placement, destination movement, scripted animation,
+item operations, and save restoration are not connected yet. The scene-list
+NPC entry behavior has its own connected Lua policy described below. The
+runner has no `io`, `os`, `debug`, or package-loader access.
 
 ## Content organization
 
@@ -302,6 +302,15 @@ rather than a second Lua copy.
   opening-story caption IDs to Lua text keys. The offline importer reads those
   separate `0xFF`-terminated ROM records at `0x5B7D8..0x5BA4B`; the native intro
   schedule still chooses their timing, row, and palette.
+- `gameplay/scripts/actor_ai.lua` selects source-profiled actor packages from
+  the ROM entity kind and initial action code. In the traced lists, kind 5 and
+  action 6 resolve through D4540 to item 6, Max-Power (Heavy Pistol), while
+  kind 11 and action 0 have no active item action. The live field runtime
+  passes those values and the typed entry state to Lua; Lua selects the package,
+  initial animation request, and source sound event, and the host advances the
+  animation and sends the audio request. This package boundary is connected
+  only for the current scene-2 and scene-0x14 profiles. Later movement, target
+  selection, weapon use, collision, hits, and damage remain unimplemented.
 - `assets/dialogue/script-text.lua` is the ROM-derived shared text table for
   opening-story captions, Stoker dialogue, field object interactions, Ares
   mode-event paragraphs, Hotel menu/status text,
@@ -347,9 +356,10 @@ layout and applies input rules. The Pocket Secretary cursor and child pages
 remain native. Wallet and quest effects remain native service
 implementations. Ares shop stock is script data, but its selector, transaction
 loop, and native UI still run in C++. Other building dialogue, remaining
-title/field presentation, item operations, inventory screens, actor placement
-and animation, audio playback, and save restoration remain to be migrated or
-connected.
+title/field presentation, item operations, inventory screens, general cutscene
+actor placement and animation, audio playback from Lua, and save restoration
+remain to be migrated or connected. The source-profiled NPC entry policy is
+the first actor package used by the live field update loop.
 
 ## Source and visual verification
 

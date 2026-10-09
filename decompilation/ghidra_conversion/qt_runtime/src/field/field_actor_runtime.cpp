@@ -16,19 +16,6 @@ constexpr std::int32_t kEntryAnimationStep = 0x0200;
 constexpr std::uint8_t kEntryAnimationFrameCount = 2U;
 constexpr std::uint8_t kBehaviorTimerReload = 20U;
 
-std::optional<std::uint16_t> entry_audio_event(
-    const std::uint16_t entity_kind) {
-    // ROM 0xB330 indexes the request table at 0xB05E by entity kind.
-    // These two profile-listed kinds resolve to silent table-2 slots.
-    if (entity_kind == 5U) {
-        return 0x002EU;
-    }
-    if (entity_kind == 11U) {
-        return 0x002FU;
-    }
-    return std::nullopt;
-}
-
 } // namespace
 
 FieldActorBehaviorState make_field_actor_behavior_state(
@@ -65,14 +52,15 @@ std::uint16_t field_actor_entry_animation_selector(
 }
 
 FieldActorBehaviorUpdate advance_field_actor_behavior(
-    FieldActorBehaviorState& state) {
+    FieldActorBehaviorState& state, const bool start_entry_animation,
+    const std::optional<std::uint16_t> entry_audio_event) {
     FieldActorBehaviorUpdate update;
     bool just_started = false;
 
     if (!state.transition_started) {
         // The field service subtracts the +0xB6 timer before testing its
         // sign, so an initial value of zero activates on the first update.
-        if (state.behavior_timer == 0U) {
+        if (state.behavior_timer == 0U && start_entry_animation) {
             state.transition_started = true;
             state.animation_phase = FieldActorAnimationPhase::entry_transition;
             state.behavior_timer = kBehaviorTimerReload;
@@ -82,7 +70,7 @@ FieldActorBehaviorUpdate advance_field_actor_behavior(
             // the transition list's 0x0200 increment.
             state.animation_accumulator = -16;
             update.transition_started = true;
-            update.audio_event = entry_audio_event(state.entity_kind);
+            update.audio_event = entry_audio_event;
             just_started = true;
         } else {
             --state.behavior_timer;

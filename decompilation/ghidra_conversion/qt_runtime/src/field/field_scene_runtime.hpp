@@ -149,6 +149,10 @@ public:
         std::uint16_t source_order) const noexcept;
     std::optional<std::uint8_t> default_actor_animation_frame_for_dump(
         std::uint16_t source_order) const noexcept;
+    std::optional<std::string> default_actor_ai_package_for_dump(
+        std::uint16_t source_order) const;
+    std::optional<std::uint8_t> default_actor_weapon_item_for_dump(
+        std::uint16_t source_order) const noexcept;
     bool open_command_overview_for_dump();
     bool open_attributes_skills_for_dump();
     bool attributes_skills_menu_open() const noexcept {
@@ -927,9 +931,11 @@ private:
     };
 
     struct DefaultFieldActorPresentation {
+        bool active = false;
         std::uint16_t scene_reference = 0;
         std::uint16_t source_order = 0;
         std::uint16_t entity_kind = 0;
+        std::uint8_t initial_action_code = 0;
         SceneRunnerPosition world_position{};
         std::uint16_t initial_heading = 0;
         std::uint8_t palette_line = 0;
@@ -937,6 +943,8 @@ private:
         std::uint32_t position_offset = 0;
         std::uint32_t list_offset = 0;
         std::string ordered_overrides;
+        std::string ai_package_id;
+        std::optional<std::uint8_t> ai_weapon_item_id;
         FieldActorBehaviorState behavior{};
     };
 

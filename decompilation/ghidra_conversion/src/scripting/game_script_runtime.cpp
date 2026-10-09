@@ -1330,6 +1330,99 @@ void GameScriptRuntime::set_field_mode_context(
     impl_->field_mode_context = context;
 }
 
+std::optional<ScriptActorBehaviorDecision>
+GameScriptRuntime::actor_behavior_decision(
+    const std::uint16_t entity_kind,
+    const std::uint8_t initial_action_code,
+    const std::uint8_t entry_delay, const bool entry_started,
+    const bool entry_complete) {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "gameplay Lua actor AI state is unavailable";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<ScriptActorBehaviorDecision> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("actor_ai")) {
+        return fail("gameplay Lua actor AI module is missing");
+    }
+    lua_getfield(state, -1, "behavior");
+    if (!lua_isfunction(state, -1)) {
+        return fail("actor_ai.behavior must be a Lua function");
+    }
+    lua_remove(state, -2);
+    lua_pushinteger(state, entity_kind);
+    lua_pushinteger(state, initial_action_code);
+    lua_pushinteger(state, entry_delay);
+    lua_pushboolean(state, entry_started);
+    lua_pushboolean(state, entry_complete);
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 5, 1, 0) != LUA_OK) {
+        return fail("actor_ai.behavior: " + stack_error(state));
+    }
+    if (!lua_istable(state, -1)) {
+        return fail("actor_ai.behavior must return an actor decision table");
+    }
+
+    const auto decision_table = lua_absindex(state, -1);
+    ScriptActorBehaviorDecision decision;
+    std::string action;
+    if (!read_field_string(state, decision_table, "package_id",
+                           decision.package_id) ||
+        !valid_identifier(decision.package_id) ||
+        !read_field_string(state, decision_table, "action", action) ||
+        !read_field_string(state, decision_table, "animation",
+                           decision.animation_id)) {
+        return fail("actor_ai.behavior returned an incomplete decision");
+    }
+    if (action == "hold" && decision.animation_id == "none") {
+        decision.action = ScriptActorBehaviorDecision::Action::hold;
+    } else if (action == "play_entry" &&
+               decision.animation_id == "entry") {
+        decision.action =
+            ScriptActorBehaviorDecision::Action::play_entry_animation;
+    } else {
+        return fail("actor_ai.behavior returned an unsupported action");
+    }
+
+    lua_getfield(state, decision_table, "audio_event");
+    if (lua_type(state, -1) != LUA_TNIL) {
+        std::uint32_t event = 0U;
+        if (!read_integer(state, -1, 0xFFFFU, event)) {
+            return fail("actor_ai.behavior returned an invalid audio event");
+        }
+        decision.audio_event = static_cast<std::uint16_t>(event);
+    }
+    lua_pop(state, 1);
+    lua_getfield(state, decision_table, "weapon_item_id");
+    if (lua_type(state, -1) != LUA_TNIL) {
+        std::uint32_t item_id = 0U;
+        if (!read_integer(state, -1, 50U, item_id) || item_id == 0U ||
+            item_id != initial_action_code) {
+            return fail("actor_ai.behavior returned an invalid weapon item");
+        }
+        decision.weapon_item_id = static_cast<std::uint8_t>(item_id);
+    }
+    lua_pop(state, 1);
+    lua_pop(state, 1);
+
+    const bool begins_entry = decision.action ==
+        ScriptActorBehaviorDecision::Action::play_entry_animation;
+    if ((begins_entry &&
+         (entry_delay != 0U || entry_started || entry_complete ||
+          !decision.audio_event.has_value())) ||
+        (!begins_entry && decision.audio_event.has_value())) {
+        return fail("actor_ai.behavior action disagrees with native state");
+    }
+    impl_->failure.clear();
+    return decision;
+}
+
 std::optional<std::string> GameScriptRuntime::call_string(
     const std::string_view module, const std::string_view function) {
     auto* state = impl_->state;

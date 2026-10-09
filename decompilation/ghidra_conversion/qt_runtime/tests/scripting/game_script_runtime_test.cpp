@@ -33,6 +33,48 @@ int main() {
         return 1;
     }
 
+    const auto guard_wait =
+        scripts.actor_behavior_decision(5U, 6U, 1U, false, false);
+    const auto guard_entry =
+        scripts.actor_behavior_decision(5U, 6U, 0U, false, false);
+    const auto pedestrian_entry =
+        scripts.actor_behavior_decision(11U, 0U, 0U, false, false);
+    const auto guard_hold =
+        scripts.actor_behavior_decision(5U, 6U, 0U, true, false);
+    const auto unsupported_guard_action =
+        scripts.actor_behavior_decision(5U, 5U, 0U, false, false);
+    if (!expect(
+            guard_wait.has_value() &&
+                guard_wait->package_id ==
+                    "corp_security.max_power_heavy_pistol" &&
+                guard_wait->action ==
+                    ScriptActorBehaviorDecision::Action::hold &&
+                !guard_wait->audio_event.has_value() &&
+                guard_entry.has_value() &&
+                guard_entry->action ==
+                    ScriptActorBehaviorDecision::Action::
+                        play_entry_animation &&
+                guard_entry->package_id ==
+                    "corp_security.max_power_heavy_pistol" &&
+                guard_entry->animation_id == "entry" &&
+                guard_entry->audio_event == 0x002EU &&
+                guard_entry->weapon_item_id == 6U &&
+                pedestrian_entry.has_value() &&
+                pedestrian_entry->package_id ==
+                    "pedestrian.no_active_action" &&
+                pedestrian_entry->audio_event == 0x002FU &&
+                !pedestrian_entry->weapon_item_id.has_value() &&
+                guard_hold.has_value() &&
+                guard_hold->action ==
+                    ScriptActorBehaviorDecision::Action::hold &&
+                guard_hold->weapon_item_id == 6U &&
+                !guard_hold->audio_event.has_value() &&
+                !unsupported_guard_action.has_value(),
+            "Lua actor packages did not resolve the ROM action/equipment state")) {
+        std::cerr << scripts.failure() << '\n';
+        return 15;
+    }
+
     const auto field_interaction_text_keys =
         scripts.string_map("field_interactions", "text_keys");
     bool field_interaction_text_map_valid =

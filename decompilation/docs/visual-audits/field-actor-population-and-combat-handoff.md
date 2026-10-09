@@ -1,11 +1,13 @@
 # Field actor population and combat handoff audit
 
-**Status:** ROM population, initial behavior entry, direction, animation, and
-sound-request paths are traced for the profile-selected actors in scenes 2 and
-`0x14`. The Qt runtime advances their typed initial transition during field
-bootstrap and normal field updates. This remains partial: post-transition
-behavior, actor movement, interaction, collision targets, hits, status, and
-damage are not implemented. `LOADOUT-01` remains partial.
+**Status:** ROM population, initial behavior entry, direction, animation,
+action/item codes, and sound-request paths are traced for the profile-selected
+actors in scenes 2 and `0x14`. A Lua package is selected from actor kind and
+the ROM-seeded action code; native C++ executes its finite entry animation.
+New Game bootstrap does not activate the scene-2 profile list. Scene changes
+activate the supported list for the destination. This remains partial:
+post-entry behavior, actor movement, interaction, collision targets, hits,
+status, and damage are not implemented. `LOADOUT-01` remains partial.
 
 ## Source path
 
@@ -23,7 +25,14 @@ On the world-frame path, `0x43B6` drains the pending `FFE120` list through
 continuations to list pointers `0x1E628` and `0x1E5C4`. `0x4466` allocates a
 world entity and effect slot for each entry; bit 31 of the template pointer
 marks a root record. `0x44BC` copies the named template data, installs its
-position, and applies optional byte-offset/value overrides.
+position, and applies optional byte-offset/value overrides. It copies
+template byte `+9` to live entity byte `+0x57`. For ordinary item actions,
+`0x14D6A` treats `+0x57` as a one-based D4540 item/action code when `+0x56` is
+nonnegative; a negative `+0x56` selects the separate D4EA0 spell table. The
+guard template has `+8=0`, `+9=6`, which resolves to item 6, Max-Power (Heavy
+Pistol). The pedestrian template has `+8=0x7F`, `+9=0`, so it starts with no
+active item action. This is a ROM-derived loadout input, not a guess from the
+actor's appearance.
 
 The decoded ROM records are:
 
@@ -126,6 +135,17 @@ completes on the 21st update after activation. This covers only the observed
 initial transition. `0xAB02` and later action, movement, collision, and damage
 branches are outside this native slice.
 
+The Qt actor service passes kind and the initial `+0x57` code to
+`gameplay/scripts/actor_ai.lua`. Lua selects
+`corp_security.max_power_heavy_pistol` for kind 5/action 6 and
+`pedestrian.no_active_action` for kind 11/action 0. The script result
+identifies weapon item 6 for the guard package; the host verifies it matches
+the source action code, stores the package/loadout on the active actor, and
+executes the script-selected entry animation and event request. Current
+scene-`0x14` QA checks all eight live package assignments and writes
+`actor-packages.tsv`. This does not yet implement gun firing, target
+selection, or combat results.
+
 The existing field entity catalog is not these actors: the importer currently
 decodes the live Joshua template at `0x7291A` (kind 3). `0x4658` updates the
 sixteen entity records and calls `0x481E`; `0x481E` separately refreshes ten
@@ -137,26 +157,31 @@ for the kind-5/kind-11 animation frames or treated as their full sprite art.
 The offline `shadowrun_graphics_extract --all-assets` step writes
 `field/entities/default-actors.tsv` by walking the profile-selected lists at
 `0x172D1C` and `0x1D91DA`. It preserves list order, world position,
-template/position/list provenance, palette line, source heading, and ordered
-overrides. It writes individually named idle images and two C0B2 transition
-frames for each kind and direction used by these lists. Scene 2 uses direction
+template/position/list provenance, initial action/item code, palette line,
+source heading, and ordered overrides. It writes individually named idle
+images and two C0B2 transition frames for each kind and direction used by
+these lists. Scene 2 uses direction
 0; scene `0x14` also uses directions 2 and 6 because source-order records 3 and
 4 override heading at `+0x2E`. Images preserve signed descriptor origins and
 are direct assets consumed by the runtime; no ROM or VDP state is used at
 runtime.
 
-`FieldSceneRuntime` initializes actor behavior after loading those assets and
-before `bootstrap_field_session` enters its 31-frame warmup. Each bootstrap
-entity-service tick and each normal field behavior-service tick advances the
-same `FieldActorBehaviorState`. The scene compositor projects actors, sorts by
-effective Y depth with source order as the stable tie-break, draws the active
-idle or transition image, then redraws the shared HUD over the playfield.
-The scene-`0x14` route checks all eight records, the direction overrides, all
-eight transition starts and completions, both source cue requests, and a clean
-whole-screen HUD/menu state. It writes actor-state checkpoints at entry and
-frames 8, 30, and 40. Its pixel assertion confirms the screen changes by frame
-30 and then holds the final pose at frame 40; the first transition image can
-match the idle image and therefore need not change pixels at frame 8.
+New Game's `0x075E` setup enters scene 2 and performs its warmup without the
+later `0x02900 -> 0x04388 -> 0x043B6` world-frame list-finalization path. The
+Qt bootstrap therefore keeps extracted scene-2 definitions inactive and draws
+no profile actors on the opening street. On an actual scene change,
+`FieldSceneRuntime` activates that destination's profile list. Normal field
+behavior-service ticks query Lua and advance the typed
+`FieldActorBehaviorState`; the compositor sorts active actors by effective Y
+depth with source order as the stable tie-break, draws the idle or transition
+image, then redraws the shared HUD. Scene-`0x14` QA checks all eight records,
+their five-guard/three-pedestrian Lua package assignments, the guard's
+Max-Power item association, heading overrides, transition starts/completions,
+both source cue requests, and clean whole-screen composition. It writes
+`actor-packages.tsv` plus animation checkpoints at entry and frames 8, 30,
+and 40. The screen changes by frame 30 and holds the final pose at frame 40;
+the first transition image can match the idle image and need not change pixels
+at frame 8.
 
 Release checks passed: `shadowrun_ghidra_conversion_qt_field_actor_runtime_qa`,
 `shadowrun_ghidra_conversion_qt_field_scene20_physical_entry_qa`,
@@ -202,13 +227,17 @@ actual event path selects it.
 
 ## Visual verification questions
 
-1. **Does it look correct?** Full-screen captures show the visible guards at
-   their source-projected positions, with no opaque crop box around either
-   sprite. The independent longplay has only supporting field-character
-   examples; it does not identify this exact scene or pose.
-2. **Does the current image reflect behavior?** The actor trace ties source
-   directions 2 and 6 to records 3 and 4. It records eight starts, eight
-   completions, and the two visible guards' animation frame at every captured
+1. **Does it look correct?** New Game's whole-screen field image contains the
+   runner, map, and HUD, without drawing inactive profile actors over it. The
+   scene-`0x14` full-screen captures show visible guards at source-projected
+   positions, with no opaque crop box around either sprite. The independent
+   longplay has supporting field-character examples but does not identify
+   this exact scene or pose.
+2. **Does the current image reflect behavior?** The trace ties source
+   directions 2 and 6 to records 3 and 4. Lua maps the five kind-5/action-6
+   records to the Max-Power guard package and the three kind-11/action-0
+   records to the pedestrian package. It records eight starts, eight
+   completions, and the two visible guards' animation frame at each captured
    checkpoint.
 3. **Are the visuals correct?** Named assets use the traced kind, selector,
    palette, descriptor, frame, and signed origin. The exact live projection
@@ -227,8 +256,10 @@ actual event path selects it.
    Frame 30 differs from entry; frame 40 matches frame 30 after all transitions
    complete. No same-scene Genesis visual golden is available.
 8. **Are new graphics drawn over stale UI?** Scene loading replaces the map;
-   actors draw in the map's entity pass; the HUD is redrawn afterwards. The
-   full-screen route confirms the previous panel and controls are gone.
+   active actors draw in the map's entity pass; the HUD is redrawn afterwards.
+   Full-screen routes confirm the previous panel and controls are gone. The
+   bootstrap path leaves unspawned rows inactive, rather than painting actors
+   over the initial street.
 
 ## Next implementation slice
 

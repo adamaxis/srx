@@ -42,6 +42,7 @@ std::uint16_t field_actor_idle_animation_selector(std::uint8_t direction);
 std::uint16_t field_actor_entry_animation_selector(std::uint8_t direction);
 
 FieldActorBehaviorUpdate advance_field_actor_behavior(
-    FieldActorBehaviorState& state);
+    FieldActorBehaviorState& state, bool start_entry_animation,
+    std::optional<std::uint16_t> entry_audio_event);
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime

@@ -105,6 +105,19 @@ struct ScriptFieldModeContext {
     std::int8_t alternate_result = 0;
 };
 
+struct ScriptActorBehaviorDecision {
+    enum class Action {
+        hold,
+        play_entry_animation,
+    };
+
+    std::string package_id;
+    Action action = Action::hold;
+    std::string animation_id = "none";
+    std::optional<std::uint16_t> audio_event;
+    std::optional<std::uint8_t> weapon_item_id;
+};
+
 struct ScriptNativeOperation {
     enum class Type {
         actor_walk_heading,
@@ -162,6 +175,9 @@ public:
                               std::string_view text_profile = {},
                               std::string_view speaker_id = {});
     void set_field_mode_context(ScriptFieldModeContext context) noexcept;
+    std::optional<ScriptActorBehaviorDecision> actor_behavior_decision(
+        std::uint16_t entity_kind, std::uint8_t initial_action_code,
+        std::uint8_t entry_delay, bool entry_started, bool entry_complete);
     std::optional<std::string> call_string(
         std::string_view module, std::string_view function);
     // Read an ordered, unique ID array that has no display labels.
