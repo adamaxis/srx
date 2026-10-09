@@ -21,6 +21,8 @@ return {
         ares_weapon_emporium = {
             title_key = "shop.ares.title",
             text_keys = {
+                universal_clips_title = "shop.universal_clips.title",
+                universal_clips_description = "shop.universal_clips.description",
                 transaction_prompt = "shop.transaction.prompt",
                 no_inventory_slot = "shop.transaction.no_inventory_slot",
                 insufficient_funds = "shop.transaction.insufficient_funds",

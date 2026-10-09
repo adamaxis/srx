@@ -138,9 +138,6 @@ void write_field_menu_text_catalog(
         emit("field-service.title-destination." + std::to_string(index),
              std::to_string(service_titles[index].destination_word));
     }
-    const auto universal_clips_text =
-        shadowrun::graphics::read_genesis_field_service_universal_clips_text(
-            rom);
     const auto escape_field_text = [](std::string text) {
         std::size_t position = 0U;
         while ((position = text.find('\n', position)) !=
@@ -150,10 +147,6 @@ void write_field_menu_text_catalog(
         }
         return text;
     };
-    emit("field-service.universal-clips.title",
-         escape_field_text(universal_clips_text.title));
-    emit("field-service.universal-clips.description",
-         escape_field_text(universal_clips_text.description));
     const auto cyberdeck_unavailable_text =
         shadowrun::graphics::read_genesis_cyberdeck_unavailable_text(rom);
     for (std::size_t index = 0;
@@ -320,13 +313,6 @@ void write_field_menu_text_catalog(
     emit("action.cannot-trade", action_text.cannot_trade);
     emit("action.choice-no", action_text.choice_no);
     emit("action.choice-yes", action_text.choice_yes);
-    const auto field_action_detail_texts =
-        shadowrun::graphics::read_genesis_field_action_detail_texts(rom);
-    for (std::size_t index = 0; index < field_action_detail_texts.size();
-         ++index) {
-        emit("field-action.detail-text." + std::to_string(index),
-             escape_newlines(field_action_detail_texts[index]));
-    }
     emit("action.automatic-use.message",
          escape_newlines(action_text.automatic_use_message));
     emit("first-aid.prompt", escape_newlines(action_text.first_aid_prompt));
@@ -399,17 +385,6 @@ void write_field_menu_text_catalog(
                  assets.field_menu_armor_labels[armor][row]);
         }
     }
-    const auto item_detail_labels =
-        shadowrun::graphics::read_genesis_field_menu_item_detail_labels(rom);
-    for (std::size_t index = 0; index < item_detail_labels.size(); ++index) {
-        emit("item-detail." + std::to_string(index), item_detail_labels[index]);
-    }
-    for (std::size_t index = 0; index < assets.inventory_items.size(); ++index) {
-        emit("item." + std::to_string(index + 1U),
-             assets.inventory_items[index].name);
-        emit("item-category." + std::to_string(index + 1U),
-             assets.inventory_items[index].category);
-    }
 }
 
 void write_notebook_tips_text_asset(
@@ -454,7 +429,8 @@ void write_notebook_tips_text_asset(
 }
 
 void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
-                                const std::filesystem::path& root) {
+                                const std::filesystem::path& root,
+                                const shadowrun::native::NativePortAssets& assets) {
     const auto path = root / "dialogue" / "script-text.lua";
     std::filesystem::create_directories(path.parent_path());
     std::ofstream output(path, std::ios::binary | std::ios::trunc);
@@ -642,6 +618,13 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
     }
     const auto shop_text =
         shadowrun::graphics::read_genesis_field_menu_action_text(rom);
+    const auto universal_clips_text =
+        shadowrun::graphics::read_genesis_field_service_universal_clips_text(
+            rom);
+    write_text_entry("shop.universal_clips.title",
+                     universal_clips_text.title);
+    write_text_entry("shop.universal_clips.description",
+                     universal_clips_text.description);
     write_text_entry("shop.transaction.prompt",
                      shop_text.transaction_prompt);
     write_text_entry("shop.transaction.no_inventory_slot",
@@ -656,6 +639,27 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
                      shop_text.sale_quote_heading);
     write_text_entry("shop.transaction.purchase_price_heading",
                      shop_text.purchase_price_heading);
+    const auto item_detail_labels =
+        shadowrun::graphics::read_genesis_field_menu_item_detail_labels(rom);
+    constexpr std::array<std::string_view, 3> kItemDetailLabelKeys{{
+        "items.detail_label.ammo", "items.detail_label.uses",
+        "items.detail_label.rating"}};
+    for (std::size_t index = 0; index < item_detail_labels.size(); ++index) {
+        write_text_entry(kItemDetailLabelKeys[index], item_detail_labels[index]);
+    }
+    for (std::size_t index = 0; index < assets.inventory_items.size(); ++index) {
+        const auto code = std::to_string(index + 1U);
+        write_text_entry("items.name." + code,
+                         assets.inventory_items[index].name);
+        write_text_entry("items.category." + code,
+                         assets.inventory_items[index].category);
+    }
+    const auto item_detail_texts =
+        shadowrun::graphics::read_genesis_field_action_detail_texts(rom);
+    for (std::size_t index = 0; index < item_detail_texts.size(); ++index) {
+        write_text_entry("items.action_detail." + std::to_string(index),
+                         item_detail_texts[index]);
+    }
     write_text_entry("hotel.options.title", hotel_text.title);
     write_text_entry("hotel.options.separator", hotel_text.separator);
     write_text_entry("hotel.option.karma_screen", hotel_text.options[0]);
@@ -1423,19 +1427,22 @@ void write_asset_readme(const std::filesystem::path& root) {
               "remain separate; "
               "it does not contain full-screen flipbook samples or an aggregate "
               "serializer. The field command overview's ROM-derived archetype, "
-              "runner, status, power, armor, item-detail, and item strings are kept in "
+              "runner, status, power, and armor strings are kept in "
               "`menu/field/text.tsv` and exposed through the `menu.field.text` "
               "manifest alias. Command labels, menu dialogue, service titles, "
-              "shop category headings, and transaction copy are emitted in "
+              "shop category headings, item names/categories/details, and "
+              "transaction copy are emitted in "
               "`dialogue/script-text.lua`; `gameplay/scripts/shop.lua` binds "
-              "Ares categories and message keys. The spell-capable Magic panel is an individually "
+              "Ares categories and message keys, while "
+              "`gameplay/scripts/items.lua` maps source item IDs to their "
+              "name/category/detail keys. The spell-capable Magic panel is an individually "
               "named RGBA overlay. Item art is grouped under items/weapons, "
               "items/first-aid, items/miscellaneous, items/magic, and items/armor. "
               "The shared field dialogue frames and A/B/C marker sprites are "
               "grouped under dialogue/panel, with speaker portraits under "
               "dialogue/portraits. ROM-derived Stoker and field interaction "
               "text, Hotel menu and status text, Pocket Secretary root menu "
-              "text, field-service titles, and shop text are emitted as "
+              "text, field-service titles, shop text, and item descriptions are emitted as "
               "`dialogue/script-text.lua` and consumed by the gameplay script "
               "runtime. `gameplay/scripts/hotel.lua` and "
               "`gameplay/scripts/pocket_secretary.lua` provide cursor-menu "
@@ -1703,7 +1710,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     const auto assets = shadowrun::graphics::decode_genesis_native_assets(rom);
     write_field_menu_text_catalog(rom, root, assets);
     write_notebook_tips_text_asset(root, assets);
-    write_dialogue_text_script(rom, root);
+    write_dialogue_text_script(rom, root, assets);
     const auto write = [&](const std::string& name,
                            const shadowrun::native::NativeImage& image,
                            const std::string& kind,

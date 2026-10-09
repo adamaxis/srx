@@ -840,6 +840,7 @@ private:
     bool load_hotel_menu_content();
     bool load_pocket_secretary_menu_content();
     bool load_ares_shop_menu_content();
+    bool load_item_menu_content();
     bool load_field_elevator_selector_assets(
         const ConversionAssetCatalog& catalog);
     bool open_field_elevator_selector();

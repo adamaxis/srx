@@ -166,6 +166,10 @@ int main() {
                 "Lua shop title or category headings are not bound") ||
         !expect(shop->text_keys.transaction_prompt ==
                     "shop.transaction.prompt" &&
+                    shop->text_keys.universal_clips_title ==
+                        "shop.universal_clips.title" &&
+                    shop->text_keys.universal_clips_description ==
+                        "shop.universal_clips.description" &&
                     shop->text_keys.no_inventory_slot ==
                         "shop.transaction.no_inventory_slot" &&
                     shop->text_keys.insufficient_funds ==
@@ -209,8 +213,46 @@ int main() {
                     purchase_price != nullptr &&
                     *purchase_price == "Price        $" &&
                     first_category_title != nullptr &&
-                    *first_category_title == " Available Weapons  ",
+                    *first_category_title == " Available Weapons  " &&
+                    scripts.dialogue_text(
+                        shop->text_keys.universal_clips_title) != nullptr &&
+                    *scripts.dialogue_text(
+                        shop->text_keys.universal_clips_title) ==
+                        "Universal\nGun Clips" &&
+                    scripts.dialogue_text(
+                        shop->text_keys.universal_clips_description) != nullptr &&
+                    scripts.dialogue_text(
+                        shop->text_keys.universal_clips_description)->find(
+                        "Cost per Clip") != std::string::npos,
                 "Lua shop text keys do not resolve to source-derived copy")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
+    const auto items = scripts.item_catalog();
+    if (!expect(items.has_value() && items->items.size() == 50U &&
+                    items->detail_text_keys.size() == 32U &&
+                    items->detail_label_keys.size() == 3U &&
+                    items->items[0].code == 1U &&
+                    items->items[0].name_key == "items.name.1" &&
+                    items->items[49].code == 50U &&
+                    items->items[49].category_key == "items.category.50" &&
+                    items->detail_text_keys[31] == "items.action_detail.31",
+                "Lua item catalog does not map the source item/detail tables") ||
+        !expect(scripts.dialogue_text(items->items[0].name_key) != nullptr &&
+                    *scripts.dialogue_text(items->items[0].name_key) ==
+                        "Streetline" &&
+                    scripts.dialogue_text(items->items[0].category_key) !=
+                        nullptr &&
+                    *scripts.dialogue_text(items->items[0].category_key) ==
+                        "Special" &&
+                    scripts.dialogue_text(items->items[15].category_key) !=
+                        nullptr &&
+                    scripts.dialogue_text(items->items[15].category_key)->empty() &&
+                    scripts.dialogue_text(items->detail_text_keys[0]) != nullptr &&
+                    *scripts.dialogue_text(items->detail_text_keys[0]) ==
+                        "A small, cheap hold-out\npistol.\nLight damage, low power.",
+                "Lua item text does not preserve ROM names, blank cells, and detail copy")) {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }

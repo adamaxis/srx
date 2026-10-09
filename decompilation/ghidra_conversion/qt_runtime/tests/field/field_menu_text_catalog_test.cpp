@@ -36,12 +36,8 @@ int main() {
         text.catalog.field_service_title_destinations[1] != 0xC110U ||
         !text.catalog.field_service_action_titles[1].empty() ||
         !text.catalog.field_service_action_titles[31].empty() ||
-        text.catalog.field_service_universal_clips_title !=
-            "Universal\nGun Clips" ||
-        text.catalog.field_service_universal_clips_description.find(
-            "These clips may be used in\nany gun.") != 0U ||
-        text.catalog.field_service_universal_clips_description.find(
-            "Cost per Clip") == std::string::npos ||
+        !text.catalog.field_service_universal_clips_title.empty() ||
+        !text.catalog.field_service_universal_clips_description.empty() ||
         text.catalog.archetype_names[2] != "Gator" ||
         text.catalog.archetype_names[3] != "Shaman" ||
         text.catalog.race_names !=
@@ -51,9 +47,9 @@ int main() {
             std::array<std::string, kFieldMenuClassNameCount>{
                 "Mage   ", "Shaman ", "Samurai", "Decker "} ||
         text.catalog.runner_names[0] != "Joshua" ||
-        text.catalog.item_detail_labels[0] != "ammo" ||
-        text.catalog.item_detail_labels[1] != "uses" ||
-        text.catalog.item_detail_labels[2] != "rtng" ||
+        !text.catalog.item_detail_labels[0].empty() ||
+        !text.catalog.item_detail_labels[1].empty() ||
+        !text.catalog.item_detail_labels[2].empty() ||
         text.catalog.cyberware_title_lines[0] != " CYBERWARE" ||
         text.catalog.cyberware_title_lines[1] !=
             std::string("[") + std::string(10U, '\\') ||
@@ -134,8 +130,11 @@ int main() {
         !text.catalog.shop_protected_sale.empty() ||
         !text.catalog.shop_sale_quote_heading.empty() ||
         !text.catalog.shop_purchase_price_heading.empty() ||
-        text.catalog.field_action_detail_texts[16] !=
-            "A slap patch that instantly\nincreases mental health\nby 20%." ||
+        !text.catalog.field_action_detail_texts[0].empty() ||
+        !text.catalog.field_action_detail_texts[16].empty() ||
+        !text.catalog.item_detail_labels[0].empty() ||
+        !text.catalog.item_names[0].empty() ||
+        !text.catalog.item_categories[15].empty() ||
         text.catalog.action_trade_recipient_label != "Give to" ||
         text.catalog.action_trade_full_inventory_message !=
             "  has a full\n  inventory.\n\nPress a button\n to continue." ||
@@ -169,8 +168,7 @@ int main() {
         text.catalog.armor_labels[1][0] != "   Armor    " ||
         text.catalog.armor_labels[1][1] != "  Clothing  " ||
         text.catalog.power_labels[0].empty() ||
-        !text.catalog.runner_names[1].empty() ||
-        !text.catalog.item_categories[15].empty()) {
+        !text.catalog.runner_names[1].empty()) {
         std::cerr << "field menu text catalog does not match source labels\n";
         return 3;
     }

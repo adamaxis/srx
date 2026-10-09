@@ -4081,6 +4081,9 @@ bool FieldSceneRuntime::bootstrap(
     if (!load_ares_shop_menu_content()) {
         return false;
     }
+    if (!load_item_menu_content()) {
+        return false;
+    }
 
     // Dialogue is optional during initial field bootstrap because the player
     // does not start inside an NPC prompt. Load it once here so the later
@@ -6876,7 +6879,11 @@ bool FieldSceneRuntime::load_ares_shop_menu_content() {
         return true;
     };
     const auto& keys = field_shop_definition_->text_keys;
-    if (!copy_shop_text(keys.transaction_prompt,
+    if (!copy_shop_text(keys.universal_clips_title,
+                        field_menu_text_.field_service_universal_clips_title) ||
+        !copy_shop_text(keys.universal_clips_description,
+                        field_menu_text_.field_service_universal_clips_description) ||
+        !copy_shop_text(keys.transaction_prompt,
                         field_menu_text_.shop_transaction_prompt) ||
         !copy_shop_text(keys.no_inventory_slot,
                         field_menu_text_.shop_no_inventory_slot) ||
@@ -6893,6 +6900,56 @@ bool FieldSceneRuntime::load_ares_shop_menu_content() {
         return fail("Ares shop Lua transaction text is incomplete");
     }
     source_boundary("field.ares_shop.menu_content_loaded_from_lua");
+    return true;
+}
+
+bool FieldSceneRuntime::load_item_menu_content() {
+    const auto fail = [this](std::string message) {
+        failure_ = std::move(message);
+        source_boundary("field.bootstrap.item_script_invalid");
+        return false;
+    };
+    const auto catalog = game_scripts_.item_catalog();
+    if (!catalog.has_value() ||
+        catalog->items.size() != field_menu_text_.item_names.size() ||
+        catalog->detail_text_keys.size() !=
+            field_menu_text_.field_action_detail_texts.size()) {
+        return fail(game_scripts_.failure().empty()
+                        ? "Lua item catalog does not match source table sizes"
+                        : game_scripts_.failure());
+    }
+    for (std::size_t index = 0; index < catalog->items.size(); ++index) {
+        const auto& item = catalog->items[index];
+        if (item.code != index + 1U) {
+            return fail("Lua item catalog changed source item order");
+        }
+        const auto* name = game_scripts_.dialogue_text(item.name_key);
+        const auto* category = game_scripts_.dialogue_text(item.category_key);
+        if (name == nullptr || category == nullptr) {
+            return fail("Lua item name or category text is incomplete");
+        }
+        field_menu_text_.item_names[index] = *name;
+        field_menu_text_.item_categories[index] = *category;
+    }
+    for (std::size_t index = 0; index < catalog->detail_text_keys.size();
+         ++index) {
+        const auto* detail =
+            game_scripts_.dialogue_text(catalog->detail_text_keys[index]);
+        if (detail == nullptr) {
+            return fail("Lua item detail text is incomplete");
+        }
+        field_menu_text_.field_action_detail_texts[index] = *detail;
+    }
+    for (std::size_t index = 0;
+         index < catalog->detail_label_keys.size(); ++index) {
+        const auto* label =
+            game_scripts_.dialogue_text(catalog->detail_label_keys[index]);
+        if (label == nullptr) {
+            return fail("Lua item detail labels are incomplete");
+        }
+        field_menu_text_.item_detail_labels[index] = *label;
+    }
+    source_boundary("field.item.menu_content_loaded_from_lua");
     return true;
 }
 

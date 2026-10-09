@@ -23,6 +23,8 @@ constexpr std::size_t kMaximumMapEventRules = 512U;
 constexpr std::size_t kMaximumMenuChoices = 7U;
 constexpr std::size_t kMaximumShopGroups = 8U;
 constexpr std::size_t kMaximumShopOffers = 8U;
+constexpr std::size_t kMaximumItemCatalogEntries = 50U;
+constexpr std::size_t kMaximumItemDetailTextEntries = 32U;
 constexpr std::size_t kMaximumIdentifierLength = 96U;
 constexpr std::size_t kMaximumStoryFacts = 4096U;
 constexpr std::size_t kMaximumDialogueTextEntries = 1024U;
@@ -866,8 +868,9 @@ bool GameScriptRuntime::load_package(
             const auto* text = string_value
                                    ? lua_tolstring(state, -1, &text_length)
                                    : nullptr;
+            // Empty Lua strings represent source item categories that are
+            // intentionally blank; missing keys remain distinguishable.
             const bool valid_text = string_value && text != nullptr &&
-                                    text_length > 0U &&
                                     text_length <= kMaximumDialogueTextBytes;
             if (!valid_key || !valid_identifier(key) || !valid_text ||
                 parsed_texts.size() >= kMaximumDialogueTextEntries) {
@@ -992,6 +995,10 @@ std::optional<ScriptShopDefinition> GameScriptRuntime::shop_definition(
                valid_identifier(value);
     };
     const bool text_keys_valid =
+        read_text_key("universal_clips_title",
+                      definition.text_keys.universal_clips_title) &&
+        read_text_key("universal_clips_description",
+                      definition.text_keys.universal_clips_description) &&
         read_text_key("transaction_prompt",
                       definition.text_keys.transaction_prompt) &&
         read_text_key("no_inventory_slot",
@@ -1102,6 +1109,106 @@ std::optional<ScriptShopDefinition> GameScriptRuntime::shop_definition(
     lua_settop(state, stack_base);
     impl_->failure.clear();
     return definition;
+}
+
+std::optional<ScriptItemCatalog> GameScriptRuntime::item_catalog() {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "Lua runtime is unavailable for item data";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<ScriptItemCatalog> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("items")) {
+        return fail("items.lua module is unavailable");
+    }
+    const auto module_index = lua_absindex(state, -1);
+    ScriptItemCatalog catalog;
+
+    lua_getfield(state, module_index, "catalog");
+    if (!lua_istable(state, -1)) {
+        return fail("items.catalog must be an array");
+    }
+    const auto items_index = lua_absindex(state, -1);
+    const auto item_count = lua_rawlen(state, items_index);
+    if (item_count != kMaximumItemCatalogEntries) {
+        return fail("items.catalog does not match the 50 source item IDs");
+    }
+    catalog.items.reserve(item_count);
+    std::set<std::uint8_t> item_codes;
+    for (std::size_t index = 1U; index <= item_count; ++index) {
+        lua_rawgeti(state, items_index, static_cast<lua_Integer>(index));
+        if (!lua_istable(state, -1)) {
+            return fail("items.catalog contains a non-record value");
+        }
+        const auto item_index = lua_absindex(state, -1);
+        std::uint32_t code = 0U;
+        ScriptItemTextKeys item;
+        const bool valid =
+            read_field_integer(state, item_index, "code", 50U, code) &&
+            code > 0U &&
+            read_field_string(state, item_index, "name_key", item.name_key) &&
+            valid_identifier(item.name_key) &&
+            read_field_string(state, item_index, "category_key",
+                              item.category_key) &&
+            valid_identifier(item.category_key);
+        lua_pop(state, 1);
+        if (!valid ||
+            !item_codes.insert(static_cast<std::uint8_t>(code)).second) {
+            return fail("items.catalog contains an invalid or duplicate ID");
+        }
+        item.code = static_cast<std::uint8_t>(code);
+        catalog.items.push_back(std::move(item));
+    }
+    lua_pop(state, 1);
+
+    lua_getfield(state, module_index, "detail_text_keys");
+    if (!lua_istable(state, -1) ||
+        lua_rawlen(state, -1) != kMaximumItemDetailTextEntries) {
+        return fail("items.detail_text_keys must contain 32 source entries");
+    }
+    const auto details_index = lua_absindex(state, -1);
+    catalog.detail_text_keys.reserve(kMaximumItemDetailTextEntries);
+    for (std::size_t index = 1U;
+         index <= kMaximumItemDetailTextEntries; ++index) {
+        lua_rawgeti(state, details_index, static_cast<lua_Integer>(index));
+        std::string key;
+        const bool valid = read_string(state, -1, key) &&
+                           valid_identifier(key);
+        lua_pop(state, 1);
+        if (!valid) {
+            return fail("items.detail_text_keys contains an invalid key");
+        }
+        catalog.detail_text_keys.push_back(std::move(key));
+    }
+    lua_pop(state, 1);
+
+    lua_getfield(state, module_index, "detail_label_keys");
+    if (!lua_istable(state, -1) ||
+        lua_rawlen(state, -1) != catalog.detail_label_keys.size()) {
+        return fail("items.detail_label_keys must contain three source labels");
+    }
+    const auto labels_index = lua_absindex(state, -1);
+    for (std::size_t index = 0; index < catalog.detail_label_keys.size();
+         ++index) {
+        lua_rawgeti(state, labels_index, static_cast<lua_Integer>(index + 1U));
+        const bool valid = read_string(state, -1,
+                                       catalog.detail_label_keys[index]) &&
+                           valid_identifier(catalog.detail_label_keys[index]);
+        lua_pop(state, 1);
+        if (!valid) {
+            return fail("items.detail_label_keys contains an invalid key");
+        }
+    }
+
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return catalog;
 }
 
 void GameScriptRuntime::set_story_state(const StoryFacts& facts) {

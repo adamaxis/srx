@@ -96,8 +96,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::array<bool, kMagicSpellTextCount> magic_spell_description_found{};
     std::array<bool, kFieldServiceTitleCount>
         field_service_title_destination_found{};
-    bool field_service_universal_clips_title_found = false;
-    bool field_service_universal_clips_description_found = false;
     std::array<bool, kCyberdeckUnavailableLineCount>
         pocket_secretary_cyberdeck_line_found{};
     std::array<bool, kPocketSecretaryGroupItemCount>
@@ -119,11 +117,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::array<std::array<bool, kFieldMenuArmorRowCount>,
                kFieldMenuArmorCount>
         armor_found{};
-    std::array<bool, kFieldMenuItemDetailLabelCount> item_detail_found{};
-    std::array<bool, kFieldMenuItemNameCount> item_found{};
-    std::array<bool, kFieldMenuItemNameCount> item_category_found{};
-    std::array<bool, kFieldActionDetailTextCount>
-        field_action_detail_text_found{};
     std::array<bool, kFieldMenuClipsCommandCount> clips_found{};
     std::array<bool, kFieldMenuClipsCommandCount> clips_trade_found{};
     std::array<bool, 3> clips_trade_prompt_found{};
@@ -230,38 +223,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                     result.catalog.field_service_title_destinations[index] =
                         destination;
                 }
-            }
-            continue;
-        }
-        if (parse_indexed_key(key, "field-action.detail-text.", index) &&
-            index < result.catalog.field_action_detail_texts.size()) {
-            if (field_action_detail_text_found[index]) {
-                result.errors.emplace_back(
-                    "duplicate field menu text row: " + key);
-            } else {
-                field_action_detail_text_found[index] = true;
-                result.catalog.field_action_detail_texts[index] = value;
-            }
-            continue;
-        }
-        if (key == "field-service.universal-clips.title") {
-            if (field_service_universal_clips_title_found) {
-                result.errors.emplace_back(
-                    "duplicate field menu text row: " + key);
-            } else {
-                field_service_universal_clips_title_found = true;
-                result.catalog.field_service_universal_clips_title = value;
-            }
-            continue;
-        }
-        if (key == "field-service.universal-clips.description") {
-            if (field_service_universal_clips_description_found) {
-                result.errors.emplace_back(
-                    "duplicate field menu text row: " + key);
-            } else {
-                field_service_universal_clips_description_found = true;
-                result.catalog.field_service_universal_clips_description =
-                    value;
             }
             continue;
         }
@@ -775,41 +736,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             }
             continue;
         }
-        if (parse_indexed_key(key, "item-detail.", index) &&
-            index < result.catalog.item_detail_labels.size()) {
-            if (item_detail_found[index]) {
-                result.errors.emplace_back("duplicate field menu text row: " +
-                                          key);
-            } else {
-                item_detail_found[index] = true;
-                result.catalog.item_detail_labels[index] = value;
-            }
-            continue;
-        }
-        if (parse_indexed_key(key, "item.", index) && index >= 1U &&
-            index <= result.catalog.item_names.size()) {
-            const auto item_index = index - 1U;
-            if (item_found[item_index]) {
-                result.errors.emplace_back("duplicate field menu text row: " +
-                                          key);
-            } else {
-                item_found[item_index] = true;
-                result.catalog.item_names[item_index] = value;
-            }
-            continue;
-        }
-        if (parse_indexed_key(key, "item-category.", index) && index >= 1U &&
-            index <= result.catalog.item_categories.size()) {
-            const auto item_index = index - 1U;
-            if (item_category_found[item_index]) {
-                result.errors.emplace_back("duplicate field menu text row: " +
-                                          key);
-            } else {
-                item_category_found[item_index] = true;
-                result.catalog.item_categories[item_index] = value;
-            }
-            continue;
-        }
         result.errors.emplace_back("unknown field menu text row: " + key);
     }
     if (!header_seen) {
@@ -920,9 +846,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             }
         }
     }
-    add_missing_entries(item_detail_found, "item-detail.", result.errors);
-    add_missing_entries(item_found, "item.", result.errors);
-    add_missing_entries(item_category_found, "item-category.", result.errors);
     add_missing_entries(magic_spell_name_found, "magic.spell.name.",
                         result.errors);
     add_missing_entries(magic_spell_description_found,
@@ -942,12 +865,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                         "notebook.mr-johnson.detail.", result.errors);
     add_missing_entries(field_service_title_destination_found,
                         "field-service.title-destination.", result.errors);
-    add_missing_entries(field_action_detail_text_found,
-                        "field-action.detail-text.", result.errors);
-    require_named("field-service.universal-clips.title",
-                  field_service_universal_clips_title_found);
-    require_named("field-service.universal-clips.description",
-                  field_service_universal_clips_description_found);
     add_missing_entries(dismiss_runner_label_found, "dismiss.label.",
                         result.errors);
     const auto decode_newlines = [](std::string& value) {
@@ -962,12 +879,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     decode_newlines(result.catalog.first_aid_not_injured);
     decode_newlines(result.catalog.action_trade_full_inventory_message);
     decode_newlines(result.catalog.action_automatic_use_message);
-    for (auto& detail_text : result.catalog.field_action_detail_texts) {
-        decode_newlines(detail_text);
-    }
-    decode_newlines(result.catalog.field_service_universal_clips_title);
-    decode_newlines(
-        result.catalog.field_service_universal_clips_description);
     decode_newlines(result.catalog.magic_panel_metric_labels);
     decode_newlines(result.catalog.magic_force_posture_labels);
     for (auto& detail : result.catalog.notebook_mr_johnson_details) {

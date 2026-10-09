@@ -11,8 +11,6 @@ field-service.title-destination.8	49430
 field-service.title-destination.9	49434
 field-service.title-destination.10	49420
 field-service.title-destination.11	49420
-field-service.universal-clips.title	Universal\nGun Clips
-field-service.universal-clips.description	These clips may be used in\nany gun.\n\nWhen switching weapons, the\nclip transfers the percentage\nof ammo left to the new gun.\n\n     Cost per Clip    $
 pocket-secretary.cyberdeck.line.0	" You do not have"
 pocket-secretary.cyberdeck.line.1	"  a cyberdeck!!"
 pocket-secretary.cyberdeck.line.2	" Keep looking."
@@ -175,38 +173,6 @@ action.cannot-discard	Cannot discard
 action.cannot-trade	Cannot trade magic items!
 action.choice-no	No
 action.choice-yes	Yes
-field-action.detail-text.0	A small, cheap hold-out\npistol.\nLight damage, low power.
-field-action.detail-text.1	A slim-line personal weapon\nfavored by street thugs.\nLight damage, light power.
-field-action.detail-text.2	This light design is popular\namong the style-conscious.\nLight damage, light power.
-field-action.detail-text.3	Designed for light security\nwork.\nLight damage, light power.
-field-action.detail-text.4	This revolver holds less\nammo but more punch.\nMed damage, brutal power.
-field-action.detail-text.5	A sturdy weapon that trades\nfirepower for ammo.\nMed damage, high power.
-field-action.detail-text.6	This menacing gun is popular\namong mercenaries.\nMed damage, high power.
-field-action.detail-text.7	A common Soviet SMG carbine.\nIt is illegal.\nMed damage, light power.
-field-action.detail-text.8	This SMG is most favored with\nCorp security.  It is illegal.\nMed damage, medium power.
-field-action.detail-text.9	A common SMG for street gangs.\nIt is illegal.\nMed damage, light power.
-field-action.detail-text.10	This autoloading shotgun\nis illegal.\nHigh damage, brutal power.
-field-action.detail-text.11	This pistol-like shotgun\nis illegal.\nHigh damage, high power.
-field-action.detail-text.12	This illegal grenade causes\nphys damage in a large area.\nHigh damage, med-high power.
-field-action.detail-text.13	This grenade casues physical\ndamage in a large area.\nHigh damage, light power.
-field-action.detail-text.14	This grenade causes stun\ndamage in a large area.\nMed damage, brutal power.
-field-action.detail-text.15	A portable first aid kit\nthat can heal wounds based\non the users Biotech skill.
-field-action.detail-text.16	A slap patch that instantly\nincreases mental health\nby 20%.
-field-action.detail-text.17	A slap patch that instantly\nincreases physical health\nby 20%.
-field-action.detail-text.18	This item absorbs drain from\nthe casting of a spell.
-field-action.detail-text.19	This illegal key can open\nMaglocked doors less than or\nequal to its rating.
-field-action.detail-text.20	This illegal kit increases\nthe chances of opening\nMaglocked doors.
-field-action.detail-text.21	Though not as efficient as a\nSmartlink, these allow the\nuser to operate a SmartGun.
-field-action.detail-text.22	A magical weapon that\nenhances the user's accuracy\nand damage.
-field-action.detail-text.23	A Power Focus increases the\npotency of all spells known\nby the user!
-field-action.detail-text.24	Spell Foci are used to\nincrease the potency of\ntheir corresponding spells.
-field-action.detail-text.25	A magical device that reduces\nall types of damage directed\nat the user.
-field-action.detail-text.26	A magical device that\nenhances the combat ability\nof the user.
-field-action.detail-text.27	Durable cloth and mesh.\nPoor weapon protection.\nLow gun protection.
-field-action.detail-text.28	Fashionable body armor.\nLow weapon protection.\nPoor gun protection.
-field-action.detail-text.29	Ribbed, padded and woven.\nFair weapon protection.\nGreat gun protection.
-field-action.detail-text.30	Rigid plates under cloth.\nFair weapon protection.\nGood gun protection.
-field-action.detail-text.31	Can conceal illegal weapons.\nLow weapon protection.\nGood gun protection.
 action.automatic-use.message	This item is\nautomatically\n    used.
 first-aid.prompt	" Heal who??"
 first-aid.label	"    First Aid    "
@@ -272,106 +238,3 @@ armor.5.0	"   Light    "
 armor.5.1	Combat Armor
 armor.6.0	"   Heavy    "
 armor.6.1	Combat Armor
-item-detail.0	ammo
-item-detail.1	uses
-item-detail.2	rtng
-item.1	Streetline
-item-category.1	Special
-item.2	Model 101T
-item-category.2	Light Pistol
-item.3	American L36
-item-category.3	Light Pistol
-item.4	Security 500
-item-category.4	Light Pistol
-item.5	Warhawk
-item-category.5	Heavy Pistol
-item.6	Max-Power
-item-category.6	Heavy Pistol
-item.7	Predator
-item-category.7	Heavy Pistol
-item.8	AK-97
-item-category.8	SMG
-item.9	HK227-S
-item-category.9	SMG
-item.10	Mach 22
-item-category.10	SMG
-item.11	Allegiance
-item-category.11	Shotgun
-item.12	Roomsweeper
-item-category.12	Shotgun
-item.13	Frag
-item-category.13	Grenade
-item.14	Scatter
-item-category.14	Grenade
-item.15	Concussion
-item-category.15	Grenade
-item.16	Medkit
-item-category.16	""
-item.17	Stim
-item-category.17	Patch
-item.18	Trauma
-item-category.18	Patch
-item.19	Fetish
-item-category.19	""
-item.20	Maglock
-item-category.20	Passkey
-item.21	Electronic
-item-category.21	Kit
-item.22	Smart
-item-category.22	Goggles
-item.23	Enchanted
-item-category.23	Dagger
-item.24	Power
-item-category.24	Focus
-item.25	Flame Dart
-item-category.25	Spell Focus
-item.26	Flame Bolt
-item-category.26	Spell Focus
-item.27	Hellblast
-item-category.27	Spell Focus
-item.28	Invisibility
-item-category.28	Spell Focus
-item.29	Sleep
-item-category.29	Spell Focus
-item.30	Stink
-item-category.30	Spell Focus
-item.31	Supr Barrier
-item-category.31	Spell Focus
-item.32	Mana Zap
-item-category.32	Spell Focus
-item.33	Mana Blast
-item-category.33	Spell Focus
-item.34	Mana Storm
-item-category.34	Spell Focus
-item.35	Rockskin
-item-category.35	Spell Focus
-item.36	Heal Wounds
-item-category.36	Spell Focus
-item.37	Confusion
-item-category.37	Spell Focus
-item.38	Barrier
-item-category.38	Spell Focus
-item.39	Protection
-item-category.39	Talisman
-item.40	Combat Sense
-item-category.40	Spell Lock
-item.41	Rat
-item-category.41	Totem
-item.42	Gator
-item-category.42	Totem
-item.43	Bear
-item-category.43	Totem
-item.44	Armor Vest
-item-category.44	""
-item.45	Armor
-item-category.45	Clothing
-item.46	Armor
-item-category.46	Jacket
-item.47	Vest
-item-category.47	w/Plates
-item.48	Lined
-item-category.48	Duster
-item.49	Light
-item-category.49	Combat Armor
-item.50	Heavy
-item-category.50	Combat Armor

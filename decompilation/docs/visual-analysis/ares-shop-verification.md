@@ -100,7 +100,9 @@ the field approach, fade, prompt, category page, and field return; see
   service headings, and seven shop transaction strings now live in
   `dialogue/script-text.lua`;
   `gameplay/scripts/shop.lua` associates the Ares title, six category heading
-  pairs, stock, and transaction-message keys.
+  pairs, stock, special clips copy, and transaction-message keys. The shared
+  `items.lua` catalog maps the 50 source item IDs and all 32 detail rows to
+  ROM-generated text; the native controller still owns item codes and state.
 - Mode-entry sprite: `0x1FA78` selects profile `0x1220C0`; its ROM pointers are
   palette `0x1219BC`, pattern stream `0x12C84E`, and sprite stream `0x12266A`.
   The offline importer emits the profile's 7x9 sprite as
@@ -207,9 +209,9 @@ returns purchase, sale, source-boundary, runner-change, and field-return
 requests. It does not own a second inventory or wallet. The live presenter
 consumes the named background, six extracted selected-tab images, fixed-width
 heading records, existing named item images, and a dedicated E-offer art/text
-asset. Source text records include the common prompt, transaction feedback,
-purchase/sale headings, and the 32 detail strings resolved from the ROM pointer
-table during offline extraction. `ShopTransactionService` delegates to the
+asset. `shop.lua` binds the common prompt, transaction feedback, purchase/sale
+headings, and special clips text; `items.lua` maps the 50 item records and 32
+detail strings generated from the ROM pointer table. `ShopTransactionService` delegates to the
 existing typed purchase/removal conversions, and the field session applies
 successful mutations to its active runner and new-game wallet. Debug QA writes
 introduction, category, selected-item, purchase failure/cancel/accept, Stim

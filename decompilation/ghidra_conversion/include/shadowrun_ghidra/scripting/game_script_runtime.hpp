@@ -47,6 +47,8 @@ struct ScriptShopOfferGroup {
 };
 
 struct ScriptShopTextKeys {
+    std::string universal_clips_title;
+    std::string universal_clips_description;
     std::string transaction_prompt;
     std::string no_inventory_slot;
     std::string insufficient_funds;
@@ -61,6 +63,18 @@ struct ScriptShopDefinition {
     std::string title_key;
     ScriptShopTextKeys text_keys;
     std::vector<ScriptShopOfferGroup> groups;
+};
+
+struct ScriptItemTextKeys {
+    std::uint8_t code = 0;
+    std::string name_key;
+    std::string category_key;
+};
+
+struct ScriptItemCatalog {
+    std::vector<ScriptItemTextKeys> items;
+    std::vector<std::string> detail_text_keys;
+    std::array<std::string, 3> detail_label_keys{};
 };
 
 struct ScriptDialogueRequest {
@@ -127,6 +141,7 @@ public:
         std::string_view module, std::string_view function);
     std::optional<ScriptShopDefinition> shop_definition(
         std::string_view shop_id);
+    std::optional<ScriptItemCatalog> item_catalog();
     ScriptTaskStep start_task(
         std::string_view module, std::string_view function);
     ScriptTaskStep complete_native_operation(bool succeeded);

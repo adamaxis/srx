@@ -10,9 +10,9 @@
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
-// The count is the selector set used by the source command overview. Root
-// labels are loaded through the Lua menu content; other field text is loaded
-// as ordinary host strings without following ROM pointers at runtime.
+// These dimensions mirror source field-menu records. Script-backed text is
+// resolved into this typed presenter catalog during field bootstrap; numeric
+// routes and the remaining field-only labels stay in the direct asset catalog.
 inline constexpr std::size_t kCommandOverviewLabelCount = 7U;
 inline constexpr std::size_t kFieldMenuArchetypeNameCount = 4U;
 inline constexpr std::size_t kFieldMenuRaceNameCount = 5U;
