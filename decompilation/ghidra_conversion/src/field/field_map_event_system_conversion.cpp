@@ -187,19 +187,4 @@ std::vector<FieldMapEventActivation> FieldMapEventSystem::evaluate(
     return activations;
 }
 
-std::vector<FieldMapEventRule> default_field_map_event_rules() {
-    // New Game's intro leaves the one-shot FFE18B marker set. The first field
-    // scene uses the known scene-2 spawn at 0x3CE0/0x2D00; its matching entry
-    // event starts the ordinary heading-zero movement continuation.
-    return {{0x00020001U,
-             2U,
-             FieldMapEventTrigger::scene_entry,
-             FieldMapEventCoordinateScope{0x3CE0U, 0x3CE0U,
-                                          0x2D00U, 0x2D00U},
-             field_map_event_flag(
-                 FieldMapEventStateFlag::new_game_opening_completed),
-             FieldMapEventRepeatPolicy::once_per_session,
-             FieldMapEventScriptAction::start_new_game_opening_walk}};
-}
-
 } // namespace shadowrun::ghidra_conversion

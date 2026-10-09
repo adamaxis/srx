@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(shadowrun_ghidra_conversion LANGUAGES CXX)
+project(shadowrun_ghidra_conversion LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -15,6 +15,54 @@ enable_testing()
 # the reviewed behavioral modules in conversion_modules.cmake rather than as
 # one undifferentiated export-shaped target.
 include(conversion_modules.cmake)
+
+# Pinned, upstream Lua 5.4 source is built as a static C library so both the
+# Qt conversion runtime and script-content QA work without a machine-installed
+# Lua DLL or a configure-time network dependency.
+add_library(shadowrun_lua_5_4_9 STATIC
+    third_party/lua-5.4.9/src/lapi.c
+    third_party/lua-5.4.9/src/lcode.c
+    third_party/lua-5.4.9/src/lctype.c
+    third_party/lua-5.4.9/src/ldebug.c
+    third_party/lua-5.4.9/src/ldo.c
+    third_party/lua-5.4.9/src/ldump.c
+    third_party/lua-5.4.9/src/lfunc.c
+    third_party/lua-5.4.9/src/lgc.c
+    third_party/lua-5.4.9/src/llex.c
+    third_party/lua-5.4.9/src/lmem.c
+    third_party/lua-5.4.9/src/lobject.c
+    third_party/lua-5.4.9/src/lopcodes.c
+    third_party/lua-5.4.9/src/lparser.c
+    third_party/lua-5.4.9/src/lstate.c
+    third_party/lua-5.4.9/src/lstring.c
+    third_party/lua-5.4.9/src/ltable.c
+    third_party/lua-5.4.9/src/ltm.c
+    third_party/lua-5.4.9/src/lundump.c
+    third_party/lua-5.4.9/src/lvm.c
+    third_party/lua-5.4.9/src/lzio.c
+    third_party/lua-5.4.9/src/lauxlib.c
+    third_party/lua-5.4.9/src/lbaselib.c
+    third_party/lua-5.4.9/src/lmathlib.c
+    third_party/lua-5.4.9/src/lstrlib.c
+    third_party/lua-5.4.9/src/ltablib.c
+    third_party/lua-5.4.9/src/lutf8lib.c
+)
+target_include_directories(shadowrun_lua_5_4_9 PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/lua-5.4.9/src")
+set_target_properties(shadowrun_lua_5_4_9 PROPERTIES
+    C_STANDARD 99
+    C_STANDARD_REQUIRED ON
+    C_EXTENSIONS OFF)
+if (UNIX)
+    target_link_libraries(shadowrun_lua_5_4_9 PUBLIC m)
+endif()
+
+add_library(shadowrun_gameplay_script_runtime STATIC
+    src/scripting/game_script_runtime.cpp)
+target_include_directories(shadowrun_gameplay_script_runtime PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_link_libraries(shadowrun_gameplay_script_runtime
+    PUBLIC shadowrun_ghidra_conversion_modules shadowrun_lua_5_4_9)
 
 # This is the Ghidra-conversion runtime composition layer. Its implementation
 # stays in src/integration/, but the runner and any future conversion-runtime

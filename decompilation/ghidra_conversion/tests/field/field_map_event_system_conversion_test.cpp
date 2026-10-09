@@ -22,9 +22,18 @@ int main() {
     using namespace shadowrun::ghidra_conversion;
 
     {
-        FieldMapEventSystem system(default_field_map_event_rules());
         const auto flag = field_map_event_flag(
             FieldMapEventStateFlag::new_game_opening_completed);
+        FieldMapEventSystem system({{
+            0x00020001U,
+            2U,
+            FieldMapEventTrigger::scene_entry,
+            FieldMapEventCoordinateScope{0x3CE0U, 0x3CE0U,
+                                         0x2D00U, 0x2D00U},
+            flag,
+            FieldMapEventRepeatPolicy::once_per_session,
+            FieldMapEventScriptAction::start_new_game_opening_walk,
+        }});
         auto activations = system.dispatch_scene_entry(
             {2U, 0x3CE0U, 0x2D00U, 0U, true});
         if (!expect(activations.empty(),

@@ -120,6 +120,12 @@ int main() {
     FieldDialogueRuntime runtime(
         [&boundary](const std::string_view reason) { boundary = reason; },
         arrival_callbacks);
+    scripting::GameScriptRuntime gameplay_scripts;
+    if (!gameplay_scripts.load_package(SHADOWRUN_GAMEPLAY_SCRIPT_ROOT)) {
+        std::cerr << gameplay_scripts.failure() << '\n';
+        return 70;
+    }
+    runtime.set_script_runtime(&gameplay_scripts);
     runtime.set_room_payment_callback([&room_payment_funds,
                                        &room_payment_outcome]() {
         StokerMotelRoomPaymentState state{};
@@ -745,8 +751,10 @@ int main() {
         return 77;
     }
 
+    StokerMotelStoryState first_visit_state{};
     if (!expect(runtime.open_stoker_story_entry(
-                    StokerMotelStoryEntryAction::opening_dialogue)) ||
+                    StokerMotelStoryEntryAction::opening_dialogue,
+                    first_visit_state)) ||
         !expect(runtime.panel().text_segments[0].find("battered sign") !=
                 std::string_view::npos) ||
         !expect(runtime.panel().has_more) ||
@@ -776,12 +784,14 @@ int main() {
         !expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::returned_to_field) ||
         !expect(runtime.open_stoker_story_entry(
-                    StokerMotelStoryEntryAction::package_offer)) ||
+                    StokerMotelStoryEntryAction::package_offer,
+                    StokerMotelStoryState{true, false, false})) ||
         !expect(runtime.panel().option_count == 3U)) {
         return 72;
     }
     if (!expect(runtime.open_stoker_story_entry(
-                    StokerMotelStoryEntryAction::ordinary_motel)) ||
+                    StokerMotelStoryEntryAction::ordinary_motel,
+                    StokerMotelStoryState{true, true, true})) ||
         !expect(runtime.panel().option_count == 2U)) {
         return 73;
     }

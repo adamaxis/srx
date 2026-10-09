@@ -5,18 +5,15 @@ namespace {
 
 constexpr std::string_view kArrivalTitle = "stoker.motel.arrival.title";
 constexpr std::string_view kMore = "stoker.motel.arrival.more";
-constexpr std::string_view kManagerTitle = "stoker.motel.manager.title";
-constexpr std::string_view kCrash = "stoker.motel.option.crash";
-constexpr std::string_view kLeave = "stoker.motel.option.leave";
 constexpr std::string_view kAmbushTitle =
     "stoker.motel.street-ambush.title";
 constexpr std::string_view kRoomTitle = "stoker.motel.room.title";
+constexpr std::string_view kLeave = "stoker.motel.option.leave";
 constexpr std::string_view kPay = "stoker.motel.option.pay";
 constexpr std::string_view kHandoffTitle =
     "stoker.motel.package-handoff.title";
 constexpr std::string_view kQuestionTitle =
     "stoker.motel.package-question.title";
-constexpr std::string_view kPackage = "stoker.motel.option.package";
 constexpr std::string_view kLeaveTitle = "stoker.motel.leave.title";
 constexpr std::string_view kDebtTitle = "stoker.motel.debt.title";
 constexpr std::string_view kPaidTitle = "stoker.motel.room.paid.title";
@@ -48,18 +45,6 @@ StokerMotelPromptView make_sentinel(const StokerMotelPromptId id,
 
 } // namespace
 
-StokerMotelStoryEntryAction resolve_stoker_motel_story_entry(
-    StokerMotelStoryState& state) noexcept {
-    if (state.michael_debt_paid && state.michael_package_collected) {
-        return StokerMotelStoryEntryAction::ordinary_motel;
-    }
-    if (!state.opening_dialogue_seen) {
-        state.opening_dialogue_seen = true;
-        return StokerMotelStoryEntryAction::opening_dialogue;
-    }
-    return StokerMotelStoryEntryAction::package_offer;
-}
-
 StokerMotelPromptView make_stoker_motel_prompt(
     const StokerMotelPromptId id) {
     StokerMotelPromptView view;
@@ -73,21 +58,10 @@ StokerMotelPromptView make_stoker_motel_prompt(
         return view;
 
     case StokerMotelPromptId::manager_greeting:
-        view.title_alias = kManagerTitle;
-        add_option(view, StokerMotelPromptOptionRole::rent_room, kCrash,
-                   StokerMotelPromptCommand::open_room_offer);
-        add_option(view, StokerMotelPromptOptionRole::leave_motel, kLeave,
-                   StokerMotelPromptCommand::open_leave_notice);
-        return view;
-
     case StokerMotelPromptId::manager_greeting_with_package:
-        view.title_alias = kManagerTitle;
-        add_option(view, StokerMotelPromptOptionRole::rent_room, kCrash,
-                   StokerMotelPromptCommand::open_room_offer);
-        add_option(view, StokerMotelPromptOptionRole::leave_motel, kLeave,
-                   StokerMotelPromptCommand::open_leave_notice);
-        add_option(view, StokerMotelPromptOptionRole::collect_package, kPackage,
-                   StokerMotelPromptCommand::open_debt_question);
+        view.source_complete = false;
+        view.source_boundary_reason =
+            "manager menu is defined by the gameplay script package";
         return view;
 
     case StokerMotelPromptId::room_offer:
@@ -132,19 +106,6 @@ StokerMotelPromptView make_stoker_motel_prompt(
 std::optional<StokerMotelPromptId> stoker_motel_prompt_target(
     const StokerMotelPromptId id, const std::size_t option_index) {
     switch (id) {
-    case StokerMotelPromptId::manager_greeting:
-    case StokerMotelPromptId::manager_greeting_with_package:
-        if (option_index == 0U) {
-            return StokerMotelPromptId::room_offer;
-        }
-        if (option_index == 1U) {
-            return StokerMotelPromptId::leave_notice;
-        }
-        if (id == StokerMotelPromptId::manager_greeting_with_package &&
-            option_index == 2U) {
-            return StokerMotelPromptId::debt_question;
-        }
-        return std::nullopt;
     case StokerMotelPromptId::room_offer:
         if (option_index == 1U) {
             return StokerMotelPromptId::leave_notice;

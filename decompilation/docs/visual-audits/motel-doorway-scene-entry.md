@@ -45,8 +45,9 @@ Release builds.
   animation.
 - The indexed service loop at `0x53A78` runs before the generic mode/event
   selector. Its first Stoker service is selected for scene 2/event 2 while
-  FFFC1E bit 0 and FFF0D5 are clear. The native handler resolves typed story
-  state at that point: the first visit opens the special sign/arrival page,
+  FFFC1E bit 0 and FFF0D5 are clear. The Lua runtime loads story flags into
+  global `game.state`, lets the quest script update them, and syncs them back
+  after the call. The first visit opens the special sign/arrival page,
   and a later unpaid visit resolves to the three-choice manager page. A on the
   first page opens that offer, including the option to collect Michael's
   belongings; C opens the debt question and B opens the Jump House referral.
@@ -54,9 +55,9 @@ Release builds.
   the source wallet/story/runner mutations, and opens the package handoff
   record beginning at `0xF487C`. The live Qt route uses a documented 250-nuyen
   QA wallet seed; it checks the net +250 balance, handoff text, paid/collected
-  story state, and clean field return. Typed story-state tests cover an unpaid
-  repeat offer and the ordinary motel result after both completion flags are
-  set. Restored-save wallet and story flags remain unresolved.
+  story state, and clean field return. Lua story-resolution tests cover an
+  unpaid repeat offer and the ordinary motel result after both completion
+  flags are set. Restored-save wallet and story flags remain unresolved.
 - Shared `0x1F246`/`0x1F3C4` presents Stoker's 56x72 portrait and text catalog
   record. Dismissing the paid handoff performs same-scene `0x2BD2` re-entry,
   redraws the native field actor projection, and returns to scene 2 with no
@@ -216,9 +217,12 @@ their own ROM-first and multi-frame audit before being called correct.
 - **Code changed:** the startup coordinator carries completed New Game opening
   state into the field runtime; typed field state arms heading-zero automatic
   movement for that route only, runs it through existing movement/collision,
-  and consumes it after the first field-exit orchestrator pass. The typed map
-  event route invokes the indexed Stoker title service and story-entry state.
-  Loaded saves and ordinary field QA bootstraps do not arm the opening walk.
+  and consumes it after the first field-exit orchestrator pass. Lua content
+  defines the one-shot scene-entry rule; `michael_package.lua` resolves the
+  first/repeat/ordinary quest branch; shared `motel.lua` supplies manager
+  choice IDs. Typed C++ handlers still own
+  movement, room/debt payment, and validated command execution. Loaded saves
+  and ordinary field QA bootstraps do not arm the opening walk.
 - **Behavior implemented:** New Game reaches the ROM C2 doorway with zero
   controller input, publishes event 2, and opens the first Stoker page. A
   enters the three-choice Michael-package offer; C opens the debt question; A
@@ -228,8 +232,9 @@ their own ROM-first and multi-frame audit before being called correct.
   same package offer on an unpaid repeat and ordinary motel service after the
   debt and package flags are both complete. Physical repeat-entry movement
   and restored-save story/wallet state remain open.
-- **Internally checked:** the startup integration and Stoker route CTests both
-  pass in Debug and Release. They assert the completed-opening handoff,
+- **Internally checked:** the Lua runtime, startup integration, Stoker route,
+  field Hotel route, and dialogue runtime CTests pass in Debug and Release.
+  They assert the completed-opening handoff,
   zero-input movement, collision bounds, raw and projected codes, mode/event
   state, indexed service selection, fade counters, the typed speaker, portrait
   alias and text, A/B/C choices, exact-250-nuyen payment, package handoff,

@@ -318,6 +318,7 @@ FieldSceneRuntime::FieldSceneRuntime(
               this->source_boundary(boundary);
           },
           source_audio_event_callback_) {
+    field_dialogue_.set_script_runtime(&game_scripts_);
     field_dialogue_.set_room_payment_callback([this]()
         -> std::optional<StokerMotelRoomPaymentOutcome> {
         if (!field_funds_.has_value()) {
@@ -583,8 +584,37 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                 return false;
             }
 
-            const auto entry_action = resolve_stoker_motel_story_entry(
-                stoker_motel_story_state_);
+            const scripting::StoryFacts story_facts{
+                {"opening_dialogue_seen",
+                 stoker_motel_story_state_.opening_dialogue_seen},
+                {"michael_debt_paid",
+                 stoker_motel_story_state_.michael_debt_paid},
+                {"michael_package_collected",
+                 stoker_motel_story_state_.michael_package_collected}};
+            game_scripts_.set_location_context("motel", "stoker_motel");
+            game_scripts_.set_story_state(story_facts);
+            const auto scripted_entry = game_scripts_.call_string(
+                "michael_package", "motel_entry");
+            if (!scripted_entry.has_value()) {
+                source_boundary("field.dialogue.stoker_story_script_failed");
+                return false;
+            }
+            const auto updated_story = game_scripts_.story_state();
+            if (const auto seen = updated_story.find("opening_dialogue_seen");
+                seen != updated_story.end()) {
+                stoker_motel_story_state_.opening_dialogue_seen = seen->second;
+            }
+            StokerMotelStoryEntryAction entry_action{};
+            if (*scripted_entry == "opening_dialogue") {
+                entry_action = StokerMotelStoryEntryAction::opening_dialogue;
+            } else if (*scripted_entry == "package_offer") {
+                entry_action = StokerMotelStoryEntryAction::package_offer;
+            } else if (*scripted_entry == "ordinary_motel") {
+                entry_action = StokerMotelStoryEntryAction::ordinary_motel;
+            } else {
+                source_boundary("field.dialogue.stoker_story_result_unknown");
+                return false;
+            }
             if ((field_exit_world_flags_ & 0x01U) != 0U &&
                 entry_action != StokerMotelStoryEntryAction::ordinary_motel) {
                 // The payment flag is persistent in the ROM. If this session
@@ -592,8 +622,8 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                 // selector in control rather than inventing a phase.
                 return false;
             }
-
-            if (!field_dialogue_.open_stoker_story_entry(entry_action)) {
+            if (!field_dialogue_.open_stoker_story_entry(
+                    entry_action, stoker_motel_story_state_)) {
                 source_boundary("field.dialogue.stoker_story_entry_unresolved");
             } else {
                 field_palette_fade_steps_ = 0U;
@@ -3887,8 +3917,21 @@ bool FieldSceneRuntime::bootstrap(
     field_collision_probe_state_ = CollisionProbeState{};
     field_movement_behavior_record_ = EntityBehaviorFrameRecord{};
     field_movement_transition_state_ = EntityMovementModeTransitionState{};
-    field_map_event_system_ =
-        FieldMapEventSystem(default_field_map_event_rules());
+    const auto script_directory =
+        startup_state.asset_catalog.catalog.asset_root.parent_path() /
+        "gameplay" / "scripts";
+    if (!game_scripts_.load_package(script_directory)) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.bootstrap.gameplay_scripts_missing");
+        return false;
+    }
+    const auto map_rules = game_scripts_.map_event_rules();
+    if (!map_rules.has_value()) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.bootstrap.map_event_scripts_invalid");
+        return false;
+    }
+    field_map_event_system_ = FieldMapEventSystem(*map_rules);
     field_map_event_state_flags_ = 0U;
     field_palette_fade_steps_ = 0U;
     field_world_activity_scene_entry_pending_ = false;

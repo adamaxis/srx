@@ -3184,12 +3184,21 @@ public:
                           << name << '\n';
                 return false;
             }
-            if (state_.phase == StartupIntegrationPhase::field_ready &&
-                !field_hud_chrome_survives(scene, asset_root_)) {
-                std::cerr << "startup qa: field HUD chrome was not preserved "
-                             "for "
-                          << name << '\n';
-                return false;
+            if (state_.phase == StartupIntegrationPhase::field_ready) {
+                if (field_scene_runtime_.dialogue_open()) {
+                    if (field_hud_chrome_survives(scene, asset_root_) ||
+                        !image_has_green_ink(scene, 88, 16, 216, 120)) {
+                        std::cerr << "startup qa: dialogue did not replace the "
+                                     "field HUD with visible text for "
+                                  << name << '\n';
+                        return false;
+                    }
+                } else if (!field_hud_chrome_survives(scene, asset_root_)) {
+                    std::cerr << "startup qa: field HUD chrome was not preserved "
+                                 "for "
+                              << name << '\n';
+                    return false;
+                }
             }
             if (state_.phase == StartupIntegrationPhase::opening_intro &&
                 state_.opening_intro.scene == OpeningIntroScene::cab_map) {
@@ -4233,6 +4242,56 @@ public:
         if (!write_snapshot("99_field_ready")) {
             return 3;
         }
+
+        // New Game enters the map-event scope at the scene-2 spawn. Let the
+        // content-authored one-shot event run through normal field frames,
+        // then dismiss Stoker's initial offer before checking field menus.
+        if (!field_scene_runtime_.opening_auto_walk_active_for_dump()) {
+            return fail("New Game did not arm the scripted Stoker opening event");
+        }
+        for (std::uint32_t frame = 0U;
+             frame < 256U && !field_scene_runtime_.dialogue_open(); ++frame) {
+            field_scene_runtime_.advance_frame();
+        }
+        const auto& opening_arrival = field_scene_runtime_.dialogue_panel();
+        if (!field_scene_runtime_.dialogue_open() ||
+            field_scene_runtime_.opening_auto_walk_active_for_dump() ||
+            opening_arrival.actor_name != "Stoker" ||
+            opening_arrival.option_count != 1U ||
+            !write_snapshot("opening_stoker_arrival")) {
+            return fail("scripted Stoker opening did not reach its arrival dialogue");
+        }
+        record("field.map_event.stoker_opening_arrival");
+        const auto press_field_button = [this](const std::uint8_t button) {
+            field_scene_runtime_.set_controller_port_byte(button);
+            field_scene_runtime_.advance_frame();
+            field_scene_runtime_.set_controller_port_byte(0U);
+            field_scene_runtime_.advance_frame();
+        };
+        press_field_button(0x40U); // A: open the scripted first-visit menu.
+        const auto& opening_offer = field_scene_runtime_.dialogue_panel();
+        if (!field_scene_runtime_.dialogue_open() ||
+            opening_offer.actor_name != "Stoker" ||
+            opening_offer.option_count != 3U ||
+            opening_offer.options[2].source_label.find("Michael's stuff") ==
+                std::string_view::npos ||
+            !write_snapshot("opening_stoker_package_offer")) {
+            return fail("first-visit Stoker menu did not expose Michael's package choice");
+        }
+        record("field.script_menu.stoker_first_visit");
+        press_field_button(0x10U); // B: choose the scripted leave option.
+        if (!field_scene_runtime_.dialogue_open() ||
+            field_scene_runtime_.dialogue_panel().option_count != 0U ||
+            !write_snapshot("opening_stoker_leave_notice")) {
+            return fail("Stoker leave choice did not replace the menu with its notice");
+        }
+        press_field_button(0x40U); // A: dismiss the notice.
+        if (field_scene_runtime_.dialogue_open() ||
+            field_scene_runtime_.opening_auto_walk_active_for_dump() ||
+            !write_snapshot("opening_stoker_returned_to_field")) {
+            return fail("Stoker dialogue did not cleanly return to the field");
+        }
+        record("field.map_event.stoker_opening_returned_to_field");
 
         // The command overview must be a re-enterable field service, not a
         // one-shot presentation. Drive the same typed controller path as the
@@ -12915,17 +12974,12 @@ int run_field_stoker_collision_to_dialogue_qa(
             package_handoff.text_segments[index].find("Here's the package") !=
                 std::string_view::npos;
     }
-    auto next_story_entry =
-        field_scene.stoker_motel_story_state_for_dump();
-    const auto next_stoker_entry =
-        resolve_stoker_motel_story_entry(next_story_entry);
     if (!field_scene.dialogue_open() ||
         field_scene.field_funds_for_dump() !=
             std::optional<std::uint32_t>{500U} ||
         !field_scene.stoker_motel_story_state_for_dump().michael_debt_paid ||
         !field_scene.stoker_motel_story_state_for_dump()
              .michael_package_collected ||
-        next_stoker_entry != StokerMotelStoryEntryAction::ordinary_motel ||
         package_handoff.actor_name != "Stoker" ||
         package_handoff.option_count != 0U ||
         !package_handoff.returns_to_field || !package_text_present ||
@@ -16644,14 +16698,16 @@ int main(int argc, char** argv) {
                 press_button(0x40U); // A: resolve the source 0xE9 arrival.
                 if (!field_scene.dialogue_open() ||
                     field_scene.dialogue_panel().actor_name != "Stoker" ||
-                    field_scene.dialogue_panel().option_count != 2U ||
-                    capture(output / "manager" / "actual.bmp").isNull()) {
-                    std::cerr << "field Hotel QA: ordinary A did not take the deterministic 0..79 manager branch\n";
+                    field_scene.dialogue_panel().option_count != 3U ||
+                    field_scene.dialogue_panel().options[2].source_label.find(
+                        "Michael's stuff") == std::string_view::npos ||
+                    capture(output / "manager-package" / "actual.bmp").isNull()) {
+                    std::cerr << "field Hotel QA: first-visit manager menu did not include Michael's package offer\n";
                     return 3;
                 }
-                mark_route("manager-greeting", "A");
+                mark_route("manager-package-offer", "A");
                 // Re-seed only the lower-bezel Hotel animation fixture after
-                // the source arrival roll has selected its ordinary branch.
+                // the first-visit content menu has been verified.
                 field_scene.set_source_random_seed_for_dump(0x51A7U);
                 press_button(0x40U); // A: rent a room.
                 if (!field_scene.dialogue_open() ||

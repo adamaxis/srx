@@ -2,10 +2,10 @@
 
 Date: 2026-10-08
 
-**Status:** partial. This slice adds a typed native route policy for the
-collision events already connected to the Qt field controller and records the
-source-driven New Game auto-walk that reaches Stoker on the first field entry.
-It does not cover every map event.
+**Status:** partial. The native event dispatcher routes connected collision
+events, and the embedded Lua package defines the New Game scene-entry action
+and Stoker story/menu branches. Most collision destinations and the other
+menus remain typed C++ content.
 
 ## ROM-derived route model
 
@@ -20,7 +20,7 @@ records.
 
 | Source input | Native route choice | Result in the connected path |
 |---|---|---|
-| Scene 2, collision value `0xC2` at ROM `0x173138`, field mode 2/event 2 | Stoker dialogue script | `0x1F65A` selects the generic Stoker arrival dialogue; A/B advance the source prompt graph and return to the field |
+| Scene 2, collision value `0xC2` at ROM `0x173138`, field mode 2/event 2 | Typed field-exit route, then Lua story/menu package | `0x1F65A` selects the generic Stoker arrival dialogue; Lua resolves first/repeat/ordinary story state and supplies manager choices; native handlers apply selected actions |
 | Scene 2, collision value `0xCB` at ROM `0x173142`, field mode 2/event 11 | Ares service script | `0x1FA78` selects the Ares mode-text prompt; A opens the shop and Start returns |
 | Scene 2, paired collision values `0xC0` at ROM `0x173124` and `0x17312E`, event 0 | Active map's event table | Row 0 in `0x172CDC` selects scene `0x14` (scene 20) |
 | Scene 20, record 110 at `0x1D96DE`, raw `0x00C0`, event 0 | Scene-`0x14` generic interaction | Its profile has no event table; `0x1651E` returns on event 0, so no destination or reverse transition is established. The event system retains this as `no_route`; it is not labeled an exit. |
@@ -46,16 +46,18 @@ animation and not a controller-input route. The C0 records at `0x173124` and
 `0x17312E` are a separate doorway that selects scene 20; they are not the
 Stoker greeting.
 
-All accepted movement-collision events now enter the typed native
+All accepted movement-collision events enter the typed native
 `FieldMapEventSystem` before their action is executed. It owns the `0xB7B8`
 event policy and the later scene/event-table route choice, while the movement
 controller executes returned actions. The completed-intro scene-entry event
-also uses its stateful rule registry, scoped to the ROM-derived scene-2 spawn
-and limited to once per session. The registry supports future inclusive map
-coordinate rules with typed prerequisites and once-per-visit/session policies.
-This connection does not fill unresolved source routes: for example, scene-20
-record 110 C0 has no table and no proven reverse destination, as described in
-the ROM-wide profile.
+uses its stateful rule registry and Lua content, scoped to the ROM-derived
+scene-2 spawn and limited to once per session. The Lua loader validates rules
+and exposes typed scene/event facts; native C++ still performs movement and
+scene changes. The registry supports inclusive map-coordinate rules with
+typed prerequisites and once-per-visit/session policies. This is the first
+scripted event package, not a conversion of every collision destination:
+scene-20 record 110 C0 still has no table or proven reverse destination, as
+described in the ROM-wide profile.
 
 The ROM-derived scene profiles and extracted collision records show four
 additional numeric event-29 groups: triggers in scenes 21-25 target the

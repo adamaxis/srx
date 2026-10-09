@@ -41,10 +41,20 @@ set_target_properties(shadowrun_ghidra_conversion_qt PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
 target_link_libraries(shadowrun_ghidra_conversion_qt
     PRIVATE
+        shadowrun_gameplay_script_runtime
         shadowrun_ghidra_conversion_runtime
         Qt6::Widgets
         Qt6::Multimedia
 )
+
+add_executable(shadowrun_gameplay_script_runtime_test
+    tests/scripting/game_script_runtime_test.cpp)
+target_link_libraries(shadowrun_gameplay_script_runtime_test
+    PRIVATE shadowrun_gameplay_script_runtime)
+target_compile_definitions(shadowrun_gameplay_script_runtime_test PRIVATE
+    SHADOWRUN_GAMEPLAY_SCRIPT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/scripts")
+add_test(NAME shadowrun_gameplay_script_runtime_qa
+         COMMAND shadowrun_gameplay_script_runtime_test)
 
 add_executable(shadowrun_ghidra_conversion_qt_field_actor_runtime_test
     tests/field/field_actor_runtime_test.cpp
@@ -614,10 +624,11 @@ set_tests_properties(shadowrun_ghidra_conversion_qt_field_hud_qa PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Follow normal New Game field controls from the physical Stoker C2 doorway
-# through its room offer/payment, Hotel status/options, Hotel Karma spending,
-# and checkout. The 223-frame whole-screen capture starts at field spawn and
-# includes a 30-frame stable field return. The route does not inject dialogue,
-# payment results, or menu state.
+# through the first-visit scripted package offer, room payment, Hotel
+# status/options, Hotel Karma spending, and checkout. The 223-frame
+# whole-screen capture starts at field spawn and includes a 30-frame stable
+# field return. The route does not inject dialogue, payment results, or menu
+# state.
 add_test(NAME shadowrun_ghidra_conversion_qt_field_hotel_qa
          COMMAND shadowrun_ghidra_conversion_qt
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
@@ -1018,9 +1029,11 @@ set_target_properties(shadowrun_ghidra_field_dialogue_runtime_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
     RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
 target_compile_definitions(shadowrun_ghidra_field_dialogue_runtime_test PRIVATE
-    SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets")
+    SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    SHADOWRUN_GAMEPLAY_SCRIPT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/scripts")
 target_link_libraries(shadowrun_ghidra_field_dialogue_runtime_test
-    PRIVATE shadowrun_ghidra_conversion_runtime Qt6::Gui)
+    PRIVATE shadowrun_gameplay_script_runtime
+            shadowrun_ghidra_conversion_runtime Qt6::Gui)
 add_test(NAME shadowrun_ghidra_field_dialogue_runtime
          COMMAND shadowrun_ghidra_field_dialogue_runtime_test)
 

@@ -59,6 +59,7 @@
 #include "elevator_selector_runtime.hpp"
 #include "field_menu_text_catalog.hpp"
 #include "shop_menu_runtime.hpp"
+#include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 
 #include <array>
 #include <cstddef>
@@ -944,6 +945,7 @@ private:
     FieldCommandOverviewBridge command_overview_;
     CommandMenuKarmaViewRuntime command_overview_attributes_skills_{};
     HotelKarmaUpgradeRuntime hotel_karma_skills_{};
+    scripting::GameScriptRuntime game_scripts_;
     FieldDialogueRuntime field_dialogue_;
     HotelMenuRuntime hotel_menu_{};
     FieldModeTextRuntime field_mode_text_{};

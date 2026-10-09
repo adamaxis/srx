@@ -170,6 +170,4 @@ private:
     std::optional<FieldMapCollisionEventDispatch> last_collision_dispatch_;
 };
 
-std::vector<FieldMapEventRule> default_field_map_event_rules();
-
 } // namespace shadowrun::ghidra_conversion

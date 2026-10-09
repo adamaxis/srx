@@ -39,14 +39,6 @@ enum class StokerMotelStoryEntryAction {
     ordinary_motel,
 };
 
-// Native script state for the scene-2/event-2 Stoker route. The first
-// collision opens the source opening page; a later unpaid visit starts at
-// the source manager choice with the Michael package option. Once the paid
-// package flow completes, the indexed special service yields to the ordinary
-// motel arrival route.
-StokerMotelStoryEntryAction resolve_stoker_motel_story_entry(
-    StokerMotelStoryState& state) noexcept;
-
 enum class StokerMotelPromptOptionRole {
     continue_arrival,
     rent_room,

@@ -9,6 +9,7 @@
 #include "shadowrun_ghidra/field/stoker_motel_followup_commands_conversion.hpp"
 #include "shadowrun_ghidra/field/stoker_motel_prompt_conversion.hpp"
 #include "shadowrun_ghidra/field/stoker_motel_room_payment_conversion.hpp"
+#include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 
 #include <cstdint>
 #include <functional>
@@ -71,6 +72,7 @@ public:
     void set_followup_command_callback(
         std::function<std::optional<StokerMotelFollowupOutcome>(
             StokerMotelFollowupCommand)> callback);
+    void set_script_runtime(scripting::GameScriptRuntime* runtime) noexcept;
 
     // Bind the selection made by converted 0x1F65A to a common NPC panel.
     // Profiles whose portrait/text records have not been extracted remain a
@@ -87,7 +89,8 @@ public:
     // continues directly to the three-choice manager offer; repeat unpaid
     // entries begin at that offer, and completed collection uses ordinary
     // motel service.
-    bool open_stoker_story_entry(StokerMotelStoryEntryAction action);
+    bool open_stoker_story_entry(StokerMotelStoryEntryAction action,
+                                 const StokerMotelStoryState& story_state);
 
     FieldDialogueAdvanceResult advance_controller_events(
         std::uint16_t event_word);
@@ -112,6 +115,9 @@ private:
     DialoguePanelPresenter presenter_;
     DialoguePanelView panel_{};
     StokerMotelPromptId active_prompt_ = StokerMotelPromptId::source_boundary;
+    scripting::GameScriptRuntime* script_runtime_ = nullptr;
+    scripting::StoryFacts story_facts_;
+    std::optional<scripting::ScriptMenuDefinition> active_script_menu_;
     StokerMotelArrivalCommandCallbacks arrival_command_callbacks_;
     std::function<std::optional<StokerMotelRoomPaymentOutcome>()>
         room_payment_callback_;

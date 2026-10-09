@@ -14,9 +14,11 @@ and bounds `(0x3C0..0x3DF, 0x280..0x29F)`. New Game spawns Joshua at
 `(0x3CE0, 0x2D00)`; ordinary Up input reaches the doorway, publishes raw
 collision `0xFFC2` and event 2, and selects Stoker's mode-2/event-2 arrival
 dialogue through the field-exit route at `0x1F65A`. The ordinary A command
-uses the bounded arrival branch at `0x249C4`; the QA fixes its seed to select
-the 0..79 manager branch. The manager's room choice dispatches command `0x06`
-to the payment logic at `0x21458`. At 20 nuyen, it deducts the live field
+advances the arrival dialogue. In this New Game route, the content-authored
+first-visit menu offers the room, leave, and Michael's package choices; its
+room choice dispatches command `0x06` to the payment logic at `0x21458`. The
+separate post-opening arrival branch still uses the bounded selector at
+`0x249C4`. At 20 nuyen, the room choice deducts the live field
 wallet and selects the paid message at `0xF5AB8`; after that message is
 dismissed, the source caller hands off to Hotel Options at `0xCF38`.
 
@@ -35,9 +37,9 @@ dispatcher.
 
 The test seeds Body 1 and Karma 50 to make the upgrade outcome observable,
 sets the status/cyberware fields used by the Hotel panel, then ordinary A
-input buys Body 2 for Karma 48. The PRNG seeds (`0` for the manager branch
-and `0x51A7` for repeatable Hotel bezel animation) are QA fixtures, not a
-claim that live ROM seed initialization has been recovered.
+input buys Body 2 for Karma 48. The PRNG seed `0x51A7` stabilizes Hotel bezel
+animation; it is a QA fixture, not a claim that live ROM seed initialization
+has been recovered.
 
 ## Captures and review window
 
@@ -57,7 +59,7 @@ The route's state milestones are:
 | 0000 | New Game spawn | Scene 2, position `(15584,11520)`, wallet 20 |
 | 0017 | Up | Record 91; raw collision `0xFFC2`, event 2 |
 | 0034 | Up released; transition complete | Stoker arrival panel |
-| 0036 | A | Deterministic manager branch |
+| 0036 | A | First-visit scripted manager menu with package choice |
 | 0038 | A | Room offer for 20 nuyen |
 | 0040 | A | Paid message; wallet 20 to 0 |
 | 0042 | A | Hotel status page |
@@ -83,8 +85,9 @@ an independent Genesis visual oracle.
    found. The native screens are internally legible and consistently laid
    out, but that cannot establish their exact original appearance.
 2. **Does the visible look match behavioral state? — Yes for the tested
-   route.** Ordinary input selects collision `0xFFC2`/event 2, the manager
-   offers rent, payment changes the wallet from 20 to 0, the paid-message
+   route.** Ordinary input selects collision `0xFFC2`/event 2, the first-visit
+   manager offers rent, leave, and Michael's package, payment changes the
+   wallet from 20 to 0, the paid-message
    dismissal opens Hotel status, A enters Hotel options and the distinct
    spending page, and the confirmed upgrade changes Body/Karma to 2/48.
    `physical-route.tsv` records the route states and input milestones.

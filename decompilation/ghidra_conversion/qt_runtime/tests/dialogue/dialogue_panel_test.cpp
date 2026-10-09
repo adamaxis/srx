@@ -175,15 +175,14 @@ int main() {
         return 11;
     }
 
-    const auto stoker_package = make_dialogue_panel_view(
+    const auto stoker_manager_boundary = make_dialogue_panel_view(
         make_stoker_motel_prompt(
             StokerMotelPromptId::manager_greeting_with_package),
         resolve_text);
-    if (!expect(stoker_package.option_count == 3U) ||
-        !expect(stoker_package.options[2].source_label ==
-                "I'm here to pick up Michael's stuff.") ||
-        !expect(dialogue_panel_option_command(stoker_package, 2U).value() ==
-                DialoguePanelCommand::stoker_open_debt_question)) {
+    if (!expect(!stoker_manager_boundary.source_complete) ||
+        !expect(stoker_manager_boundary.option_count == 0U) ||
+        !expect(stoker_manager_boundary.source_boundary_reason.find(
+                    "gameplay script package") != std::string::npos)) {
         return 12;
     }
 
