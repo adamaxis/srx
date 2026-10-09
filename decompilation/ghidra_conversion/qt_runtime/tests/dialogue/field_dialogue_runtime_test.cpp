@@ -789,7 +789,9 @@ int main() {
                 FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(runtime.panel().text_segments[0].find("seeing you") !=
                 std::string_view::npos) ||
-        !expect(runtime.advance_controller_events(0x4000U) ==
+        !expect(runtime.panel().option_count == 0U) ||
+        !expect(!runtime.panel().has_more) ||
+        !expect(runtime.advance_controller_events(0x1000U) ==
                 FieldDialogueAdvanceResult::returned_to_field) ||
         !expect(runtime.open_stoker_story_entry(
                     StokerMotelStoryEntryAction::package_offer,

@@ -19,6 +19,7 @@ constexpr std::size_t kMaximumScriptModules = 128U;
 constexpr std::size_t kMaximumMapEventRules = 512U;
 constexpr std::size_t kMaximumMenuChoices = 3U;
 constexpr std::size_t kMaximumIdentifierLength = 96U;
+constexpr std::size_t kMaximumStoryFacts = 4096U;
 constexpr int kScriptInstructionBudget = 100000;
 
 std::string stack_error(lua_State* state) {
@@ -273,10 +274,10 @@ bool parse_event_rule(lua_State* state, const int index,
 }
 
 bool parse_menu_choices(lua_State* state, const int index,
-                        const std::string_view function,
+                        const std::string_view menu_id,
                         const std::string_view text_profile,
                         ScriptMenuDefinition& menu) {
-    if (!lua_istable(state, index) || !valid_identifier(function) ||
+    if (!lua_istable(state, index) || !valid_identifier(menu_id) ||
         !valid_identifier(text_profile)) {
         return false;
     }
@@ -284,8 +285,9 @@ bool parse_menu_choices(lua_State* state, const int index,
     if (count > kMaximumMenuChoices) {
         return false;
     }
-    menu.id = std::string(function);
-    menu.title_key = std::string(text_profile) + ".manager.title";
+    menu.id = std::string(menu_id);
+    menu.title_key = std::string(text_profile) + "." +
+                     std::string(menu_id) + ".title";
     menu.choices.reserve(count);
     std::set<std::string> choice_ids;
     for (std::size_t choice_index = 1U; choice_index <= count;
@@ -314,12 +316,101 @@ struct GameScriptRuntime::Impl {
     bool task_waiting = false;
     std::optional<ScriptNativeOperation> pending_task_operation;
     std::optional<ScriptNativeOperation> active_native_operation;
+    StoryFacts story_facts;
+    std::string location_type;
+    std::string location_id;
     std::string location_text_profile;
+    std::string location_speaker_id;
     std::string bridge_failure;
     std::string failure;
 
     static Impl* from_upvalue(lua_State* lua) {
         return static_cast<Impl*>(lua_touserdata(lua, lua_upvalueindex(1)));
+    }
+
+    static int state_index(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        if (self == nullptr || lua_type(lua, 2) != LUA_TSTRING) {
+            lua_pushnil(lua);
+            return 1;
+        }
+        std::string name;
+        if (!read_string(lua, 2, name) || !valid_identifier(name)) {
+            lua_pushnil(lua);
+            return 1;
+        }
+        const auto fact = self->story_facts.find(name);
+        if (fact == self->story_facts.end()) {
+            lua_pushnil(lua);
+        } else {
+            lua_pushboolean(lua, fact->second ? 1 : 0);
+        }
+        return 1;
+    }
+
+    static int state_newindex(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        const char* error = nullptr;
+        if (self == nullptr) {
+            error = "game.state has no native story-fact store";
+        } else {
+            {
+                std::string name;
+                if (lua_type(lua, 2) != LUA_TSTRING ||
+                    !read_string(lua, 2, name) ||
+                    !valid_identifier(name) ||
+                    lua_type(lua, 3) != LUA_TBOOLEAN) {
+                    error =
+                        "game.state accepts named boolean story facts only";
+                } else if (
+                    self->story_facts.find(name) ==
+                        self->story_facts.end() &&
+                    self->story_facts.size() >= kMaximumStoryFacts) {
+                    error = "game.state has reached its fact limit";
+                } else {
+                    self->story_facts[std::move(name)] =
+                        lua_toboolean(lua, 3) != 0;
+                    return 0;
+                }
+            }
+        }
+        return luaL_error(lua, "%s", error);
+    }
+
+    static int location_index(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        if (self == nullptr || lua_type(lua, 2) != LUA_TSTRING) {
+            lua_pushnil(lua);
+            return 1;
+        }
+        std::string field;
+        if (!read_string(lua, 2, field)) {
+            lua_pushnil(lua);
+            return 1;
+        }
+        std::string_view value;
+        if (field == "type") {
+            value = self->location_type;
+        } else if (field == "id") {
+            value = self->location_id;
+        } else if (field == "text_profile") {
+            value = self->location_text_profile;
+        } else if (field == "speaker_id") {
+            value = self->location_speaker_id;
+        } else {
+            lua_pushnil(lua);
+            return 1;
+        }
+        if (value.empty()) {
+            lua_pushnil(lua);
+        } else {
+            lua_pushlstring(lua, value.data(), value.size());
+        }
+        return 1;
+    }
+
+    static int location_newindex(lua_State* lua) {
+        return luaL_error(lua, "game.location is native read-only context");
     }
 
     static int actor_walk_heading_continuation(
@@ -380,17 +471,18 @@ struct GameScriptRuntime::Impl {
             return 1;
         }
 
-        std::string profile;
+        std::string menu_id;
         ScriptMenuDefinition menu{};
-        if (!read_string(lua, 1, profile) ||
-            !valid_identifier(profile) ||
-            !parse_menu_choices(lua, 2, "menu", profile, menu)) {
+        if (!read_string(lua, 1, menu_id) ||
+            !valid_identifier(menu_id) ||
+            !valid_identifier(self->location_text_profile) ||
+            !parse_menu_choices(lua, 2, menu_id,
+                                self->location_text_profile, menu)) {
             self->bridge_failure =
-                "game.ui.menu expects a profile and unique stable choice ids";
+                "game.ui.menu expects a menu name and unique stable choice ids in a profiled location";
             lua_pushnil(lua);
             return 1;
         }
-        menu.id = profile;
 
         ScriptNativeOperation operation{};
         operation.type = ScriptNativeOperation::Type::ui_menu;
@@ -413,15 +505,13 @@ struct GameScriptRuntime::Impl {
             return 1;
         }
 
-        std::string speaker_id;
         std::string event_id;
-        if (!read_string(lua, 1, speaker_id) ||
-            !valid_identifier(speaker_id) ||
-            !read_string(lua, 2, event_id) ||
+        if (!read_string(lua, 1, event_id) ||
             !valid_identifier(event_id) ||
-            !valid_identifier(self->location_text_profile)) {
+            !valid_identifier(self->location_text_profile) ||
+            !valid_identifier(self->location_speaker_id)) {
             self->bridge_failure =
-                "game.ui.say expects a speaker, event, and active text profile";
+                "game.ui.say expects an event in a location with a speaker and text profile";
             lua_pushboolean(lua, 0);
             return 1;
         }
@@ -429,7 +519,7 @@ struct GameScriptRuntime::Impl {
         ScriptNativeOperation operation{};
         operation.type = ScriptNativeOperation::Type::ui_say;
         operation.dialogue = ScriptDialogueRequest{
-            std::move(speaker_id), self->location_text_profile,
+            self->location_speaker_id, self->location_text_profile,
             std::move(event_id)};
         self->pending_task_operation = std::move(operation);
         self->task_waiting = true;
@@ -529,6 +619,11 @@ struct GameScriptRuntime::Impl {
         task_waiting = false;
         pending_task_operation.reset();
         active_native_operation.reset();
+        story_facts.clear();
+        location_type.clear();
+        location_id.clear();
+        location_text_profile.clear();
+        location_speaker_id.clear();
         bridge_failure.clear();
         failure.clear();
         if (state == nullptr) {
@@ -540,9 +635,24 @@ struct GameScriptRuntime::Impl {
         modules_reference = luaL_ref(state, LUA_REGISTRYINDEX);
 
         lua_newtable(state);
-        lua_newtable(state);
+        lua_newtable(state); // game.state proxy
+        lua_newtable(state); // game.state metatable
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, state_index, 1);
+        lua_setfield(state, -2, "__index");
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, state_newindex, 1);
+        lua_setfield(state, -2, "__newindex");
+        lua_setmetatable(state, -2);
         lua_setfield(state, -2, "state");
-        lua_newtable(state);
+        lua_newtable(state); // game.location proxy
+        lua_newtable(state); // game.location metatable
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, location_index, 1);
+        lua_setfield(state, -2, "__index");
+        lua_pushcfunction(state, location_newindex);
+        lua_setfield(state, -2, "__newindex");
+        lua_setmetatable(state, -2);
         lua_setfield(state, -2, "location");
         lua_newtable(state);
         lua_pushlightuserdata(state, this);
@@ -697,76 +807,35 @@ GameScriptRuntime::map_event_rules() {
 }
 
 void GameScriptRuntime::set_story_state(const StoryFacts& facts) {
-    auto* state = impl_->state;
-    if (state == nullptr) {
-        return;
-    }
-    lua_getglobal(state, "game");
-    lua_newtable(state);
+    impl_->story_facts.clear();
     for (const auto& [name, value] : facts) {
-        if (!valid_identifier(name)) {
+        if (!valid_identifier(name) ||
+            impl_->story_facts.size() >= kMaximumStoryFacts) {
             continue;
         }
-        lua_pushboolean(state, value ? 1 : 0);
-        lua_setfield(state, -2, name.c_str());
+        impl_->story_facts.emplace(name, value);
     }
-    lua_setfield(state, -2, "state");
-    lua_pop(state, 1);
 }
 
 StoryFacts GameScriptRuntime::story_state() const {
-    StoryFacts facts;
-    auto* state = impl_->state;
-    if (state == nullptr) {
-        return facts;
-    }
-    lua_getglobal(state, "game");
-    lua_getfield(state, -1, "state");
-    if (lua_istable(state, -1)) {
-        lua_pushnil(state);
-        while (lua_next(state, -2) != 0) {
-            if (lua_type(state, -2) == LUA_TSTRING &&
-                lua_type(state, -1) == LUA_TBOOLEAN) {
-                std::size_t length = 0U;
-                const auto* name = lua_tolstring(state, -2, &length);
-                if (name != nullptr && length > 0U &&
-                    length <= kMaximumIdentifierLength) {
-                    facts.emplace(std::string(name, length),
-                                  lua_toboolean(state, -1) != 0);
-                }
-            }
-            lua_pop(state, 1);
-        }
-    }
-    lua_pop(state, 2);
-    return facts;
+    return impl_->story_facts;
 }
 
 void GameScriptRuntime::set_location_context(
     const std::string_view type, const std::string_view id,
-    const std::string_view text_profile) {
-    auto* state = impl_->state;
-    if (state == nullptr || !valid_identifier(type) || !valid_identifier(id) ||
-        (!text_profile.empty() && !valid_identifier(text_profile))) {
+    const std::string_view text_profile,
+    const std::string_view speaker_id) {
+    if (impl_->state == nullptr || !valid_identifier(type) ||
+        !valid_identifier(id) ||
+        (!text_profile.empty() && !valid_identifier(text_profile)) ||
+        (!speaker_id.empty() && !valid_identifier(speaker_id))) {
         impl_->failure = "invalid gameplay location context";
         return;
     }
-    lua_getglobal(state, "game");
-    lua_newtable(state);
-    lua_pushlstring(state, type.data(), type.size());
-    lua_setfield(state, -2, "type");
-    lua_pushlstring(state, id.data(), id.size());
-    lua_setfield(state, -2, "id");
-    if (!text_profile.empty()) {
-        lua_pushlstring(state, text_profile.data(), text_profile.size());
-        lua_setfield(state, -2, "text_profile");
-    } else {
-        lua_pushnil(state);
-        lua_setfield(state, -2, "text_profile");
-    }
-    lua_setfield(state, -2, "location");
-    lua_pop(state, 1);
+    impl_->location_type = std::string(type);
+    impl_->location_id = std::string(id);
     impl_->location_text_profile = std::string(text_profile);
+    impl_->location_speaker_id = std::string(speaker_id);
 }
 
 std::optional<std::string> GameScriptRuntime::call_string(
@@ -902,9 +971,10 @@ void GameScriptRuntime::cancel_task() noexcept {
 
 std::optional<ScriptMenuDefinition> GameScriptRuntime::menu(
     const std::string_view module, const std::string_view function,
-    const std::string_view text_profile) {
+    const std::string_view text_profile, const std::string_view menu_id) {
     auto* state = impl_->state;
-    if (!valid_identifier(function) || !valid_identifier(text_profile)) {
+    if (!valid_identifier(function) || !valid_identifier(text_profile) ||
+        !valid_identifier(menu_id)) {
         impl_->failure = "invalid gameplay script menu function or profile";
         return std::nullopt;
     }
@@ -930,7 +1000,7 @@ std::optional<ScriptMenuDefinition> GameScriptRuntime::menu(
     }
 
     ScriptMenuDefinition definition;
-    if (!parse_menu_choices(state, -1, function, text_profile, definition)) {
+    if (!parse_menu_choices(state, -1, menu_id, text_profile, definition)) {
         lua_pop(state, 1);
         impl_->failure = std::string(module) + "." + std::string(function) +
                          " must return unique choice ids";

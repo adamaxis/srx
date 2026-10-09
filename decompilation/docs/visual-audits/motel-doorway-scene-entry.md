@@ -74,11 +74,12 @@ Release builds.
 
 ## Full-screen and independent frame review
 
-The QA writes exactly thirteen full 320x224 BMPs: `spawn`, `movement-8`,
+The QA writes sixteen full 320x224 BMPs: `spawn`, `movement-8`,
 `movement-16`, `doorway-trigger`, `fade-08`, `fade-16`, `fade-17`,
 `stoker-arrival-dialogue`, `stoker-manager-package-offer`,
-`stoker-debt-question`, `stoker-package-handoff`, `returned-to-field`, and
-`actual`. It also writes `route.tsv` and
+`stoker-debt-question`, `stoker-package-handoff`, `returned-to-field`,
+`stoker-manager-ordinary`, `stoker-leave-dialogue`,
+`stoker-leave-returned-to-field`, and `actual`. It also writes `route.tsv` and
 `source-boundaries.txt`. Stale BMPs from earlier probes are removed before the
 exact output-set check. Debug and Release outputs are compared by file name and
 SHA-256 after both runs.
@@ -93,9 +94,10 @@ frame is the shared Stoker panel. Its portrait and green text are visible, the
 field HUD is absent, and the A-button marker appears beside `< MORE >`. The
 manager frame replaces the first page with A/B/C choices, including Michael's
 package offer. The debt question and paid package handoff replace those choices
-with their own source text. The returned frame restores the map,
-runner, and right HUD with no leftover dialogue shell or text. No second set of
-controls is drawn over the old screen.
+with their own source text. The ordinary manager page has two rows; its Leave
+branch replaces both rows with a title-only farewell page. The returned frame
+restores the map, runner, and right HUD with no leftover dialogue shell or
+text. No second set of controls is drawn over the old screen.
 
 Independent source visuals were reviewed from the supplied longplay at full
 320x224 size: section 03 frames `000028`, `000035`, `000042`, `000048`, and
@@ -210,7 +212,7 @@ their own ROM-first and multi-frame audit before being called correct.
    handoff, the field screen is re-entered and redrawn before the QA accepts
    the return. Whole-frame review shows no buttons or graphics from the
    previous screen underneath either state.
-9. **Was the whole available sequence reviewed?** Yes. All thirteen native
+9. **Was the whole available sequence reviewed?** Yes. All sixteen native
    full-screen captures were checked, including the two movement frames,
    collision, fade, arrival, manager, debt question, paid handoff, and clean
    field return. The independent video samples were inspected at full
@@ -248,9 +250,9 @@ their own ROM-first and multi-frame audit before being called correct.
   alias and text, A/B/C choices, exact-250-nuyen payment, package handoff,
   post-payment story flags, transition suspension, audio-service transaction
   counts, and whole-screen return. The
-  route writes 13 BMPs plus `route.tsv` and `source-boundaries.txt`. Every
+   route writes 16 BMPs plus `route.tsv` and `source-boundaries.txt`. Every
   Debug BMPs were opened and reviewed at full size; the corresponding Release
-  images are byte-identical. All 13 Debug and Release BMP SHA-256 hashes match.
+   images are byte-identical. All 16 Debug and Release BMP SHA-256 hashes match.
 - **Independently visually checked:** section 03 frames `000028..000055`,
   `000080..000082`, `000301`, `000601`, and `000690/000750/000780/000840`
   support the door/fade/panel appearance and the Stoker dialogue pages. The
@@ -268,8 +270,9 @@ their own ROM-first and multi-frame audit before being called correct.
 This incremental scripting change leaves the manager page's pixels and
 button-driven behavior unchanged. Shared `motel.lua` builds the ordinary motel
 choices, adds the Michael quest's package choice when its location/state hook
-allows it, and calls `game.ui.menu(profile, choice_ids)`. The Lua task suspends
-while the existing dialogue presenter displays the profile and receives A/B/C.
+allows it, and calls `game.ui.menu("manager", choice_ids)`. Native location
+context supplies the text profile. The Lua task suspends while the existing
+dialogue presenter displays the choices and receives A/B/C.
 The selected stable ID resumes the task; the existing validated native
 command handler still applies the choice's effect. The Stoker runtime supplies
 the `stoker.motel` text profile. This is a connected generic menu operation,
@@ -299,7 +302,7 @@ open.
    contains no field map/HUD behind the panel and no second set of controls.
    The field return redraws the map and HUD cleanly.
 7. **Do multiple frames support the interpretation?** The native route has
-   thirteen whole-screen checkpoints from spawn through return. Independent
+   sixteen whole-screen checkpoints from spawn through return. Independent
    section 03 captures include the manager page at `000301` plus the opening,
    debt, and referral pages. They corroborate screen family and content, while
    ROM/input-state evidence supports the action mapping.
@@ -307,9 +310,9 @@ open.
    transition goes through full black; the dialogue panel replaces the field
    scene, and the return redraws the field. The reviewed frames show no old
    buttons or graphics under the manager panel.
-9. **Was the whole available sequence reviewed?** Yes. All thirteen Debug
+9. **Was the whole available sequence reviewed?** Yes. All sixteen Debug
    route images were reopened at their full 320x224 resolution. The same
-   thirteen Release names and SHA-256 hashes match. Existing route QA covers
+   sixteen Release names and SHA-256 hashes match. Existing route QA covers
    New Game movement, collision, fade, dialogue choices, payment handoff, and
    field return; menu coroutine QA additionally checks suspension/resumption
    and selected-ID validation.
@@ -322,10 +325,10 @@ claim of original-game sound timing is made here.
 ## Lua speaker/event dialogue follow-up (2026-10-08)
 
 The first-visit interaction is now one readable Lua sequence:
-`game.ui.say("stoker", "arrival")`, then the shared
+`game.ui.say("arrival")`, then the shared
 `motel.manager_interaction()` after the player presses A. The operation
-captures the native location text profile (`stoker.motel`) together with the
-speaker and event IDs. A typed speaker profile supplies Stoker's name and
+resolves the native location text profile (`stoker.motel`) and speaker from
+active location context, using only the event ID from Lua. A typed speaker profile supplies Stoker's name and
 portrait; the text resolver finds `stoker.motel.arrival.title` and
 `stoker.motel.arrival.more`. Only this speaker/event is bound so far. The
 dialogue presenter still draws the screen and owns input; the task resumes with
@@ -355,7 +358,7 @@ remain native.
 6. **Are other screen regions correct?** The full-screen capture replaces
    the field map/HUD with the dialogue frame. After A, the manager page
    replaces the arrival text, and the eventual return redraws the field.
-7. **Do multiple frames support the interpretation?** All thirteen native
+7. **Do multiple frames support the interpretation?** All sixteen native
    route checkpoints remain available; the independent video shows the
    arrival at `000082`, manager at `000301`, and other Stoker pages at
    `000601` and later frames. ROM and runtime input evidence establish the
@@ -364,8 +367,8 @@ remain native.
    before the dialogue frame replaces the field. The manager page is a full
    redraw, and the return reconstructs the map and HUD; no old buttons or
    graphics remain underneath the new panel.
-9. **Was the whole sequence reviewed?** Yes. All thirteen Debug screenshots
-   were reopened at 320x224; all thirteen Release names and SHA-256 hashes
+9. **Was the whole sequence reviewed?** Yes. All sixteen Debug screenshots
+   were reopened at 320x224; all sixteen Release names and SHA-256 hashes
    match. The arrival and manager handoff are checked by the live collision
    route and by the dialogue-runtime test, including the A-only wait.
 
@@ -373,3 +376,50 @@ The full Debug and Release CTest suites pass 92/92 each, including the
 script, dialogue, startup, and Stoker route checks. This connects the first Stoker dialogue event to Lua; additional
 speaker profiles, dialogue events, item operations, audio, and cutscene
 placement/animation are still unimplemented.
+
+## Shared motel Leave dialogue through Lua (2026-10-08)
+
+The generic `motel.lua` manager now sequences the ordinary Leave response:
+after the player selects Leave, it asks the native dialogue presenter to show
+the current location speaker's `leave` event, then returns the stable `leave`
+choice ID. Stoker's source text is `stoker.motel.leave.title`; its native
+speaker profile supplies the existing portrait. This reuses the shared motel
+flow and location context rather than adding a Stoker-specific interaction
+script. The ROM-derived prompt conversion already defines the matching
+title-only `leave_notice` page and return to field.
+
+1. **Does it look correct?** The full 320x224 farewell capture shows Stoker's
+   portrait, the sourced sentence, the existing gray dialogue frame, and an
+   empty lower choice area. It has no field map/HUD behind it.
+2. **Does the appearance reflect behavior?** B selects the Leave row from the
+   two-choice manager. Lua reads the speaker from native `game.location`,
+   yields the `leave` text event, then returns the stable choice when the page
+   is dismissed. The runtime and route checks verify the event/profile IDs,
+   no-choice state, and field return.
+3. **Are the visuals correct?** The farewell is title-only: there is no
+   `< MORE >`, A/B choice row, selector, or leftover manager option. After
+   dismissal, the map, HUD, and player position return.
+4. **Is it animated?** No. This page adds no animation or timing loop.
+5. **Is there sound?** The new Lua path adds no audio request. A source sound
+   for this farewell and its duration are not established by this slice.
+6. **Are other screen regions correct?** The ordinary two-choice menu, the
+   farewell, and the field return were captured as full-screen images. The
+   farewell page clears both previous menu rows; the field return redraws the
+   HUD and playfield.
+7. **Do multiple frames support the interpretation?** The complete Stoker
+   route now has 16 Debug checkpoints from spawn through the scripted farewell
+   and field return. Each Debug image was opened at original 320x224 size. All
+   16 Release image hashes match. The independent video supports the broader
+   Stoker screen family, but an exact farewell frame was not identified, so
+   this is not claimed as independent pixel proof.
+8. **Was the previous interface removed first?** Yes. The screenshot shows
+   neither old manager text nor its option glyphs on the farewell page; the
+   field image replaces the panel when the page closes.
+9. **Was the whole available sequence reviewed?** Yes. All 16 current route
+   images were reopened at full resolution, including both menus, the farewell,
+   fade frames, and field return. Debug and Release hashes match. No new audio
+   behavior or source sound duration is claimed.
+
+Debug and Release pass the gameplay script, dialogue runtime, and full Stoker
+route CTests. The route QA checks the farewell screen's full-screen redraw and
+the clean return; the independent visual limit above remains open.

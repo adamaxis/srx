@@ -24,7 +24,13 @@ function Motel.manager_choices()
 end
 
 function Motel.manager_interaction()
-    return game.ui.menu(game.location.text_profile, Motel.manager_choices())
+    local choice = game.ui.menu("manager", Motel.manager_choices())
+
+    if choice == "leave" and game.location.speaker_id ~= nil then
+        game.ui.say("leave")
+    end
+
+    return choice
 end
 
 return Motel

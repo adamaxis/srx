@@ -592,7 +592,7 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                 {"michael_package_collected",
                  stoker_motel_story_state_.michael_package_collected}};
             game_scripts_.set_location_context(
-                "motel", "stoker_motel", "stoker.motel");
+                "motel", "stoker_motel", "stoker.motel", "stoker");
             game_scripts_.set_story_state(story_facts);
             const auto scripted_entry = game_scripts_.call_string(
                 "michael_package", "motel_entry");

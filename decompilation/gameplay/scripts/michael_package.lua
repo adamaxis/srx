@@ -16,7 +16,7 @@ function MichaelPackage.motel_entry()
 end
 
 function MichaelPackage.opening_interaction()
-    game.ui.say("stoker", "arrival")
+    game.ui.say("arrival")
     return game.modules.motel.manager_interaction()
 end
 

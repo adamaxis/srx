@@ -189,7 +189,7 @@ int main() {
 
     scripts.set_story_state(repeat_visit);
     scripts.set_location_context(
-        "motel", "stoker_motel", "stoker.motel");
+        "motel", "stoker_motel", "stoker.motel", "stoker");
     const auto opening_interaction =
         scripts.start_task("michael_package", "opening_interaction");
     if (!expect(opening_interaction.status ==
@@ -251,6 +251,41 @@ int main() {
                     menu_selection.result_id ==
                         std::optional<std::string>{"package"},
                 "native menu choice did not resume Lua with its stable id")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+
+    const auto leave_interaction =
+        scripts.start_task("motel", "manager_interaction");
+    if (!expect(leave_interaction.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    leave_interaction.operation.has_value() &&
+                    leave_interaction.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu,
+                "shared motel interaction did not open its manager menu")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    auto leave_step = scripts.complete_native_menu_choice("leave");
+    if (!expect(leave_step.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    leave_step.operation.has_value() &&
+                    leave_step.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    leave_step.operation->dialogue.has_value() &&
+                    leave_step.operation->dialogue->speaker_id == "stoker" &&
+                    leave_step.operation->dialogue->text_profile ==
+                        "stoker.motel" &&
+                    leave_step.operation->dialogue->event_id == "leave",
+                "shared leave choice did not resolve location dialogue")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    leave_step = scripts.complete_native_operation(true);
+    if (!expect(leave_step.status == ScriptTaskStep::Status::completed &&
+                    leave_step.result_id ==
+                        std::optional<std::string>{"leave"},
+                "motel leave flow did not return its stable choice ID")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
     }

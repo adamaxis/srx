@@ -12474,7 +12474,7 @@ int run_field_stoker_collision_to_dialogue_qa(
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries) {
     std::filesystem::create_directories(output);
-    constexpr std::array<std::string_view, 30> stale_or_current_frames{
+    constexpr std::array<std::string_view, 33> stale_or_current_frames{
         "actual.bmp",
         "destination-entry.bmp",
         "destination-idle-01.bmp",
@@ -12494,14 +12494,17 @@ int run_field_stoker_collision_to_dialogue_qa(
         "spawn.bmp",
         "stoker-arrival-dialogue.bmp",
         "stoker-debt-question.bmp",
+        "stoker-leave-dialogue.bmp",
         "stoker-jump-house-referral.bmp",
         "stoker-manager-greeting.bmp",
+        "stoker-manager-ordinary.bmp",
         "stoker-manager-package-offer.bmp",
         "stoker-leave-notice.bmp",
         "stoker-package-handoff.bmp",
         "stoker-ordinary-motel.bmp",
         "stoker-package-returned-field.bmp",
         "stoker-repeat-manager-package-offer.bmp",
+        "stoker-leave-returned-to-field.bmp",
         "stoker-unpaid-walk-away.bmp",
         "stoker-post-payment-walk-away.bmp",
         "returned-to-field.bmp"};
@@ -13031,6 +13034,56 @@ int run_field_stoker_collision_to_dialogue_qa(
     }
     write_state("returned-to-field");
 
+    // Reopen the shared motel manager with completed-story state. The Leave
+    // choice must yield location-profile dialogue through Lua, replace the
+    // manager rows cleanly, then return to the field.
+    if (!field_scene.open_stoker_dialogue_for_dump(
+            StokerMotelPromptId::manager_greeting) ||
+        !field_scene.dialogue_open() ||
+        field_scene.dialogue_panel().option_count != 2U ||
+        !save_frame("stoker-manager-ordinary", false)) {
+        std::cerr << "Stoker collision QA: ordinary motel manager did not "
+                     "reopen through the shared script flow\n";
+        return 3;
+    }
+    write_state("ordinary-motel-manager");
+
+    press_button(0x10U);
+    const auto& leave_dialogue = field_scene.dialogue_panel();
+    bool leave_text_present = false;
+    for (std::size_t index = 0; index < leave_dialogue.text_segment_count;
+         ++index) {
+        leave_text_present = leave_text_present ||
+            leave_dialogue.text_segments[index].find("seeing you") !=
+                std::string_view::npos;
+    }
+    const auto leave_image = render_field();
+    if (!field_scene.dialogue_open() || leave_dialogue.actor_name != "Stoker" ||
+        !leave_text_present || leave_dialogue.option_count != 0U ||
+        leave_dialogue.has_more ||
+        field_hud_chrome_survives(leave_image, asset_root) ||
+        !image_has_green_ink(leave_image, 88, 16, 216, 120) ||
+        image_has_green_ink(leave_image, 48, 152, 240, 48) ||
+        !save_frame("stoker-leave-dialogue", false)) {
+        std::cerr << "Stoker collision QA: scripted Leave did not replace "
+                     "the menu with a clean title-only farewell page\n";
+        return 3;
+    }
+    write_state("motel-leave-dialogue");
+
+    press_button(0x10U);
+    if (field_scene.dialogue_open() ||
+        field_scene.field_transition_pending_for_dump() ||
+        field_scene.field_scene_reference_for_dump() != 2U ||
+        field_scene.field_controller_nibble_for_dump() != 0U ||
+        !save_frame("stoker-leave-returned-to-field", true) ||
+        !save_frame("actual", true)) {
+        std::cerr << "Stoker collision QA: dismissing the scripted farewell "
+                     "did not restore the clean field scene\n";
+        return 3;
+    }
+    write_state("leave-returned-to-field");
+
     trace.close();
 
     const auto mode_entry_commands_after = std::count(
@@ -13087,6 +13140,9 @@ int run_field_stoker_collision_to_dialogue_qa(
         "spawn.bmp",
         "stoker-arrival-dialogue.bmp",
         "stoker-debt-question.bmp",
+        "stoker-leave-dialogue.bmp",
+        "stoker-leave-returned-to-field.bmp",
+        "stoker-manager-ordinary.bmp",
         "stoker-manager-package-offer.bmp",
         "stoker-package-handoff.bmp"};
     std::vector<std::string> actual_bmp_names;
@@ -13105,7 +13161,7 @@ int run_field_stoker_collision_to_dialogue_qa(
     }
     std::sort(actual_bmp_names.begin(), actual_bmp_names.end());
     if (actual_bmp_names != expected_bmp_names) {
-        std::cerr << "Stoker collision QA: expected 13 full-screen checkpoints, "
+        std::cerr << "Stoker collision QA: expected 16 full-screen checkpoints, "
                      "found " << actual_bmp_names.size() << '\n';
         for (const auto& name : actual_bmp_names) {
             std::cerr << "  frame: " << name << '\n';
@@ -13129,6 +13185,7 @@ int run_field_stoker_collision_to_dialogue_qa(
               << " returned_position=" << returned_position.x << ','
               << returned_position.y
               << " dialogue=opening->manager-package->debt->paid-handoff->field"
+                 "->motel-leave->field"
               << " mode_entry_commands="
               << mode_entry_commands_after - mode_entry_commands_before
               << " mode_entry_waits="

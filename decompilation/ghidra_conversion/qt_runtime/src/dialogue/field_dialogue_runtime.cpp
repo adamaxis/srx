@@ -174,7 +174,7 @@ bool FieldDialogueRuntime::open_stoker_prompt_for_dump(
         prompt == StokerMotelPromptId::manager_greeting_with_package) {
         if (script_runtime_ != nullptr) {
             script_runtime_->set_location_context(
-                "motel", "stoker_motel", "stoker.motel");
+                "motel", "stoker_motel", "stoker.motel", "stoker");
         }
         const bool completed =
             prompt == StokerMotelPromptId::manager_greeting;
@@ -196,7 +196,7 @@ bool FieldDialogueRuntime::open_stoker_story_entry(
         {"michael_package_collected", story_state.michael_package_collected}};
     if (script_runtime_ != nullptr) {
         script_runtime_->set_location_context(
-            "motel", "stoker_motel", "stoker.motel");
+            "motel", "stoker_motel", "stoker.motel", "stoker");
         script_runtime_->set_story_state(story_facts_);
     }
     switch (action) {
@@ -257,7 +257,7 @@ bool FieldDialogueRuntime::open_stoker_prompt(
                 "Stoker manager menu has no gameplay script runtime");
         }
         script_runtime_->set_location_context(
-            "motel", "stoker_motel", "stoker.motel");
+            "motel", "stoker_motel", "stoker.motel", "stoker");
         script_runtime_->set_story_state(story_facts_);
         return start_script_task("motel", "manager_interaction", prompt);
     } else {
@@ -392,7 +392,7 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
     if (active_script_operation_.has_value() &&
         active_script_operation_->type ==
             scripting::ScriptNativeOperation::Type::ui_say) {
-        if ((event_word & kControllerAEvent) == 0U) {
+        if (panel_.has_more && (event_word & kControllerAEvent) == 0U) {
             return FieldDialogueAdvanceResult::waiting_for_controller;
         }
         if (!script_task_waiting_ || script_runtime_ == nullptr) {
@@ -400,13 +400,12 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
                 "dialogue script is not waiting for the displayed page");
             return FieldDialogueAdvanceResult::source_boundary;
         }
+        const auto prompt = active_prompt_;
         const auto task = script_runtime_->complete_native_operation(true);
         if (task.status ==
             scripting::ScriptTaskStep::Status::awaiting_native_operation) {
             if (!task.operation.has_value() ||
-                !present_script_operation(
-                    *task.operation,
-                    StokerMotelPromptId::manager_greeting_with_package)) {
+                !present_script_operation(*task.operation, prompt)) {
                 return FieldDialogueAdvanceResult::source_boundary;
             }
             return FieldDialogueAdvanceResult::prompt_advanced;
@@ -463,8 +462,17 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         }
         const auto& selected_id =
             active_script_menu_->choices[option_index].id;
+        const auto prompt = active_prompt_;
         const auto task =
             script_runtime_->complete_native_menu_choice(selected_id);
+        if (task.status ==
+            scripting::ScriptTaskStep::Status::awaiting_native_operation) {
+            if (!task.operation.has_value() ||
+                !present_script_operation(*task.operation, prompt)) {
+                return FieldDialogueAdvanceResult::source_boundary;
+            }
+            return FieldDialogueAdvanceResult::prompt_advanced;
+        }
         if (task.status != scripting::ScriptTaskStep::Status::completed ||
             task.result_id != selected_id) {
             open_source_boundary(script_runtime_->failure().empty()
