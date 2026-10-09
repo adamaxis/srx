@@ -1,6 +1,7 @@
 #pragma once
 
 #include "shadowrun_ghidra/entities/movement_probe_conversion.hpp"
+#include "shadowrun_ghidra/entities/movement_route_conversion.hpp"
 
 #include <array>
 #include <cstdint>
@@ -36,10 +37,9 @@ inline std::uint16_t field_movement_step_context_word(
 
 using MovementStepProbe =
     std::function<MovementProbeResult(std::uint16_t direction_slot)>;
-using MovementPolicyProbe =
-    std::function<std::int16_t(std::uint16_t direction_slot)>;
+using MovementPolicyProbe = MovementStepProbe;
 using NegativeCollisionRecovery = std::function<bool()>;
-using AlignedRouteCheck = std::function<bool()>;
+using AlignedRouteCheck = std::function<MovementRouteResult()>;
 using MovementReset = std::function<void()>;
 
 // ROM 0xBADE: transfer linked collision context, probe the requested movement

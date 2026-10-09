@@ -13401,52 +13401,98 @@ int run_field_stoker_collision_candidate_qa(
         return 3;
     }
 
-    // The ROM calls 0xB442 when both orthogonal slide probes fail. Verify the
-    // connected field controller handles that case using ordinary diagonal
-    // input against the corner reached above.
+    // This diagonal press reaches the wall with the east/south corner probe
+    // blocked. The ROM tries its two orthogonal fallback probes and commits
+    // the first clear candidate, allowing the actor to slide along the wall.
     const auto reset_count_before = std::count(
         source_boundaries.begin(), source_boundaries.end(),
         std::string("field.movement.reset_blocked_step"));
-    bool saw_corner_reset = false;
+    const auto wall_corner_start = field_scene.field_entity_world_position();
+    if (!save("wall-corner-diagonal-000.bmp")) {
+        std::cerr << "field Stoker-property QA: corner-entry dump failed\n";
+        return 3;
+    }
+    bool saw_corner_slide = false;
+    bool corner_slide_was_cardinal = false;
     std::uint16_t corner_ticks = 0U;
     for (; corner_ticks < 48U && route_active(); ++corner_ticks) {
         const auto before = field_scene.field_entity_world_position();
         field_scene.set_controller_nibble(0x0AU);
         field_scene.advance_frame();
-        const auto reset_count_after = std::count(
-            source_boundaries.begin(), source_boundaries.end(),
-            std::string("field.movement.reset_blocked_step"));
-        if (reset_count_after > reset_count_before) {
-            const auto after = field_scene.field_entity_world_position();
-            if (after.x != before.x || after.y != before.y ||
-                !save("wall-corner-reset.bmp")) {
-                std::cerr << "field Stoker-property QA: blocked corner reset "
-                             "committed a colliding step or could not dump it\n";
-                return 3;
-            }
-            saw_corner_reset = true;
+        const auto frame_name =
+            "wall-corner-diagonal-" +
+            (corner_ticks + 1U < 10U ? std::string("00")
+             : corner_ticks + 1U < 100U ? std::string("0")
+                                        : std::string()) +
+            std::to_string(corner_ticks + 1U) + ".bmp";
+        if (!save(frame_name)) {
+            std::cerr << "field Stoker-property QA: corner-step dump failed\n";
+            return 3;
+        }
+        const auto after = field_scene.field_entity_world_position();
+        if (after.x != before.x || after.y != before.y) {
+            corner_slide_was_cardinal =
+                (after.x != before.x) != (after.y != before.y);
+            saw_corner_slide = save("wall-corner-slide-first.bmp");
             ++corner_ticks;
             break;
         }
     }
-    if (!saw_corner_reset) {
+    const auto reset_count_after_slide = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.movement.reset_blocked_step"));
+    const auto wall_corner_slide_position =
+        field_scene.field_entity_world_position();
+    if (!saw_corner_slide || !corner_slide_was_cardinal ||
+        wall_corner_slide_position.x == wall_corner_start.x &&
+            wall_corner_slide_position.y == wall_corner_start.y ||
+        reset_count_after_slide != reset_count_before || !route_active()) {
         std::cerr << "field Stoker-property QA: diagonal wall contact did not "
-                     "exercise the source blocked-step reset\n";
+                     "commit one clear cardinal fallback candidate "
+                     "(start="
+                  << wall_corner_start.x << ',' << wall_corner_start.y
+                  << ", after=" << wall_corner_slide_position.x << ','
+                  << wall_corner_slide_position.y << ", cardinal="
+                  << (corner_slide_was_cardinal ? "yes" : "no")
+                  << ", reset_count=" << reset_count_after_slide << ")\n";
         return 3;
     }
     field_scene.set_controller_nibble(0U);
-    field_scene.advance_frame();
-    const auto corner_direction =
-        field_scene.field_entity_direction_for_dump();
-    if (field_scene.field_entity_heading_for_dump() !=
-            field_scene.field_entity_target_heading_for_dump() ||
-        field_scene.field_entity_animation_selector_for_dump() !=
-            select_field_entity_animation_selector(corner_direction, false) ||
-        field_scene.field_entity_walking_for_dump() ||
-        field_scene.field_entity_animation_frame_for_dump() != 0U ||
-        !save("wall-corner-idle.bmp")) {
-        std::cerr << "field Stoker-property QA: blocked corner did not restore "
-                     "the target heading and directional idle pose\n";
+    auto neutral_position = wall_corner_slide_position;
+    auto neutral_tail_position = wall_corner_slide_position;
+    bool neutral_tail_stable = true;
+    for (std::uint16_t neutral_tick = 1U; neutral_tick <= 30U;
+         ++neutral_tick) {
+        field_scene.advance_frame();
+        const auto position = field_scene.field_entity_world_position();
+        if (neutral_tick == 24U) {
+            neutral_tail_position = position;
+        }
+        if (neutral_tick >= 24U &&
+            (position.x != neutral_tail_position.x ||
+             position.y != neutral_tail_position.y)) {
+            neutral_tail_stable = false;
+        }
+        neutral_position = position;
+        const auto frame_name =
+            "wall-corner-release-" +
+            (neutral_tick < 10U ? std::string("00")
+             : neutral_tick < 100U ? std::string("0")
+                                  : std::string()) +
+            std::to_string(neutral_tick) + ".bmp";
+        if (!save(frame_name)) {
+            std::cerr << "field Stoker-property QA: neutral-frame dump failed\n";
+            return 3;
+        }
+    }
+    if (field_scene.field_controller_nibble_for_dump() != 0U ||
+        !route_active() || !neutral_tail_stable ||
+        !save("wall-corner-slide-release.bmp")) {
+        std::cerr << "field Stoker-property QA: obstacle slide did not return "
+                     "to a stable neutral-input state on the active map "
+                     "(position="
+                  << neutral_position.x << ',' << neutral_position.y
+                  << ")\n";
         return 3;
     }
 
@@ -13624,6 +13670,13 @@ int run_field_stoker_collision_candidate_qa(
               << " outcome=no_stoker_dialogue east_ticks=" << east_ticks
               << " south_ticks=" << south_ticks
               << " blocked_animation=C052_idle"
+              << " edge_probe_start=" << wall_corner_start.x << ','
+              << wall_corner_start.y
+              << " edge_probe_commit=" << wall_corner_slide_position.x
+              << ',' << wall_corner_slide_position.y
+              << " edge_slide_input_frames=" << corner_ticks
+              << " neutral_tail=" << neutral_tail_position.x << ','
+              << neutral_tail_position.y
               << " property_ticks=" << property_ticks
               << " sfx_events=" << field_audio_events.size()
               << " artifacts=" << output.string() << '\n';

@@ -535,9 +535,10 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_scene20_electronics_trials_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
-# Follow ordinary D-pad movement to scene-2 collision record 2. The source
-# record is a type-2 collision object, not a Stoker identity or event code;
-# this QA verifies its observed event-0/no-dialogue result and full-frame route.
+# Follow ordinary D-pad movement through a scene-2 obstacle edge and collision
+# record 2. The source record is a type-2 collision object, not a Stoker
+# identity or event code; this QA checks the ROM's side-step fallback, its
+# neutral release, and the record's event-0/no-dialogue result.
 add_test(NAME shadowrun_ghidra_conversion_qt_field_stoker_collision_candidate_qa
          COMMAND shadowrun_ghidra_conversion_qt
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"

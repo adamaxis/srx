@@ -4719,7 +4719,7 @@ void FieldSceneRuntime::advance_field_movement() {
         return last_probe;
     };
     const auto policy_probe = [probe](const std::uint16_t direction_slot) {
-        return probe(direction_slot).collision_code;
+        return probe(direction_slot);
     };
 
     const auto previous_x = field_movement_state_.position_x;

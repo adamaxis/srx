@@ -5,10 +5,11 @@
 namespace shadowrun::ghidra_conversion {
 namespace {
 
-bool policy_probe_succeeded(
-    const std::int16_t raw_result,
+bool policy_probe_is_blocked(
+    const MovementProbeResult& raw_result,
     const MovementResultPolicy& result_policy) {
-    return apply_movement_result_policy(raw_result, result_policy) > 0;
+    return apply_movement_result_policy(
+               raw_result.collision_code, result_policy) > 0;
 }
 
 void commit_candidate(
@@ -49,10 +50,12 @@ void advance_entity_movement_step(
     }
 
     if ((entity.heading & 0x3FFFU) == 0U) {
-        if (!check_aligned_route()) {
+        const auto route_result = check_aligned_route();
+        if (!route_result.carry_set &&
+            route_result.fallback_probe.has_value()) {
             entity.collision_flags = static_cast<std::uint8_t>(
                 entity.collision_flags & static_cast<std::uint8_t>(~0x01U));
-            commit_candidate(entity, initial);
+            commit_candidate(entity, *route_result.fallback_probe);
             return;
         }
 
@@ -64,16 +67,15 @@ void advance_entity_movement_step(
     const auto movement_direction = static_cast<std::uint16_t>(
         (entity.heading >> 13U) & 0x06U);
     entity.movement_substate = movement_direction;
-    if (policy_probe_succeeded(
-            policy_probe(static_cast<std::uint16_t>(movement_direction << 1U)),
-            result_policy)) {
+    auto selected_probe = policy_probe(
+        static_cast<std::uint16_t>(movement_direction << 1U));
+    if (policy_probe_is_blocked(selected_probe, result_policy)) {
         entity.route_status = static_cast<std::int16_t>(movement_direction);
         const auto alternate_direction = static_cast<std::uint16_t>(
             (movement_direction + 2U) & 0x07U);
-        if (policy_probe_succeeded(
-                policy_probe(static_cast<std::uint16_t>(
-                    alternate_direction << 1U)),
-                result_policy)) {
+        selected_probe = policy_probe(
+            static_cast<std::uint16_t>(alternate_direction << 1U));
+        if (policy_probe_is_blocked(selected_probe, result_policy)) {
             entity.route_status = -1;
             reset_movement();
             return;
@@ -81,10 +83,10 @@ void advance_entity_movement_step(
     }
 
     entity.animation_heading = rotate_right_four(
-        initial.source_direction_slot);
+        selected_probe.source_direction_slot);
     entity.movement_flags = static_cast<std::uint8_t>(
         entity.movement_flags | 0x04U);
-    commit_candidate(entity, initial);
+    commit_candidate(entity, selected_probe);
 }
 
 void begin_entity_movement_pass(

@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <optional>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -17,12 +18,19 @@ struct DirectionalMovementRoute {
 using MovementRouteLookup =
     std::function<DirectionalMovementRoute(std::uint16_t route_key)>;
 using MovementRouteProbe =
-    std::function<std::int16_t(std::uint16_t direction_slot)>;
+    std::function<MovementProbeResult(std::uint16_t direction_slot)>;
 
-// ROM 0xBB86: derive the even heading-table key, accept a route when both
-// source markers are active, or probe the appropriate fallback direction.
+struct MovementRouteResult {
+    // Preserve the ROM return flag because the caller commits D5/D6 only when
+    // carry is clear. A fallback probe also leaves its candidate in D5/D6.
+    bool carry_set = false;
+    std::optional<MovementProbeResult> fallback_probe;
+};
+
+// ROM 0xBB86: derive the even heading-table key, preserve the source route
+// decision, and retain a fallback collision candidate when one is probed.
 // Route data and collision probing remain native service boundaries.
-bool evaluate_entity_movement_route(
+MovementRouteResult evaluate_entity_movement_route(
     std::uint16_t heading,
     const MovementResultPolicy& result_policy,
     const MovementRouteLookup& route_lookup,

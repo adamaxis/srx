@@ -1,4 +1,4 @@
-# Scene 2 collision record 2 negative-control audit
+# Scene 2 collision record 2 and obstacle-edge route
 
 ## Result
 
@@ -12,73 +12,106 @@ The actual doorway trigger is scene-2 record 91 at `0x173138`, bounds
 `(0x3C0..0x3DF, 0x280..0x29F)`, value `0xC2`. Its physical collision-to-Stoker
 dialogue path is traced and tested separately in
 [`motel-doorway-scene-entry.md`](motel-doorway-scene-entry.md). That route
-publishes raw collision `0xFFC2`, selects mode 2/event 2, and opens Stoker's
-generic arrival dialogue. Record 2's event-0 result is not evidence for that
+publishes raw collision `0xFFC2`, selects mode 2/event 2, and opens Stoker’s
+generic arrival dialogue. Record 2’s event-0 result is not evidence for that
 positive route.
 
-## Negative-control route and QA
+## ROM trace and connected movement
 
-- New Game starts in scene 2 at `(0x3CE0, 0x2D00)`.
-- Ordinary D-pad movement routes east and south to record 2's expanded west
-  collision margin. The blocked step leaves the actor at `(0x5540, 0x3480)`.
-- The source collision path at `0xB7B8` returns event 0 for this record. The
-  scene stays 2 and the dialogue modal remains closed through 30 neutral
-  destination updates.
-- At the separate wall row, held movement is rejected and the connected ROM
-  `0xB442` reset returns to C052 idle, frame 0. A subsequent held diagonal at
-  the corner reaches the same live reset callback; the candidate position is
-  unchanged, and releasing input restores the desired heading and idle pose.
-- The independent section 03 recording shows the motel approach and populated
-  Stoker panel, but does not show record 2, its collision coordinates, or the
-  event state. It therefore cannot independently validate this negative
-  control.
+The scene-2 wall route exercises the ROM’s actual diagonal fallback policy:
 
-The candidate CTest writes 23 full-screen 320x224 BMP checkpoints covering
-spawn, movement, wall approach, corner reset/idle, bypass, the property lane,
-contact, idle frames 1/8/30, and `actual.bmp`. Debug and Release output names
-and SHA-256 hashes match. All frames were reviewed at full size; the playfield
-and HUD remain visible, with no dialogue, menu controls, or duplicate UI layer
-overlaid.
+- `0xB77E` probes a direction and leaves the candidate coordinates in D5/D6
+  while recording the direction slot at `FFDF66`.
+- `0xBADE` detects the blocked diagonal candidate and calls the policy probe
+  at `0xB732` for an orthogonal side direction. A clear first probe commits;
+  if it is blocked, the second side direction is tried.
+- When either side is clear, `0xBB70` copies the last probe direction from
+  `FFDF66` to entity `+0x36`, sets the source movement flag, and falls through
+  to `0xBBE4` to commit that same probe’s D5/D6 coordinates.
+- `0xB442` is reached when both side probes remain blocked. A blocked aligned
+  route also resets through this handler.
 
-## Eight-question visual review
+The typed conversion now carries the full `MovementProbeResult` through both
+the aligned route and the diagonal side probes. `MovementRouteResult` retains
+the aligned fallback candidate; the diagonal step commits the final side
+probe, including its source direction slot. The Qt field controller supplies
+the real map collision evaluator to this path.
 
-1. **Does it look correct?** The captures show the continuous scene-2 route
-   and the expected no-dialogue outcome. No matching independent Genesis frame
-   of this record-2 contact was found.
-2. **Does the look match behavior?** Yes for this negative control: contact
-   leaves scene 2 active with event 0 and no modal. Blocked wall and corner
-   movement run through the connected B442 reset and return to the source-derived
-   idle selector and frame.
-3. **Are the visuals correct?** Whole-screen captures show a stable field and
-   HUD during movement and idle. Exact source pixels at record 2 are not
-   independently available; FIELD-01 and HUD-01 remain separate open goals.
-4. **Is it animated?** The runner changes poses during held movement and is
-   static at the blocked wall and idle checkpoints. The QA confirms the
-   directional reset frames after both wall and diagonal corner rejection.
-   This route does not test a Stoker animation or the positive doorway sequence.
-5. **Is there a sound?** This negative-control route identifies no
-   collision-specific source request or duration. Its event count cannot prove
-   playback or silence.
-6. **Are the other screen areas correct?** The full-screen review includes
-   the complete field and HUD. No stale dialogue, menu, or duplicate controls
-   appear. It does not verify portrait palette or ammunition values.
-7. **Do multiple frames support the interpretation?** Native checkpoints cover
-   movement, the blocked wall, corner reset, contact, and 30 idle updates. Independent
-   section 03 frames show the separate Stoker doorway sequence, not this
-   record-2 route or its event result.
-8. **Was old UI cleared before drawing new UI?** No UI opens on this route, and
-   all full-screen captures remain free of stale dialogue/menu content.
+## Connected route and full-screen QA
+
+The QA starts from the New Game scene-2 spawn `(0x3CE0, 0x2D00)`, follows
+ordinary east/south input to the wall, attempts the diagonal input, releases
+input for 30 consecutive frames, bypasses the wall, then contacts record 2.
+At the wall, the diagonal candidate is blocked but one orthogonal probe is
+clear. The live controller commits that cardinal candidate instead of
+resetting the actor in place. The final seven neutral frames verify that the
+position has settled. A separate held movement into the wall with no usable
+path leaves the actor at the source-derived C052 idle pose.
+
+Record 2 contact remains scene 2/event 0 with the dialogue and interaction
+windows closed. The candidate CTest writes 55 full-screen 320x224 BMPs,
+including the pre-contact wall frame, every frame in the diagonal attempt,
+all 30 neutral release frames, bypass frames, the record-2 approach, contact,
+and final idle frames. Debug and Release contain the same filenames and
+SHA-256 hashes. All 55 Release frames were inspected at full size; the
+Debug images are byte-identical.
+
+The independent section 03 recording shows the motel approach and populated
+Stoker panel, but it does not show record 2, this wall, the collision
+coordinates, or the event state. It cannot independently validate this
+negative-control path.
+
+## Nine-question visual review
+
+1. **Does it look correct?** The full-screen frames show a coherent scene-2
+   field route. No independent Genesis frame for this wall or record-2
+   contact was found, so appearance is internally reviewed but not claimed as
+   an independent match.
+2. **Does the visible look match behavior?** Yes for this route: the field
+   stays in scene 2, event 0 remains active, record 2 opens no dialogue, and
+   the diagonal obstacle contact advances through the clear cardinal fallback
+   rather than falsely invoking the blocked-step reset.
+3. **Are the visuals correct?** The complete playfield and HUD remain drawn
+   through movement and neutral release. No clipping or collision-induced
+   graphics change appears in the captures. Exact Genesis pixels for this
+   object remain unavailable.
+4. **Is it animated?** The player and map update across the obstacle contact.
+   The ROM movement code selects the fallback direction and the shared field
+   controller continues the movement; no new animation was added. The
+   consecutive 30-frame release capture includes the settle interval and
+   final stable position.
+5. **Is there a sound?** The traced `0xB6DE`, `0xBADE`, `0xBB70`, `0xBBE4`,
+   and `0xB442` movement path issues no sound call. The connected QA records
+   zero sound events for this route. Other field movement audio remains an
+   open goal; no duration is inferred here.
+6. **Are the other visible parts of the screen also correct?** All frames
+   include the full field and HUD. The portrait, status column, and nearby
+   map remain visible while the camera follows the actor.
+7. **Do multiple frames support the interpretation?** Yes. The wall
+   approach, diagonal input, release, bypass, contact, and idle have separate
+   full-screen samples; Debug and Release images match byte for byte. The
+   supplied independent clip does not contain this collision route.
+8. **Does the new UI replace the old UI cleanly?** This route does not open
+   a menu or dialog. No old menu controls or graphics appear over the field.
+9. **Was the affected time window reviewed?** The wall approach, every
+   diagonal-input frame, and the following 30 neutral frames were captured
+   consecutively and inspected. Earlier east/south travel is represented by
+   checkpoints rather than a continuous capture; it is not part of the
+   collision decision window. The final route holds at the destination long
+   enough to verify a stable field state.
 
 ## Outcome
 
-- **Code changed:** a reproducible record-2 negative-control route and CTest
-  distinguish this terrain object from the Stoker doorway; the connected live
-  field movement reset now handles blocked corner probes.
-- **Behavior checked:** record 2 contact remains scene 2/event 0 and opens no
-  dialogue. The positive record-91 route is covered by the linked audit.
-- **Internally checked:** the candidate and field-movement CTests pass in Debug
-  and Release; all 23 full-screen outputs match by SHA-256 and were reviewed.
-- **Independently visually checked:** the supplied recording does not show
-  this candidate object, so no independent visual claim is made for record 2.
-- **Reported defect resolved:** this file is only a negative control. The
-  positive Stoker route's result and evidence are recorded in the linked audit.
+- **Code changed:** native route and step results preserve the final source
+  collision probe so the connected controller commits its actual fallback
+  coordinates and direction.
+- **Behavior implemented:** this one-side-clear obstacle edge now slides
+  along the valid orthogonal route; fully blocked movement still resets.
+- **Internally checked:** the route, field-movement, and collision-to-dialogue
+  CTests pass in Debug and Release. Movement route/step contract tests pass in
+  both configurations. All 55 screen dumps match across Debug and Release.
+- **Independently visually checked:** no matching real-game frame exists for
+  this wall/record-2 path. The separate Stoker doorway frames do not prove it.
+- **Reported defect resolved:** the tested one-side-clear edge case no longer
+  sticks at the blocked diagonal candidate. FIELD-02 remains partial because
+  broad terrain recovery and other collision/property routes are still open.
