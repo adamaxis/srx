@@ -101,10 +101,11 @@ limit on initial invocation and resume.
 The Ares Weapon Emporium stock is declared in `gameplay/scripts/shop.lua`.
 The script groups offers under stable category names; `GameScriptRuntime`
 validates the bounded catalog, and the native shop controller consumes those
-typed offers. The renderer, category cursor, purchase/sale confirmation, and
-wallet/inventory rules remain native. This is the first shop content moved out
-of the C++ menu implementation; the interaction loop and other shop menus are
-still to be migrated.
+typed offers. Ordered service labels and action headings are consumed from the
+same module without a duplicate ID list in `FieldSceneRuntime`; script tests
+check their ROM order. The renderer, category cursor, purchase/sale
+confirmation, and wallet/inventory rules remain native. The interaction loop
+and other shop menus are still to be migrated.
 
 `gameplay/scripts/field_mode.lua` selects the Ares mode-text record from
 read-only `game.field` context. It owns the zero-result store introduction,
