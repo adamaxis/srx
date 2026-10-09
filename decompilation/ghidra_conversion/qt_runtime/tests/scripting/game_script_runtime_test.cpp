@@ -142,6 +142,8 @@ int main() {
     const auto manager =
         scripts.menu("motel", "manager_choices", "stoker.motel");
     if (!expect(manager.has_value() && manager->choices.size() == 2U &&
+                    manager->text_profile == "stoker.motel" &&
+                    manager->speaker_id.empty() &&
                     manager->title_key == "stoker.motel.manager.title" &&
                     manager->choices[0].id == "crash" &&
                     manager->choices[0].label_key ==
@@ -190,42 +192,125 @@ int main() {
     scripts.set_story_state(repeat_visit);
     scripts.set_location_context(
         "motel", "stoker_motel", "stoker.motel", "stoker");
-    const auto opening_interaction =
-        scripts.start_task("michael_package", "opening_interaction");
-    if (!expect(opening_interaction.status ==
+    const auto stoker_interaction =
+        scripts.start_task("michael_package", "stoker_interaction");
+    if (!expect(stoker_interaction.status ==
                         ScriptTaskStep::Status::awaiting_native_operation &&
-                    opening_interaction.operation.has_value() &&
-                    opening_interaction.operation->type ==
-                        ScriptNativeOperation::Type::ui_say &&
-                    opening_interaction.operation->dialogue.has_value() &&
-                    opening_interaction.operation->dialogue->speaker_id ==
-                        "stoker" &&
-                    opening_interaction.operation->dialogue->text_profile ==
-                        "stoker.motel" &&
-                    opening_interaction.operation->dialogue->event_id ==
-                        "arrival",
-                "opening interaction did not yield its speaker/event dialogue")) {
-        std::cerr << scripts.failure() << '\n';
-        return 13;
-    }
-    auto opening_continuation = scripts.complete_native_operation(true);
-    if (!expect(opening_continuation.status ==
-                        ScriptTaskStep::Status::awaiting_native_operation &&
-                    opening_continuation.operation.has_value() &&
-                    opening_continuation.operation->type ==
+                    stoker_interaction.operation.has_value() &&
+                    stoker_interaction.operation->type ==
                         ScriptNativeOperation::Type::ui_menu &&
-                    opening_continuation.operation->menu.has_value() &&
-                    opening_continuation.operation->menu->choices.size() == 3U,
-                "opening dialogue did not continue into the motel menu")) {
+                    stoker_interaction.operation->menu.has_value() &&
+                    stoker_interaction.operation->menu->choices.size() == 3U &&
+                    stoker_interaction.operation->menu->speaker_id == "stoker",
+                "repeat Stoker visit did not yield the shared motel menu")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
     }
-    opening_continuation = scripts.complete_native_menu_choice("package");
-    if (!expect(opening_continuation.status ==
+    auto repeat_choice = scripts.complete_native_menu_choice("package");
+    if (!expect(repeat_choice.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    repeat_choice.operation.has_value() &&
+                    repeat_choice.operation->type ==
+                        ScriptNativeOperation::Type::service_call &&
+                    repeat_choice.operation->service_id ==
+                        "michael_package.prepare_debt_offer",
+                "Michael choice did not request its native quest-state service")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    repeat_choice = scripts.complete_native_service_result("ready");
+    if (!expect(repeat_choice.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    repeat_choice.operation.has_value() &&
+                    repeat_choice.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    repeat_choice.operation->menu.has_value() &&
+                    repeat_choice.operation->menu->id == "debt" &&
+                    repeat_choice.operation->menu->choices.size() == 2U,
+                "Michael service did not resume into the scripted debt menu")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    repeat_choice = scripts.complete_native_menu_choice("jump-house");
+    if (!expect(repeat_choice.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    repeat_choice.operation.has_value() &&
+                    repeat_choice.operation->type ==
+                        ScriptNativeOperation::Type::service_call &&
+                    repeat_choice.operation->service_id ==
+                        "michael_package.jump_house_referral",
+                "Jump House choice did not yield its native referral service")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    repeat_choice = scripts.complete_native_service_result("ready");
+    if (!expect(repeat_choice.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    repeat_choice.operation.has_value() &&
+                    repeat_choice.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    repeat_choice.operation->dialogue.has_value() &&
+                    repeat_choice.operation->dialogue->event_id ==
+                        "jump-house",
+                "referral service did not yield the script-selected dialogue")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    repeat_choice = scripts.complete_native_operation(true);
+    if (!expect(repeat_choice.status == ScriptTaskStep::Status::completed,
+                "Michael's scripted referral dialogue did not complete")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+
+    scripts.set_story_state(new_game);
+    const auto first_stoker_interaction =
+        scripts.start_task("michael_package", "stoker_interaction");
+    if (!expect(first_stoker_interaction.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    first_stoker_interaction.operation.has_value() &&
+                    first_stoker_interaction.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    first_stoker_interaction.operation->dialogue.has_value() &&
+                    first_stoker_interaction.operation->dialogue->event_id ==
+                        "arrival" &&
+                    scripts.story_state().at("opening_dialogue_seen"),
+                "first Stoker visit did not set its flag and yield arrival dialogue")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+
+    auto first_continuation = scripts.complete_native_operation(true);
+    if (!expect(first_continuation.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    first_continuation.operation.has_value() &&
+                    first_continuation.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    first_continuation.operation->menu.has_value() &&
+                    first_continuation.operation->menu->choices.size() == 3U,
+                "first-entry dialogue did not continue into the shared menu")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    first_continuation = scripts.complete_native_menu_choice("leave");
+    if (!expect(first_continuation.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    first_continuation.operation.has_value() &&
+                    first_continuation.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    first_continuation.operation->dialogue.has_value() &&
+                    first_continuation.operation->dialogue->event_id ==
+                        "leave",
+                "first-visit motel Leave choice did not yield farewell dialogue")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    first_continuation = scripts.complete_native_operation(true);
+    if (!expect(first_continuation.status ==
                         ScriptTaskStep::Status::completed &&
-                    opening_continuation.result_id ==
-                        std::optional<std::string>{"package"},
-                "opening interaction did not finish with the chosen ID")) {
+                    first_continuation.result_id ==
+                        std::optional<std::string>{"leave"},
+                "first Stoker visit did not finish after farewell dialogue")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
     }
@@ -251,6 +336,65 @@ int main() {
                     menu_selection.result_id ==
                         std::optional<std::string>{"package"},
                 "native menu choice did not resume Lua with its stable id")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+
+    auto room_interaction =
+        scripts.start_task("motel", "manager_interaction");
+    if (!expect(room_interaction.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    room_interaction.operation.has_value() &&
+                    room_interaction.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu,
+                "motel interaction did not offer its manager menu")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    room_interaction = scripts.complete_native_menu_choice("crash");
+    if (!expect(room_interaction.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    room_interaction.operation.has_value() &&
+                    room_interaction.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    room_interaction.operation->menu.has_value() &&
+                    room_interaction.operation->menu->id == "room" &&
+                    room_interaction.operation->menu->choices.size() == 2U,
+                "Crash choice did not continue into the generic room menu")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    room_interaction = scripts.complete_native_menu_choice("pay");
+    if (!expect(room_interaction.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    room_interaction.operation.has_value() &&
+                    room_interaction.operation->type ==
+                        ScriptNativeOperation::Type::service_call &&
+                    room_interaction.operation->service_id ==
+                        "motel.pay_room",
+                "room menu did not yield its native payment service")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    room_interaction = scripts.complete_native_service_result("paid");
+    if (!expect(room_interaction.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    room_interaction.operation.has_value() &&
+                    room_interaction.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    room_interaction.operation->dialogue.has_value() &&
+                    room_interaction.operation->dialogue->event_id ==
+                        "room.paid",
+                "payment result did not select its scripted result dialogue")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    room_interaction = scripts.complete_native_operation(true);
+    if (!expect(room_interaction.status ==
+                        ScriptTaskStep::Status::completed &&
+                    room_interaction.result_id ==
+                        std::optional<std::string>{"hotel-options"},
+                "successful room payment did not request hotel options")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
     }
@@ -290,6 +434,29 @@ int main() {
         return 13;
     }
 
+    scripts.set_story_state(completed);
+    scripts.set_location_context("motel", "downtown_motel",
+                                 "downtown.motel");
+    auto generic_motel =
+        scripts.start_task("motel", "manager_interaction");
+    if (!expect(generic_motel.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    generic_motel.operation.has_value() &&
+                    generic_motel.operation->menu.has_value() &&
+                    generic_motel.operation->menu->choices.size() == 2U,
+                "shared motel handler did not work without Stoker context")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    generic_motel = scripts.complete_native_menu_choice("leave");
+    if (!expect(generic_motel.status == ScriptTaskStep::Status::completed &&
+                    generic_motel.result_id ==
+                        std::optional<std::string>{"leave"},
+                "generic motel Leave incorrectly required a speaker dialogue")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+
     GameScriptRuntime sequence_scripts;
     if (!expect(sequence_scripts.load_package(
                     SHADOWRUN_GAMEPLAY_SCRIPT_FIXTURE_ROOT),
@@ -319,6 +486,29 @@ int main() {
     sequence_step = sequence_scripts.complete_native_operation(true);
     if (!expect(sequence_step.status == ScriptTaskStep::Status::completed,
                 "script did not finish after sequential native operations")) {
+        std::cerr << sequence_scripts.failure() << '\n';
+        return 14;
+    }
+
+    sequence_step = sequence_scripts.start_task(
+        "field_events", "service_roundtrip");
+    if (!expect(sequence_step.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    sequence_step.operation.has_value() &&
+                    sequence_step.operation->type ==
+                        ScriptNativeOperation::Type::service_call &&
+                    sequence_step.operation->service_id ==
+                        "inventory.collect",
+                "service operation did not yield its namespaced action id")) {
+        std::cerr << sequence_scripts.failure() << '\n';
+        return 14;
+    }
+    sequence_step =
+        sequence_scripts.complete_native_service_result("accepted");
+    if (!expect(sequence_step.status == ScriptTaskStep::Status::completed &&
+                    sequence_step.result_id ==
+                        std::optional<std::string>{"item-collected"},
+                "service result did not resume Lua with its stable result id")) {
         std::cerr << sequence_scripts.failure() << '\n';
         return 14;
     }

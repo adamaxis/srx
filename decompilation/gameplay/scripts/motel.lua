@@ -28,8 +28,35 @@ function Motel.manager_interaction()
 
     if choice == "leave" and game.location.speaker_id ~= nil then
         game.ui.say("leave")
+        return choice
+    end
+    if choice == "crash" then
+        return Motel.room_interaction()
     end
 
+    return choice
+end
+
+function Motel.room_interaction()
+    local choice = game.ui.menu("room", { "pay", "leave" })
+    if choice == "leave" then
+        game.ui.say("leave")
+        return choice
+    end
+    if choice == "pay" then
+        local result = game.services.call("motel", "pay_room")
+        if result == "paid" then
+            if game.location.speaker_id ~= nil then
+                game.ui.say("room.paid")
+            end
+            return "hotel-options"
+        end
+        if result == "insufficient" then
+            if game.location.speaker_id ~= nil then
+                game.ui.say("room.insufficient")
+            end
+        end
+    end
     return choice
 end
 

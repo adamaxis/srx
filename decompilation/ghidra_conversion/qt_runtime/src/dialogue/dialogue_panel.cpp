@@ -110,6 +110,38 @@ void mark_missing_text(DialoguePanelView& view, const std::string_view alias) {
                                      : "dialogue text alias is missing";
 }
 
+struct ScriptSpeakerProperties {
+    std::string_view id;
+    std::string_view name;
+    std::string_view portrait_alias;
+};
+
+const ScriptSpeakerProperties* find_script_speaker(
+    const std::string_view speaker_id) {
+    static constexpr std::array<ScriptSpeakerProperties, 1> speakers{{
+        {"stoker", "Stoker", "dialogue.portraits.stoker.motel"},
+    }};
+    const auto speaker = std::find_if(
+        speakers.begin(), speakers.end(), [speaker_id](const auto& profile) {
+            return profile.id == speaker_id;
+        });
+    return speaker == speakers.end() ? nullptr : &*speaker;
+}
+
+void set_script_speaker(DialoguePanelView& view,
+                        const std::string_view speaker_id) {
+    if (const auto* speaker = find_script_speaker(speaker_id);
+        speaker != nullptr) {
+        view.actor_kind = DialoguePanelActorKind::field_npc;
+        view.actor_name = speaker->name;
+        view.portrait_alias = speaker->portrait_alias;
+    } else {
+        view.actor_kind = DialoguePanelActorKind::none;
+        view.actor_name = {};
+        view.portrait_alias = {};
+    }
+}
+
 void copy_text_alias_stream(DialoguePanelView& view,
                             const std::string_view text,
                             const DialogueTextResolver& resolve_text) {
@@ -382,27 +414,15 @@ std::optional<DialoguePanelView> make_script_dialogue_panel_view(
     const std::string_view text_profile,
     const std::string_view event_id,
     const DialogueTextResolver& resolve_text) {
-    struct SpeakerProperties {
-        std::string_view id;
-        std::string_view name;
-        std::string_view portrait_alias;
-    };
-    constexpr std::array<SpeakerProperties, 1> speakers{{
-        {"stoker", "Stoker", "dialogue.portraits.stoker.motel"},
-    }};
-    const auto speaker = std::find_if(
-        speakers.begin(), speakers.end(), [speaker_id](const auto& profile) {
-            return profile.id == speaker_id;
-        });
-    if (speaker == speakers.end() || text_profile.empty() || event_id.empty()) {
+    const auto* speaker = find_script_speaker(speaker_id);
+    if (speaker == nullptr || text_profile.empty() || event_id.empty()) {
         return std::nullopt;
     }
 
     DialoguePanelView view{};
     view.open = true;
     view.actor_kind = DialoguePanelActorKind::field_npc;
-    view.actor_name = speaker->name;
-    view.portrait_alias = speaker->portrait_alias;
+    set_script_speaker(view, speaker_id);
     view.kind = DialoguePanelKind::field_npc_prompt;
 
     const auto key_prefix = std::string(text_profile) + "." +
@@ -421,6 +441,47 @@ std::optional<DialoguePanelView> make_script_dialogue_panel_view(
         view.options[0] = {DialoguePanelOptionRole::field_continue, more,
                            DialoguePanelCommand::field_continue};
         view.option_count = 1U;
+    }
+    if (!view.source_complete) {
+        view.kind = DialoguePanelKind::source_boundary;
+    }
+    return view;
+}
+
+DialoguePanelView make_script_menu_panel_view(
+    const std::string_view speaker_id, const std::string_view text_profile,
+    const std::string_view title_key,
+    const std::vector<std::pair<std::string, std::string>>& choices,
+    const DialogueTextResolver& resolve_text) {
+    DialoguePanelView view{};
+    view.open = true;
+    view.actor_kind = DialoguePanelActorKind::none;
+    view.kind = DialoguePanelKind::field_npc_prompt;
+    set_script_speaker(view, speaker_id);
+
+    if (text_profile.empty() || title_key.empty()) {
+        mark_missing_text(view, title_key);
+        view.kind = DialoguePanelKind::source_boundary;
+        return view;
+    }
+    copy_text_alias_stream(view, title_key, resolve_text);
+
+    if (choices.size() > view.options.size()) {
+        view.source_complete = false;
+        view.source_boundary_reason = "script menu exceeds the panel choice limit";
+    }
+    for (const auto& [choice_id, label_key] : choices) {
+        if (view.option_count >= view.options.size()) {
+            break;
+        }
+        const auto label = resolve_text ? resolve_text(label_key)
+                                        : std::string_view{};
+        if (choice_id.empty() || label.empty()) {
+            mark_missing_text(view, label_key);
+            continue;
+        }
+        add_option(view, DialoguePanelOptionRole::script_menu_choice, label,
+                   DialoguePanelCommand::script_menu_choice);
     }
     if (!view.source_complete) {
         view.kind = DialoguePanelKind::source_boundary;

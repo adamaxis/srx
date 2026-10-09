@@ -13044,7 +13044,7 @@ int run_field_stoker_collision_to_dialogue_qa(
              .michael_package_collected ||
         package_handoff.actor_name != "Stoker" ||
         package_handoff.option_count != 0U ||
-        !package_handoff.returns_to_field || !package_text_present ||
+        !package_text_present ||
         !save_frame("stoker-package-handoff", false)) {
         std::cerr << "Stoker collision QA: successful payment did not update "
                      "the wallet and show the source package handoff\n";

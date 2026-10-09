@@ -12,6 +12,7 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 
 #include <cstdint>
+#include <cstddef>
 #include <functional>
 #include <optional>
 #include <string>
@@ -85,12 +86,9 @@ public:
     bool open_stoker_prompt_for_dump(StokerMotelPromptId prompt);
     bool open_stoker_arrival_result_for_dump(std::uint8_t random_roll);
 
-    // Entry used by the typed scene-2/event-2 story service. The opening page
-    // continues directly to the three-choice manager offer; repeat unpaid
-    // entries begin at that offer, and completed collection uses ordinary
-    // motel service.
-    bool open_stoker_story_entry(StokerMotelStoryEntryAction action,
-                                 const StokerMotelStoryState& story_state);
+    // The story script decides whether this visit plays its first-entry
+    // dialogue and then enters the shared motel manager interaction.
+    bool open_stoker_interaction(const StokerMotelStoryState& story_state);
 
     FieldDialogueAdvanceResult advance_controller_events(
         std::uint16_t event_word);
@@ -113,7 +111,9 @@ private:
                            StokerMotelPromptId prompt);
     bool present_script_operation(
         const scripting::ScriptNativeOperation& operation,
-        StokerMotelPromptId prompt);
+        StokerMotelPromptId prompt, std::size_t service_depth = 0U);
+    std::optional<std::string> invoke_script_service(
+        std::string_view service_id);
     std::string_view resolve_text(std::string_view alias) const;
 
     std::function<void(std::string_view)> source_boundary_callback_;

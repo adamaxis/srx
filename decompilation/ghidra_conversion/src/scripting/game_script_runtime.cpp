@@ -276,6 +276,7 @@ bool parse_event_rule(lua_State* state, const int index,
 bool parse_menu_choices(lua_State* state, const int index,
                         const std::string_view menu_id,
                         const std::string_view text_profile,
+                        const std::string_view speaker_id,
                         ScriptMenuDefinition& menu) {
     if (!lua_istable(state, index) || !valid_identifier(menu_id) ||
         !valid_identifier(text_profile)) {
@@ -286,6 +287,8 @@ bool parse_menu_choices(lua_State* state, const int index,
         return false;
     }
     menu.id = std::string(menu_id);
+    menu.text_profile = std::string(text_profile);
+    menu.speaker_id = std::string(speaker_id);
     menu.title_key = std::string(text_profile) + "." +
                      std::string(menu_id) + ".title";
     menu.choices.reserve(count);
@@ -477,7 +480,8 @@ struct GameScriptRuntime::Impl {
             !valid_identifier(menu_id) ||
             !valid_identifier(self->location_text_profile) ||
             !parse_menu_choices(lua, 2, menu_id,
-                                self->location_text_profile, menu)) {
+                                self->location_text_profile,
+                                self->location_speaker_id, menu)) {
             self->bridge_failure =
                 "game.ui.menu expects a menu name and unique stable choice ids in a profiled location";
             lua_pushnil(lua);
@@ -521,6 +525,37 @@ struct GameScriptRuntime::Impl {
         operation.dialogue = ScriptDialogueRequest{
             self->location_speaker_id, self->location_text_profile,
             std::move(event_id)};
+        self->pending_task_operation = std::move(operation);
+        self->task_waiting = true;
+        return lua_yieldk(lua, 0, 1, actor_walk_heading_continuation);
+    }
+
+    static int services_call(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        if (self == nullptr || self->task_state != lua ||
+            self->task_waiting || self->pending_task_operation.has_value() ||
+            self->active_native_operation.has_value()) {
+            if (self != nullptr) {
+                self->bridge_failure =
+                    "game.services.call must run inside an active task";
+            }
+            lua_pushnil(lua);
+            return 1;
+        }
+
+        std::string domain;
+        std::string action;
+        if (!read_string(lua, 1, domain) || !valid_identifier(domain) ||
+            !read_string(lua, 2, action) || !valid_identifier(action)) {
+            self->bridge_failure =
+                "game.services.call expects a service domain and action id";
+            lua_pushnil(lua);
+            return 1;
+        }
+
+        ScriptNativeOperation operation{};
+        operation.type = ScriptNativeOperation::Type::service_call;
+        operation.service_id = domain + "." + action;
         self->pending_task_operation = std::move(operation);
         self->task_waiting = true;
         return lua_yieldk(lua, 0, 1, actor_walk_heading_continuation);
@@ -667,6 +702,11 @@ struct GameScriptRuntime::Impl {
         lua_pushcclosure(state, ui_say, 1);
         lua_setfield(state, -2, "say");
         lua_setfield(state, -2, "ui");
+        lua_newtable(state);
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, services_call, 1);
+        lua_setfield(state, -2, "call");
+        lua_setfield(state, -2, "services");
         lua_rawgeti(state, LUA_REGISTRYINDEX, modules_reference);
         lua_setfield(state, -2, "modules");
         lua_setglobal(state, "game");
@@ -958,6 +998,24 @@ ScriptTaskStep GameScriptRuntime::complete_native_menu_choice(
     return impl_->resume_task(1);
 }
 
+ScriptTaskStep GameScriptRuntime::complete_native_service_result(
+    const std::string_view result_id) {
+    auto* state = impl_->state;
+    auto* task = impl_->task_state;
+    const auto& operation = impl_->active_native_operation;
+    if (state == nullptr || task == nullptr || !impl_->task_waiting ||
+        impl_->pending_task_operation.has_value() || !operation.has_value() ||
+        operation->type != ScriptNativeOperation::Type::service_call ||
+        result_id.empty() || !valid_identifier(result_id)) {
+        return impl_->failed_task(
+            "gameplay script task is not waiting for a valid service result");
+    }
+    impl_->task_waiting = false;
+    impl_->active_native_operation.reset();
+    lua_pushlstring(task, result_id.data(), result_id.size());
+    return impl_->resume_task(1);
+}
+
 bool GameScriptRuntime::task_waiting_for_native_operation() const noexcept {
     return impl_->task_state != nullptr && impl_->task_waiting &&
            !impl_->pending_task_operation.has_value() &&
@@ -1000,7 +1058,8 @@ std::optional<ScriptMenuDefinition> GameScriptRuntime::menu(
     }
 
     ScriptMenuDefinition definition;
-    if (!parse_menu_choices(state, -1, menu_id, text_profile, definition)) {
+    if (!parse_menu_choices(state, -1, menu_id, text_profile,
+                            impl_->location_speaker_id, definition)) {
         lua_pop(state, 1);
         impl_->failure = std::string(module) + "." + std::string(function) +
                          " must return unique choice ids";

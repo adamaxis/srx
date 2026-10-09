@@ -8,4 +8,12 @@ function Events.walk_twice()
     return game.actor.walk_heading("player", 1)
 end
 
+function Events.service_roundtrip()
+    local result = game.services.call("inventory", "collect")
+    if result == "accepted" then
+        return "item-collected"
+    end
+    return "item-unavailable"
+end
+
 return Events

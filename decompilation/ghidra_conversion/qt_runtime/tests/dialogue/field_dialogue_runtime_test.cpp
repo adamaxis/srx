@@ -211,6 +211,7 @@ int main() {
 
     if (!expect(runtime.open_stoker_prompt_for_dump(
             StokerMotelPromptId::manager_greeting))) {
+        std::cerr << "manager prompt boundary: " << boundary << '\n';
         return 3;
     }
     if (!expect(runtime.panel().actor_name == "Stoker")) return 39;
@@ -228,12 +229,12 @@ int main() {
         return 4;
     }
 
-    // The B button is the source's second option and leaves on its proven
-    // sentinel page. The A payment branch is exercised below.
+    // The B button is the room menu's Leave option; Lua requests its shared
+    // farewell page, which returns to the field after the next A press.
     if (!expect(runtime.advance_controller_events(0x1000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(runtime.panel().option_count == 0U) ||
-        !expect(runtime.panel().returns_to_field)) {
+        !expect(!runtime.panel().returns_to_field)) {
         return 5;
     }
     if (!expect(runtime.advance_controller_events(0x4000U) ==
@@ -289,10 +290,14 @@ int main() {
                 "dialogue.portraits.stoker.motel") ||
         !expect(runtime.panel().option_count == 2U) ||
         !expect(!runtime.panel().has_more) ||
+        !expect(runtime.panel().options[0].role ==
+                DialoguePanelOptionRole::script_menu_choice) ||
+        !expect(runtime.panel().options[1].role ==
+                DialoguePanelOptionRole::script_menu_choice) ||
         !expect(dialogue_panel_option_command(runtime.panel(), 0U) ==
-                DialoguePanelCommand::stoker_open_room_offer) ||
+                DialoguePanelCommand::script_menu_choice) ||
         !expect(dialogue_panel_option_command(runtime.panel(), 1U) ==
-                DialoguePanelCommand::stoker_open_leave_notice) ||
+                DialoguePanelCommand::script_menu_choice) ||
         !expect(runtime.panel().text_segments[0].find("manager yawns") !=
                 std::string_view::npos) ||
         !expect(runtime.panel().options[2].source_label.empty())) {
@@ -343,7 +348,7 @@ int main() {
         !expect(runtime.panel().text_segments[0].find("own towels") !=
                 std::string_view::npos) ||
         !expect(runtime.panel().option_count == 0U) ||
-        !expect(runtime.panel().returns_to_field)) {
+        !expect(!runtime.panel().returns_to_field)) {
         return 62;
     }
     QImage room_paid_scene(320, 224, QImage::Format_RGB32);
@@ -498,8 +503,8 @@ int main() {
         return 34;
     }
 
-    if (!expect(runtime.open_stoker_prompt_for_dump(
-            StokerMotelPromptId::manager_greeting_with_package)) ||
+    if (!expect(runtime.open_stoker_interaction(
+            StokerMotelStoryState{true, false, false})) ||
         !expect(runtime.panel().text_segment_count == 5U) ||
         !expect(runtime.panel().option_count == 3U) ||
         !expect(runtime.panel().text_segments[0].find("manager yawns") !=
@@ -558,13 +563,23 @@ int main() {
         return 12;
     }
 
-    if (!expect(runtime.advance_controller_events(0x2000U) ==
-                FieldDialogueAdvanceResult::prompt_advanced) ||
+    const auto debt_choice_result = runtime.advance_controller_events(0x2000U);
+    if (debt_choice_result != FieldDialogueAdvanceResult::prompt_advanced ||
         !expect(followup_state.story_flags == 3U) ||
         !expect(followup_state.referral_flags == 0U) ||
         !expect(runtime.panel().option_count == 2U) ||
         !expect(runtime.panel().text_segments[0].find("Michael's brother") !=
                 std::string_view::npos)) {
+        std::cerr << "debt menu state: result="
+                  << static_cast<int>(debt_choice_result)
+                  << " followup_flags=" << followup_state.story_flags
+                  << " referral_flags="
+                  << static_cast<unsigned>(followup_state.referral_flags)
+                  << " options=" << runtime.panel().option_count
+                  << " text=" << runtime.panel().text_segments[0]
+                  << " panel_reason="
+                  << runtime.panel().source_boundary_reason
+                  << " boundary=" << boundary << '\n';
         return 30;
     }
     scene.fill(Qt::magenta);
@@ -603,7 +618,7 @@ int main() {
         !expect(runtime.panel().text_segments[0].find("Jump House") !=
                 std::string_view::npos) ||
         !expect(runtime.panel().option_count == 0U) ||
-        !expect(runtime.panel().returns_to_field)) {
+        !expect(!runtime.panel().returns_to_field)) {
         return 32;
     }
     scene.fill(Qt::magenta);
@@ -637,12 +652,11 @@ int main() {
         return 33;
     }
 
-    // The source A command on the debt question enters 0x213E2 when the
-    // typed wallet is below 250. Verify it reaches the same title-only
-    // Jump House page and clears the former A/B rows.
+    // Paying the debt with a typed wallet below 250 returns the script to the
+    // source Jump House page and clears the former debt choices.
     debt_payment_state.followup_state.referral_flags = 0U;
-    if (!expect(runtime.open_stoker_prompt_for_dump(
-            StokerMotelPromptId::manager_greeting_with_package)) ||
+    if (!expect(runtime.open_stoker_interaction(
+            StokerMotelStoryState{true, false, false})) ||
         !expect(runtime.advance_controller_events(0x2000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(runtime.panel().option_count == 2U) ||
@@ -655,7 +669,7 @@ int main() {
         !expect(runtime.panel().text_segments[0].find("Jump House") !=
                 std::string_view::npos) ||
         !expect(runtime.panel().option_count == 0U) ||
-        !expect(runtime.panel().returns_to_field)) {
+        !expect(!runtime.panel().returns_to_field)) {
         return 65;
     }
     scene.fill(Qt::magenta);
@@ -706,8 +720,8 @@ int main() {
     debt_payment_state.runner_feature_flags = 0x40U;
     debt_payment_state.runner_source_bytes = {0xFFU, 0x00U, 0x7FU};
     debt_payment_state.followup_state.story_flags = 3U;
-    if (!expect(runtime.open_stoker_prompt_for_dump(
-            StokerMotelPromptId::manager_greeting_with_package)) ||
+    if (!expect(runtime.open_stoker_interaction(
+            StokerMotelStoryState{true, false, false})) ||
         !expect(runtime.advance_controller_events(0x2000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced)) {
         return 78;
@@ -732,7 +746,7 @@ int main() {
     if (!expect(runtime.panel().text_segment_count == 3U) ||
         !expect(runtime.panel().text_segments[2].find("Here's the package") !=
                 std::string_view::npos) ||
-        !expect(runtime.panel().returns_to_field)) {
+        !expect(!runtime.panel().returns_to_field)) {
         return 83;
     }
     scene.fill(Qt::magenta);
@@ -752,9 +766,8 @@ int main() {
     }
 
     StokerMotelStoryState first_visit_state{};
-    if (!expect(runtime.open_stoker_story_entry(
-                    StokerMotelStoryEntryAction::opening_dialogue,
-                    first_visit_state)) ||
+    if (!expect(runtime.open_stoker_interaction(first_visit_state)) ||
+        !expect(gameplay_scripts.story_state().at("opening_dialogue_seen")) ||
         !expect(runtime.panel().text_segments[0].find("battered sign") !=
                 std::string_view::npos) ||
         !expect(runtime.panel().actor_name == "Stoker") ||
@@ -793,14 +806,13 @@ int main() {
         !expect(!runtime.panel().has_more) ||
         !expect(runtime.advance_controller_events(0x1000U) ==
                 FieldDialogueAdvanceResult::returned_to_field) ||
-        !expect(runtime.open_stoker_story_entry(
-                    StokerMotelStoryEntryAction::package_offer,
+        !expect(runtime.open_stoker_interaction(
                     StokerMotelStoryState{true, false, false})) ||
         !expect(runtime.panel().option_count == 3U)) {
         return 72;
     }
-    if (!expect(runtime.open_stoker_story_entry(
-                    StokerMotelStoryEntryAction::ordinary_motel,
+    runtime.close();
+    if (!expect(runtime.open_stoker_interaction(
                     StokerMotelStoryState{true, true, true})) ||
         !expect(runtime.panel().option_count == 2U)) {
         return 73;

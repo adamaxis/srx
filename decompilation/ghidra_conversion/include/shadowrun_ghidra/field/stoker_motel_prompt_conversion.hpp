@@ -33,12 +33,6 @@ struct StokerMotelStoryState {
     bool michael_package_collected = false;
 };
 
-enum class StokerMotelStoryEntryAction {
-    opening_dialogue,
-    package_offer,
-    ordinary_motel,
-};
-
 enum class StokerMotelPromptOptionRole {
     continue_arrival,
     rent_room,

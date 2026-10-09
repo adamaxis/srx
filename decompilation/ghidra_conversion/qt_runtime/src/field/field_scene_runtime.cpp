@@ -595,43 +595,39 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
             game_scripts_.set_location_context(
                 "motel", "stoker_motel", "stoker.motel", "stoker");
             game_scripts_.set_story_state(story_facts);
-            const auto scripted_entry = game_scripts_.call_string(
-                "michael_package", "motel_entry");
-            if (!scripted_entry.has_value()) {
+            if (!field_dialogue_.open_stoker_interaction(
+                    stoker_motel_story_state_)) {
                 source_boundary("field.dialogue.stoker_story_script_failed");
-                return false;
+                state.caller_exit_status = -1;
+                return true;
             }
             const auto updated_story = game_scripts_.story_state();
             if (const auto seen = updated_story.find("opening_dialogue_seen");
                 seen != updated_story.end()) {
                 stoker_motel_story_state_.opening_dialogue_seen = seen->second;
             }
-            StokerMotelStoryEntryAction entry_action{};
-            if (*scripted_entry == "opening_dialogue") {
-                entry_action = StokerMotelStoryEntryAction::opening_dialogue;
-            } else if (*scripted_entry == "package_offer") {
-                entry_action = StokerMotelStoryEntryAction::package_offer;
-            } else if (*scripted_entry == "ordinary_motel") {
-                entry_action = StokerMotelStoryEntryAction::ordinary_motel;
-            } else {
-                source_boundary("field.dialogue.stoker_story_result_unknown");
-                return false;
+            if (const auto debt = updated_story.find("michael_debt_paid");
+                debt != updated_story.end()) {
+                stoker_motel_story_state_.michael_debt_paid = debt->second;
+            }
+            if (const auto collected =
+                    updated_story.find("michael_package_collected");
+                collected != updated_story.end()) {
+                stoker_motel_story_state_.michael_package_collected =
+                    collected->second;
             }
             if ((field_exit_world_flags_ & 0x01U) != 0U &&
-                entry_action != StokerMotelStoryEntryAction::ordinary_motel) {
+                !(stoker_motel_story_state_.michael_debt_paid &&
+                  stoker_motel_story_state_.michael_package_collected)) {
                 // The payment flag is persistent in the ROM. If this session
                 // cannot restore the matching story state, leave the generic
-                // selector in control rather than inventing a phase.
+                // selector in control rather than inventing a phase. Preserve
+                // the script's first-entry fact update before cancelling it.
+                field_dialogue_.close();
                 return false;
             }
-            if (!field_dialogue_.open_stoker_story_entry(
-                    entry_action, stoker_motel_story_state_)) {
-                source_boundary("field.dialogue.stoker_story_entry_unresolved");
-            } else {
-                field_palette_fade_steps_ = 0U;
-                source_boundary(
-                    "field.exit.prompt.display_palette_refreshed");
-            }
+            field_palette_fade_steps_ = 0U;
+            source_boundary("field.exit.prompt.display_palette_refreshed");
             state.caller_exit_status = -1;
             return true;
         };

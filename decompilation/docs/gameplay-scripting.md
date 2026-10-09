@@ -68,7 +68,7 @@ go through native operations so their source rules can validate the request.
 Only story facts connected to the field session currently reach durable game
 state; adding the general save adapter remains separate work.
 
-Three coroutine operations are connected to live routes. The first is
+Four coroutine operations are connected to live routes. The first is
 `game.actor.walk_heading(actor, heading)`: it accepts the player and headings
 0 through 7, yields a typed request to the native field controller, and resumes
 with the operation result. `game.ui.say(event_id)` resolves the speaker and
@@ -79,11 +79,15 @@ currently binds `arrival` and `leave`. Arrival has its source A-button
 continuation; the title-only farewell closes through the ordinary controller
 wait. `game.ui.menu(menu_id, choice_ids)` combines the menu name with the
 location text profile, yields choices to the common presenter, and resumes
-with the stable selected ID. The source A/B/C mapping is preserved. The generic
-motel script handles the shared menu and farewell; the Michael quest
-contributes its optional package choice. The native route still validates and
-executes package payment and other unfinished actions. Each operation uses a
-100,000-instruction limit on initial invocation and resume.
+with the stable selected ID. The source A/B/C mapping is preserved.
+`game.services.call(domain, action)` yields a namespaced request to an
+allowlisted native service and resumes Lua with a stable result ID. Current
+Stoker scripts use it for room payment, debt-offer flags, debt payment, and the
+Jump House referral. Lua chooses the room/debt menus and result dialogue; C++
+still validates wallet/story changes and updates native state. The Motel module
+handles the shared manager and room menu; Michael's quest module contributes
+the package option and debt menu. Each operation uses a 100,000-instruction
+limit on initial invocation and resume.
 Actor placement, destination movement, scripted animation, item operations,
 audio playback, additional speaker/event profiles, and save restoration are
 not connected yet. The runner has no `io`, `os`, `debug`, or package-loader
@@ -99,28 +103,32 @@ access.
 - `gameplay/scripts/motel.lua` contains one shared motel interaction, not a
   script for every named building. It adds the base choices and collects the
   optional `motel_manager_choices()` hook from quest modules in stable
-  module-name order. `manager_interaction()` presents the menu, runs the
-  location's optional `leave` dialogue when selected, then returns the stable
-  choice ID for native handling.
+  module-name order. `manager_interaction()` handles the shared manager menu,
+  room menu, payment service, result dialogue, and Leave dialogue. A successful
+  room payment returns the hotel-options result to the native host.
 - `gameplay/scripts/michael_package.lua` contains the Michael quest hook and
-  its first-visit, repeat, and completed branches. Its motel-choice hook checks
-  `game.location`, so the quest option appears at Stoker and does not leak into
-  another motel. Its first-visit interaction uses the speaker supplied by the
-  location context, says the `arrival` event, then continues into the shared
-  motel manager after A. Other quests can add the same choice hook without
-  adding per-building scripts or changing `motel.lua`.
+  its first-visit, repeat, and completed branches. `stoker_interaction()` now
+  chooses the arrival page and shared motel manager in Lua; the field route no
+  longer converts a Lua phase string into a C++ story-entry enum. Its
+  motel-choice hook checks `game.location`, so the quest option appears at
+  Stoker and does not leak into another motel. `stoker_interaction()` uses the
+  speaker supplied by location context, runs the first-visit `arrival` event,
+  enters the shared motel manager, then opens the debt menu and selects
+  payment/referral result pages. Other quests can add the same choice hook
+  without adding per-building scripts or changing `motel.lua`.
 - Future `quests/` and `scenes/` modules should call the same `game` facade.
   Menus and dialogue use the generic Qt presenters, and Lua supplies the
   available stable choice ids and story text keys.
 
 The current slice connects the New Game trigger, native-backed story facts,
-the Michael quest branch, shared motel menu, arrival/farewell dialogue, and the
-Qt presenters. Lua sequences the first-visit arrival and the Leave response;
-the native presenter draws panels and applies source input rules. Lua returns
-stable IDs for actions whose native transaction has not yet moved behind a
-game service. Movement execution, collision, payment, inventory effects,
-animation timing, and most map/menu behavior remain native. The future API
-examples above are design targets, not live adapters.
+the Michael quest branch, shared motel and debt menus, room/debt service calls,
+arrival/farewell/result dialogue, and the Qt presenters. Script menus carry
+their text profile and optional speaker into one generic panel projection;
+menu choices use generic presentation roles. The native presenter draws panels
+and applies source input rules. Wallet and quest effects remain native service
+implementations. Other building dialogue, title/field menus, item operations,
+inventory screens, actor placement/animation, audio playback, and save
+restoration remain to be migrated or connected.
 
 ## Source and visual verification
 

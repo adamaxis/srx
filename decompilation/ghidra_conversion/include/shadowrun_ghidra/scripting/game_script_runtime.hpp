@@ -21,6 +21,8 @@ struct ScriptMenuChoice {
 
 struct ScriptMenuDefinition {
     std::string id;
+    std::string text_profile;
+    std::string speaker_id;
     std::string title_key;
     std::vector<ScriptMenuChoice> choices;
 };
@@ -36,11 +38,13 @@ struct ScriptNativeOperation {
         actor_walk_heading,
         ui_say,
         ui_menu,
+        service_call,
     };
 
     Type type = Type::actor_walk_heading;
     std::string actor_id;
     std::uint8_t heading = 0;
+    std::string service_id;
     std::optional<ScriptDialogueRequest> dialogue;
     std::optional<ScriptMenuDefinition> menu;
 };
@@ -84,6 +88,7 @@ public:
         std::string_view module, std::string_view function);
     ScriptTaskStep complete_native_operation(bool succeeded);
     ScriptTaskStep complete_native_menu_choice(std::string_view choice_id);
+    ScriptTaskStep complete_native_service_result(std::string_view result_id);
     bool task_waiting_for_native_operation() const noexcept;
     void cancel_task() noexcept;
     std::optional<ScriptMenuDefinition> menu(
