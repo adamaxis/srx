@@ -1,6 +1,7 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 
 #include <array>
+#include <cstdint>
 #include <filesystem>
 #include <iostream>
 #include <optional>
@@ -52,6 +53,41 @@ int main() {
                 field_interaction_text_keys->at("security_floor_fifth") ==
                     "field.security-terminal.floor.4",
             "Lua field-interaction outcomes or ROM text keys did not load")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
+    const auto mode_prompt_content = [&](const std::uint8_t mode,
+                                         const std::uint8_t event_code,
+                                         const std::int8_t alternate_result) {
+        scripts.set_field_mode_context(
+            ScriptFieldModeContext{mode, event_code, alternate_result});
+        return scripts.string_map("field_mode", "mode_text_content");
+    };
+    const auto ares_intro = mode_prompt_content(2U, 11U, 0);
+    const auto ares_handoff = mode_prompt_content(2U, 11U, -1);
+    const auto ares_payment = mode_prompt_content(2U, 11U, 1);
+    const auto unmatched_mode_prompt = mode_prompt_content(2U, 2U, 0);
+    const auto valid_mode_prompt = [&](const auto& content,
+                                       const std::string_view text_key) {
+        return content.has_value() && content->size() == 3U &&
+               content->at("status") == "matched" &&
+               content->at("text_key") == text_key &&
+               content->at("portrait_alias") ==
+                   "field.mode.entry.ares.sprite" &&
+               scripts.dialogue_text(text_key) != nullptr;
+    };
+    if (!expect(valid_mode_prompt(ares_intro,
+                                  "field.mode.ares.store_intro") &&
+                    valid_mode_prompt(ares_handoff,
+                                      "field.mode.ares.package_handoff") &&
+                    valid_mode_prompt(ares_payment,
+                                      "field.mode.ares.package_payment") &&
+                    unmatched_mode_prompt.has_value() &&
+                    unmatched_mode_prompt->at("status") == "unmatched" &&
+                    unmatched_mode_prompt->at("text_key") == "none" &&
+                    unmatched_mode_prompt->at("portrait_alias") == "none",
+                "Lua field-mode context did not select the ROM Ares text branches")) {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }

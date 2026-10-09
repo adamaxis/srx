@@ -699,7 +699,7 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                     FieldModeServiceSelection&,
                     FieldModeServiceRouteState& source_state) {
                     prompt_opened = field_mode_text_.open(
-                        FieldModeTextPromptContext{
+                        scripting::ScriptFieldModeContext{
                             source_state.scene_id, source_state.submode,
                             source_state.alternate_result});
                     if (prompt_opened) {

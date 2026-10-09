@@ -342,6 +342,7 @@ struct GameScriptRuntime::Impl {
     std::string location_id;
     std::string location_text_profile;
     std::string location_speaker_id;
+    ScriptFieldModeContext field_mode_context{};
     std::string bridge_failure;
     std::string failure;
 
@@ -447,6 +448,34 @@ struct GameScriptRuntime::Impl {
 
     static int location_newindex(lua_State* lua) {
         return luaL_error(lua, "game.location is native read-only context");
+    }
+
+    static int field_context_index(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        if (self == nullptr || lua_type(lua, 2) != LUA_TSTRING) {
+            lua_pushnil(lua);
+            return 1;
+        }
+        std::string field;
+        if (!read_string(lua, 2, field)) {
+            lua_pushnil(lua);
+            return 1;
+        }
+        if (field == "mode") {
+            lua_pushinteger(lua, self->field_mode_context.mode);
+        } else if (field == "event_code") {
+            lua_pushinteger(lua, self->field_mode_context.event_code);
+        } else if (field == "alternate_result") {
+            lua_pushinteger(lua,
+                            self->field_mode_context.alternate_result);
+        } else {
+            lua_pushnil(lua);
+        }
+        return 1;
+    }
+
+    static int field_context_newindex(lua_State* lua) {
+        return luaL_error(lua, "game.field is native read-only context");
     }
 
     static int actor_walk_heading_continuation(
@@ -693,6 +722,7 @@ struct GameScriptRuntime::Impl {
         location_id.clear();
         location_text_profile.clear();
         location_speaker_id.clear();
+        field_mode_context = ScriptFieldModeContext{};
         bridge_failure.clear();
         failure.clear();
         if (state == nullptr) {
@@ -723,6 +753,15 @@ struct GameScriptRuntime::Impl {
         lua_setfield(state, -2, "__newindex");
         lua_setmetatable(state, -2);
         lua_setfield(state, -2, "location");
+        lua_newtable(state); // game.field proxy
+        lua_newtable(state); // game.field metatable
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, field_context_index, 1);
+        lua_setfield(state, -2, "__index");
+        lua_pushcfunction(state, field_context_newindex);
+        lua_setfield(state, -2, "__newindex");
+        lua_setmetatable(state, -2);
+        lua_setfield(state, -2, "field");
         lua_newtable(state);
         lua_pushlightuserdata(state, this);
         lua_pushcclosure(state, actor_walk_heading, 1);
@@ -1258,6 +1297,11 @@ void GameScriptRuntime::set_location_context(
     impl_->location_id = std::string(id);
     impl_->location_text_profile = std::string(text_profile);
     impl_->location_speaker_id = std::string(speaker_id);
+}
+
+void GameScriptRuntime::set_field_mode_context(
+    const ScriptFieldModeContext context) noexcept {
+    impl_->field_mode_context = context;
 }
 
 std::optional<std::string> GameScriptRuntime::call_string(

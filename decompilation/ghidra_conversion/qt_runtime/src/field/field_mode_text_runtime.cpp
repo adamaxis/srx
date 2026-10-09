@@ -5,9 +5,21 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <string_view>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
+namespace {
+
+ModeTextPromptDescriptor narrative_prompt() noexcept {
+    ModeTextPromptDescriptor prompt{};
+    // ROM source records use a negative first-option sentinel. The shared
+    // prompt waits 30 frames and then returns 0xFB on any controller event.
+    prompt.first_option_is_exit_sentinel = true;
+    return prompt;
+}
+
+} // namespace
 
 bool FieldModeTextRuntime::load_assets(
     const ConversionAssetCatalog& assets) {
@@ -20,20 +32,19 @@ bool FieldModeTextRuntime::load_assets(
 }
 
 void FieldModeTextRuntime::set_script_runtime(
-    const scripting::GameScriptRuntime* scripts) noexcept {
+    scripting::GameScriptRuntime* scripts) noexcept {
     scripts_ = scripts;
 }
 
-bool FieldModeTextRuntime::resolve_panel(const std::uint32_t text_key) {
-    const auto key = field_mode_text_prompt_key(text_key);
-    if (!key.has_value() || scripts_ == nullptr) {
-        failure_ = "mode-text prompt has no Lua text binding for its key";
+bool FieldModeTextRuntime::resolve_panel(const std::string_view text_key) {
+    if (scripts_ == nullptr) {
+        failure_ = "mode-text prompt has no Lua script runtime";
         return false;
     }
-    const auto* text = scripts_->dialogue_text(*key);
+    const auto* text = scripts_->dialogue_text(text_key);
     if (text == nullptr) {
         failure_ = "mode-text prompt Lua text is missing: " +
-                   std::string(*key);
+                   std::string(text_key);
         return false;
     }
 
@@ -67,7 +78,7 @@ bool FieldModeTextRuntime::resolve_panel(const std::uint32_t text_key) {
 }
 
 bool FieldModeTextRuntime::open(
-    const FieldModeTextPromptContext& context) {
+    const scripting::ScriptFieldModeContext& context) {
     close();
     failure_.clear();
     if (!assets_loaded_) {
@@ -75,30 +86,51 @@ bool FieldModeTextRuntime::open(
         return false;
     }
 
-    const auto selected = select_field_mode_text_prompt(context);
-    if (!selected.has_value()) {
-        failure_ = "field mode/event has no converted mode-text prompt";
+    if (scripts_ == nullptr) {
+        failure_ = "mode-text prompt has no Lua script runtime";
         return false;
     }
-    prompt_ = *selected;
-    if (!resolve_panel(prompt_.title_text)) {
+    scripts_->set_field_mode_context(context);
+    const auto content =
+        scripts_->string_map("field_mode", "mode_text_content");
+    if (!content.has_value()) {
+        failure_ = scripts_->failure().empty()
+                       ? "Lua field-mode prompt content is unavailable"
+                       : scripts_->failure();
         return false;
     }
-
-    // ROM 0x1FA78 selects Ares mode profile 0x1220C0 before calling the
-    // generic 0x1F246 prompt service. That profile supplies the logo in the
-    // shared left speaker well; the mode-text record still supplies the
-    // words and has no choices of its own.
-    if (context.field_mode == 2U && context.event_code == 11U) {
-        panel_.portrait_alias = "field.mode.entry.ares.sprite";
+    const auto status = content->find("status");
+    const auto text_key = content->find("text_key");
+    const auto portrait_alias = content->find("portrait_alias");
+    if (status == content->end() || text_key == content->end() ||
+        portrait_alias == content->end()) {
+        failure_ = "Lua field-mode prompt content is incomplete";
+        return false;
+    }
+    if (status->second == "unmatched") {
+        failure_ = "field mode/event has no Lua mode-text prompt";
+        return false;
+    }
+    if (status->second != "matched") {
+        failure_ = "Lua field-mode prompt has an unknown status";
+        return false;
+    }
+    if (!resolve_panel(text_key->second)) {
+        return false;
+    }
+    if (portrait_alias->second != "none") {
+        portrait_alias_storage_ = portrait_alias->second;
+        panel_.portrait_alias = portrait_alias_storage_;
     }
 
+    prompt_ = narrative_prompt();
     prompt_state_ = ModeTextPromptState{};
     (void)advance_mode_text_prompt(prompt_state_, prompt_, std::nullopt, 0U,
                                    {});
     if (prompt_state_.phase !=
         ModeTextPromptState::Phase::awaiting_any_event) {
-        failure_ = "mode-text prompt source record is not title-only";
+        failure_ =
+            "generic mode-text prompt did not enter its timed exit phase";
         panel_ = DialoguePanelView{};
         return false;
     }
@@ -131,6 +163,7 @@ void FieldModeTextRuntime::close() noexcept {
     prompt_ = ModeTextPromptDescriptor{};
     prompt_state_ = ModeTextPromptState{};
     panel_ = DialoguePanelView{};
+    portrait_alias_storage_.clear();
 }
 
 void FieldModeTextRuntime::paint(QPainter& painter) const {

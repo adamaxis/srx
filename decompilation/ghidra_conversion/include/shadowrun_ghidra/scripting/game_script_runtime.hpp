@@ -85,6 +85,12 @@ struct ScriptDialogueRequest {
     std::string event_id;
 };
 
+struct ScriptFieldModeContext {
+    std::uint8_t mode = 0;
+    std::uint8_t event_code = 0;
+    std::int8_t alternate_result = 0;
+};
+
 struct ScriptNativeOperation {
     enum class Type {
         actor_walk_heading,
@@ -141,6 +147,7 @@ public:
     void set_location_context(std::string_view type, std::string_view id,
                               std::string_view text_profile = {},
                               std::string_view speaker_id = {});
+    void set_field_mode_context(ScriptFieldModeContext context) noexcept;
     std::optional<std::string> call_string(
         std::string_view module, std::string_view function);
     std::optional<ScriptStringMap> string_map(

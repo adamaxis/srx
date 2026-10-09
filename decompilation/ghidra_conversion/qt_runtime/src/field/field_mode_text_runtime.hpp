@@ -2,11 +2,12 @@
 
 #include "dialogue_panel.hpp"
 #include "dialogue_panel_presenter.hpp"
-#include "shadowrun_ghidra/field/mode_text_prompt_catalog_conversion.hpp"
+#include "shadowrun_ghidra/field/mode_text_prompt_conversion.hpp"
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 class QPainter;
 
@@ -17,16 +18,16 @@ enum class FieldModeTextAdvanceResult : std::uint8_t {
     returned_to_route,
 };
 
-// Host presenter for the source's generic mode-text prompt. Event properties
-// select the native prompt descriptor; this class owns only its non-blocking
-// wait state and the resolved text-only panel view.
+// Host presenter for the source's generic mode-text prompt. Lua selects its
+// content from native field context; this class owns only generic prompt
+// timing and the resolved panel view.
 class FieldModeTextRuntime final {
 public:
     bool load_assets(const ConversionAssetCatalog& assets);
     void set_script_runtime(
-        const scripting::GameScriptRuntime* scripts) noexcept;
+        scripting::GameScriptRuntime* scripts) noexcept;
 
-    bool open(const FieldModeTextPromptContext& context);
+    bool open(const scripting::ScriptFieldModeContext& context);
     FieldModeTextAdvanceResult advance_controller_events(
         std::uint16_t event_word, std::uint16_t elapsed_frames = 1U);
 
@@ -40,13 +41,14 @@ public:
     void paint(QPainter& painter) const;
 
 private:
-    bool resolve_panel(std::uint32_t text_key);
+    bool resolve_panel(std::string_view text_key);
 
     DialoguePanelPresenter presenter_;
     ModeTextPromptDescriptor prompt_{};
     ModeTextPromptState prompt_state_{};
     DialoguePanelView panel_{};
-    const scripting::GameScriptRuntime* scripts_ = nullptr;
+    std::string portrait_alias_storage_;
+    scripting::GameScriptRuntime* scripts_ = nullptr;
     std::string failure_;
     bool assets_loaded_ = false;
     bool open_ = false;

@@ -227,7 +227,7 @@ public:
     }
     bool open_ares_mode_text_for_dump(std::int8_t alternate_result) {
         return field_mode_text_.open(
-            FieldModeTextPromptContext{2U, 11U, alternate_result});
+            scripting::ScriptFieldModeContext{2U, 11U, alternate_result});
     }
     bool field_mode_text_open_for_dump() const noexcept {
         return field_mode_text_.open();

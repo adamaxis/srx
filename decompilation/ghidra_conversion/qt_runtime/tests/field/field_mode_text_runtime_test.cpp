@@ -69,7 +69,7 @@ int main() {
     if (!expect(runtime.load_assets(assets.catalog))) {
         return 3;
     }
-    if (!expect(runtime.open(FieldModeTextPromptContext{2U, 11U, 0})) ||
+    if (!expect(runtime.open(ScriptFieldModeContext{2U, 11U, 0})) ||
         !expect(runtime.open()) ||
         !expect(runtime.frames_remaining() == 30U)) {
         return 4;
@@ -115,19 +115,19 @@ int main() {
         return 7;
     }
 
-    if (!expect(runtime.open(FieldModeTextPromptContext{2U, 11U, -1})) ||
+    if (!expect(runtime.open(ScriptFieldModeContext{2U, 11U, -1})) ||
         !expect(runtime.panel().text_segments[4].find("fake name") !=
                 std::string_view::npos)) {
         return 8;
     }
     runtime.close();
-    if (!expect(runtime.open(FieldModeTextPromptContext{2U, 11U, 1})) ||
+    if (!expect(runtime.open(ScriptFieldModeContext{2U, 11U, 1})) ||
         !expect(runtime.panel().text_segments[0].find("receptionist") !=
                 std::string_view::npos)) {
         return 9;
     }
     runtime.close();
-    if (!expect(!runtime.open(FieldModeTextPromptContext{2U, 2U, 0})) ||
+    if (!expect(!runtime.open(ScriptFieldModeContext{2U, 2U, 0})) ||
         !expect(!runtime.open())) {
         return 10;
     }

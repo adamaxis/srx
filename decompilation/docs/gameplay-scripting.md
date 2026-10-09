@@ -24,6 +24,9 @@ game.state.opening_dialogue_seen = true
 if game.location.type == "motel" then
     game.ui.say("arrival")
 end
+if game.field.mode == 2 and game.field.event_code == 11 then
+    -- Read-only native mode/event context selects Lua-authored content.
+end
 local choice = game.ui.menu("manager", {"crash", "leave"})
 ```
 
@@ -33,8 +36,9 @@ quest state; Lua sees the current values and writes them back immediately,
 without an interaction-level snapshot/copy-back pass. Standalone script QA may
 still use an in-memory fact store. `game.location` is a read-only proxy over
 native location context, including type, identity, text profile, and optional
-speaker. The proxies are not duplicated Lua tables or raw pointers into Qt
-objects.
+speaker. `game.field` is read-only field-mode context, including mode, event
+code, and the signed alternate result used by source mode prompts. The proxies
+are not duplicated Lua tables or raw pointers into Qt objects.
 
 The next capabilities should follow the same shape, added only as they connect
 to real native systems:
@@ -102,6 +106,13 @@ wallet/inventory rules remain native. This is the first shop content moved out
 of the C++ menu implementation; the interaction loop and other shop menus are
 still to be migrated.
 
+`gameplay/scripts/field_mode.lua` selects the Ares mode-text record from
+read-only `game.field` context. It owns the zero-result store introduction,
+negative-result package handoff, positive-result package payment, and the
+matching portrait asset key. The shared native mode-text prompt owns the
+source-derived title-only display, 30-frame wait, and controller return; it no
+longer chooses among Ares paragraphs or hardcodes the Ares logo.
+
 ROM-derived Stoker and field-interaction dialogue strings are imported into
 `assets/dialogue/script-text.lua` as a keyed Lua text table. The shared dialogue
 and field-interaction controllers resolve those keys through
@@ -127,6 +138,10 @@ access.
   passkey, Electronics, grenade, alarm, and map-state rules. Its text-key map
   binds those outcomes to the shared ROM-derived dialogue entries, so native
   result handling does not carry a second set of content aliases.
+- `gameplay/scripts/field_mode.lua` selects the mode-text paragraph and
+  portrait key from the signed field-mode/event context exposed by
+  `game.field`. Native code keeps only the shared prompt's sentinel timing and
+  input behavior.
 - `gameplay/scripts/motel.lua` contains one shared motel interaction, not a
   script for every named building. It adds the base choices and collects the
   optional `motel_manager_choices()` hook from quest modules in stable

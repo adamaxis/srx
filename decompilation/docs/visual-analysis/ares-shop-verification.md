@@ -41,8 +41,10 @@ the field approach, fade, prompt, category page, and field return; see
   the default route enters the shop. Positive `FFF0D5` selects record
   `0x111676` / text `0x118A6C` (package payment); negative selects
   `0x11166E` / text `0x1189F2` (package handoff). Those alternate paths return
-  without entering `0x56AC0`. The native provider keys all three text records
-  by mode/event/result and does not assign them Stoker's speaker or portrait.
+  without entering `0x56AC0`. `field_mode.lua` receives the read-only native
+  mode/event/result context and selects all three text keys plus the Ares logo
+  asset key; the text itself remains in the ROM-imported Lua catalog. This
+  selection does not assign the prompt Stoker's speaker or portrait.
 - Prompt draw: `0x1F246` loads the shared menu assets and font, prepares the
   optional mode resources, then calls `0x1F3C4`; `0x1F5A8` clears the source
   text and choice wells before the prompt draws. `0x1FA78` selects profile
