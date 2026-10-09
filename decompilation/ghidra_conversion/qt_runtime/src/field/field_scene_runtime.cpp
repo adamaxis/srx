@@ -320,6 +320,7 @@ FieldSceneRuntime::FieldSceneRuntime(
           },
           source_audio_event_callback_) {
     field_dialogue_.set_script_runtime(&game_scripts_);
+    field_interaction_.set_script_runtime(&game_scripts_);
     field_dialogue_.set_room_payment_callback([this]()
         -> std::optional<StokerMotelRoomPaymentOutcome> {
         if (!field_funds_.has_value()) {
@@ -3922,7 +3923,11 @@ bool FieldSceneRuntime::bootstrap(
     const auto script_directory =
         startup_state.asset_catalog.catalog.asset_root.parent_path() /
         "gameplay" / "scripts";
-    if (!game_scripts_.load_package(script_directory)) {
+    const auto dialogue_text_file =
+        startup_state.asset_catalog.catalog.asset_root / "dialogue" /
+        "script-text.lua";
+    if (!game_scripts_.load_package(script_directory,
+                                   dialogue_text_file)) {
         failure_ = game_scripts_.failure();
         source_boundary("field.bootstrap.gameplay_scripts_missing");
         return false;

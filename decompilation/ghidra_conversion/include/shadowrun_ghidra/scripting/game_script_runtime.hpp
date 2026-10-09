@@ -92,7 +92,10 @@ public:
     GameScriptRuntime(GameScriptRuntime&&) noexcept;
     GameScriptRuntime& operator=(GameScriptRuntime&&) noexcept;
 
-    bool load_package(const std::filesystem::path& script_directory);
+    bool load_package(
+        const std::filesystem::path& script_directory,
+        const std::filesystem::path& dialogue_text_file = {});
+    const std::string* dialogue_text(std::string_view key) const;
     std::optional<std::vector<FieldMapEventRule>> map_event_rules();
     void set_story_state(const StoryFacts& facts);
     StoryFacts story_state() const;

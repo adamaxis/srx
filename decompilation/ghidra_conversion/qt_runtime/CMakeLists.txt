@@ -26,7 +26,6 @@ add_executable(shadowrun_ghidra_conversion_qt
     src/rendering/genesis_image_compositor.cpp
     src/dialogue/dialogue_panel.cpp
     src/dialogue/dialogue_panel_presenter.cpp
-    src/dialogue/dialogue_text_catalog.cpp
     src/dialogue/field_dialogue_runtime.cpp
     src/menus/hotel_menu_runtime.cpp
     src/field/field_mode_text_runtime.cpp
@@ -53,6 +52,7 @@ target_link_libraries(shadowrun_gameplay_script_runtime_test
     PRIVATE shadowrun_gameplay_script_runtime)
 target_compile_definitions(shadowrun_gameplay_script_runtime_test PRIVATE
     SHADOWRUN_GAMEPLAY_SCRIPT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/scripts"
+    SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
     SHADOWRUN_GAMEPLAY_SCRIPT_FIXTURE_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/tests/scripting/fixtures")
 add_test(NAME shadowrun_gameplay_script_runtime_qa
          COMMAND shadowrun_gameplay_script_runtime_test)
@@ -716,8 +716,8 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_dialogue_room_insufficient_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
-# Exercise the source 0x30/0x31 follow-up commands through the Qt dialogue
-# controller and verify their mutations feed the dynamic Notebook row gates.
+# Exercise the Lua Michael quest choice through its native debt/referral
+# services and verify those mutations feed the dynamic Notebook row gates.
 add_test(NAME shadowrun_ghidra_conversion_qt_field_dialogue_debt_followup_qa
          COMMAND shadowrun_ghidra_conversion_qt
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
@@ -1012,14 +1012,15 @@ add_test(NAME shadowrun_ghidra_field_menu_text_catalog
 add_executable(shadowrun_ghidra_dialogue_panel_test
     tests/dialogue/dialogue_panel_test.cpp
     src/dialogue/dialogue_panel.cpp
-    src/dialogue/dialogue_text_catalog.cpp
 )
 target_include_directories(shadowrun_ghidra_dialogue_panel_test
     PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
 target_compile_definitions(shadowrun_ghidra_dialogue_panel_test PRIVATE
-    SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets")
+    SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    SHADOWRUN_GAMEPLAY_SCRIPT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/scripts")
 target_link_libraries(shadowrun_ghidra_dialogue_panel_test
-    PRIVATE shadowrun_ghidra_conversion_runtime)
+    PRIVATE shadowrun_gameplay_script_runtime
+            shadowrun_ghidra_conversion_runtime)
 add_test(NAME shadowrun_ghidra_dialogue_panel
          COMMAND shadowrun_ghidra_dialogue_panel_test)
 
@@ -1028,7 +1029,6 @@ add_executable(shadowrun_ghidra_field_dialogue_runtime_test
     src/dialogue/field_dialogue_runtime.cpp
     src/dialogue/dialogue_panel_presenter.cpp
     src/dialogue/dialogue_panel.cpp
-    src/dialogue/dialogue_text_catalog.cpp
     src/rendering/genesis_image_compositor.cpp
 )
 target_include_directories(shadowrun_ghidra_field_dialogue_runtime_test
@@ -1070,7 +1070,6 @@ add_executable(shadowrun_ghidra_field_interaction_runtime_test
     src/field/field_interaction_runtime.cpp
     src/dialogue/dialogue_panel_presenter.cpp
     src/dialogue/dialogue_panel.cpp
-    src/dialogue/dialogue_text_catalog.cpp
 )
 target_include_directories(shadowrun_ghidra_field_interaction_runtime_test
     PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
@@ -1079,9 +1078,11 @@ set_target_properties(shadowrun_ghidra_field_interaction_runtime_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
     RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
 target_compile_definitions(shadowrun_ghidra_field_interaction_runtime_test PRIVATE
-    SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets")
+    SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    SHADOWRUN_GAMEPLAY_SCRIPT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/scripts")
 target_link_libraries(shadowrun_ghidra_field_interaction_runtime_test
-    PRIVATE shadowrun_ghidra_conversion_runtime Qt6::Gui)
+    PRIVATE shadowrun_gameplay_script_runtime
+            shadowrun_ghidra_conversion_runtime Qt6::Gui)
 add_test(NAME shadowrun_ghidra_field_interaction_runtime
          COMMAND shadowrun_ghidra_field_interaction_runtime_test)
 

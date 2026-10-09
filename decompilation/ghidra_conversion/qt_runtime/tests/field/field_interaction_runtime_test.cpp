@@ -1,6 +1,7 @@
 #include "field_interaction_runtime.hpp"
 
 #include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
+#include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 
 #include <QColor>
 #include <QImage>
@@ -93,6 +94,15 @@ int main() {
         return 1;
     }
 
+    scripting::GameScriptRuntime gameplay_scripts;
+    if (!gameplay_scripts.load_package(
+            SHADOWRUN_GAMEPLAY_SCRIPT_ROOT,
+            std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
+                "dialogue" / "script-text.lua")) {
+        std::cerr << gameplay_scripts.failure() << '\n';
+        return 2;
+    }
+
     std::vector<std::uint16_t> audio_events;
     std::vector<std::string_view> boundaries;
     FieldInteractionRuntime runtime(
@@ -102,6 +112,7 @@ int main() {
         [&audio_events](const std::uint16_t id) {
             audio_events.push_back(id);
         });
+    runtime.set_script_runtime(&gameplay_scripts);
     if (!runtime.load_assets(assets.catalog)) {
         return 2;
     }
@@ -257,9 +268,7 @@ int main() {
     if (!found_file_success_seed) {
         return 14;
     }
-    const auto interaction_text = load_dialogue_text_catalog(
-        assets.catalog, "dialogue.field.interactions");
-    const auto* fifth_floor = interaction_text.catalog.find(
+    const auto* fifth_floor = gameplay_scripts.dialogue_text(
         "field.security-terminal.floor.4");
     if (fifth_floor == nullptr) {
         return 15;

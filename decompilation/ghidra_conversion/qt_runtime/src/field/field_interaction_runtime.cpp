@@ -67,19 +67,21 @@ FieldInteractionRuntime::~FieldInteractionRuntime() = default;
 bool FieldInteractionRuntime::load_assets(
     const ConversionAssetCatalog& assets) {
     failure_.clear();
-    const auto text = load_dialogue_text_catalog(
-        assets, "dialogue.field.interactions");
-    if (!text.complete()) {
-        failure_ = text.errors.empty() ? "field interaction text is unavailable"
-                                       : text.errors.front();
+    if (script_runtime_ == nullptr ||
+        script_runtime_->dialogue_text("field.maglock.door.title") == nullptr) {
+        failure_ = "Lua field-interaction text is not loaded";
         return false;
     }
-    text_catalog_ = text.catalog;
     assets_loaded_ = presenter_.load_assets(assets);
     if (!assets_loaded_) {
         failure_ = presenter_.failure();
     }
     return assets_loaded_;
+}
+
+void FieldInteractionRuntime::set_script_runtime(
+    scripting::GameScriptRuntime* runtime) noexcept {
+    script_runtime_ = runtime;
 }
 
 bool FieldInteractionRuntime::open(
@@ -362,7 +364,9 @@ std::string_view FieldInteractionRuntime::resolve_text(
     case TextKey::security_floor_sixth:
         alias = "field.security-terminal.floor.5"; break;
     }
-    const auto* text = text_catalog_.find(alias);
+    const auto* text = script_runtime_ != nullptr
+                           ? script_runtime_->dialogue_text(alias)
+                           : nullptr;
     return text == nullptr ? std::string_view{} : std::string_view(*text);
 }
 

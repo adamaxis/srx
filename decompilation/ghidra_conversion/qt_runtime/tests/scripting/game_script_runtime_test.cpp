@@ -1,5 +1,6 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 
+#include <filesystem>
 #include <iostream>
 
 namespace {
@@ -18,8 +19,26 @@ int main() {
     using namespace shadowrun::ghidra_conversion::scripting;
 
     GameScriptRuntime scripts;
-    if (!expect(scripts.load_package(SHADOWRUN_GAMEPLAY_SCRIPT_ROOT),
+    if (!expect(scripts.load_package(
+                    SHADOWRUN_GAMEPLAY_SCRIPT_ROOT,
+                    std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
+                        "dialogue" / "script-text.lua"),
                 "gameplay Lua package did not load")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
+    const auto* arrival_text =
+        scripts.dialogue_text("stoker.motel.arrival.title");
+    const auto* fifth_floor_text =
+        scripts.dialogue_text("field.security-terminal.floor.4");
+    if (!expect(arrival_text != nullptr &&
+                    arrival_text->find("Stoker's Coffin Motel") !=
+                        std::string::npos &&
+                    fifth_floor_text != nullptr &&
+                    fifth_floor_text->find("fifth floor.") !=
+                        std::string::npos,
+                "ROM-derived Lua dialogue content did not load")) {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }

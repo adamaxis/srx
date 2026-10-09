@@ -77,8 +77,16 @@ void FieldDialogueRuntime::set_script_runtime(
 
 bool FieldDialogueRuntime::load_assets(const ConversionAssetCatalog& assets) {
     failure_.clear();
-    const auto text = load_dialogue_text_catalog(assets, "dialogue.stoker.motel");
-    text_catalog_ = text.catalog;
+    if (script_runtime_ == nullptr ||
+        script_runtime_->dialogue_text("stoker.motel.arrival.title") ==
+            nullptr) {
+        failure_ = "Lua dialogue content is not loaded";
+        assets_loaded_ = false;
+        if (source_boundary_callback_) {
+            source_boundary_callback_("field.dialogue.script_text_unavailable");
+        }
+        return false;
+    }
 
     if (!presenter_.load_assets(assets)) {
         failure_ = presenter_.failure();
@@ -111,8 +119,14 @@ bool FieldDialogueRuntime::open_field_exit_prompt(
 
 bool FieldDialogueRuntime::open_stoker_prompt_for_dump(
     const StokerMotelPromptId prompt) {
-    if (prompt == StokerMotelPromptId::manager_greeting ||
-        prompt == StokerMotelPromptId::manager_greeting_with_package) {
+    if (prompt == StokerMotelPromptId::manager_greeting_with_package) {
+        // The package option belongs to the quest-wrapped shared motel
+        // interaction. Start at a repeat visit so this diagnostic exercises
+        // the real Lua menu and its debt/referral service hooks.
+        return open_stoker_interaction(
+            StokerMotelStoryState{true, false, false});
+    }
+    if (prompt == StokerMotelPromptId::manager_greeting) {
         if (script_runtime_ != nullptr) {
             script_runtime_->set_location_context(
                 "motel", "stoker_motel", "stoker.motel", "stoker");
@@ -425,7 +439,9 @@ bool FieldDialogueRuntime::open_source_boundary(std::string reason) {
 
 std::string_view FieldDialogueRuntime::resolve_text(
     const std::string_view alias) const {
-    const auto* value = text_catalog_.find(alias);
+    const auto* value = script_runtime_ != nullptr
+                            ? script_runtime_->dialogue_text(alias)
+                            : nullptr;
     return value == nullptr ? std::string_view{} : std::string_view(*value);
 }
 

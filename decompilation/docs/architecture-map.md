@@ -272,9 +272,9 @@ The Stoker prompt records at `0xF4AA0..0xF4B2C` are represented by the typed
 `ghidra_conversion/src/field/stoker_motel_prompt_conversion.cpp`. The graph
 preserves the source's title/option/command boundaries, including the tested
 manager-package C-to-debt and B-to-referral path, sentinel pages, and the
-unresolved debt-payment result. The offline graphics importer emits the source text streams as the direct asset
-`dialogue.stoker.motel` (`assets/dialogue/stoker-motel.tsv`); the Qt adapter
-resolves those aliases and projects Stoker through this same panel rather than
+unresolved debt-payment result. The offline graphics importer emits the source
+text streams in `assets/dialogue/script-text.lua`; the Qt adapter resolves
+those stable keys and projects Stoker through this same panel rather than
 creating an NPC-specific dialogue widget. Its semantic commands are returned
 to the owning conversion controller, so the panel carries no ROM addresses or
 Genesis command bytes.

@@ -510,24 +510,44 @@ void write_notebook_tips_text_asset(
     }
 }
 
-void write_stoker_motel_dialogue_catalog(
-    const std::vector<std::uint8_t>& rom,
-    const std::filesystem::path& root) {
-    const auto path = root / "dialogue" / "stoker-motel.tsv";
+void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
+                                const std::filesystem::path& root) {
+    const auto path = root / "dialogue" / "script-text.lua";
     std::filesystem::create_directories(path.parent_path());
     std::ofstream output(path, std::ios::binary | std::ios::trunc);
     if (!output) {
-        throw std::runtime_error("cannot create Stoker dialogue catalog: " +
+        throw std::runtime_error("cannot create Lua dialogue content: " +
                                  path.string());
     }
-    output << "key\ttext\n";
 
-    // These are the source text pointers consumed by the variable-length
-    // prompt records at 0xF4AA0..0xF4B2C. The source uses 0x80-family bytes
-    // between wrapped segments and 0xFF between records; joining segments
-    // with a visible pipe keeps the page boundaries in a two-column host
-    // catalog without embedding Genesis text encoding in the runtime.
-    const std::array<std::pair<const char*, std::size_t>, 18> records{{
+    const auto write_lua_string = [&output](const std::string_view text) {
+        output << '"';
+        for (const auto character : text) {
+            switch (character) {
+            case '\\': output << "\\\\"; break;
+            case '"': output << "\\\""; break;
+            case '\n': output << "\\n"; break;
+            case '\r': output << "\\r"; break;
+            case '\t': output << "\\t"; break;
+            default:
+                if (static_cast<unsigned char>(character) < 0x20U) {
+                    output << '\\' << static_cast<char>(
+                        '0' + ((static_cast<unsigned char>(character) / 100U) % 10U))
+                           << static_cast<char>(
+                        '0' + ((static_cast<unsigned char>(character) / 10U) % 10U))
+                           << static_cast<char>(
+                        '0' + (static_cast<unsigned char>(character) % 10U));
+                } else {
+                    output << character;
+                }
+                break;
+            }
+        }
+        output << '"';
+    };
+
+    const std::array<std::pair<const char*, std::size_t>, 44> records{{
+        // Stoker prompt pointers consumed by the source event/profile path.
         {"stoker.motel.arrival.title", 0x1167EBU},
         {"stoker.motel.arrival.more", 0x0FE5BFU},
         {"stoker.motel.manager.title", 0x116962U},
@@ -546,41 +566,8 @@ void write_stoker_motel_dialogue_catalog(
         {"stoker.motel.room.paid.title", 0x0F4241U},
         {"stoker.motel.room.insufficient.title", 0x0F42C1U},
         {"stoker.motel.jump-house.title", 0x0F41A1U},
-    }};
-    for (const auto& [key, source_offset] : records) {
-        const auto segments =
-            shadowrun::graphics::read_genesis_dialogue_segments(
-                rom, source_offset);
-        if (segments.empty()) {
-            throw std::runtime_error("empty Stoker dialogue text: " +
-                                     std::string(key));
-        }
-        output << key << '\t';
-        for (std::size_t index = 0; index < segments.size(); ++index) {
-            if (index != 0U) {
-                output << '|';
-            }
-            output << segments[index];
-        }
-        output << '\n';
-    }
-}
-
-void write_field_interaction_dialogue_catalog(
-    const std::vector<std::uint8_t>& rom,
-    const std::filesystem::path& root) {
-    const auto path = root / "dialogue" / "field-interactions.tsv";
-    std::filesystem::create_directories(path.parent_path());
-    std::ofstream output(path, std::ios::binary | std::ios::trunc);
-    if (!output) {
-        throw std::runtime_error("cannot create field interaction catalog: " +
-                                 path.string());
-    }
-    output << "key\ttext\n";
-    // These object prompts and response pages are selected by 0x20E48,
-    // 0x20EC2, and their mode-command handlers. The ROM text encoder stays in
-    // this explicit offline import; the Qt runtime consumes this named TSV.
-    const std::array<std::pair<const char*, std::size_t>, 24> records{{
+        // Mode-2 field object prompts and outcomes selected by 0x20E48,
+        // 0x20EC2, and their source mode-command handlers.
         {"field.maglock.door.title", 0x11C882U},
         {"field.maglock.more", 0x0FE5BFU},
         {"field.maglock.no-passkey", 0x11C8C8U},
@@ -605,37 +592,47 @@ void write_field_interaction_dialogue_catalog(
         {"field.security-terminal.floor.1", 0x11CF02U},
         {"field.security-terminal.floor.2", 0x11CF11U},
         {"field.security-terminal.floor.3", 0x11CF1FU},
-    }};
-    for (const auto& [key, source_offset] : records) {
-        const auto segments =
-            shadowrun::graphics::read_genesis_dialogue_segments(
-                rom, source_offset);
-        if (segments.empty()) {
-            throw std::runtime_error("empty field interaction text: " +
-                                     std::string(key));
-        }
-        output << key << '\t';
-        for (std::size_t index = 0; index < segments.size(); ++index) {
-            if (index != 0U) {
-                output << '|';
-            }
-            output << segments[index];
-        }
-        output << '\n';
-    }
-    const std::array<std::pair<const char*, std::size_t>, 2> final_floors{{
         {"field.security-terminal.floor.4", 0x11CF2EU},
         {"field.security-terminal.floor.5", 0x11CF3CU},
     }};
-    for (const auto& [key, source_offset] : final_floors) {
+
+    output << "-- Generated from the US ROM dialogue text records.\n"
+              "-- Pipe characters preserve source segment/page boundaries.\n"
+              "return {\n    texts = {\n";
+    for (std::size_t record_index = 0; record_index < records.size();
+         ++record_index) {
+        const auto& [key, source_offset] = records[record_index];
         const auto segments =
             shadowrun::graphics::read_genesis_dialogue_segments(
                 rom, source_offset);
         if (segments.empty()) {
-            throw std::runtime_error("empty field interaction text: " +
+            throw std::runtime_error("empty dialogue text: " +
                                      std::string(key));
         }
-        output << key << '\t' << segments.front() << '\n';
+        std::string text;
+        for (std::size_t segment_index = 0;
+             segment_index < segments.size(); ++segment_index) {
+            if (segment_index != 0U) {
+                text.push_back('|');
+            }
+            text += segments[segment_index];
+        }
+        output << "        [";
+        write_lua_string(key);
+        output << "] = ";
+        // The two security-terminal floor records are single-string records
+        // in the source continuation; retaining only their first segment
+        // matches the former import's record-specific handling.
+        if (record_index >= 42U) {
+            text = segments.front();
+        }
+        write_lua_string(text);
+        output << (record_index + 1U == records.size() ? "\n" : ",\n");
+    }
+    output << "    },\n}\n";
+    if (!output) {
+        throw std::runtime_error("cannot write Lua dialogue content: " +
+                                 path.string());
     }
 }
 
@@ -1371,9 +1368,9 @@ void write_asset_readme(const std::filesystem::path& root) {
               "items/first-aid, items/miscellaneous, items/magic, and items/armor. "
               "The shared field dialogue frames and A/B/C marker sprites are "
               "grouped under dialogue/panel, with speaker portraits under "
-              "dialogue/portraits; source-backed Stoker prompt text is in "
-              "`dialogue/stoker-motel.tsv` under the `dialogue.stoker.motel` "
-              "alias. "
+              "dialogue/portraits. ROM-derived Stoker and field interaction "
+              "text is emitted as `dialogue/script-text.lua` and consumed by "
+              "the gameplay script runtime. "
               "Separately traced cinematic resources belong under movies/<scene>; "
               "they must not be mixed into intro or field assets.\n\n"
            << "Audio is emitted here only as complete Windows-playable lossless "
@@ -1580,11 +1577,6 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
         "menu.pocket_secretary.notebook.tips",
         "menu/pocket-secretary/notebook-tips.tsv", "text");
     emit_generated_resource_row(
-        "dialogue.stoker.motel", "dialogue/stoker-motel.tsv", "text");
-    emit_generated_resource_row(
-        "dialogue.field.interactions",
-        "dialogue/field-interactions.tsv", "text");
-    emit_generated_resource_row(
         "field.entities.default.actors",
         "field/entities/default-actors.tsv", "state");
     std::string line;
@@ -1642,8 +1634,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     const auto assets = shadowrun::graphics::decode_genesis_native_assets(rom);
     write_field_menu_text_catalog(rom, root, assets);
     write_notebook_tips_text_asset(root, assets);
-    write_stoker_motel_dialogue_catalog(rom, root);
-    write_field_interaction_dialogue_catalog(rom, root);
+    write_dialogue_text_script(rom, root);
     const auto write = [&](const std::string& name,
                            const shadowrun::native::NativeImage& image,
                            const std::string& kind,

@@ -1521,8 +1521,9 @@ new behavior is invented.
    source resolves the speaker, triggering event, prompt/page, text, portrait,
    choices, and frame variant into `DialoguePanelView`. `DialoguePanelPresenter`
    consumes that view without choosing Stoker content. The Stoker controller
-   binds the profile-0 portrait and `dialogue.stoker.motel` text for the
-   `manager` and `manager-package` states. It now reads the source command on
+   binds the profile-0 portrait and the `stoker.motel.*` Lua text keys for the
+   `manager` and `manager-package` states. The text is imported into
+   `assets/dialogue/script-text.lua`. It now reads the source command on
    the arrival `<MORE>` option and runs `0x249C4`: a 0..79 sample opens the
    two-option manager record at `0xF4AB4`; A then opens the room offer. The
    field uses the source bounded-random algorithm, but its seed remains

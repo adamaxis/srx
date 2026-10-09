@@ -1,7 +1,9 @@
 #include "dialogue_panel.hpp"
-#include "dialogue_text_catalog.hpp"
+#include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
+#include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 
 #include <cstdint>
+#include <filesystem>
 #include <string_view>
 
 namespace {
@@ -143,14 +145,16 @@ int main() {
     if (!expect(loaded_assets.complete())) {
         return 9;
     }
-    const auto dialogue = load_dialogue_text_catalog(
-        loaded_assets.catalog, "dialogue.stoker.motel");
-    if (!expect(dialogue.complete())) {
+    scripting::GameScriptRuntime scripts;
+    if (!scripts.load_package(
+            SHADOWRUN_GAMEPLAY_SCRIPT_ROOT,
+            std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
+                "dialogue" / "script-text.lua")) {
         return 10;
     }
-    const DialogueTextResolver resolve_text = [&dialogue](
+    const DialogueTextResolver resolve_text = [&scripts](
                                                   const std::string_view key) {
-        const auto* value = dialogue.catalog.find(key);
+        const auto* value = scripts.dialogue_text(key);
         return value == nullptr ? std::string_view{} : std::string_view(*value);
     };
     const auto stoker_source = make_stoker_motel_prompt(

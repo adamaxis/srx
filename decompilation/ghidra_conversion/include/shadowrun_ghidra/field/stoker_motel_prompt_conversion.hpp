@@ -10,7 +10,7 @@ namespace shadowrun::ghidra_conversion {
 // These are host identifiers for the variable-length prompt records selected
 // by 0x1F65A and the commands in the 0x12CCB4 dispatch table. They are not ROM
 // pointers. The corresponding source text is emitted once into the direct
-// dialogue.stoker.motel asset.
+// Lua dialogue text asset.
 enum class StokerMotelPromptId {
     arrival,
     manager_greeting,
@@ -56,7 +56,7 @@ enum class StokerMotelPromptCommand {
 
 struct StokerMotelPromptOption {
     StokerMotelPromptOptionRole role{};
-    // Alias in dialogue/stoker-motel.tsv; no Genesis text-table address is
+    // Key in dialogue/script-text.lua; no Genesis text-table address is
     // carried into the native conversion or Qt runtime.
     std::string_view text_alias;
     StokerMotelPromptCommand command = StokerMotelPromptCommand::source_boundary;

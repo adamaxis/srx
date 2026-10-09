@@ -2,7 +2,6 @@
 
 #include "dialogue_panel.hpp"
 #include "dialogue_panel_presenter.hpp"
-#include "dialogue_text_catalog.hpp"
 #include "shadowrun_ghidra/field/field_exit_prompt_conversion.hpp"
 #include "shadowrun_ghidra/field/stoker_motel_arrival_command_conversion.hpp"
 #include "shadowrun_ghidra/field/stoker_motel_debt_payment_conversion.hpp"
@@ -117,7 +116,6 @@ private:
     std::string_view resolve_text(std::string_view alias) const;
 
     std::function<void(std::string_view)> source_boundary_callback_;
-    DialogueTextCatalog text_catalog_;
     DialoguePanelPresenter presenter_;
     DialoguePanelView panel_{};
     StokerMotelPromptId active_prompt_ = StokerMotelPromptId::source_boundary;

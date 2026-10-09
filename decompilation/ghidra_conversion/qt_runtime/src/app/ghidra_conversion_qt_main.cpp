@@ -16561,7 +16561,24 @@ int main(int argc, char** argv) {
                             (referral_flag_expected ? 1U : 0U) ||
                         !notebook_gates.has_value() ||
                         *notebook_gates != expected_gates) {
-                        std::cerr << "field dialogue dump: typed Stoker flags or Notebook gates mismatch\n";
+                        std::cerr << "field dialogue dump: typed Stoker flags or Notebook gates mismatch"
+                                  << " prompt_opened=" << prompt_opened
+                                  << " story_flags="
+                                  << (story_flags.has_value()
+                                          ? std::to_string(*story_flags)
+                                          : std::string("unresolved"))
+                                  << " referral_flags="
+                                  << (referral_flags.has_value()
+                                          ? std::to_string(*referral_flags)
+                                          : std::string("unresolved"))
+                                  << " notebook_gates="
+                                  << (notebook_gates.has_value()
+                                          ? std::string(
+                                                (*notebook_gates)[0] ? "1" : "0") +
+                                                ((*notebook_gates)[1] ? "1" : "0") +
+                                                ((*notebook_gates)[2] ? "1" : "0")
+                                          : std::string("unresolved"))
+                                  << "\n";
                         return 3;
                     }
                     if (debt_payment_insufficient_result &&

@@ -22,6 +22,8 @@ constexpr std::size_t kMaximumShopGroups = 8U;
 constexpr std::size_t kMaximumShopOffers = 8U;
 constexpr std::size_t kMaximumIdentifierLength = 96U;
 constexpr std::size_t kMaximumStoryFacts = 4096U;
+constexpr std::size_t kMaximumDialogueTextEntries = 1024U;
+constexpr std::size_t kMaximumDialogueTextBytes = 8192U;
 constexpr int kScriptInstructionBudget = 100000;
 
 std::string stack_error(lua_State* state) {
@@ -322,6 +324,7 @@ struct GameScriptRuntime::Impl {
     std::optional<ScriptNativeOperation> pending_task_operation;
     std::optional<ScriptNativeOperation> active_native_operation;
     StoryFacts story_facts;
+    std::unordered_map<std::string, std::string> dialogue_texts;
     std::string location_type;
     std::string location_id;
     std::string location_text_profile;
@@ -657,6 +660,7 @@ struct GameScriptRuntime::Impl {
         pending_task_operation.reset();
         active_native_operation.reset();
         story_facts.clear();
+        dialogue_texts.clear();
         location_type.clear();
         location_id.clear();
         location_text_profile.clear();
@@ -736,7 +740,8 @@ GameScriptRuntime::GameScriptRuntime(GameScriptRuntime&&) noexcept = default;
 GameScriptRuntime& GameScriptRuntime::operator=(GameScriptRuntime&&) noexcept = default;
 
 bool GameScriptRuntime::load_package(
-    const std::filesystem::path& script_directory) {
+    const std::filesystem::path& script_directory,
+    const std::filesystem::path& dialogue_text_file) {
     impl_->reset();
     if (impl_->state == nullptr) {
         return false;
@@ -797,7 +802,81 @@ bool GameScriptRuntime::load_package(
         lua_settable(state, -3);
         lua_pop(state, 1);
     }
+
+    if (!dialogue_text_file.empty()) {
+        error.clear();
+        const auto fail_dialogue = [this, state](const std::string& message) {
+            impl_->failure = message;
+            lua_settop(state, 0);
+            return false;
+        };
+        if (!std::filesystem::is_regular_file(dialogue_text_file, error) ||
+            error) {
+            return fail_dialogue(
+                "gameplay dialogue text script is missing: " +
+                dialogue_text_file.string());
+        }
+        {
+            ScopedInstructionBudget instruction_budget(state);
+            if (luaL_loadfilex(state, dialogue_text_file.string().c_str(),
+                               "t") != LUA_OK ||
+                lua_pcall(state, 0, 1, 0) != LUA_OK) {
+                return fail_dialogue(
+                    dialogue_text_file.filename().string() + ": " +
+                    stack_error(state));
+            }
+        }
+        if (!lua_istable(state, -1)) {
+            return fail_dialogue(
+                "dialogue text script must return a table");
+        }
+        lua_getfield(state, -1, "texts");
+        if (!lua_istable(state, -1)) {
+            return fail_dialogue(
+                "dialogue text script must return a texts table");
+        }
+        const auto texts_table = lua_absindex(state, -1);
+        std::unordered_map<std::string, std::string> parsed_texts;
+        lua_pushnil(state);
+        while (lua_next(state, texts_table) != 0) {
+            std::string key;
+            const bool valid_key = read_string(state, -2, key);
+            const bool string_value = lua_type(state, -1) == LUA_TSTRING;
+            std::size_t text_length = 0U;
+            const auto* text = string_value
+                                   ? lua_tolstring(state, -1, &text_length)
+                                   : nullptr;
+            const bool valid_text = string_value && text != nullptr &&
+                                    text_length > 0U &&
+                                    text_length <= kMaximumDialogueTextBytes;
+            if (!valid_key || !valid_identifier(key) || !valid_text ||
+                parsed_texts.size() >= kMaximumDialogueTextEntries) {
+                lua_pop(state, 2);
+                return fail_dialogue(
+                    "dialogue text script contains an invalid key or value");
+            }
+            if (!parsed_texts.emplace(
+                    std::move(key), std::string(text, text_length)).second) {
+                lua_pop(state, 2);
+                return fail_dialogue(
+                    "dialogue text script contains a duplicate key");
+            }
+            lua_pop(state, 1);
+        }
+        if (parsed_texts.empty()) {
+            return fail_dialogue("dialogue text script has no entries");
+        }
+        impl_->dialogue_texts = std::move(parsed_texts);
+        lua_settop(state, 0);
+    }
+    impl_->failure.clear();
     return true;
+}
+
+const std::string* GameScriptRuntime::dialogue_text(
+    const std::string_view key) const {
+    const auto found = impl_->dialogue_texts.find(std::string(key));
+    return found == impl_->dialogue_texts.end() ? nullptr : &found->second;
 }
 
 std::optional<std::vector<FieldMapEventRule>>

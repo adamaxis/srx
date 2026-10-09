@@ -2,12 +2,12 @@
 
 #include "dialogue_panel.hpp"
 #include "dialogue_panel_presenter.hpp"
-#include "dialogue_text_catalog.hpp"
 #include "shadowrun_ghidra/core/random_conversion.hpp"
 #include "shadowrun_ghidra/entities/movement_mode_transition_conversion.hpp"
 #include "shadowrun_ghidra/field/field_interaction_continuation_conversion.hpp"
 #include "shadowrun_ghidra/field/mode_text_prompt_conversion.hpp"
 #include "shadowrun_ghidra/session/runner_record_access_conversion.hpp"
+#include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 
 #include <array>
 #include <cstdint>
@@ -42,6 +42,7 @@ public:
     ~FieldInteractionRuntime();
 
     bool load_assets(const ConversionAssetCatalog& assets);
+    void set_script_runtime(scripting::GameScriptRuntime* runtime) noexcept;
     bool open(MovementModeTransitionContinuation continuation,
               std::uint16_t scene_id, std::uint16_t world_mode,
               bool interaction_suppressed,
@@ -103,7 +104,7 @@ private:
 
     std::function<void(std::string_view)> source_boundary_callback_;
     std::function<void(std::uint16_t)> source_audio_event_callback_;
-    DialogueTextCatalog text_catalog_;
+    scripting::GameScriptRuntime* script_runtime_ = nullptr;
     DialoguePanelPresenter presenter_;
     ModeTextPromptDescriptor prompt_{};
     ModeTextPromptState prompt_state_{};
