@@ -168,12 +168,13 @@ diagnostic `--field-command-dump` exercises that same Start edge and writes the
 resulting 320x224 frame. The normal command-overview path now also consumes
 the converted typed equipment combat result: source-indexed Damage/Power and
 Wpns/Guns rows, selected-item art, phase-value tiles, and the Atk/Def strips
-are drawn from the direct resource catalog. The command, archetype, runner,
-status, power, armor, item-detail, and item text catalog is extracted from the
-reviewed ROM tables into `menu.field.text` and rendered with the extracted
-menu font. Clips, Attributes, Cyberware, Magic, and Pocket Secretary still
-need their source handlers and action-detail resources connected; this hill is
-therefore partial, not defended.
+are drawn from the direct resource catalog. The seven command-root labels now
+resolve from ROM-derived Lua text keys; the typed selector still owns focus,
+drawing, and dispatch. Archetype, runner, status, power, armor, item-detail,
+and other item text remain in the extracted `menu.field.text` catalog and use
+the extracted menu font. Clips, Attributes, Cyberware, Magic, and Pocket
+Secretary still need remaining source handlers and action-detail resources
+connected; this hill is therefore partial, not defended.
 The negative `+0x56` special attack branch and the field combat consumers of
 these values remain explicitly incomplete.
 
