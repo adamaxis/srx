@@ -436,6 +436,9 @@ int main() {
 
     const auto pocket_secretary_root = scripts.menu(
         "pocket_secretary", "root", "pocket_secretary", "root");
+    const auto pocket_secretary_root_text = scripts.menu(
+        "pocket_secretary", "root_text_entries",
+        "pocket_secretary.root.text", "catalog");
     const auto* pocket_secretary_title =
         scripts.dialogue_text("pocket_secretary.root.title");
     const auto* pocket_secretary_separator =
@@ -446,6 +449,13 @@ int main() {
     constexpr std::array<std::string_view, 5> kPocketSecretaryLabels{{
         "Notebook", "Group Items", "Cyberdeck", "Dismiss Runner",
         "Save/Load Game"}};
+    constexpr std::array<std::string_view, 5>
+        kPocketSecretaryLabelKeys{{
+            "pocket_secretary.option.notebook",
+            "pocket_secretary.option.group_items",
+            "pocket_secretary.option.cyberdeck",
+            "pocket_secretary.option.dismiss_runner",
+            "pocket_secretary.option.save_load"}};
     bool pocket_secretary_rows_match =
         pocket_secretary_root.has_value() &&
         pocket_secretary_root->choices.size() ==
@@ -457,10 +467,19 @@ int main() {
             const auto* label = scripts.dialogue_text(choice.label_key);
             pocket_secretary_rows_match = pocket_secretary_rows_match &&
                 choice.id == kPocketSecretaryFieldChoiceIds[index] &&
+                choice.label_key == kPocketSecretaryLabelKeys[index] &&
                 label != nullptr && *label == kPocketSecretaryLabels[index];
         }
     }
-    if (!expect(pocket_secretary_rows_match &&
+    if (!expect(pocket_secretary_root.has_value() &&
+                    pocket_secretary_root->title_key ==
+                        "pocket_secretary.root.title" &&
+                    pocket_secretary_root_text.has_value() &&
+                    pocket_secretary_root_text->title_key.empty() &&
+                    pocket_secretary_root_text->choices.size() == 1U &&
+                    pocket_secretary_root_text->choices[0].label_key ==
+                        "pocket_secretary.root.text.option.separator" &&
+                    pocket_secretary_rows_match &&
                     pocket_secretary_title != nullptr &&
                     *pocket_secretary_title == " Main Menu" &&
                     pocket_secretary_separator != nullptr &&
@@ -480,6 +499,12 @@ int main() {
     constexpr std::array<std::string_view, 5> kNotebookChoiceLabels{{
         "Current Run", "Tips & Clues", "Contacts", "Mr. Johnsons",
         "Shadowrunners"}};
+    constexpr std::array<std::string_view, 5> kNotebookChoiceLabelKeys{{
+        "pocket_secretary.notebook.option.current_run",
+        "pocket_secretary.notebook.option.tips_and_clues",
+        "pocket_secretary.notebook.option.contacts",
+        "pocket_secretary.notebook.option.mr_johnsons",
+        "pocket_secretary.notebook.option.shadowrunners"}};
     bool notebook_rows_match = notebook_options.has_value() &&
         notebook_options->choices.size() == kNotebookChoiceIds.size();
     if (notebook_rows_match) {
@@ -490,10 +515,14 @@ int main() {
             const auto* label = scripts.dialogue_text(choice.label_key);
             notebook_rows_match = notebook_rows_match &&
                 choice.id == kNotebookChoiceIds[index] && label != nullptr &&
+                choice.label_key == kNotebookChoiceLabelKeys[index] &&
                 *label == kNotebookChoiceLabels[index];
         }
     }
-    if (!expect(notebook_rows_match,
+    if (!expect(notebook_options.has_value() &&
+                    notebook_options->title_key ==
+                        "pocket_secretary.notebook.options.title" &&
+                    notebook_rows_match,
                 "Lua Notebook choices or ROM labels changed order")) {
         std::cerr << scripts.failure() << '\n';
         return 1;

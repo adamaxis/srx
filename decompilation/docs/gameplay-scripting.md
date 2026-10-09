@@ -231,19 +231,19 @@ from the older convention incrementally.
   transitions, and the separate Hotel Karma spending screen.
 - `gameplay/scripts/pocket_secretary.lua` declares the five stable IDs for the
   field Pocket Secretary root menu and all five possible Notebook rows in ROM
-  order. It also names the dismiss choices, cyberdeck warning lines, grouped
-  item rows, empty-run message, and Mr. Johnson contact/detail entries; the
-  root panel separator is a named text entry as well. Notebook Tips metadata
-  and all 96 source-ordered entries are exposed as three validated 32-entry
-  content pages. The field text catalog reads each ordered ID list from Lua;
-  script QA checks the source order against the ROM-derived catalog.
-  `FieldSceneRuntime` consumes the root and Notebook definitions directly and
-  uses their IDs when dispatching the selected row; the text catalog resolves
-  the ROM labels from `assets/dialogue/script-text.lua`. Native state still
-  applies the three story-flag row gates and owns cursor movement, selection
-  cadence, drawing, and child-page behavior. Save/Load and the extended six-row
-  caller remain explicit boundaries; the Notebook page state and actions
-  remain native.
+  order. The root and Notebook definitions return explicit title and ordered
+  label keys; the root separator has its own text key. It also names the
+  dismiss choices, cyberdeck warning lines, grouped item rows, empty-run
+  message, and Mr. Johnson contact/detail entries. Notebook Tips metadata and
+  all 96 source-ordered entries are exposed as three validated 32-entry
+  content pages. Script QA checks IDs, labels, and keys against the
+  ROM-derived catalog. `FieldSceneRuntime` consumes the root and Notebook
+  definitions directly and uses their IDs when dispatching the selected row;
+  the text catalog resolves the keyed ROM labels from
+  `assets/dialogue/script-text.lua`. Native state still applies the three
+  story-flag row gates and owns cursor movement, selection cadence, drawing,
+  and child-page behavior. Save/Load and the extended six-row caller remain
+  explicit boundaries; the Notebook page state and actions remain native.
 - `gameplay/scripts/command_overview.lua` declares the seven stable IDs for the
   in-game command root in ROM order, including the two distinct Inventory
   columns, with each menu row paired to its explicit Lua text key. It also
@@ -306,8 +306,9 @@ resource while their source-derived schedule and native rendering remain in
 the intro controller. Stoker, field interaction, Ares mode-event paragraphs,
 Hotel text,
 startup menu text/choices, Pocket Secretary root choices/labels,
-command-overview root choices/labels, Clips selector choices/labels, Notebook
-option IDs/labels, shared confirmation choices/labels, Magic spell
+command-overview root choices/labels, Clips selector choices/labels, Pocket
+Secretary root and Notebook title/separator/label keys, Notebook option
+IDs/labels, shared confirmation choices/labels, Magic spell
 IDs/names/descriptions, field-object prompt choices, and shop
 service/action-heading IDs are Lua content. The runner biography and currently
 converted Ricky/Winston/Trent topic text are also Lua content; their

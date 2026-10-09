@@ -20454,6 +20454,7 @@ int main(int argc, char** argv) {
                     }
                 }
                 if (field_scene.pocket_secretary_selection() != 0U ||
+                    !image_has_green_ink(secretary_scene, 72, 56, 8, 8) ||
                     !save_secretary_scene("actual", secretary_scene)) {
                     std::cerr << "field secretary dump: initial selection "
                                  "or actual.bmp capture failed\n";
@@ -20481,10 +20482,14 @@ int main(int argc, char** argv) {
                         56 + static_cast<int>(selection) * 16;
                     if (!image_region_differs(
                             previous_secretary_scene, secretary_scene,
-                            136, previous_row_y, 8, 8) ||
+                            72, previous_row_y, 8, 8) ||
                         !image_region_differs(
                             previous_secretary_scene, secretary_scene,
-                            136, current_row_y, 8, 8) ||
+                            72, current_row_y, 8, 8) ||
+                        image_has_green_ink(secretary_scene, 72,
+                                            previous_row_y, 8, 8) ||
+                        !image_has_green_ink(secretary_scene, 72,
+                                             current_row_y, 8, 8) ||
                         !save_secretary_scene(
                             "selection_" + std::to_string(selection),
                             secretary_scene)) {
@@ -20507,9 +20512,11 @@ int main(int argc, char** argv) {
                 }
                 secretary_scene = render_secretary_scene();
                 if (!image_region_differs(previous_secretary_scene,
-                                          secretary_scene, 136, 56, 8, 8) ||
+                                          secretary_scene, 72, 56, 8, 8) ||
                     !image_region_differs(previous_secretary_scene,
-                                          secretary_scene, 136, 120, 8, 8) ||
+                                          secretary_scene, 72, 120, 8, 8) ||
+                    !image_has_green_ink(secretary_scene, 72, 56, 8, 8) ||
+                    image_has_green_ink(secretary_scene, 72, 120, 8, 8) ||
                     !save_secretary_scene("wrap_to_0", secretary_scene)) {
                     std::cerr << "field secretary dump: wraparound cursor "
                                  "frame failed\n";

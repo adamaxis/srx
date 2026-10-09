@@ -9,11 +9,19 @@ function PocketSecretary.root()
         "cyberdeck",
         "dismiss_runner",
         "save_load",
+    }, "pocket_secretary.root.title", {
+        "pocket_secretary.option.notebook",
+        "pocket_secretary.option.group_items",
+        "pocket_secretary.option.cyberdeck",
+        "pocket_secretary.option.dismiss_runner",
+        "pocket_secretary.option.save_load",
     }
 end
 
 function PocketSecretary.root_text_entries()
-    return { "separator" }
+    return { "separator" }, nil, {
+        "pocket_secretary.root.text.option.separator",
+    }
 end
 
 -- All possible Notebook rows in ROM order. The native model applies the
@@ -25,6 +33,12 @@ function PocketSecretary.notebook()
         "contacts",
         "mr_johnsons",
         "shadowrunners",
+    }, "pocket_secretary.notebook.options.title", {
+        "pocket_secretary.notebook.option.current_run",
+        "pocket_secretary.notebook.option.tips_and_clues",
+        "pocket_secretary.notebook.option.contacts",
+        "pocket_secretary.notebook.option.mr_johnsons",
+        "pocket_secretary.notebook.option.shadowrunners",
     }
 end
 

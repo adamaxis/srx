@@ -8788,8 +8788,10 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         }
         if (pocket_secretary_.selection <
             pocket_secretary_menu_content_.choices.size()) {
+            // ROM 0xC376 writes the selector into plane-B column 9 (x=72),
+            // in the gutter before the option labels begin at x=88.
             draw_command_overview_text(
-                painter, 136,
+                painter, 72,
                 56 + static_cast<int>(pocket_secretary_.selection) * 16,
                 "x");
         }
