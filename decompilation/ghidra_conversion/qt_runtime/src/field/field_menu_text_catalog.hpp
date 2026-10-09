@@ -32,7 +32,6 @@ inline constexpr std::size_t kCyberwareEntryCount = 15U;
 inline constexpr std::size_t kCyberdeckUnavailableLineCount = 3U;
 inline constexpr std::size_t kDismissRunnerLabelCount = 3U;
 inline constexpr std::size_t kMagicSpellTextCount = 13U;
-inline constexpr std::size_t kPocketSecretaryOptionCount = 5U;
 inline constexpr std::size_t kFieldServiceTitleCount = 12U;
 inline constexpr std::size_t kFieldServiceActionTitleCount = 32U;
 inline constexpr std::size_t kPocketSecretaryGroupItemCount = 15U;
@@ -115,8 +114,6 @@ struct FieldMenuTextCatalog {
     std::string magic_force_posture_labels;
     std::array<std::string, kMagicSpellTextCount> magic_spell_names{};
     std::array<std::string, kMagicSpellTextCount> magic_spell_descriptions{};
-    std::string pocket_secretary_title;
-    std::string pocket_secretary_separator;
     std::array<std::string, kFieldServiceTitleCount> field_service_titles{};
     std::array<std::uint16_t, kFieldServiceTitleCount>
         field_service_title_destinations{};
@@ -124,8 +121,6 @@ struct FieldMenuTextCatalog {
         field_service_action_titles{};
     std::string field_service_universal_clips_title;
     std::string field_service_universal_clips_description;
-    std::array<std::string, kPocketSecretaryOptionCount>
-        pocket_secretary_options{};
     std::array<std::string, kCyberdeckUnavailableLineCount>
         pocket_secretary_cyberdeck_unavailable_lines{};
     std::array<std::string, kPocketSecretaryGroupItemCount>

@@ -57,5 +57,12 @@ return {
         ["hotel.status.recovery.2"] = "     A steaming mug of",
         ["hotel.status.recovery.3"] = "   soykaf would be just",
         ["hotel.status.recovery.4"] = "   wiz about now.",
+        ["pocket_secretary.root.title"] = " Main Menu",
+        ["pocket_secretary.root.separator"] = "[\\\\\\\\\\\\\\\\\\\\",
+        ["pocket_secretary.option.notebook"] = "Notebook",
+        ["pocket_secretary.option.group_items"] = "Group Items",
+        ["pocket_secretary.option.cyberdeck"] = "Cyberdeck",
+        ["pocket_secretary.option.dismiss_runner"] = "Dismiss Runner",
+        ["pocket_secretary.option.save_load"] = "Save/Load Game",
     },
 }

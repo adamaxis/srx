@@ -64,13 +64,6 @@ field-service.action-title.30	"   Sell Item From   "
 field-service.action-title.31	"     Inventory      "
 field-service.universal-clips.title	Universal\nGun Clips
 field-service.universal-clips.description	These clips may be used in\nany gun.\n\nWhen switching weapons, the\nclip transfers the percentage\nof ammo left to the new gun.\n\n     Cost per Clip    $
-pocket-secretary.title	" Main Menu"
-pocket-secretary.separator	[\\\\\\\\\\
-pocket-secretary.option.0	Notebook
-pocket-secretary.option.1	Group Items
-pocket-secretary.option.2	Cyberdeck
-pocket-secretary.option.3	Dismiss Runner
-pocket-secretary.option.4	Save/Load Game
 pocket-secretary.cyberdeck.line.0	" You do not have"
 pocket-secretary.cyberdeck.line.1	"  a cyberdeck!!"
 pocket-secretary.cyberdeck.line.2	" Keep looking."

@@ -10,6 +10,8 @@ namespace shadowrun::ghidra_conversion {
 
 inline constexpr std::size_t kNotebookTipCount = 96U;
 inline constexpr std::size_t kNotebookMrJohnsonCount = 5U;
+// Field-mode caller at ROM 0xC2A6 selects this five-row variant.
+inline constexpr std::size_t kPocketSecretaryFieldMenuRowCount = 5U;
 
 enum class NotebookMenuOption : std::uint8_t {
     current_run,

@@ -49,7 +49,7 @@ flowchart TD
 | Hotel Karma upgrades | `HotelKarmaUpgradeRuntime` (fixed `hotel_karma_upgrade` mode) | Hotel option 0 (`0xD024`), live runner record, and typed progression conversions | Show next value/cost, confirm Yes/No, mutate stat/Karma, and return to Hotel Options as a full-screen child. |
 | Cyberware | `CyberwareMenuController` and `CyberwareMenuPresenter` | `CyberwareMenuModel` | Keep the current installed-bit/name view read-only until source purchase/install paths are traced. |
 | Magic | `MagicMenuController` and `MagicMenuPresenter` | `MagicMenuLoopState`, `MagicForceState`, and Magic conversions | Move spell/force selection and return behavior out of `FieldSceneRuntime`; keep the defense fallback as its own source-selected branch. |
-| Pocket Secretary | `PocketSecretaryMenuController` and a presenter per child page | `PocketSecretaryMenuState`, `NotebookMenuState`, and `DismissRunnerMenuState` | Give the parent, Notebook/Tips, and Dismiss Runner distinct views and route results. Rebuild the panel before a child page replaces parent controls. |
+| Pocket Secretary | `PocketSecretaryMenuController` and a presenter per child page | `PocketSecretaryMenuState`, `NotebookMenuState`, and `DismissRunnerMenuState` | `pocket_secretary.lua` supplies the five ordered root choice IDs; ROM labels come from the script text table. Keep cursor state, layout, and handler execution native. Give the parent, Notebook/Tips, and Dismiss Runner distinct views and route results. Rebuild the panel before a child page replaces parent controls. |
 | Hotel status/options/checkout | HotelMenuRuntime with HotelOptionsMenuState and HotelCheckoutPromptState | service_hotel_entity_status, Hotel input transitions, paid room route, and the separate Karma-upgrade child | Preserve the blank-clear/arrow-selected source tiles. Replace the whole screen for the Karma child, suspend Hotel E660 while it is open, and redraw Hotel Options on return. |
 | Dialogue | `FieldDialogueEventResolver` plus `DialoguePanelPresenter` | `DialoguePanelView`, `FieldExitPromptState`, and source speaker/event records | Resolve speaker properties, trigger event, text, portrait, options, and frame mode before the generic presenter draws. Use event-specific providers for motel, building, and random street encounters. |
 | Shop | `ShopMenuController`, `ShopTransactionService`, and `ShopMenuPresenter` | Ares mode/event and offer rows are traced; controller and typed transaction adapters are implemented | Connect the event-resolved dialogue and field-mode route, then add the source-positioned presenter and live session wallet binding. |
@@ -67,6 +67,14 @@ their current host:
   root-page transition and resolved view. `FieldSceneRuntime` still owns its
   assets, root and child drawing, child state, and most child input routing.
 - **Hotel Options:** HotelMenuRuntime owns the typed status/options/checkout phases; FieldSceneRuntime routes the paid Stoker room result into it and owns a separate spend-enabled Karma child. `gameplay/scripts/hotel.lua` supplies the validated options and checkout choice IDs, and ROM-imported Lua text supplies the visible labels. The native presenter owns layout, focus, input cadence, E660 animation, and the separate Hotel Karma child. The child redraws the full Attributes/Skills page, suspends parent E660, and returns to a rebuilt options panel. Debug/Release QA writes phase screenshots and checks upgrade/decline, Karma mutation, static child frames, source palette lines, sound silence, and stale-control clearing. The status/options and checkout loops advance E660; checkout selection and question text stay fixed during its lower-bezel animation. The source RNG seed and independent Hotel captures remain open.
+- **Pocket Secretary root content:** the five field-mode row IDs are in
+  `gameplay/scripts/pocket_secretary.lua`; ROM title, separator, and label
+  text is imported into `assets/dialogue/script-text.lua`. The native
+  presenter and typed state still own drawing, cursor cadence, and handler
+  dispatch. Debug/Release field-route QA passed, and all 79 route screenshots
+  match across configurations. The extended six-row caller, Save/Load action,
+  and independent Genesis visuals remain open; see the
+  [content review](visual-audits/pocket-secretary-lua-content.md).
 - **Dialogue:** `FieldDialogueEventResolver`, `FieldDialogueRuntime`, and the
   shared `DialoguePanelPresenter` exist. Event selection is source-keyed, but
   only converted prompt branches and extracted speaker records resolve. Ares

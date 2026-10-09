@@ -20270,7 +20270,7 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 for (std::size_t row = 0;
-                     row < kPocketSecretaryOptionCount; ++row) {
+                     row < kPocketSecretaryFieldMenuRowCount; ++row) {
                     if (!image_has_green_ink(
                             secretary_scene, 88,
                             56 + static_cast<int>(row) * 16,

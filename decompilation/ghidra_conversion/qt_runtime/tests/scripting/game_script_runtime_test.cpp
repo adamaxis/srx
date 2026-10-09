@@ -1,8 +1,10 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 
+#include <array>
 #include <filesystem>
 #include <iostream>
 #include <optional>
+#include <string_view>
 #include <string>
 #include <string_view>
 
@@ -83,6 +85,43 @@ int main() {
                     recovery_last != nullptr &&
                     *recovery_last == "   wiz about now.",
                 "Hotel menu choices or ROM-imported Lua text did not load")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
+    const auto pocket_secretary_root = scripts.menu(
+        "pocket_secretary", "root", "pocket_secretary", "root");
+    const auto* pocket_secretary_title =
+        scripts.dialogue_text("pocket_secretary.root.title");
+    const auto* pocket_secretary_separator =
+        scripts.dialogue_text("pocket_secretary.root.separator");
+    constexpr std::array<std::string_view, 5> kPocketSecretaryFieldChoiceIds{{
+        "notebook", "group_items", "cyberdeck", "dismiss_runner",
+        "save_load"}};
+    constexpr std::array<std::string_view, 5> kPocketSecretaryLabels{{
+        "Notebook", "Group Items", "Cyberdeck", "Dismiss Runner",
+        "Save/Load Game"}};
+    bool pocket_secretary_rows_match =
+        pocket_secretary_root.has_value() &&
+        pocket_secretary_root->choices.size() ==
+            kPocketSecretaryFieldChoiceIds.size();
+    if (pocket_secretary_rows_match) {
+        for (std::size_t index = 0;
+             index < kPocketSecretaryFieldChoiceIds.size(); ++index) {
+            const auto& choice = pocket_secretary_root->choices[index];
+            const auto* label = scripts.dialogue_text(choice.label_key);
+            pocket_secretary_rows_match = pocket_secretary_rows_match &&
+                choice.id == kPocketSecretaryFieldChoiceIds[index] &&
+                label != nullptr && *label == kPocketSecretaryLabels[index];
+        }
+    }
+    if (!expect(pocket_secretary_rows_match &&
+                    pocket_secretary_title != nullptr &&
+                    *pocket_secretary_title == " Main Menu" &&
+                    pocket_secretary_separator != nullptr &&
+                    *pocket_secretary_separator ==
+                        std::string("[") + std::string(10U, '\\'),
+                "Pocket Secretary Lua menu or ROM text did not load")) {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }

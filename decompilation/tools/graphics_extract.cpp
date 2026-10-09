@@ -167,15 +167,6 @@ void write_field_menu_text_catalog(
          escape_field_text(universal_clips_text.title));
     emit("field-service.universal-clips.description",
          escape_field_text(universal_clips_text.description));
-    const auto pocket_secretary_text =
-        shadowrun::graphics::read_genesis_pocket_secretary_text(rom);
-    emit("pocket-secretary.title", pocket_secretary_text.title);
-    emit("pocket-secretary.separator", pocket_secretary_text.separator);
-    for (std::size_t index = 0;
-         index < pocket_secretary_text.options.size(); ++index) {
-        emit("pocket-secretary.option." + std::to_string(index),
-             pocket_secretary_text.options[index]);
-    }
     const auto cyberdeck_unavailable_text =
         shadowrun::graphics::read_genesis_cyberdeck_unavailable_text(rom);
     for (std::size_t index = 0;
@@ -634,6 +625,22 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
          ++index) {
         write_text_entry("hotel.status.recovery." + std::to_string(index),
                          hotel_text.recovery_message[index]);
+    }
+    const auto pocket_secretary_text =
+        shadowrun::graphics::read_genesis_pocket_secretary_text(rom);
+    write_text_entry("pocket_secretary.root.title",
+                     pocket_secretary_text.title);
+    write_text_entry("pocket_secretary.root.separator",
+                     pocket_secretary_text.separator);
+    constexpr std::array<std::string_view, 5> kPocketSecretaryFieldChoiceIds{{
+        "notebook", "group_items", "cyberdeck", "dismiss_runner",
+        "save_load"}};
+    for (std::size_t index = 0;
+         index < kPocketSecretaryFieldChoiceIds.size(); ++index) {
+        write_text_entry(
+            "pocket_secretary.option." +
+                std::string(kPocketSecretaryFieldChoiceIds[index]),
+            pocket_secretary_text.options[index]);
     }
     output << "    },\n}\n";
     if (!output) {
@@ -1375,9 +1382,11 @@ void write_asset_readme(const std::filesystem::path& root) {
               "The shared field dialogue frames and A/B/C marker sprites are "
               "grouped under dialogue/panel, with speaker portraits under "
               "dialogue/portraits. ROM-derived Stoker and field interaction "
-              "text, along with Hotel menu and status text, are emitted as "
+              "text, Hotel menu and status text, and Pocket Secretary root "
+              "menu text are emitted as "
               "`dialogue/script-text.lua` and consumed by the gameplay script "
-              "runtime. `gameplay/scripts/hotel.lua` provides the Hotel page "
+              "runtime. `gameplay/scripts/hotel.lua` and "
+              "`gameplay/scripts/pocket_secretary.lua` provide cursor-menu "
               "choice IDs. "
               "Separately traced cinematic resources belong under movies/<scene>; "
               "they must not be mixed into intro or field assets.\n\n"

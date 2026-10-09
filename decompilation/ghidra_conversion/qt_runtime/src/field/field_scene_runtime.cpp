@@ -4072,6 +4072,9 @@ bool FieldSceneRuntime::bootstrap(
     if (!load_hotel_menu_content()) {
         return false;
     }
+    if (!load_pocket_secretary_menu_content()) {
+        return false;
+    }
 
     // Dialogue is optional during initial field bootstrap because the player
     // does not start inside an NPC prompt. Load it once here so the later
@@ -6229,7 +6232,15 @@ void FieldSceneRuntime::advance_frame() {
                  },
                  [this](const std::uint8_t selection) {
                      source_boundary("field.pocket_secretary.handler");
-                     if (selection == 0U) {
+                     if (selection >=
+                         pocket_secretary_menu_content_.choices.size()) {
+                         source_boundary(
+                             "field.pocket_secretary.choice_id_unresolved");
+                         return true;
+                     }
+                     const auto& choice_id =
+                         pocket_secretary_menu_content_.choices[selection].id;
+                     if (choice_id == "notebook") {
                          const auto event_gates =
                              notebook_event_gates();
                          if (!event_gates.has_value()) {
@@ -6243,7 +6254,7 @@ void FieldSceneRuntime::advance_frame() {
                              source_boundary(
                                  "field.pocket_secretary.notebook.opened");
                          }
-                     } else if (selection == 2U) {
+                     } else if (choice_id == "cyberdeck") {
                          if (cyberdeck_available_.has_value() &&
                              !*cyberdeck_available_) {
                              begin_pocket_secretary_cyberdeck_unavailable(
@@ -6257,19 +6268,22 @@ void FieldSceneRuntime::advance_frame() {
                              source_boundary(
                                  "field.pocket_secretary.matrix_path_pending");
                          }
-                    } else if (selection == 1U) {
-                        if (!group_item_flags_.has_value()) {
-                            source_boundary(
-                                "field.pocket_secretary.group_items_flags_unresolved");
-                        } else {
-                            begin_pocket_secretary_group_items(
-                                pocket_secretary_, *group_item_flags_);
-                            source_boundary(*group_item_flags_ == 0U
-                                                ? "field.pocket_secretary.group_items_empty"
-                                                : "field.pocket_secretary.group_items_populated");
-                        }
-                     } else if (selection == 3U) {
+                     } else if (choice_id == "group_items") {
+                         if (!group_item_flags_.has_value()) {
+                             source_boundary(
+                                 "field.pocket_secretary.group_items_flags_unresolved");
+                         } else {
+                             begin_pocket_secretary_group_items(
+                                 pocket_secretary_, *group_item_flags_);
+                             source_boundary(*group_item_flags_ == 0U
+                                                 ? "field.pocket_secretary.group_items_empty"
+                                                 : "field.pocket_secretary.group_items_populated");
+                         }
+                     } else if (choice_id == "dismiss_runner") {
                          begin_pocket_secretary_dismiss_runner();
+                     } else if (choice_id == "save_load") {
+                         source_boundary(
+                             "field.pocket_secretary.save_load_pending");
                      }
                      return true;
                  },
@@ -6668,6 +6682,50 @@ bool FieldSceneRuntime::load_hotel_menu_content() {
     }
     hotel_menu_content_ = std::move(content);
     source_boundary("field.hotel.menu_content.loaded_from_lua");
+    return true;
+}
+
+bool FieldSceneRuntime::load_pocket_secretary_menu_content() {
+    constexpr std::array<std::string_view,
+                         kPocketSecretaryFieldMenuRowCount> kChoiceIds{{
+        "notebook", "group_items", "cyberdeck", "dismiss_runner",
+        "save_load"}};
+    const auto fail = [this](std::string message) {
+        failure_ = std::move(message);
+        source_boundary("field.bootstrap.pocket_secretary_script_invalid");
+        return false;
+    };
+    const auto definition = game_scripts_.menu(
+        "pocket_secretary", "root", "pocket_secretary", "root");
+    if (!definition.has_value()) {
+        return fail(game_scripts_.failure().empty()
+                        ? "Pocket Secretary root menu script is unavailable"
+                        : game_scripts_.failure());
+    }
+    if (definition->choices.size() != kChoiceIds.size()) {
+        return fail(
+            "Pocket Secretary Lua menu does not match its source rows");
+    }
+    const auto* title = game_scripts_.dialogue_text(definition->title_key);
+    const auto* separator = game_scripts_.dialogue_text(
+        "pocket_secretary.root.separator");
+    if (title == nullptr || separator == nullptr) {
+        return fail("Pocket Secretary root title or separator text is missing");
+    }
+    PocketSecretaryMenuContent content{};
+    content.title = *title;
+    content.separator = *separator;
+    for (std::size_t index = 0; index < kChoiceIds.size(); ++index) {
+        const auto& choice = definition->choices[index];
+        const auto* label = game_scripts_.dialogue_text(choice.label_key);
+        if (choice.id != kChoiceIds[index] || label == nullptr) {
+            return fail("Pocket Secretary Lua choice ID or label is invalid");
+        }
+        content.choices[index] = PocketSecretaryMenuContent::Choice{
+            choice.id, *label};
+    }
+    pocket_secretary_menu_content_ = std::move(content);
+    source_boundary("field.pocket_secretary.menu_content.loaded_from_lua");
     return true;
 }
 
@@ -8289,7 +8347,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             draw_command_overview_text(
                 painter, 88, 32, field_menu_text_.notebook_labels[0]);
             draw_command_overview_text(
-                painter, 72, 40, field_menu_text_.pocket_secretary_separator);
+                painter, 72, 40, pocket_secretary_menu_content_.separator);
             for (std::size_t row = 0;
                  row < pocket_secretary_.notebook.option_count; ++row) {
                 const auto label_index = static_cast<std::size_t>(
@@ -8418,17 +8476,17 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             return;
         }
         draw_command_overview_text(
-            painter, 88, 32, field_menu_text_.pocket_secretary_title);
+            painter, 88, 32, pocket_secretary_menu_content_.title);
         draw_command_overview_text(
-            painter, 88, 40, field_menu_text_.pocket_secretary_separator);
+            painter, 88, 40, pocket_secretary_menu_content_.separator);
         for (std::size_t row = 0;
-             row < field_menu_text_.pocket_secretary_options.size(); ++row) {
+             row < pocket_secretary_menu_content_.choices.size(); ++row) {
             draw_command_overview_text(
                 painter, 88, 56 + static_cast<int>(row) * 16,
-                field_menu_text_.pocket_secretary_options[row]);
+                pocket_secretary_menu_content_.choices[row].label);
         }
         if (pocket_secretary_.selection <
-            field_menu_text_.pocket_secretary_options.size()) {
+            pocket_secretary_menu_content_.choices.size()) {
             draw_command_overview_text(
                 painter, 136,
                 56 + static_cast<int>(pocket_secretary_.selection) * 16,

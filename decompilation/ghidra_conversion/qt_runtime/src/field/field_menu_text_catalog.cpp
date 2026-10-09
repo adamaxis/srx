@@ -95,8 +95,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::array<bool, kCyberwareEntryCount> cyberware_entry_found{};
     std::array<bool, kMagicSpellTextCount> magic_spell_name_found{};
     std::array<bool, kMagicSpellTextCount> magic_spell_description_found{};
-    std::array<bool, kPocketSecretaryOptionCount>
-        pocket_secretary_option_found{};
     std::array<bool, kFieldServiceTitleCount> field_service_title_found{};
     std::array<bool, kFieldServiceTitleCount>
         field_service_title_destination_found{};
@@ -184,8 +182,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     bool magic_availability_label_found = false;
     bool magic_panel_metric_labels_found = false;
     bool magic_force_posture_labels_found = false;
-    bool pocket_secretary_title_found = false;
-    bool pocket_secretary_separator_found = false;
     bool dismiss_runner_separator_found = false;
     std::string line;
     std::size_t line_number = 0;
@@ -593,12 +589,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             parse_named("magic.panel.force-posture-labels",
                         result.catalog.magic_force_posture_labels,
                         magic_force_posture_labels_found) ||
-            parse_named("pocket-secretary.title",
-                        result.catalog.pocket_secretary_title,
-                        pocket_secretary_title_found) ||
-            parse_named("pocket-secretary.separator",
-                        result.catalog.pocket_secretary_separator,
-                        pocket_secretary_separator_found) ||
             parse_named("dismiss.separator",
                         result.catalog.dismiss_runner_separator,
                         dismiss_runner_separator_found)) {
@@ -612,17 +602,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             } else {
                 dismiss_runner_label_found[index] = true;
                 result.catalog.dismiss_runner_labels[index] = value;
-            }
-            continue;
-        }
-        if (parse_indexed_key(key, "pocket-secretary.option.", index) &&
-            index < result.catalog.pocket_secretary_options.size()) {
-            if (pocket_secretary_option_found[index]) {
-                result.errors.emplace_back(
-                    "duplicate field menu text row: " + key);
-            } else {
-                pocket_secretary_option_found[index] = true;
-                result.catalog.pocket_secretary_options[index] = value;
             }
             continue;
         }
@@ -991,9 +970,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                   magic_panel_metric_labels_found);
     require_named("magic.panel.force-posture-labels",
                   magic_force_posture_labels_found);
-    require_named("pocket-secretary.title", pocket_secretary_title_found);
-    require_named("pocket-secretary.separator",
-                  pocket_secretary_separator_found);
     require_named("dismiss.separator", dismiss_runner_separator_found);
     require_named("notebook.tips.title", notebook_tips_title_found);
     require_named("notebook.tips.separator", notebook_tips_separator_found);
@@ -1026,8 +1002,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                         result.errors);
     add_missing_entries(magic_spell_description_found,
                         "magic.spell.description.", result.errors);
-    add_missing_entries(pocket_secretary_option_found,
-                        "pocket-secretary.option.", result.errors);
     add_missing_entries(pocket_secretary_cyberdeck_line_found,
                         "pocket-secretary.cyberdeck.line.", result.errors);
     add_missing_entries(pocket_secretary_group_item_found,

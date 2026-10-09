@@ -112,6 +112,17 @@ struct FieldOpeningAutoWalkState {
     std::uint16_t target_heading = 0;
 };
 
+struct PocketSecretaryMenuContent {
+    struct Choice {
+        std::string id;
+        std::string label;
+    };
+
+    std::string title;
+    std::string separator;
+    std::array<Choice, kPocketSecretaryFieldMenuRowCount> choices{};
+};
+
 // Composition-only adapter for the separate Ghidra-conversion Qt executable.
 // It owns no ROM view and does not duplicate converted field state. The
 // conversion bootstrap remains authoritative; this class supplies host
@@ -826,6 +837,7 @@ private:
     void paint_field_shop(QPainter& painter) const;
     void begin_hotel_menu();
     bool load_hotel_menu_content();
+    bool load_pocket_secretary_menu_content();
     bool load_field_elevator_selector_assets(
         const ConversionAssetCatalog& catalog);
     bool open_field_elevator_selector();
@@ -956,6 +968,7 @@ private:
     FieldDialogueRuntime field_dialogue_;
     HotelMenuRuntime hotel_menu_{};
     HotelMenuContent hotel_menu_content_{};
+    PocketSecretaryMenuContent pocket_secretary_menu_content_{};
     FieldModeTextRuntime field_mode_text_{};
     FieldInteractionRuntime field_interaction_;
     ElevatorSelectorRuntime field_elevator_selector_{};

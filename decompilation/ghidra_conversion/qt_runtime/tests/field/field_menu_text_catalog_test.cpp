@@ -72,18 +72,11 @@ int main() {
         text.catalog.magic_success_label != "Success" ||
         text.catalog.magic_force_label != "Force" ||
         text.catalog.magic_availability_label != "Damage" ||
-        text.catalog.pocket_secretary_title != " Main Menu" ||
-        text.catalog.pocket_secretary_separator !=
-            std::string("[") + std::string(10U, static_cast<char>(92)) ||
         text.catalog.dismiss_runner_labels !=
             std::array<std::string, kDismissRunnerLabelCount>{
                 "   Dismiss", "    Who??", "    Abort"} ||
         text.catalog.dismiss_runner_separator !=
             std::string("[") + std::string(12U, static_cast<char>(92)) ||
-        text.catalog.pocket_secretary_options !=
-            std::array<std::string, kPocketSecretaryOptionCount>{
-                "Notebook", "Group Items", "Cyberdeck", "Dismiss Runner",
-                "Save/Load Game"} ||
         text.catalog.pocket_secretary_cyberdeck_unavailable_lines !=
             std::array<std::string, kCyberdeckUnavailableLineCount>{
                 " You do not have", "  a cyberdeck!!", " Keep looking."} ||
