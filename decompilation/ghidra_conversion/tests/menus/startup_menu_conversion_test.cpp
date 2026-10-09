@@ -18,10 +18,8 @@ int main() {
                 startup_menu_cursor_y(kStartOptionsCursorVram, 0) == 80 &&
                 startup_menu_cursor_y(kStartOptionsCursorVram, 1) == 96 &&
                 kStartOptionsLayout[2].row == 3 &&
-                kStartOptionsLayout[0].text_key ==
-                    "startup.options.title" &&
-                kStartOptionsLayout[1].text_key ==
-                    "startup.options.separator" &&
+                kStartOptionsLayout[0].text_id == "options_title" &&
+                kStartOptionsLayout[1].text_id == "options_separator" &&
                 kStartOptionsLayout[2].choice_index == 0U &&
                 kStartOptionsLayout[3].choice_index == 1U)) {
         return 13;
@@ -35,8 +33,8 @@ int main() {
                 kJoshuaArchetypeLayout[4].choice_index == 1U &&
                 kJoshuaArchetypeLayout[5].choice_index == 2U &&
                 kJoshuaArchetypeLayout[6].row == 9 &&
-                kJoshuaArchetypeLayout[6].text_key ==
-                    "startup.archetype.gator_shaman.suffix" &&
+                kJoshuaArchetypeLayout[6].text_id ==
+                    "archetype_gator_suffix" &&
                 startup_menu_line_y(kJoshuaArchetypePlaneVram, 8) == 120 &&
                 startup_menu_line_y(kJoshuaArchetypePlaneVram, 9) == 128)) {
         return 14;
@@ -49,10 +47,8 @@ int main() {
                 kSaveLoadLayout[1].choice_index == 1U &&
                 startup_menu_vram_x(kSaveLoadMessagePlaneVram) == 72 &&
                 startup_menu_vram_y(kSaveLoadMessagePlaneVram) == 72 &&
-                kNoSaveDataLayout[0].text_key ==
-                    "startup.message.no_save.0" &&
-                kSaveSuccessLayout[2].text_key ==
-                    "startup.message.save_success.2")) {
+                kNoSaveDataLayout[0].text_id == "no_save_0" &&
+                kSaveSuccessLayout[2].text_id == "save_success_2")) {
         return 15;
     }
 

@@ -53,7 +53,7 @@ constexpr int startup_menu_line_y(const std::uint16_t plane_vram,
 
 struct StartupMenuTextLine {
     std::uint8_t row = 0;
-    std::string_view text_key;
+    std::string_view text_id;
     std::uint8_t choice_index = 0xFFU;
 };
 
@@ -61,8 +61,8 @@ struct StartupMenuTextLine {
 constexpr std::uint16_t kStartOptionsPlaneVram = 0xC39AU;
 constexpr std::uint16_t kStartOptionsCursorVram = 0xC51AU;
 inline constexpr std::array<StartupMenuTextLine, 4> kStartOptionsLayout{{
-    {0, "startup.options.title"},
-    {1, "startup.options.separator"},
+    {0, "options_title"},
+    {1, "options_separator"},
     {3, {}, 0U},
     {5, {}, 1U},
 }};
@@ -72,13 +72,13 @@ inline constexpr std::array<StartupMenuTextLine, 4> kStartOptionsLayout{{
 constexpr std::uint16_t kJoshuaArchetypePlaneVram = 0xC3A6U;
 constexpr std::uint16_t kJoshuaArchetypeCursorVram = 0xC5A6U;
 inline constexpr std::array<StartupMenuTextLine, 7> kJoshuaArchetypeLayout{{
-    {0, "startup.archetype.heading.choose"},
-    {1, "startup.archetype.heading.archetype"},
-    {2, "startup.archetype.separator"},
+    {0, "archetype_heading_choose"},
+    {1, "archetype_heading_archetype"},
+    {2, "archetype_separator"},
     {4, {}, 0U},
     {6, {}, 1U},
     {8, {}, 2U},
-    {9, "startup.archetype.gator_shaman.suffix"},
+    {9, "archetype_gator_suffix"},
 }};
 
 // 0x59174 A2=0xC726, D7=0xC722, layout 0x1B6518.
@@ -92,15 +92,15 @@ inline constexpr std::array<StartupMenuTextLine, 2> kSaveLoadLayout{{
 // 0x59240 A2=0xC492, layouts 0x1B6527 / 0x1B6577.
 constexpr std::uint16_t kSaveLoadMessagePlaneVram = 0xC492U;
 inline constexpr std::array<StartupMenuTextLine, 4> kNoSaveDataLayout{{
-    {0, "startup.message.no_save.0"},
-    {1, "startup.message.no_save.1"},
-    {3, "startup.message.no_save.2"},
-    {4, "startup.message.no_save.3"},
+    {0, "no_save_0"},
+    {1, "no_save_1"},
+    {3, "no_save_2"},
+    {4, "no_save_3"},
 }};
 inline constexpr std::array<StartupMenuTextLine, 3> kSaveSuccessLayout{{
-    {0, "startup.message.save_success.0"},
-    {2, "startup.message.save_success.1"},
-    {3, "startup.message.save_success.2"},
+    {0, "save_success_0"},
+    {2, "save_success_1"},
+    {3, "save_success_2"},
 }};
 
 enum class StartOptionsChoice : std::uint8_t {

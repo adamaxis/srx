@@ -4545,6 +4545,22 @@ private:
             "startup", "save_slots", "startup", "save_slots");
         const auto archetypes = startup_scripts_.menu(
             "startup", "archetypes", "startup", "archetypes");
+        const auto text_keys =
+            startup_scripts_.string_map("startup", "text_keys");
+        const auto fixed_text_count = [](const auto& lines) {
+            std::size_t count = 0U;
+            for (const auto& line : lines) {
+                if (line.choice_index == 0xFFU && !line.text_id.empty()) {
+                    ++count;
+                }
+            }
+            return count;
+        };
+        const auto expected_text_key_count =
+            fixed_text_count(kStartOptionsLayout) +
+            fixed_text_count(kJoshuaArchetypeLayout) +
+            fixed_text_count(kNoSaveDataLayout) +
+            fixed_text_count(kSaveSuccessLayout);
         const auto validate_choices = [this](
             const std::optional<scripting::ScriptMenuDefinition>& menu,
             const std::initializer_list<std::string_view> ids) {
@@ -4565,36 +4581,46 @@ private:
         if (!validate_choices(start_options, {"new_game", "load_game"}) ||
             !validate_choices(save_slots, {"slot_one", "slot_two"}) ||
             !validate_choices(archetypes,
-                              {"samurai", "decker", "gator_shaman"})) {
+                              {"samurai", "decker", "gator_shaman"}) ||
+            !text_keys.has_value() ||
+            text_keys->size() != expected_text_key_count) {
             throw std::runtime_error(
-                "startup Lua menus do not match the native choice order: " +
+                "startup Lua menus or text bindings are incomplete: " +
                 startup_scripts_.failure());
         }
 
-        constexpr std::array<std::string_view, 13> kRequiredTextKeys{{
-            "startup.options.title",
-            "startup.options.separator",
-            "startup.archetype.heading.choose",
-            "startup.archetype.heading.archetype",
-            "startup.archetype.separator",
-            "startup.archetype.gator_shaman.suffix",
-            "startup.message.no_save.0",
-            "startup.message.no_save.1",
-            "startup.message.no_save.2",
-            "startup.message.no_save.3",
-            "startup.message.save_success.0",
-            "startup.message.save_success.1",
-            "startup.message.save_success.2",
-        }};
-        for (const auto key : kRequiredTextKeys) {
-            if (startup_scripts_.dialogue_text(key) == nullptr) {
+        const auto validate_text_layout = [this, &text_keys](const auto& lines) {
+            for (const auto& line : lines) {
+                if (line.choice_index != 0xFFU) {
+                    continue;
+                }
+                const auto key = text_keys->find(std::string(line.text_id));
+                if (key == text_keys->end() ||
+                    startup_scripts_.dialogue_text(key->second) == nullptr) {
+                    return false;
+                }
+            }
+            return true;
+        };
+        if (!validate_text_layout(kStartOptionsLayout) ||
+            !validate_text_layout(kJoshuaArchetypeLayout) ||
+            !validate_text_layout(kNoSaveDataLayout) ||
+            !validate_text_layout(kSaveSuccessLayout)) {
+            throw std::runtime_error(
+                "startup Lua text bindings do not cover the ROM layout: " +
+                startup_scripts_.failure());
+        }
+        for (const auto& [text_id, key] : *text_keys) {
+            if (text_id.empty() || key.empty() ||
+                startup_scripts_.dialogue_text(key) == nullptr) {
                 throw std::runtime_error(
-                    "startup Lua text key is missing: " + std::string(key));
+                    "startup Lua text key is unresolved: " + text_id);
             }
         }
         startup_options_menu_ = *start_options;
         startup_save_slots_menu_ = *save_slots;
         startup_archetypes_menu_ = *archetypes;
+        startup_text_keys_ = *text_keys;
     }
 
     bool startup_shell_survives(const QImage& scene) const {
@@ -6013,7 +6039,11 @@ private:
         for (const auto& line : lines) {
             const std::string* text = nullptr;
             if (line.choice_index == 0xFFU) {
-                text = startup_scripts_.dialogue_text(line.text_key);
+                const auto text_key =
+                    startup_text_keys_.find(std::string(line.text_id));
+                if (text_key != startup_text_keys_.end()) {
+                    text = startup_scripts_.dialogue_text(text_key->second);
+                }
             } else if (menu != nullptr &&
                        line.choice_index < menu->choices.size()) {
                 text = startup_scripts_.dialogue_text(
@@ -6119,6 +6149,7 @@ private:
     StartupIntegrationState state_;
     StartupIntegrationCallbacks startup_callbacks_;
     scripting::GameScriptRuntime startup_scripts_;
+    scripting::ScriptStringMap startup_text_keys_;
     std::optional<scripting::ScriptMenuDefinition> startup_options_menu_;
     std::optional<scripting::ScriptMenuDefinition> startup_save_slots_menu_;
     std::optional<scripting::ScriptMenuDefinition> startup_archetypes_menu_;

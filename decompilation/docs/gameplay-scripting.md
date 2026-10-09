@@ -233,8 +233,10 @@ access.
 - `gameplay/scripts/startup.lua` declares the ordered New Game/Load Game,
   Save Slot, and archetype choices. The title-screen presenter validates each
   list against its typed native menu state and resolves its labels from the
-  shared Lua text table. The startup renderer keeps source-derived row
-  placement; input cadence and menu transitions remain in C++.
+  shared Lua text table. The same module binds semantic text IDs for the title,
+  separators, archetype headings, and save/load feedback. The startup renderer
+  keeps source-derived row placement; input cadence and menu transitions
+  remain in C++.
 - `assets/dialogue/script-text.lua` is the ROM-derived shared text table for
   Stoker dialogue, field object interactions, Ares mode-event paragraphs,
   Hotel menu/status text,

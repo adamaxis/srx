@@ -5,7 +5,6 @@
 #include <filesystem>
 #include <iostream>
 #include <optional>
-#include <string_view>
 #include <string>
 #include <string_view>
 
@@ -113,6 +112,18 @@ int main() {
         scripts.menu("startup", "save_slots", "startup", "save_slots");
     const auto startup_archetypes =
         scripts.menu("startup", "archetypes", "startup", "archetypes");
+    const auto startup_text_keys =
+        scripts.string_map("startup", "text_keys");
+    const auto startup_text_key_matches =
+        [&startup_text_keys](const std::string_view id,
+                             const std::string_view key) {
+            if (!startup_text_keys.has_value()) {
+                return false;
+            }
+            const auto found = startup_text_keys->find(std::string(id));
+            return found != startup_text_keys->end() &&
+                   found->second == key;
+        };
     const auto* startup_title =
         scripts.dialogue_text("startup.options.title");
     const auto* startup_separator =
@@ -142,6 +153,38 @@ int main() {
                     startup_archetypes->choices[0].id == "samurai" &&
                     startup_archetypes->choices[1].id == "decker" &&
                     startup_archetypes->choices[2].id == "gator_shaman" &&
+                    startup_text_keys.has_value() &&
+                    startup_text_keys->size() == 13U &&
+                    startup_text_key_matches(
+                        "options_title", "startup.options.title") &&
+                    startup_text_key_matches(
+                        "options_separator", "startup.options.separator") &&
+                    startup_text_key_matches(
+                        "archetype_heading_choose",
+                        "startup.archetype.heading.choose") &&
+                    startup_text_key_matches(
+                        "archetype_heading_archetype",
+                        "startup.archetype.heading.archetype") &&
+                    startup_text_key_matches(
+                        "archetype_separator",
+                        "startup.archetype.separator") &&
+                    startup_text_key_matches(
+                        "archetype_gator_suffix",
+                        "startup.archetype.gator_shaman.suffix") &&
+                    startup_text_key_matches(
+                        "no_save_0", "startup.message.no_save.0") &&
+                    startup_text_key_matches(
+                        "no_save_1", "startup.message.no_save.1") &&
+                    startup_text_key_matches(
+                        "no_save_2", "startup.message.no_save.2") &&
+                    startup_text_key_matches(
+                        "no_save_3", "startup.message.no_save.3") &&
+                    startup_text_key_matches(
+                        "save_success_0", "startup.message.save_success.0") &&
+                    startup_text_key_matches(
+                        "save_success_1", "startup.message.save_success.1") &&
+                    startup_text_key_matches(
+                        "save_success_2", "startup.message.save_success.2") &&
                     startup_title != nullptr &&
                     *startup_title == " Start Options" &&
                     startup_separator != nullptr &&
