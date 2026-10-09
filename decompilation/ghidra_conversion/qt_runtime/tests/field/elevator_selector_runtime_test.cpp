@@ -6,18 +6,16 @@
 int main() {
     using namespace shadowrun::ghidra_conversion::qt_runtime;
 
-    constexpr std::array<std::uint16_t, kElevatorSelectorMaximumFloors>
-        destinations{{26U, 27U, 28U, 0U, 0U}};
     ElevatorSelectorRuntime selector;
-    if (!selector.open(destinations, 3U, 1U) ||
+    if (!selector.open(3U, 1U) ||
         selector.entry_floor() != 1U || selector.current_floor() != 1U ||
         selector.selected_floor() != 1U) {
         return 1;
     }
 
-    auto update = selector.advance(0x0100U);
+    auto update = selector.advance(elevator_selector_button_mask(
+        ElevatorSelectorButton::next_floor));
     if (!update.selection_moved || selector.selected_floor() != 2U ||
-        selector.selected_scene_id() != 28U ||
         !update.navigation_feedback_started ||
         selector.navigation_feedback() !=
             ElevatorSelectorNavigationFeedback::next_floor_active ||
@@ -25,7 +23,8 @@ int main() {
             kElevatorSelectorNavigationFeedbackFrameCount) {
         return 2;
     }
-    update = selector.advance(0x4000U);
+    update = selector.advance(elevator_selector_button_mask(
+        ElevatorSelectorButton::confirm));
     if (update.animation_started || selector.is_animating() ||
         selector.navigation_feedback() !=
             ElevatorSelectorNavigationFeedback::next_floor_active) {
@@ -45,7 +44,8 @@ int main() {
             ElevatorSelectorNavigationFeedback::next_floor_rest) {
         return 5;
     }
-    update = selector.advance(0x4000U);
+    update = selector.advance(elevator_selector_button_mask(
+        ElevatorSelectorButton::confirm));
     if (!update.animation_started || !selector.is_animating() ||
         selector.animation_frame() != 16U) {
         return 6;
@@ -72,13 +72,15 @@ int main() {
         return 9;
     }
 
-    update = selector.advance(0x0200U);
+    update = selector.advance(elevator_selector_button_mask(
+        ElevatorSelectorButton::previous_floor));
     if (!update.selection_moved || selector.selected_floor() != 1U ||
         selector.navigation_feedback() !=
             ElevatorSelectorNavigationFeedback::previous_floor_active) {
         return 10;
     }
-    update = selector.advance(0x2000U);
+    update = selector.advance(elevator_selector_button_mask(
+        ElevatorSelectorButton::cancel));
     if (update.sound_effect_requested ||
         selector.navigation_feedback() !=
             ElevatorSelectorNavigationFeedback::previous_floor_active) {
@@ -88,11 +90,13 @@ int main() {
          tick < kElevatorSelectorNavigationFeedbackFrameCount; ++tick) {
         update = selector.advance(0U);
     }
-    update = selector.advance(0x2000U);
+    update = selector.advance(elevator_selector_button_mask(
+        ElevatorSelectorButton::cancel));
     if (!update.sound_effect_requested || !selector.is_open()) {
         return 12;
     }
-    update = selector.advance(0x0100U);
+    update = selector.advance(elevator_selector_button_mask(
+        ElevatorSelectorButton::next_floor));
     if (!update.selection_moved || selector.selected_floor() != 2U) {
         return 13;
     }
@@ -100,16 +104,15 @@ int main() {
          tick < kElevatorSelectorNavigationFeedbackFrameCount; ++tick) {
         selector.advance(0U);
     }
-    update = selector.advance(0x8000U);
+    update = selector.advance(elevator_selector_button_mask(
+        ElevatorSelectorButton::start));
     if (!update.confirmed || !selector.is_open() ||
-        !selector.destination_changed() ||
-        selector.selected_scene_id() != 28U) {
+        !selector.destination_changed()) {
         return 14;
     }
     selector.close();
 
-    if (selector.open(destinations, 1U, 0U) ||
-        selector.open(destinations, 6U, 0U)) {
+    if (selector.open(1U, 0U) || selector.open(6U, 0U)) {
         return 15;
     }
     ElevatorSceneTransitionRuntime transition;

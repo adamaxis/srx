@@ -1,22 +1,23 @@
 # Scene-26 Event-29 Floor Selector and Map Transition
 
-Date: 2026-10-07
+Date: 2026-10-09
 
-**Status: partial.** The scene-26 event-29 selector and its selected-scene
-handoff are source-traced, implemented as typed native state, and covered by
-Debug/Release QA with full consecutive frame captures. Physical-input routes
-cover non-member trigger scenes 25, 29, 34, 40, and 43. The scene-25 route
-continues through scenes 22, 23, 24, and 21, physically entering every member
-trigger in group 21/22/23/24. The scene-34 route continues through
-31->32->33->30->31, physically entering every member trigger in group
-30/31/32/33. The scene-40 route continues through scenes 36, 37, 38, 39, and
-35, physically entering every member trigger in group 35/36/37/38/39. The
-scene-43 route similarly enters both member triggers in group 41/42. These
-routes do not establish ordinary world-event entry into their starting scenes
-or saved-session floor restoration. The destination map identities are still
-unnamed. The Qt fade follows the ROM's timing but uses a black overlay rather
-than reproducing its per-color CRAM arithmetic, and route-specific audio
-output has not been captured with loopback.
+**Status: partial.** The selector's route choice now runs through Lua:
+`building.resolve_field_location_entry` resolves the source-backed group and
+entry floor, and `building.resolve_elevator_destination` maps the selected
+floor to its scene ID. The typed native selector still owns its input timing,
+lift animation, fades, and map loading. Debug and Release route QA pass for groups
+21-24, 30-33, and 41-42, and for non-member entries 25, 29, 34, 40, and 43.
+The scene-26 route reaches and loads scene 28, but the follow-up scene-28
+physical probe does not reach its event rectangle. The scene-40 route reaches
+and loads scene 36, but the follow-up scene-36 physical probe also misses its
+event rectangle. Each focused Debug and Release run had 9 of 11 selected tests
+pass; those two approach routes remain collision defects, not verified Lua
+entry routes.
+Ordinary resource entry and saved-session floor restoration remain open. Map
+identities remain unnamed. The Qt fade uses a black overlay rather than the
+ROM's per-color CRAM arithmetic, and route-specific audio output has not been
+captured with loopback.
 ## Source trace and native behavior
 
 The scene-26 terrain records 102 and 103 carry collision value `0xDD`. The
@@ -40,9 +41,9 @@ event-29 rectangles in 23 numeric scenes, arranged as follows:
 | Trigger scenes | Source child-scene group | Physical route QA |
 |---|---|---|
 | 21, 22, 23, 24, 25 | 21, 22, 23, 24 | Scene 25 chains through 22, 23, 24, 21, and 22, physically testing all four member triggers |
-| 26, 27, 28, 29 | 26, 27, 28 | Member loop covers 26/27/28; scene 29 has a descriptor-spawn physical-input route |
+| 26, 27, 28, 29 | 26, 27, 28 | Scene 26 entry and transition to 28 pass; the current follow-up input probe in scene 28 does not reach event 29. Scene 29 entry passes. |
 | 30, 31, 32, 33, 34 | 30, 31, 32, 33 | Scene 34 chains through 31, 32, 33, 30, and 31, physically testing every member trigger |
-| 35, 36, 37, 38, 39, 40 | 35, 36, 37, 38, 39 | Scene 40 chains through scenes 36, 37, 38, 39, 35, and 36, physically testing all five member triggers |
+| 35, 36, 37, 38, 39, 40 | 35, 36, 37, 38, 39 | Scene 40 entry and transition to 36 pass; the current follow-up input probe in scene 36 does not reach event 29, so member routes 36-39 and 35 are not yet verified. |
 | 41, 42, 43 | 41, 42 | Scene 43 starts a physical-input group round trip through member scenes 42 and 41 |
 
 These are scene IDs only; this census does not identify the places. Scenes
@@ -66,13 +67,14 @@ destination descriptor spawn.
 Scene 25 starts from its descriptor-spawn checkpoint and chains through
 22->23->24->21->22, entering each member-scene event-29 trigger through the
 selector and carrying current-floor indices 1, 2, 3, and 0 into the next leg.
-Scene 40 starts from its descriptor-spawn checkpoint and chains through
-36->37->38->39->35->36, entering each member-scene event-29 trigger through
-the selector and carrying current-floor indices 1, 2, 3, 4, and 0 into the
-next leg. Scene 43 similarly transitions through member scenes 42 and 41,
-then returns to 42. These routes establish member-trigger behavior and
-carried-floor state for groups 21-24, 30-33, 35-39, and 41/42. The physical
-return-loop QA also covers scenes 26, 27, and 28 within the 26/27/28 group.
+The scene-34 route similarly covers member scenes 31, 32, 33, and 30; scene 43
+covers 42 and 41. In the current Debug run, the scene-26 route loads scene 28
+and the scene-40 route loads scene 36, but the subsequent Up-only physical
+probes stop outside their event rectangles. The timelines record the scene-28
+probe ending at `(3280, 1160)` and the scene-36 probe at `(10960, 5264)` after
+120 updates. No selector opened in either case. These are open map
+approach/collision routes; the Lua group lookup does not prove those physical
+routes work.
 
 ### ROM evidence for member triggers 21-24
 
@@ -248,51 +250,42 @@ at full size. No independent Genesis capture has been tied to scenes 21-25, so
 the evidence establishes source-driven behavior and clean screen replacement,
 not independent map-pixel fidelity.
 
-The scene-40 group route starts from descriptor spawn `(0x1600,0x0500)` and
-enters the paired event-29 rectangles through ordinary Up input. Its six
-selector legs are `40->36->37->38->39->35->36`, with timeline lengths 340,
-321, 297, 332, 721, and 321 frames (2,332 total). The first leg selects all
-five floors; subsequent legs physically enter each member trigger and carry
-the floor index from the previous handoff. The 39-to-35 ride descends four
-floors: each 17-frame sequence is held for eight VBlanks, the current-floor
-digit updates at each 136-VBlank stop, and the selected-floor digit stays put.
-Each leg requests B audio event `0x25` once. The event's decoded resource 037
-is 2.134 seconds including its release tail; these route tests check the event
-request but do not capture Windows output loopback.
+The current scene-40 group run starts from descriptor spawn `(0x1600,0x0500)`,
+enters event 29 with Up, presents the five ROM-derived destinations, and
+transitions to scene 36. That first leg captures 340 consecutive frames. Its
+follow-up scene-36 probe captures 121 frames but does not reach event 29; it
+ends at `(10960,5264)`. Thus the current run does not establish member routes
+36-39 or 35, and the earlier multi-leg capture is not evidence for this
+current build. The event's decoded resource 037 is 2.134 seconds including its
+release tail; the passing first leg checks the event request but does not
+capture Windows output loopback.
 
 The 17 extracted selector frames visibly move the thin rail marker at x=32;
-the source timing advances one animation frame every eight VBlanks and begins
-at frame 16 upward or frame 0 downward. Route QA checks the rendered rail
-pixels on each frame change and the current-floor digit at every stop, in
-addition to the typed state and exact travel duration. Sixty-three chronological
-whole-screen sheets covered all 2,332 frames. Full-size selector, source-map,
-black-handoff, destination-entry, and settled-map checkpoints were inspected
-across the route. All 2,443 Debug and Release artifacts match by relative path
-and SHA-256. No independent Genesis captures have been tied to scenes 35-40,
-so this route establishes source-driven behavior and clean screen replacement,
-not independent map-pixel fidelity.
+source timing advances one animation frame every eight VBlanks and begins at
+frame 16 upward or frame 0 downward. The current scene-40 first leg checks the
+selector choices, the lift to scene 36, fade, and clean destination screen.
+Full physical member-trigger routes are still open. No independent Genesis
+captures have been tied to scenes 35-40, so these frames establish internal
+route behavior and clean replacement only, not independent map-pixel fidelity.
 
 The Debug and Release CLI route QA captures every update from before the
 scene-26 collision, through selector input and animation, both fades, scene
 replacement, and a 30-frame stable scene-28 hold. This first route includes 459
 consecutive 320x224 frames in `timeline/`, with state, input, palette step,
-alpha, and scene logged in `timeline.tsv`. A second physical-input QA starts
-from scene 28, enters its paired event-29 trigger, descends to scene 27, then
-repeats through scene 27's trigger to scene 26. Its
-`floor-group-roundtrip/timeline/` capture contains 553 consecutive frames,
-including both arrow-feedback windows, floor animations, fades, black
-handoffs, scene replacements, and stable holds. It also records each scene's
-collision rectangles and verifies the destination descriptor spawn. `actual.bmp`
-is the final scene-26 field frame for this second route. Named BMP checkpoints
-cover both selector states, feedback, animation, fade boundaries, black
-handoffs, scene entries, and held destinations. All 23 sheets for the first
-route and all 28 sheets for the second route were reviewed as whole screens.
-The 332-frame scene-25, 304-frame scene-29, 330-frame scene-34, and 340-frame
-scene-40 routes were reviewed in six, five, nine, and nine chronological sheets; transition and selector
-checkpoints were inspected at full size. The nested scene-2 event-1 route uses a QA-only source
-PRNG seed so its selected resource variant matches across build configurations;
-the live runtime still seeds itself. These native captures establish route
-behavior and clean screen replacement, not independent pixel fidelity.
+alpha, and scene logged in `timeline.tsv`. Its follow-up physical-input probe
+captures 121 consecutive frames from scene 28 but does not enter event 29 or
+open the selector; the current endpoint is `(3280,1160)`. The scene-40 first
+leg similarly captures 340 frames through its scene-36 destination, then its
+121-frame scene-36 approach probe stops outside the trigger. The current tests
+therefore do not establish the 26/27/28 or 35-39 member round trips. The
+scene-25, scene-34, and scene-43 routes still exercise their source groups end
+to end. The 332-frame scene-25, 304-frame scene-29, and 330-frame scene-34
+captures and selector checkpoints were reviewed; the current failed approach
+endpoints were inspected at full size. The nested scene-2 event-1 route uses a
+QA-only source PRNG seed so its selected resource variant matches across build
+configurations; the live runtime still seeds itself. These native captures
+establish internal route behavior and clean screen replacement, not independent
+pixel fidelity.
 
 Independent visual reference: `video analysis/long_gameplay_video.mp4`,
 approximately 8833-8837 seconds. Around 8833-8834 seconds, the selector shows
@@ -308,10 +301,12 @@ renderer match.
 1. **Does it look correct? - Partial.** The selector layout, current/selected
    floor labels, and screen order agree with the independent longplay samples.
    Exact color arithmetic and every animation frame do not have independent
-   pixel-matched references. The 21-24, 30-33, 35-39, and 41/42 member routes show
-   consistent group labels and expected scene replacement, but those numeric
-   maps lack independent visual references.
-2. **Does the visible look match behavior? - Yes for the tested routes.** QA
+   pixel-matched references. The 21-24, 30-33, and 41/42 member routes show
+   consistent group labels and expected scene replacement. The scene-40
+   selector lists its five source destinations and loads scene 36, but its
+   follow-up physical route fails. These numeric maps lack independent visual
+   references.
+2. **Does the visible look match behavior? - Partial.** QA
    enters through ordinary D-pad input into collision `0xDD` and checks event
    29, every destination in each tested group, current and selected floor,
    active arrow feedback, A animation, and destination scene. Scenes 25/29/34/
@@ -319,11 +314,11 @@ renderer match.
    verify normal-entry reset or save restoration. Scene 25 reaches scenes 22,
    23, 24, 21, and 22 at carried floor indices 1, 2, 3, and 0; scene 24's
    three-floor descent updates the current-floor digit at each stop. Scene 40
-   then reaches scenes 36, 37, 38, 39, 35, and 36 at carried floor indices
-   1, 2, 3, 4, 0, and 1;
-   each next member trigger is reached with Up from its destination descriptor
-   spawn. Scene 43 similarly reaches scene 42 at index 1 and scene 41 at index
-   0. In the 30-33 group, scene 34 starts the chain; scenes 31, 32, and 33
+   selects scene 36 at carried floor index 1, but the next Up-only probe stops
+   outside scene 36's event rectangle. No member route for scenes 36-39 or 35
+   is established by the current run. Scene 43 similarly reaches scene 42 at
+   index 1 and scene 41 at index 0. In the 30-33 group, scene 34 starts the
+   chain; scenes 31, 32, and 33
    require six Right updates before Up can enter their lane, while scene 30's
    spawn is already centered and uses Up.
 3. **Are the visuals themselves correct? - Partial.** The extracted selector
@@ -338,9 +333,9 @@ renderer match.
    the reached floor begins the two 17-step palette fades, with two VBlanks
    per step. Neutral holds do not start animation. ROM state sets the starting
    animation frame by travel direction: frame 16 upward and frame 0 downward;
-   all scene-25, scene-34, scene-40, and scene-43 group-route legs check the
-   direction-specific start frame. The scene-25 and scene-40 routes also
-   check every visible rail-frame change and the 136-VBlank interval between
+   the completed scene-25, scene-34, and scene-43 group-route legs check the
+   direction-specific start frame. The scene-25 route also checks every
+   visible rail-frame change and the 136-VBlank interval between
    floors. Scene 24's downward trip checks the displayed floors 3, 2, and 1 at
    the source-timed stops. Scene 33's descent checks the intermediate floor
    stops through scene 30. Destination camera follow
@@ -356,86 +351,66 @@ renderer match.
 6. **Are the other visible parts correct? - Partial.** Review covered the
    whole 320x224 view, selector art, character panel, floor labels, scene map,
    and HUD through selection, transitions, and destination holds. Captures
-   show clean composition and no leftover controls. The scene-25 and scene-40
+   show clean composition and no leftover controls. The scene-25 and scene-34
    group routes' full frames show the party HUD retained on the selector and
-   field controls cleared. The 30-34 route shows the same result. Each member
-   leg repeats the full replacement: selector, full-black
-   handoff, new map entry, then a stable destination with no stale controls.
-   The 30-34 route has the same clean replacement. Independent map references
+   field controls cleared. The scene-40 first leg shows the selector replaced
+   by scene 36 after the fade. Completed member legs repeat the full
+   replacement: selector, full-black handoff, new map entry, then a stable
+   destination with no stale controls. Independent map references
    are unavailable for these numeric scenes.
 7. **Do multiple frames support the interpretation? - Yes.** Consecutive QA
    captures cover idle, group destinations, navigation, feedback retirement,
    direction-specific lift animation, fade-out, black handoff, fade-in, and
-   stable destinations. The 1,858-frame 25/22/23/24/21 route was reviewed in
-   48 chronological full-screen sheets, with selector, floor-stop, and
-   transition checkpoints inspected at full size. The 30-34 route adds 1,856
-   frames across 48 chronological full-screen sheets. The 2,332-frame
-   40/36/37/38/39/35 route was reviewed in 63 sheets, and the 988-frame
-   43/42/41 route in 25 sheets. Longplay supplies separate selector and post-
-   transition examples but no controller log. Member routes therefore have
-   internal multi-frame evidence only.
+   stable destinations on passing routes. The 1,858-frame 25/22/23/24/21 route
+   was reviewed in 48 chronological full-screen sheets, and the 30-34 route
+   adds 1,856 frames across 48 sheets. The current scene-40 capture has a
+   340-frame first leg plus a 121-frame failed approach probe; the scene-26
+   capture has a 459-frame first leg plus a 121-frame failed probe. Longplay
+   supplies separate selector and post-transition examples but no controller
+   log. Member routes therefore have internal multi-frame evidence only where
+   the physical route passed.
 8. **Does the new UI replace the old UI cleanly? - Yes in the captured routes.**
    The selector replaces the field view with its full-screen elevator layout;
    the party HUD remains visible as part of that screen. Each black handoff
    clears the selector, and each destination replaces it with its field
    composition. QA confirms no field controls, dialogue, shop, or prior modal
    remain layered underneath.
-9. **Was the whole time window reviewed? - Yes.** The 459-frame first route,
-   553-frame return route, and non-member routes from scenes 25, 29, 34, 40,
-   and 43 were captured consecutively and reviewed in chronologically indexed
-   whole-screen sheets. The scene-25 group route adds 1,858 frames across 48
-   sheets, the scene-34 group route adds 1,856 frames across 48, the scene-40
-   route adds 2,332 frames across 63, and the scene-43 route adds 988 frames
-   across 25. Selector, floor stops, black handoff, destination entry, and
-   settled screens were also inspected at full size. Independent video
-   timestamps are visual anchors, not ROM timing measurements.
+9. **Was the whole time window reviewed? - Yes for the captured intervals.**
+   The complete passing scene-25, scene-34, and scene-43 group routes and the
+   first scene-40 destination leg were captured. Current scene-26 and scene-40
+   follow-up probes stop before their triggers; each 121-frame failed window
+   was captured and its endpoint inspected at full size. Selector, floor
+   stops, black handoff, destination entry, and settled screens were inspected
+   on passing routes. Independent video timestamps are visual anchors, not ROM
+   timing measurements.
 
 ## Verification and remaining work
 
-The defending Debug/Release tests are
-`shadowrun_ghidra_conversion_qt_field_elevator_physical_entry_qa`,
-`shadowrun_ghidra_conversion_qt_field_elevator_scene25_entry_qa`,
-`shadowrun_ghidra_conversion_qt_field_elevator_scene25_group_roundtrip_qa`,
-`shadowrun_ghidra_conversion_qt_field_elevator_scene29_entry_qa`,
-`shadowrun_ghidra_conversion_qt_field_elevator_scene34_entry_qa`,
-`shadowrun_ghidra_conversion_qt_field_elevator_scene34_group_roundtrip_qa`,
-`shadowrun_ghidra_conversion_qt_field_elevator_scene40_entry_qa`,
-`shadowrun_ghidra_conversion_qt_field_elevator_scene40_group_roundtrip_qa`,
-`shadowrun_ghidra_conversion_qt_field_elevator_scene43_group_roundtrip_qa`, and
-`shadowrun_ghidra_field_elevator_selector_runtime`. The route QA checks source
-collision records, event 29, state transitions, event `0x25`, clean screen
-replacement, and rendered pixel regions. The physical-entry tests check the
-scene-26 outbound transition, the scene-28-to-27-to-26 return loop, and the
-scene-25, scene-29, scene-34, and scene-40 descriptor-spawn checkpoint routes; the
-original route writes
-`qt_runtime/field-elevator-physical-entry-qa/scene26-event29-elevator/actual.bmp`
-plus the `floor-group-roundtrip/actual.bmp` and consecutive `timeline/` captures.
-The non-member route dumps are under
-`qt_runtime/field-elevator-scene25-entry-qa/` and
-`qt_runtime/field-elevator-scene29-entry-qa/`, with 332 and 304 timeline
-frames, respectively, and `qt_runtime/field-elevator-scene34-entry-qa/` has
-330 timeline frames; `qt_runtime/field-elevator-scene40-entry-qa/` has 340 frames;
-`qt_runtime/field-elevator-scene25-group-roundtrip-qa/` has five chained
-timelines of 332, 309, 309, 599, and 309 frames for scenes 25, 22, 23, 24,
-and 21; `qt_runtime/field-elevator-scene40-group-roundtrip-qa/` has six chained
-timelines of 340, 321, 297, 332, 721, and 321 frames; and
-`qt_runtime/field-elevator-scene43-group-roundtrip-qa/` has three chained
-timelines of 335, 335, and 318 frames for scenes 43, 42, and 41 respectively;
-`qt_runtime/field-elevator-scene34-group-roundtrip-qa/` has five chained
-timelines of 330, 309, 309, 599, and 309 frames for scenes 34, 31, 32, 33,
-and 30 respectively. Debug and Release outputs are compared by frame name and
-SHA-256. Scene-25,
-scene-29, scene-34, scene-40, all 1,947 scene-25 group round-trip artifacts,
-all 2,443 scene-40 group round-trip artifacts, and all 1,030 scene-43 group
-round-trip artifacts match exactly across builds. All 1,945 scene-34 group
-round-trip artifacts also match exactly. The broader
-physical-entry directory also matches after excluding its
-manually copied `longplay-*` reference frames, which are present only in the
-Debug output.
+The focused Debug and Release runs each selected 11 tests. Nine passed in each
+configuration: gameplay script runtime,
+selector runtime, scene-25 entry and group roundtrip, scene-29 entry, scene-34
+entry and group roundtrip, scene-40 entry, and scene-43 group roundtrip. Two
+failed on physical approach: `shadowrun_ghidra_conversion_qt_field_elevator_physical_entry_qa`
+stops after reaching scene 28, and
+`shadowrun_ghidra_conversion_qt_field_elevator_scene40_group_roundtrip_qa`
+stops after reaching scene 36. Both route timelines contain the descriptor
+spawn, input sequence, full-screen frames, world coordinates, and heading
+state. The Lua script test validates the five source groups, current-floor
+selection, event-29/no-action decision, and destination mapping.
 
-Remaining: ordinary resource-entry and save-restore floor-state paths; exact
-CRAM color arithmetic for this field transition; route-level audio loopback and
-measured output; independent map references for scenes 21-25 and 29-40 and
-independent selector animation frames; and source-backed map names. Do not use
-this route as evidence that Stokers
-has an interior.
+The Debug and Release runs report the same two failures and endpoint
+coordinates: scene 28 ends at `(3280, 1160)` and scene 36 ends at
+`(10960, 5264)`, after 120 Up updates. Current Debug captures are under
+`build/conversion/qt/debug/qt_runtime/field-elevator-physical-entry-qa/` and
+`build/conversion/qt/debug/qt_runtime/field-elevator-scene40-group-roundtrip-qa/`.
+The scene-28 and scene-36 120-update input probes miss their event rectangles;
+the full map approach is still under investigation. Visual route captures are
+internal runtime evidence, not independent Genesis goldens. The scene-40 test
+recreates its output directory and therefore does not preserve later member
+route captures after the scene-36 approach fails.
+
+Remaining: the scene-28 and scene-36 physical approaches; ordinary resource
+entry and save-restore floor-state paths; exact CRAM color arithmetic; route
+audio loopback; independent map references and selector animation frames; and
+source-backed map names. Do not use this route as evidence that Stokers has an
+interior.

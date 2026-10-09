@@ -11759,6 +11759,7 @@ int run_field_elevator_group_route_qa(
     }
     timeline << "frame\tscene\tx\ty\tcamera_x\tcamera_y\tmode"
                 "\tterrain_code\tprobe_0\tprobe_1\tprobe_2\tprobe_3\tevent"
+                "\theading\ttarget_heading\tanimation_heading"
                 "\tselector_open"
                 "\tcurrent_floor\tselected_floor\tdestination\tfeedback"
                 "\tanimation\tanimation_frame\ttransition_phase"
@@ -11793,6 +11794,9 @@ int run_field_elevator_group_route_qa(
                  << static_cast<unsigned>(probe_samples[3U]) << '\t'
                  << static_cast<unsigned>(
                         field_scene.field_mode_event_code_for_dump())
+                 << '\t' << field_scene.field_entity_heading_for_dump()
+                 << '\t' << field_scene.field_entity_target_heading_for_dump()
+                 << '\t' << field_scene.field_entity_animation_heading_for_dump()
                  << '\t' << field_scene.elevator_selector_open_for_dump()
                  << '\t'
                  << static_cast<unsigned>(field_scene
@@ -11913,8 +11917,20 @@ int run_field_elevator_group_route_qa(
                   << static_cast<unsigned>(expected.current_floor)
                   << " (frames=" << trigger_frames
                   << ", event=" << static_cast<unsigned>(movement.event_code)
+                  << ", position="
+                  << field_scene.field_entity_world_position().x << ','
+                  << field_scene.field_entity_world_position().y
+                  << ", selector_open="
+                  << field_scene.elevator_selector_open_for_dump()
+                  << ", current_floor="
+                  << static_cast<unsigned>(field_scene
+                                               .elevator_selector_current_floor_for_dump())
+                  << ", selected_floor="
+                  << static_cast<unsigned>(field_scene
+                                               .elevator_selector_selected_floor_for_dump())
                   << ", destination="
                   << field_scene.elevator_selector_destination_for_dump()
+                  << ", failure=" << field_scene.failure()
                   << ")\n";
         return 3;
     }
@@ -12358,7 +12374,8 @@ int run_field_elevator_floor_group_roundtrip_qa(
                 "\ttransition_phase\ttransition_step\ttransition_alpha"
                 "\taudio_event_count\timage\n";
     timeline_manifest
-        << "frame\tscene\tselector_open\tcurrent_floor\tselected_floor"
+        << "frame\tscene\tx\ty\theading\ttarget_heading\tselector_open"
+           "\tcurrent_floor\tselected_floor"
            "\tanimation\tanimation_frame\ttransition_phase"
            "\ttransition_step\ttransition_vblanks\ttransition_alpha"
            "\tinput\timage\n";
@@ -12391,6 +12408,10 @@ int run_field_elevator_floor_group_roundtrip_qa(
         timeline_manifest
             << frame << '\t'
             << field_scene.field_scene_reference_for_dump() << '\t'
+            << field_scene.field_entity_world_position().x << '\t'
+            << field_scene.field_entity_world_position().y << '\t'
+            << field_scene.field_entity_heading_for_dump() << '\t'
+            << field_scene.field_entity_target_heading_for_dump() << '\t'
             << field_scene.elevator_selector_open_for_dump() << '\t'
             << static_cast<unsigned>(
                    field_scene.elevator_selector_current_floor_for_dump())
@@ -12746,7 +12767,22 @@ int run_field_elevator_floor_group_roundtrip_qa(
         if (selector.isNull()) {
             std::cerr << "Elevator floor-group QA: scene "
                       << route.source_scene
-                      << " collision did not open its current floor selector\n";
+                      << " collision did not open its current floor selector"
+                      << " (selector_open="
+                      << field_scene.elevator_selector_open_for_dump()
+                      << ", current_floor="
+                      << static_cast<unsigned>(field_scene
+                                                   .elevator_selector_current_floor_for_dump())
+                      << ", selected_floor="
+                      << static_cast<unsigned>(field_scene
+                                                   .elevator_selector_selected_floor_for_dump())
+                      << ", event="
+                      << static_cast<unsigned>(field_scene
+                                                   .field_mode_event_code_for_dump())
+                      << ", position="
+                      << field_scene.field_entity_world_position().x << ','
+                      << field_scene.field_entity_world_position().y
+                      << ", failure=" << field_scene.failure() << ")\n";
             return 3;
         }
         const auto destination = transition_down_one_floor(

@@ -156,6 +156,9 @@ local function same_actor(state, context)
 end
 
 local function snapshot(state, action, audio_event, projectile_movement)
+    if state.animation_id == "idle" then
+        state.animation_frame = 0
+    end
     return {
         actor_id = state.actor_id,
         profile_id = state.profile_id,

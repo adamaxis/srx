@@ -105,6 +105,21 @@ struct ScriptFieldModeContext {
     std::int8_t alternate_result = 0;
 };
 
+enum class ScriptLocationEntryAction {
+    no_action,
+    open_elevator_selector,
+};
+
+struct ScriptElevatorFloorGroup {
+    std::vector<std::uint16_t> scene_ids;
+    std::uint8_t entry_floor = 0;
+};
+
+struct ScriptLocationEntryDecision {
+    ScriptLocationEntryAction action = ScriptLocationEntryAction::no_action;
+    ScriptElevatorFloorGroup elevator_group;
+};
+
 enum class ScriptActorActionKind : std::uint8_t {
     none,
     item,
@@ -355,6 +370,12 @@ public:
     dialogue_text_entries() const noexcept;
     std::optional<FieldScriptRoute> resolve_field_location_route(
         const FieldScriptRouteContext& context);
+    std::optional<ScriptLocationEntryDecision> resolve_field_location_entry(
+        std::uint16_t scene_id, FieldCollisionEventCode event_code,
+        const std::vector<std::vector<std::uint16_t>>& source_elevator_groups);
+    std::optional<std::uint16_t> resolve_elevator_destination(
+        const ScriptElevatorFloorGroup& group,
+        std::uint8_t selected_floor);
     std::optional<FieldMapEventPolicyDecision> resolve_field_collision_event(
         const FieldMapCollisionEventInput& input);
     std::optional<std::vector<FieldMapEventRule>> map_event_rules();

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <array>
 #include <cstddef>
 #include <cstdint>
 
@@ -12,6 +11,19 @@ constexpr std::uint8_t kElevatorSelectorAnimationFrameDelay = 8U;
 constexpr std::uint8_t kElevatorSelectorNavigationFeedbackFrameCount = 8U;
 constexpr std::uint8_t kElevatorSceneTransitionPaletteStepCount = 17U;
 constexpr std::uint8_t kElevatorSceneTransitionPaletteStepVblanks = 2U;
+
+enum class ElevatorSelectorButton : std::uint16_t {
+    previous_floor = 0x0200U,
+    next_floor = 0x0100U,
+    cancel = 0x2000U,
+    confirm = 0x4000U,
+    start = 0x8000U,
+};
+
+constexpr std::uint16_t elevator_selector_button_mask(
+    const ElevatorSelectorButton button) noexcept {
+    return static_cast<std::uint16_t>(button);
+}
 
 enum class ElevatorSelectorNavigationFeedback : std::uint8_t {
     none,
@@ -32,14 +44,12 @@ struct ElevatorSelectorUpdate {
     bool confirmed = false;
 };
 
-// Native state for the ROM's event-29 elevator screen. The ROM's child scene
-// pointers are resolved into this list by offline extraction; this class
-// owns only menu selection and the source-timed 17-frame lift animation.
+// Native presentation state for the elevator floor selector. Lua resolves
+// the ROM-derived child scene list and destination; this class owns only
+// menu selection and the source-timed lift animation.
 class ElevatorSelectorRuntime final {
 public:
-    bool open(const std::array<std::uint16_t,
-                               kElevatorSelectorMaximumFloors>& scene_ids,
-              std::uint8_t floor_count, std::uint8_t entry_floor) noexcept;
+    bool open(std::uint8_t floor_count, std::uint8_t entry_floor) noexcept;
     ElevatorSelectorUpdate advance(std::uint16_t controller_events) noexcept;
 
     bool is_open() const noexcept { return open_; }
@@ -56,7 +66,6 @@ public:
     std::uint8_t navigation_feedback_frames_remaining() const noexcept {
         return navigation_feedback_frames_remaining_;
     }
-    std::uint16_t selected_scene_id() const noexcept;
     bool destination_changed() const noexcept {
         return selected_floor_ != entry_floor_;
     }
@@ -64,7 +73,6 @@ public:
 private:
     void begin_floor_step() noexcept;
 
-    std::array<std::uint16_t, kElevatorSelectorMaximumFloors> scene_ids_{};
     std::uint8_t floor_count_ = 0U;
     std::uint8_t entry_floor_ = 0U;
     std::uint8_t current_floor_ = 0U;

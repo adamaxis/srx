@@ -107,6 +107,99 @@ int main() {
         return 2;
     }
 
+    std::vector<std::vector<std::uint16_t>> source_elevator_groups(56U);
+    for (std::uint16_t scene_id = 21U; scene_id <= 25U; ++scene_id) {
+        source_elevator_groups[scene_id] = {21U, 22U, 23U, 24U};
+    }
+    for (std::uint16_t scene_id = 26U; scene_id <= 29U; ++scene_id) {
+        source_elevator_groups[scene_id] = {26U, 27U, 28U};
+    }
+    for (std::uint16_t scene_id = 30U; scene_id <= 34U; ++scene_id) {
+        source_elevator_groups[scene_id] = {30U, 31U, 32U, 33U};
+    }
+    for (std::uint16_t scene_id = 35U; scene_id <= 40U; ++scene_id) {
+        source_elevator_groups[scene_id] =
+            {35U, 36U, 37U, 38U, 39U};
+    }
+    for (std::uint16_t scene_id = 41U; scene_id <= 43U; ++scene_id) {
+        source_elevator_groups[scene_id] = {41U, 42U};
+    }
+    const auto nonmember_elevator_entry =
+        scripts.resolve_field_location_entry(
+            25U, FieldCollisionEventCode::event_29,
+            source_elevator_groups);
+    const auto member_elevator_entry =
+        scripts.resolve_field_location_entry(
+            22U, FieldCollisionEventCode::event_29,
+            source_elevator_groups);
+    const auto three_floor_member_entry =
+        scripts.resolve_field_location_entry(
+            28U, FieldCollisionEventCode::event_29,
+            source_elevator_groups);
+    const auto five_floor_member_entry =
+        scripts.resolve_field_location_entry(
+            36U, FieldCollisionEventCode::event_29,
+            source_elevator_groups);
+    const auto four_floor_member_entry =
+        scripts.resolve_field_location_entry(
+            32U, FieldCollisionEventCode::event_29,
+            source_elevator_groups);
+    const auto two_floor_member_entry =
+        scripts.resolve_field_location_entry(
+            42U, FieldCollisionEventCode::event_29,
+            source_elevator_groups);
+    const auto no_group_entry = scripts.resolve_field_location_entry(
+        5U, FieldCollisionEventCode::event_29, source_elevator_groups);
+    const auto non_elevator_entry =
+        scripts.resolve_field_location_entry(
+            25U, FieldCollisionEventCode::event_28,
+            source_elevator_groups);
+    const auto elevator_destination =
+        nonmember_elevator_entry.has_value()
+            ? scripts.resolve_elevator_destination(
+                  nonmember_elevator_entry->elevator_group, 3U)
+            : std::optional<std::uint16_t>{};
+    const auto invalid_elevator_destination =
+        nonmember_elevator_entry.has_value()
+            ? scripts.resolve_elevator_destination(
+                  nonmember_elevator_entry->elevator_group, 4U)
+            : std::optional<std::uint16_t>{};
+    const auto two_floor_destination =
+        two_floor_member_entry.has_value()
+            ? scripts.resolve_elevator_destination(
+                  two_floor_member_entry->elevator_group, 0U)
+            : std::optional<std::uint16_t>{};
+    if (!expect(
+            nonmember_elevator_entry.has_value() &&
+                nonmember_elevator_entry->action ==
+                    ScriptLocationEntryAction::open_elevator_selector &&
+                nonmember_elevator_entry->elevator_group.scene_ids ==
+                    std::vector<std::uint16_t>{21U, 22U, 23U, 24U} &&
+                nonmember_elevator_entry->elevator_group.entry_floor == 0U &&
+                member_elevator_entry.has_value() &&
+                member_elevator_entry->elevator_group.entry_floor == 1U &&
+                three_floor_member_entry.has_value() &&
+                three_floor_member_entry->elevator_group.entry_floor == 2U &&
+                five_floor_member_entry.has_value() &&
+                five_floor_member_entry->elevator_group.entry_floor == 1U &&
+                four_floor_member_entry.has_value() &&
+                four_floor_member_entry->elevator_group.entry_floor == 2U &&
+                two_floor_member_entry.has_value() &&
+                two_floor_member_entry->elevator_group.entry_floor == 1U &&
+                no_group_entry.has_value() &&
+                no_group_entry->action ==
+                    ScriptLocationEntryAction::no_action &&
+                non_elevator_entry.has_value() &&
+                non_elevator_entry->action ==
+                    ScriptLocationEntryAction::no_action &&
+                elevator_destination == 24U &&
+                !invalid_elevator_destination.has_value() &&
+                two_floor_destination == 41U,
+            "Lua did not resolve ROM-backed elevator entry and destinations")) {
+        std::cerr << scripts.failure() << '\n';
+        return 105;
+    }
+
     const auto collision = [](
                                 const FieldCollisionEventCode event_code,
                                 const std::uint16_t scene_id = 0U) {

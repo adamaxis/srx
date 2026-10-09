@@ -77,4 +77,66 @@ function Building.resolve_field_location_route(context)
     }
 end
 
+-- Elevator trigger scenes and their child scene lists are supplied from the
+-- extracted US ROM records. The script owns the entry action, entry floor,
+-- and selected destination; the native menu owns only selection and timing.
+function Building.resolve_field_location_entry(context)
+    if type(context) ~= "table" or
+       type(context.scene_id) ~= "number" or
+       context.scene_id % 1 ~= 0 or context.scene_id < 0 or
+       type(context.event_code) ~= "string" or
+       type(context.source_elevator_groups) ~= "table" then
+        return nil
+    end
+
+    if context.event_code ~= "event_29" then
+        return { action = "no_action" }
+    end
+
+    local group = context.source_elevator_groups[context.scene_id + 1]
+    if type(group) ~= "table" or #group == 0 then
+        return { action = "no_action" }
+    end
+    if #group < 2 or #group > 5 then
+        return nil
+    end
+
+    local entry_floor = 0
+    local seen = {}
+    for floor, scene_id in ipairs(group) do
+        if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
+           scene_id < 0 or scene_id > 255 or seen[scene_id] then
+            return nil
+        end
+        seen[scene_id] = true
+        if scene_id == context.scene_id then
+            entry_floor = floor - 1
+        end
+    end
+
+    return {
+        action = "open_elevator_selector",
+        floor_scenes = group,
+        entry_floor = entry_floor,
+    }
+end
+
+function Building.resolve_elevator_destination(context)
+    if type(context) ~= "table" or
+       type(context.floor_scenes) ~= "table" or
+       type(context.selected_floor) ~= "number" or
+       context.selected_floor % 1 ~= 0 or
+       context.selected_floor < 0 or
+       context.selected_floor >= #context.floor_scenes then
+        return nil
+    end
+
+    local destination = context.floor_scenes[context.selected_floor + 1]
+    if type(destination) ~= "number" or destination % 1 ~= 0 or
+       destination < 0 or destination > 255 then
+        return nil
+    end
+    return destination
+end
+
 return Building

@@ -1343,6 +1343,172 @@ GameScriptRuntime::resolve_field_location_route(
     return route;
 }
 
+std::optional<ScriptLocationEntryDecision>
+GameScriptRuntime::resolve_field_location_entry(
+    const std::uint16_t scene_id,
+    const FieldCollisionEventCode event_code,
+    const std::vector<std::vector<std::uint16_t>>& source_elevator_groups) {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "Lua runtime is unavailable for location entry";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<ScriptLocationEntryDecision> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("building")) {
+        return fail("building.lua module is missing");
+    }
+    lua_getfield(state, -1, "resolve_field_location_entry");
+    if (!lua_isfunction(state, -1)) {
+        return fail("building.lua location-entry function is missing");
+    }
+
+    lua_createtable(state, 0, 3);
+    const auto input_index = lua_absindex(state, -1);
+    lua_pushinteger(state, scene_id);
+    lua_setfield(state, input_index, "scene_id");
+    const auto event_name = collision_event_name(event_code);
+    lua_pushlstring(state, event_name.c_str(), event_name.size());
+    lua_setfield(state, input_index, "event_code");
+    lua_createtable(state,
+                    static_cast<int>(source_elevator_groups.size()), 0);
+    const auto groups_index = lua_absindex(state, -1);
+    for (std::size_t group_index = 0U;
+         group_index < source_elevator_groups.size(); ++group_index) {
+        const auto& source_group = source_elevator_groups[group_index];
+        lua_createtable(state, static_cast<int>(source_group.size()), 0);
+        const auto group_table_index = lua_absindex(state, -1);
+        for (std::size_t floor = 0U; floor < source_group.size(); ++floor) {
+            lua_pushinteger(state, source_group[floor]);
+            lua_rawseti(state, group_table_index,
+                        static_cast<lua_Integer>(floor + 1U));
+        }
+        lua_rawseti(state, groups_index,
+                    static_cast<lua_Integer>(group_index + 1U));
+    }
+    lua_setfield(state, input_index, "source_elevator_groups");
+
+    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+        return fail("building.lua location-entry resolution failed");
+    }
+    if (!lua_istable(state, -1)) {
+        return fail("building.lua location-entry returned no decision");
+    }
+
+    const auto result_index = lua_absindex(state, -1);
+    std::string action_name;
+    if (!read_field_string(state, result_index, "action", action_name)) {
+        return fail("building.lua location-entry action is missing");
+    }
+
+    ScriptLocationEntryDecision decision{};
+    if (action_name == "no_action") {
+        lua_settop(state, stack_base);
+        impl_->failure.clear();
+        return decision;
+    }
+    if (action_name != "open_elevator_selector") {
+        return fail("building.lua location-entry action is unknown");
+    }
+
+    lua_getfield(state, result_index, "floor_scenes");
+    if (!lua_istable(state, -1)) {
+        lua_pop(state, 1);
+        return fail("building.lua elevator entry has no floor list");
+    }
+    const auto floor_table_index = lua_absindex(state, -1);
+    const auto floor_count = lua_rawlen(state, floor_table_index);
+    if (floor_count < 2U || floor_count > 5U) {
+        lua_pop(state, 1);
+        return fail("building.lua elevator entry has an invalid floor count");
+    }
+    decision.elevator_group.scene_ids.reserve(floor_count);
+    for (std::size_t floor = 0U; floor < floor_count; ++floor) {
+        lua_rawgeti(state, floor_table_index,
+                    static_cast<lua_Integer>(floor + 1U));
+        std::uint32_t scene_reference = 0U;
+        const bool valid = read_integer(state, -1, 255U, scene_reference);
+        lua_pop(state, 1);
+        if (!valid) {
+            lua_pop(state, 1);
+            return fail("building.lua elevator entry has an invalid scene");
+        }
+        decision.elevator_group.scene_ids.push_back(
+            static_cast<std::uint16_t>(scene_reference));
+    }
+    lua_pop(state, 1);
+
+    std::uint32_t entry_floor = 0U;
+    if (!read_field_integer(state, result_index, "entry_floor",
+                            static_cast<std::uint32_t>(floor_count - 1U),
+                            entry_floor)) {
+        return fail("building.lua elevator entry has an invalid floor");
+    }
+    decision.action = ScriptLocationEntryAction::open_elevator_selector;
+    decision.elevator_group.entry_floor =
+        static_cast<std::uint8_t>(entry_floor);
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return decision;
+}
+
+std::optional<std::uint16_t> GameScriptRuntime::resolve_elevator_destination(
+    const ScriptElevatorFloorGroup& group,
+    const std::uint8_t selected_floor) {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "Lua runtime is unavailable for elevator routing";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<std::uint16_t> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (group.scene_ids.size() < 2U || group.scene_ids.size() > 5U ||
+        selected_floor >= group.scene_ids.size()) {
+        return fail("elevator destination request has an invalid floor");
+    }
+    if (!impl_->push_module("building")) {
+        return fail("building.lua module is missing");
+    }
+    lua_getfield(state, -1, "resolve_elevator_destination");
+    if (!lua_isfunction(state, -1)) {
+        return fail("building.lua elevator-destination function is missing");
+    }
+
+    lua_createtable(state, 0, 2);
+    const auto input_index = lua_absindex(state, -1);
+    lua_createtable(state, static_cast<int>(group.scene_ids.size()), 0);
+    const auto floors_index = lua_absindex(state, -1);
+    for (std::size_t floor = 0U; floor < group.scene_ids.size(); ++floor) {
+        lua_pushinteger(state, group.scene_ids[floor]);
+        lua_rawseti(state, floors_index,
+                    static_cast<lua_Integer>(floor + 1U));
+    }
+    lua_setfield(state, input_index, "floor_scenes");
+    lua_pushinteger(state, selected_floor);
+    lua_setfield(state, input_index, "selected_floor");
+
+    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+        return fail("building.lua elevator-destination resolution failed");
+    }
+    std::uint32_t destination = 0U;
+    if (!read_integer(state, -1, 255U, destination)) {
+        return fail("building.lua returned an invalid elevator destination");
+    }
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return static_cast<std::uint16_t>(destination);
+}
+
 std::optional<FieldMapEventPolicyDecision>
 GameScriptRuntime::resolve_field_collision_event(
     const FieldMapCollisionEventInput& input) {
@@ -2491,7 +2657,24 @@ GameScriptRuntime::actor_heartbeat(
         (decision.animation_id == "idle" &&
          decision.animation_frame != 0U) ||
         (begins_entry && !decision.transition_started)) {
-        return fail("actor_ai.heartbeat returned inconsistent actor state");
+        const auto reason =
+            "actor_ai.heartbeat returned inconsistent actor state: actor=" +
+            std::string(context.instance_id) + " profile=" +
+            std::string(context.profile_id) + " phase=" +
+            (context.phase == ScriptActorHeartbeatPhase::behavior
+                 ? std::string("behavior")
+                 : std::string("render")) +
+            " animation=" + decision.animation_id +
+            " animation_frame=" +
+            std::to_string(decision.animation_frame) +
+            " transition_started=" +
+            (decision.transition_started ? "true" : "false") +
+            " transition_complete=" +
+            (decision.transition_complete ? "true" : "false") +
+            " action=" +
+            (begins_entry ? "entry" : "hold") + " audio=" +
+            (decision.audio_event.has_value() ? "present" : "none");
+        return fail(reason);
     }
     impl_->failure.clear();
     return decision;

@@ -934,33 +934,64 @@ bool FieldSceneRuntime::load_field_elevator_selector_assets(
     return true;
 }
 
-bool FieldSceneRuntime::open_field_elevator_selector() {
+bool FieldSceneRuntime::open_field_elevator_selector(
+    const FieldCollisionEventCode event_code) {
     if (!field_session_source_assets_ || field_elevator_selector_.is_open()) {
         return false;
     }
     const auto scene_reference =
         state_.field_scene_buffers.scene_reference;
-    if (scene_reference >=
-        field_session_source_assets_->field_elevator_scene_groups.size()) {
+    std::vector<std::vector<std::uint16_t>> source_elevator_groups;
+    source_elevator_groups.reserve(
+        field_session_source_assets_->field_elevator_scene_groups.size());
+    for (const auto& source_group :
+         field_session_source_assets_->field_elevator_scene_groups) {
+        if (source_group.count > source_group.scene_ids.size()) {
+            source_boundary("field.elevator.source_group_invalid");
+            return false;
+        }
+        auto& group = source_elevator_groups.emplace_back();
+        group.insert(group.end(), source_group.scene_ids.begin(),
+                     source_group.scene_ids.begin() +
+                         static_cast<std::ptrdiff_t>(source_group.count));
+    }
+
+    const auto entry_decision = game_scripts_.resolve_field_location_entry(
+        scene_reference, event_code, source_elevator_groups);
+    if (!entry_decision.has_value()) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.elevator.entry_script_failed");
         return false;
     }
-    const auto& group = field_session_source_assets_
-                            ->field_elevator_scene_groups[scene_reference];
-    if (group.count < 2U ||
-        group.count > kElevatorSelectorMaximumFloors) {
+    if (entry_decision->action !=
+            scripting::ScriptLocationEntryAction::open_elevator_selector ||
+        entry_decision->elevator_group.scene_ids.size() < 2U ||
+        entry_decision->elevator_group.scene_ids.size() >
+            kElevatorSelectorMaximumFloors) {
+        failure_ = "Lua declined elevator selector entry for scene " +
+                   std::to_string(scene_reference) + " and event code " +
+                   std::to_string(field_collision_event_value(event_code));
+        source_boundary("field.elevator.entry_script_no_selector");
         return false;
     }
-    auto entry_floor = std::uint8_t{0U};
-    const auto group_end =
-        group.scene_ids.begin() + static_cast<std::ptrdiff_t>(group.count);
-    const auto current = std::find(group.scene_ids.begin(), group_end,
-                                   scene_reference);
-    if (current != group_end) {
-        entry_floor = static_cast<std::uint8_t>(
-            std::distance(group.scene_ids.begin(), current));
-    }
+
+    field_elevator_floor_group_ = entry_decision->elevator_group;
+    const auto floor_count = static_cast<std::uint8_t>(
+        field_elevator_floor_group_->scene_ids.size());
     if (!field_elevator_selector_.open(
-            group.scene_ids, group.count, entry_floor)) {
+            floor_count, field_elevator_floor_group_->entry_floor)) {
+        field_elevator_floor_group_.reset();
+        return false;
+    }
+    field_elevator_script_destination_ =
+        game_scripts_.resolve_elevator_destination(
+            *field_elevator_floor_group_,
+            field_elevator_selector_.selected_floor());
+    if (!field_elevator_script_destination_.has_value()) {
+        failure_ = game_scripts_.failure();
+        field_elevator_selector_.close();
+        field_elevator_floor_group_.reset();
+        source_boundary("field.elevator.destination_script_failed");
         return false;
     }
     source_boundary("field.elevator.selector.opened");
@@ -994,6 +1025,7 @@ bool FieldSceneRuntime::transition_to_elevator_destination(
     field_entity_animation_.increment = kFieldWalkAnimationIncrement;
     field_entity_animation_.period = kFieldEntityAnimationPeriod;
     field_entity_animation_id_ = "idle";
+    field_player_actor_script_initialized_ = false;
     field_player_animation_reset_pending_ = false;
     field_entity_animation_selector_ = 0U;
     field_movement_behavior_record_.current_heading = 0U;
@@ -1047,6 +1079,19 @@ void FieldSceneRuntime::advance_field_elevator_selector() {
     const auto update = field_elevator_selector_.advance(
         field_controller_sample_state_.events);
     if (update.selection_moved) {
+        if (!field_elevator_floor_group_.has_value()) {
+            source_boundary("field.elevator.floor_group_missing");
+            return;
+        }
+        field_elevator_script_destination_ =
+            game_scripts_.resolve_elevator_destination(
+                *field_elevator_floor_group_,
+                field_elevator_selector_.selected_floor());
+        if (!field_elevator_script_destination_.has_value()) {
+            failure_ = game_scripts_.failure();
+            source_boundary("field.elevator.destination_script_failed");
+            return;
+        }
         source_boundary("field.elevator.selector.selection_moved");
     }
     if (update.navigation_feedback_started) {
@@ -1073,18 +1118,40 @@ void FieldSceneRuntime::advance_field_elevator_selector() {
     }
 
     const auto current_scene = state_.field_scene_buffers.scene_reference;
-    const auto destination = field_elevator_selector_.selected_scene_id();
     source_boundary("field.elevator.selector.confirmed");
-    if (field_elevator_selector_.destination_changed() &&
-        destination != current_scene) {
+    if (field_elevator_selector_.destination_changed()) {
+        if (!field_elevator_floor_group_.has_value()) {
+            source_boundary("field.elevator.floor_group_missing");
+            return;
+        }
+        const auto destination = game_scripts_.resolve_elevator_destination(
+            *field_elevator_floor_group_,
+            field_elevator_selector_.selected_floor());
+        if (!destination.has_value()) {
+            failure_ = game_scripts_.failure();
+            source_boundary("field.elevator.destination_script_failed");
+            return;
+        }
+        field_elevator_script_destination_ = destination;
+        if (*destination == current_scene) {
+            field_elevator_selector_.close();
+            field_elevator_floor_group_.reset();
+            field_runtime_state_.display_service_word = 0U;
+            state_.display_service_word = 0U;
+            source_boundary("field.elevator.selector.returned_to_current_scene");
+            return;
+        }
+        field_elevator_pending_destination_ = destination;
         if (field_elevator_scene_transition_.begin_fade_out()) {
             source_boundary("field.elevator.destination_fade_out_started");
         } else {
+            field_elevator_pending_destination_.reset();
             source_boundary("field.elevator.destination_transition_busy");
         }
         return;
     }
     field_elevator_selector_.close();
+    field_elevator_floor_group_.reset();
     field_runtime_state_.display_service_word = 0U;
     state_.display_service_word = 0U;
     source_boundary("field.elevator.selector.returned_to_current_scene");
@@ -1096,13 +1163,17 @@ void FieldSceneRuntime::advance_field_elevator_scene_transition() {
         source_boundary("field.elevator.destination_fade.palette_step");
     }
     if (update.destination_load_requested) {
-        const auto destination = field_elevator_selector_.selected_scene_id();
-        if (!transition_to_elevator_destination(destination)) {
+        if (!field_elevator_pending_destination_.has_value() ||
+            !transition_to_elevator_destination(
+                *field_elevator_pending_destination_)) {
             field_elevator_scene_transition_.cancel();
+            field_elevator_pending_destination_.reset();
             source_boundary("field.elevator.destination_transition_reopened");
             return;
         }
         field_elevator_selector_.close();
+        field_elevator_floor_group_.reset();
+        field_elevator_pending_destination_.reset();
         if (!field_elevator_scene_transition_.begin_fade_in()) {
             field_elevator_scene_transition_.cancel();
             source_boundary("field.elevator.destination_fade_in_unresolved");
@@ -2451,7 +2522,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             MovementModeTransitionContinuation::none;
         if (continuation ==
             MovementModeTransitionContinuation::event_29_world_activity) {
-            if (!open_field_elevator_selector()) {
+            if (!open_field_elevator_selector(
+                    FieldCollisionEventCode::event_29)) {
                 source_boundary("field.elevator.selector_open_unresolved");
             }
             return integration::PendingFieldSceneHandlerResult::resumed_field;
@@ -4175,6 +4247,9 @@ bool FieldSceneRuntime::bootstrap(
     field_interaction_.reset_session();
     field_elevator_selector_ = ElevatorSelectorRuntime{};
     field_elevator_scene_transition_ = ElevatorSceneTransitionRuntime{};
+    field_elevator_floor_group_.reset();
+    field_elevator_script_destination_.reset();
+    field_elevator_pending_destination_.reset();
     field_party_roster_.clear();
     field_menu_text_ = FieldMenuTextCatalog{};
     command_overview_resource_variant_ = ResourceVariantState{};

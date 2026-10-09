@@ -279,7 +279,7 @@ public:
         return field_elevator_selector_.navigation_feedback_frames_remaining();
     }
     std::uint16_t elevator_selector_destination_for_dump() const noexcept {
-        return field_elevator_selector_.selected_scene_id();
+        return field_elevator_script_destination_.value_or(0U);
     }
     ElevatorSceneTransitionPhase
     elevator_scene_transition_phase_for_dump() const noexcept {
@@ -862,7 +862,8 @@ private:
     bool load_item_menu_content();
     bool load_field_elevator_selector_assets(
         const ConversionAssetCatalog& catalog);
-    bool open_field_elevator_selector();
+    bool open_field_elevator_selector(
+        FieldCollisionEventCode event_code);
     void advance_field_elevator_selector();
     void advance_field_elevator_scene_transition();
     bool transition_to_elevator_destination(std::uint16_t scene_reference);
@@ -1010,6 +1011,10 @@ private:
     FieldInteractionRuntime field_interaction_;
     ElevatorSelectorRuntime field_elevator_selector_{};
     ElevatorSceneTransitionRuntime field_elevator_scene_transition_{};
+    std::optional<scripting::ScriptElevatorFloorGroup>
+        field_elevator_floor_group_;
+    std::optional<std::uint16_t> field_elevator_script_destination_;
+    std::optional<std::uint16_t> field_elevator_pending_destination_;
     ShopMenuController field_shop_menu_{};
     FieldDialogueEventResolver field_dialogue_event_resolver_;
     StokerMotelStoryState stoker_motel_story_state_{};

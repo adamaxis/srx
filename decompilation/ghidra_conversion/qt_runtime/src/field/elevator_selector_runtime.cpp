@@ -5,23 +5,20 @@
 namespace shadowrun::ghidra_conversion::qt_runtime {
 namespace {
 
-constexpr std::uint16_t kPreviousFloor = 0x0200U;
-constexpr std::uint16_t kNextFloor = 0x0100U;
-constexpr std::uint16_t kB = 0x2000U;
-constexpr std::uint16_t kA = 0x4000U;
-constexpr std::uint16_t kStart = 0x8000U;
+bool button_pressed(const std::uint16_t controller_events,
+                    const ElevatorSelectorButton button) noexcept {
+    return (controller_events & elevator_selector_button_mask(button)) != 0U;
+}
 
 } // namespace
 
 bool ElevatorSelectorRuntime::open(
-    const std::array<std::uint16_t, kElevatorSelectorMaximumFloors>& scene_ids,
     const std::uint8_t floor_count,
     const std::uint8_t entry_floor) noexcept {
-    if (floor_count < 2U || floor_count > scene_ids.size() ||
+    if (floor_count < 2U || floor_count > kElevatorSelectorMaximumFloors ||
         entry_floor >= floor_count) {
         return false;
     }
-    scene_ids_ = scene_ids;
     floor_count_ = floor_count;
     entry_floor_ = entry_floor;
     current_floor_ = entry_floor;
@@ -102,7 +99,8 @@ ElevatorSelectorUpdate ElevatorSelectorRuntime::advance(
         return update;
     }
 
-    if ((controller_events & kPreviousFloor) != 0U) {
+    if (button_pressed(controller_events,
+                       ElevatorSelectorButton::previous_floor)) {
         if (selected_floor_ > 0U) {
             --selected_floor_;
             update.selection_moved = true;
@@ -114,7 +112,8 @@ ElevatorSelectorUpdate ElevatorSelectorRuntime::advance(
         update.navigation_feedback_started = true;
         return update;
     }
-    if ((controller_events & kNextFloor) != 0U) {
+    if (button_pressed(controller_events,
+                       ElevatorSelectorButton::next_floor)) {
         if (selected_floor_ + 1U < floor_count_) {
             ++selected_floor_;
             update.selection_moved = true;
@@ -126,26 +125,19 @@ ElevatorSelectorUpdate ElevatorSelectorRuntime::advance(
         update.navigation_feedback_started = true;
         return update;
     }
-    if ((controller_events & kB) != 0U) {
+    if (button_pressed(controller_events, ElevatorSelectorButton::cancel)) {
         update.sound_effect_requested = true;
     }
-    if ((controller_events & kA) != 0U &&
+    if (button_pressed(controller_events, ElevatorSelectorButton::confirm) &&
         selected_floor_ != current_floor_) {
         begin_floor_step();
         update.animation_started = true;
         return update;
     }
-    if ((controller_events & kStart) != 0U) {
+    if (button_pressed(controller_events, ElevatorSelectorButton::start)) {
         update.confirmed = true;
     }
     return update;
-}
-
-std::uint16_t ElevatorSelectorRuntime::selected_scene_id() const noexcept {
-    if (floor_count_ == 0U || selected_floor_ >= floor_count_) {
-        return 0U;
-    }
-    return scene_ids_[selected_floor_];
 }
 
 bool ElevatorSceneTransitionRuntime::begin_fade_out() noexcept {
