@@ -27,12 +27,6 @@ constexpr std::array<std::string_view, kClipsTextCount> kClipsTextIds{{
     "item_without_clips_first", "item_without_clips_second",
     "item_without_clips_third", "no_party_first", "no_party_second",
     "no_party_third"}};
-constexpr std::array<std::string_view, kItemUiTextCount> kItemUiTextIds{{
-    "equipped_prefix", "equipped_suffix", "discard_prompt",
-    "cannot_discard", "cannot_trade", "trade_recipient",
-    "trade_full_inventory", "automatic_use", "first_aid_prompt",
-    "first_aid_label", "first_aid_cancel", "first_aid_not_injured",
-    "first_aid_slap_patch_used", "first_aid_medkit_used"}};
 constexpr std::array<std::string_view, kAttributesSkillsTextCount>
     kAttributesSkillsTextIds{{
         "body", "quickness", "strength", "charisma", "intelligence",
@@ -41,26 +35,12 @@ constexpr std::array<std::string_view, kAttributesSkillsTextCount>
         "biotech", "electronics", "reputation", "negotiation",
         "upgrade_header", "maximum_level", "mage_only",
         "insufficient_karma", "upgrade_prompt"}};
-constexpr std::array<std::string_view, kItemDisplayTextCount>
-    kItemDisplayTextIds{{
-        "power_meager", "power_minor", "power_very_low", "power_low",
-        "power_very_light", "power_light", "power_medium",
-        "power_medium_high", "power_high", "power_brutal", "power_severe",
-        "power_massive", "power_incredible", "armor_vest_top",
-        "armor_vest_bottom", "armor_clothing_top", "armor_clothing_bottom",
-        "armor_jacket_top", "armor_jacket_bottom", "armor_plates_top",
-        "armor_plates_bottom", "lined_duster_top", "lined_duster_bottom",
-        "light_combat_armor_top", "light_combat_armor_bottom",
-        "heavy_combat_armor_top", "heavy_combat_armor_bottom"}};
 constexpr std::array<std::string_view, kNotebookChoiceCount>
     kNotebookChoiceIds{{"current_run", "tips_and_clues", "contacts",
                         "mr_johnsons", "shadowrunners"}};
 constexpr std::array<std::string_view, 5> kPocketSecretaryRootChoiceIds{{
     "notebook", "group_items", "cyberdeck", "dismiss_runner",
     "save_load"}};
-constexpr std::array<std::string_view, kInventoryActionChoiceCount>
-    kInventoryActionChoiceIds{{"equip_or_use", "discard", "trade",
-                               "cancel"}};
 constexpr std::array<std::string_view, kMagicSpellTextCount> kMagicSpellIds{{
     "flame_dart", "flame_bolt", "hellblast", "invisibility", "sleep",
     "stink", "super_barrier", "mana_zap", "mana_blast", "mana_storm",
@@ -136,11 +116,22 @@ bool has_item_ui_text_label_prefix(const std::string_view key) {
     return key.rfind("items.text.option.", 0U) == 0U;
 }
 
-bool is_item_ui_text_label_key(const std::string_view key) {
+template <std::size_t N>
+bool has_menu_choice_id(const std::array<std::string, N>& choice_ids,
+                        const std::string_view id) {
+    return std::find_if(
+               choice_ids.begin(), choice_ids.end(),
+               [id](const std::string& choice_id) {
+                   return std::string_view(choice_id) == id;
+               }) != choice_ids.end();
+}
+
+bool is_item_ui_text_label_key(
+    const std::string_view key,
+    const std::array<std::string, kItemUiTextCount>& choice_ids) {
     constexpr std::string_view kTextPrefix = "items.text.option.";
     return key.rfind(kTextPrefix, 0U) == 0U &&
-           std::find(kItemUiTextIds.begin(), kItemUiTextIds.end(),
-                     key.substr(kTextPrefix.size())) != kItemUiTextIds.end();
+           has_menu_choice_id(choice_ids, key.substr(kTextPrefix.size()));
 }
 
 bool has_attributes_skills_text_label_prefix(const std::string_view key) {
@@ -161,12 +152,12 @@ bool has_item_display_text_label_prefix(const std::string_view key) {
     return key.rfind("items.display.option.", 0U) == 0U;
 }
 
-bool is_item_display_text_label_key(const std::string_view key) {
+bool is_item_display_text_label_key(
+    const std::string_view key,
+    const std::array<std::string, kItemDisplayTextCount>& choice_ids) {
     constexpr std::string_view kTextPrefix = "items.display.option.";
     return key.rfind(kTextPrefix, 0U) == 0U &&
-           std::find(kItemDisplayTextIds.begin(), kItemDisplayTextIds.end(),
-                     key.substr(kTextPrefix.size())) !=
-               kItemDisplayTextIds.end();
+           has_menu_choice_id(choice_ids, key.substr(kTextPrefix.size()));
 }
 
 bool has_magic_panel_text_label_prefix(const std::string_view key) {
@@ -195,16 +186,6 @@ bool is_cyberware_text_label_key(const std::string_view key) {
 
 bool has_field_metric_text_label_prefix(const std::string_view key) {
     return key.rfind("ui.field_metric.option.", 0U) == 0U;
-}
-
-template <std::size_t N>
-bool has_menu_choice_id(const std::array<std::string, N>& choice_ids,
-                        const std::string_view id) {
-    return std::find_if(
-               choice_ids.begin(), choice_ids.end(),
-               [id](const std::string& choice_id) {
-                   return std::string_view(choice_id) == id;
-               }) != choice_ids.end();
 }
 
 bool is_field_metric_text_label_key(
@@ -507,7 +488,6 @@ void load_script_menu_choice_ids(
     shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts,
     const std::string_view module, const std::string_view function,
     const std::string_view text_profile, const std::string_view menu_id,
-    const std::array<std::string_view, N>& expected_ids,
     std::array<std::string, N>& choice_ids,
     std::vector<std::string>& errors) {
     const auto menu = scripts.menu(module, function, text_profile, menu_id);
@@ -516,19 +496,22 @@ void load_script_menu_choice_ids(
                             std::string(function) + ": " + scripts.failure());
         return;
     }
-    if (menu->choices.size() != expected_ids.size()) {
+    if (menu->choices.size() != N) {
         errors.emplace_back("Lua menu has the wrong choice count: " +
                             std::string(function));
         return;
     }
-    for (std::size_t index = 0; index < expected_ids.size(); ++index) {
-        if (menu->choices[index].id != expected_ids[index]) {
-            errors.emplace_back("Lua menu choices do not match the "
-                                "native action order: " +
-                                std::string(function));
+    for (std::size_t index = 0; index < N; ++index) {
+        const auto& choice = menu->choices[index];
+        const auto seen_end = choice_ids.begin() +
+                              static_cast<std::ptrdiff_t>(index);
+        if (choice.id.empty() ||
+            std::find(choice_ids.begin(), seen_end, choice.id) != seen_end) {
+            errors.emplace_back("Lua menu contains an empty or duplicate "
+                                "choice id: " + std::string(function));
             return;
         }
-        choice_ids[index] = menu->choices[index].id;
+        choice_ids[index] = choice.id;
     }
 }
 
@@ -657,12 +640,12 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     result.catalog.status_names = std::move(posture_labels);
     load_script_menu_choice_ids(
         scripts, "items", "inventory_actions", "items",
-        "inventory_actions", kInventoryActionChoiceIds,
+        "inventory_actions",
         result.catalog.inventory_action_choice_ids, result.errors);
     std::array<std::string, kItemUiTextCount> item_ui_text{};
     load_script_menu_labels(
         scripts, "items", "ui_text_entries", "items.text", "catalog",
-        kItemUiTextIds, item_ui_text, result.errors, nullptr,
+        item_ui_text, result.errors, nullptr,
         &result.catalog.item_ui_text_ids);
     result.catalog.action_item_equipped_prefix = item_ui_text[0];
     result.catalog.action_item_equipped_suffix = item_ui_text[1];
@@ -681,7 +664,7 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::array<std::string, kItemDisplayTextCount> item_display_text{};
     load_script_menu_labels(
         scripts, "items", "display_text_entries", "items.display",
-        "catalog", kItemDisplayTextIds, item_display_text, result.errors,
+        "catalog", item_display_text, result.errors,
         nullptr, &result.catalog.item_display_text_ids);
     std::copy_n(item_display_text.begin(), kFieldMenuPowerLabelCount,
                 result.catalog.power_labels.begin());
@@ -924,7 +907,8 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             continue;
         }
         if (has_item_ui_text_label_prefix(key)) {
-            if (!is_item_ui_text_label_key(key)) {
+            if (!is_item_ui_text_label_key(
+                    key, result.catalog.item_ui_text_ids)) {
                 result.errors.emplace_back(
                     "unknown Items UI text label key: " + key);
             }
@@ -938,7 +922,8 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             continue;
         }
         if (has_item_display_text_label_prefix(key)) {
-            if (!is_item_display_text_label_key(key)) {
+            if (!is_item_display_text_label_key(
+                    key, result.catalog.item_display_text_ids)) {
                 result.errors.emplace_back(
                     "unknown item display text label key: " + key);
             }

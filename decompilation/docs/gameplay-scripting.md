@@ -172,10 +172,12 @@ access.
   display name and category keys, maps the 32 source detail rows used by field
   item/shop panels, and declares the four inventory-action IDs in source order.
   It also declares semantic IDs for inventory/First Aid text, 13 weapon power
-  grades, and 14 armor label lines. `FieldSceneRuntime` validates the action list and dispatches Equip/Use,
-  Discard, and Trade through the selected stable ID; the text catalog resolves
-  the ROM copy through those IDs. Item codes, cursor state, and inventory
-  behavior remain typed native state.
+  grades, and 14 armor label lines. `FieldSceneRuntime` validates the action
+  list and dispatches Equip/Use, Discard, and Trade through the selected
+  stable ID; the text catalog takes action, inventory-message, and display
+  label IDs from Lua without duplicate runtime lists. QA checks their source
+  order and ROM copy. Item codes, cursor state, and inventory behavior remain
+  typed native state.
 - `gameplay/scripts/attributes_skills.lua` declares stable IDs for the 20
   Attributes/Skills labels and five upgrade messages in source order. The field
   text catalog resolves the ROM copy through those IDs; skill values, cursor
