@@ -25,6 +25,27 @@ struct ScriptMenuDefinition {
     std::vector<ScriptMenuChoice> choices;
 };
 
+struct ScriptNativeOperation {
+    enum class Type {
+        actor_walk_heading,
+    };
+
+    Type type = Type::actor_walk_heading;
+    std::string actor_id;
+    std::uint8_t heading = 0;
+};
+
+struct ScriptTaskStep {
+    enum class Status {
+        completed,
+        awaiting_native_operation,
+        failed,
+    };
+
+    Status status = Status::failed;
+    std::optional<ScriptNativeOperation> operation;
+};
+
 // Lua modules use the global game facade. Story/location tables are copied in
 // before a script call and returned for host validation afterward; Lua never
 // receives pointers to mutable engine, save, or Qt objects.
@@ -45,6 +66,10 @@ public:
     void set_location_context(std::string_view type, std::string_view id);
     std::optional<std::string> call_string(
         std::string_view module, std::string_view function);
+    ScriptTaskStep start_task(
+        std::string_view module, std::string_view function);
+    ScriptTaskStep complete_native_operation(bool succeeded);
+    bool task_waiting_for_native_operation() const noexcept;
     std::optional<ScriptMenuDefinition> menu(
         std::string_view module, std::string_view function,
         std::string_view text_profile);

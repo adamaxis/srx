@@ -41,7 +41,8 @@ int main() {
                     opening.repeat_policy ==
                         FieldMapEventRepeatPolicy::once_per_session &&
                     opening.action ==
-                        FieldMapEventScriptAction::start_new_game_opening_walk,
+                        FieldMapEventScriptAction::run_lua_handler &&
+                    opening.handler == "new_game_opening_walk",
                 "opening map event does not match its typed source profile")) {
         return 3;
     }
@@ -58,6 +59,28 @@ int main() {
         return 3;
     }
 
+    const auto task =
+        scripts.start_task("field_events", opening.handler);
+    if (!expect(task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    task.operation.has_value() &&
+                    task.operation->type ==
+                        ScriptNativeOperation::Type::actor_walk_heading &&
+                    task.operation->actor_id == "player" &&
+                    task.operation->heading == 0U &&
+                    scripts.task_waiting_for_native_operation(),
+                "opening handler did not yield its typed player movement")) {
+        std::cerr << scripts.failure() << '\n';
+        return 4;
+    }
+    const auto resumed = scripts.complete_native_operation(true);
+    if (!expect(resumed.status == ScriptTaskStep::Status::completed &&
+                    !scripts.task_waiting_for_native_operation(),
+                "opening handler did not resume after native movement")) {
+        std::cerr << scripts.failure() << '\n';
+        return 4;
+    }
+
     const StoryFacts new_game{
         {"opening_dialogue_seen", false},
         {"michael_debt_paid", false},
@@ -70,11 +93,11 @@ int main() {
     if (!expect(first_visit == "opening_dialogue",
                 "first motel visit did not select the opening dialogue")) {
         std::cerr << scripts.failure() << '\n';
-        return 4;
+        return 5;
     }
     if (!expect(scripts.story_state().at("opening_dialogue_seen"),
                 "Lua could not set a story flag through game.state")) {
-        return 4;
+        return 5;
     }
 
     const StoryFacts repeat_visit{
@@ -87,7 +110,7 @@ int main() {
         scripts.call_string("michael_package", "motel_entry");
     if (!expect(repeat == "package_offer",
                 "repeat unpaid visit lost the Michael package offer")) {
-        return 5;
+        return 6;
     }
 
     const StoryFacts paid_but_not_collected{
@@ -99,7 +122,7 @@ int main() {
     if (!expect(scripts.call_string("michael_package", "motel_entry") ==
                     "package_offer",
                 "paid debt hid an uncollected package")) {
-        return 6;
+        return 7;
     }
 
     const StoryFacts completed{
@@ -111,7 +134,7 @@ int main() {
     if (!expect(scripts.call_string("michael_package", "motel_entry") ==
                     "ordinary_motel",
                 "completed package quest did not return to motel service")) {
-        return 7;
+        return 8;
     }
 
     scripts.set_story_state(completed);
@@ -126,7 +149,7 @@ int main() {
                     manager->choices[1].id == "leave",
                 "ordinary manager menu does not have its two source choices")) {
         std::cerr << scripts.failure() << '\n';
-        return 8;
+        return 9;
     }
     scripts.set_story_state(repeat_visit);
     scripts.set_location_context("motel", "downtown_motel");
@@ -135,7 +158,7 @@ int main() {
     if (!expect(ordinary_motel_manager.has_value() &&
                     ordinary_motel_manager->choices.size() == 2U,
                 "Michael quest hook leaked into another motel")) {
-        return 9;
+        return 10;
     }
     scripts.set_location_context("motel", "stoker_motel");
     const auto package_manager =
@@ -145,7 +168,7 @@ int main() {
                     package_manager->choices[2].id == "package",
                 "unpaid manager menu lacks the package choice")) {
         std::cerr << scripts.failure() << '\n';
-        return 9;
+        return 10;
     }
     scripts.set_story_state(paid_but_not_collected);
     const auto paid_package_manager =
@@ -153,7 +176,7 @@ int main() {
     if (!expect(paid_package_manager.has_value() &&
                     paid_package_manager->choices.size() == 3U,
                 "debt payment prematurely removed the uncollected package")) {
-        return 10;
+        return 11;
     }
     scripts.set_story_state(completed);
     const auto completed_package_manager =
@@ -161,7 +184,40 @@ int main() {
     if (!expect(completed_package_manager.has_value() &&
                     completed_package_manager->choices.size() == 2U,
                 "completed package facts did not remove the special choice")) {
-        return 11;
+        return 12;
+    }
+
+    GameScriptRuntime sequence_scripts;
+    if (!expect(sequence_scripts.load_package(
+                    SHADOWRUN_GAMEPLAY_SCRIPT_FIXTURE_ROOT),
+                "coroutine fixture did not load")) {
+        std::cerr << sequence_scripts.failure() << '\n';
+        return 13;
+    }
+    auto sequence_step =
+        sequence_scripts.start_task("field_events", "walk_twice");
+    if (!expect(sequence_step.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    sequence_step.operation.has_value() &&
+                    sequence_step.operation->heading == 0U,
+                "first sequential actor operation did not yield")) {
+        std::cerr << sequence_scripts.failure() << '\n';
+        return 13;
+    }
+    sequence_step = sequence_scripts.complete_native_operation(true);
+    if (!expect(sequence_step.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    sequence_step.operation.has_value() &&
+                    sequence_step.operation->heading == 1U,
+                "script did not resume and yield its second actor operation")) {
+        std::cerr << sequence_scripts.failure() << '\n';
+        return 13;
+    }
+    sequence_step = sequence_scripts.complete_native_operation(true);
+    if (!expect(sequence_step.status == ScriptTaskStep::Status::completed,
+                "script did not finish after sequential native operations")) {
+        std::cerr << sequence_scripts.failure() << '\n';
+        return 13;
     }
     return 0;
 }

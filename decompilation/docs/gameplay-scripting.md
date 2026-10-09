@@ -49,20 +49,28 @@ save adapter. Lua globals are not the save system. Service calls such as
 granting an item or paying a debt still go through the native inventory or
 wallet rules.
 
-The current runtime creates global `game.state` and `game.location` snapshots
-before a call and reads story writes back afterward. The opening Stoker quest
-script marks `opening_dialogue_seen`, and the field controller applies that
-validated flag. Other script writes are not yet connected to general session
-or save state. Durable save backing and the `items`, `actor`, `audio`, `ui`,
-and coroutine services are still migration work. The runner currently executes
-ordinary synchronous callbacks with a 100,000-instruction limit and has no
-`io`, `os`, `debug`, or package-loader access.
+The runtime exposes global Lua `game.state` and `game.location` tables, so
+scripts read and update session context without threading state arguments
+through every callback. These tables are synchronized with typed native state
+at call boundaries; they are not live C++ object references, and C++ remains
+authoritative. The opening Stoker quest script marks
+`opening_dialogue_seen`, and the field controller applies that validated flag.
+Other script writes are not yet connected to general session or save state.
+The first coroutine service is `game.actor.walk_heading(actor, heading)`: it
+currently accepts the player and headings 0 through 7, yields a typed request
+to the native field controller, and resumes with the operation result. Both
+initial invocation and each resume have a 100,000-instruction limit. Actor
+placement, destination movement, scripted animation, `game.items`,
+`game.audio`, `game.ui`, and durable save backing remain unimplemented. The
+runner has no `io`, `os`, `debug`, or package-loader access.
 
 ## Content organization
 
 - `gameplay/scripts/field_events.lua` contains source-traced map trigger
-  declarations. Trigger detection and repeat policy belong to the native event
-  runner; a matched event starts a Lua-owned scene routine.
+  declarations and the New Game scene handler. Trigger detection and repeat
+  policy belong to the native event runner; a matched event starts a Lua
+  coroutine, which requests heading-zero player movement through the shared
+  actor service and waits for the native operation to finish.
 - `gameplay/scripts/motel.lua` contains shared motel behavior, independent of
   Stoker's identity. It adds the base choices and calls the optional
   `motel_manager_choices()` hook on loaded quest modules in stable module-name
@@ -75,13 +83,14 @@ ordinary synchronous callbacks with a 100,000-instruction limit and has no
   Menus and dialogue use the generic Qt presenters, and Lua supplies the
   available stable choice ids and story text keys.
 
-The current vertical slice connects the New Game scene-entry trigger, the
-Michael package entry branch, and the shared motel manager choices to the Qt
-field and dialogue runtime. The opening walk, collision route, payment and
-inventory effects, scene presentation, and most other map/menu behavior still
-run through existing native controllers. The generic actor, sound, dialogue,
-inventory, and coroutine calls above are the target interface, not a claim
-that every adapter is already connected.
+The current vertical slice connects the New Game scene-entry trigger, its
+Lua-owned handler and yieldable movement request, the Michael package entry
+branch, and the shared motel manager choices to the Qt field and dialogue
+runtime. Native C++ still owns movement execution, collision, payment,
+inventory effects, animation timing, scene presentation, and most other
+map/menu behavior. Only the heading-based player movement operation is wired
+through the coroutine boundary; the remaining examples above describe
+incremental services to add, not existing adapters.
 
 ## Source and visual verification
 

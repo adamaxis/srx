@@ -775,6 +775,8 @@ private:
     void advance_field_scene_transition_after_modal();
     void handle_field_map_event_activations(
         const std::vector<FieldMapEventActivation>& activations);
+    void handle_game_script_task_step(
+        const scripting::ScriptTaskStep& step);
     bool prepare_runtime_field_scene(std::uint16_t scene_reference);
     void dispatch_field_map_scene_entry(std::uint16_t scene_id);
     std::optional<std::size_t> projected_terrain_cell() const;

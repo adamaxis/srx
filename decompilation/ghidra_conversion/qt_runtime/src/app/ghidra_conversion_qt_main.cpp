@@ -12532,11 +12532,14 @@ int run_field_stoker_collision_to_dialogue_qa(
     const auto opening_event_started_before = std::count(
         source_boundaries.begin(), source_boundaries.end(),
         std::string("field.map_event.new_game_opening_walk_started"));
+    const auto lua_handler_completed_before = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.map_event.lua_handler_completed"));
     const auto auto_walk_consumed_before = std::count(
         source_boundaries.begin(), source_boundaries.end(),
         std::string("field.opening_auto_walk.consumed"));
     if (auto_walk_armed_before != 1 || opening_event_started_before != 1 ||
-        auto_walk_consumed_before != 0) {
+        lua_handler_completed_before != 0 || auto_walk_consumed_before != 0) {
         std::cerr << "Stoker collision QA: New Game opening event was not "
                      "dispatched and armed exactly once before the field route\n";
         return 3;
@@ -12805,12 +12808,16 @@ int run_field_stoker_collision_to_dialogue_qa(
     const auto auto_walk_consumed_after = std::count(
         source_boundaries.begin(), source_boundaries.end(),
         std::string("field.opening_auto_walk.consumed"));
+    const auto lua_handler_completed_after = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.map_event.lua_handler_completed"));
     const auto& map_event_system =
         field_scene.field_map_event_system_for_dump();
     const auto& last_map_event =
         map_event_system.last_collision_dispatch();
     if (field_scene.opening_auto_walk_active_for_dump() ||
         auto_walk_consumed_after != auto_walk_consumed_before + 1 ||
+        lua_handler_completed_after != lua_handler_completed_before + 1 ||
         map_event_system.collision_dispatch_count() == 0U ||
         !last_map_event.has_value() ||
         last_map_event->input.scene_id != 2U ||

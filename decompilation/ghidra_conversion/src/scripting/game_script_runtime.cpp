@@ -165,8 +165,8 @@ bool field_repeat_policy(const std::string_view name,
 
 bool field_action(const std::string_view name,
                   FieldMapEventScriptAction& action) {
-    if (name == "start_new_game_opening_walk") {
-        action = FieldMapEventScriptAction::start_new_game_opening_walk;
+    if (name == "run_lua_handler") {
+        action = FieldMapEventScriptAction::run_lua_handler;
         return true;
     }
     if (name == "dispatch_native_script") {
@@ -248,6 +248,7 @@ bool parse_event_rule(lua_State* state, const int index,
     std::string trigger_name;
     std::string repeat_name;
     std::string action_name;
+    std::string handler_name;
     if (!read_field_integer(state, index, "id", 0xFFFFFFFFU, rule.id) ||
         rule.id == 0U ||
         !read_field_integer(state, index, "scene", 0xFFFFU, scene_id) ||
@@ -261,7 +262,13 @@ bool parse_event_rule(lua_State* state, const int index,
         !parse_required_flags(state, index, rule.required_state_flags)) {
         return false;
     }
+    if (rule.action == FieldMapEventScriptAction::run_lua_handler &&
+        (!read_field_string(state, index, "handler", handler_name) ||
+         !valid_identifier(handler_name))) {
+        return false;
+    }
     rule.scene_id = static_cast<std::uint16_t>(scene_id);
+    rule.handler = std::move(handler_name);
     return true;
 }
 
@@ -301,8 +308,119 @@ bool parse_menu_choices(lua_State* state, const int index,
 
 struct GameScriptRuntime::Impl {
     lua_State* state = nullptr;
+    lua_State* task_state = nullptr;
     int modules_reference = LUA_NOREF;
+    int task_reference = LUA_NOREF;
+    bool task_waiting = false;
+    std::optional<ScriptNativeOperation> pending_task_operation;
+    std::string bridge_failure;
     std::string failure;
+
+    static Impl* from_upvalue(lua_State* lua) {
+        return static_cast<Impl*>(lua_touserdata(lua, lua_upvalueindex(1)));
+    }
+
+    static int actor_walk_heading_continuation(
+        lua_State*, int, lua_KContext) {
+        // The host resumes this continuation with the native movement result.
+        return 1;
+    }
+
+    static int actor_walk_heading(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        if (self == nullptr || self->task_state != lua ||
+            self->task_waiting || self->pending_task_operation.has_value()) {
+            if (self != nullptr) {
+                self->bridge_failure =
+                    "game.actor.walk_heading must run inside an active task";
+            }
+            lua_pushboolean(lua, 0);
+            return 1;
+        }
+
+        std::size_t actor_length = 0U;
+        const auto* actor = lua_type(lua, 1) == LUA_TSTRING
+                                ? lua_tolstring(lua, 1, &actor_length)
+                                : nullptr;
+        const bool valid_actor = actor != nullptr && actor_length == 6U &&
+                                 std::string_view(actor, actor_length) ==
+                                     "player";
+        const bool valid_heading = lua_isinteger(lua, 2) != 0 &&
+                                   lua_tointeger(lua, 2) >= 0 &&
+                                   lua_tointeger(lua, 2) <= 7;
+        if (!valid_actor || !valid_heading) {
+            self->bridge_failure =
+                "game.actor.walk_heading expects the player and a heading from 0 to 7";
+            lua_pushboolean(lua, 0);
+            return 1;
+        }
+
+        ScriptNativeOperation operation{};
+        operation.type = ScriptNativeOperation::Type::actor_walk_heading;
+        operation.actor_id = "player";
+        operation.heading = static_cast<std::uint8_t>(lua_tointeger(lua, 2));
+        self->pending_task_operation = std::move(operation);
+        self->task_waiting = true;
+        return lua_yieldk(lua, 0, 0, actor_walk_heading_continuation);
+    }
+
+    void release_task() {
+        task_waiting = false;
+        pending_task_operation.reset();
+        bridge_failure.clear();
+        if (task_state != nullptr) {
+            lua_settop(task_state, 0);
+        }
+        if (state != nullptr && task_reference != LUA_NOREF) {
+            luaL_unref(state, LUA_REGISTRYINDEX, task_reference);
+        }
+        task_state = nullptr;
+        task_reference = LUA_NOREF;
+    }
+
+    ScriptTaskStep failed_task(std::string message) {
+        failure = std::move(message);
+        release_task();
+        return {ScriptTaskStep::Status::failed, std::nullopt};
+    }
+
+    ScriptTaskStep resume_task(const int argument_count) {
+        if (state == nullptr || task_state == nullptr) {
+            return failed_task("no active gameplay script task");
+        }
+        bridge_failure.clear();
+        int result_count = 0;
+        int status = LUA_ERRRUN;
+        {
+            ScopedInstructionBudget instruction_budget(task_state);
+            status = lua_resume(task_state, state, argument_count,
+                                &result_count);
+        }
+        if (!bridge_failure.empty()) {
+            return failed_task(bridge_failure);
+        }
+        if (status == LUA_YIELD) {
+            if (!task_waiting || !pending_task_operation.has_value()) {
+                return failed_task(
+                    "gameplay script yielded without a native operation");
+            }
+            ScriptTaskStep step{};
+            step.status =
+                ScriptTaskStep::Status::awaiting_native_operation;
+            step.operation = std::move(pending_task_operation);
+            pending_task_operation.reset();
+            failure.clear();
+            return step;
+        }
+        if (status != LUA_OK) {
+            return failed_task(stack_error(task_state));
+        }
+        (void)result_count;
+        lua_settop(task_state, 0);
+        release_task();
+        failure.clear();
+        return {ScriptTaskStep::Status::completed, std::nullopt};
+    }
 
     ~Impl() {
         if (state != nullptr) {
@@ -315,7 +433,12 @@ struct GameScriptRuntime::Impl {
             lua_close(state);
         }
         state = luaL_newstate();
+        task_state = nullptr;
         modules_reference = LUA_NOREF;
+        task_reference = LUA_NOREF;
+        task_waiting = false;
+        pending_task_operation.reset();
+        bridge_failure.clear();
         failure.clear();
         if (state == nullptr) {
             failure = "could not create Lua state";
@@ -330,6 +453,11 @@ struct GameScriptRuntime::Impl {
         lua_setfield(state, -2, "state");
         lua_newtable(state);
         lua_setfield(state, -2, "location");
+        lua_newtable(state);
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, actor_walk_heading, 1);
+        lua_setfield(state, -2, "walk_heading");
+        lua_setfield(state, -2, "actor");
         lua_rawgeti(state, LUA_REGISTRYINDEX, modules_reference);
         lua_setfield(state, -2, "modules");
         lua_setglobal(state, "game");
@@ -435,6 +563,7 @@ GameScriptRuntime::map_event_rules() {
         return std::nullopt;
     }
     const auto rules_table = lua_absindex(state, -1);
+    const auto module_table = lua_absindex(state, -2);
     const auto count = lua_rawlen(state, rules_table);
     if (count == 0U || count > kMaximumMapEventRules) {
         lua_pop(state, 2);
@@ -447,8 +576,14 @@ GameScriptRuntime::map_event_rules() {
     for (std::size_t index = 1U; index <= count; ++index) {
         lua_rawgeti(state, rules_table, static_cast<lua_Integer>(index));
         FieldMapEventRule rule{};
-        const bool valid = parse_event_rule(state, -1, rule) &&
-                           identifiers.insert(rule.id).second;
+        bool valid = parse_event_rule(state, -1, rule) &&
+                     identifiers.insert(rule.id).second;
+        if (valid &&
+            rule.action == FieldMapEventScriptAction::run_lua_handler) {
+            lua_getfield(state, module_table, rule.handler.c_str());
+            valid = lua_isfunction(state, -1) != 0;
+            lua_pop(state, 1);
+        }
         lua_pop(state, 1);
         if (!valid) {
             lua_pop(state, 2);
@@ -561,6 +696,61 @@ std::optional<std::string> GameScriptRuntime::call_string(
     lua_pop(state, 1);
     impl_->failure.clear();
     return result;
+}
+
+ScriptTaskStep GameScriptRuntime::start_task(
+    const std::string_view module, const std::string_view function) {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "gameplay Lua state is not available";
+        return {ScriptTaskStep::Status::failed, std::nullopt};
+    }
+    if (impl_->task_state != nullptr) {
+        impl_->failure = "a gameplay script task is already active";
+        return {ScriptTaskStep::Status::failed, std::nullopt};
+    }
+    if (!valid_identifier(function)) {
+        impl_->failure = "invalid gameplay script task id";
+        return {ScriptTaskStep::Status::failed, std::nullopt};
+    }
+    if (!impl_->push_module(module)) {
+        impl_->failure = "gameplay script module is missing: " +
+                         std::string(module);
+        return {ScriptTaskStep::Status::failed, std::nullopt};
+    }
+    lua_getfield(state, -1, std::string(function).c_str());
+    if (!lua_isfunction(state, -1)) {
+        lua_pop(state, 2);
+        impl_->failure = "script task handler is missing: " +
+                         std::string(module) + "." + std::string(function);
+        return {ScriptTaskStep::Status::failed, std::nullopt};
+    }
+    lua_remove(state, -2);
+
+    impl_->task_state = lua_newthread(state);
+    impl_->task_reference = luaL_ref(state, LUA_REGISTRYINDEX);
+    lua_xmove(state, impl_->task_state, 1);
+    return impl_->resume_task(0);
+}
+
+ScriptTaskStep GameScriptRuntime::complete_native_operation(
+    const bool succeeded) {
+    auto* state = impl_->state;
+    auto* task = impl_->task_state;
+    if (state == nullptr || task == nullptr || !impl_->task_waiting ||
+        impl_->pending_task_operation.has_value()) {
+        impl_->failure =
+            "gameplay script task is not waiting for a native operation";
+        return {ScriptTaskStep::Status::failed, std::nullopt};
+    }
+    impl_->task_waiting = false;
+    lua_pushboolean(task, succeeded ? 1 : 0);
+    return impl_->resume_task(1);
+}
+
+bool GameScriptRuntime::task_waiting_for_native_operation() const noexcept {
+    return impl_->task_state != nullptr && impl_->task_waiting &&
+           !impl_->pending_task_operation.has_value();
 }
 
 std::optional<ScriptMenuDefinition> GameScriptRuntime::menu(

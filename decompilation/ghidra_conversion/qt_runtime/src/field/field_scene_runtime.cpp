@@ -2278,6 +2278,10 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 // orchestrator pass, regardless of the selected event route.
                 field_opening_auto_walk_.active = false;
                 source_boundary("field.opening_auto_walk.consumed");
+                if (game_scripts_.task_waiting_for_native_operation()) {
+                    handle_game_script_task_step(
+                        game_scripts_.complete_native_operation(true));
+                }
             }
             const auto anchor_refresh_required =
                 run_field_exit_orchestrator(runtime);
@@ -5598,16 +5602,48 @@ void FieldSceneRuntime::handle_field_map_event_activations(
     const std::vector<FieldMapEventActivation>& activations) {
     for (const auto& activation : activations) {
         switch (activation.action) {
-        case FieldMapEventScriptAction::start_new_game_opening_walk:
-            field_opening_auto_walk_.active = true;
-            field_opening_auto_walk_.target_heading = 0U;
-            source_boundary("field.map_event.new_game_opening_walk_started");
+        case FieldMapEventScriptAction::run_lua_handler:
+            handle_game_script_task_step(
+                game_scripts_.start_task("field_events", activation.handler));
             break;
         case FieldMapEventScriptAction::dispatch_native_script:
             source_boundary("field.map_event.native_script_handler_unresolved");
             break;
         }
     }
+}
+
+void FieldSceneRuntime::handle_game_script_task_step(
+    const scripting::ScriptTaskStep& step) {
+    using ScriptTaskStatus = scripting::ScriptTaskStep::Status;
+    if (step.status == ScriptTaskStatus::failed) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.map_event.lua_handler_failed");
+        return;
+    }
+    if (step.status == ScriptTaskStatus::completed) {
+        source_boundary("field.map_event.lua_handler_completed");
+        return;
+    }
+    if (!step.operation.has_value()) {
+        failure_ = "Lua gameplay task yielded without a typed operation";
+        source_boundary("field.map_event.lua_handler_failed");
+        return;
+    }
+
+    const auto& operation = *step.operation;
+    if (operation.type !=
+            scripting::ScriptNativeOperation::Type::actor_walk_heading ||
+        operation.actor_id != "player" || operation.heading > 7U ||
+        field_opening_auto_walk_.active) {
+        failure_ = "Lua requested an unsupported native actor operation";
+        source_boundary("field.map_event.lua_operation_unresolved");
+        return;
+    }
+
+    field_opening_auto_walk_.active = true;
+    field_opening_auto_walk_.target_heading = operation.heading;
+    source_boundary("field.map_event.new_game_opening_walk_started");
 }
 
 void FieldSceneRuntime::advance_frame() {

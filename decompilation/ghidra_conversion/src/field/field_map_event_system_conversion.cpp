@@ -182,7 +182,7 @@ std::vector<FieldMapEventActivation> FieldMapEventSystem::evaluate(
                    FieldMapEventRepeatPolicy::once_per_session) {
             fired_this_session_.insert(rule.id);
         }
-        activations.push_back({rule.id, rule.action});
+        activations.push_back({rule.id, rule.action, rule.handler});
     }
     return activations;
 }

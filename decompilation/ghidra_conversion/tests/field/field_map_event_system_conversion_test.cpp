@@ -32,7 +32,8 @@ int main() {
                                          0x2D00U, 0x2D00U},
             flag,
             FieldMapEventRepeatPolicy::once_per_session,
-            FieldMapEventScriptAction::start_new_game_opening_walk,
+            FieldMapEventScriptAction::run_lua_handler,
+            "new_game_opening_walk",
         }});
         auto activations = system.dispatch_scene_entry(
             {2U, 0x3CE0U, 0x2D00U, 0U, true});
@@ -58,7 +59,8 @@ int main() {
                         activations[0].event_id == 0x00020001U &&
                         activations[0].action ==
                             FieldMapEventScriptAction::
-                                start_new_game_opening_walk,
+                                run_lua_handler &&
+                        activations[0].handler == "new_game_opening_walk",
                     "completed New Game entry must start the one-shot walk")) {
             return 1;
         }

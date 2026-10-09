@@ -11,9 +11,11 @@ scene-2 terrain record 91 (`0x173138`), Stoker prompt records
 (`0xF4AA0..0xF4B2C`), profile/portrait records (`0x121FA0`, `0x122420`),
 and the shared `0x1728` sprite-stream writer.
 Ghidra output was used only as a cross-check. Runtime code represents the
-startup action as typed field state and uses the ordinary native movement,
-collision, event, and shared dialogue systems; it does not execute ROM code or
-inject the collision/event tuple.
+scene-entry condition in Lua and starts its handler as a yieldable task. The
+handler requests heading-zero player movement through `game.actor`; the native
+field controller executes the movement and resumes the script when the
+one-shot action is consumed. Runtime code does not execute ROM code or inject
+the collision/event tuple.
 
 CTest: `shadowrun_ghidra_conversion_qt_field_stoker_collision_to_dialogue_qa`.
 Output: `qt_runtime/field-stoker-collision-to-dialogue-qa/` in Debug and
@@ -154,7 +156,9 @@ their own ROM-first and multi-frame audit before being called correct.
    sampled two-frame blank-shell interval; its ROM-derived duration is
    unresolved.
 2. **Does the look reflect behavior?** The completed New Game opening arms
-   heading-zero movement while the controller stays released. The actor
+   heading-zero movement while the controller stays released. Lua requests
+   that movement with `game.actor.walk_heading("player", 0)`, yields, and
+   resumes after the native field-exit coordinator consumes it. The actor
    reaches record 91, raw collision `0xFFC2` publishes event 2, and the event
    system resolves the Stoker script through indexed title service `0x53A78`.
    The first entry opens the special page; A opens the three-choice package
@@ -173,7 +177,8 @@ their own ROM-first and multi-frame audit before being called correct.
    remains `HUD-01`.
 4. **Is it animated?** The actor changes position and uses the ordinary field
    walk poses during the automatic movement. There is no separate opening
-   movement animation. The Stoker speaker uses a single 56x72 portrait
+   movement animation; Lua requests movement but does not directly set
+   position or animation. The Stoker speaker uses a single 56x72 portrait
    resource, not an identified portrait animation list. The dialogue remains
    static until a new controller edge changes the record.
    Fade cadence follows `0x16396`: 17 updates with palette steps reaching 9.
@@ -184,9 +189,9 @@ their own ROM-first and multi-frame audit before being called correct.
    service `0x53126`: six command-`0x14` transactions, one three-VBlank wait
    group per transaction (18 VBlanks total), a flush, and one service tick. The
    Qt backend records those boundaries and does not play them. The route logs
-   zero discrete SFX callbacks. No sound alias or audible duration for the
-   mode-entry command was verified, so this is not evidence that the original
-   game is silent.
+   zero discrete SFX callbacks. Lua audio playback is not connected yet. No
+   sound alias or audible duration for the mode-entry command was verified,
+   so this is not evidence that the original game is silent.
 6. **Are the rest of the screen and related elements correct?** The full
    captures include the entire map, actor, right HUD, panel, and return frame.
    Dialogue replaces the field contents cleanly; no old buttons, HUD, map, or
@@ -215,14 +220,13 @@ their own ROM-first and multi-frame audit before being called correct.
 ## Outcome
 
 - **Code changed:** the startup coordinator carries completed New Game opening
-  state into the field runtime; typed field state arms heading-zero automatic
-  movement for that route only, runs it through existing movement/collision,
-  and consumes it after the first field-exit orchestrator pass. Lua content
-  defines the one-shot scene-entry rule; `michael_package.lua` resolves the
-  first/repeat/ordinary quest branch; shared `motel.lua` supplies manager
-  choice IDs. Typed C++ handlers still own
-  movement, room/debt payment, and validated command execution. Loaded saves
-  and ordinary field QA bootstraps do not arm the opening walk.
+  state into the field runtime; a Lua scene handler requests heading-zero
+  movement through a typed native operation and suspends until the existing
+  field controller consumes it after the first field-exit orchestrator pass.
+  `michael_package.lua` resolves the first/repeat/ordinary quest branch;
+  shared `motel.lua` supplies manager choice IDs. Typed C++ handlers still own
+  movement execution, room/debt payment, and validated command execution.
+  Loaded saves and ordinary field QA bootstraps do not arm the opening walk.
 - **Behavior implemented:** New Game reaches the ROM C2 doorway with zero
   controller input, publishes event 2, and opens the first Stoker page. A
   enters the three-choice Michael-package offer; C opens the debt question; A
@@ -233,7 +237,11 @@ their own ROM-first and multi-frame audit before being called correct.
   debt and package flags are both complete. Physical repeat-entry movement
   and restored-save story/wallet state remain open.
 - **Internally checked:** the Lua runtime, startup integration, Stoker route,
-  field Hotel route, and dialogue runtime CTests pass in Debug and Release.
+  field Hotel route, and dialogue runtime CTests pass in Debug and Release;
+  both complete 92-test suites pass. The Lua runtime test checks the typed
+  movement request, suspend/resume cycle, and two sequential native operations
+  in one script; Stoker route QA asserts the handler completes only after the
+  native auto-walk is consumed.
   They assert the completed-opening handoff,
   zero-input movement, collision bounds, raw and projected codes, mode/event
   state, indexed service selection, fade counters, the typed speaker, portrait
@@ -241,8 +249,8 @@ their own ROM-first and multi-frame audit before being called correct.
   post-payment story flags, transition suspension, audio-service transaction
   counts, and whole-screen return. The
   route writes 13 BMPs plus `route.tsv` and `source-boundaries.txt`. Every
-  Release BMP was opened and reviewed at full size; all 13 Debug and Release
-  BMP SHA-256 hashes match.
+  Debug BMPs were opened and reviewed at full size; the corresponding Release
+  images are byte-identical. All 13 Debug and Release BMP SHA-256 hashes match.
 - **Independently visually checked:** section 03 frames `000028..000055`,
   `000080..000082`, `000301`, `000601`, and `000690/000750/000780/000840`
   support the door/fade/panel appearance and the Stoker dialogue pages. The

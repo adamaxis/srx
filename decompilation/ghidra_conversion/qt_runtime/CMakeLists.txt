@@ -52,7 +52,8 @@ add_executable(shadowrun_gameplay_script_runtime_test
 target_link_libraries(shadowrun_gameplay_script_runtime_test
     PRIVATE shadowrun_gameplay_script_runtime)
 target_compile_definitions(shadowrun_gameplay_script_runtime_test PRIVATE
-    SHADOWRUN_GAMEPLAY_SCRIPT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/scripts")
+    SHADOWRUN_GAMEPLAY_SCRIPT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/scripts"
+    SHADOWRUN_GAMEPLAY_SCRIPT_FIXTURE_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/tests/scripting/fixtures")
 add_test(NAME shadowrun_gameplay_script_runtime_qa
          COMMAND shadowrun_gameplay_script_runtime_test)
 

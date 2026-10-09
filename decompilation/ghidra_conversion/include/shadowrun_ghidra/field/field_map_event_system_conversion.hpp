@@ -5,6 +5,7 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <unordered_set>
 #include <vector>
 
@@ -71,7 +72,7 @@ enum class FieldMapEventRepeatPolicy {
 };
 
 enum class FieldMapEventScriptAction {
-    start_new_game_opening_walk,
+    run_lua_handler,
     dispatch_native_script,
 };
 
@@ -103,6 +104,7 @@ struct FieldMapEventRule {
         FieldMapEventRepeatPolicy::once_per_scene_visit;
     FieldMapEventScriptAction action =
         FieldMapEventScriptAction::dispatch_native_script;
+    std::string handler;
 };
 
 struct FieldMapEventTriggerContext {
@@ -117,6 +119,7 @@ struct FieldMapEventActivation {
     std::uint32_t event_id = 0;
     FieldMapEventScriptAction action =
         FieldMapEventScriptAction::dispatch_native_script;
+    std::string handler;
 };
 
 struct FieldMapCollisionEventDispatch {
