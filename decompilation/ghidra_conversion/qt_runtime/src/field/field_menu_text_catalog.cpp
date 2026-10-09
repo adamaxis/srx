@@ -5,10 +5,39 @@
 #include <algorithm>
 #include <charconv>
 #include <fstream>
+#include <string_view>
 #include <utility>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 namespace {
+
+constexpr std::array<std::string_view, kFieldMenuClipsCommandCount>
+    kClipsCommandIds{{"reload", "trade", "distribute", "cancel"}};
+constexpr std::array<std::string_view, kFieldMenuClipsCommandCount>
+    kClipsTradeCommandIds{{"increase_clips", "decrease_clips", "trade_clips",
+                           "change_recipient"}};
+
+bool has_clips_menu_label_prefix(const std::string_view key) {
+    return key.rfind("clips.option.", 0U) == 0U ||
+           key.rfind("clips.trade.option.", 0U) == 0U;
+}
+
+bool is_clips_menu_label_key(const std::string_view key) {
+    constexpr std::string_view kCommandPrefix = "clips.option.";
+    constexpr std::string_view kTradeCommandPrefix = "clips.trade.option.";
+    if (key.rfind(kCommandPrefix, 0U) == 0U) {
+        return std::find(kClipsCommandIds.begin(), kClipsCommandIds.end(),
+                         key.substr(kCommandPrefix.size())) !=
+               kClipsCommandIds.end();
+    }
+    if (key.rfind(kTradeCommandPrefix, 0U) == 0U) {
+        return std::find(kClipsTradeCommandIds.begin(),
+                         kClipsTradeCommandIds.end(),
+                         key.substr(kTradeCommandPrefix.size())) !=
+               kClipsTradeCommandIds.end();
+    }
+    return false;
+}
 
 bool parse_indexed_key(const std::string& key, const std::string& prefix,
                        std::size_t& index) {
@@ -110,11 +139,47 @@ bool is_field_menu_text_key(const std::string& key) {
     return false;
 }
 
+template <std::size_t N>
+void load_script_menu_labels(
+    shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts,
+    const std::string_view module, const std::string_view function,
+    const std::string_view text_profile, const std::string_view menu_id,
+    const std::array<std::string_view, N>& expected_ids,
+    std::array<std::string, N>& labels, std::vector<std::string>& errors) {
+    const auto menu = scripts.menu(module, function, text_profile, menu_id);
+    if (!menu.has_value()) {
+        errors.emplace_back("Clips Lua menu is unavailable: " +
+                            std::string(function) + ": " + scripts.failure());
+        return;
+    }
+    if (menu->choices.size() != expected_ids.size()) {
+        errors.emplace_back("Clips Lua menu has the wrong choice count: " +
+                            std::string(function));
+        return;
+    }
+    for (std::size_t index = 0; index < expected_ids.size(); ++index) {
+        const auto& choice = menu->choices[index];
+        if (choice.id != expected_ids[index]) {
+            errors.emplace_back("Clips Lua menu choices do not match the "
+                                "native action order: " +
+                                std::string(function));
+            return;
+        }
+        const auto* label = scripts.dialogue_text(choice.label_key);
+        if (label == nullptr) {
+            errors.emplace_back("Clips Lua menu label is missing: " +
+                                choice.label_key);
+            return;
+        }
+        labels[index] = *label;
+    }
+}
+
 } // namespace
 
 FieldMenuTextLoadResult load_field_menu_text_catalog(
     const ConversionAssetCatalog& assets,
-    const shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts) {
+    shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts) {
     FieldMenuTextLoadResult result;
     const auto* record = assets.find("menu.field.service.routes");
     if (record == nullptr) {
@@ -225,8 +290,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::array<std::array<bool, kFieldMenuArmorRowCount>,
                kFieldMenuArmorCount>
         armor_found{};
-    std::array<bool, kFieldMenuClipsCommandCount> clips_found{};
-    std::array<bool, kFieldMenuClipsCommandCount> clips_trade_found{};
     std::array<bool, 3> clips_trade_prompt_found{};
     std::array<bool, 2> clips_exchange_complete_found{};
     std::array<bool, 3> clips_reload_found{};
@@ -273,7 +336,21 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     bool magic_panel_metric_labels_found = false;
     bool magic_force_posture_labels_found = false;
     bool dismiss_runner_separator_found = false;
+    load_script_menu_labels(
+        scripts, "clips", "commands", "clips", "commands",
+        kClipsCommandIds, result.catalog.clips_commands, result.errors);
+    load_script_menu_labels(
+        scripts, "clips", "trade_commands", "clips.trade", "commands",
+        kClipsTradeCommandIds, result.catalog.clips_trade_commands,
+        result.errors);
     for (const auto& [key, value] : text_rows) {
+        if (has_clips_menu_label_prefix(key)) {
+            if (!is_clips_menu_label_key(key)) {
+                result.errors.emplace_back(
+                    "unknown Clips menu label key: " + key);
+            }
+            continue;
+        }
         std::size_t index = 0;
         if (parse_indexed_key(key, "field-service.title-destination.",
                               index) &&
@@ -385,17 +462,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             }
             continue;
         }
-        if (parse_indexed_key(key, "clips.trade.", index) &&
-            index < result.catalog.clips_trade_commands.size()) {
-            if (clips_trade_found[index]) {
-                result.errors.emplace_back("duplicate field menu text row: " +
-                                          key);
-            } else {
-                clips_trade_found[index] = true;
-                result.catalog.clips_trade_commands[index] = value;
-            }
-            continue;
-        }
         if (parse_indexed_key(key, "clips.trade-prompt.", index) &&
             index < result.catalog.clips_trade_prompt.size()) {
             if (clips_trade_prompt_found[index]) {
@@ -415,17 +481,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             } else {
                 clips_exchange_complete_found[index] = true;
                 result.catalog.clips_exchange_complete[index] = value;
-            }
-            continue;
-        }
-        if (parse_indexed_key(key, "clips.", index) &&
-            index < result.catalog.clips_commands.size()) {
-            if (clips_found[index]) {
-                result.errors.emplace_back("duplicate field menu text row: " +
-                                          key);
-            } else {
-                clips_found[index] = true;
-                result.catalog.clips_commands[index] = value;
             }
             continue;
         }
@@ -841,8 +896,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                         result.errors);
     add_missing_entries(cyberware_entry_found, "cyberware.entry.",
                         result.errors);
-    add_missing_entries(clips_found, "clips.", result.errors);
-    add_missing_entries(clips_trade_found, "clips.trade.", result.errors);
     add_missing_entries(clips_trade_prompt_found, "clips.trade-prompt.",
                         result.errors);
     add_missing_entries(clips_exchange_complete_found,

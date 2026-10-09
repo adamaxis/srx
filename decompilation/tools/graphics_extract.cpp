@@ -324,9 +324,18 @@ write_field_service_routes(
          escape_newlines(action_text.trade_full_inventory_message));
     const auto clips_text =
         shadowrun::graphics::read_genesis_field_menu_clips_text(rom);
+    constexpr std::array<std::string_view, 4> kClipsCommandTextKeys{{
+        "clips.option.reload", "clips.option.trade",
+        "clips.option.distribute", "clips.option.cancel"}};
+    constexpr std::array<std::string_view, 4> kClipsTradeCommandTextKeys{{
+        "clips.trade.option.increase_clips",
+        "clips.trade.option.decrease_clips",
+        "clips.trade.option.trade_clips",
+        "clips.trade.option.change_recipient"}};
     for (std::size_t index = 0; index < clips_text.commands.size(); ++index) {
-        emit("clips." + std::to_string(index), clips_text.commands[index]);
-        emit("clips.trade." + std::to_string(index),
+        emit(std::string(kClipsCommandTextKeys[index]),
+             clips_text.commands[index]);
+        emit(std::string(kClipsTradeCommandTextKeys[index]),
              clips_text.trade_commands[index]);
     }
     for (std::size_t index = 0; index < clips_text.trade_prompt.size();
@@ -1520,7 +1529,8 @@ void write_asset_readme(const std::filesystem::path& root) {
               "text, and item descriptions are emitted as "
               "`dialogue/script-text.lua` and consumed by the gameplay script "
               "runtime. `gameplay/scripts/hotel.lua`, "
-              "`gameplay/scripts/pocket_secretary.lua`, and "
+              "`gameplay/scripts/pocket_secretary.lua`, "
+              "`gameplay/scripts/clips.lua`, and "
               "`gameplay/scripts/startup.lua` provide cursor-menu choice IDs. "
               "Separately traced cinematic resources belong under movies/<scene>; "
               "they must not be mixed into intro or field assets.\n\n"

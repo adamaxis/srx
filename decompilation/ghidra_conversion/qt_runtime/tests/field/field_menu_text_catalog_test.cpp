@@ -157,9 +157,13 @@ int main() {
             "This person is\n not injured!" ||
         text.catalog.first_aid_slap_patch_used != "Slap-patch used." ||
         text.catalog.first_aid_medkit_used != "Medkit used." ||
-        text.catalog.clips_commands[0] != "Reload" ||
-        text.catalog.clips_commands[2] != "Distribute" ||
-        text.catalog.clips_trade_commands[3] != "Change Recipient" ||
+        text.catalog.clips_commands !=
+            std::array<std::string, kFieldMenuClipsCommandCount>{
+                "Reload", "Trade", "Distribute", "Cancel"} ||
+        text.catalog.clips_trade_commands !=
+            std::array<std::string, kFieldMenuClipsCommandCount>{
+                "Increase Clips", "Decrease Clips", "Trade Clips",
+                "Change Recipient"} ||
          text.catalog.clips_trade_prompt[0] != "Trade" ||
          text.catalog.clips_trade_prompt[1] != "clips to" ||
          text.catalog.clips_trade_prompt[2] != "  ????" ||

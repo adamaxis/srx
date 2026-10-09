@@ -232,6 +232,47 @@ int main() {
         return 1;
     }
 
+    const auto clips_commands =
+        scripts.menu("clips", "commands", "clips", "commands");
+    const auto clips_trade_commands = scripts.menu(
+        "clips", "trade_commands", "clips.trade", "commands");
+    constexpr std::array<std::string_view, 4> kClipsCommandIds{{
+        "reload", "trade", "distribute", "cancel"}};
+    constexpr std::array<std::string_view, 4> kClipsCommandLabels{{
+        "Reload", "Trade", "Distribute", "Cancel"}};
+    constexpr std::array<std::string_view, 4> kClipsTradeCommandIds{{
+        "increase_clips", "decrease_clips", "trade_clips",
+        "change_recipient"}};
+    constexpr std::array<std::string_view, 4> kClipsTradeCommandLabels{{
+        "Increase Clips", "Decrease Clips", "Trade Clips",
+        "Change Recipient"}};
+    bool clips_rows_match =
+        clips_commands.has_value() && clips_trade_commands.has_value() &&
+        clips_commands->choices.size() == kClipsCommandIds.size() &&
+        clips_trade_commands->choices.size() ==
+            kClipsTradeCommandIds.size();
+    if (clips_rows_match) {
+        for (std::size_t index = 0; index < kClipsCommandIds.size(); ++index) {
+            const auto* command_label = scripts.dialogue_text(
+                clips_commands->choices[index].label_key);
+            const auto* trade_label = scripts.dialogue_text(
+                clips_trade_commands->choices[index].label_key);
+            clips_rows_match = clips_rows_match &&
+                clips_commands->choices[index].id == kClipsCommandIds[index] &&
+                command_label != nullptr &&
+                *command_label == kClipsCommandLabels[index] &&
+                clips_trade_commands->choices[index].id ==
+                    kClipsTradeCommandIds[index] &&
+                trade_label != nullptr &&
+                *trade_label == kClipsTradeCommandLabels[index];
+        }
+    }
+    if (!expect(clips_rows_match,
+                "Lua Clips selectors or ROM labels changed order")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
     const auto shop = scripts.shop_definition("ares_weapon_emporium");
     if (!expect(shop.has_value() && shop->groups.size() == 6U,
                 "Lua shop catalog did not define the Ares selector groups") ||

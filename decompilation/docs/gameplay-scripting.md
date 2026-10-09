@@ -166,6 +166,11 @@ access.
   columns. `FieldSceneRuntime` validates the choices and resolves their labels
   from `assets/dialogue/script-text.lua`. The typed command controller remains
   the sole owner of page selection, focus, rendering, and action dispatch.
+- `gameplay/scripts/clips.lua` declares the top-level Reload/Trade/Distribute/
+  Cancel choices and the nested Increase/Decrease/Trade/Recipient choices.
+  The field menu catalog validates both lists against the native action order
+  and resolves their ROM labels from the shared Lua text table. Cursor, reload,
+  trade, ammunition, and runner-record state remain native.
 - `gameplay/scripts/startup.lua` declares the ordered New Game/Load Game,
   Save Slot, and archetype choices. The title-screen presenter validates each
   list against its typed native menu state and resolves its labels from the
@@ -191,7 +196,8 @@ the Michael quest branch, shared motel and debt menus, Hotel menu definitions,
 room/debt service calls, arrival/farewell/result dialogue, and the Qt
 presenters. Stoker, field interaction, Ares mode-event paragraphs, Hotel text,
 startup menu text/choices, Pocket Secretary root choices/labels, and
-command-overview root choices/labels are Lua content.
+command-overview root choices/labels, and Clips selector choices/labels are
+Lua content.
 Script dialogue menus carry
 their text profile and optional speaker into one generic panel projection;
 menu choices use generic presentation roles. Hotel cursor-menu choices come

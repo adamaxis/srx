@@ -311,6 +311,10 @@ button row CD33E for Clips, 0x11E7E installs CD37A for nested Trade, and
 0x11D06/0x127B0 replaces that row with CD3B6 for reload Yes/No. The prior Qt
 presenter reused the inventory row for these states; it now consumes three
 separately extracted named assets and paints the matching selected focus.
+The two selector ID lists live in `gameplay/scripts/clips.lua`; their generated
+Lua label keys preserve the text records at D1DDC and D1E24. The typed
+controller validates the script order before projecting labels into either
+selector.
 The source 0x12C36 clear starts at name-table C118 (screen 96,16), covers its
 20x20-cell center region, and leaves the separately composed field HUD intact.
 

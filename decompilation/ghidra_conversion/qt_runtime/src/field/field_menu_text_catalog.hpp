@@ -183,6 +183,6 @@ struct FieldMenuTextLoadResult {
 // from the extracted routing catalog. Missing source rows remain visible.
 FieldMenuTextLoadResult load_field_menu_text_catalog(
     const ConversionAssetCatalog& assets,
-    const shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts);
+    shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts);
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime
