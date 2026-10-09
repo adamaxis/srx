@@ -134,7 +134,7 @@ then each transition pose remains for nine field updates. The final pose stays
 selected while the 20-count behavior timer is serviced; the next zero check
 completes on the 21st update after activation. This covers only the observed
 initial transition. `0xAB02` and later action, movement, collision, and damage
-branches are outside this native slice.
+branches remain outside the Lua heartbeat slice.
 
 The offline actor table now gives each active record a stable Lua profile ID
 built from the source template name, entity kind, action-table class, and
@@ -143,17 +143,18 @@ selects the D4540 item-action table, a set sign bit selects the D4EA0 spell
 table, and code zero means no active action. Those are typed data inputs; the
 profile ID contains no runtime ROM address.
 
-The Qt actor service passes that identity, action class/code, and current
-entry state to `gameplay/scripts/actor_ai.lua` as one named context table. Lua
+The Qt actor service passes that identity, action class/code, instance ID,
+initial delay, and source heading to `gameplay/scripts/actor_ai.lua`. Lua
 selects the `corp_guard_k05_item06` package for the kind-5 guard and
 `pedestrian_k0b_none00` for the kind-11 pedestrian. The guard package binds
 item 6 (Max-Power / Heavy Pistol); the pedestrian has no active item action.
-Each package owns the source-supported initial entry decision, animation
-request, and sound-event request. Native C++ executes the timed clip and audio
-request. Scene-`0x14` QA checks all eight package assignments and writes
-`actor-packages.tsv`. Targeting, attack decisions, actual NPC weapon firing,
-movement, collision outcomes, and damage are not implemented by these
-profiles yet.
+Each actor now receives a Lua heartbeat on each field behavior-service pass.
+The script owns the entry delay, directional C0B2 choice, two-frame timer,
+terminal hold, and cue request; C++ stores only the latest returned pose for
+rendering and forwards the cue to the audio host. This replaces the prior
+`FieldActorBehaviorState` C++ timer/animation implementation for this entry
+branch. Targeting, attack decisions, actual NPC weapon firing, movement,
+collision outcomes, and damage are not implemented by these profiles yet.
 
 The existing field entity catalog is not these actors: the importer currently
 decodes the live Joshua template at `0x7291A` (kind 3). `0x4658` updates the
@@ -161,7 +162,7 @@ sixteen entity records and calls `0x481E`; `0x481E` separately refreshes ten
 projection slots from `FF164C`. Its `0x5F78` geometry must not be substituted
 for the kind-5/kind-11 animation frames or treated as their full sprite art.
 
-## Native default-actor transition slice
+## Lua default-actor heartbeat slice
 
 The offline `shadowrun_graphics_extract --all-assets` step writes
 `field/entities/default-actors.tsv` by walking the profile-selected lists at
@@ -180,28 +181,21 @@ New Game's `0x075E` setup enters scene 2 and performs its warmup without the
 later `0x02900 -> 0x04388 -> 0x043B6` world-frame list-finalization path. The
 Qt bootstrap therefore keeps extracted scene-2 definitions inactive and draws
 no profile actors on the opening street. On an actual scene change,
-`FieldSceneRuntime` activates that destination's profile list. Normal field
-behavior-service ticks query Lua and advance the typed
-`FieldActorBehaviorState`; the compositor sorts active actors by effective Y
-depth with source order as the stable tie-break, draws the idle or transition
-image, then redraws the shared HUD. Scene-`0x14` QA checks all eight records,
-their five-guard/three-pedestrian Lua package assignments, the guard's
-Max-Power item association, heading overrides, transition starts/completions,
-both source cue requests, and clean whole-screen composition. It writes
-`actor-packages.tsv` plus animation checkpoints at entry and frames 8, 30,
-and 40. The screen changes by frame 30 and holds the final pose at frame 40;
-the first transition image can match the idle image and need not change pixels
-at frame 8.
+`FieldSceneRuntime` activates that destination's profile list and resets each
+Lua instance by stable scene/source-order ID. Each field behavior-service pass
+calls Lua once per active profile actor. The compositor sorts actors by
+effective Y depth with source order as the stable tie-break, draws the
+Lua-selected idle or transition frame, then redraws the shared HUD. The
+existing scene-`0x14` captures and QA artifacts were generated before this
+ownership change; they are historical evidence for the old native transition
+and must be regenerated before they can validate the Lua heartbeat.
 
-Release checks passed: `shadowrun_ghidra_conversion_qt_field_actor_runtime_qa`,
-`shadowrun_ghidra_conversion_qt_field_scene20_physical_entry_qa`,
-`shadowrun_ghidra_conversion_qt_field_action_qa`, and
-`shadowrun_ghidra_conversion_qt_field_player_action_qa`. All 43 full-screen
-scene-20 route captures were reviewed across four contact sheets. The actor
-sequence changes only the expected field sprites; no stale menu or dialogue
-controls remain, and the shared HUD stays intact. The route outputs include
-`actor-animation.tsv` and `scene20-frame-40.bmp`. This validates native
-transition behavior and clean composition, not Genesis visual equivalence.
+The dedicated C++ `FieldActorBehaviorState` and its test target have been
+removed. The broader AI source trace, exact call cadence, animation/render
+split, and open movement/collision branches are recorded in
+[`actor-ai-heartbeat-source-audit.md`](../actor-ai-heartbeat-source-audit.md).
+No new visual correctness claim is made from the old screenshots, and an
+independent Genesis match is still unavailable.
 
 ## Live-route reachability check
 

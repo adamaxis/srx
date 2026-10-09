@@ -304,14 +304,20 @@ rather than a second Lua copy.
   schedule still chooses their timing, row, and palette.
 - `gameplay/scripts/actor_ai.lua` resolves Lua AI packages from a stable
   source-template profile ID plus the ROM's item/spell/none action class and
-  code. The live field runtime passes those fields and a typed entry-state
-  snapshot as one named context table. In the traced lists,
+  code. Every active profile actor has a stable instance ID and receives one
+  Lua heartbeat on each field behavior-service pass. Lua owns its entry delay,
+  transition completion timer, direction, animation frame, and cadence; the
+  Qt renderer consumes the returned snapshot without advancing a second clock.
+  In the traced lists,
   `corp_guard_k05_item06` binds item 6, Max-Power (Heavy Pistol), and
   `pedestrian_k0b_none00` has no active item action. Each package selects its
-  initial animation and sound-event requests; native C++ performs timed
-  animation, audio playback, collision, and drawing. This policy is connected
-  only for the current scene-2 and scene-0x14 profiles. Later NPC routing,
-  target selection, combat choices, weapon fire, hits, and damage remain open.
+  initial animation and requests its source cue; the audio host executes the
+  request. This entry/idle branch is connected only for the current scene-2
+  and scene-0x14 profile definitions, with scene 2 still inactive during New
+  Game bootstrap. The script does not yet own general movement, target
+  selection, combat choices, weapon fire, hits, or damage. The ROM call order,
+  actor timers, target/movement hand-off, and current gaps are documented in
+  [the actor heartbeat source audit](actor-ai-heartbeat-source-audit.md).
 - `assets/dialogue/script-text.lua` is the ROM-derived shared text table for
   opening-story captions, Stoker dialogue, field object interactions, Ares
   mode-event paragraphs, Hotel menu/status text,

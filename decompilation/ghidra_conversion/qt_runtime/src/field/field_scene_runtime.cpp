@@ -1173,6 +1173,9 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
             DefaultFieldActorPresentation actor;
             actor.scene_reference = parse_word(fields[0]);
             actor.source_order = parse_word(fields[1]);
+            actor.actor_instance_id =
+                "field_scene_" + std::to_string(actor.scene_reference) +
+                "_actor_" + std::to_string(actor.source_order);
             actor.entity_kind = parse_word(fields[2]);
             actor.script_profile_id = fields[3];
             if (actor.script_profile_id.empty()) {
@@ -1258,8 +1261,24 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
     std::array<std::array<bool, 8>, 2> loaded_directions{};
     for (const auto& actor : field_default_actors_) {
         const auto kind_index = actor.entity_kind == 5U ? 0U : 1U;
-        const auto direction =
-            field_actor_direction_from_heading(actor.initial_heading);
+        const auto direction_decision = game_scripts_.actor_heartbeat(
+            scripting::ScriptActorBehaviorContext{
+                actor.script_profile_id,
+                actor.entity_kind,
+                actor.action_kind,
+                actor.initial_action_code,
+                0U,
+                false,
+                false,
+                actor.actor_instance_id,
+                actor.initial_heading,
+                true,
+            });
+        if (!direction_decision.has_value()) {
+            failure_ = game_scripts_.failure();
+            return false;
+        }
+        const auto direction = direction_decision->direction;
         if (loaded_directions[kind_index][direction]) {
             continue;
         }
@@ -1307,19 +1326,20 @@ void FieldSceneRuntime::initialize_default_field_actors(
             continue;
         }
         actor.active = true;
-        const auto initial_delay = static_cast<std::uint8_t>(
+        actor.initial_behavior_delay = static_cast<std::uint8_t>(
             advance_source_random_seed(field_random_seed_) & 0x000FU);
-        actor.behavior = make_field_actor_behavior_state(
-            actor.entity_kind, actor.initial_heading, initial_delay);
-        const auto decision = game_scripts_.actor_behavior_decision(
+        const auto decision = game_scripts_.actor_heartbeat(
             scripting::ScriptActorBehaviorContext{
                 actor.script_profile_id,
                 actor.entity_kind,
                 actor.action_kind,
                 actor.initial_action_code,
-                actor.behavior.behavior_timer,
+                actor.initial_behavior_delay,
                 false,
                 false,
+                actor.actor_instance_id,
+                actor.initial_heading,
+                true,
             });
         if (!decision.has_value()) {
             failure_ = game_scripts_.failure();
@@ -1329,6 +1349,11 @@ void FieldSceneRuntime::initialize_default_field_actors(
         }
         actor.ai_package_id = decision->package_id;
         actor.ai_weapon_item_id = decision->weapon_item_id;
+        actor.animation_direction = decision->direction;
+        actor.animation_id = decision->animation_id;
+        actor.animation_frame = decision->animation_frame;
+        actor.transition_started = decision->transition_started;
+        actor.transition_complete = decision->transition_complete;
     }
 }
 
@@ -1338,15 +1363,18 @@ void FieldSceneRuntime::advance_default_field_actors() {
         if (!actor.active || actor.scene_reference != current_scene) {
             continue;
         }
-        const auto decision = game_scripts_.actor_behavior_decision(
+        const auto decision = game_scripts_.actor_heartbeat(
             scripting::ScriptActorBehaviorContext{
                 actor.script_profile_id,
                 actor.entity_kind,
                 actor.action_kind,
                 actor.initial_action_code,
-                actor.behavior.behavior_timer,
-                actor.behavior.transition_started,
-                actor.behavior.transition_complete,
+                actor.initial_behavior_delay,
+                actor.transition_started,
+                actor.transition_complete,
+                actor.actor_instance_id,
+                actor.initial_heading,
+                false,
             });
         if (!decision.has_value()) {
             failure_ = game_scripts_.failure();
@@ -1356,13 +1384,14 @@ void FieldSceneRuntime::advance_default_field_actors() {
         }
         actor.ai_package_id = decision->package_id;
         actor.ai_weapon_item_id = decision->weapon_item_id;
-        const bool start_entry_animation = decision->action ==
-            scripting::ScriptActorBehaviorDecision::Action::
-                play_entry_animation;
-        const auto update = advance_field_actor_behavior(
-            actor.behavior, start_entry_animation, decision->audio_event);
-        if (update.audio_event.has_value() && source_audio_event_callback_) {
-            source_audio_event_callback_(*update.audio_event);
+        actor.animation_direction = decision->direction;
+        actor.animation_id = decision->animation_id;
+        actor.animation_frame = decision->animation_frame;
+        actor.transition_started = decision->transition_started;
+        actor.transition_complete = decision->transition_complete;
+        if (decision->audio_event.has_value() &&
+            source_audio_event_callback_) {
+            source_audio_event_callback_(*decision->audio_event);
         }
     }
 }
@@ -1376,17 +1405,16 @@ FieldSceneRuntime::default_actor_sprite_view(
     }
     const auto kind_index = actor.entity_kind == 5U ? 0U : 1U;
     const auto direction = static_cast<std::size_t>(
-        actor.behavior.direction & 0x07U);
+        actor.animation_direction & 0x07U);
     const auto& artwork = field_default_actor_artwork_[kind_index];
-    if (actor.behavior.animation_phase ==
-        FieldActorAnimationPhase::initial_idle) {
+    if (actor.animation_id == "idle") {
         return DefaultActorSpriteView{
             &artwork.idle_images[direction],
             artwork.idle_origin_x[direction],
             artwork.idle_origin_y[direction]};
     }
     const auto frame = static_cast<std::size_t>(
-        actor.behavior.animation_frame & 0x01U);
+        actor.animation_frame & 0x01U);
     return DefaultActorSpriteView{
         &artwork.entry_images[direction][frame],
         artwork.entry_origin_x[direction][frame],
@@ -9635,7 +9663,7 @@ FieldSceneRuntime::default_actor_transition_started_count_for_dump() const
         [scene_reference](const DefaultFieldActorPresentation& actor) {
             return actor.scene_reference == scene_reference &&
                    actor.active &&
-                   actor.behavior.transition_started;
+                   actor.transition_started;
         }));
 }
 
@@ -9648,7 +9676,7 @@ FieldSceneRuntime::default_actor_transition_complete_count_for_dump() const
         [scene_reference](const DefaultFieldActorPresentation& actor) {
             return actor.scene_reference == scene_reference &&
                    actor.active &&
-                   actor.behavior.transition_complete;
+                   actor.transition_complete;
         }));
 }
 
@@ -9666,7 +9694,7 @@ FieldSceneRuntime::default_actor_direction_for_dump(
         });
     return actor == field_default_actors_.end()
                ? std::nullopt
-               : std::optional<std::uint8_t>{actor->behavior.direction};
+               : std::optional<std::uint8_t>{actor->animation_direction};
 }
 
 std::optional<std::uint8_t>
@@ -9684,7 +9712,7 @@ FieldSceneRuntime::default_actor_animation_frame_for_dump(
     return actor == field_default_actors_.end()
                ? std::nullopt
                : std::optional<std::uint8_t>{
-                     actor->behavior.animation_frame};
+                     actor->animation_frame};
 }
 
 std::optional<std::string>

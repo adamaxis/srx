@@ -111,9 +111,9 @@ enum class ScriptActorActionKind : std::uint8_t {
     spell,
 };
 
-// A read-only snapshot of source-derived actor identity and current entry
-// state. Lua receives this as one named context table so packages can make
-// decisions from explicit native state without owning the entity record.
+// Source-derived identity and spawn facts passed to an actor's Lua heartbeat.
+// Lua owns per-instance behavior state; the host retains world facts and
+// consumes the returned presentation/action snapshot.
 struct ScriptActorBehaviorContext {
     std::string_view profile_id;
     std::uint16_t entity_kind = 0;
@@ -122,6 +122,9 @@ struct ScriptActorBehaviorContext {
     std::uint8_t entry_delay = 0;
     bool entry_started = false;
     bool entry_complete = false;
+    std::string_view instance_id;
+    std::uint16_t initial_heading = 0;
+    bool spawn = false;
 };
 
 struct ScriptActorBehaviorDecision {
@@ -132,7 +135,11 @@ struct ScriptActorBehaviorDecision {
 
     std::string package_id;
     Action action = Action::hold;
-    std::string animation_id = "none";
+    std::string animation_id = "idle";
+    std::uint8_t direction = 0;
+    std::uint8_t animation_frame = 0;
+    bool transition_started = false;
+    bool transition_complete = false;
     std::optional<std::uint16_t> audio_event;
     std::optional<std::uint8_t> weapon_item_id;
 };
@@ -194,6 +201,10 @@ public:
                               std::string_view text_profile = {},
                               std::string_view speaker_id = {});
     void set_field_mode_context(ScriptFieldModeContext context) noexcept;
+    std::optional<ScriptActorBehaviorDecision> actor_heartbeat(
+        const ScriptActorBehaviorContext& context);
+    // Kept for the existing script-runtime caller contract. New game-runtime
+    // code should use actor_heartbeat() to make the per-tick boundary clear.
     std::optional<ScriptActorBehaviorDecision> actor_behavior_decision(
         const ScriptActorBehaviorContext& context);
     std::optional<std::string> call_string(

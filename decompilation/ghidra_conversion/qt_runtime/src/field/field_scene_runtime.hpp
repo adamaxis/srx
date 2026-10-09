@@ -8,7 +8,6 @@
 #include "shadowrun_ghidra/entities/collision_state_conversion.hpp"
 #include "shadowrun_ghidra/entities/collision_probe_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_behavior_frame_service_conversion.hpp"
-#include "field_actor_runtime.hpp"
 #include "shadowrun_ghidra/field/field_camera_conversion.hpp"
 #include "shadowrun_ghidra/field/field_hud_conversion.hpp"
 #include "shadowrun_ghidra/field/field_viewport_conversion.hpp"
@@ -937,6 +936,7 @@ private:
         std::uint16_t scene_reference = 0;
         std::uint16_t source_order = 0;
         std::uint16_t entity_kind = 0;
+        std::string actor_instance_id;
         std::string script_profile_id;
         scripting::ScriptActorActionKind action_kind =
             scripting::ScriptActorActionKind::none;
@@ -948,9 +948,14 @@ private:
         std::uint32_t position_offset = 0;
         std::uint32_t list_offset = 0;
         std::string ordered_overrides;
+        std::uint8_t initial_behavior_delay = 0;
+        std::uint8_t animation_direction = 0;
+        std::string animation_id = "idle";
+        std::uint8_t animation_frame = 0;
+        bool transition_started = false;
+        bool transition_complete = false;
         std::string ai_package_id;
         std::optional<std::uint8_t> ai_weapon_item_id;
-        FieldActorBehaviorState behavior{};
     };
 
     struct DefaultActorArtwork {

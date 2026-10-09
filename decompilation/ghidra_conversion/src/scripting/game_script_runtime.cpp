@@ -1331,10 +1331,14 @@ void GameScriptRuntime::set_field_mode_context(
 }
 
 std::optional<ScriptActorBehaviorDecision>
-GameScriptRuntime::actor_behavior_decision(
+GameScriptRuntime::actor_heartbeat(
     const ScriptActorBehaviorContext& context) {
     auto* state = impl_->state;
-    if (state == nullptr || !valid_identifier(context.profile_id)) {
+    const auto actor_id = context.instance_id.empty()
+        ? context.profile_id
+        : context.instance_id;
+    if (state == nullptr || !valid_identifier(context.profile_id) ||
+        !valid_identifier(actor_id)) {
         impl_->failure = "gameplay Lua actor AI state is unavailable";
         return std::nullopt;
     }
@@ -1353,9 +1357,9 @@ GameScriptRuntime::actor_behavior_decision(
     if (!impl_->push_module("actor_ai")) {
         return fail("gameplay Lua actor AI module is missing");
     }
-    lua_getfield(state, -1, "behavior");
+    lua_getfield(state, -1, "heartbeat");
     if (!lua_isfunction(state, -1)) {
-        return fail("actor_ai.behavior must be a Lua function");
+        return fail("actor_ai.heartbeat must be a Lua function");
     }
     lua_remove(state, -2);
     std::string_view action_kind;
@@ -1372,7 +1376,9 @@ GameScriptRuntime::actor_behavior_decision(
     default:
         return fail("gameplay Lua actor action kind is invalid");
     }
-    lua_createtable(state, 0, 7);
+    lua_createtable(state, 0, 10);
+    lua_pushlstring(state, actor_id.data(), actor_id.size());
+    lua_setfield(state, -2, "actor_id");
     lua_pushlstring(state, context.profile_id.data(),
                     context.profile_id.size());
     lua_setfield(state, -2, "profile_id");
@@ -1388,21 +1394,28 @@ GameScriptRuntime::actor_behavior_decision(
     lua_setfield(state, -2, "entry_started");
     lua_pushboolean(state, context.entry_complete);
     lua_setfield(state, -2, "entry_complete");
+    lua_pushinteger(state, context.initial_heading);
+    lua_setfield(state, -2, "initial_heading");
+    lua_pushboolean(state, context.spawn);
+    lua_setfield(state, -2, "spawn");
     ScopedInstructionBudget instruction_budget(state);
     if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
-        return fail("actor_ai.behavior: " + stack_error(state));
+        return fail("actor_ai.heartbeat: " + stack_error(state));
     }
     if (!lua_istable(state, -1)) {
-        return fail("actor_ai.behavior must return an actor decision table");
+        return fail("actor_ai.heartbeat must return an actor snapshot table");
     }
 
     const auto decision_table = lua_absindex(state, -1);
     ScriptActorBehaviorDecision decision;
     std::string action;
     std::string returned_profile_id;
+    std::string returned_actor_id;
     std::string returned_action_kind;
     std::uint32_t returned_action_code = 0U;
-    if (!read_field_string(state, decision_table, "package_id",
+    if (!read_field_string(state, decision_table, "actor_id",
+                           returned_actor_id) ||
+        !read_field_string(state, decision_table, "package_id",
                            decision.package_id) ||
         !valid_identifier(decision.package_id) ||
         !read_field_string(state, decision_table, "profile_id",
@@ -1411,33 +1424,61 @@ GameScriptRuntime::actor_behavior_decision(
                            returned_action_kind) ||
         !read_field_integer(state, decision_table, "action_code", 0xFFU,
                             returned_action_code)) {
-        return fail("actor_ai.behavior returned an incomplete decision");
+        return fail("actor_ai.heartbeat returned an incomplete snapshot");
     }
-    if (returned_profile_id != context.profile_id ||
+    if (returned_actor_id != actor_id ||
+        returned_profile_id != context.profile_id ||
         returned_action_kind != action_kind ||
         returned_action_code != context.action_code) {
-        return fail("actor_ai.behavior decision changed source profile data");
+        return fail("actor_ai.heartbeat changed source actor identity");
     }
     if (!read_field_string(state, decision_table, "action", action) ||
         !read_field_string(state, decision_table, "animation",
-                           decision.animation_id)) {
-        return fail("actor_ai.behavior returned an incomplete decision");
+                           decision.animation_id) ||
+        !read_field_integer(state, decision_table, "direction", 7U,
+                            returned_action_code)) {
+        return fail("actor_ai.heartbeat returned an incomplete snapshot");
     }
-    if (action == "hold" && decision.animation_id == "none") {
+    decision.direction = static_cast<std::uint8_t>(returned_action_code);
+    if (!read_field_integer(state, decision_table, "frame", 1U,
+                            returned_action_code)) {
+        return fail("actor_ai.heartbeat returned an invalid animation frame");
+    }
+    decision.animation_frame = static_cast<std::uint8_t>(returned_action_code);
+    const auto read_boolean_field = [state, decision_table](
+                                        const char* field,
+                                        bool& value) {
+        lua_getfield(state, decision_table, field);
+        const bool valid = lua_isboolean(state, -1);
+        if (valid) {
+            value = lua_toboolean(state, -1) != 0;
+        }
+        lua_pop(state, 1);
+        return valid;
+    };
+    if (!read_boolean_field("transition_started",
+                            decision.transition_started) ||
+        !read_boolean_field("transition_complete",
+                            decision.transition_complete)) {
+        return fail("actor_ai.heartbeat returned invalid transition state");
+    }
+    if (action == "hold" &&
+        (decision.animation_id == "idle" ||
+         decision.animation_id == "entry")) {
         decision.action = ScriptActorBehaviorDecision::Action::hold;
     } else if (action == "play_entry" &&
                decision.animation_id == "entry") {
         decision.action =
             ScriptActorBehaviorDecision::Action::play_entry_animation;
     } else {
-        return fail("actor_ai.behavior returned an unsupported action");
+        return fail("actor_ai.heartbeat returned an unsupported action");
     }
 
     lua_getfield(state, decision_table, "audio_event");
     if (lua_type(state, -1) != LUA_TNIL) {
         std::uint32_t event = 0U;
         if (!read_integer(state, -1, 0xFFFFU, event)) {
-            return fail("actor_ai.behavior returned an invalid audio event");
+            return fail("actor_ai.heartbeat returned an invalid audio event");
         }
         decision.audio_event = static_cast<std::uint16_t>(event);
     }
@@ -1448,28 +1489,36 @@ GameScriptRuntime::actor_behavior_decision(
         if (!read_integer(state, -1, 50U, item_id) || item_id == 0U ||
             context.action_kind != ScriptActorActionKind::item ||
             item_id != context.action_code) {
-            return fail("actor_ai.behavior returned an invalid weapon item");
+            return fail("actor_ai.heartbeat returned an invalid weapon item");
         }
         decision.weapon_item_id = static_cast<std::uint8_t>(item_id);
     }
     lua_pop(state, 1);
     if (context.action_kind == ScriptActorActionKind::item &&
         !decision.weapon_item_id.has_value()) {
-        return fail("actor_ai.behavior omitted the source item action");
+        return fail("actor_ai.heartbeat omitted the source item action");
     }
     lua_pop(state, 1);
 
     const bool begins_entry = decision.action ==
         ScriptActorBehaviorDecision::Action::play_entry_animation;
-    if ((begins_entry &&
-         (context.entry_delay != 0U || context.entry_started ||
-          context.entry_complete ||
-          !decision.audio_event.has_value())) ||
-        (!begins_entry && decision.audio_event.has_value())) {
-        return fail("actor_ai.behavior action disagrees with native state");
+    if ((begins_entry != decision.audio_event.has_value()) ||
+        (decision.transition_complete && !decision.transition_started) ||
+        ((decision.animation_id == "entry") !=
+         decision.transition_started) ||
+        (decision.animation_id == "idle" &&
+         decision.animation_frame != 0U) ||
+        (begins_entry && !decision.transition_started)) {
+        return fail("actor_ai.heartbeat returned inconsistent actor state");
     }
     impl_->failure.clear();
     return decision;
+}
+
+std::optional<ScriptActorBehaviorDecision>
+GameScriptRuntime::actor_behavior_decision(
+    const ScriptActorBehaviorContext& context) {
+    return actor_heartbeat(context);
 }
 
 std::optional<std::string> GameScriptRuntime::call_string(

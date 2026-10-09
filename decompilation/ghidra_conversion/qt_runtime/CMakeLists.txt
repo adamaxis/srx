@@ -14,7 +14,6 @@ set(SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS
 # shadowrun_qt, GenesisBus, or the native asset decoder.
 add_executable(shadowrun_ghidra_conversion_qt
     src/app/ghidra_conversion_qt_main.cpp
-    src/field/field_actor_runtime.cpp
     src/field/field_scene_runtime.cpp
     src/field/elevator_selector_runtime.cpp
     src/menus/attributes_skills_menu_runtime.cpp
@@ -57,14 +56,6 @@ target_compile_definitions(shadowrun_gameplay_script_runtime_test PRIVATE
 add_test(NAME shadowrun_gameplay_script_runtime_qa
          COMMAND shadowrun_gameplay_script_runtime_test)
 
-add_executable(shadowrun_ghidra_conversion_qt_field_actor_runtime_test
-    tests/field/field_actor_runtime_test.cpp
-    src/field/field_actor_runtime.cpp)
-target_include_directories(
-    shadowrun_ghidra_conversion_qt_field_actor_runtime_test
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/field")
-add_test(NAME shadowrun_ghidra_conversion_qt_field_actor_runtime_qa
-         COMMAND shadowrun_ghidra_conversion_qt_field_actor_runtime_test)
 if(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     # Qt's bundled WinMain shim is built against a different MinGW runtime
     # than this MSYS2 UCRT64 build. Select the GUI subsystem directly while
