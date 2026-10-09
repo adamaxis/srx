@@ -40,7 +40,7 @@ bool expect(const bool condition) { return condition; }
 
 bool runner_text_catalog_is_complete(
     const scripting::GameScriptRuntime& scripts) {
-    constexpr std::array<std::pair<std::string_view, std::size_t>, 46>
+    constexpr std::array<std::pair<std::string_view, std::size_t>, 56>
         kRunnerText{{
             {"runner.ricky.information.opening", 3U},
             {"runner.ricky.information.continuation", 3U},
@@ -88,6 +88,16 @@ bool runner_text_catalog_is_complete(
             {"runner.trent.subject.mages.page_1", 1U},
             {"runner.trent.subject.contacts.page_0", 3U},
             {"runner.trent.subject.johnsons.page_0", 3U},
+            {"runner.ricky.name", 1U},
+            {"runner.winston_marrs.name", 1U},
+            {"runner.trent.name", 1U},
+            {"runner.petr_uvehr.name", 1U},
+            {"runner.walking_bear.name", 1U},
+            {"runner.phantom.name", 1U},
+            {"runner.two_fists.name", 1U},
+            {"runner.freya.name", 1U},
+            {"runner.rianna.name", 1U},
+            {"runner.stark.name", 1U},
         }};
 
     for (const auto& [key, expected_rows] : kRunnerText) {
@@ -102,6 +112,41 @@ bool runner_text_catalog_is_complete(
             std::cerr << "runner Lua text row count differs for " << key
                       << ": expected " << expected_rows << ", got "
                       << actual_rows << '\n';
+            return false;
+        }
+    }
+    constexpr std::array<std::pair<std::string_view, std::string_view>, 10>
+        kRunnerNames{{
+            {"runner.ricky.name", "Ricky"},
+            {"runner.winston_marrs.name", "Winston Marrs"},
+            {"runner.trent.name", "Trent"},
+            {"runner.petr_uvehr.name", "Petr Uvehr"},
+            {"runner.walking_bear.name", "Walking Bear"},
+            {"runner.phantom.name", "Phantom"},
+            {"runner.two_fists.name", "Two Fists"},
+            {"runner.freya.name", "Freya"},
+            {"runner.rianna.name", "Rianna"},
+            {"runner.stark.name", "Stark"},
+        }};
+    constexpr std::array<RecruitedRunnerConversationRunner, 10>
+        kRunnerOrder{{
+            RecruitedRunnerConversationRunner::ricky,
+            RecruitedRunnerConversationRunner::winston_marrs,
+            RecruitedRunnerConversationRunner::trent,
+            RecruitedRunnerConversationRunner::petr_uvehr,
+            RecruitedRunnerConversationRunner::walking_bear,
+            RecruitedRunnerConversationRunner::phantom,
+            RecruitedRunnerConversationRunner::two_fists,
+            RecruitedRunnerConversationRunner::freya,
+            RecruitedRunnerConversationRunner::rianna,
+            RecruitedRunnerConversationRunner::stark,
+        }};
+    for (std::size_t index = 0; index < kRunnerNames.size(); ++index) {
+        const auto [key, expected_name] = kRunnerNames[index];
+        const auto* actual_name = scripts.dialogue_text(key);
+        if (actual_name == nullptr || *actual_name != expected_name ||
+            dialogue_panel_runner_name_key(kRunnerOrder[index]) != key) {
+            std::cerr << "runner name key/value mismatch for " << key << '\n';
             return false;
         }
     }

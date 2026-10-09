@@ -790,6 +790,51 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         write_lua_string(text);
         output << ",\n";
     }
+    struct RunnerNameRecord {
+        std::string_view key;
+        std::string_view expected_name;
+        std::size_t source_offset;
+    };
+    // The recruited runner names are the +0x58 fields in template records
+    // 3..12 at 0x7291A. These are display names, so trim fixed-width padding
+    // while preserving the ROM spelling and capitalization.
+    constexpr std::array<RunnerNameRecord, 10> kRunnerNameRecords{{
+        {"runner.ricky.name", "Ricky", 0x72C72U},
+        {"runner.winston_marrs.name", "Winston Marrs", 0x72D72U},
+        {"runner.trent.name", "Trent", 0x72E72U},
+        {"runner.petr_uvehr.name", "Petr Uvehr", 0x72F72U},
+        {"runner.walking_bear.name", "Walking Bear", 0x73072U},
+        {"runner.phantom.name", "Phantom", 0x73172U},
+        {"runner.two_fists.name", "Two Fists", 0x73272U},
+        {"runner.freya.name", "Freya", 0x73372U},
+        {"runner.rianna.name", "Rianna", 0x73472U},
+        {"runner.stark.name", "Stark", 0x73572U},
+    }};
+    for (const auto& record : kRunnerNameRecords) {
+        auto segments = shadowrun::graphics::read_genesis_dialogue_segments(
+            rom, record.source_offset);
+        if (segments.size() != 1U) {
+            throw std::runtime_error(
+                "recruited-runner display name is not one ROM string: " +
+                std::string(record.key));
+        }
+        auto& name = segments.front();
+        const auto first = name.find_first_not_of(' ');
+        const auto last = name.find_last_not_of(' ');
+        name = first == std::string::npos
+                   ? std::string{}
+                   : name.substr(first, last - first + 1U);
+        if (name != record.expected_name) {
+            throw std::runtime_error(
+                "recruited-runner display name changed for " +
+                std::string(record.key));
+        }
+        output << "        [";
+        write_lua_string(record.key);
+        output << "] = ";
+        write_lua_string(name);
+        output << ",\n";
+    }
     const auto hotel_text =
         shadowrun::graphics::read_genesis_hotel_options_text(rom);
     const auto write_text_entry = [&output, &write_lua_string](

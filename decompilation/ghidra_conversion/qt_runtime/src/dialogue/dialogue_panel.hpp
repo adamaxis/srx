@@ -166,7 +166,7 @@ dialogue_panel_option_command(const DialoguePanelView& view,
 std::optional<DialoguePanelCommand> dialogue_panel_command(
     const DialoguePanelView& view, std::size_t option_index);
 
-std::string_view dialogue_panel_runner_name(
+std::string_view dialogue_panel_runner_name_key(
     RecruitedRunnerConversationRunner runner);
 
 // ROM 0x1F65A profile 0 is the Stoker's Coffin Motel portrait. The other

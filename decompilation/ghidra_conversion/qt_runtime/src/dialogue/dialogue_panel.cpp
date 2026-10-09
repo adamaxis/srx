@@ -256,29 +256,29 @@ void add_response_page(DialoguePanelView& view, const Response& response,
 
 } // namespace
 
-std::string_view dialogue_panel_runner_name(
+std::string_view dialogue_panel_runner_name_key(
     const RecruitedRunnerConversationRunner runner) {
     switch (runner) {
     case RecruitedRunnerConversationRunner::ricky:
-        return "Ricky";
+        return "runner.ricky.name";
     case RecruitedRunnerConversationRunner::winston_marrs:
-        return "Winston Marrs";
+        return "runner.winston_marrs.name";
     case RecruitedRunnerConversationRunner::trent:
-        return "Trent";
+        return "runner.trent.name";
     case RecruitedRunnerConversationRunner::petr_uvehr:
-        return "Petr Uvehr";
+        return "runner.petr_uvehr.name";
     case RecruitedRunnerConversationRunner::walking_bear:
-        return "Walking Bear";
+        return "runner.walking_bear.name";
     case RecruitedRunnerConversationRunner::phantom:
-        return "Phantom";
+        return "runner.phantom.name";
     case RecruitedRunnerConversationRunner::two_fists:
-        return "Two Fists";
+        return "runner.two_fists.name";
     case RecruitedRunnerConversationRunner::freya:
-        return "Freya";
+        return "runner.freya.name";
     case RecruitedRunnerConversationRunner::rianna:
-        return "Rianna";
+        return "runner.rianna.name";
     case RecruitedRunnerConversationRunner::stark:
-        return "Stark";
+        return "runner.stark.name";
     }
     return {};
 }
@@ -288,7 +288,13 @@ DialoguePanelView make_dialogue_panel_view(
     const DialogueTextResolver& resolve_text) {
     DialoguePanelView view{};
     view.actor = source_view.runner;
-    view.actor_name = dialogue_panel_runner_name(source_view.runner);
+    const auto actor_name_key =
+        dialogue_panel_runner_name_key(source_view.runner);
+    view.actor_name = resolve_text ? resolve_text(actor_name_key)
+                                   : std::string_view{};
+    if (view.actor_name.empty()) {
+        mark_missing_text(view, actor_name_key);
+    }
     view.page_index = source_view.page_index;
 
     switch (source_view.screen) {
