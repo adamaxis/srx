@@ -125,6 +125,10 @@ struct ScriptActorBehaviorContext {
     std::string_view instance_id;
     std::uint16_t initial_heading = 0;
     bool spawn = false;
+    bool movement_allowed = false;
+    std::uint8_t controller_nibble = 0;
+    std::array<std::uint16_t, 16> controller_heading_table{};
+    std::optional<std::uint16_t> movement_heading_override;
 };
 
 struct ScriptActorBehaviorDecision {
@@ -142,6 +146,7 @@ struct ScriptActorBehaviorDecision {
     bool transition_complete = false;
     std::optional<std::uint16_t> audio_event;
     std::optional<std::uint8_t> weapon_item_id;
+    std::optional<std::uint16_t> movement_heading;
 };
 
 struct ScriptNativeOperation {

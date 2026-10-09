@@ -33,24 +33,53 @@ int main() {
         return 1;
     }
 
-    const auto guard_wait = scripts.actor_behavior_decision(
-        {"corp_guard_k05_item06", 5U, ScriptActorActionKind::item, 6U,
-         1U, false, false});
-    const auto guard_entry = scripts.actor_behavior_decision(
-        {"corp_guard_k05_item06", 5U, ScriptActorActionKind::item, 6U,
-         0U, false, false});
-    const auto pedestrian_entry = scripts.actor_behavior_decision(
-        {"pedestrian_k0b_none00", 11U, ScriptActorActionKind::none, 0U,
-         0U, false, false});
-    const auto guard_hold = scripts.actor_behavior_decision(
-        {"corp_guard_k05_item06", 5U, ScriptActorActionKind::item, 6U,
-         0U, true, false});
-    const auto unsupported_guard_action = scripts.actor_behavior_decision(
-        {"corp_guard_k05_item06", 5U, ScriptActorActionKind::item, 5U,
-         0U, false, false});
-    const auto unsupported_profile = scripts.actor_behavior_decision(
-        {"corp_guard_k05_item06", 11U, ScriptActorActionKind::item, 6U,
-         0U, false, false});
+    const auto actor_context = [](
+                                   const std::string_view profile_id,
+                                   const std::string_view instance_id,
+                                   const std::uint16_t entity_kind,
+                                   const ScriptActorActionKind action_kind,
+                                   const std::uint8_t action_code,
+                                   const std::uint8_t entry_delay,
+                                   const bool spawn) {
+        ScriptActorBehaviorContext context{};
+        context.profile_id = profile_id;
+        context.entity_kind = entity_kind;
+        context.action_kind = action_kind;
+        context.action_code = action_code;
+        context.entry_delay = entry_delay;
+        context.instance_id = instance_id;
+        context.spawn = spawn;
+        return context;
+    };
+    auto guard_wait_context = actor_context(
+        "corp_guard_k05_item06", "guard_wait", 5U,
+        ScriptActorActionKind::item, 6U, 1U, true);
+    const auto guard_wait = scripts.actor_heartbeat(guard_wait_context);
+    guard_wait_context.spawn = false;
+    const auto guard_wait_tick = scripts.actor_heartbeat(guard_wait_context);
+
+    auto guard_entry_context = actor_context(
+        "corp_guard_k05_item06", "guard_entry", 5U,
+        ScriptActorActionKind::item, 6U, 0U, true);
+    const auto guard_entry_spawn =
+        scripts.actor_heartbeat(guard_entry_context);
+    guard_entry_context.spawn = false;
+    const auto guard_entry = scripts.actor_heartbeat(guard_entry_context);
+    const auto guard_hold = scripts.actor_heartbeat(guard_entry_context);
+
+    auto pedestrian_context = actor_context(
+        "pedestrian_k0b_none00", "pedestrian_entry", 11U,
+        ScriptActorActionKind::none, 0U, 0U, true);
+    const auto pedestrian_spawn = scripts.actor_heartbeat(pedestrian_context);
+    pedestrian_context.spawn = false;
+    const auto pedestrian_entry = scripts.actor_heartbeat(pedestrian_context);
+
+    const auto unsupported_guard_action = scripts.actor_heartbeat(actor_context(
+        "corp_guard_k05_item06", "unsupported_guard_action", 5U,
+        ScriptActorActionKind::item, 5U, 0U, true));
+    const auto unsupported_profile = scripts.actor_heartbeat(actor_context(
+        "corp_guard_k05_item06", "unsupported_profile", 11U,
+        ScriptActorActionKind::item, 6U, 0U, true));
     if (!expect(
             guard_wait.has_value() &&
                 guard_wait->package_id ==
@@ -58,6 +87,11 @@ int main() {
                 guard_wait->action ==
                     ScriptActorBehaviorDecision::Action::hold &&
                 !guard_wait->audio_event.has_value() &&
+                guard_wait_tick.has_value() &&
+                guard_wait_tick->action ==
+                    ScriptActorBehaviorDecision::Action::hold &&
+                guard_entry_spawn.has_value() &&
+                guard_entry_spawn->animation_id == "idle" &&
                 guard_entry.has_value() &&
                 guard_entry->action ==
                     ScriptActorBehaviorDecision::Action::
@@ -67,6 +101,8 @@ int main() {
                 guard_entry->animation_id == "entry" &&
                 guard_entry->audio_event == 0x002EU &&
                 guard_entry->weapon_item_id == 6U &&
+                pedestrian_spawn.has_value() &&
+                pedestrian_spawn->animation_id == "idle" &&
                 pedestrian_entry.has_value() &&
                 pedestrian_entry->package_id ==
                     "pedestrian.no_active_action" &&
@@ -82,6 +118,44 @@ int main() {
             "Lua actor packages did not resolve the ROM action/equipment state")) {
         std::cerr << scripts.failure() << '\n';
         return 15;
+    }
+
+    ScriptActorBehaviorContext player_movement{};
+    player_movement.profile_id = "field_runner_k03_none00";
+    player_movement.entity_kind = 3U;
+    player_movement.instance_id = "field_player_runner";
+    player_movement.initial_heading = 0U;
+    player_movement.spawn = true;
+    player_movement.movement_allowed = true;
+    player_movement.controller_nibble = 6U;
+    player_movement.controller_heading_table.fill(0xFFFFU);
+    player_movement.controller_heading_table[6] = 0x4000U;
+    const auto player_right = scripts.actor_heartbeat(player_movement);
+    player_movement.spawn = false;
+    player_movement.controller_nibble = 7U;
+    player_movement.controller_heading_table[7] = 0x6000U;
+    player_movement.movement_heading_override = 0x2000U;
+    const auto player_scripted_heading =
+        scripts.actor_heartbeat(player_movement);
+    player_movement.movement_heading_override.reset();
+    player_movement.controller_heading_table[7] = 0xFFFFU;
+    const auto player_invalid_heading =
+        scripts.actor_heartbeat(player_movement);
+    player_movement.movement_allowed = false;
+    const auto player_idle = scripts.actor_heartbeat(player_movement);
+    if (!expect(
+            player_right.has_value() &&
+                player_right->package_id == "runner.field_controlled" &&
+                player_right->movement_heading == 0x4000U &&
+                player_scripted_heading.has_value() &&
+                player_scripted_heading->movement_heading == 0x2000U &&
+                player_invalid_heading.has_value() &&
+                !player_invalid_heading->movement_heading.has_value() &&
+                player_idle.has_value() &&
+                !player_idle->movement_heading.has_value(),
+            "Lua player heartbeat did not resolve controller/script movement intent")) {
+        std::cerr << scripts.failure() << '\n';
+        return 16;
     }
 
     const auto field_interaction_text_keys =

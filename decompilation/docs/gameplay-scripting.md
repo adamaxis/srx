@@ -48,7 +48,7 @@ to real native systems:
 game.items.add(item_id, count)
 game.items.remove(item_id, count)
 
--- Future cutscene operations yield to the native actor/animation systems.
+-- Future cutscene operations update Lua actor state and await host services.
 game.actor.place("stoker", 164, 92)
 game.actor.move_to("stoker", 172, 92)
 game.actor.animate("stoker", "talk")
@@ -56,16 +56,17 @@ game.audio.play("motel.door_open")
 ```
 
 Movement and animation waits should suspend the Lua coroutine and resume it
-when the native system reports completion. Audio should be callable from the
-same sequential flow; whether it blocks or overlaps is a property of that
-operation. The game update loop remains the only clock, and Qt presents native
-state and forwards input.
+when the host reports collision or playback completion. Audio should be
+callable from the same sequential flow; whether it blocks or overlaps is a
+property of that operation. The game update loop remains the only clock, and
+Qt presents Lua-owned actor state and forwards input.
 
 The facade exposes named capabilities, not raw Qt widgets, renderers, actor
-objects, inventory containers, or save records. This keeps the boundary clear:
-Lua decides the sequence and story branch; native services validate and apply
-state changes, move and draw actors, play audio, and save the resulting game
-state. New operations can be added one at a time behind this interface.
+objects, inventory containers, or save records. Lua owns actor behavior,
+movement intent, animation state, and story sequencing. Native host services
+provide terrain queries and accepted-position commits, audio output, and
+rendering; they do not choose an actor's next behavior or animation. New
+operations can be added one at a time behind this interface.
 
 ## State and ownership
 
@@ -308,17 +309,23 @@ rather than a second Lua copy.
   Lua heartbeat on each field behavior-service pass. Per-actor mutable state is
   stored in the shared `game.actors[actor_id]` registry, so other gameplay
   scripts can inspect or coordinate actor state without copying it through
-  callback arguments. Lua owns its entry delay,
-  transition completion timer, direction, animation frame, and cadence; the
-  Qt renderer consumes the returned snapshot without advancing a second clock.
+  callback arguments. Lua owns entry delay, transition completion timer,
+  direction, animation frame, and cadence; the Qt renderer consumes the
+  returned snapshot without advancing a second clock. The player also receives
+  a heartbeat each field service pass: Lua maps the ROM's normalized D-pad
+  table to a movement heading or consumes a scripted heading override. The
+  host performs the collision-coupled step and reports its result on the next
+  service pass.
   In the traced lists,
   `corp_guard_k05_item06` binds item 6, Max-Power (Heavy Pistol), and
   `pedestrian_k0b_none00` has no active item action. Each package selects its
   initial animation and requests its source cue; the audio host executes the
   request. This entry/idle branch is connected only for the current scene-2
   and scene-0x14 profile definitions, with scene 2 still inactive during New
-  Game bootstrap. The script does not yet own general movement, target
-  selection, combat choices, weapon fire, hits, or damage. The ROM call order,
+  Game bootstrap. Player terrain probes, position commit, and movement
+  animation clock remain native host work; Lua now chooses movement intent.
+  The script does not yet own general NPC movement, target selection, combat
+  choices, weapon fire, hits, or damage. The ROM call order,
   actor timers, target/movement hand-off, and current gaps are documented in
   [the actor heartbeat source audit](actor-ai-heartbeat-source-audit.md).
 - `assets/dialogue/script-text.lua` is the ROM-derived shared text table for

@@ -20,6 +20,14 @@ local profiles = {
         action_code = 0,
         entry_audio_event = 0x2f,
     },
+    ["field_runner_k03_none00"] = {
+        package_id = "runner.field_controlled",
+        entity_kind = 3,
+        action_kind = "none",
+        action_code = 0,
+        controls_movement = true,
+        entry_animation = false,
+    },
 }
 
 local function direction_from_heading(heading)
@@ -86,7 +94,28 @@ local function snapshot(state, action, audio_event)
         transition_complete = state.transition_complete,
         audio_event = audio_event,
         weapon_item_id = state.weapon_item_id,
+        movement_heading = state.movement_heading,
     }
+end
+
+local function requested_movement_heading(context, profile)
+    if not profile.controls_movement or not context.movement_allowed then
+        return nil
+    end
+    if context.movement_heading_override ~= nil then
+        return context.movement_heading_override
+    end
+    if type(context.controller_nibble) ~= "number" or
+       context.controller_nibble < 0 or context.controller_nibble > 15 or
+       type(context.controller_heading_table) ~= "table" then
+        return nil
+    end
+    local heading = context.controller_heading_table[
+        context.controller_nibble + 1]
+    if type(heading) ~= "number" or heading < 0 or heading >= 0xffff then
+        return nil
+    end
+    return heading
 end
 
 function ActorAI.heartbeat(context)
@@ -105,6 +134,7 @@ function ActorAI.heartbeat(context)
     if context.spawn or state == nil then
         state = initial_state(context, profile)
         states[context.actor_id] = state
+        state.movement_heading = requested_movement_heading(context, profile)
         return snapshot(state, "hold", nil)
     end
     if not same_actor(state, context) then
@@ -114,6 +144,11 @@ function ActorAI.heartbeat(context)
     local action = "hold"
     local audio_event
     local just_started = false
+    state.movement_heading = requested_movement_heading(context, profile)
+
+    if profile.entry_animation == false then
+        return snapshot(state, action, nil)
+    end
 
     -- ROM 0x13904 services the actor's signed initial delay before B330.
     if not state.transition_started then

@@ -4030,6 +4030,7 @@ bool FieldSceneRuntime::bootstrap(
     }
     field_controller_nibble_ = 0U;
     field_controller_port_byte_ = 0U;
+    field_player_actor_script_initialized_ = false;
     field_random_seed_ = static_cast<std::uint16_t>(
         QRandomGenerator::global()->generate());
     field_opening_auto_walk_ = FieldOpeningAutoWalkState{};
@@ -4823,7 +4824,40 @@ std::int16_t FieldSceneRuntime::evaluate_field_collision(
 }
 
 void FieldSceneRuntime::advance_field_movement() {
-    if (!ready_ || !field_entity_.active) {
+    if (!field_entity_.active) {
+        return;
+    }
+
+    const bool movement_transition_paused =
+        field_opening_auto_walk_.active &&
+        field_movement_transition_state_.interaction_transition_pending;
+    const bool script_movement_allowed =
+        ready_ && !movement_transition_paused &&
+        (field_opening_auto_walk_.active || field_controller_nibble_ != 0U);
+    scripting::ScriptActorBehaviorContext actor_context{};
+    actor_context.profile_id = "field_runner_k03_none00";
+    actor_context.entity_kind = 3U;
+    actor_context.action_kind = scripting::ScriptActorActionKind::none;
+    actor_context.instance_id = "field_player_runner";
+    actor_context.initial_heading = field_movement_state_.heading;
+    actor_context.spawn = !field_player_actor_script_initialized_;
+    actor_context.movement_allowed = script_movement_allowed;
+    actor_context.controller_nibble = field_controller_nibble_;
+    actor_context.controller_heading_table =
+        field_controller_heading_table_;
+    if (field_opening_auto_walk_.active && !movement_transition_paused) {
+        actor_context.movement_heading_override =
+            field_opening_auto_walk_.target_heading;
+    }
+    const auto actor_decision = game_scripts_.actor_heartbeat(actor_context);
+    if (!actor_decision.has_value()) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.player.lua_heartbeat_failed");
+        return;
+    }
+    field_player_actor_script_initialized_ = true;
+
+    if (!ready_) {
         // The source keeps the walking pose only while a direction is held.
         // When the controller goes idle, the heading animation returns to
         // the directional idle list instead of looping the walk cycle while
@@ -4834,8 +4868,7 @@ void FieldSceneRuntime::advance_field_movement() {
         return;
     }
 
-    if (field_opening_auto_walk_.active &&
-        field_movement_transition_state_.interaction_transition_pending) {
+    if (movement_transition_paused) {
         // Keep the startup marker alive through the fade, as the ROM does,
         // while the projected doorway event owns the field transition.
         apply_field_entity_animation(false);
@@ -4849,25 +4882,11 @@ void FieldSceneRuntime::advance_field_movement() {
         return;
     }
 
-    const auto input = field_opening_auto_walk_.active
-                           ? FieldMovementInputResult{
-                                 true,
-                                 field_opening_auto_walk_.target_heading,
-                                 field_movement_direction_from_heading(
-                                     field_opening_auto_walk_.target_heading),
-                                 static_cast<std::uint16_t>(
-                                     field_movement_direction_from_heading(
-                                         field_opening_auto_walk_
-                                             .target_heading) *
-                                     2U)}
-                           : decode_field_movement_input(
-                                 field_controller_nibble_,
-                                 field_controller_heading_table_);
-    if (!input.valid) {
+    if (!actor_decision->movement_heading.has_value()) {
         return;
     }
 
-    field_target_heading_ = input.target_heading;
+    field_target_heading_ = *actor_decision->movement_heading;
     EntityCoordinateTarget heading{
         field_movement_state_.heading, field_target_heading_};
     approach_entity_fixed_point_target(heading);

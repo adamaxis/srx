@@ -1228,6 +1228,7 @@ private:
     std::uint8_t field_controller_port_byte_ = 0;
     std::uint16_t field_target_heading_ = 0;
     FieldOpeningAutoWalkState field_opening_auto_walk_{};
+    bool field_player_actor_script_initialized_ = false;
     // Typed source field corresponding to FF014C, consumed only by the
     // 0xC7F8 scene-runtime dispatcher.
     std::uint8_t field_action_counter_ = 0;

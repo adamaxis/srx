@@ -51,9 +51,12 @@ from the source PRNG low nibble (`0..15`; world activity mode `0x37` instead
 uses `0x28`). Thus `+0x10` is a service/active flag byte, not the actor kind.
 The initializer later applies ordered template overrides, so behavior should
 read the resulting record facts rather than derive flags from a package name.
-The current Lua profile slice receives kind/action identity, initial delay,
-and heading; it does not yet receive the remaining `+0x10`, `+0x11`,
-`+0x4C`, `+0x9E`, or route fields needed for the general branch tree.
+The NPC Lua profile slice receives kind/action identity, initial delay, and
+heading; it does not yet receive the remaining `+0x10`, `+0x11`, `+0x4C`,
+`+0x9E`, or route fields needed for the general branch tree. The player
+heartbeat receives the normalized controller nibble and source heading table
+so Lua can choose a movement intent. Terrain probes and position commit remain
+host services for this slice.
 The corresponding Lua-owned per-instance state lives at
 `game.actors[actor_id]`; it is shared script state rather than a transient
 heartbeat result or a C++ behavior-state object.
@@ -120,11 +123,13 @@ This is a narrow first port, not the Genesis AI system. The current extracted
 profile actors cover the 3 scene-2 definitions and 8 scene-`0x14` definitions;
 New Game's scene-2 list remains inactive under the observed ROM lifecycle.
 They are not yet the complete 16 live entity records. General target
-selection, movement and terrain collision, item/spell action selection,
-weapon firing, damage/death state, linked actors, world activities, and the
-player's movement/animation still have native boundaries or are not connected
-to this Lua heartbeat. Those branches must be traced and ported before claiming
-that every on-screen actor is Lua-driven.
+selection, general NPC movement, item/spell action selection, weapon firing,
+damage/death state, linked actors, and world activities remain outside the Lua
+heartbeat. The player now shares the per-service heartbeat and Lua selects
+controller/scripted movement intent, but collision-coupled motion and the
+player's animation clock remain native host work. Those branches must be
+ported before claiming that every on-screen actor's behavior and animation
+are Lua-driven.
 
 The entry sounds selected by `0xB330` are kind-table events `0x2E` and `0x2F`.
 The extracted audio table maps both to silent slots, so the Lua request has no

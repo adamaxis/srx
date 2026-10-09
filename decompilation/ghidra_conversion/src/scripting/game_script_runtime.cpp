@@ -1378,7 +1378,7 @@ GameScriptRuntime::actor_heartbeat(
     default:
         return fail("gameplay Lua actor action kind is invalid");
     }
-    lua_createtable(state, 0, 10);
+    lua_createtable(state, 0, 15);
     lua_pushlstring(state, actor_id.data(), actor_id.size());
     lua_setfield(state, -2, "actor_id");
     lua_pushlstring(state, context.profile_id.data(),
@@ -1400,6 +1400,23 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "initial_heading");
     lua_pushboolean(state, context.spawn);
     lua_setfield(state, -2, "spawn");
+    lua_pushboolean(state, context.movement_allowed);
+    lua_setfield(state, -2, "movement_allowed");
+    lua_pushinteger(state, context.controller_nibble);
+    lua_setfield(state, -2, "controller_nibble");
+    lua_createtable(state, 16, 0);
+    for (std::size_t index = 0;
+         index < context.controller_heading_table.size(); ++index) {
+        lua_pushinteger(state, context.controller_heading_table[index]);
+        lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
+    }
+    lua_setfield(state, -2, "controller_heading_table");
+    if (context.movement_heading_override.has_value()) {
+        lua_pushinteger(state, *context.movement_heading_override);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "movement_heading_override");
     ScopedInstructionBudget instruction_budget(state);
     if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
         return fail("actor_ai.heartbeat: " + stack_error(state));
@@ -1494,6 +1511,18 @@ GameScriptRuntime::actor_heartbeat(
             return fail("actor_ai.heartbeat returned an invalid weapon item");
         }
         decision.weapon_item_id = static_cast<std::uint8_t>(item_id);
+    }
+    lua_pop(state, 1);
+    lua_getfield(state, decision_table, "movement_heading");
+    if (lua_type(state, -1) != LUA_TNIL) {
+        std::uint32_t heading = 0U;
+        if (!read_integer(state, -1, 0xFFFEU, heading) ||
+            context.profile_id != "field_runner_k03_none00" ||
+            !context.movement_allowed) {
+            return fail(
+                "actor_ai.heartbeat returned an invalid movement intent");
+        }
+        decision.movement_heading = static_cast<std::uint16_t>(heading);
     }
     lua_pop(state, 1);
     if (context.action_kind == ScriptActorActionKind::item &&
