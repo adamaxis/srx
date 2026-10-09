@@ -79,130 +79,49 @@ struct RecruitedRunnerInformationRecord {
     RecruitedRunnerInformationTextStream continuation_text;
 };
 
-// The pointers below are the source stream starts read from the ten
-// descriptors at 0xFE848..0xFF8F0. Each 0x80 marker in the ROM separates one
-// text segment, so dropping everything after the first printable run would
-// silently omit dialogue that the game actually renders.
+// The source descriptors at 0xFE848..0xFF8F0 still choose these streams and
+// segment counts. ROM text is imported into dialogue/script-text.lua so the
+// native state conversion carries keys rather than narrative copy.
 constexpr RecruitedRunnerInformationTextStream kRickyInformationOpening{
-    {{"I've lived in Glow City all my life.",
-      "I was slummin' in the sewers, but it got me nowhere, because I had no purpose.",
-      "And because everyone was larger than me.",
-      {}}},
-    3U};
+    "runner.ricky.information.opening", 3U};
 constexpr RecruitedRunnerInformationTextStream kRickyInformationContinuation{
-    {{"Then I heard my totem calling.  I have embraced that power, the power of Rat!",
-      "Rat has shown that force is not the only way to success.",
-      "When I find some companions to work with, I'll be able to use my talents to finally get outta this dump!",
-      {}}},
-    3U};
+    "runner.ricky.information.continuation", 3U};
 constexpr RecruitedRunnerInformationTextStream kWinstonInformationOpening{
-    {{"The name's Marrs.  Did you know he was the god of war?  I see things different than most.",
-      "The fastest way to solve a problem is to shove a gun in it and shoot!",
-      "Problem is, I can't do this all the time.  I run out of bullets too fast.",
-      {}}},
-    3U};
+    "runner.winston_marrs.information.opening", 3U};
 constexpr RecruitedRunnerInformationTextStream kWinstonInformationContinuation{
-    {{"So, I started to think.  How can I get paid to shoot at people?",
-      "Then it hit me... join Lone Star!  They can shoot at anyone they like and get free reloads!",
-      "So I studied real hard, but you know what?  I was thrown out, so now I'm here looking for work.",
-      {}}},
-    3U};
+    "runner.winston_marrs.information.continuation", 3U};
 constexpr RecruitedRunnerInformationTextStream kTrentInformationOpening{
-    {{"My name is Trent.",
-      "I've been studying the mystical arts, the powers of magic.",
-      "I was studying at the university, but I quickly tired of the parlor tricks they taught there.",
-      "I aspired to learn so much more."}},
-    4U};
+    "runner.trent.information.opening", 4U};
 constexpr RecruitedRunnerInformationTextStream kTrentInformationContinuation{
-    {{"I've decided to add to my experiences by working for those who'll pay for me to have them.",
-      {},
-      {},
-      {}}},
-    1U};
+    "runner.trent.information.continuation", 1U};
 constexpr RecruitedRunnerInformationTextStream kPetrInformationOpening{
-    {{"I came up here to drown my sorrows.  But I guess you want to talk.",
-      "I'm called Petr.  I worked in the tech division of the Stuffer Shack where I learned my way around a cyberdeck.",
-      {},
-      {}}},
-    2U};
+    "runner.petr_uvehr.information.opening", 2U};
 constexpr RecruitedRunnerInformationTextStream kPetrInformationContinuation{
-    {{"I was jealous of those cyber-cowboys, with their guns and chrome.",
-      "The Matrix got them all they wanted, so I stole me a deck, plugged in, and I've never looked back!",
-      {},
-      {}}},
-    2U};
+    "runner.petr_uvehr.information.continuation", 2U};
 constexpr RecruitedRunnerInformationTextStream kWalkingBearInformationOpening{
-    {{"I am Walking Bear.  I was born in the city and was happy until I changed into the form you see now.",
-      "Then no one would talk to me and many made fun of me.",
-      "I ran into the wilderness and never wanted to return.",
-      {}}},
-    3U};
+    "runner.walking_bear.information.opening", 3U};
 constexpr RecruitedRunnerInformationTextStream kWalkingBearInformationContinuation{
-    {{"There I met some AmerIndian tribes.  They were nice and taught me the way of the shaman.",
-      "Bear reached out to me because he knew I needed his calm words, and he knew I could take care of my AmerIndian brothers.",
-      {},
-      {}}},
-    2U};
+    "runner.walking_bear.information.continuation", 2U};
 constexpr RecruitedRunnerInformationTextStream kPhantomInformationOpening{
-    {{"I've been shooting the Matrix for a bit.",
-      "My handle is Phantom.",
-      "Heard of me?",
-      {}}},
-    3U};
+    "runner.phantom.information.opening", 3U};
 constexpr RecruitedRunnerInformationTextStream kPhantomInformationContinuation{
-    {{"I've been making a name for myself in the Matrix.",
-      "I worked for a company who trained me in cyberspace.",
-      "Then one of those anti-metahuman groups showed up, screaming about purity and them losing jobs and garbage like that.",
-      {}}},
-    3U};
+    "runner.phantom.information.continuation", 3U};
 constexpr RecruitedRunnerInformationTextStream kTwoFistsInformationOpening{
-    {{"I went to the Barrens to find some action. At the time I thought my life needed some adventure.",
-      "Anyway, I get involved with these joyboys who tell me they know how to get their hands on some serious nuyen.",
-      {},
-      {}}},
-    2U};
+    "runner.two_fists.information.opening", 2U};
 constexpr RecruitedRunnerInformationTextStream kTwoFistsInformationContinuation{
-    {{"So I hook up with them on this run against Ares, and what do you know?  My buddies set off the alarm while I was checking ahead. Before I knew what hit me, Corp Strike Teams were swarming all over and I end up in Hollywood Pen.",
-      {},
-      {},
-      {}}},
-    1U};
+    "runner.two_fists.information.continuation", 1U};
 constexpr RecruitedRunnerInformationTextStream kFreyaInformationOpening{
-    {{"I hear you're the new golden child.  Number one with a bullet, and all that jazz.  So, I guess I can trust you.  I'm Freya.",
-      "When I was young, I discovered I had latent magical skills.",
-      {},
-      {}}},
-    2U};
+    "runner.freya.information.opening", 2U};
 constexpr RecruitedRunnerInformationTextStream kFreyaInformationContinuation{
-    {{"My tribe, the Cascade Crow, viewed hermetic mages as blasphemous, so I ran away and fell in with a radical political group.",
-      "They trained me to become an assassin, using magic as my weapon, with Corporate officials as my targets.",
-      "I did my job, no sweat.",
-      {}}},
-    3U};
+    "runner.freya.information.continuation", 3U};
 constexpr RecruitedRunnerInformationTextStream kRiannaInformationOpening{
-    {{"Heartbane was an ancient elven leader.",
-      "She prophesied the Matrix, \"a place where everything and nothing exists.",
-      "A place where wars are fought and blood is shed without weapons\".",
-      "She knew it was going to be big!"}},
-    4U};
+    "runner.rianna.information.opening", 4U};
 constexpr RecruitedRunnerInformationTextStream kRiannaInformationContinuation{
-    {{"So I use Heartbane as my street name, coupled with my true name, Rianna.",
-      "I've been running the Corps since the inception of the Matrix.",
-      "I've seen just about every type of IC and flatlined my share of decker cowboys.",
-      {}}},
-    3U};
+    "runner.rianna.information.continuation", 3U};
 constexpr RecruitedRunnerInformationTextStream kStarkInformationOpening{
-    {{"I was raised in the AmerIndian lands, and I have spent many years as a tribal warrior. I love my AmerIndian heritage, and will allow nothing to mar it.",
-      {},
-      {},
-      {}}},
-    1U};
+    "runner.stark.information.opening", 1U};
 constexpr RecruitedRunnerInformationTextStream kStarkInformationContinuation{
-    {{"When I heard strangers were entering our land for some unknown purpose, I went to the city to dig up some clues. It was there I met your brother. We became fast friends, and in the end, he was a blood brother.",
-      {},
-      {},
-      {}}},
-    1U};
+    "runner.stark.information.continuation", 1U};
 
 constexpr std::array<RecruitedRunnerInformationRecord,
                      kInformationRunnerCount>
@@ -259,107 +178,51 @@ constexpr std::array<RecruitedRunnerInformationRecord,
          kStarkInformationContinuation},
     }};
 
-constexpr std::string_view kMoreOptionText = "< MORE >";
+constexpr std::string_view kMoreOptionText = "stoker.motel.arrival.more";
 
 // Ricky's subject descriptors at 0xFE894..0xFE908 each point at a complete
 // encoded text stream. The source descriptors are the page boundaries; the
 // segment arrays below preserve the text inside each page as well.
 constexpr RecruitedRunnerInformationTextStream
     kRickyShamanMagicPageOne{
-        {{"Shaman get their powers from nature.",
-          "We use her forces to achieve our ends.",
-          "This is superior to mages, who force the spirits to do their bidding.",
-          {}}},
-        3U};
+        "runner.ricky.subject.shaman_magic.page_0", 3U};
 constexpr RecruitedRunnerInformationTextStream
     kRickyShamanMagicPageTwo{
-        {{"<He shows you his Rat totem, a dingy block of wood.>",
-          "Each shaman has a totem that seeks him out.",
-          "This totem represents an animal from nature.",
-          "Rat chose me to follow his ways."}},
-        4U};
+        "runner.ricky.subject.shaman_magic.page_1", 4U};
 constexpr RecruitedRunnerInformationTextStream
     kRickyShamanMagicPageThree{
-        {{"Rat wants me to protect myself by looking for opportunities.",
-          "To use guile and misdirection in lieu of combat.",
-          "Rat bestows benefits by means of this totem.",
-          {}}},
-        3U};
+        "runner.ricky.subject.shaman_magic.page_2", 3U};
 constexpr RecruitedRunnerInformationTextStream
     kRickyLocalAreaPageOne{
-        {{"The Rat's Nest is a haven for squatters and other transients.",
-          "It used to be the city dump until the city died.",
-          "Even I, a follower of Rat, will not hole up there.",
-          {}}},
-        3U};
+        "runner.ricky.subject.local_area.page_0", 3U};
 constexpr RecruitedRunnerInformationTextStream
     kRickyLocalAreaPageTwo{
-        {{"Glow City sprung up when they ran out of room in the Rat's Nest.",
-          "Sure, there's some minor radiation leakage from the nuke plant, but it's no big deal.",
-          {},
-          {}}},
-        2U};
+        "runner.ricky.subject.local_area.page_1", 2U};
 constexpr RecruitedRunnerInformationTextStream
     kRickyJohnsonGundersonPage{
-        {{"Yeah, sure.  Gunderson's a Johnson I've used when I needed some quick nuyen.",
-          "Works next door at the Jump House, he does.",
-          "His payout is as bad as his smell, but his runs are a piece of cake so long as you have some firepower handy when things go sour.",
-          {}}},
-        3U};
+        "runner.ricky.subject.johnson_gunderson.page_0", 3U};
 
 constexpr RecruitedRunnerInformationTextStream
     kWinstonHalloweenersPage{
-        {{"The Halloweeners's own Redmond.  They're the sort of low-end trash I used to hang with before I got more educated.",
-          "They beat on unsuspecting targets, but flee when things get too hairy.",
-          "Still, they're a lot tougher than the Eye-fivers.",
-          {}}},
-        3U};
+        "runner.winston_marrs.subject.halloweeners.page_0", 3U};
 constexpr RecruitedRunnerInformationTextStream
     kWinstonLoneStarPage{
-        {{"Lone Stars!  I hate them!",
-          "They think they are so wiz, walking the streets in their regulation body armor and shooting at anyone they want!",
-          "I hate them!",
-          "Don't bring up that subject again!"}},
-        4U};
+        "runner.winston_marrs.subject.lone_star.page_0", 4U};
 constexpr RecruitedRunnerInformationTextStream
     kWinstonTrollOriginPageOne{
-        {{"<He looks like he's going to lose his temper, but stays calm.>",
-          "I didn't ask to be like this, you know.  I was normal, like you, when I was younger.",
-          {},
-          {}}},
-        2U};
+        "runner.winston_marrs.subject.troll_origin.page_0", 2U};
 constexpr RecruitedRunnerInformationTextStream
     kWinstonTrollOriginPageTwo{
-        {{"But now I'm seven feet, four inches of troll.",
-          "Do you know how hard it is to buy clothes that fit?!",
-          "Arrgh, it's enough to make me want to shoot someone!",
-          "<His grip tightens on his pistol.>"}},
-        4U};
+        "runner.winston_marrs.subject.troll_origin.page_1", 4U};
 
 constexpr RecruitedRunnerInformationTextStream kTrentMagesPageOne{
-    {{"Mages use arcane magic.  Shaman require a totem, and are forced to adhere to the laws of nature.",
-      "Mages have no such limitations.  We use our intellect to call upon the astral plane, and bend it to our will.",
-      {},
-      {}}},
-    2U};
+    "runner.trent.subject.mages.page_0", 2U};
 constexpr RecruitedRunnerInformationTextStream kTrentMagesPageTwo{
-    {{"When I get some more experience, you'll see some serious casting come from my fingers, man!",
-      {},
-      {},
-      {}}},
-    1U};
+    "runner.trent.subject.mages.page_1", 1U};
 constexpr RecruitedRunnerInformationTextStream kTrentJeffersonContactPage{
-    {{"I've got the number of an old professor of mine, Jefferson is his name.",
-      "Most folk'll only sell names to you, but the prof's always willing to talk with new people without the influence of money.",
-      "<He places the name in your Pocket Secretary.>",
-      {}}},
-    3U};
+    "runner.trent.subject.contacts.page_0", 3U};
 constexpr RecruitedRunnerInformationTextStream kTrentJohnsonPage{
-    {{"Yeah, I know of a local Johnson.",
-      "Goes by the name of Vigore.",
-      "I occasionally see him over in the Rat's Nest, but he does his work out of the Wanderer in Puyallup Barrens.",
-      {}}},
-    3U};
+    "runner.trent.subject.johnsons.page_0", 3U};
 
 constexpr std::uint32_t kTrentJeffersonContactStoryFlag =
     std::uint32_t{1U} << 12U;
@@ -554,10 +417,10 @@ select_recruited_runner_information_prompt(
 }
 
 RickyInformationSubjectPrompt ricky_information_subject_prompt() {
-    return {"Like what?",
-            {"Tell me about shaman magic.",
-             "Tell me about the local area.",
-             "Do you know of any Johnsons in the area?"}};
+    return {"runner.ricky.subject.title",
+            {"runner.ricky.subject.option.shaman_magic",
+             "runner.ricky.subject.option.local_area",
+             "runner.ricky.subject.option.johnson"}};
 }
 
 RickyInformationResponse select_ricky_information_response(
@@ -591,10 +454,10 @@ RickyInformationResponse select_ricky_information_response(
 }
 
 WinstonInformationSubjectPrompt winston_information_subject_prompt() {
-    return {"What do you want?",
-            {"Tell me about the Halloweeners.",
-             "What do you know about Lone Star?",
-             "How is it that you are a troll?"}};
+    return {"runner.winston_marrs.subject.title",
+            {"runner.winston_marrs.subject.option.halloweeners",
+             "runner.winston_marrs.subject.option.lone_star",
+             "runner.winston_marrs.subject.option.troll_origin"}};
 }
 
 WinstonInformationResponse select_winston_information_response(
@@ -627,10 +490,10 @@ WinstonInformationResponse select_winston_information_response(
 }
 
 TrentInformationSubjectPrompt trent_information_subject_prompt() {
-    return {"Yes, like what?",
-            {"I'd like to hear about mages.",
-             "I'm looking for some contacts.",
-             "Do you know of any Johnsons in the area?"}};
+    return {"runner.trent.subject.title",
+            {"runner.trent.subject.option.mages",
+             "runner.trent.subject.option.contacts",
+             "runner.trent.subject.option.johnsons"}};
 }
 
 TrentInformationResponse select_trent_information_response(

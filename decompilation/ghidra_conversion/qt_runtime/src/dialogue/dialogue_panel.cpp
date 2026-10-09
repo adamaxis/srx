@@ -85,15 +85,6 @@ DialoguePanelCommand map_stoker_command(
     return DialoguePanelCommand::stoker_source_boundary;
 }
 
-void copy_text_stream(DialoguePanelView& view,
-                      const RecruitedRunnerInformationTextStream& stream) {
-    const auto count = std::min(stream.segment_count,
-                                view.text_segments.size());
-    std::copy_n(stream.segments.begin(), count,
-                view.text_segments.begin());
-    view.text_segment_count = count;
-}
-
 void add_option(DialoguePanelView& view, const DialoguePanelOptionRole role,
                 const std::string_view source_label,
                 const DialoguePanelCommand command) {
@@ -108,6 +99,18 @@ void mark_missing_text(DialoguePanelView& view, const std::string_view alias) {
     view.source_boundary_reason = alias.empty()
                                      ? "dialogue text alias is empty"
                                      : "dialogue text alias is missing";
+}
+
+std::string_view resolve_continuation_label(
+    const DialogueTextResolver& resolve_text, const std::string_view alias) {
+    auto label = resolve_text ? resolve_text(alias) : std::string_view{};
+    // The ROM stores the centered continuation caption after a leading 0x80
+    // line delimiter. That delimiter remains in the shared Lua stream for
+    // paragraph-aware dialogue, but is not part of the label itself.
+    while (!label.empty() && label.front() == '|') {
+        label.remove_prefix(1U);
+    }
+    return label;
 }
 
 struct ScriptSpeakerProperties {
@@ -172,6 +175,20 @@ void copy_text_alias_stream(DialoguePanelView& view,
     }
 }
 
+void copy_text_stream(DialoguePanelView& view,
+                      const RecruitedRunnerInformationTextStream& stream,
+                      const DialogueTextResolver& resolve_text) {
+    const auto initial_segment_count = view.text_segment_count;
+    copy_text_alias_stream(view, stream.text_key, resolve_text);
+    if (view.source_complete &&
+        view.text_segment_count - initial_segment_count !=
+            stream.segment_count) {
+        view.source_complete = false;
+        view.source_boundary_reason =
+            "Lua runner dialogue segment count does not match the source descriptor";
+    }
+}
+
 void add_common_options(DialoguePanelView& view) {
     // The role is source-derived; visible labels remain blank until the
     // common prompt's text records are traced. This prevents an invented
@@ -186,9 +203,14 @@ void add_common_options(DialoguePanelView& view) {
 
 template <typename SubjectPrompt>
 void add_subject_options(DialoguePanelView& view,
-                         const SubjectPrompt& subject_prompt) {
-    view.text_segments[0] = subject_prompt.title_text;
-    view.text_segment_count = 1U;
+                         const SubjectPrompt& subject_prompt,
+                         const DialogueTextResolver& resolve_text) {
+    copy_text_alias_stream(view, subject_prompt.title_key, resolve_text);
+    if (view.text_segment_count != 1U) {
+        view.source_complete = false;
+        view.source_boundary_reason =
+            "runner subject menu must resolve to one title segment";
+    }
     constexpr std::array<DialoguePanelOptionRole, 3> kRoles{
         DialoguePanelOptionRole::information_subject,
         DialoguePanelOptionRole::information_subject,
@@ -197,27 +219,38 @@ void add_subject_options(DialoguePanelView& view,
         DialoguePanelCommand::runner_select_first_subject,
         DialoguePanelCommand::runner_select_second_subject,
         DialoguePanelCommand::runner_select_third_subject};
-    for (std::size_t index = 0; index < subject_prompt.options.size();
+    for (std::size_t index = 0; index < subject_prompt.option_keys.size();
          ++index) {
-        add_option(view, kRoles[index], subject_prompt.options[index],
+        const auto label = resolve_text
+                               ? resolve_text(subject_prompt.option_keys[index])
+                               : std::string_view{};
+        if (label.empty()) {
+            mark_missing_text(view, subject_prompt.option_keys[index]);
+        }
+        add_option(view, kRoles[index], label,
                    kCommands[index]);
     }
 }
 
 template <typename Response>
-void add_response_page(DialoguePanelView& view, const Response& response) {
+void add_response_page(DialoguePanelView& view, const Response& response,
+                       const DialogueTextResolver& resolve_text) {
     if (view.page_index >= response.page_count) {
         view.source_complete = false;
         view.source_boundary_reason =
             "converted dialogue page cursor exceeded its source page count";
         return;
     }
-    copy_text_stream(view, response.pages[view.page_index]);
+    copy_text_stream(view, response.pages[view.page_index], resolve_text);
     view.has_more = response.more_after_page[view.page_index];
     view.returns_to_conversation = !view.has_more &&
                                    response.returns_to_common_conversation;
     if (view.has_more) {
-        view.continuation_label = "< MORE >";
+        view.continuation_label = resolve_continuation_label(
+            resolve_text, "stoker.motel.arrival.more");
+        if (view.continuation_label.empty()) {
+            mark_missing_text(view, "stoker.motel.arrival.more");
+        }
     }
 }
 
@@ -251,7 +284,8 @@ std::string_view dialogue_panel_runner_name(
 }
 
 DialoguePanelView make_dialogue_panel_view(
-    const RecruitedRunnerConversationView& source_view) {
+    const RecruitedRunnerConversationView& source_view,
+    const DialogueTextResolver& resolve_text) {
     DialoguePanelView view{};
     view.actor = source_view.runner;
     view.actor_name = dialogue_panel_runner_name(source_view.runner);
@@ -268,10 +302,12 @@ DialoguePanelView make_dialogue_panel_view(
         view.open = true;
         view.kind = DialoguePanelKind::information_page;
         if (source_view.page_index == 0U) {
-            copy_text_stream(view, source_view.information_prompt.opening_text);
+            copy_text_stream(view, source_view.information_prompt.opening_text,
+                             resolve_text);
         } else if (source_view.page_index == 1U) {
             copy_text_stream(view,
-                            source_view.information_prompt.continuation_text);
+                             source_view.information_prompt.continuation_text,
+                             resolve_text);
         } else {
             view.source_complete = false;
             view.source_boundary_reason =
@@ -281,8 +317,12 @@ DialoguePanelView make_dialogue_panel_view(
         view.has_more = source_view.page_index == 0U;
         view.returns_to_conversation = source_view.page_index == 1U;
         if (view.has_more) {
-            view.continuation_label =
-                source_view.information_prompt.more_option_text;
+            view.continuation_label = resolve_continuation_label(
+                resolve_text, source_view.information_prompt.more_option_text);
+            if (view.continuation_label.empty()) {
+                mark_missing_text(
+                    view, source_view.information_prompt.more_option_text);
+            }
         }
         return view;
 
@@ -292,10 +332,10 @@ DialoguePanelView make_dialogue_panel_view(
         view.open = true;
         view.kind = DialoguePanelKind::subject_choices;
         std::visit(
-            [&view](const auto& subject_prompt) {
+            [&view, &resolve_text](const auto& subject_prompt) {
                 using Prompt = std::decay_t<decltype(subject_prompt)>;
                 if constexpr (!std::is_same_v<Prompt, std::monostate>) {
-                    add_subject_options(view, subject_prompt);
+                    add_subject_options(view, subject_prompt, resolve_text);
                 }
             },
             source_view.subject_prompt);
@@ -305,10 +345,10 @@ DialoguePanelView make_dialogue_panel_view(
         view.open = true;
         view.kind = DialoguePanelKind::information_response_page;
         std::visit(
-            [&view](const auto& response) {
+            [&view, &resolve_text](const auto& response) {
                 using Response = std::decay_t<decltype(response)>;
                 if constexpr (!std::is_same_v<Response, std::monostate>) {
-                    add_response_page(view, response);
+                    add_response_page(view, response, resolve_text);
                 }
             },
             source_view.information_response);
@@ -431,10 +471,7 @@ std::optional<DialoguePanelView> make_script_dialogue_panel_view(
     copy_text_alias_stream(view, title_key, resolve_text);
 
     const auto more_key = key_prefix + ".more";
-    auto more = resolve_text ? resolve_text(more_key) : std::string_view{};
-    while (!more.empty() && more.front() == '|') {
-        more.remove_prefix(1U);
-    }
+    const auto more = resolve_continuation_label(resolve_text, more_key);
     if (!more.empty()) {
         view.has_more = true;
         view.continuation_label = more;

@@ -698,6 +698,98 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         write_lua_string(text);
         output << ",\n";
     }
+    // Recruited-runner biographies and the converted Ricky/Winston/Trent
+    // topic trees are imported from their ROM stream starts. The source
+    // descriptors at 0xFE848..0xFF8F0, 0xFE894..0xFE908,
+    // 0xFEA8C..0xFEAF4, and 0xFEC78..0xFECE0 choose these records. Keep
+    // every 0x80-delimited segment in the generated Lua value.
+    struct RunnerDialogueRecord {
+        std::string_view key;
+        std::size_t source_offset;
+        std::size_t expected_segments;
+    };
+    constexpr std::array<RunnerDialogueRecord, 46> kRunnerDialogueRecords{{
+        {"runner.ricky.information.opening", 0x0FFCF4U, 3U},
+        {"runner.ricky.information.continuation", 0x0FFD93U, 3U},
+        {"runner.winston_marrs.information.opening", 0x1004A0U, 3U},
+        {"runner.winston_marrs.information.continuation", 0x10058CU, 3U},
+        {"runner.trent.information.opening", 0x100B59U, 4U},
+        {"runner.trent.information.continuation", 0x100C27U, 1U},
+        {"runner.petr_uvehr.information.opening", 0x101131U, 2U},
+        {"runner.petr_uvehr.information.continuation", 0x1011E5U, 2U},
+        {"runner.walking_bear.information.opening", 0x101FACU, 3U},
+        {"runner.walking_bear.information.continuation", 0x10207EU, 2U},
+        {"runner.phantom.information.opening", 0x1016EEU, 3U},
+        {"runner.phantom.information.continuation", 0x10173CU, 3U},
+        {"runner.two_fists.information.opening", 0x10254FU, 2U},
+        {"runner.two_fists.information.continuation", 0x10261EU, 1U},
+        {"runner.freya.information.opening", 0x10327CU, 2U},
+        {"runner.freya.information.continuation", 0x103335U, 3U},
+        {"runner.rianna.information.opening", 0x102B42U, 4U},
+        {"runner.rianna.information.continuation", 0x102C18U, 3U},
+        {"runner.stark.information.opening", 0x103730U, 1U},
+        {"runner.stark.information.continuation", 0x1037C8U, 1U},
+        {"runner.ricky.subject.title", 0x0FFE85U, 1U},
+        {"runner.ricky.subject.option.shaman_magic", 0x104C9CU, 1U},
+        {"runner.ricky.subject.option.local_area", 0x104CB8U, 1U},
+        {"runner.ricky.subject.option.johnson", 0x105009U, 1U},
+        {"runner.winston_marrs.subject.title", 0x10068AU, 1U},
+        {"runner.winston_marrs.subject.option.halloweeners", 0x1047B4U, 1U},
+        {"runner.winston_marrs.subject.option.lone_star", 0x104DF8U, 1U},
+        {"runner.winston_marrs.subject.option.troll_origin", 0x105032U, 1U},
+        {"runner.trent.subject.title", 0x100C82U, 1U},
+        {"runner.trent.subject.option.mages", 0x104CD6U, 1U},
+        {"runner.trent.subject.option.contacts", 0x104666U, 1U},
+        {"runner.trent.subject.option.johnsons", 0x105009U, 1U},
+        {"runner.ricky.subject.shaman_magic.page_0", 0x0FFE90U, 3U},
+        {"runner.ricky.subject.shaman_magic.page_1", 0x0FFF24U, 4U},
+        {"runner.ricky.subject.shaman_magic.page_2", 0x0FFFD6U, 3U},
+        {"runner.ricky.subject.local_area.page_0", 0x100073U, 3U},
+        {"runner.ricky.subject.local_area.page_1", 0x100117U, 2U},
+        {"runner.ricky.subject.johnson_gunderson.page_0", 0x1001AFU, 3U},
+        {"runner.winston_marrs.subject.halloweeners.page_0", 0x10069CU, 3U},
+        {"runner.winston_marrs.subject.lone_star.page_0", 0x10078AU, 4U},
+        {"runner.winston_marrs.subject.troll_origin.page_0", 0x100848U, 2U},
+        {"runner.winston_marrs.subject.troll_origin.page_1", 0x1008DDU, 4U},
+        {"runner.trent.subject.mages.page_0", 0x100C92U, 2U},
+        {"runner.trent.subject.mages.page_1", 0x100D62U, 1U},
+        {"runner.trent.subject.contacts.page_0", 0x100DBEU, 3U},
+        {"runner.trent.subject.johnsons.page_0", 0x100EB2U, 3U},
+    }};
+    for (const auto& record : kRunnerDialogueRecords) {
+        const auto segments =
+            shadowrun::graphics::read_genesis_dialogue_segments(
+                rom, record.source_offset);
+        // The converted runner presenter models the non-empty text rows. In
+        // these streams, repeated 0x80 controls separate adjacent ROM text
+        // rows but do not add another presenter row, so retain the source
+        // wording and validate against that typed view's row count.
+        const auto text_row_count = static_cast<std::size_t>(std::count_if(
+            segments.begin(), segments.end(),
+            [](const std::string& segment) { return !segment.empty(); }));
+        if (text_row_count != record.expected_segments) {
+            throw std::runtime_error(
+                "recruited-runner dialogue segment count changed for " +
+                std::string(record.key));
+        }
+        std::string text;
+        bool first_row = true;
+        for (const auto& segment : segments) {
+            if (segment.empty()) {
+                continue;
+            }
+            if (!first_row) {
+                text.push_back('|');
+            }
+            text += segment;
+            first_row = false;
+        }
+        output << "        [";
+        write_lua_string(record.key);
+        output << "] = ";
+        write_lua_string(text);
+        output << ",\n";
+    }
     const auto hotel_text =
         shadowrun::graphics::read_genesis_hotel_options_text(rom);
     const auto write_text_entry = [&output, &write_lua_string](

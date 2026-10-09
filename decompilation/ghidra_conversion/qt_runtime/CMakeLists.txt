@@ -1027,7 +1027,12 @@ add_test(NAME shadowrun_ghidra_field_menu_text_catalog
 add_executable(shadowrun_ghidra_dialogue_panel_test
     tests/dialogue/dialogue_panel_test.cpp
     src/dialogue/dialogue_panel.cpp
+    src/dialogue/dialogue_panel_presenter.cpp
 )
+set_target_properties(shadowrun_ghidra_dialogue_panel_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
 target_include_directories(shadowrun_ghidra_dialogue_panel_test
     PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
 target_compile_definitions(shadowrun_ghidra_dialogue_panel_test PRIVATE
@@ -1035,7 +1040,8 @@ target_compile_definitions(shadowrun_ghidra_dialogue_panel_test PRIVATE
     SHADOWRUN_GAMEPLAY_SCRIPT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/scripts")
 target_link_libraries(shadowrun_ghidra_dialogue_panel_test
     PRIVATE shadowrun_gameplay_script_runtime
-            shadowrun_ghidra_conversion_runtime)
+            shadowrun_ghidra_conversion_runtime
+            Qt6::Gui)
 add_test(NAME shadowrun_ghidra_dialogue_panel
          COMMAND shadowrun_ghidra_dialogue_panel_test)
 

@@ -113,14 +113,10 @@ enum class RecruitedRunnerInformationTopic {
     stark_amerindian_heritage,
 };
 
-// The source text renderer consumes a high-bit encoded stream: 0x80..0xBF
-// separates text segments and 0xC0..0xFF terminates the stream. Native text
-// layout does not need those marker bytes, but it does need every source
-// segment in order. This typed representation retains that complete content
-// without exposing the ROM buffer address or the encoded marker protocol to
-// the runtime.
+// C++ owns which source stream and how many source segments a state uses.
+// The text itself is resolved from the ROM-imported Lua catalog by key.
 struct RecruitedRunnerInformationTextStream {
-    std::array<std::string_view, 4> segments{};
+    std::string_view text_key;
     std::size_t segment_count = 0;
 };
 
@@ -150,8 +146,8 @@ enum class RickyInformationSubject {
 };
 
 struct RickyInformationSubjectPrompt {
-    std::string_view title_text;
-    std::array<std::string_view, 3> options{};
+    std::string_view title_key;
+    std::array<std::string_view, 3> option_keys{};
 };
 
 enum class RickyInformationResponseAction {
@@ -303,8 +299,8 @@ enum class WinstonInformationSubject {
 };
 
 struct WinstonInformationSubjectPrompt {
-    std::string_view title_text;
-    std::array<std::string_view, 3> options{};
+    std::string_view title_key;
+    std::array<std::string_view, 3> option_keys{};
 };
 
 enum class WinstonInformationResponseAction {
@@ -338,8 +334,8 @@ enum class TrentInformationSubject {
 };
 
 struct TrentInformationSubjectPrompt {
-    std::string_view title_text;
-    std::array<std::string_view, 3> options{};
+    std::string_view title_key;
+    std::array<std::string_view, 3> option_keys{};
 };
 
 enum class TrentInformationResponseAction {

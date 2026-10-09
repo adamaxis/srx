@@ -127,20 +127,13 @@ int main() {
                 ricky_information.changed_flag == 0x0001U &&
                 ricky_information.information_flags == 0x0001U &&
                 ricky_information.opening_text.segment_count == 3U &&
-                ricky_information.opening_text.segments[0] ==
-                    "I've lived in Glow City all my life." &&
-                ricky_information.opening_text.segments[1] ==
-                    "I was slummin' in the sewers, but it got me nowhere, because I had no purpose." &&
-                ricky_information.opening_text.segments[2] ==
-                    "And because everyone was larger than me." &&
+                ricky_information.opening_text.text_key ==
+                    "runner.ricky.information.opening" &&
                 ricky_information.continuation_text.segment_count == 3U &&
-                ricky_information.continuation_text.segments[0] ==
-                    "Then I heard my totem calling.  I have embraced that power, the power of Rat!" &&
-                ricky_information.continuation_text.segments[1] ==
-                    "Rat has shown that force is not the only way to success." &&
-                ricky_information.continuation_text.segments[2] ==
-                    "When I find some companions to work with, I'll be able to use my talents to finally get outta this dump!" &&
-                ricky_information.more_option_text == "< MORE >")) {
+                ricky_information.continuation_text.text_key ==
+                    "runner.ricky.information.continuation" &&
+                ricky_information.more_option_text ==
+                    "stoker.motel.arrival.more")) {
         return 8;
     }
     const auto repeated_ricky_information =
@@ -161,8 +154,8 @@ int main() {
                     RecruitedRunnerInformationTopic::stark_amerindian_heritage &&
                 stark_information.changed_flag == 0x0200U &&
                 stark_information.information_flags == 0x0201U &&
-                stark_information.opening_text.segments[0].find("AmerIndian") !=
-                    std::string_view::npos)) {
+                stark_information.opening_text.text_key ==
+                    "runner.stark.information.opening")) {
         return 10;
     }
 
@@ -188,7 +181,8 @@ int main() {
                         expected_opening_segment_counts[runner_index] &&
                     information.continuation_text.segment_count ==
                         expected_continuation_segment_counts[runner_index] &&
-                    information.more_option_text == "< MORE >")) {
+                    information.more_option_text ==
+                        "stoker.motel.arrival.more")) {
             return 11;
         }
     }
@@ -200,13 +194,14 @@ int main() {
     }
 
     const auto ricky_subjects = ricky_information_subject_prompt();
-    if (!expect(ricky_subjects.title_text == "Like what?" &&
-                ricky_subjects.options[0] ==
-                    "Tell me about shaman magic." &&
-                ricky_subjects.options[1] ==
-                    "Tell me about the local area." &&
-                ricky_subjects.options[2] ==
-                    "Do you know of any Johnsons in the area?")) {
+    if (!expect(ricky_subjects.title_key ==
+                    "runner.ricky.subject.title" &&
+                ricky_subjects.option_keys[0] ==
+                    "runner.ricky.subject.option.shaman_magic" &&
+                ricky_subjects.option_keys[1] ==
+                    "runner.ricky.subject.option.local_area" &&
+                ricky_subjects.option_keys[2] ==
+                    "runner.ricky.subject.option.johnson")) {
         return 13;
     }
     const auto shaman_response = select_ricky_information_response(
@@ -217,14 +212,14 @@ int main() {
                 shaman_response.more_after_page ==
                     std::array<bool, 3>{{true, true, false}} &&
                 shaman_response.pages[0].segment_count == 3U &&
-                shaman_response.pages[0].segments[1] ==
-                    "We use her forces to achieve our ends." &&
+                shaman_response.pages[0].text_key ==
+                    "runner.ricky.subject.shaman_magic.page_0" &&
                 shaman_response.pages[1].segment_count == 4U &&
-                shaman_response.pages[1].segments[3] ==
-                    "Rat chose me to follow his ways." &&
+                shaman_response.pages[1].text_key ==
+                    "runner.ricky.subject.shaman_magic.page_1" &&
                 shaman_response.pages[2].segment_count == 3U &&
-                shaman_response.pages[2].segments[1] ==
-                    "To use guile and misdirection in lieu of combat." &&
+                shaman_response.pages[2].text_key ==
+                    "runner.ricky.subject.shaman_magic.page_2" &&
                 shaman_response.returns_to_common_conversation)) {
         return 14;
     }
@@ -234,11 +229,11 @@ int main() {
                 local_response.more_after_page ==
                     std::array<bool, 3>{{true, false, false}} &&
                 local_response.pages[0].segment_count == 3U &&
-                local_response.pages[0].segments[2] ==
-                    "Even I, a follower of Rat, will not hole up there." &&
+                local_response.pages[0].text_key ==
+                    "runner.ricky.subject.local_area.page_0" &&
                 local_response.pages[1].segment_count == 2U &&
-                local_response.pages[1].segments[1] ==
-                    "Sure, there's some minor radiation leakage from the nuke plant, but it's no big deal.")) {
+                local_response.pages[1].text_key ==
+                    "runner.ricky.subject.local_area.page_1")) {
         return 15;
     }
     const auto johnson_response = select_ricky_information_response(
@@ -246,8 +241,8 @@ int main() {
     if (!expect(johnson_response.page_count == 1U &&
                 !johnson_response.more_after_page[0] &&
                 johnson_response.pages[0].segment_count == 3U &&
-                johnson_response.pages[0].segments[2] ==
-                    "His payout is as bad as his smell, but his runs are a piece of cake so long as you have some firepower handy when things go sour.")) {
+                johnson_response.pages[0].text_key ==
+                    "runner.ricky.subject.johnson_gunderson.page_0")) {
         return 16;
     }
     if (!expect(select_ricky_information_response(
@@ -258,13 +253,14 @@ int main() {
     }
 
     const auto winston_subjects = winston_information_subject_prompt();
-    if (!expect(winston_subjects.title_text == "What do you want?" &&
-                winston_subjects.options[0] ==
-                    "Tell me about the Halloweeners." &&
-                winston_subjects.options[1] ==
-                    "What do you know about Lone Star?" &&
-                winston_subjects.options[2] ==
-                    "How is it that you are a troll?")) {
+    if (!expect(winston_subjects.title_key ==
+                    "runner.winston_marrs.subject.title" &&
+                winston_subjects.option_keys[0] ==
+                    "runner.winston_marrs.subject.option.halloweeners" &&
+                winston_subjects.option_keys[1] ==
+                    "runner.winston_marrs.subject.option.lone_star" &&
+                winston_subjects.option_keys[2] ==
+                    "runner.winston_marrs.subject.option.troll_origin")) {
         return 25;
     }
     const auto halloweeners_response = select_winston_information_response(
@@ -275,8 +271,8 @@ int main() {
                 halloweeners_response.more_after_page ==
                     std::array<bool, 2>{{false, false}} &&
                 halloweeners_response.pages[0].segment_count == 3U &&
-                halloweeners_response.pages[0].segments[2] ==
-                    "Still, they're a lot tougher than the Eye-fivers." &&
+                halloweeners_response.pages[0].text_key ==
+                    "runner.winston_marrs.subject.halloweeners.page_0" &&
                 halloweeners_response.returns_to_common_conversation)) {
         return 26;
     }
@@ -284,8 +280,8 @@ int main() {
         WinstonInformationSubject::lone_star);
     if (!expect(lone_star_response.page_count == 1U &&
                 lone_star_response.pages[0].segment_count == 4U &&
-                lone_star_response.pages[0].segments[3] ==
-                    "Don't bring up that subject again!")) {
+                lone_star_response.pages[0].text_key ==
+                    "runner.winston_marrs.subject.lone_star.page_0")) {
         return 27;
     }
     const auto troll_response = select_winston_information_response(
@@ -295,8 +291,10 @@ int main() {
                     std::array<bool, 2>{{true, false}} &&
                 troll_response.pages[0].segment_count == 2U &&
                 troll_response.pages[1].segment_count == 4U &&
-                troll_response.pages[1].segments[2] ==
-                    "Arrgh, it's enough to make me want to shoot someone!")) {
+                troll_response.pages[0].text_key ==
+                    "runner.winston_marrs.subject.troll_origin.page_0" &&
+                troll_response.pages[1].text_key ==
+                    "runner.winston_marrs.subject.troll_origin.page_1")) {
         return 28;
     }
     if (!expect(select_winston_information_response(
@@ -307,13 +305,14 @@ int main() {
     }
 
     const auto trent_subjects = trent_information_subject_prompt();
-    if (!expect(trent_subjects.title_text == "Yes, like what?" &&
-                trent_subjects.options[0] ==
-                    "I'd like to hear about mages." &&
-                trent_subjects.options[1] ==
-                    "I'm looking for some contacts." &&
-                trent_subjects.options[2] ==
-                    "Do you know of any Johnsons in the area?")) {
+    if (!expect(trent_subjects.title_key ==
+                    "runner.trent.subject.title" &&
+                trent_subjects.option_keys[0] ==
+                    "runner.trent.subject.option.mages" &&
+                trent_subjects.option_keys[1] ==
+                    "runner.trent.subject.option.contacts" &&
+                trent_subjects.option_keys[2] ==
+                    "runner.trent.subject.option.johnsons")) {
         return 30;
     }
     const auto trent_mages = select_trent_information_response(
@@ -323,9 +322,11 @@ int main() {
                 trent_mages.more_after_page ==
                     std::array<bool, 2>{{true, false}} &&
                 trent_mages.pages[0].segment_count == 2U &&
-                trent_mages.pages[0].segments[1] ==
-                    "Mages have no such limitations.  We use our intellect to call upon the astral plane, and bend it to our will." &&
+                trent_mages.pages[0].text_key ==
+                    "runner.trent.subject.mages.page_0" &&
                 trent_mages.pages[1].segment_count == 1U &&
+                trent_mages.pages[1].text_key ==
+                    "runner.trent.subject.mages.page_1" &&
                 trent_mages.returns_to_common_conversation)) {
         return 31;
     }
@@ -335,8 +336,8 @@ int main() {
     if (!expect(trent_contacts.action == TrentInformationResponseAction::selected &&
                 trent_contacts.page_count == 1U &&
                 trent_contacts.pages[0].segment_count == 3U &&
-                trent_contacts.pages[0].segments[2] ==
-                    "<He places the name in your Pocket Secretary.>" &&
+                trent_contacts.pages[0].text_key ==
+                    "runner.trent.subject.contacts.page_0" &&
                 offer_state.story_flags == (std::uint32_t{1U} << 12U))) {
         return 32;
     }
@@ -344,8 +345,8 @@ int main() {
         TrentInformationSubject::johnsons, offer_state);
     if (!expect(trent_johnsons.page_count == 1U &&
                 trent_johnsons.pages[0].segment_count == 3U &&
-                trent_johnsons.pages[0].segments[2] ==
-                    "I occasionally see him over in the Rat's Nest, but he does his work out of the Wanderer in Puyallup Barrens.")) {
+                trent_johnsons.pages[0].text_key ==
+                    "runner.trent.subject.johnsons.page_0")) {
         return 33;
     }
     if (!expect(select_trent_information_response(

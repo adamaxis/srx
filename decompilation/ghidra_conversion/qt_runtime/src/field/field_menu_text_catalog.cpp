@@ -16,6 +16,26 @@ constexpr std::string_view kMagicSpellOptionPrefix =
 constexpr std::string_view kMagicSpellDescriptionPrefix =
     "magic.spells.description.";
 
+bool has_recruited_runner_dialogue_prefix(const std::string_view key) {
+    constexpr std::array<std::string_view, 10> kRunnerPrefixes{{
+        "runner.ricky.",
+        "runner.winston_marrs.",
+        "runner.trent.",
+        "runner.petr_uvehr.",
+        "runner.walking_bear.",
+        "runner.phantom.",
+        "runner.two_fists.",
+        "runner.freya.",
+        "runner.rianna.",
+        "runner.stark.",
+    }};
+    return std::any_of(
+        kRunnerPrefixes.begin(), kRunnerPrefixes.end(),
+        [key](const std::string_view prefix) {
+            return key.rfind(prefix, 0U) == 0U;
+        });
+}
+
 bool magic_spell_index(
     const std::string_view id, std::size_t& index,
     const std::array<std::string, kMagicSpellTextCount>& spell_ids) {
@@ -934,6 +954,12 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                 runner_found[index] = true;
                 result.catalog.runner_names[index] = value;
             }
+            continue;
+        }
+        // The field-menu text catalog also loads the shared script-text.lua
+        // table, but recruited-runner dialogue belongs to the dialogue panel
+        // namespace and is validated by dialogue-panel QA.
+        if (has_recruited_runner_dialogue_prefix(key)) {
             continue;
         }
         if (parse_indexed_key(key, "archetype.", index) &&

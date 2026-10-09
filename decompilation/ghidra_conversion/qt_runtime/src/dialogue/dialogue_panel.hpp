@@ -148,11 +148,15 @@ struct DialoguePanelView {
     std::string_view source_boundary_reason;
 };
 
+using DialogueTextResolver =
+    std::function<std::string_view(std::string_view alias)>;
+
 // One projection function covers the common runner/NPC conversation shell.
 // It intentionally does not own mutable cursor state or dispatch commands;
 // input returns to dispatch_recruited_runner_conversation().
 DialoguePanelView make_dialogue_panel_view(
-    const integration::RecruitedRunnerConversationView& source_view);
+    const integration::RecruitedRunnerConversationView& source_view,
+    const DialogueTextResolver& resolve_text);
 
 std::optional<DialoguePanelCommand>
 dialogue_panel_option_command(const DialoguePanelView& view,
@@ -170,9 +174,6 @@ std::string_view dialogue_panel_runner_name(
 // are traced, so a shared panel cannot accidentally borrow Stoker's sprite.
 std::string_view dialogue_panel_portrait_alias(
     FieldExitResourceProfile profile);
-
-using DialogueTextResolver =
-    std::function<std::string_view(std::string_view alias)>;
 
 // Project the source-backed Stoker prompt records into the same panel shape
 // as recruited-runner conversations. Text is resolved through the direct

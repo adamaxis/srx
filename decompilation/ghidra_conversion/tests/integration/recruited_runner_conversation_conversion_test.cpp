@@ -62,7 +62,8 @@ int main() {
     if (!expect(view.screen ==
                     RecruitedRunnerConversationScreen::ricky_subject_prompt &&
                 std::get<RickyInformationSubjectPrompt>(view.subject_prompt)
-                        .options[0] == "Tell me about shaman magic.")) {
+                        .option_keys[0] ==
+                    "runner.ricky.subject.option.shaman_magic")) {
         return 4;
     }
     view = dispatch_recruited_runner_conversation(
@@ -98,7 +99,8 @@ int main() {
     if (!expect(view.screen ==
                     RecruitedRunnerConversationScreen::winston_subject_prompt &&
                 std::get<WinstonInformationSubjectPrompt>(view.subject_prompt)
-                        .options[2] == "How is it that you are a troll?")) {
+                        .option_keys[2] ==
+                    "runner.winston_marrs.subject.option.troll_origin")) {
         return 7;
     }
     view = dispatch_recruited_runner_conversation(
@@ -127,8 +129,8 @@ int main() {
                 trent.service.story_flags == (std::uint32_t{1U} << 12U) &&
                 std::get<TrentInformationResponse>(view.information_response)
                         .pages[0]
-                        .segments[0] ==
-                    "I've got the number of an old professor of mine, Jefferson is his name.")) {
+                        .text_key ==
+                    "runner.trent.subject.contacts.page_0")) {
         return 10;
     }
 
