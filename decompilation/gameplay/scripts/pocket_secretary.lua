@@ -2,6 +2,14 @@
 -- The native presenter owns selection cadence, page drawing, and handlers.
 local PocketSecretary = {}
 
+local function text_entries(ids, prefix)
+    local keys = {}
+    for index, id in ipairs(ids) do
+        keys[index] = prefix .. id
+    end
+    return ids, nil, keys
+end
+
 function PocketSecretary.root()
     return {
         "notebook",
@@ -45,67 +53,78 @@ end
 -- Child-page text IDs remain in the ROM's source order. Native state decides
 -- whether these messages or rows are currently visible.
 function PocketSecretary.cyberdeck_unavailable_lines()
-    return { "no_deck_first", "no_deck_second", "look_for_deck" }
+    return text_entries(
+        { "no_deck_first", "no_deck_second", "look_for_deck" },
+        "pocket_secretary.cyberdeck.option.")
 end
 
 function PocketSecretary.group_item_names()
-    return {
-        "prototype_cyberheart",
-        "indian_lands_visa",
-        "feathered_scale",
-        "hell_hound_pelt",
-        "gargoyle_horn",
-        "gift_lady_gillian",
-        "gift_red_buffalo_woman",
-        "landmark_map",
-        "map_overlay",
-        "current_run_package",
-        "security_pass",
-        "weapon_permit",
-        "eye_fiver_ear_cuff",
-        "halloweener_patch",
-        "ork_armband",
-    }
+    return text_entries({
+            "prototype_cyberheart",
+            "indian_lands_visa",
+            "feathered_scale",
+            "hell_hound_pelt",
+            "gargoyle_horn",
+            "gift_lady_gillian",
+            "gift_red_buffalo_woman",
+            "landmark_map",
+            "map_overlay",
+            "current_run_package",
+            "security_pass",
+            "weapon_permit",
+            "eye_fiver_ear_cuff",
+            "halloweener_patch",
+            "ork_armband",
+        }, "pocket_secretary.group_item.option.")
 end
 
 function PocketSecretary.group_items_empty_lines()
-    return { "first_line", "second_line" }
+    return text_entries(
+        { "first_line", "second_line" },
+        "pocket_secretary.group_items.empty.option.")
 end
 
 function PocketSecretary.dismiss_options()
-    return { "dismiss", "who_question", "abort" }
+    return text_entries(
+        { "dismiss", "who_question", "abort" },
+        "pocket_secretary.dismiss.option.")
 end
 
 function PocketSecretary.dismiss_separator_text()
-    return { "separator" }
+    return text_entries(
+        { "separator" }, "pocket_secretary.dismiss.text.option.")
 end
 
 function PocketSecretary.notebook_no_run_lines()
-    return { "first_line", "second_line", "last_line" }
+    return text_entries(
+        { "first_line", "second_line", "last_line" },
+        "pocket_secretary.notebook.no_run.option.")
 end
 
 function PocketSecretary.mr_johnson_contacts()
-    return {
-        "gunderson",
-        "julius_strouther",
-        "mortimer_reed",
-        "vigore_and_jarl",
-        "caleb_brightmore",
-    }
+    return text_entries({
+            "gunderson",
+            "julius_strouther",
+            "mortimer_reed",
+            "vigore_and_jarl",
+            "caleb_brightmore",
+        }, "pocket_secretary.notebook.mr_johnson.name.option.")
 end
 
 function PocketSecretary.mr_johnson_details()
-    return {
-        "gunderson",
-        "julius_strouther",
-        "mortimer_reed",
-        "vigore_and_jarl",
-        "caleb_brightmore",
-    }
+    return text_entries({
+            "gunderson",
+            "julius_strouther",
+            "mortimer_reed",
+            "vigore_and_jarl",
+            "caleb_brightmore",
+        }, "pocket_secretary.notebook.mr_johnson.detail.option.")
 end
 
 function PocketSecretary.notebook_tips_metadata()
-    return { "title", "separator", "page_count", "page_number_clear" }
+    return text_entries(
+        { "title", "separator", "page_count", "page_number_clear" },
+        "pocket_secretary.notebook.tips.option.")
 end
 
 local function notebook_tip_page(first_tip)
@@ -113,7 +132,7 @@ local function notebook_tip_page(first_tip)
     for tip_number = first_tip, first_tip + 31 do
         ids[#ids + 1] = "tip_" .. tip_number
     end
-    return ids
+    return text_entries(ids, "pocket_secretary.notebook.tips.option.")
 end
 
 -- Keep each source-order page within the script menu catalog's 32-row limit.

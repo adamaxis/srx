@@ -2,6 +2,14 @@
 -- FieldSceneRuntime owns page state, selection cadence, drawing, and actions.
 local CommandOverview = {}
 
+local function label_keys(ids, prefix)
+    local keys = {}
+    for index, id in ipairs(ids) do
+        keys[index] = prefix .. id
+    end
+    return keys
+end
+
 function CommandOverview.root()
     return {
         "inventory_left",
@@ -24,21 +32,24 @@ end
 
 -- Display labels shared by the runner summary and its posture selector.
 function CommandOverview.races()
-    return { "human", "elf", "dwarf", "orc", "troll" }
+    local ids = { "human", "elf", "dwarf", "orc", "troll" }
+    return ids, nil, label_keys(ids, "command_overview.race.option.")
 end
 
 function CommandOverview.classes()
-    return { "mage", "shaman", "samurai", "decker" }
+    local ids = { "mage", "shaman", "samurai", "decker" }
+    return ids, nil, label_keys(ids, "command_overview.class.option.")
 end
 
 function CommandOverview.postures()
-    return {
+    local ids = {
         "full_defense",
         "medium_defense",
         "neutral",
         "medium_offense",
         "full_offense",
     }
+    return ids, nil, label_keys(ids, "command_overview.posture.option.")
 end
 
 return CommandOverview
