@@ -145,9 +145,11 @@ access.
   and the keys for all seven transaction messages. The native shop controller
   still owns rendering, focus, input cadence, and wallet/inventory changes.
 - `gameplay/scripts/items.lua` maps each source item ID to its ROM-derived
-  display name and category keys and maps the 32 source detail rows used by
-  field item/shop panels. The data is shared with the shop; item codes and
-  inventory behavior remain typed native state.
+  display name and category keys, maps the 32 source detail rows used by field
+  item/shop panels, and declares the four inventory-action IDs in source order.
+  `FieldSceneRuntime` validates that action list and dispatches Equip/Use,
+  Discard, and Trade through the selected stable ID. Item codes, cursor state,
+  and inventory behavior remain typed native state.
 - `gameplay/scripts/hotel.lua` declares stable choice IDs for the Hotel
   Options and checkout cursor menus. `FieldSceneRuntime` loads both menu
   definitions through `GameScriptRuntime::menu`, validates their source order,

@@ -203,6 +203,10 @@ equipment are separate: an item in one of the eight cells is not active until
 the source equip action sets the live record's equipped slot/item bytes.
 Medical items stay in their source-specific First Aid path and never become
 weapons through the generic Equip/Unequip branch.
+The four source action positions are now declared as stable IDs by
+`gameplay/scripts/items.lua`; the field text catalog checks their ROM order,
+and the Qt dispatcher resolves the selected typed source action to its Lua ID.
+The four source button graphics remain the native extracted icon assets.
 The reviewed utility/magic branch is also source-specific: `0x12168` routes
 item codes `0x13`, `0x14`, `0x16`, and `0x18..0x2B` to `0x121C0`, which writes
 the three D202F source lines at C620, waits for a fresh event through `0x0D94`,

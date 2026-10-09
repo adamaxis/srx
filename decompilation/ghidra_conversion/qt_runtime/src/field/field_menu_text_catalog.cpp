@@ -21,6 +21,9 @@ constexpr std::array<std::string_view, kNotebookChoiceCount>
                         "mr_johnsons", "shadowrunners"}};
 constexpr std::array<std::string_view, kConfirmationChoiceCount>
     kConfirmationChoiceIds{{"yes", "no"}};
+constexpr std::array<std::string_view, kInventoryActionChoiceCount>
+    kInventoryActionChoiceIds{{"equip_or_use", "discard", "trade",
+                               "cancel"}};
 
 bool has_clips_menu_label_prefix(const std::string_view key) {
     return key.rfind("clips.option.", 0U) == 0U ||
@@ -224,6 +227,36 @@ void load_script_menu_labels(
     }
 }
 
+template <std::size_t N>
+void load_script_menu_choice_ids(
+    shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts,
+    const std::string_view module, const std::string_view function,
+    const std::string_view text_profile, const std::string_view menu_id,
+    const std::array<std::string_view, N>& expected_ids,
+    std::array<std::string, N>& choice_ids,
+    std::vector<std::string>& errors) {
+    const auto menu = scripts.menu(module, function, text_profile, menu_id);
+    if (!menu.has_value()) {
+        errors.emplace_back("Lua menu is unavailable: " +
+                            std::string(function) + ": " + scripts.failure());
+        return;
+    }
+    if (menu->choices.size() != expected_ids.size()) {
+        errors.emplace_back("Lua menu has the wrong choice count: " +
+                            std::string(function));
+        return;
+    }
+    for (std::size_t index = 0; index < expected_ids.size(); ++index) {
+        if (menu->choices[index].id != expected_ids[index]) {
+            errors.emplace_back("Lua menu choices do not match the "
+                                "native action order: " +
+                                std::string(function));
+            return;
+        }
+        choice_ids[index] = menu->choices[index].id;
+    }
+}
+
 } // namespace
 
 FieldMenuTextLoadResult load_field_menu_text_catalog(
@@ -389,6 +422,10 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         &result.catalog.confirmation_choice_ids);
     result.catalog.action_choice_yes = confirmation_labels[0];
     result.catalog.action_choice_no = confirmation_labels[1];
+    load_script_menu_choice_ids(
+        scripts, "items", "inventory_actions", "items",
+        "inventory_actions", kInventoryActionChoiceIds,
+        result.catalog.inventory_action_choice_ids, result.errors);
     load_script_menu_labels(
         scripts, "clips", "commands", "clips", "commands",
         kClipsCommandIds, result.catalog.clips_commands, result.errors);

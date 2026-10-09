@@ -135,6 +135,9 @@ int main() {
         text.catalog.action_choice_yes != "Yes" ||
         text.catalog.confirmation_choice_ids !=
             std::array<std::string, kConfirmationChoiceCount>{"yes", "no"} ||
+        text.catalog.inventory_action_choice_ids !=
+            std::array<std::string, kInventoryActionChoiceCount>{
+                "equip_or_use", "discard", "trade", "cancel"} ||
         !text.catalog.shop_transaction_prompt.empty() ||
         !text.catalog.shop_no_inventory_slot.empty() ||
         !text.catalog.shop_insufficient_funds.empty() ||

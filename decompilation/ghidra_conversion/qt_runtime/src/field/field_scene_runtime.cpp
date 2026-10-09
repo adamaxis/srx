@@ -3297,8 +3297,26 @@ void FieldSceneRuntime::dispatch_command_overview_inventory_action(
     }
 
     command_overview_selected_inventory_item_ = result.item;
-    const auto choice = *result.choice;
-    if (choice == InventoryActionChoice::equip_or_use) {
+    const auto source_choice = static_cast<std::uint8_t>(*result.choice);
+    if (source_choice < 2U) {
+        source_boundary(
+            "field.command_overview.inventory_action.choice_unresolved");
+        command_overview_inventory_action_active_ = false;
+        command_overview_selected_inventory_item_.reset();
+        return;
+    }
+    const auto choice_index = static_cast<std::size_t>(source_choice - 2U);
+    if (choice_index >=
+        field_menu_text_.inventory_action_choice_ids.size()) {
+        source_boundary(
+            "field.command_overview.inventory_action.choice_unresolved");
+        command_overview_inventory_action_active_ = false;
+        command_overview_selected_inventory_item_.reset();
+        return;
+    }
+    const auto& choice_id =
+        field_menu_text_.inventory_action_choice_ids[choice_index];
+    if (choice_id == "equip_or_use") {
         const auto branch = result.branch.value_or(
             classify_selected_item(result.item->item_code, true));
         if (branch == SelectedItemBranch::weapon_or_gear ||
@@ -3343,7 +3361,7 @@ void FieldSceneRuntime::dispatch_command_overview_inventory_action(
         return;
     }
 
-    if (choice == InventoryActionChoice::discard) {
+    if (choice_id == "discard") {
         if (!can_discard_selected_item(*result.item)) {
             command_overview_action_message_ =
                 CommandOverviewActionMessage::cannot_discard;
@@ -3364,7 +3382,7 @@ void FieldSceneRuntime::dispatch_command_overview_inventory_action(
         return;
     }
 
-    if (choice == InventoryActionChoice::trade) {
+    if (choice_id == "trade") {
         if (!can_trade_selected_item(result.item->item_code)) {
             command_overview_action_message_ =
                 CommandOverviewActionMessage::cannot_trade;
@@ -3402,6 +3420,10 @@ void FieldSceneRuntime::dispatch_command_overview_inventory_action(
         return;
     }
 
+    if (choice_id != "cancel") {
+        source_boundary(
+            "field.command_overview.inventory_action.choice_unresolved");
+    }
     command_overview_inventory_action_active_ = false;
     command_overview_selected_inventory_item_.reset();
 }

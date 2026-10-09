@@ -322,6 +322,27 @@ int main() {
         return 1;
     }
 
+    const auto inventory_actions =
+        scripts.menu("items", "inventory_actions", "items",
+                     "inventory_actions");
+    constexpr std::array<std::string_view, 4> kInventoryActionIds{{
+        "equip_or_use", "discard", "trade", "cancel"}};
+    bool inventory_action_rows_match = inventory_actions.has_value() &&
+        inventory_actions->choices.size() == kInventoryActionIds.size();
+    if (inventory_action_rows_match) {
+        for (std::size_t index = 0; index < kInventoryActionIds.size();
+             ++index) {
+            inventory_action_rows_match = inventory_action_rows_match &&
+                inventory_actions->choices[index].id ==
+                    kInventoryActionIds[index];
+        }
+    }
+    if (!expect(inventory_action_rows_match,
+                "Lua inventory action IDs changed source order")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
     const auto shop = scripts.shop_definition("ares_weapon_emporium");
     if (!expect(shop.has_value() && shop->groups.size() == 6U,
                 "Lua shop catalog did not define the Ares selector groups") ||

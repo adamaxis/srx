@@ -1,5 +1,7 @@
 -- Shared item labels and detail text are generated from the ROM into
 -- dialogue/script-text.lua. This module maps source IDs to their stable keys.
+local Items = {}
+
 local function source_item(code)
     return {
         code = code,
@@ -18,12 +20,18 @@ for index = 0, 31 do
     detail_text_keys[#detail_text_keys + 1] = "items.action_detail." .. index
 end
 
-return {
-    catalog = catalog,
-    detail_text_keys = detail_text_keys,
-    detail_label_keys = {
-        "items.detail_label.ammo",
-        "items.detail_label.uses",
-        "items.detail_label.rating",
-    },
+Items.catalog = catalog
+Items.detail_text_keys = detail_text_keys
+Items.detail_label_keys = {
+    "items.detail_label.ammo",
+    "items.detail_label.uses",
+    "items.detail_label.rating",
 }
+
+-- ROM 0x11740/0x118C6 action row order. The native controller keeps the
+-- four source icon positions and cursor timing; dispatch resolves these IDs.
+function Items.inventory_actions()
+    return { "equip_or_use", "discard", "trade", "cancel" }
+end
+
+return Items
