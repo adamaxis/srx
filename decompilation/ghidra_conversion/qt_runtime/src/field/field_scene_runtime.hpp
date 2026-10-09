@@ -784,8 +784,11 @@ private:
         std::uint16_t event_word);
     void configure_callbacks();
     void configure_runtime_coordinator_callbacks();
+    std::optional<scripting::ScriptActorBehaviorDecision>
+    heartbeat_field_player(scripting::ScriptActorHeartbeatPhase phase);
     void advance_field_movement();
     void advance_field_actor_animation();
+    void advance_default_field_actor_animations();
     void advance_field_weapon_projectiles();
     void service_player_weapon_action();
     void initialize_field_entity_selection_state();
@@ -1167,6 +1170,8 @@ private:
     std::array<std::vector<int>, 8> field_entity_walk_origin_y_{};
     EntityAnimationState field_entity_animation_{};
     std::uint16_t field_entity_animation_selector_ = 0;
+    std::string field_entity_animation_id_ = "idle";
+    bool field_player_animation_reset_pending_ = false;
     bool field_entity_walking_ = false;
     bool field_entity_attack_pose_active_ = false;
     std::uint8_t field_entity_attack_direction_ = 0U;
@@ -1229,6 +1234,7 @@ private:
     std::uint16_t field_target_heading_ = 0;
     FieldOpeningAutoWalkState field_opening_auto_walk_{};
     bool field_player_actor_script_initialized_ = false;
+    bool field_player_movement_heading_sync_pending_ = false;
     // Typed source field corresponding to FF014C, consumed only by the
     // 0xC7F8 scene-runtime dispatcher.
     std::uint8_t field_action_counter_ = 0;

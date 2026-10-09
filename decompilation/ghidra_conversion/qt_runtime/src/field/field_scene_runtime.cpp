@@ -964,6 +964,9 @@ bool FieldSceneRuntime::transition_to_elevator_destination(
     field_entity_animation_ = EntityAnimationState{};
     field_entity_animation_.increment = kFieldWalkAnimationIncrement;
     field_entity_animation_.period = kFieldEntityAnimationPeriod;
+    field_entity_animation_id_ = "idle";
+    field_player_animation_reset_pending_ = false;
+    field_player_movement_heading_sync_pending_ = false;
     field_entity_animation_selector_ =
         select_field_entity_animation_selector(0U, false);
     field_movement_behavior_record_.current_heading = 0U;
@@ -2190,6 +2193,7 @@ void FieldSceneRuntime::configure_callbacks() {
         };
     callbacks_.entity_render_pass.finish_pass = [this] {
         source_boundary("field.entities.finish_render_pass");
+        advance_default_field_actor_animations();
     };
     callbacks_.wait_for_vblank = [this] {
         source_boundary("field.timing.wait_for_vblank");
@@ -4031,6 +4035,7 @@ bool FieldSceneRuntime::bootstrap(
     field_controller_nibble_ = 0U;
     field_controller_port_byte_ = 0U;
     field_player_actor_script_initialized_ = false;
+    field_player_movement_heading_sync_pending_ = false;
     field_random_seed_ = static_cast<std::uint16_t>(
         QRandomGenerator::global()->generate());
     field_opening_auto_walk_ = FieldOpeningAutoWalkState{};
@@ -4162,6 +4167,9 @@ bool FieldSceneRuntime::bootstrap(
     field_entity_animation_ = {};
     field_entity_animation_.increment = kFieldWalkAnimationIncrement;
     field_entity_animation_.period = kFieldEntityAnimationPeriod;
+    field_entity_animation_id_ = "idle";
+    field_player_animation_reset_pending_ = false;
+    field_player_movement_heading_sync_pending_ = false;
     field_entity_animation_selector_ =
         select_field_entity_animation_selector(0, false);
     field_entity_walking_ = false;
@@ -4823,6 +4831,73 @@ std::int16_t FieldSceneRuntime::evaluate_field_collision(
                                      candidate_y, collision_evaluator);
 }
 
+std::optional<scripting::ScriptActorBehaviorDecision>
+FieldSceneRuntime::heartbeat_field_player(
+    const scripting::ScriptActorHeartbeatPhase phase) {
+    if (!field_entity_.active) {
+        return std::nullopt;
+    }
+    const bool movement_transition_paused =
+        field_opening_auto_walk_.active &&
+        field_movement_transition_state_.interaction_transition_pending;
+    const bool script_movement_allowed =
+        phase == scripting::ScriptActorHeartbeatPhase::behavior && ready_ &&
+        !movement_transition_paused &&
+        (field_opening_auto_walk_.active || field_controller_nibble_ != 0U);
+    scripting::ScriptActorBehaviorContext actor_context{};
+    actor_context.profile_id = "field_runner_k03_none00";
+    actor_context.entity_kind = 3U;
+    actor_context.action_kind = scripting::ScriptActorActionKind::none;
+    actor_context.instance_id = "field_player_runner";
+    actor_context.initial_heading =
+        phase == scripting::ScriptActorHeartbeatPhase::render
+            ? field_movement_state_.animation_heading
+            : field_movement_state_.heading;
+    actor_context.spawn = !field_player_actor_script_initialized_;
+    actor_context.movement_allowed = script_movement_allowed;
+    actor_context.phase = phase;
+    if (phase == scripting::ScriptActorHeartbeatPhase::render) {
+        actor_context.animation_mode = field_entity_attack_pose_active_
+            ? scripting::ScriptActorAnimationMode::attack
+            : field_entity_walking_
+                  ? scripting::ScriptActorAnimationMode::walking
+                  : scripting::ScriptActorAnimationMode::idle;
+        if (field_entity_attack_pose_active_) {
+            actor_context.animation_direction_override =
+                field_entity_attack_direction_;
+        }
+        if (field_player_animation_reset_pending_) {
+            actor_context.animation_accumulator_override =
+                field_entity_animation_.accumulator;
+        }
+    }
+    actor_context.controller_nibble = field_controller_nibble_;
+    actor_context.controller_heading_table =
+        field_controller_heading_table_;
+    if (phase == scripting::ScriptActorHeartbeatPhase::behavior &&
+        field_player_movement_heading_sync_pending_) {
+        actor_context.movement_state_heading_override =
+            field_movement_state_.heading;
+    }
+    if (field_opening_auto_walk_.active && !movement_transition_paused) {
+        actor_context.movement_heading_override =
+            field_opening_auto_walk_.target_heading;
+    }
+    const auto actor_decision = game_scripts_.actor_heartbeat(actor_context);
+    if (actor_decision.has_value()) {
+        field_player_actor_script_initialized_ = true;
+        if (phase == scripting::ScriptActorHeartbeatPhase::behavior &&
+            actor_context.movement_state_heading_override.has_value()) {
+            field_player_movement_heading_sync_pending_ = false;
+        }
+        if (phase == scripting::ScriptActorHeartbeatPhase::render &&
+            actor_context.animation_accumulator_override.has_value()) {
+            field_player_animation_reset_pending_ = false;
+        }
+    }
+    return actor_decision;
+}
+
 void FieldSceneRuntime::advance_field_movement() {
     if (!field_entity_.active) {
         return;
@@ -4831,31 +4906,13 @@ void FieldSceneRuntime::advance_field_movement() {
     const bool movement_transition_paused =
         field_opening_auto_walk_.active &&
         field_movement_transition_state_.interaction_transition_pending;
-    const bool script_movement_allowed =
-        ready_ && !movement_transition_paused &&
-        (field_opening_auto_walk_.active || field_controller_nibble_ != 0U);
-    scripting::ScriptActorBehaviorContext actor_context{};
-    actor_context.profile_id = "field_runner_k03_none00";
-    actor_context.entity_kind = 3U;
-    actor_context.action_kind = scripting::ScriptActorActionKind::none;
-    actor_context.instance_id = "field_player_runner";
-    actor_context.initial_heading = field_movement_state_.heading;
-    actor_context.spawn = !field_player_actor_script_initialized_;
-    actor_context.movement_allowed = script_movement_allowed;
-    actor_context.controller_nibble = field_controller_nibble_;
-    actor_context.controller_heading_table =
-        field_controller_heading_table_;
-    if (field_opening_auto_walk_.active && !movement_transition_paused) {
-        actor_context.movement_heading_override =
-            field_opening_auto_walk_.target_heading;
-    }
-    const auto actor_decision = game_scripts_.actor_heartbeat(actor_context);
+    const auto actor_decision = heartbeat_field_player(
+        scripting::ScriptActorHeartbeatPhase::behavior);
     if (!actor_decision.has_value()) {
         failure_ = game_scripts_.failure();
         source_boundary("field.player.lua_heartbeat_failed");
         return;
     }
-    field_player_actor_script_initialized_ = true;
 
     if (!ready_) {
         // The source keeps the walking pose only while a direction is held.
@@ -4886,11 +4943,15 @@ void FieldSceneRuntime::advance_field_movement() {
         return;
     }
 
+    if (!actor_decision->movement_current_heading.has_value()) {
+        failure_ = "Lua player heartbeat omitted its current heading";
+        source_boundary("field.player.lua_heading_missing");
+        return;
+    }
     field_target_heading_ = *actor_decision->movement_heading;
-    EntityCoordinateTarget heading{
-        field_movement_state_.heading, field_target_heading_};
-    approach_entity_fixed_point_target(heading);
-    field_movement_state_.heading = heading.current;
+    const auto lua_heading =
+        *actor_decision->movement_current_heading;
+    field_movement_state_.heading = lua_heading;
     // The ordinary step presents the slewed +0x2E heading. ROM 0xBADE may
     // replace +0x36 with the direction of its committed diagonal fallback;
     // keep that source-facing value separate and let the fallback update it.
@@ -4959,6 +5020,7 @@ void FieldSceneRuntime::advance_field_movement() {
         field_movement_state_.movement_flags = reset_state.animation_flags;
         field_entity_animation_.accumulator = static_cast<std::int16_t>(
             reset_state.movement_status);
+        field_player_animation_reset_pending_ = true;
         field_entity_animation_.frame = 0U;
         field_entity_animation_.redraw_requested = true;
         field_entity_animation_selector_ = reset_state.direction_animation;
@@ -5004,6 +5066,12 @@ void FieldSceneRuntime::advance_field_movement() {
         },
         policy_probe,
         reset_blocked_movement);
+    if (field_movement_state_.heading != lua_heading) {
+        // Route collision can replace the current heading with its committed
+        // fallback. Feed that accepted source state back into Lua on the next
+        // behavior heartbeat before it computes another 0xB530 step.
+        field_player_movement_heading_sync_pending_ = true;
+    }
 
     // ROM 0xAC5E checks FFDF64 after the terrain probe. A clear raw sample
     // releases the entity's B7B8 retry guard so a later doorway or terminal
@@ -5511,36 +5579,59 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
 }
 
 void FieldSceneRuntime::advance_field_actor_animation() {
-    if (field_entity_attack_pose_active_) {
-        // C042 entries are static held poses. 0xABFC owns the source action
-        // delay; the host render cadence must not turn this into a walk loop.
-        field_entity_animation_.frame = 0U;
-        field_entity_animation_.accumulator = 0;
-        return;
+    if (field_entity_.active) {
+        const auto previous_frame = field_entity_animation_.frame;
+        const auto previous_animation = field_entity_animation_id_;
+        const auto decision = heartbeat_field_player(
+            scripting::ScriptActorHeartbeatPhase::render);
+        if (!decision.has_value()) {
+            failure_ = game_scripts_.failure();
+            source_boundary("field.player.lua_animation_failed");
+        } else {
+            field_entity_.direction = decision->direction;
+            field_entity_animation_.frame = decision->animation_frame;
+            field_entity_animation_.accumulator =
+                decision->animation_accumulator;
+            field_entity_animation_id_ = decision->animation_id;
+            field_entity_animation_.redraw_requested =
+                previous_frame != field_entity_animation_.frame ||
+                previous_animation != field_entity_animation_id_;
+        }
     }
-    // Keep the actor's animation as a small native clock. The source C062
-    // positive marker wraps its four poses, while C052's one-pose idle list
-    // resolves to frame zero. BABC sets +0xCA=0x28 and 600E consequently uses
-    // this 0x0280 increment against 0x1000; no ROM list needs interpreting in
-    // the Qt runtime.
-    const auto accumulated =
-        static_cast<std::int32_t>(field_entity_animation_.accumulator) +
-        static_cast<std::int32_t>(field_entity_animation_.increment);
-    if (accumulated >= kFieldEntityAnimationPeriod) {
-        field_entity_animation_.frame = static_cast<std::uint16_t>(
-            field_entity_animation_.frame + 1U);
-        field_entity_animation_.redraw_requested = true;
-        field_entity_animation_.accumulator = static_cast<std::int16_t>(
-            accumulated - kFieldEntityAnimationPeriod);
-    } else {
-        field_entity_animation_.accumulator =
-            static_cast<std::int16_t>(accumulated);
-    }
+}
 
-    field_entity_animation_.increment = kFieldWalkAnimationIncrement;
-    field_entity_animation_.frame = field_entity_walking_
-        ? bound_field_walk_animation_frame(field_entity_animation_.frame)
-        : 0U;
+void FieldSceneRuntime::advance_default_field_actor_animations() {
+    const auto current_scene = state_.field_scene_buffers.scene_reference;
+    for (auto& actor : field_default_actors_) {
+        if (!actor.active || actor.scene_reference != current_scene) {
+            continue;
+        }
+        auto context = scripting::ScriptActorBehaviorContext{
+            actor.script_profile_id,
+            actor.entity_kind,
+            actor.action_kind,
+            actor.initial_action_code,
+            actor.initial_behavior_delay,
+            actor.transition_started,
+            actor.transition_complete,
+            actor.actor_instance_id,
+            actor.initial_heading,
+            false,
+        };
+        context.phase = scripting::ScriptActorHeartbeatPhase::render;
+        const auto decision = game_scripts_.actor_heartbeat(context);
+        if (!decision.has_value()) {
+            failure_ = game_scripts_.failure();
+            source_boundary("field.actor.lua_animation_failed");
+            actor.active = false;
+            continue;
+        }
+        actor.animation_direction = decision->direction;
+        actor.animation_id = decision->animation_id;
+        actor.animation_frame = decision->animation_frame;
+        actor.transition_started = decision->transition_started;
+        actor.transition_complete = decision->transition_complete;
+    }
 }
 
 void FieldSceneRuntime::update_source_field_camera() {
@@ -7314,25 +7405,25 @@ void FieldSceneRuntime::paint_field_scene_entities(QPainter& painter) const {
 
     if (field_entity_.active && field_entity_.visible) {
         const auto direction = static_cast<std::size_t>(
-            (field_entity_attack_pose_active_ ? field_entity_attack_direction_
-                                              : field_entity_.direction) %
+            field_entity_.direction %
             field_entity_idle_images_.size());
-        const auto walking = field_entity_walking_;
+        const auto walking = field_entity_animation_id_ == "walk";
+        const auto attack_pose = field_entity_animation_id_ == "attack";
         const auto movement_frames =
             field_entity_walk_images_[direction].size();
         const auto frame = movement_frames == 0U
             ? 0U
-            : bound_field_walk_animation_frame(
-                  field_entity_animation_.frame) % movement_frames;
-        const auto& image = field_entity_attack_pose_active_
+            : static_cast<std::size_t>(field_entity_animation_.frame) %
+                  movement_frames;
+        const auto& image = attack_pose
             ? field_entity_attack_images_[direction]
             : walking ? field_entity_walk_images_[direction][frame]
                       : field_entity_idle_images_[direction];
-        const auto origin_x = field_entity_attack_pose_active_
+        const auto origin_x = attack_pose
             ? field_entity_attack_origin_x_[direction]
             : walking ? field_entity_walk_origin_x_[direction][frame]
                       : field_entity_idle_origin_x_[direction];
-        const auto origin_y = field_entity_attack_pose_active_
+        const auto origin_y = attack_pose
             ? field_entity_attack_origin_y_[direction]
             : walking ? field_entity_walk_origin_y_[direction][frame]
                       : field_entity_idle_origin_y_[direction];

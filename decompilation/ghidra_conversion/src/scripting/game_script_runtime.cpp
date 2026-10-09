@@ -1378,7 +1378,25 @@ GameScriptRuntime::actor_heartbeat(
     default:
         return fail("gameplay Lua actor action kind is invalid");
     }
-    lua_createtable(state, 0, 15);
+    const std::string_view heartbeat_phase =
+        context.phase == ScriptActorHeartbeatPhase::behavior
+            ? "behavior"
+            : "render";
+    std::string_view animation_mode;
+    switch (context.animation_mode) {
+    case ScriptActorAnimationMode::idle:
+        animation_mode = "idle";
+        break;
+    case ScriptActorAnimationMode::walking:
+        animation_mode = "walking";
+        break;
+    case ScriptActorAnimationMode::attack:
+        animation_mode = "attack";
+        break;
+    default:
+        return fail("gameplay Lua actor animation mode is invalid");
+    }
+    lua_createtable(state, 0, 18);
     lua_pushlstring(state, actor_id.data(), actor_id.size());
     lua_setfield(state, -2, "actor_id");
     lua_pushlstring(state, context.profile_id.data(),
@@ -1417,6 +1435,28 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "movement_heading_override");
+    if (context.movement_state_heading_override.has_value()) {
+        lua_pushinteger(state, *context.movement_state_heading_override);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "movement_state_heading_override");
+    lua_pushlstring(state, heartbeat_phase.data(), heartbeat_phase.size());
+    lua_setfield(state, -2, "phase");
+    lua_pushlstring(state, animation_mode.data(), animation_mode.size());
+    lua_setfield(state, -2, "animation_mode");
+    if (context.animation_direction_override.has_value()) {
+        lua_pushinteger(state, *context.animation_direction_override);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "animation_direction_override");
+    if (context.animation_accumulator_override.has_value()) {
+        lua_pushinteger(state, *context.animation_accumulator_override);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "animation_accumulator_override");
     ScopedInstructionBudget instruction_budget(state);
     if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
         return fail("actor_ai.heartbeat: " + stack_error(state));
@@ -1459,11 +1499,24 @@ GameScriptRuntime::actor_heartbeat(
         return fail("actor_ai.heartbeat returned an incomplete snapshot");
     }
     decision.direction = static_cast<std::uint8_t>(returned_action_code);
-    if (!read_field_integer(state, decision_table, "frame", 1U,
+    if (!read_field_integer(state, decision_table, "frame", 15U,
                             returned_action_code)) {
         return fail("actor_ai.heartbeat returned an invalid animation frame");
     }
     decision.animation_frame = static_cast<std::uint8_t>(returned_action_code);
+    lua_getfield(state, decision_table, "animation_accumulator");
+    if (!lua_isinteger(state, -1)) {
+        return fail(
+            "actor_ai.heartbeat returned an invalid animation accumulator");
+    }
+    const auto animation_accumulator = lua_tointeger(state, -1);
+    if (animation_accumulator < -32768 || animation_accumulator > 32767) {
+        return fail(
+            "actor_ai.heartbeat returned an out-of-range animation accumulator");
+    }
+    decision.animation_accumulator =
+        static_cast<std::int16_t>(animation_accumulator);
+    lua_pop(state, 1);
     const auto read_boolean_field = [state, decision_table](
                                         const char* field,
                                         bool& value) {
@@ -1483,7 +1536,9 @@ GameScriptRuntime::actor_heartbeat(
     }
     if (action == "hold" &&
         (decision.animation_id == "idle" ||
-         decision.animation_id == "entry")) {
+         decision.animation_id == "entry" ||
+         decision.animation_id == "walk" ||
+         decision.animation_id == "attack")) {
         decision.action = ScriptActorBehaviorDecision::Action::hold;
     } else if (action == "play_entry" &&
                decision.animation_id == "entry") {
@@ -1491,6 +1546,14 @@ GameScriptRuntime::actor_heartbeat(
             ScriptActorBehaviorDecision::Action::play_entry_animation;
     } else {
         return fail("actor_ai.heartbeat returned an unsupported action");
+    }
+    // Every phase returns the actor's full state snapshot. A behavior
+    // heartbeat may therefore report the walk/attack pose last selected by
+    // the render heartbeat without advancing that animation itself.
+    if ((decision.animation_id == "walk" ||
+         decision.animation_id == "attack") &&
+        context.profile_id != "field_runner_k03_none00") {
+        return fail("actor_ai.heartbeat returned an invalid player animation");
     }
 
     lua_getfield(state, decision_table, "audio_event");
@@ -1513,11 +1576,24 @@ GameScriptRuntime::actor_heartbeat(
         decision.weapon_item_id = static_cast<std::uint8_t>(item_id);
     }
     lua_pop(state, 1);
+    lua_getfield(state, decision_table, "movement_current_heading");
+    if (lua_type(state, -1) != LUA_TNIL) {
+        std::uint32_t heading = 0U;
+        if (!read_integer(state, -1, 0xFFFFU, heading) ||
+            context.profile_id != "field_runner_k03_none00") {
+            return fail(
+                "actor_ai.heartbeat returned an invalid current heading");
+        }
+        decision.movement_current_heading =
+            static_cast<std::uint16_t>(heading);
+    }
+    lua_pop(state, 1);
     lua_getfield(state, decision_table, "movement_heading");
     if (lua_type(state, -1) != LUA_TNIL) {
         std::uint32_t heading = 0U;
         if (!read_integer(state, -1, 0xFFFEU, heading) ||
             context.profile_id != "field_runner_k03_none00" ||
+            context.phase != ScriptActorHeartbeatPhase::behavior ||
             !context.movement_allowed) {
             return fail(
                 "actor_ai.heartbeat returned an invalid movement intent");

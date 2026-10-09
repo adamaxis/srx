@@ -66,6 +66,12 @@ int main() {
     guard_entry_context.spawn = false;
     const auto guard_entry = scripts.actor_heartbeat(guard_entry_context);
     const auto guard_hold = scripts.actor_heartbeat(guard_entry_context);
+    guard_entry_context.phase = ScriptActorHeartbeatPhase::render;
+    std::optional<ScriptActorBehaviorDecision> guard_entry_last_frame;
+    for (std::size_t frame = 0; frame < 9U; ++frame) {
+        guard_entry_last_frame =
+            scripts.actor_heartbeat(guard_entry_context);
+    }
 
     auto pedestrian_context = actor_context(
         "pedestrian_k0b_none00", "pedestrian_entry", 11U,
@@ -99,8 +105,15 @@ int main() {
                 guard_entry->package_id ==
                     "corp_security.max_power_heavy_pistol" &&
                 guard_entry->animation_id == "entry" &&
+                guard_entry->animation_frame == 0U &&
+                guard_entry->animation_accumulator == -16 &&
                 guard_entry->audio_event == 0x002EU &&
                 guard_entry->weapon_item_id == 6U &&
+                guard_hold.has_value() &&
+                guard_hold->animation_frame == 0U &&
+                guard_entry_last_frame.has_value() &&
+                guard_entry_last_frame->animation_id == "entry" &&
+                guard_entry_last_frame->animation_frame == 1U &&
                 pedestrian_spawn.has_value() &&
                 pedestrian_spawn->animation_id == "idle" &&
                 pedestrian_entry.has_value() &&
@@ -147,15 +160,64 @@ int main() {
             player_right.has_value() &&
                 player_right->package_id == "runner.field_controlled" &&
                 player_right->movement_heading == 0x4000U &&
+                player_right->movement_current_heading == 0x0800U &&
                 player_scripted_heading.has_value() &&
                 player_scripted_heading->movement_heading == 0x2000U &&
+                player_scripted_heading->movement_current_heading == 0x1000U &&
                 player_invalid_heading.has_value() &&
                 !player_invalid_heading->movement_heading.has_value() &&
+                player_invalid_heading->movement_current_heading == 0x1000U &&
                 player_idle.has_value() &&
-                !player_idle->movement_heading.has_value(),
-            "Lua player heartbeat did not resolve controller/script movement intent")) {
+                !player_idle->movement_heading.has_value() &&
+                player_idle->movement_current_heading == 0x1000U,
+            "Lua player heartbeat did not resolve movement intent and heading slew")) {
         std::cerr << scripts.failure() << '\n';
         return 16;
+    }
+
+    player_movement.phase = ScriptActorHeartbeatPhase::render;
+    player_movement.initial_heading = 0x4000U;
+    player_movement.animation_mode = ScriptActorAnimationMode::walking;
+    const auto player_walk_start = scripts.actor_heartbeat(player_movement);
+    std::optional<ScriptActorBehaviorDecision> player_walk_seventh;
+    for (std::size_t update = 0; update < 6U; ++update) {
+        player_walk_seventh = scripts.actor_heartbeat(player_movement);
+    }
+    player_movement.animation_mode = ScriptActorAnimationMode::attack;
+    const auto player_attack_pose = scripts.actor_heartbeat(player_movement);
+    player_movement.animation_mode = ScriptActorAnimationMode::walking;
+    std::optional<ScriptActorBehaviorDecision> player_walk_after_attack;
+    for (std::size_t update = 0; update < 7U; ++update) {
+        player_walk_after_attack = scripts.actor_heartbeat(player_movement);
+    }
+    player_movement.phase = ScriptActorHeartbeatPhase::behavior;
+    player_movement.movement_allowed = true;
+    player_movement.controller_nibble = 6U;
+    player_movement.movement_state_heading_override = 0x3000U;
+    const auto player_behavior_after_render =
+        scripts.actor_heartbeat(player_movement);
+    if (!expect(
+            player_walk_start.has_value() &&
+                player_walk_start->animation_id == "walk" &&
+                player_walk_start->direction == 2U &&
+                player_walk_start->animation_frame == 0U &&
+                player_walk_start->animation_accumulator == 0x0280 &&
+                player_walk_seventh.has_value() &&
+                player_walk_seventh->animation_frame == 1U &&
+                player_attack_pose.has_value() &&
+                player_attack_pose->animation_id == "attack" &&
+                player_attack_pose->animation_frame == 0U &&
+                player_attack_pose->animation_accumulator == 0 &&
+                player_walk_after_attack.has_value() &&
+                player_walk_after_attack->animation_frame == 1U &&
+                player_behavior_after_render.has_value() &&
+                player_behavior_after_render->animation_id == "walk" &&
+                player_behavior_after_render->movement_heading == 0x4000U &&
+                player_behavior_after_render->movement_current_heading ==
+                    0x3800U,
+            "Lua heartbeat did not own player animation and movement cadence")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
     }
 
     const auto field_interaction_text_keys =

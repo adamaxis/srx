@@ -54,9 +54,12 @@ read the resulting record facts rather than derive flags from a package name.
 The NPC Lua profile slice receives kind/action identity, initial delay, and
 heading; it does not yet receive the remaining `+0x10`, `+0x11`, `+0x4C`,
 `+0x9E`, or route fields needed for the general branch tree. The player
-heartbeat receives the normalized controller nibble and source heading table
-so Lua can choose a movement intent. Terrain probes and position commit remain
-host services for this slice.
+heartbeat receives the normalized controller nibble and source heading table.
+Lua chooses its target heading and advances the current heading with the
+`0xB530` `0x0800`-step rule. The field host still resolves route and terrain
+collision, commits accepted positions, and reports collision-driven heading
+corrections to Lua. That collision and position path is an unfinished Lua
+ownership boundary.
 The corresponding Lua-owned per-instance state lives at
 `game.actors[actor_id]`; it is shared script state rather than a transient
 heartbeat result or a C++ behavior-state object.
@@ -101,13 +104,14 @@ terminal marker and next increment. This work occurs in the render pass; it
 does not replace the AI/action update at `0xA8EA`.
 
 The native port should retain that distinction in its scheduler: Lua receives
-one behavior heartbeat per source field-service pass and owns each actor's
-timers, decisions, movement intents, animation clip/frame/cadence, and sound
-requests. The host supplies narrow world services (read/write actor facts,
-collision query/commit, spawn/despawn, named audio playback) and renders the
-script-produced pose. Rendering must not increment a Lua animation a second
-time. Actor state is keyed by a stable instance ID, not the archetype ID, so
-two guards can run independent timers and decisions.
+one behavior heartbeat per source field-service pass and one render heartbeat
+per source actor-render pass. The behavior heartbeat owns decisions and timers;
+the render heartbeat owns animation frame/cadence. Lua also selects movement
+and advances player heading, while the host supplies collision query/route,
+position commit, spawn/despawn, named audio playback, and rendering services.
+Drawing consumes the script-produced pose without advancing it a second time.
+Actor state is keyed by a stable instance ID, not the archetype ID, so two
+guards can run independent timers and decisions.
 
 ## Port coverage and current boundary
 
@@ -125,11 +129,14 @@ New Game's scene-2 list remains inactive under the observed ROM lifecycle.
 They are not yet the complete 16 live entity records. General target
 selection, general NPC movement, item/spell action selection, weapon firing,
 damage/death state, linked actors, and world activities remain outside the Lua
-heartbeat. The player now shares the per-service heartbeat and Lua selects
-controller/scripted movement intent, but collision-coupled motion and the
-player's animation clock remain native host work. Those branches must be
-ported before claiming that every on-screen actor's behavior and animation
-are Lua-driven.
+heartbeat. The player now receives behavior and render heartbeats; Lua resolves
+controller/scripted target headings, applies the `0xB530` slew, and owns the
+player's animation clock. C++ still chooses collision routes, commits accepted
+positions, and can feed a collision-corrected heading back to Lua. The 16-slot
+population and projectile animation paths are not yet all connected to these
+callbacks. General NPC movement, collision policy, and source actor-slot
+dispatch must move behind Lua actor packages before claiming complete
+Lua-owned movement or that every on-screen actor is connected.
 
 The entry sounds selected by `0xB330` are kind-table events `0x2E` and `0x2F`.
 The extracted audio table maps both to silent slots, so the Lua request has no

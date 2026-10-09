@@ -111,6 +111,17 @@ enum class ScriptActorActionKind : std::uint8_t {
     spell,
 };
 
+enum class ScriptActorHeartbeatPhase : std::uint8_t {
+    behavior,
+    render,
+};
+
+enum class ScriptActorAnimationMode : std::uint8_t {
+    idle,
+    walking,
+    attack,
+};
+
 // Source-derived identity and spawn facts passed to an actor's Lua heartbeat.
 // Lua owns per-instance behavior state; the host retains world facts and
 // consumes the returned presentation/action snapshot.
@@ -129,6 +140,12 @@ struct ScriptActorBehaviorContext {
     std::uint8_t controller_nibble = 0;
     std::array<std::uint16_t, 16> controller_heading_table{};
     std::optional<std::uint16_t> movement_heading_override;
+    std::optional<std::uint16_t> movement_state_heading_override;
+    ScriptActorHeartbeatPhase phase = ScriptActorHeartbeatPhase::behavior;
+    ScriptActorAnimationMode animation_mode =
+        ScriptActorAnimationMode::idle;
+    std::optional<std::uint8_t> animation_direction_override;
+    std::optional<std::int16_t> animation_accumulator_override;
 };
 
 struct ScriptActorBehaviorDecision {
@@ -147,6 +164,8 @@ struct ScriptActorBehaviorDecision {
     std::optional<std::uint16_t> audio_event;
     std::optional<std::uint8_t> weapon_item_id;
     std::optional<std::uint16_t> movement_heading;
+    std::optional<std::uint16_t> movement_current_heading;
+    std::int16_t animation_accumulator = 0;
 };
 
 struct ScriptNativeOperation {

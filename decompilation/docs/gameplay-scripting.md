@@ -303,27 +303,44 @@ rather than a second Lua copy.
   opening-story caption IDs to Lua text keys. The offline importer reads those
   separate `0xFF`-terminated ROM records at `0x5B7D8..0x5BA4B`; the native intro
   schedule still chooses their timing, row, and palette.
+Actor ownership target: the source has a behavior service pass at ROM `0xA8EA`
+and a separate actor render pass at `0x4618`; Lua should receive one heartbeat
+for each active ROM record in each corresponding pass. Lua packages own actor
+AI, movement state and decisions, animation state, sound requests, and
+scripted placement. C++ provides narrow host services for collision queries,
+accepted-position commit, asset rendering, and audio playback. The current
+runtime sends these heartbeats only to the controlled player and the extracted
+NPC profiles; it does not yet enumerate all 16 live records. Lua now owns the
+player's target-heading selection/slew and animation cadence plus extracted
+NPC entry animations, while collision-route policy and most NPC behavior remain
+native or unconnected.
+
 - `gameplay/scripts/actor_ai.lua` resolves Lua AI packages from a stable
   source-template profile ID plus the ROM's item/spell/none action class and
-  code. Every active profile actor has a stable instance ID and receives one
-  Lua heartbeat on each field behavior-service pass. Per-actor mutable state is
+  code. Every active profile actor has a stable instance ID and receives a
+  Lua behavior heartbeat on each field behavior-service pass and a render
+  heartbeat on the actor render pass. Per-actor mutable state is
   stored in the shared `game.actors[actor_id]` registry, so other gameplay
   scripts can inspect or coordinate actor state without copying it through
   callback arguments. Lua owns entry delay, transition completion timer,
   direction, animation frame, and cadence; the Qt renderer consumes the
-  returned snapshot without advancing a second clock. The player also receives
-  a heartbeat each field service pass: Lua maps the ROM's normalized D-pad
-  table to a movement heading or consumes a scripted heading override. The
-  host performs the collision-coupled step and reports its result on the next
-  service pass.
+  returned snapshot without advancing a second clock. The player receives a
+  behavior heartbeat each field service pass, where Lua maps the ROM's
+  normalized D-pad table or a scripted override to a target heading and applies
+  the `0xB530` `0x0800`-step heading slew. A separate render heartbeat owns the
+  player's C062/C052 animation clock and returns the pose. The host still
+  chooses collision routes, commits accepted positions, and reports a
+  collision-adjusted heading to Lua before its next movement update.
   In the traced lists,
   `corp_guard_k05_item06` binds item 6, Max-Power (Heavy Pistol), and
   `pedestrian_k0b_none00` has no active item action. Each package selects its
   initial animation and requests its source cue; the audio host executes the
   request. This entry/idle branch is connected only for the current scene-2
   and scene-0x14 profile definitions, with scene 2 still inactive during New
-  Game bootstrap. Player terrain probes, position commit, and movement
-  animation clock remain native host work; Lua now chooses movement intent.
+  Game bootstrap. Player terrain probes, route/fallback selection, and
+  position commit remain native host work; Lua owns the player's heading
+  progression and animation clock. Moving collision policy and all live source
+  actor slots into Lua remains unfinished.
   The script does not yet own general NPC movement, target selection, combat
   choices, weapon fire, hits, or damage. The ROM call order,
   actor timers, target/movement hand-off, and current gaps are documented in

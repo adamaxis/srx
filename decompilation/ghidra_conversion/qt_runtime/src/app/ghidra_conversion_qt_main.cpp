@@ -15591,7 +15591,27 @@ int main(int argc, char** argv) {
                         0U) {
                     std::cerr << "field movement QA: held direction, heading "
                                  "slew, accepted movement, or idle reset did "
-                                 "not match the source state\n";
+                                 "not match the source state"
+                              << " target=0x" << std::hex << held_target
+                              << " heading8=0x" << heading_after_eight_ticks
+                              << " heading=0x" << held_heading << std::dec
+                              << " delta=(" << x_delta << ',' << y_delta << ')'
+                              << " frame16=" << static_cast<unsigned>(
+                                     held_animation_frame_at_sixteen)
+                              << " advances=" << static_cast<unsigned>(
+                                     frame_advance_count)
+                              << " wraps=" << static_cast<unsigned>(
+                                     frame_wrap_count)
+                              << " intervals=" << animation_intervals_valid
+                              << " walking16=" << held_walking_at_sixteen
+                              << " walking=" << held_walking
+                              << " selector16=0x" << std::hex
+                              << held_animation_selector_at_sixteen
+                              << " selector=0x" << held_animation_selector
+                              << std::dec << " nibble="
+                              << static_cast<unsigned>(
+                                     field_scene.field_controller_nibble_for_dump())
+                              << " failure=" << field_scene.failure() << "\n";
                     return 3;
                 }
                 const auto left_initial_position =

@@ -43,10 +43,61 @@ frame 7 at completion. This is not the ordinary held-D-pad cycle.
 
 The extractor writes C062 frames as individually named files at
 `assets/field/entities/movement-<direction>-<frame>.bmp`, with
-`0xB6DE/0xC062/0x600E` provenance. The Qt runtime consumes those files directly
-and keeps selector, frame, accumulator, period, direction, position, and
-walking/idle state typed in `FieldSceneRuntime`. C0B2 transition assets remain
-in their separate legacy family.
+`0xB6DE/0xC062/0x600E` provenance. The Qt renderer consumes those files
+directly. `actor_ai.lua` owns the player's render-phase frame accumulator,
+four-pose cadence, and idle/walk/attack animation selection; it also owns the
+default NPCs' C0B2 transition animation cadence. `FieldSceneRuntime` retains
+the accepted position, collision state, source selector bookkeeping, and the
+last Lua pose snapshot. Player target-heading selection and the `0xB530`
+`0x0800` heading slew now run in Lua. C++ still evaluates collision routes
+and fallback headings, commits the accepted position, and synchronizes any
+collision heading correction back into the next Lua heartbeat. C0B2 transition
+assets remain a separate family.
+
+## Full-screen visual review for the Lua heartbeat slice
+
+The latest Debug and Release QA runs emitted 55 field-movement frames and 43
+scene-20 physical-entry frames each. The corresponding Debug/Release BMPs
+match byte for byte. I reviewed every frame in full-screen contact sheets. The
+movement route keeps the map, runner, portrait, equipment/ammo slots, and
+sidebar intact while the camera scrolls; the release checkpoints return to the
+directional idle pose. The scene-20 sequence shows the field, doorway, interior,
+maglock dialogue, and return without stale dialogue panels, duplicate controls,
+or old button graphics left under the new screen.
+
+I also reviewed the independent longplay's 30-fps scene-2 frames 4440-4469
+(02:28). They show the same street, HUD scale, and moving runner through the
+camera scroll. The video does not log controller input, so it corroborates
+placement and sprite appearance but does not prove the exact heading or
+per-step cadence of the QA route. The internal captures verify this conversion
+path, not Genesis visual fidelity.
+
+## Seven-question visual check
+
+1. **Does it look correct?** The runner remains aligned to the street and
+   changes facing with the held direction; the longplay frames corroborate its
+   scale and street placement.
+2. **Does the look match state?** The movement QA checks the source target and
+   current headings, accepted coordinates, walking state, and C052/C062
+   selector values; release resets to the corresponding directional idle
+   selector.
+3. **Are the visuals correct?** The ROM selects C062 for accepted movement and
+   C052 for idle/reset. The renderer uses the extracted directional frame files
+   for those selectors.
+4. **How does it animate?** ROM `0x5FDC` advances on a `0x1000` period from a
+   `0x0280` increment. Lua advances the four-pose walk cycle on the corresponding
+   six/seven-update cadence; the QA checks all four poses and a loop.
+5. **Is there sound?** The traced ordinary movement and selector path from
+   `0xB530` through `0xB6DE` contains no movement-specific audio call. Entry
+   cues `0x2E`/`0x2F` belong to a separate branch and map to silent slots.
+6. **Are neighboring visuals clean?** The complete field and scene-20 frames
+   were reviewed, including HUD, portrait, map edges, doorway, interior, and
+   dialogue return. No old panel, duplicate control, or stale button remains
+   over the next screen.
+7. **Are there multiple frames?** Yes: 55 field-movement and 43 scene-20
+   checkpoints per Debug/Release build, plus the 30 consecutive longplay frames
+   4440-4469. The longplay does not expose input state, so it does not confirm
+   the QA route's exact movement timing.
 
 The `shadowrun_ghidra_conversion_qt_field_movement_qa` route captures idle,
 held-right ticks 1, 4, 7, 8, 14, 16, 21, 28, 32, and 35, release, and
