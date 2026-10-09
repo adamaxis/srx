@@ -107,6 +107,7 @@ private:
     std::function<void(std::string_view)> source_boundary_callback_;
     std::function<void(std::uint16_t)> source_audio_event_callback_;
     scripting::GameScriptRuntime* script_runtime_ = nullptr;
+    scripting::ScriptStringMap text_keys_;
     std::optional<scripting::ScriptMenuDefinition> maglock_intro_menu_;
     std::optional<scripting::ScriptMenuDefinition> maglock_actions_menu_;
     std::optional<scripting::ScriptMenuDefinition> security_actions_menu_;

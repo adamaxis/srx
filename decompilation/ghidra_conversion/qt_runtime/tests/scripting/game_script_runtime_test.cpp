@@ -33,6 +33,29 @@ int main() {
         return 1;
     }
 
+    const auto field_interaction_text_keys =
+        scripts.string_map("field_interactions", "text_keys");
+    bool field_interaction_text_map_valid =
+        field_interaction_text_keys.has_value() &&
+        field_interaction_text_keys->size() == 22U;
+    if (field_interaction_text_map_valid) {
+        for (const auto& entry : *field_interaction_text_keys) {
+            field_interaction_text_map_valid =
+                field_interaction_text_map_valid &&
+                scripts.dialogue_text(entry.second) != nullptr;
+        }
+    }
+    if (!expect(
+            field_interaction_text_map_valid &&
+                field_interaction_text_keys->at("door_title") ==
+                    "field.maglock.door.title" &&
+                field_interaction_text_keys->at("security_floor_fifth") ==
+                    "field.security-terminal.floor.4",
+            "Lua field-interaction outcomes or ROM text keys did not load")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
     const auto* arrival_text =
         scripts.dialogue_text("stoker.motel.arrival.title");
     const auto* fifth_floor_text =

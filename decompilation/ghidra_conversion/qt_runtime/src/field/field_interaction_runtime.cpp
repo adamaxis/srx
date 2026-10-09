@@ -5,6 +5,7 @@
 #include <QPainter>
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -21,6 +22,30 @@ constexpr std::uint32_t kTerminalCommand = 0xFAU;
 constexpr std::uint8_t kMaglockPasskeyItem = 0x14U;
 constexpr std::uint8_t kElectronicsKitItem = 0x15U;
 constexpr std::uint8_t kFragGrenadeItem = 0x0DU;
+constexpr std::array<std::string_view, 22U> kFieldInteractionTextKeyIds{{
+    "door_title",
+    "no_passkey",
+    "insufficient_passkey",
+    "passkey_result",
+    "electronics_no_skill",
+    "electronics_success",
+    "electronics_failure",
+    "electronics_alert",
+    "grenade_no_item",
+    "grenade_result",
+    "unlocked_door",
+    "security_title",
+    "security_failure",
+    "security_alarm_disabled",
+    "security_system_disabled",
+    "security_files",
+    "security_floor_first",
+    "security_floor_second",
+    "security_floor_third",
+    "security_floor_fourth",
+    "security_floor_fifth",
+    "security_floor_sixth",
+}};
 } // namespace
 
 enum class FieldInteractionRuntime::TextKey : std::uint32_t {
@@ -64,9 +89,29 @@ FieldInteractionRuntime::~FieldInteractionRuntime() = default;
 bool FieldInteractionRuntime::load_assets(
     const ConversionAssetCatalog& assets) {
     failure_.clear();
-    if (script_runtime_ == nullptr ||
-        script_runtime_->dialogue_text("field.maglock.door.title") == nullptr) {
-        failure_ = "Lua field-interaction text is not loaded";
+    if (script_runtime_ == nullptr) {
+        failure_ = "Lua field-interaction script runtime is not loaded";
+        return false;
+    }
+    auto text_keys =
+        script_runtime_->string_map("field_interactions", "text_keys");
+    if (!text_keys.has_value() ||
+        text_keys->size() != kFieldInteractionTextKeyIds.size()) {
+        failure_ = "Lua field-interaction text-key map is missing or incomplete";
+        return false;
+    }
+    for (const auto id : kFieldInteractionTextKeyIds) {
+        const auto key = text_keys->find(std::string(id));
+        if (key == text_keys->end() ||
+            script_runtime_->dialogue_text(key->second) == nullptr) {
+            failure_ = "Lua field-interaction text key has no ROM text";
+            return false;
+        }
+    }
+    text_keys_ = std::move(*text_keys);
+
+    if (script_runtime_->dialogue_text(text_keys_.at("door_title")) == nullptr) {
+        failure_ = "Lua field-interaction title text is not loaded";
         return false;
     }
 
@@ -408,53 +453,54 @@ void FieldInteractionRuntime::add_option(
 
 std::string_view FieldInteractionRuntime::resolve_text(
     const std::uint32_t key) const {
-    std::string_view alias;
+    std::string_view text_id;
     switch (static_cast<TextKey>(key)) {
-    case TextKey::door_title: alias = "field.maglock.door.title"; break;
-    case TextKey::no_passkey: alias = "field.maglock.no-passkey"; break;
+    case TextKey::door_title: text_id = "door_title"; break;
+    case TextKey::no_passkey: text_id = "no_passkey"; break;
     case TextKey::insufficient_passkey:
-        alias = "field.maglock.insufficient-passkey"; break;
+        text_id = "insufficient_passkey"; break;
     case TextKey::passkey_result:
-        alias = "field.maglock.passkey.result"; break;
+        text_id = "passkey_result"; break;
     case TextKey::electronics_no_skill:
-        alias = "field.maglock.electronics.no-skill"; break;
+        text_id = "electronics_no_skill"; break;
     case TextKey::electronics_success:
-        alias = "field.maglock.electronics.success"; break;
+        text_id = "electronics_success"; break;
     case TextKey::electronics_failure:
-        alias = "field.maglock.electronics.failure"; break;
+        text_id = "electronics_failure"; break;
     case TextKey::electronics_alert:
-        alias = "field.maglock.electronics.alert"; break;
+        text_id = "electronics_alert"; break;
     case TextKey::grenade_no_item:
-        alias = "field.maglock.grenade.unavailable"; break;
+        text_id = "grenade_no_item"; break;
     case TextKey::grenade_result:
-        alias = "field.maglock.grenade.result"; break;
+        text_id = "grenade_result"; break;
     case TextKey::unlocked_door:
-        alias = "field.maglock.already-unlocked"; break;
-    case TextKey::security_title:
-        alias = "field.security-terminal.title"; break;
+        text_id = "unlocked_door"; break;
+    case TextKey::security_title: text_id = "security_title"; break;
     case TextKey::security_failure:
-        alias = "field.security-terminal.failed"; break;
+        text_id = "security_failure"; break;
     case TextKey::security_alarm_disabled:
-        alias = "field.security-terminal.alarm-disabled"; break;
+        text_id = "security_alarm_disabled"; break;
     case TextKey::security_system_disabled:
-        alias = "field.security-terminal.system-disabled"; break;
+        text_id = "security_system_disabled"; break;
     case TextKey::security_files:
-        alias = "field.security-terminal.files"; break;
+        text_id = "security_files"; break;
     case TextKey::security_floor_first:
-        alias = "field.security-terminal.floor.0"; break;
+        text_id = "security_floor_first"; break;
     case TextKey::security_floor_second:
-        alias = "field.security-terminal.floor.1"; break;
+        text_id = "security_floor_second"; break;
     case TextKey::security_floor_third:
-        alias = "field.security-terminal.floor.2"; break;
+        text_id = "security_floor_third"; break;
     case TextKey::security_floor_fourth:
-        alias = "field.security-terminal.floor.3"; break;
+        text_id = "security_floor_fourth"; break;
     case TextKey::security_floor_fifth:
-        alias = "field.security-terminal.floor.4"; break;
+        text_id = "security_floor_fifth"; break;
     case TextKey::security_floor_sixth:
-        alias = "field.security-terminal.floor.5"; break;
+        text_id = "security_floor_sixth"; break;
     }
-    const auto* text = script_runtime_ != nullptr
-                           ? script_runtime_->dialogue_text(alias)
+    const auto mapped_key = text_keys_.find(std::string(text_id));
+    const auto* text = script_runtime_ != nullptr &&
+                               mapped_key != text_keys_.end()
+                           ? script_runtime_->dialogue_text(mapped_key->second)
                            : nullptr;
     return text == nullptr ? std::string_view{} : std::string_view(*text);
 }

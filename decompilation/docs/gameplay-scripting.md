@@ -124,8 +124,9 @@ access.
 - `gameplay/scripts/field_interactions.lua` declares the ordered choices for
   the shared Maglock and Security Terminal prompts. The native interaction
   controller maps these stable choice IDs to source commands and retains the
-  passkey, Electronics, grenade, alarm, and map-state rules; labels resolve
-  through the ROM-derived text table.
+  passkey, Electronics, grenade, alarm, and map-state rules. Its text-key map
+  binds those outcomes to the shared ROM-derived dialogue entries, so native
+  result handling does not carry a second set of content aliases.
 - `gameplay/scripts/motel.lua` contains one shared motel interaction, not a
   script for every named building. It adds the base choices and collects the
   optional `motel_manager_choices()` hook from quest modules in stable

@@ -24,6 +24,7 @@ constexpr std::size_t kMaximumMenuChoices = 7U;
 // Static script catalogs may describe source tables such as all 13 Magic
 // spells or 32 shop headings; live dialogue menus keep the seven-row cap.
 constexpr std::size_t kMaximumMenuCatalogChoices = 32U;
+constexpr std::size_t kMaximumStringMapEntries = 128U;
 constexpr std::size_t kMaximumShopGroups = 8U;
 constexpr std::size_t kMaximumShopOffers = 8U;
 constexpr std::size_t kMaximumItemCatalogEntries = 50U;
@@ -1406,6 +1407,64 @@ bool GameScriptRuntime::task_waiting_for_native_operation() const noexcept {
 void GameScriptRuntime::cancel_task() noexcept {
     impl_->release_task();
     impl_->failure.clear();
+}
+
+std::optional<ScriptStringMap> GameScriptRuntime::string_map(
+    const std::string_view module, const std::string_view function) {
+    auto* state = impl_->state;
+    if (state == nullptr || !valid_identifier(function)) {
+        impl_->failure = "invalid gameplay script string-map callback";
+        return std::nullopt;
+    }
+    if (!impl_->push_module(module)) {
+        impl_->failure = "gameplay script module is missing: " +
+                         std::string(module);
+        return std::nullopt;
+    }
+    lua_getfield(state, -1, std::string(function).c_str());
+    if (!lua_isfunction(state, -1)) {
+        lua_pop(state, 2);
+        impl_->failure = std::string(module) + "." + std::string(function) +
+                         " must be a Lua function";
+        return std::nullopt;
+    }
+    lua_remove(state, -2);
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 0, 1, 0) != LUA_OK) {
+        impl_->failure = std::string(module) + "." + std::string(function) +
+                         ": " + stack_error(state);
+        lua_pop(state, 1);
+        return std::nullopt;
+    }
+
+    ScriptStringMap result;
+    bool valid = lua_istable(state, -1);
+    const auto table_index = lua_absindex(state, -1);
+    if (valid) {
+        lua_pushnil(state);
+        while (lua_next(state, table_index) != 0) {
+            std::string key;
+            std::string value;
+            if (!read_string(state, -2, key) || !valid_identifier(key) ||
+                !read_string(state, -1, value) ||
+                !valid_identifier(value) ||
+                result.size() >= kMaximumStringMapEntries ||
+                !result.emplace(std::move(key), std::move(value)).second) {
+                lua_pop(state, 2);
+                valid = false;
+                break;
+            }
+            lua_pop(state, 1);
+        }
+    }
+    lua_pop(state, 1);
+    if (!valid || result.empty()) {
+        impl_->failure = std::string(module) + "." + std::string(function) +
+                         " must return a bounded map of string IDs";
+        return std::nullopt;
+    }
+    impl_->failure.clear();
+    return result;
 }
 
 std::optional<ScriptMenuDefinition> GameScriptRuntime::menu(

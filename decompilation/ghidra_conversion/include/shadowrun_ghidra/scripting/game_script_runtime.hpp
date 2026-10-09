@@ -34,6 +34,8 @@ struct ScriptMenuDefinition {
     std::vector<ScriptMenuChoice> choices;
 };
 
+using ScriptStringMap = std::unordered_map<std::string, std::string>;
+
 struct ScriptShopOffer {
     std::uint8_t type = 0;
     std::uint8_t value = 0;
@@ -140,6 +142,8 @@ public:
                               std::string_view text_profile = {},
                               std::string_view speaker_id = {});
     std::optional<std::string> call_string(
+        std::string_view module, std::string_view function);
+    std::optional<ScriptStringMap> string_map(
         std::string_view module, std::string_view function);
     std::optional<ScriptShopDefinition> shop_definition(
         std::string_view shop_id);
