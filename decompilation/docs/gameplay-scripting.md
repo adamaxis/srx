@@ -180,18 +180,20 @@ access.
   typed native state.
 - `gameplay/scripts/attributes_skills.lua` declares stable IDs for the 20
   Attributes/Skills labels and five upgrade messages in source order. The field
-  text catalog resolves the ROM copy through those IDs; skill values, cursor
-  movement, upgrade eligibility, and karma spending remain native state.
+  text catalog reads that list from Lua and resolves the ROM copy; catalog QA
+  checks the source ordering. Skill values, cursor movement, upgrade
+  eligibility, and karma spending remain native state.
 - `gameplay/scripts/cyberware.lua` declares stable IDs for the Cyberware title,
-  separator, empty state, and 15 implant names in source order. Native field
-  state controls which implants are owned and how that page is presented.
+  separator, empty state, and 15 implant names in source order. The field text
+  catalog reads those IDs from Lua; native field state controls which implants
+  are owned and how that page is presented.
 - `gameplay/scripts/magic.lua` declares the 13 spell IDs in the ROM
   `D4EA0` name-table order. The extractor keys each ROM name and description
   with that semantic ID. It also declares seven IDs for the two Magic panel
-  variants' shared labels and headings. The field text catalog validates the
-  ordered lists and binds copy back to the typed presenter; the runner's spell
-  table still filters available spells, and force, posture, cursor timing, and
-  spell effects remain native state.
+  variants' shared labels and headings. The field text catalog reads both
+  lists from Lua and binds copy back to the typed presenter; catalog QA checks
+  source ordering. The runner's spell table still filters available spells,
+  and force, posture, cursor timing, and spell effects remain native state.
 - `gameplay/scripts/hotel.lua` declares stable choice IDs for the Hotel
   Options and checkout cursor menus. `FieldSceneRuntime` loads both menu
   definitions through `GameScriptRuntime::menu`, validates their source order,

@@ -11,36 +11,12 @@
 namespace shadowrun::ghidra_conversion::qt_runtime {
 namespace {
 
-constexpr std::array<std::string_view, kAttributesSkillsTextCount>
-    kAttributesSkillsTextIds{{
-        "body", "quickness", "strength", "charisma", "intelligence",
-        "willpower", "essence", "magic", "sorcery", "firearms", "pistols",
-        "smgs", "shotguns", "melee_combat", "throwing", "computer",
-        "biotech", "electronics", "reputation", "negotiation",
-        "upgrade_header", "maximum_level", "mage_only",
-        "insufficient_karma", "upgrade_prompt"}};
 constexpr std::array<std::string_view, kNotebookChoiceCount>
     kNotebookChoiceIds{{"current_run", "tips_and_clues", "contacts",
                         "mr_johnsons", "shadowrunners"}};
 constexpr std::array<std::string_view, 5> kPocketSecretaryRootChoiceIds{{
     "notebook", "group_items", "cyberdeck", "dismiss_runner",
     "save_load"}};
-constexpr std::array<std::string_view, kMagicSpellTextCount> kMagicSpellIds{{
-    "flame_dart", "flame_bolt", "hellblast", "invisibility", "sleep",
-    "stink", "super_barrier", "mana_zap", "mana_blast", "mana_storm",
-    "rockskin", "heal_wounds", "confusion"}};
-constexpr std::array<std::string_view, kMagicPanelTextCount>
-    kMagicPanelTextIds{{
-        "defense_title", "force_posture_heading", "success_label",
-        "force_label", "availability_label", "panel_metric_labels",
-        "panel_force_posture_labels"}};
-constexpr std::array<std::string_view, kCyberwareTextCount>
-    kCyberwareTextIds{{
-        "title", "separator", "empty", "datajack", "cyber_eyes",
-        "hand_razors", "spurs", "smartlink", "muscle_replace_1",
-        "muscle_replace_2", "muscle_replace_3", "muscle_replace_4",
-        "dermal_plating_1", "dermal_plating_2", "dermal_plating_3",
-        "wired_reflexes_1", "wired_reflexes_2", "wired_reflexes_3"}};
 constexpr std::array<std::string_view, kFieldMenuRaceNameCount>
     kCommandOverviewRaceIds{{"human", "elf", "dwarf", "orc", "troll"}};
 constexpr std::array<std::string_view, kFieldMenuClassNameCount>
@@ -80,13 +56,18 @@ constexpr std::string_view kMagicSpellOptionPrefix =
 constexpr std::string_view kMagicSpellDescriptionPrefix =
     "magic.spells.description.";
 
-bool magic_spell_index(const std::string_view id, std::size_t& index) {
-    const auto found = std::find(kMagicSpellIds.begin(), kMagicSpellIds.end(),
-                                 id);
-    if (found == kMagicSpellIds.end()) {
+bool magic_spell_index(
+    const std::string_view id, std::size_t& index,
+    const std::array<std::string, kMagicSpellTextCount>& spell_ids) {
+    const auto found = std::find_if(
+        spell_ids.begin(), spell_ids.end(),
+        [id](const std::string& spell_id) {
+            return std::string_view(spell_id) == id;
+        });
+    if (found == spell_ids.end()) {
         return false;
     }
-    index = static_cast<std::size_t>(found - kMagicSpellIds.begin());
+    index = static_cast<std::size_t>(found - spell_ids.begin());
     return true;
 }
 
@@ -122,14 +103,13 @@ bool has_attributes_skills_text_label_prefix(const std::string_view key) {
     return key.rfind("attributes_skills.text.option.", 0U) == 0U;
 }
 
-bool is_attributes_skills_text_label_key(const std::string_view key) {
+bool is_attributes_skills_text_label_key(
+    const std::string_view key,
+    const std::array<std::string, kAttributesSkillsTextCount>& text_ids) {
     constexpr std::string_view kTextPrefix =
         "attributes_skills.text.option.";
     return key.rfind(kTextPrefix, 0U) == 0U &&
-           std::find(kAttributesSkillsTextIds.begin(),
-                     kAttributesSkillsTextIds.end(),
-                     key.substr(kTextPrefix.size())) !=
-               kAttributesSkillsTextIds.end();
+           has_menu_choice_id(text_ids, key.substr(kTextPrefix.size()));
 }
 
 bool has_item_display_text_label_prefix(const std::string_view key) {
@@ -148,24 +128,24 @@ bool has_magic_panel_text_label_prefix(const std::string_view key) {
     return key.rfind("magic.panel.text.option.", 0U) == 0U;
 }
 
-bool is_magic_panel_text_label_key(const std::string_view key) {
+bool is_magic_panel_text_label_key(
+    const std::string_view key,
+    const std::array<std::string, kMagicPanelTextCount>& text_ids) {
     constexpr std::string_view kTextPrefix = "magic.panel.text.option.";
     return key.rfind(kTextPrefix, 0U) == 0U &&
-           std::find(kMagicPanelTextIds.begin(), kMagicPanelTextIds.end(),
-                     key.substr(kTextPrefix.size())) !=
-               kMagicPanelTextIds.end();
+           has_menu_choice_id(text_ids, key.substr(kTextPrefix.size()));
 }
 
 bool has_cyberware_text_label_prefix(const std::string_view key) {
     return key.rfind("cyberware.text.option.", 0U) == 0U;
 }
 
-bool is_cyberware_text_label_key(const std::string_view key) {
+bool is_cyberware_text_label_key(
+    const std::string_view key,
+    const std::array<std::string, kCyberwareTextCount>& text_ids) {
     constexpr std::string_view kTextPrefix = "cyberware.text.option.";
     return key.rfind(kTextPrefix, 0U) == 0U &&
-           std::find(kCyberwareTextIds.begin(), kCyberwareTextIds.end(),
-                     key.substr(kTextPrefix.size())) !=
-               kCyberwareTextIds.end();
+           has_menu_choice_id(text_ids, key.substr(kTextPrefix.size()));
 }
 
 bool has_field_metric_text_label_prefix(const std::string_view key) {
@@ -662,8 +642,8 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         attributes_skills_text{};
     load_script_menu_labels(
         scripts, "attributes_skills", "text_entries",
-        "attributes_skills.text", "catalog", kAttributesSkillsTextIds,
-        attributes_skills_text, result.errors, nullptr,
+        "attributes_skills.text", "catalog", attributes_skills_text,
+        result.errors, nullptr,
         &result.catalog.attribute_skill_text_ids);
     std::copy_n(attributes_skills_text.begin(), kAttributeSkillLabelCount,
                 result.catalog.attribute_skill_labels.begin());
@@ -678,13 +658,13 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::array<std::string, kMagicSpellTextCount> magic_spell_names{};
     load_script_menu_labels(
         scripts, "magic", "spells", "magic.spells", "catalog",
-        kMagicSpellIds, magic_spell_names, result.errors, nullptr,
+        magic_spell_names, result.errors, nullptr,
         &result.catalog.magic_spell_ids);
     result.catalog.magic_spell_names = std::move(magic_spell_names);
     std::array<std::string, kMagicPanelTextCount> magic_panel_text{};
     load_script_menu_labels(
         scripts, "magic", "panel_text_entries", "magic.panel.text",
-        "catalog", kMagicPanelTextIds, magic_panel_text, result.errors,
+        "catalog", magic_panel_text, result.errors,
         nullptr, &result.catalog.magic_panel_text_ids);
     result.catalog.magic_defense_title = magic_panel_text[0];
     result.catalog.magic_force_posture_heading = magic_panel_text[1];
@@ -696,7 +676,7 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::array<std::string, kCyberwareTextCount> cyberware_text{};
     load_script_menu_labels(
         scripts, "cyberware", "text_entries", "cyberware.text", "catalog",
-        kCyberwareTextIds, cyberware_text, result.errors, nullptr,
+        cyberware_text, result.errors, nullptr,
         &result.catalog.cyberware_text_ids);
     std::copy_n(cyberware_text.begin(), kCyberwareTitleLineCount,
                 result.catalog.cyberware_title_lines.begin());
@@ -903,7 +883,8 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             continue;
         }
         if (has_attributes_skills_text_label_prefix(key)) {
-            if (!is_attributes_skills_text_label_key(key)) {
+            if (!is_attributes_skills_text_label_key(
+                    key, result.catalog.attribute_skill_text_ids)) {
                 result.errors.emplace_back(
                     "unknown Attributes/Skills UI text label key: " + key);
             }
@@ -918,14 +899,16 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             continue;
         }
         if (has_magic_panel_text_label_prefix(key)) {
-            if (!is_magic_panel_text_label_key(key)) {
+            if (!is_magic_panel_text_label_key(
+                    key, result.catalog.magic_panel_text_ids)) {
                 result.errors.emplace_back(
                     "unknown Magic panel text label key: " + key);
             }
             continue;
         }
         if (has_cyberware_text_label_prefix(key)) {
-            if (!is_cyberware_text_label_key(key)) {
+            if (!is_cyberware_text_label_key(
+                    key, result.catalog.cyberware_text_ids)) {
                 result.errors.emplace_back(
                     "unknown Cyberware text label key: " + key);
             }
@@ -979,8 +962,7 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         if (key.rfind(kMagicSpellOptionPrefix, 0U) == 0U) {
             const auto spell_id = std::string_view(key).substr(
                 kMagicSpellOptionPrefix.size());
-            if (std::find(kMagicSpellIds.begin(), kMagicSpellIds.end(),
-                          spell_id) == kMagicSpellIds.end()) {
+            if (!has_menu_choice_id(result.catalog.magic_spell_ids, spell_id)) {
                 result.errors.emplace_back(
                     "unknown Magic spell option key: " + key);
             }
@@ -990,7 +972,7 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             if (!magic_spell_index(
                     std::string_view(key).substr(
                         kMagicSpellDescriptionPrefix.size()),
-                    index)) {
+                    index, result.catalog.magic_spell_ids)) {
                 result.errors.emplace_back(
                     "unknown Magic spell description key: " + key);
                 continue;
@@ -1024,7 +1006,7 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         if (!magic_spell_description_found[index]) {
             result.errors.emplace_back(
                 "missing field menu text row: magic.spells.description." +
-                std::string(kMagicSpellIds[index]));
+                result.catalog.magic_spell_ids[index]);
         }
     }
     add_missing_entries(field_service_title_destination_found,
