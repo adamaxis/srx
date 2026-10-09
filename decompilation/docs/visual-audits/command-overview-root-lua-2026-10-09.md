@@ -2,8 +2,9 @@
 
 ## Scope and source trace
 
-This slice moves the seven stable command-root choice IDs into
-`gameplay/scripts/command_overview.lua` and their ROM-derived labels into
+This slice has `CommandOverview.root()` return the seven stable command-root
+choice IDs and their parallel explicit label keys from
+`gameplay/scripts/command_overview.lua`; the ROM-derived labels remain in
 `assets/dialogue/script-text.lua`. The label order follows selectors 0 through
 6 at the selected-command text position described in
 [`screen-system-audit.md`](../screen-system-audit.md#command-overview-0x10d30-0x10f50-0x111e8).
@@ -37,6 +38,11 @@ with the pre-menu field. These internal captures show consistent state and
 clean redraws; there is no independent Genesis command-page capture to prove
 pixel fidelity.
 
+The current Debug/Release rerun also produced matching full-frame
+`field-command-qa.bmp` and `field-inventory-selector-qa.bmp` screenshots. Both
+were inspected at 320x224; the latter exercises the separate Gator inventory
+page after the command root.
+
 ## Nine-question visual review
 
 1. **Does it look correct?** Each full screen retains the source command shell
@@ -69,8 +75,12 @@ pixel fidelity.
 
 `shadowrun_gameplay_script_runtime_qa`,
 `shadowrun_ghidra_field_menu_text_catalog`,
-`shadowrun_ghidra_conversion_qt_field_command_qa`, and the focused field
-Attributes/Skills QA pass in Debug and Release. The command-root image review
+`shadowrun_ghidra_conversion_qt_field_command_qa`,
+`shadowrun_ghidra_conversion_qt_inventory_selector_qa`, and
+`shadowrun_ghidra_field_command_overview_bridge` pass in Debug and Release.
+The seven page and seven field-return artifacts have matching Debug/Release
+hashes; all seven root pages were inspected at full size, and the return
+images reduce to one identical full-field frame. The command-root image review
 is internal renderer evidence; independent Genesis command-page imagery and
 source-backed route audio remain open. Clips, Cyberware, Magic, and Pocket
 Secretary have separate handlers or child pages, and are not claimed as

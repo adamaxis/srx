@@ -246,7 +246,8 @@ from the older convention incrementally.
   remain native.
 - `gameplay/scripts/command_overview.lua` declares the seven stable IDs for the
   in-game command root in ROM order, including the two distinct Inventory
-  columns, plus the metatype, class, and five posture labels used by its runner
+  columns, with each menu row paired to its explicit Lua text key. It also
+  declares the metatype, class, and five posture labels used by its runner
   summary and selectable posture bar. Both the menu presenter and field text
   catalog consume these ID lists directly from Lua, while script QA checks ROM
   order and text. Typed native command state remains the sole owner of page

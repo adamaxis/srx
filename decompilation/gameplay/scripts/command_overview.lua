@@ -11,6 +11,14 @@ function CommandOverview.root()
         "cyberware",
         "magic",
         "pocket_secretary",
+    }, nil, {
+        "field.command_overview.option.inventory_left",
+        "field.command_overview.option.inventory_right",
+        "field.command_overview.option.clips",
+        "field.command_overview.option.attributes_skills",
+        "field.command_overview.option.cyberware",
+        "field.command_overview.option.magic",
+        "field.command_overview.option.pocket_secretary",
     }
 end
 

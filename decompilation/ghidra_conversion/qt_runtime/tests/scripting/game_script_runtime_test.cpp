@@ -507,6 +507,14 @@ int main() {
     constexpr std::array<std::string_view, 7> kCommandLabels{{
         "Inventory", "Inventory", "Clips", "Attributes/Skills",
         "Cyberware", "Magic", "Pocket Secretary"}};
+    constexpr std::array<std::string_view, 7> kCommandLabelKeys{{
+        "field.command_overview.option.inventory_left",
+        "field.command_overview.option.inventory_right",
+        "field.command_overview.option.clips",
+        "field.command_overview.option.attributes_skills",
+        "field.command_overview.option.cyberware",
+        "field.command_overview.option.magic",
+        "field.command_overview.option.pocket_secretary"}};
     bool command_rows_match = command_root.has_value() &&
         command_root->choices.size() == kCommandChoiceIds.size();
     if (command_rows_match) {
@@ -515,10 +523,12 @@ int main() {
             const auto* label = scripts.dialogue_text(choice.label_key);
             command_rows_match = command_rows_match &&
                 choice.id == kCommandChoiceIds[index] && label != nullptr &&
+                choice.label_key == kCommandLabelKeys[index] &&
                 *label == kCommandLabels[index];
         }
     }
-    if (!expect(command_rows_match,
+    if (!expect(command_root.has_value() &&
+                    command_root->title_key.empty() && command_rows_match,
                 "Lua command overview choices or labels changed order")) {
         std::cerr << scripts.failure() << '\n';
         return 1;
