@@ -41,6 +41,7 @@ inline constexpr std::size_t kFieldServiceActionTitleCount = 32U;
 inline constexpr std::size_t kPocketSecretaryGroupItemCount = 15U;
 inline constexpr std::size_t kPocketSecretaryGroupItemsEmptyLineCount = 2U;
 inline constexpr std::size_t kNotebookLabelCount = 6U;
+inline constexpr std::size_t kNotebookChoiceCount = kNotebookLabelCount - 1U;
 inline constexpr std::size_t kNotebookNoRunLineCount = 3U;
 inline constexpr std::size_t kNotebookTipCount = 96U;
 inline constexpr std::size_t kNotebookMrJohnsonCount = 5U;

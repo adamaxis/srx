@@ -121,6 +121,7 @@ struct PocketSecretaryMenuContent {
     std::string title;
     std::string separator;
     std::array<Choice, kPocketSecretaryFieldMenuRowCount> choices{};
+    std::array<std::string, kNotebookChoiceCount> notebook_choice_ids{};
 };
 
 // Composition-only adapter for the separate Ghidra-conversion Qt executable.

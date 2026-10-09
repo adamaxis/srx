@@ -12,4 +12,16 @@ function PocketSecretary.root()
     }
 end
 
+-- All possible Notebook rows in ROM order. The native model applies the
+-- Contacts, Mr. Johnsons, and Shadowrunners story-flag gates at runtime.
+function PocketSecretary.notebook()
+    return {
+        "current_run",
+        "tips_and_clues",
+        "contacts",
+        "mr_johnsons",
+        "shadowrunners",
+    }
+end
+
 return PocketSecretary

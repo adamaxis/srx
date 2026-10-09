@@ -6325,37 +6325,55 @@ void FieldSceneRuntime::advance_frame() {
                 source_boundary("field.pocket_secretary.notebook.returned");
                 break;
             case PocketSecretaryMenuEvent::notebook_action_boundary:
-                if (pocket_secretary_.notebook.selection <
-                    pocket_secretary_.notebook.option_count &&
-                    pocket_secretary_.notebook.visible_options[
-                        pocket_secretary_.notebook.selection] ==
-                        NotebookMenuOption::tips_and_clues) {
-                    if (!notebook_tip_flags_resolved_) {
+                if (pocket_secretary_.notebook.selection >=
+                    pocket_secretary_.notebook.option_count) {
+                    source_boundary(
+                        "field.pocket_secretary.notebook.choice_id_unresolved");
+                    break;
+                }
+                {
+                    const auto option_index = static_cast<std::size_t>(
+                        pocket_secretary_.notebook.visible_options[
+                            pocket_secretary_.notebook.selection]);
+                    if (option_index >=
+                        pocket_secretary_menu_content_.notebook_choice_ids
+                            .size()) {
                         source_boundary(
-                            "field.pocket_secretary.notebook.tips.flags_unresolved");
+                            "field.pocket_secretary.notebook.choice_id_unresolved");
                         break;
                     }
-                    begin_pocket_secretary_notebook_tips(
-                        pocket_secretary_, notebook_tip_flags_);
-                    source_boundary(
-                        "field.pocket_secretary.notebook.tips.opened");
-                } else if (pocket_secretary_.notebook.selection <
-                               pocket_secretary_.notebook.option_count &&
-                           pocket_secretary_.notebook.visible_options[
-                               pocket_secretary_.notebook.selection] ==
-                               NotebookMenuOption::mr_johnsons) {
-                    if (!notebook_referral_flags_.has_value()) {
+                    const auto& choice_id =
+                        pocket_secretary_menu_content_.notebook_choice_ids[
+                            option_index];
+                    if (choice_id == "tips_and_clues") {
+                        if (!notebook_tip_flags_resolved_) {
+                            source_boundary(
+                                "field.pocket_secretary.notebook.tips.flags_unresolved");
+                            break;
+                        }
+                        begin_pocket_secretary_notebook_tips(
+                            pocket_secretary_, notebook_tip_flags_);
                         source_boundary(
-                            "field.pocket_secretary.notebook.mr_johnsons.flags_unresolved");
-                        break;
+                            "field.pocket_secretary.notebook.tips.opened");
+                    } else if (choice_id == "mr_johnsons") {
+                        if (!notebook_referral_flags_.has_value()) {
+                            source_boundary(
+                                "field.pocket_secretary.notebook.mr_johnsons.flags_unresolved");
+                            break;
+                        }
+                        begin_pocket_secretary_notebook_mr_johnsons(
+                            pocket_secretary_, *notebook_referral_flags_);
+                        source_boundary(
+                            "field.pocket_secretary.notebook.mr_johnsons.opened");
+                    } else if (choice_id == "current_run" ||
+                               choice_id == "contacts" ||
+                               choice_id == "shadowrunners") {
+                        source_boundary(
+                            "field.pocket_secretary.notebook.child_pending");
+                    } else {
+                        source_boundary(
+                            "field.pocket_secretary.notebook.choice_id_unresolved");
                     }
-                    begin_pocket_secretary_notebook_mr_johnsons(
-                        pocket_secretary_, *notebook_referral_flags_);
-                    source_boundary(
-                        "field.pocket_secretary.notebook.mr_johnsons.opened");
-                } else {
-                    source_boundary(
-                        "field.pocket_secretary.notebook.child_pending");
                 }
                 break;
             case PocketSecretaryMenuEvent::notebook_tips_selection_moved:
@@ -6733,6 +6751,9 @@ bool FieldSceneRuntime::load_pocket_secretary_menu_content() {
                          kPocketSecretaryFieldMenuRowCount> kChoiceIds{{
         "notebook", "group_items", "cyberdeck", "dismiss_runner",
         "save_load"}};
+    constexpr std::array<std::string_view, kNotebookChoiceCount>
+        kNotebookChoiceIds{{"current_run", "tips_and_clues", "contacts",
+                            "mr_johnsons", "shadowrunners"}};
     const auto fail = [this](std::string message) {
         failure_ = std::move(message);
         source_boundary("field.bootstrap.pocket_secretary_script_invalid");
@@ -6748,6 +6769,17 @@ bool FieldSceneRuntime::load_pocket_secretary_menu_content() {
     if (definition->choices.size() != kChoiceIds.size()) {
         return fail(
             "Pocket Secretary Lua menu does not match its source rows");
+    }
+    const auto notebook_definition = game_scripts_.menu(
+        "pocket_secretary", "notebook", "notebook", "options");
+    if (!notebook_definition.has_value()) {
+        return fail(game_scripts_.failure().empty()
+                        ? "Pocket Secretary Notebook menu script is unavailable"
+                        : game_scripts_.failure());
+    }
+    if (notebook_definition->choices.size() != kNotebookChoiceIds.size()) {
+        return fail(
+            "Pocket Secretary Notebook menu does not match its source rows");
     }
     const auto* title = game_scripts_.dialogue_text(definition->title_key);
     const auto* separator = game_scripts_.dialogue_text(
@@ -6766,6 +6798,15 @@ bool FieldSceneRuntime::load_pocket_secretary_menu_content() {
         }
         content.choices[index] = PocketSecretaryMenuContent::Choice{
             choice.id, *label};
+    }
+    for (std::size_t index = 0; index < kNotebookChoiceIds.size(); ++index) {
+        const auto& choice = notebook_definition->choices[index];
+        if (choice.id != kNotebookChoiceIds[index] ||
+            game_scripts_.dialogue_text(choice.label_key) == nullptr) {
+            return fail(
+                "Pocket Secretary Notebook choice ID or label is invalid");
+        }
+        content.notebook_choice_ids[index] = choice.id;
     }
     pocket_secretary_menu_content_ = std::move(content);
     source_boundary("field.pocket_secretary.menu_content.loaded_from_lua");

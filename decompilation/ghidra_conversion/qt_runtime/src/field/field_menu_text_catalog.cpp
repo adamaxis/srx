@@ -16,6 +16,9 @@ constexpr std::array<std::string_view, kFieldMenuClipsCommandCount>
 constexpr std::array<std::string_view, kFieldMenuClipsCommandCount>
     kClipsTradeCommandIds{{"increase_clips", "decrease_clips", "trade_clips",
                            "change_recipient"}};
+constexpr std::array<std::string_view, kNotebookChoiceCount>
+    kNotebookChoiceIds{{"current_run", "tips_and_clues", "contacts",
+                        "mr_johnsons", "shadowrunners"}};
 
 bool has_clips_menu_label_prefix(const std::string_view key) {
     return key.rfind("clips.option.", 0U) == 0U ||
@@ -37,6 +40,22 @@ bool is_clips_menu_label_key(const std::string_view key) {
                kClipsTradeCommandIds.end();
     }
     return false;
+}
+
+bool has_notebook_menu_label_prefix(const std::string_view key) {
+    return key.rfind("notebook.option.", 0U) == 0U ||
+           key == "notebook.options.title";
+}
+
+bool is_notebook_menu_label_key(const std::string_view key) {
+    if (key == "notebook.options.title") {
+        return true;
+    }
+    constexpr std::string_view kChoicePrefix = "notebook.option.";
+    return key.rfind(kChoicePrefix, 0U) == 0U &&
+           std::find(kNotebookChoiceIds.begin(), kNotebookChoiceIds.end(),
+                     key.substr(kChoicePrefix.size())) !=
+               kNotebookChoiceIds.end();
 }
 
 bool parse_indexed_key(const std::string& key, const std::string& prefix,
@@ -100,7 +119,7 @@ bool is_field_menu_text_key(const std::string& key) {
         "attribute.skill.", "cyberware.title.", "cyberware.entry.",
         "clips.", "dismiss.label.", "pocket-secretary.cyberdeck.line.",
         "pocket-secretary.group-item.", "pocket-secretary.group-items.empty.",
-        "notebook.label.", "notebook.no-run.", "notebook.mr-johnson.name.",
+        "notebook.option.", "notebook.no-run.", "notebook.mr-johnson.name.",
         "notebook.mr-johnson.detail.", "notebook.tip.", "magic.spell.name.",
         "magic.spell.description.", "power.", "armor.",
     };
@@ -129,7 +148,7 @@ bool is_field_menu_text_key(const std::string& key) {
         "magic.panel.metric-labels", "magic.panel.force-posture-labels",
         "dismiss.separator", "notebook.tips.title",
         "notebook.tips.separator", "notebook.tips.page-count",
-        "notebook.tips.page-number-clear",
+        "notebook.tips.page-number-clear", "notebook.options.title",
     };
     for (const auto* expected : exact_keys) {
         if (key == expected) {
@@ -145,29 +164,39 @@ void load_script_menu_labels(
     const std::string_view module, const std::string_view function,
     const std::string_view text_profile, const std::string_view menu_id,
     const std::array<std::string_view, N>& expected_ids,
-    std::array<std::string, N>& labels, std::vector<std::string>& errors) {
+    std::array<std::string, N>& labels, std::vector<std::string>& errors,
+    std::string* title = nullptr) {
     const auto menu = scripts.menu(module, function, text_profile, menu_id);
     if (!menu.has_value()) {
-        errors.emplace_back("Clips Lua menu is unavailable: " +
+        errors.emplace_back("Lua menu is unavailable: " +
                             std::string(function) + ": " + scripts.failure());
         return;
     }
     if (menu->choices.size() != expected_ids.size()) {
-        errors.emplace_back("Clips Lua menu has the wrong choice count: " +
+        errors.emplace_back("Lua menu has the wrong choice count: " +
                             std::string(function));
         return;
+    }
+    if (title != nullptr) {
+        const auto* title_text = scripts.dialogue_text(menu->title_key);
+        if (title_text == nullptr) {
+            errors.emplace_back("Lua menu title is missing: " +
+                                menu->title_key);
+            return;
+        }
+        *title = *title_text;
     }
     for (std::size_t index = 0; index < expected_ids.size(); ++index) {
         const auto& choice = menu->choices[index];
         if (choice.id != expected_ids[index]) {
-            errors.emplace_back("Clips Lua menu choices do not match the "
+            errors.emplace_back("Lua menu choices do not match the "
                                 "native action order: " +
                                 std::string(function));
             return;
         }
         const auto* label = scripts.dialogue_text(choice.label_key);
         if (label == nullptr) {
-            errors.emplace_back("Clips Lua menu label is missing: " +
+            errors.emplace_back("Lua menu label is missing: " +
                                 choice.label_key);
             return;
         }
@@ -274,7 +303,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         pocket_secretary_group_item_found{};
     std::array<bool, kPocketSecretaryGroupItemsEmptyLineCount>
         pocket_secretary_group_items_empty_found{};
-    std::array<bool, kNotebookLabelCount> notebook_label_found{};
     std::array<bool, kNotebookNoRunLineCount> notebook_no_run_found{};
     std::array<bool, kNotebookMrJohnsonCount>
         notebook_mr_johnson_name_found{};
@@ -343,7 +371,23 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         scripts, "clips", "trade_commands", "clips.trade", "commands",
         kClipsTradeCommandIds, result.catalog.clips_trade_commands,
         result.errors);
+    std::array<std::string, kNotebookChoiceCount> notebook_choice_labels{};
+    std::string notebook_title;
+    load_script_menu_labels(
+        scripts, "pocket_secretary", "notebook", "notebook", "options",
+        kNotebookChoiceIds, notebook_choice_labels, result.errors,
+        &notebook_title);
+    result.catalog.notebook_labels[0] = std::move(notebook_title);
+    std::copy(notebook_choice_labels.begin(), notebook_choice_labels.end(),
+              result.catalog.notebook_labels.begin() + 1);
     for (const auto& [key, value] : text_rows) {
+        if (has_notebook_menu_label_prefix(key)) {
+            if (!is_notebook_menu_label_key(key)) {
+                result.errors.emplace_back(
+                    "unknown Notebook menu label key: " + key);
+            }
+            continue;
+        }
         if (has_clips_menu_label_prefix(key)) {
             if (!is_clips_menu_label_key(key)) {
                 result.errors.emplace_back(
@@ -667,17 +711,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             }
             continue;
         }
-        if (parse_indexed_key(key, "notebook.label.", index) &&
-            index < result.catalog.notebook_labels.size()) {
-            if (notebook_label_found[index]) {
-                result.errors.emplace_back(
-                    "duplicate field menu text row: " + key);
-            } else {
-                notebook_label_found[index] = true;
-                result.catalog.notebook_labels[index] = value;
-            }
-            continue;
-        }
         if (parse_indexed_key(key, "notebook.no-run.", index) &&
             index < result.catalog.notebook_no_run_lines.size()) {
             if (notebook_no_run_found[index]) {
@@ -998,7 +1031,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                         "pocket-secretary.group-item.", result.errors);
     add_missing_entries(pocket_secretary_group_items_empty_found,
                         "pocket-secretary.group-items.empty.", result.errors);
-    add_missing_entries(notebook_label_found, "notebook.label.", result.errors);
     add_missing_entries(notebook_no_run_found, "notebook.no-run.",
                         result.errors);
     add_missing_entries(notebook_mr_johnson_name_found,

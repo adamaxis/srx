@@ -177,8 +177,16 @@ write_field_service_routes(
     emit("notebook.tips.page-count", notebook_tips_text.page_count_label);
     emit("notebook.tips.page-number-clear",
          notebook_tips_text.page_number_clear);
+    constexpr std::array<std::string_view, 6> kNotebookLabelKeys{{
+        "notebook.options.title",
+        "notebook.option.current_run",
+        "notebook.option.tips_and_clues",
+        "notebook.option.contacts",
+        "notebook.option.mr_johnsons",
+        "notebook.option.shadowrunners",
+    }};
     for (std::size_t index = 0; index < assets.notebook_labels.size(); ++index) {
-        emit("notebook.label." + std::to_string(index),
+        emit(std::string(kNotebookLabelKeys[index]),
              assets.notebook_labels[index]);
     }
     for (std::size_t index = 0; index < assets.notebook_no_run_lines.size();
@@ -1525,7 +1533,7 @@ void write_asset_readme(const std::filesystem::path& root) {
               "grouped under dialogue/panel, with speaker portraits under "
               "dialogue/portraits. ROM-derived Stoker and field interaction "
               "text, Hotel menu and status text, Ares mode-event dialogue, "
-              "Pocket Secretary root menu text, field-service titles, shop "
+              "Pocket Secretary root/Notebook menu text, field-service titles, shop "
               "text, and item descriptions are emitted as "
               "`dialogue/script-text.lua` and consumed by the gameplay script "
               "runtime. `gameplay/scripts/hotel.lua`, "

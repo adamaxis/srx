@@ -155,12 +155,14 @@ access.
   still owns cursor input, layout, the E660 animation, status service, page
   transitions, and the separate Hotel Karma spending screen.
 - `gameplay/scripts/pocket_secretary.lua` declares the five stable IDs for the
-  field Pocket Secretary root menu in ROM order. `FieldSceneRuntime` validates
-  that order and resolves the labels from `assets/dialogue/script-text.lua`.
-  The typed native state still owns cursor movement, selection cadence,
-  drawing, and dispatch to existing child routes. Save/Load and the extended
-  six-row caller remain explicit boundaries; child pages have not moved to
-  Lua.
+  field Pocket Secretary root menu and all five possible Notebook rows in ROM
+  order. `FieldSceneRuntime` validates both lists and uses the Notebook IDs
+  when dispatching the selected row; the text catalog resolves their ROM
+  labels from `assets/dialogue/script-text.lua`. Native state still applies
+  the three story-flag row gates and owns cursor movement, selection cadence,
+  drawing, and child-page behavior. Save/Load and the extended six-row caller
+  remain explicit boundaries; the Notebook page state and actions remain
+  native.
 - `gameplay/scripts/command_overview.lua` declares the seven stable IDs for the
   in-game command root in ROM order, including the two distinct Inventory
   columns. `FieldSceneRuntime` validates the choices and resolves their labels
@@ -179,7 +181,8 @@ access.
 - `assets/dialogue/script-text.lua` is the ROM-derived shared text table for
   Stoker dialogue, field object interactions, Ares mode-event paragraphs,
   Hotel menu/status text,
-  Pocket Secretary root title/separator/labels, command-overview labels,
+  Pocket Secretary root and Notebook title/separator/labels,
+  command-overview labels,
   field-service titles, field-menu labels and feedback, all 96 Notebook Tips,
   startup and save/load copy, shop category headings and transaction copy,
   item names/categories/details, and the special clips text. Native presenters
@@ -196,14 +199,14 @@ the Michael quest branch, shared motel and debt menus, Hotel menu definitions,
 room/debt service calls, arrival/farewell/result dialogue, and the Qt
 presenters. Stoker, field interaction, Ares mode-event paragraphs, Hotel text,
 startup menu text/choices, Pocket Secretary root choices/labels, and
-command-overview root choices/labels, and Clips selector choices/labels are
-Lua content.
+command-overview root choices/labels, Clips selector choices/labels, and
+Notebook option IDs/labels are Lua content.
 Script dialogue menus carry
 their text profile and optional speaker into one generic panel projection;
 menu choices use generic presentation roles. Hotel cursor-menu choices come
 from a shared Lua module while the native Hotel presenter draws the source
-layout and applies input rules. The Pocket Secretary root cursor and child
-pages remain native. Wallet and quest effects remain native service
+layout and applies input rules. The Pocket Secretary cursor and child pages
+remain native. Wallet and quest effects remain native service
 implementations. Ares shop stock is script data, but its selector, transaction
 loop, and native UI still run in C++. Other building dialogue, remaining
 title/field presentation, item operations, inventory screens, actor placement

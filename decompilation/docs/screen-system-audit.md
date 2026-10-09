@@ -446,8 +446,11 @@ The Cyberdeck row now follows the first branch of `0x18150`: with the native
 new-game state equivalent to clear `FF018F` bit 0, it writes the exact three
 lines at `0xE43D1`, `0xE43E2`, and `0xE43F3` into the Pocket Secretary panel.
 Notebook now follows the base `0xF236`/`0xF33E` path: it extracts the title,
-Current Run, Tips & Clues, and the three event-gated labels. The New Game
-path clears `FFFC2C/27/2A` at `0x82A`, then `0x59C48` seeds `FFFC2C` to
+Current Run, Tips & Clues, and the three event-gated labels. Its five
+potential rows keep ROM order in `gameplay/scripts/pocket_secretary.lua`; the
+typed model applies the event gates and dispatches the selected stable ID.
+The New Game path clears `FFFC2C/27/2A` at `0x82A`, then `0x59C48` seeds
+`FFFC2C` to
 `0x1C7F`, so Contacts is visible in the fresh post-opening session. The Qt
 runtime now builds the three row gates from typed field state instead of
 static text-asset data. Stoker command `0x30` adds `FFFC30` bit 1, exposing

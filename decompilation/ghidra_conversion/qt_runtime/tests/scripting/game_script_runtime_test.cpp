@@ -207,6 +207,33 @@ int main() {
         return 1;
     }
 
+    const auto notebook_options = scripts.menu(
+        "pocket_secretary", "notebook", "notebook", "options");
+    constexpr std::array<std::string_view, 5> kNotebookChoiceIds{{
+        "current_run", "tips_and_clues", "contacts", "mr_johnsons",
+        "shadowrunners"}};
+    constexpr std::array<std::string_view, 5> kNotebookChoiceLabels{{
+        "Current Run", "Tips & Clues", "Contacts", "Mr. Johnsons",
+        "Shadowrunners"}};
+    bool notebook_rows_match = notebook_options.has_value() &&
+        notebook_options->choices.size() == kNotebookChoiceIds.size();
+    if (notebook_rows_match) {
+        const auto* title = scripts.dialogue_text(notebook_options->title_key);
+        notebook_rows_match = title != nullptr && *title == "  Notebook";
+        for (std::size_t index = 0; index < kNotebookChoiceIds.size(); ++index) {
+            const auto& choice = notebook_options->choices[index];
+            const auto* label = scripts.dialogue_text(choice.label_key);
+            notebook_rows_match = notebook_rows_match &&
+                choice.id == kNotebookChoiceIds[index] && label != nullptr &&
+                *label == kNotebookChoiceLabels[index];
+        }
+    }
+    if (!expect(notebook_rows_match,
+                "Lua Notebook choices or ROM labels changed order")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
     const auto command_root = scripts.menu(
         "command_overview", "root", "field.command_overview", "root");
     constexpr std::array<std::string_view, 7> kCommandChoiceIds{{
