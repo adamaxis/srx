@@ -150,8 +150,13 @@ Static menu functions can return three Lua values: the ordered stable choice
 IDs, an optional title key, and the ordered label keys. The runtime validates
 that the label count matches the choices. This lets each menu script provide
 its exact ROM-derived text bindings instead of relying on C++ to compose key
-names. Startup menus now use this form; other static menus are being migrated
-from the older convention incrementally.
+names. Startup menus now use this form; the archetype menu also maps each
+stable archetype ID to its extracted portrait asset in Lua. Native menu state
+selects the ID and the shared presenter loads that portrait. The archetype
+screen currently has no visible stat rows: starting attributes continue to
+come from the selected extracted ROM record, rather than a second Lua copy.
+Other static menus are being migrated from the older convention
+incrementally.
 
 - `gameplay/scripts/field_events.lua` contains source-traced map trigger
   declarations and the New Game scene handler. Trigger detection and repeat
@@ -180,6 +185,10 @@ from the older convention incrementally.
   from the location content profile, separately from whether a portrait is
   present. The generic Qt presenter receives resolved keys and does not infer
   text IDs from menu names or choice IDs.
+- `gameplay/scripts/startup.lua` maps the three ROM archetype IDs to the
+  extracted portraits shown by New Game. The menu's choice and cursor remain
+  typed native state; archetype starting values still come from the matching
+  ROM-derived record asset.
 - `gameplay/scripts/michael_package.lua` contains the Michael quest hook and
   its first-visit, repeat, and completed branches. `stoker_interaction()` now
   chooses the arrival page and shared motel manager in Lua; the field route no

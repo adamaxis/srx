@@ -172,3 +172,41 @@ but does not establish menu sound duration or every 60-Hz animation state. All
 contact sheets and 17 menu/route checkpoints were inspected individually at
 full size. This is internal consistency evidence, not independent proof of
 Genesis visual fidelity for every choice route.
+
+## Archetype portrait selection through Lua (2026-10-09)
+
+`startup.lua` now maps the stable `samurai`, `decker`, and `gator_shaman`
+choice IDs to their individually extracted portrait aliases. The native
+startup selection remains authoritative; rendering looks up the alias for
+that selected choice. The ROM path at `0x592C2` selects the portrait resource
+and calls `0x1F38A`; the extracted choices are the three entries at `0x7291A`.
+The visible archetype page contains a portrait and choices, but no stat rows.
+Starting attributes continue to come from the selected ROM-derived runner
+record, so this presentation binding does not invent or duplicate stat data.
+
+The visual review used the seven-question anomaly pass:
+
+1. The three full-screen native states show Samurai, Decker, and Gator Shaman
+   portraits with the cursor on the matching row. Independent section 02
+   frames `000030`, `000045`, and `000060` show the same three pairings.
+2. Selection behavior remains native input state; Lua supplies only the
+   portrait alias keyed by the selected stable choice ID. Script-runtime QA
+   checks all three ID/alias pairs and startup QA exercises all three choices.
+3. The portrait stays at the traced `(64,64)` position. The shell, heading,
+   choice spacing, cursor, and other screen regions are unchanged.
+4. Portraits are static. A portrait changes only when the archetype selection
+   changes; this slice adds no animation or cadence.
+5. This slice adds no sound request and changes no startup audio behavior.
+6. Start Options, both Save/Load states, the return page, and all three
+   archetype states were checked as complete screens. The old page's controls
+   do not remain over the new page.
+7. Independent frames `000030`, `000045`, and `000060` show the selector
+   moving through each portrait. Native frames `08_archetype_samurai.bmp`,
+   `09_archetype_decker.bmp`, and `10_archetype_gator_shaman.bmp` cover the
+   same states.
+
+Fresh Debug and Release startup captures each contain 134 BMPs. All 134
+hashes match between configurations and the previously reviewed capture; no
+pixel changed in this asset-selection-only refactor. The screen images verify
+the host integration and match the three observed independent choice states;
+they do not establish Genesis fidelity for unobserved input paths or audio.

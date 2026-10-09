@@ -4545,6 +4545,8 @@ private:
             "startup", "save_slots", "startup", "save_slots");
         const auto archetypes = startup_scripts_.menu(
             "startup", "archetypes", "startup", "archetypes");
+        const auto archetype_portraits =
+            startup_scripts_.string_map("startup", "archetype_portraits");
         const auto text_keys =
             startup_scripts_.string_map("startup", "text_keys");
         const auto opening_text_keys =
@@ -4584,12 +4586,28 @@ private:
             !validate_choices(save_slots, {"slot_one", "slot_two"}) ||
             !validate_choices(archetypes,
                               {"samurai", "decker", "gator_shaman"}) ||
+            !archetype_portraits.has_value() || !archetypes.has_value() ||
+            archetype_portraits->size() != archetypes->choices.size() ||
             !text_keys.has_value() ||
             text_keys->size() != expected_text_key_count) {
             throw std::runtime_error(
-                "startup Lua menus or text bindings are incomplete: " +
+                "startup Lua menus, portrait bindings, or text bindings "
+                "are incomplete: " +
                 startup_scripts_.failure());
         }
+
+        for (const auto& choice : archetypes->choices) {
+            const auto portrait = archetype_portraits->find(choice.id);
+            if (portrait == archetype_portraits->end() ||
+                state_.asset_catalog.catalog.find(portrait->second) ==
+                    nullptr) {
+                throw std::runtime_error(
+                    "startup Lua archetype portrait is not an extracted "
+                    "asset: " +
+                    choice.id);
+            }
+        }
+        startup_archetype_portraits_ = *archetype_portraits;
 
         const auto validate_text_layout = [this, &text_keys](const auto& lines) {
             for (const auto& line : lines) {
@@ -5345,8 +5363,15 @@ private:
                  std::string("menu.startup.cursor")}) {
             cache_asset(alias);
         }
-        for (int index = 0; index < 3; ++index) {
-            cache_asset("menu.field.runner.portrait." + std::to_string(index));
+        for (const auto& [archetype_id, alias] :
+             startup_archetype_portraits_) {
+            static_cast<void>(archetype_id);
+            cache_asset(alias);
+            if (draw_asset_cache_.find(alias) == draw_asset_cache_.end()) {
+                throw std::runtime_error(
+                    "startup archetype portrait image could not be loaded: "
+                    + alias);
+            }
         }
         for (int index = 0; index < 7; ++index) {
             const auto alias =
@@ -6045,11 +6070,19 @@ private:
         }
 
         draw_menu_metadata_grid(painter);
-        const auto portrait_index = static_cast<int>(
+        const auto selected_index = static_cast<std::size_t>(
             state_.joshua_archetype.selected);
-        const auto portrait_alias =
-            "menu.field.runner.portrait." + std::to_string(portrait_index);
-        const auto portrait = draw_asset_cache_.find(portrait_alias);
+        const auto& choices = startup_archetypes_menu_->choices;
+        const auto portrait_binding =
+            selected_index < choices.size()
+                ? startup_archetype_portraits_.find(
+                      choices[selected_index].id)
+                : startup_archetype_portraits_.end();
+        const auto portrait = portrait_binding !=
+                                      startup_archetype_portraits_.end()
+                                  ? draw_asset_cache_.find(
+                                        portrait_binding->second)
+                                  : draw_asset_cache_.end();
         if (portrait != draw_asset_cache_.end()) {
             // 0x592C2 -> 0x1F38A uploads the selected 80-word portrait
             // resource at the source's x/y tile origin (8,8), i.e. the
@@ -6191,6 +6224,7 @@ private:
     std::optional<scripting::ScriptMenuDefinition> startup_options_menu_;
     std::optional<scripting::ScriptMenuDefinition> startup_save_slots_menu_;
     std::optional<scripting::ScriptMenuDefinition> startup_archetypes_menu_;
+    scripting::ScriptStringMap startup_archetype_portraits_;
     qt_runtime::FieldSceneRuntime field_scene_runtime_;
     TitleLoopState title_loop_;
     TitleLoopCallbacks title_loop_callbacks_;

@@ -24,6 +24,16 @@ function Startup.archetypes()
     }
 end
 
+-- Portraits are presentation content attached to stable archetype IDs. The
+-- selected archetype's gameplay record remains the extracted ROM template.
+function Startup.archetype_portraits()
+    return {
+        samurai = "menu.field.runner.portrait.0",
+        decker = "menu.field.runner.portrait.1",
+        gator_shaman = "menu.field.runner.portrait.2",
+    }
+end
+
 -- ROM-derived title, archetype, and save/load copy lives in the shared text
 -- resource. Keep this module as the screen's semantic binding layer.
 function Startup.text_keys()

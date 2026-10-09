@@ -190,6 +190,8 @@ int main() {
         scripts.menu("startup", "save_slots", "startup", "save_slots");
     const auto startup_archetypes =
         scripts.menu("startup", "archetypes", "startup", "archetypes");
+    const auto startup_archetype_portraits =
+        scripts.string_map("startup", "archetype_portraits");
     const auto startup_text_keys =
         scripts.string_map("startup", "text_keys");
     const auto opening_text_keys =
@@ -246,6 +248,14 @@ int main() {
                     startup_archetypes->choices[2].id == "gator_shaman" &&
                     startup_archetypes->choices[2].label_key ==
                         "startup.option.gator_shaman" &&
+                    startup_archetype_portraits.has_value() &&
+                    startup_archetype_portraits->size() == 3U &&
+                    startup_archetype_portraits->at("samurai") ==
+                        "menu.field.runner.portrait.0" &&
+                    startup_archetype_portraits->at("decker") ==
+                        "menu.field.runner.portrait.1" &&
+                    startup_archetype_portraits->at("gator_shaman") ==
+                        "menu.field.runner.portrait.2" &&
                     startup_text_keys.has_value() &&
                     startup_text_keys->size() == 13U &&
                     startup_text_key_matches(
