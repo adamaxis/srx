@@ -4060,7 +4060,7 @@ bool FieldSceneRuntime::bootstrap(
     refresh_field_hud_runner_slot();
 
     const auto menu_text = load_field_menu_text_catalog(
-        startup_state.asset_catalog.catalog);
+        startup_state.asset_catalog.catalog, game_scripts_);
     if (!menu_text.complete()) {
         failure_ = menu_text.errors.empty()
                        ? "field menu text catalog is incomplete"

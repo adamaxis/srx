@@ -108,8 +108,7 @@ int main() {
                 }
                 ++state_count;
             } else if (kind == "text") {
-                require(alias == "menu.field.text" ||
-                            alias == "menu.pocket_secretary.notebook.tips",
+                require(alias == "menu.field.service.routes",
                         "unexpected text resource alias: " + alias);
                 ++text_count;
             } else {
@@ -120,8 +119,8 @@ int main() {
 
         require(native_state_seen && state_count != 0U,
                 "resources.tsv must contain a native state row");
-        require(text_count == 2U,
-                "resources.tsv must contain the field and Notebook Tips text rows");
+        require(text_count == 1U,
+                "resources.tsv must contain only the field service routes row");
         require(image_count == assets.resources.size(),
                 "manifest image rows and loaded resources differ");
         require(audio_count == 65U,

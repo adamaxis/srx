@@ -1,7 +1,11 @@
 #include "field_menu_text_catalog.hpp"
 
+#include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
+
+#include <algorithm>
 #include <charconv>
 #include <fstream>
+#include <utility>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 namespace {
@@ -61,24 +65,127 @@ void add_missing_entries(const std::array<bool, N>& found, const char* prefix,
     }
 }
 
+bool is_field_menu_text_key(const std::string& key) {
+    static constexpr const char* prefixes[]{
+        "runner.", "archetype.", "race.", "class.", "status.",
+        "attribute.skill.", "cyberware.title.", "cyberware.entry.",
+        "clips.", "dismiss.label.", "pocket-secretary.cyberdeck.line.",
+        "pocket-secretary.group-item.", "pocket-secretary.group-items.empty.",
+        "notebook.label.", "notebook.no-run.", "notebook.mr-johnson.name.",
+        "notebook.mr-johnson.detail.", "notebook.tip.", "magic.spell.name.",
+        "magic.spell.description.", "power.", "armor.",
+    };
+    for (const auto* prefix : prefixes) {
+        if (key.rfind(prefix, 0U) == 0U) {
+            return true;
+        }
+    }
+    static constexpr const char* exact_keys[]{
+        "metric.physical", "metric.mental", "metric.attack",
+        "metric.defense", "metric.damage", "metric.drain", "metric.none",
+        "metric.no-armor", "metric.weapons", "metric.guns", "metric.power",
+        "action.item-equipped.prefix", "action.item-equipped.suffix",
+        "action.discard-prompt", "action.cannot-discard",
+        "action.cannot-trade", "action.choice-no", "action.choice-yes",
+        "action.trade-recipient", "action.trade-full-inventory",
+        "action.automatic-use.message", "attributes.upgrade.header",
+        "attributes.upgrade.maximum-level", "attributes.upgrade.mage-only",
+        "attributes.upgrade.insufficient-karma", "attributes.upgrade.prompt",
+        "first-aid.prompt", "first-aid.label", "first-aid.cancel",
+        "first-aid.not-injured", "first-aid.slap-patch-used",
+        "first-aid.medkit-used", "clips.title", "clips.separator",
+        "clips.counter", "cyberware.empty", "magic.defense.title",
+        "magic.heading.force-posture", "magic.label.success",
+        "magic.label.force", "magic.label.availability",
+        "magic.panel.metric-labels", "magic.panel.force-posture-labels",
+        "dismiss.separator", "notebook.tips.title",
+        "notebook.tips.separator", "notebook.tips.page-count",
+        "notebook.tips.page-number-clear",
+    };
+    for (const auto* expected : exact_keys) {
+        if (key == expected) {
+            return true;
+        }
+    }
+    return false;
+}
+
 } // namespace
 
 FieldMenuTextLoadResult load_field_menu_text_catalog(
-    const ConversionAssetCatalog& assets) {
+    const ConversionAssetCatalog& assets,
+    const shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts) {
     FieldMenuTextLoadResult result;
-    const auto* record = assets.find("menu.field.text");
+    const auto* record = assets.find("menu.field.service.routes");
     if (record == nullptr) {
-        result.errors.emplace_back("missing field menu text alias: menu.field.text");
+        result.errors.emplace_back(
+            "missing field service route alias: menu.field.service.routes");
         return result;
     }
 
-    std::ifstream input(record->absolute_path);
-    if (!input) {
-        result.errors.emplace_back("cannot open field menu text: " +
+    std::ifstream routing_input(record->absolute_path);
+    if (!routing_input) {
+        result.errors.emplace_back("cannot open field service routes: " +
                                   record->absolute_path.string());
         return result;
     }
 
+    std::vector<std::pair<std::string, std::string>> text_rows;
+    for (const auto& entry : scripts.dialogue_text_entries()) {
+        if (is_field_menu_text_key(entry.first)) {
+            text_rows.push_back(entry);
+        }
+    }
+    std::sort(text_rows.begin(), text_rows.end(),
+              [](const auto& left, const auto& right) {
+                  return left.first < right.first;
+              });
+    for (const auto& [key, value] : text_rows) {
+        if (value.find_first_of("\t\r") != std::string::npos) {
+            result.errors.emplace_back(
+                "field menu Lua text contains a TSV control character: " + key);
+        }
+    }
+
+    std::string routing_line;
+    std::size_t routing_line_number = 0U;
+    bool routing_header_seen = false;
+    while (std::getline(routing_input, routing_line)) {
+        ++routing_line_number;
+        if (!routing_line.empty() && routing_line.back() == '\r') {
+            routing_line.pop_back();
+        }
+        if (routing_line.empty()) {
+            continue;
+        }
+        if (!routing_header_seen) {
+            routing_header_seen = true;
+            if (routing_line != "key\ttext") {
+                result.errors.emplace_back(
+                    "invalid field menu routing header at line " +
+                    std::to_string(routing_line_number));
+            }
+            continue;
+        }
+        const auto separator = routing_line.find('\t');
+        if (separator == std::string::npos ||
+            routing_line.rfind("field-service.title-destination.", 0U) != 0U) {
+            result.errors.emplace_back(
+                "field service route TSV contains a non-routing row at line " +
+                std::to_string(routing_line_number));
+            continue;
+        }
+        auto key = routing_line.substr(0U, separator);
+        auto value = routing_line.substr(separator + 1U);
+        if (value.size() >= 2U && value.front() == '"' &&
+            value.back() == '"') {
+            value = value.substr(1U, value.size() - 2U);
+        }
+        text_rows.emplace_back(std::move(key), std::move(value));
+    }
+    if (!routing_header_seen) {
+        result.errors.emplace_back("field menu routing catalog is empty");
+    }
     std::array<bool, kFieldMenuArchetypeNameCount> archetype_found{};
     std::array<bool, kFieldMenuRaceNameCount> race_found{};
     std::array<bool, kFieldMenuClassNameCount> class_found{};
@@ -108,6 +215,7 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         notebook_mr_johnson_name_found{};
     std::array<bool, kNotebookMrJohnsonCount>
         notebook_mr_johnson_detail_found{};
+    std::array<bool, kNotebookTipCount> notebook_tip_found{};
     bool notebook_tips_title_found = false;
     bool notebook_tips_separator_found = false;
     bool notebook_tips_page_count_found = false;
@@ -165,44 +273,7 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     bool magic_panel_metric_labels_found = false;
     bool magic_force_posture_labels_found = false;
     bool dismiss_runner_separator_found = false;
-    std::string line;
-    std::size_t line_number = 0;
-    bool header_seen = false;
-    while (std::getline(input, line)) {
-        ++line_number;
-        if (!line.empty() && line.back() == '\r') {
-            line.pop_back();
-        }
-        if (line.empty()) {
-            continue;
-        }
-        if (!header_seen) {
-            header_seen = true;
-            if (line != "key\ttext") {
-                result.errors.emplace_back(
-                    "invalid field menu text header at line " +
-                    std::to_string(line_number));
-            }
-            continue;
-        }
-
-        const auto separator = line.find('\t');
-        if (separator == std::string::npos) {
-            result.errors.emplace_back(
-                "invalid field menu text row at line " +
-                std::to_string(line_number));
-            continue;
-        }
-        const auto key = line.substr(0, separator);
-        const auto encoded_value = line.substr(separator + 1U);
-        std::string value;
-        if (encoded_value.size() >= 2U &&
-            encoded_value.front() == '"' &&
-            encoded_value.back() == '"') {
-            value = encoded_value.substr(1U, encoded_value.size() - 2U);
-        } else {
-            value = encoded_value;
-        }
+    for (const auto& [key, value] : text_rows) {
         std::size_t index = 0;
         if (parse_indexed_key(key, "field-service.title-destination.",
                               index) &&
@@ -585,6 +656,24 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             }
             continue;
         }
+        if (parse_indexed_key(key, "notebook.tip.", index) &&
+            index < result.catalog.notebook_tips.size()) {
+            if (notebook_tip_found[index]) {
+                result.errors.emplace_back(
+                    "duplicate field menu text row: " + key);
+            } else {
+                notebook_tip_found[index] = true;
+                auto tip = value;
+                std::size_t position = 0U;
+                while ((position = tip.find("\\n", position)) !=
+                       std::string::npos) {
+                    tip.replace(position, 2U, "\n");
+                    ++position;
+                }
+                result.catalog.notebook_tips[index] = std::move(tip);
+            }
+            continue;
+        }
         if (key == "notebook.tips.title") {
             if (notebook_tips_title_found) {
                 result.errors.emplace_back(
@@ -738,7 +827,7 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         }
         result.errors.emplace_back("unknown field menu text row: " + key);
     }
-    if (!header_seen) {
+    if (text_rows.empty()) {
         result.errors.emplace_back("field menu text catalog is empty");
     }
     add_missing_entries(archetype_found, "archetype.", result.errors);
@@ -863,6 +952,7 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                         "notebook.mr-johnson.name.", result.errors);
     add_missing_entries(notebook_mr_johnson_detail_found,
                         "notebook.mr-johnson.detail.", result.errors);
+    add_missing_entries(notebook_tip_found, "notebook.tip.", result.errors);
     add_missing_entries(field_service_title_destination_found,
                         "field-service.title-destination.", result.errors);
     add_missing_entries(dismiss_runner_label_found, "dismiss.label.",
@@ -885,85 +975,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         decode_newlines(detail);
     }
 
-    const auto* tips_record =
-        assets.find("menu.pocket_secretary.notebook.tips");
-    if (tips_record == nullptr) {
-        result.errors.emplace_back(
-            "missing Notebook Tips text alias: "
-            "menu.pocket_secretary.notebook.tips");
-    } else {
-        std::ifstream tips_input(tips_record->absolute_path);
-        if (!tips_input) {
-            result.errors.emplace_back(
-                "cannot open Notebook Tips text: " +
-                tips_record->absolute_path.string());
-        } else {
-            std::array<bool, kNotebookTipCount> tip_found{};
-            std::string tip_line;
-            std::size_t tip_line_number = 0U;
-            bool tip_header_seen = false;
-            while (std::getline(tips_input, tip_line)) {
-                ++tip_line_number;
-                if (!tip_line.empty() && tip_line.back() == '\r') {
-                    tip_line.pop_back();
-                }
-                if (tip_line.empty()) {
-                    continue;
-                }
-                if (!tip_header_seen) {
-                    tip_header_seen = true;
-                    if (tip_line != "tip_index\ttext") {
-                        result.errors.emplace_back(
-                            "invalid Notebook Tips header at line " +
-                            std::to_string(tip_line_number));
-                    }
-                    continue;
-                }
-                const auto separator = tip_line.find('\t');
-                if (separator == std::string::npos) {
-                    result.errors.emplace_back(
-                        "invalid Notebook Tips row at line " +
-                        std::to_string(tip_line_number));
-                    continue;
-                }
-                const auto index_text = tip_line.substr(0U, separator);
-                std::size_t tip_index = 0U;
-                const auto* first = index_text.data();
-                const auto* last = first + index_text.size();
-                const auto parsed =
-                    std::from_chars(first, last, tip_index);
-                if (parsed.ec != std::errc{} || parsed.ptr != last ||
-                    tip_index >= tip_found.size()) {
-                    result.errors.emplace_back(
-                        "invalid Notebook Tips index at line " +
-                        std::to_string(tip_line_number));
-                    continue;
-                }
-                if (tip_found[tip_index]) {
-                    result.errors.emplace_back(
-                        "duplicate Notebook Tips entry: " + index_text);
-                    continue;
-                }
-                tip_found[tip_index] = true;
-                auto value = tip_line.substr(separator + 1U);
-                if (value.size() >= 2U && value.front() == '"' &&
-                    value.back() == '"') {
-                    value = value.substr(1U, value.size() - 2U);
-                }
-                std::size_t position = 0U;
-                while ((position = value.find("\\n", position)) !=
-                       std::string::npos) {
-                    value.replace(position, 2U, "\n");
-                    ++position;
-                }
-                result.catalog.notebook_tips[tip_index] = std::move(value);
-            }
-            if (!tip_header_seen) {
-                result.errors.emplace_back("Notebook Tips text asset is empty");
-            }
-            add_missing_entries(tip_found, "notebook.tip.", result.errors);
-        }
-    }
     return result;
 }
 

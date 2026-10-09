@@ -129,6 +129,8 @@ public:
         const std::filesystem::path& script_directory,
         const std::filesystem::path& dialogue_text_file = {});
     const std::string* dialogue_text(std::string_view key) const;
+    const std::unordered_map<std::string, std::string>&
+    dialogue_text_entries() const noexcept;
     std::optional<std::vector<FieldMapEventRule>> map_event_rules();
     void set_story_state(const StoryFacts& facts);
     void set_story_fact_accessors(StoryFactReader read,

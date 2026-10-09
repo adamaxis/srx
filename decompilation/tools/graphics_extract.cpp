@@ -99,37 +99,32 @@ void write_host_record(const std::vector<std::uint8_t>& bytes,
     }
 }
 
-void write_field_menu_text_catalog(
+std::vector<std::pair<std::string, std::string>>
+write_field_service_routes(
     const std::vector<std::uint8_t>& rom,
     const std::filesystem::path& root,
     const shadowrun::native::NativePortAssets& assets) {
-    const auto path = root / "menu" / "field" / "text.tsv";
+    const auto path = root / "menu" / "field" / "service-routes.tsv";
     std::filesystem::create_directories(path.parent_path());
     std::ofstream output(path, std::ios::binary | std::ios::trunc);
     if (!output) {
-        throw std::runtime_error("cannot create field menu text catalog: " +
+        throw std::runtime_error("cannot create field service route catalog: " +
                                  path.string());
     }
     output << "key\ttext\n";
-    const auto emit = [&output](const std::string& key,
-                                const std::string& text) {
+    std::vector<std::pair<std::string, std::string>> script_text;
+    const auto emit = [&output, &script_text](const std::string& key,
+                                             const std::string& text) {
         if (text.find_first_of("\t\r\n") != std::string::npos) {
             throw std::runtime_error(
-                "field menu text contains a TSV control character: " + key);
+                "field service route text contains a TSV control character: " +
+                key);
         }
-        // Keep empty and fixed-width source strings explicit. Armor records
-        // intentionally carry leading/trailing spaces for their Genesis text
-        // cells; quoting those values preserves the source layout without
-        // creating trailing whitespace in the generated TSV.
-        const auto padded = !text.empty() &&
-                            (text.front() == ' ' || text.back() == ' ');
-        output << key << '\t';
-        if (text.empty() || padded) {
-            output << '"' << text << '"';
+        if (key.rfind("field-service.title-destination.", 0U) == 0U) {
+            output << key << '\t' << text << '\n';
         } else {
-            output << text;
+            script_text.emplace_back(key, text);
         }
-        output << '\n';
     };
 
     const auto service_titles =
@@ -385,20 +380,18 @@ void write_field_menu_text_catalog(
                  assets.field_menu_armor_labels[armor][row]);
         }
     }
-}
-
-void write_notebook_tips_text_asset(
-    const std::filesystem::path& root,
-    const shadowrun::native::NativePortAssets& assets) {
-    const auto path = root / "menu" / "pocket-secretary" /
-                      "notebook-tips.tsv";
-    std::filesystem::create_directories(path.parent_path());
-    std::ofstream output(path, std::ios::binary | std::ios::trunc);
     if (!output) {
-        throw std::runtime_error("cannot create Notebook Tips catalog: " +
+        throw std::runtime_error("cannot write field service route catalog: " +
                                  path.string());
     }
-    output << "tip_index\ttext\n";
+    return script_text;
+}
+
+std::vector<std::pair<std::string, std::string>>
+read_notebook_tips_script_text(
+    const shadowrun::native::NativePortAssets& assets) {
+    std::vector<std::pair<std::string, std::string>> script_text;
+    script_text.reserve(assets.notebook_tip_text.size());
     for (std::size_t index = 0; index < assets.notebook_tip_text.size();
          ++index) {
         auto text = assets.notebook_tip_text[index];
@@ -412,25 +405,26 @@ void write_notebook_tips_text_asset(
             text.replace(position, 1U, "\\n");
             position += 2U;
         }
-        const auto padded = !text.empty() &&
-                            (text.front() == ' ' || text.back() == ' ');
-        output << index << '\t';
-        if (text.empty() || padded) {
-            output << '"' << text << '"';
-        } else {
-            output << text;
-        }
-        output << '\n';
+        script_text.emplace_back("notebook.tip." + std::to_string(index),
+                                 std::move(text));
     }
-    if (!output) {
-        throw std::runtime_error("cannot write Notebook Tips catalog: " +
-                                 path.string());
-    }
+    return script_text;
+}
+
+void remove_obsolete_menu_text_assets(const std::filesystem::path& root) {
+    // These generated TSVs were replaced by keyed Lua text. Remove them when
+    // refreshing an existing asset directory so stale copies cannot linger.
+    std::filesystem::remove(root / "menu" / "field" / "text.tsv");
+    std::filesystem::remove(root / "menu" / "pocket-secretary" /
+                            "notebook-tips.tsv");
 }
 
 void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
                                 const std::filesystem::path& root,
-                                const shadowrun::native::NativePortAssets& assets) {
+                                const shadowrun::native::NativePortAssets& assets,
+                                const std::vector<std::pair<std::string,
+                                                            std::string>>&
+                                    field_text) {
     const auto path = root / "dialogue" / "script-text.lua";
     std::filesystem::create_directories(path.parent_path());
     std::ofstream output(path, std::ios::binary | std::ios::trunc);
@@ -695,6 +689,9 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
             "pocket_secretary.option." +
                 std::string(kPocketSecretaryFieldChoiceIds[index]),
             pocket_secretary_text.options[index]);
+    }
+    for (const auto& [key, text] : field_text) {
+        write_text_entry(key, text);
     }
     output << "    },\n}\n";
     if (!output) {
@@ -1426,11 +1423,12 @@ void write_asset_readme(const std::filesystem::path& root) {
               "Static intro plates and independently extracted intro sprites "
               "remain separate; "
               "it does not contain full-screen flipbook samples or an aggregate "
-              "serializer. The field command overview's ROM-derived archetype, "
-              "runner, status, power, and armor strings are kept in "
-              "`menu/field/text.tsv` and exposed through the `menu.field.text` "
-              "manifest alias. Command labels, menu dialogue, service titles, "
-              "shop category headings, item names/categories/details, and "
+              "serializer. All ROM-derived dialogue, field-menu labels, "
+              "feedback, and Notebook Tips are keyed in "
+              "`dialogue/script-text.lua`; `menu/field/service-routes.tsv` "
+              "retains only "
+              "numeric service destinations. Command labels, menu dialogue, "
+              "service titles, shop category headings, item names/categories/details, and "
               "transaction copy are emitted in "
               "`dialogue/script-text.lua`; `gameplay/scripts/shop.lua` binds "
               "Ares categories and message keys, while "
@@ -1648,10 +1646,7 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
         }
     };
     emit_generated_resource_row(
-        "menu.field.text", "menu/field/text.tsv", "text");
-    emit_generated_resource_row(
-        "menu.pocket_secretary.notebook.tips",
-        "menu/pocket-secretary/notebook-tips.tsv", "text");
+        "menu.field.service.routes", "menu/field/service-routes.tsv", "text");
     emit_generated_resource_row(
         "field.entities.default.actors",
         "field/entities/default-actors.tsv", "state");
@@ -1695,6 +1690,7 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
 void extract_all_assets(const std::vector<std::uint8_t>& rom,
                         const std::filesystem::path& root) {
     std::filesystem::create_directories(root);
+    remove_obsolete_menu_text_assets(root);
     extract_title_boot_assets(rom, root);
 
     std::ofstream manifest(root / "catalog.tsv", std::ios::binary);
@@ -1708,9 +1704,11 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     std::size_t missing = 0;
     std::size_t blank = 0;
     const auto assets = shadowrun::graphics::decode_genesis_native_assets(rom);
-    write_field_menu_text_catalog(rom, root, assets);
-    write_notebook_tips_text_asset(root, assets);
-    write_dialogue_text_script(rom, root, assets);
+    auto field_text = write_field_service_routes(rom, root, assets);
+    auto notebook_tips = read_notebook_tips_script_text(assets);
+    field_text.insert(field_text.end(), notebook_tips.begin(),
+                      notebook_tips.end());
+    write_dialogue_text_script(rom, root, assets, field_text);
     const auto write = [&](const std::string& name,
                            const shadowrun::native::NativeImage& image,
                            const std::string& kind,

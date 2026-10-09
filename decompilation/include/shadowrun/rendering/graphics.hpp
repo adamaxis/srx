@@ -405,8 +405,8 @@ struct GenesisHotelOptionsText {
 GenesisHotelOptionsText read_genesis_hotel_options_text(
     const std::vector<std::uint8_t>& rom);
 
-// ROM 0xD82A/0xD53C messages for the Attributes/Skills upgrade panel. These
-// source strings are extracted into menu/field/text.tsv for the host runtime.
+// ROM 0xD82A/0xD53C messages for the Attributes/Skills upgrade panel. The
+// offline importer emits these source strings into script-text.lua.
 struct GenesisAttributesSkillsText {
     std::string upgrade_header;
     std::string maximum_level_message;

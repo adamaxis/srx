@@ -169,11 +169,12 @@ access.
 - `assets/dialogue/script-text.lua` is the ROM-derived shared text table for
   Stoker dialogue, field object interactions, Hotel menu/status text,
   Pocket Secretary root title/separator/labels, command-overview labels,
-  field-service titles, shop category headings and transaction copy, item
-  names/categories/details, and the special clips text.
-  Native presenters resolve those keys through the Lua runtime. These strings
-  no longer duplicate rows in `menu/field/text.tsv`; numeric service
-  destinations remain in that catalog as routing data.
+  field-service titles, field-menu labels and feedback, all 96 Notebook Tips,
+  shop category headings and transaction copy, item names/categories/details,
+  and the special clips text. Native presenters resolve those keys through the
+  Lua runtime and validate the full field-menu key set at bootstrap. The
+  generated `menu/field/service-routes.tsv` now contains only numeric service
+  destinations used as routing data.
 - Future `quests/` and `scenes/` modules should call the same `game` facade.
   Menus and dialogue use the generic Qt presenters, and Lua supplies the
   available stable choice ids and story text keys.

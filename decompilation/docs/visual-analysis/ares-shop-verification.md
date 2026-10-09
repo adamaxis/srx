@@ -77,8 +77,10 @@ the field approach, fade, prompt, category page, and field return; see
   `FFF0B6`. Ares uses entry 1, whose record at `0x1AAB92` stores destination
   cell `0xC110` and text `Ares Weapon Emporium`. The offline extractor emits
   all 12 titles as keyed Lua text in `dialogue/script-text.lua`; numeric
-  destination words remain in `menu/field/text.tsv`. The Qt runtime does not
-  follow those ROM pointers.
+  destination words remain as extracted routing data in
+  `menu/field/service-routes.tsv`.
+  All other field menu copy now comes from the shared Lua text table. The Qt
+  runtime does not follow those ROM pointers.
 - Service background: `0x56AC0` begins by calling `0x10BC4`. That routine
   loads the shared pattern stream at `0xCAB0C` through `0x10918`, copies the
   raw `0x340` bytes at `0xD263C` to VRAM `0x9F40`, then writes eight literal

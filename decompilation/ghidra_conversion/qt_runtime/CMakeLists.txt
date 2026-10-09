@@ -1016,9 +1016,11 @@ add_executable(shadowrun_ghidra_field_menu_text_catalog_test
 target_include_directories(shadowrun_ghidra_field_menu_text_catalog_test
     PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
 target_compile_definitions(shadowrun_ghidra_field_menu_text_catalog_test PRIVATE
-    SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets")
+    SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    SHADOWRUN_GAMEPLAY_SCRIPT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/scripts")
 target_link_libraries(shadowrun_ghidra_field_menu_text_catalog_test
-    PRIVATE shadowrun_ghidra_conversion_runtime)
+    PRIVATE shadowrun_gameplay_script_runtime
+            shadowrun_ghidra_conversion_runtime)
 add_test(NAME shadowrun_ghidra_field_menu_text_catalog
          COMMAND shadowrun_ghidra_field_menu_text_catalog_test)
 

@@ -859,8 +859,8 @@ move that page cursor with a zero/final-index clamp. A and B return to Notebook,
 C calls the shared `0x391A` mode-action routine and resumes Tips, and Start
 returns to Notebook.
 
-Qt loads all 96 source strings from the named direct asset
-`menu/pocket-secretary/notebook-tips.tsv`; `0x80` becomes a host newline. The
+Qt loads all 96 source strings from the ROM-generated Lua text table in
+`dialogue/script-text.lua`; source `0x80` line breaks become host newlines. The
 screen draws the title/separator at `(88,32)/(72,40)`, page text at `(40,56)`,
 the `C663A` page-count label at `(136,184)`, the right-aligned current page at
 `(184,184)`, and the total at `(232,184)`. `C6645` is the two-cell current-page

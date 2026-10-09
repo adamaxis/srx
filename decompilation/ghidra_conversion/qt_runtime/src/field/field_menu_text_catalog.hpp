@@ -8,11 +8,15 @@
 #include <string>
 #include <vector>
 
+namespace shadowrun::ghidra_conversion::scripting {
+class GameScriptRuntime;
+}
+
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
-// These dimensions mirror source field-menu records. Script-backed text is
-// resolved into this typed presenter catalog during field bootstrap; numeric
-// routes and the remaining field-only labels stay in the direct asset catalog.
+// These dimensions mirror source field-menu records. ROM-backed Lua text is
+// resolved into this typed presenter catalog during bootstrap; numeric service
+// routes remain in the extracted route catalog.
 inline constexpr std::size_t kCommandOverviewLabelCount = 7U;
 inline constexpr std::size_t kFieldMenuArchetypeNameCount = 4U;
 inline constexpr std::size_t kFieldMenuRaceNameCount = 5U;
@@ -117,7 +121,7 @@ struct FieldMenuTextCatalog {
     std::array<std::string, kMagicSpellTextCount> magic_spell_names{};
     std::array<std::string, kMagicSpellTextCount> magic_spell_descriptions{};
     // Store names and category headings are Lua text. Destination words are
-    // numeric route data and remain in the extracted TSV.
+    // numeric route data and remain in service-routes.tsv.
     std::array<std::string, kFieldServiceTitleCount> field_service_titles{};
     std::array<std::uint16_t, kFieldServiceTitleCount>
         field_service_title_destinations{};
@@ -175,9 +179,10 @@ struct FieldMenuTextLoadResult {
     bool complete() const { return errors.empty(); }
 };
 
-// Load generated field/menu text plus the separate 0xF9A4 Tips text asset
-// through their manifest aliases. Missing source rows remain visible errors.
+// Load the Lua-authored field/menu copy plus numeric service destinations
+// from the extracted routing catalog. Missing source rows remain visible.
 FieldMenuTextLoadResult load_field_menu_text_catalog(
-    const ConversionAssetCatalog& assets);
+    const ConversionAssetCatalog& assets,
+    const shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts);
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime

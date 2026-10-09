@@ -1,7 +1,9 @@
 #include "field_menu_text_catalog.hpp"
 
 #include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
+#include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 
+#include <filesystem>
 #include <iostream>
 
 int main() {
@@ -11,9 +13,17 @@ int main() {
         std::cerr << "direct asset catalog is incomplete\n";
         return 1;
     }
+    shadowrun::ghidra_conversion::scripting::GameScriptRuntime scripts;
+    if (!scripts.load_package(
+            SHADOWRUN_GAMEPLAY_SCRIPT_ROOT,
+            std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) / "dialogue" /
+                "script-text.lua")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
     const auto text =
         shadowrun::ghidra_conversion::qt_runtime::load_field_menu_text_catalog(
-            loaded.catalog);
+            loaded.catalog, scripts);
     if (!text.complete()) {
         std::cerr << "field menu text catalog is incomplete\n";
         for (const auto& error : text.errors) {

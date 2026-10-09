@@ -170,13 +170,13 @@ the converted typed equipment combat result: source-indexed Damage/Power and
 Wpns/Guns rows, selected-item art, phase-value tiles, and the Atk/Def strips
 are drawn from the direct resource catalog. The seven command-root labels now
 resolve from ROM-derived Lua text keys; the typed selector still owns focus,
-drawing, and dispatch. Archetype, runner, status, power, and armor text remain
-in the extracted `menu.field.text` catalog and use the extracted menu font.
-Item names, categories, labels, and detail rows resolve from `items.lua` and
-`script-text.lua`, then use that same native presenter/font path. Clips,
-Attributes, Cyberware, Magic, and Pocket
-Secretary still need remaining source handlers and action-detail resources
-connected; this hill is therefore partial, not defended.
+drawing, and dispatch. Archetype, runner, status, power, armor, and menu
+feedback labels resolve from ROM-derived `script-text.lua`; item names,
+categories, labels, and detail rows resolve through `items.lua` and the same
+shared text table. They all use the existing native presenter/font path.
+Clips, Attributes, Cyberware, Magic, and Pocket Secretary still need remaining
+source handlers and action resources connected; this hill is therefore
+partial, not defended.
 The negative `+0x56` special attack branch and the field combat consumers of
 these values remain explicitly incomplete.
 

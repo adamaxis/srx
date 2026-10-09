@@ -902,6 +902,11 @@ const std::string* GameScriptRuntime::dialogue_text(
     return found == impl_->dialogue_texts.end() ? nullptr : &found->second;
 }
 
+const std::unordered_map<std::string, std::string>&
+GameScriptRuntime::dialogue_text_entries() const noexcept {
+    return impl_->dialogue_texts;
+}
+
 std::optional<std::vector<FieldMapEventRule>>
 GameScriptRuntime::map_event_rules() {
     auto* state = impl_->state;

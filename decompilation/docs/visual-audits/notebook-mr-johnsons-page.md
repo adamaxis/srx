@@ -26,9 +26,9 @@ list row. C calls shared mode action `0x391A`, requests event `0x25`, and
 resumes the same list selection. Start returns to the Notebook. A/B detail
 selection, list movement, and Start do not make a sound request in this handler.
 
-The host imports the five names and details into individually named fields in
-`decompilation/assets/menu/field/text.tsv`; doubled `0x80` line breaks are
-preserved. The runtime reads that text catalog and stores the visible source
+The host imports the five names and details as keyed entries in
+`decompilation/assets/dialogue/script-text.lua`; doubled `0x80` line breaks are
+preserved. The runtime reads those Lua values into the typed Notebook model and stores the visible source
 indices, selection, and detail-wait state in the typed Notebook model. The
 Qt projection redraws the lower panel grid at the detail transition before
 placing text, then redraws the list and selector on return. It keeps the title,

@@ -424,7 +424,7 @@ source-derived positions. The normal equipment-detail seam passes the typed
 `EquipmentCombatBarResult` and `ItemActionDetailResult` from converted code
 into that presentation, so the item art, phase-value tiles, Damage/Power,
 Wpns/Guns, and Atk/Def rows are not recomputed by Qt. The label catalog is
-generated offline at the ROM text-table boundary as `menu.field.text`; the
+generated offline from ROM text tables into `dialogue/script-text.lua`; the
 action-detail data for Attributes, Cyberware, Magic, and Pocket Secretary
 remain explicit conversion work. The top-level Clips branch is now connected
 through a separate `FieldClipsMenuRuntime`: its four-entry selector,
