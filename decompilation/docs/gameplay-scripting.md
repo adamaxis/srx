@@ -178,7 +178,9 @@ access.
   field Pocket Secretary root menu and all five possible Notebook rows in ROM
   order. It also names the dismiss choices, cyberdeck warning lines, grouped
   item rows, empty-run message, and Mr. Johnson contact/detail entries; the
-  root panel separator is a named text entry as well.
+  root panel separator is a named text entry as well. Notebook Tips metadata
+  and all 96 source-ordered entries are exposed as three validated 32-entry
+  content pages.
   `FieldSceneRuntime` validates the lists and uses Notebook IDs when dispatching
   the selected row; the text catalog resolves the ROM labels from
   `assets/dialogue/script-text.lua`. Native state still applies the three

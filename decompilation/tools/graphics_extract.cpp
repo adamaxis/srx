@@ -192,10 +192,13 @@ write_field_service_routes(
          shadowrun::graphics::read_genesis_dismiss_runner_separator(rom));
     const auto notebook_tips_text =
         shadowrun::graphics::read_genesis_notebook_tips_text(rom);
-    emit("notebook.tips.title", notebook_tips_text.title);
-    emit("notebook.tips.separator", notebook_tips_text.separator);
-    emit("notebook.tips.page-count", notebook_tips_text.page_count_label);
-    emit("notebook.tips.page-number-clear",
+    emit("pocket_secretary.notebook.tips.option.title",
+         notebook_tips_text.title);
+    emit("pocket_secretary.notebook.tips.option.separator",
+         notebook_tips_text.separator);
+    emit("pocket_secretary.notebook.tips.option.page_count",
+         notebook_tips_text.page_count_label);
+    emit("pocket_secretary.notebook.tips.option.page_number_clear",
          notebook_tips_text.page_number_clear);
     constexpr std::array<std::string_view, 6> kNotebookLabelKeys{{
         "pocket_secretary.notebook.options.title",
@@ -539,7 +542,9 @@ read_notebook_tips_script_text(
             text.replace(position, 1U, "\\n");
             position += 2U;
         }
-        script_text.emplace_back("notebook.tip." + std::to_string(index),
+        script_text.emplace_back(
+            "pocket_secretary.notebook.tips.option.tip_" +
+                std::to_string(index + 1U),
                                  std::move(text));
     }
     return script_text;

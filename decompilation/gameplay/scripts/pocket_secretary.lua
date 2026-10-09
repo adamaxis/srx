@@ -90,4 +90,29 @@ function PocketSecretary.mr_johnson_details()
     }
 end
 
+function PocketSecretary.notebook_tips_metadata()
+    return { "title", "separator", "page_count", "page_number_clear" }
+end
+
+local function notebook_tip_page(first_tip)
+    local ids = {}
+    for tip_number = first_tip, first_tip + 31 do
+        ids[#ids + 1] = "tip_" .. tip_number
+    end
+    return ids
+end
+
+-- Keep each source-order page within the script menu catalog's 32-row limit.
+function PocketSecretary.notebook_tip_page_1()
+    return notebook_tip_page(1)
+end
+
+function PocketSecretary.notebook_tip_page_2()
+    return notebook_tip_page(33)
+end
+
+function PocketSecretary.notebook_tip_page_3()
+    return notebook_tip_page(65)
+end
+
 return PocketSecretary

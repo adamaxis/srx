@@ -5,6 +5,7 @@
 
 #include <filesystem>
 #include <iostream>
+#include <string>
 
 int main() {
     const auto loaded = shadowrun::ghidra_conversion::load_conversion_asset_catalog(
@@ -103,6 +104,15 @@ int main() {
             "Caleb Brightmore is\nan upper-level Johnson\nwho specializes in\n"
             "Matrix Runs.\n\nCan be contacted at\nIcarus Descending in\n"
             "Downtown Seattle."}};
+    const std::array<std::string, kNotebookTipsMetadataCount>
+        expected_notebook_tips_metadata_text_ids{{
+            "title", "separator", "page_count", "page_number_clear"}};
+    std::array<std::string, kNotebookTipCount> expected_notebook_tip_text_ids{};
+    for (std::size_t index = 0; index < expected_notebook_tip_text_ids.size();
+         ++index) {
+        expected_notebook_tip_text_ids[index] =
+            "tip_" + std::to_string(index + 1U);
+    }
     const std::array<std::string, kFieldMenuRaceNameCount>
         expected_race_text_ids{{"human", "elf", "dwarf", "orc", "troll"}};
     const std::array<std::string, kFieldMenuClassNameCount>
@@ -234,6 +244,10 @@ int main() {
             expected_johnson_text_ids ||
         text.catalog.notebook_mr_johnson_detail_text_ids !=
             expected_johnson_text_ids ||
+        text.catalog.notebook_tips_metadata_text_ids !=
+            expected_notebook_tips_metadata_text_ids ||
+        text.catalog.notebook_tip_text_ids !=
+            expected_notebook_tip_text_ids ||
         text.catalog.race_text_ids != expected_race_text_ids ||
         text.catalog.class_text_ids != expected_class_text_ids ||
         text.catalog.status_text_ids != expected_posture_text_ids ||

@@ -113,6 +113,9 @@ constexpr std::array<std::string_view, kNotebookMrJohnsonCount>
     kNotebookMrJohnsonTextIds{{"gunderson", "julius_strouther",
                                "mortimer_reed", "vigore_and_jarl",
                                "caleb_brightmore"}};
+constexpr std::array<std::string_view, kNotebookTipsMetadataCount>
+    kNotebookTipsMetadataTextIds{{"title", "separator", "page_count",
+                                  "page_number_clear"}};
 
 constexpr std::string_view kMagicSpellOptionPrefix =
     "magic.spells.option.";
@@ -272,6 +275,24 @@ bool has_semantic_label_key(const std::string_view key,
                ids.end();
 }
 
+bool is_notebook_tip_text_label_key(const std::string_view key) {
+    constexpr std::string_view kPrefix =
+        "pocket_secretary.notebook.tips.option.tip_";
+    if (key.rfind(kPrefix, 0U) != 0U) {
+        return false;
+    }
+    const auto number_text = key.substr(kPrefix.size());
+    if (number_text.empty() || number_text.front() == '0') {
+        return false;
+    }
+    std::size_t number = 0U;
+    const auto* first = number_text.data();
+    const auto* last = first + number_text.size();
+    const auto result = std::from_chars(first, last, number);
+    return result.ec == std::errc{} && result.ptr == last && number > 0U &&
+           number <= kNotebookTipCount;
+}
+
 bool has_pocket_secretary_text_label_prefix(const std::string_view key) {
     return key.rfind("pocket_secretary.", 0U) == 0U;
 }
@@ -313,7 +334,11 @@ bool is_pocket_secretary_text_label_key(const std::string_view key) {
                kNotebookMrJohnsonTextIds) ||
            has_semantic_label_key(
                key, "pocket_secretary.notebook.mr_johnson.detail.option.",
-               kNotebookMrJohnsonTextIds);
+               kNotebookMrJohnsonTextIds) ||
+           has_semantic_label_key(
+               key, "pocket_secretary.notebook.tips.option.",
+               kNotebookTipsMetadataTextIds) ||
+           is_notebook_tip_text_label_key(key);
 }
 
 bool has_confirmation_menu_label_prefix(const std::string_view key) {
@@ -363,7 +388,7 @@ void add_missing_entries(const std::array<bool, N>& found, const char* prefix,
 bool is_field_menu_text_key(const std::string& key) {
     static constexpr const char* prefixes[]{
         "runner.", "archetype.",
-        "clips.", "notebook.tip.", "pocket_secretary.", "ui.option.",
+        "clips.", "pocket_secretary.", "ui.option.",
         "magic.spells.option.", "magic.spells.description.",
         "magic.panel.text.option.", "cyberware.text.option.",
         "items.text.option.", "items.display.option.",
@@ -378,24 +403,15 @@ bool is_field_menu_text_key(const std::string& key) {
             return true;
         }
     }
-    static constexpr const char* exact_keys[]{
-        "notebook.tips.title", "notebook.tips.separator",
-        "notebook.tips.page-count", "notebook.tips.page-number-clear",
-    };
-    for (const auto* expected : exact_keys) {
-        if (key == expected) {
-            return true;
-        }
-    }
     return false;
 }
 
-template <std::size_t N>
+template <typename IdString, std::size_t N>
 void load_script_menu_labels(
     shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts,
     const std::string_view module, const std::string_view function,
     const std::string_view text_profile, const std::string_view menu_id,
-    const std::array<std::string_view, N>& expected_ids,
+    const std::array<IdString, N>& expected_ids,
     std::array<std::string, N>& labels, std::vector<std::string>& errors,
     std::string* title = nullptr,
     std::array<std::string, N>* choice_ids = nullptr) {
@@ -421,7 +437,8 @@ void load_script_menu_labels(
     }
     for (std::size_t index = 0; index < expected_ids.size(); ++index) {
         const auto& choice = menu->choices[index];
-        if (choice.id != expected_ids[index]) {
+        if (std::string_view(choice.id) !=
+            std::string_view(expected_ids[index])) {
             errors.emplace_back("Lua menu choices do not match the "
                                 "native action order: " +
                                 std::string(function));
@@ -551,11 +568,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::array<bool, kMagicSpellTextCount> magic_spell_description_found{};
     std::array<bool, kFieldServiceTitleCount>
         field_service_title_destination_found{};
-    std::array<bool, kNotebookTipCount> notebook_tip_found{};
-    bool notebook_tips_title_found = false;
-    bool notebook_tips_separator_found = false;
-    bool notebook_tips_page_count_found = false;
-    bool notebook_tips_page_number_clear_found = false;
     std::array<std::string, kConfirmationChoiceCount> confirmation_labels{};
     load_script_menu_labels(
         scripts, "ui", "confirmation", "ui", "confirmation",
@@ -788,6 +800,46 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         &result.catalog.notebook_mr_johnson_detail_text_ids);
     result.catalog.notebook_mr_johnson_details =
         std::move(mr_johnson_details);
+    std::array<std::string, kNotebookTipsMetadataCount> notebook_tips_metadata{};
+    load_script_menu_labels(
+        scripts, "pocket_secretary", "notebook_tips_metadata",
+        "pocket_secretary.notebook.tips", "metadata",
+        kNotebookTipsMetadataTextIds, notebook_tips_metadata, result.errors,
+        nullptr, &result.catalog.notebook_tips_metadata_text_ids);
+    result.catalog.notebook_tips_title = notebook_tips_metadata[0];
+    result.catalog.notebook_tips_separator = notebook_tips_metadata[1];
+    result.catalog.notebook_tips_page_count_label = notebook_tips_metadata[2];
+    result.catalog.notebook_tips_page_number_clear =
+        notebook_tips_metadata[3];
+
+    constexpr std::array<std::string_view, kNotebookTipsPageCount>
+        kNotebookTipsPageFunctions{{"notebook_tip_page_1",
+                                    "notebook_tip_page_2",
+                                    "notebook_tip_page_3"}};
+    constexpr std::array<std::string_view, kNotebookTipsPageCount>
+        kNotebookTipsPageMenuIds{{"page_1", "page_2", "page_3"}};
+    std::array<std::string, kNotebookTipsPageSize> expected_tip_ids{};
+    std::array<std::string, kNotebookTipsPageSize> tip_page_text{};
+    std::array<std::string, kNotebookTipsPageSize> tip_page_text_ids{};
+    for (std::size_t page = 0; page < kNotebookTipsPageCount; ++page) {
+        const auto first_tip = page * kNotebookTipsPageSize;
+        for (std::size_t offset = 0; offset < kNotebookTipsPageSize; ++offset) {
+            expected_tip_ids[offset] =
+                "tip_" + std::to_string(first_tip + offset + 1U);
+        }
+        load_script_menu_labels(
+            scripts, "pocket_secretary",
+            kNotebookTipsPageFunctions[page],
+            "pocket_secretary.notebook.tips", kNotebookTipsPageMenuIds[page],
+            expected_tip_ids, tip_page_text, result.errors, nullptr,
+            &tip_page_text_ids);
+        std::copy(tip_page_text.begin(), tip_page_text.end(),
+                  result.catalog.notebook_tips.begin() +
+                      static_cast<std::ptrdiff_t>(first_tip));
+        std::copy(tip_page_text_ids.begin(), tip_page_text_ids.end(),
+                  result.catalog.notebook_tip_text_ids.begin() +
+                      static_cast<std::ptrdiff_t>(first_tip));
+    }
     for (const auto& [key, value] : text_rows) {
         if (has_confirmation_menu_label_prefix(key)) {
             if (!is_confirmation_menu_label_key(key)) {
@@ -904,79 +956,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             }
             continue;
         }
-        const auto parse_named = [&](const char* expected,
-                                     std::string& destination,
-                                     bool& found) {
-            if (key != expected) {
-                return false;
-            }
-            if (found) {
-                result.errors.emplace_back(
-                    "duplicate field menu text row: " + key);
-            } else {
-                found = true;
-                destination = value;
-            }
-            return true;
-        };
-        if (parse_indexed_key(key, "notebook.tip.", index) &&
-            index < result.catalog.notebook_tips.size()) {
-            if (notebook_tip_found[index]) {
-                result.errors.emplace_back(
-                    "duplicate field menu text row: " + key);
-            } else {
-                notebook_tip_found[index] = true;
-                auto tip = value;
-                std::size_t position = 0U;
-                while ((position = tip.find("\\n", position)) !=
-                       std::string::npos) {
-                    tip.replace(position, 2U, "\n");
-                    ++position;
-                }
-                result.catalog.notebook_tips[index] = std::move(tip);
-            }
-            continue;
-        }
-        if (key == "notebook.tips.title") {
-            if (notebook_tips_title_found) {
-                result.errors.emplace_back(
-                    "duplicate field menu text row: " + key);
-            } else {
-                notebook_tips_title_found = true;
-                result.catalog.notebook_tips_title = value;
-            }
-            continue;
-        }
-        if (key == "notebook.tips.separator") {
-            if (notebook_tips_separator_found) {
-                result.errors.emplace_back(
-                    "duplicate field menu text row: " + key);
-            } else {
-                notebook_tips_separator_found = true;
-                result.catalog.notebook_tips_separator = value;
-            }
-            continue;
-        }
-        if (key == "notebook.tips.page-count") {
-            if (notebook_tips_page_count_found) {
-                result.errors.emplace_back(
-                    "duplicate field menu text row: " + key);
-            } else {
-                notebook_tips_page_count_found = true;
-                result.catalog.notebook_tips_page_count_label = value;
-            }
-            continue;
-        }
-        if (key == "notebook.tips.page-number-clear") {
-            if (notebook_tips_page_number_clear_found) {
-                result.errors.emplace_back(
-                    "duplicate field menu text row: " + key);
-            } else {
-                notebook_tips_page_number_clear_found = true;
-                result.catalog.notebook_tips_page_number_clear = value;
-            }
-            continue;
-        }
         if (key.rfind(kMagicSpellOptionPrefix, 0U) == 0U) {
             const auto spell_id = std::string_view(key).substr(
                 kMagicSpellOptionPrefix.size());
@@ -1020,18 +999,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     }
     add_missing_entries(archetype_found, "archetype.", result.errors);
     add_missing_entries(runner_found, "runner.", result.errors);
-    const auto require_named = [&result](const char* key, const bool found) {
-        if (!found) {
-            result.errors.emplace_back(
-                "missing field menu text row: " + std::string(key));
-        }
-    };
-    require_named("notebook.tips.title", notebook_tips_title_found);
-    require_named("notebook.tips.separator", notebook_tips_separator_found);
-    require_named("notebook.tips.page-count",
-                  notebook_tips_page_count_found);
-    require_named("notebook.tips.page-number-clear",
-                  notebook_tips_page_number_clear_found);
     for (std::size_t index = 0; index < magic_spell_description_found.size();
          ++index) {
         if (!magic_spell_description_found[index]) {
@@ -1040,7 +1007,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                 std::string(kMagicSpellIds[index]));
         }
     }
-    add_missing_entries(notebook_tip_found, "notebook.tip.", result.errors);
     add_missing_entries(field_service_title_destination_found,
                         "field-service.title-destination.", result.errors);
     const auto decode_newlines = [](std::string& value) {
@@ -1059,6 +1025,9 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     decode_newlines(result.catalog.magic_force_posture_labels);
     for (auto& detail : result.catalog.notebook_mr_johnson_details) {
         decode_newlines(detail);
+    }
+    for (auto& tip : result.catalog.notebook_tips) {
+        decode_newlines(tip);
     }
 
     return result;

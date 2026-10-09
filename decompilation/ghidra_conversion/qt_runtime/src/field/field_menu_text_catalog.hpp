@@ -57,6 +57,12 @@ inline constexpr std::size_t kNotebookLabelCount = 6U;
 inline constexpr std::size_t kNotebookChoiceCount = kNotebookLabelCount - 1U;
 inline constexpr std::size_t kNotebookNoRunLineCount = 3U;
 inline constexpr std::size_t kNotebookTipCount = 96U;
+inline constexpr std::size_t kNotebookTipsPageCount = 3U;
+inline constexpr std::size_t kNotebookTipsPageSize =
+    kNotebookTipCount / kNotebookTipsPageCount;
+static_assert(kNotebookTipCount % kNotebookTipsPageCount == 0U,
+              "Notebook tips must divide evenly into source-ordered pages");
+inline constexpr std::size_t kNotebookTipsMetadataCount = 4U;
 inline constexpr std::size_t kNotebookMrJohnsonCount = 5U;
 
 struct FieldMenuTextCatalog {
@@ -193,12 +199,15 @@ struct FieldMenuTextCatalog {
         notebook_mr_johnson_details{};
     std::array<std::string, kNotebookMrJohnsonCount>
         notebook_mr_johnson_detail_text_ids{};
+    std::array<std::string, kNotebookTipsMetadataCount>
+        notebook_tips_metadata_text_ids{};
+    std::array<std::string, kNotebookTipCount> notebook_tip_text_ids{};
     std::string notebook_tips_title;
     std::string notebook_tips_separator;
     std::string notebook_tips_page_count_label;
     std::string notebook_tips_page_number_clear;
-    // ROM 0xF9A4's three pointer tables are imported offline into their own
-    // named text asset and loaded as host strings before the field runtime.
+    // ROM 0xF9A4's three pointer tables are imported offline into semantic
+    // Lua text keys; typed page state consumes their text through this catalog.
     std::array<std::string, kNotebookTipCount> notebook_tips{};
     std::array<std::string, kCyberwareEntryCount> cyberware_entries{};
     std::array<std::string, kCyberwareTextCount> cyberware_text_ids{};
