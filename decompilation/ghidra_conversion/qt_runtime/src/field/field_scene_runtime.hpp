@@ -170,6 +170,14 @@ public:
     }
     bool open_stoker_dialogue_for_dump(
         StokerMotelPromptId prompt) {
+        // Script state reads this typed field state directly in a live
+        // session, so seed the native owner for deterministic diagnostic
+        // prompts instead of writing only GameScriptRuntime's fallback map.
+        if (prompt == StokerMotelPromptId::manager_greeting_with_package) {
+            stoker_motel_story_state_ = {true, false, false};
+        } else if (prompt == StokerMotelPromptId::manager_greeting) {
+            stoker_motel_story_state_ = {true, true, true};
+        }
         return field_dialogue_.open_stoker_prompt_for_dump(prompt);
     }
     bool open_stoker_arrival_result_for_dump(std::uint8_t random_roll) {

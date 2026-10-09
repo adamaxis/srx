@@ -555,7 +555,10 @@ choice before the generic panel uses them. The script QA checks the explicit
 arrival/farewell event keys, menu ordering and labels, and that the same motel
 menu mapping works without a speaker ID. The physical route QA continues to
 exercise the scripts through scene-2 collision, menu input, quest services,
-and field return.
+and field return. Separate debt, referral, and low-funds routes verify the
+native quest facts and corresponding full-screen debt/referral pages. Their
+diagnostic helpers now seed the typed native story state that the live Lua
+property binding reads, rather than writing the unused fallback map.
 
 1. **Does it look correct?** The 16 full-screen 320x224 route captures still
    show the arrival, manager, debt, handoff, farewell, fade, and field screens
@@ -586,8 +589,10 @@ and field return.
    dialogue panel. No old controls or graphics remain underneath.
 9. **Was the full available sequence reviewed?** Yes. I reopened all 16 Debug
    BMPs at original 320x224 resolution. Each corresponding Release BMP has
-   the same SHA-256 hash. The script runtime, generic panel, field-dialogue
-   runtime, and physical Stoker route tests pass in Debug and Release (4/4).
+   the same SHA-256 hash. The three debt/referral pages also match by
+   Debug/Release SHA-256 and were opened at full resolution. The script
+   runtime, generic panel, field-dialogue runtime, physical Stoker route, and
+   all three follow-up routes pass in Debug and Release (7/7).
 
 These checks validate the native conversion route and Lua content binding;
 the independent capture remains the visual authority. The older static

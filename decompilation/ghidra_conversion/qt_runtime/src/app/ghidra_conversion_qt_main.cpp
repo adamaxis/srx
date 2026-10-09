@@ -17054,6 +17054,9 @@ int main(int argc, char** argv) {
                         *notebook_gates != expected_gates) {
                         std::cerr << "field dialogue dump: typed Stoker flags or Notebook gates mismatch"
                                   << " prompt_opened=" << prompt_opened
+                                  << " panel_boundary="
+                                  << field_scene.dialogue_panel()
+                                         .source_boundary_reason
                                   << " story_flags="
                                   << (story_flags.has_value()
                                           ? std::to_string(*story_flags)
