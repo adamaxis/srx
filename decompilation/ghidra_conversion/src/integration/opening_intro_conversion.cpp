@@ -521,13 +521,13 @@ const OpeningIntroSourcePlan& opening_intro_source_plan() {
         };
         result.stage2_schedule = {{0x0001U, action(0x5AE9EU)}};
 
-        // 0x5A1D2: the four individually extracted wilderness background
-        // patches used by the four-entry stage sequence.
+        // 0x5A0B2 reads each pointer and delay from the six-byte records at
+        // 0x5A1D2. The source hold lengths are 12, 24, 60, then 12 updates.
         result.sequence_phases = {{
             {sprite(OpeningIntroSpriteFamily::background_patch, 0), 0x000CU},
             {sprite(OpeningIntroSpriteFamily::background_patch, 1), 0x0018U},
-            {sprite(OpeningIntroSpriteFamily::background_patch, 2), 0x000CU},
-            {sprite(OpeningIntroSpriteFamily::background_patch, 3), 0x003CU},
+            {sprite(OpeningIntroSpriteFamily::background_patch, 2), 0x003CU},
+            {sprite(OpeningIntroSpriteFamily::background_patch, 3), 0x000CU},
         }};
 
         // 0x5A398, 0x5A482, and 0x5A562.

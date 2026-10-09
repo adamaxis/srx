@@ -633,6 +633,27 @@ int main() {
     }
 
     const auto& opening_plan = opening_intro_source_plan();
+    const auto& ambush_patch_phases = opening_plan.sequence_phases;
+    const auto ambush_patch_0 = opening_intro_sprite_group(
+        ambush_patch_phases[0].sprite_descriptor);
+    const auto ambush_patch_1 = opening_intro_sprite_group(
+        ambush_patch_phases[1].sprite_descriptor);
+    const auto ambush_patch_2 = opening_intro_sprite_group(
+        ambush_patch_phases[2].sprite_descriptor);
+    const auto ambush_patch_3 = opening_intro_sprite_group(
+        ambush_patch_phases[3].sprite_descriptor);
+    if (ambush_patch_0.family != OpeningIntroSpriteFamily::background_patch ||
+        ambush_patch_1.family != OpeningIntroSpriteFamily::background_patch ||
+        ambush_patch_2.family != OpeningIntroSpriteFamily::background_patch ||
+        ambush_patch_3.family != OpeningIntroSpriteFamily::background_patch ||
+        ambush_patch_0.variant != 0U || ambush_patch_1.variant != 1U ||
+        ambush_patch_2.variant != 2U || ambush_patch_3.variant != 3U ||
+        ambush_patch_phases[0].delay_frames != 0x000CU ||
+        ambush_patch_phases[1].delay_frames != 0x0018U ||
+        ambush_patch_phases[2].delay_frames != 0x003CU ||
+        ambush_patch_phases[3].delay_frames != 0x000CU) {
+        return 27;
+    }
     const auto timed_phase_0 = opening_intro_sprite_group(
         opening_plan.stage_timed_phases[0].sprite_descriptor);
     const auto timed_phase_1 = opening_intro_sprite_group(

@@ -80,12 +80,13 @@ the paired sprite routine itself has no sound request or audible duration.
    update. Stopping the spell pair removes only those requests; story text,
    projectiles, the hit sprite, and the smoke continue on their own source
    states.
-9. **Was the whole time window reviewed? Partial.** The post-hit QA advances
-   every source update through the complete death-layer interval and cockpit
-   entry, checking that no paired spell sprite returns. Its named screenshots
-   cover active phases, hit, smoke, clear, and handoff. A refreshed consecutive
-   full-intro image capture is still needed after the separate OPEN-10 border
-   correction so both intro fixes can be reviewed together.
+9. **Was the whole time window reviewed? Yes, as a whole-screen overview.** The
+   final connected Release capture has 6,782 consecutive frames from title
+   through the map handoff and first field dialogue. All are represented in
+   106 chronological overview sheets. The active, hit, smoke, clear, and
+   handoff regions were also reviewed at full resolution. This sequence-wide
+   scan supports the effect remaining stopped; it does not resolve other
+   intro behaviors.
 
 ## Outcome
 
@@ -99,6 +100,8 @@ the paired sprite routine itself has no sound request or audible duration.
 - **Independently visually checked:** section 02 frames `000660-000678` show
   the hit/blast sequence without the paired sparkle. Timing is not aligned to
   individual 60-Hz source updates.
-- **Reported defect status:** the persistent magic animation is corrected in
-  the connected native route. The final consecutive full-intro review remains
-  open until the adjacent OPEN-10 extraction fix is complete.
+- **Reported defect status:** the persistent paired magic animation is
+  corrected in the connected native route. Independent source frames support
+  the hit/blast ordering; the final consecutive native route scan found no
+  later reappearance of the pair. Traveling projectiles are separate sprites
+  and remain governed by their own source state.

@@ -68,6 +68,30 @@ int main() {
     assert(atlas.pixels[4].alpha == 0);
 
     const auto rom = read_rom();
+    const auto ambush_patches =
+        decode_genesis_intro_ambush_background_resources(rom);
+    assert(ambush_patches.size() == 4U);
+    for (const auto& patch : ambush_patches) {
+        assert(patch.image.width == 320U);
+        assert(patch.image.height == 224U);
+        assert(patch.image.pixels.size() == 320U * 224U);
+        std::size_t transparent_patch_pixels = 0U;
+        std::size_t drawn_patch_pixels = 0U;
+        for (std::size_t y = 128U; y < 224U; ++y) {
+            for (std::size_t x = 152U; x < 256U; ++x) {
+                const auto& pixel = patch.image.pixels[y * 320U + x];
+                transparent_patch_pixels += pixel.alpha == 0U ? 1U : 0U;
+                drawn_patch_pixels += pixel.alpha == 255U ? 1U : 0U;
+            }
+        }
+        const auto first_background_cell =
+            patch.image.pixels[128U * 320U + 152U];
+        assert(first_background_cell.alpha == 0U);
+        const auto has_transparent_pixel = transparent_patch_pixels > 0U;
+        const auto has_drawn_pixel = drawn_patch_pixels > 0U;
+        assert(has_transparent_pixel);
+        assert(has_drawn_pixel);
+    }
     // ROM 0x5ACF6 writes D6=-0x2000 for the three timed tri-vid SAT lists.
     // Preserve the resulting palette-line-3/high-priority attributes in the
     // offline extractor so rebuilding named assets cannot recolor the timed

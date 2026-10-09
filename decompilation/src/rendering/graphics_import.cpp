@@ -6681,10 +6681,10 @@ void blit_genesis_1728_name_table(
     for (std::size_t row = 0; row < rows; ++row) {
         for (std::size_t col = 0; col < columns; ++col) {
             const auto word = map[row * columns + col];
+            const auto tile_index = static_cast<std::size_t>(word & 0x07FFU);
             if (word == 0U && transparent_zero) {
                 continue;
             }
-            const auto tile_index = static_cast<std::size_t>(word & 0x07FFU);
             const auto palette_line =
                 static_cast<std::size_t>((word >> 13U) & 0x03U);
             const auto hflip = (word & 0x0800U) != 0;
@@ -8002,8 +8002,11 @@ decode_genesis_intro_ambush_background_resources_impl(
         resource.table_index = index;
         resource.source_offset = source;
         resource.image = make_transparent_title_layer();
+        // ROM 0x5A1D2 supplies the wilderness map patches as plane overlays.
+        // Preserve their color-zero cells/pixels as transparent so the
+        // palette-line-0 hit flash cannot turn the empty canvas into a panel.
         blit_genesis_1728_name_table(rom, scene, resource.image, source, 13U,
-                                     12U, 0x826U, 0x0000U, 0, false);
+                                     12U, 0x826U, 0x0000U, 0, true);
         resources.push_back(std::move(resource));
     }
     return resources;

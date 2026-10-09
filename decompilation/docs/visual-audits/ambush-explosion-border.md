@@ -1,68 +1,70 @@
-# OPEN-10: Ambush explosion patch has an opaque square
+# OPEN-10: Ambush explosion patch transparency
 
-## Current reproduction
+## Source trace and native change
 
-The Release full-intro capture at
-`ghidra_conversion/build-ghidra-conversion-qt-release/qt_runtime/full-intro-ambush-fix-review/frame-004446.png`
-is a complete 320x224 frame at wilderness `opening_frame=1012`. It shows a
-rectangular tone boundary behind the center attacker explosion. The independent
-Genesis reference is section 02 frame `000642.png`; the same region has no
-patch-sized rectangle there. The current intro extractor's assets include four
-152x128 `intro/background-patch-*.bmp` resources.
+The US ROM sequence at `0x5A0B2` reads four pointer/delay records from
+`0x5A1D2`. Their holds are 12, 24, 60, and 12 updates. Each record selects a
+13x12 tile map that is composited as a patch over the existing wilderness
+scene. Empty map entries and color-zero pixels must leave the earlier scene
+visible.
 
-## ROM and extraction trace
-
-The US ROM's ambush map pointer table begins at `0x5A1D2`. Its four entries
-point to `0x1E2EBA`, `0x1E2F04`, `0x1E2F6C`, and `0x1E2EBA`, with encoded
-lengths `0x0C`, `0x18`, `0x3C`, and `0x0C`. The source setup at
-`0x5B4A8` selects the wilderness resources. These are ordinary source map
-patches; the runtime is expected to composite their mapped pixels over the
-existing scene, preserving empty cells.
-
-The offline `decode_genesis_intro_ambush_background_resources_impl` decodes
-each 13x12 map into a transparent 320x224 canvas. It currently calls the
-0x1728 tile-map blitter with `transparent_zero=false`. In that mode zero-valued
-cells and color-zero pixels become opaque, filling the map-patch extent. The
-zero-cell policy must be checked against the ROM map and the patch's intended
-layer before changing the extractor. This is an offline import correction;
-the native renderer should consume the resulting named RGBA assets directly.
+The offline `decode_genesis_intro_ambush_background_resources_impl` now treats
+zero entries as transparent while decoding all four patches. It regenerates
+the individually named RGBA assets. The typed intro phase list now carries
+the ROM hold values in source order. The runtime still consumes the named
+assets; no ROM address or tile decoder is used for live drawing.
 
 ## Nine-question visual review
 
-1. **Does it look correct? No.** The current full-screen frame has a visible
-   rectangular boundary behind the center explosion; the independent frame
-   `000642` does not.
-2. **Does the look match behavior? Not yet.** The patch is sourced from the
-   ROM's ambush map table, but the mapped zero cells currently overwrite the
-   scene rather than remaining transparent. Confirm against the raw map and its
-   drawing order before finalizing the change.
-3. **Are the visuals correct? No.** The patch's outer canvas should not appear
-   as a filled rectangle. Check all four patch assets and all surrounding
-   actors, projectiles, text, and smoke after correcting transparency.
-4. **Should it animate?** The map patch itself is static. The explosion/smoke
-   sprites animate on their own source cadence; changing map transparency must
-   not alter those frames or their timing.
-5. **Does it have sound?** The patch renderer has no sound request. Audit the
-   adjacent source event separately; do not infer a sound or duration from the
-   pixels.
-6. **Are other screen regions correct? Not established by this reproduction.**
-   Review each full-screen checkpoint before and after the patch transition,
-   including both attackers, the runner, text, shots, spell effects, smoke,
-   palette fade, and later intro replacement.
-7. **Do multiple frames support the interpretation? Yes, provisionally.** The
-   independent frame `000642` and Qt frame `frame-004446` provide a
-   cross-source comparison. Review multiple adjacent Genesis frames and the
-   consecutive native intro run after the fix.
-8. **Are new graphics layered cleanly? No.** The opaque patch is currently
-   drawn over the prior background. Its empty cells must preserve the prior
-   layer; verify no stale rectangle or newly covered actor remains.
-9. **Was the full time window reviewed? Not yet for this correction.** The
-   earlier full-intro capture identified the defect. A fresh consecutive
-   Release capture and Debug/Release whole-screen checkpoints are required
-   after the asset fix, with all changed frames reviewed.
+1. **Does it look correct? Yes for the reported square.** Native full-screen
+   frame `frame-004446.png` in the final 6,782-frame Release capture has no
+   patch-sized rectangle behind the center attacker explosion. The former
+   tone block is gone while the blast remains visible.
+2. **Does the look match behavior? Yes.** The four ROM map records carry the
+   overlay content and 12/24/60/12 update holds. Color-zero cells are now
+   transparent, preserving the previously drawn wilderness layer.
+3. **Are the visuals correct? Yes for this patch defect.** All four extracted
+   assets contain both transparent and drawn pixels. The attacker, player,
+   story text, projectiles, hit effect, smoke, and later layer cleanup remain
+   present in the reviewed full-screen sequence.
+4. **Should it animate?** The patch images are static per phase. The phase
+   changes after 12, 24, 60, and 12 source updates. Explosion and smoke
+   sprites keep their separate source animation schedules.
+5. **Does it have sound?** Drawing the patch makes no sound request. The
+   adjacent hit event `0x46` selects silent table-2 slot 70 in the traced ROM
+   audio path; it has no audible clip or playback duration.
+6. **Are other screen regions correct?** The full 320x224 frames were scanned
+   from title through the map handoff and first field dialogue. The changed
+   ambush frames were additionally reviewed side by side with the baseline;
+   later scenes were not claimed as resolved by this patch.
+7. **Do multiple frames support this interpretation? Yes.** Independent
+   Genesis section 02 frames `000640`, `000642`, `000644`, `000646`, and
+   `000648` show the same explosion interval without the rectangle. Native
+   frames `004332` through `004446` cover the patch transition and hit. This
+   is an automatic cutscene, so there is no click-through sequence.
+8. **Are new graphics layered cleanly? Yes.** Zero map cells preserve the
+   earlier scene. The patch adds no panel or control; no old button or
+   interface is involved. Full-screen frames retain underlying actors and
+   effects without a rectangular overdraw.
+9. **Was the full time window reviewed? Yes, as a whole-screen overview.** All
+   6,782 captured frames are represented in 106 chronological contact sheets
+   (eight by eight images per sheet; the final sheet is partial). All 535
+   pixel-differing baseline/fix frames were also reviewed in full-resolution
+   comparison sheets; the 48 phase-timing changes were reviewed separately.
+   Direct 320x224 frames were inspected at the key explosion and handoff
+   points. The overview is a scan for sequence-wide anomalies; it does not
+   replace pixel-level inspection of every unchanged duplicate frame.
 
-## Status
+## Outcome
 
-**Reproduced; fix in progress.** Do not close OPEN-10 until the ROM map's empty
-cells are traced, named assets are regenerated, the intro route passes Debug
-and Release QA, and a fresh consecutive full-screen capture is reviewed.
+- **Code changed:** the offline patch extractor preserves transparent zero
+  cells; the four phase durations now match the ROM records.
+- **Behavior implemented:** the four ambush overlays reveal the existing
+  background through empty cells and advance after 12/24/60/12 updates.
+- **Internally checked:** graphics and connected startup QA passed in Debug
+  and Release; regenerated assets were loaded by the Qt capture.
+- **Independently visually checked:** Genesis section 02 frames
+  `000640-000648` show no rectangular patch; native full-screen frames and
+  transition comparisons show the native layer is transparent.
+- **Reported defect status:** OPEN-10 is resolved for the square border. The
+  overall intro hill remains partial for other open behaviors.

@@ -243,10 +243,10 @@ intro/sprites/helicopter-5-3.bmp	sprite	146	124	32	2	table=0x5b180 index=5 sprit
 intro/sprites/helicopter-5-4.bmp	sprite	178	124	14	1	table=0x5b180 index=5 sprite=4 source=0x1df3ea attr=0x2000	extracted
 intro/sprites/aircraft-movement-0-0.bmp	sprite	115	120	24	8	table=0x1df3f4 index=0 sprite=0 source=0x1df3f4 attr=0x2000	extracted
 intro/sprites/aircraft-movement-1-0.bmp	sprite	115	117	23	13	table=0x1df3f4 index=1 sprite=0 source=0x1df3fe attr=0x2000	extracted
-intro/background-patch-0.bmp	background	152	128	104	96	table=0x5a1d2 index=0 sprite=0 source=0x1e2eba attr=0x0	extracted
-intro/background-patch-1.bmp	background	152	128	104	96	table=0x5a1d2 index=1 sprite=0 source=0x1e2f04 attr=0x0	extracted
-intro/background-patch-2.bmp	background	152	128	104	96	table=0x5a1d2 index=2 sprite=0 source=0x1e2f6c attr=0x0	extracted
-intro/background-patch-3.bmp	background	152	128	104	96	table=0x5a1d2 index=3 sprite=0 source=0x1e2eba attr=0x0	extracted
+intro/background-patch-0.bmp	background	152	134	104	90	table=0x5a1d2 index=0 sprite=0 source=0x1e2eba attr=0x0	extracted
+intro/background-patch-1.bmp	background	152	134	100	90	table=0x5a1d2 index=1 sprite=0 source=0x1e2f04 attr=0x0	extracted
+intro/background-patch-2.bmp	background	152	134	104	90	table=0x5a1d2 index=2 sprite=0 source=0x1e2f6c attr=0x0	extracted
+intro/background-patch-3.bmp	background	152	134	104	90	table=0x5a1d2 index=3 sprite=0 source=0x1e2eba attr=0x0	extracted
 intro/cab-map.bmp	background	0	0	208	136	0x134D2/0xD2A2E	extracted
 intro/cab/cursor-top-left.bmp	sprite	0	0	8	8	0xD4446/0x13726	extracted
 intro/cab/cursor-top-middle.bmp	sprite	0	0	8	8	0xD4446/0x13726	extracted

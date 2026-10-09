@@ -596,10 +596,10 @@ intro.sprites.helicopter.5.3	intro/sprites/helicopter-5-3.bmp	image	146	124
 intro.sprites.helicopter.5.4	intro/sprites/helicopter-5-4.bmp	image	178	124
 intro.sprites.aircraft.movement.0.0	intro/sprites/aircraft-movement-0-0.bmp	image	115	120
 intro.sprites.aircraft.movement.1.0	intro/sprites/aircraft-movement-1-0.bmp	image	115	117
-intro.background.patch.0	intro/background-patch-0.bmp	image	152	128
-intro.background.patch.1	intro/background-patch-1.bmp	image	152	128
-intro.background.patch.2	intro/background-patch-2.bmp	image	152	128
-intro.background.patch.3	intro/background-patch-3.bmp	image	152	128
+intro.background.patch.0	intro/background-patch-0.bmp	image	152	134
+intro.background.patch.1	intro/background-patch-1.bmp	image	152	134
+intro.background.patch.2	intro/background-patch-2.bmp	image	152	134
+intro.background.patch.3	intro/background-patch-3.bmp	image	152	134
 intro.cab.map	intro/cab-map.bmp	image	0	0
 intro.cab.cursor.top.left	intro/cab/cursor-top-left.bmp	image	0	0
 intro.cab.cursor.top.middle	intro/cab/cursor-top-middle.bmp	image	0	0
