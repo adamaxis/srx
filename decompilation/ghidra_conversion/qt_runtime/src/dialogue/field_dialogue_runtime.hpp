@@ -85,9 +85,11 @@ public:
     bool open_stoker_prompt_for_dump(StokerMotelPromptId prompt);
     bool open_stoker_arrival_result_for_dump(std::uint8_t random_roll);
 
-    // The story script decides whether this visit plays its first-entry
-    // dialogue and then enters the shared motel manager interaction.
-    bool open_stoker_interaction(const StokerMotelStoryState& story_state);
+    // The story script reads and writes the native story facts through the
+    // GameScriptRuntime binding, then enters the shared motel interaction.
+    bool open_stoker_interaction();
+    bool open_stoker_interaction_for_dump(
+        const StokerMotelStoryState& story_state);
 
     FieldDialogueAdvanceResult advance_controller_events(
         std::uint16_t event_word);
@@ -120,7 +122,6 @@ private:
     DialoguePanelView panel_{};
     StokerMotelPromptId active_prompt_ = StokerMotelPromptId::source_boundary;
     scripting::GameScriptRuntime* script_runtime_ = nullptr;
-    scripting::StoryFacts story_facts_;
     std::optional<scripting::ScriptNativeOperation>
         active_script_operation_;
     std::optional<scripting::ScriptMenuDefinition> active_script_menu_;

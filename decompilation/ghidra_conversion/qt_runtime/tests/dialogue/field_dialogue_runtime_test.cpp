@@ -506,7 +506,7 @@ int main() {
         return 34;
     }
 
-    if (!expect(runtime.open_stoker_interaction(
+    if (!expect(runtime.open_stoker_interaction_for_dump(
             StokerMotelStoryState{true, false, false})) ||
         !expect(runtime.panel().text_segment_count == 5U) ||
         !expect(runtime.panel().option_count == 3U) ||
@@ -658,7 +658,7 @@ int main() {
     // Paying the debt with a typed wallet below 250 returns the script to the
     // source Jump House page and clears the former debt choices.
     debt_payment_state.followup_state.referral_flags = 0U;
-    if (!expect(runtime.open_stoker_interaction(
+    if (!expect(runtime.open_stoker_interaction_for_dump(
             StokerMotelStoryState{true, false, false})) ||
         !expect(runtime.advance_controller_events(0x2000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
@@ -669,6 +669,9 @@ int main() {
                 StokerMotelDebtPaymentResult::insufficient_funds) ||
         !expect(debt_payment_outcome.remaining_funds == 249U) ||
         !expect(debt_payment_state.followup_state.referral_flags == 1U) ||
+        !expect(!gameplay_scripts.story_state().at("michael_debt_paid")) ||
+        !expect(!gameplay_scripts.story_state().at(
+                    "michael_package_collected")) ||
         !expect(runtime.panel().text_segments[0].find("Jump House") !=
                 std::string_view::npos) ||
         !expect(runtime.panel().option_count == 0U) ||
@@ -723,7 +726,7 @@ int main() {
     debt_payment_state.runner_feature_flags = 0x40U;
     debt_payment_state.runner_source_bytes = {0xFFU, 0x00U, 0x7FU};
     debt_payment_state.followup_state.story_flags = 3U;
-    if (!expect(runtime.open_stoker_interaction(
+    if (!expect(runtime.open_stoker_interaction_for_dump(
             StokerMotelStoryState{true, false, false})) ||
         !expect(runtime.advance_controller_events(0x2000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced)) {
@@ -736,7 +739,10 @@ int main() {
     if (!expect(debt_payment_outcome.result ==
                     StokerMotelDebtPaymentResult::debt_paid) ||
         !expect(debt_payment_outcome.remaining_funds == 500U) ||
-        !expect(debt_payment_outcome.michael_package_sequence_follows)) {
+        !expect(debt_payment_outcome.michael_package_sequence_follows) ||
+        !expect(gameplay_scripts.story_state().at("michael_debt_paid")) ||
+        !expect(gameplay_scripts.story_state().at(
+                    "michael_package_collected"))) {
         return 81;
     }
     if (!expect(debt_payment_state.world_flags == 0x01U) ||
@@ -769,7 +775,7 @@ int main() {
     }
 
     StokerMotelStoryState first_visit_state{};
-    if (!expect(runtime.open_stoker_interaction(first_visit_state)) ||
+    if (!expect(runtime.open_stoker_interaction_for_dump(first_visit_state)) ||
         !expect(gameplay_scripts.story_state().at("opening_dialogue_seen")) ||
         !expect(runtime.panel().text_segments[0].find("battered sign") !=
                 std::string_view::npos) ||
@@ -809,13 +815,13 @@ int main() {
         !expect(!runtime.panel().has_more) ||
         !expect(runtime.advance_controller_events(0x1000U) ==
                 FieldDialogueAdvanceResult::returned_to_field) ||
-        !expect(runtime.open_stoker_interaction(
+        !expect(runtime.open_stoker_interaction_for_dump(
                     StokerMotelStoryState{true, false, false})) ||
         !expect(runtime.panel().option_count == 3U)) {
         return 72;
     }
     runtime.close();
-    if (!expect(runtime.open_stoker_interaction(
+    if (!expect(runtime.open_stoker_interaction_for_dump(
                     StokerMotelStoryState{true, true, true})) ||
         !expect(runtime.panel().option_count == 2U)) {
         return 73;

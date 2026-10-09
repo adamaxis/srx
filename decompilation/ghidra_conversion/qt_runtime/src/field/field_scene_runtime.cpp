@@ -375,10 +375,6 @@ FieldSceneRuntime::FieldSceneRuntime(
                 payment_state.runner_source_bytes;
             cyberdeck_available_ =
                 (payment_state.runner_feature_flags & 0x01U) != 0U;
-            // The successful command returns the package handoff text as part
-            // of the same source transaction, after setting its world flag.
-            stoker_motel_story_state_.michael_debt_paid = true;
-            stoker_motel_story_state_.michael_package_collected = true;
         }
         notebook_tip_flags_[0] = payment_state.followup_state.story_flags;
         notebook_referral_flags_ =
@@ -586,36 +582,12 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                 return false;
             }
 
-            const scripting::StoryFacts story_facts{
-                {"opening_dialogue_seen",
-                 stoker_motel_story_state_.opening_dialogue_seen},
-                {"michael_debt_paid",
-                 stoker_motel_story_state_.michael_debt_paid},
-                {"michael_package_collected",
-                 stoker_motel_story_state_.michael_package_collected}};
             game_scripts_.set_location_context(
                 "motel", "stoker_motel", "stoker.motel", "stoker");
-            game_scripts_.set_story_state(story_facts);
-            if (!field_dialogue_.open_stoker_interaction(
-                    stoker_motel_story_state_)) {
+            if (!field_dialogue_.open_stoker_interaction()) {
                 source_boundary("field.dialogue.stoker_story_script_failed");
                 state.caller_exit_status = -1;
                 return true;
-            }
-            const auto updated_story = game_scripts_.story_state();
-            if (const auto seen = updated_story.find("opening_dialogue_seen");
-                seen != updated_story.end()) {
-                stoker_motel_story_state_.opening_dialogue_seen = seen->second;
-            }
-            if (const auto debt = updated_story.find("michael_debt_paid");
-                debt != updated_story.end()) {
-                stoker_motel_story_state_.michael_debt_paid = debt->second;
-            }
-            if (const auto collected =
-                    updated_story.find("michael_package_collected");
-                collected != updated_story.end()) {
-                stoker_motel_story_state_.michael_package_collected =
-                    collected->second;
             }
             if ((field_exit_world_flags_ & 0x01U) != 0U &&
                 !(stoker_motel_story_state_.michael_debt_paid &&
@@ -3968,6 +3940,34 @@ bool FieldSceneRuntime::bootstrap(
     field_exit_alternate_result_ = 0;
     field_exit_world_flags_ = 0U;
     stoker_motel_story_state_ = StokerMotelStoryState{};
+    game_scripts_.set_story_fact_accessors(
+        [this](const std::string_view name) -> std::optional<bool> {
+            if (name == "opening_dialogue_seen") {
+                return stoker_motel_story_state_.opening_dialogue_seen;
+            }
+            if (name == "michael_debt_paid") {
+                return stoker_motel_story_state_.michael_debt_paid;
+            }
+            if (name == "michael_package_collected") {
+                return stoker_motel_story_state_.michael_package_collected;
+            }
+            return std::nullopt;
+        },
+        [this](const std::string_view name, const bool value) {
+            if (name == "opening_dialogue_seen") {
+                stoker_motel_story_state_.opening_dialogue_seen = value;
+                return true;
+            }
+            if (name == "michael_debt_paid") {
+                stoker_motel_story_state_.michael_debt_paid = value;
+                return true;
+            }
+            if (name == "michael_package_collected") {
+                stoker_motel_story_state_.michael_package_collected = value;
+                return true;
+            }
+            return false;
+        });
     field_entity_selection_state_ = RunnerSwitchState{};
     field_runner_refresh_state_ = FieldRunnerRefreshState{};
     field_mode_exit_transition_state_ = FieldModeExitTransitionState{};

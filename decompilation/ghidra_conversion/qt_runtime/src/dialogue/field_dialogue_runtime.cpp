@@ -123,7 +123,7 @@ bool FieldDialogueRuntime::open_stoker_prompt_for_dump(
         // The package option belongs to the quest-wrapped shared motel
         // interaction. Start at a repeat visit so this diagnostic exercises
         // the real Lua menu and its debt/referral service hooks.
-        return open_stoker_interaction(
+        return open_stoker_interaction_for_dump(
             StokerMotelStoryState{true, false, false});
     }
     if (prompt == StokerMotelPromptId::manager_greeting) {
@@ -131,30 +131,34 @@ bool FieldDialogueRuntime::open_stoker_prompt_for_dump(
             script_runtime_->set_location_context(
                 "motel", "stoker_motel", "stoker.motel", "stoker");
         }
-        const bool completed =
-            prompt == StokerMotelPromptId::manager_greeting;
-        story_facts_["michael_debt_paid"] = completed;
-        story_facts_["michael_package_collected"] = completed;
         if (script_runtime_ != nullptr) {
-            script_runtime_->set_story_state(story_facts_);
+            script_runtime_->set_story_state({
+                {"michael_debt_paid", true},
+                {"michael_package_collected", true}});
         }
     }
     return open_stoker_prompt(prompt);
 }
 
-bool FieldDialogueRuntime::open_stoker_interaction(
-    const StokerMotelStoryState& story_state) {
-    story_facts_ = {
-        {"opening_dialogue_seen", story_state.opening_dialogue_seen},
-        {"michael_debt_paid", story_state.michael_debt_paid},
-        {"michael_package_collected", story_state.michael_package_collected}};
+bool FieldDialogueRuntime::open_stoker_interaction() {
     if (script_runtime_ != nullptr) {
         script_runtime_->set_location_context(
             "motel", "stoker_motel", "stoker.motel", "stoker");
-        script_runtime_->set_story_state(story_facts_);
     }
     return start_script_task("michael_package", "stoker_interaction",
                              StokerMotelPromptId::manager_greeting);
+}
+
+bool FieldDialogueRuntime::open_stoker_interaction_for_dump(
+    const StokerMotelStoryState& story_state) {
+    if (script_runtime_ != nullptr) {
+        script_runtime_->set_story_state({
+            {"opening_dialogue_seen", story_state.opening_dialogue_seen},
+            {"michael_debt_paid", story_state.michael_debt_paid},
+            {"michael_package_collected",
+             story_state.michael_package_collected}});
+    }
+    return open_stoker_interaction();
 }
 
 bool FieldDialogueRuntime::open_stoker_arrival_result_for_dump(
@@ -203,7 +207,6 @@ bool FieldDialogueRuntime::open_stoker_prompt(
         }
         script_runtime_->set_location_context(
             "motel", "stoker_motel", "stoker.motel", "stoker");
-        script_runtime_->set_story_state(story_facts_);
         return start_script_task("motel", "manager_interaction", prompt);
     } else {
         source_view = make_stoker_motel_prompt(prompt);
@@ -391,22 +394,12 @@ std::optional<std::string> FieldDialogueRuntime::invoke_script_service(
             outcome->prompt ==
                 StokerMotelDebtPaymentPrompt::jump_house_nuyen_referral &&
             !outcome->michael_package_sequence_follows) {
-            story_facts_["michael_debt_paid"] = false;
-            story_facts_["michael_package_collected"] = false;
-            if (script_runtime_ != nullptr) {
-                script_runtime_->set_story_state(story_facts_);
-            }
             return "insufficient";
         }
         if (outcome->result == StokerMotelDebtPaymentResult::debt_paid &&
             outcome->prompt ==
                 StokerMotelDebtPaymentPrompt::michael_package_contents &&
             outcome->michael_package_sequence_follows) {
-            story_facts_["michael_debt_paid"] = true;
-            story_facts_["michael_package_collected"] = true;
-            if (script_runtime_ != nullptr) {
-                script_runtime_->set_story_state(story_facts_);
-            }
             return "paid";
         }
         return std::nullopt;

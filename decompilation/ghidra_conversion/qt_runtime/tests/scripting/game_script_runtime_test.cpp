@@ -2,6 +2,9 @@
 
 #include <filesystem>
 #include <iostream>
+#include <optional>
+#include <string>
+#include <string_view>
 
 namespace {
 
@@ -493,6 +496,45 @@ int main() {
                     generic_motel.result_id ==
                         std::optional<std::string>{"leave"},
                 "generic motel Leave incorrectly required a speaker dialogue")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+
+    StoryFacts native_story{
+        {"opening_dialogue_seen", false},
+        {"michael_debt_paid", false},
+        {"michael_package_collected", false},
+    };
+    scripts.set_story_fact_accessors(
+        [&native_story](const std::string_view name)
+            -> std::optional<bool> {
+            const auto fact = native_story.find(std::string(name));
+            return fact == native_story.end()
+                       ? std::nullopt
+                       : std::optional<bool>{fact->second};
+        },
+        [&native_story](const std::string_view name, const bool value) {
+            const auto fact = native_story.find(std::string(name));
+            if (fact == native_story.end()) {
+                return false;
+            }
+            fact->second = value;
+            return true;
+        });
+    const auto native_first_visit =
+        scripts.call_string("michael_package", "motel_entry");
+    if (!expect(native_first_visit == "opening_dialogue" &&
+                    native_story.at("opening_dialogue_seen"),
+                "Lua did not update the bound native story state directly")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    native_story["michael_debt_paid"] = true;
+    native_story["michael_package_collected"] = true;
+    const auto native_completed_visit =
+        scripts.call_string("michael_package", "motel_entry");
+    if (!expect(native_completed_visit == "ordinary_motel",
+                "Lua did not read current facts from the native story state")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
     }

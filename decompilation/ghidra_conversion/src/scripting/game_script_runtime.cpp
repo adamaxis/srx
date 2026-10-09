@@ -324,6 +324,8 @@ struct GameScriptRuntime::Impl {
     std::optional<ScriptNativeOperation> pending_task_operation;
     std::optional<ScriptNativeOperation> active_native_operation;
     StoryFacts story_facts;
+    StoryFactReader story_fact_reader;
+    StoryFactWriter story_fact_writer;
     std::unordered_map<std::string, std::string> dialogue_texts;
     std::string location_type;
     std::string location_id;
@@ -347,11 +349,20 @@ struct GameScriptRuntime::Impl {
             lua_pushnil(lua);
             return 1;
         }
-        const auto fact = self->story_facts.find(name);
-        if (fact == self->story_facts.end()) {
+        const auto fact = self->story_fact_reader
+                              ? self->story_fact_reader(name)
+                              : [&]() -> std::optional<bool> {
+                                    const auto stored =
+                                        self->story_facts.find(name);
+                                    if (stored == self->story_facts.end()) {
+                                        return std::nullopt;
+                                    }
+                                    return stored->second;
+                                }();
+        if (!fact.has_value()) {
             lua_pushnil(lua);
         } else {
-            lua_pushboolean(lua, fact->second ? 1 : 0);
+            lua_pushboolean(lua, *fact ? 1 : 0);
         }
         return 1;
     }
@@ -370,6 +381,12 @@ struct GameScriptRuntime::Impl {
                     lua_type(lua, 3) != LUA_TBOOLEAN) {
                     error =
                         "game.state accepts named boolean story facts only";
+                } else if (self->story_fact_writer) {
+                    const bool value = lua_toboolean(lua, 3) != 0;
+                    if (self->story_fact_writer(name, value)) {
+                        return 0;
+                    }
+                    error = "game.state property is not writable";
                 } else if (
                     self->story_facts.find(name) ==
                         self->story_facts.end() &&
@@ -1036,6 +1053,12 @@ void GameScriptRuntime::set_story_state(const StoryFacts& facts) {
         }
         impl_->story_facts.emplace(name, value);
     }
+}
+
+void GameScriptRuntime::set_story_fact_accessors(
+    StoryFactReader read, StoryFactWriter write) {
+    impl_->story_fact_reader = std::move(read);
+    impl_->story_fact_writer = std::move(write);
 }
 
 StoryFacts GameScriptRuntime::story_state() const {

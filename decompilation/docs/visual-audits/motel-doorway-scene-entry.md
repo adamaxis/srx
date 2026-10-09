@@ -423,3 +423,60 @@ title-only `leave_notice` page and return to field.
 Debug and Release pass the gameplay script, dialogue runtime, and full Stoker
 route CTests. The route QA checks the farewell screen's full-screen redraw and
 the clean return; the independent visual limit above remains open.
+
+## Native story facts bound directly to Lua (2026-10-09)
+
+The live field runtime now binds the allowlisted Stoker facts
+`opening_dialogue_seen`, `michael_debt_paid`, and
+`michael_package_collected` directly to its typed quest state. The script
+runtime's `game.state` proxy reads and writes those properties through native
+accessors. The field route no longer copies a `StoryFacts` snapshot into Lua
+before opening the motel and then copies the result back afterward. The
+dialogue adapter no longer sets the debt/package flags after payment either;
+`michael_package.lua` updates them from the stable result returned by the
+native payment service. Wallet, world-flag, and runner-record effects remain
+inside the typed native service. A separate `open_stoker_interaction_for_dump`
+entry keeps deterministic story fixtures confined to QA.
+
+Debug and Release builds pass `shadowrun_gameplay_script_runtime_qa`,
+`shadowrun_ghidra_field_dialogue_runtime`, and the physical
+`shadowrun_ghidra_conversion_qt_field_stoker_collision_to_dialogue_qa` route.
+The runtime QA verifies Lua observes a fact changed by native code and writes
+the first-visit fact directly back. The physical route also verifies that the
+Lua debt result updates the field's typed state before the handoff screen.
+All 16 full-screen route BMPs match across Debug and Release by SHA-256. I
+reviewed all 16 at 320x224; the unchanged field, dialogue, fade, handoff, and
+return screens have no stale controls or overdrawn panels.
+
+1. **Does it look correct?** The manager still shows the package choice while
+   the debt/package facts are incomplete; the successful payment still shows
+   the package handoff.
+2. **Does the look match behavior?** The direct-state test and live route
+   check native fact reads, the first-visit Lua write, and the payment result
+   before the corresponding choice/page is presented.
+3. **Are the visuals correct?** This change does not alter rendering, text,
+   selection attributes, or panel geometry. The 16 full-resolution frames
+   match between Debug and Release.
+4. **Is it animated?** The refactor adds no animation. Field movement and
+   fades retain their existing native update timing; dialogue pages remain
+   static while awaiting input.
+5. **Is there sound?** No audio request was added or removed by this change;
+   it establishes no new sound cue or duration.
+6. **Are other screen regions correct?** The reviewed captures include the
+   full map and HUD, dialogue portrait and frame, menu rows, and return screen.
+   The new path adds no graphics over the existing interface.
+7. **Do multiple frames support this interpretation?** All 16 route
+   checkpoints cover spawn, movement, arrival, both manager variants, debt,
+   payment/handoff, leave, fades, and clean field return. They are native
+   conversion captures, not independent Genesis behavior proof.
+8. **Was the old interface cleared?** The same full-screen replacements and
+   return redraw remain in use; no underlying menu or dialogue layer is left
+   visible.
+9. **Was the whole sequence reviewed?** Yes. All 16 BMPs were opened at
+   320x224, and Debug/Release file hashes match. The independent longplay still
+   supports the Stoker screen appearance, but does not expose controller or
+   native story state.
+
+Restored-save quest facts remain unresolved. The live field binding is an
+explicit allowlist of typed properties; it does not expose arbitrary C++
+objects or save memory to scripts.

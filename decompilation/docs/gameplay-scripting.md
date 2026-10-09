@@ -27,10 +27,14 @@ end
 local choice = game.ui.menu("manager", {"crash", "leave"})
 ```
 
-`game.state` reads and writes the C++ story-fact store through a boolean
-property proxy. `game.location` is a read-only proxy over native location
-context, including type, identity, text profile, and optional speaker. The
-proxies are not duplicated Lua tables or raw pointers into Qt objects.
+`game.state` reads and writes native story facts through a boolean property
+proxy. The live field runtime binds known properties directly to its typed
+quest state; Lua sees the current values and writes them back immediately,
+without an interaction-level snapshot/copy-back pass. Standalone script QA may
+still use an in-memory fact store. `game.location` is a read-only proxy over
+native location context, including type, identity, text profile, and optional
+speaker. The proxies are not duplicated Lua tables or raw pointers into Qt
+objects.
 
 The next capabilities should follow the same shape, added only as they connect
 to real native systems:
@@ -65,8 +69,8 @@ state. New operations can be added one at a time behind this interface.
 still owns that store and any persistence rules; Lua does not receive the save
 record or mutate arbitrary engine objects. Inventory and wallet changes must
 go through native operations so their source rules can validate the request.
-Only story facts connected to the field session currently reach durable game
-state; adding the general save adapter remains separate work.
+Only the allowlisted story facts currently bind to the live field session;
+save serialization and restoration remain separate work.
 
 Four coroutine operations are connected to live routes. The first is
 `game.actor.walk_heading(actor, heading)`: it accepts the player and headings
@@ -83,8 +87,9 @@ with the stable selected ID. The source A/B/C mapping is preserved.
 `game.services.call(domain, action)` yields a namespaced request to an
 allowlisted native service and resumes Lua with a stable result ID. Current
 Stoker scripts use it for room payment, debt-offer flags, debt payment, and the
-Jump House referral. Lua chooses the room/debt menus and result dialogue; C++
-still validates wallet/story changes and updates native state. The Motel module
+Jump House referral. Lua chooses the room/debt menus, updates its bound quest
+facts from the returned outcome, and selects result dialogue; C++ validates
+and applies wallet, source-world, and runner-record effects. The Motel module
 handles the shared manager and room menu; Michael's quest module contributes
 the package option and debt menu. Each operation uses a 100,000-instruction
 limit on initial invocation and resume.
@@ -130,8 +135,11 @@ access.
   Stoker and does not leak into another motel. `stoker_interaction()` uses the
   speaker supplied by location context, runs the first-visit `arrival` event,
   enters the shared motel manager, then opens the debt menu and selects
-  payment/referral result pages. Other quests can add the same choice hook
-  without adding per-building scripts or changing `motel.lua`.
+  payment/referral result pages. It writes first-visit and debt/package facts
+  through the live native-state proxy after the matching story transition;
+  no dialogue adapter copies these facts into a temporary Lua map. Other
+  quests can add the same choice hook without adding per-building scripts or
+  changing `motel.lua`.
 - `gameplay/scripts/shop.lua` is the shared shop catalog. It currently defines
   the ordered Ares categories and stock; shops can reuse those categories
   while native services continue to validate each transaction.

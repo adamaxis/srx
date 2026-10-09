@@ -4,6 +4,7 @@
 
 #include <filesystem>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -14,6 +15,10 @@
 namespace shadowrun::ghidra_conversion::scripting {
 
 using StoryFacts = std::unordered_map<std::string, bool>;
+using StoryFactReader =
+    std::function<std::optional<bool>(std::string_view)>;
+using StoryFactWriter =
+    std::function<bool(std::string_view, bool)>;
 
 struct ScriptMenuChoice {
     std::string id;
@@ -98,6 +103,8 @@ public:
     const std::string* dialogue_text(std::string_view key) const;
     std::optional<std::vector<FieldMapEventRule>> map_event_rules();
     void set_story_state(const StoryFacts& facts);
+    void set_story_fact_accessors(StoryFactReader read,
+                                  StoryFactWriter write);
     StoryFacts story_state() const;
     void set_location_context(std::string_view type, std::string_view id,
                               std::string_view text_profile = {},

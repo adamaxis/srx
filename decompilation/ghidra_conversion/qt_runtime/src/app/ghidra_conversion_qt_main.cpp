@@ -12964,6 +12964,8 @@ int run_field_stoker_collision_to_dialogue_qa(
         arrival.portrait_alias != "dialogue.portraits.stoker.motel" ||
         !arrival_text_present() || !arrival.has_more ||
         arrival.option_count != 1U ||
+        !field_scene.stoker_motel_story_state_for_dump()
+             .opening_dialogue_seen ||
         arrival.continuation_label.find("< MORE >") == std::string_view::npos ||
         !save_frame("stoker-arrival-dialogue", false)) {
         std::cerr << "Stoker collision QA: normal contact did not select the "

@@ -37,8 +37,12 @@ function MichaelPackage.stoker_interaction()
     if debt_choice == "debt-payment" then
         local result = game.services.call("michael_package", "pay_debt")
         if result == "paid" then
+            game.state.michael_debt_paid = true
+            game.state.michael_package_collected = true
             game.ui.say("package-handoff")
         elseif result == "insufficient" then
+            game.state.michael_debt_paid = false
+            game.state.michael_package_collected = false
             game.ui.say("jump-house")
         end
     elseif debt_choice == "jump-house" then
