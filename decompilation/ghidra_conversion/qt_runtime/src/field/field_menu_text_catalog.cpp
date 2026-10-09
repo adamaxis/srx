@@ -94,11 +94,8 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::array<bool, kCyberwareEntryCount> cyberware_entry_found{};
     std::array<bool, kMagicSpellTextCount> magic_spell_name_found{};
     std::array<bool, kMagicSpellTextCount> magic_spell_description_found{};
-    std::array<bool, kFieldServiceTitleCount> field_service_title_found{};
     std::array<bool, kFieldServiceTitleCount>
         field_service_title_destination_found{};
-    std::array<bool, kFieldServiceActionTitleCount>
-        field_service_action_title_found{};
     bool field_service_universal_clips_title_found = false;
     bool field_service_universal_clips_description_found = false;
     std::array<bool, kCyberdeckUnavailableLineCount>
@@ -154,13 +151,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     bool action_cannot_trade_found = false;
     bool action_choice_no_found = false;
     bool action_choice_yes_found = false;
-    bool shop_transaction_prompt_found = false;
-    bool shop_no_inventory_slot_found = false;
-    bool shop_insufficient_funds_found = false;
-    bool shop_special_action_limit_found = false;
-    bool shop_protected_sale_found = false;
-    bool shop_sale_quote_heading_found = false;
-    bool shop_purchase_price_heading_found = false;
     bool action_trade_recipient_found = false;
     bool action_trade_full_inventory_found = false;
     bool action_automatic_use_message_found = false;
@@ -221,17 +211,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             value = encoded_value;
         }
         std::size_t index = 0;
-        if (parse_indexed_key(key, "field-service.title.", index) &&
-            index < result.catalog.field_service_titles.size()) {
-            if (field_service_title_found[index]) {
-                result.errors.emplace_back(
-                    "duplicate field menu text row: " + key);
-            } else {
-                field_service_title_found[index] = true;
-                result.catalog.field_service_titles[index] = value;
-            }
-            continue;
-        }
         if (parse_indexed_key(key, "field-service.title-destination.",
                               index) &&
             index < result.catalog.field_service_title_destinations.size()) {
@@ -251,17 +230,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                     result.catalog.field_service_title_destinations[index] =
                         destination;
                 }
-            }
-            continue;
-        }
-        if (parse_indexed_key(key, "field-service.action-title.", index) &&
-            index < result.catalog.field_service_action_titles.size()) {
-            if (field_service_action_title_found[index]) {
-                result.errors.emplace_back(
-                    "duplicate field menu text row: " + key);
-            } else {
-                field_service_action_title_found[index] = true;
-                result.catalog.field_service_action_titles[index] = value;
             }
             continue;
         }
@@ -499,27 +467,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             parse_named("attributes.upgrade.prompt",
                         result.catalog.attributes_upgrade_prompt,
                         attributes_upgrade_prompt_found) ||
-            parse_named("shop.transaction-prompt",
-                        result.catalog.shop_transaction_prompt,
-                        shop_transaction_prompt_found) ||
-            parse_named("shop.no-inventory-slot",
-                        result.catalog.shop_no_inventory_slot,
-                        shop_no_inventory_slot_found) ||
-            parse_named("shop.insufficient-funds",
-                        result.catalog.shop_insufficient_funds,
-                        shop_insufficient_funds_found) ||
-            parse_named("shop.special-action-limit",
-                        result.catalog.shop_special_action_limit,
-                        shop_special_action_limit_found) ||
-            parse_named("shop.protected-sale",
-                        result.catalog.shop_protected_sale,
-                        shop_protected_sale_found) ||
-            parse_named("shop.sale-quote-heading",
-                        result.catalog.shop_sale_quote_heading,
-                        shop_sale_quote_heading_found) ||
-            parse_named("shop.purchase-price-heading",
-                        result.catalog.shop_purchase_price_heading,
-                        shop_purchase_price_heading_found) ||
             parse_named("action.trade-recipient",
                         result.catalog.action_trade_recipient_label,
                         action_trade_recipient_found) ||
@@ -921,15 +868,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                   attributes_upgrade_insufficient_karma_found);
     require_named("attributes.upgrade.prompt",
                   attributes_upgrade_prompt_found);
-    require_named("shop.transaction-prompt", shop_transaction_prompt_found);
-    require_named("shop.no-inventory-slot", shop_no_inventory_slot_found);
-    require_named("shop.insufficient-funds", shop_insufficient_funds_found);
-    require_named("shop.special-action-limit",
-                  shop_special_action_limit_found);
-    require_named("shop.protected-sale", shop_protected_sale_found);
-    require_named("shop.sale-quote-heading", shop_sale_quote_heading_found);
-    require_named("shop.purchase-price-heading",
-                  shop_purchase_price_heading_found);
     require_named("action.trade-recipient", action_trade_recipient_found);
     require_named("action.trade-full-inventory",
                   action_trade_full_inventory_found);
@@ -1002,12 +940,8 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                         "notebook.mr-johnson.name.", result.errors);
     add_missing_entries(notebook_mr_johnson_detail_found,
                         "notebook.mr-johnson.detail.", result.errors);
-    add_missing_entries(field_service_title_found, "field-service.title.",
-                        result.errors);
     add_missing_entries(field_service_title_destination_found,
                         "field-service.title-destination.", result.errors);
-    add_missing_entries(field_service_action_title_found,
-                        "field-service.action-title.", result.errors);
     add_missing_entries(field_action_detail_text_found,
                         "field-action.detail-text.", result.errors);
     require_named("field-service.universal-clips.title",
@@ -1028,9 +962,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     decode_newlines(result.catalog.first_aid_not_injured);
     decode_newlines(result.catalog.action_trade_full_inventory_message);
     decode_newlines(result.catalog.action_automatic_use_message);
-    decode_newlines(result.catalog.shop_no_inventory_slot);
-    decode_newlines(result.catalog.shop_insufficient_funds);
-    decode_newlines(result.catalog.shop_special_action_limit);
     for (auto& detail_text : result.catalog.field_action_detail_texts) {
         decode_newlines(detail_text);
     }

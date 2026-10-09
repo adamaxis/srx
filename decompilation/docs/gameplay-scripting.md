@@ -140,9 +140,10 @@ access.
   no dialogue adapter copies these facts into a temporary Lua map. Other
   quests can add the same choice hook without adding per-building scripts or
   changing `motel.lua`.
-- `gameplay/scripts/shop.lua` is the shared shop catalog. It currently defines
-  the ordered Ares categories and stock; shops can reuse those categories
-  while native services continue to validate each transaction.
+- `gameplay/scripts/shop.lua` defines the Ares shop title, its six ordered
+  categories, each category's two ROM-derived heading keys, available stock,
+  and the keys for all seven transaction messages. The native shop controller
+  still owns rendering, focus, input cadence, and wallet/inventory changes.
 - `gameplay/scripts/hotel.lua` declares stable choice IDs for the Hotel
   Options and checkout cursor menus. `FieldSceneRuntime` loads both menu
   definitions through `GameScriptRuntime::menu`, validates their source order,
@@ -163,10 +164,11 @@ access.
   the sole owner of page selection, focus, rendering, and action dispatch.
 - `assets/dialogue/script-text.lua` is the ROM-derived shared text table for
   Stoker dialogue, field object interactions, Hotel menu/status text,
-  Pocket Secretary root title/separator/labels, and command-overview root
-  labels. Native presenters resolve those keys through the Lua runtime. Hotel,
-  Pocket Secretary, and command-overview root text no longer duplicate rows
-  in `menu/field/text.tsv`.
+  Pocket Secretary root title/separator/labels, command-overview labels,
+  field-service titles, shop category headings, and Ares transaction copy.
+  Native presenters resolve those keys through the Lua runtime. These strings
+  no longer duplicate rows in `menu/field/text.tsv`; numeric service
+  destinations remain in that catalog as routing data.
 - Future `quests/` and `scenes/` modules should call the same `game` facade.
   Menus and dialogue use the generic Qt presenters, and Lua supplies the
   available stable choice ids and story text keys.

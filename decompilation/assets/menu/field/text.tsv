@@ -1,60 +1,16 @@
 key	text
-field-service.title.0	Weapons World
 field-service.title-destination.0	49430
-field-service.title.1	Ares Weapon Emporium
 field-service.title-destination.1	49424
-field-service.title.2	Crime Mall
 field-service.title-destination.2	49434
-field-service.title.3	Medicine Lodge
 field-service.title-destination.3	49430
-field-service.title.4	Riannon's
 field-service.title-destination.4	49432
-field-service.title.5	Merlin's Lore
 field-service.title-destination.5	49430
-field-service.title.6	Microtronics
 field-service.title-destination.6	49430
-field-service.title.7	Wire-Masters
 field-service.title-destination.7	49430
-field-service.title.8	Little Chiba
 field-service.title-destination.8	49430
-field-service.title.9	Dr. Bob's
 field-service.title-destination.9	49434
-field-service.title.10	Council Island Hospital
 field-service.title-destination.10	49420
-field-service.title.11	Seattle General Hospital
 field-service.title-destination.11	49420
-field-service.action-title.0	"      Display       "
-field-service.action-title.1	" Available Weapons  "
-field-service.action-title.2	"      Display       "
-field-service.action-title.3	"  Available Armor   "
-field-service.action-title.4	" Display Available  "
-field-service.action-title.5	"     Equipment      "
-field-service.action-title.6	"   Display Weapon   "
-field-service.action-title.7	"    Accessories     "
-field-service.action-title.8	"   Select Firearm   "
-field-service.action-title.9	"   To Accessorize   "
-field-service.action-title.10	"   Sell Item From   "
-field-service.action-title.11	"     Inventory      "
-field-service.action-title.12	" Display Available  "
-field-service.action-title.13	"  Combat Utilities  "
-field-service.action-title.14	" Display Available  "
-field-service.action-title.15	" Defense Utilities  "
-field-service.action-title.16	" Display Available  "
-field-service.action-title.17	Mask/Sense Utilities
-field-service.action-title.18	" Display Available  "
-field-service.action-title.19	"    Cyberdecks      "
-field-service.action-title.20	" Display Available  "
-field-service.action-title.21	" Cyberdeck Upgrades "
-field-service.action-title.22	" Display Available  "
-field-service.action-title.23	" Cyberdeck Upgrades "
-field-service.action-title.24	" Display Available  "
-field-service.action-title.25	"    Magic Spells    "
-field-service.action-title.26	" Display Available  "
-field-service.action-title.27	"    Magic Items     "
-field-service.action-title.28	" Display Available  "
-field-service.action-title.29	"    Magic Foci      "
-field-service.action-title.30	"   Sell Item From   "
-field-service.action-title.31	"     Inventory      "
 field-service.universal-clips.title	Universal\nGun Clips
 field-service.universal-clips.description	These clips may be used in\nany gun.\n\nWhen switching weapons, the\nclip transfers the percentage\nof ammo left to the new gun.\n\n     Cost per Clip    $
 pocket-secretary.cyberdeck.line.0	" You do not have"
@@ -219,13 +175,6 @@ action.cannot-discard	Cannot discard
 action.cannot-trade	Cannot trade magic items!
 action.choice-no	No
 action.choice-yes	Yes
-shop.transaction-prompt	Complete Transaction?
-shop.no-inventory-slot	Your inventory\n   is full!
-shop.insufficient-funds	" You do not have the\nnuyen for this item!!"
-shop.special-action-limit	"  You are already\ncarrying the maximum\n  number "
-shop.protected-sale	Totems cannot be sold!!
-shop.sale-quote-heading	Item sells for       $
-shop.purchase-price-heading	Price        $
 field-action.detail-text.0	A small, cheap hold-out\npistol.\nLight damage, low power.
 field-action.detail-text.1	A slim-line personal weapon\nfavored by street thugs.\nLight damage, light power.
 field-action.detail-text.2	This light design is popular\namong the style-conscious.\nLight damage, light power.

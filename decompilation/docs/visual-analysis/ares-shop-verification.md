@@ -75,9 +75,10 @@ the field approach, fade, prompt, category page, and field return; see
   uses them to align the two centered title lines.
 - Title: `0x56AC0` indexes the 12-entry pointer table at `0x1AAB50` with
   `FFF0B6`. Ares uses entry 1, whose record at `0x1AAB92` stores destination
-  cell `0xC110` and text `Ares Weapon Emporium`. The offline extractor now
-  publishes every title and destination as host text in `menu/field/text.tsv`;
-  the Qt runtime does not follow those ROM pointers.
+  cell `0xC110` and text `Ares Weapon Emporium`. The offline extractor emits
+  all 12 titles as keyed Lua text in `dialogue/script-text.lua`; numeric
+  destination words remain in `menu/field/text.tsv`. The Qt runtime does not
+  follow those ROM pointers.
 - Service background: `0x56AC0` begins by calling `0x10BC4`. That routine
   loads the shared pattern stream at `0xCAB0C` through `0x10918`, copies the
   raw `0x340` bytes at `0xD263C` to VRAM `0x9F40`, then writes eight literal
@@ -93,9 +94,13 @@ the field approach, fade, prompt, category page, and field return; see
   description from `0x1AACE2`; the row carries quantity/price 25. The art uses
   palette line 1 from field palette setup `0xD29D6` plus `0x18AC56`, and its
   name words retain horizontal/vertical flips. The host importer emits a
-  named 24x16 image and text rows. The runtime draws detail art at `(128,32)`,
+  named 24x16 image and Lua text entries. The runtime draws detail art at `(128,32)`,
   description at `(24,56)`, cost at `(192,112)`, title at `(104,144)`, and the
-  stock icon in the first offer cell.
+  stock icon in the first offer cell. All 12 service titles, 32 fixed-width
+  service headings, and seven shop transaction strings now live in
+  `dialogue/script-text.lua`;
+  `gameplay/scripts/shop.lua` associates the Ares title, six category heading
+  pairs, stock, and transaction-message keys.
 - Mode-entry sprite: `0x1FA78` selects profile `0x1220C0`; its ROM pointers are
   palette `0x1219BC`, pattern stream `0x12C84E`, and sprite stream `0x12266A`.
   The offline importer emits the profile's 7x9 sprite as
@@ -186,6 +191,14 @@ the field approach, fade, prompt, category page, and field return; see
    frames. It checks that modal redraw removes stale description/price text,
    preserves the intended item art/title/row, and that Start return replaces
    the whole service page, including tabs, item art, details, and selector.
+9. **Do new UI elements cover old UI that should be gone?** The full-screen
+   route and all 21 shop transaction captures were reopened at 320x224. The
+   category page has only its active headings, tabs, offer row, wallet, and
+   right HUD; confirmation and feedback states clear old detail text while
+   retaining only the intended item art, row, and HUD. Field return redraws
+   the field page and leaves no shop tabs, selector, or text behind. Debug and
+   Release captures match by SHA-256; all 14 route captures also match the
+   pre-migration hashes.
 
 ## Implemented controller slice
 
@@ -203,5 +216,6 @@ introduction, category, selected-item, purchase failure/cancel/accept, Stim
 Patch confirmation, E-coded clips, sale/refund, protected-sale, and return
 `actual.bmp` checkpoints. The importer was run explicitly with
 `shadowrun_graphics_extract --all-assets`; extraction is not part of CTest or
-ordinary builds. Loaded-save wallet binding and Windows loopback capture for
-the shop action are still open.
+ordinary builds. Debug and Release also pass script runtime, field-menu text
+catalog, physical Ares entry, and full shop transaction QA. Loaded-save wallet
+binding and Windows loopback capture for the shop action are still open.

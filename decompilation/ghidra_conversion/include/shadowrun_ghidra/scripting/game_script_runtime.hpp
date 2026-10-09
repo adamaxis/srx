@@ -2,6 +2,7 @@
 
 #include "shadowrun_ghidra/field/field_map_event_system_conversion.hpp"
 
+#include <array>
 #include <filesystem>
 #include <cstdint>
 #include <functional>
@@ -41,11 +42,24 @@ struct ScriptShopOffer {
 
 struct ScriptShopOfferGroup {
     std::string id;
+    std::array<std::string, 2> title_keys{};
     std::vector<ScriptShopOffer> offers;
+};
+
+struct ScriptShopTextKeys {
+    std::string transaction_prompt;
+    std::string no_inventory_slot;
+    std::string insufficient_funds;
+    std::string special_action_limit;
+    std::string protected_sale;
+    std::string sale_quote_heading;
+    std::string purchase_price_heading;
 };
 
 struct ScriptShopDefinition {
     std::string id;
+    std::string title_key;
+    ScriptShopTextKeys text_keys;
     std::vector<ScriptShopOfferGroup> groups;
 };
 

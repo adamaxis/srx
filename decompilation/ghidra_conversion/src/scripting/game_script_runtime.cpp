@@ -976,6 +976,40 @@ std::optional<ScriptShopDefinition> GameScriptRuntime::shop_definition(
     const auto definition_index = lua_absindex(state, -1);
     ScriptShopDefinition definition;
     definition.id = std::string(shop_id);
+    if (!read_field_string(state, definition_index, "title_key",
+                           definition.title_key) ||
+        !valid_identifier(definition.title_key)) {
+        return fail("shop catalog title key is invalid");
+    }
+    lua_getfield(state, definition_index, "text_keys");
+    if (!lua_istable(state, -1)) {
+        return fail("shop catalog text_keys must be a table");
+    }
+    const auto text_keys_index = lua_absindex(state, -1);
+    const auto read_text_key = [state, text_keys_index](
+                                   const char* field, std::string& value) {
+        return read_field_string(state, text_keys_index, field, value) &&
+               valid_identifier(value);
+    };
+    const bool text_keys_valid =
+        read_text_key("transaction_prompt",
+                      definition.text_keys.transaction_prompt) &&
+        read_text_key("no_inventory_slot",
+                      definition.text_keys.no_inventory_slot) &&
+        read_text_key("insufficient_funds",
+                      definition.text_keys.insufficient_funds) &&
+        read_text_key("special_action_limit",
+                      definition.text_keys.special_action_limit) &&
+        read_text_key("protected_sale",
+                      definition.text_keys.protected_sale) &&
+        read_text_key("sale_quote_heading",
+                      definition.text_keys.sale_quote_heading) &&
+        read_text_key("purchase_price_heading",
+                      definition.text_keys.purchase_price_heading);
+    lua_pop(state, 1);
+    if (!text_keys_valid) {
+        return fail("shop catalog transaction text keys are incomplete");
+    }
     lua_getfield(state, definition_index, "groups");
     if (!lua_istable(state, -1)) {
         return fail("shop catalog groups must be an array");
@@ -1001,6 +1035,29 @@ std::optional<ScriptShopDefinition> GameScriptRuntime::shop_definition(
             !valid_identifier(group.id) ||
             !group_ids.insert(group.id).second) {
             return fail("shop catalog contains an invalid or duplicate group id");
+        }
+        lua_getfield(state, group_table, "title_keys");
+        if (!lua_istable(state, -1) || lua_rawlen(state, -1) != 2U) {
+            return fail("shop offer group must contain two title keys");
+        }
+        const auto title_keys_index = lua_absindex(state, -1);
+        bool title_keys_valid = true;
+        for (std::size_t title_index = 0U;
+             title_index < group.title_keys.size(); ++title_index) {
+            lua_rawgeti(state, title_keys_index,
+                        static_cast<lua_Integer>(title_index + 1U));
+            title_keys_valid = read_string(state, -1,
+                                           group.title_keys[title_index]) &&
+                               valid_identifier(
+                                   group.title_keys[title_index]);
+            lua_pop(state, 1);
+            if (!title_keys_valid) {
+                break;
+            }
+        }
+        lua_pop(state, 1);
+        if (!title_keys_valid) {
+            return fail("shop offer group contains an invalid title key");
         }
         lua_getfield(state, group_table, "offers");
         if (!lua_istable(state, -1)) {

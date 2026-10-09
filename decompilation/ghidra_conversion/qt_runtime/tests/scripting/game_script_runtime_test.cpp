@@ -154,6 +154,31 @@ int main() {
     const auto shop = scripts.shop_definition("ares_weapon_emporium");
     if (!expect(shop.has_value() && shop->groups.size() == 6U,
                 "Lua shop catalog did not define the Ares selector groups") ||
+        !expect(shop->title_key == "shop.ares.title" &&
+                    shop->groups[0].title_keys ==
+                        std::array<std::string, 2>{
+                            "shop.ares.weapons.display",
+                            "shop.ares.weapons.available"} &&
+                    shop->groups[5].title_keys ==
+                        std::array<std::string, 2>{
+                            "shop.ares.sell.item_from",
+                            "shop.ares.sell.inventory"},
+                "Lua shop title or category headings are not bound") ||
+        !expect(shop->text_keys.transaction_prompt ==
+                    "shop.transaction.prompt" &&
+                    shop->text_keys.no_inventory_slot ==
+                        "shop.transaction.no_inventory_slot" &&
+                    shop->text_keys.insufficient_funds ==
+                        "shop.transaction.insufficient_funds" &&
+                    shop->text_keys.special_action_limit ==
+                        "shop.transaction.special_action_limit" &&
+                    shop->text_keys.protected_sale ==
+                        "shop.transaction.protected_sale" &&
+                    shop->text_keys.sale_quote_heading ==
+                        "shop.transaction.sale_quote_heading" &&
+                    shop->text_keys.purchase_price_heading ==
+                        "shop.transaction.purchase_price_heading",
+                "Lua shop transaction messages are not assigned") ||
         !expect(shop->groups[0].id == "weapons" &&
                     shop->groups[0].offers.size() == 7U &&
                     shop->groups[1].id == "other_items" &&
@@ -168,6 +193,24 @@ int main() {
                     shop->groups[2].offers[1].type == 0x2DU &&
                     shop->groups[2].offers[1].quantity == 0x0CU,
                 "Lua shop offer records did not retain their native values")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    const auto* ares_title = scripts.dialogue_text(shop->title_key);
+    const auto* transaction_prompt =
+        scripts.dialogue_text(shop->text_keys.transaction_prompt);
+    const auto* purchase_price =
+        scripts.dialogue_text(shop->text_keys.purchase_price_heading);
+    const auto* first_category_title =
+        scripts.dialogue_text(shop->groups[0].title_keys[1]);
+    if (!expect(ares_title != nullptr && *ares_title == "Ares Weapon Emporium" &&
+                    transaction_prompt != nullptr &&
+                    *transaction_prompt == "Complete Transaction?" &&
+                    purchase_price != nullptr &&
+                    *purchase_price == "Price        $" &&
+                    first_category_title != nullptr &&
+                    *first_category_title == " Available Weapons  ",
+                "Lua shop text keys do not resolve to source-derived copy")) {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }

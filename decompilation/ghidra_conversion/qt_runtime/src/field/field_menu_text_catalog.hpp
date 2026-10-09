@@ -74,6 +74,8 @@ struct FieldMenuTextCatalog {
     std::string action_cannot_trade;
     std::string action_choice_no;
     std::string action_choice_yes;
+    // Ares shop headings and transaction copy are resolved from the Lua
+    // content table during field bootstrap; the TSV stores no shop prose.
     std::string shop_transaction_prompt;
     std::string shop_no_inventory_slot;
     std::string shop_insufficient_funds;
@@ -114,6 +116,8 @@ struct FieldMenuTextCatalog {
     std::string magic_force_posture_labels;
     std::array<std::string, kMagicSpellTextCount> magic_spell_names{};
     std::array<std::string, kMagicSpellTextCount> magic_spell_descriptions{};
+    // Store names and category headings are Lua text. Destination words are
+    // numeric route data and remain in the extracted TSV.
     std::array<std::string, kFieldServiceTitleCount> field_service_titles{};
     std::array<std::uint16_t, kFieldServiceTitleCount>
         field_service_title_destinations{};

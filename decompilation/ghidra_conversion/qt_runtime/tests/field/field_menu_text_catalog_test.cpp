@@ -31,17 +31,11 @@ int main() {
             "Dermal Plating(2)", "Dermal Plating(3)",
             "Wired Reflexes(1)", "Wired Reflexes(2)",
             "Wired Reflexes(3)"}};
-    if (text.catalog.field_service_titles[0] != "Weapons World" ||
-        text.catalog.field_service_titles[1] != "Ares Weapon Emporium" ||
+    if (!text.catalog.field_service_titles[0].empty() ||
+        !text.catalog.field_service_titles[1].empty() ||
         text.catalog.field_service_title_destinations[1] != 0xC110U ||
-        text.catalog.field_service_action_titles[1] !=
-            " Available Weapons  " ||
-        text.catalog.field_service_action_titles[4] !=
-            " Display Available  " ||
-        text.catalog.field_service_action_titles[5] !=
-            "     Equipment      " ||
-        text.catalog.field_service_action_titles[10] !=
-            "   Sell Item From   " ||
+        !text.catalog.field_service_action_titles[1].empty() ||
+        !text.catalog.field_service_action_titles[31].empty() ||
         text.catalog.field_service_universal_clips_title !=
             "Universal\nGun Clips" ||
         text.catalog.field_service_universal_clips_description.find(
@@ -133,16 +127,13 @@ int main() {
         text.catalog.action_cannot_trade != "Cannot trade magic items!" ||
         text.catalog.action_choice_no != "No" ||
         text.catalog.action_choice_yes != "Yes" ||
-        text.catalog.shop_transaction_prompt != "Complete Transaction?" ||
-        text.catalog.shop_no_inventory_slot !=
-            "Your inventory\n   is full!" ||
-        text.catalog.shop_insufficient_funds !=
-            " You do not have the\nnuyen for this item!!" ||
-        text.catalog.shop_special_action_limit !=
-            "  You are already\ncarrying the maximum\n  number " ||
-        text.catalog.shop_protected_sale != "Totems cannot be sold!!" ||
-        text.catalog.shop_sale_quote_heading != "Item sells for       $" ||
-        text.catalog.shop_purchase_price_heading != "Price        $" ||
+        !text.catalog.shop_transaction_prompt.empty() ||
+        !text.catalog.shop_no_inventory_slot.empty() ||
+        !text.catalog.shop_insufficient_funds.empty() ||
+        !text.catalog.shop_special_action_limit.empty() ||
+        !text.catalog.shop_protected_sale.empty() ||
+        !text.catalog.shop_sale_quote_heading.empty() ||
+        !text.catalog.shop_purchase_price_heading.empty() ||
         text.catalog.field_action_detail_texts[16] !=
             "A slap patch that instantly\nincreases mental health\nby 20%." ||
         text.catalog.action_trade_recipient_label != "Give to" ||

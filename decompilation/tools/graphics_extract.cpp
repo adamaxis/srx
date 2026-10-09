@@ -132,24 +132,11 @@ void write_field_menu_text_catalog(
         output << '\n';
     };
 
-    const auto command_labels =
-        shadowrun::graphics::read_genesis_command_overview_labels(rom);
-    for (std::size_t index = 0; index < command_labels.size(); ++index) {
-        emit("command." + std::to_string(index), command_labels[index]);
-    }
     const auto service_titles =
         shadowrun::graphics::read_genesis_field_service_titles(rom);
     for (std::size_t index = 0; index < service_titles.size(); ++index) {
-        emit("field-service.title." + std::to_string(index),
-             service_titles[index].text);
         emit("field-service.title-destination." + std::to_string(index),
              std::to_string(service_titles[index].destination_word));
-    }
-    const auto service_action_titles =
-        shadowrun::graphics::read_genesis_field_service_action_titles(rom);
-    for (std::size_t index = 0; index < service_action_titles.size(); ++index) {
-        emit("field-service.action-title." + std::to_string(index),
-             service_action_titles[index]);
     }
     const auto universal_clips_text =
         shadowrun::graphics::read_genesis_field_service_universal_clips_text(
@@ -333,16 +320,6 @@ void write_field_menu_text_catalog(
     emit("action.cannot-trade", action_text.cannot_trade);
     emit("action.choice-no", action_text.choice_no);
     emit("action.choice-yes", action_text.choice_yes);
-    emit("shop.transaction-prompt", action_text.transaction_prompt);
-    emit("shop.no-inventory-slot",
-         escape_newlines(action_text.no_inventory_slot_message));
-    emit("shop.insufficient-funds",
-         escape_newlines(action_text.insufficient_funds_message));
-    emit("shop.special-action-limit",
-         escape_newlines(action_text.special_action_limit_message));
-    emit("shop.protected-sale", action_text.protected_sale_message);
-    emit("shop.sale-quote-heading", action_text.sale_quote_heading);
-    emit("shop.purchase-price-heading", action_text.purchase_price_heading);
     const auto field_action_detail_texts =
         shadowrun::graphics::read_genesis_field_action_detail_texts(rom);
     for (std::size_t index = 0; index < field_action_detail_texts.size();
@@ -565,6 +542,23 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
     output << "-- Generated from the US ROM dialogue and menu text records.\n"
               "-- Pipe characters preserve source segment/page boundaries.\n"
               "return {\n    texts = {\n";
+    constexpr std::array<std::string_view, 7> kCommandOverviewTextKeys{{
+        "field.command_overview.option.inventory_left",
+        "field.command_overview.option.inventory_right",
+        "field.command_overview.option.clips",
+        "field.command_overview.option.attributes_skills",
+        "field.command_overview.option.cyberware",
+        "field.command_overview.option.magic",
+        "field.command_overview.option.pocket_secretary"}};
+    const auto command_labels =
+        shadowrun::graphics::read_genesis_command_overview_labels(rom);
+    for (std::size_t index = 0; index < command_labels.size(); ++index) {
+        output << "        [";
+        write_lua_string(kCommandOverviewTextKeys[index]);
+        output << "] = ";
+        write_lua_string(command_labels[index]);
+        output << ",\n";
+    }
     for (std::size_t record_index = 0; record_index < records.size();
          ++record_index) {
         const auto& [key, source_offset] = records[record_index];
@@ -606,6 +600,62 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         write_lua_string(text);
         output << ",\n";
     };
+    constexpr std::array<std::string_view, 12> kServiceTitleTextKeys{{
+        "shop.service.title.weapons_world",
+        "shop.ares.title",
+        "shop.service.title.crime_mall",
+        "shop.service.title.medicine_lodge",
+        "shop.service.title.riannons",
+        "shop.service.title.merlins_lore",
+        "shop.service.title.microtronics",
+        "shop.service.title.wire_masters",
+        "shop.service.title.little_chiba",
+        "shop.service.title.dr_bobs",
+        "shop.service.title.council_island_hospital",
+        "shop.service.title.seattle_general_hospital"}};
+    const auto service_titles =
+        shadowrun::graphics::read_genesis_field_service_titles(rom);
+    for (std::size_t index = 0; index < service_titles.size(); ++index) {
+        write_text_entry(kServiceTitleTextKeys[index],
+                         service_titles[index].text);
+    }
+    constexpr std::array<std::string_view, 12> kAresActionTitleTextKeys{{
+        "shop.ares.weapons.display",
+        "shop.ares.weapons.available",
+        "shop.ares.armor.display",
+        "shop.ares.armor.available",
+        "shop.ares.other_items.display",
+        "shop.ares.other_items.equipment",
+        "shop.ares.weapon_accessories.display",
+        "shop.ares.weapon_accessories.accessories",
+        "shop.ares.firearm_accessories.select",
+        "shop.ares.firearm_accessories.to_accessorize",
+        "shop.ares.sell.item_from",
+        "shop.ares.sell.inventory"}};
+    const auto service_action_titles =
+        shadowrun::graphics::read_genesis_field_service_action_titles(rom);
+    for (std::size_t index = 0; index < service_action_titles.size(); ++index) {
+        const auto key = index < kAresActionTitleTextKeys.size()
+            ? std::string(kAresActionTitleTextKeys[index])
+            : "shop.service.action-title." + std::to_string(index);
+        write_text_entry(key, service_action_titles[index]);
+    }
+    const auto shop_text =
+        shadowrun::graphics::read_genesis_field_menu_action_text(rom);
+    write_text_entry("shop.transaction.prompt",
+                     shop_text.transaction_prompt);
+    write_text_entry("shop.transaction.no_inventory_slot",
+                     shop_text.no_inventory_slot_message);
+    write_text_entry("shop.transaction.insufficient_funds",
+                     shop_text.insufficient_funds_message);
+    write_text_entry("shop.transaction.special_action_limit",
+                     shop_text.special_action_limit_message);
+    write_text_entry("shop.transaction.protected_sale",
+                     shop_text.protected_sale_message);
+    write_text_entry("shop.transaction.sale_quote_heading",
+                     shop_text.sale_quote_heading);
+    write_text_entry("shop.transaction.purchase_price_heading",
+                     shop_text.purchase_price_heading);
     write_text_entry("hotel.options.title", hotel_text.title);
     write_text_entry("hotel.options.separator", hotel_text.separator);
     write_text_entry("hotel.option.karma_screen", hotel_text.options[0]);
@@ -1372,18 +1422,20 @@ void write_asset_readme(const std::filesystem::path& root) {
               "Static intro plates and independently extracted intro sprites "
               "remain separate; "
               "it does not contain full-screen flipbook samples or an aggregate "
-              "serializer. The field command overview's ROM-derived command, "
-              "archetype, runner, status, power, armor, item-detail, and "
-              "item strings are kept in "
+              "serializer. The field command overview's ROM-derived archetype, "
+              "runner, status, power, armor, item-detail, and item strings are kept in "
               "`menu/field/text.tsv` and exposed through the `menu.field.text` "
-              "manifest alias. The spell-capable Magic panel is an individually "
+              "manifest alias. Command labels, menu dialogue, service titles, "
+              "shop category headings, and transaction copy are emitted in "
+              "`dialogue/script-text.lua`; `gameplay/scripts/shop.lua` binds "
+              "Ares categories and message keys. The spell-capable Magic panel is an individually "
               "named RGBA overlay. Item art is grouped under items/weapons, "
               "items/first-aid, items/miscellaneous, items/magic, and items/armor. "
               "The shared field dialogue frames and A/B/C marker sprites are "
               "grouped under dialogue/panel, with speaker portraits under "
               "dialogue/portraits. ROM-derived Stoker and field interaction "
-              "text, Hotel menu and status text, and Pocket Secretary root "
-              "menu text are emitted as "
+              "text, Hotel menu and status text, Pocket Secretary root menu "
+              "text, field-service titles, and shop text are emitted as "
               "`dialogue/script-text.lua` and consumed by the gameplay script "
               "runtime. `gameplay/scripts/hotel.lua` and "
               "`gameplay/scripts/pocket_secretary.lua` provide cursor-menu "

@@ -4078,6 +4078,9 @@ bool FieldSceneRuntime::bootstrap(
     if (!load_pocket_secretary_menu_content()) {
         return false;
     }
+    if (!load_ares_shop_menu_content()) {
+        return false;
+    }
 
     // Dialogue is optional during initial field bootstrap because the player
     // does not start inside an NPC prompt. Load it once here so the later
@@ -6762,6 +6765,134 @@ bool FieldSceneRuntime::load_pocket_secretary_menu_content() {
     }
     pocket_secretary_menu_content_ = std::move(content);
     source_boundary("field.pocket_secretary.menu_content.loaded_from_lua");
+    return true;
+}
+
+bool FieldSceneRuntime::load_ares_shop_menu_content() {
+    constexpr std::array<std::string_view, kFieldServiceTitleCount>
+        kServiceTitleKeys{{
+            "shop.service.title.weapons_world",
+            "shop.ares.title",
+            "shop.service.title.crime_mall",
+            "shop.service.title.medicine_lodge",
+            "shop.service.title.riannons",
+            "shop.service.title.merlins_lore",
+            "shop.service.title.microtronics",
+            "shop.service.title.wire_masters",
+            "shop.service.title.little_chiba",
+            "shop.service.title.dr_bobs",
+            "shop.service.title.council_island_hospital",
+            "shop.service.title.seattle_general_hospital"}};
+    constexpr std::array<std::string_view, 6> kGroupIds{{
+        "weapons", "other_items", "armor", "source_action_3",
+        "source_action_4", "sell"}};
+    constexpr std::array<std::size_t, 6> kGroupFirstTitleIndices{{
+        0U, 4U, 2U, 6U, 8U, 10U}};
+    constexpr std::array<std::string_view, 20> kOtherServiceActionTitleKeys{{
+        "shop.service.action-title.12",
+        "shop.service.action-title.13",
+        "shop.service.action-title.14",
+        "shop.service.action-title.15",
+        "shop.service.action-title.16",
+        "shop.service.action-title.17",
+        "shop.service.action-title.18",
+        "shop.service.action-title.19",
+        "shop.service.action-title.20",
+        "shop.service.action-title.21",
+        "shop.service.action-title.22",
+        "shop.service.action-title.23",
+        "shop.service.action-title.24",
+        "shop.service.action-title.25",
+        "shop.service.action-title.26",
+        "shop.service.action-title.27",
+        "shop.service.action-title.28",
+        "shop.service.action-title.29",
+        "shop.service.action-title.30",
+        "shop.service.action-title.31"}};
+    const auto fail = [this](std::string message) {
+        failure_ = std::move(message);
+        source_boundary("field.bootstrap.ares_shop_script_invalid");
+        return false;
+    };
+    if (!field_shop_definition_.has_value() ||
+        field_shop_definition_->id != "ares_weapon_emporium" ||
+        field_shop_definition_->title_key != kServiceTitleKeys[1] ||
+        field_shop_definition_->groups.size() != kGroupIds.size()) {
+        return fail("Ares shop Lua definition does not match its source page");
+    }
+
+    for (std::size_t index = 0; index < kServiceTitleKeys.size(); ++index) {
+        const auto* title =
+            game_scripts_.dialogue_text(kServiceTitleKeys[index]);
+        if (title == nullptr) {
+            return fail("Lua shop service title text is incomplete");
+        }
+        field_menu_text_.field_service_titles[index] = *title;
+    }
+
+    std::array<bool, 12> ares_action_titles_found{};
+    for (std::size_t group_index = 0; group_index < kGroupIds.size();
+         ++group_index) {
+        const auto& group = field_shop_definition_->groups[group_index];
+        const auto first_title_index = kGroupFirstTitleIndices[group_index];
+        if (group.id != kGroupIds[group_index]) {
+            return fail("Ares shop Lua categories changed source order");
+        }
+        for (std::size_t line = 0; line < group.title_keys.size(); ++line) {
+            const auto title_index = first_title_index + line;
+            const auto* title =
+                game_scripts_.dialogue_text(group.title_keys[line]);
+            if (title == nullptr || title->size() != 20U ||
+                ares_action_titles_found[title_index]) {
+                return fail("Ares shop Lua category heading is invalid");
+            }
+            ares_action_titles_found[title_index] = true;
+            field_menu_text_.field_service_action_titles[title_index] = *title;
+        }
+    }
+    if (!std::all_of(ares_action_titles_found.begin(),
+                     ares_action_titles_found.end(),
+                     [](const bool found) { return found; })) {
+        return fail(
+            "Ares shop Lua category headings do not cover each source row");
+    }
+    for (std::size_t index = 0; index < kOtherServiceActionTitleKeys.size();
+         ++index) {
+        const auto* title = game_scripts_.dialogue_text(
+            kOtherServiceActionTitleKeys[index]);
+        if (title == nullptr || title->size() != 20U) {
+            return fail("Lua service action title text is incomplete");
+        }
+        field_menu_text_.field_service_action_titles[index + 12U] = *title;
+    }
+
+    const auto copy_shop_text = [this](const std::string& key,
+                                       std::string& destination) {
+        const auto* text = game_scripts_.dialogue_text(key);
+        if (text == nullptr) {
+            return false;
+        }
+        destination = *text;
+        return true;
+    };
+    const auto& keys = field_shop_definition_->text_keys;
+    if (!copy_shop_text(keys.transaction_prompt,
+                        field_menu_text_.shop_transaction_prompt) ||
+        !copy_shop_text(keys.no_inventory_slot,
+                        field_menu_text_.shop_no_inventory_slot) ||
+        !copy_shop_text(keys.insufficient_funds,
+                        field_menu_text_.shop_insufficient_funds) ||
+        !copy_shop_text(keys.special_action_limit,
+                        field_menu_text_.shop_special_action_limit) ||
+        !copy_shop_text(keys.protected_sale,
+                        field_menu_text_.shop_protected_sale) ||
+        !copy_shop_text(keys.sale_quote_heading,
+                        field_menu_text_.shop_sale_quote_heading) ||
+        !copy_shop_text(keys.purchase_price_heading,
+                        field_menu_text_.shop_purchase_price_heading)) {
+        return fail("Ares shop Lua transaction text is incomplete");
+    }
+    source_boundary("field.ares_shop.menu_content_loaded_from_lua");
     return true;
 }
 
