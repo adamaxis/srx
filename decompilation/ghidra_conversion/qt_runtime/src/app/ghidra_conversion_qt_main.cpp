@@ -2109,6 +2109,14 @@ public:
                   << name << '\n';
             return true;
         };
+        const auto has_magic_flash_sprite = [this] {
+            return std::any_of(
+                opening_sprites_.begin(), opening_sprites_.end(),
+                [](const OpeningIntroSpriteRequest& request) {
+                    return opening_intro_sprite_group(request.sprite_descriptor)
+                               .family == OpeningIntroSpriteFamily::ambush_flash;
+                });
+        };
 
         std::uint32_t frames = 0U;
         while (state_.phase == StartupIntegrationPhase::opening_intro &&
@@ -2120,16 +2128,47 @@ public:
             }
             advance_one_source_frame();
         }
+        bool saw_magic_flash_before_death = false;
+        bool saw_magic_flash_advance = false;
+        std::uint32_t first_magic_descriptor = 0U;
         while (state_.phase == StartupIntegrationPhase::opening_intro &&
                state_.opening_intro.persistent.stage < 4U) {
             if (frames++ >= kMaximumFrames) {
                 return fail("did not reach the source hit-flash transition");
             }
             advance_one_source_frame();
+            const auto& opening = state_.opening_intro;
+            const auto magic_count = std::count_if(
+                opening_sprites_.begin(), opening_sprites_.end(),
+                [](const OpeningIntroSpriteRequest& request) {
+                    return opening_intro_sprite_group(request.sprite_descriptor)
+                               .family == OpeningIntroSpriteFamily::ambush_flash;
+                });
+            if (opening.dual.active && magic_count == 2) {
+                saw_magic_flash_before_death = true;
+                if (first_magic_descriptor == 0U) {
+                    first_magic_descriptor =
+                        opening.dual.left_sprite_descriptor;
+                    if (!save_frame("magic-before-death-0.bmp",
+                                    render_scene())) {
+                        return fail("could not save the live magic effect");
+                    }
+                } else if (!saw_magic_flash_advance &&
+                           opening.dual.left_sprite_descriptor !=
+                               first_magic_descriptor) {
+                    saw_magic_flash_advance = true;
+                    if (!save_frame("magic-before-death-1.bmp",
+                                    render_scene())) {
+                        return fail("could not save the advancing magic effect");
+                    }
+                }
+            }
         }
         if (state_.phase != StartupIntegrationPhase::opening_intro ||
             state_.opening_intro.scene != OpeningIntroScene::wilderness ||
-            state_.opening_intro.persistent.stage != 4U) {
+            state_.opening_intro.persistent.stage != 4U ||
+            !saw_magic_flash_before_death || !saw_magic_flash_advance ||
+            !state_.opening_intro.dual.active || !has_magic_flash_sprite()) {
             return fail("source persistent stage 4 was skipped");
         }
 
@@ -2158,9 +2197,10 @@ public:
         if (state_.phase != StartupIntegrationPhase::opening_intro ||
             state_.opening_intro.persistent.stage != 5U ||
             !opening_ambush_palette_flash_active() ||
+            state_.opening_intro.dual.active || has_magic_flash_sprite() ||
             !opening_wilderness_map_right_ ||
             opening_wilderness_map_center_) {
-            return fail("the source white-hit state did not connect to the renderer");
+            return fail("the source white-hit state did not stop the magic sprites and connect to the renderer");
         }
         const auto& flash_palette =
             state_.opening_intro.entity_colors.words[1U];
@@ -2470,6 +2510,18 @@ public:
             if (opening.scene == OpeningIntroScene::wilderness &&
                 opening.source_frame >= kDeathOverlayFrame &&
                 opening_wilderness_final_overlay_) {
+                if (opening.persistent.stage >= 5U &&
+                    (opening.dual.active ||
+                     std::any_of(
+                         opening_sprites_.begin(), opening_sprites_.end(),
+                         [](const OpeningIntroSpriteRequest& request) {
+                             return opening_intro_sprite_group(
+                                        request.sprite_descriptor)
+                                        .family ==
+                                    OpeningIntroSpriteFamily::ambush_flash;
+                         }))) {
+                    return fail("magic sprites continued after the hit/death transition");
+                }
                 if (opening_wilderness_map_left_ ||
                     opening_wilderness_overlay_) {
                     return fail("the source-cleared left actor plate was reintroduced during the death pose");

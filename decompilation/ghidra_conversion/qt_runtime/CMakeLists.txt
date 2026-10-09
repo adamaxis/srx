@@ -143,6 +143,13 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_opening_ambush_flash_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+add_executable(shadowrun_ghidra_conversion_qt_title_intro_motion_test
+    ../tests/title_intro/title_intro_motion_conversion_test.cpp)
+target_link_libraries(shadowrun_ghidra_conversion_qt_title_intro_motion_test
+    PRIVATE shadowrun_ghidra_conversion_modules)
+add_test(NAME shadowrun_ghidra_conversion_qt_title_intro_motion_qa
+         COMMAND shadowrun_ghidra_conversion_qt_title_intro_motion_test)
+
 # The six 0x5A080 updates replace the left wilderness region. At 0x59F8E's
 # terminal event, ROM fills that region with the blank tile before drawing the
 # death pose. Verify the full-screen lifetime and the cockpit handoff.

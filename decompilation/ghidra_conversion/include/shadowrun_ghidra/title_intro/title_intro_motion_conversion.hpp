@@ -66,6 +66,7 @@ struct TitleIntroDualSpriteState {
     std::uint16_t phase = 0;
     std::uint32_t left_sprite_descriptor = 0;
     std::uint32_t right_sprite_descriptor = 0;
+    bool active = false;
 };
 
 struct TitleIntroDualSpriteCallbacks {
@@ -77,6 +78,10 @@ struct TitleIntroDualSpriteCallbacks {
 
 // ROM 0x5A4B4: reset the four-phase dual-sprite sequence.
 void reset_title_intro_dual_sprites(TitleIntroDualSpriteState& state);
+
+// ROM 0x5A252 writes the shared 0xFFF146 control to four when the hit/death
+// sequence begins; the dual spell sprites stop when that control is set.
+void stop_title_intro_dual_sprites(TitleIntroDualSpriteState& state);
 
 // ROM 0x5A4C2: select paired descriptors from the eight-entry host table,
 // advance every six frames, and draw both sprites on each active call.

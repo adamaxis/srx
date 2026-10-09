@@ -54,13 +54,18 @@ TitleIntroMotionAdvanceResult advance_title_intro_motion(
 void reset_title_intro_dual_sprites(TitleIntroDualSpriteState& state) {
     state.next_event_frame = 0;
     state.phase = 0;
+    state.active = true;
+}
+
+void stop_title_intro_dual_sprites(TitleIntroDualSpriteState& state) {
+    state.active = false;
 }
 
 void advance_title_intro_dual_sprites(
     TitleIntroDualSpriteState& state,
     const std::array<std::uint32_t, kTitleIntroDualSpriteCount>& sprites,
     const TitleIntroDualSpriteCallbacks& callbacks) {
-    if (state.phase >= 4U) {
+    if (!state.active || state.phase >= 4U) {
         return;
     }
 

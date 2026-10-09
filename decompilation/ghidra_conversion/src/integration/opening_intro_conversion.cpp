@@ -860,6 +860,10 @@ void advance_animation_services(OpeningIntroState& state,
              [&state, &callbacks](const std::uint16_t, const std::uint16_t) {
                  set_title_intro_entity_color_words(
                      state.entity_colors, 1U, 0x0EEEU);
+                 // ROM 0x5A252 writes 4 to the same 0xFFF146 control read
+                 // by 0x5A4C2. The source spell flashes end as this actor's
+                 // hit/death palette sequence begins.
+                 stop_title_intro_dual_sprites(state.dual);
                  source_boundary(callbacks,
                                  "0x5A2D0.persistent_stage_four_transition");
              },

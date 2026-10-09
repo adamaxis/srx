@@ -70,5 +70,15 @@ int main() {
         right.size() != 2U) {
         return 5;
     }
+    stop_title_intro_dual_sprites(dual);
+    dual.current_frame = 12U;
+    advance_title_intro_dual_sprites(dual, sprites, dual_callbacks);
+    if (dual.active || left.size() != 2U || right.size() != 2U) {
+        return 6;
+    }
+    reset_title_intro_dual_sprites(dual);
+    if (!dual.active || dual.phase != 0U) {
+        return 7;
+    }
     return 0;
 }
