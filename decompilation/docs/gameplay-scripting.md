@@ -210,10 +210,11 @@ from the older convention incrementally.
   messages. Script QA checks every ID/key/ROM-text tuple, and field catalog QA
   checks the rendered catalog order. Skill values, cursor movement, upgrade
   eligibility, and karma spending remain native state.
-- `gameplay/scripts/cyberware.lua` declares stable IDs for the Cyberware title,
-  separator, empty state, and 15 implant names in source order. The field text
-  catalog reads those IDs from Lua; native field state controls which implants
-  are owned and how that page is presented.
+- `gameplay/scripts/cyberware.lua` declares stable IDs and explicit ordered
+  text keys for the Cyberware title, separator, empty state, and 15 implant
+  names. Script and field-catalog QA check each ID/key/value in source order;
+  native field state controls which implants are owned and how that page is
+  presented.
 - `gameplay/scripts/magic.lua` declares the 13 spell IDs in the ROM
   `D4EA0` name-table order. The extractor keys each ROM name and description
   with that semantic ID. It also declares seven IDs for the two Magic panel

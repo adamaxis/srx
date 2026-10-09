@@ -1,6 +1,6 @@
 # Cyberware Shared Command-Panel Audit
 
-Date: 2026-10-07
+Date: 2026-10-09
 ROM: US Genesis Shadowrun
 Screen: command selector page 4, A opens Cyberware (`0x11950`)
 
@@ -21,7 +21,13 @@ shared elements. The corrected presenter starts with the complete typed
 command page, restores the center panel background, and then draws the
 Cyberware title and rows.
 
-## Eight-question visual review
+`gameplay/scripts/cyberware.lua` now maps the 18 source-ordered text IDs to
+explicit `cyberware.text.option.*` keys. Script QA checks each ID/key/resolved
+string; field-menu catalog QA checks that those same strings populate the
+visible Cyberware rows. The content change does not alter which rows the
+active runner's `+0x90` word selects.
+
+## Nine-question visual review
 
 1. **Does it look correct?** Before the correction the left portrait and item
    cells were blank and the posture value was missing. The corrected full
@@ -30,12 +36,14 @@ Cyberware title and rows.
    fidelity remains unverified.
 2. **Does the look reflect behavioral state?** Yes. Page 4 opens only after A;
    the populated runner's `+0x90` bit 0 draws `Hand Razors`, while the zero-word
-   branch draws `NONE`. The selected tab remains Cyberware. Return leaves the
-   parent page and runner record unchanged.
+   branch draws `NONE`. The selected tab remains Cyberware. The explicit Lua
+   keys name the same source-ordered title and implant strings. Return leaves
+   the parent page and runner record unchanged.
 3. **Are the visuals correct?** The title, rows, and destinations follow
-   `0x11950`, `0x12C36`, `0x11900`, and the name table at `0xD2072`. Debug and
-   Release screenshots show the portrait, inventory, posture, command row,
-   and right HUD unchanged while the center panel is replaced.
+   `0x11950`, `0x12C36`, `0x11900`, and the name table at `0xD2072`. Script QA
+   checks all 18 keys and source strings. Debug and Release screenshots show
+   the portrait, inventory, posture, command row, and right HUD unchanged while
+   the center panel is replaced.
 4. **Does it animate?** No timer or cursor animation is used by this text page.
    The ROM draws once and waits for a controller event. Thirty held frames in
    the Qt route are pixel-identical to entry.
@@ -60,11 +68,17 @@ Cyberware title and rows.
    own locations. Return restores a full-screen image pixel-identical to the
    parent; reopen is pixel-identical to the first child frame.
 
+9. **Was the complete affected interval reviewed?** Yes. All ten populated and
+   empty branch BMPs were reviewed in one contact sheet, and both initial child
+   frames plus the return parent were opened at native size. Debug and Release
+   emit matching filenames and SHA-256 hashes for each route.
+
 ## Verification
 
-- **Code changed:** `FieldSceneRuntime::paint_command_overview` no longer
-  replaces the complete command screen when Cyberware opens; it redraws only
-  the center content panel and presents the child text over the typed parent.
+- **Code changed:** `FieldSceneRuntime::paint_command_overview` redraws only
+  the center content panel when Cyberware opens. In this content slice,
+  `cyberware.lua` also supplies explicit keys for the 18 source strings; the
+  typed presenter still selects and draws the page.
 - **Behavior implemented:** the `+0x90` installed-bit list and empty branch
   retain their source ordering and input/return behavior.
 - **Regression coverage:**
@@ -74,6 +88,12 @@ Cyberware title and rows.
   `returned-command-page.bmp`, and `reopened.bmp` under
   `build/conversion/qt/<configuration>/qt_runtime/field-cyberware-populated/`
   and the corresponding `field-cyberware-empty/` directory.
+  Script runtime and field-menu catalog tests also verify every new key and
+  resolved string in Debug and Release.
+- **Visual review:** the nine-question audit inspected the complete ten-frame
+  route set; the content key migration adds no controls and leaves the clean
+  parent/child redraw behavior unchanged. No matching independent Genesis
+  Cyberware page is available.
 - **Reported Qt defect resolved:** the Cyberware child no longer hides the
   shared portrait, inventory, or posture interface and no longer leaves
   previous center-panel text behind. Genesis visual fidelity remains partial

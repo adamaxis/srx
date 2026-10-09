@@ -3,7 +3,7 @@
 local Cyberware = {}
 
 function Cyberware.text_entries()
-    return {
+    local ids = {
         "title",
         "separator",
         "empty",
@@ -23,6 +23,11 @@ function Cyberware.text_entries()
         "wired_reflexes_2",
         "wired_reflexes_3",
     }
+    local label_keys = {}
+    for index, id in ipairs(ids) do
+        label_keys[index] = "cyberware.text.option." .. id
+    end
+    return ids, nil, label_keys
 end
 
 return Cyberware

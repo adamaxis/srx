@@ -410,6 +410,12 @@ pixel-identical parent restoration. No matching Genesis Cyberware capture is
 available; purchase/install/removal flows, if reached through another source
 path, remain to be traced.
 
+The 18 strings now have explicit ordered `cyberware.text.option.*` keys in
+`gameplay/scripts/cyberware.lua`; the script test checks their ROM text, while
+field-catalog QA checks the resulting title, separator, empty message, and
+implant rows. This changes content routing only, not the installed-bit logic
+or the shared-panel composition.
+
 ## Command-screen dispatch map
 
 The command bar is a dispatcher, not a collection of decorative buttons. The

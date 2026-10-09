@@ -768,6 +768,45 @@ int main() {
         return 1;
     }
 
+    const auto cyberware_text = scripts.menu(
+        "cyberware", "text_entries", "cyberware.text", "catalog");
+    constexpr std::array<std::string_view, 18> kCyberwareTextIds{{
+        "title", "separator", "empty", "datajack", "cyber_eyes",
+        "hand_razors", "spurs", "smartlink", "muscle_replace_1",
+        "muscle_replace_2", "muscle_replace_3", "muscle_replace_4",
+        "dermal_plating_1", "dermal_plating_2", "dermal_plating_3",
+        "wired_reflexes_1", "wired_reflexes_2", "wired_reflexes_3"}};
+    constexpr std::array<std::string_view, 18> kCyberwareTextLabels{{
+        " CYBERWARE", "", "NONE", "    Datajack", "    CyberEyes",
+        "   Hand Razors", "      Spurs", "    Smartlink",
+        "Muscle Replace(1)", "Muscle Replace(2)", "Muscle Replace(3)",
+        "Muscle Replace(4)", "Dermal Plating(1)", "Dermal Plating(2)",
+        "Dermal Plating(3)", "Wired Reflexes(1)", "Wired Reflexes(2)",
+        "Wired Reflexes(3)"}};
+    bool cyberware_text_matches = cyberware_text.has_value() &&
+        cyberware_text->title_key.empty() &&
+        cyberware_text->choices.size() == kCyberwareTextIds.size();
+    if (cyberware_text_matches) {
+        for (std::size_t index = 0; index < kCyberwareTextIds.size(); ++index) {
+            const auto& choice = cyberware_text->choices[index];
+            const auto* label = scripts.dialogue_text(choice.label_key);
+            const auto expected_key = std::string("cyberware.text.option.") +
+                std::string(kCyberwareTextIds[index]);
+            const auto expected_label = index == 1U
+                ? std::string("[") + std::string(10U, '\\')
+                : std::string(kCyberwareTextLabels[index]);
+            cyberware_text_matches = cyberware_text_matches &&
+                choice.id == kCyberwareTextIds[index] &&
+                choice.label_key == expected_key && label != nullptr &&
+                *label == expected_label;
+        }
+    }
+    if (!expect(cyberware_text_matches,
+                "Lua Cyberware keys or ROM text changed source order")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
     const auto inventory_actions =
         scripts.menu("items", "inventory_actions", "items",
                      "inventory_actions");
