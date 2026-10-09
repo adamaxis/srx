@@ -309,13 +309,15 @@ for each active ROM record in each corresponding pass. Lua packages own actor
 AI, movement state and decisions, animation state, sound requests, and
 scripted placement. C++ provides narrow host services for collision queries,
 accepted-position commit, asset rendering, and audio playback. The current
-runtime sends these heartbeats only to the controlled player and the extracted
-NPC profiles; it does not yet enumerate all 16 live records. Lua now owns the
-player's target-heading selection/slew, collision-route decisions, and
-animation cadence plus extracted NPC entry animations. Native services provide
-terrain samples, route-table facts, map-event recovery, accepted-position
-commit, asset rendering, and audio playback. Most NPC behavior and the full
-16-record population remain unconnected.
+runtime sends full behavior/render heartbeats to the controlled player and
+extracted NPC profiles, and a render heartbeat to connected weapon projectile
+records; it does not yet enumerate all 16 live records. Lua owns the player's
+target-heading selection/slew, collision-route decisions, and animation
+cadence, the extracted NPC entry animations, and finite weapon-list animation.
+Projectile movement and collision recovery still run in C++. Native services
+provide terrain samples, route-table facts, map-event recovery,
+accepted-position commit, asset rendering, and audio playback. Most NPC
+behavior and the full 16-record population remain unconnected.
 
 - `gameplay/scripts/actor_ai.lua` resolves Lua AI packages from a stable
   source-template profile ID plus the ROM's item/spell/none action class and
@@ -351,6 +353,12 @@ synchronized.
   run in Lua. Terrain sampling, route-table reads, map-event recovery, and the
   final host-world coordinate write remain native services. General NPC
   movement/collision policy and all live source actor slots are unfinished.
+  The `weapon_projectile` package also receives a Lua render heartbeat for
+  each connected primary/secondary record, advances its finite descriptor at
+  the ROM `0x5FDC`/`0x600E` cadence, and returns the completion marker; the next
+  native `0xA8EA` service currently retires it. Primary projectile movement
+  and recovery remain native and are a source-driven Lua behavior package to
+  port next.
   The script does not yet own general NPC movement, target selection, combat
   choices, weapon fire, hits, or damage. The ROM call order,
   actor timers, target/movement hand-off, and current gaps are documented in

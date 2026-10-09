@@ -109,6 +109,23 @@ list selected by kind `+0x0E` and animation selector `+0x16`, including the
 terminal marker and next increment. This work occurs in the render pass; it
 does not replace the AI/action update at `0xA8EA`.
 
+The connected weapon-projectile animation path preserves this split. The Lua
+`weapon_projectile` profile receives each active primary and secondary record
+during the `0x4618` render callback, with its selector, finite-list length,
+frame, accumulator, increment, and period. Lua applies the signed-word
+`0x5FDC` cadence and `0x600E` list bound, returning the frame and completion
+bit. The next `0xA8EA` pass observes that bit and retires the finite record
+before its following render pass. For the regular `0x8003` list, QA records
+frame 0 on the shot, frames 1 and 2 on the next two updates, completion marked
+while frame 2 remains selected on update 3, and record retirement before
+rendering update 4. The special `0x800B` list uses the same `0x270F` increment
+and `0x1000` period; signed word overflow in `0x5FDC` holds frames 4 and 9
+through their source intervals, with the terminal marker on update 19 and
+retirement before update 20. The Lua runtime QA checks this 19-pass list
+sequence; the connected field route has only captured the regular family so
+far. This is source pass ordering, not a single callback that advances and
+retires together.
+
 The native port should retain that distinction in its scheduler: Lua receives
 one behavior heartbeat per source field-service pass and one render heartbeat
 per source actor-render pass. The behavior heartbeat owns decisions and timers;
@@ -140,11 +157,13 @@ controller/scripted target headings, applies the `0xB530` slew, owns the
 player's animation clock, and selects each player movement candidate and
 fallback plus the C052/C062 selector. C++ remains responsible for terrain
 collision sampling, source route data access, map-event recovery, and applying
-Lua's selected coordinates and selector to the field model. The 16-slot
-population and projectile animation paths are not yet all connected to these
-callbacks. General NPC movement, targeting, combat, and source actor-slot
-dispatch remain open; this slice does not establish that every on-screen actor
-is connected.
+Lua's selected coordinates and selector to the field model. Projectile
+animation is now Lua-owned for connected primary/secondary weapon records, but
+their `0xA8EA` behavior path remains partly native: primary movement, collision
+recovery, and record retirement still run in C++. The runtime still does not
+enumerate and heartbeat the complete 16-record population. General NPC
+movement, targeting, combat, and source actor-slot dispatch remain open; this
+slice does not establish that every on-screen actor is connected.
 
 The entry sounds selected by `0xB330` are kind-table events `0x2E` and `0x2F`.
 The extracted audio table maps both to silent slots, so the Lua request has no

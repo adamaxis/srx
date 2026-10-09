@@ -766,6 +766,8 @@ public:
     field_weapon_primary_retry_count_for_dump() const noexcept;
     std::optional<std::uint16_t>
     field_weapon_projectile_selector_for_dump() const noexcept;
+    std::optional<bool>
+    field_weapon_projectile_list_finished_for_dump() const noexcept;
     std::optional<std::uint16_t>
     field_weapon_projectile_frame_for_dump() const noexcept;
     EntitySpawnCycleAction last_field_weapon_spawn_action_for_dump() const
@@ -789,6 +791,7 @@ private:
     void advance_field_movement();
     void advance_field_actor_animation();
     void advance_default_field_actor_animations();
+    void advance_field_weapon_projectile_animations();
     void advance_field_weapon_projectiles();
     void service_player_weapon_action();
     void initialize_field_entity_selection_state();
@@ -925,10 +928,12 @@ private:
         EntityFixedPointPosition primary_fixed_position{};
         SceneRunnerPosition primary_spawn_position{};
         EntityAnimationState primary_animation{};
+        bool primary_animation_script_initialized = false;
         bool primary_active = false;
         std::optional<std::uint16_t> primary_slot;
         SpawnEntityRecordState source_record{};
         EntityAnimationState animation{};
+        bool secondary_animation_script_initialized = false;
         bool secondary_active = false;
         std::optional<std::uint16_t> secondary_slot;
     };

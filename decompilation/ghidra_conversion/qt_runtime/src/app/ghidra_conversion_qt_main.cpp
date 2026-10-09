@@ -16313,7 +16313,8 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 projectile_animation_trace
-                    << "delay_frame\teffect_count\tselector\teffect_frame\t"
+                    << "delay_frame\teffect_count\tselector\tlist_finished\t"
+                       "effect_frame\t"
                        "primary_count\tspawn_x\tspawn_y\tprimary_x\tprimary_y\t"
                        "offset_x\toffset_y\tprimary_retry\t"
                        "full_screen_differs_from_attack\n";
@@ -16335,6 +16336,8 @@ int main(int argc, char** argv) {
                         .field_weapon_projectile_count_for_dump();
                     const auto visible_selector = weapon_fire_scene
                         .field_weapon_projectile_selector_for_dump();
+                    const auto visible_finished = weapon_fire_scene
+                        .field_weapon_projectile_list_finished_for_dump();
                     const auto visible_frame = weapon_fire_scene
                         .field_weapon_projectile_frame_for_dump();
                     const auto primary_count = weapon_fire_scene
@@ -16372,6 +16375,10 @@ int main(int argc, char** argv) {
                                 ? std::to_string(*visible_selector)
                                 : std::string("none"))
                         << '\t'
+                        << (visible_finished.has_value()
+                                ? (*visible_finished ? "1" : "0")
+                                : "none")
+                        << '\t'
                         << (visible_frame.has_value()
                                 ? std::to_string(*visible_frame)
                                 : std::string("none"))
@@ -16399,16 +16406,21 @@ int main(int argc, char** argv) {
                                 ? std::to_string(*primary_retry)
                                 : std::string("none"))
                         << '\t' << (differs_from_attack ? 1 : 0) << '\n';
-                    // The 0x8003 list is three frames. The spawned record
-                    // begins at frame zero, then advances on the source
-                    // 0x1000/0x270F cadence and is retired by the high-bit
-                    // continuation after its final descriptor.
+                    // The 0x8003 list is three frames. The render pass marks
+                    // completion after frame 2; the next 0xA8EA behavior pass
+                    // observes that bit and retires the record before render.
                     const bool source_animation_state_matches =
                         (delay_frame == 1U && projectile_count == 1U &&
+                         visible_finished == std::optional<bool>{false} &&
                          visible_frame == std::optional<std::uint16_t>{1U}) ||
                         (delay_frame == 2U && projectile_count == 1U &&
+                         visible_finished == std::optional<bool>{false} &&
                          visible_frame == std::optional<std::uint16_t>{2U}) ||
-                        (delay_frame >= 3U && projectile_count == 0U &&
+                        (delay_frame == 3U && projectile_count == 1U &&
+                         visible_finished == std::optional<bool>{true} &&
+                         visible_frame == std::optional<std::uint16_t>{2U}) ||
+                        (delay_frame >= 4U && projectile_count == 0U &&
+                         !visible_finished.has_value() &&
                          !visible_frame.has_value());
                     if (!source_animation_state_matches) {
                         std::cerr << "field player action dump: projectile list state did not follow its source frame/termination sequence at delay frame "
@@ -16426,7 +16438,7 @@ int main(int argc, char** argv) {
                     if (delay_frame == 1U) {
                         projectile_first_frame_visible = differs_from_attack;
                     }
-                    if (delay_frame == 3U) {
+                    if (delay_frame == 4U) {
                         projectile_clear_image = delay_image;
                     }
                     fire_delay_values.push_back(next_delay);
@@ -16954,9 +16966,9 @@ int main(int argc, char** argv) {
                 }
                 weapon_two_fire_trace
                     << "frame\tinput\tselector\tanimation_frame\t"
-                       "effect_count\tammo_rounds\tclip_reserve\t"
+                       "effect_count\tlist_finished\tammo_rounds\tclip_reserve\t"
                        "audio_events\n"
-                    << "ready\t0\t-1\t-1\t0\t12\t1\t0\n";
+                    << "ready\t0\t-1\t-1\t0\t-1\t12\t1\t0\n";
                 field_scene.set_controller_port_byte(0x40U);
                 field_scene.advance_frame();
                 field_scene.set_controller_port_byte(0U);
@@ -16987,26 +16999,38 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 weapon_two_fire_trace
-                    << "shot\t64\t" << *weapon_two_selector << "\t0\t1\t"
+                    << "shot\t64\t" << *weapon_two_selector << "\t0\t1\t0\t"
                     << static_cast<unsigned>(runner.ammo_rounds) << "\t"
                     << static_cast<unsigned>(runner.ammo_clips) << "\t"
                     << field_audio_events.size() << '\n';
 
                 QImage weapon_two_effect_clear;
                 bool weapon_two_effect_frame_visible = false;
-                for (std::uint16_t delay_frame = 1U; delay_frame <= 3U;
+                for (std::uint16_t delay_frame = 1U; delay_frame <= 4U;
                      ++delay_frame) {
                     field_scene.advance_frame();
                     const auto frame = render_scene();
                     const auto effect_count =
                         field_scene.field_weapon_projectile_count_for_dump();
+                    const auto list_finished = field_scene
+                        .field_weapon_projectile_list_finished_for_dump();
                     const auto animation_frame =
                         field_scene.field_weapon_projectile_frame_for_dump();
                     const bool expected_animation_state =
-                        (delay_frame < 3U && effect_count == 1U &&
+                        (delay_frame == 1U && effect_count == 1U &&
+                         list_finished == std::optional<bool>{false} &&
                          animation_frame ==
-                             std::optional<std::uint16_t>{delay_frame}) ||
-                        (delay_frame == 3U && effect_count == 0U &&
+                             std::optional<std::uint16_t>{1U}) ||
+                        (delay_frame == 2U && effect_count == 1U &&
+                         list_finished == std::optional<bool>{false} &&
+                         animation_frame ==
+                             std::optional<std::uint16_t>{2U}) ||
+                        (delay_frame == 3U && effect_count == 1U &&
+                         list_finished == std::optional<bool>{true} &&
+                         animation_frame ==
+                             std::optional<std::uint16_t>{2U}) ||
+                        (delay_frame == 4U && effect_count == 0U &&
+                         !list_finished.has_value() &&
                          !animation_frame.has_value());
                     if (!expected_animation_state ||
                         runner.ammo_rounds != 11U ||
@@ -17028,7 +17052,7 @@ int main(int argc, char** argv) {
                         weapon_two_effect_frame_visible =
                             !same_full_frame(weapon_two_fire, frame);
                     }
-                    if (delay_frame == 3U) {
+                    if (delay_frame == 4U) {
                         weapon_two_effect_clear = frame;
                     }
                     weapon_two_fire_trace
@@ -17038,6 +17062,10 @@ int main(int argc, char** argv) {
                                 ? static_cast<int>(*animation_frame)
                                 : -1)
                         << '\t' << effect_count << '\t'
+                        << (list_finished.has_value()
+                                ? (*list_finished ? 1 : 0)
+                                : -1)
+                        << '\t'
                         << static_cast<unsigned>(runner.ammo_rounds) << '\t'
                         << static_cast<unsigned>(runner.ammo_clips) << '\t'
                         << field_audio_events.size() << '\n';

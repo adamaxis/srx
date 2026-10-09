@@ -10,6 +10,9 @@ local movement_context_words = {
     0, -40, 40, -40, 40, 0, 40, 40,
     0, 40, -40, 40, -40, 0, -40, -40,
 }
+-- The directional weapon-effect records at ROM 0x630C use this descriptor
+-- cadence in their finite 0x8003/0x800B lists.
+local weapon_projectile_descriptor_increment = 0x270f
 
 local profiles = {
     ["corp_guard_k05_item06"] = {
@@ -33,6 +36,12 @@ local profiles = {
         action_kind = "none",
         action_code = 0,
         controls_movement = true,
+    },
+    ["weapon_projectile"] = {
+        package_id = "combat.weapon_projectile",
+        action_kind = "none",
+        action_code = 0,
+        projectile_animation = true,
     },
 }
 
@@ -69,7 +78,8 @@ end
 local function source_profile(context)
     local profile = profiles[context.profile_id]
     if profile == nil or
-       context.entity_kind ~= profile.entity_kind or
+       (not profile.projectile_animation and
+        context.entity_kind ~= profile.entity_kind) or
        context.action_kind ~= profile.action_kind or
        context.action_code ~= profile.action_code then
         return nil
@@ -78,7 +88,7 @@ local function source_profile(context)
 end
 
 local function initial_state(context, profile)
-    return {
+    local state = {
         actor_id = context.actor_id,
         profile_id = context.profile_id,
         entity_kind = context.entity_kind,
@@ -92,12 +102,26 @@ local function initial_state(context, profile)
         animation_id = "idle",
         animation_frame = 0,
         animation_accumulator = 0,
+        animation_increment = 0,
         movement_current_heading = profile.controls_movement
             and context.initial_heading or nil,
         transition_started = false,
         transition_frame_list_finished = false,
         transition_complete = false,
     }
+    if profile.projectile_animation then
+        local animation = context.projectile_animation
+        if type(animation) ~= "table" then
+            return nil
+        end
+        state.animation_id = "projectile"
+        state.animation_selector = animation.selector
+        state.animation_frame = animation.frame
+        state.animation_accumulator = animation.accumulator
+        state.animation_increment = animation.increment
+        state.animation_period = animation.period
+    end
+    return state
 end
 
 local function same_actor(state, context)
@@ -124,10 +148,59 @@ local function snapshot(state, action, audio_event)
         transition_complete = state.transition_complete,
         audio_event = audio_event,
         weapon_item_id = state.weapon_item_id,
+        animation_increment = state.animation_increment,
         movement_heading = state.movement_heading,
         movement_current_heading = state.movement_current_heading,
         movement_step = state.movement_step,
     }
+end
+
+local function advance_projectile_animation(state, context)
+    local animation = context.projectile_animation
+    if context.phase ~= "render" or type(animation) ~= "table" or
+       type(animation.selector) ~= "number" or
+       type(animation.frame_count) ~= "number" or
+       animation.frame_count < 1 or animation.frame_count > 16 or
+       type(animation.finite) ~= "boolean" or not animation.finite or
+       type(animation.period) ~= "number" then
+        return false
+    end
+
+    -- The behavior pass may select a new list (for example, the stopped
+    -- projectile tail). Preserve +0x1A/+0x1E as 0x600E does: only the source
+    -- selector changes before this render heartbeat.
+    state.animation_selector = animation.selector
+    state.animation_period = animation.period
+    state.animation_frame_count = animation.frame_count
+
+    -- ROM 0x5FDC adds +0x18 to +0x1A as a signed 16-bit word, compares it
+    -- with +0x1C, and advances +0x1E once when the period is reached.
+    local accumulated_word =
+        (state.animation_accumulator + state.animation_increment) & 0xffff
+    local accumulated_signed = accumulated_word
+    if accumulated_word >= 0x8000 then
+        accumulated_signed = accumulated_word - 0x10000
+    end
+    if state.animation_period <= accumulated_signed then
+        state.animation_frame = (state.animation_frame + 1) & 0xffff
+        state.animation_accumulator =
+            (accumulated_word - state.animation_period) & 0xffff
+        if state.animation_accumulator >= 0x8000 then
+            state.animation_accumulator = state.animation_accumulator - 0x10000
+        end
+    else
+        state.animation_accumulator = accumulated_signed
+    end
+
+    -- ROM 0x600E resolves the finite source list after 0x5FDC. The sixteen
+    -- weapon-effect lists use 0x8003 or 0x800B markers and 0x270F cadence.
+    if animation.frame_count <= state.animation_frame then
+        state.animation_selector = state.animation_selector | 0x8000
+        state.animation_frame = animation.frame_count - 1
+    end
+    state.animation_increment = weapon_projectile_descriptor_increment
+    state.animation_id = "projectile"
+    return true
 end
 
 local function advance_entry_animation(state)
@@ -423,7 +496,16 @@ function ActorAI.heartbeat(context)
     local state = states[context.actor_id]
     if context.spawn or state == nil then
         state = initial_state(context, profile)
+        if state == nil then
+            return nil
+        end
         states[context.actor_id] = state
+        if profile.projectile_animation then
+            if not advance_projectile_animation(state, context) then
+                return nil
+            end
+            return snapshot(state, "hold", nil)
+        end
         if profile.controls_movement then
             state.movement_step = nil
             if context.phase == "behavior" then
@@ -444,6 +526,12 @@ function ActorAI.heartbeat(context)
     end
     if not same_actor(state, context) then
         return nil
+    end
+    if profile.projectile_animation then
+        if not advance_projectile_animation(state, context) then
+            return nil
+        end
+        return snapshot(state, "hold", nil)
     end
 
     local action = "hold"

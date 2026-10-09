@@ -229,6 +229,101 @@ int main() {
         return 17;
     }
 
+    auto projectile_context = actor_context(
+        "weapon_projectile", "field_weapon_slot_9", 3U,
+        ScriptActorActionKind::none, 0U, 0U, true);
+    projectile_context.phase = ScriptActorHeartbeatPhase::render;
+    projectile_context.projectile_animation =
+        ScriptActorProjectileAnimation{0U, 3U, 0U, 0, 0, 0x1000, true};
+    const auto projectile_frame_zero =
+        scripts.actor_heartbeat(projectile_context);
+    projectile_context.spawn = false;
+    const auto set_projectile_input_from =
+        [&projectile_context](const ScriptActorBehaviorDecision& decision) {
+            auto& animation = *projectile_context.projectile_animation;
+            animation.selector = decision.animation_selector.value_or(0U);
+            animation.frame = decision.animation_frame;
+            animation.accumulator = decision.animation_accumulator;
+            animation.increment = decision.animation_increment.value_or(0);
+        };
+    if (projectile_frame_zero.has_value()) {
+        set_projectile_input_from(*projectile_frame_zero);
+    }
+    const auto projectile_frame_one =
+        scripts.actor_heartbeat(projectile_context);
+    if (projectile_frame_one.has_value()) {
+        set_projectile_input_from(*projectile_frame_one);
+    }
+    const auto projectile_frame_two =
+        scripts.actor_heartbeat(projectile_context);
+    if (projectile_frame_two.has_value()) {
+        set_projectile_input_from(*projectile_frame_two);
+    }
+    const auto projectile_terminal =
+        scripts.actor_heartbeat(projectile_context);
+    if (!expect(
+            projectile_frame_zero.has_value() &&
+                projectile_frame_zero->package_id ==
+                    "combat.weapon_projectile" &&
+                projectile_frame_zero->animation_id == "projectile" &&
+                projectile_frame_zero->animation_frame == 0U &&
+                projectile_frame_zero->animation_increment == 0x270f &&
+                projectile_frame_one.has_value() &&
+                projectile_frame_one->animation_frame == 1U &&
+                projectile_frame_two.has_value() &&
+                projectile_frame_two->animation_frame == 2U &&
+                projectile_terminal.has_value() &&
+                projectile_terminal->animation_selector == 0x8000U &&
+                projectile_terminal->animation_frame == 2U,
+            "Lua projectile render heartbeat did not follow the finite ROM animation list")) {
+        std::cerr << scripts.failure() << '\n';
+        return 19;
+    }
+
+    auto special_projectile_context = actor_context(
+        "weapon_projectile", "field_weapon_slot_10", 3U,
+        ScriptActorActionKind::none, 0U, 0U, true);
+    special_projectile_context.phase = ScriptActorHeartbeatPhase::render;
+    special_projectile_context.projectile_animation =
+        ScriptActorProjectileAnimation{0x20U, 11U, 0U, 0, 0, 0x1000, true};
+    auto special_projectile_frame =
+        scripts.actor_heartbeat(special_projectile_context);
+    if (!special_projectile_frame.has_value() ||
+        special_projectile_frame->animation_frame != 0U ||
+        special_projectile_frame->animation_increment != 0x270f) {
+        std::cerr << "Lua special projectile render heartbeat did not start at frame 0\n";
+        return 20;
+    }
+    special_projectile_context.spawn = false;
+    constexpr std::array<std::uint16_t, 19> expected_special_frames{
+        1U, 2U, 3U, 4U, 4U, 4U, 4U, 4U, 5U, 6U,
+        7U, 8U, 9U, 9U, 9U, 9U, 9U, 10U, 10U};
+    for (std::size_t tick = 0U; tick < expected_special_frames.size(); ++tick) {
+        auto& animation =
+            *special_projectile_context.projectile_animation;
+        animation.selector = special_projectile_frame->animation_selector
+                                 .value_or(0U);
+        animation.frame = special_projectile_frame->animation_frame;
+        animation.accumulator =
+            special_projectile_frame->animation_accumulator;
+        animation.increment =
+            special_projectile_frame->animation_increment.value_or(0);
+        special_projectile_frame =
+            scripts.actor_heartbeat(special_projectile_context);
+        const bool terminal = tick + 1U == expected_special_frames.size();
+        const auto expected_frame = expected_special_frames[tick];
+        if (!special_projectile_frame.has_value() ||
+            !special_projectile_frame->animation_selector.has_value() ||
+            *special_projectile_frame->animation_selector !=
+                (terminal ? 0x8020U : 0x0020U) ||
+            special_projectile_frame->animation_frame !=
+                (terminal ? 10U : expected_frame)) {
+            std::cerr << "Lua special projectile render heartbeat did not follow the finite 0x800B list at frame "
+                      << tick + 1U << '\n';
+            return 20;
+        }
+    }
+
     const auto player_step_context = [](
                                         const std::string_view actor_id,
                                         const std::uint16_t initial_heading,

@@ -163,6 +163,16 @@ using ScriptMovementCollisionRecovery =
     std::function<bool(std::uint16_t, std::uint16_t, std::int16_t,
                       std::uint8_t)>;
 
+struct ScriptActorProjectileAnimation {
+    std::uint16_t selector = 0;
+    std::uint16_t frame_count = 0;
+    std::uint16_t frame = 0;
+    std::int16_t accumulator = 0;
+    std::int16_t increment = 0;
+    std::int16_t period = 0;
+    bool finite = false;
+};
+
 struct ScriptActorMovementStep {
     enum class Outcome : std::uint8_t {
         accepted,
@@ -197,6 +207,7 @@ struct ScriptActorBehaviorContext {
         ScriptActorAnimationMode::idle;
     std::optional<std::uint8_t> animation_direction_override;
     std::optional<std::int16_t> animation_accumulator_override;
+    std::optional<ScriptActorProjectileAnimation> projectile_animation;
     bool movement_services_available = false;
     std::array<ScriptMovementOffset, 8> movement_offsets{};
     std::array<std::uint16_t, 8> movement_idle_selectors{};
@@ -229,6 +240,7 @@ struct ScriptActorBehaviorDecision {
     std::optional<std::uint16_t> movement_heading;
     std::optional<std::uint16_t> movement_current_heading;
     std::optional<ScriptActorMovementStep> movement_step;
+    std::optional<std::int16_t> animation_increment;
     std::int16_t animation_accumulator = 0;
 };
 
