@@ -570,6 +570,34 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         write_lua_string(text);
         output << ",\n";
     };
+    // Startup layout text at ROM 0x1B6498, 0x1B64CF, 0x1B6518,
+    // 0x1B6527, and 0x1B6577. Native C++ retains row placement and typed
+    // controller state; Lua owns the rendered copy and ordered choice labels.
+    write_text_entry("startup.options.title", " Start Options");
+    write_text_entry("startup.options.separator",
+                     std::string("[") + std::string(13U, '\\'));
+    write_text_entry("startup.option.new_game", "  New Game");
+    write_text_entry("startup.option.load_game", "  Load Game");
+    write_text_entry("startup.archetype.heading.choose", "  Choose");
+    write_text_entry("startup.archetype.heading.archetype", " Archetype");
+    write_text_entry("startup.archetype.separator",
+                     std::string("[") + std::string(10U, '\\'));
+    write_text_entry("startup.option.samurai", "  Samurai");
+    write_text_entry("startup.option.decker", "  Decker");
+    write_text_entry("startup.option.gator_shaman", "  Gator");
+    write_text_entry("startup.archetype.gator_shaman.suffix", "    Shaman");
+    write_text_entry("startup.option.slot_one", "Game 1");
+    write_text_entry("startup.option.slot_two", "Game 2");
+    write_text_entry("startup.message.no_save.0", "Jack out and smell the");
+    write_text_entry("startup.message.no_save.1", "   soycaf, chummer!");
+    write_text_entry("startup.message.no_save.2", "   There's no game");
+    write_text_entry("startup.message.no_save.3", "     saved here!");
+    write_text_entry("startup.message.save_success.0",
+                     " Successful download!");
+    write_text_entry("startup.message.save_success.1",
+                     "   Press any button");
+    write_text_entry("startup.message.save_success.2",
+                     "to run in the shadows.");
     constexpr std::array<std::string_view, 12> kServiceTitleTextKeys{{
         "shop.service.title.weapons_world",
         "shop.ares.title",
@@ -1424,12 +1452,12 @@ void write_asset_readme(const std::filesystem::path& root) {
               "remain separate; "
               "it does not contain full-screen flipbook samples or an aggregate "
               "serializer. All ROM-derived dialogue, field-menu labels, "
-              "feedback, and Notebook Tips are keyed in "
+              "startup menu copy, feedback, and Notebook Tips are keyed in "
               "`dialogue/script-text.lua`; `menu/field/service-routes.tsv` "
               "retains only "
               "numeric service destinations. Command labels, menu dialogue, "
-              "service titles, shop category headings, item names/categories/details, and "
-              "transaction copy are emitted in "
+              "service titles, shop category headings, item names/categories/details, "
+              "startup labels/messages, and transaction copy are emitted in "
               "`dialogue/script-text.lua`; `gameplay/scripts/shop.lua` binds "
               "Ares categories and message keys, while "
               "`gameplay/scripts/items.lua` maps source item IDs to their "
@@ -1442,9 +1470,9 @@ void write_asset_readme(const std::filesystem::path& root) {
               "text, Hotel menu and status text, Pocket Secretary root menu "
               "text, field-service titles, shop text, and item descriptions are emitted as "
               "`dialogue/script-text.lua` and consumed by the gameplay script "
-              "runtime. `gameplay/scripts/hotel.lua` and "
-              "`gameplay/scripts/pocket_secretary.lua` provide cursor-menu "
-              "choice IDs. "
+              "runtime. `gameplay/scripts/hotel.lua`, "
+              "`gameplay/scripts/pocket_secretary.lua`, and "
+              "`gameplay/scripts/startup.lua` provide cursor-menu choice IDs. "
               "Separately traced cinematic resources belong under movies/<scene>; "
               "they must not be mixed into intro or field assets.\n\n"
            << "Audio is emitted here only as complete Windows-playable lossless "

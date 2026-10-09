@@ -12,26 +12,18 @@ bool expect(const bool condition) { return condition; }
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
-    if (!expect(std::string(start_options_choice_name(
-                         StartOptionsChoice::new_game)) == "New Game" &&
-                std::string(start_options_choice_name(
-                         StartOptionsChoice::load_game)) == "Load Game" &&
-                std::string(save_slot_choice_name(SaveSlotChoice::slot_two)) ==
-                    "Save Slot 2" &&
-                std::string(joshua_archetype_choice_name(
-                         JoshuaArchetypeChoice::gator_shaman)) ==
-                    "Gator Shaman")) {
-        return 1;
-    }
-
     if (!expect(startup_menu_vram_x(kStartOptionsPlaneVram) == 104 &&
                 startup_menu_vram_y(kStartOptionsPlaneVram) == 56 &&
                 startup_menu_vram_x(kStartOptionsCursorVram) == 104 &&
                 startup_menu_cursor_y(kStartOptionsCursorVram, 0) == 80 &&
                 startup_menu_cursor_y(kStartOptionsCursorVram, 1) == 96 &&
                 kStartOptionsLayout[2].row == 3 &&
-                kStartOptionsLayout[2].text == "  New Game" &&
-                kStartOptionsLayout[1].text.size() == 14U)) {
+                kStartOptionsLayout[0].text_key ==
+                    "startup.options.title" &&
+                kStartOptionsLayout[1].text_key ==
+                    "startup.options.separator" &&
+                kStartOptionsLayout[2].choice_index == 0U &&
+                kStartOptionsLayout[3].choice_index == 1U)) {
         return 13;
     }
     if (!expect(startup_menu_vram_x(kJoshuaArchetypePlaneVram) == 152 &&
@@ -39,9 +31,12 @@ int main() {
                 startup_menu_cursor_y(kJoshuaArchetypeCursorVram, 0) == 88 &&
                 startup_menu_cursor_y(kJoshuaArchetypeCursorVram, 1) == 104 &&
                 startup_menu_cursor_y(kJoshuaArchetypeCursorVram, 2) == 120 &&
-                kJoshuaArchetypeLayout[5].text == "  Gator" &&
+                kJoshuaArchetypeLayout[3].choice_index == 0U &&
+                kJoshuaArchetypeLayout[4].choice_index == 1U &&
+                kJoshuaArchetypeLayout[5].choice_index == 2U &&
                 kJoshuaArchetypeLayout[6].row == 9 &&
-                kJoshuaArchetypeLayout[6].text == "    Shaman" &&
+                kJoshuaArchetypeLayout[6].text_key ==
+                    "startup.archetype.gator_shaman.suffix" &&
                 startup_menu_line_y(kJoshuaArchetypePlaneVram, 8) == 120 &&
                 startup_menu_line_y(kJoshuaArchetypePlaneVram, 9) == 128)) {
         return 14;
@@ -50,11 +45,14 @@ int main() {
                 startup_menu_vram_y(kSaveLoadPlaneVram) == 112 &&
                 startup_menu_vram_x(kSaveLoadCursorVram) == 136 &&
                 startup_menu_cursor_y(kSaveLoadCursorVram, 1) == 128 &&
-                kSaveLoadLayout[0].text == "Game 1" &&
-                kSaveLoadLayout[1].text == "Game 2" &&
+                kSaveLoadLayout[0].choice_index == 0U &&
+                kSaveLoadLayout[1].choice_index == 1U &&
                 startup_menu_vram_x(kSaveLoadMessagePlaneVram) == 72 &&
                 startup_menu_vram_y(kSaveLoadMessagePlaneVram) == 72 &&
-                kNoSaveDataLayout[0].text == "Jack out and smell the")) {
+                kNoSaveDataLayout[0].text_key ==
+                    "startup.message.no_save.0" &&
+                kSaveSuccessLayout[2].text_key ==
+                    "startup.message.save_success.2")) {
         return 15;
     }
 

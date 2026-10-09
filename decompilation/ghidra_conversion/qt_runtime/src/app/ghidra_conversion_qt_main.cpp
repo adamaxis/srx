@@ -10,6 +10,7 @@
 #include "shadowrun_ghidra/title_intro/title_setup_conversion.hpp"
 #include "shadowrun_ghidra/world/post_intro_mode_conversion.hpp"
 #include "shadowrun_ghidra/rendering/display_service_batch_conversion.hpp"
+#include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 #include "field_scene_runtime.hpp"
 #include "audio_playback.hpp"
 #include "genesis_image_compositor.hpp"
@@ -810,6 +811,7 @@ public:
                 "converted startup did not enter pre_title; phase=" +
                 std::string(startup_integration_phase_name(state_.phase)));
         }
+        load_startup_script_content();
 
         load_direct_title_assets();
         configure_title_loop_callbacks();
@@ -4527,6 +4529,74 @@ protected:
     }
 
 private:
+    void load_startup_script_content() {
+        const auto script_directory =
+            asset_root_.parent_path() / "gameplay" / "scripts";
+        const auto text_file = asset_root_ / "dialogue" / "script-text.lua";
+        if (!startup_scripts_.load_package(script_directory, text_file)) {
+            throw std::runtime_error(
+                "startup gameplay scripts did not load: " +
+                startup_scripts_.failure());
+        }
+
+        const auto start_options = startup_scripts_.menu(
+            "startup", "options", "startup", "options");
+        const auto save_slots = startup_scripts_.menu(
+            "startup", "save_slots", "startup", "save_slots");
+        const auto archetypes = startup_scripts_.menu(
+            "startup", "archetypes", "startup", "archetypes");
+        const auto validate_choices = [this](
+            const std::optional<scripting::ScriptMenuDefinition>& menu,
+            const std::initializer_list<std::string_view> ids) {
+            if (!menu.has_value() || menu->choices.size() != ids.size()) {
+                return false;
+            }
+            std::size_t index = 0U;
+            for (const auto id : ids) {
+                const auto& choice = menu->choices[index++];
+                if (choice.id != id ||
+                    startup_scripts_.dialogue_text(choice.label_key) ==
+                        nullptr) {
+                    return false;
+                }
+            }
+            return true;
+        };
+        if (!validate_choices(start_options, {"new_game", "load_game"}) ||
+            !validate_choices(save_slots, {"slot_one", "slot_two"}) ||
+            !validate_choices(archetypes,
+                              {"samurai", "decker", "gator_shaman"})) {
+            throw std::runtime_error(
+                "startup Lua menus do not match the native choice order: " +
+                startup_scripts_.failure());
+        }
+
+        constexpr std::array<std::string_view, 13> kRequiredTextKeys{{
+            "startup.options.title",
+            "startup.options.separator",
+            "startup.archetype.heading.choose",
+            "startup.archetype.heading.archetype",
+            "startup.archetype.separator",
+            "startup.archetype.gator_shaman.suffix",
+            "startup.message.no_save.0",
+            "startup.message.no_save.1",
+            "startup.message.no_save.2",
+            "startup.message.no_save.3",
+            "startup.message.save_success.0",
+            "startup.message.save_success.1",
+            "startup.message.save_success.2",
+        }};
+        for (const auto key : kRequiredTextKeys) {
+            if (startup_scripts_.dialogue_text(key) == nullptr) {
+                throw std::runtime_error(
+                    "startup Lua text key is missing: " + std::string(key));
+            }
+        }
+        startup_options_menu_ = *start_options;
+        startup_save_slots_menu_ = *save_slots;
+        startup_archetypes_menu_ = *archetypes;
+    }
+
     bool startup_shell_survives(const QImage& scene) const {
         const auto shell = draw_asset_cache_.find("menu.startup.background");
         if (shell == draw_asset_cache_.end()) {
@@ -5872,7 +5942,8 @@ private:
         if (state_.phase == StartupIntegrationPhase::start_options) {
             draw_menu_metadata_grid(painter);
             draw_startup_layout(painter, kStartOptionsPlaneVram,
-                                kStartOptionsLayout);
+                                kStartOptionsLayout,
+                                &*startup_options_menu_);
             draw_cursor(painter, startup_menu_vram_x(kStartOptionsCursorVram),
                         startup_menu_cursor_y(
                             kStartOptionsCursorVram,
@@ -5898,8 +5969,10 @@ private:
             }
             // 0xC0DA writes Game 1/2 over the live Start Options nametable.
             draw_startup_layout(painter, kStartOptionsPlaneVram,
-                                kStartOptionsLayout);
-            draw_startup_layout(painter, kSaveLoadPlaneVram, kSaveLoadLayout);
+                                kStartOptionsLayout,
+                                &*startup_options_menu_);
+            draw_startup_layout(painter, kSaveLoadPlaneVram, kSaveLoadLayout,
+                                &*startup_save_slots_menu_);
             draw_cursor(painter, startup_menu_vram_x(kSaveLoadCursorVram),
                         startup_menu_cursor_y(
                             kSaveLoadCursorVram,
@@ -5922,7 +5995,8 @@ private:
             painter.drawImage(64, 64, portrait->second);
         }
         draw_startup_layout(painter, kJoshuaArchetypePlaneVram,
-                            kJoshuaArchetypeLayout);
+                            kJoshuaArchetypeLayout,
+                            &*startup_archetypes_menu_);
         draw_cursor(painter, startup_menu_vram_x(kJoshuaArchetypeCursorVram),
                     startup_menu_cursor_y(
                         kJoshuaArchetypeCursorVram,
@@ -5933,12 +6007,23 @@ private:
     template <std::size_t N>
     void draw_startup_layout(
         QPainter& painter, const std::uint16_t plane_vram,
-        const std::array<StartupMenuTextLine, N>& lines) const {
+        const std::array<StartupMenuTextLine, N>& lines,
+        const scripting::ScriptMenuDefinition* menu = nullptr) const {
         const auto x = startup_menu_vram_x(plane_vram);
         for (const auto& line : lines) {
-            draw_startup_text(painter, x,
-                              startup_menu_line_y(plane_vram, line.row),
-                              line.text, source_text_color(0U));
+            const std::string* text = nullptr;
+            if (line.choice_index == 0xFFU) {
+                text = startup_scripts_.dialogue_text(line.text_key);
+            } else if (menu != nullptr &&
+                       line.choice_index < menu->choices.size()) {
+                text = startup_scripts_.dialogue_text(
+                    menu->choices[line.choice_index].label_key);
+            }
+            if (text != nullptr) {
+                draw_startup_text(painter, x,
+                                  startup_menu_line_y(plane_vram, line.row),
+                                  *text, source_text_color(0U));
+            }
         }
     }
 
@@ -5965,7 +6050,9 @@ private:
     void draw_cursor(QPainter& painter, const int x, const int y) const {
         const auto image = draw_asset_cache_.find("menu.startup.cursor");
         if (image != draw_asset_cache_.end()) {
-            painter.drawImage(x, y, image->second);
+            // The alpha-trimmed startup cursor has source origin_x=4 in the
+            // asset catalog. Restore that offset just as draw_alias does.
+            draw_alias(painter, "menu.startup.cursor", x, y);
         } else {
             painter.drawText(x, y + 10, QStringLiteral(">"));
         }
@@ -6031,6 +6118,10 @@ private:
     std::filesystem::path asset_root_;
     StartupIntegrationState state_;
     StartupIntegrationCallbacks startup_callbacks_;
+    scripting::GameScriptRuntime startup_scripts_;
+    std::optional<scripting::ScriptMenuDefinition> startup_options_menu_;
+    std::optional<scripting::ScriptMenuDefinition> startup_save_slots_menu_;
+    std::optional<scripting::ScriptMenuDefinition> startup_archetypes_menu_;
     qt_runtime::FieldSceneRuntime field_scene_runtime_;
     TitleLoopState title_loop_;
     TitleLoopCallbacks title_loop_callbacks_;

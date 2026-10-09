@@ -53,17 +53,18 @@ constexpr int startup_menu_line_y(const std::uint16_t plane_vram,
 
 struct StartupMenuTextLine {
     std::uint8_t row = 0;
-    std::string_view text;
+    std::string_view text_key;
+    std::uint8_t choice_index = 0xFFU;
 };
 
 // 0x590BE A2=0xC39A, D7=0xC51A, layout 0x1B6498.
 constexpr std::uint16_t kStartOptionsPlaneVram = 0xC39AU;
 constexpr std::uint16_t kStartOptionsCursorVram = 0xC51AU;
 inline constexpr std::array<StartupMenuTextLine, 4> kStartOptionsLayout{{
-    {0, " Start Options"},
-    {1, R"([\\\\\\\\\\\\\)"},
-    {3, "  New Game"},
-    {5, "  Load Game"},
+    {0, "startup.options.title"},
+    {1, "startup.options.separator"},
+    {3, {}, 0U},
+    {5, {}, 1U},
 }};
 
 // 0x59250 A2=0xC3A6, D7=0xC5A6, layout 0x1B64CF. Gator and Shaman are two
@@ -71,43 +72,41 @@ inline constexpr std::array<StartupMenuTextLine, 4> kStartOptionsLayout{{
 constexpr std::uint16_t kJoshuaArchetypePlaneVram = 0xC3A6U;
 constexpr std::uint16_t kJoshuaArchetypeCursorVram = 0xC5A6U;
 inline constexpr std::array<StartupMenuTextLine, 7> kJoshuaArchetypeLayout{{
-    {0, "  Choose"},
-    {1, " Archetype"},
-    {2, R"([\\\\\\\\\\)"},
-    {4, "  Samurai"},
-    {6, "  Decker"},
-    {8, "  Gator"},
-    {9, "    Shaman"},
+    {0, "startup.archetype.heading.choose"},
+    {1, "startup.archetype.heading.archetype"},
+    {2, "startup.archetype.separator"},
+    {4, {}, 0U},
+    {6, {}, 1U},
+    {8, {}, 2U},
+    {9, "startup.archetype.gator_shaman.suffix"},
 }};
 
 // 0x59174 A2=0xC726, D7=0xC722, layout 0x1B6518.
 constexpr std::uint16_t kSaveLoadPlaneVram = 0xC726U;
 constexpr std::uint16_t kSaveLoadCursorVram = 0xC722U;
 inline constexpr std::array<StartupMenuTextLine, 2> kSaveLoadLayout{{
-    {0, "Game 1"},
-    {2, "Game 2"},
+    {0, {}, 0U},
+    {2, {}, 1U},
 }};
 
 // 0x59240 A2=0xC492, layouts 0x1B6527 / 0x1B6577.
 constexpr std::uint16_t kSaveLoadMessagePlaneVram = 0xC492U;
 inline constexpr std::array<StartupMenuTextLine, 4> kNoSaveDataLayout{{
-    {0, "Jack out and smell the"},
-    {1, "   soycaf, chummer!"},
-    {3, "   There's no game"},
-    {4, "     saved here!"},
+    {0, "startup.message.no_save.0"},
+    {1, "startup.message.no_save.1"},
+    {3, "startup.message.no_save.2"},
+    {4, "startup.message.no_save.3"},
 }};
 inline constexpr std::array<StartupMenuTextLine, 3> kSaveSuccessLayout{{
-    {0, " Successful download!"},
-    {2, "   Press any button"},
-    {3, "to run in the shadows."},
+    {0, "startup.message.save_success.0"},
+    {2, "startup.message.save_success.1"},
+    {3, "startup.message.save_success.2"},
 }};
 
 enum class StartOptionsChoice : std::uint8_t {
     new_game = 0,
     load_game = 1,
 };
-
-const char* start_options_choice_name(StartOptionsChoice choice);
 
 struct StartOptionsMenuState {
     StartOptionsChoice selected = StartOptionsChoice::new_game;
@@ -152,8 +151,6 @@ enum class SaveSlotChoice : std::uint8_t {
     slot_one = 0,
     slot_two = 1,
 };
-
-const char* save_slot_choice_name(SaveSlotChoice choice);
 
 enum class SaveLoadMessage {
     none,
@@ -216,8 +213,6 @@ enum class JoshuaArchetypeChoice : std::uint8_t {
     decker = 1,
     gator_shaman = 2,
 };
-
-const char* joshua_archetype_choice_name(JoshuaArchetypeChoice choice);
 
 struct JoshuaArchetypeMenuState {
     JoshuaArchetypeChoice selected = JoshuaArchetypeChoice::samurai;

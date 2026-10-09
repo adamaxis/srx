@@ -48,6 +48,60 @@ int main() {
         return 1;
     }
 
+    const auto startup_options =
+        scripts.menu("startup", "options", "startup", "options");
+    const auto startup_save_slots =
+        scripts.menu("startup", "save_slots", "startup", "save_slots");
+    const auto startup_archetypes =
+        scripts.menu("startup", "archetypes", "startup", "archetypes");
+    const auto* startup_title =
+        scripts.dialogue_text("startup.options.title");
+    const auto* startup_separator =
+        scripts.dialogue_text("startup.options.separator");
+    const auto* startup_gator =
+        scripts.dialogue_text("startup.option.gator_shaman");
+    const auto* startup_gator_suffix =
+        scripts.dialogue_text("startup.archetype.gator_shaman.suffix");
+    const auto* startup_no_save =
+        scripts.dialogue_text("startup.message.no_save.3");
+    const auto* startup_save_success =
+        scripts.dialogue_text("startup.message.save_success.2");
+    if (!expect(startup_options.has_value() &&
+                    startup_options->choices.size() == 2U &&
+                    startup_options->choices[0].id == "new_game" &&
+                    startup_options->choices[0].label_key ==
+                        "startup.option.new_game" &&
+                    startup_options->choices[1].id == "load_game" &&
+                    startup_options->choices[1].label_key ==
+                        "startup.option.load_game" &&
+                    startup_save_slots.has_value() &&
+                    startup_save_slots->choices.size() == 2U &&
+                    startup_save_slots->choices[0].id == "slot_one" &&
+                    startup_save_slots->choices[1].id == "slot_two" &&
+                    startup_archetypes.has_value() &&
+                    startup_archetypes->choices.size() == 3U &&
+                    startup_archetypes->choices[0].id == "samurai" &&
+                    startup_archetypes->choices[1].id == "decker" &&
+                    startup_archetypes->choices[2].id == "gator_shaman" &&
+                    startup_title != nullptr &&
+                    *startup_title == " Start Options" &&
+                    startup_separator != nullptr &&
+                    *startup_separator ==
+                        std::string("[") + std::string(13U, '\\') &&
+                    startup_gator != nullptr &&
+                    *startup_gator == "  Gator" &&
+                    startup_gator_suffix != nullptr &&
+                    *startup_gator_suffix == "    Shaman" &&
+                    startup_no_save != nullptr &&
+                    *startup_no_save == "     saved here!" &&
+                    startup_save_success != nullptr &&
+                    *startup_save_success ==
+                        "to run in the shadows.",
+                "startup Lua menu choices or original text did not load")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
     const auto hotel_options =
         scripts.menu("hotel", "options", "hotel", "options");
     const auto hotel_checkout =

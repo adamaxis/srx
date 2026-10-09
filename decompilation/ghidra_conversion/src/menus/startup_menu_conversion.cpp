@@ -27,16 +27,6 @@ std::int8_t vertical_step(const std::uint8_t sampled_controller_byte) {
 
 } // namespace
 
-const char* start_options_choice_name(const StartOptionsChoice choice) {
-    switch (choice) {
-    case StartOptionsChoice::new_game:
-        return "New Game";
-    case StartOptionsChoice::load_game:
-        return "Load Game";
-    }
-    return "Unknown start option";
-}
-
 void enter_start_options_menu(
     StartOptionsMenuState& state,
     const StartOptionsMenuCallbacks& callbacks) {
@@ -78,16 +68,6 @@ StartOptionsMenuEvent advance_start_options_menu(
     return state.selected == StartOptionsChoice::new_game
         ? StartOptionsMenuEvent::enter_joshua_archetype_menu
         : StartOptionsMenuEvent::enter_save_load_menu;
-}
-
-const char* save_slot_choice_name(const SaveSlotChoice choice) {
-    switch (choice) {
-    case SaveSlotChoice::slot_one:
-        return "Save Slot 1";
-    case SaveSlotChoice::slot_two:
-        return "Save Slot 2";
-    }
-    return "Unknown save slot";
 }
 
 void enter_save_load_menu(
@@ -159,19 +139,6 @@ SaveLoadMenuEvent advance_save_load_menu(
         return SaveLoadMenuEvent::no_save_data;
     }
     return SaveLoadMenuEvent::callback_unresolved;
-}
-
-const char* joshua_archetype_choice_name(
-    const JoshuaArchetypeChoice choice) {
-    switch (choice) {
-    case JoshuaArchetypeChoice::samurai:
-        return "Samurai";
-    case JoshuaArchetypeChoice::decker:
-        return "Decker";
-    case JoshuaArchetypeChoice::gator_shaman:
-        return "Gator Shaman";
-    }
-    return "Unknown Joshua archetype";
 }
 
 void enter_joshua_archetype_menu(

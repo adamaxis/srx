@@ -116,6 +116,18 @@ than silently treating the current rendering as correct.
    remains `partial` until an independent Load Game capture and valid-save
    route are available.
 
+**2026-10-09 Lua-content review:** startup labels and save/load messages now
+resolve from `gameplay/scripts/startup.lua` and
+`assets/dialogue/script-text.lua`; the controller and source row placements
+remain native. The first full-frame pass also found that `draw_cursor()` drew
+the alpha-trimmed cursor at the untrimmed origin. The asset manifest records
+`origin_x=4` from the ROM tile, so the renderer now restores that offset via
+`draw_alias()`. The independent section 01 frame 001679 supports the selected
+row placement. Startup QA then captured all 134 screens; Debug and Release
+BMPs match each other, and the full-frame contact-sheet review found no stale
+controls or other new overlays. Other menu states still lack independent
+longplay captures.
+
 ### Applied review: SEGA shock figure fade
 
 The previous Qt fade reduced the extracted figure by a linear RGB weight over
