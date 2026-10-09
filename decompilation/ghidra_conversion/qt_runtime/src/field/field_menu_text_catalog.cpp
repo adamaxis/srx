@@ -58,8 +58,6 @@ constexpr std::array<std::string_view, kNotebookChoiceCount>
 constexpr std::array<std::string_view, 5> kPocketSecretaryRootChoiceIds{{
     "notebook", "group_items", "cyberdeck", "dismiss_runner",
     "save_load"}};
-constexpr std::array<std::string_view, kConfirmationChoiceCount>
-    kConfirmationChoiceIds{{"yes", "no"}};
 constexpr std::array<std::string_view, kInventoryActionChoiceCount>
     kInventoryActionChoiceIds{{"equip_or_use", "discard", "trade",
                                "cancel"}};
@@ -79,10 +77,6 @@ constexpr std::array<std::string_view, kCyberwareTextCount>
         "muscle_replace_2", "muscle_replace_3", "muscle_replace_4",
         "dermal_plating_1", "dermal_plating_2", "dermal_plating_3",
         "wired_reflexes_1", "wired_reflexes_2", "wired_reflexes_3"}};
-constexpr std::array<std::string_view, kFieldMetricTextCount>
-    kFieldMetricTextIds{{
-        "physical", "mental", "attack", "defense", "damage", "drain",
-        "none", "no_armor", "weapons", "guns", "power"}};
 constexpr std::array<std::string_view, kFieldMenuRaceNameCount>
     kCommandOverviewRaceIds{{"human", "elf", "dwarf", "orc", "troll"}};
 constexpr std::array<std::string_view, kFieldMenuClassNameCount>
@@ -203,12 +197,22 @@ bool has_field_metric_text_label_prefix(const std::string_view key) {
     return key.rfind("ui.field_metric.option.", 0U) == 0U;
 }
 
-bool is_field_metric_text_label_key(const std::string_view key) {
+template <std::size_t N>
+bool has_menu_choice_id(const std::array<std::string, N>& choice_ids,
+                        const std::string_view id) {
+    return std::find_if(
+               choice_ids.begin(), choice_ids.end(),
+               [id](const std::string& choice_id) {
+                   return std::string_view(choice_id) == id;
+               }) != choice_ids.end();
+}
+
+bool is_field_metric_text_label_key(
+    const std::string_view key,
+    const std::array<std::string, kFieldMetricTextCount>& choice_ids) {
     constexpr std::string_view kTextPrefix = "ui.field_metric.option.";
     return key.rfind(kTextPrefix, 0U) == 0U &&
-           std::find(kFieldMetricTextIds.begin(), kFieldMetricTextIds.end(),
-                     key.substr(kTextPrefix.size())) !=
-               kFieldMetricTextIds.end();
+           has_menu_choice_id(choice_ids, key.substr(kTextPrefix.size()));
 }
 
 bool has_command_overview_text_label_prefix(const std::string_view key) {
@@ -345,13 +349,13 @@ bool has_confirmation_menu_label_prefix(const std::string_view key) {
     return key.rfind("ui.option.", 0U) == 0U;
 }
 
-bool is_confirmation_menu_label_key(const std::string_view key) {
+bool is_confirmation_menu_label_key(
+    const std::string_view key,
+    const std::array<std::string, kConfirmationChoiceCount>& choice_ids) {
     constexpr std::string_view kChoicePrefix = "ui.option.";
     return key.rfind(kChoicePrefix, 0U) == 0U &&
-           std::find(kConfirmationChoiceIds.begin(),
-                     kConfirmationChoiceIds.end(),
-                     key.substr(kChoicePrefix.size())) !=
-               kConfirmationChoiceIds.end();
+           has_menu_choice_id(choice_ids,
+                              key.substr(kChoicePrefix.size()));
 }
 
 bool parse_indexed_key(const std::string& key, const std::string& prefix,
@@ -406,14 +410,13 @@ bool is_field_menu_text_key(const std::string& key) {
     return false;
 }
 
-template <typename IdString, std::size_t N>
-void load_script_menu_labels(
+template <std::size_t N, typename ChoiceValidator>
+void load_script_menu_labels_impl(
     shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts,
     const std::string_view module, const std::string_view function,
     const std::string_view text_profile, const std::string_view menu_id,
-    const std::array<IdString, N>& expected_ids,
     std::array<std::string, N>& labels, std::vector<std::string>& errors,
-    std::string* title = nullptr,
+    const ChoiceValidator& choice_is_valid, std::string* title,
     std::array<std::string, N>* choice_ids = nullptr) {
     const auto menu = scripts.menu(module, function, text_profile, menu_id);
     if (!menu.has_value()) {
@@ -421,7 +424,7 @@ void load_script_menu_labels(
                             std::string(function) + ": " + scripts.failure());
         return;
     }
-    if (menu->choices.size() != expected_ids.size()) {
+    if (menu->choices.size() != N) {
         errors.emplace_back("Lua menu has the wrong choice count: " +
                             std::string(function));
         return;
@@ -435,15 +438,21 @@ void load_script_menu_labels(
         }
         *title = *title_text;
     }
-    for (std::size_t index = 0; index < expected_ids.size(); ++index) {
+    std::array<std::string, N> resolved_choice_ids{};
+    for (std::size_t index = 0; index < N; ++index) {
         const auto& choice = menu->choices[index];
-        if (std::string_view(choice.id) !=
-            std::string_view(expected_ids[index])) {
+        const auto seen_end = resolved_choice_ids.begin() +
+                              static_cast<std::ptrdiff_t>(index);
+        if (choice.id.empty() ||
+            std::find(resolved_choice_ids.begin(), seen_end, choice.id) !=
+                seen_end ||
+            !choice_is_valid(index, choice)) {
             errors.emplace_back("Lua menu choices do not match the "
-                                "native action order: " +
-                                std::string(function));
+                                "native action order or contain an empty/"
+                                "duplicate id: " + std::string(function));
             return;
         }
+        resolved_choice_ids[index] = choice.id;
         if (choice_ids != nullptr) {
             (*choice_ids)[index] = choice.id;
         }
@@ -455,6 +464,42 @@ void load_script_menu_labels(
         }
         labels[index] = *label;
     }
+}
+
+template <typename IdString, std::size_t N>
+void load_script_menu_labels(
+    shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts,
+    const std::string_view module, const std::string_view function,
+    const std::string_view text_profile, const std::string_view menu_id,
+    const std::array<IdString, N>& expected_ids,
+    std::array<std::string, N>& labels, std::vector<std::string>& errors,
+    std::string* title = nullptr,
+    std::array<std::string, N>* choice_ids = nullptr) {
+    const auto choice_is_valid = [&expected_ids](
+                                     const std::size_t index,
+                                     const auto& choice) {
+        return std::string_view(choice.id) ==
+               std::string_view(expected_ids[index]);
+    };
+    load_script_menu_labels_impl(
+        scripts, module, function, text_profile, menu_id, labels, errors,
+        choice_is_valid, title, choice_ids);
+}
+
+template <std::size_t N>
+void load_script_menu_labels(
+    shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts,
+    const std::string_view module, const std::string_view function,
+    const std::string_view text_profile, const std::string_view menu_id,
+    std::array<std::string, N>& labels, std::vector<std::string>& errors,
+    std::string* title = nullptr,
+    std::array<std::string, N>* choice_ids = nullptr) {
+    const auto any_nonempty_choice = [](std::size_t, const auto& choice) {
+        return !choice.id.empty();
+    };
+    load_script_menu_labels_impl(
+        scripts, module, function, text_profile, menu_id, labels, errors,
+        any_nonempty_choice, title, choice_ids);
 }
 
 template <std::size_t N>
@@ -571,14 +616,14 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::array<std::string, kConfirmationChoiceCount> confirmation_labels{};
     load_script_menu_labels(
         scripts, "ui", "confirmation", "ui", "confirmation",
-        kConfirmationChoiceIds, confirmation_labels, result.errors, nullptr,
+        confirmation_labels, result.errors, nullptr,
         &result.catalog.confirmation_choice_ids);
     result.catalog.action_choice_yes = confirmation_labels[0];
     result.catalog.action_choice_no = confirmation_labels[1];
     std::array<std::string, kFieldMetricTextCount> field_metric_labels{};
     load_script_menu_labels(
         scripts, "ui", "field_metric_labels", "ui.field_metric", "catalog",
-        kFieldMetricTextIds, field_metric_labels, result.errors, nullptr,
+        field_metric_labels, result.errors, nullptr,
         &result.catalog.field_metric_text_ids);
     result.catalog.physical_label = field_metric_labels[0];
     result.catalog.mental_label = field_metric_labels[1];
@@ -842,14 +887,16 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     }
     for (const auto& [key, value] : text_rows) {
         if (has_confirmation_menu_label_prefix(key)) {
-            if (!is_confirmation_menu_label_key(key)) {
+            if (!is_confirmation_menu_label_key(
+                    key, result.catalog.confirmation_choice_ids)) {
                 result.errors.emplace_back(
                     "unknown confirmation menu label key: " + key);
             }
             continue;
         }
         if (has_field_metric_text_label_prefix(key)) {
-            if (!is_field_metric_text_label_key(key)) {
+            if (!is_field_metric_text_label_key(
+                    key, result.catalog.field_metric_text_ids)) {
                 result.errors.emplace_back(
                     "unknown field metric text label key: " + key);
             }

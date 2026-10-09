@@ -225,11 +225,12 @@ access.
   table. Cursor, reload, trade, ammunition, and runner-record state remain
   native.
 - `gameplay/scripts/ui.lua` declares the shared Yes/No confirmation menu in
-  ROM order. The field text catalog binds its extracted labels, and the Ares
-  shop and inventory discard paths use the selected stable ID when applying
-  the result. Cursor timing, default-No state, sound, and item/wallet effects
-  remain native. The same module maps the shared field-stat captions used by
-  the command overview and item detail panels.
+  ROM order and the shared field-stat caption IDs. The field text catalog
+  takes those IDs from Lua without a second runtime list in C++; script and
+  catalog QA assert their source order and ROM copy. The Ares shop and
+  inventory discard paths use the selected stable ID when applying the
+  result. Cursor timing, default-No state, sound, and item/wallet effects
+  remain native.
 - `gameplay/scripts/startup.lua` declares the ordered New Game/Load Game,
   Save Slot, and archetype choices. The title-screen presenter validates each
   list against its typed native menu state and resolves its labels from the
