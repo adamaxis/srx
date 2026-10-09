@@ -17,6 +17,20 @@ enum class EntityAmmoServiceAction {
     decremented,
 };
 
+enum class FieldCombatActionKind {
+    unsupported,
+    weapon_ammo,
+    magic_spell,
+    effect_record,
+};
+
+// ROM 0x14D6A selects the D4EA0 spell table when the equipped-slot field is
+// negative, even though its one-based spell code overlaps ordinary item
+// action codes. Nonnegative slots use the D4540 item/effect action families.
+FieldCombatActionKind classify_field_combat_action(
+    std::int16_t equipped_inventory_slot,
+    std::uint8_t action_code);
+
 // ROM 0x38AC: service one entity's current ammo value. The source delegates
 // records below type 3 to the weapon-service routine with a -1 or -3 meter
 // delta; that routine remains an explicit boundary because its inventory and

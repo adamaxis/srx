@@ -14,7 +14,7 @@ C042 attack pose, applies the source action delay, and resets animation state.
 The C042 pose is a static one-frame list held during that delay; it is not a
 multi-frame weapon swing.
 
-Action codes 13..15 take the separate effect-record path at ROM 0x15646 before 0x1514E; that path calls asset-meter routine 0x36FC, not ammo service 0x38AC. The 0x36FC branch for codes 13..15 decrements the equipped inventory phase byte and clears that slot at zero; it does not change weapon ammo rounds. The connected Qt weapon action path likewise accepts only weapon codes 1..12 before reload or ammo handling.
+Action codes 13..15 on a nonnegative equipped slot take the separate effect-record path at ROM 0x15646 before 0x1514E; that path calls asset-meter routine 0x36FC, not ammo service 0x38AC. The 0x36FC branch for codes 13..15 decrements the equipped inventory phase byte and clears that slot at zero; it does not change weapon ammo rounds. Magic spells use a separate overlapping one-based code space: ROM 0x14D6A uses the sign of +0x56 to select D4EA0 spell rows instead of D4540 item rows. The Qt action service now classifies the signed equipped slot and code together, and negative-slot spells return before empty-magazine reload or ammo handling. Spell target/effect execution remains open.
 
 The paired secondary record selects one of sixteen direction lists from
 `0x630C`: selectors `0x00..0x1C` are the regular three-frame (`0x8003`) family,

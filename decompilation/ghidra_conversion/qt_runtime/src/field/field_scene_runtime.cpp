@@ -51,26 +51,6 @@ namespace {
 // that scene reference with the saved row; both paths use the same typed scene
 // resource selection below.
 constexpr std::uint16_t kInitialFieldSceneReference = 2U;
-enum class FieldActionKind {
-    unsupported,
-    weapon_ammo,
-    effect_record,
-};
-constexpr std::uint8_t kFirstWeaponActionCode = 1U;
-constexpr std::uint8_t kFirstEffectRecordActionCode = 13U;
-constexpr std::uint8_t kAfterLastEffectRecordActionCode = 16U;
-
-FieldActionKind classify_field_action(const std::uint8_t action_code) {
-    if (action_code >= kFirstWeaponActionCode &&
-        action_code < kFirstEffectRecordActionCode) {
-        return FieldActionKind::weapon_ammo;
-    }
-    if (action_code >= kFirstEffectRecordActionCode &&
-        action_code < kAfterLastEffectRecordActionCode) {
-        return FieldActionKind::effect_record;
-    }
-    return FieldActionKind::unsupported;
-}
 
 constexpr std::string_view kFieldHudAlias = "field.hud.background";
 constexpr std::string_view kFieldHudFaceAliasPrefix = "field.hud.face.";
@@ -5220,11 +5200,21 @@ void FieldSceneRuntime::service_player_weapon_action() {
         return;
     }
 
-    // ROM 0xACAE routes weapon-item codes to 0x1514E. Codes 13..15 enter the
-    // separate effect-record continuation at 0x15646 and do not use ammo.
-    if (classify_field_action(runner.equipped_item_code) !=
-            FieldActionKind::weapon_ammo ||
+    // A negative equipped slot selects a D4EA0 spell row. Spell codes overlap
+    // D4540 weapon codes, so classify the signed slot and code together and
+    // return before either empty-magazine reload or ammo service.
+    const auto action_kind = classify_field_combat_action(
+        runner.equipped_inventory_slot, runner.equipped_item_code);
+    if (action_kind == FieldCombatActionKind::magic_spell) {
+        return;
+    }
+    if (action_kind != FieldCombatActionKind::weapon_ammo ||
         (runner.flags & 0x0100U) == 0U) {
+        return;
+    }
+    if (runner.equipped_inventory_slot < 0 ||
+        static_cast<std::size_t>(runner.equipped_inventory_slot) >=
+            runner.inventory_phase_bytes.size()) {
         return;
     }
 
@@ -5248,12 +5238,6 @@ void FieldSceneRuntime::service_player_weapon_action() {
     // is past 0x3C. B39A installs C042 selectors 0x40..0x5C, so movement must
     // return the runner to idle/walk before another shot can enter the window.
     if ((field_entity_animation_selector_ & 0x07FFU) > 0x003CU) {
-        return;
-    }
-
-    if (runner.equipped_inventory_slot < 0 ||
-        static_cast<std::size_t>(runner.equipped_inventory_slot) >=
-            runner.inventory_phase_bytes.size()) {
         return;
     }
 

@@ -2,6 +2,32 @@
 
 namespace shadowrun::ghidra_conversion {
 
+FieldCombatActionKind classify_field_combat_action(
+    const std::int16_t equipped_inventory_slot,
+    const std::uint8_t action_code) {
+    constexpr std::uint8_t kFirstActionCode = 1U;
+    constexpr std::uint8_t kLastWeaponActionCode = 12U;
+    constexpr std::uint8_t kLastSpellActionCode = 13U;
+    constexpr std::uint8_t kFirstEffectRecordCode = 13U;
+    constexpr std::uint8_t kLastEffectRecordCode = 15U;
+
+    if (equipped_inventory_slot < 0) {
+        return action_code >= kFirstActionCode &&
+                       action_code <= kLastSpellActionCode
+                   ? FieldCombatActionKind::magic_spell
+                   : FieldCombatActionKind::unsupported;
+    }
+    if (action_code >= kFirstActionCode &&
+        action_code <= kLastWeaponActionCode) {
+        return FieldCombatActionKind::weapon_ammo;
+    }
+    if (action_code >= kFirstEffectRecordCode &&
+        action_code <= kLastEffectRecordCode) {
+        return FieldCombatActionKind::effect_record;
+    }
+    return FieldCombatActionKind::unsupported;
+}
+
 EntityAmmoServiceAction service_entity_ammo(
     EntityEquipmentState& state,
     const std::uint8_t source_action_code,

@@ -13,11 +13,30 @@ bool expect(const bool condition) {
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
+    if (!expect(classify_field_combat_action(0, 1U) ==
+                    FieldCombatActionKind::weapon_ammo &&
+                classify_field_combat_action(7, 12U) ==
+                    FieldCombatActionKind::weapon_ammo &&
+                classify_field_combat_action(-1, 1U) ==
+                    FieldCombatActionKind::magic_spell &&
+                classify_field_combat_action(-1, 13U) ==
+                    FieldCombatActionKind::magic_spell &&
+                classify_field_combat_action(0, 13U) ==
+                    FieldCombatActionKind::effect_record &&
+                classify_field_combat_action(0, 15U) ==
+                    FieldCombatActionKind::effect_record &&
+                classify_field_combat_action(-1, 14U) ==
+                    FieldCombatActionKind::unsupported &&
+                classify_field_combat_action(0, 16U) ==
+                    FieldCombatActionKind::unsupported)) {
+        return 1;
+    }
+
     EntityEquipmentState empty{0U, 4};
     if (!expect(service_entity_ammo(empty, 7U, {}) ==
                     EntityAmmoServiceAction::no_action &&
                 empty.current_ammo == 0U)) {
-        return 1;
+        return 2;
     }
 
     EntityEquipmentState delegated{5U, 2};
@@ -30,7 +49,7 @@ int main() {
                     }) == EntityAmmoServiceAction::delegated_to_weapon_service &&
                 weapon_services == 1 && weapon_delta == -1 &&
                 delegated.current_ammo == 5U)) {
-        return 2;
+        return 3;
     }
 
     EntityEquipmentState multi_round_action{5U, 2};
@@ -41,21 +60,21 @@ int main() {
                         weapon_delta = delta;
                     }) == EntityAmmoServiceAction::delegated_to_weapon_service &&
                 weapon_delta == -3)) {
-        return 3;
+        return 4;
     }
 
     EntityEquipmentState unresolved{5U, 2};
     if (!expect(service_entity_ammo(unresolved, 7U, {}) ==
                     EntityAmmoServiceAction::weapon_service_unresolved &&
                 unresolved.current_ammo == 5U)) {
-        return 4;
+        return 5;
     }
 
     EntityEquipmentState decremented{5U, 3};
     if (!expect(service_entity_ammo(decremented, 7U, {}) ==
                     EntityAmmoServiceAction::decremented &&
                 decremented.current_ammo == 4U)) {
-        return 5;
+        return 6;
     }
 
     std::vector<char> order;
@@ -65,7 +84,7 @@ int main() {
         [&order] { order.push_back('c'); });
     if (!expect(order == std::vector<char>{'a', 'b', 'c', 'a', 'b', 'c',
                                             'a', 'b', 'c'})) {
-        return 6;
+        return 7;
     }
 
     order.clear();
@@ -77,7 +96,7 @@ int main() {
         [&order] { order.push_back('c'); });
     if (!expect(order == std::vector<char>{'g', 'h', 'a', 'b', 'c', 'a',
                                             'b', 'c', 'a', 'b', 'c'})) {
-        return 7;
+        return 8;
     }
     return 0;
 }
