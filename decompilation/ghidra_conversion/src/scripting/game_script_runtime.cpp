@@ -21,6 +21,9 @@ constexpr std::size_t kMaximumMapEventRules = 512U;
 // caller can expose six. Keep the generic script-menu bound at the larger
 // source-defined menu size.
 constexpr std::size_t kMaximumMenuChoices = 7U;
+// Static script catalogs may describe a larger native-filtered list, such as
+// the 13 ROM Magic spells; live dialogue menus keep the source seven-row cap.
+constexpr std::size_t kMaximumMenuCatalogChoices = 16U;
 constexpr std::size_t kMaximumShopGroups = 8U;
 constexpr std::size_t kMaximumShopOffers = 8U;
 constexpr std::size_t kMaximumItemCatalogEntries = 50U;
@@ -286,13 +289,15 @@ bool parse_menu_choices(lua_State* state, const int index,
                         const std::string_view menu_id,
                         const std::string_view text_profile,
                         const std::string_view speaker_id,
-                        ScriptMenuDefinition& menu) {
+                        ScriptMenuDefinition& menu,
+                        const std::size_t maximum_choices =
+                            kMaximumMenuChoices) {
     if (!lua_istable(state, index) || !valid_identifier(menu_id) ||
         !valid_identifier(text_profile)) {
         return false;
     }
     const auto count = lua_rawlen(state, index);
-    if (count > kMaximumMenuChoices) {
+    if (count > maximum_choices) {
         return false;
     }
     menu.id = std::string(menu_id);
@@ -1435,7 +1440,8 @@ std::optional<ScriptMenuDefinition> GameScriptRuntime::menu(
 
     ScriptMenuDefinition definition;
     if (!parse_menu_choices(state, -1, menu_id, text_profile,
-                            impl_->location_speaker_id, definition)) {
+                            impl_->location_speaker_id, definition,
+                            kMaximumMenuCatalogChoices)) {
         lua_pop(state, 1);
         impl_->failure = std::string(module) + "." + std::string(function) +
                          " must return unique choice ids";

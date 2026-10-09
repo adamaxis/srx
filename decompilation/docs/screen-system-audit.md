@@ -510,6 +510,9 @@ screen with its own cursor, load state, program memory, and A/B/C posture
 launch semantics. The overhead field combat loop is also not the command
 screen: it selects targets, consumes ammunition or spell drain, updates health,
 and uses the runner's posture to bias offensive/defensive behavior.
+The spell text table at ROM `0xD4EA0` now has semantic IDs in
+`gameplay/scripts/magic.lua` source order; the native runner spell table still
+controls which spells appear for each archetype.
 
 The manual and the source both make posture consequential: the five settings
 are Full Defense, Med Defense, Neutral, Med Offense, and Full Offense; computer

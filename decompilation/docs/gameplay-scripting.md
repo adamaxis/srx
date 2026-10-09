@@ -150,6 +150,12 @@ access.
   `FieldSceneRuntime` validates that action list and dispatches Equip/Use,
   Discard, and Trade through the selected stable ID. Item codes, cursor state,
   and inventory behavior remain typed native state.
+- `gameplay/scripts/magic.lua` declares the 13 spell IDs in the ROM
+  `D4EA0` name-table order. The extractor keys each ROM name and description
+  with that semantic ID; the field text catalog validates the ordered menu
+  and binds labels back to spell codes. The runner's spell table still filters
+  which entries are available, and force, posture, cursor timing, and spell
+  effects remain native state.
 - `gameplay/scripts/hotel.lua` declares stable choice IDs for the Hotel
   Options and checkout cursor menus. `FieldSceneRuntime` loads both menu
   definitions through `GameScriptRuntime::menu`, validates their source order,
@@ -190,6 +196,7 @@ access.
   Hotel menu/status text,
   Pocket Secretary root and Notebook title/separator/labels,
   command-overview labels and shared confirmation labels,
+  Magic spell names and descriptions by stable spell ID,
   field-service titles, field-menu labels and feedback, all 96 Notebook Tips,
   startup and save/load copy, shop category headings and transaction copy,
   item names/categories/details, and the special clips text. Native presenters
@@ -207,7 +214,8 @@ room/debt service calls, arrival/farewell/result dialogue, and the Qt
 presenters. Stoker, field interaction, Ares mode-event paragraphs, Hotel text,
 startup menu text/choices, Pocket Secretary root choices/labels,
 command-overview root choices/labels, Clips selector choices/labels, Notebook
-option IDs/labels, and shared confirmation choices/labels are Lua content.
+option IDs/labels, shared confirmation choices/labels, and Magic spell IDs,
+names, and descriptions are Lua content.
 Script dialogue menus carry
 their text profile and optional speaker into one generic panel projection;
 menu choices use generic presentation roles. Hotel cursor-menu choices come

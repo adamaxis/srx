@@ -125,6 +125,7 @@ struct FieldMenuTextCatalog {
     std::string magic_availability_label;
     std::string magic_panel_metric_labels;
     std::string magic_force_posture_labels;
+    std::array<std::string, kMagicSpellTextCount> magic_spell_ids{};
     std::array<std::string, kMagicSpellTextCount> magic_spell_names{};
     std::array<std::string, kMagicSpellTextCount> magic_spell_descriptions{};
     // Store names and category headings are Lua text. Destination words are

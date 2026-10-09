@@ -343,6 +343,35 @@ int main() {
         return 1;
     }
 
+    const auto magic_spells =
+        scripts.menu("magic", "spells", "magic.spells", "catalog");
+    constexpr std::array<std::string_view, 13> kMagicSpellIds{{
+        "flame_dart", "flame_bolt", "hellblast", "invisibility", "sleep",
+        "stink", "super_barrier", "mana_zap", "mana_blast", "mana_storm",
+        "rockskin", "heal_wounds", "confusion"}};
+    constexpr std::array<std::string_view, 13> kMagicSpellNames{{
+        "Flame Dart", "Flame Bolt", "Hellblast", "Invisibility", "Sleep",
+        "Stink", "Super Barrier", "Mana Zap", "Mana Blast", "Mana Storm",
+        "Rockskin", "Heal Wounds", "Confusion"}};
+    bool magic_spell_rows_match = magic_spells.has_value() &&
+        magic_spells->choices.size() == kMagicSpellIds.size();
+    if (magic_spell_rows_match) {
+        for (std::size_t index = 0; index < kMagicSpellIds.size(); ++index) {
+            const auto& choice = magic_spells->choices[index];
+            const auto* label = scripts.dialogue_text(choice.label_key);
+            magic_spell_rows_match = magic_spell_rows_match &&
+                choice.id == kMagicSpellIds[index] && label != nullptr &&
+                *label == kMagicSpellNames[index] &&
+                scripts.dialogue_text("magic.spells.description." +
+                                      choice.id) != nullptr;
+        }
+    }
+    if (!expect(magic_spell_rows_match,
+                "Lua Magic spell IDs or ROM text changed source order")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
     const auto shop = scripts.shop_definition("ares_weapon_emporium");
     if (!expect(shop.has_value() && shop->groups.size() == 6U,
                 "Lua shop catalog did not define the Ares selector groups") ||

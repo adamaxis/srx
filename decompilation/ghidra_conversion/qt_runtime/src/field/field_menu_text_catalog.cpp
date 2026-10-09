@@ -24,6 +24,25 @@ constexpr std::array<std::string_view, kConfirmationChoiceCount>
 constexpr std::array<std::string_view, kInventoryActionChoiceCount>
     kInventoryActionChoiceIds{{"equip_or_use", "discard", "trade",
                                "cancel"}};
+constexpr std::array<std::string_view, kMagicSpellTextCount> kMagicSpellIds{{
+    "flame_dart", "flame_bolt", "hellblast", "invisibility", "sleep",
+    "stink", "super_barrier", "mana_zap", "mana_blast", "mana_storm",
+    "rockskin", "heal_wounds", "confusion"}};
+
+constexpr std::string_view kMagicSpellOptionPrefix =
+    "magic.spells.option.";
+constexpr std::string_view kMagicSpellDescriptionPrefix =
+    "magic.spells.description.";
+
+bool magic_spell_index(const std::string_view id, std::size_t& index) {
+    const auto found = std::find(kMagicSpellIds.begin(), kMagicSpellIds.end(),
+                                 id);
+    if (found == kMagicSpellIds.end()) {
+        return false;
+    }
+    index = static_cast<std::size_t>(found - kMagicSpellIds.begin());
+    return true;
+}
 
 bool has_clips_menu_label_prefix(const std::string_view key) {
     return key.rfind("clips.option.", 0U) == 0U ||
@@ -139,8 +158,9 @@ bool is_field_menu_text_key(const std::string& key) {
         "pocket-secretary.group-item.", "pocket-secretary.group-items.empty.",
         "ui.option.", "notebook.option.", "notebook.no-run.",
         "notebook.mr-johnson.name.",
-        "notebook.mr-johnson.detail.", "notebook.tip.", "magic.spell.name.",
-        "magic.spell.description.", "power.", "armor.",
+        "notebook.mr-johnson.detail.", "notebook.tip.",
+        "magic.spells.option.", "magic.spells.description.", "power.",
+        "armor.",
     };
     for (const auto* prefix : prefixes) {
         if (key.rfind(prefix, 0U) == 0U) {
@@ -346,7 +366,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     bool attributes_upgrade_prompt_found = false;
     std::array<bool, kCyberwareTitleLineCount> cyberware_title_found{};
     std::array<bool, kCyberwareEntryCount> cyberware_entry_found{};
-    std::array<bool, kMagicSpellTextCount> magic_spell_name_found{};
     std::array<bool, kMagicSpellTextCount> magic_spell_description_found{};
     std::array<bool, kFieldServiceTitleCount>
         field_service_title_destination_found{};
@@ -426,6 +445,12 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         scripts, "items", "inventory_actions", "items",
         "inventory_actions", kInventoryActionChoiceIds,
         result.catalog.inventory_action_choice_ids, result.errors);
+    std::array<std::string, kMagicSpellTextCount> magic_spell_names{};
+    load_script_menu_labels(
+        scripts, "magic", "spells", "magic.spells", "catalog",
+        kMagicSpellIds, magic_spell_names, result.errors, nullptr,
+        &result.catalog.magic_spell_ids);
+    result.catalog.magic_spell_names = std::move(magic_spell_names);
     load_script_menu_labels(
         scripts, "clips", "commands", "clips", "commands",
         kClipsCommandIds, result.catalog.clips_commands, result.errors);
@@ -867,19 +892,25 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             }
             continue;
         }
-        if (parse_indexed_key(key, "magic.spell.name.", index) &&
-            index < result.catalog.magic_spell_names.size()) {
-            if (magic_spell_name_found[index]) {
-                result.errors.emplace_back("duplicate field menu text row: " +
-                                          key);
-            } else {
-                magic_spell_name_found[index] = true;
-                result.catalog.magic_spell_names[index] = value;
+        if (key.rfind(kMagicSpellOptionPrefix, 0U) == 0U) {
+            const auto spell_id = std::string_view(key).substr(
+                kMagicSpellOptionPrefix.size());
+            if (std::find(kMagicSpellIds.begin(), kMagicSpellIds.end(),
+                          spell_id) == kMagicSpellIds.end()) {
+                result.errors.emplace_back(
+                    "unknown Magic spell option key: " + key);
             }
             continue;
         }
-        if (parse_indexed_key(key, "magic.spell.description.", index) &&
-            index < result.catalog.magic_spell_descriptions.size()) {
+        if (key.rfind(kMagicSpellDescriptionPrefix, 0U) == 0U) {
+            if (!magic_spell_index(
+                    std::string_view(key).substr(
+                        kMagicSpellDescriptionPrefix.size()),
+                    index)) {
+                result.errors.emplace_back(
+                    "unknown Magic spell description key: " + key);
+                continue;
+            }
             if (magic_spell_description_found[index]) {
                 result.errors.emplace_back("duplicate field menu text row: " +
                                           key);
@@ -1084,10 +1115,14 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             }
         }
     }
-    add_missing_entries(magic_spell_name_found, "magic.spell.name.",
-                        result.errors);
-    add_missing_entries(magic_spell_description_found,
-                        "magic.spell.description.", result.errors);
+    for (std::size_t index = 0; index < magic_spell_description_found.size();
+         ++index) {
+        if (!magic_spell_description_found[index]) {
+            result.errors.emplace_back(
+                "missing field menu text row: magic.spells.description." +
+                std::string(kMagicSpellIds[index]));
+        }
+    }
     add_missing_entries(pocket_secretary_cyberdeck_line_found,
                         "pocket-secretary.cyberdeck.line.", result.errors);
     add_missing_entries(pocket_secretary_group_item_found,

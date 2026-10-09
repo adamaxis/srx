@@ -41,6 +41,14 @@ int main() {
             "Dermal Plating(2)", "Dermal Plating(3)",
             "Wired Reflexes(1)", "Wired Reflexes(2)",
             "Wired Reflexes(3)"}};
+    const std::array<std::string, kMagicSpellTextCount> expected_magic_spell_ids{{
+        "flame_dart", "flame_bolt", "hellblast", "invisibility", "sleep",
+        "stink", "super_barrier", "mana_zap", "mana_blast", "mana_storm",
+        "rockskin", "heal_wounds", "confusion"}};
+    const std::array<std::string, kMagicSpellTextCount> expected_magic_spell_names{{
+        "Flame Dart", "Flame Bolt", "Hellblast", "Invisibility", "Sleep",
+        "Stink", "Super Barrier", "Mana Zap", "Mana Blast", "Mana Storm",
+        "Rockskin", "Heal Wounds", "Confusion"}};
     if (!text.catalog.field_service_titles[0].empty() ||
         !text.catalog.field_service_titles[1].empty() ||
         text.catalog.field_service_title_destinations[1] != 0xC110U ||
@@ -70,6 +78,13 @@ int main() {
         text.catalog.magic_success_label != "Success" ||
         text.catalog.magic_force_label != "Force" ||
         text.catalog.magic_availability_label != "Damage" ||
+        text.catalog.magic_spell_ids != expected_magic_spell_ids ||
+        text.catalog.magic_spell_names != expected_magic_spell_names ||
+        text.catalog.magic_spell_descriptions[0] !=
+            "A small burst of fire that\ndelivers a nasty burn." ||
+        text.catalog.magic_spell_descriptions[12] !=
+            "An area effect spell which\ndistracts all enemies with\n"
+            "sensory overload." ||
         text.catalog.dismiss_runner_labels !=
             std::array<std::string, kDismissRunnerLabelCount>{
                 "   Dismiss", "    Who??", "    Abort"} ||

@@ -105,6 +105,10 @@ write_field_service_routes(
     const std::vector<std::uint8_t>& rom,
     const std::filesystem::path& root,
     const shadowrun::native::NativePortAssets& assets) {
+    constexpr std::array<std::string_view, 13> kMagicSpellIds{{
+        "flame_dart", "flame_bolt", "hellblast", "invisibility", "sleep",
+        "stink", "super_barrier", "mana_zap", "mana_blast", "mana_storm",
+        "rockskin", "heal_wounds", "confusion"}};
     const auto path = root / "menu" / "field" / "service-routes.tsv";
     std::filesystem::create_directories(path.parent_path());
     std::ofstream output(path, std::ios::binary | std::ios::trunc);
@@ -257,6 +261,11 @@ write_field_service_routes(
     emit("magic.defense.title", " Magical Defense");
     const auto magic_text =
         shadowrun::graphics::read_genesis_magic_menu_text(rom);
+    if (magic_text.spell_names.size() != kMagicSpellIds.size() ||
+        magic_text.spell_descriptions.size() != kMagicSpellIds.size()) {
+        throw std::runtime_error(
+            "Magic spell text count no longer matches its stable IDs");
+    }
     emit("magic.heading.force-posture", magic_text.set_force_and_posture);
     emit("magic.label.success", magic_text.success_label);
     emit("magic.label.force", magic_text.force_label);
@@ -275,9 +284,10 @@ write_field_service_routes(
          escape_newlines(magic_text.force_posture_labels));
     for (std::size_t index = 0; index < magic_text.spell_names.size();
          ++index) {
-        emit("magic.spell.name." + std::to_string(index),
+        const auto spell_id = std::string(kMagicSpellIds[index]);
+        emit("magic.spells.option." + spell_id,
              magic_text.spell_names[index]);
-        emit("magic.spell.description." + std::to_string(index),
+        emit("magic.spells.description." + spell_id,
              escape_newlines(magic_text.spell_descriptions[index]));
     }
     for (std::size_t index = 0; index < assets.intro.archetypes.size();
@@ -1541,6 +1551,7 @@ void write_asset_readme(const std::filesystem::path& root) {
               "`gameplay/scripts/clips.lua`, and "
               "`gameplay/scripts/startup.lua` provide cursor-menu choice IDs; "
               "`gameplay/scripts/ui.lua` provides shared confirmation choices. "
+              "`gameplay/scripts/magic.lua` provides ROM-ordered spell IDs. "
               "Separately traced cinematic resources belong under movies/<scene>; "
               "they must not be mixed into intro or field assets.\n\n"
            << "Audio is emitted here only as complete Windows-playable lossless "
