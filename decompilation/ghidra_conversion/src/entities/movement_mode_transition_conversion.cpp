@@ -102,7 +102,12 @@ advance_entity_movement_and_mode_transition(
                     EntityMovementModeTransitionResultKind::callback_unresolved;
                 return result;
             }
-            callbacks.begin_world_activity_if_idle(continuation);
+            if (!callbacks.begin_world_activity_if_idle(continuation)) {
+                result.continuation = continuation;
+                return release_record(
+                    EntityMovementModeTransitionResultKind::
+                        world_activity_already_running);
+            }
             return release_record(kind);
         };
 
@@ -130,7 +135,7 @@ advance_entity_movement_and_mode_transition(
         return result;
     }
     const auto& decision = *decision_result;
-    result.event_code = field_collision_event_value(decision.event_code);
+    result.event_code = decision.event_code;
     state.terrain_collision_code = decision.raw_collision_code;
     record.projected_field_code = decision.raw_collision_code;
     if (decision.rewrite_direction_probe) {

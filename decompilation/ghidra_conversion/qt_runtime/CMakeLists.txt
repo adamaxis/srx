@@ -1192,6 +1192,14 @@ foreach(SHADOWRUN_GHIDRA_ENTITY_TEST IN ITEMS entity_combat entity_transition)
              COMMAND shadowrun_ghidra_${SHADOWRUN_GHIDRA_ENTITY_TEST}_test)
 endforeach()
 
+add_executable(shadowrun_ghidra_movement_mode_transition_test
+    ../tests/entities/movement_mode_transition_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_movement_mode_transition_test
+    PRIVATE shadowrun_ghidra_conversion_modules)
+add_test(NAME shadowrun_ghidra_movement_mode_transition
+         COMMAND shadowrun_ghidra_movement_mode_transition_test)
+
 # Verify the source selector and maglock unlock events reach their extracted
 # assets, the FLAC decoder loads the resource, and a mapped event starts on the
 # host audio output. Unknown, silent, or lifecycle-unresolved commands stay

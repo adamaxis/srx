@@ -6490,8 +6490,9 @@ int run_field_scene26_maglock_descriptor_route_qa(
     }
 
     constexpr std::uint16_t kScene = 26U;
-    constexpr std::uint16_t kElevatorEvent = 0x1DU;
-    constexpr std::uint16_t kMaglockEvent = 2U;
+    constexpr auto kElevatorEvent = FieldCollisionEventCode::event_29;
+    constexpr std::uint8_t kMaglockSelection = 2U;
+    constexpr auto kMaglockEvent = FieldCollisionEventCode::event_2;
     constexpr std::uint16_t kMaglockCollision = 0x00A2U;
     constexpr std::uint16_t kSecondaryMaglockCollision = 0x0082U;
     const auto& metadata =
@@ -6808,7 +6809,8 @@ int run_field_scene26_maglock_descriptor_route_qa(
     const bool source_a2_prompt =
         field_scene.field_scene_reference_for_dump() == kScene &&
         field_scene.field_interaction_mode_for_dump() == 2U &&
-        field_scene.field_activity_selection_for_dump() == kMaglockEvent &&
+        field_scene.field_activity_selection_for_dump() ==
+            kMaglockSelection &&
         field_scene.field_interaction_open() && panel.source_complete &&
         panel.actor_kind == DialoguePanelActorKind::none &&
         panel.option_count == 1U && panel.text_segment_count != 0U &&
@@ -6828,7 +6830,9 @@ int run_field_scene26_maglock_descriptor_route_qa(
         !save("maglock-introduction") || !save("actual")) {
         std::cerr << "Scene-26 descriptor route QA: record 117 did not open "
                      "the generic electromagnetic-lock introduction "
-                     "(event=" << movement.event_code << ", selection="
+                     "(event=" << static_cast<unsigned>(
+                         field_collision_event_value(movement.event_code))
+                  << ", selection="
                   << static_cast<unsigned>(
                          field_scene.field_activity_selection_for_dump())
                   << ", probes=" << static_cast<unsigned>(
@@ -7094,7 +7098,8 @@ int run_field_scene26_maglock_descriptor_route_qa(
     const bool source_secondary_maglock_prompt =
         field_scene.field_scene_reference_for_dump() == kScene &&
         field_scene.field_interaction_mode_for_dump() == 2U &&
-        field_scene.field_activity_selection_for_dump() == kMaglockEvent &&
+        field_scene.field_activity_selection_for_dump() ==
+            kMaglockSelection &&
         field_scene.field_interaction_open() && secondary_panel.source_complete &&
         secondary_panel.actor_kind == DialoguePanelActorKind::none &&
         secondary_panel.option_count == 1U &&
@@ -7122,7 +7127,9 @@ int run_field_scene26_maglock_descriptor_route_qa(
         !save("actual")) {
         std::cerr << "Scene-26 descriptor route QA: record 110 did not open "
                      "the source generic maglock prompt (event="
-                  << secondary_movement.event_code << ", probes="
+                  << static_cast<unsigned>(field_collision_event_value(
+                         secondary_movement.event_code))
+                  << ", probes="
                   << static_cast<unsigned>(
                          secondary_movement.negative_probe_count)
                   << ", runner=" << secondary_position.x << ','
@@ -7400,7 +7407,7 @@ int run_field_scene26_maglock_descriptor_route_qa(
             DialoguePanelOptionRole::field_security_access &&
         terminal_panel.options[1U].role ==
             DialoguePanelOptionRole::field_walk_away &&
-        terminal_movement.event_code == 0x18U &&
+        terminal_movement.event_code == FieldCollisionEventCode::event_24 &&
         terminal_movement.negative_probe_count >= 2U &&
         terminal_movement.continuation ==
             MovementModeTransitionContinuation::building_security_terminal &&
@@ -7417,8 +7424,10 @@ int run_field_scene26_maglock_descriptor_route_qa(
         !capture("security-terminal-from-descriptor-spawn", "neutral") ||
         !save("actual")) {
         std::cerr << "Scene-26 descriptor route QA: normal map path did not "
-                     "reach the D8 event-0x18 Security Terminal (event="
-                  << terminal_movement.event_code << ", probes="
+                     "reach the D8 event-24 Security Terminal (event="
+                  << static_cast<unsigned>(field_collision_event_value(
+                         terminal_movement.event_code))
+                  << ", probes="
                   << static_cast<unsigned>(
                          terminal_movement.negative_probe_count)
                   << ", runner=" << route_position.x << ','
@@ -7676,7 +7685,7 @@ int run_field_security_terminal_physical_entry_qa(
         return 3;
     }
 
-    constexpr std::uint16_t kSecurityEvent = 0x18U;
+    constexpr auto kSecurityEvent = FieldCollisionEventCode::event_24;
     constexpr std::uint16_t kSecurityCollision = 0x00D8U;
     constexpr std::array<std::size_t, 2> kSecurityRecords{124U, 125U};
     const auto& metadata =
@@ -7839,7 +7848,7 @@ int run_field_security_terminal_physical_entry_qa(
     };
     const auto reached_terminal_event = [&] {
         return (field_scene.field_terrain_collision_code_for_dump() & 0x001FU) ==
-               kSecurityEvent;
+               field_collision_event_value(kSecurityEvent);
     };
 
     // Walk north into the 0xD8 collision using normal controller input. The ROM
@@ -10584,7 +10593,8 @@ int run_field_scene26_event1_physical_entry_qa(
     constexpr std::size_t kEntryRecord = 93U;
     constexpr std::uint32_t kEntryRecordAddress = 0x17314CU;
     constexpr std::uint8_t kEntryCollision = 0xC1U;
-    constexpr std::uint8_t kEntryEvent = 1U;
+    constexpr std::uint8_t kEntryEventIndex = 1U;
+    constexpr auto kEntryEventCode = FieldCollisionEventCode::event_1;
     constexpr std::uint8_t kDestinationScene = 0x1AU;
     const auto& entry_metadata =
         field_scene.state().field_scene_buffers.source_metadata;
@@ -10598,7 +10608,7 @@ int run_field_scene26_event1_physical_entry_qa(
         entry_records[kEntryRecord].bottom == 0x023FU &&
         entry_records[kEntryRecord].value == kEntryCollision &&
         entry_metadata.event_table_available &&
-        entry_metadata.event_mode_table[kEntryEvent] == kDestinationScene &&
+        entry_metadata.event_mode_table[kEntryEventIndex] == kDestinationScene &&
         field_scene.field_scene_reference_for_dump() == 2U &&
         initial_position.x == 0x3CE0U && initial_position.y == 0x2D00U;
     if (!source_entry_matches) {
@@ -10794,10 +10804,11 @@ int run_field_scene26_event1_physical_entry_qa(
             field_scene.last_field_movement_transition_for_dump();
         const bool entry_touched =
             (field_scene.field_terrain_collision_code_for_dump() & 0x001FU) ==
-                kEntryEvent ||
-            (transition.event_code == kEntryEvent &&
+                field_collision_event_value(kEntryEventCode) ||
+            (transition.event_code == kEntryEventCode &&
              transition.mode_event_code_published) ||
-            field_scene.field_mode_event_code_for_dump() == kEntryEvent;
+            field_scene.field_mode_event_code_for_dump() ==
+                field_collision_event_value(kEntryEventCode);
         if (north_ticks == 16U || north_ticks == 32U) {
             if (!save("north-doorway-" + std::to_string(north_ticks))) {
                 return 3;
@@ -10812,10 +10823,11 @@ int run_field_scene26_event1_physical_entry_qa(
     const auto& movement_transition =
         field_scene.last_field_movement_transition_for_dump();
     const bool published_event_one =
-        movement_transition.event_code == kEntryEvent &&
+        movement_transition.event_code == kEntryEventCode &&
         movement_transition.mode_event_code_published &&
         movement_transition.negative_probe_count >= 2U &&
-        field_scene.field_mode_event_code_for_dump() == kEntryEvent;
+        field_scene.field_mode_event_code_for_dump() ==
+            field_collision_event_value(kEntryEventCode);
     if (!published_event_one || !save("scene2-event1-contact")) {
         const auto position = world_position();
         std::cerr << "Scene-26 event-1 entry QA: normal Up did not publish "
@@ -11222,7 +11234,7 @@ int run_field_elevator_physical_entry_qa(
         return image;
     }();
     if (!field_scene.elevator_selector_open_for_dump() ||
-        movement_transition.event_code != 0x1DU ||
+        movement_transition.event_code != FieldCollisionEventCode::event_29 ||
         movement_transition.continuation !=
             MovementModeTransitionContinuation::event_29_world_activity ||
         movement_transition.kind !=
@@ -11623,6 +11635,15 @@ int run_field_elevator_group_route_qa(
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries,
     const std::optional<std::uint8_t> destination_floor_override) {
+    const auto activity_start_count = static_cast<std::size_t>(
+        std::count(source_boundaries.begin(), source_boundaries.end(),
+                   "field.world.activity.started"));
+    const auto collision_dispatch_count = static_cast<std::size_t>(
+        std::count(source_boundaries.begin(), source_boundaries.end(),
+                   "field.map_event.collision_dispatched"));
+    const auto selector_open_count = static_cast<std::size_t>(
+        std::count(source_boundaries.begin(), source_boundaries.end(),
+                   "field.elevator.selector.opened"));
     std::error_code output_error;
     std::filesystem::remove_all(output, output_error);
     if (output_error) {
@@ -11860,6 +11881,22 @@ int run_field_elevator_group_route_qa(
         return 3;
     }
 
+    std::uint8_t activity_cooldown_frames = 0U;
+    while (field_scene.world_activity_request_timeout_for_dump() != 0U &&
+           activity_cooldown_frames < 60U) {
+        input_label = "activity-cooldown";
+        field_scene.set_controller_nibble(0U);
+        if (!advance()) {
+            return 3;
+        }
+        ++activity_cooldown_frames;
+    }
+    if (field_scene.world_activity_request_timeout_for_dump() != 0U) {
+        std::cerr << "Elevator group route QA: previous world activity did "
+                     "not release after its 60 field frames\n";
+        return 3;
+    }
+
     std::uint16_t trigger_frames = 0U;
     while (trigger_frames < 120U &&
            !field_scene.elevator_selector_open_for_dump() &&
@@ -11897,7 +11934,7 @@ int run_field_elevator_group_route_qa(
     }();
     const auto selector_open = render();
     if (!field_scene.elevator_selector_open_for_dump() ||
-        movement.event_code != 0x1DU ||
+        movement.event_code != FieldCollisionEventCode::event_29 ||
         movement.continuation !=
             MovementModeTransitionContinuation::event_29_world_activity ||
         movement.kind !=
@@ -11917,9 +11954,45 @@ int run_field_elevator_group_route_qa(
                   << static_cast<unsigned>(expected.current_floor)
                   << " (frames=" << trigger_frames
                   << ", event=" << static_cast<unsigned>(movement.event_code)
+                  << ", field_event="
+                  << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ", entity_flags="
+                  << static_cast<unsigned>(
+                         field_scene.field_entity_behavior_flags_for_dump())
+                  << ", terrain_code="
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << ", transition_kind="
+                  << static_cast<unsigned>(movement.kind)
+                  << ", continuation="
+                  << static_cast<unsigned>(movement.continuation)
+                  << ", activity_starts="
+                  << (static_cast<std::size_t>(std::count(
+                          source_boundaries.begin(), source_boundaries.end(),
+                          "field.world.activity.started")) -
+                      activity_start_count)
+                  << ", collision_dispatches="
+                  << (static_cast<std::size_t>(std::count(
+                          source_boundaries.begin(), source_boundaries.end(),
+                          "field.map_event.collision_dispatched")) -
+                      collision_dispatch_count)
+                  << ", selector_open_events="
+                  << (static_cast<std::size_t>(std::count(
+                          source_boundaries.begin(), source_boundaries.end(),
+                          "field.elevator.selector.opened")) -
+                      selector_open_count)
                   << ", position="
                   << field_scene.field_entity_world_position().x << ','
                   << field_scene.field_entity_world_position().y
+                  << ", resource_countdown="
+                  << field_scene.world_frame_logic_for_dump()
+                         .resource_countdown
+                  << ", activity_timer="
+                  << static_cast<unsigned>(
+                         field_scene.world_activity_request_timeout_for_dump())
+                  << ", activity_countdown="
+                  << field_scene.world_frame_logic_for_dump()
+                         .activity_countdown
                   << ", selector_open="
                   << field_scene.elevator_selector_open_for_dump()
                   << ", current_floor="
@@ -12350,6 +12423,15 @@ int run_field_elevator_floor_group_roundtrip_qa(
     const std::filesystem::path& output,
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries) {
+    const auto activity_start_count = static_cast<std::size_t>(
+        std::count(source_boundaries.begin(), source_boundaries.end(),
+                   "field.world.activity.started"));
+    const auto collision_dispatch_count = static_cast<std::size_t>(
+        std::count(source_boundaries.begin(), source_boundaries.end(),
+                   "field.map_event.collision_dispatched"));
+    const auto selector_open_count = static_cast<std::size_t>(
+        std::count(source_boundaries.begin(), source_boundaries.end(),
+                   "field.elevator.selector.opened"));
     std::error_code output_error;
     std::filesystem::remove_all(output, output_error);
     if (output_error) {
@@ -12549,6 +12631,20 @@ int run_field_elevator_floor_group_roundtrip_qa(
                 return QImage{};
             }
         }
+        std::uint8_t activity_cooldown_frames = 0U;
+        while (field_scene.world_activity_request_timeout_for_dump() != 0U &&
+               activity_cooldown_frames < 60U) {
+            timeline_input = "activity-cooldown";
+            field_scene.set_controller_nibble(0U);
+            tick_frame();
+            ++activity_cooldown_frames;
+        }
+        if (field_scene.world_activity_request_timeout_for_dump() != 0U) {
+            std::cerr << "Elevator floor-group QA: previous world activity "
+                         "did not release after its 60 field frames\n";
+            return QImage{};
+        }
+
         const auto activity_before = static_cast<std::size_t>(std::count(
             source_boundaries.begin(), source_boundaries.end(),
             "field.world.activity.started"));
@@ -12572,7 +12668,7 @@ int run_field_elevator_floor_group_roundtrip_qa(
             source_boundaries.begin(), source_boundaries.end(),
             "field.world.activity.started"));
         if (!field_scene.elevator_selector_open_for_dump() ||
-            transition.event_code != 0x1DU ||
+        transition.event_code != FieldCollisionEventCode::event_29 ||
             transition.continuation !=
                 MovementModeTransitionContinuation::event_29_world_activity ||
             transition.kind !=
@@ -12581,6 +12677,26 @@ int run_field_elevator_floor_group_roundtrip_qa(
             field_scene.elevator_selector_current_floor_for_dump() != floor ||
             field_scene.elevator_selector_selected_floor_for_dump() != floor ||
             activity_after <= activity_before || !no_modal_screen()) {
+        const auto& last_dispatch =
+            field_scene.field_map_event_system_for_dump()
+                .last_collision_dispatch();
+        if (last_dispatch.has_value()) {
+            std::cerr << "Elevator approach last collision: scene="
+                      << last_dispatch->input.scene_id
+                      << " event="
+                      << static_cast<unsigned>(field_collision_event_value(
+                             last_dispatch->decision.source_event_code))
+                      << " selected_event="
+                      << static_cast<unsigned>(field_collision_event_value(
+                             last_dispatch->decision.event_code))
+                      << " raw_collision="
+                      << last_dispatch->input.raw_collision_code
+                      << " candidate=" << last_dispatch->input.world_x << ','
+                      << last_dispatch->input.world_y
+                      << " action=" << static_cast<unsigned>(
+                             last_dispatch->decision.action)
+                      << '\n';
+        }
             return QImage{};
         }
         const auto selector = save(label + "-selector-open");
@@ -12765,6 +12881,11 @@ int run_field_elevator_floor_group_roundtrip_qa(
             route.source_scene, route.first_collision_record,
             route.current_floor, route.label, stable_field);
         if (selector.isNull()) {
+            const auto& movement =
+                field_scene.last_field_movement_transition_for_dump();
+            const auto& last_dispatch =
+                field_scene.field_map_event_system_for_dump()
+                    .last_collision_dispatch();
             std::cerr << "Elevator floor-group QA: scene "
                       << route.source_scene
                       << " collision did not open its current floor selector"
@@ -12779,10 +12900,65 @@ int run_field_elevator_floor_group_roundtrip_qa(
                       << ", event="
                       << static_cast<unsigned>(field_scene
                                                    .field_mode_event_code_for_dump())
+                      << ", entity_flags="
+                      << static_cast<unsigned>(
+                             field_scene.field_entity_behavior_flags_for_dump())
+                      << ", terrain_code="
+                      << field_scene.field_terrain_collision_code_for_dump()
+                      << ", transition_kind="
+                      << static_cast<unsigned>(movement.kind)
+                      << ", continuation="
+                      << static_cast<unsigned>(movement.continuation)
+                      << ", activity_starts="
+                      << (static_cast<std::size_t>(std::count(
+                              source_boundaries.begin(),
+                              source_boundaries.end(),
+                              "field.world.activity.started")) -
+                          activity_start_count)
+                      << ", collision_dispatches="
+                      << (static_cast<std::size_t>(std::count(
+                              source_boundaries.begin(),
+                              source_boundaries.end(),
+                              "field.map_event.collision_dispatched")) -
+                          collision_dispatch_count)
+                      << ", selector_open_events="
+                      << (static_cast<std::size_t>(std::count(
+                              source_boundaries.begin(),
+                              source_boundaries.end(),
+                              "field.elevator.selector.opened")) -
+                          selector_open_count)
                       << ", position="
                       << field_scene.field_entity_world_position().x << ','
                       << field_scene.field_entity_world_position().y
+                      << ", resource_countdown="
+                      << field_scene.world_frame_logic_for_dump()
+                             .resource_countdown
+                      << ", activity_timer="
+                      << static_cast<unsigned>(
+                             field_scene
+                                 .world_activity_request_timeout_for_dump())
+                      << ", activity_countdown="
+                      << field_scene.world_frame_logic_for_dump()
+                             .activity_countdown
                       << ", failure=" << field_scene.failure() << ")\n";
+            if (last_dispatch.has_value()) {
+                std::cerr << "Elevator approach last collision: scene="
+                          << last_dispatch->input.scene_id
+                          << " event="
+                          << static_cast<unsigned>(field_collision_event_value(
+                                 last_dispatch->decision.source_event_code))
+                          << " selected_event="
+                          << static_cast<unsigned>(field_collision_event_value(
+                                 last_dispatch->decision.event_code))
+                          << " raw_collision="
+                          << last_dispatch->input.raw_collision_code
+                          << " candidate="
+                          << last_dispatch->input.world_x << ','
+                          << last_dispatch->input.world_y
+                          << " action=" << static_cast<unsigned>(
+                                 last_dispatch->decision.action)
+                          << '\n';
+            }
             return 3;
         }
         const auto destination = transition_down_one_floor(

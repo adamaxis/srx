@@ -3,12 +3,13 @@
 Date: 2026-10-08
 
 **Status:** partial. `field_events.lua` selects a named action for every
-accepted collision; `building.lua` selects direct scene-2 location routes and
-ROM event-table destinations. The embedded Lua package also defines the New
-Game scene-entry action and Stoker story/menu branches. C++ validates those
-script results and applies the typed engine operations. Floor-selector
-destination groups and downstream activity results remain native and are not
-yet fully covered by a Lua route.
+accepted collision; `building.lua` selects direct scene-2 location routes,
+ROM event-table destinations, elevator entry groups, and selected floor
+destinations. The embedded Lua package also defines the New Game scene-entry
+action and Stoker story/menu branches. C++ validates those script results and
+applies the typed engine operations. Selector timing, animations, transitions,
+and downstream activity results remain native. Some ROM rows still have no
+identified destination or reverse route.
 
 ## ROM-derived route model
 
@@ -28,7 +29,7 @@ records.
 | Scene 2, paired collision values `0xC0` at ROM `0x173124` and `0x17312E`, event 0 | `building.lua` reads the active map's ROM event table | Row 0 in `0x172CDC` selects numeric scene `0x14` (scene 20); the identifier does not supply a place-name |
 | Scene 20, record 110 at `0x1D96DE`, raw `0x00C0`, event 0 | Scene-`0x14` generic interaction | Its profile has no event table; `0x1651E` returns on event 0, so no destination or reverse transition is established. `building.lua` returns `no_route`; this rectangle is not labeled an exit. |
 | Scene 2, collision value `0xC1` at ROM `0x17314C`, event 1 | `building.lua` reads the ROM event table and passes the target to the world-activity service | Row 1 in `0x172CDC` selects numeric scene `0x1A` (scene 26); its resource bundle has bound 3 |
-| Scene 26-29 family, paired `0xDD` collision rectangles, event 29 | Floor selector and selected-scene transition | `0x58D94` calls `0x58DE0`; the typed child scene group contains scenes 26, 27, and 28. Physical QA covers scenes 26-29; destination identity remains open. This is separate from the Stoker scene-2 event-2 dialogue route |
+| Scene 26-29 family, paired `0xDD` collision rectangles, event 29 | `building.lua` resolves the source child group and selected destination; native code presents the selector and transition | `0x58D94` calls `0x58DE0`; the typed child scene group contains scenes 26, 27, and 28. Debug/Release physical QA covers scene 26->28 and the later scene-28 trigger after the source activity timeout expires. This is separate from the Stoker scene-2 event-2 dialogue route; map identity remains open |
 | Scene 20, collision value `0x82` at ROM `0x1D9724`, event 2 | Building interaction continuation | The electromagnetic-lock handler `0x20E48` opens its generic prompt. Physical QA covers quality-2 passkey success, quality-1 insufficiency, Samurai no-skill result, Decker no-kit partial result, and Decker kit-assisted success. The no-kit roll reduces selection 2->1 without sound/map change; physical recontact reloads selection 2 through `0xB994`. A QA-seeded item `0x15` plus source-seeded three-roll success then requests `0x4B`; `0x2BD2` changes map index 483 from `0x82` to `0x81` only after the result is acknowledged. No-skill/partial/insufficient branches preserve the map and add no action sound. Kit acquisition and other passkey qualities remain open. Seed 0 now follows the ordinary scene-20 zero-roll branch: the alert page is static for 30 frames, selection/inventory/map stay unchanged, and ROM 0x1E04A schedules timeout marker -1 for 0x78 frames without a scene-20 sound request. A field frame hands world_active=0xFFFF to the 0x1DE00 entity-target selector; its downstream actor/effect boundary remains unresolved. Exact independent maglock visuals remain open. |
 | Scene 26, collision record 117 (`0xA2`) at ROM `0x1D9E00`, world-mode-2 event 2 | Generic electromagnetic-lock continuation and passkey action | `0xB7B8` reaches `0x20E48`; descriptor-route CTest seeds active runner item `0x14`/quality 2, verifies sound `0x4B`, and checks sampled map index 712 changes `0xA2` to `0xA1` before ordinary Right input crosses the passage. Traversal clears that marker from the active collision buffer |
 | Scene 26, collision record 110 (`0x82`) at ROM `0x1D9DBA`, event 2; then `0xD8` records 124/125 at `0x1D9E46`, event `0x18` | Shared maglock continuation followed by typed Security Terminal continuation | The same live passkey changes sampled map index 525 from `0x82` to `0x81`; ordinary input follows the collision grid around the `0x7E` wall into the D8 lane. `0xB7B8` requires two negative samples and selects `0x20EC2`; the descriptor-spawn route opens the Electronics/Walk Away prompt. A separate checkpoint QA remains as focused coverage |
@@ -59,10 +60,11 @@ routes or reads the destination byte from the active ROM event table. C++ loads
 that typed numeric destination and performs the scene transition. The
 completed-intro scene-entry event remains in the same script package's
 stateful rule registry, scoped to the ROM-derived scene-2 spawn and limited to
-once per session. Native C++ still performs movement and scene changes. The
-floor-selector destination groups and downstream activity results remain
-native. Scene-20 record 110 C0 still has no event-table row or proven reverse
-destination, as documented in the ROM-wide profile.
+once per session. Native C++ still performs movement and scene changes. Lua
+resolves event-29 child groups and selected destination IDs; native C++ owns
+the selector's timing, lift animation, fades, and map loading. Scene-20 record
+110 C0 still has no event-table row or proven reverse destination, as
+documented in the ROM-wide profile.
 
 The ROM-derived scene profiles and extracted collision records show four
 additional numeric event-29 groups: triggers in scenes 21-25 target the
@@ -85,6 +87,14 @@ mode setter and do not verify the ordinary resource-scene entry path. The
 resource setup at `0x167AE` clears current-floor `FFF0C8` for scene IDs
 `0x15..0x2B`, supporting index 0 on normal entry; saved-floor restoration
 remains open.
+
+In the chained 26->28 and 40->36 routes, ROM `0x1E2E0` starts a 60-field-frame
+world-activity timeout. Selector and fade processing do not consume those
+field updates. The QA now waits for the remaining timeout before using ordinary
+input to enter the destination trigger. The typed movement transition also
+reports `world_activity_already_running` when the native activity coordinator
+refuses to begin another activity; it does not report that a new selector
+opened.
 
 The Lua route policy is `building.lua:resolve_field_location_route()`. It
 selects the Stoker dialogue and Ares service directly, then resolves other

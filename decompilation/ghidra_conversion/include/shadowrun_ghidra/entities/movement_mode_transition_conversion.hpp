@@ -100,6 +100,7 @@ enum class EntityMovementModeTransitionResultKind {
     released_without_behavior,
     released_by_scene_gate,
     released_by_probe_count,
+    world_activity_already_running,
     world_activity_started,
     projected_terrain_marked,
     terrain_cell_not_marked,
@@ -117,7 +118,7 @@ struct EntityMovementModeTransitionResult {
     MovementModeTransitionContinuation continuation =
         MovementModeTransitionContinuation::none;
     std::uint8_t negative_probe_count = 0;
-    std::uint8_t event_code = 0;
+    FieldCollisionEventCode event_code = FieldCollisionEventCode::event_0;
     bool mode_event_code_published = false;
     bool record_released = false;
 };

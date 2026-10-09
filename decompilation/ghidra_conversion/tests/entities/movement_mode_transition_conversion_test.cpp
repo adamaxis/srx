@@ -1,3 +1,8 @@
+// This test uses assert as its check mechanism; keep it active in Release too.
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
 #include "shadowrun_ghidra/entities/movement_mode_transition_conversion.hpp"
 
 #include <cassert>
@@ -191,6 +196,33 @@ int main() {
     }
 
     {
+        auto record = make_record();
+        auto state = make_state(0x001DU);
+        callbacks.dispatch_field_map_event = [](
+            const FieldMapCollisionEventInput& input)
+            -> std::optional<FieldMapEventPolicyDecision> {
+            return make_script_decision(
+                input, FieldMapEventAction::begin_event_29_activity,
+                FieldCollisionEventCode::event_29);
+        };
+        callbacks.begin_world_activity_if_idle =
+            [](const MovementModeTransitionContinuation) { return false; };
+        const auto result = advance_entity_movement_and_mode_transition(
+            record, 0x200U, 0x400U, state, callbacks);
+        assert(result.kind == EntityMovementModeTransitionResultKind::
+                                  world_activity_already_running &&
+               result.continuation ==
+                   MovementModeTransitionContinuation::event_29_world_activity &&
+               result.event_code == FieldCollisionEventCode::event_29 &&
+               result.record_released && (record.route_flags & 0x21U) == 1U);
+        callbacks.begin_world_activity_if_idle =
+            [&](const MovementModeTransitionContinuation continuation) {
+                last_continuation = continuation;
+                return true;
+            };
+    }
+
+    {
         quantized_value = 0x001AU;
         auto record = make_record();
         auto state = make_state(0x001AU);
@@ -244,7 +276,7 @@ int main() {
                        field_dialogue_started &&
                state.activity_selection == 2U &&
                state.activity_source_word == 0xCAFEU &&
-               result.event_code == 2U &&
+               result.event_code == FieldCollisionEventCode::event_2 &&
                record.projected_field_code == 0xFFC2U &&
                result.continuation ==
                    MovementModeTransitionContinuation::maglock_door_interaction);
@@ -306,7 +338,8 @@ int main() {
             record, 0x200U, 0x400U, state, callbacks);
         assert(result.kind == EntityMovementModeTransitionResultKind::
                                   projected_field_code_updated &&
-               result.event_code == 8U && state.mode_event_code == 8U &&
+               result.event_code == FieldCollisionEventCode::event_8 &&
+               state.mode_event_code == 8U &&
                result.mode_event_code_published &&
                record.projected_field_code == 0xA8U &&
                !result.record_released && (record.route_flags & 0x20U) != 0U);
@@ -339,6 +372,12 @@ int main() {
         quantized_value = 0;
         auto record = make_record();
         auto state = make_state();
+        callbacks.dispatch_field_map_event = [](
+            const FieldMapCollisionEventInput& input)
+            -> std::optional<FieldMapEventPolicyDecision> {
+            return make_script_decision(
+                input, FieldMapEventAction::project_world_interaction);
+        };
         callbacks.project_entity_world_interaction = [] { return true; };
         const auto result = advance_entity_movement_and_mode_transition(
             record, 0x200U, 0x400U, state, callbacks);

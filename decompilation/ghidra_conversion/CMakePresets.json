@@ -90,7 +90,8 @@
       "displayName": "Build Ghidra Conversion Qt (Debug)",
       "configurePreset": "ghidra-conversion-qt-debug",
       "targets": [
-        "shadowrun_ghidra_conversion_qt"
+        "shadowrun_ghidra_conversion_qt",
+        "shadowrun_ghidra_movement_mode_transition_test"
       ]
     },
     {
@@ -98,7 +99,8 @@
       "displayName": "Build Ghidra Conversion Qt (Release)",
       "configurePreset": "ghidra-conversion-qt-release",
       "targets": [
-        "shadowrun_ghidra_conversion_qt"
+        "shadowrun_ghidra_conversion_qt",
+        "shadowrun_ghidra_movement_mode_transition_test"
       ]
     },
     {
