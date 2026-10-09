@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shadowrun_ghidra/world/world_activity_mode.hpp"
+
 #include <array>
 #include <cstdint>
 #include <optional>
@@ -112,9 +114,10 @@ struct FieldScriptRoute {
     FieldScriptId script = FieldScriptId::none;
     std::uint8_t event_code = 0;
     // This is the selected byte from the area's event table. It may identify
-    // a field map, resource activity, or another source activity; the caller
-    // resolves its meaning through the native world-activity policy.
+    // a field map, resource activity, or another source activity. Lua also
+    // returns the typed branch selected from the ROM's destination ranges.
     std::optional<std::uint8_t> area_event_target;
+    std::optional<WorldActivityMode> area_event_destination_mode;
 };
 
 } // namespace shadowrun::ghidra_conversion

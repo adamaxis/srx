@@ -2360,6 +2360,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             }
 
             std::optional<std::uint16_t> selected_scene;
+            std::optional<WorldActivityMode> routed_destination_mode;
             if (active_field_script_route_.has_value() &&
                 active_field_script_route_->kind ==
                     FieldScriptRouteKind::area_event &&
@@ -2368,6 +2369,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 active_field_script_route_->area_event_target.has_value()) {
                 selected_scene = static_cast<std::uint16_t>(
                     *active_field_script_route_->area_event_target);
+                routed_destination_mode =
+                    active_field_script_route_->area_event_destination_mode;
             }
             active_field_script_route_.reset();
             if (!selected_scene.has_value()) {
@@ -2379,6 +2382,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
 
             WorldActivityRoutineInput input{};
             input.initial_scene_id = *selected_scene;
+            input.routed_destination_mode = routed_destination_mode;
             input.scene_variant = runtime.field_mode;
             input.timeout_override = runtime.scene_runtime_state;
             input.world_flags = field_exit_world_flags_;

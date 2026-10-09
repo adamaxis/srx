@@ -1,6 +1,7 @@
 #pragma once
 
 #include "shadowrun_ghidra/field/scene_profile_conversion.hpp"
+#include "shadowrun_ghidra/world/world_activity_mode.hpp"
 
 #include <array>
 #include <cstdint>
@@ -9,13 +10,6 @@
 #include <vector>
 
 namespace shadowrun::ghidra_conversion {
-
-enum class WorldActivityMode {
-    field = 1,
-    resource_activity = 2,
-    scripted_activity = 3,
-    halted = 4,
-};
 
 enum class WorldActivityResult {
     field_ready,
@@ -39,6 +33,10 @@ struct WorldActivityResourceOverrides {
 
 struct WorldActivityRoutineInput {
     std::uint16_t initial_scene_id = 0;
+    // A Lua location route may provide the typed branch selected from the
+    // ROM event-table value. Source-internal transitions leave this empty and
+    // use the ROM-derived scene-range classifier below.
+    std::optional<WorldActivityMode> routed_destination_mode;
     std::uint8_t scene_variant = 0;
     std::uint8_t timeout_override = 0;
     bool descriptors_pending = false;

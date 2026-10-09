@@ -133,10 +133,13 @@ After the ROM field-exit path begins, `building.lua` owns location route
 selection. The native host passes the current scene/mode/event enum and the
 extracted 32-byte event table as read-only facts. Lua applies the Stoker and
 Ares scene-2 overrides or selects the byte at the active event index. The
-typed result carries that numeric scene/activity target to the native world
-activity executor. This keeps the destination choice in Lua while preserving
-the ROM table as source data and the C++ scene loader as the host service.
-Invalid or absent table routes remain explicit `no_route` results.
+typed result carries both the numeric scene/activity target and a named
+`WorldActivityMode` selected from the ROM `0x167AE` ranges: field scene,
+resource activity, scripted activity, or halted. The world-activity executor
+uses Lua's mode for a routed location; source-internal timeout and descriptor
+overrides still select their traced mode. The ROM event table remains named
+host data and C++ remains the scene/activity executor. Invalid or absent
+table routes remain explicit `no_route` results.
 
 The scene-entry registry consumes Lua-authored rules from `field_events.lua`.
 Each rule names a scene, optional inclusive coordinate scope, required typed

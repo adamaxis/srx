@@ -45,6 +45,8 @@ int main() {
 
     WorldActivityRoutineInput resource_input{};
     resource_input.initial_scene_id = 0x20U;
+    resource_input.routed_destination_mode =
+        WorldActivityMode::resource_activity;
     resource_input.default_resource_word = 0x1234U;
     resource_input.resource_random_index_bound = 6U;
     resource_input.resource_cursor_source = {-2, 0x4567U};
@@ -191,6 +193,8 @@ int main() {
 
     WorldActivityRoutineInput timeout_input{};
     timeout_input.initial_scene_id = 0x10U;
+    timeout_input.routed_destination_mode =
+        WorldActivityMode::scripted_activity;
     timeout_input.timeout_override = 1U;
     timeout_input.descriptors_pending = true;
     WorldActivityRoutineState timeout_state{};
@@ -201,7 +205,8 @@ int main() {
         {[&] { ++timeouts; }, [&] { ++published; }, {}, {}, {}});
     if (!expect(timeout_result == WorldActivityResult::blocked_by_scene_gate &&
                 timeout_state.scene_id == 0x0FU && timeouts == 1 &&
-                published == 1 && timeout_state.descriptors_published)) {
+                published == 1 && timeout_state.descriptors_published &&
+                timeout_state.mode == WorldActivityMode::field)) {
         return 5;
     }
 

@@ -76,6 +76,32 @@ int main() {
     const auto missing_table_route =
         scripts.resolve_field_location_route(other_map_location);
 
+    const auto route_has_destination_mode =
+        [&scripts, &other_map_location](
+            const std::uint8_t target,
+            const WorldActivityMode expected_mode) {
+            other_map_location.event_table_available = true;
+            other_map_location.event_table[2U] = target;
+            const auto route =
+                scripts.resolve_field_location_route(other_map_location);
+            return route.has_value() &&
+                   route->kind == FieldScriptRouteKind::area_event &&
+                   route->area_event_target == target &&
+                   route->area_event_destination_mode == expected_mode;
+        };
+    const bool destination_ranges_match =
+        route_has_destination_mode(20U, WorldActivityMode::field) &&
+        route_has_destination_mode(21U,
+                                   WorldActivityMode::resource_activity) &&
+        route_has_destination_mode(43U,
+                                   WorldActivityMode::resource_activity) &&
+        route_has_destination_mode(44U,
+                                   WorldActivityMode::scripted_activity) &&
+        route_has_destination_mode(55U,
+                                   WorldActivityMode::scripted_activity) &&
+        route_has_destination_mode(56U, WorldActivityMode::halted) &&
+        route_has_destination_mode(255U, WorldActivityMode::halted);
+
     if (!expect(
             stoker_route.has_value() &&
                 stoker_route->kind == FieldScriptRouteKind::dialogue &&
@@ -88,9 +114,13 @@ int main() {
                 scene20_route.has_value() &&
                 scene20_route->kind == FieldScriptRouteKind::area_event &&
                 scene20_route->area_event_target == 20U &&
+                scene20_route->area_event_destination_mode ==
+                    WorldActivityMode::field &&
                 scene26_route.has_value() &&
                 scene26_route->kind == FieldScriptRouteKind::area_event &&
                 scene26_route->area_event_target == 26U &&
+                scene26_route->area_event_destination_mode ==
+                    WorldActivityMode::resource_activity &&
                 missing_event_route.has_value() &&
                 missing_event_route->kind == FieldScriptRouteKind::no_route &&
                 missing_event_route->event_code == 255U &&
@@ -100,9 +130,12 @@ int main() {
                 other_map_route.has_value() &&
                 other_map_route->kind == FieldScriptRouteKind::area_event &&
                 other_map_route->area_event_target == 13U &&
+                other_map_route->area_event_destination_mode ==
+                    WorldActivityMode::field &&
                 missing_table_route.has_value() &&
-                missing_table_route->kind == FieldScriptRouteKind::no_route,
-            "Lua did not resolve ROM-backed field location routes")) {
+                missing_table_route->kind == FieldScriptRouteKind::no_route &&
+                destination_ranges_match,
+            "Lua did not resolve ROM-backed field location routes and destination modes")) {
         std::cerr << scripts.failure() << '\n';
         return 2;
     }

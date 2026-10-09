@@ -1315,9 +1315,34 @@ GameScriptRuntime::resolve_field_location_route(
         lua_pop(state, 1);
     }
 
+    std::optional<WorldActivityMode> destination_mode;
+    lua_getfield(state, result_index, "area_event_destination_mode");
+    if (!lua_isnil(state, -1)) {
+        std::string mode_name;
+        const bool valid = read_string(state, -1, mode_name);
+        lua_pop(state, 1);
+        if (!valid) {
+            return fail("building.lua route has an invalid destination mode");
+        }
+        if (mode_name == "field") {
+            destination_mode = WorldActivityMode::field;
+        } else if (mode_name == "resource_activity") {
+            destination_mode = WorldActivityMode::resource_activity;
+        } else if (mode_name == "scripted_activity") {
+            destination_mode = WorldActivityMode::scripted_activity;
+        } else if (mode_name == "halted") {
+            destination_mode = WorldActivityMode::halted;
+        } else {
+            return fail("building.lua route returned an unknown destination mode");
+        }
+    } else {
+        lua_pop(state, 1);
+    }
+
     FieldScriptRoute route{};
     route.event_code = field_collision_event_value(event_code);
     route.area_event_target = target_scene;
+    route.area_event_destination_mode = destination_mode;
     const bool no_target = !target_scene.has_value();
     if (kind_name == "no_route" && script_name == "none" && no_target) {
         route.kind = FieldScriptRouteKind::no_route;
@@ -1331,7 +1356,8 @@ GameScriptRuntime::resolve_field_location_route(
         route.kind = FieldScriptRouteKind::field_service;
         route.script = FieldScriptId::ares_weapon_emporium;
     } else if (kind_name == "area_event" &&
-               script_name == "area_event_table" && target_scene) {
+               script_name == "area_event_table" && target_scene &&
+               destination_mode.has_value()) {
         route.kind = FieldScriptRouteKind::area_event;
         route.script = FieldScriptId::area_event_table;
     } else {

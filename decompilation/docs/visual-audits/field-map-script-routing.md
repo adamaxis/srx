@@ -4,11 +4,12 @@ Date: 2026-10-08
 
 **Status:** partial. `field_events.lua` selects a named action for every
 accepted collision; `building.lua` selects direct scene-2 location routes,
-ROM event-table destinations, elevator entry groups, and selected floor
-destinations. The embedded Lua package also defines the New Game scene-entry
-action and Stoker story/menu branches. C++ validates those script results and
-applies the typed engine operations. Selector timing, animations, transitions,
-and downstream activity results remain native. Some ROM rows still have no
+ROM event-table destinations and their typed field/resource/scripted/halted
+destination mode, elevator entry groups, and selected floor destinations.
+The embedded Lua package also defines the New Game scene-entry action and
+Stoker story/menu branches. C++ validates those script results and applies the
+typed engine operations. Selector timing, animations, transitions, and
+downstream activity results remain native. Some ROM rows still have no
 identified destination or reverse route.
 
 ## ROM-derived route model
@@ -56,8 +57,13 @@ state facts. `GameScriptRuntime` rejects unknown actions, enum names, and
 malformed values. `FieldMapEventSystem` records the input and validated Lua
 decision; the movement controller executes the selected continuation. After
 field-exit orchestration begins, `building.lua` selects the direct Stoker/Ares
-routes or reads the destination byte from the active ROM event table. C++ loads
-that typed numeric destination and performs the scene transition. The
+routes or reads the destination byte from the active ROM event table. Lua also
+classifies that destination into a named `WorldActivityMode` using the ROM's
+`0x167AE` boundaries: field scenes 0-20, resource activities 21-43, scripted
+activities 44-55, and halted for 56-255. The Qt executor consumes that enum;
+it no longer infers the destination class from a raw byte on this route.
+Source-internal timeout and descriptor overrides still use their own typed
+branches. C++ loads the selected destination and performs the scene transition. The
 completed-intro scene-entry event remains in the same script package's
 stateful rule registry, scoped to the ROM-derived scene-2 spawn and limited to
 once per session. Native C++ still performs movement and scene changes. Lua

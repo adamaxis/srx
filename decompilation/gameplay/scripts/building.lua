@@ -18,6 +18,30 @@ local route_script = {
     map_event_table = "area_event_table",
 }
 
+local destination_mode = {
+    field = "field",
+    resource_activity = "resource_activity",
+    scripted_activity = "scripted_activity",
+    halted = "halted",
+}
+
+local destination_range = {
+    last_field_scene = 20,
+    last_resource_activity = 43,
+    last_scripted_activity = 55,
+}
+
+local function classify_area_event_destination(scene_id)
+    if scene_id <= destination_range.last_field_scene then
+        return destination_mode.field
+    elseif scene_id <= destination_range.last_resource_activity then
+        return destination_mode.resource_activity
+    elseif scene_id <= destination_range.last_scripted_activity then
+        return destination_mode.scripted_activity
+    end
+    return destination_mode.halted
+end
+
 local function no_route(event_code)
     return {
         kind = route_kind.no_route,
@@ -74,6 +98,8 @@ function Building.resolve_field_location_route(context)
         script = route_script.map_event_table,
         event_code = context.event_code,
         area_event_target = target_scene,
+        area_event_destination_mode =
+            classify_area_event_destination(target_scene),
     }
 end
 
