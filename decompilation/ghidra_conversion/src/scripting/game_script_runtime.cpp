@@ -760,6 +760,8 @@ struct GameScriptRuntime::Impl {
         modules_reference = luaL_ref(state, LUA_REGISTRYINDEX);
 
         lua_newtable(state);
+        lua_newtable(state); // game.actors registry; Lua owns actor behavior state
+        lua_setfield(state, -2, "actors");
         lua_newtable(state); // game.state proxy
         lua_newtable(state); // game.state metatable
         lua_pushlightuserdata(state, this);

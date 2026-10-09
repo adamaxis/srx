@@ -305,7 +305,10 @@ rather than a second Lua copy.
 - `gameplay/scripts/actor_ai.lua` resolves Lua AI packages from a stable
   source-template profile ID plus the ROM's item/spell/none action class and
   code. Every active profile actor has a stable instance ID and receives one
-  Lua heartbeat on each field behavior-service pass. Lua owns its entry delay,
+  Lua heartbeat on each field behavior-service pass. Per-actor mutable state is
+  stored in the shared `game.actors[actor_id]` registry, so other gameplay
+  scripts can inspect or coordinate actor state without copying it through
+  callback arguments. Lua owns its entry delay,
   transition completion timer, direction, animation frame, and cadence; the
   Qt renderer consumes the returned snapshot without advancing a second clock.
   In the traced lists,

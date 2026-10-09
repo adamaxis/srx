@@ -44,6 +44,20 @@ This is not an independent AI callback at an arbitrary render frequency.
 It is a source-ordered service pass with per-record flags, timers,
 continuations, and shared candidate/global gates.
 
+The record initializer at `0x44BC` is essential context for those gates. Its
+ROM instructions copy the common record template, write `0x05` to record
+`+0x10`, copy the entity kind separately to `+0x0E`, and initialize `+0xB6`
+from the source PRNG low nibble (`0..15`; world activity mode `0x37` instead
+uses `0x28`). Thus `+0x10` is a service/active flag byte, not the actor kind.
+The initializer later applies ordered template overrides, so behavior should
+read the resulting record facts rather than derive flags from a package name.
+The current Lua profile slice receives kind/action identity, initial delay,
+and heading; it does not yet receive the remaining `+0x10`, `+0x11`,
+`+0x4C`, `+0x9E`, or route fields needed for the general branch tree.
+The corresponding Lua-owned per-instance state lives at
+`game.actors[actor_id]`; it is shared script state rather than a transient
+heartbeat result or a C++ behavior-state object.
+
 ## AI cadence, targeting, action data, and movement
 
 `0x138B8` and `0x13904` decrement the actor's word timer at `+0xB6`. When it

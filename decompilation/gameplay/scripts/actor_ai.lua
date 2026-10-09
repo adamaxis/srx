@@ -2,7 +2,7 @@
 -- heartbeat for each active actor on each field behavior-service pass, then
 -- renders the returned animation snapshot without advancing it a second time.
 local ActorAI = {}
-local states = {}
+local states = game.actors
 
 local profiles = {
     ["corp_guard_k05_item06"] = {
