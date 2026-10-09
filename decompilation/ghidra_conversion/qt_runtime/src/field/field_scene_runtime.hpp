@@ -696,6 +696,9 @@ public:
     std::uint16_t field_entity_heading_for_dump() const noexcept {
         return field_movement_state_.heading;
     }
+    std::uint16_t field_entity_animation_heading_for_dump() const noexcept {
+        return field_movement_state_.animation_heading;
+    }
     std::uint16_t field_entity_target_heading_for_dump() const noexcept {
         return field_target_heading_;
     }

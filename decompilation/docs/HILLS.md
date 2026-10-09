@@ -6,6 +6,15 @@ composites do not count. Apply the question-by-question evidence process in
 [`visual-verification-checklist.md`](visual-verification-checklist.md) to each
 screen change.
 
+The motel-street collision report is now covered by a dedicated Scene-2 route
+from the New Game spawn. It targets the ROM-recorded Stoker frontage, keeps
+the C2 doorway event out of the collision check, and logs held wall contact,
+diagonal escape, and retreat. The connected Qt renderer now consumes the
+ROM-derived fallback heading at `+0x36`. The Walk / collide hill remains
+partial; this runtime QA is not independent Genesis fidelity proof and does
+not close the user's stuck-obstacle defect by itself. See
+[`visual-audits/field-movement-animation.md`](visual-audits/field-movement-animation.md).
+
 The user-reported intro, field, HUD, menu, inventory, and sound defects are
 tracked as independent goals in
 [`visual-defect-goals.md`](visual-defect-goals.md). Reported status and

@@ -4708,6 +4708,10 @@ void FieldSceneRuntime::advance_field_movement() {
         field_movement_state_.heading, field_target_heading_};
     approach_entity_fixed_point_target(heading);
     field_movement_state_.heading = heading.current;
+    // The ordinary step presents the slewed +0x2E heading. ROM 0xBADE may
+    // replace +0x36 with the direction of its committed diagonal fallback;
+    // keep that source-facing value separate and let the fallback update it.
+    field_movement_state_.animation_heading = field_movement_state_.heading;
 
     MovementProbeResult last_probe{};
     const auto probe = [this, &last_probe](const std::uint16_t direction_slot) {
@@ -4832,7 +4836,8 @@ void FieldSceneRuntime::advance_field_movement() {
     field_entity_.world_position.x = field_movement_state_.position_x;
     field_entity_.world_position.y = field_movement_state_.position_y;
     field_entity_.direction =
-        field_movement_direction_from_heading(field_movement_state_.heading);
+        field_movement_direction_from_heading(
+            field_movement_state_.animation_heading);
     if (previous_x != field_movement_state_.position_x ||
         previous_y != field_movement_state_.position_y) {
         source_boundary("field.movement.accepted_step");

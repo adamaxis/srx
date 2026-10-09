@@ -97,69 +97,100 @@ menu, or duplicate control layer appears. This route still rejects the nearby
 record-2 object as Stoker's trigger; it does not identify the real Stoker
 property.
 
+## Scene-2 motel-street collision route
+
+The separate `shadowrun_ghidra_conversion_qt_field_scene2_motel_street_collision_qa`
+starts at the traced New Game position `(0x3CE0, 0x2D00)` and uses ordinary
+controller input to reach the motel's west frontage. It then holds Up against
+the wall formed by scene-2 ROM collision records 32-38
+(`0x172EEA..0x172F26`). The ROM route table at `0xBB86` can choose an open
+orthogonal candidate when one side of the probe is clear. Here, Up follows that
+fallback for several steps, then settles at the wall while Up remains held;
+the final 61 held-input frames have the same position and the C052 idle pose.
+Up+Left then moves around the wall edge, and South retreats to open pavement.
+The route stays west of scene-2 record 91 (`0x173138`, C2), so this collision
+check does not fire the motel doorway event.
+
+The ROM step record keeps a separate `+0x36` animation heading for a diagonal
+fallback (`0xBADE`/`0xBB70`). The native state already retained that heading,
+but the renderer derived the player's direction from `+0x2E` instead. The
+connected field runtime now uses `animation_heading` for sprite direction;
+normal steps initialize it from the slewed heading and fallback steps may
+replace it. The QA checks the direction, C052/C062 selector, frame range, and
+world position on every recorded frame. `motel-street-movement.tsv` also logs
+input, current/target/animation headings, event, and audio-event count.
+
+Debug and Release each pass this CTest. All 48 whole-screen BMPs match by
+SHA-256 and were reviewed, including 19 consecutive held-Up frames and 16
+consecutive Up+Left frames; the HUD and field stay present with no stale menu
+or dialogue graphics. The route reports zero new audio events; playback
+duration is not applicable to this tested path. Independent section-03 longplay frames
+28-45 show the same street with the runner at rest, but do not include the
+controller sequence or collision state, so they do not verify the wall
+behavior.
+
+This is targeted evidence for the location the user identified. It shows the
+tested input can be blocked by the motel wall and can leave it through another
+heading; it does not reproduce a permanent movement lock. The user's exact
+stuck sequence and an independent Genesis collision trace are still missing,
+so FIELD-02 remains open.
+
 ## Eight-question visual review
 
-1. **Does it look correct?** The corrected Qt frames show the runner upright
-   through held movement in all eight directions. The old fallen final pose no
-   longer appears in the route captures.
-2. **Does the look match behavior?** The held-right route selects C062
-   selector `0x28`; the left and six additional routes select the source
-   heading's C062 selector after accepted movement. Every route verifies its
-   target/current heading, direction, selector, frame, position change, and
-   matching C052 selector on release. The blocked diagonal corner route also
-   verifies that position does not advance and that the reset restores the
-   desired heading and C052 idle selector.
-3. **Are the visuals themselves correct?** The sprite frames are decoded from
-   the source descriptors selected by the ROM movement continuation. Whole
+1. **Does it look correct?** Every Scene-2 motel-route capture shows the runner,
+   wall, street, and HUD. The runner stays upright, and the new diagonal
+   fallback poses face the selected source direction. The Genesis controller
+   sequence for this wall is unavailable, so this is not a visual-fidelity
+   claim.
+2. **Does the look match behavior?** The per-frame trace checks current and
+   target headings, ROM-derived `+0x36` animation heading, direction, C052/C062
+   selector, frame, position, event, and audio count. Held Up reaches the wall,
+   uses the source one-side-clear candidate, then settles; Up+Left and South
+   leave the frontage. Scene 2 remains active with event zero throughout.
+3. **Are the visuals themselves correct?** Sprite frames are the named
+   source-derived assets selected by the native movement controller. Whole
    screen review confirms actor, map, and HUD are composited together. Exact
-   actor placement against an identical game scene remains unverified.
-4. **Is it animated?** Yes. The positive four-pose list loops. The source
-   `0x280 / 0x1000` accumulator advances at six- or seven-update intervals,
-   depending on starting phase. The 35-update right-held QA observes all four
-   frames and a wrap. Accepted movement uses C062; released input selects static C052
-   idle. The separate C0B2 transition is finite. At the scene-2 wall, held
-   movement is rejected and the C052 selector/frame-zero state is checked;
-   the diagonal corner route reaches the B442 reset boundary and also returns
-   to frame zero after input release.
-5. **Is there a sound?** No direct sound request appears in the traced
-   heading/vector/collision path. The wider footstep/audio dispatch is not
-   resolved; cue and duration remain unknown.
-6. **Are other screen areas correct?** All saved images are whole 320x224
-   frames. Across the eight routes, the scrolling map, HUD chrome, portrait,
-   item slots, and ammo remain present.
-   The portrait-face palette concern remains open under HUD-01, and the visible
-   ammo/weapon counts are not evaluated here (HUD-02). No menu or dialogue is
-   opened.
-7. **Do multiple frames support this interpretation?** The right/left routes
-   show idle, repeated movement, loop wrap, and release. Thirty additional
-   full-screen frames show idle, held input, aligned heading, continued
-   movement, and release for the other six directions. The scene-2 collision
-   route supplies multiple frames before, during, and after corner recovery.
-   Independent section 04
-   frames 000900, 000903, 000906, 000909, 000912, 000915, 000918, and 000921
-   show the original actor in multiple field positions/poses. The video has no
-   synchronized controller or selector log and does not show this same map, so
-   it supports the normal movement-pose family, not exact timing or placement.
-8. **Was old UI cleared?** This movement route does not replace a UI page.
-   Each checkpoint is drawn as a fresh full frame; review found no old button,
-   panel, or sprite underneath the active pose.
+   Genesis pixels and placement for this movement route remain unverified.
+4. **Is it animated?** Accepted movement uses the four-frame C062 lists; the
+   source `0x280 / 0x1000` accumulator advances at six- or seven-update
+   intervals. The full movement QA observes all four poses and a loop wrap.
+   Held Up returns to the static C052 selector/frame zero after the wall
+   fallback is exhausted. Diagonal fallback updates `+0x36`; the connected
+   Qt actor now follows that direction. The separate C0B2 transition remains
+   finite.
+5. **Is there a sound?** The route's audio-event count increases by zero over
+   169 movement updates. No movement cue or duration is assigned by this
+   route; broader footstep/audio dispatch remains unresolved.
+6. **Are other screen areas correct?** All 48 images are whole `320x224`
+   frames. The map, HUD chrome, portrait, item slots, and ammo remain visible,
+   with no additional menu/dialogue layer. HUD palette and ammo-count concerns
+   remain separate under HUD-01/HUD-02.
+7. **Do multiple frames support this interpretation?** The new route captures
+   all 19 frames of the held-Up wall decision and all 16 initial Up+Left
+   escape frames, plus approach, long hold, retreat, and idle checkpoints.
+   Independent section-03 frames 28-45 show the same street with the runner at
+   rest, but have no controller or collision log. They anchor the scene's look,
+   not the fallback behavior. Section-04 frames 000900-000921 support ordinary
+   moving poses on another map.
+8. **Was old UI cleared?** This route does not open a menu or dialog. Each
+   checkpoint is a fresh complete field frame; review found no old buttons,
+   panels, or interaction graphics left underneath the runner.
 
 ## Outcome labels
 
 - **Code changed:** Qt uses source-selected C062 assets/timing for ordinary
   movement and C052 on idle/reset; the live blocked-step branch calls the
-  typed B442 movement reset; C0B2 is retained as a separate transition.
+  typed B442 movement reset; the rendered direction consumes the typed
+  `+0x36` fallback heading; C0B2 remains a separate transition.
 - **Behavior implemented:** accepted D-pad movement shows a looping stride;
   release/rejected movement returns to its directional idle pose.
-- **Internally checked:** Debug/Release right/left field-movement QA and
-  graphics extraction CTests pass. The six additional live routes pass the
-  Release field-movement QA; all 30 new full-screen images were inspected.
+- **Internally checked:** Debug/Release field-movement, Stoker, Ares, and
+  motel-frontage CTests pass; the 48 motel-route BMPs match across Debug and
+  Release and were reviewed full-screen.
 - **Independently checked:** section 04 frames support ordinary moving field
   poses. No matching controller/selector capture exists for exact correlation.
-- **Reported defect status:** the C062 correction and all eight live heading
-  routes are implemented; right-held movement loops through its four poses,
-  and normal wall and diagonal corner collisions return to C052 idle through
-  the connected B442 reset. Independent section
-  04 frames support a moving runner, but they do not match this map or expose
-  selector/input state. Exact-scene visual alignment remains unverified.
-  Movement audio and broader collision/building defects are separate goals.
+- **Reported defect status:** ordinary movement, source fallback facing, and
+  the tested motel wall route are connected. This route did not reproduce a
+  persistent movement lock after changing heading or retreating. Independent
+  video frames show the street but not the input sequence; the reported
+  collision defect and broader building paths remain open.

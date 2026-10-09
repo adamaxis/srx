@@ -13683,6 +13683,310 @@ int run_field_stoker_collision_candidate_qa(
     return 0;
 }
 
+int run_field_scene2_motel_street_collision_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events) {
+    std::filesystem::create_directories(output);
+    std::error_code directory_error;
+    for (std::filesystem::directory_iterator item(output, directory_error), end;
+         !directory_error && item != end; item.increment(directory_error)) {
+        if (item->is_regular_file(directory_error) &&
+            item->path().extension() == ".bmp") {
+            std::filesystem::remove(item->path(), directory_error);
+            if (directory_error) {
+                std::cerr << "Scene-2 motel collision QA: could not clear old "
+                          << item->path().filename().string() << ": "
+                          << directory_error.message() << '\n';
+                return 3;
+            }
+        }
+    }
+    if (directory_error) {
+        std::cerr << "Scene-2 motel collision QA: could not inspect output: "
+                  << directory_error.message() << '\n';
+        return 3;
+    }
+
+    std::ofstream trace(output / "motel-street-movement.tsv");
+    if (!trace) {
+        std::cerr << "Scene-2 motel collision QA: could not open movement log\n";
+        return 3;
+    }
+    const auto audio_events_before = field_audio_events.size();
+    bool animation_state_coherent = true;
+    bool saw_walking_animation = false;
+    trace << "phase\tframe\tinput\tx\ty\tscene\tevent\theading"
+             "\ttarget_heading\tanimation_heading\tdirection\twalking"
+             "\tselector\tanimation_frame\taudio_event_count\n";
+    const auto record = [&] (const std::string_view phase,
+                             const unsigned frame,
+                             const std::uint8_t input) {
+        const auto position = field_scene.field_entity_world_position();
+        const auto direction = field_scene.field_entity_direction_for_dump();
+        const auto walking = field_scene.field_entity_walking_for_dump();
+        const auto selector =
+            field_scene.field_entity_animation_selector_for_dump();
+        const auto animation_frame =
+            field_scene.field_entity_animation_frame_for_dump();
+        if (walking) {
+            saw_walking_animation = true;
+            animation_state_coherent = animation_state_coherent &&
+                direction == field_movement_direction_from_heading(
+                                 field_scene
+                                     .field_entity_animation_heading_for_dump()) &&
+                selector == static_cast<std::uint16_t>(0x0020U + direction * 4U) &&
+                animation_frame <= 3U;
+        } else {
+            animation_state_coherent = animation_state_coherent &&
+                direction == field_movement_direction_from_heading(
+                                 field_scene
+                                     .field_entity_animation_heading_for_dump()) &&
+                selector == static_cast<std::uint16_t>(direction * 4U) &&
+                animation_frame == 0U;
+        }
+        trace << phase << '\t' << frame << '\t'
+              << static_cast<unsigned>(input) << '\t' << position.x << '\t'
+              << position.y << '\t'
+              << field_scene.field_scene_reference_for_dump() << '\t'
+              << static_cast<unsigned>(
+                     field_scene.field_mode_event_code_for_dump())
+              << '\t' << field_scene.field_entity_heading_for_dump() << '\t'
+              << field_scene.field_entity_target_heading_for_dump() << '\t'
+              << field_scene.field_entity_animation_heading_for_dump() << '\t'
+              << static_cast<unsigned>(direction) << '\t'
+              << (walking ? 1 : 0) << '\t' << selector << '\t'
+              << animation_frame << '\t' << field_audio_events.size()
+              << '\n';
+    };
+    const auto save = [&field_scene, &output](const std::string_view name) {
+        QImage image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        field_scene.paint(painter);
+        painter.end();
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+               image.save(QString::fromStdWString(
+                   (output / std::string(name)).wstring()));
+    };
+    const auto route_active = [&field_scene] {
+        return field_scene.field_scene_reference_for_dump() == 2U &&
+               field_scene.field_mode_event_code_for_dump() == 0U &&
+               !field_scene.dialogue_open() &&
+               !field_scene.field_interaction_open() &&
+               !field_scene.field_interaction_transition_active_for_dump() &&
+               !field_scene.field_transition_pending_for_dump();
+    };
+    const auto start = field_scene.field_entity_world_position();
+    if (!route_active() || start.x != 0x3CE0U || start.y != 0x2D00U ||
+        !save("spawn.bmp")) {
+        std::cerr << "Scene-2 motel collision QA: unexpected New Game spawn "
+                  << "scene=" << field_scene.field_scene_reference_for_dump()
+                  << " position=" << start.x << ',' << start.y << '\n';
+        return 3;
+    }
+    record("spawn", 0U, 0U);
+
+    // Scene-2 ROM records 32-38 (0x172EEA..0x172F26) form the motel's north
+    // wall and its short west/east returns. Record 91 (0x173138, C2) is the
+    // doorway directly east of this test lane. Approach the west wall with
+    // normal controller input so the QA cannot bypass the live collision path.
+    constexpr std::uint16_t west_wall_lane_x = 0x3B20U;
+    std::uint16_t west_ticks = 0U;
+    while (west_ticks < 160U &&
+           field_scene.field_entity_world_position().x > west_wall_lane_x &&
+           route_active()) {
+        field_scene.set_controller_nibble(0x04U);
+        field_scene.advance_frame();
+        ++west_ticks;
+        record("approach-west", west_ticks, 0x04U);
+        if (west_ticks == 8U || west_ticks == 16U || west_ticks == 32U) {
+            const auto name = "approach-west-" +
+                              std::to_string(west_ticks) + ".bmp";
+            if (!save(name)) {
+                std::cerr << "Scene-2 motel collision QA: west dump failed\n";
+                return 3;
+            }
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    const auto wall_approach = field_scene.field_entity_world_position();
+    record("approach-west-release", west_ticks, 0U);
+    if (!route_active() || west_ticks == 160U ||
+        wall_approach.x < 0x3A80U || wall_approach.x > 0x3C00U ||
+        wall_approach.y < 0x2A00U || wall_approach.y > start.y ||
+        !save("approach-west.bmp")) {
+        std::cerr << "Scene-2 motel collision QA: could not reach the wall lane "
+                  << "ticks=" << west_ticks << " position="
+                  << wall_approach.x << ',' << wall_approach.y << '\n';
+        return 3;
+    }
+
+    std::uint16_t north_ticks = 0U;
+    std::uint16_t north_stationary_frames = 0U;
+    for (; north_ticks < 80U && route_active(); ++north_ticks) {
+        const auto before = field_scene.field_entity_world_position();
+        field_scene.set_controller_nibble(0x01U);
+        field_scene.advance_frame();
+        const auto after = field_scene.field_entity_world_position();
+        north_stationary_frames =
+            after.x == before.x && after.y == before.y
+                ? static_cast<std::uint16_t>(north_stationary_frames + 1U)
+                : 0U;
+        record("press-north", north_ticks + 1U, 0x01U);
+        if (north_ticks < 19U || north_ticks == 31U ||
+            north_ticks == 63U) {
+            const auto frame = north_ticks + 1U;
+            const auto name = north_ticks < 19U
+                ? "press-north-step-" +
+                      (frame < 10U ? std::string("0") : std::string()) +
+                      std::to_string(frame) + ".bmp"
+                : "press-north-" + std::to_string(frame) + ".bmp";
+            if (!save(name)) {
+                std::cerr << "Scene-2 motel collision QA: north dump failed\n";
+                return 3;
+            }
+        }
+    }
+    const auto held_contact = field_scene.field_entity_world_position();
+    const auto held_selector =
+        field_scene.field_entity_animation_selector_for_dump();
+    const auto held_frame = field_scene.field_entity_animation_frame_for_dump();
+    const bool north_hold_settled =
+        north_stationary_frames >= 8U &&
+        !field_scene.field_entity_walking_for_dump() && held_frame == 0U &&
+        held_selector <= 0x001CU && (held_selector & 0x0003U) == 0U;
+    if (!route_active() || north_ticks != 80U || !north_hold_settled ||
+        !save("north-held-contact.bmp")) {
+        std::cerr << "Scene-2 motel collision QA: held Up did not settle at the "
+                  << "source wall; position=" << held_contact.x << ','
+                  << held_contact.y << " stationary_frames="
+                  << north_stationary_frames << " selector=" << held_selector
+                  << " frame=" << held_frame << '\n';
+        return 3;
+    }
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    const auto blocked_position = field_scene.field_entity_world_position();
+    record("north-release", north_ticks, 0U);
+    const auto blocked_selector =
+        field_scene.field_entity_animation_selector_for_dump();
+    if (!route_active() || north_ticks != 80U ||
+        blocked_position.y >= wall_approach.y ||
+        blocked_position.x != held_contact.x ||
+        blocked_position.y != held_contact.y ||
+        blocked_position.x < 0x3A80U || blocked_position.x > 0x3C00U ||
+        field_scene.field_entity_walking_for_dump() ||
+        field_scene.field_entity_animation_frame_for_dump() != 0U ||
+        blocked_selector > 0x001CU || (blocked_selector & 0x0003U) != 0U ||
+        !save("north-wall-contact.bmp")) {
+        std::cerr << "Scene-2 motel collision QA: did not settle against the "
+                  << "ROM wall in C052 idle; position=" << blocked_position.x
+                  << ',' << blocked_position.y << " selector="
+                  << blocked_selector << " frame="
+                  << field_scene.field_entity_animation_frame_for_dump()
+                  << '\n';
+        return 3;
+    }
+
+    // Walking diagonally away along the wall and then retreating tests that a
+    // rejected northward candidate does not leave a stale movement state.
+    const auto slide_start = field_scene.field_entity_world_position();
+    std::uint16_t diagonal_ticks = 0U;
+    for (; diagonal_ticks < 48U && route_active(); ++diagonal_ticks) {
+        field_scene.set_controller_nibble(0x05U); // north + west
+        field_scene.advance_frame();
+        record("north-west", diagonal_ticks + 1U, 0x05U);
+        if (diagonal_ticks < 16U || diagonal_ticks == 31U ||
+            diagonal_ticks == 47U) {
+            const auto frame = diagonal_ticks + 1U;
+            const auto name = diagonal_ticks < 16U
+                ? "north-west-step-" +
+                      (frame < 10U ? std::string("0") : std::string()) +
+                      std::to_string(frame) + ".bmp"
+                : "north-west-" + std::to_string(frame) + ".bmp";
+            if (!save(name)) {
+                std::cerr << "Scene-2 motel collision QA: diagonal dump failed\n";
+                return 3;
+            }
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    const auto slide_end = field_scene.field_entity_world_position();
+    const auto slide_moved = slide_end.x != slide_start.x ||
+                             slide_end.y != slide_start.y;
+    record("diagonal-release", diagonal_ticks, 0U);
+    if (!route_active() || diagonal_ticks != 48U || !slide_moved ||
+        !save("north-west-result.bmp")) {
+        std::cerr << "Scene-2 motel collision QA: diagonal escape did not "
+                  << "advance from the wall; start=" << slide_start.x << ','
+                  << slide_start.y << " end=" << slide_end.x << ','
+                  << slide_end.y << '\n';
+        return 3;
+    }
+
+    std::uint16_t retreat_ticks = 0U;
+    while (retreat_ticks < 64U &&
+           field_scene.field_entity_world_position().y <
+               static_cast<std::uint16_t>(start.y - 0x0080U) &&
+           route_active()) {
+        field_scene.set_controller_nibble(0x02U); // south, away from building
+        field_scene.advance_frame();
+        ++retreat_ticks;
+        record("retreat-south", retreat_ticks, 0x02U);
+        if (retreat_ticks == 8U || retreat_ticks == 16U ||
+            retreat_ticks == 32U) {
+            const auto name = "retreat-south-" +
+                              std::to_string(retreat_ticks) + ".bmp";
+            if (!save(name)) {
+                std::cerr << "Scene-2 motel collision QA: retreat dump failed\n";
+                return 3;
+            }
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    for (std::uint16_t idle = 1U; idle <= 30U; ++idle) {
+        field_scene.advance_frame();
+        record("idle", idle, 0U);
+    }
+    const auto actual = field_scene.field_entity_world_position();
+    if (!route_active() || retreat_ticks == 64U ||
+        actual.y < static_cast<std::uint16_t>(start.y - 0x0080U) ||
+        field_scene.field_entity_walking_for_dump() ||
+        field_scene.field_entity_animation_frame_for_dump() != 0U ||
+        !saw_walking_animation || !animation_state_coherent ||
+        !save("actual.bmp")) {
+        std::cerr << "Scene-2 motel collision QA: retreat/idle did not finish "
+                  << "cleanly; position=" << actual.x << ',' << actual.y
+                  << " retreat_ticks=" << retreat_ticks << '\n';
+        return 3;
+    }
+    trace.close();
+    if (!trace) {
+        std::cerr << "Scene-2 motel collision QA: movement log write failed\n";
+        return 3;
+    }
+    std::cout << "field_scene2_motel_street_collision_qa=passed scene=2 "
+              << "wall_approach=" << wall_approach.x << ','
+              << wall_approach.y << " wall_contact=" << blocked_position.x
+              << ',' << blocked_position.y << " diagonal_escape="
+              << slide_end.x << ',' << slide_end.y << " retreat=" << actual.x
+              << ',' << actual.y << " frames=" << west_ticks + north_ticks +
+                     diagonal_ticks + retreat_ticks
+              << " animation_state="
+              << (animation_state_coherent ? "source-facing" : "mismatch")
+              << " north_hold_stationary_frames="
+              << north_stationary_frames
+              << " audio_event_delta="
+              << (field_audio_events.size() >= audio_events_before
+                      ? field_audio_events.size() - audio_events_before
+                      : 0U)
+              << " artifacts=" << output.string() << '\n';
+    return 0;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -13732,6 +14036,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_scene20_grenade_no_item_qa_path;
         std::optional<std::filesystem::path> field_stoker_collision_qa_path;
+        std::optional<std::filesystem::path>
+            field_scene2_motel_street_collision_qa_path;
         std::optional<std::filesystem::path> field_hud_qa_path;
         std::optional<std::filesystem::path> field_hotel_qa_path;
         std::optional<std::filesystem::path> field_command_dump_path;
@@ -13805,6 +14111,7 @@ int main(int argc, char** argv) {
                        " [--field-elevator-scene43-group-roundtrip-qa <output-dir>]"
                        " [--field-security-terminal-physical-entry-qa <output-dir>]"
                        " [--field-stoker-collision-qa <output-dir>]"
+                       " [--field-scene2-motel-street-collision-qa <output-dir>]"
                        " [--field-command-dump <file>]"
                        " [--field-command-page <0..6>]"
                        " [--field-cyberware-dump <file>]"
@@ -14034,6 +14341,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_stoker_collision_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene2-motel-street-collision-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene2_motel_street_collision_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-command-reopen-smoke") {
@@ -14687,6 +15001,11 @@ int main(int argc, char** argv) {
                 return run_field_stoker_collision_candidate_qa(
                     field_scene, *field_stoker_collision_qa_path,
                     field_audio_events, field_source_boundaries);
+            }
+            if (field_scene2_motel_street_collision_qa_path.has_value()) {
+                return run_field_scene2_motel_street_collision_qa(
+                    field_scene, *field_scene2_motel_street_collision_qa_path,
+                    field_audio_events);
             }
             if (field_transition_qa_path.has_value()) {
                 std::filesystem::create_directories(

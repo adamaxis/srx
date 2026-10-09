@@ -548,6 +548,19 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_stoker_collision_candidate_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Follow ordinary New Game movement into the west wall of Stoker's motel,
+# hold against the source collision cells, move diagonally along the frontage,
+# and retreat. Whole-screen checkpoints and a per-frame coordinate log keep
+# the player away from scene-2's C2 doorway event while testing collision.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_scene2_motel_street_collision_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-scene2-motel-street-collision-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-scene2-motel-street-collision-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_scene2_motel_street_collision_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # First Aid shares the real item cell/action path, then exercises the active
 # party list, CANCEL row, RNG-backed medkit effect, result wait, and inventory
 # return against directly extracted source text and HUD assets.
