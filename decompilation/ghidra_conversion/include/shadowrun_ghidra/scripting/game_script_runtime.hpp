@@ -36,6 +36,15 @@ struct ScriptMenuDefinition {
 
 using ScriptStringMap = std::unordered_map<std::string, std::string>;
 
+// Speaker-facing presentation properties are content metadata. The native
+// panel consumes this value but does not maintain a parallel speaker table.
+struct ScriptSpeakerProfile {
+    std::string id;
+    std::string name;
+    std::string text_profile;
+    std::string portrait_alias;
+};
+
 struct ScriptShopOffer {
     std::uint8_t type = 0;
     std::uint8_t value = 0;
@@ -152,6 +161,8 @@ public:
         std::string_view module, std::string_view function);
     std::optional<ScriptStringMap> string_map(
         std::string_view module, std::string_view function);
+    std::optional<ScriptSpeakerProfile> speaker_profile(
+        std::string_view speaker_id);
     std::optional<ScriptShopDefinition> shop_definition(
         std::string_view shop_id);
     std::optional<ScriptItemCatalog> item_catalog();

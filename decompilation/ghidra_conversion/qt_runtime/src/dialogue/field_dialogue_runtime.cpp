@@ -32,6 +32,12 @@ std::optional<StokerMotelPromptId> stoker_prompt_for_asset(
     }
 }
 
+DialogueSpeakerPresentation present_speaker(
+    const scripting::ScriptSpeakerProfile& profile) {
+    return {profile.id, profile.name, profile.text_profile,
+            profile.portrait_alias};
+}
+
 } // namespace
 
 FieldExitPromptAction FieldDialogueEventResolver::resolve(
@@ -88,6 +94,23 @@ bool FieldDialogueRuntime::load_assets(const ConversionAssetCatalog& assets) {
         return false;
     }
 
+    auto stoker_profile = script_runtime_->speaker_profile("stoker");
+    const auto* stoker_portrait =
+        stoker_profile.has_value()
+            ? assets.find(stoker_profile->portrait_alias)
+            : nullptr;
+    if (!stoker_profile.has_value() ||
+        stoker_profile->text_profile != "stoker.motel" ||
+        stoker_portrait == nullptr || stoker_portrait->kind != "image") {
+        failure_ = "Lua dialogue speaker profile or portrait is unavailable";
+        assets_loaded_ = false;
+        if (source_boundary_callback_) {
+            source_boundary_callback_(
+                "field.dialogue.script_speaker_unavailable");
+        }
+        return false;
+    }
+
     if (!presenter_.load_assets(assets)) {
         failure_ = presenter_.failure();
         assets_loaded_ = false;
@@ -97,8 +120,7 @@ bool FieldDialogueRuntime::load_assets(const ConversionAssetCatalog& assets) {
         return false;
     }
 
-    // Speaker-specific tables remain controller-owned, while the presenter
-    // loads all available named portraits without choosing one itself.
+    stoker_speaker_profile_ = std::move(stoker_profile);
     assets_loaded_ = true;
     return true;
 }
@@ -211,10 +233,16 @@ bool FieldDialogueRuntime::open_stoker_prompt(
     } else {
         source_view = make_stoker_motel_prompt(prompt);
     }
+    if (!stoker_speaker_profile_.has_value()) {
+        return open_source_boundary(
+            "Stoker speaker profile was not loaded from Lua");
+    }
+    active_speaker_profile_ = stoker_speaker_profile_;
     const DialogueTextResolver resolver = [this](const std::string_view alias) {
         return resolve_text(alias);
     };
-    panel_ = make_dialogue_panel_view(source_view, resolver);
+    panel_ = make_dialogue_panel_view(
+        source_view, present_speaker(*active_speaker_profile_), resolver);
     if (!panel_.source_complete && panel_.source_boundary_reason.empty()) {
         panel_.source_boundary_reason =
             "Stoker dialogue source projection is incomplete";
@@ -253,13 +281,22 @@ bool FieldDialogueRuntime::present_script_operation(
             return open_source_boundary(
                 "dialogue script emitted an empty speaker/event request");
         }
+        const auto& dialogue = *operation.dialogue;
+        active_speaker_profile_ =
+            script_runtime_ != nullptr
+                ? script_runtime_->speaker_profile(dialogue.speaker_id)
+                : std::nullopt;
+        if (!active_speaker_profile_.has_value() ||
+            active_speaker_profile_->text_profile != dialogue.text_profile) {
+            return open_source_boundary(
+                "dialogue script selected an unbound Lua speaker profile");
+        }
         const DialogueTextResolver resolver =
             [this](const std::string_view alias) {
                 return resolve_text(alias);
             };
-        const auto& dialogue = *operation.dialogue;
         const auto view = make_script_dialogue_panel_view(
-            dialogue.speaker_id, dialogue.text_profile, dialogue.event_id,
+            present_speaker(*active_speaker_profile_), dialogue.event_id,
             resolver);
         if (!view.has_value()) {
             return open_source_boundary(
@@ -277,6 +314,22 @@ bool FieldDialogueRuntime::present_script_operation(
     if (operation.type == scripting::ScriptNativeOperation::Type::ui_menu &&
         operation.menu.has_value()) {
         active_script_menu_ = operation.menu;
+        active_speaker_profile_.reset();
+        std::optional<DialogueSpeakerPresentation> speaker;
+        if (!operation.menu->speaker_id.empty()) {
+            active_speaker_profile_ =
+                script_runtime_ != nullptr
+                    ? script_runtime_->speaker_profile(
+                          operation.menu->speaker_id)
+                    : std::nullopt;
+            if (!active_speaker_profile_.has_value() ||
+                active_speaker_profile_->text_profile !=
+                    operation.menu->text_profile) {
+                return open_source_boundary(
+                    "dialogue script menu selected an unbound Lua speaker profile");
+            }
+            speaker = present_speaker(*active_speaker_profile_);
+        }
         const DialogueTextResolver resolver =
             [this](const std::string_view alias) {
                 return resolve_text(alias);
@@ -287,8 +340,7 @@ bool FieldDialogueRuntime::present_script_operation(
             choices.emplace_back(choice.id, choice.label_key);
         }
         panel_ = make_script_menu_panel_view(
-            operation.menu->speaker_id, operation.menu->text_profile,
-            operation.menu->title_key, choices, resolver);
+            speaker, operation.menu->title_key, choices, resolver);
         if (!panel_.source_complete) {
             return open_source_boundary(
                 panel_.source_boundary_reason.empty()
@@ -420,6 +472,7 @@ bool FieldDialogueRuntime::open_source_boundary(std::string reason) {
     panel_.source_complete = false;
     panel_.source_boundary_reason = boundary_reason_;
     active_prompt_ = StokerMotelPromptId::source_boundary;
+    active_speaker_profile_.reset();
     active_script_operation_.reset();
     active_script_menu_.reset();
     script_task_waiting_ = false;
@@ -714,6 +767,7 @@ void FieldDialogueRuntime::close() noexcept {
     }
     panel_ = DialoguePanelView{};
     active_prompt_ = StokerMotelPromptId::source_boundary;
+    active_speaker_profile_.reset();
     active_script_operation_.reset();
     active_script_menu_.reset();
     script_task_waiting_ = false;

@@ -81,13 +81,15 @@ Four coroutine operations are connected to live routes. The first is
 0 through 7, yields a typed request to the native field controller, and resumes
 with the operation result. `game.ui.say(event_id)` resolves the speaker and
 text profile from native location context, then suspends until the dialogue
-presenter advances the page. The only bound speaker is Stoker; his native
-profile supplies his name and portrait, and the `stoker.motel` profile
-currently binds `arrival` and `leave`. Arrival has its source A-button
-continuation; the title-only farewell closes through the ordinary controller
-wait. `game.ui.menu(menu_id, choice_ids)` combines the menu name with the
-location text profile, yields choices to the common presenter, and resumes
-with the stable selected ID. The source A/B/C mapping is preserved.
+presenter advances the page. `dialogue.lua` resolves the speaker's display
+name, text profile, and portrait alias from the speaker id in location
+context; the host verifies the profile matches that context and that the
+portrait asset exists. Stoker is the only currently bound field speaker, and
+the `stoker.motel` profile binds `arrival` and `leave`. Arrival has its source
+A-button continuation; the title-only farewell closes through the ordinary
+controller wait. `game.ui.menu(menu_id, choice_ids)` combines the menu name
+with the location text profile, yields choices to the common presenter, and
+resumes with the stable selected ID. The source A/B/C mapping is preserved.
 `game.services.call(domain, action)` yields a namespaced request to an
 allowlisted native service and resumes Lua with a stable result ID. Current
 Stoker scripts use it for room payment, debt-offer flags, debt payment, and the
@@ -155,6 +157,10 @@ access.
   module-name order. `manager_interaction()` handles the shared manager menu,
   room menu, payment service, result dialogue, and Leave dialogue. A successful
   room payment returns the hotel-options result to the native host.
+- `gameplay/scripts/dialogue.lua` owns field-speaker display names, named text
+  profiles, and portrait aliases. The runtime binds these properties by the
+  speaker id supplied with the active location; Qt receives the resolved
+  profile and does not keep a second speaker table.
 - `gameplay/scripts/michael_package.lua` contains the Michael quest hook and
   its first-visit, repeat, and completed branches. `stoker_interaction()` now
   chooses the arrival page and shared motel manager in Lua; the field route no

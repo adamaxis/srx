@@ -113,36 +113,11 @@ std::string_view resolve_continuation_label(
     return label;
 }
 
-struct ScriptSpeakerProperties {
-    std::string_view id;
-    std::string_view name;
-    std::string_view portrait_alias;
-};
-
-const ScriptSpeakerProperties* find_script_speaker(
-    const std::string_view speaker_id) {
-    static constexpr std::array<ScriptSpeakerProperties, 1> speakers{{
-        {"stoker", "Stoker", "dialogue.portraits.stoker.motel"},
-    }};
-    const auto speaker = std::find_if(
-        speakers.begin(), speakers.end(), [speaker_id](const auto& profile) {
-            return profile.id == speaker_id;
-        });
-    return speaker == speakers.end() ? nullptr : &*speaker;
-}
-
 void set_script_speaker(DialoguePanelView& view,
-                        const std::string_view speaker_id) {
-    if (const auto* speaker = find_script_speaker(speaker_id);
-        speaker != nullptr) {
-        view.actor_kind = DialoguePanelActorKind::field_npc;
-        view.actor_name = speaker->name;
-        view.portrait_alias = speaker->portrait_alias;
-    } else {
-        view.actor_kind = DialoguePanelActorKind::none;
-        view.actor_name = {};
-        view.portrait_alias = {};
-    }
+                        const DialogueSpeakerPresentation& speaker) {
+    view.actor_kind = DialoguePanelActorKind::field_npc;
+    view.actor_name = speaker.name;
+    view.portrait_alias = speaker.portrait_alias;
 }
 
 void copy_text_alias_stream(DialoguePanelView& view,
@@ -406,12 +381,13 @@ DialoguePanelView make_dialogue_panel_view(
 
 DialoguePanelView make_dialogue_panel_view(
     const StokerMotelPromptView& source_view,
+    const DialogueSpeakerPresentation& speaker,
     const DialogueTextResolver& resolve_text) {
     DialoguePanelView view{};
     view.open = true;
     view.actor_kind = DialoguePanelActorKind::field_npc;
-    view.actor_name = "Stoker";
-    view.portrait_alias = "dialogue.portraits.stoker.motel";
+    view.actor_name = speaker.name;
+    view.portrait_alias = speaker.portrait_alias;
     view.kind = source_view.source_complete
                     ? DialoguePanelKind::field_npc_prompt
                     : DialoguePanelKind::source_boundary;
@@ -456,22 +432,22 @@ DialoguePanelView make_dialogue_panel_view(
 }
 
 std::optional<DialoguePanelView> make_script_dialogue_panel_view(
-    const std::string_view speaker_id,
-    const std::string_view text_profile,
+    const DialogueSpeakerPresentation& speaker,
     const std::string_view event_id,
     const DialogueTextResolver& resolve_text) {
-    const auto* speaker = find_script_speaker(speaker_id);
-    if (speaker == nullptr || text_profile.empty() || event_id.empty()) {
+    if (speaker.id.empty() || speaker.name.empty() ||
+        speaker.text_profile.empty() || speaker.portrait_alias.empty() ||
+        event_id.empty()) {
         return std::nullopt;
     }
 
     DialoguePanelView view{};
     view.open = true;
     view.actor_kind = DialoguePanelActorKind::field_npc;
-    set_script_speaker(view, speaker_id);
+    set_script_speaker(view, speaker);
     view.kind = DialoguePanelKind::field_npc_prompt;
 
-    const auto key_prefix = std::string(text_profile) + "." +
+    const auto key_prefix = std::string(speaker.text_profile) + "." +
                             std::string(event_id);
     const auto title_key = key_prefix + ".title";
     copy_text_alias_stream(view, title_key, resolve_text);
@@ -492,7 +468,7 @@ std::optional<DialoguePanelView> make_script_dialogue_panel_view(
 }
 
 DialoguePanelView make_script_menu_panel_view(
-    const std::string_view speaker_id, const std::string_view text_profile,
+    const std::optional<DialogueSpeakerPresentation>& speaker,
     const std::string_view title_key,
     const std::vector<std::pair<std::string, std::string>>& choices,
     const DialogueTextResolver& resolve_text) {
@@ -500,9 +476,17 @@ DialoguePanelView make_script_menu_panel_view(
     view.open = true;
     view.actor_kind = DialoguePanelActorKind::none;
     view.kind = DialoguePanelKind::field_npc_prompt;
-    set_script_speaker(view, speaker_id);
+    if (speaker.has_value()) {
+        if (speaker->id.empty() || speaker->name.empty() ||
+            speaker->text_profile.empty() ||
+            speaker->portrait_alias.empty()) {
+            mark_missing_text(view, speaker->id);
+        } else {
+            set_script_speaker(view, *speaker);
+        }
+    }
 
-    if (text_profile.empty() || title_key.empty()) {
+    if (title_key.empty()) {
         mark_missing_text(view, title_key);
         view.kind = DialoguePanelKind::source_boundary;
         return view;
@@ -544,14 +528,6 @@ dialogue_panel_option_command(const DialoguePanelView& view,
 std::optional<DialoguePanelCommand> dialogue_panel_command(
     const DialoguePanelView& view, const std::size_t option_index) {
     return dialogue_panel_option_command(view, option_index);
-}
-
-std::string_view dialogue_panel_portrait_alias(
-    const FieldExitResourceProfile profile) {
-    if (profile == FieldExitResourceProfile::stoker_motel) {
-        return "dialogue.portraits.stoker.motel";
-    }
-    return {};
 }
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime

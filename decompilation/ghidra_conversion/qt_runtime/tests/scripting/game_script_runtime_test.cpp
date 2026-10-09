@@ -56,6 +56,18 @@ int main() {
         return 1;
     }
 
+    const auto stoker_speaker = scripts.speaker_profile("stoker");
+    if (!expect(stoker_speaker.has_value() &&
+                    stoker_speaker->id == "stoker" &&
+                    stoker_speaker->name == "Stoker" &&
+                    stoker_speaker->text_profile == "stoker.motel" &&
+                    stoker_speaker->portrait_alias ==
+                        "dialogue.portraits.stoker.motel",
+                "Lua dialogue speaker properties did not load")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
     const auto mode_prompt_content = [&](const std::uint8_t mode,
                                          const std::uint8_t event_code,
                                          const std::int8_t alternate_result) {

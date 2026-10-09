@@ -49,10 +49,9 @@ public:
         const FieldExitPromptCallbacks& callbacks) const;
 };
 
-// Host-side composition for the source 0x1F246/0x1F3C4 prompt loop.  The
-// converted prompt graph owns the records and transitions; this class owns
-// only the non-blocking Qt presentation state and direct assets needed to
-// display one prompt at a time.
+// Host-side composition for the source 0x1F246/0x1F3C4 prompt loop. Converted
+// prompt state and Lua speaker/content properties feed one non-blocking Qt
+// presentation path.
 class FieldDialogueRuntime final {
 public:
     explicit FieldDialogueRuntime(
@@ -122,6 +121,8 @@ private:
     DialoguePanelView panel_{};
     StokerMotelPromptId active_prompt_ = StokerMotelPromptId::source_boundary;
     scripting::GameScriptRuntime* script_runtime_ = nullptr;
+    std::optional<scripting::ScriptSpeakerProfile> stoker_speaker_profile_;
+    std::optional<scripting::ScriptSpeakerProfile> active_speaker_profile_;
     std::optional<scripting::ScriptNativeOperation>
         active_script_operation_;
     std::optional<scripting::ScriptMenuDefinition> active_script_menu_;

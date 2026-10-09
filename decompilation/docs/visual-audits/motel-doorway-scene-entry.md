@@ -328,8 +328,10 @@ The first-visit interaction is now one readable Lua sequence:
 `game.ui.say("arrival")`, then the shared
 `motel.manager_interaction()` after the player presses A. The operation
 resolves the native location text profile (`stoker.motel`) and speaker from
-active location context, using only the event ID from Lua. A typed speaker profile supplies Stoker's name and
-portrait; the text resolver finds `stoker.motel.arrival.title` and
+active location context, using only the event ID from Lua. `dialogue.lua`
+supplies Stoker's name, matching text profile, and portrait alias; the runtime
+validates that the selected speaker and location profiles agree. The text
+resolver finds `stoker.motel.arrival.title` and
 `stoker.motel.arrival.more`. Only this speaker/event is bound so far. The
 dialogue presenter still draws the screen and owns input; the task resumes with
 the manager menu after the source A continuation. Payment and inventory state
@@ -340,7 +342,7 @@ remain native.
    It matches independent section 03 frame `000082`. The same profile and
    event are carried by the typed script operation.
 2. **Does the appearance reflect behavior?** The operation binds speaker
-   `stoker` to the native Stoker speaker properties and joins the current
+   `stoker` to its Lua speaker properties and joins the current
    `stoker.motel` text profile with event `arrival`. The page exposes one
    continuation option; B leaves it open, and A resumes the Lua task into the
    three-choice motel menu. The runtime tests check the request tuple and
@@ -372,18 +374,19 @@ remain native.
    match. The arrival and manager handoff are checked by the live collision
    route and by the dialogue-runtime test, including the A-only wait.
 
-The full Debug and Release CTest suites pass 92/92 each, including the
-script, dialogue, startup, and Stoker route checks. This connects the first Stoker dialogue event to Lua; additional
-speaker profiles, dialogue events, item operations, audio, and cutscene
-placement/animation are still unimplemented.
+The full Debug and Release CTest suites passed 92/92 in the prior route pass,
+including the script, dialogue, startup, and Stoker route checks. This
+connects the first Stoker dialogue event to Lua; additional speaker profiles,
+dialogue events, item operations, audio, and cutscene placement/animation are
+still unimplemented.
 
 ## Shared motel Leave dialogue through Lua (2026-10-08)
 
 The generic `motel.lua` manager now sequences the ordinary Leave response:
 after the player selects Leave, it asks the native dialogue presenter to show
 the current location speaker's `leave` event, then returns the stable `leave`
-choice ID. Stoker's source text is `stoker.motel.leave.title`; its native
-speaker profile supplies the existing portrait. This reuses the shared motel
+choice ID. Stoker's source text is `stoker.motel.leave.title`; its Lua speaker
+profile supplies the existing portrait. This reuses the shared motel
 flow and location context rather than adding a Stoker-specific interaction
 script. The ROM-derived prompt conversion already defines the matching
 title-only `leave_notice` page and return to field.
@@ -480,3 +483,54 @@ return screens have no stale controls or overdrawn panels.
 Restored-save quest facts remain unresolved. The live field binding is an
 explicit allowlist of typed properties; it does not expose arbitrary C++
 objects or save memory to scripts.
+
+## Speaker presentation profile moved to Lua (2026-10-09)
+
+`gameplay/scripts/dialogue.lua` now owns the Stoker speaker's display name,
+`stoker.motel` text profile, and `dialogue.portraits.stoker.motel` asset alias.
+`game.location.speaker_id` selects the profile. Before opening a dialogue or
+speaker-backed menu, the runtime checks that the speaker exists, that its text
+profile matches location context, and that its portrait alias names an image
+asset. The generic panel receives this resolved profile; its C++ code no
+longer carries a parallel Stoker name/portrait table. The ROM-selected event
+and source-derived page timing are unchanged.
+
+1. **Does it look correct?** The Lua profile resolves to the same Stoker name
+   and 56x72 portrait already shown by the arrival, manager, debt, and package
+   pages. Current capture appearance matches independent section 03 frames
+   `000082`, `000301`, and `000601`.
+2. **Does appearance reflect behavior?** The physical scene-2 collision at
+   `0x173138` selects the Stoker prompt through the source field-exit profile
+   at `0x1F65A`; the active location supplies `speaker_id = stoker`. The new
+   Lua profile must match its `stoker.motel` context and resolve a real portrait
+   asset or the panel route stops at a source boundary. Debug and Release
+   route tests exercise the collision-to-dialogue path and shared script menu.
+3. **Are the visuals correct?** All 16 current full-screen checkpoints are
+   320x224. Arrival, manager choices, debt, package handoff, referral, leave,
+   fade, and field return were inspected after the profile move. The existing
+   portrait, text positions, A/B/C markers, panel edges, map, and HUD remain
+   intact.
+4. **Is it animated?** The dialogue panel is static while waiting for input.
+   This profile change adds no animation or timing; the automatic field walk
+   and 17-update fade keep their existing native cadence.
+5. **Is there sound?** The profile change adds no audio request and changes no
+   playback duration. The route's separate source audio-service boundary is
+   unchanged.
+6. **Are neighboring screen elements also correct?** The whole-screen route
+   includes the motel street, runner/HUD, dialogue frame and portrait, menu
+   choices, and clean map return. The portrait and panel occupy the existing
+   source-selected interface.
+7. **Do multiple frames support the interpretation?** All 16 route BMPs were
+   inspected; Debug/Release SHA-256 hashes match for every one. Independent
+   longplay frames `000082`, `000301`, `000601`, and `000690` show arrival,
+   manager, debt, and referral pages. That 30-fps clip supports visual order
+   and appearance, not native input state or exact VBlank timing.
+8. **Was old UI cleared before new controls were drawn?** The field fades to
+   black before the dialogue panel replaces it. Manager choices replace the
+   arrival page, and the return redraws the whole field/HUD; no previous
+   buttons or graphics remain underneath.
+
+The gameplay-script runtime, dialogue-panel test, field-dialogue runtime test,
+and physical Stoker collision-to-dialogue QA all pass in Debug and Release
+(4/4 each). This moves speaker presentation metadata for Stoker into Lua; the
+other NPC profiles and their event dialogue remain unported.

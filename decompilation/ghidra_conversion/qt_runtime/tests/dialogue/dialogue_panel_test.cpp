@@ -184,6 +184,18 @@ int main(const int argc, char** argv) {
                 "dialogue" / "script-text.lua")) {
         return 10;
     }
+    const auto stoker_profile = scripts.speaker_profile("stoker");
+    if (!expect(stoker_profile.has_value()) ||
+        !expect(stoker_profile->id == "stoker") ||
+        !expect(stoker_profile->name == "Stoker") ||
+        !expect(stoker_profile->text_profile == "stoker.motel") ||
+        !expect(stoker_profile->portrait_alias ==
+                "dialogue.portraits.stoker.motel")) {
+        return 20;
+    }
+    const DialogueSpeakerPresentation stoker_speaker{
+        stoker_profile->id, stoker_profile->name,
+        stoker_profile->text_profile, stoker_profile->portrait_alias};
     if (!runner_text_catalog_is_complete(scripts)) {
         return 13;
     }
@@ -336,19 +348,10 @@ int main(const int argc, char** argv) {
     const auto hire_source = dispatch_recruited_runner_conversation(
         state, RecruitedRunnerConversationCommand::back_to_common_prompt);
     (void)hire_source;
-    if (!expect(dialogue_panel_portrait_alias(
-                    FieldExitResourceProfile::stoker_motel) ==
-                "dialogue.portraits.stoker.motel") ||
-        !expect(dialogue_panel_portrait_alias(
-                    FieldExitResourceProfile::scene_zero_submode_three)
-                    .empty())) {
-        return 8;
-    }
-
     const auto stoker_source = make_stoker_motel_prompt(
         StokerMotelPromptId::arrival);
-    const auto stoker_panel = make_dialogue_panel_view(stoker_source,
-                                                       resolve_text);
+    const auto stoker_panel = make_dialogue_panel_view(
+        stoker_source, stoker_speaker, resolve_text);
     if (!expect(stoker_panel.open) ||
         !expect(stoker_panel.actor_kind == DialoguePanelActorKind::field_npc) ||
         !expect(stoker_panel.actor_name == "Stoker") ||
@@ -370,7 +373,7 @@ int main(const int argc, char** argv) {
     const auto stoker_manager_boundary = make_dialogue_panel_view(
         make_stoker_motel_prompt(
             StokerMotelPromptId::manager_greeting_with_package),
-        resolve_text);
+        stoker_speaker, resolve_text);
     if (!expect(!stoker_manager_boundary.source_complete) ||
         !expect(stoker_manager_boundary.option_count == 0U) ||
         !expect(stoker_manager_boundary.source_boundary_reason.find(

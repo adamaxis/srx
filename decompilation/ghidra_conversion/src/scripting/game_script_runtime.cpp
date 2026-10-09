@@ -1511,6 +1511,74 @@ std::optional<ScriptStringMap> GameScriptRuntime::string_map(
     return result;
 }
 
+std::optional<ScriptSpeakerProfile> GameScriptRuntime::speaker_profile(
+    const std::string_view speaker_id) {
+    auto* state = impl_->state;
+    if (state == nullptr || !valid_identifier(speaker_id)) {
+        impl_->failure = "invalid gameplay script speaker id";
+        return std::nullopt;
+    }
+    constexpr std::string_view kModule = "dialogue";
+    constexpr std::string_view kFunction = "speaker_profile";
+    if (!impl_->push_module(kModule)) {
+        impl_->failure = "gameplay script module is missing: dialogue";
+        return std::nullopt;
+    }
+    lua_getfield(state, -1, std::string(kFunction).c_str());
+    if (!lua_isfunction(state, -1)) {
+        lua_pop(state, 2);
+        impl_->failure = "dialogue.speaker_profile must be a Lua function";
+        return std::nullopt;
+    }
+    lua_remove(state, -2);
+    lua_pushlstring(state, speaker_id.data(), speaker_id.size());
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+        impl_->failure = "dialogue.speaker_profile: " + stack_error(state);
+        lua_pop(state, 1);
+        return std::nullopt;
+    }
+    if (!lua_istable(state, -1)) {
+        lua_pop(state, 1);
+        impl_->failure = "dialogue speaker profile is unavailable: " +
+                         std::string(speaker_id);
+        return std::nullopt;
+    }
+
+    const auto table_index = lua_absindex(state, -1);
+    ScriptSpeakerProfile result;
+    result.id = speaker_id;
+    const auto read_profile_field = [state, table_index](
+                                        const char* field,
+                                        std::string& value) {
+        lua_getfield(state, table_index, field);
+        const bool valid = read_string(state, -1, value);
+        lua_pop(state, 1);
+        return valid;
+    };
+    const bool fields_valid =
+        read_profile_field("name", result.name) &&
+        read_profile_field("text_profile", result.text_profile) &&
+        read_profile_field("portrait_alias", result.portrait_alias);
+    const bool name_valid =
+        !result.name.empty() && result.name.size() <= 80U &&
+        std::all_of(result.name.begin(), result.name.end(),
+                    [](const char character) {
+                        return character >= 0x20 && character <= 0x7E;
+                    });
+    const bool profile_valid =
+        valid_identifier(result.text_profile) &&
+        valid_identifier(result.portrait_alias);
+    lua_pop(state, 1);
+    if (!fields_valid || !name_valid || !profile_valid) {
+        impl_->failure = "dialogue speaker profile is malformed: " +
+                         std::string(speaker_id);
+        return std::nullopt;
+    }
+    impl_->failure.clear();
+    return result;
+}
+
 std::optional<ScriptMenuDefinition> GameScriptRuntime::menu(
     const std::string_view module, const std::string_view function,
     const std::string_view text_profile, const std::string_view menu_id) {

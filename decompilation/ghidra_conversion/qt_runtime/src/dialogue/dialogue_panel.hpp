@@ -1,6 +1,5 @@
 #pragma once
 
-#include "shadowrun_ghidra/field/field_exit_prompt_conversion.hpp"
 #include "shadowrun_ghidra/field/stoker_motel_prompt_conversion.hpp"
 #include "shadowrun_ghidra/integration/recruited_runner_conversation_conversion.hpp"
 
@@ -151,6 +150,15 @@ struct DialoguePanelView {
 using DialogueTextResolver =
     std::function<std::string_view(std::string_view alias)>;
 
+// Resolved from the Lua dialogue module and retained by the host runtime
+// while a panel is open. The shared presenter sees only these properties.
+struct DialogueSpeakerPresentation {
+    std::string_view id;
+    std::string_view name;
+    std::string_view text_profile;
+    std::string_view portrait_alias;
+};
+
 // One projection function covers the common runner/NPC conversation shell.
 // It intentionally does not own mutable cursor state or dispatch commands;
 // input returns to dispatch_recruited_runner_conversation().
@@ -169,30 +177,23 @@ std::optional<DialoguePanelCommand> dialogue_panel_command(
 std::string_view dialogue_panel_runner_name_key(
     RecruitedRunnerConversationRunner runner);
 
-// ROM 0x1F65A profile 0 is the Stoker's Coffin Motel portrait. The other
-// field-exit profiles are deliberately unbound until their portrait streams
-// are traced, so a shared panel cannot accidentally borrow Stoker's sprite.
-std::string_view dialogue_panel_portrait_alias(
-    FieldExitResourceProfile profile);
-
-// Project the source-backed Stoker prompt records into the same panel shape
-// as recruited-runner conversations. Text is resolved through the direct
-// asset catalog; a missing alias remains an explicit source boundary.
+// Project source-backed field-NPC prompt records into the shared panel. The
+// speaker profile is supplied by Lua after the event/location selects it.
 DialoguePanelView make_dialogue_panel_view(
     const StokerMotelPromptView& source_view,
+    const DialogueSpeakerPresentation& speaker,
     const DialogueTextResolver& resolve_text);
 
-// Resolve a script-authored speaker/event pair through native speaker
-// properties and the location's named text profile. Only source-bound
-// speakers can produce a view; missing content remains an explicit failure.
+// Resolve a script-authored event through the selected Lua speaker profile
+// and the location's event id. Missing or mismatched profiles fail closed.
 std::optional<DialoguePanelView> make_script_dialogue_panel_view(
-    std::string_view speaker_id, std::string_view text_profile,
-    std::string_view event_id, const DialogueTextResolver& resolve_text);
+    const DialogueSpeakerPresentation& speaker, std::string_view event_id,
+    const DialogueTextResolver& resolve_text);
 
 // Generic Lua menu presentation. The script owns title/choice order and
 // stable IDs; this shared view resolves labels and optional speaker artwork.
 DialoguePanelView make_script_menu_panel_view(
-    std::string_view speaker_id, std::string_view text_profile,
+    const std::optional<DialogueSpeakerPresentation>& speaker,
     std::string_view title_key,
     const std::vector<std::pair<std::string, std::string>>& choices,
     const DialogueTextResolver& resolve_text);
