@@ -206,21 +206,22 @@ access.
   item rows, empty-run message, and Mr. Johnson contact/detail entries; the
   root panel separator is a named text entry as well. Notebook Tips metadata
   and all 96 source-ordered entries are exposed as three validated 32-entry
-  content pages.
-  `FieldSceneRuntime` validates the lists and uses Notebook IDs when dispatching
-  the selected row; the text catalog resolves the ROM labels from
-  `assets/dialogue/script-text.lua`. Native state still applies the three
-  story-flag row gates and owns cursor movement, selection cadence, drawing,
-  and child-page behavior. Save/Load and the extended six-row caller remain
-  explicit boundaries; the Notebook page state and actions remain native.
+  content pages. The field text catalog reads each ordered ID list from Lua;
+  script QA checks the source order against the ROM-derived catalog.
+  `FieldSceneRuntime` consumes the root and Notebook definitions directly and
+  uses their IDs when dispatching the selected row; the text catalog resolves
+  the ROM labels from `assets/dialogue/script-text.lua`. Native state still
+  applies the three story-flag row gates and owns cursor movement, selection
+  cadence, drawing, and child-page behavior. Save/Load and the extended six-row
+  caller remain explicit boundaries; the Notebook page state and actions
+  remain native.
 - `gameplay/scripts/command_overview.lua` declares the seven stable IDs for the
   in-game command root in ROM order, including the two distinct Inventory
   columns, plus the metatype, class, and five posture labels used by its runner
-  summary and selectable posture bar. The field text catalog resolves those
-  IDs to ROM-extracted copy from `assets/dialogue/script-text.lua`.
-  `FieldSceneRuntime` validates the root choices and typed native command
-  state remains the sole owner of page selection, focus, rendering, posture
-  effects, and action dispatch.
+  summary and selectable posture bar. Both the menu presenter and field text
+  catalog consume these ID lists directly from Lua, while script QA checks ROM
+  order and text. Typed native command state remains the sole owner of page
+  selection, focus, rendering, posture effects, and action dispatch.
 - `gameplay/scripts/clips.lua` declares the top-level Reload/Trade/Distribute/
   Cancel choices and the nested Increase/Decrease/Trade/Recipient choices.
   It also declares stable IDs for the Clips panel labels, reload/trade prompts,

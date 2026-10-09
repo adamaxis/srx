@@ -6656,10 +6656,6 @@ void FieldSceneRuntime::begin_hotel_menu() {
 }
 
 bool FieldSceneRuntime::load_command_overview_menu_content() {
-    constexpr std::array<std::string_view, kCommandOverviewLabelCount>
-        kChoiceIds{{"inventory_left", "inventory_right", "clips",
-                    "attributes_skills", "cyberware", "magic",
-                    "pocket_secretary"}};
     const auto fail = [this](std::string message) {
         failure_ = std::move(message);
         source_boundary("field.bootstrap.command_overview_script_invalid");
@@ -6672,15 +6668,15 @@ bool FieldSceneRuntime::load_command_overview_menu_content() {
                         ? "command overview root menu script is unavailable"
                         : game_scripts_.failure());
     }
-    if (definition->choices.size() != kChoiceIds.size()) {
+    if (definition->choices.size() != field_menu_text_.command_labels.size()) {
         return fail(
             "command overview Lua menu does not match the seven source rows");
     }
-    for (std::size_t index = 0; index < kChoiceIds.size(); ++index) {
+    for (std::size_t index = 0; index < definition->choices.size(); ++index) {
         const auto& choice = definition->choices[index];
         const auto* label = game_scripts_.dialogue_text(choice.label_key);
-        if (choice.id != kChoiceIds[index] || label == nullptr) {
-            return fail("command overview Lua choice ID or label is invalid");
+        if (label == nullptr) {
+            return fail("command overview Lua choice label is missing");
         }
         field_menu_text_.command_labels[index] = *label;
     }
@@ -6782,13 +6778,6 @@ bool FieldSceneRuntime::load_hotel_menu_content() {
 }
 
 bool FieldSceneRuntime::load_pocket_secretary_menu_content() {
-    constexpr std::array<std::string_view,
-                         kPocketSecretaryFieldMenuRowCount> kChoiceIds{{
-        "notebook", "group_items", "cyberdeck", "dismiss_runner",
-        "save_load"}};
-    constexpr std::array<std::string_view, kNotebookChoiceCount>
-        kNotebookChoiceIds{{"current_run", "tips_and_clues", "contacts",
-                            "mr_johnsons", "shadowrunners"}};
     const auto fail = [this](std::string message) {
         failure_ = std::move(message);
         source_boundary("field.bootstrap.pocket_secretary_script_invalid");
@@ -6801,16 +6790,15 @@ bool FieldSceneRuntime::load_pocket_secretary_menu_content() {
                         ? "Pocket Secretary root menu script is unavailable"
                         : game_scripts_.failure());
     }
-    if (definition->choices.size() != kChoiceIds.size()) {
+    if (definition->choices.size() != kPocketSecretaryFieldMenuRowCount) {
         return fail(
-            "Pocket Secretary Lua menu does not match its source rows");
+            "Pocket Secretary Lua root menu has the wrong row count");
     }
     const auto root_text_definition = game_scripts_.menu(
         "pocket_secretary", "root_text_entries",
         "pocket_secretary.root.text", "catalog");
     if (!root_text_definition.has_value() ||
-        root_text_definition->choices.size() != 1U ||
-        root_text_definition->choices[0].id != "separator") {
+        root_text_definition->choices.size() != 1U) {
         return fail("Pocket Secretary root separator script entry is invalid");
     }
     const auto notebook_definition = game_scripts_.menu(
@@ -6821,9 +6809,9 @@ bool FieldSceneRuntime::load_pocket_secretary_menu_content() {
                         ? "Pocket Secretary Notebook menu script is unavailable"
                         : game_scripts_.failure());
     }
-    if (notebook_definition->choices.size() != kNotebookChoiceIds.size()) {
+    if (notebook_definition->choices.size() != kNotebookChoiceCount) {
         return fail(
-            "Pocket Secretary Notebook menu does not match its source rows");
+            "Pocket Secretary Notebook menu has the wrong row count");
     }
     const auto* title = game_scripts_.dialogue_text(definition->title_key);
     const auto* separator = game_scripts_.dialogue_text(
@@ -6834,21 +6822,21 @@ bool FieldSceneRuntime::load_pocket_secretary_menu_content() {
     PocketSecretaryMenuContent content{};
     content.title = *title;
     content.separator = *separator;
-    for (std::size_t index = 0; index < kChoiceIds.size(); ++index) {
+    for (std::size_t index = 0; index < definition->choices.size(); ++index) {
         const auto& choice = definition->choices[index];
         const auto* label = game_scripts_.dialogue_text(choice.label_key);
-        if (choice.id != kChoiceIds[index] || label == nullptr) {
-            return fail("Pocket Secretary Lua choice ID or label is invalid");
+        if (label == nullptr) {
+            return fail("Pocket Secretary Lua choice label is missing");
         }
         content.choices[index] = PocketSecretaryMenuContent::Choice{
             choice.id, *label};
     }
-    for (std::size_t index = 0; index < kNotebookChoiceIds.size(); ++index) {
+    for (std::size_t index = 0;
+         index < notebook_definition->choices.size(); ++index) {
         const auto& choice = notebook_definition->choices[index];
-        if (choice.id != kNotebookChoiceIds[index] ||
-            game_scripts_.dialogue_text(choice.label_key) == nullptr) {
+        if (game_scripts_.dialogue_text(choice.label_key) == nullptr) {
             return fail(
-                "Pocket Secretary Notebook choice ID or label is invalid");
+                "Pocket Secretary Notebook choice label is missing");
         }
         content.notebook_choice_ids[index] = choice.id;
     }
