@@ -175,7 +175,8 @@ bool FieldDialogueRuntime::open_stoker_prompt_for_dump(
     if (prompt == StokerMotelPromptId::manager_greeting ||
         prompt == StokerMotelPromptId::manager_greeting_with_package) {
         if (script_runtime_ != nullptr) {
-            script_runtime_->set_location_context("motel", "stoker_motel");
+            script_runtime_->set_location_context(
+                "motel", "stoker_motel", "stoker.motel");
         }
         const bool completed =
             prompt == StokerMotelPromptId::manager_greeting;
@@ -241,6 +242,9 @@ bool FieldDialogueRuntime::open_stoker_arrival_result_for_dump(
 
 bool FieldDialogueRuntime::open_stoker_prompt(
     const StokerMotelPromptId prompt) {
+    if (script_menu_task_waiting_ && script_runtime_ != nullptr) {
+        script_runtime_->cancel_task();
+    }
     if (!assets_loaded_) {
         return open_source_boundary(
             failure_.empty() ? "Stoker dialogue assets are not loaded"
@@ -249,6 +253,8 @@ bool FieldDialogueRuntime::open_stoker_prompt(
     boundary_reason_.clear();
     active_prompt_ = prompt;
     hotel_options_menu_follows_ = false;
+    active_script_menu_.reset();
+    script_menu_task_waiting_ = false;
     StokerMotelPromptView source_view;
     if (prompt == StokerMotelPromptId::manager_greeting ||
         prompt == StokerMotelPromptId::manager_greeting_with_package) {
@@ -256,14 +262,21 @@ bool FieldDialogueRuntime::open_stoker_prompt(
             return open_source_boundary(
                 "Stoker manager menu has no gameplay script runtime");
         }
-        script_runtime_->set_location_context("motel", "stoker_motel");
+        script_runtime_->set_location_context(
+            "motel", "stoker_motel", "stoker.motel");
         script_runtime_->set_story_state(story_facts_);
-        auto menu = script_runtime_->menu(
-            "motel", "manager_choices", "stoker.motel");
-        if (!menu.has_value()) {
+        const auto task = script_runtime_->start_task(
+            "motel", "manager_interaction");
+        if (task.status !=
+                scripting::ScriptTaskStep::Status::awaiting_native_operation ||
+            !task.operation.has_value() ||
+            task.operation->type !=
+                scripting::ScriptNativeOperation::Type::ui_menu ||
+            !task.operation->menu.has_value()) {
             return open_source_boundary(script_runtime_->failure());
         }
-        active_script_menu_ = std::move(*menu);
+        active_script_menu_ = task.operation->menu;
+        script_menu_task_waiting_ = true;
         const auto script_view = script_prompt_view(
             prompt, *active_script_menu_);
         if (!script_view.has_value()) {
@@ -287,6 +300,9 @@ bool FieldDialogueRuntime::open_stoker_prompt(
 }
 
 bool FieldDialogueRuntime::open_source_boundary(std::string reason) {
+    if (script_menu_task_waiting_ && script_runtime_ != nullptr) {
+        script_runtime_->cancel_task();
+    }
     boundary_reason_ = std::move(reason);
     panel_ = DialoguePanelView{};
     panel_.open = true;
@@ -297,6 +313,7 @@ bool FieldDialogueRuntime::open_source_boundary(std::string reason) {
     panel_.source_boundary_reason = boundary_reason_;
     active_prompt_ = StokerMotelPromptId::source_boundary;
     active_script_menu_.reset();
+    script_menu_task_waiting_ = false;
     hotel_options_menu_follows_ = false;
     opening_intro_package_offer_follows_ = false;
     if (source_boundary_callback_) {
@@ -349,12 +366,30 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
     }
 
     panel_.selected_option = option_index;
-    const auto command = active_script_menu_.has_value()
-        ? (option_index < active_script_menu_->choices.size()
-               ? script_option_command(
-                     active_script_menu_->choices[option_index].id)
-               : std::nullopt)
-        : stoker_motel_prompt_command(active_prompt_, option_index);
+    std::optional<StokerMotelPromptCommand> command;
+    if (active_script_menu_.has_value()) {
+        if (!script_menu_task_waiting_ || script_runtime_ == nullptr ||
+            option_index >= active_script_menu_->choices.size()) {
+            open_source_boundary(
+                "Stoker script menu is not waiting for a valid selection");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+        const auto& selected_id =
+            active_script_menu_->choices[option_index].id;
+        const auto task =
+            script_runtime_->complete_native_menu_choice(selected_id);
+        if (task.status != scripting::ScriptTaskStep::Status::completed ||
+            task.result_id != selected_id) {
+            open_source_boundary(script_runtime_->failure().empty()
+                                     ? "Stoker script did not return its selected choice"
+                                     : script_runtime_->failure());
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+        script_menu_task_waiting_ = false;
+        command = script_option_command(*task.result_id);
+    } else {
+        command = stoker_motel_prompt_command(active_prompt_, option_index);
+    }
     if (!command.has_value()) {
         open_source_boundary("selected Stoker option has no command record");
         return FieldDialogueAdvanceResult::source_boundary;
@@ -519,9 +554,13 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
 }
 
 void FieldDialogueRuntime::close() noexcept {
+    if (script_menu_task_waiting_ && script_runtime_ != nullptr) {
+        script_runtime_->cancel_task();
+    }
     panel_ = DialoguePanelView{};
     active_prompt_ = StokerMotelPromptId::source_boundary;
     active_script_menu_.reset();
+    script_menu_task_waiting_ = false;
     boundary_reason_.clear();
     hotel_options_menu_follows_ = false;
     opening_intro_package_offer_follows_ = false;

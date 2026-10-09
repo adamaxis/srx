@@ -23,4 +23,8 @@ function Motel.manager_choices()
     return choices
 end
 
+function Motel.manager_interaction()
+    return game.ui.menu(game.location.text_profile, Motel.manager_choices())
+end
+
 return Motel

@@ -56,13 +56,21 @@ at call boundaries; they are not live C++ object references, and C++ remains
 authoritative. The opening Stoker quest script marks
 `opening_dialogue_seen`, and the field controller applies that validated flag.
 Other script writes are not yet connected to general session or save state.
-The first coroutine service is `game.actor.walk_heading(actor, heading)`: it
-currently accepts the player and headings 0 through 7, yields a typed request
-to the native field controller, and resumes with the operation result. Both
-initial invocation and each resume have a 100,000-instruction limit. Actor
+Two coroutine operations are now connected to live routes. The first is
+`game.actor.walk_heading(actor, heading)`: it accepts the player and headings
+0 through 7, yields a typed request to the native field controller, and resumes
+with the operation result. The second is `game.ui.menu(profile, choice_ids)`:
+it yields a menu definition to the existing native dialogue presenter, then
+resumes with the stable ID selected by the player. Shared `motel.lua` builds
+the ordinary motel options and collects optional quest hooks; the current
+Stoker route supplies `stoker.motel` as the location's text profile. The A/B/C
+input still follows the original menu's button mapping, and validated native
+handlers still perform the resulting actions. This UI operation is a first
+connected menu, not a general dialogue or window toolkit. Both operations use
+a 100,000-instruction limit on initial invocation and each resume. Actor
 placement, destination movement, scripted animation, `game.items`,
-`game.audio`, `game.ui`, and durable save backing remain unimplemented. The
-runner has no `io`, `os`, `debug`, or package-loader access.
+`game.audio`, general `game.ui.say`, and durable save backing remain
+unimplemented. The runner has no `io`, `os`, `debug`, or package-loader access.
 
 ## Content organization
 
@@ -74,7 +82,8 @@ runner has no `io`, `os`, `debug`, or package-loader access.
 - `gameplay/scripts/motel.lua` contains shared motel behavior, independent of
   Stoker's identity. It adds the base choices and calls the optional
   `motel_manager_choices()` hook on loaded quest modules in stable module-name
-  order.
+  order. `manager_interaction()` presents that list through the yielded
+  `game.ui.menu` service and returns the selected stable choice ID.
 - `gameplay/scripts/michael_package.lua` contains the Michael quest hook and
   its first-visit, repeat, and completed branches. Its motel-choice hook checks
   `game.location`, so the quest option appears at Stoker and does not leak into
@@ -85,23 +94,26 @@ runner has no `io`, `os`, `debug`, or package-loader access.
 
 The current vertical slice connects the New Game scene-entry trigger, its
 Lua-owned handler and yieldable movement request, the Michael package entry
-branch, and the shared motel manager choices to the Qt field and dialogue
-runtime. Native C++ still owns movement execution, collision, payment,
-inventory effects, animation timing, scene presentation, and most other
-map/menu behavior. Only the heading-based player movement operation is wired
-through the coroutine boundary; the remaining examples above describe
-incremental services to add, not existing adapters.
+branch, and the shared motel manager menu to the Qt field and dialogue
+runtime. Lua supplies the live manager choice list and receives the player's
+stable selected ID through a suspended task. Native C++ still owns movement
+execution, collision, payment, inventory effects, animation timing, the
+presenter's drawing/input, and most other map/menu behavior. The remaining
+examples above describe incremental services to add, not existing adapters.
 
 ## Source and visual verification
 
 Every event and story branch remains grounded in the ROM profile and checked
 against converted Ghidra code. C++ source addresses stay in audit documents as
 provenance, not script identifiers. Script QA checks state transitions and
-normal-input routes. Visual review checks the full frame during menu/dialogue
-entry and exit, selector state, animation timing, sound timing, and whether
-old panels are fully cleared before the next interface appears. Internal Qt
-captures verify the converted presentation only; they do not establish
-Genesis fidelity without an independent game capture.
+normal-input routes. Each visual review asks whether the screen looks right;
+whether focus/selection matches the actual behavior; whether the art, layout,
+and selector marks are correct; what moves and on which cadence; which sounds
+play and for how long; whether adjacent screen regions also remain correct;
+whether several frames support the interpretation; and whether the prior UI
+was cleared or redrawn before new controls appeared. Internal Qt captures
+verify the converted presentation only; they do not establish Genesis fidelity
+without an independent game capture.
 
 ## Provenance
 

@@ -28,11 +28,13 @@ struct ScriptMenuDefinition {
 struct ScriptNativeOperation {
     enum class Type {
         actor_walk_heading,
+        ui_menu,
     };
 
     Type type = Type::actor_walk_heading;
     std::string actor_id;
     std::uint8_t heading = 0;
+    std::optional<ScriptMenuDefinition> menu;
 };
 
 struct ScriptTaskStep {
@@ -44,6 +46,7 @@ struct ScriptTaskStep {
 
     Status status = Status::failed;
     std::optional<ScriptNativeOperation> operation;
+    std::optional<std::string> result_id;
 };
 
 // Lua modules use the global game facade. Story/location tables are copied in
@@ -63,13 +66,16 @@ public:
     std::optional<std::vector<FieldMapEventRule>> map_event_rules();
     void set_story_state(const StoryFacts& facts);
     StoryFacts story_state() const;
-    void set_location_context(std::string_view type, std::string_view id);
+    void set_location_context(std::string_view type, std::string_view id,
+                              std::string_view text_profile = {});
     std::optional<std::string> call_string(
         std::string_view module, std::string_view function);
     ScriptTaskStep start_task(
         std::string_view module, std::string_view function);
     ScriptTaskStep complete_native_operation(bool succeeded);
+    ScriptTaskStep complete_native_menu_choice(std::string_view choice_id);
     bool task_waiting_for_native_operation() const noexcept;
+    void cancel_task() noexcept;
     std::optional<ScriptMenuDefinition> menu(
         std::string_view module, std::string_view function,
         std::string_view text_profile);

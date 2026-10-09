@@ -262,3 +262,59 @@ their own ROM-first and multi-frame audit before being called correct.
   automatic New Game arrival route are connected in the Qt conversion. General
   building access, same-archetype HUD palette/ammo, exact blank-shell timing,
   and actual audio playback are not closed by this hill.
+
+## Lua manager-menu coroutine follow-up (2026-10-08)
+
+This incremental scripting change leaves the manager page's pixels and
+button-driven behavior unchanged. Shared `motel.lua` builds the ordinary motel
+choices, adds the Michael quest's package choice when its location/state hook
+allows it, and calls `game.ui.menu(profile, choice_ids)`. The Lua task suspends
+while the existing dialogue presenter displays the profile and receives A/B/C.
+The selected stable ID resumes the task; the existing validated native
+command handler still applies the choice's effect. The Stoker runtime supplies
+the `stoker.motel` text profile. This is a connected generic menu operation,
+not a general dialogue/window API, and item/audio/cutscene adapters remain
+open.
+
+1. **Does it look correct?** The manager page still shows the source A/B/C
+   button rows and the three expected choices. A/B/C are direct action buttons;
+   the ROM page does not use a movable row cursor, so no new highlight was
+   added. The Debug capture matches Release by SHA-256, and independent section
+   03 frame `000301` shows this manager screen family.
+2. **Does the appearance reflect the behavior?** The unpaid Stoker location
+   supplies `crash`, `leave`, and `package`; the page labels those choices, and
+   A/B/C returns the corresponding stable ID to the suspended Lua function.
+   The runtime test checks the menu request and returned `package` ID. The
+   native command resolver still owns payment and other effects.
+3. **Are the visuals correct?** The full manager screenshot retains the
+   portrait, text frame, button glyphs, labels, margins, and black backing of
+   the previous native page. The script path produces the same capture, so
+   this change introduces no menu art or layout change.
+4. **Is it animated?** The manager page is static while it waits for A/B/C.
+   No timed row animation or cursor cadence was found in this menu path.
+5. **Is there sound?** This coroutine adds no sound request. No distinct
+   manager-choice sound call or playback duration is established by this
+   route; mode-entry audio events remain a separate native service boundary.
+6. **Are the other screen regions correct?** The full 320x224 manager capture
+   contains no field map/HUD behind the panel and no second set of controls.
+   The field return redraws the map and HUD cleanly.
+7. **Do multiple frames support the interpretation?** The native route has
+   thirteen whole-screen checkpoints from spawn through return. Independent
+   section 03 captures include the manager page at `000301` plus the opening,
+   debt, and referral pages. They corroborate screen family and content, while
+   ROM/input-state evidence supports the action mapping.
+8. **Was the previous interface cleared before this one appeared?** Yes. The
+   transition goes through full black; the dialogue panel replaces the field
+   scene, and the return redraws the field. The reviewed frames show no old
+   buttons or graphics under the manager panel.
+9. **Was the whole available sequence reviewed?** Yes. All thirteen Debug
+   route images were reopened at their full 320x224 resolution. The same
+   thirteen Release names and SHA-256 hashes match. Existing route QA covers
+   New Game movement, collision, fade, dialogue choices, payment handoff, and
+   field return; menu coroutine QA additionally checks suspension/resumption
+   and selected-ID validation.
+
+Debug and Release focused CTests pass for script runtime, dialogue runtime,
+startup integration, and the Stoker collision-to-dialogue route. These are
+conversion checks; the independent clip remains the visual reference, and no
+claim of original-game sound timing is made here.

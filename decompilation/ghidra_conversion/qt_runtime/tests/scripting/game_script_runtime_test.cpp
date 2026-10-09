@@ -187,12 +187,40 @@ int main() {
         return 12;
     }
 
+    scripts.set_story_state(repeat_visit);
+    scripts.set_location_context(
+        "motel", "stoker_motel", "stoker.motel");
+    const auto manager_interaction =
+        scripts.start_task("motel", "manager_interaction");
+    if (!expect(manager_interaction.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    manager_interaction.operation.has_value() &&
+                    manager_interaction.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    manager_interaction.operation->menu.has_value() &&
+                    manager_interaction.operation->menu->title_key ==
+                        "stoker.motel.manager.title" &&
+                    manager_interaction.operation->menu->choices.size() == 3U,
+                "shared motel script did not yield its property-profile menu")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    const auto menu_selection =
+        scripts.complete_native_menu_choice("package");
+    if (!expect(menu_selection.status == ScriptTaskStep::Status::completed &&
+                    menu_selection.result_id ==
+                        std::optional<std::string>{"package"},
+                "native menu choice did not resume Lua with its stable id")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+
     GameScriptRuntime sequence_scripts;
     if (!expect(sequence_scripts.load_package(
                     SHADOWRUN_GAMEPLAY_SCRIPT_FIXTURE_ROOT),
                 "coroutine fixture did not load")) {
         std::cerr << sequence_scripts.failure() << '\n';
-        return 13;
+        return 14;
     }
     auto sequence_step =
         sequence_scripts.start_task("field_events", "walk_twice");
@@ -202,7 +230,7 @@ int main() {
                     sequence_step.operation->heading == 0U,
                 "first sequential actor operation did not yield")) {
         std::cerr << sequence_scripts.failure() << '\n';
-        return 13;
+        return 14;
     }
     sequence_step = sequence_scripts.complete_native_operation(true);
     if (!expect(sequence_step.status ==
@@ -211,13 +239,13 @@ int main() {
                     sequence_step.operation->heading == 1U,
                 "script did not resume and yield its second actor operation")) {
         std::cerr << sequence_scripts.failure() << '\n';
-        return 13;
+        return 14;
     }
     sequence_step = sequence_scripts.complete_native_operation(true);
     if (!expect(sequence_step.status == ScriptTaskStep::Status::completed,
                 "script did not finish after sequential native operations")) {
         std::cerr << sequence_scripts.failure() << '\n';
-        return 13;
+        return 14;
     }
     return 0;
 }

@@ -118,6 +118,7 @@ private:
     scripting::GameScriptRuntime* script_runtime_ = nullptr;
     scripting::StoryFacts story_facts_;
     std::optional<scripting::ScriptMenuDefinition> active_script_menu_;
+    bool script_menu_task_waiting_ = false;
     StokerMotelArrivalCommandCallbacks arrival_command_callbacks_;
     std::function<std::optional<StokerMotelRoomPaymentOutcome>()>
         room_payment_callback_;
