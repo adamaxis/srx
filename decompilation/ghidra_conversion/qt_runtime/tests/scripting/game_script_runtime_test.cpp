@@ -307,6 +307,38 @@ int main() {
         return 1;
     }
 
+    const auto maglock_intro_menu = scripts.menu(
+        "field_interactions", "maglock_intro", "field.maglock", "door");
+    const auto maglock_actions_menu = scripts.menu(
+        "field_interactions", "maglock_actions", "field.interaction",
+        "maglock_actions");
+    const auto security_actions_menu = scripts.menu(
+        "field_interactions", "security_terminal_actions",
+        "field.interaction", "security_actions");
+    if (!expect(maglock_intro_menu.has_value() &&
+                    maglock_intro_menu->choices.size() == 1U &&
+                    maglock_intro_menu->choices[0].id == "more" &&
+                    maglock_intro_menu->choices[0].label_key ==
+                        "field.maglock.option.more" &&
+                    maglock_actions_menu.has_value() &&
+                    maglock_actions_menu->choices.size() == 3U &&
+                    maglock_actions_menu->choices[0].label_key ==
+                        "field.interaction.option.electronics" &&
+                    maglock_actions_menu->choices[1].label_key ==
+                        "field.interaction.option.grenade" &&
+                    maglock_actions_menu->choices[2].label_key ==
+                        "field.interaction.option.walk-away" &&
+                    security_actions_menu.has_value() &&
+                    security_actions_menu->choices.size() == 2U &&
+                    security_actions_menu->choices[0].label_key ==
+                        "field.interaction.option.electronics" &&
+                    security_actions_menu->choices[1].label_key ==
+                        "field.interaction.option.walk-away",
+                "field-interaction menus did not return explicit Lua text keys")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
     struct OpeningStoryTextExpectation {
         std::string_view id;
         std::string_view text;

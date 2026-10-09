@@ -168,7 +168,9 @@ incrementally.
   controller maps these stable choice IDs to source commands and retains the
   passkey, Electronics, grenade, alarm, and map-state rules. Its text-key map
   binds those outcomes to the shared ROM-derived dialogue entries, so native
-  result handling does not carry a second set of content aliases.
+  result handling does not carry a second set of content aliases. All three
+  menus return their exact ordered ROM label keys directly; the runtime does
+  not compose the label keys from the choice IDs.
 - `gameplay/scripts/field_mode.lua` selects the mode-text paragraph and
   portrait key from the signed field-mode/event context exposed by
   `game.field`. Native code keeps only the shared prompt's sentinel timing and

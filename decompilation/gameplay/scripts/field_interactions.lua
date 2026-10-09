@@ -4,15 +4,24 @@
 local FieldInteractions = {}
 
 function FieldInteractions.maglock_intro()
-    return { "more" }
+    return { "more" }, nil, {
+        "field.maglock.option.more",
+    }
 end
 
 function FieldInteractions.maglock_actions()
-    return { "electronics", "grenade", "walk-away" }
+    return { "electronics", "grenade", "walk-away" }, nil, {
+        "field.interaction.option.electronics",
+        "field.interaction.option.grenade",
+        "field.interaction.option.walk-away",
+    }
 end
 
 function FieldInteractions.security_terminal_actions()
-    return { "electronics", "walk-away" }
+    return { "electronics", "walk-away" }, nil, {
+        "field.interaction.option.electronics",
+        "field.interaction.option.walk-away",
+    }
 end
 
 function FieldInteractions.text_keys()
