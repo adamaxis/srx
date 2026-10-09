@@ -74,7 +74,10 @@ the field approach, fade, prompt, category page, and field return; see
   `0x58BB6` adds the selected 2x2 overlay from `0xCE22E + cursor*8`. The
   heading table at `0x1AA8AF` contains 32 records with 20 visible characters
   and a separator byte. Extraction preserves their spaces because the source
-  uses them to align the two centered title lines.
+  uses them to align the two centered title lines. `shop.lua` returns the
+  explicit keyed text binding beside each stable service/action ID; the Lua
+  runtime validates that ordered binding before the native presenter resolves
+  the corresponding ROM text.
 - Title: `0x56AC0` indexes the 12-entry pointer table at `0x1AAB50` with
   `FFF0B6`. Ares uses entry 1, whose record at `0x1AAB92` stores destination
   cell `0xC110` and text `Ares Weapon Emporium`. The offline extractor emits
@@ -82,8 +85,10 @@ the field approach, fade, prompt, category page, and field return; see
   `gameplay/scripts/shop.lua` declares their stable IDs in the same pointer-
   table order. Numeric destination words remain as extracted routing data in
   `menu/field/service-routes.tsv`.
-  All other field menu copy now comes from the shared Lua text table. The Qt
-  runtime does not follow those ROM pointers.
+  All other field menu copy now comes from the shared Lua text table. Each
+  service ID returned by `Shop.services()` is paired there with its explicit
+  `shop.service.option.*` text key; the C++ menu runtime no longer has to
+  manufacture that key. The Qt runtime does not follow the ROM pointers.
 - Service background: `0x56AC0` begins by calling `0x10BC4`. That routine
   loads the shared pattern stream at `0xCAB0C` through `0x10918`, copies the
   raw `0x340` bytes at `0xD263C` to VRAM `0x9F40`, then writes eight literal
@@ -219,9 +224,11 @@ returns purchase, sale, source-boundary, runner-change, and field-return
 requests. It does not own a second inventory or wallet. The live presenter
 consumes the named background, six extracted selected-tab images, fixed-width
 heading records, existing named item images, and a dedicated E-offer art/text
-asset. `shop.lua` binds the common prompt, transaction feedback, purchase/sale
-headings, and special clips text; `items.lua` maps the 50 item records and 32
-detail strings generated from the ROM pointer table. `ShopTransactionService` delegates to the
+asset. `shop.lua` binds the common prompt, transaction feedback, service
+labels, action headings, purchase/sale headings, and special clips text; its
+menu functions return explicit ordered text keys with the stable IDs.
+`items.lua` maps the 50 item records and 32 detail strings generated from the
+ROM pointer table. `ShopTransactionService` delegates to the
 existing typed purchase/removal conversions, and the field session applies
 successful mutations to its active runner and new-game wallet. Debug QA writes
 introduction, category, selected-item, purchase failure/cancel/accept, Stim
@@ -231,3 +238,29 @@ Patch confirmation, E-coded clips, sale/refund, protected-sale, and return
 ordinary builds. Debug and Release also pass script runtime, field-menu text
 catalog, physical Ares entry, and full shop transaction QA. Loaded-save wallet
 binding and Windows loopback capture for the shop action are still open.
+
+## Lua menu-label binding follow-up (2026-10-09)
+
+`Shop.services()` and `Shop.action_headings()` now return the ordered stable
+IDs and their explicit label keys together. The generic Lua runtime checks the
+key list against the row count; `FieldSceneRuntime` continues to check the ROM
+row order and resolves the keys through the imported text resource. This
+removes the implicit C++ `profile.option.<id>` label construction for these
+two shop menus. No menu layout, selection, transaction, asset, or audio code
+changed.
+
+The full-screen review reconfirmed the Ares title and category headings, the
+slim yellow item selector, selected item art/details, default-No and moved-Yes
+confirmation state, purchase/sale feedback, protected-item page, and field
+return. All 21 named Debug BMP checkpoints were inspected individually at
+320x224; matching Release hashes establish the same pixels in both builds.
+The modal pages replace old price
+and description text while retaining only the intended item art, offer row,
+and HUD; field return removes the entire shop panel. The shop loop has no timed
+idle animation; item/tab selection changes only on controller events. ROM
+movement/confirmation sounds and their extracted durations remain as traced
+above; this Lua mapping does not add or change a sound request. Independent
+longplay frames support the Ares title, category, item, confirmation, and
+updated-funds sequence, but do not supply a second complete menu traversal.
+This is a text-binding/runtime consistency check, not a new Genesis fidelity
+claim.

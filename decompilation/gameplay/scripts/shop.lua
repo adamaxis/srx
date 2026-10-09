@@ -3,8 +3,24 @@
 -- and transactions.
 local Shop = {}
 
+local function service_title(id)
+    return "shop.service.option." .. id
+end
+
+local function action_heading(id)
+    return "shop.action_heading.option." .. id
+end
+
+local function key_rows(ids, make_key)
+    local keys = {}
+    for index, id in ipairs(ids) do
+        keys[index] = make_key(id)
+    end
+    return keys
+end
+
 function Shop.services()
-    return {
+    local ids = {
         "weapons_world",
         "ares_weapon_emporium",
         "crime_mall",
@@ -18,10 +34,11 @@ function Shop.services()
         "council_island_hospital",
         "seattle_general_hospital",
     }
+    return ids, nil, key_rows(ids, service_title)
 end
 
 function Shop.action_headings()
-    return {
+    local ids = {
         "ares_weapons_display",
         "ares_weapons_available",
         "ares_armor_display",
@@ -55,14 +72,7 @@ function Shop.action_headings()
         "sell_item_from_secondary",
         "sell_inventory_secondary",
     }
-end
-
-local function service_title(id)
-    return "shop.service.option." .. id
-end
-
-local function action_heading(id)
-    return "shop.action_heading.option." .. id
+    return ids, nil, key_rows(ids, action_heading)
 end
 
 local function offer(kind, value, quantity)

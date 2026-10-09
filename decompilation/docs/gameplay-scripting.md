@@ -189,7 +189,8 @@ from the older convention incrementally.
   quests can add the same choice hook without adding per-building scripts or
   changing `motel.lua`.
 - `gameplay/scripts/shop.lua` declares all 12 service-title IDs and all 32
-  service action-heading IDs in ROM order. Its Ares catalog connects the Ares
+  service action-heading IDs in ROM order, with explicit per-row text keys
+  returned from each Lua menu function. Its Ares catalog connects the Ares
   service title, six ordered categories and their heading IDs, available stock,
   universal clips text, and all nine transaction/detail text keys to the native
   shop controller. The controller still owns rendering, focus, input cadence,

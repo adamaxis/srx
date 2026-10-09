@@ -657,10 +657,15 @@ int main() {
             const auto* label = scripts.dialogue_text(choice.label_key);
             shop_service_rows_match = shop_service_rows_match &&
                 choice.id == kShopServiceIds[index] && label != nullptr &&
+                choice.label_key ==
+                    "shop.service.option." +
+                        std::string(kShopServiceIds[index]) &&
                 *label == kShopServiceLabels[index];
         }
     }
-    if (!expect(shop_service_rows_match &&
+    if (!expect(shop_services.has_value() &&
+                    shop_services->title_key.empty() &&
+                    shop_service_rows_match &&
                     scripts.dialogue_text("shop.ares.title") == nullptr &&
                     scripts.dialogue_text("shop.service.action-title.12") ==
                         nullptr,
@@ -717,10 +722,15 @@ int main() {
                 shop_action_heading_rows_match &&
                 choice.id == kShopActionHeadingIds[index] &&
                 label != nullptr &&
+                choice.label_key ==
+                    "shop.action_heading.option." +
+                        std::string(kShopActionHeadingIds[index]) &&
                 *label == kShopActionHeadingLabels[index];
         }
     }
-    if (!expect(shop_action_heading_rows_match,
+    if (!expect(shop_action_headings.has_value() &&
+                    shop_action_headings->title_key.empty() &&
+                    shop_action_heading_rows_match,
                 "Lua shop headings or 32-row ROM order changed")) {
         std::cerr << scripts.failure() << '\n';
         return 1;
