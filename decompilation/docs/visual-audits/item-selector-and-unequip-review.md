@@ -68,7 +68,7 @@ Qt route: `shadowrun_ghidra_conversion_qt_field_action_qa`.
    release tail). Windows loopback for this exact inventory visit remains
    unrecorded.
 6. **Are the other visible parts of the screen also correct? Yes for the
-   reviewed route.** All 54 Debug outputs are full 320x224 frames and were
+   reviewed route.** All 55 Debug outputs are full 320x224 frames and were
    inspected. The runner portrait, right HUD, item detail, posture strip,
    action strip, Clips child, confirmation rows, and return screen retain their
    expected state. The gear frames show its icon variant and equipment marker
@@ -150,7 +150,7 @@ All 55 shared Debug/Release BMPs have matching SHA-256 hashes. The old
 debug-only `item-cell-zoom.bmp` is a 4x nearest-neighbor crop; each four-pixel
 display edge represents one source pixel and is not a four-pixel outline.
 
-On 2026-10-08, I reopened all 54 Release BMPs at their full 320x224 size,
+On 2026-10-08, I reopened all 55 Release BMPs at their full 320x224 size,
 including the weapon, armor, and gear unequip frames, repeated toggles, fresh
 unequipped baselines, child-page return, and `actual.bmp`. The reported black
 box did not reproduce in this sequence; old controls and child overlays were

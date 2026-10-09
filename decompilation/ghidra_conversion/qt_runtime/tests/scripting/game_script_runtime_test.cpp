@@ -665,9 +665,12 @@ int main() {
     const auto confirmation =
         scripts.menu("ui", "confirmation", "ui", "confirmation");
     constexpr std::array<std::string_view, 2> kConfirmationIds{{"yes", "no"}};
+    constexpr std::array<std::string_view, 2> kConfirmationLabelKeys{{
+        "ui.option.yes", "ui.option.no"}};
     constexpr std::array<std::string_view, 2> kConfirmationLabels{{
         "Yes", "No"}};
     bool confirmation_rows_match = confirmation.has_value() &&
+        confirmation->title_key.empty() &&
         confirmation->choices.size() == kConfirmationIds.size();
     if (confirmation_rows_match) {
         for (std::size_t index = 0; index < kConfirmationIds.size(); ++index) {
@@ -675,11 +678,51 @@ int main() {
             const auto* label = scripts.dialogue_text(choice.label_key);
             confirmation_rows_match = confirmation_rows_match &&
                 choice.id == kConfirmationIds[index] && label != nullptr &&
+                choice.label_key == kConfirmationLabelKeys[index] &&
                 *label == kConfirmationLabels[index];
         }
     }
     if (!expect(confirmation_rows_match,
                 "Lua confirmation choices or ROM labels changed order")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
+    const auto field_metrics = scripts.menu(
+        "ui", "field_metric_labels", "ui.field_metric", "catalog");
+    constexpr std::array<std::string_view, 11> kFieldMetricIds{{
+        "physical", "mental", "attack", "defense", "damage", "drain",
+        "none", "no_armor", "weapons", "guns", "power"}};
+    constexpr std::array<std::string_view, 11> kFieldMetricLabelKeys{{
+        "ui.field_metric.option.physical",
+        "ui.field_metric.option.mental",
+        "ui.field_metric.option.attack",
+        "ui.field_metric.option.defense",
+        "ui.field_metric.option.damage",
+        "ui.field_metric.option.drain",
+        "ui.field_metric.option.none",
+        "ui.field_metric.option.no_armor",
+        "ui.field_metric.option.weapons",
+        "ui.field_metric.option.guns",
+        "ui.field_metric.option.power"}};
+    constexpr std::array<std::string_view, 11> kFieldMetricLabels{{
+        "Physical", "Mental", "Atk", "Def", "Damage", "Drain",
+        "None", "No Armor", "Wpns", "Guns", "Power"}};
+    bool field_metric_rows_match = field_metrics.has_value() &&
+        field_metrics->title_key.empty() &&
+        field_metrics->choices.size() == kFieldMetricIds.size();
+    if (field_metric_rows_match) {
+        for (std::size_t index = 0; index < kFieldMetricIds.size(); ++index) {
+            const auto& choice = field_metrics->choices[index];
+            const auto* label = scripts.dialogue_text(choice.label_key);
+            field_metric_rows_match = field_metric_rows_match &&
+                choice.id == kFieldMetricIds[index] &&
+                choice.label_key == kFieldMetricLabelKeys[index] &&
+                label != nullptr && *label == kFieldMetricLabels[index];
+        }
+    }
+    if (!expect(field_metric_rows_match,
+                "Lua field metric keys or ROM labels changed source order")) {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }

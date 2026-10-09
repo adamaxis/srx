@@ -240,9 +240,13 @@ supports the panel placement; the differing-state comparison is still open.
 Discard now follows `0x12634`/`0x1275C`: it opens the source Yes/No
 confirmation with No selected, shows the equipped-item warning, protects item
 codes `0x29..0x2B` in slot 7, and clears the possession cell only after Yes.
-The shared `0x57B8C` Yes/No row is declared by `gameplay/scripts/ui.lua` in
-source order; discard and Ares transaction dispatch resolve the selected ID
-while keeping their existing typed state and input path.
+The shared `0x57B8C` Yes/No row is declared by `gameplay/scripts/ui.lua` with
+explicit `ui.option.yes` / `ui.option.no` keys in source order; the field
+metric captions likewise bind their stable IDs to explicit `ui.field_metric`
+keys. Discard and Ares transaction dispatch resolve the selected ID while
+keeping their existing typed state and input path. Debug/Release script,
+catalog, and full-screen route QA cover the bindings; see the
+[shared UI Lua content review](visual-audits/shared-ui-lua-content.md).
 If the discarded cell is live equipment, its weapon or armor state is cleared
 with it. First Aid now follows `0x12298`/`0x1253E`: it builds the active
 record target list plus the source `CANCEL` row, preserves the target cursor,

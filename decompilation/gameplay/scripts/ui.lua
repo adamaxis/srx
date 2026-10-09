@@ -2,12 +2,16 @@
 local UI = {}
 
 function UI.confirmation()
-    return { "yes", "no" }
+    local ids = { "yes", "no" }
+    return ids, nil, {
+        "ui.option.yes",
+        "ui.option.no",
+    }
 end
 
 -- Shared field-stat captions used by item and command overview panels.
 function UI.field_metric_labels()
-    return {
+    local ids = {
         "physical",
         "mental",
         "attack",
@@ -20,6 +24,11 @@ function UI.field_metric_labels()
         "guns",
         "power",
     }
+    local label_keys = {}
+    for index, id in ipairs(ids) do
+        label_keys[index] = "ui.field_metric.option." .. id
+    end
+    return ids, nil, label_keys
 end
 
 return UI

@@ -259,13 +259,13 @@ from the older convention incrementally.
   its IDs, and the field menu catalog resolves the extracted copy from those
   Lua keys; QA checks key and source-text order against the ROM. Cursor,
   reload, trade, ammunition, and runner-record state remain native.
-- `gameplay/scripts/ui.lua` declares the shared Yes/No confirmation menu in
-  ROM order and the shared field-stat caption IDs. The field text catalog
-  takes those IDs from Lua without a second runtime list in C++; script and
-  catalog QA assert their source order and ROM copy. The Ares shop and
-  inventory discard paths use the selected stable ID when applying the
-  result. Cursor timing, default-No state, sound, and item/wallet effects
-  remain native.
+- `gameplay/scripts/ui.lua` declares the shared Yes/No confirmation menu and
+  shared field-stat caption IDs with explicit ordered text keys. The field
+  text catalog resolves those keys without a duplicate label list in C++;
+  script and catalog QA assert each ID/key pair, source order, and ROM copy.
+  The Ares shop and inventory discard paths use the selected stable ID when
+  applying the result. Cursor timing, default-No state, sound, and item/wallet
+  effects remain native.
 - `gameplay/scripts/startup.lua` declares the ordered New Game/Load Game,
   Save Slot, and archetype choices, with explicit optional title and ordered
   label keys returned from those Lua menu functions. The title-screen
