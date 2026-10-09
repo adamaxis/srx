@@ -372,18 +372,108 @@ int main() {
         return 1;
     }
 
+    constexpr std::array<std::string_view, 12> kShopServiceIds{{
+        "weapons_world", "ares_weapon_emporium", "crime_mall",
+        "medicine_lodge", "riannons", "merlins_lore", "microtronics",
+        "wire_masters", "little_chiba", "dr_bobs",
+        "council_island_hospital", "seattle_general_hospital"}};
+    constexpr std::array<std::string_view, 12> kShopServiceLabels{{
+        "Weapons World", "Ares Weapon Emporium", "Crime Mall",
+        "Medicine Lodge", "Riannon's", "Merlin's Lore", "Microtronics",
+        "Wire-Masters", "Little Chiba", "Dr. Bob's",
+        "Council Island Hospital", "Seattle General Hospital"}};
+    const auto shop_services =
+        scripts.menu("shop", "services", "shop.service", "catalog");
+    bool shop_service_rows_match = shop_services.has_value() &&
+        shop_services->choices.size() == kShopServiceIds.size();
+    if (shop_service_rows_match) {
+        for (std::size_t index = 0; index < kShopServiceIds.size(); ++index) {
+            const auto& choice = shop_services->choices[index];
+            const auto* label = scripts.dialogue_text(choice.label_key);
+            shop_service_rows_match = shop_service_rows_match &&
+                choice.id == kShopServiceIds[index] && label != nullptr &&
+                *label == kShopServiceLabels[index];
+        }
+    }
+    if (!expect(shop_service_rows_match &&
+                    scripts.dialogue_text("shop.ares.title") == nullptr &&
+                    scripts.dialogue_text("shop.service.action-title.12") ==
+                        nullptr,
+                "Lua shop service IDs or ROM title order changed")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
+    constexpr std::array<std::string_view, 32> kShopActionHeadingIds{{
+        "ares_weapons_display", "ares_weapons_available",
+        "ares_armor_display", "ares_armor_available",
+        "ares_other_items_display", "ares_other_items_equipment",
+        "ares_weapon_accessories_display",
+        "ares_weapon_accessories_accessories",
+        "ares_firearm_accessories_select",
+        "ares_firearm_accessories_to_accessorize", "ares_sell_item_from",
+        "ares_sell_inventory", "combat_utilities_display",
+        "combat_utilities", "defense_utilities_display", "defense_utilities",
+        "mask_sense_utilities_display", "mask_sense_utilities",
+        "cyberdecks_display", "cyberdecks", "cyberdeck_upgrades_display",
+        "cyberdeck_upgrades", "cyberdeck_upgrades_second_display",
+        "cyberdeck_upgrades_second", "magic_spells_display", "magic_spells",
+        "magic_items_display", "magic_items", "magic_foci_display",
+        "magic_foci", "sell_item_from_secondary",
+        "sell_inventory_secondary"}};
+    constexpr std::array<std::string_view, 32> kShopActionHeadingLabels{{
+        "      Display       ", " Available Weapons  ",
+        "      Display       ", "  Available Armor   ",
+        " Display Available  ", "     Equipment      ",
+        "   Display Weapon   ", "    Accessories     ",
+        "   Select Firearm   ", "   To Accessorize   ",
+        "   Sell Item From   ", "     Inventory      ",
+        " Display Available  ", "  Combat Utilities  ",
+        " Display Available  ", " Defense Utilities  ",
+        " Display Available  ", "Mask/Sense Utilities",
+        " Display Available  ", "    Cyberdecks      ",
+        " Display Available  ", " Cyberdeck Upgrades ",
+        " Display Available  ", " Cyberdeck Upgrades ",
+        " Display Available  ", "    Magic Spells    ",
+        " Display Available  ", "    Magic Items     ",
+        " Display Available  ", "    Magic Foci      ",
+        "   Sell Item From   ", "     Inventory      "}};
+    const auto shop_action_headings = scripts.menu(
+        "shop", "action_headings", "shop.action_heading", "catalog");
+    bool shop_action_heading_rows_match = shop_action_headings.has_value() &&
+        shop_action_headings->choices.size() ==
+            kShopActionHeadingIds.size();
+    if (shop_action_heading_rows_match) {
+        for (std::size_t index = 0; index < kShopActionHeadingIds.size();
+             ++index) {
+            const auto& choice = shop_action_headings->choices[index];
+            const auto* label = scripts.dialogue_text(choice.label_key);
+            shop_action_heading_rows_match =
+                shop_action_heading_rows_match &&
+                choice.id == kShopActionHeadingIds[index] &&
+                label != nullptr &&
+                *label == kShopActionHeadingLabels[index];
+        }
+    }
+    if (!expect(shop_action_heading_rows_match,
+                "Lua shop headings or 32-row ROM order changed")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
     const auto shop = scripts.shop_definition("ares_weapon_emporium");
     if (!expect(shop.has_value() && shop->groups.size() == 6U,
                 "Lua shop catalog did not define the Ares selector groups") ||
-        !expect(shop->title_key == "shop.ares.title" &&
+        !expect(shop->title_key ==
+                    "shop.service.option.ares_weapon_emporium" &&
                     shop->groups[0].title_keys ==
                         std::array<std::string, 2>{
-                            "shop.ares.weapons.display",
-                            "shop.ares.weapons.available"} &&
+                            "shop.action_heading.option.ares_weapons_display",
+                            "shop.action_heading.option.ares_weapons_available"} &&
                     shop->groups[5].title_keys ==
                         std::array<std::string, 2>{
-                            "shop.ares.sell.item_from",
-                            "shop.ares.sell.inventory"},
+                            "shop.action_heading.option.ares_sell_item_from",
+                            "shop.action_heading.option.ares_sell_inventory"},
                 "Lua shop title or category headings are not bound") ||
         !expect(shop->text_keys.transaction_prompt ==
                     "shop.transaction.prompt" &&

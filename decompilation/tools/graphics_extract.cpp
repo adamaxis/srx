@@ -673,44 +673,40 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         "field.mode.ares.package_payment",
         read_mode_prompt_paragraphs(
             {{0x118A6CU, 54U}, {0x118AA4U, 80U}}));
-    constexpr std::array<std::string_view, 12> kServiceTitleTextKeys{{
-        "shop.service.title.weapons_world",
-        "shop.ares.title",
-        "shop.service.title.crime_mall",
-        "shop.service.title.medicine_lodge",
-        "shop.service.title.riannons",
-        "shop.service.title.merlins_lore",
-        "shop.service.title.microtronics",
-        "shop.service.title.wire_masters",
-        "shop.service.title.little_chiba",
-        "shop.service.title.dr_bobs",
-        "shop.service.title.council_island_hospital",
-        "shop.service.title.seattle_general_hospital"}};
+    constexpr std::array<std::string_view, 12> kServiceTitleIds{{
+        "weapons_world", "ares_weapon_emporium", "crime_mall",
+        "medicine_lodge", "riannons", "merlins_lore", "microtronics",
+        "wire_masters", "little_chiba", "dr_bobs",
+        "council_island_hospital", "seattle_general_hospital"}};
     const auto service_titles =
         shadowrun::graphics::read_genesis_field_service_titles(rom);
     for (std::size_t index = 0; index < service_titles.size(); ++index) {
-        write_text_entry(kServiceTitleTextKeys[index],
+        write_text_entry("shop.service.option." +
+                             std::string(kServiceTitleIds[index]),
                          service_titles[index].text);
     }
-    constexpr std::array<std::string_view, 12> kAresActionTitleTextKeys{{
-        "shop.ares.weapons.display",
-        "shop.ares.weapons.available",
-        "shop.ares.armor.display",
-        "shop.ares.armor.available",
-        "shop.ares.other_items.display",
-        "shop.ares.other_items.equipment",
-        "shop.ares.weapon_accessories.display",
-        "shop.ares.weapon_accessories.accessories",
-        "shop.ares.firearm_accessories.select",
-        "shop.ares.firearm_accessories.to_accessorize",
-        "shop.ares.sell.item_from",
-        "shop.ares.sell.inventory"}};
+    constexpr std::array<std::string_view, 32> kShopActionHeadingIds{{
+        "ares_weapons_display", "ares_weapons_available",
+        "ares_armor_display", "ares_armor_available",
+        "ares_other_items_display", "ares_other_items_equipment",
+        "ares_weapon_accessories_display",
+        "ares_weapon_accessories_accessories",
+        "ares_firearm_accessories_select",
+        "ares_firearm_accessories_to_accessorize", "ares_sell_item_from",
+        "ares_sell_inventory", "combat_utilities_display",
+        "combat_utilities", "defense_utilities_display", "defense_utilities",
+        "mask_sense_utilities_display", "mask_sense_utilities",
+        "cyberdecks_display", "cyberdecks", "cyberdeck_upgrades_display",
+        "cyberdeck_upgrades", "cyberdeck_upgrades_second_display",
+        "cyberdeck_upgrades_second", "magic_spells_display", "magic_spells",
+        "magic_items_display", "magic_items", "magic_foci_display",
+        "magic_foci", "sell_item_from_secondary",
+        "sell_inventory_secondary"}};
     const auto service_action_titles =
         shadowrun::graphics::read_genesis_field_service_action_titles(rom);
     for (std::size_t index = 0; index < service_action_titles.size(); ++index) {
-        const auto key = index < kAresActionTitleTextKeys.size()
-            ? std::string(kAresActionTitleTextKeys[index])
-            : "shop.service.action-title." + std::to_string(index);
+        const auto key = "shop.action_heading.option." +
+                         std::string(kShopActionHeadingIds[index]);
         write_text_entry(key, service_action_titles[index]);
     }
     const auto shop_text =
@@ -1534,7 +1530,8 @@ void write_asset_readme(const std::filesystem::path& root) {
               "service titles, shop category headings, item names/categories/details, "
               "startup labels/messages, and transaction copy are emitted in "
               "`dialogue/script-text.lua`; `gameplay/scripts/shop.lua` binds "
-              "Ares categories and message keys, while "
+              "the 12 service titles, 32 source-order action headings, Ares "
+              "categories, and message keys, while "
               "`gameplay/scripts/items.lua` maps source item IDs to their "
               "name/category/detail keys. The spell-capable Magic panel is an individually "
               "named RGBA overlay. Item art is grouped under items/weapons, "

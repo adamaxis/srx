@@ -6850,64 +6850,74 @@ bool FieldSceneRuntime::load_pocket_secretary_menu_content() {
 
 bool FieldSceneRuntime::load_ares_shop_menu_content() {
     constexpr std::array<std::string_view, kFieldServiceTitleCount>
-        kServiceTitleKeys{{
-            "shop.service.title.weapons_world",
-            "shop.ares.title",
-            "shop.service.title.crime_mall",
-            "shop.service.title.medicine_lodge",
-            "shop.service.title.riannons",
-            "shop.service.title.merlins_lore",
-            "shop.service.title.microtronics",
-            "shop.service.title.wire_masters",
-            "shop.service.title.little_chiba",
-            "shop.service.title.dr_bobs",
-            "shop.service.title.council_island_hospital",
-            "shop.service.title.seattle_general_hospital"}};
+        kServiceTitleIds{{
+            "weapons_world", "ares_weapon_emporium", "crime_mall",
+            "medicine_lodge", "riannons", "merlins_lore", "microtronics",
+            "wire_masters", "little_chiba", "dr_bobs",
+            "council_island_hospital", "seattle_general_hospital"}};
+    constexpr std::array<std::string_view, kFieldServiceActionTitleCount>
+        kServiceActionHeadingIds{{
+            "ares_weapons_display", "ares_weapons_available",
+            "ares_armor_display", "ares_armor_available",
+            "ares_other_items_display", "ares_other_items_equipment",
+            "ares_weapon_accessories_display",
+            "ares_weapon_accessories_accessories",
+            "ares_firearm_accessories_select",
+            "ares_firearm_accessories_to_accessorize", "ares_sell_item_from",
+            "ares_sell_inventory", "combat_utilities_display",
+            "combat_utilities", "defense_utilities_display", "defense_utilities",
+            "mask_sense_utilities_display", "mask_sense_utilities",
+            "cyberdecks_display", "cyberdecks", "cyberdeck_upgrades_display",
+            "cyberdeck_upgrades", "cyberdeck_upgrades_second_display",
+            "cyberdeck_upgrades_second", "magic_spells_display",
+            "magic_spells", "magic_items_display", "magic_items",
+            "magic_foci_display", "magic_foci",
+            "sell_item_from_secondary", "sell_inventory_secondary"}};
     constexpr std::array<std::string_view, 6> kGroupIds{{
         "weapons", "other_items", "armor", "source_action_3",
         "source_action_4", "sell"}};
     constexpr std::array<std::size_t, 6> kGroupFirstTitleIndices{{
         0U, 4U, 2U, 6U, 8U, 10U}};
-    constexpr std::array<std::string_view, 20> kOtherServiceActionTitleKeys{{
-        "shop.service.action-title.12",
-        "shop.service.action-title.13",
-        "shop.service.action-title.14",
-        "shop.service.action-title.15",
-        "shop.service.action-title.16",
-        "shop.service.action-title.17",
-        "shop.service.action-title.18",
-        "shop.service.action-title.19",
-        "shop.service.action-title.20",
-        "shop.service.action-title.21",
-        "shop.service.action-title.22",
-        "shop.service.action-title.23",
-        "shop.service.action-title.24",
-        "shop.service.action-title.25",
-        "shop.service.action-title.26",
-        "shop.service.action-title.27",
-        "shop.service.action-title.28",
-        "shop.service.action-title.29",
-        "shop.service.action-title.30",
-        "shop.service.action-title.31"}};
     const auto fail = [this](std::string message) {
         failure_ = std::move(message);
         source_boundary("field.bootstrap.ares_shop_script_invalid");
         return false;
     };
+    const auto service_titles = game_scripts_.menu(
+        "shop", "services", "shop.service", "catalog");
+    const auto action_headings = game_scripts_.menu(
+        "shop", "action_headings", "shop.action_heading", "catalog");
     if (!field_shop_definition_.has_value() ||
+        !service_titles.has_value() || !action_headings.has_value() ||
         field_shop_definition_->id != "ares_weapon_emporium" ||
-        field_shop_definition_->title_key != kServiceTitleKeys[1] ||
-        field_shop_definition_->groups.size() != kGroupIds.size()) {
+        field_shop_definition_->groups.size() != kGroupIds.size() ||
+        service_titles->choices.size() != kServiceTitleIds.size() ||
+        action_headings->choices.size() != kServiceActionHeadingIds.size()) {
         return fail("Ares shop Lua definition does not match its source page");
     }
 
-    for (std::size_t index = 0; index < kServiceTitleKeys.size(); ++index) {
-        const auto* title =
-            game_scripts_.dialogue_text(kServiceTitleKeys[index]);
-        if (title == nullptr) {
+    for (std::size_t index = 0; index < kServiceTitleIds.size(); ++index) {
+        const auto& choice = service_titles->choices[index];
+        const auto* title = game_scripts_.dialogue_text(choice.label_key);
+        if (choice.id != kServiceTitleIds[index] || title == nullptr) {
             return fail("Lua shop service title text is incomplete");
         }
         field_menu_text_.field_service_titles[index] = *title;
+    }
+    if (field_shop_definition_->title_key !=
+        service_titles->choices[1].label_key) {
+        return fail("Ares title is not bound to its ROM service record");
+    }
+
+    for (std::size_t index = 0; index < kServiceActionHeadingIds.size();
+         ++index) {
+        const auto& choice = action_headings->choices[index];
+        const auto* title = game_scripts_.dialogue_text(choice.label_key);
+        if (choice.id != kServiceActionHeadingIds[index] || title == nullptr ||
+            title->size() != 20U) {
+            return fail("Lua shop action-heading catalog is incomplete");
+        }
+        field_menu_text_.field_service_action_titles[index] = *title;
     }
 
     std::array<bool, 12> ares_action_titles_found{};
@@ -6920,14 +6930,12 @@ bool FieldSceneRuntime::load_ares_shop_menu_content() {
         }
         for (std::size_t line = 0; line < group.title_keys.size(); ++line) {
             const auto title_index = first_title_index + line;
-            const auto* title =
-                game_scripts_.dialogue_text(group.title_keys[line]);
-            if (title == nullptr || title->size() != 20U ||
+            if (group.title_keys[line] !=
+                    action_headings->choices[title_index].label_key ||
                 ares_action_titles_found[title_index]) {
                 return fail("Ares shop Lua category heading is invalid");
             }
             ares_action_titles_found[title_index] = true;
-            field_menu_text_.field_service_action_titles[title_index] = *title;
         }
     }
     if (!std::all_of(ares_action_titles_found.begin(),
@@ -6936,16 +6944,6 @@ bool FieldSceneRuntime::load_ares_shop_menu_content() {
         return fail(
             "Ares shop Lua category headings do not cover each source row");
     }
-    for (std::size_t index = 0; index < kOtherServiceActionTitleKeys.size();
-         ++index) {
-        const auto* title = game_scripts_.dialogue_text(
-            kOtherServiceActionTitleKeys[index]);
-        if (title == nullptr || title->size() != 20U) {
-            return fail("Lua service action title text is incomplete");
-        }
-        field_menu_text_.field_service_action_titles[index + 12U] = *title;
-    }
-
     const auto copy_shop_text = [this](const std::string& key,
                                        std::string& destination) {
         const auto* text = game_scripts_.dialogue_text(key);

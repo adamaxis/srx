@@ -140,10 +140,12 @@ access.
   no dialogue adapter copies these facts into a temporary Lua map. Other
   quests can add the same choice hook without adding per-building scripts or
   changing `motel.lua`.
-- `gameplay/scripts/shop.lua` defines the Ares shop title, its six ordered
-  categories, each category's two ROM-derived heading keys, available stock,
-  and the keys for all seven transaction messages. The native shop controller
-  still owns rendering, focus, input cadence, and wallet/inventory changes.
+- `gameplay/scripts/shop.lua` declares all 12 service-title IDs and all 32
+  service action-heading IDs in ROM order. Its Ares catalog connects the Ares
+  service title, six ordered categories and their heading IDs, available stock,
+  universal clips text, and all nine transaction/detail text keys to the native
+  shop controller. The controller still owns rendering, focus, input cadence,
+  and wallet/inventory changes.
 - `gameplay/scripts/items.lua` maps each source item ID to its ROM-derived
   display name and category keys, maps the 32 source detail rows used by field
   item/shop panels, and declares the four inventory-action IDs in source order.
@@ -196,8 +198,9 @@ access.
   Hotel menu/status text,
   Pocket Secretary root and Notebook title/separator/labels,
   command-overview labels and shared confirmation labels,
-  Magic spell names and descriptions by stable spell ID,
-  field-service titles, field-menu labels and feedback, all 96 Notebook Tips,
+  Magic spell names and descriptions by stable spell ID, field-service titles
+  and 32 fixed-width shop action headings by stable Lua IDs, field-menu labels
+  and feedback, all 96 Notebook Tips,
   startup and save/load copy, shop category headings and transaction copy,
   item names/categories/details, and the special clips text. Native presenters
   resolve those keys through the Lua runtime and validate the full field-menu
@@ -214,8 +217,8 @@ room/debt service calls, arrival/farewell/result dialogue, and the Qt
 presenters. Stoker, field interaction, Ares mode-event paragraphs, Hotel text,
 startup menu text/choices, Pocket Secretary root choices/labels,
 command-overview root choices/labels, Clips selector choices/labels, Notebook
-option IDs/labels, shared confirmation choices/labels, and Magic spell IDs,
-names, and descriptions are Lua content.
+option IDs/labels, shared confirmation choices/labels, Magic spell
+IDs/names/descriptions, and shop service/action-heading IDs are Lua content.
 Script dialogue menus carry
 their text profile and optional speaker into one generic panel projection;
 menu choices use generic presentation roles. Hotel cursor-menu choices come

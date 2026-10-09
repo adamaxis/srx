@@ -21,9 +21,9 @@ constexpr std::size_t kMaximumMapEventRules = 512U;
 // caller can expose six. Keep the generic script-menu bound at the larger
 // source-defined menu size.
 constexpr std::size_t kMaximumMenuChoices = 7U;
-// Static script catalogs may describe a larger native-filtered list, such as
-// the 13 ROM Magic spells; live dialogue menus keep the source seven-row cap.
-constexpr std::size_t kMaximumMenuCatalogChoices = 16U;
+// Static script catalogs may describe source tables such as all 13 Magic
+// spells or 32 shop headings; live dialogue menus keep the seven-row cap.
+constexpr std::size_t kMaximumMenuCatalogChoices = 32U;
 constexpr std::size_t kMaximumShopGroups = 8U;
 constexpr std::size_t kMaximumShopOffers = 8U;
 constexpr std::size_t kMaximumItemCatalogEntries = 50U;
