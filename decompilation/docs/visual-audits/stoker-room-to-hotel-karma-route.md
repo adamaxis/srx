@@ -1,6 +1,6 @@
 # Physical Stoker doorway to Hotel Karma route
 
-Date: 2026-10-08
+Date: 2026-10-08 (Lua text-binding review updated 2026-10-09)
 
 Scope: the ordinary New Game field route from scene-2 Stoker collision record
 91 through the paid-room message, Hotel status/options, Hotel Karma spending,
@@ -140,10 +140,11 @@ an independent Genesis visual oracle.
   and places the No selector on the second text row, matching the two-row
   stride derived from `0xC376`/`0xC3B2` and the `0xE387E` Yes/No text.
 - **Code changed:** `gameplay/scripts/hotel.lua` now supplies both cursor-menu
-  choice lists to the live Hotel route. ROM-derived Hotel labels and status
-  text load from `assets/dialogue/script-text.lua`; their duplicate rows were
-  removed from the general field text catalog. The native Hotel presenter
-  keeps layout and input ownership.
+  choice lists to the live Hotel route, with explicit title and per-choice
+  text keys for both Options and Checkout. Its `text_keys()` map also binds
+  the Options separator, medical-attention suffix, and recovery rows. The
+  native presenter resolves those keys against the ROM-derived copy in
+  `assets/dialogue/script-text.lua`; it keeps layout and input ownership.
 - **Code changed:** the Hotel QA follows the physical doorway and normal
   input through the live `FieldSceneRuntime`, dialogue, payment, Hotel,
   Karma, and checkout handlers; no test helper injects a dialogue, payment
@@ -157,6 +158,15 @@ an independent Genesis visual oracle.
   and `shadowrun_ghidra_conversion_qt_karma_screen_distinction_qa`. The Hotel
   route writes its continuous sequence, named checkpoints, and
   `physical-route.tsv` under `qt_runtime/field-hotel-qa/`.
+- **Text-binding follow-up:** Debug and Release passed
+  `shadowrun_gameplay_script_runtime_qa`,
+  `shadowrun_ghidra_conversion_qt_field_hotel_qa`, and
+  `shadowrun_ghidra_field_menu_text_catalog`. All 223 route frames and all
+  named BMP checkpoints (252 BMPs total per configuration) retain matching
+  SHA-256 hashes. Eight chronological contact sheets were scanned; the
+  Options default/Check Out selection, checkout default-No/Yes selection,
+  status page, and clean field return were inspected at full resolution. The
+  binding change leaves the output pixels unchanged.
 - **Independently visually checked:** section 03 supports the Stoker doorway
   and dialogue panel only. No independent Hotel-page capture is available.
 - **Reported defect resolved:** no new independent Hotel appearance claim is

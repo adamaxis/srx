@@ -221,10 +221,12 @@ from the older convention incrementally.
   source ordering. The runner's spell table still filters available spells,
   and force, posture, cursor timing, and spell effects remain native state.
 - `gameplay/scripts/hotel.lua` declares stable choice IDs for the Hotel
-  Options and checkout cursor menus. `FieldSceneRuntime` loads both menu
-  definitions through `GameScriptRuntime::menu`, validates their source order,
-  and binds their ROM text keys into `HotelMenuRuntime`. Its typed C++ state
-  still owns cursor input, layout, the E660 animation, status service, page
+  Options and checkout cursor menus, including their explicit title and
+  ordered choice-label keys. Its `text_keys()` map binds the separator,
+  medical-attention suffix, and recovery-message rows. `FieldSceneRuntime`
+  loads these bindings through `GameScriptRuntime`, validates choice order,
+  and resolves the ROM copy into `HotelMenuRuntime`. Its typed C++ state still
+  owns cursor input, layout, the E660 animation, status service, page
   transitions, and the separate Hotel Karma spending screen.
 - `gameplay/scripts/pocket_secretary.lua` declares the five stable IDs for the
   field Pocket Secretary root menu and all five possible Notebook rows in ROM

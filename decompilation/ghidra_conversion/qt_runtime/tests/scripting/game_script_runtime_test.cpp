@@ -382,6 +382,7 @@ int main() {
         scripts.menu("hotel", "options", "hotel", "options");
     const auto hotel_checkout =
         scripts.menu("hotel", "checkout", "hotel", "checkout");
+    const auto hotel_text_keys = scripts.string_map("hotel", "text_keys");
     const auto* hotel_title = scripts.dialogue_text("hotel.options.title");
     const auto* hotel_separator =
         scripts.dialogue_text("hotel.options.separator");
@@ -392,6 +393,7 @@ int main() {
     const auto* recovery_last =
         scripts.dialogue_text("hotel.status.recovery.4");
     if (!expect(hotel_options.has_value() &&
+                    hotel_options->title_key == "hotel.options.title" &&
                     hotel_options->choices.size() == 2U &&
                     hotel_options->choices[0].id == "karma_screen" &&
                     hotel_options->choices[1].id == "check_out" &&
@@ -400,9 +402,22 @@ int main() {
                     hotel_options->choices[1].label_key ==
                         "hotel.option.check_out" &&
                     hotel_checkout.has_value() &&
+                    hotel_checkout->title_key == "hotel.checkout.title" &&
                     hotel_checkout->choices.size() == 2U &&
                     hotel_checkout->choices[0].id == "checkout_yes" &&
+                    hotel_checkout->choices[0].label_key ==
+                        "hotel.option.checkout_yes" &&
                     hotel_checkout->choices[1].id == "checkout_no" &&
+                    hotel_checkout->choices[1].label_key ==
+                        "hotel.option.checkout_no" &&
+                    hotel_text_keys.has_value() &&
+                    hotel_text_keys->size() == 5U &&
+                    hotel_text_keys->at("options_separator") ==
+                        "hotel.options.separator" &&
+                    hotel_text_keys->at("medical_attention_suffix") ==
+                        "hotel.status.medical_attention_suffix" &&
+                    hotel_text_keys->at("recovery_4") ==
+                        "hotel.status.recovery.4" &&
                     hotel_title != nullptr &&
                     *hotel_title == " Hotel Options" &&
                     hotel_separator != nullptr &&

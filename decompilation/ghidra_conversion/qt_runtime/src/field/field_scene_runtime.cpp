@@ -6709,6 +6709,12 @@ bool FieldSceneRuntime::load_hotel_menu_content() {
                         ? "Hotel checkout menu script is unavailable"
                         : game_scripts_.failure());
     }
+    const auto text_keys = game_scripts_.string_map("hotel", "text_keys");
+    if (!text_keys.has_value()) {
+        return fail(game_scripts_.failure().empty()
+                        ? "Hotel text-key script is unavailable"
+                        : game_scripts_.failure());
+    }
     if (options->choices.size() != kOptionIds.size() ||
         checkout->choices.size() != kCheckoutIds.size()) {
         return fail("Hotel Lua menus do not match the source choice count");
@@ -6723,9 +6729,16 @@ bool FieldSceneRuntime::load_hotel_menu_content() {
         destination = *source;
         return true;
     };
+    const auto copy_named_text = [&text_keys, &copy_text](
+                                    const std::string_view name,
+                                    std::string& destination) {
+        const auto key = text_keys->find(std::string(name));
+        return key != text_keys->end() &&
+               copy_text(key->second, destination);
+    };
     const auto* title = game_scripts_.dialogue_text(options->title_key);
-    if (title == nullptr || !copy_text("hotel.options.separator",
-                                      content.separator)) {
+    if (title == nullptr ||
+        !copy_named_text("options_separator", content.separator)) {
         return fail("Hotel options title or separator text is missing");
     }
     content.title = *title;
@@ -6761,14 +6774,16 @@ bool FieldSceneRuntime::load_hotel_menu_content() {
         }
         content.checkout_choices[index].id = choice.id;
     }
-    if (!copy_text("hotel.status.medical_attention_suffix",
-                   content.medical_attention_suffix)) {
+    if (!copy_named_text("medical_attention_suffix",
+                         content.medical_attention_suffix)) {
         return fail("Hotel medical-attention text is missing");
     }
-    for (std::size_t index = 2U; index < content.recovery_message.size();
-         ++index) {
-        if (!copy_text("hotel.status.recovery." + std::to_string(index),
-                       content.recovery_message[index])) {
+    constexpr std::array<std::string_view, 3> kRecoveryTextNames{{
+        "recovery_2", "recovery_3", "recovery_4"}};
+    for (std::size_t index = 0; index < kRecoveryTextNames.size(); ++index) {
+        const auto destination_index = index + 2U;
+        if (!copy_named_text(kRecoveryTextNames[index],
+                             content.recovery_message[destination_index])) {
             return fail("Hotel recovery text is incomplete");
         }
     }
