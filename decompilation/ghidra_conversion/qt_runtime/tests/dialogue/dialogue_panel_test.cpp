@@ -560,8 +560,16 @@ int main(const int argc, char** argv) {
     (void)hire_source;
     const auto stoker_source = make_stoker_motel_prompt(
         StokerMotelPromptId::arrival);
+    const auto stoker_arrival_text = scripts.dialogue_event_text_keys(
+        "stoker", "stoker.motel", stoker_source.event_id);
+    if (!expect(stoker_arrival_text.has_value())) {
+        return 11;
+    }
+    const std::array<std::string_view, 3> stoker_arrival_option_keys{{
+        stoker_arrival_text->continuation_key, {}, {}}};
     const auto stoker_panel = make_dialogue_panel_view(
-        stoker_source, stoker_speaker, resolve_text);
+        stoker_source, stoker_speaker, stoker_arrival_text->title_key,
+        stoker_arrival_option_keys, resolve_text);
     if (!expect(stoker_panel.open) ||
         !expect(stoker_panel.actor_kind == DialoguePanelActorKind::field_npc) ||
         !expect(stoker_panel.actor_name == "Stoker") ||
@@ -583,7 +591,7 @@ int main(const int argc, char** argv) {
     const auto stoker_manager_boundary = make_dialogue_panel_view(
         make_stoker_motel_prompt(
             StokerMotelPromptId::manager_greeting_with_package),
-        stoker_speaker, resolve_text);
+        stoker_speaker, {}, {}, resolve_text);
     if (!expect(!stoker_manager_boundary.source_complete) ||
         !expect(stoker_manager_boundary.option_count == 0U) ||
         !expect(stoker_manager_boundary.source_boundary_reason.find(

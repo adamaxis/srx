@@ -56,15 +56,15 @@ enum class StokerMotelPromptCommand {
 
 struct StokerMotelPromptOption {
     StokerMotelPromptOptionRole role{};
-    // Key in dialogue/script-text.lua; no Genesis text-table address is
-    // carried into the native conversion or Qt runtime.
-    std::string_view text_alias;
+    // Stable choice ID resolved through the Lua dialogue profile.
+    std::string_view choice_id;
     StokerMotelPromptCommand command = StokerMotelPromptCommand::source_boundary;
 };
 
 struct StokerMotelPromptView {
     StokerMotelPromptId id = StokerMotelPromptId::source_boundary;
-    std::string_view title_alias;
+    std::string_view event_id;
+    std::string_view menu_id;
     std::array<StokerMotelPromptOption, 3> options{};
     std::size_t option_count = 0;
     bool has_more = false;

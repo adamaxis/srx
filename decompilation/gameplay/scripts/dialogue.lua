@@ -16,6 +16,14 @@ local speakers = {
                 title_key = "stoker.motel.leave.title",
                 continuation_key = "",
             },
+            ["street-ambush"] = {
+                title_key = "stoker.motel.street-ambush.title",
+                continuation_key = "",
+            },
+            ["package-question"] = {
+                title_key = "stoker.motel.package-question.title",
+                continuation_key = "",
+            },
             ["room.paid"] = {
                 title_key = "stoker.motel.room.paid.title",
                 continuation_key = "",

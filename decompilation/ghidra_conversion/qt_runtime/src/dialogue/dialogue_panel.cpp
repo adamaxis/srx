@@ -420,6 +420,8 @@ DialoguePanelView make_dialogue_panel_view(
 DialoguePanelView make_dialogue_panel_view(
     const StokerMotelPromptView& source_view,
     const DialogueSpeakerPresentation& speaker,
+    const std::string_view title_key,
+    const std::array<std::string_view, 3>& option_label_keys,
     const DialogueTextResolver& resolve_text) {
     DialoguePanelView view{};
     view.open = true;
@@ -429,7 +431,13 @@ DialoguePanelView make_dialogue_panel_view(
     view.kind = source_view.source_complete
                     ? DialoguePanelKind::field_npc_prompt
                     : DialoguePanelKind::source_boundary;
-    copy_text_alias_stream(view, source_view.title_alias, resolve_text);
+    if (!title_key.empty()) {
+        copy_text_alias_stream(view, title_key, resolve_text);
+    } else if (source_view.source_complete) {
+        mark_missing_text(view, source_view.event_id.empty()
+                                   ? source_view.menu_id
+                                   : source_view.event_id);
+    }
     if (!view.source_complete) {
         view.kind = DialoguePanelKind::source_boundary;
         view.source_boundary_reason = source_view.source_boundary_reason.empty()
@@ -439,7 +447,8 @@ DialoguePanelView make_dialogue_panel_view(
 
     for (std::size_t index = 0U; index < source_view.option_count; ++index) {
         const auto& option = source_view.options[index];
-        auto label = resolve_text ? resolve_text(option.text_alias)
+        const auto label_key = option_label_keys[index];
+        auto label = resolve_text ? resolve_text(label_key)
                                   : std::string_view{};
         if (source_view.has_more) {
             // A leading empty source segment is a text-stream delimiter, not
@@ -450,7 +459,7 @@ DialoguePanelView make_dialogue_panel_view(
             }
         }
         if (label.empty()) {
-            mark_missing_text(view, option.text_alias);
+            mark_missing_text(view, option.choice_id);
         }
         add_option(view, map_stoker_role(option.role), label,
                    map_stoker_command(option.command));

@@ -85,9 +85,12 @@ presenter advances the page. `dialogue.lua` resolves the speaker's display
 name, text profile, and portrait alias from the speaker id in location
 context; the host verifies the profile matches that context and that the
 portrait asset exists. Stoker is the only currently bound field speaker. The
-speaker profile binds `arrival`, `leave`, `room.paid`, `room.insufficient`,
-`package-handoff`, and `jump-house` to explicit title/continuation keys.
-Arrival has its source A-button continuation; the other pages are title-only.
+speaker profile binds `arrival`, `street-ambush`, `package-question`, `leave`,
+`room.paid`, `room.insufficient`, `package-handoff`, and `jump-house` to
+explicit title/continuation keys. Static prompt conversion now carries only
+these event IDs or the `room`/`debt` menu IDs and stable choice IDs; the Qt
+runtime resolves all prompt and menu copy through the Lua profiles. Arrival
+has its source A-button continuation; the other event pages are title-only.
 `game.ui.menu(menu_id, choice_ids)` carries only stable IDs and location
 context. Lua maps each Stoker motel menu title and each selected stable choice
 to a text key; shared motel menus use the `stoker.motel` content profile even

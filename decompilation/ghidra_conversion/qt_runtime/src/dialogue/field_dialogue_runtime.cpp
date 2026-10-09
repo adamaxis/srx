@@ -2,7 +2,9 @@
 
 #include <QPainter>
 
+#include <array>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <utility>
 
@@ -237,12 +239,61 @@ bool FieldDialogueRuntime::open_stoker_prompt(
         return open_source_boundary(
             "Stoker speaker profile was not loaded from Lua");
     }
+    if (script_runtime_ == nullptr && source_view.source_complete) {
+        return open_source_boundary(
+            "Stoker prompt has no gameplay script runtime");
+    }
     active_speaker_profile_ = stoker_speaker_profile_;
+    std::string title_key;
+    std::array<std::string, 3> option_label_key_storage{};
+    if (source_view.source_complete && !source_view.event_id.empty()) {
+        const auto text_keys = script_runtime_->dialogue_event_text_keys(
+            "stoker", "stoker.motel", source_view.event_id);
+        if (!text_keys.has_value()) {
+            return open_source_boundary(
+                script_runtime_->failure().empty()
+                    ? "Stoker prompt event has no Lua text mapping"
+                    : script_runtime_->failure());
+        }
+        title_key = text_keys->title_key;
+        if (source_view.has_more && source_view.option_count != 0U) {
+            option_label_key_storage[0] = text_keys->continuation_key;
+        }
+    } else if (source_view.source_complete && !source_view.menu_id.empty()) {
+        scripting::ScriptMenuDefinition menu;
+        menu.id = std::string(source_view.menu_id);
+        menu.text_profile = "stoker.motel";
+        menu.speaker_id = "stoker";
+        for (std::size_t index = 0U; index < source_view.option_count;
+             ++index) {
+            menu.choices.push_back({
+                std::string(source_view.options[index].choice_id), {}});
+        }
+        const auto resolved_menu =
+            script_runtime_->resolve_dialogue_menu(std::move(menu));
+        if (!resolved_menu.has_value()) {
+            return open_source_boundary(
+                script_runtime_->failure().empty()
+                    ? "Stoker prompt menu has no Lua text mapping"
+                    : script_runtime_->failure());
+        }
+        title_key = resolved_menu->title_key;
+        for (std::size_t index = 0U;
+             index < resolved_menu->choices.size(); ++index) {
+            option_label_key_storage[index] =
+                resolved_menu->choices[index].label_key;
+        }
+    }
+    std::array<std::string_view, 3> option_label_keys{};
+    for (std::size_t index = 0U; index < option_label_keys.size(); ++index) {
+        option_label_keys[index] = option_label_key_storage[index];
+    }
     const DialogueTextResolver resolver = [this](const std::string_view alias) {
         return resolve_text(alias);
     };
     panel_ = make_dialogue_panel_view(
-        source_view, present_speaker(*active_speaker_profile_), resolver);
+        source_view, present_speaker(*active_speaker_profile_), title_key,
+        option_label_keys, resolver);
     if (!panel_.source_complete && panel_.source_boundary_reason.empty()) {
         panel_.source_boundary_reason =
             "Stoker dialogue source projection is incomplete";

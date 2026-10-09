@@ -11,6 +11,7 @@
 #include <iostream>
 #include <optional>
 #include <string_view>
+#include <utility>
 
 namespace {
 
@@ -482,10 +483,44 @@ int main() {
         FieldExitPromptAsset::stoker_motel_package_question,
         0x14U};
     if (!expect(runtime.open_field_exit_prompt(package_question)) ||
+        !expect(runtime.panel().text_segment_count != 0U) ||
+        !expect(runtime.panel().text_segments[0].find("Do you have the package") !=
+                std::string_view::npos) ||
         !expect(runtime.panel().option_count == 0U) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::returned_to_field)) {
         return 9;
+    }
+
+    constexpr std::array<std::pair<StokerMotelPromptId, std::string_view>, 3>
+        kLuaResolvedTitleOnlyPrompts{{
+            {StokerMotelPromptId::package_handoff, "Here's the package"},
+            {StokerMotelPromptId::leave_notice, "seeing you, chum"},
+            {StokerMotelPromptId::jump_house_referral, "Jump House"},
+        }};
+    for (std::size_t index = 0U;
+         index < kLuaResolvedTitleOnlyPrompts.size(); ++index) {
+        const auto& [prompt, expected_text] =
+            kLuaResolvedTitleOnlyPrompts[index];
+        bool expected_text_found = false;
+        if (runtime.open_stoker_prompt_for_dump(prompt)) {
+            for (std::size_t segment = 0U;
+                 segment < runtime.panel().text_segment_count; ++segment) {
+                expected_text_found = expected_text_found ||
+                    runtime.panel().text_segments[segment].find(expected_text) !=
+                        std::string_view::npos;
+            }
+        }
+        if (!expect(expected_text_found) ||
+            !expect(runtime.panel().option_count == 0U) ||
+            !expect(runtime.panel().text_segment_count != 0U) ||
+            !expect(runtime.advance_controller_events(0x4000U) ==
+                    FieldDialogueAdvanceResult::returned_to_field) ||
+            !expect(!runtime.open())) {
+            std::cerr << "Lua prompt event resolution failed for event index "
+                      << index << '\n';
+            return static_cast<int>(60U + index);
+        }
     }
 
     const FieldExitPromptSelection unconverted_profile{

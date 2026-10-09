@@ -3,42 +3,21 @@
 namespace shadowrun::ghidra_conversion {
 namespace {
 
-constexpr std::string_view kArrivalTitle = "stoker.motel.arrival.title";
-constexpr std::string_view kMore = "stoker.motel.arrival.more";
-constexpr std::string_view kAmbushTitle =
-    "stoker.motel.street-ambush.title";
-constexpr std::string_view kRoomTitle = "stoker.motel.room.title";
-constexpr std::string_view kLeave = "stoker.motel.option.leave";
-constexpr std::string_view kPay = "stoker.motel.option.pay";
-constexpr std::string_view kHandoffTitle =
-    "stoker.motel.package-handoff.title";
-constexpr std::string_view kQuestionTitle =
-    "stoker.motel.package-question.title";
-constexpr std::string_view kLeaveTitle = "stoker.motel.leave.title";
-constexpr std::string_view kDebtTitle = "stoker.motel.debt.title";
-constexpr std::string_view kPaidTitle = "stoker.motel.room.paid.title";
-constexpr std::string_view kInsufficientTitle =
-    "stoker.motel.room.insufficient.title";
-constexpr std::string_view kJumpHouseTitle =
-    "stoker.motel.jump-house.title";
-constexpr std::string_view kDebtPayment = "stoker.motel.option.debt-payment";
-constexpr std::string_view kJumpHouse = "stoker.motel.option.jump-house";
-
 void add_option(StokerMotelPromptView& view,
                 const StokerMotelPromptOptionRole role,
-                const std::string_view text_alias,
+                const std::string_view choice_id,
                 const StokerMotelPromptCommand command) {
     if (view.option_count >= view.options.size()) {
         return;
     }
-    view.options[view.option_count++] = {role, text_alias, command};
+    view.options[view.option_count++] = {role, choice_id, command};
 }
 
 StokerMotelPromptView make_sentinel(const StokerMotelPromptId id,
-                                    const std::string_view title_alias) {
+                                    const std::string_view event_id) {
     StokerMotelPromptView view;
     view.id = id;
-    view.title_alias = title_alias;
+    view.event_id = event_id;
     view.returns_to_field = true;
     return view;
 }
@@ -51,9 +30,9 @@ StokerMotelPromptView make_stoker_motel_prompt(
     view.id = id;
     switch (id) {
     case StokerMotelPromptId::arrival:
-        view.title_alias = kArrivalTitle;
+        view.event_id = "arrival";
         view.has_more = true;
-        add_option(view, StokerMotelPromptOptionRole::continue_arrival, kMore,
+        add_option(view, StokerMotelPromptOptionRole::continue_arrival, "more",
                    StokerMotelPromptCommand::resolve_arrival);
         return view;
 
@@ -65,35 +44,37 @@ StokerMotelPromptView make_stoker_motel_prompt(
         return view;
 
     case StokerMotelPromptId::room_offer:
-        view.title_alias = kRoomTitle;
-        add_option(view, StokerMotelPromptOptionRole::pay_room, kPay,
+        view.menu_id = "room";
+        add_option(view, StokerMotelPromptOptionRole::pay_room, "pay",
                    StokerMotelPromptCommand::pay_room);
-        add_option(view, StokerMotelPromptOptionRole::leave_motel, kLeave,
+        add_option(view, StokerMotelPromptOptionRole::leave_motel, "leave",
                    StokerMotelPromptCommand::open_leave_notice);
         return view;
 
     case StokerMotelPromptId::debt_question:
-        view.title_alias = kDebtTitle;
+        view.menu_id = "debt";
         add_option(view, StokerMotelPromptOptionRole::pay_michael_debt,
-                   kDebtPayment, StokerMotelPromptCommand::pay_michael_debt);
+                   "debt-payment",
+                   StokerMotelPromptCommand::pay_michael_debt);
         add_option(view, StokerMotelPromptOptionRole::ask_jump_house,
-                   kJumpHouse, StokerMotelPromptCommand::open_jump_house_referral);
+                   "jump-house",
+                   StokerMotelPromptCommand::open_jump_house_referral);
         return view;
 
     case StokerMotelPromptId::street_ambush:
-        return make_sentinel(id, kAmbushTitle);
+        return make_sentinel(id, "street-ambush");
     case StokerMotelPromptId::package_handoff:
-        return make_sentinel(id, kHandoffTitle);
+        return make_sentinel(id, "package-handoff");
     case StokerMotelPromptId::package_question:
-        return make_sentinel(id, kQuestionTitle);
+        return make_sentinel(id, "package-question");
     case StokerMotelPromptId::leave_notice:
-        return make_sentinel(id, kLeaveTitle);
+        return make_sentinel(id, "leave");
     case StokerMotelPromptId::room_paid:
-        return make_sentinel(id, kPaidTitle);
+        return make_sentinel(id, "room.paid");
     case StokerMotelPromptId::room_insufficient:
-        return make_sentinel(id, kInsufficientTitle);
+        return make_sentinel(id, "room.insufficient");
     case StokerMotelPromptId::jump_house_referral:
-        return make_sentinel(id, kJumpHouseTitle);
+        return make_sentinel(id, "jump-house");
     case StokerMotelPromptId::source_boundary:
         view.source_complete = false;
         view.source_boundary_reason =

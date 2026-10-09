@@ -185,6 +185,8 @@ std::string_view dialogue_panel_runner_id(
 DialoguePanelView make_dialogue_panel_view(
     const StokerMotelPromptView& source_view,
     const DialogueSpeakerPresentation& speaker,
+    std::string_view title_key,
+    const std::array<std::string_view, 3>& option_label_keys,
     const DialogueTextResolver& resolve_text);
 
 // Build a script-authored page from text keys already resolved by Lua.
