@@ -30,6 +30,22 @@ each changed slice. Do not mark a reported defect resolved from a same-source
 compositor, internal screenshot, or passing test alone. Record absent
 independent references as absent.
 
+### Latest full-screen verification pass
+
+The 2026-10-09 Release intro recapture contains 6,782 consecutive screens and
+2,032 distinct full-screen images. Each distinct state was reviewed in
+chronological sheets; exact repeats were accounted for by per-frame hashes
+and metadata. The sweep revisited the magician effect stop, transparent ambush
+patch, field handoff, and Stoker dialogue. See the [complete recapture review](visual-audits/full-intro-capture-2026-10-09-distinct-frame-review.md).
+
+Opening ambush, death-layer cleanup, startup integration, Scene 2 motel-street
+collision, Start-menu Attributes/Skills, gameplay-script runtime, field-text
+catalog, and command-root screen CTests pass in Debug and Release. The
+collision route confirms that the runner can leave the tested motel wall with
+other input, but it does not reproduce a permanent lock; FIELD-02 remains open
+for the exact stuck sequence and independent Genesis collision evidence. The
+Karma cursor focus still does not open the view by itself.
+
 ## Itemized report and atomic goals
 
 The rows below preserve every distinct issue in the user's pasted report.
