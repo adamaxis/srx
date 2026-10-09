@@ -258,14 +258,25 @@ write_field_service_routes(
         throw std::runtime_error(
             "field menu Cyberware title must contain exactly two source lines");
     }
-    emit("cyberware.title.0", cyberware_text.title.substr(0, title_break));
-    emit("cyberware.title.1",
-         cyberware_text.title.substr(title_break + 1U));
-    emit("cyberware.empty", cyberware_text.empty_message);
+    constexpr std::array<std::string_view, 18> kCyberwareTextIds{{
+        "title", "separator", "empty", "datajack", "cyber_eyes",
+        "hand_razors", "spurs", "smartlink", "muscle_replace_1",
+        "muscle_replace_2", "muscle_replace_3", "muscle_replace_4",
+        "dermal_plating_1", "dermal_plating_2", "dermal_plating_3",
+        "wired_reflexes_1", "wired_reflexes_2", "wired_reflexes_3"}};
+    std::array<std::string, 18> cyberware_ui_text{{
+        cyberware_text.title.substr(0, title_break),
+        cyberware_text.title.substr(title_break + 1U),
+        cyberware_text.empty_message,
+    }};
     for (std::size_t index = 0; index < cyberware_text.entries.size();
          ++index) {
-        emit("cyberware.entry." + std::to_string(index),
-             cyberware_text.entries[index]);
+        cyberware_ui_text[index + 3U] = cyberware_text.entries[index];
+    }
+    for (std::size_t index = 0; index < kCyberwareTextIds.size(); ++index) {
+        emit("cyberware.text.option." +
+                 std::string(kCyberwareTextIds[index]),
+             cyberware_ui_text[index]);
     }
     // ROM 0xFBA6 passes C89C0 to the encoded-title writer as the fallback
     // heading. Keep the source's leading space for its original cell offset.
@@ -1610,6 +1621,8 @@ void write_asset_readme(const std::filesystem::path& root) {
               "`gameplay/scripts/ui.lua` provides shared confirmation choices. "
               "`gameplay/scripts/magic.lua` provides ROM-ordered spell and "
               "Magic panel text IDs. "
+              "`gameplay/scripts/cyberware.lua` provides stable IDs for the "
+              "Cyberware panel. "
               "Separately traced cinematic resources belong under movies/<scene>; "
               "they must not be mixed into intro or field assets.\n\n"
            << "Audio is emitted here only as complete Windows-playable lossless "

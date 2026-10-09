@@ -42,6 +42,8 @@ inline constexpr std::size_t kAttributesSkillsTextCount =
     kAttributeSkillLabelCount + 5U;
 inline constexpr std::size_t kCyberwareTitleLineCount = 2U;
 inline constexpr std::size_t kCyberwareEntryCount = 15U;
+inline constexpr std::size_t kCyberwareTextCount =
+    kCyberwareTitleLineCount + 1U + kCyberwareEntryCount;
 inline constexpr std::size_t kCyberdeckUnavailableLineCount = 3U;
 inline constexpr std::size_t kDismissRunnerLabelCount = 3U;
 inline constexpr std::size_t kMagicSpellTextCount = 13U;
@@ -178,6 +180,7 @@ struct FieldMenuTextCatalog {
     // named text asset and loaded as host strings before the field runtime.
     std::array<std::string, kNotebookTipCount> notebook_tips{};
     std::array<std::string, kCyberwareEntryCount> cyberware_entries{};
+    std::array<std::string, kCyberwareTextCount> cyberware_text_ids{};
     std::array<std::string, 3> clips_trade_prompt{};
     std::array<std::string, 2> clips_exchange_complete{};
     std::string clips_title;

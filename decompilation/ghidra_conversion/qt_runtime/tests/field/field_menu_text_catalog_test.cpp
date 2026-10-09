@@ -41,6 +41,13 @@ int main() {
             "Dermal Plating(2)", "Dermal Plating(3)",
             "Wired Reflexes(1)", "Wired Reflexes(2)",
             "Wired Reflexes(3)"}};
+    const std::array<std::string, kCyberwareTextCount>
+        expected_cyberware_text_ids{{
+            "title", "separator", "empty", "datajack", "cyber_eyes",
+            "hand_razors", "spurs", "smartlink", "muscle_replace_1",
+            "muscle_replace_2", "muscle_replace_3", "muscle_replace_4",
+            "dermal_plating_1", "dermal_plating_2", "dermal_plating_3",
+            "wired_reflexes_1", "wired_reflexes_2", "wired_reflexes_3"}};
     const std::array<std::string, kMagicSpellTextCount> expected_magic_spell_ids{{
         "flame_dart", "flame_bolt", "hellblast", "invisibility", "sleep",
         "stink", "super_barrier", "mana_zap", "mana_blast", "mana_storm",
@@ -178,6 +185,7 @@ int main() {
         text.catalog.cyberware_title_lines[1] !=
             std::string("[") + std::string(10U, '\\') ||
         text.catalog.cyberware_empty_message != "NONE" ||
+        text.catalog.cyberware_text_ids != expected_cyberware_text_ids ||
         text.catalog.magic_defense_title != " Magical Defense" ||
         text.catalog.magic_force_posture_heading !=
             "Set Force & Posture." ||

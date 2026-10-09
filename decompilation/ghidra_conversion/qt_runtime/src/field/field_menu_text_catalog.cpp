@@ -69,6 +69,13 @@ constexpr std::array<std::string_view, kMagicPanelTextCount>
         "defense_title", "force_posture_heading", "success_label",
         "force_label", "availability_label", "panel_metric_labels",
         "panel_force_posture_labels"}};
+constexpr std::array<std::string_view, kCyberwareTextCount>
+    kCyberwareTextIds{{
+        "title", "separator", "empty", "datajack", "cyber_eyes",
+        "hand_razors", "spurs", "smartlink", "muscle_replace_1",
+        "muscle_replace_2", "muscle_replace_3", "muscle_replace_4",
+        "dermal_plating_1", "dermal_plating_2", "dermal_plating_3",
+        "wired_reflexes_1", "wired_reflexes_2", "wired_reflexes_3"}};
 
 constexpr std::string_view kMagicSpellOptionPrefix =
     "magic.spells.option.";
@@ -138,6 +145,18 @@ bool is_magic_panel_text_label_key(const std::string_view key) {
            std::find(kMagicPanelTextIds.begin(), kMagicPanelTextIds.end(),
                      key.substr(kTextPrefix.size())) !=
                kMagicPanelTextIds.end();
+}
+
+bool has_cyberware_text_label_prefix(const std::string_view key) {
+    return key.rfind("cyberware.text.option.", 0U) == 0U;
+}
+
+bool is_cyberware_text_label_key(const std::string_view key) {
+    constexpr std::string_view kTextPrefix = "cyberware.text.option.";
+    return key.rfind(kTextPrefix, 0U) == 0U &&
+           std::find(kCyberwareTextIds.begin(), kCyberwareTextIds.end(),
+                     key.substr(kTextPrefix.size())) !=
+               kCyberwareTextIds.end();
 }
 
 bool is_clips_menu_label_key(const std::string_view key) {
@@ -226,14 +245,13 @@ void add_missing_entries(const std::array<bool, N>& found, const char* prefix,
 bool is_field_menu_text_key(const std::string& key) {
     static constexpr const char* prefixes[]{
         "runner.", "archetype.", "race.", "class.", "status.",
-        "cyberware.title.", "cyberware.entry.",
         "clips.", "dismiss.label.", "pocket-secretary.cyberdeck.line.",
         "pocket-secretary.group-item.", "pocket-secretary.group-items.empty.",
         "ui.option.", "notebook.option.", "notebook.no-run.",
         "notebook.mr-johnson.name.",
         "notebook.mr-johnson.detail.", "notebook.tip.",
         "magic.spells.option.", "magic.spells.description.",
-        "magic.panel.text.option.",
+        "magic.panel.text.option.", "cyberware.text.option.",
         "items.text.option.", "items.display.option.",
         "attributes_skills.text.option.",
     };
@@ -246,7 +264,6 @@ bool is_field_menu_text_key(const std::string& key) {
         "metric.physical", "metric.mental", "metric.attack",
         "metric.defense", "metric.damage", "metric.drain", "metric.none",
         "metric.no-armor", "metric.weapons", "metric.guns", "metric.power",
-        "cyberware.empty",
         "dismiss.separator", "notebook.tips.title",
         "notebook.tips.separator", "notebook.tips.page-count",
         "notebook.tips.page-number-clear", "notebook.options.title",
@@ -420,8 +437,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::array<bool, kFieldMenuClassNameCount> class_found{};
     std::array<bool, kFieldMenuRunnerNameCount> runner_found{};
     std::array<bool, kFieldMenuStatusNameCount> status_found{};
-    std::array<bool, kCyberwareTitleLineCount> cyberware_title_found{};
-    std::array<bool, kCyberwareEntryCount> cyberware_entry_found{};
     std::array<bool, kMagicSpellTextCount> magic_spell_description_found{};
     std::array<bool, kFieldServiceTitleCount>
         field_service_title_destination_found{};
@@ -453,7 +468,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     bool weapons_found = false;
     bool guns_found = false;
     bool power_metric_found = false;
-    bool cyberware_empty_found = false;
     bool dismiss_runner_separator_found = false;
     std::array<std::string, kConfirmationChoiceCount> confirmation_labels{};
     load_script_menu_labels(
@@ -535,6 +549,16 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     result.catalog.magic_availability_label = magic_panel_text[4];
     result.catalog.magic_panel_metric_labels = magic_panel_text[5];
     result.catalog.magic_force_posture_labels = magic_panel_text[6];
+    std::array<std::string, kCyberwareTextCount> cyberware_text{};
+    load_script_menu_labels(
+        scripts, "cyberware", "text_entries", "cyberware.text", "catalog",
+        kCyberwareTextIds, cyberware_text, result.errors, nullptr,
+        &result.catalog.cyberware_text_ids);
+    std::copy_n(cyberware_text.begin(), kCyberwareTitleLineCount,
+                result.catalog.cyberware_title_lines.begin());
+    result.catalog.cyberware_empty_message = cyberware_text[2];
+    std::copy_n(cyberware_text.begin() + 3, kCyberwareEntryCount,
+                result.catalog.cyberware_entries.begin());
     load_script_menu_labels(
         scripts, "clips", "commands", "clips", "commands",
         kClipsCommandIds, result.catalog.clips_commands, result.errors);
@@ -623,6 +647,13 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             }
             continue;
         }
+        if (has_cyberware_text_label_prefix(key)) {
+            if (!is_cyberware_text_label_key(key)) {
+                result.errors.emplace_back(
+                    "unknown Cyberware text label key: " + key);
+            }
+            continue;
+        }
         std::size_t index = 0;
         if (parse_indexed_key(key, "field-service.title-destination.",
                               index) &&
@@ -701,28 +732,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             }
             continue;
         }
-        if (parse_indexed_key(key, "cyberware.title.", index) &&
-            index < result.catalog.cyberware_title_lines.size()) {
-            if (cyberware_title_found[index]) {
-                result.errors.emplace_back("duplicate field menu text row: " +
-                                          key);
-            } else {
-                cyberware_title_found[index] = true;
-                result.catalog.cyberware_title_lines[index] = value;
-            }
-            continue;
-        }
-        if (parse_indexed_key(key, "cyberware.entry.", index) &&
-            index < result.catalog.cyberware_entries.size()) {
-            if (cyberware_entry_found[index]) {
-                result.errors.emplace_back("duplicate field menu text row: " +
-                                          key);
-            } else {
-                cyberware_entry_found[index] = true;
-                result.catalog.cyberware_entries[index] = value;
-            }
-            continue;
-        }
         const auto parse_named = [&](const char* expected,
                                      std::string& destination,
                                      bool& found) {
@@ -759,9 +768,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             parse_named("metric.guns", result.catalog.guns_label, guns_found) ||
             parse_named("metric.power", result.catalog.power_label,
                         power_metric_found) ||
-            parse_named("cyberware.empty",
-                        result.catalog.cyberware_empty_message,
-                        cyberware_empty_found) ||
             parse_named("dismiss.separator",
                         result.catalog.dismiss_runner_separator,
                         dismiss_runner_separator_found)) {
@@ -955,10 +961,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     add_missing_entries(class_found, "class.", result.errors);
     add_missing_entries(runner_found, "runner.", result.errors);
     add_missing_entries(status_found, "status.", result.errors);
-    add_missing_entries(cyberware_title_found, "cyberware.title.",
-                        result.errors);
-    add_missing_entries(cyberware_entry_found, "cyberware.entry.",
-                        result.errors);
     const auto require_named = [&result](const char* key, const bool found) {
         if (!found) {
             result.errors.emplace_back(
@@ -976,7 +978,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     require_named("metric.weapons", weapons_found);
     require_named("metric.guns", guns_found);
     require_named("metric.power", power_metric_found);
-    require_named("cyberware.empty", cyberware_empty_found);
     require_named("dismiss.separator", dismiss_runner_separator_found);
     require_named("notebook.tips.title", notebook_tips_title_found);
     require_named("notebook.tips.separator", notebook_tips_separator_found);
