@@ -84,12 +84,17 @@ text profile from native location context, then suspends until the dialogue
 presenter advances the page. `dialogue.lua` resolves the speaker's display
 name, text profile, and portrait alias from the speaker id in location
 context; the host verifies the profile matches that context and that the
-portrait asset exists. Stoker is the only currently bound field speaker, and
-the `stoker.motel` profile binds `arrival` and `leave`. Arrival has its source
-A-button continuation; the title-only farewell closes through the ordinary
-controller wait. `game.ui.menu(menu_id, choice_ids)` combines the menu name
-with the location text profile, yields choices to the common presenter, and
-resumes with the stable selected ID. The source A/B/C mapping is preserved.
+portrait asset exists. Stoker is the only currently bound field speaker. The
+speaker profile binds `arrival`, `leave`, `room.paid`, `room.insufficient`,
+`package-handoff`, and `jump-house` to explicit title/continuation keys.
+Arrival has its source A-button continuation; the other pages are title-only.
+`game.ui.menu(menu_id, choice_ids)` carries only stable IDs and location
+context. Lua maps each Stoker motel menu title and each selected stable choice
+to a text key; shared motel menus use the `stoker.motel` content profile even
+when the presentation has no named speaker. C++ no longer invents these keys
+by concatenating profile/menu/choice strings. The common presenter resolves
+the explicit keys, owns layout, and preserves the source A/B/C mapping. Menu
+selection resumes the script with the stable selected ID.
 `game.services.call(domain, action)` yields a namespaced request to an
 allowlisted native service and resumes Lua with a stable result ID. Current
 Stoker scripts use it for room payment, debt-offer flags, debt payment, and the
@@ -158,9 +163,11 @@ access.
   room menu, payment service, result dialogue, and Leave dialogue. A successful
   room payment returns the hotel-options result to the native host.
 - `gameplay/scripts/dialogue.lua` owns field-speaker display names, named text
-  profiles, and portrait aliases. The runtime binds these properties by the
-  speaker id supplied with the active location; Qt receives the resolved
-  profile and does not keep a second speaker table.
+  profiles, portrait aliases, and explicit event/menu text bindings. Speaker
+  display properties resolve from the active location; menu copy resolves
+  from the location content profile, separately from whether a portrait is
+  present. The generic Qt presenter receives resolved keys and does not infer
+  text IDs from menu names or choice IDs.
 - `gameplay/scripts/michael_package.lua` contains the Michael quest hook and
   its first-visit, repeat, and completed branches. `stoker_interaction()` now
   chooses the arrival page and shared motel manager in Lua; the field route no

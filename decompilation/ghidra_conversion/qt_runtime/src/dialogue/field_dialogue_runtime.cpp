@@ -291,13 +291,23 @@ bool FieldDialogueRuntime::present_script_operation(
             return open_source_boundary(
                 "dialogue script selected an unbound Lua speaker profile");
         }
+        const auto text_keys =
+            script_runtime_->dialogue_event_text_keys(
+                dialogue.speaker_id, dialogue.text_profile,
+                dialogue.event_id);
+        if (!text_keys.has_value()) {
+            return open_source_boundary(
+                script_runtime_->failure().empty()
+                    ? "dialogue script selected an unbound Lua event"
+                    : script_runtime_->failure());
+        }
         const DialogueTextResolver resolver =
             [this](const std::string_view alias) {
                 return resolve_text(alias);
             };
         const auto view = make_script_dialogue_panel_view(
-            present_speaker(*active_speaker_profile_), dialogue.event_id,
-            resolver);
+            present_speaker(*active_speaker_profile_), text_keys->title_key,
+            text_keys->continuation_key, resolver);
         if (!view.has_value()) {
             return open_source_boundary(
                 "dialogue script selected an unbound speaker profile");
@@ -313,18 +323,29 @@ bool FieldDialogueRuntime::present_script_operation(
     }
     if (operation.type == scripting::ScriptNativeOperation::Type::ui_menu &&
         operation.menu.has_value()) {
-        active_script_menu_ = operation.menu;
+        if (script_runtime_ == nullptr) {
+            return open_source_boundary(
+                "dialogue menu has no gameplay script runtime");
+        }
+        active_script_menu_ =
+            script_runtime_->resolve_dialogue_menu(*operation.menu);
+        if (!active_script_menu_.has_value()) {
+            return open_source_boundary(
+                script_runtime_->failure().empty()
+                    ? "dialogue script menu has no Lua content mapping"
+                    : script_runtime_->failure());
+        }
+        const auto& menu = *active_script_menu_;
         active_speaker_profile_.reset();
         std::optional<DialogueSpeakerPresentation> speaker;
-        if (!operation.menu->speaker_id.empty()) {
+        if (!menu.speaker_id.empty()) {
             active_speaker_profile_ =
                 script_runtime_ != nullptr
-                    ? script_runtime_->speaker_profile(
-                          operation.menu->speaker_id)
+                    ? script_runtime_->speaker_profile(menu.speaker_id)
                     : std::nullopt;
             if (!active_speaker_profile_.has_value() ||
                 active_speaker_profile_->text_profile !=
-                    operation.menu->text_profile) {
+                    menu.text_profile) {
                 return open_source_boundary(
                     "dialogue script menu selected an unbound Lua speaker profile");
             }
@@ -335,12 +356,12 @@ bool FieldDialogueRuntime::present_script_operation(
                 return resolve_text(alias);
             };
         std::vector<std::pair<std::string, std::string>> choices;
-        choices.reserve(operation.menu->choices.size());
-        for (const auto& choice : operation.menu->choices) {
+        choices.reserve(menu.choices.size());
+        for (const auto& choice : menu.choices) {
             choices.emplace_back(choice.id, choice.label_key);
         }
         panel_ = make_script_menu_panel_view(
-            speaker, operation.menu->title_key, choices, resolver);
+            speaker, menu.title_key, choices, resolver);
         if (!panel_.source_complete) {
             return open_source_boundary(
                 panel_.source_boundary_reason.empty()

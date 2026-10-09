@@ -292,7 +292,8 @@ bool parse_menu_choices(lua_State* state, const int index,
                         const std::string_view speaker_id,
                         ScriptMenuDefinition& menu,
                         const std::size_t maximum_choices =
-                            kMaximumMenuChoices) {
+                            kMaximumMenuChoices,
+                        const bool derive_text_keys = true) {
     if (!lua_istable(state, index) || !valid_identifier(menu_id) ||
         !valid_identifier(text_profile)) {
         return false;
@@ -304,8 +305,10 @@ bool parse_menu_choices(lua_State* state, const int index,
     menu.id = std::string(menu_id);
     menu.text_profile = std::string(text_profile);
     menu.speaker_id = std::string(speaker_id);
-    menu.title_key = std::string(text_profile) + "." +
-                     std::string(menu_id) + ".title";
+    if (derive_text_keys) {
+        menu.title_key = std::string(text_profile) + "." +
+                         std::string(menu_id) + ".title";
+    }
     menu.choices.reserve(count);
     std::set<std::string> choice_ids;
     for (std::size_t choice_index = 1U; choice_index <= count;
@@ -318,7 +321,10 @@ bool parse_menu_choices(lua_State* state, const int index,
         if (!valid || !choice_ids.insert(choice.id).second) {
             return false;
         }
-        choice.label_key = std::string(text_profile) + ".option." + choice.id;
+        if (derive_text_keys) {
+            choice.label_key =
+                std::string(text_profile) + ".option." + choice.id;
+        }
         menu.choices.push_back(std::move(choice));
     }
     return true;
@@ -543,7 +549,8 @@ struct GameScriptRuntime::Impl {
             !valid_identifier(self->location_text_profile) ||
             !parse_menu_choices(lua, 2, menu_id,
                                 self->location_text_profile,
-                                self->location_speaker_id, menu)) {
+                                self->location_speaker_id, menu,
+                                kMaximumMenuChoices, false)) {
             self->bridge_failure =
                 "game.ui.menu expects a menu name and unique stable choice ids in a profiled location";
             lua_pushnil(lua);
@@ -1577,6 +1584,170 @@ std::optional<ScriptSpeakerProfile> GameScriptRuntime::speaker_profile(
     }
     impl_->failure.clear();
     return result;
+}
+
+std::optional<ScriptDialogueTextKeys>
+GameScriptRuntime::dialogue_event_text_keys(
+    const std::string_view speaker_id, const std::string_view text_profile,
+    const std::string_view event_id) {
+    auto* state = impl_->state;
+    if (state == nullptr || !valid_identifier(speaker_id) ||
+        !valid_identifier(text_profile) || !valid_identifier(event_id)) {
+        impl_->failure = "invalid gameplay script dialogue event context";
+        return std::nullopt;
+    }
+    constexpr std::string_view kModule = "dialogue";
+    constexpr std::string_view kFunction = "event_text_keys";
+    if (!impl_->push_module(kModule)) {
+        impl_->failure = "gameplay script module is missing: dialogue";
+        return std::nullopt;
+    }
+    lua_getfield(state, -1, std::string(kFunction).c_str());
+    if (!lua_isfunction(state, -1)) {
+        lua_pop(state, 2);
+        impl_->failure = "dialogue.event_text_keys must be a Lua function";
+        return std::nullopt;
+    }
+    lua_remove(state, -2);
+    const auto push_string = [state](const std::string_view value) {
+        lua_pushlstring(state, value.data(), value.size());
+    };
+    push_string(speaker_id);
+    push_string(text_profile);
+    push_string(event_id);
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 3, 1, 0) != LUA_OK) {
+        impl_->failure = "dialogue.event_text_keys: " + stack_error(state);
+        lua_pop(state, 1);
+        return std::nullopt;
+    }
+    if (!lua_istable(state, -1)) {
+        lua_pop(state, 1);
+        impl_->failure = "Lua dialogue event is not bound: " +
+                         std::string(speaker_id) + "." +
+                         std::string(event_id);
+        return std::nullopt;
+    }
+
+    const auto table_index = lua_absindex(state, -1);
+    ScriptDialogueTextKeys result;
+    lua_getfield(state, table_index, "title_key");
+    const bool title_valid = read_string(state, -1, result.title_key) &&
+                             valid_identifier(result.title_key);
+    lua_pop(state, 1);
+    lua_getfield(state, table_index, "continuation_key");
+    std::size_t continuation_length = 0U;
+    const auto* continuation =
+        lua_type(state, -1) == LUA_TSTRING
+            ? lua_tolstring(state, -1, &continuation_length)
+            : nullptr;
+    const bool continuation_valid =
+        continuation != nullptr &&
+        continuation_length <= kMaximumIdentifierLength &&
+        (continuation_length == 0U ||
+         valid_identifier(std::string_view(continuation,
+                                           continuation_length)));
+    if (continuation_valid) {
+        result.continuation_key.assign(continuation, continuation_length);
+    }
+    lua_pop(state, 1);
+    lua_pop(state, 1);
+    if (!title_valid || !continuation_valid) {
+        impl_->failure = "Lua dialogue event keys are malformed: " +
+                         std::string(speaker_id) + "." +
+                         std::string(event_id);
+        return std::nullopt;
+    }
+    impl_->failure.clear();
+    return result;
+}
+
+std::optional<ScriptMenuDefinition> GameScriptRuntime::resolve_dialogue_menu(
+    ScriptMenuDefinition menu) {
+    auto* state = impl_->state;
+    if (state == nullptr ||
+        (!menu.speaker_id.empty() && !valid_identifier(menu.speaker_id)) ||
+        !valid_identifier(menu.text_profile) || !valid_identifier(menu.id) ||
+        menu.choices.size() > kMaximumMenuChoices) {
+        impl_->failure = "invalid gameplay script dialogue menu context";
+        return std::nullopt;
+    }
+    for (const auto& choice : menu.choices) {
+        if (!valid_identifier(choice.id)) {
+            impl_->failure =
+                "dialogue menu contains an invalid stable choice id";
+            return std::nullopt;
+        }
+    }
+
+    constexpr std::string_view kModule = "dialogue";
+    constexpr std::string_view kFunction = "menu_text_keys";
+    if (!impl_->push_module(kModule)) {
+        impl_->failure = "gameplay script module is missing: dialogue";
+        return std::nullopt;
+    }
+    lua_getfield(state, -1, std::string(kFunction).c_str());
+    if (!lua_isfunction(state, -1)) {
+        lua_pop(state, 2);
+        impl_->failure = "dialogue.menu_text_keys must be a Lua function";
+        return std::nullopt;
+    }
+    lua_remove(state, -2);
+    const auto push_string = [state](const std::string_view value) {
+        lua_pushlstring(state, value.data(), value.size());
+    };
+    push_string(menu.speaker_id);
+    push_string(menu.text_profile);
+    push_string(menu.id);
+    lua_createtable(state, static_cast<int>(menu.choices.size()), 0);
+    for (std::size_t index = 0; index < menu.choices.size(); ++index) {
+        const auto& choice_id = menu.choices[index].id;
+        lua_pushlstring(state, choice_id.data(), choice_id.size());
+        lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
+    }
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 4, 1, 0) != LUA_OK) {
+        impl_->failure = "dialogue.menu_text_keys: " + stack_error(state);
+        lua_pop(state, 1);
+        return std::nullopt;
+    }
+    if (!lua_istable(state, -1)) {
+        lua_pop(state, 1);
+        impl_->failure = "Lua dialogue menu is not bound: " +
+                         std::string(menu.speaker_id) + "." + menu.id;
+        return std::nullopt;
+    }
+
+    const auto table_index = lua_absindex(state, -1);
+    lua_getfield(state, table_index, "title_key");
+    const bool title_valid = read_string(state, -1, menu.title_key) &&
+                             valid_identifier(menu.title_key);
+    lua_pop(state, 1);
+    lua_getfield(state, table_index, "choice_label_keys");
+    bool labels_valid = lua_istable(state, -1) &&
+                       lua_rawlen(state, -1) == menu.choices.size();
+    if (labels_valid) {
+        const auto labels_index = lua_absindex(state, -1);
+        for (std::size_t index = 0; index < menu.choices.size(); ++index) {
+            auto& label_key = menu.choices[index].label_key;
+            lua_rawgeti(state, labels_index,
+                        static_cast<lua_Integer>(index + 1U));
+            labels_valid = read_string(state, -1, label_key) &&
+                           valid_identifier(label_key);
+            lua_pop(state, 1);
+            if (!labels_valid) {
+                break;
+            }
+        }
+    }
+    lua_pop(state, 2);
+    if (!title_valid || !labels_valid) {
+        impl_->failure = "Lua dialogue menu keys do not match its choices: " +
+                         std::string(menu.speaker_id) + "." + menu.id;
+        return std::nullopt;
+    }
+    impl_->failure.clear();
+    return menu;
 }
 
 std::optional<ScriptMenuDefinition> GameScriptRuntime::menu(

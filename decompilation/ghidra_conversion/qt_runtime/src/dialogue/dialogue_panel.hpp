@@ -184,10 +184,11 @@ DialoguePanelView make_dialogue_panel_view(
     const DialogueSpeakerPresentation& speaker,
     const DialogueTextResolver& resolve_text);
 
-// Resolve a script-authored event through the selected Lua speaker profile
-// and the location's event id. Missing or mismatched profiles fail closed.
+// Build a script-authored page from text keys already resolved by Lua.
+// Missing speaker properties or text still fail closed.
 std::optional<DialoguePanelView> make_script_dialogue_panel_view(
-    const DialogueSpeakerPresentation& speaker, std::string_view event_id,
+    const DialogueSpeakerPresentation& speaker, std::string_view title_key,
+    std::string_view continuation_key,
     const DialogueTextResolver& resolve_text);
 
 // Generic Lua menu presentation. The script owns title/choice order and

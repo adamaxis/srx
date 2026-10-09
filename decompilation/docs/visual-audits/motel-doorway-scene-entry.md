@@ -534,3 +534,62 @@ The gameplay-script runtime, dialogue-panel test, field-dialogue runtime test,
 and physical Stoker collision-to-dialogue QA all pass in Debug and Release
 (4/4 each). This moves speaker presentation metadata for Stoker into Lua; the
 other NPC profiles and their event dialogue remain unported.
+
+## Explicit Stoker event and menu text bindings in Lua (2026-10-09)
+
+The shared script UI now yields a stable event or menu ID without inventing
+text keys from a naming convention. `dialogue.lua` explicitly maps the six
+events used by the live Stoker scripts (`arrival`, `leave`, `room.paid`,
+`room.insufficient`, `package-handoff`, and `jump-house`) to their title and
+optional continuation keys. It separately maps the manager, room, and debt
+menu IDs and each stable choice ID to a source text key under the
+`stoker.motel` location-content profile. Menu copy is independent from the
+optional speaker portrait, so the shared motel menu can be presented with or
+without a named speaker. The text records remain the ROM-imported entries in
+`assets/dialogue/script-text.lua`; this change moves their selection into the
+gameplay script. Static Stoker prompts for the street ambush and package
+question are still on the older native prompt path.
+
+The runtime validates event keys, menu title keys, and one label key per
+choice before the generic panel uses them. The script QA checks the explicit
+arrival/farewell event keys, menu ordering and labels, and that the same motel
+menu mapping works without a speaker ID. The physical route QA continues to
+exercise the scripts through scene-2 collision, menu input, quest services,
+and field return.
+
+1. **Does it look correct?** The 16 full-screen 320x224 route captures still
+   show the arrival, manager, debt, handoff, farewell, fade, and field screens
+   with the same source text. Independent longplay frames `000082`, `000301`,
+   `000601`, and `000690` show the arrival, manager, debt, and referral pages.
+2. **Does the appearance reflect behavior?** The typed script operation
+   carries the selected event/menu and stable choice IDs. Lua resolves those
+   IDs to explicit content keys; tests cover choice order and content mapping.
+   The manager offers package only on the unpaid quest branch.
+3. **Are the visuals and selection attributes correct?** Existing panel art,
+   portrait, text placement, A/B/C row markers, and source-backed page states
+   are unchanged. This key-routing change adds no selector or decoration.
+4. **Is anything animated?** Dialogue pages and choices remain static while
+   awaiting input. The field approach and fade retain their existing cadence;
+   this change adds no animation.
+5. **Is there sound?** No sound operation or playback-duration behavior was
+   added. Sound timing remains outside this slice.
+6. **Are the other screen regions correct?** Every capture shows the whole
+   game frame, including map/HUD, portrait, dialogue frame, and menu rows.
+   The returned field view restores the runner and HUD.
+7. **Do multiple frames support the interpretation?** All 16 route states
+   cover spawn through clean return, and four independent longplay frames
+   corroborate the key Stoker pages. The longplay does not expose native
+   controller state or exact timing.
+8. **Was previous UI cleared before new UI appeared?** The route fades fully
+   to black before dialogue; each dialogue/menu state redraws its panel and
+   choices. The farewell clears manager rows, and field return clears the
+   dialogue panel. No old controls or graphics remain underneath.
+9. **Was the full available sequence reviewed?** Yes. I reopened all 16 Debug
+   BMPs at original 320x224 resolution. Each corresponding Release BMP has
+   the same SHA-256 hash. The script runtime, generic panel, field-dialogue
+   runtime, and physical Stoker route tests pass in Debug and Release (4/4).
+
+These checks validate the native conversion route and Lua content binding;
+the independent capture remains the visual authority. The older static
+street-ambush and package-question prompt paths still need to move into the
+shared script flow.

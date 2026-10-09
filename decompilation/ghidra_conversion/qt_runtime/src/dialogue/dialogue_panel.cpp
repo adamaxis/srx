@@ -433,11 +433,12 @@ DialoguePanelView make_dialogue_panel_view(
 
 std::optional<DialoguePanelView> make_script_dialogue_panel_view(
     const DialogueSpeakerPresentation& speaker,
-    const std::string_view event_id,
+    const std::string_view title_key,
+    const std::string_view continuation_key,
     const DialogueTextResolver& resolve_text) {
     if (speaker.id.empty() || speaker.name.empty() ||
         speaker.text_profile.empty() || speaker.portrait_alias.empty() ||
-        event_id.empty()) {
+        title_key.empty()) {
         return std::nullopt;
     }
 
@@ -447,13 +448,10 @@ std::optional<DialoguePanelView> make_script_dialogue_panel_view(
     set_script_speaker(view, speaker);
     view.kind = DialoguePanelKind::field_npc_prompt;
 
-    const auto key_prefix = std::string(speaker.text_profile) + "." +
-                            std::string(event_id);
-    const auto title_key = key_prefix + ".title";
     copy_text_alias_stream(view, title_key, resolve_text);
 
-    const auto more_key = key_prefix + ".more";
-    const auto more = resolve_continuation_label(resolve_text, more_key);
+    const auto more = resolve_continuation_label(resolve_text,
+                                                continuation_key);
     if (!more.empty()) {
         view.has_more = true;
         view.continuation_label = more;

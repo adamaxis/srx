@@ -45,6 +45,11 @@ struct ScriptSpeakerProfile {
     std::string portrait_alias;
 };
 
+struct ScriptDialogueTextKeys {
+    std::string title_key;
+    std::string continuation_key;
+};
+
 struct ScriptShopOffer {
     std::uint8_t type = 0;
     std::uint8_t value = 0;
@@ -163,6 +168,11 @@ public:
         std::string_view module, std::string_view function);
     std::optional<ScriptSpeakerProfile> speaker_profile(
         std::string_view speaker_id);
+    std::optional<ScriptDialogueTextKeys> dialogue_event_text_keys(
+        std::string_view speaker_id, std::string_view text_profile,
+        std::string_view event_id);
+    std::optional<ScriptMenuDefinition> resolve_dialogue_menu(
+        ScriptMenuDefinition menu);
     std::optional<ScriptShopDefinition> shop_definition(
         std::string_view shop_id);
     std::optional<ScriptItemCatalog> item_catalog();

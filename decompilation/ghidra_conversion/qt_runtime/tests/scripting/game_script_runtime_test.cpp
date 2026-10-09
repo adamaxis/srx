@@ -68,6 +68,72 @@ int main() {
         return 1;
     }
 
+    const auto arrival_keys = scripts.dialogue_event_text_keys(
+        "stoker", "stoker.motel", "arrival");
+    const auto farewell_keys = scripts.dialogue_event_text_keys(
+        "stoker", "stoker.motel", "leave");
+    if (!expect(arrival_keys.has_value() &&
+                    arrival_keys->title_key ==
+                        "stoker.motel.arrival.title" &&
+                    arrival_keys->continuation_key ==
+                        "stoker.motel.arrival.more" &&
+                    farewell_keys.has_value() &&
+                    farewell_keys->title_key == "stoker.motel.leave.title" &&
+                    farewell_keys->continuation_key.empty(),
+                "Lua dialogue events did not resolve explicit text keys")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
+    ScriptMenuDefinition stoker_manager_menu{};
+    stoker_manager_menu.id = "manager";
+    stoker_manager_menu.text_profile = "stoker.motel";
+    stoker_manager_menu.speaker_id = "stoker";
+    stoker_manager_menu.choices = {
+        {"crash", {}}, {"leave", {}}, {"package", {}}};
+    const auto stoker_manager_content =
+        scripts.resolve_dialogue_menu(stoker_manager_menu);
+    ScriptMenuDefinition stoker_debt_menu{};
+    stoker_debt_menu.id = "debt";
+    stoker_debt_menu.text_profile = "stoker.motel";
+    stoker_debt_menu.speaker_id = "stoker";
+    stoker_debt_menu.choices = {
+        {"debt-payment", {}}, {"jump-house", {}}};
+    const auto stoker_debt_content =
+        scripts.resolve_dialogue_menu(stoker_debt_menu);
+    if (!expect(stoker_manager_content.has_value() &&
+                    stoker_manager_content->title_key ==
+                        "stoker.motel.manager.title" &&
+                    stoker_manager_content->choices.size() == 3U &&
+                    stoker_manager_content->choices[0].label_key ==
+                        "stoker.motel.option.crash" &&
+                    stoker_manager_content->choices[1].label_key ==
+                        "stoker.motel.option.leave" &&
+                    stoker_manager_content->choices[2].label_key ==
+                        "stoker.motel.option.package" &&
+                    stoker_debt_content.has_value() &&
+                    stoker_debt_content->title_key ==
+                        "stoker.motel.debt.title" &&
+                    stoker_debt_content->choices[0].label_key ==
+                        "stoker.motel.option.debt-payment" &&
+                    stoker_debt_content->choices[1].label_key ==
+                        "stoker.motel.option.jump-house",
+                "Lua dialogue menus did not resolve explicit choice text")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    stoker_manager_menu.speaker_id.clear();
+    const auto shared_manager_content =
+        scripts.resolve_dialogue_menu(stoker_manager_menu);
+    if (!expect(shared_manager_content.has_value() &&
+                    shared_manager_content->title_key ==
+                        "stoker.motel.manager.title" &&
+                    shared_manager_content->choices.size() == 3U,
+                "motel menu text was incorrectly coupled to a speaker")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
     const auto mode_prompt_content = [&](const std::uint8_t mode,
                                          const std::uint8_t event_code,
                                          const std::int8_t alternate_result) {
@@ -1038,10 +1104,24 @@ int main() {
                     manager_interaction.operation->type ==
                         ScriptNativeOperation::Type::ui_menu &&
                     manager_interaction.operation->menu.has_value() &&
-                    manager_interaction.operation->menu->title_key ==
-                        "stoker.motel.manager.title" &&
+                    manager_interaction.operation->menu->title_key.empty() &&
                     manager_interaction.operation->menu->choices.size() == 3U,
-                "shared motel script did not yield its property-profile menu")) {
+                "shared motel script did not yield an unmapped stable-id menu")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    const auto manager_menu_content = scripts.resolve_dialogue_menu(
+        *manager_interaction.operation->menu);
+    if (!expect(manager_menu_content.has_value() &&
+                    manager_menu_content->title_key ==
+                        "stoker.motel.manager.title" &&
+                    manager_menu_content->choices[0].label_key ==
+                        "stoker.motel.option.crash" &&
+                    manager_menu_content->choices[1].label_key ==
+                        "stoker.motel.option.leave" &&
+                    manager_menu_content->choices[2].label_key ==
+                        "stoker.motel.option.package",
+                "Lua did not map the shared motel menu text explicitly")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
     }
