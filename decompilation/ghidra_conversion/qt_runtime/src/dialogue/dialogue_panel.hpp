@@ -149,6 +149,8 @@ struct DialoguePanelView {
 
 using DialogueTextResolver =
     std::function<std::string_view(std::string_view alias)>;
+using DialogueContentKeyResolver = std::function<std::string_view(
+    std::string_view speaker_id, std::string_view content_id)>;
 
 // Resolved from the Lua dialogue module and retained by the host runtime
 // while a panel is open. The shared presenter sees only these properties.
@@ -164,7 +166,8 @@ struct DialogueSpeakerPresentation {
 // input returns to dispatch_recruited_runner_conversation().
 DialoguePanelView make_dialogue_panel_view(
     const integration::RecruitedRunnerConversationView& source_view,
-    const DialogueTextResolver& resolve_text);
+    const DialogueTextResolver& resolve_text,
+    const DialogueContentKeyResolver& resolve_content_key);
 
 std::optional<DialoguePanelCommand>
 dialogue_panel_option_command(const DialoguePanelView& view,
@@ -174,7 +177,7 @@ dialogue_panel_option_command(const DialoguePanelView& view,
 std::optional<DialoguePanelCommand> dialogue_panel_command(
     const DialoguePanelView& view, std::size_t option_index);
 
-std::string_view dialogue_panel_runner_name_key(
+std::string_view dialogue_panel_runner_id(
     RecruitedRunnerConversationRunner runner);
 
 // Project source-backed field-NPC prompt records into the shared panel. The

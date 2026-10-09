@@ -81,47 +81,48 @@ struct RecruitedRunnerInformationRecord {
 
 // The source descriptors at 0xFE848..0xFF8F0 still choose these streams and
 // segment counts. ROM text is imported into dialogue/script-text.lua so the
-// native state conversion carries keys rather than narrative copy.
+// native state conversion carries semantic content IDs rather than narrative
+// copy; dialogue.lua maps each ID to its imported catalog key.
 constexpr RecruitedRunnerInformationTextStream kRickyInformationOpening{
-    "runner.ricky.information.opening", 3U};
+    "information.opening", 3U};
 constexpr RecruitedRunnerInformationTextStream kRickyInformationContinuation{
-    "runner.ricky.information.continuation", 3U};
+    "information.continuation", 3U};
 constexpr RecruitedRunnerInformationTextStream kWinstonInformationOpening{
-    "runner.winston_marrs.information.opening", 3U};
+    "information.opening", 3U};
 constexpr RecruitedRunnerInformationTextStream kWinstonInformationContinuation{
-    "runner.winston_marrs.information.continuation", 3U};
+    "information.continuation", 3U};
 constexpr RecruitedRunnerInformationTextStream kTrentInformationOpening{
-    "runner.trent.information.opening", 4U};
+    "information.opening", 4U};
 constexpr RecruitedRunnerInformationTextStream kTrentInformationContinuation{
-    "runner.trent.information.continuation", 1U};
+    "information.continuation", 1U};
 constexpr RecruitedRunnerInformationTextStream kPetrInformationOpening{
-    "runner.petr_uvehr.information.opening", 2U};
+    "information.opening", 2U};
 constexpr RecruitedRunnerInformationTextStream kPetrInformationContinuation{
-    "runner.petr_uvehr.information.continuation", 2U};
+    "information.continuation", 2U};
 constexpr RecruitedRunnerInformationTextStream kWalkingBearInformationOpening{
-    "runner.walking_bear.information.opening", 3U};
+    "information.opening", 3U};
 constexpr RecruitedRunnerInformationTextStream kWalkingBearInformationContinuation{
-    "runner.walking_bear.information.continuation", 2U};
+    "information.continuation", 2U};
 constexpr RecruitedRunnerInformationTextStream kPhantomInformationOpening{
-    "runner.phantom.information.opening", 3U};
+    "information.opening", 3U};
 constexpr RecruitedRunnerInformationTextStream kPhantomInformationContinuation{
-    "runner.phantom.information.continuation", 3U};
+    "information.continuation", 3U};
 constexpr RecruitedRunnerInformationTextStream kTwoFistsInformationOpening{
-    "runner.two_fists.information.opening", 2U};
+    "information.opening", 2U};
 constexpr RecruitedRunnerInformationTextStream kTwoFistsInformationContinuation{
-    "runner.two_fists.information.continuation", 1U};
+    "information.continuation", 1U};
 constexpr RecruitedRunnerInformationTextStream kFreyaInformationOpening{
-    "runner.freya.information.opening", 2U};
+    "information.opening", 2U};
 constexpr RecruitedRunnerInformationTextStream kFreyaInformationContinuation{
-    "runner.freya.information.continuation", 3U};
+    "information.continuation", 3U};
 constexpr RecruitedRunnerInformationTextStream kRiannaInformationOpening{
-    "runner.rianna.information.opening", 4U};
+    "information.opening", 4U};
 constexpr RecruitedRunnerInformationTextStream kRiannaInformationContinuation{
-    "runner.rianna.information.continuation", 3U};
+    "information.continuation", 3U};
 constexpr RecruitedRunnerInformationTextStream kStarkInformationOpening{
-    "runner.stark.information.opening", 1U};
+    "information.opening", 1U};
 constexpr RecruitedRunnerInformationTextStream kStarkInformationContinuation{
-    "runner.stark.information.continuation", 1U};
+    "information.continuation", 1U};
 
 constexpr std::array<RecruitedRunnerInformationRecord,
                      kInformationRunnerCount>
@@ -178,51 +179,51 @@ constexpr std::array<RecruitedRunnerInformationRecord,
          kStarkInformationContinuation},
     }};
 
-constexpr std::string_view kMoreOptionText = "stoker.motel.arrival.more";
+constexpr std::string_view kMoreOptionContentId = "shared.more";
 
 // Ricky's subject descriptors at 0xFE894..0xFE908 each point at a complete
 // encoded text stream. The source descriptors are the page boundaries; the
 // segment arrays below preserve the text inside each page as well.
 constexpr RecruitedRunnerInformationTextStream
     kRickyShamanMagicPageOne{
-        "runner.ricky.subject.shaman_magic.page_0", 3U};
+        "subject.shaman_magic.page_0", 3U};
 constexpr RecruitedRunnerInformationTextStream
     kRickyShamanMagicPageTwo{
-        "runner.ricky.subject.shaman_magic.page_1", 4U};
+        "subject.shaman_magic.page_1", 4U};
 constexpr RecruitedRunnerInformationTextStream
     kRickyShamanMagicPageThree{
-        "runner.ricky.subject.shaman_magic.page_2", 3U};
+        "subject.shaman_magic.page_2", 3U};
 constexpr RecruitedRunnerInformationTextStream
     kRickyLocalAreaPageOne{
-        "runner.ricky.subject.local_area.page_0", 3U};
+        "subject.local_area.page_0", 3U};
 constexpr RecruitedRunnerInformationTextStream
     kRickyLocalAreaPageTwo{
-        "runner.ricky.subject.local_area.page_1", 2U};
+        "subject.local_area.page_1", 2U};
 constexpr RecruitedRunnerInformationTextStream
     kRickyJohnsonGundersonPage{
-        "runner.ricky.subject.johnson_gunderson.page_0", 3U};
+        "subject.johnson_gunderson.page_0", 3U};
 
 constexpr RecruitedRunnerInformationTextStream
     kWinstonHalloweenersPage{
-        "runner.winston_marrs.subject.halloweeners.page_0", 3U};
+        "subject.halloweeners.page_0", 3U};
 constexpr RecruitedRunnerInformationTextStream
     kWinstonLoneStarPage{
-        "runner.winston_marrs.subject.lone_star.page_0", 4U};
+        "subject.lone_star.page_0", 4U};
 constexpr RecruitedRunnerInformationTextStream
     kWinstonTrollOriginPageOne{
-        "runner.winston_marrs.subject.troll_origin.page_0", 2U};
+        "subject.troll_origin.page_0", 2U};
 constexpr RecruitedRunnerInformationTextStream
     kWinstonTrollOriginPageTwo{
-        "runner.winston_marrs.subject.troll_origin.page_1", 4U};
+        "subject.troll_origin.page_1", 4U};
 
 constexpr RecruitedRunnerInformationTextStream kTrentMagesPageOne{
-    "runner.trent.subject.mages.page_0", 2U};
+    "subject.mages.page_0", 2U};
 constexpr RecruitedRunnerInformationTextStream kTrentMagesPageTwo{
-    "runner.trent.subject.mages.page_1", 1U};
+    "subject.mages.page_1", 1U};
 constexpr RecruitedRunnerInformationTextStream kTrentJeffersonContactPage{
-    "runner.trent.subject.contacts.page_0", 3U};
+    "subject.contacts.page_0", 3U};
 constexpr RecruitedRunnerInformationTextStream kTrentJohnsonPage{
-    "runner.trent.subject.johnsons.page_0", 3U};
+    "subject.johnsons.page_0", 3U};
 
 constexpr std::uint32_t kTrentJeffersonContactStoryFlag =
     std::uint32_t{1U} << 12U;
@@ -412,15 +413,15 @@ select_recruited_runner_information_prompt(
     result.information_flags = state.runner_information_flags;
     result.opening_text = record.opening_text;
     result.continuation_text = record.continuation_text;
-    result.more_option_text = kMoreOptionText;
+    result.more_content_id = kMoreOptionContentId;
     return result;
 }
 
 RickyInformationSubjectPrompt ricky_information_subject_prompt() {
-    return {"runner.ricky.subject.title",
-            {"runner.ricky.subject.option.shaman_magic",
-             "runner.ricky.subject.option.local_area",
-             "runner.ricky.subject.option.johnson"}};
+    return {"subject.title",
+            {"subject.option.shaman_magic",
+             "subject.option.local_area",
+             "subject.option.johnson"}};
 }
 
 RickyInformationResponse select_ricky_information_response(
@@ -454,10 +455,10 @@ RickyInformationResponse select_ricky_information_response(
 }
 
 WinstonInformationSubjectPrompt winston_information_subject_prompt() {
-    return {"runner.winston_marrs.subject.title",
-            {"runner.winston_marrs.subject.option.halloweeners",
-             "runner.winston_marrs.subject.option.lone_star",
-             "runner.winston_marrs.subject.option.troll_origin"}};
+    return {"subject.title",
+            {"subject.option.halloweeners",
+             "subject.option.lone_star",
+             "subject.option.troll_origin"}};
 }
 
 WinstonInformationResponse select_winston_information_response(
@@ -490,10 +491,10 @@ WinstonInformationResponse select_winston_information_response(
 }
 
 TrentInformationSubjectPrompt trent_information_subject_prompt() {
-    return {"runner.trent.subject.title",
-            {"runner.trent.subject.option.mages",
-             "runner.trent.subject.option.contacts",
-             "runner.trent.subject.option.johnsons"}};
+    return {"subject.title",
+            {"subject.option.mages",
+             "subject.option.contacts",
+             "subject.option.johnsons"}};
 }
 
 TrentInformationResponse select_trent_information_response(

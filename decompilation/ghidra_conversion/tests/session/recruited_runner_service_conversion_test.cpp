@@ -127,13 +127,13 @@ int main() {
                 ricky_information.changed_flag == 0x0001U &&
                 ricky_information.information_flags == 0x0001U &&
                 ricky_information.opening_text.segment_count == 3U &&
-                ricky_information.opening_text.text_key ==
-                    "runner.ricky.information.opening" &&
+                ricky_information.opening_text.content_id ==
+                    "information.opening" &&
                 ricky_information.continuation_text.segment_count == 3U &&
-                ricky_information.continuation_text.text_key ==
-                    "runner.ricky.information.continuation" &&
-                ricky_information.more_option_text ==
-                    "stoker.motel.arrival.more")) {
+                ricky_information.continuation_text.content_id ==
+                    "information.continuation" &&
+                ricky_information.more_content_id ==
+                    "shared.more")) {
         return 8;
     }
     const auto repeated_ricky_information =
@@ -154,8 +154,8 @@ int main() {
                     RecruitedRunnerInformationTopic::stark_amerindian_heritage &&
                 stark_information.changed_flag == 0x0200U &&
                 stark_information.information_flags == 0x0201U &&
-                stark_information.opening_text.text_key ==
-                    "runner.stark.information.opening")) {
+                stark_information.opening_text.content_id ==
+                    "information.opening")) {
         return 10;
     }
 
@@ -181,8 +181,8 @@ int main() {
                         expected_opening_segment_counts[runner_index] &&
                     information.continuation_text.segment_count ==
                         expected_continuation_segment_counts[runner_index] &&
-                    information.more_option_text ==
-                        "stoker.motel.arrival.more")) {
+                    information.more_content_id ==
+                        "shared.more")) {
             return 11;
         }
     }
@@ -194,14 +194,14 @@ int main() {
     }
 
     const auto ricky_subjects = ricky_information_subject_prompt();
-    if (!expect(ricky_subjects.title_key ==
-                    "runner.ricky.subject.title" &&
-                ricky_subjects.option_keys[0] ==
-                    "runner.ricky.subject.option.shaman_magic" &&
-                ricky_subjects.option_keys[1] ==
-                    "runner.ricky.subject.option.local_area" &&
-                ricky_subjects.option_keys[2] ==
-                    "runner.ricky.subject.option.johnson")) {
+    if (!expect(ricky_subjects.title_content_id ==
+                    "subject.title" &&
+                ricky_subjects.option_content_ids[0] ==
+                    "subject.option.shaman_magic" &&
+                ricky_subjects.option_content_ids[1] ==
+                    "subject.option.local_area" &&
+                ricky_subjects.option_content_ids[2] ==
+                    "subject.option.johnson")) {
         return 13;
     }
     const auto shaman_response = select_ricky_information_response(
@@ -212,14 +212,14 @@ int main() {
                 shaman_response.more_after_page ==
                     std::array<bool, 3>{{true, true, false}} &&
                 shaman_response.pages[0].segment_count == 3U &&
-                shaman_response.pages[0].text_key ==
-                    "runner.ricky.subject.shaman_magic.page_0" &&
+                shaman_response.pages[0].content_id ==
+                    "subject.shaman_magic.page_0" &&
                 shaman_response.pages[1].segment_count == 4U &&
-                shaman_response.pages[1].text_key ==
-                    "runner.ricky.subject.shaman_magic.page_1" &&
+                shaman_response.pages[1].content_id ==
+                    "subject.shaman_magic.page_1" &&
                 shaman_response.pages[2].segment_count == 3U &&
-                shaman_response.pages[2].text_key ==
-                    "runner.ricky.subject.shaman_magic.page_2" &&
+                shaman_response.pages[2].content_id ==
+                    "subject.shaman_magic.page_2" &&
                 shaman_response.returns_to_common_conversation)) {
         return 14;
     }
@@ -229,11 +229,11 @@ int main() {
                 local_response.more_after_page ==
                     std::array<bool, 3>{{true, false, false}} &&
                 local_response.pages[0].segment_count == 3U &&
-                local_response.pages[0].text_key ==
-                    "runner.ricky.subject.local_area.page_0" &&
+                local_response.pages[0].content_id ==
+                    "subject.local_area.page_0" &&
                 local_response.pages[1].segment_count == 2U &&
-                local_response.pages[1].text_key ==
-                    "runner.ricky.subject.local_area.page_1")) {
+                local_response.pages[1].content_id ==
+                    "subject.local_area.page_1")) {
         return 15;
     }
     const auto johnson_response = select_ricky_information_response(
@@ -241,8 +241,8 @@ int main() {
     if (!expect(johnson_response.page_count == 1U &&
                 !johnson_response.more_after_page[0] &&
                 johnson_response.pages[0].segment_count == 3U &&
-                johnson_response.pages[0].text_key ==
-                    "runner.ricky.subject.johnson_gunderson.page_0")) {
+                johnson_response.pages[0].content_id ==
+                    "subject.johnson_gunderson.page_0")) {
         return 16;
     }
     if (!expect(select_ricky_information_response(
@@ -253,14 +253,14 @@ int main() {
     }
 
     const auto winston_subjects = winston_information_subject_prompt();
-    if (!expect(winston_subjects.title_key ==
-                    "runner.winston_marrs.subject.title" &&
-                winston_subjects.option_keys[0] ==
-                    "runner.winston_marrs.subject.option.halloweeners" &&
-                winston_subjects.option_keys[1] ==
-                    "runner.winston_marrs.subject.option.lone_star" &&
-                winston_subjects.option_keys[2] ==
-                    "runner.winston_marrs.subject.option.troll_origin")) {
+    if (!expect(winston_subjects.title_content_id ==
+                    "subject.title" &&
+                winston_subjects.option_content_ids[0] ==
+                    "subject.option.halloweeners" &&
+                winston_subjects.option_content_ids[1] ==
+                    "subject.option.lone_star" &&
+                winston_subjects.option_content_ids[2] ==
+                    "subject.option.troll_origin")) {
         return 25;
     }
     const auto halloweeners_response = select_winston_information_response(
@@ -271,8 +271,8 @@ int main() {
                 halloweeners_response.more_after_page ==
                     std::array<bool, 2>{{false, false}} &&
                 halloweeners_response.pages[0].segment_count == 3U &&
-                halloweeners_response.pages[0].text_key ==
-                    "runner.winston_marrs.subject.halloweeners.page_0" &&
+                halloweeners_response.pages[0].content_id ==
+                    "subject.halloweeners.page_0" &&
                 halloweeners_response.returns_to_common_conversation)) {
         return 26;
     }
@@ -280,8 +280,8 @@ int main() {
         WinstonInformationSubject::lone_star);
     if (!expect(lone_star_response.page_count == 1U &&
                 lone_star_response.pages[0].segment_count == 4U &&
-                lone_star_response.pages[0].text_key ==
-                    "runner.winston_marrs.subject.lone_star.page_0")) {
+                lone_star_response.pages[0].content_id ==
+                    "subject.lone_star.page_0")) {
         return 27;
     }
     const auto troll_response = select_winston_information_response(
@@ -291,10 +291,10 @@ int main() {
                     std::array<bool, 2>{{true, false}} &&
                 troll_response.pages[0].segment_count == 2U &&
                 troll_response.pages[1].segment_count == 4U &&
-                troll_response.pages[0].text_key ==
-                    "runner.winston_marrs.subject.troll_origin.page_0" &&
-                troll_response.pages[1].text_key ==
-                    "runner.winston_marrs.subject.troll_origin.page_1")) {
+                troll_response.pages[0].content_id ==
+                    "subject.troll_origin.page_0" &&
+                troll_response.pages[1].content_id ==
+                    "subject.troll_origin.page_1")) {
         return 28;
     }
     if (!expect(select_winston_information_response(
@@ -305,14 +305,14 @@ int main() {
     }
 
     const auto trent_subjects = trent_information_subject_prompt();
-    if (!expect(trent_subjects.title_key ==
-                    "runner.trent.subject.title" &&
-                trent_subjects.option_keys[0] ==
-                    "runner.trent.subject.option.mages" &&
-                trent_subjects.option_keys[1] ==
-                    "runner.trent.subject.option.contacts" &&
-                trent_subjects.option_keys[2] ==
-                    "runner.trent.subject.option.johnsons")) {
+    if (!expect(trent_subjects.title_content_id ==
+                    "subject.title" &&
+                trent_subjects.option_content_ids[0] ==
+                    "subject.option.mages" &&
+                trent_subjects.option_content_ids[1] ==
+                    "subject.option.contacts" &&
+                trent_subjects.option_content_ids[2] ==
+                    "subject.option.johnsons")) {
         return 30;
     }
     const auto trent_mages = select_trent_information_response(
@@ -322,11 +322,11 @@ int main() {
                 trent_mages.more_after_page ==
                     std::array<bool, 2>{{true, false}} &&
                 trent_mages.pages[0].segment_count == 2U &&
-                trent_mages.pages[0].text_key ==
-                    "runner.trent.subject.mages.page_0" &&
+                trent_mages.pages[0].content_id ==
+                    "subject.mages.page_0" &&
                 trent_mages.pages[1].segment_count == 1U &&
-                trent_mages.pages[1].text_key ==
-                    "runner.trent.subject.mages.page_1" &&
+                trent_mages.pages[1].content_id ==
+                    "subject.mages.page_1" &&
                 trent_mages.returns_to_common_conversation)) {
         return 31;
     }
@@ -336,8 +336,8 @@ int main() {
     if (!expect(trent_contacts.action == TrentInformationResponseAction::selected &&
                 trent_contacts.page_count == 1U &&
                 trent_contacts.pages[0].segment_count == 3U &&
-                trent_contacts.pages[0].text_key ==
-                    "runner.trent.subject.contacts.page_0" &&
+                trent_contacts.pages[0].content_id ==
+                    "subject.contacts.page_0" &&
                 offer_state.story_flags == (std::uint32_t{1U} << 12U))) {
         return 32;
     }
@@ -345,8 +345,8 @@ int main() {
         TrentInformationSubject::johnsons, offer_state);
     if (!expect(trent_johnsons.page_count == 1U &&
                 trent_johnsons.pages[0].segment_count == 3U &&
-                trent_johnsons.pages[0].text_key ==
-                    "runner.trent.subject.johnsons.page_0")) {
+                trent_johnsons.pages[0].content_id ==
+                    "subject.johnsons.page_0")) {
         return 33;
     }
     if (!expect(select_trent_information_response(

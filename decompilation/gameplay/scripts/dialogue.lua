@@ -65,6 +65,168 @@ local menu_profiles = {
     },
 }
 
+-- Content is grouped by speaker and topic. The controller supplies only the
+-- semantic runner/page ID; this table connects that ID to the imported copy.
+local runner_dialogue = {
+    ricky = {
+        name_key = "runner.ricky.name",
+        information = {
+            opening = "runner.ricky.information.opening",
+            continuation = "runner.ricky.information.continuation",
+        },
+        subject = {
+            title_key = "runner.ricky.subject.title",
+            options = {
+                shaman_magic = "runner.ricky.subject.option.shaman_magic",
+                local_area = "runner.ricky.subject.option.local_area",
+                johnson = "runner.ricky.subject.option.johnson",
+            },
+            responses = {
+                shaman_magic = {
+                    "runner.ricky.subject.shaman_magic.page_0",
+                    "runner.ricky.subject.shaman_magic.page_1",
+                    "runner.ricky.subject.shaman_magic.page_2",
+                },
+                local_area = {
+                    "runner.ricky.subject.local_area.page_0",
+                    "runner.ricky.subject.local_area.page_1",
+                },
+                johnson_gunderson = {
+                    "runner.ricky.subject.johnson_gunderson.page_0",
+                },
+            },
+        },
+    },
+    winston_marrs = {
+        name_key = "runner.winston_marrs.name",
+        information = {
+            opening = "runner.winston_marrs.information.opening",
+            continuation = "runner.winston_marrs.information.continuation",
+        },
+        subject = {
+            title_key = "runner.winston_marrs.subject.title",
+            options = {
+                halloweeners = "runner.winston_marrs.subject.option.halloweeners",
+                lone_star = "runner.winston_marrs.subject.option.lone_star",
+                troll_origin = "runner.winston_marrs.subject.option.troll_origin",
+            },
+            responses = {
+                halloweeners = {
+                    "runner.winston_marrs.subject.halloweeners.page_0",
+                },
+                lone_star = {
+                    "runner.winston_marrs.subject.lone_star.page_0",
+                },
+                troll_origin = {
+                    "runner.winston_marrs.subject.troll_origin.page_0",
+                    "runner.winston_marrs.subject.troll_origin.page_1",
+                },
+            },
+        },
+    },
+    trent = {
+        name_key = "runner.trent.name",
+        information = {
+            opening = "runner.trent.information.opening",
+            continuation = "runner.trent.information.continuation",
+        },
+        subject = {
+            title_key = "runner.trent.subject.title",
+            options = {
+                mages = "runner.trent.subject.option.mages",
+                contacts = "runner.trent.subject.option.contacts",
+                johnsons = "runner.trent.subject.option.johnsons",
+            },
+            responses = {
+                mages = {
+                    "runner.trent.subject.mages.page_0",
+                    "runner.trent.subject.mages.page_1",
+                },
+                contacts = {
+                    "runner.trent.subject.contacts.page_0",
+                },
+                johnsons = {
+                    "runner.trent.subject.johnsons.page_0",
+                },
+            },
+        },
+    },
+    petr_uvehr = {
+        name_key = "runner.petr_uvehr.name",
+        information = {
+            opening = "runner.petr_uvehr.information.opening",
+            continuation = "runner.petr_uvehr.information.continuation",
+        },
+    },
+    walking_bear = {
+        name_key = "runner.walking_bear.name",
+        information = {
+            opening = "runner.walking_bear.information.opening",
+            continuation = "runner.walking_bear.information.continuation",
+        },
+    },
+    phantom = {
+        name_key = "runner.phantom.name",
+        information = {
+            opening = "runner.phantom.information.opening",
+            continuation = "runner.phantom.information.continuation",
+        },
+    },
+    two_fists = {
+        name_key = "runner.two_fists.name",
+        information = {
+            opening = "runner.two_fists.information.opening",
+            continuation = "runner.two_fists.information.continuation",
+        },
+    },
+    freya = {
+        name_key = "runner.freya.name",
+        information = {
+            opening = "runner.freya.information.opening",
+            continuation = "runner.freya.information.continuation",
+        },
+    },
+    rianna = {
+        name_key = "runner.rianna.name",
+        information = {
+            opening = "runner.rianna.information.opening",
+            continuation = "runner.rianna.information.continuation",
+        },
+    },
+    stark = {
+        name_key = "runner.stark.name",
+        information = {
+            opening = "runner.stark.information.opening",
+            continuation = "runner.stark.information.continuation",
+        },
+    },
+}
+
+local function runner_text_keys()
+    local keys = { ["shared.more"] = "stoker.motel.arrival.more" }
+    for runner_id, runner in pairs(runner_dialogue) do
+        keys[runner_id .. ".name"] = runner.name_key
+        for page_id, text_key in pairs(runner.information) do
+            keys[runner_id .. ".information." .. page_id] = text_key
+        end
+        if runner.subject ~= nil then
+            local subject = runner.subject
+            keys[runner_id .. ".subject.title"] = subject.title_key
+            for option_id, text_key in pairs(subject.options) do
+                keys[runner_id .. ".subject.option." .. option_id] = text_key
+            end
+            for topic_id, pages in pairs(subject.responses) do
+                for page_index, text_key in ipairs(pages) do
+                    local content_id = runner_id .. ".subject." .. topic_id ..
+                        ".page_" .. (page_index - 1)
+                    keys[content_id] = text_key
+                end
+            end
+        end
+    end
+    return keys
+end
+
 function Dialogue.speaker_profile(speaker_id)
     return speakers[speaker_id]
 end
@@ -104,5 +266,7 @@ function Dialogue.menu_text_keys(speaker_id, text_profile, menu_id, choice_ids)
         choice_label_keys = choice_label_keys,
     }
 end
+
+Dialogue.runner_text_keys = runner_text_keys
 
 return Dialogue

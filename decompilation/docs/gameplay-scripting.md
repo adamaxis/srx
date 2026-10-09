@@ -131,9 +131,11 @@ presenters. Story modules select the content and choices. The same ROM import
 now includes all ten recruited-runner biography streams and the converted
 Ricky, Winston Marrs, and Trent topic prompts and response pages. The ten
 recruited-runner display names also come from the ROM template-name table.
-The runner conversion and shared panel projection resolve names and copy
-through Lua, while their source-derived transition state remains typed native
-C++ and is not yet connected to the live field/roster route.
+`dialogue.lua` groups runner names, biographies, topic choices, and response
+pages by stable runner and topic IDs. The shared panel projection resolves
+those IDs through Lua while source-derived transition state remains typed
+native C++. The projection is covered by conversion QA, but the runner
+conversation still has no live field/roster entry route.
 Actor placement, destination movement, scripted animation, item operations,
 audio playback, additional speaker/event profiles, and save restoration are
 not connected yet. The runner has no `io`, `os`, `debug`, or package-loader
@@ -315,8 +317,9 @@ command-overview root choices/labels, Clips selector choices/labels and panel
 text keys, Pocket Secretary root and Notebook title/separator/label keys, Notebook option
 IDs/labels, shared confirmation choices/labels, Magic spell
 IDs/names/descriptions, field-object prompt choices, and shop
-service/action-heading IDs are Lua content. The runner biography and currently
-converted Ricky/Winston/Trent topic text are also Lua content; their
+service/action-heading IDs are Lua content. Runner biographies and the
+converted Ricky/Winston/Trent topic trees are grouped in `dialogue.lua`; the
+shared panel resolves them through Lua and QA captures their screens. Their
 conversation path still needs integration with the live roster/field UI.
 Script dialogue menus carry
 their text profile and optional speaker into one generic panel projection;

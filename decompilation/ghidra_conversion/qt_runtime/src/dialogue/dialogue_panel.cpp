@@ -152,9 +152,19 @@ void copy_text_alias_stream(DialoguePanelView& view,
 
 void copy_text_stream(DialoguePanelView& view,
                       const RecruitedRunnerInformationTextStream& stream,
+                      const std::string_view speaker_id,
+                      const DialogueContentKeyResolver& resolve_content_key,
                       const DialogueTextResolver& resolve_text) {
+    const auto text_key = resolve_content_key
+                             ? resolve_content_key(speaker_id,
+                                                  stream.content_id)
+                             : std::string_view{};
+    if (text_key.empty()) {
+        mark_missing_text(view, stream.content_id);
+        return;
+    }
     const auto initial_segment_count = view.text_segment_count;
-    copy_text_alias_stream(view, stream.text_key, resolve_text);
+    copy_text_alias_stream(view, text_key, resolve_text);
     if (view.source_complete &&
         view.text_segment_count - initial_segment_count !=
             stream.segment_count) {
@@ -179,8 +189,15 @@ void add_common_options(DialoguePanelView& view) {
 template <typename SubjectPrompt>
 void add_subject_options(DialoguePanelView& view,
                          const SubjectPrompt& subject_prompt,
+                         const std::string_view speaker_id,
+                         const DialogueContentKeyResolver& resolve_content_key,
                          const DialogueTextResolver& resolve_text) {
-    copy_text_alias_stream(view, subject_prompt.title_key, resolve_text);
+    const auto title_key = resolve_content_key
+                               ? resolve_content_key(
+                                     speaker_id,
+                                     subject_prompt.title_content_id)
+                               : std::string_view{};
+    copy_text_alias_stream(view, title_key, resolve_text);
     if (view.text_segment_count != 1U) {
         view.source_complete = false;
         view.source_boundary_reason =
@@ -194,13 +211,16 @@ void add_subject_options(DialoguePanelView& view,
         DialoguePanelCommand::runner_select_first_subject,
         DialoguePanelCommand::runner_select_second_subject,
         DialoguePanelCommand::runner_select_third_subject};
-    for (std::size_t index = 0; index < subject_prompt.option_keys.size();
-         ++index) {
-        const auto label = resolve_text
-                               ? resolve_text(subject_prompt.option_keys[index])
-                               : std::string_view{};
+    for (std::size_t index = 0;
+         index < subject_prompt.option_content_ids.size(); ++index) {
+        const auto content_id = subject_prompt.option_content_ids[index];
+        const auto label_key = resolve_content_key
+                                   ? resolve_content_key(speaker_id, content_id)
+                                   : std::string_view{};
+        const auto label = resolve_text ? resolve_text(label_key)
+                                        : std::string_view{};
         if (label.empty()) {
-            mark_missing_text(view, subject_prompt.option_keys[index]);
+            mark_missing_text(view, content_id);
         }
         add_option(view, kRoles[index], label,
                    kCommands[index]);
@@ -209,6 +229,8 @@ void add_subject_options(DialoguePanelView& view,
 
 template <typename Response>
 void add_response_page(DialoguePanelView& view, const Response& response,
+                       const std::string_view speaker_id,
+                       const DialogueContentKeyResolver& resolve_content_key,
                        const DialogueTextResolver& resolve_text) {
     if (view.page_index >= response.page_count) {
         view.source_complete = false;
@@ -216,55 +238,62 @@ void add_response_page(DialoguePanelView& view, const Response& response,
             "converted dialogue page cursor exceeded its source page count";
         return;
     }
-    copy_text_stream(view, response.pages[view.page_index], resolve_text);
+    copy_text_stream(view, response.pages[view.page_index], speaker_id,
+                     resolve_content_key, resolve_text);
     view.has_more = response.more_after_page[view.page_index];
     view.returns_to_conversation = !view.has_more &&
                                    response.returns_to_common_conversation;
     if (view.has_more) {
-        view.continuation_label = resolve_continuation_label(
-            resolve_text, "stoker.motel.arrival.more");
+        const auto more_key = resolve_content_key
+                                  ? resolve_content_key({}, "shared.more")
+                                  : std::string_view{};
+        view.continuation_label = resolve_continuation_label(resolve_text,
+                                                              more_key);
         if (view.continuation_label.empty()) {
-            mark_missing_text(view, "stoker.motel.arrival.more");
+            mark_missing_text(view, "shared.more");
         }
     }
 }
 
 } // namespace
 
-std::string_view dialogue_panel_runner_name_key(
+std::string_view dialogue_panel_runner_id(
     const RecruitedRunnerConversationRunner runner) {
     switch (runner) {
     case RecruitedRunnerConversationRunner::ricky:
-        return "runner.ricky.name";
+        return "ricky";
     case RecruitedRunnerConversationRunner::winston_marrs:
-        return "runner.winston_marrs.name";
+        return "winston_marrs";
     case RecruitedRunnerConversationRunner::trent:
-        return "runner.trent.name";
+        return "trent";
     case RecruitedRunnerConversationRunner::petr_uvehr:
-        return "runner.petr_uvehr.name";
+        return "petr_uvehr";
     case RecruitedRunnerConversationRunner::walking_bear:
-        return "runner.walking_bear.name";
+        return "walking_bear";
     case RecruitedRunnerConversationRunner::phantom:
-        return "runner.phantom.name";
+        return "phantom";
     case RecruitedRunnerConversationRunner::two_fists:
-        return "runner.two_fists.name";
+        return "two_fists";
     case RecruitedRunnerConversationRunner::freya:
-        return "runner.freya.name";
+        return "freya";
     case RecruitedRunnerConversationRunner::rianna:
-        return "runner.rianna.name";
+        return "rianna";
     case RecruitedRunnerConversationRunner::stark:
-        return "runner.stark.name";
+        return "stark";
     }
     return {};
 }
 
 DialoguePanelView make_dialogue_panel_view(
     const RecruitedRunnerConversationView& source_view,
-    const DialogueTextResolver& resolve_text) {
+    const DialogueTextResolver& resolve_text,
+    const DialogueContentKeyResolver& resolve_content_key) {
     DialoguePanelView view{};
     view.actor = source_view.runner;
-    const auto actor_name_key =
-        dialogue_panel_runner_name_key(source_view.runner);
+    const auto runner_id = dialogue_panel_runner_id(source_view.runner);
+    const auto actor_name_key = resolve_content_key
+                                    ? resolve_content_key(runner_id, "name")
+                                    : std::string_view{};
     view.actor_name = resolve_text ? resolve_text(actor_name_key)
                                    : std::string_view{};
     if (view.actor_name.empty()) {
@@ -284,11 +313,11 @@ DialoguePanelView make_dialogue_panel_view(
         view.kind = DialoguePanelKind::information_page;
         if (source_view.page_index == 0U) {
             copy_text_stream(view, source_view.information_prompt.opening_text,
-                             resolve_text);
+                             runner_id, resolve_content_key, resolve_text);
         } else if (source_view.page_index == 1U) {
             copy_text_stream(view,
                              source_view.information_prompt.continuation_text,
-                             resolve_text);
+                             runner_id, resolve_content_key, resolve_text);
         } else {
             view.source_complete = false;
             view.source_boundary_reason =
@@ -298,11 +327,16 @@ DialoguePanelView make_dialogue_panel_view(
         view.has_more = source_view.page_index == 0U;
         view.returns_to_conversation = source_view.page_index == 1U;
         if (view.has_more) {
-            view.continuation_label = resolve_continuation_label(
-                resolve_text, source_view.information_prompt.more_option_text);
+            const auto more_key = resolve_content_key
+                                      ? resolve_content_key(
+                                            {}, source_view.information_prompt
+                                                   .more_content_id)
+                                      : std::string_view{};
+            view.continuation_label = resolve_continuation_label(resolve_text,
+                                                                  more_key);
             if (view.continuation_label.empty()) {
-                mark_missing_text(
-                    view, source_view.information_prompt.more_option_text);
+                mark_missing_text(view,
+                                  source_view.information_prompt.more_content_id);
             }
         }
         return view;
@@ -313,10 +347,12 @@ DialoguePanelView make_dialogue_panel_view(
         view.open = true;
         view.kind = DialoguePanelKind::subject_choices;
         std::visit(
-            [&view, &resolve_text](const auto& subject_prompt) {
+            [&view, &resolve_text, &resolve_content_key, runner_id](
+                const auto& subject_prompt) {
                 using Prompt = std::decay_t<decltype(subject_prompt)>;
                 if constexpr (!std::is_same_v<Prompt, std::monostate>) {
-                    add_subject_options(view, subject_prompt, resolve_text);
+                    add_subject_options(view, subject_prompt, runner_id,
+                                        resolve_content_key, resolve_text);
                 }
             },
             source_view.subject_prompt);
@@ -326,10 +362,12 @@ DialoguePanelView make_dialogue_panel_view(
         view.open = true;
         view.kind = DialoguePanelKind::information_response_page;
         std::visit(
-            [&view, &resolve_text](const auto& response) {
+            [&view, &resolve_text, &resolve_content_key, runner_id](
+                const auto& response) {
                 using Response = std::decay_t<decltype(response)>;
                 if constexpr (!std::is_same_v<Response, std::monostate>) {
-                    add_response_page(view, response, resolve_text);
+                    add_response_page(view, response, runner_id,
+                                      resolve_content_key, resolve_text);
                 }
             },
             source_view.information_response);

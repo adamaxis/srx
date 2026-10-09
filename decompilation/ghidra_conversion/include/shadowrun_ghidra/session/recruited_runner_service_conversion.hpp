@@ -113,10 +113,10 @@ enum class RecruitedRunnerInformationTopic {
     stark_amerindian_heritage,
 };
 
-// C++ owns which source stream and how many source segments a state uses.
-// The text itself is resolved from the ROM-imported Lua catalog by key.
+// C++ owns the source stream/page count. Lua maps the stable content ID to
+// the ROM-imported text catalog key used by the shared dialogue presenter.
 struct RecruitedRunnerInformationTextStream {
-    std::string_view text_key;
+    std::string_view content_id;
     std::size_t segment_count = 0;
 };
 
@@ -136,7 +136,7 @@ struct RecruitedRunnerInformationPromptResult {
     std::uint16_t changed_flag = 0;
     RecruitedRunnerInformationTextStream opening_text;
     RecruitedRunnerInformationTextStream continuation_text;
-    std::string_view more_option_text;
+    std::string_view more_content_id;
 };
 
 enum class RickyInformationSubject {
@@ -146,8 +146,8 @@ enum class RickyInformationSubject {
 };
 
 struct RickyInformationSubjectPrompt {
-    std::string_view title_key;
-    std::array<std::string_view, 3> option_keys{};
+    std::string_view title_content_id;
+    std::array<std::string_view, 3> option_content_ids{};
 };
 
 enum class RickyInformationResponseAction {
@@ -280,13 +280,14 @@ select_recruited_runner_conversation_prompt(
 // one runner-specific bit in FFFC2A and returns a title-only first page with
 // the shared < MORE > option; the continuation page then presents the second
 // complete biographical stream before returning to the subject choices. The
-// source text is represented as native text data, not ROM pointer arithmetic.
+// source text is represented by semantic content IDs resolved through Lua,
+// not ROM pointer arithmetic.
 RecruitedRunnerInformationPromptResult
 select_recruited_runner_information_prompt(
     RecruitedRunnerServiceState& state);
 
-// ROM data rooted at 0xFE878. The returned subject prompt is native text
-// data; it does not expose the source descriptor addresses.
+// ROM data rooted at 0xFE878. The returned subject prompt contains semantic
+// content IDs; it does not expose the source descriptor addresses.
 RickyInformationSubjectPrompt ricky_information_subject_prompt();
 
 RickyInformationResponse select_ricky_information_response(
@@ -299,8 +300,8 @@ enum class WinstonInformationSubject {
 };
 
 struct WinstonInformationSubjectPrompt {
-    std::string_view title_key;
-    std::array<std::string_view, 3> option_keys{};
+    std::string_view title_content_id;
+    std::array<std::string_view, 3> option_content_ids{};
 };
 
 enum class WinstonInformationResponseAction {
@@ -320,8 +321,8 @@ struct WinstonInformationResponse {
     bool returns_to_common_conversation = false;
 };
 
-// ROM data rooted at 0xFEA8C. The subject names and response streams are
-// native text data; descriptor addresses do not enter the runtime.
+// ROM data rooted at 0xFEA8C. The subject names and response streams use
+// semantic content IDs; descriptor addresses do not enter the runtime.
 WinstonInformationSubjectPrompt winston_information_subject_prompt();
 
 WinstonInformationResponse select_winston_information_response(
@@ -334,8 +335,8 @@ enum class TrentInformationSubject {
 };
 
 struct TrentInformationSubjectPrompt {
-    std::string_view title_key;
-    std::array<std::string_view, 3> option_keys{};
+    std::string_view title_content_id;
+    std::array<std::string_view, 3> option_content_ids{};
 };
 
 enum class TrentInformationResponseAction {
@@ -359,8 +360,8 @@ struct TrentInformationResponse {
     bool returns_to_common_conversation = false;
 };
 
-// ROM data rooted at 0xFEC78. The prompt and response streams are native
-// text data; source pointers and the command-table index do not enter the
+// ROM data rooted at 0xFEC78. The prompt and response streams use semantic
+// content IDs; source pointers and the command-table index do not enter the
 // runtime.
 TrentInformationSubjectPrompt trent_information_subject_prompt();
 
