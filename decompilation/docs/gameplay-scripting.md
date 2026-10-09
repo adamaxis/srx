@@ -154,6 +154,10 @@ access.
   Discard, and Trade through the selected stable ID; the text catalog resolves
   the ROM copy through those IDs. Item codes, cursor state, and inventory
   behavior remain typed native state.
+- `gameplay/scripts/attributes_skills.lua` declares stable IDs for the 20
+  Attributes/Skills labels and five upgrade messages in source order. The field
+  text catalog resolves the ROM copy through those IDs; skill values, cursor
+  movement, upgrade eligibility, and karma spending remain native state.
 - `gameplay/scripts/magic.lua` declares the 13 spell IDs in the ROM
   `D4EA0` name-table order. The extractor keys each ROM name and description
   with that semantic ID; the field text catalog validates the ordered menu

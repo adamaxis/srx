@@ -219,25 +219,36 @@ write_field_service_routes(
     for (std::size_t index = 0; index < command_names.classes.size(); ++index) {
         emit("class." + std::to_string(index), command_names.classes[index]);
     }
+    constexpr std::array<std::string_view, 25> kAttributesSkillsTextIds{{
+        "body", "quickness", "strength", "charisma", "intelligence",
+        "willpower", "essence", "magic", "sorcery", "firearms", "pistols",
+        "smgs", "shotguns", "melee_combat", "throwing", "computer",
+        "biotech", "electronics", "reputation", "negotiation",
+        "upgrade_header", "maximum_level", "mage_only",
+        "insufficient_karma", "upgrade_prompt"}};
     const auto attribute_skill_labels =
         shadowrun::graphics::read_genesis_attribute_skill_labels(rom);
     for (std::size_t index = 0; index < attribute_skill_labels.size();
          ++index) {
-        emit("attribute.skill." + std::to_string(index),
+        emit("attributes_skills.text.option." +
+                 std::string(kAttributesSkillsTextIds[index]),
              attribute_skill_labels[index]);
     }
     const auto attributes_skills_text =
         shadowrun::graphics::read_genesis_attributes_skills_text(rom);
-    emit("attributes.upgrade.header",
-         attributes_skills_text.upgrade_header);
-    emit("attributes.upgrade.maximum-level",
-         attributes_skills_text.maximum_level_message);
-    emit("attributes.upgrade.mage-only",
-         attributes_skills_text.mage_only_message);
-    emit("attributes.upgrade.insufficient-karma",
-         attributes_skills_text.insufficient_karma_message);
-    emit("attributes.upgrade.prompt",
-         attributes_skills_text.upgrade_prompt);
+    const std::array<std::string, 5> attributes_upgrade_text{{
+        attributes_skills_text.upgrade_header,
+        attributes_skills_text.maximum_level_message,
+        attributes_skills_text.mage_only_message,
+        attributes_skills_text.insufficient_karma_message,
+        attributes_skills_text.upgrade_prompt}};
+    for (std::size_t index = 0; index < attributes_upgrade_text.size();
+         ++index) {
+        emit("attributes_skills.text.option." +
+                 std::string(kAttributesSkillsTextIds[
+                     attribute_skill_labels.size() + index]),
+             attributes_upgrade_text[index]);
+    }
     const auto cyberware_text =
         shadowrun::graphics::read_genesis_cyberware_text(rom);
     const auto title_break = cyberware_text.title.find('\n');
@@ -1560,6 +1571,8 @@ void write_asset_readme(const std::filesystem::path& root) {
               "categories, and message keys, while "
               "`gameplay/scripts/items.lua` maps source item IDs to their "
               "name/category/detail keys and inventory/First Aid text IDs. "
+              "`gameplay/scripts/attributes_skills.lua` maps the "
+              "Attributes/Skills labels and upgrade copy to stable IDs. "
               "The spell-capable Magic panel is an individually "
               "named RGBA overlay. Item art is grouped under items/weapons, "
               "items/first-aid, items/miscellaneous, items/magic, and items/armor. "

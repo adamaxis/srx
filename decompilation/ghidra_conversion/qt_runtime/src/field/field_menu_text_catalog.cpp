@@ -33,6 +33,14 @@ constexpr std::array<std::string_view, kItemUiTextCount> kItemUiTextIds{{
     "trade_full_inventory", "automatic_use", "first_aid_prompt",
     "first_aid_label", "first_aid_cancel", "first_aid_not_injured",
     "first_aid_slap_patch_used", "first_aid_medkit_used"}};
+constexpr std::array<std::string_view, kAttributesSkillsTextCount>
+    kAttributesSkillsTextIds{{
+        "body", "quickness", "strength", "charisma", "intelligence",
+        "willpower", "essence", "magic", "sorcery", "firearms", "pistols",
+        "smgs", "shotguns", "melee_combat", "throwing", "computer",
+        "biotech", "electronics", "reputation", "negotiation",
+        "upgrade_header", "maximum_level", "mage_only",
+        "insufficient_karma", "upgrade_prompt"}};
 constexpr std::array<std::string_view, kNotebookChoiceCount>
     kNotebookChoiceIds{{"current_run", "tips_and_clues", "contacts",
                         "mr_johnsons", "shadowrunners"}};
@@ -76,6 +84,20 @@ bool is_item_ui_text_label_key(const std::string_view key) {
     return key.rfind(kTextPrefix, 0U) == 0U &&
            std::find(kItemUiTextIds.begin(), kItemUiTextIds.end(),
                      key.substr(kTextPrefix.size())) != kItemUiTextIds.end();
+}
+
+bool has_attributes_skills_text_label_prefix(const std::string_view key) {
+    return key.rfind("attributes_skills.text.option.", 0U) == 0U;
+}
+
+bool is_attributes_skills_text_label_key(const std::string_view key) {
+    constexpr std::string_view kTextPrefix =
+        "attributes_skills.text.option.";
+    return key.rfind(kTextPrefix, 0U) == 0U &&
+           std::find(kAttributesSkillsTextIds.begin(),
+                     kAttributesSkillsTextIds.end(),
+                     key.substr(kTextPrefix.size())) !=
+               kAttributesSkillsTextIds.end();
 }
 
 bool is_clips_menu_label_key(const std::string_view key) {
@@ -188,14 +210,14 @@ void add_missing_entries(const std::array<bool, N>& found, const char* prefix,
 bool is_field_menu_text_key(const std::string& key) {
     static constexpr const char* prefixes[]{
         "runner.", "archetype.", "race.", "class.", "status.",
-        "attribute.skill.", "cyberware.title.", "cyberware.entry.",
+        "cyberware.title.", "cyberware.entry.",
         "clips.", "dismiss.label.", "pocket-secretary.cyberdeck.line.",
         "pocket-secretary.group-item.", "pocket-secretary.group-items.empty.",
         "ui.option.", "notebook.option.", "notebook.no-run.",
         "notebook.mr-johnson.name.",
         "notebook.mr-johnson.detail.", "notebook.tip.",
         "magic.spells.option.", "magic.spells.description.",
-        "items.text.option.", "power.",
+        "items.text.option.", "attributes_skills.text.option.", "power.",
         "armor.",
     };
     for (const auto* prefix : prefixes) {
@@ -207,9 +229,6 @@ bool is_field_menu_text_key(const std::string& key) {
         "metric.physical", "metric.mental", "metric.attack",
         "metric.defense", "metric.damage", "metric.drain", "metric.none",
         "metric.no-armor", "metric.weapons", "metric.guns", "metric.power",
-        "attributes.upgrade.header",
-        "attributes.upgrade.maximum-level", "attributes.upgrade.mage-only",
-        "attributes.upgrade.insufficient-karma", "attributes.upgrade.prompt",
         "cyberware.empty",
         "magic.defense.title",
         "magic.heading.force-posture", "magic.label.success",
@@ -388,12 +407,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::array<bool, kFieldMenuClassNameCount> class_found{};
     std::array<bool, kFieldMenuRunnerNameCount> runner_found{};
     std::array<bool, kFieldMenuStatusNameCount> status_found{};
-    std::array<bool, kAttributeSkillLabelCount> attribute_skill_found{};
-    bool attributes_upgrade_header_found = false;
-    bool attributes_upgrade_maximum_level_found = false;
-    bool attributes_upgrade_mage_only_found = false;
-    bool attributes_upgrade_insufficient_karma_found = false;
-    bool attributes_upgrade_prompt_found = false;
     std::array<bool, kCyberwareTitleLineCount> cyberware_title_found{};
     std::array<bool, kCyberwareEntryCount> cyberware_entry_found{};
     std::array<bool, kMagicSpellTextCount> magic_spell_description_found{};
@@ -470,6 +483,23 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     result.catalog.first_aid_not_injured = item_ui_text[11];
     result.catalog.first_aid_slap_patch_used = item_ui_text[12];
     result.catalog.first_aid_medkit_used = item_ui_text[13];
+    std::array<std::string, kAttributesSkillsTextCount>
+        attributes_skills_text{};
+    load_script_menu_labels(
+        scripts, "attributes_skills", "text_entries",
+        "attributes_skills.text", "catalog", kAttributesSkillsTextIds,
+        attributes_skills_text, result.errors, nullptr,
+        &result.catalog.attribute_skill_text_ids);
+    std::copy_n(attributes_skills_text.begin(), kAttributeSkillLabelCount,
+                result.catalog.attribute_skill_labels.begin());
+    result.catalog.attributes_upgrade_header = attributes_skills_text[20];
+    result.catalog.attributes_upgrade_maximum_level_message =
+        attributes_skills_text[21];
+    result.catalog.attributes_upgrade_mage_only_message =
+        attributes_skills_text[22];
+    result.catalog.attributes_upgrade_insufficient_karma_message =
+        attributes_skills_text[23];
+    result.catalog.attributes_upgrade_prompt = attributes_skills_text[24];
     std::array<std::string, kMagicSpellTextCount> magic_spell_names{};
     load_script_menu_labels(
         scripts, "magic", "spells", "magic.spells", "catalog",
@@ -540,6 +570,13 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             if (!is_item_ui_text_label_key(key)) {
                 result.errors.emplace_back(
                     "unknown Items UI text label key: " + key);
+            }
+            continue;
+        }
+        if (has_attributes_skills_text_label_prefix(key)) {
+            if (!is_attributes_skills_text_label_key(key)) {
+                result.errors.emplace_back(
+                    "unknown Attributes/Skills UI text label key: " + key);
             }
             continue;
         }
@@ -621,17 +658,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             }
             continue;
         }
-        if (parse_indexed_key(key, "attribute.skill.", index) &&
-            index < result.catalog.attribute_skill_labels.size()) {
-            if (attribute_skill_found[index]) {
-                result.errors.emplace_back("duplicate field menu text row: " +
-                                          key);
-            } else {
-                attribute_skill_found[index] = true;
-                result.catalog.attribute_skill_labels[index] = value;
-            }
-            continue;
-        }
         if (parse_indexed_key(key, "cyberware.title.", index) &&
             index < result.catalog.cyberware_title_lines.size()) {
             if (cyberware_title_found[index]) {
@@ -690,21 +716,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             parse_named("metric.guns", result.catalog.guns_label, guns_found) ||
             parse_named("metric.power", result.catalog.power_label,
                         power_metric_found) ||
-            parse_named("attributes.upgrade.header",
-                        result.catalog.attributes_upgrade_header,
-                        attributes_upgrade_header_found) ||
-            parse_named("attributes.upgrade.maximum-level",
-                        result.catalog.attributes_upgrade_maximum_level_message,
-                        attributes_upgrade_maximum_level_found) ||
-            parse_named("attributes.upgrade.mage-only",
-                        result.catalog.attributes_upgrade_mage_only_message,
-                        attributes_upgrade_mage_only_found) ||
-            parse_named("attributes.upgrade.insufficient-karma",
-                        result.catalog.attributes_upgrade_insufficient_karma_message,
-                        attributes_upgrade_insufficient_karma_found) ||
-            parse_named("attributes.upgrade.prompt",
-                        result.catalog.attributes_upgrade_prompt,
-                        attributes_upgrade_prompt_found) ||
             parse_named("cyberware.empty",
                         result.catalog.cyberware_empty_message,
                         cyberware_empty_found) ||
@@ -948,8 +959,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     add_missing_entries(class_found, "class.", result.errors);
     add_missing_entries(runner_found, "runner.", result.errors);
     add_missing_entries(status_found, "status.", result.errors);
-    add_missing_entries(attribute_skill_found, "attribute.skill.",
-                        result.errors);
     add_missing_entries(cyberware_title_found, "cyberware.title.",
                         result.errors);
     add_missing_entries(cyberware_entry_found, "cyberware.entry.",
@@ -971,16 +980,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     require_named("metric.weapons", weapons_found);
     require_named("metric.guns", guns_found);
     require_named("metric.power", power_metric_found);
-    require_named("attributes.upgrade.header",
-                  attributes_upgrade_header_found);
-    require_named("attributes.upgrade.maximum-level",
-                  attributes_upgrade_maximum_level_found);
-    require_named("attributes.upgrade.mage-only",
-                  attributes_upgrade_mage_only_found);
-    require_named("attributes.upgrade.insufficient-karma",
-                  attributes_upgrade_insufficient_karma_found);
-    require_named("attributes.upgrade.prompt",
-                  attributes_upgrade_prompt_found);
     require_named("cyberware.empty", cyberware_empty_found);
     require_named("magic.defense.title", magic_defense_title_found);
     require_named("magic.heading.force-posture",

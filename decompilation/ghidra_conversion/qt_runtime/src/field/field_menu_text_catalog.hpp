@@ -35,6 +35,8 @@ inline constexpr std::size_t kItemUiTextCount = 14U;
 inline constexpr std::size_t kConfirmationChoiceCount = 2U;
 inline constexpr std::size_t kInventoryActionChoiceCount = 4U;
 inline constexpr std::size_t kAttributeSkillLabelCount = 20U;
+inline constexpr std::size_t kAttributesSkillsTextCount =
+    kAttributeSkillLabelCount + 5U;
 inline constexpr std::size_t kCyberwareTitleLineCount = 2U;
 inline constexpr std::size_t kCyberwareEntryCount = 15U;
 inline constexpr std::size_t kCyberdeckUnavailableLineCount = 3U;
@@ -113,6 +115,8 @@ struct FieldMenuTextCatalog {
     // the Attributes/Skills command page.
     std::array<std::string, kAttributeSkillLabelCount>
         attribute_skill_labels{};
+    std::array<std::string, kAttributesSkillsTextCount>
+        attribute_skill_text_ids{};
     std::string attributes_upgrade_header;
     std::string attributes_upgrade_maximum_level_message;
     std::string attributes_upgrade_mage_only_message;

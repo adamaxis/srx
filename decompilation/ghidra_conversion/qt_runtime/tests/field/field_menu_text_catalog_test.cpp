@@ -66,6 +66,21 @@ int main() {
         "trade_full_inventory", "automatic_use", "first_aid_prompt",
         "first_aid_label", "first_aid_cancel", "first_aid_not_injured",
         "first_aid_slap_patch_used", "first_aid_medkit_used"}};
+    const std::array<std::string, kAttributesSkillsTextCount>
+        expected_attributes_skills_text_ids{{
+            "body", "quickness", "strength", "charisma", "intelligence",
+            "willpower", "essence", "magic", "sorcery", "firearms",
+            "pistols", "smgs", "shotguns", "melee_combat", "throwing",
+            "computer", "biotech", "electronics", "reputation",
+            "negotiation", "upgrade_header", "maximum_level", "mage_only",
+            "insufficient_karma", "upgrade_prompt"}};
+    const std::array<std::string, kAttributeSkillLabelCount>
+        expected_attribute_skill_labels{{
+            "Body", "Quickness", "Strength", "Charisma", "Intelligence",
+            "Willpower", "Essence      .", "Magic", "Sorcery", "Firearms",
+            "Pistols", "SMGs", "Shotguns", "Melee Combat", "Throwing",
+            "Computer", "Biotech", "Electronics", "Reputation",
+            "Negotiation"}};
     const std::array<std::string, kClipsTextCount> actual_clips_text{{
         text.catalog.clips_title, text.catalog.clips_separator,
         text.catalog.clips_counter_label,
@@ -103,6 +118,18 @@ int main() {
         !text.catalog.field_service_universal_clips_description.empty() ||
         text.catalog.archetype_names[2] != "Gator" ||
         text.catalog.archetype_names[3] != "Shaman" ||
+        text.catalog.attribute_skill_text_ids !=
+            expected_attributes_skills_text_ids ||
+        text.catalog.attribute_skill_labels !=
+            expected_attribute_skill_labels ||
+        text.catalog.attributes_upgrade_header != "Upgrade to       Cost" ||
+        text.catalog.attributes_upgrade_maximum_level_message !=
+            "You are at the maximum level." ||
+        text.catalog.attributes_upgrade_mage_only_message !=
+            "This skill is for mages" ||
+        text.catalog.attributes_upgrade_insufficient_karma_message !=
+            "You do not have enough" ||
+        text.catalog.attributes_upgrade_prompt != "Upgrade?" ||
         text.catalog.race_names !=
             std::array<std::string, kFieldMenuRaceNameCount>{
                 "Human", "  Elf", "Dwarf", "  Orc", "Troll"} ||
