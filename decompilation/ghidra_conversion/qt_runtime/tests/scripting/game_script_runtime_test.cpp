@@ -190,6 +190,46 @@ int main() {
     scripts.set_story_state(repeat_visit);
     scripts.set_location_context(
         "motel", "stoker_motel", "stoker.motel");
+    const auto opening_interaction =
+        scripts.start_task("michael_package", "opening_interaction");
+    if (!expect(opening_interaction.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    opening_interaction.operation.has_value() &&
+                    opening_interaction.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    opening_interaction.operation->dialogue.has_value() &&
+                    opening_interaction.operation->dialogue->speaker_id ==
+                        "stoker" &&
+                    opening_interaction.operation->dialogue->text_profile ==
+                        "stoker.motel" &&
+                    opening_interaction.operation->dialogue->event_id ==
+                        "arrival",
+                "opening interaction did not yield its speaker/event dialogue")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    auto opening_continuation = scripts.complete_native_operation(true);
+    if (!expect(opening_continuation.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    opening_continuation.operation.has_value() &&
+                    opening_continuation.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    opening_continuation.operation->menu.has_value() &&
+                    opening_continuation.operation->menu->choices.size() == 3U,
+                "opening dialogue did not continue into the motel menu")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    opening_continuation = scripts.complete_native_menu_choice("package");
+    if (!expect(opening_continuation.status ==
+                        ScriptTaskStep::Status::completed &&
+                    opening_continuation.result_id ==
+                        std::optional<std::string>{"package"},
+                "opening interaction did not finish with the chosen ID")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+
     const auto manager_interaction =
         scripts.start_task("motel", "manager_interaction");
     if (!expect(manager_interaction.status ==

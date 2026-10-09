@@ -318,3 +318,58 @@ Debug and Release focused CTests pass for script runtime, dialogue runtime,
 startup integration, and the Stoker collision-to-dialogue route. These are
 conversion checks; the independent clip remains the visual reference, and no
 claim of original-game sound timing is made here.
+
+## Lua speaker/event dialogue follow-up (2026-10-08)
+
+The first-visit interaction is now one readable Lua sequence:
+`game.ui.say("stoker", "arrival")`, then the shared
+`motel.manager_interaction()` after the player presses A. The operation
+captures the native location text profile (`stoker.motel`) together with the
+speaker and event IDs. A typed speaker profile supplies Stoker's name and
+portrait; the text resolver finds `stoker.motel.arrival.title` and
+`stoker.motel.arrival.more`. Only this speaker/event is bound so far. The
+dialogue presenter still draws the screen and owns input; the task resumes with
+the manager menu after the source A continuation. Payment and inventory state
+remain native.
+
+1. **Does it look correct?** The arrival page shows Stoker, the extracted
+   56x72 portrait, the sign text, and the centered A/`< MORE >` continuation.
+   It matches independent section 03 frame `000082`. The same profile and
+   event are carried by the typed script operation.
+2. **Does the appearance reflect behavior?** The operation binds speaker
+   `stoker` to the native Stoker speaker properties and joins the current
+   `stoker.motel` text profile with event `arrival`. The page exposes one
+   continuation option; B leaves it open, and A resumes the Lua task into the
+   three-choice motel menu. The runtime tests check the request tuple and
+   sequential say-to-menu continuation.
+3. **Are the visuals correct?** The image remains the source-backed arrival
+   panel and preserves its button glyph and label. Debug and Release route
+   images are byte-identical after the presenter began resolving the page
+   from the speaker/event request.
+4. **Is it animated?** The speaker page is static while waiting for A. It adds
+   no motion or timing loop; the preceding actor walk and fade remain the
+   existing native services.
+5. **Is there sound?** The dialogue request adds no audio operation. No
+   discrete arrival-page or continuation sound and duration are established
+   here; actual audio playback remains a separate open service.
+6. **Are other screen regions correct?** The full-screen capture replaces
+   the field map/HUD with the dialogue frame. After A, the manager page
+   replaces the arrival text, and the eventual return redraws the field.
+7. **Do multiple frames support the interpretation?** All thirteen native
+   route checkpoints remain available; the independent video shows the
+   arrival at `000082`, manager at `000301`, and other Stoker pages at
+   `000601` and later frames. ROM and runtime input evidence establish the
+   page transition; the video has no controller log.
+8. **Was the old interface removed first?** Yes. The route fades to black
+   before the dialogue frame replaces the field. The manager page is a full
+   redraw, and the return reconstructs the map and HUD; no old buttons or
+   graphics remain underneath the new panel.
+9. **Was the whole sequence reviewed?** Yes. All thirteen Debug screenshots
+   were reopened at 320x224; all thirteen Release names and SHA-256 hashes
+   match. The arrival and manager handoff are checked by the live collision
+   route and by the dialogue-runtime test, including the A-only wait.
+
+The full Debug and Release CTest suites pass 92/92 each, including the
+script, dialogue, startup, and Stoker route checks. This connects the first Stoker dialogue event to Lua; additional
+speaker profiles, dialogue events, item operations, audio, and cutscene
+placement/animation are still unimplemented.

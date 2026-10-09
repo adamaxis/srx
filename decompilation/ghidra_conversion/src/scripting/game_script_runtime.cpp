@@ -314,6 +314,7 @@ struct GameScriptRuntime::Impl {
     bool task_waiting = false;
     std::optional<ScriptNativeOperation> pending_task_operation;
     std::optional<ScriptNativeOperation> active_native_operation;
+    std::string location_text_profile;
     std::string bridge_failure;
     std::string failure;
 
@@ -394,6 +395,42 @@ struct GameScriptRuntime::Impl {
         ScriptNativeOperation operation{};
         operation.type = ScriptNativeOperation::Type::ui_menu;
         operation.menu = std::move(menu);
+        self->pending_task_operation = std::move(operation);
+        self->task_waiting = true;
+        return lua_yieldk(lua, 0, 1, actor_walk_heading_continuation);
+    }
+
+    static int ui_say(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        if (self == nullptr || self->task_state != lua ||
+            self->task_waiting || self->pending_task_operation.has_value() ||
+            self->active_native_operation.has_value()) {
+            if (self != nullptr) {
+                self->bridge_failure =
+                    "game.ui.say must run inside an active task";
+            }
+            lua_pushboolean(lua, 0);
+            return 1;
+        }
+
+        std::string speaker_id;
+        std::string event_id;
+        if (!read_string(lua, 1, speaker_id) ||
+            !valid_identifier(speaker_id) ||
+            !read_string(lua, 2, event_id) ||
+            !valid_identifier(event_id) ||
+            !valid_identifier(self->location_text_profile)) {
+            self->bridge_failure =
+                "game.ui.say expects a speaker, event, and active text profile";
+            lua_pushboolean(lua, 0);
+            return 1;
+        }
+
+        ScriptNativeOperation operation{};
+        operation.type = ScriptNativeOperation::Type::ui_say;
+        operation.dialogue = ScriptDialogueRequest{
+            std::move(speaker_id), self->location_text_profile,
+            std::move(event_id)};
         self->pending_task_operation = std::move(operation);
         self->task_waiting = true;
         return lua_yieldk(lua, 0, 1, actor_walk_heading_continuation);
@@ -516,6 +553,9 @@ struct GameScriptRuntime::Impl {
         lua_pushlightuserdata(state, this);
         lua_pushcclosure(state, ui_menu, 1);
         lua_setfield(state, -2, "menu");
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, ui_say, 1);
+        lua_setfield(state, -2, "say");
         lua_setfield(state, -2, "ui");
         lua_rawgeti(state, LUA_REGISTRYINDEX, modules_reference);
         lua_setfield(state, -2, "modules");
@@ -720,9 +760,13 @@ void GameScriptRuntime::set_location_context(
     if (!text_profile.empty()) {
         lua_pushlstring(state, text_profile.data(), text_profile.size());
         lua_setfield(state, -2, "text_profile");
+    } else {
+        lua_pushnil(state);
+        lua_setfield(state, -2, "text_profile");
     }
     lua_setfield(state, -2, "location");
     lua_pop(state, 1);
+    impl_->location_text_profile = std::string(text_profile);
 }
 
 std::optional<std::string> GameScriptRuntime::call_string(
@@ -805,10 +849,12 @@ ScriptTaskStep GameScriptRuntime::complete_native_operation(
     if (state == nullptr || task == nullptr || !impl_->task_waiting ||
         impl_->pending_task_operation.has_value() ||
         !impl_->active_native_operation.has_value() ||
-        impl_->active_native_operation->type !=
-            ScriptNativeOperation::Type::actor_walk_heading) {
+        (impl_->active_native_operation->type !=
+             ScriptNativeOperation::Type::actor_walk_heading &&
+         impl_->active_native_operation->type !=
+             ScriptNativeOperation::Type::ui_say)) {
         return impl_->failed_task(
-            "gameplay script task is not waiting for actor movement");
+            "gameplay script task is not waiting for a resumable operation");
     }
     impl_->task_waiting = false;
     impl_->active_native_operation.reset();

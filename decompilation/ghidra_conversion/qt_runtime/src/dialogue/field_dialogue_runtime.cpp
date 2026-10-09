@@ -156,7 +156,6 @@ bool FieldDialogueRuntime::load_assets(const ConversionAssetCatalog& assets) {
 
 bool FieldDialogueRuntime::open_field_exit_prompt(
     const FieldExitPromptSelection& selection) {
-    opening_intro_package_offer_follows_ = false;
     if (selection.resource_profile != FieldExitResourceProfile::stoker_motel) {
         return open_source_boundary(
             "field exit selected a prompt profile without a converted dialogue asset");
@@ -171,7 +170,6 @@ bool FieldDialogueRuntime::open_field_exit_prompt(
 
 bool FieldDialogueRuntime::open_stoker_prompt_for_dump(
     const StokerMotelPromptId prompt) {
-    opening_intro_package_offer_follows_ = false;
     if (prompt == StokerMotelPromptId::manager_greeting ||
         prompt == StokerMotelPromptId::manager_greeting_with_package) {
         if (script_runtime_ != nullptr) {
@@ -197,18 +195,14 @@ bool FieldDialogueRuntime::open_stoker_story_entry(
         {"michael_debt_paid", story_state.michael_debt_paid},
         {"michael_package_collected", story_state.michael_package_collected}};
     if (script_runtime_ != nullptr) {
-        script_runtime_->set_location_context("motel", "stoker_motel");
+        script_runtime_->set_location_context(
+            "motel", "stoker_motel", "stoker.motel");
         script_runtime_->set_story_state(story_facts_);
     }
-    opening_intro_package_offer_follows_ = false;
     switch (action) {
     case StokerMotelStoryEntryAction::opening_dialogue:
-        opening_intro_package_offer_follows_ = true;
-        if (open_stoker_prompt(StokerMotelPromptId::arrival)) {
-            return true;
-        }
-        opening_intro_package_offer_follows_ = false;
-        return false;
+        return start_script_task("michael_package", "opening_interaction",
+                                 StokerMotelPromptId::arrival);
     case StokerMotelStoryEntryAction::package_offer:
         return open_stoker_prompt(
             StokerMotelPromptId::manager_greeting_with_package);
@@ -242,7 +236,7 @@ bool FieldDialogueRuntime::open_stoker_arrival_result_for_dump(
 
 bool FieldDialogueRuntime::open_stoker_prompt(
     const StokerMotelPromptId prompt) {
-    if (script_menu_task_waiting_ && script_runtime_ != nullptr) {
+    if (script_task_waiting_ && script_runtime_ != nullptr) {
         script_runtime_->cancel_task();
     }
     if (!assets_loaded_) {
@@ -253,8 +247,8 @@ bool FieldDialogueRuntime::open_stoker_prompt(
     boundary_reason_.clear();
     active_prompt_ = prompt;
     hotel_options_menu_follows_ = false;
+    active_script_operation_.reset();
     active_script_menu_.reset();
-    script_menu_task_waiting_ = false;
     StokerMotelPromptView source_view;
     if (prompt == StokerMotelPromptId::manager_greeting ||
         prompt == StokerMotelPromptId::manager_greeting_with_package) {
@@ -265,27 +259,8 @@ bool FieldDialogueRuntime::open_stoker_prompt(
         script_runtime_->set_location_context(
             "motel", "stoker_motel", "stoker.motel");
         script_runtime_->set_story_state(story_facts_);
-        const auto task = script_runtime_->start_task(
-            "motel", "manager_interaction");
-        if (task.status !=
-                scripting::ScriptTaskStep::Status::awaiting_native_operation ||
-            !task.operation.has_value() ||
-            task.operation->type !=
-                scripting::ScriptNativeOperation::Type::ui_menu ||
-            !task.operation->menu.has_value()) {
-            return open_source_boundary(script_runtime_->failure());
-        }
-        active_script_menu_ = task.operation->menu;
-        script_menu_task_waiting_ = true;
-        const auto script_view = script_prompt_view(
-            prompt, *active_script_menu_);
-        if (!script_view.has_value()) {
-            return open_source_boundary(
-                "Stoker manager script contains an unsupported role or action");
-        }
-        source_view = *script_view;
+        return start_script_task("motel", "manager_interaction", prompt);
     } else {
-        active_script_menu_.reset();
         source_view = make_stoker_motel_prompt(prompt);
     }
     const DialogueTextResolver resolver = [this](const std::string_view alias) {
@@ -299,8 +274,85 @@ bool FieldDialogueRuntime::open_stoker_prompt(
     return true;
 }
 
+bool FieldDialogueRuntime::start_script_task(
+    const std::string_view module, const std::string_view function,
+    const StokerMotelPromptId prompt) {
+    if (script_runtime_ == nullptr) {
+        return open_source_boundary(
+            "dialogue script has no gameplay script runtime");
+    }
+    const auto task = script_runtime_->start_task(module, function);
+    if (task.status !=
+            scripting::ScriptTaskStep::Status::awaiting_native_operation ||
+        !task.operation.has_value()) {
+        return open_source_boundary(
+            script_runtime_->failure().empty()
+                ? "dialogue script did not yield a presentation operation"
+                : script_runtime_->failure());
+    }
+    return present_script_operation(*task.operation, prompt);
+}
+
+bool FieldDialogueRuntime::present_script_operation(
+    const scripting::ScriptNativeOperation& operation,
+    const StokerMotelPromptId prompt) {
+    active_prompt_ = prompt;
+    active_script_operation_ = operation;
+    active_script_menu_.reset();
+    script_task_waiting_ = true;
+    if (operation.type == scripting::ScriptNativeOperation::Type::ui_say) {
+        if (!operation.dialogue.has_value()) {
+            return open_source_boundary(
+                "dialogue script emitted an empty speaker/event request");
+        }
+        const DialogueTextResolver resolver =
+            [this](const std::string_view alias) {
+                return resolve_text(alias);
+            };
+        const auto& dialogue = *operation.dialogue;
+        const auto view = make_script_dialogue_panel_view(
+            dialogue.speaker_id, dialogue.text_profile, dialogue.event_id,
+            resolver);
+        if (!view.has_value()) {
+            return open_source_boundary(
+                "dialogue script selected an unbound speaker profile");
+        }
+        panel_ = *view;
+        if (!panel_.source_complete) {
+            return open_source_boundary(
+                panel_.source_boundary_reason.empty()
+                    ? "dialogue script selected an unbound text event"
+                    : std::string(panel_.source_boundary_reason));
+        }
+        return true;
+    }
+    if (operation.type == scripting::ScriptNativeOperation::Type::ui_menu &&
+        operation.menu.has_value()) {
+        const auto view = script_prompt_view(prompt, *operation.menu);
+        if (!view.has_value()) {
+            return open_source_boundary(
+                "dialogue script menu contains an unsupported choice");
+        }
+        active_script_menu_ = operation.menu;
+        const DialogueTextResolver resolver =
+            [this](const std::string_view alias) {
+                return resolve_text(alias);
+            };
+        panel_ = make_dialogue_panel_view(*view, resolver);
+        if (!panel_.source_complete) {
+            return open_source_boundary(
+                panel_.source_boundary_reason.empty()
+                    ? "dialogue script menu has missing text"
+                    : std::string(panel_.source_boundary_reason));
+        }
+        return true;
+    }
+    return open_source_boundary(
+        "dialogue script requested an unsupported native operation");
+}
+
 bool FieldDialogueRuntime::open_source_boundary(std::string reason) {
-    if (script_menu_task_waiting_ && script_runtime_ != nullptr) {
+    if (script_task_waiting_ && script_runtime_ != nullptr) {
         script_runtime_->cancel_task();
     }
     boundary_reason_ = std::move(reason);
@@ -312,10 +364,10 @@ bool FieldDialogueRuntime::open_source_boundary(std::string reason) {
     panel_.source_complete = false;
     panel_.source_boundary_reason = boundary_reason_;
     active_prompt_ = StokerMotelPromptId::source_boundary;
+    active_script_operation_.reset();
     active_script_menu_.reset();
-    script_menu_task_waiting_ = false;
+    script_task_waiting_ = false;
     hotel_options_menu_follows_ = false;
-    opening_intro_package_offer_follows_ = false;
     if (source_boundary_callback_) {
         source_boundary_callback_(panel_.source_boundary_reason);
     }
@@ -334,6 +386,41 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         return FieldDialogueAdvanceResult::waiting_for_controller;
     }
     if (!panel_.source_complete) {
+        return FieldDialogueAdvanceResult::source_boundary;
+    }
+
+    if (active_script_operation_.has_value() &&
+        active_script_operation_->type ==
+            scripting::ScriptNativeOperation::Type::ui_say) {
+        if ((event_word & kControllerAEvent) == 0U) {
+            return FieldDialogueAdvanceResult::waiting_for_controller;
+        }
+        if (!script_task_waiting_ || script_runtime_ == nullptr) {
+            open_source_boundary(
+                "dialogue script is not waiting for the displayed page");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+        const auto task = script_runtime_->complete_native_operation(true);
+        if (task.status ==
+            scripting::ScriptTaskStep::Status::awaiting_native_operation) {
+            if (!task.operation.has_value() ||
+                !present_script_operation(
+                    *task.operation,
+                    StokerMotelPromptId::manager_greeting_with_package)) {
+                return FieldDialogueAdvanceResult::source_boundary;
+            }
+            return FieldDialogueAdvanceResult::prompt_advanced;
+        }
+        script_task_waiting_ = false;
+        active_script_operation_.reset();
+        if (task.status == scripting::ScriptTaskStep::Status::completed) {
+            close();
+            return FieldDialogueAdvanceResult::returned_to_field;
+        }
+        open_source_boundary(
+            script_runtime_->failure().empty()
+                ? "dialogue script failed after the speaker page"
+                : script_runtime_->failure());
         return FieldDialogueAdvanceResult::source_boundary;
     }
 
@@ -368,7 +455,7 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
     panel_.selected_option = option_index;
     std::optional<StokerMotelPromptCommand> command;
     if (active_script_menu_.has_value()) {
-        if (!script_menu_task_waiting_ || script_runtime_ == nullptr ||
+        if (!script_task_waiting_ || script_runtime_ == nullptr ||
             option_index >= active_script_menu_->choices.size()) {
             open_source_boundary(
                 "Stoker script menu is not waiting for a valid selection");
@@ -385,7 +472,9 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
                                      : script_runtime_->failure());
             return FieldDialogueAdvanceResult::source_boundary;
         }
-        script_menu_task_waiting_ = false;
+        script_task_waiting_ = false;
+        active_script_operation_.reset();
+        active_script_menu_.reset();
         command = script_option_command(*task.result_id);
     } else {
         command = stoker_motel_prompt_command(active_prompt_, option_index);
@@ -395,14 +484,6 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         return FieldDialogueAdvanceResult::source_boundary;
     }
     if (*command == StokerMotelPromptCommand::resolve_arrival) {
-        if (opening_intro_package_offer_follows_) {
-            opening_intro_package_offer_follows_ = false;
-            if (!open_stoker_prompt(
-                    StokerMotelPromptId::manager_greeting_with_package)) {
-                return FieldDialogueAdvanceResult::source_boundary;
-            }
-            return FieldDialogueAdvanceResult::prompt_advanced;
-        }
         const auto result = resolve_stoker_motel_arrival_command(
             arrival_command_callbacks_);
         if (result == StokerMotelArrivalCommandResult::manager_greeting) {
@@ -554,16 +635,16 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
 }
 
 void FieldDialogueRuntime::close() noexcept {
-    if (script_menu_task_waiting_ && script_runtime_ != nullptr) {
+    if (script_task_waiting_ && script_runtime_ != nullptr) {
         script_runtime_->cancel_task();
     }
     panel_ = DialoguePanelView{};
     active_prompt_ = StokerMotelPromptId::source_boundary;
+    active_script_operation_.reset();
     active_script_menu_.reset();
-    script_menu_task_waiting_ = false;
+    script_task_waiting_ = false;
     boundary_reason_.clear();
     hotel_options_menu_follows_ = false;
-    opening_intro_package_offer_follows_ = false;
 }
 
 void FieldDialogueRuntime::paint(QPainter& painter) const {

@@ -176,4 +176,11 @@ DialoguePanelView make_dialogue_panel_view(
     const StokerMotelPromptView& source_view,
     const DialogueTextResolver& resolve_text);
 
+// Resolve a script-authored speaker/event pair through native speaker
+// properties and the location's named text profile. Only source-bound
+// speakers can produce a view; missing content remains an explicit failure.
+std::optional<DialoguePanelView> make_script_dialogue_panel_view(
+    std::string_view speaker_id, std::string_view text_profile,
+    std::string_view event_id, const DialogueTextResolver& resolve_text);
+
 } // namespace shadowrun::ghidra_conversion::qt_runtime

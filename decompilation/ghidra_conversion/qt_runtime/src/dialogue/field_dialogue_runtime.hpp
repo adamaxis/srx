@@ -108,6 +108,12 @@ public:
 private:
     bool open_stoker_prompt(StokerMotelPromptId prompt);
     bool open_source_boundary(std::string reason);
+    bool start_script_task(std::string_view module,
+                           std::string_view function,
+                           StokerMotelPromptId prompt);
+    bool present_script_operation(
+        const scripting::ScriptNativeOperation& operation,
+        StokerMotelPromptId prompt);
     std::string_view resolve_text(std::string_view alias) const;
 
     std::function<void(std::string_view)> source_boundary_callback_;
@@ -117,8 +123,10 @@ private:
     StokerMotelPromptId active_prompt_ = StokerMotelPromptId::source_boundary;
     scripting::GameScriptRuntime* script_runtime_ = nullptr;
     scripting::StoryFacts story_facts_;
+    std::optional<scripting::ScriptNativeOperation>
+        active_script_operation_;
     std::optional<scripting::ScriptMenuDefinition> active_script_menu_;
-    bool script_menu_task_waiting_ = false;
+    bool script_task_waiting_ = false;
     StokerMotelArrivalCommandCallbacks arrival_command_callbacks_;
     std::function<std::optional<StokerMotelRoomPaymentOutcome>()>
         room_payment_callback_;
@@ -126,7 +134,6 @@ private:
         debt_payment_callback_;
     std::function<std::optional<StokerMotelFollowupOutcome>(
         StokerMotelFollowupCommand)> followup_command_callback_;
-    bool opening_intro_package_offer_follows_ = false;
     std::string failure_;
     std::string boundary_reason_;
     bool assets_loaded_ = false;

@@ -15,6 +15,11 @@ function MichaelPackage.motel_entry()
     return "package_offer"
 end
 
+function MichaelPackage.opening_interaction()
+    game.ui.say("stoker", "arrival")
+    return game.modules.motel.manager_interaction()
+end
+
 function MichaelPackage.motel_manager_choices()
     if game.location.type ~= "motel" or
        game.location.id ~= "stoker_motel" then

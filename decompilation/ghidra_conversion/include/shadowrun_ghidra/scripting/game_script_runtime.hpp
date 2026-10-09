@@ -25,15 +25,23 @@ struct ScriptMenuDefinition {
     std::vector<ScriptMenuChoice> choices;
 };
 
+struct ScriptDialogueRequest {
+    std::string speaker_id;
+    std::string text_profile;
+    std::string event_id;
+};
+
 struct ScriptNativeOperation {
     enum class Type {
         actor_walk_heading,
+        ui_say,
         ui_menu,
     };
 
     Type type = Type::actor_walk_heading;
     std::string actor_id;
     std::uint8_t heading = 0;
+    std::optional<ScriptDialogueRequest> dialogue;
     std::optional<ScriptMenuDefinition> menu;
 };
 

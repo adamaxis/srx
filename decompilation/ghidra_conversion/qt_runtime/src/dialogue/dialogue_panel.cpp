@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <string>
 #include <type_traits>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
@@ -372,6 +373,57 @@ DialoguePanelView make_dialogue_panel_view(
         if (view.source_boundary_reason.empty()) {
             view.source_boundary_reason = source_view.source_boundary_reason;
         }
+    }
+    return view;
+}
+
+std::optional<DialoguePanelView> make_script_dialogue_panel_view(
+    const std::string_view speaker_id,
+    const std::string_view text_profile,
+    const std::string_view event_id,
+    const DialogueTextResolver& resolve_text) {
+    struct SpeakerProperties {
+        std::string_view id;
+        std::string_view name;
+        std::string_view portrait_alias;
+    };
+    constexpr std::array<SpeakerProperties, 1> speakers{{
+        {"stoker", "Stoker", "dialogue.portraits.stoker.motel"},
+    }};
+    const auto speaker = std::find_if(
+        speakers.begin(), speakers.end(), [speaker_id](const auto& profile) {
+            return profile.id == speaker_id;
+        });
+    if (speaker == speakers.end() || text_profile.empty() || event_id.empty()) {
+        return std::nullopt;
+    }
+
+    DialoguePanelView view{};
+    view.open = true;
+    view.actor_kind = DialoguePanelActorKind::field_npc;
+    view.actor_name = speaker->name;
+    view.portrait_alias = speaker->portrait_alias;
+    view.kind = DialoguePanelKind::field_npc_prompt;
+
+    const auto key_prefix = std::string(text_profile) + "." +
+                            std::string(event_id);
+    const auto title_key = key_prefix + ".title";
+    copy_text_alias_stream(view, title_key, resolve_text);
+
+    const auto more_key = key_prefix + ".more";
+    auto more = resolve_text ? resolve_text(more_key) : std::string_view{};
+    while (!more.empty() && more.front() == '|') {
+        more.remove_prefix(1U);
+    }
+    if (!more.empty()) {
+        view.has_more = true;
+        view.continuation_label = more;
+        view.options[0] = {DialoguePanelOptionRole::field_continue, more,
+                           DialoguePanelCommand::field_continue};
+        view.option_count = 1U;
+    }
+    if (!view.source_complete) {
+        view.kind = DialoguePanelKind::source_boundary;
     }
     return view;
 }

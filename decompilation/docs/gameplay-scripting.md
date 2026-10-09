@@ -56,21 +56,28 @@ at call boundaries; they are not live C++ object references, and C++ remains
 authoritative. The opening Stoker quest script marks
 `opening_dialogue_seen`, and the field controller applies that validated flag.
 Other script writes are not yet connected to general session or save state.
-Two coroutine operations are now connected to live routes. The first is
+Three coroutine operations are now connected to live routes. The first is
 `game.actor.walk_heading(actor, heading)`: it accepts the player and headings
 0 through 7, yields a typed request to the native field controller, and resumes
-with the operation result. The second is `game.ui.menu(profile, choice_ids)`:
-it yields a menu definition to the existing native dialogue presenter, then
-resumes with the stable ID selected by the player. Shared `motel.lua` builds
-the ordinary motel options and collects optional quest hooks; the current
-Stoker route supplies `stoker.motel` as the location's text profile. The A/B/C
-input still follows the original menu's button mapping, and validated native
-handlers still perform the resulting actions. This UI operation is a first
-connected menu, not a general dialogue or window toolkit. Both operations use
-a 100,000-instruction limit on initial invocation and each resume. Actor
+with the operation result. `game.ui.say(speaker_id, event_id)` snapshots the
+active location text profile into a speaker/event request and suspends until
+the native dialogue presenter advances that page. The current connected
+speaker is Stoker, whose native profile supplies his name and extracted
+portrait; the `stoker.motel` text profile and `arrival` event resolve the
+source title and A-button continuation. `game.ui.menu(profile, choice_ids)`
+yields a menu definition to the same presenter, then resumes with the stable
+ID selected by the player. Shared `motel.lua` builds the ordinary motel options
+and collects optional quest hooks; the Stoker route supplies `stoker.motel` as
+the location's text profile. The A/B/C input follows the source menu's button
+mapping, and validated native handlers still perform the resulting actions.
+The New Game first-visit script now says the arrival event, waits for A, then
+calls the shared motel manager. These are the first connected dialogue and
+menu operations, not a general dialogue/window toolkit. All three operations
+use a 100,000-instruction limit on initial invocation and each resume. Actor
 placement, destination movement, scripted animation, `game.items`,
-`game.audio`, general `game.ui.say`, and durable save backing remain
-unimplemented. The runner has no `io`, `os`, `debug`, or package-loader access.
+`game.audio`, additional speaker/event profiles, and durable save backing
+remain unimplemented. The runner has no `io`, `os`, `debug`, or package-loader
+access.
 
 ## Content organization
 
@@ -87,7 +94,9 @@ unimplemented. The runner has no `io`, `os`, `debug`, or package-loader access.
 - `gameplay/scripts/michael_package.lua` contains the Michael quest hook and
   its first-visit, repeat, and completed branches. Its motel-choice hook checks
   `game.location`, so the quest option appears at Stoker and does not leak into
-  another motel. Other quests can add the same hook without changing `motel.lua`.
+  another motel. Its first-visit interaction calls `game.ui.say("stoker",
+  "arrival")`, then continues into the shared motel manager after A. Other
+  quests can add the same choice hook without changing `motel.lua`.
 - Future `quests/` and `scenes/` modules should call the same `game` facade.
   Menus and dialogue use the generic Qt presenters, and Lua supplies the
   available stable choice ids and story text keys.
@@ -95,11 +104,13 @@ unimplemented. The runner has no `io`, `os`, `debug`, or package-loader access.
 The current vertical slice connects the New Game scene-entry trigger, its
 Lua-owned handler and yieldable movement request, the Michael package entry
 branch, and the shared motel manager menu to the Qt field and dialogue
-runtime. Lua supplies the live manager choice list and receives the player's
-stable selected ID through a suspended task. Native C++ still owns movement
-execution, collision, payment, inventory effects, animation timing, the
-presenter's drawing/input, and most other map/menu behavior. The remaining
-examples above describe incremental services to add, not existing adapters.
+runtime. Lua supplies the first-visit speaker/event sequence, then the live
+manager choice list, and receives the player's stable selected ID through one
+suspended task. Native C++ resolves speaker properties and text assets, draws
+the panel, forwards A/B/C input, and still owns movement execution, collision,
+payment, inventory effects, animation timing, and most other map/menu behavior.
+The remaining examples above describe incremental services to add, not
+existing adapters.
 
 ## Source and visual verification
 

@@ -757,9 +757,17 @@ int main() {
                     first_visit_state)) ||
         !expect(runtime.panel().text_segments[0].find("battered sign") !=
                 std::string_view::npos) ||
+        !expect(runtime.panel().actor_name == "Stoker") ||
+        !expect(runtime.panel().portrait_alias ==
+                "dialogue.portraits.stoker.motel") ||
         !expect(runtime.panel().has_more) ||
         !expect(runtime.panel().continuation_label.find("MORE") !=
                 std::string_view::npos)) {
+        return 71;
+    }
+    if (!expect(runtime.advance_controller_events(0x1000U) ==
+                    FieldDialogueAdvanceResult::waiting_for_controller) ||
+        !expect(runtime.open())) {
         return 71;
     }
     QImage arrival_scene(320, 224, QImage::Format_RGB32);
