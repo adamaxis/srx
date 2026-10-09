@@ -76,6 +76,10 @@ constexpr std::array<std::string_view, kCyberwareTextCount>
         "muscle_replace_2", "muscle_replace_3", "muscle_replace_4",
         "dermal_plating_1", "dermal_plating_2", "dermal_plating_3",
         "wired_reflexes_1", "wired_reflexes_2", "wired_reflexes_3"}};
+constexpr std::array<std::string_view, kFieldMetricTextCount>
+    kFieldMetricTextIds{{
+        "physical", "mental", "attack", "defense", "damage", "drain",
+        "none", "no_armor", "weapons", "guns", "power"}};
 
 constexpr std::string_view kMagicSpellOptionPrefix =
     "magic.spells.option.";
@@ -157,6 +161,18 @@ bool is_cyberware_text_label_key(const std::string_view key) {
            std::find(kCyberwareTextIds.begin(), kCyberwareTextIds.end(),
                      key.substr(kTextPrefix.size())) !=
                kCyberwareTextIds.end();
+}
+
+bool has_field_metric_text_label_prefix(const std::string_view key) {
+    return key.rfind("ui.field_metric.option.", 0U) == 0U;
+}
+
+bool is_field_metric_text_label_key(const std::string_view key) {
+    constexpr std::string_view kTextPrefix = "ui.field_metric.option.";
+    return key.rfind(kTextPrefix, 0U) == 0U &&
+           std::find(kFieldMetricTextIds.begin(), kFieldMetricTextIds.end(),
+                     key.substr(kTextPrefix.size())) !=
+               kFieldMetricTextIds.end();
 }
 
 bool is_clips_menu_label_key(const std::string_view key) {
@@ -253,6 +269,7 @@ bool is_field_menu_text_key(const std::string& key) {
         "magic.spells.option.", "magic.spells.description.",
         "magic.panel.text.option.", "cyberware.text.option.",
         "items.text.option.", "items.display.option.",
+        "ui.field_metric.option.",
         "attributes_skills.text.option.",
     };
     for (const auto* prefix : prefixes) {
@@ -261,9 +278,6 @@ bool is_field_menu_text_key(const std::string& key) {
         }
     }
     static constexpr const char* exact_keys[]{
-        "metric.physical", "metric.mental", "metric.attack",
-        "metric.defense", "metric.damage", "metric.drain", "metric.none",
-        "metric.no-armor", "metric.weapons", "metric.guns", "metric.power",
         "dismiss.separator", "notebook.tips.title",
         "notebook.tips.separator", "notebook.tips.page-count",
         "notebook.tips.page-number-clear", "notebook.options.title",
@@ -457,17 +471,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     bool notebook_tips_page_count_found = false;
     bool notebook_tips_page_number_clear_found = false;
     std::array<bool, kDismissRunnerLabelCount> dismiss_runner_label_found{};
-    bool physical_found = false;
-    bool mental_found = false;
-    bool attack_found = false;
-    bool defense_found = false;
-    bool damage_found = false;
-    bool drain_found = false;
-    bool none_found = false;
-    bool no_armor_found = false;
-    bool weapons_found = false;
-    bool guns_found = false;
-    bool power_metric_found = false;
     bool dismiss_runner_separator_found = false;
     std::array<std::string, kConfirmationChoiceCount> confirmation_labels{};
     load_script_menu_labels(
@@ -476,6 +479,22 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         &result.catalog.confirmation_choice_ids);
     result.catalog.action_choice_yes = confirmation_labels[0];
     result.catalog.action_choice_no = confirmation_labels[1];
+    std::array<std::string, kFieldMetricTextCount> field_metric_labels{};
+    load_script_menu_labels(
+        scripts, "ui", "field_metric_labels", "ui.field_metric", "catalog",
+        kFieldMetricTextIds, field_metric_labels, result.errors, nullptr,
+        &result.catalog.field_metric_text_ids);
+    result.catalog.physical_label = field_metric_labels[0];
+    result.catalog.mental_label = field_metric_labels[1];
+    result.catalog.attack_label = field_metric_labels[2];
+    result.catalog.defense_label = field_metric_labels[3];
+    result.catalog.damage_label = field_metric_labels[4];
+    result.catalog.drain_label = field_metric_labels[5];
+    result.catalog.none_label = field_metric_labels[6];
+    result.catalog.no_armor_label = field_metric_labels[7];
+    result.catalog.weapons_label = field_metric_labels[8];
+    result.catalog.guns_label = field_metric_labels[9];
+    result.catalog.power_label = field_metric_labels[10];
     load_script_menu_choice_ids(
         scripts, "items", "inventory_actions", "items",
         "inventory_actions", kInventoryActionChoiceIds,
@@ -602,6 +621,13 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             if (!is_confirmation_menu_label_key(key)) {
                 result.errors.emplace_back(
                     "unknown confirmation menu label key: " + key);
+            }
+            continue;
+        }
+        if (has_field_metric_text_label_prefix(key)) {
+            if (!is_field_metric_text_label_key(key)) {
+                result.errors.emplace_back(
+                    "unknown field metric text label key: " + key);
             }
             continue;
         }
@@ -747,28 +773,7 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             }
             return true;
         };
-        if (parse_named("metric.physical", result.catalog.physical_label,
-                        physical_found) ||
-            parse_named("metric.mental", result.catalog.mental_label,
-                        mental_found) ||
-            parse_named("metric.attack", result.catalog.attack_label,
-                        attack_found) ||
-            parse_named("metric.defense", result.catalog.defense_label,
-                        defense_found) ||
-            parse_named("metric.damage", result.catalog.damage_label,
-                        damage_found) ||
-            parse_named("metric.drain", result.catalog.drain_label,
-                        drain_found) ||
-            parse_named("metric.none", result.catalog.none_label,
-                        none_found) ||
-            parse_named("metric.no-armor", result.catalog.no_armor_label,
-                        no_armor_found) ||
-            parse_named("metric.weapons", result.catalog.weapons_label,
-                        weapons_found) ||
-            parse_named("metric.guns", result.catalog.guns_label, guns_found) ||
-            parse_named("metric.power", result.catalog.power_label,
-                        power_metric_found) ||
-            parse_named("dismiss.separator",
+        if (parse_named("dismiss.separator",
                         result.catalog.dismiss_runner_separator,
                         dismiss_runner_separator_found)) {
             continue;
@@ -967,17 +972,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                 "missing field menu text row: " + std::string(key));
         }
     };
-    require_named("metric.physical", physical_found);
-    require_named("metric.mental", mental_found);
-    require_named("metric.attack", attack_found);
-    require_named("metric.defense", defense_found);
-    require_named("metric.damage", damage_found);
-    require_named("metric.drain", drain_found);
-    require_named("metric.none", none_found);
-    require_named("metric.no-armor", no_armor_found);
-    require_named("metric.weapons", weapons_found);
-    require_named("metric.guns", guns_found);
-    require_named("metric.power", power_metric_found);
     require_named("dismiss.separator", dismiss_runner_separator_found);
     require_named("notebook.tips.title", notebook_tips_title_found);
     require_named("notebook.tips.separator", notebook_tips_separator_found);

@@ -48,6 +48,10 @@ int main() {
             "muscle_replace_2", "muscle_replace_3", "muscle_replace_4",
             "dermal_plating_1", "dermal_plating_2", "dermal_plating_3",
             "wired_reflexes_1", "wired_reflexes_2", "wired_reflexes_3"}};
+    const std::array<std::string, kFieldMetricTextCount>
+        expected_field_metric_text_ids{{
+            "physical", "mental", "attack", "defense", "damage", "drain",
+            "none", "no_armor", "weapons", "guns", "power"}};
     const std::array<std::string, kMagicSpellTextCount> expected_magic_spell_ids{{
         "flame_dart", "flame_bolt", "hellblast", "invisibility", "sleep",
         "stink", "super_barrier", "mana_zap", "mana_blast", "mana_storm",
@@ -154,6 +158,8 @@ int main() {
         !text.catalog.field_service_action_titles[31].empty() ||
         !text.catalog.field_service_universal_clips_title.empty() ||
         !text.catalog.field_service_universal_clips_description.empty() ||
+        text.catalog.field_metric_text_ids !=
+            expected_field_metric_text_ids ||
         text.catalog.archetype_names[2] != "Gator" ||
         text.catalog.archetype_names[3] != "Shaman" ||
         text.catalog.attribute_skill_text_ids !=
@@ -256,6 +262,8 @@ int main() {
         text.catalog.attack_label != "Atk" ||
         text.catalog.defense_label != "Def" ||
         text.catalog.damage_label != "Damage" ||
+        text.catalog.drain_label != "Drain" ||
+        text.catalog.none_label != "None" ||
         text.catalog.no_armor_label != "No Armor" ||
         text.catalog.weapons_label != "Wpns" ||
         text.catalog.guns_label != "Guns" ||

@@ -335,17 +335,19 @@ write_field_service_routes(
     }
     const auto field_labels =
         shadowrun::graphics::read_genesis_field_menu_labels(rom);
-    emit("metric.physical", field_labels.physical);
-    emit("metric.mental", field_labels.mental);
-    emit("metric.attack", field_labels.attack);
-    emit("metric.defense", field_labels.defense);
-    emit("metric.damage", field_labels.damage);
-    emit("metric.drain", field_labels.drain);
-    emit("metric.none", field_labels.none);
-    emit("metric.no-armor", field_labels.no_armor);
-    emit("metric.weapons", field_labels.weapons);
-    emit("metric.guns", field_labels.guns);
-    emit("metric.power", field_labels.power);
+    constexpr std::array<std::string_view, 11> kFieldMetricTextIds{{
+        "physical", "mental", "attack", "defense", "damage", "drain",
+        "none", "no_armor", "weapons", "guns", "power"}};
+    const std::array<std::string, 11> field_metric_labels{{
+        field_labels.physical, field_labels.mental, field_labels.attack,
+        field_labels.defense, field_labels.damage, field_labels.drain,
+        field_labels.none, field_labels.no_armor, field_labels.weapons,
+        field_labels.guns, field_labels.power}};
+    for (std::size_t index = 0; index < kFieldMetricTextIds.size(); ++index) {
+        emit("ui.field_metric.option." +
+                 std::string(kFieldMetricTextIds[index]),
+             field_metric_labels[index]);
+    }
     const auto action_text =
         shadowrun::graphics::read_genesis_field_menu_action_text(rom);
     constexpr std::array<std::string_view, 14> kItemUiTextIds{{
@@ -1619,6 +1621,7 @@ void write_asset_readme(const std::filesystem::path& root) {
               "`gameplay/scripts/startup.lua` provide cursor-menu choice IDs; "
               "`gameplay/scripts/clips.lua` provides selector and text IDs; "
               "`gameplay/scripts/ui.lua` provides shared confirmation choices. "
+              "It also maps shared field metric captions to stable IDs. "
               "`gameplay/scripts/magic.lua` provides ROM-ordered spell and "
               "Magic panel text IDs. "
               "`gameplay/scripts/cyberware.lua` provides stable IDs for the "

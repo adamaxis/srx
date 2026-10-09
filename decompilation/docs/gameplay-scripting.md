@@ -199,7 +199,8 @@ access.
   ROM order. The field text catalog binds its extracted labels, and the Ares
   shop and inventory discard paths use the selected stable ID when applying
   the result. Cursor timing, default-No state, sound, and item/wallet effects
-  remain native.
+  remain native. The same module maps the shared field-stat captions used by
+  the command overview and item detail panels.
 - `gameplay/scripts/startup.lua` declares the ordered New Game/Load Game,
   Save Slot, and archetype choices. The title-screen presenter validates each
   list against its typed native menu state and resolves its labels from the

@@ -36,6 +36,7 @@ inline constexpr std::size_t kItemDisplayTextCount =
     kFieldMenuPowerLabelCount +
     (kFieldMenuArmorCount * kFieldMenuArmorRowCount);
 inline constexpr std::size_t kConfirmationChoiceCount = 2U;
+inline constexpr std::size_t kFieldMetricTextCount = 11U;
 inline constexpr std::size_t kInventoryActionChoiceCount = 4U;
 inline constexpr std::size_t kAttributeSkillLabelCount = 20U;
 inline constexpr std::size_t kAttributesSkillsTextCount =
@@ -82,6 +83,7 @@ struct FieldMenuTextCatalog {
     std::string weapons_label;
     std::string guns_label;
     std::string power_label;
+    std::array<std::string, kFieldMetricTextCount> field_metric_text_ids{};
     // ROM 0x12634/0x127B0 source text used by the inventory discard branch.
     // These are extracted catalog values, not UI-authored replacements.
     std::string action_item_equipped_prefix;
