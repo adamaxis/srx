@@ -99,11 +99,10 @@ struct OpeningIntroOutlinePlan {
 OpeningIntroOutlinePlan opening_intro_seattle_outline_plan(
     std::uint8_t phase);
 
-// The text records are the source strings at 0x5B7D8..0x5BA4C, represented as
-// typed host records. The blank record at 0x5B7B2 is kept separately because
-// 0x5AE3A writes it across five rows to clear the previous story page. The Qt
-// frontend uses these records with the extracted source font; no runtime ROM
-// text decoder is involved.
+// Typed host identities for the source strings at 0x5B7D8..0x5BA4B. The blank
+// record at 0x5B7B2 stays separate because 0x5AE3A writes it across five rows
+// to clear the previous story page. Caption copy is resolved from Lua; the Qt
+// frontend uses the extracted source font and has no runtime ROM text decoder.
 enum class OpeningIntroTextAsset : std::uint8_t {
     time,
     place,
@@ -134,7 +133,9 @@ constexpr std::uint32_t kOpeningIntroTextHandleTag = 0xB6000000U;
 
 std::uint32_t opening_intro_text_handle(OpeningIntroTextAsset asset);
 OpeningIntroTextAsset opening_intro_text_asset(std::uint32_t handle);
-std::string_view opening_intro_text(OpeningIntroTextAsset asset);
+// Stable semantic ids address the matching text keys in the gameplay Lua
+// content package. The cutscene schedule carries the typed id; Lua owns copy.
+std::string_view opening_intro_text_id(OpeningIntroTextAsset asset);
 
 enum class OpeningIntroScene : std::uint8_t {
     seattle,

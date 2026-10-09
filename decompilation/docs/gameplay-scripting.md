@@ -248,10 +248,13 @@ access.
   shared Lua text table. The same module binds semantic text IDs for the title,
   separators, archetype headings, and save/load feedback. The startup renderer
   keeps source-derived row placement; input cadence and menu transitions
-  remain in C++.
+  remain in C++. It also maps 22 typed opening-story caption IDs to Lua text
+  keys. The offline importer reads those separate `0xFF`-terminated ROM
+  records at `0x5B7D8..0x5BA4B`; the native intro schedule still chooses their
+  timing, row, and palette.
 - `assets/dialogue/script-text.lua` is the ROM-derived shared text table for
-  Stoker dialogue, field object interactions, Ares mode-event paragraphs,
-  Hotel menu/status text,
+  opening-story captions, Stoker dialogue, field object interactions, Ares
+  mode-event paragraphs, Hotel menu/status text,
   Pocket Secretary root and Notebook title/separator/labels,
   command-overview labels and shared confirmation labels,
   Magic spell names and descriptions by stable spell ID, field-service titles
@@ -273,7 +276,10 @@ access.
 The current slice connects the New Game trigger, native-backed story facts,
 the Michael quest branch, shared motel and debt menus, Hotel menu definitions,
 room/debt service calls, arrival/farewell/result dialogue, and the Qt
-presenters. Stoker, field interaction, Ares mode-event paragraphs, Hotel text,
+presenters. The opening story captions now resolve through the same Lua text
+resource while their source-derived schedule and native rendering remain in
+the intro controller. Stoker, field interaction, Ares mode-event paragraphs,
+Hotel text,
 startup menu text/choices, Pocket Secretary root choices/labels,
 command-overview root choices/labels, Clips selector choices/labels, Notebook
 option IDs/labels, shared confirmation choices/labels, Magic spell

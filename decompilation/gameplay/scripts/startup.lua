@@ -34,4 +34,33 @@ function Startup.text_keys()
     }
 end
 
+-- Opening-story copy is source text; the native cutscene owns when and where
+-- each typed story record is drawn.
+function Startup.opening_text_keys()
+    return {
+        time = "opening.story.time",
+        place = "opening.story.place",
+        team_cover = "opening.story.team_cover",
+        team_runners = "opening.story.team_runners",
+        team_wilderness = "opening.story.team_wilderness",
+        without_warning = "opening.story.without_warning",
+        ambushed = "opening.story.ambushed",
+        massacre = "opening.story.massacre",
+        captured = "opening.story.captured",
+        slain = "opening.story.slain",
+        tri_vid_recovered = "opening.story.tri_vid_recovered",
+        national_news = "opening.story.national_news",
+        brother_last_die = "opening.story.brother_last_die",
+        spending = "opening.story.spending",
+        vow = "opening.story.vow",
+        brother_death = "opening.story.brother_death",
+        landing = "opening.story.landing",
+        flag_cab = "opening.story.flag_cab",
+        last_credstick = "opening.story.last_credstick",
+        transaction = "opening.story.transaction",
+        motel = "opening.story.motel",
+        redmond = "opening.story.redmond",
+    }
+end
+
 return Startup

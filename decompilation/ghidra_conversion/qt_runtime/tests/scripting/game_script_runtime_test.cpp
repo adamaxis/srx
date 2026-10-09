@@ -114,6 +114,8 @@ int main() {
         scripts.menu("startup", "archetypes", "startup", "archetypes");
     const auto startup_text_keys =
         scripts.string_map("startup", "text_keys");
+    const auto opening_text_keys =
+        scripts.string_map("startup", "opening_text_keys");
     const auto startup_text_key_matches =
         [&startup_text_keys](const std::string_view id,
                              const std::string_view key) {
@@ -200,6 +202,60 @@ int main() {
                     *startup_save_success ==
                         "to run in the shadows.",
                 "startup Lua menu choices or original text did not load")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
+    struct OpeningStoryTextExpectation {
+        std::string_view id;
+        std::string_view text;
+    };
+    constexpr std::array<OpeningStoryTextExpectation, 22>
+        kOpeningStoryTextExpectations{{
+            {"time", "The Time:  January 31, 2058"},
+            {"place", "The Place: Seattle, UCAS"},
+            {"team_cover", "Under the cover of darkness, a team"},
+            {"team_runners", "of shadowrunners moves through"},
+            {"team_wilderness", "the Salish-Shidhe wilderness."},
+            {"without_warning", "Without warning, they are"},
+            {"ambushed", "ambushed by unknown forces."},
+            {"massacre", "The massacre is over quickly, but"},
+            {"captured", "captured on tri-vid by one of the"},
+            {"slain", "slain member's cybereyes."},
+            {"tri_vid_recovered", "The tri-vid was recovered and made"},
+            {"national_news", "national news.  Michael, your"},
+            {"brother_last_die", "brother, was the last to die."},
+            {"spending", "Spending your last Nuyen to go to"},
+            {"vow", "Seattle, you vow to avenge your"},
+            {"brother_death", "brother's death."},
+            {"landing", "Landing at Sea-Tac Airport,"},
+            {"flag_cab", "you flag a cab to bring you to"},
+            {"last_credstick", "Michael's last Credstick"},
+            {"transaction", "transaction."},
+            {"motel", "Stoker's Coffin Motel, located"},
+            {"redmond", "in the Redmond Barrens."},
+        }};
+    bool opening_story_content_valid =
+        opening_text_keys.has_value() &&
+        opening_text_keys->size() == kOpeningStoryTextExpectations.size();
+    if (opening_story_content_valid) {
+        for (const auto& expected : kOpeningStoryTextExpectations) {
+            const auto key =
+                opening_text_keys->find(std::string(expected.id));
+            const auto* text = key == opening_text_keys->end()
+                                   ? nullptr
+                                   : scripts.dialogue_text(key->second);
+            opening_story_content_valid = opening_story_content_valid &&
+                                          key != opening_text_keys->end() &&
+                                          key->second ==
+                                              "opening.story." +
+                                                  std::string(expected.id) &&
+                                          text != nullptr &&
+                                          *text == expected.text;
+        }
+    }
+    if (!expect(opening_story_content_valid,
+                "opening story captions or ROM text keys did not load")) {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }

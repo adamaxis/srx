@@ -901,7 +901,9 @@ int main() {
         !has_opening_text(new_game_observations,
                           OpeningIntroTextAsset::slain, 0x2306U,
                           0xE000U) ||
-        !opening_intro_text(OpeningIntroTextAsset::blank).empty()) {
+        !opening_intro_text_id(OpeningIntroTextAsset::blank).empty() ||
+        opening_intro_text_id(OpeningIntroTextAsset::time) != "time" ||
+        opening_intro_text_id(OpeningIntroTextAsset::redmond) != "redmond") {
         return 22;
     }
     const auto massacre_transition = std::find_if(

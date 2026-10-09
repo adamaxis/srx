@@ -846,6 +846,59 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         write_lua_string(text);
         output << ",\n";
     };
+    struct OpeningStoryTextRecord {
+        std::string_view id;
+        std::size_t source_offset;
+        std::size_t byte_count;
+    };
+    // Each caption is a separate FF-terminated record in the ROM story text
+    // stream at 0x5B7D8..0x5BA4B. Import the ROM bytes directly so copy never
+    // has a second runtime C++ source of truth.
+    constexpr std::array<OpeningStoryTextRecord, 22> kOpeningStoryText{{
+        {"time", 0x5B7D8U, 27U},
+        {"place", 0x5B7F4U, 24U},
+        {"team_cover", 0x5B80DU, 35U},
+        {"team_runners", 0x5B831U, 30U},
+        {"team_wilderness", 0x5B850U, 29U},
+        {"without_warning", 0x5B86EU, 25U},
+        {"ambushed", 0x5B888U, 27U},
+        {"massacre", 0x5B8A4U, 33U},
+        {"captured", 0x5B8C6U, 33U},
+        {"slain", 0x5B8E8U, 25U},
+        {"tri_vid_recovered", 0x5B902U, 34U},
+        {"national_news", 0x5B925U, 29U},
+        {"brother_last_die", 0x5B943U, 29U},
+        {"spending", 0x5B961U, 33U},
+        {"vow", 0x5B983U, 31U},
+        {"brother_death", 0x5B9A3U, 16U},
+        {"landing", 0x5B9B4U, 27U},
+        {"flag_cab", 0x5B9D0U, 30U},
+        {"last_credstick", 0x5B9EFU, 24U},
+        {"transaction", 0x5BA08U, 12U},
+        {"motel", 0x5BA15U, 30U},
+        {"redmond", 0x5BA34U, 23U},
+    }};
+    for (const auto& record : kOpeningStoryText) {
+        if (record.source_offset > rom.size() ||
+            record.byte_count >= rom.size() - record.source_offset ||
+            rom[record.source_offset + record.byte_count] != 0xFFU) {
+            throw std::runtime_error(
+                "opening story text record is truncated or no longer FF-terminated: " +
+                std::string(record.id));
+        }
+        std::string text;
+        text.reserve(record.byte_count);
+        for (std::size_t index = 0; index < record.byte_count; ++index) {
+            const auto byte = rom[record.source_offset + index];
+            if (byte < 0x20U || byte > 0x7EU) {
+                throw std::runtime_error(
+                    "opening story text record contains a control byte: " +
+                    std::string(record.id));
+            }
+            text.push_back(static_cast<char>(byte));
+        }
+        write_text_entry("opening.story." + std::string(record.id), text);
+    }
     // Startup layout text at ROM 0x1B6498, 0x1B64CF, 0x1B6518,
     // 0x1B6527, and 0x1B6577. Native C++ retains row placement and typed
     // controller state; Lua owns the rendered copy and ordered choice labels.

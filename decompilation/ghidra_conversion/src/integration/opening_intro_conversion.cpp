@@ -395,52 +395,30 @@ OpeningIntroTextAsset opening_intro_text_asset(const std::uint32_t handle) {
     return static_cast<OpeningIntroTextAsset>(value);
 }
 
-std::string_view opening_intro_text(const OpeningIntroTextAsset asset) {
+std::string_view opening_intro_text_id(const OpeningIntroTextAsset asset) {
     switch (asset) {
-    case OpeningIntroTextAsset::time:
-        return "The Time:  January 31, 2058";
-    case OpeningIntroTextAsset::place:
-        return "The Place: Seattle, UCAS";
-    case OpeningIntroTextAsset::team_cover:
-        return "Under the cover of darkness, a team";
-    case OpeningIntroTextAsset::team_runners:
-        return "of shadowrunners moves through";
-    case OpeningIntroTextAsset::team_wilderness:
-        return "the Salish-Shidhe wilderness.";
-    case OpeningIntroTextAsset::without_warning:
-        return "Without warning, they are";
-    case OpeningIntroTextAsset::ambushed:
-        return "ambushed by unknown forces.";
-    case OpeningIntroTextAsset::massacre:
-        return "The massacre is over quickly, but";
-    case OpeningIntroTextAsset::captured:
-        return "captured on tri-vid by one of the";
-    case OpeningIntroTextAsset::slain:
-        return "slain member's cybereyes.";
-    case OpeningIntroTextAsset::tri_vid_recovered:
-        return "The tri-vid was recovered and made";
-    case OpeningIntroTextAsset::national_news:
-        return "national news.  Michael, your";
-    case OpeningIntroTextAsset::brother_last_die:
-        return "brother, was the last to die.";
-    case OpeningIntroTextAsset::spending:
-        return "Spending your last Nuyen to go to";
-    case OpeningIntroTextAsset::vow:
-        return "Seattle, you vow to avenge your";
-    case OpeningIntroTextAsset::brother_death:
-        return "brother's death.";
-    case OpeningIntroTextAsset::landing:
-        return "Landing at Sea-Tac Airport,";
-    case OpeningIntroTextAsset::flag_cab:
-        return "you flag a cab to bring you to";
-    case OpeningIntroTextAsset::last_credstick:
-        return "Michael's last Credstick";
-    case OpeningIntroTextAsset::transaction:
-        return "transaction.";
-    case OpeningIntroTextAsset::motel:
-        return "Stoker's Coffin Motel, located";
-    case OpeningIntroTextAsset::redmond:
-        return "in the Redmond Barrens.";
+    case OpeningIntroTextAsset::time: return "time";
+    case OpeningIntroTextAsset::place: return "place";
+    case OpeningIntroTextAsset::team_cover: return "team_cover";
+    case OpeningIntroTextAsset::team_runners: return "team_runners";
+    case OpeningIntroTextAsset::team_wilderness: return "team_wilderness";
+    case OpeningIntroTextAsset::without_warning: return "without_warning";
+    case OpeningIntroTextAsset::ambushed: return "ambushed";
+    case OpeningIntroTextAsset::massacre: return "massacre";
+    case OpeningIntroTextAsset::captured: return "captured";
+    case OpeningIntroTextAsset::slain: return "slain";
+    case OpeningIntroTextAsset::tri_vid_recovered: return "tri_vid_recovered";
+    case OpeningIntroTextAsset::national_news: return "national_news";
+    case OpeningIntroTextAsset::brother_last_die: return "brother_last_die";
+    case OpeningIntroTextAsset::spending: return "spending";
+    case OpeningIntroTextAsset::vow: return "vow";
+    case OpeningIntroTextAsset::brother_death: return "brother_death";
+    case OpeningIntroTextAsset::landing: return "landing";
+    case OpeningIntroTextAsset::flag_cab: return "flag_cab";
+    case OpeningIntroTextAsset::last_credstick: return "last_credstick";
+    case OpeningIntroTextAsset::transaction: return "transaction";
+    case OpeningIntroTextAsset::motel: return "motel";
+    case OpeningIntroTextAsset::redmond: return "redmond";
     case OpeningIntroTextAsset::blank:
         return {};
     }

@@ -4547,6 +4547,8 @@ private:
             "startup", "archetypes", "startup", "archetypes");
         const auto text_keys =
             startup_scripts_.string_map("startup", "text_keys");
+        const auto opening_text_keys =
+            startup_scripts_.string_map("startup", "opening_text_keys");
         const auto fixed_text_count = [](const auto& lines) {
             std::size_t count = 0U;
             for (const auto& line : lines) {
@@ -4610,6 +4612,31 @@ private:
                 "startup Lua text bindings do not cover the ROM layout: " +
                 startup_scripts_.failure());
         }
+        constexpr auto kOpeningStoryTextCount = static_cast<std::size_t>(
+            OpeningIntroTextAsset::blank);
+        if (!opening_text_keys.has_value() ||
+            opening_text_keys->size() != kOpeningStoryTextCount) {
+            throw std::runtime_error(
+                "startup Lua opening-story text bindings are incomplete: " +
+                startup_scripts_.failure());
+        }
+        for (std::size_t index = 0U; index < kOpeningStoryTextCount;
+             ++index) {
+            const auto text_id = opening_intro_text_id(
+                static_cast<OpeningIntroTextAsset>(index));
+            const auto key = opening_text_keys->find(std::string(text_id));
+            const auto* text = key == opening_text_keys->end()
+                                   ? nullptr
+                                   : startup_scripts_.dialogue_text(
+                                         key->second);
+            if (text_id.empty() || key == opening_text_keys->end() ||
+                key->second.rfind("opening.story.", 0U) != 0U ||
+                text == nullptr || text->empty()) {
+                throw std::runtime_error(
+                    "startup Lua opening-story text is unresolved: " +
+                    std::string(text_id));
+            }
+        }
         for (const auto& [text_id, key] : *text_keys) {
             if (text_id.empty() || key.empty() ||
                 startup_scripts_.dialogue_text(key) == nullptr) {
@@ -4621,6 +4648,7 @@ private:
         startup_save_slots_menu_ = *save_slots;
         startup_archetypes_menu_ = *archetypes;
         startup_text_keys_ = *text_keys;
+        opening_text_keys_ = *opening_text_keys;
     }
 
     bool startup_shell_survives(const QImage& scene) const {
@@ -5870,7 +5898,16 @@ private:
             return;
         }
         const auto text_asset = opening_intro_text_asset(request.text_asset);
-        const auto text = opening_intro_text(text_asset);
+        const auto text_id = opening_intro_text_id(text_asset);
+        const auto text_key =
+            opening_text_keys_.find(std::string(text_id));
+        if (text_key == opening_text_keys_.end()) {
+            return;
+        }
+        const auto* text = startup_scripts_.dialogue_text(text_key->second);
+        if (text == nullptr) {
+            return;
+        }
         constexpr std::uint16_t kPlaneBase = 0x2000U;
         if (request.destination_word < kPlaneBase) {
             return;
@@ -5888,7 +5925,7 @@ private:
             y -= static_cast<int>(
                 state_.opening_intro.stage_loop.scroll.fade_counter);
         }
-        draw_startup_text(painter, x, y, text,
+        draw_startup_text(painter, x, y, *text,
                           source_text_color(request.palette_flags));
     }
 
@@ -6150,6 +6187,7 @@ private:
     StartupIntegrationCallbacks startup_callbacks_;
     scripting::GameScriptRuntime startup_scripts_;
     scripting::ScriptStringMap startup_text_keys_;
+    scripting::ScriptStringMap opening_text_keys_;
     std::optional<scripting::ScriptMenuDefinition> startup_options_menu_;
     std::optional<scripting::ScriptMenuDefinition> startup_save_slots_menu_;
     std::optional<scripting::ScriptMenuDefinition> startup_archetypes_menu_;
