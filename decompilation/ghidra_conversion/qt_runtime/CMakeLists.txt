@@ -612,6 +612,29 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_command_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_command_qa PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# The runner summary uses the equipped item's Lua-backed name/category before
+# its ROM-indexed damage and power rows. Keep that shared menu panel covered by
+# a full-frame artifact with the default equipped Model 101T fixture.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_runner_summary_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-command-dump
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-runner-summary-qa.bmp"
+                 --field-command-page 2)
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_runner_summary_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+add_test(NAME shadowrun_ghidra_conversion_qt_field_runner_summary_gator_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-command-dump
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-runner-summary-gator-qa.bmp"
+                 --field-command-page 2
+                 --field-archetype gator)
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_runner_summary_gator_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Command-menu Attributes/Skills is the view-only Karma page. Its separate
 # Hotel route exposes the upgrade preview and spending prompt; keep the
 # captures and verification for those distinct screen variants separate.

@@ -94,8 +94,6 @@ constexpr std::string_view kCommandOverviewBackgroundAlias =
 constexpr std::string_view kCommandOverviewInventoryBoxesAlias =
     "menu.field.inventory.boxes";
 constexpr std::string_view kCommandOverviewCursorAlias = "menu.field.cursor";
-constexpr std::string_view kCommandOverviewPortraitAliasPrefix =
-    "menu.field.runner.portrait.";
 constexpr std::string_view kRandomGridFixedAliasPrefix =
     "menu.field.random.grid.fixed.";
 constexpr std::string_view kRandomGridIndexedAliasPrefix =
@@ -1675,11 +1673,23 @@ bool FieldSceneRuntime::load_command_overview_assets(
         }
         return true;
     };
-    for (std::size_t index = 0; index < command_overview_portraits_.size();
-         ++index) {
-        if (!load_sprite(std::string(kCommandOverviewPortraitAliasPrefix) +
-                             std::to_string(index),
-                         command_overview_portraits_[index])) {
+    const auto archetypes = game_scripts_.menu(
+        "startup", "archetypes", "startup", "archetypes");
+    const auto portrait_bindings =
+        game_scripts_.string_map("startup", "archetype_portraits");
+    if (!archetypes.has_value() || !portrait_bindings.has_value() ||
+        archetypes->choices.size() != command_overview_portraits_.size() ||
+        portrait_bindings->size() != archetypes->choices.size()) {
+        failure_ = "startup Lua archetype portraits are incomplete";
+        return false;
+    }
+    for (std::size_t index = 0; index < archetypes->choices.size(); ++index) {
+        const auto binding = portrait_bindings->find(
+            archetypes->choices[index].id);
+        if (binding == portrait_bindings->end() ||
+            !load_sprite(binding->second, command_overview_portraits_[index])) {
+            failure_ = "startup Lua archetype portrait asset is unavailable: " +
+                       archetypes->choices[index].id;
             return false;
         }
     }
@@ -8965,6 +8975,25 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 100U, static_cast<unsigned>(
                           active_runner_record().behavior_meter) * 10U)) +
                 "%");
+        const auto equipped_item_code =
+            active_runner_record().equipped_item_code;
+        if (equipped_item_code > 0U &&
+            equipped_item_code <= field_menu_text_.item_names.size()) {
+            // ROM 0x111E8 renders the active equipment title before the
+            // 0x12EAE damage/power detail rows. These two ROM-backed Lua
+            // catalog entries occupy the same name/category rows used by
+            // inventory detail: Model 101T / Light Pistol for item 2.
+            const auto item_index =
+                static_cast<std::size_t>(equipped_item_code - 1U);
+            draw_command_overview_text(
+                painter, 128, 64, field_menu_text_.item_names[item_index]);
+            if (item_index < field_menu_text_.item_categories.size() &&
+                !field_menu_text_.item_categories[item_index].empty()) {
+                draw_command_overview_text(
+                    painter, 128, 72,
+                    field_menu_text_.item_categories[item_index]);
+            }
+        }
         draw_item_detail_rows(active_runner_record().equipped_item_code,
                               std::nullopt, false);
         draw_command_overview_text(painter, 112, 104,
