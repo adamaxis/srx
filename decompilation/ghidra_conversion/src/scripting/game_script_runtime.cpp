@@ -592,6 +592,66 @@ struct GameScriptRuntime::Impl {
         }
     }
 
+    static int movement_projectile_terrain(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        std::uint32_t x = 0U;
+        std::uint32_t y = 0U;
+        if (self == nullptr || self->active_actor_context == nullptr ||
+            !self->active_actor_context->projectile_movement.has_value() ||
+            !self->active_actor_context->projectile_terrain_probe ||
+            !read_integer(lua, 1, 0xFFFFU, x) ||
+            !read_integer(lua, 2, 0xFFFFU, y)) {
+            return luaL_error(
+                lua,
+                "game.movement.projectile_terrain expects x/y during a projectile behavior heartbeat");
+        }
+        try {
+            const auto sample =
+                self->active_actor_context->projectile_terrain_probe(
+                    static_cast<std::uint16_t>(x),
+                    static_cast<std::uint16_t>(y));
+            lua_pushinteger(lua, sample.terrain_result);
+            lua_pushboolean(lua, sample.terrain_boundary_active);
+            lua_pushboolean(lua, sample.outside_bounds_marker);
+            return 3;
+        } catch (...) {
+            return luaL_error(
+                lua, "native projectile terrain query failed");
+        }
+    }
+
+    static int movement_projectile_collision(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        std::uint32_t x = 0U;
+        std::uint32_t y = 0U;
+        std::uint32_t source_flags = 0U;
+        if (self == nullptr || self->active_actor_context == nullptr ||
+            !self->active_actor_context->projectile_movement.has_value() ||
+            !self->active_actor_context->projectile_collision_search ||
+            !read_integer(lua, 1, 0xFFFFU, x) ||
+            !read_integer(lua, 2, 0xFFFFU, y) ||
+            !read_integer(lua, 3, 0xFFU, source_flags)) {
+            return luaL_error(
+                lua,
+                "game.movement.projectile_collision expects x/y/flags during a projectile behavior heartbeat");
+        }
+        try {
+            const auto result =
+                self->active_actor_context->projectile_collision_search(
+                    static_cast<std::uint16_t>(x),
+                    static_cast<std::uint16_t>(y),
+                    static_cast<std::uint8_t>(source_flags));
+            lua_pushboolean(lua, result.source_carry);
+            lua_pushboolean(lua, result.source_position_updated);
+            lua_pushinteger(lua, result.source_x);
+            lua_pushinteger(lua, result.source_y);
+            return 4;
+        } catch (...) {
+            return luaL_error(
+                lua, "native projectile collision search failed");
+        }
+    }
+
     static int actor_walk_heading_continuation(
         lua_State*, int, lua_KContext) {
         // The host resumes this continuation with the native service result.
@@ -908,6 +968,12 @@ struct GameScriptRuntime::Impl {
         lua_pushlightuserdata(state, this);
         lua_pushcclosure(state, movement_recover_collision, 1);
         lua_setfield(state, -2, "recover_collision");
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, movement_projectile_terrain, 1);
+        lua_setfield(state, -2, "projectile_terrain");
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, movement_projectile_collision, 1);
+        lua_setfield(state, -2, "projectile_collision");
         lua_setfield(state, -2, "movement");
         lua_rawgeti(state, LUA_REGISTRYINDEX, modules_reference);
         lua_setfield(state, -2, "modules");
@@ -1450,6 +1516,15 @@ GameScriptRuntime::actor_heartbeat(
         impl_->failure = "gameplay Lua actor action source is inconsistent";
         return std::nullopt;
     }
+    if (context.projectile_movement.has_value() &&
+        (context.profile_id != "weapon_projectile" ||
+         context.phase != ScriptActorHeartbeatPhase::behavior ||
+         !context.projectile_terrain_probe ||
+         !context.projectile_collision_search)) {
+        impl_->failure =
+            "gameplay Lua projectile behavior services are unavailable";
+        return std::nullopt;
+    }
     const auto stack_base = lua_gettop(state);
     const auto fail = [this, state, stack_base](const std::string_view reason)
         -> std::optional<ScriptActorBehaviorDecision> {
@@ -1573,6 +1648,38 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "projectile_animation");
+    if (context.projectile_movement.has_value()) {
+        const auto& movement = *context.projectile_movement;
+        lua_createtable(state, 0, 12);
+        const auto role = movement.role == ScriptActorProjectileRole::primary
+                              ? "primary"
+                              : "secondary";
+        lua_pushstring(state, role);
+        lua_setfield(state, -2, "role");
+        lua_pushboolean(state, movement.active);
+        lua_setfield(state, -2, "active");
+        lua_pushinteger(state, movement.flags);
+        lua_setfield(state, -2, "flags");
+        lua_pushinteger(state, movement.record_flags);
+        lua_setfield(state, -2, "record_flags");
+        lua_pushinteger(state, movement.world_x);
+        lua_setfield(state, -2, "world_x");
+        lua_pushinteger(state, movement.world_y);
+        lua_setfield(state, -2, "world_y");
+        lua_pushinteger(state, movement.tile_offset_x);
+        lua_setfield(state, -2, "tile_offset_x");
+        lua_pushinteger(state, movement.tile_offset_y);
+        lua_setfield(state, -2, "tile_offset_y");
+        lua_pushinteger(state, movement.retry_counter);
+        lua_setfield(state, -2, "retry_counter");
+        lua_pushinteger(state, movement.linked_action_timer);
+        lua_setfield(state, -2, "linked_action_timer");
+        lua_pushinteger(state, movement.animation_selector);
+        lua_setfield(state, -2, "animation_selector");
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "projectile_movement");
     lua_pushboolean(
         state,
         context.movement_services_available &&
@@ -1902,6 +2009,142 @@ GameScriptRuntime::actor_heartbeat(
         !decision.movement_step.has_value()) {
         return fail("actor_ai.heartbeat omitted the Lua movement step");
     }
+    lua_getfield(state, decision_table, "projectile_movement");
+    if (context.projectile_movement.has_value()) {
+        if (!lua_istable(state, -1) ||
+            context.profile_id != "weapon_projectile" ||
+            context.phase != ScriptActorHeartbeatPhase::behavior) {
+            return fail(
+                "actor_ai.heartbeat returned an invalid projectile movement step");
+        }
+        const auto movement_table = lua_absindex(state, -1);
+        ScriptActorProjectileMovementDecision movement_decision{};
+        movement_decision.state = *context.projectile_movement;
+        const auto read_boolean = [state, movement_table](
+                                      const char* field, bool& value) {
+            lua_getfield(state, movement_table, field);
+            const bool valid = lua_isboolean(state, -1);
+            if (valid) {
+                value = lua_toboolean(state, -1) != 0;
+            }
+            lua_pop(state, 1);
+            return valid;
+        };
+        const auto read_signed = [state, movement_table](
+                                     const char* field, const lua_Integer min,
+                                     const lua_Integer max,
+                                     lua_Integer& value) {
+            lua_getfield(state, movement_table, field);
+            const bool valid = lua_isinteger(state, -1) &&
+                               lua_tointeger(state, -1) >= min &&
+                               lua_tointeger(state, -1) <= max;
+            if (valid) {
+                value = lua_tointeger(state, -1);
+            }
+            lua_pop(state, 1);
+            return valid;
+        };
+        std::string role;
+        std::uint32_t unsigned_value = 0U;
+        lua_Integer signed_value = 0;
+        if (!read_field_string(state, movement_table, "role", role) ||
+            role != (context.projectile_movement->role ==
+                             ScriptActorProjectileRole::primary
+                         ? "primary"
+                         : "secondary") ||
+            !read_boolean("active", movement_decision.state.active) ||
+            !read_field_integer(state, movement_table, "flags", 0xFFU,
+                                unsigned_value)) {
+            return fail(
+                "actor_ai.heartbeat returned an incomplete projectile state");
+        }
+        movement_decision.state.flags =
+            static_cast<std::uint8_t>(unsigned_value);
+        if (!read_field_integer(state, movement_table, "record_flags", 0xFFU,
+                                unsigned_value)) {
+            return fail(
+                "actor_ai.heartbeat returned invalid projectile record flags");
+        }
+        movement_decision.state.record_flags =
+            static_cast<std::uint8_t>(unsigned_value);
+        if (!read_signed("world_x",
+                         static_cast<lua_Integer>(-2147483647LL - 1LL),
+                         2147483647LL, signed_value)) {
+            return fail(
+                "actor_ai.heartbeat returned invalid projectile X position");
+        }
+        movement_decision.state.world_x =
+            static_cast<std::int32_t>(signed_value);
+        if (!read_signed("world_y",
+                         static_cast<lua_Integer>(-2147483647LL - 1LL),
+                         2147483647LL, signed_value)) {
+            return fail(
+                "actor_ai.heartbeat returned invalid projectile Y position");
+        }
+        movement_decision.state.world_y =
+            static_cast<std::int32_t>(signed_value);
+        if (!read_signed("tile_offset_x", -32768, 32767, signed_value)) {
+            return fail(
+                "actor_ai.heartbeat returned invalid projectile X offset");
+        }
+        movement_decision.state.tile_offset_x =
+            static_cast<std::int16_t>(signed_value);
+        if (!read_signed("tile_offset_y", -32768, 32767, signed_value)) {
+            return fail(
+                "actor_ai.heartbeat returned invalid projectile Y offset");
+        }
+        movement_decision.state.tile_offset_y =
+            static_cast<std::int16_t>(signed_value);
+        if (!read_field_integer(state, movement_table, "retry_counter", 0xFFU,
+                                unsigned_value)) {
+            return fail(
+                "actor_ai.heartbeat returned invalid projectile retry counter");
+        }
+        movement_decision.state.retry_counter =
+            static_cast<std::uint8_t>(unsigned_value);
+        if (!read_signed("linked_action_timer", -128, 127, signed_value)) {
+            return fail(
+                "actor_ai.heartbeat returned invalid projectile action timer");
+        }
+        movement_decision.state.linked_action_timer =
+            static_cast<std::int8_t>(signed_value);
+        if (!read_field_integer(state, movement_table, "animation_selector",
+                                0xFFFFU, unsigned_value)) {
+            return fail(
+                "actor_ai.heartbeat returned incomplete projectile policy state");
+        }
+        movement_decision.state.animation_selector =
+            static_cast<std::uint16_t>(unsigned_value);
+        std::string outcome;
+        if (!read_field_string(state, movement_table, "outcome", outcome)) {
+            return fail(
+                "actor_ai.heartbeat returned an invalid projectile outcome");
+        }
+        if (outcome == "none") {
+            movement_decision.outcome =
+                ScriptActorProjectileOutcome::none;
+        } else if (outcome == "stopped") {
+            movement_decision.outcome =
+                ScriptActorProjectileOutcome::stopped;
+        } else if (outcome == "retired") {
+            movement_decision.outcome =
+                ScriptActorProjectileOutcome::retired;
+        } else if (outcome == "hit_resolution_pending") {
+            movement_decision.outcome =
+                ScriptActorProjectileOutcome::hit_resolution_pending;
+        } else if (outcome == "linked_followup_pending") {
+            movement_decision.outcome =
+                ScriptActorProjectileOutcome::linked_followup_pending;
+        } else {
+            return fail(
+                "actor_ai.heartbeat returned an unsupported projectile outcome");
+        }
+        decision.projectile_movement = movement_decision;
+    } else if (lua_type(state, -1) != LUA_TNIL) {
+        return fail(
+            "actor_ai.heartbeat returned unexpected projectile movement state");
+    }
+    lua_pop(state, 1);
     if (context.action_kind == ScriptActorActionKind::item &&
         !decision.weapon_item_id.has_value()) {
         return fail("actor_ai.heartbeat omitted the source item action");
@@ -1910,7 +2153,18 @@ GameScriptRuntime::actor_heartbeat(
 
     const bool begins_entry = decision.action ==
         ScriptActorBehaviorDecision::Action::play_entry_animation;
-    if ((begins_entry != decision.audio_event.has_value()) ||
+    const bool projectile_behavior = context.projectile_movement.has_value();
+    if (((begins_entry != decision.audio_event.has_value()) &&
+         !projectile_behavior) ||
+        (projectile_behavior && decision.audio_event.has_value() &&
+         *decision.audio_event != 0x003CU) ||
+        (decision.projectile_movement.has_value() &&
+         decision.projectile_movement->state.role ==
+             ScriptActorProjectileRole::secondary &&
+         (decision.projectile_movement->outcome ==
+              ScriptActorProjectileOutcome::linked_followup_pending ||
+          decision.projectile_movement->outcome ==
+              ScriptActorProjectileOutcome::hit_resolution_pending)) ||
         (decision.transition_complete && !decision.transition_started) ||
         ((decision.animation_id == "entry") !=
          decision.transition_started) ||

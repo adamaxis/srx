@@ -84,14 +84,19 @@ int main() {
         return 13;
     }
 
-    record.equipped_item_code = 0x0DU;
-    record.inventory_item_codes[2] = 0x0DU;
+    // The source effect-record action reaches 0x36FC rather than the weapon
+    // ammo service; it may spend the equipped slot phase but leaves rounds
+    // untouched.
+    record.equipped_item_code = 13U;
+    record.inventory_item_codes[2] = 13U;
     record.inventory_phase_bytes[2] = 1U;
+    record.ammo_rounds = 17U;
     if (!expect(advance_entity_asset_meter(record, -1, 0U) ==
                     RunnerAssetOperationResult::equipment_cleared &&
                 record.inventory_item_codes[2] == 0U &&
                 record.equipped_item_code == 0U &&
-                record.equipped_inventory_slot == 0x7F)) {
+                record.equipped_inventory_slot == 0x7F &&
+                record.ammo_rounds == 17U)) {
         return 4;
     }
 

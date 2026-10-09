@@ -13,6 +13,30 @@ local movement_context_words = {
 -- The directional weapon-effect records at ROM 0x630C use this descriptor
 -- cadence in their finite 0x8003/0x800B lists.
 local weapon_projectile_descriptor_increment = 0x270f
+local projectile = {
+    role = { primary = "primary", secondary = "secondary" },
+    flags = {
+        active_record = 0x01,
+        stopped_record = 0x08,
+        terminal_record = 0x09,
+        animation_list_finished = 0x8000,
+    },
+    outcome = {
+        none = "none",
+        stopped = "stopped",
+        retired = "retired",
+        hit_resolution_pending = "hit_resolution_pending",
+        linked_followup_pending = "linked_followup_pending",
+    },
+    movement_probes_per_update = 4,
+    impact_sound_event = 0x003c,
+}
+local byte_mask = 0xff
+local signed_byte_threshold = 0x80
+local byte_modulus = 0x100
+local fixed_long_mask = 0xffffffff
+local fixed_integer_shift = 16
+local fixed_fraction_scale = 0x100
 
 local profiles = {
     ["corp_guard_k05_item06"] = {
@@ -131,7 +155,7 @@ local function same_actor(state, context)
            state.action_code == context.action_code
 end
 
-local function snapshot(state, action, audio_event)
+local function snapshot(state, action, audio_event, projectile_movement)
     return {
         actor_id = state.actor_id,
         profile_id = state.profile_id,
@@ -152,6 +176,7 @@ local function snapshot(state, action, audio_event)
         movement_heading = state.movement_heading,
         movement_current_heading = state.movement_current_heading,
         movement_step = state.movement_step,
+        projectile_movement = projectile_movement,
     }
 end
 
@@ -201,6 +226,203 @@ local function advance_projectile_animation(state, context)
     state.animation_increment = weapon_projectile_descriptor_increment
     state.animation_id = "projectile"
     return true
+end
+
+local function signed_byte(value)
+    local byte = value & byte_mask
+    if byte >= signed_byte_threshold then
+        return byte - byte_modulus
+    end
+    return byte
+end
+
+local function signed_word_from_long(value)
+    local word = value & fixed_long_mask
+    if word >= 0x80000000 then
+        return word - 0x100000000
+    end
+    return word
+end
+
+local function integer_world_word(value)
+    return ((value & fixed_long_mask) >> fixed_integer_shift) & 0xffff
+end
+
+local function projectile_movement_snapshot(context)
+    local source = context.projectile_movement
+    if type(source) ~= "table" or
+       (source.role ~= projectile.role.primary and
+        source.role ~= projectile.role.secondary) or
+       type(source.active) ~= "boolean" or
+       type(source.flags) ~= "number" or source.flags < 0 or
+       source.flags > 0xff or type(source.record_flags) ~= "number" or
+       source.record_flags < 0 or source.record_flags > 0xff or
+       type(source.world_x) ~= "number" or
+       type(source.world_y) ~= "number" or
+       type(source.tile_offset_x) ~= "number" or
+       type(source.tile_offset_y) ~= "number" or
+       type(source.retry_counter) ~= "number" or
+       source.retry_counter < 0 or source.retry_counter > 0xff or
+       type(source.linked_action_timer) ~= "number" or
+       source.linked_action_timer < -128 or
+       source.linked_action_timer > 127 or
+       type(source.animation_selector) ~= "number" or
+       source.animation_selector < 0 or source.animation_selector > 0xffff then
+        return nil
+    end
+
+    local result = {
+        role = source.role,
+        active = source.active,
+        flags = source.flags,
+        record_flags = source.record_flags,
+        world_x = source.world_x,
+        world_y = source.world_y,
+        tile_offset_x = source.tile_offset_x,
+        tile_offset_y = source.tile_offset_y,
+        retry_counter = source.retry_counter,
+        linked_action_timer = source.linked_action_timer,
+        animation_selector = source.animation_selector,
+        outcome = projectile.outcome.none,
+    }
+    local audio_event
+
+    if not result.active then
+        return result, nil
+    end
+    if result.role == projectile.role.secondary then
+        -- ROM 0xAC4E retires the secondary record after the preceding render
+        -- heartbeat marks its finite animation list complete.
+        if (result.animation_selector &
+            projectile.flags.animation_list_finished) ~= 0 then
+            result.flags = result.flags & ~projectile.flags.active_record
+            result.active = false
+            result.outcome = projectile.outcome.retired
+        end
+        return result, nil
+    end
+
+    if (result.record_flags & projectile.flags.stopped_record) ~= 0 then
+        -- ROM 0x14E0A/0x14F1C wait for the stopped record's finite list.
+        -- The linked action pair in 0x14F86 is still an explicit boundary.
+        if (result.animation_selector &
+            projectile.flags.animation_list_finished) ~= 0 then
+            result.linked_action_timer =
+                signed_byte(result.linked_action_timer - 1)
+            if result.linked_action_timer < 0 then
+                result.flags = result.flags & ~projectile.flags.active_record
+                result.active = false
+                result.outcome = projectile.outcome.retired
+            else
+                result.outcome = projectile.outcome.linked_followup_pending
+            end
+        end
+        return result, nil
+    end
+
+    local outside_bounds_marker = false
+    for _ = 1, projectile.movement_probes_per_update do
+        -- ROM 0x14F26 adds the signed +0x4C/+0x4E tile offsets as 8.8
+        -- fixed-point deltas before sampling terrain.
+        local probe_x = signed_word_from_long(
+            result.world_x + result.tile_offset_x * fixed_fraction_scale)
+        local probe_y = signed_word_from_long(
+            result.world_y + result.tile_offset_y * fixed_fraction_scale)
+        local terrain_result, boundary_active, outside_marker =
+            game.movement.projectile_terrain(
+                integer_world_word(probe_x), integer_world_word(probe_y))
+        if type(terrain_result) ~= "number" or
+           type(boundary_active) ~= "boolean" or
+           type(outside_marker) ~= "boolean" then
+            return nil
+        end
+        outside_bounds_marker = outside_marker
+
+        local terminal = terrain_result ~= 0 and not boundary_active
+        if not terminal then
+            result.retry_counter =
+                (result.retry_counter - 1) & byte_mask
+            terminal = signed_byte(result.retry_counter) < 0
+        end
+        if terminal then
+            result.record_flags = result.record_flags |
+                                  projectile.flags.terminal_record
+            result.animation_selector = 0
+            result.tile_offset_x = 0
+            result.tile_offset_y = 0
+            if outside_bounds_marker then
+                result.flags = result.flags & ~projectile.flags.active_record
+                result.active = false
+                result.outcome = projectile.outcome.retired
+            else
+                result.outcome = projectile.outcome.stopped
+            end
+            -- ROM 0x14E32 requests event 0x3C when D1 is zero, including
+            -- the outside-bounds branch.
+            audio_event = projectile.impact_sound_event
+            break
+        end
+
+        result.world_x = probe_x
+        result.world_y = probe_y
+        local source_carry, source_position_updated, source_x, source_y =
+            game.movement.projectile_collision(
+                integer_world_word(probe_x), integer_world_word(probe_y),
+                result.flags)
+        if type(source_carry) ~= "boolean" or
+           type(source_position_updated) ~= "boolean" or
+           type(source_x) ~= "number" or type(source_y) ~= "number" then
+            return nil
+        end
+        if source_carry then
+            result.record_flags = result.record_flags |
+                                  projectile.flags.terminal_record
+            result.animation_selector = 0
+            result.tile_offset_x = 0
+            result.tile_offset_y = 0
+            if outside_bounds_marker then
+                result.flags = result.flags & ~projectile.flags.active_record
+                result.active = false
+                result.outcome = projectile.outcome.retired
+            end
+            if source_position_updated then
+                -- 0x15ABA copies the target's integer coordinates while
+                -- preserving the projectile record's fractional words.
+                result.world_x = signed_word_from_long(
+                    (source_x << fixed_integer_shift) |
+                    (probe_x & 0xffff))
+                result.world_y = signed_word_from_long(
+                    (source_y << fixed_integer_shift) |
+                    (probe_y & 0xffff))
+                result.outcome =
+                    projectile.outcome.hit_resolution_pending
+                audio_event = projectile.impact_sound_event
+            else
+                result.outcome =
+                    projectile.outcome.linked_followup_pending
+            end
+            break
+        end
+    end
+    return result, audio_event
+end
+
+local function projectile_heartbeat(state, context)
+    if context.phase == "render" then
+        if not advance_projectile_animation(state, context) then
+            return nil
+        end
+        return snapshot(state, "hold", nil)
+    end
+    if context.phase ~= "behavior" then
+        return nil
+    end
+    local movement, audio_event = projectile_movement_snapshot(context)
+    if movement == nil then
+        return nil
+    end
+    state.animation_selector = movement.animation_selector
+    return snapshot(state, "hold", audio_event, movement)
 end
 
 local function advance_entry_animation(state)
@@ -501,10 +723,7 @@ function ActorAI.heartbeat(context)
         end
         states[context.actor_id] = state
         if profile.projectile_animation then
-            if not advance_projectile_animation(state, context) then
-                return nil
-            end
-            return snapshot(state, "hold", nil)
+            return projectile_heartbeat(state, context)
         end
         if profile.controls_movement then
             state.movement_step = nil
@@ -528,10 +747,7 @@ function ActorAI.heartbeat(context)
         return nil
     end
     if profile.projectile_animation then
-        if not advance_projectile_animation(state, context) then
-            return nil
-        end
-        return snapshot(state, "hold", nil)
+        return projectile_heartbeat(state, context)
     end
 
     local action = "hold"

@@ -126,6 +126,37 @@ sequence; the connected field route has only captured the regular family so
 far. This is source pass ordering, not a single callback that advances and
 retires together.
 
+## Projectile behavior is a separate Lua heartbeat
+
+The ROM behavior pass at `0x14E0A` checks the stopped bit at `+0x11.3`. A
+moving primary runs `0x14F50` four times per field update (`DBF` from 3), and
+each attempt enters `0x14F26` before the collision scan. `0x14F26` forms
+signed 8.8 probes from fixed-point world position `+0x00/+0x04` and signed
+offsets `+0x4C/+0x4E`; `0x14F50` samples terrain, reads the boundary result
+from `FFDFE2`, decrements the byte retry counter at `+0x89`, commits the
+probe, then calls `0x15ABA`. Lua owns this ordering, wrapping arithmetic,
+four-attempt cadence, and retry decision. Native callbacks return the current
+terrain sample and typed entity-scan result; they do not select the next state.
+
+Terrain rejection or retry exhaustion branches to `0x14E32`: set `+0x11` bits
+0 and 3, clear selector `+0x16` and offsets `+0x4C/+0x4E`, and request audio
+event `0x3C` when `D1` is zero. `FFDF68` independently clears the active bit
+at `+0x10.0`; the audio request still occurs when that marker is set. Lua QA
+covers both outside termination and retry wrap to `0xFF`. A successful entity
+hit returns source carry with the target position copied to the projectile
+record and `D1` cleared; the sound is requested, then the unresolved linked
+actor/status path remains a boundary. Other source-carry exits retain `D1` and
+enter the same linked path without the hit sound.
+
+When the stopped record sees the preceding render pass's finite-list bit,
+`0x14F86` decrements signed byte `+0x41`; a negative result clears the active
+bit, while a nonnegative result begins linked action setup and derives new
+heading offsets. Lua owns the countdown and retirement choice; the linked
+record resolver is not connected. The secondary `0xAC4E` path only waits for
+its finite-list marker and then clears its active bit. Lua owns that retirement
+decision too. The active scene currently supplies no live collision candidates,
+so no NPC hit or damage behavior is fabricated.
+
 The native port should retain that distinction in its scheduler: Lua receives
 one behavior heartbeat per source field-service pass and one render heartbeat
 per source actor-render pass. The behavior heartbeat owns decisions and timers;
@@ -157,13 +188,17 @@ controller/scripted target headings, applies the `0xB530` slew, owns the
 player's animation clock, and selects each player movement candidate and
 fallback plus the C052/C062 selector. C++ remains responsible for terrain
 collision sampling, source route data access, map-event recovery, and applying
-Lua's selected coordinates and selector to the field model. Projectile
-animation is now Lua-owned for connected primary/secondary weapon records, but
-their `0xA8EA` behavior path remains partly native: primary movement, collision
-recovery, and record retirement still run in C++. The runtime still does not
-enumerate and heartbeat the complete 16-record population. General NPC
-movement, targeting, combat, and source actor-slot dispatch remain open; this
-slice does not establish that every on-screen actor is connected.
+Lua's selected coordinates and selector to the field model. Connected weapon
+primary and secondary records now receive Lua behavior and render heartbeats.
+Lua owns four-probe primary movement, retry and terminal flags, outside-bound
+retirement, the `0x3C` request, the stopped-record countdown, and secondary
+finite-list retirement. C++ supplies terrain/entity scan results, applies the
+typed record snapshot, and plays requested audio. The scene has no live actor
+candidates, so target hit, linked status/damage, and `0x14F86` follow-up stay
+explicit boundaries. The runtime still does not enumerate the complete
+16-record population. General NPC movement, targeting, combat, and source
+actor-slot dispatch remain open; this slice does not establish that every
+on-screen actor is connected.
 
 The entry sounds selected by `0xB330` are kind-table events `0x2E` and `0x2F`.
 The extracted audio table maps both to silent slots, so the Lua request has no

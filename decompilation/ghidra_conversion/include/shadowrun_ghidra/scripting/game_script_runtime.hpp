@@ -173,6 +173,62 @@ struct ScriptActorProjectileAnimation {
     bool finite = false;
 };
 
+// Projectile behavior state is supplied by the native field scene, while
+// Lua owns the source update decisions. The callbacks below only sample the
+// host world and return the collision routine's source result.
+enum class ScriptActorProjectileRole : std::uint8_t {
+    primary,
+    secondary,
+};
+
+enum class ScriptActorProjectileOutcome : std::uint8_t {
+    none,
+    stopped,
+    retired,
+    hit_resolution_pending,
+    linked_followup_pending,
+};
+
+struct ScriptActorProjectileMovement {
+    ScriptActorProjectileRole role = ScriptActorProjectileRole::primary;
+    bool active = false;
+    std::uint8_t flags = 0;
+    std::uint8_t record_flags = 0;
+    std::int32_t world_x = 0;
+    std::int32_t world_y = 0;
+    std::int16_t tile_offset_x = 0;
+    std::int16_t tile_offset_y = 0;
+    std::uint8_t retry_counter = 0;
+    std::int8_t linked_action_timer = 0;
+    std::uint16_t animation_selector = 0;
+};
+
+struct ScriptProjectileTerrainSample {
+    std::uint16_t terrain_result = 0;
+    bool terrain_boundary_active = false;
+    bool outside_bounds_marker = false;
+};
+
+struct ScriptProjectileCollisionSearchResult {
+    bool source_carry = false;
+    bool source_position_updated = false;
+    std::uint16_t source_x = 0;
+    std::uint16_t source_y = 0;
+};
+
+struct ScriptActorProjectileMovementDecision {
+    ScriptActorProjectileMovement state{};
+    ScriptActorProjectileOutcome outcome =
+        ScriptActorProjectileOutcome::none;
+};
+
+using ScriptProjectileTerrainProbe =
+    std::function<ScriptProjectileTerrainSample(std::uint16_t x,
+                                                std::uint16_t y)>;
+using ScriptProjectileCollisionSearch =
+    std::function<ScriptProjectileCollisionSearchResult(
+        std::uint16_t x, std::uint16_t y, std::uint8_t source_flags)>;
+
 struct ScriptActorMovementStep {
     enum class Outcome : std::uint8_t {
         accepted,
@@ -208,6 +264,9 @@ struct ScriptActorBehaviorContext {
     std::optional<std::uint8_t> animation_direction_override;
     std::optional<std::int16_t> animation_accumulator_override;
     std::optional<ScriptActorProjectileAnimation> projectile_animation;
+    std::optional<ScriptActorProjectileMovement> projectile_movement;
+    ScriptProjectileTerrainProbe projectile_terrain_probe;
+    ScriptProjectileCollisionSearch projectile_collision_search;
     bool movement_services_available = false;
     std::array<ScriptMovementOffset, 8> movement_offsets{};
     std::array<std::uint16_t, 8> movement_idle_selectors{};
@@ -240,6 +299,8 @@ struct ScriptActorBehaviorDecision {
     std::optional<std::uint16_t> movement_heading;
     std::optional<std::uint16_t> movement_current_heading;
     std::optional<ScriptActorMovementStep> movement_step;
+    std::optional<ScriptActorProjectileMovementDecision>
+        projectile_movement;
     std::optional<std::int16_t> animation_increment;
     std::int16_t animation_accumulator = 0;
 };

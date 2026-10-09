@@ -14,6 +14,8 @@ C042 attack pose, applies the source action delay, and resets animation state.
 The C042 pose is a static one-frame list held during that delay; it is not a
 multi-frame weapon swing.
 
+Action codes 13..15 take the separate effect-record path at ROM 0x15646 before 0x1514E; that path calls asset-meter routine 0x36FC, not ammo service 0x38AC. The 0x36FC branch for codes 13..15 decrements the equipped inventory phase byte and clears that slot at zero; it does not change weapon ammo rounds. The connected Qt weapon action path likewise accepts only weapon codes 1..12 before reload or ammo handling.
+
 The paired secondary record selects one of sixteen direction lists from
 `0x630C`: selectors `0x00..0x1C` are the regular three-frame (`0x8003`) family,
 and `0x20..0x3C` are the special eleven-frame (`0x800B`) family. Action codes
@@ -139,10 +141,12 @@ no travel behavior in the traced source path.
    19 and the following behavior pass retires it. The Lua runtime checks this
    source sequence, but the connected field route has not captured a special
    weapon effect yet.
-   The primary performs four source terrain/recovery probes per field update,
-   moves while the current collision probe permits it, then selects the finite
-   stopped tail on terrain contact. Retry exhaustion or an outside-bounds
-   result retires it. There is no live actor-hit animation yet.
+   Lua performs four source terrain/recovery probes per field update, moves
+   while the native terrain service permits it, then selects the finite stopped
+   tail on terrain contact. Retry exhaustion or an outside-bounds result stops
+   and retires it according to the `FFDF68` marker. The stopped-list countdown
+   and secondary finite-list retirement are also Lua policy. There is no live
+   actor-hit animation yet.
 5. **What sound plays and how long?** Items 1 and 2 request event `0x1C`,
    resource 028, a one-shot measured at 2.483 seconds. Holding A during the delay
    does not repeat it. Terrain terminal event `0x3C` is source-requested but maps
@@ -153,12 +157,14 @@ no travel behavior in the traced source path.
    map, actor, HUD, selector, and right-side controls. QA captures the before/shot
    frames, all 52 delay updates, 30 idle holds, and the item-2 equip/reload/fire
    return route. The map and HUD remain intact as both records move and retire.
-7. **Do multiple frames support this interpretation?** All 262 Debug and
-   Release screenshots were reviewed in 22 contact sheets and matched by
-   SHA-256. Shot and terminal frames were also inspected at native size.
-   Independent sections 06/07 were reviewed, but they contain no identified
-   player firing example or matching pose. Internal native frames prove route
-   consistency, not Genesis visual fidelity.
+7. **Do multiple frames support this interpretation?** After moving projectile
+   behavior into Lua, all 262 Debug and Release screenshots still matched by
+   SHA-256. The current full-screen captures were reviewed in nine fresh
+   contact sheets of 30 frames each; the before/shot/three-delay/retirement
+   frames were also inspected at native size. Independent sections 06/07 were
+   reviewed, but they contain no identified player firing example or matching
+   pose. Internal native frames prove route consistency, not Genesis visual
+   fidelity.
 8. **Are new visuals cleanly redrawn?** Firing opens no page and adds no
    controls. The C042 pose replaces the actor's field sprite; projectile images
    follow the source entity draw order with the player. Both slots are released
@@ -179,20 +185,24 @@ selector/frame/completion, and whole-screen change for every delay update. It
 verifies primary movement and terrain retirement, the visible secondary frame,
 finite-list removal,
 stable cleared pose, HUD ammo, source flags, timer progression, and source audio
-events. The remaining item/action/menu/runner route supplies 177 additional
+events. The Lua runtime test now directly checks four ordered probes, terrain
+rejection, retry wrap/exhaustion, outside-bound sound/retirement, target
+position handoff, stopped-list retirement, and the unresolved linked-action
+outcome. The remaining item/action/menu/runner route supplies 177 additional
 full-screen captures. The extra item-2 terminal checkpoint brings the total to
-262 Debug and Release BMPs; all match by SHA-256 and were reviewed in 22 contact
-sheets. Collision-state tests pass in Debug and
-Release, including the current-probe boundary ordering. Qt field action and
-player-action CTests pass in Debug and Release. The audio playback test checks
-mapped resources and durations. No matching independent Genesis firing frame
-or audio correlation has been found.
+262 Debug and Release BMPs; all match by SHA-256. The current Debug screens were
+reviewed in nine fresh full-screen contact sheets, and the firing window was
+inspected at native size. Qt field action and player-action CTests pass in
+Debug and Release. The audio playback test checks mapped resources and
+durations. No matching independent Genesis firing frame or audio correlation
+has been found.
 
-Ordinary A input now connects the source spawn helper, ammo/HUD update, mapped
-shot sound, C042 pose, six-slot weapon allocator, Lua-owned primary/secondary
-finite animation, primary fixed-point movement and live map-terrain collision,
-slot retirement, and the source field depth order. The source's live actor records have not been
-imported; target selection, linked-record hit/status/damage, movement
+Ordinary A input now connects the source spawn helper, weapon ammo/HUD update,
+mapped shot sound, C042 pose, six-slot weapon allocator, Lua-owned
+primary/secondary finite animation and behavior, primary fixed-point movement,
+live map-terrain sampling, slot retirement, and the source field depth order.
+The source's live actor records have not been imported; target selection,
+linked-record hit/status/damage, movement
 cancellation, and full combat return remain open. Event `0x3C` has no mapped
 audible asset, and independent firing visuals/audio are unavailable. The
 secondary effect has no travel behavior in the traced source path. LOADOUT-01

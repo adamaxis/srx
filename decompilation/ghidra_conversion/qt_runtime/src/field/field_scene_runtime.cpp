@@ -51,6 +51,27 @@ namespace {
 // that scene reference with the saved row; both paths use the same typed scene
 // resource selection below.
 constexpr std::uint16_t kInitialFieldSceneReference = 2U;
+enum class FieldActionKind {
+    unsupported,
+    weapon_ammo,
+    effect_record,
+};
+constexpr std::uint8_t kFirstWeaponActionCode = 1U;
+constexpr std::uint8_t kFirstEffectRecordActionCode = 13U;
+constexpr std::uint8_t kAfterLastEffectRecordActionCode = 16U;
+
+FieldActionKind classify_field_action(const std::uint8_t action_code) {
+    if (action_code >= kFirstWeaponActionCode &&
+        action_code < kFirstEffectRecordActionCode) {
+        return FieldActionKind::weapon_ammo;
+    }
+    if (action_code >= kFirstEffectRecordActionCode &&
+        action_code < kAfterLastEffectRecordActionCode) {
+        return FieldActionKind::effect_record;
+    }
+    return FieldActionKind::unsupported;
+}
+
 constexpr std::string_view kFieldHudAlias = "field.hud.background";
 constexpr std::string_view kFieldHudFaceAliasPrefix = "field.hud.face.";
 constexpr std::string_view kFieldHudItemAliasPrefix = "field.hud.item.";
@@ -5108,9 +5129,10 @@ void FieldSceneRuntime::service_player_weapon_action() {
         return;
     }
 
-    // ROM 0xACAE routes action codes 1..12 through the weapon spawn/ammo
-    // service. Codes 13..15 use the separate effect-record path at 0x15646.
-    if (runner.equipped_item_code == 0U || runner.equipped_item_code > 12U ||
+    // ROM 0xACAE routes weapon-item codes to 0x1514E. Codes 13..15 enter the
+    // separate effect-record continuation at 0x15646 and do not use ammo.
+    if (classify_field_action(runner.equipped_item_code) !=
+            FieldActionKind::weapon_ammo ||
         (runner.flags & 0x0100U) == 0U) {
         return;
     }
@@ -5354,136 +5376,190 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
         }
         slot.reset();
     };
+    const std::vector<CollisionCandidate> live_collision_targets;
     const auto word_from_fixed = [](const std::int32_t value) {
         return static_cast<std::uint16_t>(
             static_cast<std::uint32_t>(value) >> 16U);
     };
-    const std::vector<CollisionCandidate> live_collision_targets;
+    const auto signed_fixed_from_word = [](const std::uint16_t word,
+                                           const std::int32_t current) {
+        const auto combined =
+            (static_cast<std::uint32_t>(word) << 16U) |
+            (static_cast<std::uint32_t>(current) & 0xFFFFU);
+        return static_cast<std::int32_t>(combined);
+    };
+
+    const auto advance_record = [this, &release_slot, &live_collision_targets,
+                                 &word_from_fixed, &signed_fixed_from_word](
+                                    FieldWeaponProjectilePresentation& spawn,
+                                    const bool primary_record) {
+        auto& record = primary_record ? spawn.primary_record
+                                      : spawn.source_record;
+        auto& active = primary_record ? spawn.primary_active
+                                      : spawn.secondary_active;
+        auto& script_initialized = primary_record
+            ? spawn.primary_animation_script_initialized
+            : spawn.secondary_animation_script_initialized;
+        auto& slot = primary_record ? spawn.primary_slot
+                                    : spawn.secondary_slot;
+        auto& animation = primary_record ? spawn.primary_animation
+                                         : spawn.animation;
+        if (!active) {
+            return;
+        }
+        const auto disable_record = [&] {
+            record.flags = static_cast<std::uint8_t>(
+                record.flags & static_cast<std::uint8_t>(~0x01U));
+            active = false;
+            release_slot(slot);
+        };
+        if (!slot.has_value()) {
+            source_boundary("field.combat.weapon_projectile_slot_missing");
+            disable_record();
+            return;
+        }
+        if (primary_record &&
+            !field_weapon_collision_targets_pending_reported_) {
+            source_boundary(
+                "field.combat.weapon_live_actor_population_pending");
+            field_weapon_collision_targets_pending_reported_ = true;
+        }
+
+        const auto selector = static_cast<std::uint16_t>(
+            record.animation_resource & 0x7FFFU);
+        const auto animation_index =
+            static_cast<std::size_t>(selector / 4U);
+        if ((selector & 0x0003U) != 0U ||
+            animation_index >= field_weapon_projectile_images_.size()) {
+            source_boundary(
+                "field.combat.weapon_projectile_selector_invalid");
+            disable_record();
+            return;
+        }
+        const auto frame_count =
+            field_weapon_projectile_images_[animation_index].size();
+        if (frame_count == 0U || frame_count > 16U) {
+            source_boundary("field.combat.weapon_projectile_frames_invalid");
+            disable_record();
+            return;
+        }
+
+        const auto instance_id = "field_weapon_slot_" +
+                                 std::to_string(*slot);
+        scripting::ScriptActorBehaviorContext context{};
+        context.profile_id = "weapon_projectile";
+        context.entity_kind = record.behavior_defaults.animation_state;
+        context.action_kind = scripting::ScriptActorActionKind::none;
+        context.action_code = 0U;
+        context.instance_id = instance_id;
+        context.initial_heading = record.heading;
+        context.spawn = !script_initialized;
+        context.phase = scripting::ScriptActorHeartbeatPhase::behavior;
+        context.projectile_animation =
+            scripting::ScriptActorProjectileAnimation{
+                record.animation_resource,
+                static_cast<std::uint16_t>(frame_count),
+                animation.frame,
+                animation.accumulator,
+                animation.increment,
+                animation.period,
+                true};
+        context.projectile_movement =
+            scripting::ScriptActorProjectileMovement{
+                primary_record
+                    ? scripting::ScriptActorProjectileRole::primary
+                    : scripting::ScriptActorProjectileRole::secondary,
+                active,
+                record.flags,
+                record.record_flags,
+                primary_record ? spawn.primary_fixed_position.world_x
+                               : signed_fixed_from_word(record.position_x, 0),
+                primary_record ? spawn.primary_fixed_position.world_y
+                               : signed_fixed_from_word(record.position_y, 0),
+                primary_record ? record.heading_offset_x : std::int16_t{0},
+                primary_record ? record.heading_offset_y : std::int16_t{0},
+                record.field_0x89,
+                record.field_0x41,
+                record.animation_resource};
+        context.projectile_terrain_probe =
+            [this, &spawn, &record, primary_record](
+                const std::uint16_t x, const std::uint16_t y) {
+                if (!primary_record) {
+                    return scripting::ScriptProjectileTerrainSample{};
+                }
+                const auto terrain_code = evaluate_field_collision(
+                    x, y, spawn.primary_collision_record,
+                    field_terrain_sample_state_, record.flags, false);
+                return scripting::ScriptProjectileTerrainSample{
+                    static_cast<std::uint16_t>(terrain_code),
+                    field_terrain_boundary_active_,
+                    field_terrain_outside_bounds_marker_};
+            };
+        context.projectile_collision_search =
+            [this, &live_collision_targets](
+                const std::uint16_t x, const std::uint16_t y,
+                const std::uint8_t source_flags) {
+                EntityCollisionSearchContext collision_context{};
+                collision_context.probe_x = x;
+                collision_context.probe_y = y;
+                collision_context.source_flags = source_flags;
+                const auto result = find_colliding_entity(
+                    collision_context, live_collision_targets);
+                return scripting::ScriptProjectileCollisionSearchResult{
+                    result.source_carry,
+                    result.source_position_updated,
+                    result.source_x,
+                    result.source_y};
+            };
+
+        const auto decision = game_scripts_.actor_heartbeat(context);
+        if (!decision.has_value() ||
+            !decision->projectile_movement.has_value()) {
+            failure_ = game_scripts_.failure();
+            source_boundary(
+                "field.combat.weapon_projectile_lua_behavior_failed");
+            disable_record();
+            return;
+        }
+        script_initialized = true;
+        const auto& movement = decision->projectile_movement->state;
+        record.flags = movement.flags;
+        record.record_flags = movement.record_flags;
+        record.animation_resource = movement.animation_selector;
+        record.field_0x89 = movement.retry_counter;
+        record.field_0x41 = movement.linked_action_timer;
+        if (primary_record) {
+            record.heading_offset_x = movement.tile_offset_x;
+            record.heading_offset_y = movement.tile_offset_y;
+            spawn.primary_fixed_position.world_x = movement.world_x;
+            spawn.primary_fixed_position.world_y = movement.world_y;
+            record.position_x = word_from_fixed(movement.world_x);
+            record.position_y = word_from_fixed(movement.world_y);
+        }
+        if (decision->audio_event.has_value() &&
+            source_audio_event_callback_) {
+            source_audio_event_callback_(*decision->audio_event);
+        }
+        if (decision->projectile_movement->outcome ==
+            scripting::ScriptActorProjectileOutcome::hit_resolution_pending) {
+            source_boundary(
+                "field.combat.weapon_hit_resolution_pending");
+        }
+        if (decision->projectile_movement->outcome ==
+            scripting::ScriptActorProjectileOutcome::linked_followup_pending) {
+            source_boundary(
+                "field.combat.weapon_linked_action_followup_pending");
+        }
+        active = movement.active;
+        if (!active) {
+            release_slot(slot);
+        }
+    };
 
     auto spawn = field_weapon_projectiles_.begin();
     while (spawn != field_weapon_projectiles_.end()) {
-        if (spawn->primary_active) {
-            auto& primary = spawn->primary_record;
-            if ((primary.record_flags & 0x08U) != 0U) {
-                // ROM 0x14E0A's stopped branch enters 0x14F1C. It observes
-                // the finite-list bit produced by the preceding 0x4618 pass;
-                // 0x14F86 then decrements +0x41 and may retire this record.
-                if ((primary.animation_resource & 0x8000U) != 0U) {
-                    primary.field_0x41 = static_cast<std::int8_t>(
-                        primary.field_0x41 - 1);
-                    if (primary.field_0x41 < 0) {
-                        primary.flags = static_cast<std::uint8_t>(
-                            primary.flags &
-                            static_cast<std::uint8_t>(~0x01U));
-                        spawn->primary_active = false;
-                        release_slot(spawn->primary_slot);
-                    } else {
-                        source_boundary(
-                            "field.combat.weapon_linked_action_followup_pending");
-                    }
-                }
-            } else {
-                EntityCollisionRecoveryState recovery{
-                    spawn->primary_fixed_position,
-                    static_cast<std::int8_t>(primary.field_0x89)};
-                EntityCollisionSearchContext collision_context{};
-                collision_context.source_flags = primary.flags;
-
-                if (!field_weapon_collision_targets_pending_reported_) {
-                    source_boundary(
-                        "field.combat.weapon_live_actor_population_pending");
-                    field_weapon_collision_targets_pending_reported_ = true;
-                }
-
-                // 0x14E0A executes DBF from 3: four 0x14F50 terrain/recovery
-                // probes per field update. The scene's live actor table has
-                // not been imported yet, so this typed search receives no
-                // fabricated collision candidates.
-                for (std::uint8_t attempt = 0U; attempt < 4U; ++attempt) {
-                    const auto recovery_result =
-                        advance_entity_collision_recovery(
-                            recovery,
-                            [this, &spawn, &primary](
-                                const std::int32_t world_x,
-                                const std::int32_t world_y) {
-                                const auto terrain_code = evaluate_field_collision(
-                                    static_cast<std::uint16_t>(
-                                        static_cast<std::uint32_t>(world_x) >>
-                                        16U),
-                                    static_cast<std::uint16_t>(
-                                        static_cast<std::uint32_t>(world_y) >>
-                                        16U),
-                                    spawn->primary_collision_record,
-                                    field_terrain_sample_state_,
-                                    primary.flags, false);
-                                return EntityTerrainProbeSample{
-                                    static_cast<std::uint16_t>(terrain_code),
-                                    field_terrain_boundary_active_,
-                                    field_terrain_outside_bounds_marker_};
-                            },
-                            collision_context, live_collision_targets);
-                    primary.field_0x89 = static_cast<std::uint8_t>(
-                        recovery.retry_counter);
-
-                    if (recovery_result.action ==
-                            EntityCollisionRecoveryAction::terrain_probe_blocked ||
-                        recovery_result.action ==
-                            EntityCollisionRecoveryAction::retry_exhausted) {
-                        // ROM 0x14E32 marks completion, clears movement
-                        // offsets, selects list 0 for the finite impact tail,
-                        // and requests event 0x3C when D1 is zero.
-                        primary.record_flags = static_cast<std::uint8_t>(
-                            primary.record_flags | 0x09U);
-                        primary.animation_resource = 0U;
-                        primary.heading_offset_x = 0;
-                        primary.heading_offset_y = 0;
-                        if (recovery_result.outside_bounds_marker) {
-                            primary.flags = static_cast<std::uint8_t>(
-                                primary.flags &
-                                static_cast<std::uint8_t>(~0x01U));
-                            spawn->primary_active = false;
-                            release_slot(spawn->primary_slot);
-                        } else if (source_audio_event_callback_) {
-                            source_audio_event_callback_(0x003CU);
-                        }
-                        break;
-                    }
-
-                    spawn->primary_fixed_position = recovery.position;
-                    primary.position_x =
-                        word_from_fixed(recovery.position.world_x);
-                    primary.position_y =
-                        word_from_fixed(recovery.position.world_y);
-                    if (recovery_result.source_carry) {
-                        // A real target will take the ROM's linked-record
-                        // action/status path. No such field records are
-                        // populated by the current scene importer.
-                        source_boundary(
-                            "field.combat.weapon_hit_resolution_pending");
-                        break;
-                    }
-                }
-                spawn->primary_fixed_position = recovery.position;
-                primary.position_x = word_from_fixed(recovery.position.world_x);
-                primary.position_y = word_from_fixed(recovery.position.world_y);
-                primary.field_0x89 = static_cast<std::uint8_t>(
-                    recovery.retry_counter);
-            }
-        }
-
-        if (spawn->secondary_active) {
-            auto& secondary = spawn->source_record;
-            if ((secondary.animation_resource & 0x8000U) != 0U) {
-                // The copied +0xAC4E continuation observes the completion bit
-                // from the preceding 0x4618 render pass, then retires the
-                // finite descriptor without advancing its world position.
-                secondary.flags = static_cast<std::uint8_t>(
-                    secondary.flags & static_cast<std::uint8_t>(~0x01U));
-                spawn->secondary_active = false;
-                release_slot(spawn->secondary_slot);
-            }
-        }
-
+        advance_record(*spawn, true);
+        advance_record(*spawn, false);
         if (!spawn->primary_active && !spawn->secondary_active) {
             spawn = field_weapon_projectiles_.erase(spawn);
         } else {

@@ -7,6 +7,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace {
 
@@ -322,6 +323,256 @@ int main() {
                       << tick + 1U << '\n';
             return 20;
         }
+    }
+
+    const auto projectile_behavior_context = [&actor_context](
+                                                  const std::string_view actor_id,
+                                                  const ScriptActorProjectileMovement movement) {
+        auto context = actor_context(
+            "weapon_projectile", actor_id, 3U,
+            ScriptActorActionKind::none, 0U, 0U, true);
+        context.phase = ScriptActorHeartbeatPhase::behavior;
+        context.projectile_animation = ScriptActorProjectileAnimation{
+            movement.animation_selector, 3U, 0U, 0, 0, 0x1000, true};
+        context.projectile_movement = movement;
+        return context;
+    };
+
+    ScriptActorProjectileMovement moving_projectile{};
+    moving_projectile.role = ScriptActorProjectileRole::primary;
+    moving_projectile.active = true;
+    moving_projectile.flags = 0x01U;
+    moving_projectile.world_x = 10 * 0x10000;
+    moving_projectile.world_y = 20 * 0x10000;
+    moving_projectile.tile_offset_x = 0x0100;
+    moving_projectile.retry_counter = 20U;
+    std::vector<std::uint16_t> projectile_terrain_x;
+    std::uint32_t projectile_collision_count = 0U;
+    auto moving_projectile_context = projectile_behavior_context(
+        "field_weapon_slot_move", moving_projectile);
+    moving_projectile_context.projectile_terrain_probe =
+        [&projectile_terrain_x](const std::uint16_t x,
+                                const std::uint16_t) {
+            projectile_terrain_x.push_back(x);
+            return ScriptProjectileTerrainSample{0U, true, false};
+        };
+    moving_projectile_context.projectile_collision_search =
+        [&projectile_collision_count](const std::uint16_t,
+                                      const std::uint16_t,
+                                      const std::uint8_t) {
+            ++projectile_collision_count;
+            return ScriptProjectileCollisionSearchResult{};
+        };
+    const auto moving_projectile_step =
+        scripts.actor_heartbeat(moving_projectile_context);
+    if (!expect(
+            moving_projectile_step.has_value() &&
+                moving_projectile_step->projectile_movement.has_value() &&
+                projectile_terrain_x ==
+                    std::vector<std::uint16_t>{11U, 12U, 13U, 14U} &&
+                projectile_collision_count == 4U &&
+                moving_projectile_step->projectile_movement->state.world_x ==
+                    14 * 0x10000 &&
+                moving_projectile_step->projectile_movement->state.retry_counter ==
+                    16U &&
+                moving_projectile_step->projectile_movement->state.active &&
+                moving_projectile_step->projectile_movement->outcome ==
+                    ScriptActorProjectileOutcome::none &&
+                !moving_projectile_step->audio_event.has_value(),
+            "Lua projectile behavior did not execute four ordered terrain/collision probes")) {
+        std::cerr << scripts.failure() << '\n';
+        return 21;
+    }
+
+    auto outside_projectile = moving_projectile;
+    outside_projectile.tile_offset_x = 2;
+    outside_projectile.retry_counter = 7U;
+    auto outside_projectile_context = projectile_behavior_context(
+        "field_weapon_slot_outside", outside_projectile);
+    std::uint32_t outside_collision_count = 0U;
+    outside_projectile_context.projectile_terrain_probe =
+        [](const std::uint16_t, const std::uint16_t) {
+            return ScriptProjectileTerrainSample{1U, false, true};
+        };
+    outside_projectile_context.projectile_collision_search =
+        [&outside_collision_count](const std::uint16_t,
+                                   const std::uint16_t,
+                                   const std::uint8_t) {
+            ++outside_collision_count;
+            return ScriptProjectileCollisionSearchResult{};
+        };
+    const auto outside_projectile_step =
+        scripts.actor_heartbeat(outside_projectile_context);
+    if (!expect(
+            outside_projectile_step.has_value() &&
+                outside_projectile_step->projectile_movement.has_value() &&
+                outside_projectile_step->projectile_movement->state.record_flags ==
+                    0x09U &&
+                outside_projectile_step->projectile_movement->state.flags ==
+                    0U &&
+                !outside_projectile_step->projectile_movement->state.active &&
+                outside_projectile_step->projectile_movement->state.animation_selector ==
+                    0U &&
+                outside_projectile_step->projectile_movement->state.tile_offset_x ==
+                    0 &&
+                outside_projectile_step->projectile_movement->state.retry_counter ==
+                    7U &&
+                outside_projectile_step->projectile_movement->outcome ==
+                    ScriptActorProjectileOutcome::retired &&
+                outside_collision_count == 0U &&
+                outside_projectile_step->audio_event == 0x003CU,
+            "Lua projectile terminal branch did not clear outside state and request sound 0x3C")) {
+        std::cerr << scripts.failure() << '\n';
+        return 22;
+    }
+
+    auto exhausted_projectile = moving_projectile;
+    exhausted_projectile.retry_counter = 0U;
+    auto exhausted_projectile_context = projectile_behavior_context(
+        "field_weapon_slot_exhausted", exhausted_projectile);
+    std::uint32_t exhausted_collision_count = 0U;
+    exhausted_projectile_context.projectile_terrain_probe =
+        [](const std::uint16_t, const std::uint16_t) {
+            return ScriptProjectileTerrainSample{0U, true, false};
+        };
+    exhausted_projectile_context.projectile_collision_search =
+        [&exhausted_collision_count](const std::uint16_t,
+                                    const std::uint16_t,
+                                    const std::uint8_t) {
+            ++exhausted_collision_count;
+            return ScriptProjectileCollisionSearchResult{};
+        };
+    const auto exhausted_projectile_step =
+        scripts.actor_heartbeat(exhausted_projectile_context);
+    if (!expect(
+            exhausted_projectile_step.has_value() &&
+                exhausted_projectile_step->projectile_movement.has_value() &&
+                exhausted_projectile_step->projectile_movement->state.retry_counter ==
+                    0xFFU &&
+                exhausted_projectile_step->projectile_movement->state.active &&
+                exhausted_projectile_step->projectile_movement->outcome ==
+                    ScriptActorProjectileOutcome::stopped &&
+                exhausted_projectile_step->audio_event == 0x003CU &&
+                exhausted_collision_count == 0U,
+            "Lua projectile retry exhaustion did not stop before collision search")) {
+        std::cerr << scripts.failure() << '\n';
+        return 23;
+    }
+
+    auto hit_projectile = moving_projectile;
+    hit_projectile.world_x = 10 * 0x10000 + 123;
+    hit_projectile.tile_offset_x = 0x0100;
+    auto hit_projectile_context = projectile_behavior_context(
+        "field_weapon_slot_hit", hit_projectile);
+    hit_projectile_context.projectile_terrain_probe =
+        [](const std::uint16_t, const std::uint16_t) {
+            return ScriptProjectileTerrainSample{0U, true, false};
+        };
+    hit_projectile_context.projectile_collision_search =
+        [](const std::uint16_t, const std::uint16_t,
+           const std::uint8_t) {
+            return ScriptProjectileCollisionSearchResult{
+                true, true, 45U, 77U};
+        };
+    const auto hit_projectile_step =
+        scripts.actor_heartbeat(hit_projectile_context);
+    if (!expect(
+            hit_projectile_step.has_value() &&
+                hit_projectile_step->projectile_movement.has_value() &&
+                hit_projectile_step->projectile_movement->outcome ==
+                    ScriptActorProjectileOutcome::hit_resolution_pending &&
+                hit_projectile_step->projectile_movement->state.world_x ==
+                    45 * 0x10000 + 123 &&
+                hit_projectile_step->audio_event == 0x003CU,
+            "Lua projectile hit branch did not preserve fractional coordinates and request hit audio")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+
+    auto secondary_projectile = moving_projectile;
+    secondary_projectile.role = ScriptActorProjectileRole::secondary;
+    secondary_projectile.animation_selector = 0x8000U;
+    auto secondary_projectile_context = projectile_behavior_context(
+        "field_weapon_slot_secondary", secondary_projectile);
+    secondary_projectile_context.projectile_terrain_probe =
+        [](const std::uint16_t, const std::uint16_t) {
+            return ScriptProjectileTerrainSample{};
+        };
+    secondary_projectile_context.projectile_collision_search =
+        [](const std::uint16_t, const std::uint16_t,
+           const std::uint8_t) {
+            return ScriptProjectileCollisionSearchResult{};
+        };
+    const auto secondary_projectile_step =
+        scripts.actor_heartbeat(secondary_projectile_context);
+    if (!expect(
+            secondary_projectile_step.has_value() &&
+                secondary_projectile_step->projectile_movement.has_value() &&
+                !secondary_projectile_step->projectile_movement->state.active &&
+                secondary_projectile_step->projectile_movement->state.flags == 0U &&
+                secondary_projectile_step->projectile_movement->outcome ==
+                    ScriptActorProjectileOutcome::retired &&
+                !secondary_projectile_step->audio_event.has_value(),
+            "Lua secondary projectile did not retire after its finite list completed")) {
+        std::cerr << scripts.failure() << '\n';
+        return 25;
+    }
+
+    auto stopped_projectile = moving_projectile;
+    stopped_projectile.record_flags = 0x08U;
+    stopped_projectile.animation_selector = 0x8000U;
+    stopped_projectile.linked_action_timer = 0;
+    auto stopped_projectile_context = projectile_behavior_context(
+        "field_weapon_slot_stopped", stopped_projectile);
+    stopped_projectile_context.projectile_terrain_probe =
+        [](const std::uint16_t, const std::uint16_t) {
+            return ScriptProjectileTerrainSample{};
+        };
+    stopped_projectile_context.projectile_collision_search =
+        [](const std::uint16_t, const std::uint16_t,
+           const std::uint8_t) {
+            return ScriptProjectileCollisionSearchResult{};
+        };
+    const auto stopped_projectile_step =
+        scripts.actor_heartbeat(stopped_projectile_context);
+    if (!expect(
+            stopped_projectile_step.has_value() &&
+                stopped_projectile_step->projectile_movement.has_value() &&
+                stopped_projectile_step->projectile_movement->state.linked_action_timer ==
+                    -1 &&
+                !stopped_projectile_step->projectile_movement->state.active &&
+                stopped_projectile_step->projectile_movement->outcome ==
+                    ScriptActorProjectileOutcome::retired,
+            "Lua stopped projectile did not retire after its source countdown expired")) {
+        std::cerr << scripts.failure() << '\n';
+        return 26;
+    }
+
+    stopped_projectile.linked_action_timer = 2;
+    auto linked_projectile_context = projectile_behavior_context(
+        "field_weapon_slot_linked", stopped_projectile);
+    linked_projectile_context.projectile_terrain_probe =
+        [](const std::uint16_t, const std::uint16_t) {
+            return ScriptProjectileTerrainSample{};
+        };
+    linked_projectile_context.projectile_collision_search =
+        [](const std::uint16_t, const std::uint16_t,
+           const std::uint8_t) {
+            return ScriptProjectileCollisionSearchResult{};
+        };
+    const auto linked_projectile_step =
+        scripts.actor_heartbeat(linked_projectile_context);
+    if (!expect(
+            linked_projectile_step.has_value() &&
+                linked_projectile_step->projectile_movement.has_value() &&
+                linked_projectile_step->projectile_movement->state.linked_action_timer ==
+                    1 &&
+                linked_projectile_step->projectile_movement->state.active &&
+                linked_projectile_step->projectile_movement->outcome ==
+                    ScriptActorProjectileOutcome::linked_followup_pending,
+            "Lua stopped projectile did not expose the unresolved linked-action branch")) {
+        std::cerr << scripts.failure() << '\n';
+        return 27;
     }
 
     const auto player_step_context = [](
