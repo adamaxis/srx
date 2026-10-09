@@ -2,6 +2,14 @@
 -- dialogue/script-text.lua. This module maps source IDs to their stable keys.
 local Items = {}
 
+local function label_keys(ids, prefix)
+    local keys = {}
+    for index, id in ipairs(ids) do
+        keys[index] = prefix .. id
+    end
+    return keys
+end
+
 local function source_item(code)
     return {
         code = code,
@@ -36,7 +44,7 @@ end
 
 -- Stable IDs for the ROM-backed inventory-action and First Aid copy.
 function Items.ui_text_entries()
-    return {
+    local ids = {
         "equipped_prefix",
         "equipped_suffix",
         "discard_prompt",
@@ -52,11 +60,12 @@ function Items.ui_text_entries()
         "first_aid_slap_patch_used",
         "first_aid_medkit_used",
     }
+    return ids, nil, label_keys(ids, "items.text.option.")
 end
 
 -- ROM-ordered item detail labels for weapon power and armor names.
 function Items.display_text_entries()
-    return {
+    local ids = {
         "power_meager",
         "power_minor",
         "power_very_low",
@@ -85,6 +94,7 @@ function Items.display_text_entries()
         "heavy_combat_armor_top",
         "heavy_combat_armor_bottom",
     }
+    return ids, nil, label_keys(ids, "items.display.option.")
 end
 
 return Items

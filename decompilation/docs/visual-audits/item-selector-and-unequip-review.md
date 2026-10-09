@@ -1,6 +1,6 @@
 # Inventory Selector and Equip/Unequip Review
 
-Source/code audit: 2026-10-07. Full-screen re-review: 2026-10-08.
+Source/code audit: 2026-10-07. Full-screen re-review: 2026-10-08 and 2026-10-09.
 Primary source: US ROM `decompilation/input/shadowrun_genesis_us.bin`.
 Qt route: `shadowrun_ghidra_conversion_qt_field_action_qa`.
 
@@ -21,6 +21,11 @@ Qt route: `shadowrun_ghidra_conversion_qt_field_action_qa`.
   Weapon/gear state at `+0x56/+0x57/+0x4E` remains separate.
 - The Qt runtime binds these transitions to the active typed runner record and
   rebuilds the menu frame after the action returns through `0x11928`.
+- `items.lua` now returns explicit ordered text keys for the 14 inventory and
+  First Aid messages and the 27 weapon power/armor detail labels. Script QA
+  checks each stable ID/key pair; field-menu catalog QA checks that the keys
+  resolve to the imported ROM copy. This content binding did not change native
+  menu state or screen layout.
 
 ## Nine-question visual review
 
@@ -37,7 +42,8 @@ Qt route: `shadowrun_ghidra_conversion_qt_field_action_qa`.
    The equipped marker follows weapon-slot state, armor `+0x76`, or the typed
    gear slot; it is not inferred from item possession alone. Debug/Release QA
    checks armor codes `0x2C` and `0x2D`, gear `0x15`, their selected cells,
-   phase/state, and the source's two-step armor change.
+   phase/state, the source's two-step armor change, and stable Lua text keys
+   for inventory/First Aid copy and item display labels.
 3. **Are the visuals themselves correct? Yes for the reviewed routes.** Direct
    named weapon and armor icon assets match the visible icon interior. The
    one-pixel cursor and separate equipped-cell treatment are independently
@@ -140,7 +146,7 @@ under `build/conversion/qt/release/qt_runtime/field-action-qa/`.
   `34_fresh_gear_unequipped_baseline.bmp`, `34_gear_unequipped.bmp`,
   `34_gear_unequipped_frame30.bmp`.
 
-All 54 shared Debug/Release BMPs have matching SHA-256 hashes. The old
+All 55 shared Debug/Release BMPs have matching SHA-256 hashes. The old
 debug-only `item-cell-zoom.bmp` is a 4x nearest-neighbor crop; each four-pixel
 display edge represents one source pixel and is not a four-pixel outline.
 
@@ -153,6 +159,16 @@ by SHA-256 in the current QA set. This internal renderer comparison still
 does not provide an independent Genesis image of the exact equip/unequip
 transition, so `EQUIP-02` remains open.
 
+On 2026-10-09, the current Debug and Release runs emitted 55 shared full-screen
+frames, including the default-actor field baseline. Four contact sheets were
+regenerated and reviewed across the inventory action, discard, weapon/Clips,
+armor replacement, and gear sequences. The separate First Aid, automatic-use,
+and Trade sets add 7, 6, and 10 matching frames; those complete compositions
+were also reviewed. Native-size checkpoints for the action row, unequipped
+inventory, First Aid target, automatic-use result, and Trade confirmation
+were opened individually. No old button row, stale overlay, or new text overlap
+appeared after the Lua key migration.
+
 ## Outcome
 
 - **Code changed:** the typed armor toggle now follows the ROM's any-armor
@@ -164,8 +180,9 @@ transition, so `EQUIP-02` remains open.
   possession; equipment is typed state; armor replacement is two-step; the
   complete action strip and parent redraw are checked.
 - **Internally checked:** Debug and Release builds; the field action QA and
-  inventory action conversion test pass in both. All 54 complete frames match
-  across configurations and were reviewed as full screens. The test checks
+  inventory action conversion test pass in both. All 55 field-action frames
+  and the First Aid, automatic-use, and Trade route sets match across
+  configurations. The test checks
   direct asset pixels, exact selector geometry, audio events, 30-frame holds,
   full-grid fresh-render matches, and complete return screens.
 - **Independently visually checked:** section 06 frames `002550`, `002560`,

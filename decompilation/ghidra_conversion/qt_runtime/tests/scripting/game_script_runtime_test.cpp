@@ -705,6 +705,97 @@ int main() {
         return 1;
     }
 
+    const auto item_ui_text =
+        scripts.menu("items", "ui_text_entries", "items.text", "catalog");
+    constexpr std::array<std::string_view, 14> kItemUiTextIds{{
+        "equipped_prefix", "equipped_suffix", "discard_prompt",
+        "cannot_discard", "cannot_trade", "trade_recipient",
+        "trade_full_inventory", "automatic_use", "first_aid_prompt",
+        "first_aid_label", "first_aid_cancel", "first_aid_not_injured",
+        "first_aid_slap_patch_used", "first_aid_medkit_used"}};
+    constexpr std::array<std::string_view, 14> kItemUiTextKeys{{
+        "items.text.option.equipped_prefix",
+        "items.text.option.equipped_suffix",
+        "items.text.option.discard_prompt",
+        "items.text.option.cannot_discard",
+        "items.text.option.cannot_trade",
+        "items.text.option.trade_recipient",
+        "items.text.option.trade_full_inventory",
+        "items.text.option.automatic_use",
+        "items.text.option.first_aid_prompt",
+        "items.text.option.first_aid_label",
+        "items.text.option.first_aid_cancel",
+        "items.text.option.first_aid_not_injured",
+        "items.text.option.first_aid_slap_patch_used",
+        "items.text.option.first_aid_medkit_used"}};
+    const auto item_display_text = scripts.menu(
+        "items", "display_text_entries", "items.display", "catalog");
+    constexpr std::array<std::string_view, 27> kItemDisplayTextIds{{
+        "power_meager", "power_minor", "power_very_low", "power_low",
+        "power_very_light", "power_light", "power_medium",
+        "power_medium_high", "power_high", "power_brutal",
+        "power_severe", "power_massive", "power_incredible",
+        "armor_vest_top", "armor_vest_bottom", "armor_clothing_top",
+        "armor_clothing_bottom", "armor_jacket_top", "armor_jacket_bottom",
+        "armor_plates_top", "armor_plates_bottom", "lined_duster_top",
+        "lined_duster_bottom", "light_combat_armor_top",
+        "light_combat_armor_bottom", "heavy_combat_armor_top",
+        "heavy_combat_armor_bottom"}};
+    constexpr std::array<std::string_view, 27> kItemDisplayTextKeys{{
+        "items.display.option.power_meager",
+        "items.display.option.power_minor",
+        "items.display.option.power_very_low",
+        "items.display.option.power_low",
+        "items.display.option.power_very_light",
+        "items.display.option.power_light",
+        "items.display.option.power_medium",
+        "items.display.option.power_medium_high",
+        "items.display.option.power_high",
+        "items.display.option.power_brutal",
+        "items.display.option.power_severe",
+        "items.display.option.power_massive",
+        "items.display.option.power_incredible",
+        "items.display.option.armor_vest_top",
+        "items.display.option.armor_vest_bottom",
+        "items.display.option.armor_clothing_top",
+        "items.display.option.armor_clothing_bottom",
+        "items.display.option.armor_jacket_top",
+        "items.display.option.armor_jacket_bottom",
+        "items.display.option.armor_plates_top",
+        "items.display.option.armor_plates_bottom",
+        "items.display.option.lined_duster_top",
+        "items.display.option.lined_duster_bottom",
+        "items.display.option.light_combat_armor_top",
+        "items.display.option.light_combat_armor_bottom",
+        "items.display.option.heavy_combat_armor_top",
+        "items.display.option.heavy_combat_armor_bottom"}};
+    bool item_text_keys_match = item_ui_text.has_value() &&
+        item_display_text.has_value() &&
+        item_ui_text->choices.size() == kItemUiTextIds.size() &&
+        item_display_text->choices.size() == kItemDisplayTextIds.size();
+    if (item_text_keys_match) {
+        for (std::size_t index = 0; index < kItemUiTextIds.size(); ++index) {
+            const auto& choice = item_ui_text->choices[index];
+            item_text_keys_match = item_text_keys_match &&
+                choice.id == kItemUiTextIds[index] &&
+                choice.label_key == kItemUiTextKeys[index] &&
+                scripts.dialogue_text(choice.label_key) != nullptr;
+        }
+        for (std::size_t index = 0; index < kItemDisplayTextIds.size();
+             ++index) {
+            const auto& choice = item_display_text->choices[index];
+            item_text_keys_match = item_text_keys_match &&
+                choice.id == kItemDisplayTextIds[index] &&
+                choice.label_key == kItemDisplayTextKeys[index] &&
+                scripts.dialogue_text(choice.label_key) != nullptr;
+        }
+    }
+    if (!expect(item_text_keys_match,
+                "Lua item UI or display text keys changed source order")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
     const auto magic_spells =
         scripts.menu("magic", "spells", "magic.spells", "catalog");
     constexpr std::array<std::string_view, 13> kMagicSpellIds{{
