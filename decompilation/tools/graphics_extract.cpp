@@ -13,6 +13,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -174,32 +175,6 @@ void write_field_menu_text_catalog(
          index < pocket_secretary_text.options.size(); ++index) {
         emit("pocket-secretary.option." + std::to_string(index),
              pocket_secretary_text.options[index]);
-    }
-    const auto hotel_options_text =
-        shadowrun::graphics::read_genesis_hotel_options_text(rom);
-    emit("hotel.title", hotel_options_text.title);
-    emit("hotel.separator", hotel_options_text.separator);
-    for (std::size_t index = 0; index < hotel_options_text.options.size();
-         ++index) {
-        emit("hotel.option." + std::to_string(index),
-             hotel_options_text.options[index]);
-    }
-    for (std::size_t index = 0;
-         index < hotel_options_text.checkout_question.size(); ++index) {
-        emit("hotel.checkout-question." + std::to_string(index),
-             hotel_options_text.checkout_question[index]);
-    }
-    for (std::size_t index = 0;
-         index < hotel_options_text.checkout_options.size(); ++index) {
-        emit("hotel.checkout-option." + std::to_string(index),
-             hotel_options_text.checkout_options[index]);
-    }
-    emit("hotel.medical-attention-suffix",
-         hotel_options_text.medical_attention_suffix);
-    for (std::size_t index = 0;
-         index < hotel_options_text.recovery_message.size(); ++index) {
-        emit("hotel.recovery-message." + std::to_string(index),
-             hotel_options_text.recovery_message[index]);
     }
     const auto cyberdeck_unavailable_text =
         shadowrun::graphics::read_genesis_cyberdeck_unavailable_text(rom);
@@ -596,7 +571,7 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         {"field.security-terminal.floor.5", 0x11CF3CU},
     }};
 
-    output << "-- Generated from the US ROM dialogue text records.\n"
+    output << "-- Generated from the US ROM dialogue and menu text records.\n"
               "-- Pipe characters preserve source segment/page boundaries.\n"
               "return {\n    texts = {\n";
     for (std::size_t record_index = 0; record_index < records.size();
@@ -627,7 +602,38 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
             text = segments.front();
         }
         write_lua_string(text);
-        output << (record_index + 1U == records.size() ? "\n" : ",\n");
+        output << ",\n";
+    }
+    const auto hotel_text =
+        shadowrun::graphics::read_genesis_hotel_options_text(rom);
+    const auto write_text_entry = [&output, &write_lua_string](
+                                      const std::string_view key,
+                                      const std::string_view text) {
+        output << "        [";
+        write_lua_string(key);
+        output << "] = ";
+        write_lua_string(text);
+        output << ",\n";
+    };
+    write_text_entry("hotel.options.title", hotel_text.title);
+    write_text_entry("hotel.options.separator", hotel_text.separator);
+    write_text_entry("hotel.option.karma_screen", hotel_text.options[0]);
+    write_text_entry("hotel.option.check_out", hotel_text.options[1]);
+    write_text_entry(
+        "hotel.checkout.title",
+        hotel_text.checkout_question[0] + "|" +
+            hotel_text.checkout_question[1]);
+    write_text_entry("hotel.option.checkout_yes",
+                     hotel_text.checkout_options[0]);
+    write_text_entry("hotel.option.checkout_no",
+                     hotel_text.checkout_options[2]);
+    write_text_entry("hotel.status.medical_attention_suffix",
+                     hotel_text.medical_attention_suffix);
+    for (std::size_t index = 2U;
+         index < hotel_text.recovery_message.size();
+         ++index) {
+        write_text_entry("hotel.status.recovery." + std::to_string(index),
+                         hotel_text.recovery_message[index]);
     }
     output << "    },\n}\n";
     if (!output) {
@@ -1369,8 +1375,10 @@ void write_asset_readme(const std::filesystem::path& root) {
               "The shared field dialogue frames and A/B/C marker sprites are "
               "grouped under dialogue/panel, with speaker portraits under "
               "dialogue/portraits. ROM-derived Stoker and field interaction "
-              "text is emitted as `dialogue/script-text.lua` and consumed by "
-              "the gameplay script runtime. "
+              "text, along with Hotel menu and status text, are emitted as "
+              "`dialogue/script-text.lua` and consumed by the gameplay script "
+              "runtime. `gameplay/scripts/hotel.lua` provides the Hotel page "
+              "choice IDs. "
               "Separately traced cinematic resources belong under movies/<scene>; "
               "they must not be mixed into intro or field assets.\n\n"
            << "Audio is emitted here only as complete Windows-playable lossless "

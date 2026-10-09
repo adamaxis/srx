@@ -1,6 +1,5 @@
 #pragma once
 
-#include "field_menu_text_catalog.hpp"
 #include "shadowrun_ghidra/menus/hotel_entity_status_conversion.hpp"
 #include "shadowrun_ghidra/menus/hotel_options_menu_conversion.hpp"
 #include "shadowrun_ghidra/rendering/display_service_batch_conversion.hpp"
@@ -42,6 +41,23 @@ enum class HotelMenuEvent {
     mode_action,
 };
 
+struct HotelMenuChoiceText {
+    std::string id;
+    std::string label;
+};
+
+// Host text and stable choice IDs loaded from the ROM-backed Lua text table
+// and gameplay/scripts/hotel.lua. Layout and cursor presentation stay native.
+struct HotelMenuContent {
+    std::string title;
+    std::string separator;
+    std::array<HotelMenuChoiceText, 2> options{};
+    std::array<std::string, 2> checkout_question{};
+    std::array<HotelMenuChoiceText, 2> checkout_choices{};
+    std::string medical_attention_suffix;
+    std::array<std::string, 5> recovery_message{};
+};
+
 // Typed controller and presenter for the Hotel route entered after a paid
 // room prompt. State transitions reuse the ROM-derived blocking menu
 // conversions, while this Qt owner presents each full-screen page directly.
@@ -61,7 +77,7 @@ public:
                const QImage& options_cursor,
                const QImage& checkout_cursor,
                const std::array<QImage, 7>& random_patterns,
-               const FieldMenuTextCatalog& text,
+               const HotelMenuContent& content,
                const TextPainter& draw_text) const;
 
     bool open() const noexcept { return phase_ != HotelMenuPhase::closed; }

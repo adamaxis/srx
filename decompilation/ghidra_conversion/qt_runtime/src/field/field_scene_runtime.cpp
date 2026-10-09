@@ -3980,6 +3980,7 @@ bool FieldSceneRuntime::bootstrap(
     command_overview_.close();
     field_dialogue_.close();
     hotel_menu_.close();
+    hotel_menu_content_ = HotelMenuContent{};
     hotel_karma_skills_.close_to_parent();
     field_mode_text_.close();
     field_interaction_.reset_session();
@@ -4068,6 +4069,9 @@ bool FieldSceneRuntime::bootstrap(
         return false;
     }
     field_menu_text_ = menu_text.catalog;
+    if (!load_hotel_menu_content()) {
+        return false;
+    }
 
     // Dialogue is optional during initial field bootstrap because the player
     // does not start inside an NPC prompt. Load it once here so the later
@@ -6574,6 +6578,99 @@ void FieldSceneRuntime::begin_hotel_menu() {
     source_boundary("field.hotel.entity_status.opened");
 }
 
+bool FieldSceneRuntime::load_hotel_menu_content() {
+    using scripting::ScriptMenuDefinition;
+    constexpr std::array<std::string_view, 2> kOptionIds{{
+        "karma_screen", "check_out"}};
+    constexpr std::array<std::string_view, 2> kCheckoutIds{{
+        "checkout_yes", "checkout_no"}};
+    const auto fail = [this](std::string message) {
+        failure_ = std::move(message);
+        source_boundary("field.bootstrap.hotel_menu_script_invalid");
+        return false;
+    };
+    const auto options = game_scripts_.menu(
+        "hotel", "options", "hotel", "options");
+    if (!options.has_value()) {
+        return fail(game_scripts_.failure().empty()
+                        ? "Hotel options menu script is unavailable"
+                        : game_scripts_.failure());
+    }
+    const auto checkout = game_scripts_.menu(
+        "hotel", "checkout", "hotel", "checkout");
+    if (!checkout.has_value()) {
+        return fail(game_scripts_.failure().empty()
+                        ? "Hotel checkout menu script is unavailable"
+                        : game_scripts_.failure());
+    }
+    if (options->choices.size() != kOptionIds.size() ||
+        checkout->choices.size() != kCheckoutIds.size()) {
+        return fail("Hotel Lua menus do not match the source choice count");
+    }
+    HotelMenuContent content{};
+    const auto copy_text = [this](const std::string_view key,
+                                  std::string& destination) {
+        const auto* source = game_scripts_.dialogue_text(key);
+        if (source == nullptr) {
+            return false;
+        }
+        destination = *source;
+        return true;
+    };
+    const auto* title = game_scripts_.dialogue_text(options->title_key);
+    if (title == nullptr || !copy_text("hotel.options.separator",
+                                      content.separator)) {
+        return fail("Hotel options title or separator text is missing");
+    }
+    content.title = *title;
+    for (std::size_t index = 0; index < kOptionIds.size(); ++index) {
+        const auto& choice = options->choices[index];
+        if (choice.id != kOptionIds[index] ||
+            !copy_text(choice.label_key, content.options[index].label)) {
+            return fail("Hotel options Lua choice ID or label is invalid");
+        }
+        content.options[index].id = choice.id;
+    }
+    const auto* checkout_question =
+        game_scripts_.dialogue_text(checkout->title_key);
+    if (checkout_question == nullptr) {
+        return fail("Hotel checkout question text is missing");
+    }
+    const auto question_break = checkout_question->find('|');
+    if (question_break == std::string::npos ||
+        checkout_question->find('|', question_break + 1U) !=
+            std::string::npos) {
+        return fail("Hotel checkout question must contain two source rows");
+    }
+    content.checkout_question[0] =
+        checkout_question->substr(0U, question_break);
+    content.checkout_question[1] =
+        checkout_question->substr(question_break + 1U);
+    for (std::size_t index = 0; index < kCheckoutIds.size(); ++index) {
+        const auto& choice = checkout->choices[index];
+        if (choice.id != kCheckoutIds[index] ||
+            !copy_text(choice.label_key,
+                       content.checkout_choices[index].label)) {
+            return fail("Hotel checkout Lua choice ID or label is invalid");
+        }
+        content.checkout_choices[index].id = choice.id;
+    }
+    if (!copy_text("hotel.status.medical_attention_suffix",
+                   content.medical_attention_suffix)) {
+        return fail("Hotel medical-attention text is missing");
+    }
+    for (std::size_t index = 2U; index < content.recovery_message.size();
+         ++index) {
+        if (!copy_text("hotel.status.recovery." + std::to_string(index),
+                       content.recovery_message[index])) {
+            return fail("Hotel recovery text is incomplete");
+        }
+    }
+    hotel_menu_content_ = std::move(content);
+    source_boundary("field.hotel.menu_content.loaded_from_lua");
+    return true;
+}
+
 HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
     const std::uint16_t events) {
     const auto result = hotel_menu_.advance_controller_events(events);
@@ -7772,12 +7869,12 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
         draw_hotel_menu_text(
             painter, 96, 176, field_menu_text_.attributes_upgrade_prompt,
             HotelMenuPaletteLine::checkout);
-        draw_hotel_menu_text(
-            painter, 200, 168, field_menu_text_.hotel_checkout_options[0],
-            HotelMenuPaletteLine::checkout);
-        draw_hotel_menu_text(
-            painter, 200, 184, field_menu_text_.hotel_checkout_options[2],
-            HotelMenuPaletteLine::checkout);
+        draw_hotel_menu_text(painter, 200, 168,
+                             field_menu_text_.action_choice_yes,
+                             HotelMenuPaletteLine::checkout);
+        draw_hotel_menu_text(painter, 200, 184,
+                             field_menu_text_.action_choice_no,
+                             HotelMenuPaletteLine::checkout);
         const auto cursor_y =
             menu.upgrade_prompt_selection() == 0U
                 ? 168
@@ -8995,7 +9092,7 @@ void FieldSceneRuntime::paint(QPainter& painter) const {
         hotel_menu_.paint(
             painter, pocket_secretary_grid_, hotel_options_cursor_,
             hotel_checkout_cursor_, dismiss_runner_random_grid_patterns_,
-            field_menu_text_,
+            hotel_menu_content_,
             [this](QPainter& target, const int x, const int y,
                    const std::string_view text,
                    const HotelMenuPaletteLine palette_line) {

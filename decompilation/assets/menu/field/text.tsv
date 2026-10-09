@@ -71,21 +71,6 @@ pocket-secretary.option.1	Group Items
 pocket-secretary.option.2	Cyberdeck
 pocket-secretary.option.3	Dismiss Runner
 pocket-secretary.option.4	Save/Load Game
-hotel.title	" Hotel Options"
-hotel.separator	[\\\\\\\\\\\\\\
-hotel.option.0	"  Karma Screen"
-hotel.option.1	"  Check Out"
-hotel.checkout-question.0	Do you wish to
-hotel.checkout-question.1	"  check out?"
-hotel.checkout-option.0	Yes
-hotel.checkout-option.1	""
-hotel.checkout-option.2	No
-hotel.medical-attention-suffix	" needs medical attention!"
-hotel.recovery-message.0	""
-hotel.recovery-message.1	""
-hotel.recovery-message.2	"     A steaming mug of"
-hotel.recovery-message.3	"   soykaf would be just"
-hotel.recovery-message.4	"   wiz about now."
 pocket-secretary.cyberdeck.line.0	" You do not have"
 pocket-secretary.cyberdeck.line.1	"  a cyberdeck!!"
 pocket-secretary.cyberdeck.line.2	" Keep looking."

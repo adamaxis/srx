@@ -46,6 +46,47 @@ int main() {
         return 1;
     }
 
+    const auto hotel_options =
+        scripts.menu("hotel", "options", "hotel", "options");
+    const auto hotel_checkout =
+        scripts.menu("hotel", "checkout", "hotel", "checkout");
+    const auto* hotel_title = scripts.dialogue_text("hotel.options.title");
+    const auto* hotel_separator =
+        scripts.dialogue_text("hotel.options.separator");
+    const auto* checkout_question =
+        scripts.dialogue_text("hotel.checkout.title");
+    const auto* medical_attention =
+        scripts.dialogue_text("hotel.status.medical_attention_suffix");
+    const auto* recovery_last =
+        scripts.dialogue_text("hotel.status.recovery.4");
+    if (!expect(hotel_options.has_value() &&
+                    hotel_options->choices.size() == 2U &&
+                    hotel_options->choices[0].id == "karma_screen" &&
+                    hotel_options->choices[1].id == "check_out" &&
+                    hotel_options->choices[0].label_key ==
+                        "hotel.option.karma_screen" &&
+                    hotel_options->choices[1].label_key ==
+                        "hotel.option.check_out" &&
+                    hotel_checkout.has_value() &&
+                    hotel_checkout->choices.size() == 2U &&
+                    hotel_checkout->choices[0].id == "checkout_yes" &&
+                    hotel_checkout->choices[1].id == "checkout_no" &&
+                    hotel_title != nullptr &&
+                    *hotel_title == " Hotel Options" &&
+                    hotel_separator != nullptr &&
+                    *hotel_separator ==
+                        std::string("[") + std::string(14U, '\\') &&
+                    checkout_question != nullptr &&
+                    *checkout_question == "Do you wish to|  check out?" &&
+                    medical_attention != nullptr &&
+                    *medical_attention == " needs medical attention!" &&
+                    recovery_last != nullptr &&
+                    *recovery_last == "   wiz about now.",
+                "Hotel menu choices or ROM-imported Lua text did not load")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
     const auto shop = scripts.shop_definition("ares_weapon_emporium");
     if (!expect(shop.has_value() && shop->groups.size() == 6U,
                 "Lua shop catalog did not define the Ares selector groups") ||

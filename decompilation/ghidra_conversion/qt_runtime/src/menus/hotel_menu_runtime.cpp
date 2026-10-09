@@ -242,7 +242,7 @@ void HotelMenuRuntime::paint(
     QPainter& painter, const QImage& grid,
     const QImage& options_cursor, const QImage& checkout_cursor,
     const std::array<QImage, 7>& random_patterns,
-    const FieldMenuTextCatalog& text, const TextPainter& draw_text) const {
+    const HotelMenuContent& content, const TextPainter& draw_text) const {
     // Every Hotel page starts from a complete black composition and the
     // source 28x21 grid. No dialogue panel or previous page controls survive.
     painter.fillRect(QRect(0, 0, 320, 224), Qt::black);
@@ -271,7 +271,7 @@ void HotelMenuRuntime::paint(
             draw_text(painter, 88, y, entity_names_[slot],
                       HotelMenuPaletteLine::status_and_options);
             draw_text(painter, 32, y + 8,
-                      text.hotel_medical_attention_suffix,
+                      content.medical_attention_suffix,
                       HotelMenuPaletteLine::status_and_options);
             ++attention_row;
         }
@@ -281,23 +281,23 @@ void HotelMenuRuntime::paint(
         const auto recovery_y =
             40 + 24 * static_cast<int>(medical_attention_count_) + 16;
         for (std::size_t line = 2U;
-             line < text.hotel_recovery_message.size(); ++line) {
+             line < content.recovery_message.size(); ++line) {
             draw_text(painter, 32,
                       recovery_y + static_cast<int>(line - 2U) * 8,
-                      text.hotel_recovery_message[line],
+                      content.recovery_message[line],
                       HotelMenuPaletteLine::status_and_options);
         }
         return;
     }
 
     if (phase_ == HotelMenuPhase::options) {
-        draw_text(painter, 72, 48, text.hotel_title,
+        draw_text(painter, 72, 48, content.title,
                   HotelMenuPaletteLine::status_and_options);
-        draw_text(painter, 72, 56, text.hotel_separator,
+        draw_text(painter, 72, 56, content.separator,
                   HotelMenuPaletteLine::status_and_options);
-        for (std::size_t row = 0; row < text.hotel_options.size(); ++row) {
+        for (std::size_t row = 0; row < content.options.size(); ++row) {
             draw_text(painter, 72, 72 + static_cast<int>(row) * 8,
-                      text.hotel_options[row],
+                      content.options[row].label,
                       HotelMenuPaletteLine::status_and_options);
         }
         const auto row = static_cast<int>(options_state_.selection);
@@ -307,19 +307,16 @@ void HotelMenuRuntime::paint(
         return;
     }
 
-    for (std::size_t row = 0; row < text.hotel_checkout_question.size();
+    for (std::size_t row = 0; row < content.checkout_question.size();
          ++row) {
         draw_text(painter, 80, 72 + static_cast<int>(row) * 8,
-                  text.hotel_checkout_question[row],
+                  content.checkout_question[row],
                   HotelMenuPaletteLine::checkout);
     }
-    for (std::size_t row = 0; row < text.hotel_checkout_options.size(); ++row) {
-        if (!text.hotel_checkout_options[row].empty()) {
-            draw_text(painter, 128, 96 + static_cast<int>(row) * 8,
-                      text.hotel_checkout_options[row],
-                      HotelMenuPaletteLine::checkout);
-        }
-    }
+    draw_text(painter, 128, 96, content.checkout_choices[0].label,
+              HotelMenuPaletteLine::checkout);
+    draw_text(painter, 128, 112, content.checkout_choices[1].label,
+              HotelMenuPaletteLine::checkout);
     if (!checkout_cursor.isNull()) {
         painter.drawImage(
             // C3B2 doubles FFF0DC for this cursor table because FFF0FC is

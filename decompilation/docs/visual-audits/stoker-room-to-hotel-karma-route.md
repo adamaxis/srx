@@ -139,6 +139,11 @@ an independent Genesis visual oracle.
 - **Code changed:** checkout now advances its ROM-matched lower-bezel effect
   and places the No selector on the second text row, matching the two-row
   stride derived from `0xC376`/`0xC3B2` and the `0xE387E` Yes/No text.
+- **Code changed:** `gameplay/scripts/hotel.lua` now supplies both cursor-menu
+  choice lists to the live Hotel route. ROM-derived Hotel labels and status
+  text load from `assets/dialogue/script-text.lua`; their duplicate rows were
+  removed from the general field text catalog. The native Hotel presenter
+  keeps layout and input ownership.
 - **Code changed:** the Hotel QA follows the physical doorway and normal
   input through the live `FieldSceneRuntime`, dialogue, payment, Hotel,
   Karma, and checkout handlers; no test helper injects a dialogue, payment

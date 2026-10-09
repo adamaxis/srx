@@ -825,6 +825,7 @@ private:
     void paint_command_overview_clips(QPainter& painter) const;
     void paint_field_shop(QPainter& painter) const;
     void begin_hotel_menu();
+    bool load_hotel_menu_content();
     bool load_field_elevator_selector_assets(
         const ConversionAssetCatalog& catalog);
     bool open_field_elevator_selector();
@@ -954,6 +955,7 @@ private:
     std::optional<scripting::ScriptShopDefinition> field_shop_definition_;
     FieldDialogueRuntime field_dialogue_;
     HotelMenuRuntime hotel_menu_{};
+    HotelMenuContent hotel_menu_content_{};
     FieldModeTextRuntime field_mode_text_{};
     FieldInteractionRuntime field_interaction_;
     ElevatorSelectorRuntime field_elevator_selector_{};

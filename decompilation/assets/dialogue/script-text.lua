@@ -1,4 +1,4 @@
--- Generated from the US ROM dialogue text records.
+-- Generated from the US ROM dialogue and menu text records.
 -- Pipe characters preserve source segment/page boundaries.
 return {
     texts = {
@@ -45,6 +45,17 @@ return {
         ["field.security-terminal.floor.2"] = "third floor.>",
         ["field.security-terminal.floor.3"] = "fourth floor.>",
         ["field.security-terminal.floor.4"] = "fifth floor.>",
-        ["field.security-terminal.floor.5"] = "sixth floor.>"
+        ["field.security-terminal.floor.5"] = "sixth floor.>",
+        ["hotel.options.title"] = " Hotel Options",
+        ["hotel.options.separator"] = "[\\\\\\\\\\\\\\\\\\\\\\\\\\\\",
+        ["hotel.option.karma_screen"] = "  Karma Screen",
+        ["hotel.option.check_out"] = "  Check Out",
+        ["hotel.checkout.title"] = "Do you wish to|  check out?",
+        ["hotel.option.checkout_yes"] = "Yes",
+        ["hotel.option.checkout_no"] = "No",
+        ["hotel.status.medical_attention_suffix"] = " needs medical attention!",
+        ["hotel.status.recovery.2"] = "     A steaming mug of",
+        ["hotel.status.recovery.3"] = "   soykaf would be just",
+        ["hotel.status.recovery.4"] = "   wiz about now.",
     },
 }

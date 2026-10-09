@@ -143,20 +143,29 @@ access.
 - `gameplay/scripts/shop.lua` is the shared shop catalog. It currently defines
   the ordered Ares categories and stock; shops can reuse those categories
   while native services continue to validate each transaction.
+- `gameplay/scripts/hotel.lua` declares stable choice IDs for the Hotel
+  Options and checkout cursor menus. `FieldSceneRuntime` loads both menu
+  definitions through `GameScriptRuntime::menu`, validates their source order,
+  and binds their ROM text keys into `HotelMenuRuntime`. Its typed C++ state
+  still owns cursor input, layout, the E660 animation, status service, page
+  transitions, and the separate Hotel Karma spending screen.
 - `assets/dialogue/script-text.lua` is the ROM-imported shared text table for
-  the Stoker motel and field object-interaction routes. Their native handlers
-  retain stable text keys and resolve the strings through the Lua runtime.
+  Stoker dialogue, field object interactions, and Hotel menu/status text.
+  Native presenters resolve those keys through the Lua runtime. The Hotel
+  text no longer duplicates rows in `menu/field/text.tsv`.
 - Future `quests/` and `scenes/` modules should call the same `game` facade.
   Menus and dialogue use the generic Qt presenters, and Lua supplies the
   available stable choice ids and story text keys.
 
 The current slice connects the New Game trigger, native-backed story facts,
-the Michael quest branch, shared motel and debt menus, room/debt service calls,
-arrival/farewell/result dialogue, and the Qt presenters. Stoker and field
-interaction text is now Lua content. Script menus carry
+the Michael quest branch, shared motel and debt menus, Hotel menu definitions,
+room/debt service calls, arrival/farewell/result dialogue, and the Qt
+presenters. Stoker, field interaction, and Hotel menu text is Lua content.
+Script dialogue menus carry
 their text profile and optional speaker into one generic panel projection;
-menu choices use generic presentation roles. The native presenter draws panels
-and applies source input rules. Wallet and quest effects remain native service
+menu choices use generic presentation roles. Hotel cursor-menu choices come
+from a shared Lua module while the native Hotel presenter draws the source
+layout and applies input rules. Wallet and quest effects remain native service
 implementations. Ares shop stock is script data, but its selector, transaction
 loop, and native UI still run in C++. Other building dialogue, title/field
 menus, item operations, inventory screens, actor placement/animation, audio
