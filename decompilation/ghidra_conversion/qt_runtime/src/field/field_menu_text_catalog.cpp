@@ -659,6 +659,13 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         magic_spell_names, result.errors, nullptr,
         &result.catalog.magic_spell_ids);
     result.catalog.magic_spell_names = std::move(magic_spell_names);
+    std::array<std::string, kMagicSpellTextCount> magic_spell_descriptions{};
+    load_script_menu_labels(
+        scripts, "magic", "spell_descriptions",
+        "magic.spells.description", "catalog", result.catalog.magic_spell_ids,
+        magic_spell_descriptions, result.errors);
+    result.catalog.magic_spell_descriptions =
+        std::move(magic_spell_descriptions);
     std::array<std::string, kMagicPanelTextCount> magic_panel_text{};
     load_script_menu_labels(
         scripts, "magic", "panel_text_entries", "magic.panel.text",
@@ -996,15 +1003,10 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                                           key);
             } else {
                 magic_spell_description_found[index] = true;
-                auto description = value;
-                std::size_t position = 0U;
-                while ((position = description.find("\\n", position)) !=
-                       std::string::npos) {
-                    description.replace(position, 2U, "\n");
-                    ++position;
+                if (value.empty()) {
+                    result.errors.emplace_back(
+                        "empty Magic spell description text: " + key);
                 }
-                result.catalog.magic_spell_descriptions[index] =
-                    std::move(description);
             }
             continue;
         }
@@ -1039,6 +1041,9 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     decode_newlines(result.catalog.action_automatic_use_message);
     decode_newlines(result.catalog.magic_panel_metric_labels);
     decode_newlines(result.catalog.magic_force_posture_labels);
+    for (auto& description : result.catalog.magic_spell_descriptions) {
+        decode_newlines(description);
+    }
     for (auto& detail : result.catalog.notebook_mr_johnson_details) {
         decode_newlines(detail);
     }

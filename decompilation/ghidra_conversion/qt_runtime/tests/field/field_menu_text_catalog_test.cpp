@@ -128,6 +128,24 @@ int main() {
         "Flame Dart", "Flame Bolt", "Hellblast", "Invisibility", "Sleep",
         "Stink", "Super Barrier", "Mana Zap", "Mana Blast", "Mana Storm",
         "Rockskin", "Heal Wounds", "Confusion"}};
+    const std::array<std::string, kMagicSpellTextCount>
+        expected_magic_spell_descriptions{{
+            "A small burst of fire that\ndelivers a nasty burn.",
+            "A large ball of fire which\ncauses a vicious burn.",
+            "Creates fire to incinerate\nall in its area of effect!",
+            "Renders a person invisible.",
+            "An area attack on one's\nmental state, fatiguing them\n"
+            "into unconciousness.",
+            "An area effect spell which\nsickens all targets with\n"
+            "a foul stench.",
+            "Creates a magical wall which\ninhibits everything.",
+            "A small zap of energy that\ndelivers a nasty jolt.",
+            "A burst of magical energy\nthat causes a vicious jolt.",
+            "A magical conflagration\nengulfing all within its\narea of effect!",
+            "Hardens flesh to resist\nthe effects of damage.",
+            "Cures damage to characters.",
+            "An area effect spell which\ndistracts all enemies with\n"
+            "sensory overload."}};
     const std::array<std::string, kMagicPanelTextCount> expected_magic_panel_text_ids{{
         "defense_title", "force_posture_heading", "success_label",
         "force_label", "availability_label", "panel_metric_labels",
@@ -300,6 +318,8 @@ int main() {
             "Force\n\n\nPosture" ||
         text.catalog.magic_spell_ids != expected_magic_spell_ids ||
         text.catalog.magic_spell_names != expected_magic_spell_names ||
+        text.catalog.magic_spell_descriptions !=
+            expected_magic_spell_descriptions ||
         text.catalog.magic_spell_descriptions[0] !=
             "A small burst of fire that\ndelivers a nasty burn." ||
         text.catalog.magic_spell_descriptions[12] !=

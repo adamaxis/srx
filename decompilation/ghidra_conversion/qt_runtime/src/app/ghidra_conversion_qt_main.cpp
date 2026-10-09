@@ -19448,15 +19448,21 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 int title_ink = 0;
+                bool title_leading_blank_cleared = true;
                 for (int y = 48; y < 56; ++y) {
                     for (int x = 112; x < 256; ++x) {
                         if (page_scene.pixel(x, y) !=
                             actual_scene.pixel(x, y)) {
                             ++title_ink;
                         }
+                        if (x < 120 &&
+                            actual_scene.pixelColor(x, y) !=
+                                QColor(Qt::black)) {
+                            title_leading_blank_cleared = false;
+                        }
                     }
                 }
-                if (title_ink == 0 ||
+                if (title_ink == 0 || !title_leading_blank_cleared ||
                     !field_command_shell_survives(actual_scene, asset_root) ||
                     !field_hud_chrome_survives(actual_scene, asset_root) ||
                     !field_hud_face_family_survives(

@@ -9288,8 +9288,14 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         CommandOverviewMagicState::magical_defense_wait) {
         // ROM 0xFBA6 writes C89C0 at name-plane C31C (screen 112,48), then
         // 0x106DA writes 13-tile strips at C51E/C69E (120,80 and 120,104).
-        // Keep the page and runner/HUD below these overlays; this fallback
-        // does not call 0x0FFE to clear Plane A.
+        // The encoded title begins with a blank tile. VDP name-plane writes
+        // replace the covered cells, including that blank; clear the same
+        // 16-tile text row before the transparent host-font draw so parent
+        // command text cannot show through its leading space or title cells.
+        painter.fillRect(112, 48,
+                         static_cast<int>(
+                             field_menu_text_.magic_defense_title.size()) * 8,
+                         8, Qt::black);
         draw_command_overview_text(painter, 112, 48,
                                    field_menu_text_.magic_defense_title);
         const auto draw_strip = [this, &painter](

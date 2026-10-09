@@ -216,12 +216,16 @@ from the older convention incrementally.
   native field state controls which implants are owned and how that page is
   presented.
 - `gameplay/scripts/magic.lua` declares the 13 spell IDs in the ROM
-  `D4EA0` name-table order. The extractor keys each ROM name and description
-  with that semantic ID. It also declares seven IDs for the two Magic panel
-  variants' shared labels and headings. The field text catalog reads both
-  lists from Lua and binds copy back to the typed presenter; catalog QA checks
-  source ordering. The runner's spell table still filters available spells,
-  and force, posture, cursor timing, and spell effects remain native state.
+  `D4EA0` name-table order, with explicit ordered Lua keys for every spell
+  name and description. It also declares seven explicit keys for the shared
+  Magic panel labels and headings. The field text catalog reads these menus
+  from Lua and binds the ROM copy back to the typed presenter; script and
+  catalog QA check every ID, key, value, and source ordering. The runner's
+  spell table still filters available spells, and force, posture, cursor
+  timing, and spell effects remain native state. The non-magic
+  `Magical Defense` fallback overlays its title and two bars on the shared
+  page; the host renderer clears the title's source-written leading blank
+  cell along with the title row so the parent glyph cannot show through.
 - `gameplay/scripts/hotel.lua` declares stable choice IDs for the Hotel
   Options and checkout cursor menus, including their explicit title and
   ordered choice-label keys. Its `text_keys()` map binds the separator,

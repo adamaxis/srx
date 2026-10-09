@@ -929,6 +929,20 @@ int main() {
         "Flame Dart", "Flame Bolt", "Hellblast", "Invisibility", "Sleep",
         "Stink", "Super Barrier", "Mana Zap", "Mana Blast", "Mana Storm",
         "Rockskin", "Heal Wounds", "Confusion"}};
+    constexpr std::array<std::string_view, 13> kMagicSpellDescriptions{{
+        "A small burst of fire that\\ndelivers a nasty burn.",
+        "A large ball of fire which\\ncauses a vicious burn.",
+        "Creates fire to incinerate\\nall in its area of effect!",
+        "Renders a person invisible.",
+        "An area attack on one's\\nmental state, fatiguing them\\ninto unconciousness.",
+        "An area effect spell which\\nsickens all targets with\\na foul stench.",
+        "Creates a magical wall which\\ninhibits everything.",
+        "A small zap of energy that\\ndelivers a nasty jolt.",
+        "A burst of magical energy\\nthat causes a vicious jolt.",
+        "A magical conflagration\\nengulfing all within its\\narea of effect!",
+        "Hardens flesh to resist\\nthe effects of damage.",
+        "Cures damage to characters.",
+        "An area effect spell which\\ndistracts all enemies with\\nsensory overload."}};
     bool magic_spell_rows_match = magic_spells.has_value() &&
         magic_spells->choices.size() == kMagicSpellIds.size();
     if (magic_spell_rows_match) {
@@ -937,6 +951,9 @@ int main() {
             const auto* label = scripts.dialogue_text(choice.label_key);
             magic_spell_rows_match = magic_spell_rows_match &&
                 choice.id == kMagicSpellIds[index] && label != nullptr &&
+                choice.label_key ==
+                    "magic.spells.option." +
+                        std::string(kMagicSpellIds[index]) &&
                 *label == kMagicSpellNames[index] &&
                 scripts.dialogue_text("magic.spells.description." +
                                       choice.id) != nullptr;
@@ -944,6 +961,63 @@ int main() {
     }
     if (!expect(magic_spell_rows_match,
                 "Lua Magic spell IDs or ROM text changed source order")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
+    const auto magic_spell_descriptions = scripts.menu(
+        "magic", "spell_descriptions", "magic.spells.description",
+        "catalog");
+    bool magic_spell_descriptions_match =
+        magic_spell_descriptions.has_value() &&
+        magic_spell_descriptions->choices.size() == kMagicSpellIds.size();
+    if (magic_spell_descriptions_match) {
+        for (std::size_t index = 0; index < kMagicSpellIds.size(); ++index) {
+            const auto& choice = magic_spell_descriptions->choices[index];
+            const auto* description = scripts.dialogue_text(choice.label_key);
+            magic_spell_descriptions_match =
+                magic_spell_descriptions_match &&
+                choice.id == kMagicSpellIds[index] && description != nullptr &&
+                choice.label_key ==
+                    "magic.spells.description." +
+                        std::string(kMagicSpellIds[index]) &&
+                *description == kMagicSpellDescriptions[index];
+        }
+    }
+    if (!expect(magic_spell_descriptions_match,
+                "Lua Magic spell description keys or ROM text changed order")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
+    const auto magic_panel_text = scripts.menu(
+        "magic", "panel_text_entries", "magic.panel.text", "catalog");
+    constexpr std::array<std::string_view, 7> kMagicPanelTextIds{{
+        "defense_title", "force_posture_heading", "success_label",
+        "force_label", "availability_label", "panel_metric_labels",
+        "panel_force_posture_labels"}};
+    constexpr std::array<std::string_view, 7> kMagicPanelTextLabels{{
+        " Magical Defense", "Set Force & Posture.", "Success", "Force",
+        "Damage",
+        "Success\\n\\nDrain\\n\\nDefense\\n  vs. Phys\\n\\n  vs. Mana",
+        "Force\\n\\n\\nPosture"}};
+    bool magic_panel_text_matches = magic_panel_text.has_value() &&
+        magic_panel_text->title_key.empty() &&
+        magic_panel_text->choices.size() == kMagicPanelTextIds.size();
+    if (magic_panel_text_matches) {
+        for (std::size_t index = 0; index < kMagicPanelTextIds.size(); ++index) {
+            const auto& choice = magic_panel_text->choices[index];
+            const auto* label = scripts.dialogue_text(choice.label_key);
+            magic_panel_text_matches = magic_panel_text_matches &&
+                choice.id == kMagicPanelTextIds[index] && label != nullptr &&
+                choice.label_key ==
+                    "magic.panel.text.option." +
+                        std::string(kMagicPanelTextIds[index]) &&
+                *label == kMagicPanelTextLabels[index];
+        }
+    }
+    if (!expect(magic_panel_text_matches,
+                "Lua Magic panel keys or ROM text changed source order")) {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }

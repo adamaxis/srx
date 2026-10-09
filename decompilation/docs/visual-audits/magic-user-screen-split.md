@@ -1,6 +1,6 @@
 # Magic User and Non-Magic Screen Split Audit
 
-Date: 2026-10-07
+Date: 2026-10-09
 ROM: US Genesis Shadowrun
 Scope: Pocket Secretary Magic page, spell-capable route, and non-magic Magical Defense fallback at ROM `0xFBA6`
 
@@ -33,7 +33,10 @@ unmodified record.
    longplay has matching magic-user screens, but no Samurai/Decker Defense
    page. The reviewed internal Samurai frame has the two-bar overlay described
    by the user and the ROM; it is not independent proof of Genesis appearance.
-   The full-screen Qt images are `field-magic-nonmagic-qa/actual.bmp` and
+   The current non-magic frame cleanly shows the retained `Physical 100%`
+   status row, the `Magical Defense` title, and the two distinct defense
+   strips; the title row's leading blank is black. The full-screen Qt images
+   are `field-magic-nonmagic-qa/actual.bmp` and
    `field-magic-spell-qa/actual.bmp`.
 2. **Does the visible look match the behavioral state? — Yes for tested
    records.** The Samurai page begins from class 2/`+0x7F=0`; A opens
@@ -61,12 +64,13 @@ unmodified record.
    state, but output loopback for this route was not measured, so the audible
    duration on the configured Windows device is unverified.
 6. **Are the other visible parts of the screen also correct? — Yes in the
-   reviewed internal captures.** All 25 generated BMPs were viewed at full
-   screen. The shared portrait, inventory, posture strip, outer frame, and
-   right HUD remain present. The yellow page replaces the old center content;
-   the Defense fallback updates its center area over the retained command
-   page. No stale spell text or unrelated selector is visible after entry or
-   return.
+   reviewed internal captures.** All 25 generated checkpoints were reviewed
+   in a contact sheet, with parent, open, hold, return, and selected spell
+   states also inspected full-size. The shared portrait, inventory, posture
+   strip, outer frame, and right HUD remain present. The yellow page replaces
+   the old center content; the Defense fallback updates its center area over
+   the retained command page. No stale spell text or unrelated selector is
+   visible after entry or return.
 7. **Do multiple frames support the interpretation? — Unknown for the full
    split; yes for the spell route.** Independent section 06 frames
    `000001`/`000002` show Rockskin, `000005` shows Mana Zap,
@@ -77,31 +81,43 @@ unmodified record.
    The spell route follows the source plane clear and leaves no old command
    center text or buttons beneath the yellow panel. Magical Defense preserves
    the shared command/status page as the ROM does and replaces its center
-   content. Its 30-frame hold is unchanged, and return restores the previous
+   content. The ROM's 16-cell ` Magical Defense` name-plane write includes a
+   leading blank cell; the Qt path now clears that exact title row before
+   transparent host-font drawing, preventing the old page glyph from showing
+   through. Its 30-frame hold is unchanged, and return restores the previous
    command page without stale Defense bars.
 9. **Was the whole affected time window reviewed? — No, not as a continuous
-   capture.** The complete generated state set was reviewed full-screen:
-   Samurai parent, Defense, 30-frame hold, return; and Gator parent, spell
-   display/browse, four selector phases, force/posture selection and edits,
-   equipped item, return, and reopen. The dumper records transition
-   checkpoints, not every frame of a continuous route clip. The user-provided
-   longplay reference frames listed above were each inspected in full.
+   capture.** The complete generated checkpoint set was reviewed in the
+   contact sheet; Samurai parent, Defense, 30-frame hold, return, Gator
+   parent, spell display/browse, cursor phases, force/posture edits, equipped
+   item, return, and reopen were inspected as checkpoints, with representative
+   states opened full-size. The dumper records transition checkpoints, not
+   every frame of a continuous route clip. The user-provided longplay
+   reference frames listed above were each inspected in full.
 
 ## Evidence and disposition
 
-- **Code changed:** the Magic fallback CTest now selects the real Samurai
-  startup record and asserts class 2, `+0x7F=0`, fallback state, two source
-  values/bar assets, persistent HUD, and return. A conversion unit case checks
-  that class 3 still falls back with a nonzero resource byte. No runtime menu
-  branch was changed in this slice.
+- **Code changed:** `magic.lua` now supplies explicit ordered Lua keys for all
+  13 spell names, all 13 descriptions, and seven panel text entries. The
+  field text catalog resolves descriptions from those script bindings and
+  retains the exact ROM copy. Runtime source-title drawing now clears the
+  16-cell title row before painting, matching the ROM's blank-cell overwrite.
+  Magic fallback QA uses the genuine Samurai startup record and asserts class
+  2, `+0x7F=0`, fallback state, two source values/bar assets, a black leading
+  title cell, persistent HUD, and return. A conversion unit case checks that
+  class 3 still falls back with a nonzero resource byte.
 - **Behavior implemented:** the existing typed route distinguishes the
   yellow spell page from the two-bar Magical Defense page using runner class
   and Magic resource state.
-- **Internally checked:** Debug and Release builds and CTests
+- **Internally checked:** Debug and Release builds and all five focused CTests
+  passed in each configuration, including
+  `shadowrun_gameplay_script_runtime_qa`,
+  `shadowrun_ghidra_field_menu_text_catalog`,
   `shadowrun_ghidra_conversion_qt_field_magic_qa`,
   `shadowrun_ghidra_conversion_qt_field_magic_spell_qa`, and
-  `shadowrun_ghidra_magic_menu_conversion` passed. The four Debug non-magic
-  BMPs and 21 Debug spell BMPs were reviewed; SHA-256 hashes match every
+  `shadowrun_ghidra_magic_menu_conversion`. All 25 Debug BMP checkpoints (four
+  non-magic and 21 spell-route frames) were reviewed full-screen; title and
+  defense-strip close-ups were inspected. SHA-256 hashes match every
   corresponding Release BMP. Dumps are under
   `decompilation/ghidra_conversion/build-ghidra-conversion-qt-debug/qt_runtime/`
   and `build/conversion/qt/release/qt_runtime/`.
@@ -110,9 +126,11 @@ unmodified record.
   frames `000001`, `000002`, `000005`, `000015`, `000020`, and `000030`
   support the magic-user spell and action views. No corresponding non-magic
   Defense screen was found.
-- **Retained comparison artifacts:** the older Oct. 4 zooms and contact sheet
-  in the Debug dump directory were also inspected. Their Qt/reference upper
-  crops show different selected spells (Mana Zap vs. Rockskin), so they are
+- **Retained comparison artifacts:** the Oct. 9 full-screen contact sheet and
+  close-ups in the Debug dump directory were inspected. The older Oct. 4 zooms
+  and contact sheet in the Debug dump directory were also inspected. Their
+  Qt/reference upper crops show different selected spells (Mana Zap vs.
+  Rockskin), so they are
   not a matched comparison and are not used as visual proof. The Oct. 7
   full-screen Qt spell states were compared with the corresponding section 06
   frames instead.
