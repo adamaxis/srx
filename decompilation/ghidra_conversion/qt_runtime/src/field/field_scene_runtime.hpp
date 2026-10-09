@@ -836,6 +836,7 @@ private:
     void paint_command_overview_clips(QPainter& painter) const;
     void paint_field_shop(QPainter& painter) const;
     void begin_hotel_menu();
+    bool load_command_overview_menu_content();
     bool load_hotel_menu_content();
     bool load_pocket_secretary_menu_content();
     bool load_field_elevator_selector_assets(

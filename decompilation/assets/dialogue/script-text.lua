@@ -2,6 +2,13 @@
 -- Pipe characters preserve source segment/page boundaries.
 return {
     texts = {
+        ["field.command_overview.option.inventory_left"] = "Inventory",
+        ["field.command_overview.option.inventory_right"] = "Inventory",
+        ["field.command_overview.option.clips"] = "Clips",
+        ["field.command_overview.option.attributes_skills"] = "Attributes/Skills",
+        ["field.command_overview.option.cyberware"] = "Cyberware",
+        ["field.command_overview.option.magic"] = "Magic",
+        ["field.command_overview.option.pocket_secretary"] = "Pocket Secretary",
         ["stoker.motel.arrival.title"] = "<The battered sign reads Stoker's Coffin Motel.||Motels like these are cheap, each room only large enough to fit a small bed.||Dumps like these tend to attract the dregs of humanity.>",
         ["stoker.motel.arrival.more"] = "|          < MORE >",
         ["stoker.motel.manager.title"] = "<The manager yawns.>||I won't bore you with the welcome speech.||So whadda' ya' want?",

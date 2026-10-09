@@ -126,6 +126,31 @@ int main() {
         return 1;
     }
 
+    const auto command_root = scripts.menu(
+        "command_overview", "root", "field.command_overview", "root");
+    constexpr std::array<std::string_view, 7> kCommandChoiceIds{{
+        "inventory_left", "inventory_right", "clips", "attributes_skills",
+        "cyberware", "magic", "pocket_secretary"}};
+    constexpr std::array<std::string_view, 7> kCommandLabels{{
+        "Inventory", "Inventory", "Clips", "Attributes/Skills",
+        "Cyberware", "Magic", "Pocket Secretary"}};
+    bool command_rows_match = command_root.has_value() &&
+        command_root->choices.size() == kCommandChoiceIds.size();
+    if (command_rows_match) {
+        for (std::size_t index = 0; index < kCommandChoiceIds.size(); ++index) {
+            const auto& choice = command_root->choices[index];
+            const auto* label = scripts.dialogue_text(choice.label_key);
+            command_rows_match = command_rows_match &&
+                choice.id == kCommandChoiceIds[index] && label != nullptr &&
+                *label == kCommandLabels[index];
+        }
+    }
+    if (!expect(command_rows_match,
+                "Lua command overview choices or labels changed order")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
     const auto shop = scripts.shop_definition("ares_weapon_emporium");
     if (!expect(shop.has_value() && shop->groups.size() == 6U,
                 "Lua shop catalog did not define the Ares selector groups") ||

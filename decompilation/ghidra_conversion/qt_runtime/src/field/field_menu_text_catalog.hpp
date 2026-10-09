@@ -10,9 +10,9 @@
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
-// These counts are the selector/data sets used by the source command
-// overview. The text file is generated offline from the ROM; the Qt runtime
-// receives ordinary host strings and never follows a ROM pointer table.
+// The count is the selector set used by the source command overview. Root
+// labels are loaded through the Lua menu content; other field text is loaded
+// as ordinary host strings without following ROM pointers at runtime.
 inline constexpr std::size_t kCommandOverviewLabelCount = 7U;
 inline constexpr std::size_t kFieldMenuArchetypeNameCount = 4U;
 inline constexpr std::size_t kFieldMenuRaceNameCount = 5U;

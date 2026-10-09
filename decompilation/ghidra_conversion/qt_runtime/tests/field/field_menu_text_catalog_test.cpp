@@ -31,9 +31,7 @@ int main() {
             "Dermal Plating(2)", "Dermal Plating(3)",
             "Wired Reflexes(1)", "Wired Reflexes(2)",
             "Wired Reflexes(3)"}};
-    if (text.catalog.command_labels[0] != "Inventory" ||
-        text.catalog.command_labels[6] != "Pocket Secretary" ||
-        text.catalog.field_service_titles[0] != "Weapons World" ||
+    if (text.catalog.field_service_titles[0] != "Weapons World" ||
         text.catalog.field_service_titles[1] != "Ares Weapon Emporium" ||
         text.catalog.field_service_title_destinations[1] != 0xC110U ||
         text.catalog.field_service_action_titles[1] !=

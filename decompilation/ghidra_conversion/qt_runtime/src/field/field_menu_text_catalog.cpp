@@ -79,7 +79,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         return result;
     }
 
-    std::array<bool, kCommandOverviewLabelCount> command_found{};
     std::array<bool, kFieldMenuArchetypeNameCount> archetype_found{};
     std::array<bool, kFieldMenuRaceNameCount> race_found{};
     std::array<bool, kFieldMenuClassNameCount> class_found{};
@@ -295,17 +294,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                 field_service_universal_clips_description_found = true;
                 result.catalog.field_service_universal_clips_description =
                     value;
-            }
-            continue;
-        }
-        if (parse_indexed_key(key, "command.", index) &&
-            index < result.catalog.command_labels.size()) {
-            if (command_found[index]) {
-                result.errors.emplace_back("duplicate field menu text row: " +
-                                          key);
-            } else {
-                command_found[index] = true;
-                result.catalog.command_labels[index] = value;
             }
             continue;
         }
@@ -880,7 +868,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     if (!header_seen) {
         result.errors.emplace_back("field menu text catalog is empty");
     }
-    add_missing_entries(command_found, "command.", result.errors);
     add_missing_entries(archetype_found, "archetype.", result.errors);
     add_missing_entries(race_found, "race.", result.errors);
     add_missing_entries(class_found, "class.", result.errors);

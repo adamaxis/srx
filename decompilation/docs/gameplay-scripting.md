@@ -156,11 +156,17 @@ access.
   drawing, and dispatch to existing child routes. Save/Load and the extended
   six-row caller remain explicit boundaries; child pages have not moved to
   Lua.
-- `assets/dialogue/script-text.lua` is the ROM-imported shared text table for
-  Stoker dialogue, field object interactions, Hotel menu/status text, and
-  Pocket Secretary root title, separator, and labels. Native presenters
-  resolve those keys through the Lua runtime. Hotel and Pocket Secretary root
-  text no longer duplicate rows in `menu/field/text.tsv`.
+- `gameplay/scripts/command_overview.lua` declares the seven stable IDs for the
+  in-game command root in ROM order, including the two distinct Inventory
+  columns. `FieldSceneRuntime` validates the choices and resolves their labels
+  from `assets/dialogue/script-text.lua`. The typed command controller remains
+  the sole owner of page selection, focus, rendering, and action dispatch.
+- `assets/dialogue/script-text.lua` is the ROM-derived shared text table for
+  Stoker dialogue, field object interactions, Hotel menu/status text,
+  Pocket Secretary root title/separator/labels, and command-overview root
+  labels. Native presenters resolve those keys through the Lua runtime. Hotel,
+  Pocket Secretary, and command-overview root text no longer duplicate rows
+  in `menu/field/text.tsv`.
 - Future `quests/` and `scenes/` modules should call the same `game` facade.
   Menus and dialogue use the generic Qt presenters, and Lua supplies the
   available stable choice ids and story text keys.
@@ -168,8 +174,8 @@ access.
 The current slice connects the New Game trigger, native-backed story facts,
 the Michael quest branch, shared motel and debt menus, Hotel menu definitions,
 room/debt service calls, arrival/farewell/result dialogue, and the Qt
-presenters. Stoker, field interaction, Hotel text, and Pocket Secretary root
-choices and labels are Lua content.
+presenters. Stoker, field interaction, Hotel text, Pocket Secretary root
+choices/labels, and command-overview root choices/labels are Lua content.
 Script dialogue menus carry
 their text profile and optional speaker into one generic panel projection;
 menu choices use generic presentation roles. Hotel cursor-menu choices come

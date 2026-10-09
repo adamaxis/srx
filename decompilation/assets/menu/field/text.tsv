@@ -1,11 +1,4 @@
 key	text
-command.0	Inventory
-command.1	Inventory
-command.2	Clips
-command.3	Attributes/Skills
-command.4	Cyberware
-command.5	Magic
-command.6	Pocket Secretary
 field-service.title.0	Weapons World
 field-service.title-destination.0	49430
 field-service.title.1	Ares Weapon Emporium

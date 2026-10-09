@@ -17,8 +17,10 @@ namespace {
 
 constexpr std::size_t kMaximumScriptModules = 128U;
 constexpr std::size_t kMaximumMapEventRules = 512U;
-// Pocket Secretary's extended ROM variant can expose six rows.
-constexpr std::size_t kMaximumMenuChoices = 6U;
+// The command overview has seven source rows; Pocket Secretary's extended
+// caller can expose six. Keep the generic script-menu bound at the larger
+// source-defined menu size.
+constexpr std::size_t kMaximumMenuChoices = 7U;
 constexpr std::size_t kMaximumShopGroups = 8U;
 constexpr std::size_t kMaximumShopOffers = 8U;
 constexpr std::size_t kMaximumIdentifierLength = 96U;

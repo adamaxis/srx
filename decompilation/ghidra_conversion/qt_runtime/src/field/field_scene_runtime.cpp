@@ -4069,6 +4069,9 @@ bool FieldSceneRuntime::bootstrap(
         return false;
     }
     field_menu_text_ = menu_text.catalog;
+    if (!load_command_overview_menu_content()) {
+        return false;
+    }
     if (!load_hotel_menu_content()) {
         return false;
     }
@@ -6590,6 +6593,39 @@ void FieldSceneRuntime::begin_hotel_menu() {
                      field_party_roster_.active_slot());
     refresh_field_hud_runner_slot();
     source_boundary("field.hotel.entity_status.opened");
+}
+
+bool FieldSceneRuntime::load_command_overview_menu_content() {
+    constexpr std::array<std::string_view, kCommandOverviewLabelCount>
+        kChoiceIds{{"inventory_left", "inventory_right", "clips",
+                    "attributes_skills", "cyberware", "magic",
+                    "pocket_secretary"}};
+    const auto fail = [this](std::string message) {
+        failure_ = std::move(message);
+        source_boundary("field.bootstrap.command_overview_script_invalid");
+        return false;
+    };
+    const auto definition = game_scripts_.menu(
+        "command_overview", "root", "field.command_overview", "root");
+    if (!definition.has_value()) {
+        return fail(game_scripts_.failure().empty()
+                        ? "command overview root menu script is unavailable"
+                        : game_scripts_.failure());
+    }
+    if (definition->choices.size() != kChoiceIds.size()) {
+        return fail(
+            "command overview Lua menu does not match the seven source rows");
+    }
+    for (std::size_t index = 0; index < kChoiceIds.size(); ++index) {
+        const auto& choice = definition->choices[index];
+        const auto* label = game_scripts_.dialogue_text(choice.label_key);
+        if (choice.id != kChoiceIds[index] || label == nullptr) {
+            return fail("command overview Lua choice ID or label is invalid");
+        }
+        field_menu_text_.command_labels[index] = *label;
+    }
+    source_boundary("field.command_overview.menu_content.loaded_from_lua");
+    return true;
 }
 
 bool FieldSceneRuntime::load_hotel_menu_content() {

@@ -405,6 +405,12 @@ The first two selector values are both labeled `Inventory`, because they
 identify the left and right columns; Up/Down changes the row and Left/Right
 changes the column.
 
+The seven root choice IDs and visible labels are now declared in
+`gameplay/scripts/command_overview.lua` and `assets/dialogue/script-text.lua`.
+`FieldSceneRuntime` validates their ROM order and binds the labels to the
+existing command-menu view. This moves menu content into Lua without giving
+Lua or Qt a second copy of the native page-selection state.
+
 ## Pocket Secretary systems
 
 The Pocket Secretary is a second-level menu under command selector six. The
