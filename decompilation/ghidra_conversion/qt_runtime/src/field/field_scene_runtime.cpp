@@ -332,24 +332,51 @@ FieldSceneRuntime::FieldSceneRuntime(
     field_dialogue_.set_debt_payment_callback([this]()
         -> std::optional<StokerMotelDebtPaymentOutcome> {
         constexpr std::uint32_t kDebt = 250U;
-        if (!field_funds_.has_value() || *field_funds_ >= kDebt ||
-            !notebook_tip_flags_resolved_ ||
+        if (!field_funds_.has_value() || !notebook_tip_flags_resolved_ ||
             !notebook_referral_flags_.has_value()) {
-            // The paid branch also consumes FFDD64, runner status, and three
-            // source runner bytes. Do not seed those fields with guessed
-            // defaults; this runtime slice connects the source low-funds
-            // branch available to a fresh New Game wallet.
+            // Story and payment state is not restored by the current save
+            // adapter, so keep loaded-session writes explicit.
+            return std::nullopt;
+        }
+        const bool paid_branch = *field_funds_ >= kDebt;
+        if (paid_branch &&
+            (!field_runner_feature_flags_.has_value() ||
+             !field_entity_action_phase_roll_counters_.has_value())) {
+            // The successful source branch also updates FF018F and the three
+            // reaction counters. Those stay unresolved for restored saves.
             return std::nullopt;
         }
 
         StokerMotelDebtPaymentState payment_state{};
         payment_state.funds = *field_funds_;
+        payment_state.world_flags = field_exit_world_flags_;
+        // The live Stoker branch is title-service table entry zero at ROM
+        // 0x53AB6; 0x53A78 publishes that index in FFDD64 before dispatch.
+        payment_state.effect_marker = 0U;
+        payment_state.runner_feature_flags =
+            field_runner_feature_flags_.value_or(0U);
         payment_state.followup_state.story_flags = notebook_tip_flags_[0];
         payment_state.followup_state.referral_flags =
             *notebook_referral_flags_;
+        payment_state.runner_source_bytes =
+            field_entity_action_phase_roll_counters_.value_or(
+                std::array<std::uint8_t, 3>{});
         const auto outcome =
             resolve_stoker_motel_debt_payment(payment_state);
         field_funds_ = payment_state.funds;
+        if (outcome.result == StokerMotelDebtPaymentResult::debt_paid) {
+            field_exit_world_flags_ = payment_state.world_flags;
+            field_runner_feature_flags_ =
+                payment_state.runner_feature_flags;
+            field_entity_action_phase_roll_counters_ =
+                payment_state.runner_source_bytes;
+            cyberdeck_available_ =
+                (payment_state.runner_feature_flags & 0x01U) != 0U;
+            // The successful command returns the package handoff text as part
+            // of the same source transaction, after setting its world flag.
+            stoker_motel_story_state_.michael_debt_paid = true;
+            stoker_motel_story_state_.michael_package_collected = true;
+        }
         notebook_tip_flags_[0] = payment_state.followup_state.story_flags;
         notebook_referral_flags_ =
             payment_state.followup_state.referral_flags;
@@ -552,14 +579,17 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
             // the package offer until collection is complete.
             if (event_route.script !=
                     FieldScriptId::stoker_motel_interaction ||
-                field_exit_alternate_result_ != 0 ||
-                (field_exit_world_flags_ & 0x01U) != 0U) {
+                field_exit_alternate_result_ != 0) {
                 return false;
             }
 
             const auto entry_action = resolve_stoker_motel_story_entry(
                 stoker_motel_story_state_);
-            if (entry_action == StokerMotelStoryEntryAction::ordinary_motel) {
+            if ((field_exit_world_flags_ & 0x01U) != 0U &&
+                entry_action != StokerMotelStoryEntryAction::ordinary_motel) {
+                // The payment flag is persistent in the ROM. If this session
+                // cannot restore the matching story state, leave the generic
+                // selector in control rather than inventing a phase.
                 return false;
             }
 
@@ -3777,6 +3807,15 @@ bool FieldSceneRuntime::bootstrap(
     field_funds_ = restored_field_state == nullptr
                        ? std::optional<std::uint32_t>{0x14U}
                        : std::nullopt;
+    field_runner_feature_flags_ =
+        restored_field_state == nullptr
+            ? std::optional<std::uint8_t>{0U}
+            : std::nullopt;
+    field_entity_action_phase_roll_counters_ =
+        restored_field_state == nullptr
+            ? std::optional<std::array<std::uint8_t, 3>>{
+                  std::array<std::uint8_t, 3>{}}
+            : std::nullopt;
     pocket_secretary_ = PocketSecretaryMenuState{};
     dismiss_runner_ = DismissRunnerMenuState{};
     dismiss_runner_random_grid_effect_ = RandomGridEffectState{};
@@ -5314,6 +5353,7 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
                             state_.field_scene_buffers.initialized &&
                             state_.field_scene_buffers.scene_reference ==
                                 scene_reference;
+    const auto prior_world_mode = field_movement_transition_state_.world_mode;
     const auto prior_camera_x = state_.field_scene_buffers.camera_x;
     const auto prior_camera_y = state_.field_scene_buffers.camera_y;
     const auto prior_runner_position = field_entity_.world_position;
@@ -5369,7 +5409,12 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
         state_.field_scene_buffers.field_resource_mode;
     field_movement_transition_state_.scene_id = scene_reference;
     field_world_activity_timeout_state_.scene_id = scene_reference;
-    field_movement_transition_state_.world_mode = *interaction_mode;
+    // ROM 0x2BD2 performs a same-scene redraw in place; its visible code does
+    // not replace FFDF40. Preserve the active field mode across that modal
+    // return so 0xBC36 keeps refreshing collision probes when the source had
+    // FFDF40 clear. A genuinely new scene still selects its source mode.
+    field_movement_transition_state_.world_mode =
+        same_scene ? prior_world_mode : *interaction_mode;
     field_movement_transition_state_.field_origin_x =
         static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x);
     world_frame_logic_state_.world_mode = scene_reference;

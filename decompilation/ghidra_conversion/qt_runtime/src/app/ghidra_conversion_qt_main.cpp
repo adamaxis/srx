@@ -12415,7 +12415,7 @@ int run_field_stoker_collision_to_dialogue_qa(
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries) {
     std::filesystem::create_directories(output);
-    constexpr std::array<std::string_view, 24> stale_or_current_frames{
+    constexpr std::array<std::string_view, 30> stale_or_current_frames{
         "actual.bmp",
         "destination-entry.bmp",
         "destination-idle-01.bmp",
@@ -12439,6 +12439,12 @@ int run_field_stoker_collision_to_dialogue_qa(
         "stoker-manager-greeting.bmp",
         "stoker-manager-package-offer.bmp",
         "stoker-leave-notice.bmp",
+        "stoker-package-handoff.bmp",
+        "stoker-ordinary-motel.bmp",
+        "stoker-package-returned-field.bmp",
+        "stoker-repeat-manager-package-offer.bmp",
+        "stoker-unpaid-walk-away.bmp",
+        "stoker-post-payment-walk-away.bmp",
         "returned-to-field.bmp"};
     for (const auto name : stale_or_current_frames) {
         std::error_code remove_error;
@@ -12882,6 +12888,9 @@ int run_field_stoker_collision_to_dialogue_qa(
         return 3;
     }
 
+    // QA fixture for the paid source branch; this does not claim an in-game
+    // funds-acquisition route.
+    field_scene.set_field_funds_for_dump(250U);
     press_button(0x20U);
     const auto& debt_question = field_scene.dialogue_panel();
     if (!field_scene.dialogue_open() ||
@@ -12897,19 +12906,35 @@ int run_field_stoker_collision_to_dialogue_qa(
     }
     write_state("stoker-debt-question");
 
-    press_button(0x10U);
-    const auto& referral = field_scene.dialogue_panel();
-    if (!field_scene.dialogue_open() || referral.actor_name != "Stoker" ||
-        referral.option_count != 0U || referral.text_segment_count == 0U ||
-        referral.text_segments[0].find("Jump House") ==
-            std::string_view::npos ||
-        !referral.returns_to_field ||
-        !save_frame("stoker-jump-house-referral", false)) {
-        std::cerr << "Stoker collision QA: B did not select the source Jump "
-                     "House referral route\n";
+    press_button(0x40U);
+    const auto& package_handoff = field_scene.dialogue_panel();
+    bool package_text_present = false;
+    for (std::size_t index = 0;
+         index < package_handoff.text_segment_count; ++index) {
+        package_text_present = package_text_present ||
+            package_handoff.text_segments[index].find("Here's the package") !=
+                std::string_view::npos;
+    }
+    auto next_story_entry =
+        field_scene.stoker_motel_story_state_for_dump();
+    const auto next_stoker_entry =
+        resolve_stoker_motel_story_entry(next_story_entry);
+    if (!field_scene.dialogue_open() ||
+        field_scene.field_funds_for_dump() !=
+            std::optional<std::uint32_t>{500U} ||
+        !field_scene.stoker_motel_story_state_for_dump().michael_debt_paid ||
+        !field_scene.stoker_motel_story_state_for_dump()
+             .michael_package_collected ||
+        next_stoker_entry != StokerMotelStoryEntryAction::ordinary_motel ||
+        package_handoff.actor_name != "Stoker" ||
+        package_handoff.option_count != 0U ||
+        !package_handoff.returns_to_field || !package_text_present ||
+        !save_frame("stoker-package-handoff", false)) {
+        std::cerr << "Stoker collision QA: successful payment did not update "
+                     "the wallet and show the source package handoff\n";
         return 3;
     }
-    write_state("stoker-jump-house-referral");
+    write_state("paid-package-handoff");
 
     press_button(0x40U);
     field_scene.advance_frame();
@@ -12944,6 +12969,7 @@ int run_field_stoker_collision_to_dialogue_qa(
         return 3;
     }
     write_state("returned-to-field");
+
     trace.close();
 
     const auto mode_entry_commands_after = std::count(
@@ -13000,8 +13026,8 @@ int run_field_stoker_collision_to_dialogue_qa(
         "spawn.bmp",
         "stoker-arrival-dialogue.bmp",
         "stoker-debt-question.bmp",
-        "stoker-jump-house-referral.bmp",
-        "stoker-manager-package-offer.bmp"};
+        "stoker-manager-package-offer.bmp",
+        "stoker-package-handoff.bmp"};
     std::vector<std::string> actual_bmp_names;
     std::error_code directory_error;
     for (std::filesystem::directory_iterator item(output, directory_error), end;
@@ -13041,7 +13067,7 @@ int run_field_stoker_collision_to_dialogue_qa(
               << " position=" << position.x << ',' << position.y
               << " returned_position=" << returned_position.x << ','
               << returned_position.y
-              << " dialogue=opening->manager-package->debt->referral->field"
+              << " dialogue=opening->manager-package->debt->paid-handoff->field"
               << " mode_entry_commands="
               << mode_entry_commands_after - mode_entry_commands_before
               << " mode_entry_waits="

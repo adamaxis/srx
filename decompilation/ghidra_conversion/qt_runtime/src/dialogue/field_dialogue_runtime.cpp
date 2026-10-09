@@ -326,8 +326,17 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
             }
             return FieldDialogueAdvanceResult::prompt_advanced;
         }
+        if (outcome->result == StokerMotelDebtPaymentResult::debt_paid &&
+            outcome->prompt ==
+                StokerMotelDebtPaymentPrompt::michael_package_contents &&
+            outcome->michael_package_sequence_follows) {
+            if (!open_stoker_prompt(StokerMotelPromptId::package_handoff)) {
+                return FieldDialogueAdvanceResult::source_boundary;
+            }
+            return FieldDialogueAdvanceResult::prompt_advanced;
+        }
         open_source_boundary(
-            "Stoker paid-debt package sequence is not converted");
+            "Stoker debt-payment result is inconsistent");
         return FieldDialogueAdvanceResult::source_boundary;
     }
 

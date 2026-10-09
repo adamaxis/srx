@@ -324,6 +324,10 @@ public:
     const FieldMapEventSystem& field_map_event_system_for_dump() const noexcept {
         return field_map_event_system_;
     }
+    const StokerMotelStoryState& stoker_motel_story_state_for_dump() const
+        noexcept {
+        return stoker_motel_story_state_;
+    }
     std::uint16_t field_terrain_collision_code_for_dump() const noexcept {
         return field_movement_transition_state_.terrain_collision_code;
     }
@@ -1178,6 +1182,12 @@ private:
     std::int8_t field_exit_alternate_result_ = 0;
     std::uint32_t field_exit_world_flags_ = 0;
     std::optional<std::uint32_t> field_funds_{0x14U};
+    // The fresh New Game runtime initializes these typed source globals to
+    // zero. The loaded-save adapter does not restore them, so paid writes stay
+    // explicit for that path.
+    std::optional<std::uint8_t> field_runner_feature_flags_{0U}; // FF018F
+    std::optional<std::array<std::uint8_t, 3>>
+        field_entity_action_phase_roll_counters_{std::array<std::uint8_t, 3>{}};
     bool field_shop_route_pending_ = false;
     FieldEntityPresentation field_entity_{};
     std::string failure_;

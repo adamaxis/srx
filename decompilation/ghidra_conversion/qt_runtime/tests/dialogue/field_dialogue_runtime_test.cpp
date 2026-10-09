@@ -5,6 +5,7 @@
 #include <QImage>
 #include <QPainter>
 
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
@@ -689,6 +690,59 @@ int main() {
                 FieldDialogueAdvanceResult::returned_to_field) ||
         !expect(!runtime.open())) {
         return 70;
+    }
+
+    // At exactly 250 nuyen the source pays the debt, applies its world and
+    // runner-state mutations, then presents the package handoff record.
+    debt_payment_state.funds = 250U;
+    debt_payment_state.world_flags = 0U;
+    debt_payment_state.effect_marker = 0U;
+    debt_payment_state.runner_feature_flags = 0x40U;
+    debt_payment_state.runner_source_bytes = {0xFFU, 0x00U, 0x7FU};
+    debt_payment_state.followup_state.story_flags = 3U;
+    if (!expect(runtime.open_stoker_prompt_for_dump(
+            StokerMotelPromptId::manager_greeting_with_package)) ||
+        !expect(runtime.advance_controller_events(0x2000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced)) {
+        return 78;
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced)) {
+        return 79;
+    }
+    if (!expect(debt_payment_outcome.result ==
+                    StokerMotelDebtPaymentResult::debt_paid) ||
+        !expect(debt_payment_outcome.remaining_funds == 500U) ||
+        !expect(debt_payment_outcome.michael_package_sequence_follows)) {
+        return 81;
+    }
+    if (!expect(debt_payment_state.world_flags == 0x01U) ||
+        !expect(debt_payment_state.runner_feature_flags == 0x41U) ||
+        !expect(debt_payment_state.runner_source_bytes ==
+                std::array<std::uint8_t, 3>{0x00U, 0x01U, 0x80U}) ||
+        !expect(debt_payment_state.followup_state.story_flags == 0x1CU)) {
+        return 82;
+    }
+    if (!expect(runtime.panel().text_segment_count == 3U) ||
+        !expect(runtime.panel().text_segments[2].find("Here's the package") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().returns_to_field)) {
+        return 83;
+    }
+    scene.fill(Qt::magenta);
+    QPainter package_handoff_painter(&scene);
+    runtime.paint(package_handoff_painter);
+    package_handoff_painter.end();
+    if (!expect(!has_exact_color(scene, 0, 0, 320, 224,
+                                 QColor(Qt::magenta))) ||
+        !expect(!has_green_ink(scene, 48, 152, 256, 64)) ||
+        !expect(!has_nonblack_pixel(scene, 17, 203, 11, 11))) {
+        return 76;
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(!runtime.open())) {
+        return 77;
     }
 
     if (!expect(runtime.open_stoker_story_entry(
