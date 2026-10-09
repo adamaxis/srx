@@ -98,20 +98,31 @@ Screen map: `decompilation/docs/screen-system-audit.md` and
 - Genesis 4-bit tiles and 9-bit CRAM become RGBA8 at extraction. Preserve the
   look, not VRAM limits.
 - Host may run at 60 FPS. Animation cadence still follows ROM counters.
-- Use modern Qt/C++ for the runtime. Menus, inventory screens, dialogs, and
-  other interfaces with limited moving parts may be implemented directly in
-  Qt Widgets, `.ui` files, or Qt Quick. Their controls are bound to the typed
-  native game state; they must not duplicate authoritative behavior.
-- Use a native C++ game engine layer for field movement, combat, world state,
-  animation, and other behavior that needs it. If an existing Qt-compatible
-  engine satisfies the requirements, evaluate and use it; otherwise build the
-  smallest engine needed rather than recreating Genesis hardware.
+- Lua owns authoritative gameplay behavior and content: actor AI, movement
+  state and decisions, animation state and cadence, combat policy, world/map
+  events, quests, dialogue text and portraits, and menu choices and labels.
+  Keep mutable actor state in Lua under stable instance IDs such as
+  `game.actors[actor_id]`. Qt presents script-defined state and forwards input;
+  it must not create a parallel gameplay or menu state machine.
+- Schedule one Lua behavior heartbeat for each active ROM actor record per
+  source actor-service pass and a separate animation heartbeat per active
+  record in the source render pass. Trace the ROM cadence and conditions first;
+  do not substitute a wall-clock timer or call an actor only because it is
+  visible in the current viewport.
+- Native C++/Qt provides narrow host services: focused-window input collection,
+  typed world facts, map and collision queries, asset rendering, audio
+  playback, and persistence. Scripts own movement/path policy, animation
+  timing, AI, combat decisions, quest/dialogue flow, and menu behavior. C++ may
+  return structured collision results and render the resulting Lua state, but
+  it must not run a second movement or animation state machine. Existing
+  native paths remain partial migration work until their policy and state have
+  moved into Lua.
 - A software framebuffer/widget remains valid for scenes that need exact
   sprite compositing, but it is a presentation choice, not a requirement that
   every screen be rendered as a Genesis-style tile plane.
-- Input belongs to the focused Qt window and is forwarded to the authoritative
-  native controller. There must be no duplicate menu state machine or
-  unfocused-window input capture.
+- Input belongs to the focused Qt window and is forwarded as typed input facts
+  to the authoritative Lua gameplay/menu state. There must be no duplicate
+  menu state machine or unfocused-window input capture.
 - Unresolved indirect calls stay explicit boundaries.
 
 ## De-engineering and modernization rule
