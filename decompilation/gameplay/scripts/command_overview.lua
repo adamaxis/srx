@@ -14,4 +14,23 @@ function CommandOverview.root()
     }
 end
 
+-- Display labels shared by the runner summary and its posture selector.
+function CommandOverview.races()
+    return { "human", "elf", "dwarf", "orc", "troll" }
+end
+
+function CommandOverview.classes()
+    return { "mage", "shaman", "samurai", "decker" }
+end
+
+function CommandOverview.postures()
+    return {
+        "full_defense",
+        "medium_defense",
+        "neutral",
+        "medium_offense",
+        "full_offense",
+    }
+end
+
 return CommandOverview

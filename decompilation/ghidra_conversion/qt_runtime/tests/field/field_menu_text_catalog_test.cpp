@@ -52,6 +52,13 @@ int main() {
         expected_field_metric_text_ids{{
             "physical", "mental", "attack", "defense", "damage", "drain",
             "none", "no_armor", "weapons", "guns", "power"}};
+    const std::array<std::string, kFieldMenuRaceNameCount>
+        expected_race_text_ids{{"human", "elf", "dwarf", "orc", "troll"}};
+    const std::array<std::string, kFieldMenuClassNameCount>
+        expected_class_text_ids{{"mage", "shaman", "samurai", "decker"}};
+    const std::array<std::string, kFieldMenuStatusNameCount>
+        expected_posture_text_ids{{"full_defense", "medium_defense", "neutral",
+                                   "medium_offense", "full_offense"}};
     const std::array<std::string, kMagicSpellTextCount> expected_magic_spell_ids{{
         "flame_dart", "flame_bolt", "hellblast", "invisibility", "sleep",
         "stink", "super_barrier", "mana_zap", "mana_blast", "mana_storm",
@@ -160,6 +167,9 @@ int main() {
         !text.catalog.field_service_universal_clips_description.empty() ||
         text.catalog.field_metric_text_ids !=
             expected_field_metric_text_ids ||
+        text.catalog.race_text_ids != expected_race_text_ids ||
+        text.catalog.class_text_ids != expected_class_text_ids ||
+        text.catalog.status_text_ids != expected_posture_text_ids ||
         text.catalog.archetype_names[2] != "Gator" ||
         text.catalog.archetype_names[3] != "Shaman" ||
         text.catalog.attribute_skill_text_ids !=
@@ -183,6 +193,10 @@ int main() {
         text.catalog.class_names !=
             std::array<std::string, kFieldMenuClassNameCount>{
                 "Mage   ", "Shaman ", "Samurai", "Decker "} ||
+        text.catalog.status_names !=
+            std::array<std::string, kFieldMenuStatusNameCount>{
+                "Full Defense", "Med. Defense", "Neutral", "Med. Offense",
+                "Full Offense"} ||
         text.catalog.runner_names[0] != "Joshua" ||
         !text.catalog.item_detail_labels[0].empty() ||
         !text.catalog.item_detail_labels[1].empty() ||

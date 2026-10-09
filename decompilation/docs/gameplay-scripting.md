@@ -185,9 +185,12 @@ access.
   native.
 - `gameplay/scripts/command_overview.lua` declares the seven stable IDs for the
   in-game command root in ROM order, including the two distinct Inventory
-  columns. `FieldSceneRuntime` validates the choices and resolves their labels
-  from `assets/dialogue/script-text.lua`. The typed command controller remains
-  the sole owner of page selection, focus, rendering, and action dispatch.
+  columns, plus the metatype, class, and five posture labels used by its runner
+  summary and selectable posture bar. The field text catalog resolves those
+  IDs to ROM-extracted copy from `assets/dialogue/script-text.lua`.
+  `FieldSceneRuntime` validates the root choices and typed native command
+  state remains the sole owner of page selection, focus, rendering, posture
+  effects, and action dispatch.
 - `gameplay/scripts/clips.lua` declares the top-level Reload/Trade/Distribute/
   Cancel choices and the nested Increase/Decrease/Trade/Recipient choices.
   It also declares stable IDs for the Clips panel labels, reload/trade prompts,

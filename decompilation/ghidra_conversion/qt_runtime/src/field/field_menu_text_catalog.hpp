@@ -63,9 +63,12 @@ struct FieldMenuTextCatalog {
     std::array<std::string, kCommandOverviewLabelCount> command_labels{};
     std::array<std::string, kFieldMenuArchetypeNameCount> archetype_names{};
     std::array<std::string, kFieldMenuRaceNameCount> race_names{};
+    std::array<std::string, kFieldMenuRaceNameCount> race_text_ids{};
     std::array<std::string, kFieldMenuClassNameCount> class_names{};
+    std::array<std::string, kFieldMenuClassNameCount> class_text_ids{};
     std::array<std::string, kFieldMenuRunnerNameCount> runner_names{};
     std::array<std::string, kFieldMenuStatusNameCount> status_names{};
+    std::array<std::string, kFieldMenuStatusNameCount> status_text_ids{};
     std::array<std::string, kFieldMenuPowerLabelCount> power_labels{};
     std::array<std::array<std::string, kFieldMenuArmorRowCount>,
                kFieldMenuArmorCount>

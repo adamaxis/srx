@@ -80,6 +80,13 @@ constexpr std::array<std::string_view, kFieldMetricTextCount>
     kFieldMetricTextIds{{
         "physical", "mental", "attack", "defense", "damage", "drain",
         "none", "no_armor", "weapons", "guns", "power"}};
+constexpr std::array<std::string_view, kFieldMenuRaceNameCount>
+    kCommandOverviewRaceIds{{"human", "elf", "dwarf", "orc", "troll"}};
+constexpr std::array<std::string_view, kFieldMenuClassNameCount>
+    kCommandOverviewClassIds{{"mage", "shaman", "samurai", "decker"}};
+constexpr std::array<std::string_view, kFieldMenuStatusNameCount>
+    kCommandOverviewPostureIds{{"full_defense", "medium_defense", "neutral",
+                                "medium_offense", "full_offense"}};
 
 constexpr std::string_view kMagicSpellOptionPrefix =
     "magic.spells.option.";
@@ -175,6 +182,38 @@ bool is_field_metric_text_label_key(const std::string_view key) {
                kFieldMetricTextIds.end();
 }
 
+bool has_command_overview_text_label_prefix(const std::string_view key) {
+    return key.rfind("command_overview.race.option.", 0U) == 0U ||
+           key.rfind("command_overview.class.option.", 0U) == 0U ||
+           key.rfind("command_overview.posture.option.", 0U) == 0U;
+}
+
+bool is_command_overview_text_label_key(const std::string_view key) {
+    constexpr std::string_view kRacePrefix =
+        "command_overview.race.option.";
+    if (key.rfind(kRacePrefix, 0U) == 0U) {
+        return std::find(kCommandOverviewRaceIds.begin(),
+                         kCommandOverviewRaceIds.end(),
+                         key.substr(kRacePrefix.size())) !=
+               kCommandOverviewRaceIds.end();
+    }
+    constexpr std::string_view kClassPrefix =
+        "command_overview.class.option.";
+    if (key.rfind(kClassPrefix, 0U) == 0U) {
+        return std::find(kCommandOverviewClassIds.begin(),
+                         kCommandOverviewClassIds.end(),
+                         key.substr(kClassPrefix.size())) !=
+               kCommandOverviewClassIds.end();
+    }
+    constexpr std::string_view kPosturePrefix =
+        "command_overview.posture.option.";
+    return key.rfind(kPosturePrefix, 0U) == 0U &&
+           std::find(kCommandOverviewPostureIds.begin(),
+                     kCommandOverviewPostureIds.end(),
+                     key.substr(kPosturePrefix.size())) !=
+               kCommandOverviewPostureIds.end();
+}
+
 bool is_clips_menu_label_key(const std::string_view key) {
     constexpr std::string_view kCommandPrefix = "clips.option.";
     constexpr std::string_view kTradeCommandPrefix = "clips.trade.option.";
@@ -260,7 +299,7 @@ void add_missing_entries(const std::array<bool, N>& found, const char* prefix,
 
 bool is_field_menu_text_key(const std::string& key) {
     static constexpr const char* prefixes[]{
-        "runner.", "archetype.", "race.", "class.", "status.",
+        "runner.", "archetype.",
         "clips.", "dismiss.label.", "pocket-secretary.cyberdeck.line.",
         "pocket-secretary.group-item.", "pocket-secretary.group-items.empty.",
         "ui.option.", "notebook.option.", "notebook.no-run.",
@@ -270,6 +309,9 @@ bool is_field_menu_text_key(const std::string& key) {
         "magic.panel.text.option.", "cyberware.text.option.",
         "items.text.option.", "items.display.option.",
         "ui.field_metric.option.",
+        "command_overview.race.option.",
+        "command_overview.class.option.",
+        "command_overview.posture.option.",
         "attributes_skills.text.option.",
     };
     for (const auto* prefix : prefixes) {
@@ -447,10 +489,7 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         result.errors.emplace_back("field menu routing catalog is empty");
     }
     std::array<bool, kFieldMenuArchetypeNameCount> archetype_found{};
-    std::array<bool, kFieldMenuRaceNameCount> race_found{};
-    std::array<bool, kFieldMenuClassNameCount> class_found{};
     std::array<bool, kFieldMenuRunnerNameCount> runner_found{};
-    std::array<bool, kFieldMenuStatusNameCount> status_found{};
     std::array<bool, kMagicSpellTextCount> magic_spell_description_found{};
     std::array<bool, kFieldServiceTitleCount>
         field_service_title_destination_found{};
@@ -495,6 +534,25 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     result.catalog.weapons_label = field_metric_labels[8];
     result.catalog.guns_label = field_metric_labels[9];
     result.catalog.power_label = field_metric_labels[10];
+    std::array<std::string, kFieldMenuRaceNameCount> race_labels{};
+    load_script_menu_labels(
+        scripts, "command_overview", "races", "command_overview.race",
+        "catalog", kCommandOverviewRaceIds, race_labels, result.errors,
+        nullptr, &result.catalog.race_text_ids);
+    result.catalog.race_names = std::move(race_labels);
+    std::array<std::string, kFieldMenuClassNameCount> class_labels{};
+    load_script_menu_labels(
+        scripts, "command_overview", "classes", "command_overview.class",
+        "catalog", kCommandOverviewClassIds, class_labels, result.errors,
+        nullptr, &result.catalog.class_text_ids);
+    result.catalog.class_names = std::move(class_labels);
+    std::array<std::string, kFieldMenuStatusNameCount> posture_labels{};
+    load_script_menu_labels(
+        scripts, "command_overview", "postures",
+        "command_overview.posture", "catalog", kCommandOverviewPostureIds,
+        posture_labels, result.errors, nullptr,
+        &result.catalog.status_text_ids);
+    result.catalog.status_names = std::move(posture_labels);
     load_script_menu_choice_ids(
         scripts, "items", "inventory_actions", "items",
         "inventory_actions", kInventoryActionChoiceIds,
@@ -631,6 +689,13 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             }
             continue;
         }
+        if (has_command_overview_text_label_prefix(key)) {
+            if (!is_command_overview_text_label_key(key)) {
+                result.errors.emplace_back(
+                    "unknown command overview text label key: " + key);
+            }
+            continue;
+        }
         if (has_notebook_menu_label_prefix(key)) {
             if (!is_notebook_menu_label_key(key)) {
                 result.errors.emplace_back(
@@ -722,39 +787,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             } else {
                 archetype_found[index] = true;
                 result.catalog.archetype_names[index] = value;
-            }
-            continue;
-        }
-        if (parse_indexed_key(key, "race.", index) &&
-            index < result.catalog.race_names.size()) {
-            if (race_found[index]) {
-                result.errors.emplace_back("duplicate field menu text row: " +
-                                          key);
-            } else {
-                race_found[index] = true;
-                result.catalog.race_names[index] = value;
-            }
-            continue;
-        }
-        if (parse_indexed_key(key, "class.", index) &&
-            index < result.catalog.class_names.size()) {
-            if (class_found[index]) {
-                result.errors.emplace_back("duplicate field menu text row: " +
-                                          key);
-            } else {
-                class_found[index] = true;
-                result.catalog.class_names[index] = value;
-            }
-            continue;
-        }
-        if (parse_indexed_key(key, "status.", index) &&
-            index < result.catalog.status_names.size()) {
-            if (status_found[index]) {
-                result.errors.emplace_back("duplicate field menu text row: " +
-                                          key);
-            } else {
-                status_found[index] = true;
-                result.catalog.status_names[index] = value;
             }
             continue;
         }
@@ -962,10 +994,7 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         result.errors.emplace_back("field menu text catalog is empty");
     }
     add_missing_entries(archetype_found, "archetype.", result.errors);
-    add_missing_entries(race_found, "race.", result.errors);
-    add_missing_entries(class_found, "class.", result.errors);
     add_missing_entries(runner_found, "runner.", result.errors);
-    add_missing_entries(status_found, "status.", result.errors);
     const auto require_named = [&result](const char* key, const bool found) {
         if (!found) {
             result.errors.emplace_back(

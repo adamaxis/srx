@@ -213,11 +213,22 @@ write_field_service_routes(
     }
     const auto command_names =
         shadowrun::graphics::read_genesis_command_overview_names(rom);
+    // The command-screen presenter selects these padded ROM rows by the
+    // runner record's species/class bytes. Stable names preserve their source
+    // order without exposing numeric text-table slots to the runtime.
+    constexpr std::array<std::string_view, 5> kCommandOverviewRaceIds{{
+        "human", "elf", "dwarf", "orc", "troll"}};
     for (std::size_t index = 0; index < command_names.races.size(); ++index) {
-        emit("race." + std::to_string(index), command_names.races[index]);
+        emit("command_overview.race.option." +
+                 std::string(kCommandOverviewRaceIds[index]),
+             command_names.races[index]);
     }
+    constexpr std::array<std::string_view, 4> kCommandOverviewClassIds{{
+        "mage", "shaman", "samurai", "decker"}};
     for (std::size_t index = 0; index < command_names.classes.size(); ++index) {
-        emit("class." + std::to_string(index), command_names.classes[index]);
+        emit("command_overview.class.option." +
+                 std::string(kCommandOverviewClassIds[index]),
+             command_names.classes[index]);
     }
     constexpr std::array<std::string_view, 25> kAttributesSkillsTextIds{{
         "body", "quickness", "strength", "charisma", "intelligence",
@@ -328,9 +339,13 @@ write_field_service_routes(
         emit("runner." + std::to_string(index),
              assets.field_menu_runner_names[index]);
     }
+    constexpr std::array<std::string_view, 5> kCommandOverviewPostureIds{{
+        "full_defense", "medium_defense", "neutral", "medium_offense",
+        "full_offense"}};
     for (std::size_t index = 0; index < assets.field_menu_status_names.size();
          ++index) {
-        emit("status." + std::to_string(index),
+        emit("command_overview.posture.option." +
+                 std::string(kCommandOverviewPostureIds[index]),
              assets.field_menu_status_names[index]);
     }
     const auto field_labels =
@@ -1620,12 +1635,13 @@ void write_asset_readme(const std::filesystem::path& root) {
               "`gameplay/scripts/pocket_secretary.lua`, and "
               "`gameplay/scripts/startup.lua` provide cursor-menu choice IDs; "
               "`gameplay/scripts/clips.lua` provides selector and text IDs; "
-              "`gameplay/scripts/ui.lua` provides shared confirmation choices. "
-              "It also maps shared field metric captions to stable IDs. "
+              "`gameplay/scripts/ui.lua` provides shared confirmation choices "
+              "and field metric caption IDs. "
               "`gameplay/scripts/magic.lua` provides ROM-ordered spell and "
               "Magic panel text IDs. "
               "`gameplay/scripts/cyberware.lua` provides stable IDs for the "
-              "Cyberware panel. "
+              "Cyberware panel. `gameplay/scripts/command_overview.lua` maps "
+              "race, class, and posture caption IDs. "
               "Separately traced cinematic resources belong under movies/<scene>; "
               "they must not be mixed into intro or field assets.\n\n"
            << "Audio is emitted here only as complete Windows-playable lossless "
