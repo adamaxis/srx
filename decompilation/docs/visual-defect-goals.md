@@ -427,7 +427,7 @@ only for the current interaction; collision re-entry resets it to 2. The success
 route checks sound request `0x4B` and the `0x82 -> 0x81` map update after
 acknowledgement. Scene 26 reaches both passkey doors and the D8 terminal prompt
 from the descriptor spawn with QA-seeded passkeys. Full map/path coverage
-remains incomplete. General terrain recovery and downstream alert-entity selection,
+remains incomplete. The tested scene-2 blocked diagonal corner now reaches the connected ROM 0xB442 reset, leaves position unchanged, and returns to directional idle; this specific route is fixed, while general terrain recovery and downstream alert-entity selection,
 item acquisition, other passkey qualities, grenade consumption, the terminal's
 world-activity outcome, building item use, and other building/property routes
 remain open.

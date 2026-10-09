@@ -13200,7 +13200,8 @@ int run_field_stoker_collision_to_dialogue_qa(
 int run_field_stoker_collision_candidate_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& output,
-    const std::vector<std::uint16_t>& field_audio_events) {
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
     std::filesystem::create_directories(output);
     std::error_code directory_error;
     for (std::filesystem::directory_iterator item(output, directory_error), end;
@@ -13345,6 +13346,55 @@ int run_field_stoker_collision_candidate_qa(
                   << ", selector=" << wall_animation_selector << ", frame="
                   << field_scene.field_entity_animation_frame_for_dump()
                   << ")\n";
+        return 3;
+    }
+
+    // The ROM calls 0xB442 when both orthogonal slide probes fail. Verify the
+    // connected field controller handles that case using ordinary diagonal
+    // input against the corner reached above.
+    const auto reset_count_before = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.movement.reset_blocked_step"));
+    bool saw_corner_reset = false;
+    std::uint16_t corner_ticks = 0U;
+    for (; corner_ticks < 48U && route_active(); ++corner_ticks) {
+        const auto before = field_scene.field_entity_world_position();
+        field_scene.set_controller_nibble(0x0AU);
+        field_scene.advance_frame();
+        const auto reset_count_after = std::count(
+            source_boundaries.begin(), source_boundaries.end(),
+            std::string("field.movement.reset_blocked_step"));
+        if (reset_count_after > reset_count_before) {
+            const auto after = field_scene.field_entity_world_position();
+            if (after.x != before.x || after.y != before.y ||
+                !save("wall-corner-reset.bmp")) {
+                std::cerr << "field Stoker-property QA: blocked corner reset "
+                             "committed a colliding step or could not dump it\n";
+                return 3;
+            }
+            saw_corner_reset = true;
+            ++corner_ticks;
+            break;
+        }
+    }
+    if (!saw_corner_reset) {
+        std::cerr << "field Stoker-property QA: diagonal wall contact did not "
+                     "exercise the source blocked-step reset\n";
+        return 3;
+    }
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    const auto corner_direction =
+        field_scene.field_entity_direction_for_dump();
+    if (field_scene.field_entity_heading_for_dump() !=
+            field_scene.field_entity_target_heading_for_dump() ||
+        field_scene.field_entity_animation_selector_for_dump() !=
+            select_field_entity_animation_selector(corner_direction, false) ||
+        field_scene.field_entity_walking_for_dump() ||
+        field_scene.field_entity_animation_frame_for_dump() != 0U ||
+        !save("wall-corner-idle.bmp")) {
+        std::cerr << "field Stoker-property QA: blocked corner did not restore "
+                     "the target heading and directional idle pose\n";
         return 3;
     }
 
@@ -14531,7 +14581,7 @@ int main(int argc, char** argv) {
             if (field_stoker_collision_qa_path.has_value()) {
                 return run_field_stoker_collision_candidate_qa(
                     field_scene, *field_stoker_collision_qa_path,
-                    field_audio_events);
+                    field_audio_events, field_source_boundaries);
             }
             if (field_transition_qa_path.has_value()) {
                 std::filesystem::create_directories(

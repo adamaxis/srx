@@ -21,6 +21,7 @@
 #include "shadowrun_ghidra/entities/entity_action_math_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_animation_conversion.hpp"
 #include "shadowrun_ghidra/entities/heading_animation_conversion.hpp"
+#include "shadowrun_ghidra/entities/movement_state_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_delay_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_combat_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_transition_conversion.hpp"
@@ -4727,6 +4728,50 @@ void FieldSceneRuntime::advance_field_movement() {
         false,
         state_.field_scene_buffers.scene_reference,
         field_movement_transition_state_.world_mode};
+    const auto reset_blocked_movement = [this] {
+        // ROM 0xB442 resets the active entity after a blocked directional
+        // probe. The field route previously left this callback as a marker
+        // only, so a failed diagonal slide retained its partially slewed
+        // heading and animation accumulator.
+        EntityMovementState reset_state{};
+        reset_state.movement_flags =
+            field_movement_behavior_record_.route_flags;
+        reset_state.current_heading = field_movement_state_.heading;
+        reset_state.desired_heading = field_target_heading_;
+        reset_state.animation_flags = field_movement_state_.movement_flags;
+        reset_state.movement_status = static_cast<std::uint16_t>(
+            field_entity_animation_.accumulator);
+        reset_state.direction_animation = field_entity_animation_selector_;
+        reset_state.collision = field_collision_record_;
+
+        auto sample_state = field_terrain_sample_state_;
+        reset_entity_movement_state(
+            reset_state, kFieldIdleAnimationSelectors,
+            field_movement_state_.position_x,
+            field_movement_state_.position_y,
+            [this, &reset_state, &sample_state](
+                const std::uint16_t x, const std::uint16_t y) {
+                const auto result = evaluate_field_collision(
+                    x, y, reset_state.collision, sample_state,
+                    field_entity_behavior_flags_, true);
+                return CollisionEvaluation{
+                    result, reset_state.collision.packed_state};
+            });
+
+        field_movement_behavior_record_.route_flags =
+            reset_state.movement_flags;
+        field_movement_state_.heading = reset_state.current_heading;
+        field_movement_state_.movement_flags = reset_state.animation_flags;
+        field_entity_animation_.accumulator = static_cast<std::int16_t>(
+            reset_state.movement_status);
+        field_entity_animation_.frame = 0U;
+        field_entity_animation_.redraw_requested = true;
+        field_entity_animation_selector_ = reset_state.direction_animation;
+        field_entity_attack_pose_active_ = false;
+        field_collision_record_ = reset_state.collision;
+        field_terrain_sample_state_ = sample_state;
+        source_boundary("field.movement.reset_blocked_step");
+    };
     begin_entity_movement_pass(
         field_movement_state_,
         result_policy,
@@ -4763,7 +4808,7 @@ void FieldSceneRuntime::advance_field_movement() {
                 policy_probe);
         },
         policy_probe,
-        [this] { source_boundary("field.movement.reset_blocked_step"); });
+        reset_blocked_movement);
 
     // ROM 0xAC5E checks FFDF64 after the terrain probe. A clear raw sample
     // releases the entity's B7B8 retry guard so a later doorway or terminal

@@ -80,15 +80,22 @@ headings: right and left have extended cadence routes, while the other six
 directions have ordinary-input movement, facing, selector, full-screen, and
 release checkpoints.
 
-Blocked movement is checked in the existing scene-2 wall route of
+Blocked movement is checked in the scene-2 route of
 `shadowrun_ghidra_conversion_qt_field_stoker_collision_candidate_qa`. After
 normal held-Down input reaches the source wall row, the test requires no
-movement, frame zero, and a C052 directional selector. Debug and Release both
-pass, and their 22 route frames match by SHA-256. All 22 Debug frames were
-reviewed at full-screen size; the wall and bypass are visible, the actor/HUD
-remain present, and no dialogue or stale menu appears. This route still rejects
-the nearby record-2 object as Stoker's trigger; it does not identify the real
-Stoker property.
+movement, frame zero, and a C052 directional selector. The live runtime now
+connects this blocked-step branch to typed `reset_entity_movement_state`
+(ROM `0xB442`): it clears the blocked bit, restores the desired heading,
+resets the movement accumulator, selects C052, and re-evaluates collision at
+the current position. The QA then holds diagonal Up/Right at the wall corner,
+requires the source reset boundary to fire without committing either candidate
+coordinate, releases input, and verifies target/current heading equality,
+directional idle, and frame zero. Debug and Release pass; all 23 route BMPs
+match by SHA-256. Every Debug frame was reviewed at full-screen size; the wall,
+bypass, corner reset, player, and HUD remain visible, and no dialogue, stale
+menu, or duplicate control layer appears. This route still rejects the nearby
+record-2 object as Stoker's trigger; it does not identify the real Stoker
+property.
 
 ## Eight-question visual review
 
@@ -99,7 +106,9 @@ Stoker property.
    selector `0x28`; the left and six additional routes select the source
    heading's C062 selector after accepted movement. Every route verifies its
    target/current heading, direction, selector, frame, position change, and
-   matching C052 selector on release.
+   matching C052 selector on release. The blocked diagonal corner route also
+   verifies that position does not advance and that the reset restores the
+   desired heading and C052 idle selector.
 3. **Are the visuals themselves correct?** The sprite frames are decoded from
    the source descriptors selected by the ROM movement continuation. Whole
    screen review confirms actor, map, and HUD are composited together. Exact
@@ -109,7 +118,9 @@ Stoker property.
    depending on starting phase. The 35-update right-held QA observes all four
    frames and a wrap. Accepted movement uses C062; released input selects static C052
    idle. The separate C0B2 transition is finite. At the scene-2 wall, held
-   movement is rejected and the C052 selector/frame-zero state is checked.
+   movement is rejected and the C052 selector/frame-zero state is checked;
+   the diagonal corner route reaches the B442 reset boundary and also returns
+   to frame zero after input release.
 5. **Is there a sound?** No direct sound request appears in the traced
    heading/vector/collision path. The wider footstep/audio dispatch is not
    resolved; cue and duration remain unknown.
@@ -122,7 +133,9 @@ Stoker property.
 7. **Do multiple frames support this interpretation?** The right/left routes
    show idle, repeated movement, loop wrap, and release. Thirty additional
    full-screen frames show idle, held input, aligned heading, continued
-   movement, and release for the other six directions. Independent section 04
+   movement, and release for the other six directions. The scene-2 collision
+   route supplies multiple frames before, during, and after corner recovery.
+   Independent section 04
    frames 000900, 000903, 000906, 000909, 000912, 000915, 000918, and 000921
    show the original actor in multiple field positions/poses. The video has no
    synchronized controller or selector log and does not show this same map, so
@@ -134,7 +147,8 @@ Stoker property.
 ## Outcome labels
 
 - **Code changed:** Qt uses source-selected C062 assets/timing for ordinary
-  movement and C052 on idle/reset; C0B2 is retained as a separate transition.
+  movement and C052 on idle/reset; the live blocked-step branch calls the
+  typed B442 movement reset; C0B2 is retained as a separate transition.
 - **Behavior implemented:** accepted D-pad movement shows a looping stride;
   release/rejected movement returns to its directional idle pose.
 - **Internally checked:** Debug/Release right/left field-movement QA and
@@ -144,7 +158,8 @@ Stoker property.
   poses. No matching controller/selector capture exists for exact correlation.
 - **Reported defect status:** the C062 correction and all eight live heading
   routes are implemented; right-held movement loops through its four poses,
-  and a normal-input wall collision returns to C052 idle. Independent section
+  and normal wall and diagonal corner collisions return to C052 idle through
+  the connected B442 reset. Independent section
   04 frames support a moving runner, but they do not match this map or expose
   selector/input state. Exact-scene visual alignment remains unverified.
   Movement audio and broader collision/building defects are separate goals.

@@ -24,18 +24,21 @@ positive route.
 - The source collision path at `0xB7B8` returns event 0 for this record. The
   scene stays 2 and the dialogue modal remains closed through 30 neutral
   destination updates.
-- At the separate wall row, held movement is rejected and the typed selector
-  returns to C052 idle, frame 0.
+- At the separate wall row, held movement is rejected and the connected ROM
+  `0xB442` reset returns to C052 idle, frame 0. A subsequent held diagonal at
+  the corner reaches the same live reset callback; the candidate position is
+  unchanged, and releasing input restores the desired heading and idle pose.
 - The independent section 03 recording shows the motel approach and populated
   Stoker panel, but does not show record 2, its collision coordinates, or the
   event state. It therefore cannot independently validate this negative
   control.
 
-The candidate CTest writes 22 full-screen 320x224 BMP checkpoints covering
-spawn, movement, wall approach and bypass, the property lane, contact, idle
-frames 1/8/30, and `actual.bmp`. Debug and Release output names and SHA-256
-hashes match. The frames were reviewed at full size; the playfield and HUD
-remain visible, with no dialogue or menu controls overlaid.
+The candidate CTest writes 23 full-screen 320x224 BMP checkpoints covering
+spawn, movement, wall approach, corner reset/idle, bypass, the property lane,
+contact, idle frames 1/8/30, and `actual.bmp`. Debug and Release output names
+and SHA-256 hashes match. All frames were reviewed at full size; the playfield
+and HUD remain visible, with no dialogue, menu controls, or duplicate UI layer
+overlaid.
 
 ## Eight-question visual review
 
@@ -43,14 +46,16 @@ remain visible, with no dialogue or menu controls overlaid.
    and the expected no-dialogue outcome. No matching independent Genesis frame
    of this record-2 contact was found.
 2. **Does the look match behavior?** Yes for this negative control: contact
-   leaves scene 2 active with event 0 and no modal. The wall reset also returns
-   to the source-derived idle selector and frame.
+   leaves scene 2 active with event 0 and no modal. Blocked wall and corner
+   movement run through the connected B442 reset and return to the source-derived
+   idle selector and frame.
 3. **Are the visuals correct?** Whole-screen captures show a stable field and
    HUD during movement and idle. Exact source pixels at record 2 are not
    independently available; FIELD-01 and HUD-01 remain separate open goals.
 4. **Is it animated?** The runner changes poses during held movement and is
-   static at the blocked wall and idle checkpoints. This route does not test a
-   Stoker animation or the positive doorway sequence.
+   static at the blocked wall and idle checkpoints. The QA confirms the
+   directional reset frames after both wall and diagonal corner rejection.
+   This route does not test a Stoker animation or the positive doorway sequence.
 5. **Is there a sound?** This negative-control route identifies no
    collision-specific source request or duration. Its event count cannot prove
    playback or silence.
@@ -58,7 +63,7 @@ remain visible, with no dialogue or menu controls overlaid.
    the complete field and HUD. No stale dialogue, menu, or duplicate controls
    appear. It does not verify portrait palette or ammunition values.
 7. **Do multiple frames support the interpretation?** Native checkpoints cover
-   movement, the blocked wall, contact, and 30 idle updates. Independent
+   movement, the blocked wall, corner reset, contact, and 30 idle updates. Independent
    section 03 frames show the separate Stoker doorway sequence, not this
    record-2 route or its event result.
 8. **Was old UI cleared before drawing new UI?** No UI opens on this route, and
@@ -67,11 +72,12 @@ remain visible, with no dialogue or menu controls overlaid.
 ## Outcome
 
 - **Code changed:** a reproducible record-2 negative-control route and CTest
-  distinguish this terrain object from the Stoker doorway.
+  distinguish this terrain object from the Stoker doorway; the connected live
+  field movement reset now handles blocked corner probes.
 - **Behavior checked:** record 2 contact remains scene 2/event 0 and opens no
   dialogue. The positive record-91 route is covered by the linked audit.
-- **Internally checked:** the candidate CTest passes in Debug and Release;
-  the 22 full-screen outputs match by SHA-256 and were reviewed.
+- **Internally checked:** the candidate and field-movement CTests pass in Debug
+  and Release; all 23 full-screen outputs match by SHA-256 and were reviewed.
 - **Independently visually checked:** the supplied recording does not show
   this candidate object, so no independent visual claim is made for record 2.
 - **Reported defect resolved:** this file is only a negative control. The
