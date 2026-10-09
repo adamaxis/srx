@@ -183,6 +183,10 @@ int main() {
     for (std::size_t update = 0; update < 6U; ++update) {
         player_walk_seventh = scripts.actor_heartbeat(player_movement);
     }
+    player_movement.animation_mode = ScriptActorAnimationMode::idle;
+    player_movement.animation_direction_override = 4U;
+    const auto player_reset_idle = scripts.actor_heartbeat(player_movement);
+    player_movement.animation_direction_override.reset();
     player_movement.animation_mode = ScriptActorAnimationMode::attack;
     const auto player_attack_pose = scripts.actor_heartbeat(player_movement);
     player_movement.animation_mode = ScriptActorAnimationMode::walking;
@@ -193,17 +197,22 @@ int main() {
     player_movement.phase = ScriptActorHeartbeatPhase::behavior;
     player_movement.movement_allowed = true;
     player_movement.controller_nibble = 6U;
-    player_movement.movement_state_heading_override = 0x3000U;
     const auto player_behavior_after_render =
         scripts.actor_heartbeat(player_movement);
     if (!expect(
             player_walk_start.has_value() &&
                 player_walk_start->animation_id == "walk" &&
+                player_walk_start->animation_selector == 0x28U &&
                 player_walk_start->direction == 2U &&
                 player_walk_start->animation_frame == 0U &&
                 player_walk_start->animation_accumulator == 0x0280 &&
                 player_walk_seventh.has_value() &&
                 player_walk_seventh->animation_frame == 1U &&
+                player_reset_idle.has_value() &&
+                player_reset_idle->animation_id == "idle" &&
+                player_reset_idle->direction == 4U &&
+                player_reset_idle->animation_selector == 0x10U &&
+                player_reset_idle->animation_accumulator == 0x0400 &&
                 player_attack_pose.has_value() &&
                 player_attack_pose->animation_id == "attack" &&
                 player_attack_pose->animation_frame == 0U &&
@@ -214,10 +223,152 @@ int main() {
                 player_behavior_after_render->animation_id == "walk" &&
                 player_behavior_after_render->movement_heading == 0x4000U &&
                 player_behavior_after_render->movement_current_heading ==
-                    0x3800U,
+                    0x1800U,
             "Lua heartbeat did not own player animation and movement cadence")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
+    }
+
+    const auto player_step_context = [](
+                                        const std::string_view actor_id,
+                                        const std::uint16_t initial_heading,
+                                        const std::uint16_t target_heading) {
+        ScriptActorBehaviorContext context{};
+        context.profile_id = "field_runner_k03_none00";
+        context.entity_kind = 3U;
+        context.instance_id = actor_id;
+        context.initial_heading = initial_heading;
+        context.spawn = true;
+        context.movement_allowed = true;
+        context.controller_nibble = 1U;
+        context.controller_heading_table.fill(0xFFFFU);
+        context.controller_heading_table[1] = target_heading;
+        context.movement_services_available = true;
+        context.movement_state.position_x = 100U;
+        context.movement_state.position_y = 100U;
+        context.movement_state.heading = initial_heading;
+        context.movement_state.animation_heading = initial_heading;
+        context.movement_state.movement_substate = 7U;
+        context.movement_state.route_status = 9;
+        context.movement_state.route_flags = 0x03U;
+        context.movement_state.movement_flags = 0x08U;
+        context.movement_state.collision_flags = 0x01U;
+        context.movement_state.event_flags = 0x01U;
+        context.movement_offsets = {{
+            {10, 0}, {0, 10}, {20, 0}, {0, 20},
+            {-10, 0}, {0, -10}, {-20, 0}, {0, -20},
+        }};
+        context.movement_idle_selectors = {{
+            0x20U, 0x21U, 0x22U, 0x23U,
+            0x24U, 0x25U, 0x26U, 0x27U,
+        }};
+        context.movement_collision_recovery =
+            [](const std::uint16_t, const std::uint16_t,
+               const std::int16_t, const std::uint8_t) { return false; };
+        return context;
+    };
+
+    auto clear_step_context = player_step_context(
+        "movement_clear", 0U, 0U);
+    clear_step_context.movement_entity_flags = 0x08U;
+    clear_step_context.movement_state.route_flags = 0x23U;
+    std::size_t clear_collision_queries = 0U;
+    clear_step_context.movement_collision =
+        [&clear_collision_queries](const std::uint16_t x,
+                                   const std::uint16_t y) {
+            ++clear_collision_queries;
+            const auto code = static_cast<std::int16_t>(
+                x == 110U && y == 100U ? 0 : 1);
+            return ScriptMovementCollisionResult{
+                code, static_cast<std::uint16_t>(code)};
+        };
+    clear_step_context.movement_route_lookup =
+        [](const std::uint16_t) { return ScriptMovementRouteFacts{}; };
+    const auto clear_step = scripts.actor_heartbeat(clear_step_context);
+
+    auto route_step_context = player_step_context(
+        "movement_route_fallback", 0x4000U, 0x4000U);
+    std::size_t route_collision_queries = 0U;
+    std::uint16_t observed_route_key = 0xFFFFU;
+    route_step_context.movement_collision =
+        [&route_collision_queries](const std::uint16_t x,
+                                   const std::uint16_t y) {
+            ++route_collision_queries;
+            const auto code = static_cast<std::int16_t>(
+                x == 120U && y == 100U ? 1 : 0);
+            return ScriptMovementCollisionResult{
+                code, static_cast<std::uint16_t>(code)};
+        };
+    route_step_context.movement_route_lookup =
+        [&observed_route_key](const std::uint16_t key) {
+            observed_route_key = key;
+            return ScriptMovementRouteFacts{0, 1, 0U, 4U};
+        };
+    const auto route_step = scripts.actor_heartbeat(route_step_context);
+
+    auto slide_step_context = player_step_context(
+        "movement_diagonal_slide", 0x2000U, 0x2000U);
+    std::size_t slide_collision_queries = 0U;
+    slide_step_context.movement_collision =
+        [&slide_collision_queries](const std::uint16_t x,
+                                   const std::uint16_t y) {
+            ++slide_collision_queries;
+            if ((x == 100U && y == 110U) ||
+                (x == 110U && y == 100U)) {
+                return ScriptMovementCollisionResult{1, 1U};
+            }
+            return ScriptMovementCollisionResult{0, 0U};
+        };
+    slide_step_context.movement_route_lookup =
+        [](const std::uint16_t) { return ScriptMovementRouteFacts{}; };
+    const auto slide_step = scripts.actor_heartbeat(slide_step_context);
+
+    auto reset_step_context = player_step_context(
+        "movement_blocked_reset", 0x2000U, 0x4000U);
+    std::size_t reset_collision_queries = 0U;
+    reset_step_context.movement_collision =
+        [&reset_collision_queries](const std::uint16_t x,
+                                   const std::uint16_t y) {
+            ++reset_collision_queries;
+            const auto code = static_cast<std::int16_t>(
+                x == 100U && y == 100U ? 0 : 1);
+            return ScriptMovementCollisionResult{
+                code, static_cast<std::uint16_t>(code)};
+        };
+    reset_step_context.movement_route_lookup =
+        [](const std::uint16_t) { return ScriptMovementRouteFacts{}; };
+    const auto reset_step = scripts.actor_heartbeat(reset_step_context);
+    if (!expect(
+            clear_step.has_value() && clear_step->movement_step.has_value() &&
+                clear_step->movement_step->outcome ==
+                    ScriptActorMovementStep::Outcome::accepted &&
+                clear_step->movement_step->state.position_x == 110U &&
+                clear_step->movement_step->state.event_flags == 0U &&
+                clear_step->movement_step->state.route_flags == 0x03U &&
+                clear_collision_queries == 1U &&
+                route_step.has_value() && route_step->movement_step.has_value() &&
+                route_step->movement_step->state.position_x == 110U &&
+                route_step->movement_step->state.collision_flags == 0U &&
+                observed_route_key == 4U && route_collision_queries == 2U &&
+                slide_step.has_value() && slide_step->movement_step.has_value() &&
+                slide_step->movement_step->state.position_x == 120U &&
+                slide_step->movement_step->state.route_status == 0 &&
+                slide_step->movement_step->state.movement_flags == 0x0CU &&
+                slide_collision_queries == 3U &&
+                reset_step.has_value() && reset_step->movement_step.has_value() &&
+                reset_step->movement_step->outcome ==
+                    ScriptActorMovementStep::Outcome::reset &&
+                reset_step->movement_current_heading == 0x4000U &&
+                reset_step->movement_step->state.route_flags == 0x01U &&
+                reset_step->movement_step->state.movement_flags == 0x09U &&
+                reset_step->movement_step->state.route_status == -1 &&
+                reset_step->movement_step->direction_animation == 0x22U &&
+                clear_step->movement_step->direction_animation == 0x40U &&
+                route_step->movement_step->direction_animation == 0x42U &&
+                reset_collision_queries == 4U,
+            "Lua movement policy did not resolve clear, route, slide, and reset cases")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
     }
 
     const auto field_interaction_text_keys =

@@ -14004,10 +14004,11 @@ int run_field_scene2_motel_street_collision_qa(
                 selector == static_cast<std::uint16_t>(0x0020U + direction * 4U) &&
                 animation_frame <= 3U;
         } else {
+            const auto heading_direction =
+                field_movement_direction_from_heading(
+                    field_scene.field_entity_heading_for_dump());
             animation_state_coherent = animation_state_coherent &&
-                direction == field_movement_direction_from_heading(
-                                 field_scene
-                                     .field_entity_animation_heading_for_dump()) &&
+                direction == heading_direction &&
                 selector == static_cast<std::uint16_t>(direction * 4U) &&
                 animation_frame == 0U;
         }

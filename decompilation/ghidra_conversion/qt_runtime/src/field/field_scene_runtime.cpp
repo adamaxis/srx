@@ -40,6 +40,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -966,9 +967,7 @@ bool FieldSceneRuntime::transition_to_elevator_destination(
     field_entity_animation_.period = kFieldEntityAnimationPeriod;
     field_entity_animation_id_ = "idle";
     field_player_animation_reset_pending_ = false;
-    field_player_movement_heading_sync_pending_ = false;
-    field_entity_animation_selector_ =
-        select_field_entity_animation_selector(0U, false);
+    field_entity_animation_selector_ = 0U;
     field_movement_behavior_record_.current_heading = 0U;
     field_movement_behavior_record_.target_heading = 0U;
     field_movement_transition_state_.terrain_collision_code = 0U;
@@ -4035,7 +4034,6 @@ bool FieldSceneRuntime::bootstrap(
     field_controller_nibble_ = 0U;
     field_controller_port_byte_ = 0U;
     field_player_actor_script_initialized_ = false;
-    field_player_movement_heading_sync_pending_ = false;
     field_random_seed_ = static_cast<std::uint16_t>(
         QRandomGenerator::global()->generate());
     field_opening_auto_walk_ = FieldOpeningAutoWalkState{};
@@ -4169,9 +4167,7 @@ bool FieldSceneRuntime::bootstrap(
     field_entity_animation_.period = kFieldEntityAnimationPeriod;
     field_entity_animation_id_ = "idle";
     field_player_animation_reset_pending_ = false;
-    field_player_movement_heading_sync_pending_ = false;
-    field_entity_animation_selector_ =
-        select_field_entity_animation_selector(0, false);
+    field_entity_animation_selector_ = 0U;
     field_entity_walking_ = false;
     field_entity_attack_pose_active_ = false;
     input_ = integration::FieldSessionBootstrapInput{};
@@ -4865,6 +4861,14 @@ FieldSceneRuntime::heartbeat_field_player(
         if (field_entity_attack_pose_active_) {
             actor_context.animation_direction_override =
                 field_entity_attack_direction_;
+        } else if (field_entity_animation_selector_ <= 0x001CU &&
+                   (field_entity_animation_selector_ & 0x0003U) == 0U) {
+            // ROM 0xB442 writes the C052 idle selector from +0x2E but leaves
+            // the separate +0x36 sprite heading untouched. Keep Lua's idle
+            // facing bound to the selected C052 list after that reset.
+            actor_context.animation_direction_override =
+                static_cast<std::uint8_t>(
+                    field_entity_animation_selector_ / 4U);
         }
         if (field_player_animation_reset_pending_) {
             actor_context.animation_accumulator_override =
@@ -4874,22 +4878,95 @@ FieldSceneRuntime::heartbeat_field_player(
     actor_context.controller_nibble = field_controller_nibble_;
     actor_context.controller_heading_table =
         field_controller_heading_table_;
-    if (phase == scripting::ScriptActorHeartbeatPhase::behavior &&
-        field_player_movement_heading_sync_pending_) {
-        actor_context.movement_state_heading_override =
-            field_movement_state_.heading;
-    }
     if (field_opening_auto_walk_.active && !movement_transition_paused) {
         actor_context.movement_heading_override =
             field_opening_auto_walk_.target_heading;
     }
+    if (phase == scripting::ScriptActorHeartbeatPhase::behavior) {
+        actor_context.movement_state = scripting::ScriptMovementStepState{
+            field_movement_state_.position_x,
+            field_movement_state_.position_y,
+            field_movement_state_.heading,
+            field_movement_state_.animation_heading,
+            field_movement_state_.collision_context,
+            field_movement_state_.movement_substate,
+            field_movement_state_.route_status,
+            field_movement_behavior_record_.route_flags,
+            field_movement_state_.movement_flags,
+            field_movement_state_.collision_flags,
+            field_movement_state_.event_flags,
+            field_movement_state_.collision_extent,
+            field_movement_transition_state_.terrain_collision_code};
+        for (std::size_t index = 0;
+             index < field_movement_direction_offsets_.size(); ++index) {
+            actor_context.movement_offsets[index] =
+                scripting::ScriptMovementOffset{
+                    field_movement_direction_offsets_[index].x,
+                    field_movement_direction_offsets_[index].y};
+        }
+        actor_context.movement_idle_selectors =
+            kFieldIdleAnimationSelectors;
+        actor_context.movement_entity_flags = field_entity_behavior_flags_;
+        actor_context.movement_transition_active = false;
+        actor_context.movement_scene_id =
+            state_.field_scene_buffers.scene_reference;
+        actor_context.movement_collision_mode =
+            field_movement_transition_state_.world_mode;
+        actor_context.movement_services_available = script_movement_allowed;
+        if (script_movement_allowed) {
+            actor_context.movement_collision =
+                [this](const std::uint16_t x, const std::uint16_t y) {
+                    const auto collision_code =
+                        evaluate_field_collision(x, y);
+                    return scripting::ScriptMovementCollisionResult{
+                        collision_code,
+                        field_movement_transition_state_.terrain_collision_code};
+                };
+            actor_context.movement_route_lookup =
+                [this](const std::uint16_t route_key) {
+                    if ((route_key & 0x03U) != 0U ||
+                        route_key / 4U >= field_movement_routes_.size()) {
+                        source_boundary(
+                            "field.movement.route_key_out_of_range");
+                        throw std::runtime_error(
+                            "Lua requested a movement route outside the source table");
+                    }
+                    const auto route_index =
+                        static_cast<std::size_t>(route_key / 4U);
+                    const auto& route_source =
+                        field_movement_route_sources_[route_index];
+                    const auto sample_value = [this](
+                                                  const std::uint8_t sample_index) {
+                        if (sample_index >=
+                            field_terrain_sample_state_.size()) {
+                            source_boundary(
+                                "field.movement.route_sample_out_of_range");
+                            throw std::runtime_error(
+                                "movement route sample index is outside source state");
+                        }
+                        return static_cast<std::int8_t>(
+                            field_terrain_sample_state_[sample_index]);
+                    };
+                    const auto& route = field_movement_routes_[route_index];
+                    return scripting::ScriptMovementRouteFacts{
+                        sample_value(route_source.primary_sample_index),
+                        sample_value(route_source.secondary_sample_index),
+                        route.primary_fallback_slot,
+                        route.secondary_fallback_slot};
+                };
+            actor_context.movement_collision_recovery =
+                [this](const std::uint16_t x, const std::uint16_t y,
+                       const std::int16_t collision_code,
+                       const std::uint8_t direction_slot) {
+                    return recover_blocked_field_movement(
+                        MovementProbeResult{collision_code, x, y,
+                                            direction_slot});
+                };
+        }
+    }
     const auto actor_decision = game_scripts_.actor_heartbeat(actor_context);
     if (actor_decision.has_value()) {
         field_player_actor_script_initialized_ = true;
-        if (phase == scripting::ScriptActorHeartbeatPhase::behavior &&
-            actor_context.movement_state_heading_override.has_value()) {
-            field_player_movement_heading_sync_pending_ = false;
-        }
         if (phase == scripting::ScriptActorHeartbeatPhase::render &&
             actor_context.animation_accumulator_override.has_value()) {
             field_player_animation_reset_pending_ = false;
@@ -4919,8 +4996,8 @@ void FieldSceneRuntime::advance_field_movement() {
         // When the controller goes idle, the heading animation returns to
         // the directional idle list instead of looping the walk cycle while
         // the runner stands still.
-        if (field_entity_walking_) {
-            apply_field_entity_animation(false);
+        if (!field_entity_attack_pose_active_) {
+            field_entity_walking_ = false;
         }
         return;
     }
@@ -4928,13 +5005,15 @@ void FieldSceneRuntime::advance_field_movement() {
     if (movement_transition_paused) {
         // Keep the startup marker alive through the fade, as the ROM does,
         // while the projected doorway event owns the field transition.
-        apply_field_entity_animation(false);
+        if (!field_entity_attack_pose_active_) {
+            field_entity_walking_ = false;
+        }
         return;
     }
 
     if (!field_opening_auto_walk_.active && field_controller_nibble_ == 0U) {
-        if (field_entity_walking_) {
-            apply_field_entity_animation(false);
+        if (!field_entity_attack_pose_active_) {
+            field_entity_walking_ = false;
         }
         return;
     }
@@ -4948,153 +5027,57 @@ void FieldSceneRuntime::advance_field_movement() {
         source_boundary("field.player.lua_heading_missing");
         return;
     }
-    field_target_heading_ = *actor_decision->movement_heading;
-    const auto lua_heading =
-        *actor_decision->movement_current_heading;
-    field_movement_state_.heading = lua_heading;
-    // The ordinary step presents the slewed +0x2E heading. ROM 0xBADE may
-    // replace +0x36 with the direction of its committed diagonal fallback;
-    // keep that source-facing value separate and let the fallback update it.
-    field_movement_state_.animation_heading = field_movement_state_.heading;
-
-    MovementProbeResult last_probe{};
-    const auto probe = [this, &last_probe](const std::uint16_t direction_slot) {
-        const auto direction = static_cast<std::uint8_t>(
-            (direction_slot >> 1U) & 0x07U);
-        last_probe = probe_entity_directional_collision(
-            MovementProbeInput{
-                field_movement_state_.position_x,
-                field_movement_state_.position_y,
-                direction,
-                field_entity_behavior_flags_},
-            field_movement_direction_offsets_,
-            [this](const std::uint16_t candidate_x,
-                   const std::uint16_t candidate_y) {
-                return evaluate_field_collision(candidate_x, candidate_y);
-            });
-        return last_probe;
-    };
-    const auto policy_probe = [probe](const std::uint16_t direction_slot) {
-        return probe(direction_slot);
-    };
-
-    const auto previous_x = field_movement_state_.position_x;
-    const auto previous_y = field_movement_state_.position_y;
-    const MovementResultPolicy result_policy{
-        false,
-        state_.field_scene_buffers.scene_reference,
-        field_movement_transition_state_.world_mode};
-    const auto reset_blocked_movement = [this] {
-        // ROM 0xB442 resets the active entity after a blocked directional
-        // probe. The field route previously left this callback as a marker
-        // only, so a failed diagonal slide retained its partially slewed
-        // heading and animation accumulator.
-        EntityMovementState reset_state{};
-        reset_state.movement_flags =
-            field_movement_behavior_record_.route_flags;
-        reset_state.current_heading = field_movement_state_.heading;
-        reset_state.desired_heading = field_target_heading_;
-        reset_state.animation_flags = field_movement_state_.movement_flags;
-        reset_state.movement_status = static_cast<std::uint16_t>(
-            field_entity_animation_.accumulator);
-        reset_state.direction_animation = field_entity_animation_selector_;
-        reset_state.collision = field_collision_record_;
-
-        auto sample_state = field_terrain_sample_state_;
-        reset_entity_movement_state(
-            reset_state, kFieldIdleAnimationSelectors,
-            field_movement_state_.position_x,
-            field_movement_state_.position_y,
-            [this, &reset_state, &sample_state](
-                const std::uint16_t x, const std::uint16_t y) {
-                const auto result = evaluate_field_collision(
-                    x, y, reset_state.collision, sample_state,
-                    field_entity_behavior_flags_, true);
-                return CollisionEvaluation{
-                    result, reset_state.collision.packed_state};
-            });
-
-        field_movement_behavior_record_.route_flags =
-            reset_state.movement_flags;
-        field_movement_state_.heading = reset_state.current_heading;
-        field_movement_state_.movement_flags = reset_state.animation_flags;
-        field_entity_animation_.accumulator = static_cast<std::int16_t>(
-            reset_state.movement_status);
-        field_player_animation_reset_pending_ = true;
-        field_entity_animation_.frame = 0U;
-        field_entity_animation_.redraw_requested = true;
-        field_entity_animation_selector_ = reset_state.direction_animation;
-        field_entity_attack_pose_active_ = false;
-        field_collision_record_ = reset_state.collision;
-        field_terrain_sample_state_ = sample_state;
-        source_boundary("field.movement.reset_blocked_step");
-    };
-    begin_entity_movement_pass(
-        field_movement_state_,
-        result_policy,
-        probe,
-        [this, &last_probe] { return recover_blocked_field_movement(last_probe); },
-        [this, &result_policy, &policy_probe] {
-            const auto route_lookup = [this](const std::uint16_t route_key) {
-                if ((route_key & 0x03U) != 0U ||
-                    route_key / 4U >= field_movement_routes_.size()) {
-                    source_boundary("field.movement.route_key_out_of_range");
-                    return DirectionalMovementRoute{};
-                }
-                auto route = field_movement_routes_[route_key / 4U];
-                const auto& source_route =
-                    field_movement_route_sources_[route_key / 4U];
-                const auto sample_value = [this](
-                                              const std::uint8_t sample_index) {
-                    if (sample_index >= field_terrain_sample_state_.size()) {
-                        source_boundary(
-                            "field.movement.route_sample_out_of_range");
-                        return static_cast<std::int8_t>(-1);
-                    }
-                    return static_cast<std::int8_t>(
-                        field_terrain_sample_state_[sample_index]);
-                };
-                route.primary_marker =
-                    sample_value(source_route.primary_sample_index);
-                route.secondary_marker =
-                    sample_value(source_route.secondary_sample_index);
-                return route;
-            };
-            return evaluate_entity_movement_route(
-                field_movement_state_.heading, result_policy, route_lookup,
-                policy_probe);
-        },
-        policy_probe,
-        reset_blocked_movement);
-    if (field_movement_state_.heading != lua_heading) {
-        // Route collision can replace the current heading with its committed
-        // fallback. Feed that accepted source state back into Lua on the next
-        // behavior heartbeat before it computes another 0xB530 step.
-        field_player_movement_heading_sync_pending_ = true;
+    if (!actor_decision->movement_step.has_value()) {
+        failure_ = "Lua player heartbeat omitted its collision-resolved step";
+        source_boundary("field.player.lua_movement_step_missing");
+        return;
     }
 
-    // ROM 0xAC5E checks FFDF64 after the terrain probe. A clear raw sample
-    // releases the entity's B7B8 retry guard so a later doorway or terminal
-    // can publish its event. Keep the other route bits intact.
-    if ((field_entity_behavior_flags_ & 0x08U) != 0U &&
-        field_movement_transition_state_.terrain_collision_code == 0U) {
-        field_movement_behavior_record_.route_flags =
-            static_cast<std::uint8_t>(
-                field_movement_behavior_record_.route_flags &
-                static_cast<std::uint8_t>(~0x20U));
+    field_target_heading_ = *actor_decision->movement_heading;
+    const auto previous_x = field_movement_state_.position_x;
+    const auto previous_y = field_movement_state_.position_y;
+    const auto& movement_step = *actor_decision->movement_step;
+    const auto& script_state = movement_step.state;
+    field_movement_state_.position_x = script_state.position_x;
+    field_movement_state_.position_y = script_state.position_y;
+    field_movement_state_.heading = script_state.heading;
+    field_movement_state_.animation_heading = script_state.animation_heading;
+    field_movement_state_.collision_context = script_state.collision_context;
+    field_movement_state_.movement_substate = script_state.movement_substate;
+    field_movement_state_.route_status = script_state.route_status;
+    field_movement_state_.movement_flags = script_state.movement_flags;
+    field_movement_state_.collision_flags = script_state.collision_flags;
+    field_movement_state_.event_flags = script_state.event_flags;
+    field_movement_state_.collision_extent = script_state.collision_extent;
+    field_movement_transition_state_.terrain_collision_code =
+        script_state.terrain_collision_code;
+    field_movement_behavior_record_.route_flags = script_state.route_flags;
+
+    if (movement_step.direction_animation !=
+        field_entity_animation_selector_) {
+        field_entity_animation_.redraw_requested = true;
+    }
+    field_entity_animation_selector_ = movement_step.direction_animation;
+
+    if (movement_step.outcome ==
+        scripting::ScriptActorMovementStep::Outcome::reset) {
+        field_player_animation_reset_pending_ = true;
+        field_entity_animation_.redraw_requested = true;
+        field_entity_attack_pose_active_ = false;
+        field_entity_walking_ = false;
+        source_boundary("field.movement.reset_blocked_step");
     }
 
     field_entity_.world_position.x = field_movement_state_.position_x;
     field_entity_.world_position.y = field_movement_state_.position_y;
-    field_entity_.direction =
-        field_movement_direction_from_heading(
-            field_movement_state_.animation_heading);
+    field_entity_.direction = actor_decision->direction;
     if (previous_x != field_movement_state_.position_x ||
         previous_y != field_movement_state_.position_y) {
         source_boundary("field.movement.accepted_step");
-        apply_field_entity_animation(true);
+        field_entity_attack_pose_active_ = false;
+        field_entity_walking_ = true;
     } else {
-        apply_field_entity_animation(false);
+        field_entity_walking_ = false;
     }
 }
 
@@ -5351,27 +5334,6 @@ void FieldSceneRuntime::service_player_weapon_action() {
     source_boundary("field.combat.player_weapon_spawned");
 }
 
-void FieldSceneRuntime::apply_field_entity_animation(const bool walking) {
-    if (walking) {
-        // Accepted movement replaces the one-frame C042 pose with the source
-        // C062 walking list. Idle field frames leave the attack pose selected
-        // until the source movement path chooses another list.
-        field_entity_attack_pose_active_ = false;
-    } else if (field_entity_attack_pose_active_) {
-        return;
-    }
-    const auto selector = select_field_entity_animation_selector(
-        field_entity_.direction, walking);
-    if (selector != field_entity_animation_selector_) {
-        field_entity_animation_selector_ = selector;
-        // B6DE and B442 replace +0x16 directly. They leave +0x1A and +0x1E
-        // intact; 0x600E wraps the positive walk list or resets the single
-        // idle frame on the next entity-render pass.
-        field_entity_animation_.redraw_requested = true;
-    }
-    field_entity_walking_ = walking;
-}
-
 void FieldSceneRuntime::advance_field_weapon_projectiles() {
     const auto advance_record_animation =
         [this](SpawnEntityRecordState& record,
@@ -5593,7 +5555,16 @@ void FieldSceneRuntime::advance_field_actor_animation() {
             field_entity_animation_.accumulator =
                 decision->animation_accumulator;
             field_entity_animation_id_ = decision->animation_id;
+            const auto selector_changed =
+                decision->animation_selector.has_value() &&
+                *decision->animation_selector !=
+                    field_entity_animation_selector_;
+            if (decision->animation_selector.has_value()) {
+                field_entity_animation_selector_ =
+                    *decision->animation_selector;
+            }
             field_entity_animation_.redraw_requested =
+                selector_changed ||
                 previous_frame != field_entity_animation_.frame ||
                 previous_animation != field_entity_animation_id_;
         }

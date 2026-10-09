@@ -311,9 +311,11 @@ scripted placement. C++ provides narrow host services for collision queries,
 accepted-position commit, asset rendering, and audio playback. The current
 runtime sends these heartbeats only to the controlled player and the extracted
 NPC profiles; it does not yet enumerate all 16 live records. Lua now owns the
-player's target-heading selection/slew and animation cadence plus extracted
-NPC entry animations, while collision-route policy and most NPC behavior remain
-native or unconnected.
+player's target-heading selection/slew, collision-route decisions, and
+animation cadence plus extracted NPC entry animations. Native services provide
+terrain samples, route-table facts, map-event recovery, accepted-position
+commit, asset rendering, and audio playback. Most NPC behavior and the full
+16-record population remain unconnected.
 
 - `gameplay/scripts/actor_ai.lua` resolves Lua AI packages from a stable
   source-template profile ID plus the ROM's item/spell/none action class and
@@ -326,21 +328,29 @@ native or unconnected.
   direction, animation frame, and cadence; the Qt renderer consumes the
   returned snapshot without advancing a second clock. The player receives a
   behavior heartbeat each field service pass, where Lua maps the ROM's
-  normalized D-pad table or a scripted override to a target heading and applies
-  the `0xB530` `0x0800`-step heading slew. A separate render heartbeat owns the
-  player's C062/C052 animation clock and returns the pose. The host still
-  chooses collision routes, commits accepted positions, and reports a
-  collision-adjusted heading to Lua before its next movement update.
+  normalized D-pad table or a scripted override to a target heading, applies
+  the `0xB530` `0x0800`-step slew, probes candidates through
+  `game.movement.collision`, and chooses the accepted route/fallback. The
+  `game.movement.route` service returns source marker and fallback data after
+  the preceding terrain sample; `game.movement.recover_collision` invokes the
+  existing map-event recovery boundary for preserved negative results. A
+  separate render heartbeat owns the player's C062/C052 animation clock and
+returns the pose and C052/C062 selector. On a blocked reset, Lua takes the
+visible idle facing from C052 selected via current heading `+0x2E`, because
+ROM `0xB442` leaves `+0x36` unchanged. C++ applies Lua's selected coordinates
+and selector to the field world model and keeps native collision/event state
+synchronized.
   In the traced lists,
   `corp_guard_k05_item06` binds item 6, Max-Power (Heavy Pistol), and
   `pedestrian_k0b_none00` has no active item action. Each package selects its
   initial animation and requests its source cue; the audio host executes the
   request. This entry/idle branch is connected only for the current scene-2
   and scene-0x14 profile definitions, with scene 2 still inactive during New
-  Game bootstrap. Player terrain probes, route/fallback selection, and
-  position commit remain native host work; Lua owns the player's heading
-  progression and animation clock. Moving collision policy and all live source
-  actor slots into Lua remains unfinished.
+  Game bootstrap. Player route-key derivation, negative-result policy,
+  aligned fallback, diagonal alternate, movement flags, and blocked reset now
+  run in Lua. Terrain sampling, route-table reads, map-event recovery, and the
+  final host-world coordinate write remain native services. General NPC
+  movement/collision policy and all live source actor slots are unfinished.
   The script does not yet own general NPC movement, target selection, combat
   choices, weapon fire, hits, or damage. The ROM call order,
   actor timers, target/movement hand-off, and current gaps are documented in

@@ -122,6 +122,58 @@ enum class ScriptActorAnimationMode : std::uint8_t {
     attack,
 };
 
+struct ScriptMovementOffset {
+    std::int16_t x = 0;
+    std::int16_t y = 0;
+};
+
+struct ScriptMovementStepState {
+    std::uint16_t position_x = 0;
+    std::uint16_t position_y = 0;
+    std::uint16_t heading = 0;
+    std::uint16_t animation_heading = 0;
+    std::uint16_t collision_context = 0;
+    std::uint16_t movement_substate = 0;
+    std::int16_t route_status = 0;
+    std::uint8_t route_flags = 0;
+    std::uint8_t movement_flags = 0;
+    std::uint8_t collision_flags = 0;
+    std::uint8_t event_flags = 0;
+    std::int16_t collision_extent = 0;
+    std::uint16_t terrain_collision_code = 0;
+};
+
+struct ScriptMovementRouteFacts {
+    std::int8_t primary_marker = 0;
+    std::int8_t secondary_marker = 0;
+    std::uint16_t primary_fallback_slot = 0;
+    std::uint16_t secondary_fallback_slot = 0;
+};
+
+struct ScriptMovementCollisionResult {
+    std::int16_t collision_code = 0;
+    std::uint16_t terrain_collision_code = 0;
+};
+
+using ScriptMovementCollisionQuery =
+    std::function<ScriptMovementCollisionResult(std::uint16_t, std::uint16_t)>;
+using ScriptMovementRouteLookup =
+    std::function<ScriptMovementRouteFacts(std::uint16_t)>;
+using ScriptMovementCollisionRecovery =
+    std::function<bool(std::uint16_t, std::uint16_t, std::int16_t,
+                      std::uint8_t)>;
+
+struct ScriptActorMovementStep {
+    enum class Outcome : std::uint8_t {
+        accepted,
+        reset,
+    };
+
+    Outcome outcome = Outcome::accepted;
+    ScriptMovementStepState state{};
+    std::uint16_t direction_animation = 0;
+};
+
 // Source-derived identity and spawn facts passed to an actor's Lua heartbeat.
 // Lua owns per-instance behavior state; the host retains world facts and
 // consumes the returned presentation/action snapshot.
@@ -140,12 +192,22 @@ struct ScriptActorBehaviorContext {
     std::uint8_t controller_nibble = 0;
     std::array<std::uint16_t, 16> controller_heading_table{};
     std::optional<std::uint16_t> movement_heading_override;
-    std::optional<std::uint16_t> movement_state_heading_override;
     ScriptActorHeartbeatPhase phase = ScriptActorHeartbeatPhase::behavior;
     ScriptActorAnimationMode animation_mode =
         ScriptActorAnimationMode::idle;
     std::optional<std::uint8_t> animation_direction_override;
     std::optional<std::int16_t> animation_accumulator_override;
+    bool movement_services_available = false;
+    std::array<ScriptMovementOffset, 8> movement_offsets{};
+    std::array<std::uint16_t, 8> movement_idle_selectors{};
+    ScriptMovementStepState movement_state{};
+    std::uint8_t movement_entity_flags = 0;
+    bool movement_transition_active = false;
+    std::uint16_t movement_scene_id = 0;
+    std::uint16_t movement_collision_mode = 0;
+    ScriptMovementCollisionQuery movement_collision;
+    ScriptMovementRouteLookup movement_route_lookup;
+    ScriptMovementCollisionRecovery movement_collision_recovery;
 };
 
 struct ScriptActorBehaviorDecision {
@@ -159,12 +221,14 @@ struct ScriptActorBehaviorDecision {
     std::string animation_id = "idle";
     std::uint8_t direction = 0;
     std::uint8_t animation_frame = 0;
+    std::optional<std::uint16_t> animation_selector;
     bool transition_started = false;
     bool transition_complete = false;
     std::optional<std::uint16_t> audio_event;
     std::optional<std::uint8_t> weapon_item_id;
     std::optional<std::uint16_t> movement_heading;
     std::optional<std::uint16_t> movement_current_heading;
+    std::optional<ScriptActorMovementStep> movement_step;
     std::int16_t animation_accumulator = 0;
 };
 

@@ -4,6 +4,13 @@
 local ActorAI = {}
 local states = game.actors
 
+-- Source C002 movement context words. The table is static game data; collision
+-- sampling itself remains a narrow native service.
+local movement_context_words = {
+    0, -40, 40, -40, 40, 0, 40, 40,
+    0, 40, -40, 40, -40, 0, -40, -40,
+}
+
 local profiles = {
     ["corp_guard_k05_item06"] = {
         package_id = "corp_security.max_power_heavy_pistol",
@@ -109,6 +116,7 @@ local function snapshot(state, action, audio_event)
         action_code = state.action_code,
         action = action,
         animation = state.animation_id,
+        animation_selector = state.animation_selector,
         direction = state.direction,
         frame = state.animation_frame,
         animation_accumulator = state.animation_accumulator,
@@ -118,6 +126,7 @@ local function snapshot(state, action, audio_event)
         weapon_item_id = state.weapon_item_id,
         movement_heading = state.movement_heading,
         movement_current_heading = state.movement_current_heading,
+        movement_step = state.movement_step,
     }
 end
 
@@ -153,6 +162,7 @@ local function advance_player_animation(state, context)
 
     if context.animation_mode == "attack" then
         state.animation_id = "attack"
+        state.animation_selector = nil
         state.animation_frame = 0
         state.animation_accumulator = 0
         return
@@ -166,11 +176,13 @@ local function advance_player_animation(state, context)
     state.animation_accumulator = accumulated
     if context.animation_mode == "walking" then
         state.animation_id = "walk"
+        state.animation_selector = 0x20 + state.direction * 4
         if frame_advanced then
             state.animation_frame = (state.animation_frame + 1) % 4
         end
     else
         state.animation_id = "idle"
+        state.animation_selector = state.direction * 4
         state.animation_frame = 0
     end
 end
@@ -195,6 +207,206 @@ local function requested_movement_heading(context, profile)
     return heading
 end
 
+local function movement_collision_code(code, context)
+    if code >= 0 then
+        return code
+    end
+    local low_bits = code & 0x1f
+    if context.movement_transition_active or low_bits >= 0x18 or
+       ((context.movement_scene_id == 0x14 or
+         context.movement_collision_mode == 2) and
+        low_bits >= 2 and low_bits <= 5) then
+        return 0x7f
+    end
+    return code
+end
+
+local function probe_movement(context, movement_state, direction_slot)
+    local direction = (direction_slot >> 1) & 0x7
+    local offset = context.movement_offsets[direction + 1]
+    local candidate_x = (movement_state.position_x + offset[1]) & 0xffff
+    local candidate_y = (movement_state.position_y + offset[2]) & 0xffff
+    local collision_code, terrain_collision_code = game.movement.collision(
+        candidate_x, candidate_y)
+    movement_state.terrain_collision_code = terrain_collision_code
+    -- ROM 0xB77E maps detailed negative terrain results to 0x7F unless the
+    -- actor's +0x10 bit 1 requests that negative values be preserved.
+    if collision_code < 0 and (context.movement_entity_flags & 0x02) == 0 then
+        collision_code = 0x7f
+    end
+    return {
+        collision_code = collision_code,
+        candidate_x = candidate_x,
+        candidate_y = candidate_y,
+        direction_slot = direction_slot,
+    }
+end
+
+local function route_key_for_heading(heading)
+    local rotated = ((heading << 3) | (heading >> 13)) & 0xffff
+    rotated = rotated & 0x07
+    return (rotated & 0x06) << 1
+end
+
+local function movement_probe_is_blocked(probe, context)
+    return movement_collision_code(probe.collision_code, context) > 0
+end
+
+local function commit_movement_candidate(movement_state, probe)
+    movement_state.position_x = probe.candidate_x
+    movement_state.position_y = probe.candidate_y
+    movement_state.event_flags = movement_state.event_flags & 0xfe
+end
+
+local function reset_blocked_movement(context, state, movement_state)
+    movement_state.route_flags = movement_state.route_flags & 0xfd
+    movement_state.heading = state.movement_heading
+    movement_state.movement_flags = movement_state.movement_flags | 0x01
+    movement_state.route_status = -1
+    state.movement_current_heading = state.movement_heading
+    local direction = direction_from_heading(movement_state.heading)
+    state.direction = direction
+    state.animation_id = "idle"
+    -- B442 replaces +0x16 and clears movement +0x38, but leaves the sprite
+    -- frame (+0x1E) and cadence accumulator (+0x1A) to the render pass.
+    local _, terrain_collision_code = game.movement.collision(
+        movement_state.position_x, movement_state.position_y)
+    movement_state.terrain_collision_code = terrain_collision_code
+    return {
+        outcome = "reset",
+        state = movement_state,
+        direction_animation = context.movement_idle_selectors[direction + 1],
+    }
+end
+
+local function advance_player_movement(context, state)
+    if not context.movement_services_available or
+       state.movement_heading == nil or
+       state.movement_current_heading == nil then
+        return nil
+    end
+
+    local movement_state = {}
+    for key, value in pairs(context.movement_state) do
+        movement_state[key] = value
+    end
+    movement_state.heading = state.movement_current_heading
+    movement_state.animation_heading = movement_state.heading
+    movement_state.collision_extent = -12
+
+    local initial_direction = direction_from_heading(movement_state.heading)
+    local initial_slot = initial_direction * 2
+    movement_state.collision_context =
+        movement_context_words[3 + initial_direction] & 0xffff
+    local initial = probe_movement(context, movement_state, initial_slot)
+
+    if initial.collision_code == 0 then
+        movement_state.movement_substate = 0x1000
+        commit_movement_candidate(movement_state, initial)
+        state.animation_id = "walk"
+        state.direction = direction_from_heading(movement_state.heading)
+        return {
+            outcome = "accepted",
+            state = movement_state,
+            direction_animation = 0x20 + context.movement_idle_selectors[
+                direction_from_heading(movement_state.heading) + 1],
+        }
+    end
+
+    if initial.collision_code < 0 then
+        local recovered = game.movement.recover_collision(
+            initial.candidate_x, initial.candidate_y,
+            initial.collision_code, initial.direction_slot)
+        if not recovered then
+            movement_state.movement_substate = 0x1000
+            commit_movement_candidate(movement_state, initial)
+            state.animation_id = "walk"
+            state.direction = direction_from_heading(movement_state.heading)
+            return {
+                outcome = "accepted",
+                state = movement_state,
+                direction_animation = 0x20 + context.movement_idle_selectors[
+                    direction_from_heading(movement_state.heading) + 1],
+            }
+        end
+    end
+
+    if (movement_state.heading & 0x3fff) == 0 then
+        local key = route_key_for_heading(movement_state.heading)
+        local route = game.movement.route(key)
+        local fallback
+        local carry_set = false
+        if not (route.primary_marker > 0 and route.secondary_marker > 0) then
+            local fallback_slot = route.primary_marker <= 0
+                and route.primary_fallback_slot
+                or route.secondary_fallback_slot
+            fallback = probe_movement(context, movement_state, fallback_slot)
+            carry_set = movement_probe_is_blocked(fallback, context)
+        else
+            carry_set = true
+        end
+        if not carry_set and fallback ~= nil then
+            movement_state.collision_flags = movement_state.collision_flags & 0xfe
+            commit_movement_candidate(movement_state, fallback)
+            state.animation_id = "walk"
+            state.direction = direction_from_heading(movement_state.heading)
+            return {
+                outcome = "accepted",
+                state = movement_state,
+                direction_animation = 0x20 + context.movement_idle_selectors[
+                    direction_from_heading(movement_state.heading) + 1],
+            }
+        end
+        local reset = reset_blocked_movement(
+            context, state, movement_state)
+        state.animation_id = "idle"
+        return reset
+    end
+
+    local movement_direction = (movement_state.heading >> 13) & 0x06
+    movement_state.movement_substate = movement_direction
+    local selected = probe_movement(
+        context, movement_state, movement_direction << 1)
+    if movement_probe_is_blocked(selected, context) then
+        movement_state.route_status = movement_direction
+        local alternate_direction = (movement_direction + 2) & 0x07
+        selected = probe_movement(
+            context, movement_state, alternate_direction << 1)
+        if movement_probe_is_blocked(selected, context) then
+            local reset = reset_blocked_movement(
+                context, state, movement_state)
+            state.animation_id = "idle"
+            return reset
+        end
+    end
+
+    movement_state.animation_heading =
+        ((selected.direction_slot >> 4) |
+         (selected.direction_slot << 12)) & 0xffff
+    movement_state.movement_flags = movement_state.movement_flags | 0x04
+    commit_movement_candidate(movement_state, selected)
+    state.animation_id = "walk"
+    state.direction = direction_from_heading(movement_state.animation_heading)
+    return {
+        outcome = "accepted",
+        state = movement_state,
+        direction_animation = 0x20 + context.movement_idle_selectors[
+            direction_from_heading(movement_state.animation_heading) + 1],
+    }
+end
+
+local function finish_player_movement(context, movement_step)
+    if movement_step ~= nil and
+       (context.movement_entity_flags & 0x08) ~= 0 and
+       movement_step.state.terrain_collision_code == 0 then
+        -- ROM 0xAC5E releases B7B8's retry bit after FFDF64 reports clear
+        -- terrain, allowing a later doorway or terminal event to dispatch.
+        movement_step.state.route_flags =
+            movement_step.state.route_flags & 0xdf
+    end
+    return movement_step
+end
+
 function ActorAI.heartbeat(context)
     if type(context) ~= "table" then
         return nil
@@ -213,6 +425,7 @@ function ActorAI.heartbeat(context)
         state = initial_state(context, profile)
         states[context.actor_id] = state
         if profile.controls_movement then
+            state.movement_step = nil
             if context.phase == "behavior" then
                 state.movement_heading =
                     requested_movement_heading(context, profile)
@@ -220,6 +433,8 @@ function ActorAI.heartbeat(context)
                     state.movement_current_heading = approach_heading(
                         state.movement_current_heading,
                         state.movement_heading)
+                    state.movement_step = finish_player_movement(
+                        context, advance_player_movement(context, state))
                 end
             else
                 advance_player_animation(state, context)
@@ -235,18 +450,18 @@ function ActorAI.heartbeat(context)
     local audio_event
     if profile.controls_movement then
         if context.phase == "render" then
+            state.movement_step = nil
             state.movement_heading = nil
             advance_player_animation(state, context)
         else
-            if type(context.movement_state_heading_override) == "number" then
-                state.movement_current_heading =
-                    context.movement_state_heading_override & 0xffff
-            end
+            state.movement_step = nil
             state.movement_heading =
                 requested_movement_heading(context, profile)
             if state.movement_heading ~= nil then
                 state.movement_current_heading = approach_heading(
                     state.movement_current_heading, state.movement_heading)
+                state.movement_step = finish_player_movement(
+                    context, advance_player_movement(context, state))
             end
         end
         return snapshot(state, action, nil)

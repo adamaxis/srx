@@ -800,7 +800,6 @@ private:
     bool project_field_world_interaction();
     void update_source_field_camera();
     void service_pending_field_viewports();
-    void apply_field_entity_animation(bool walking);
     bool recover_blocked_field_movement(
         const MovementProbeResult& initial_probe);
     void advance_field_scene_transition_after_modal();
@@ -1234,7 +1233,6 @@ private:
     std::uint16_t field_target_heading_ = 0;
     FieldOpeningAutoWalkState field_opening_auto_walk_{};
     bool field_player_actor_script_initialized_ = false;
-    bool field_player_movement_heading_sync_pending_ = false;
     // Typed source field corresponding to FF014C, consumed only by the
     // 0xC7F8 scene-runtime dispatcher.
     std::uint8_t field_action_counter_ = 0;

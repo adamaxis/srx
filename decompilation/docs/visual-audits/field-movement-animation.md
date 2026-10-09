@@ -47,23 +47,25 @@ The extractor writes C062 frames as individually named files at
 directly. `actor_ai.lua` owns the player's render-phase frame accumulator,
 four-pose cadence, and idle/walk/attack animation selection; it also owns the
 default NPCs' C0B2 transition animation cadence. `FieldSceneRuntime` retains
-the accepted position, collision state, source selector bookkeeping, and the
-last Lua pose snapshot. Player target-heading selection and the `0xB530`
-`0x0800` heading slew now run in Lua. C++ still evaluates collision routes
-and fallback headings, commits the accepted position, and synchronizes any
-collision heading correction back into the next Lua heartbeat. C0B2 transition
-assets remain a separate family.
+the accepted position and collision state, then applies the movement position
+and C052/C062 selector returned by Lua. Player target-heading selection, the
+`0xB530` `0x0800` heading slew, collision-route policy, fallback selection,
+and movement animation selector now run in Lua. C++ provides terrain samples,
+route-table facts, the existing map-event recovery service, the final world
+position write, and asset drawing. C0B2 transition assets remain a separate
+family.
 
 ## Full-screen visual review for the Lua heartbeat slice
 
-The latest Debug and Release QA runs emitted 55 field-movement frames and 43
-scene-20 physical-entry frames each. The corresponding Debug/Release BMPs
-match byte for byte. I reviewed every frame in full-screen contact sheets. The
-movement route keeps the map, runner, portrait, equipment/ammo slots, and
-sidebar intact while the camera scrolls; the release checkpoints return to the
+The latest Debug and Release QA runs emitted 55 field-movement frames, 43
+scene-20 physical-entry frames, and 48 Scene-2 motel-route frames each. Their
+corresponding Debug/Release BMPs match byte for byte. I reviewed every frame in
+full-screen contact sheets and inspected the motel route's `actual.bmp` at
+native size. The movement route keeps the map, runner, portrait, equipment/ammo
+slots, and sidebar intact while the camera scrolls; release returns to the
 directional idle pose. The scene-20 sequence shows the field, doorway, interior,
 maglock dialogue, and return without stale dialogue panels, duplicate controls,
-or old button graphics left under the new screen.
+or old button graphics under the new screen.
 
 I also reviewed the independent longplay's 30-fps scene-2 frames 4440-4469
 (02:28). They show the same street, HUD scale, and moving runner through the
@@ -72,7 +74,7 @@ placement and sprite appearance but does not prove the exact heading or
 per-step cadence of the QA route. The internal captures verify this conversion
 path, not Genesis visual fidelity.
 
-## Seven-question visual check
+## Eight-question visual check
 
 1. **Does it look correct?** The runner remains aligned to the street and
    changes facing with the held direction; the longplay frames corroborate its
@@ -98,6 +100,10 @@ path, not Genesis visual fidelity.
    checkpoints per Debug/Release build, plus the 30 consecutive longplay frames
    4440-4469. The longplay does not expose input state, so it does not confirm
    the QA route's exact movement timing.
+8. **Is old UI cleared?** The field movement and Scene-20 route return use
+   complete frames. The field route has no menu/dialogue layer; Scene-20 shows
+   the prior dialogue and controls cleared on return, with no duplicate buttons
+   beneath the restored field screen.
 
 The `shadowrun_ghidra_conversion_qt_field_movement_qa` route captures idle,
 held-right ticks 1, 4, 7, 8, 14, 16, 21, 28, 32, and 35, release, and
@@ -137,13 +143,16 @@ normal held-Down input reaches the source wall row, the test requires no
 movement, frame zero, and a C052 directional selector. The live runtime now
 connects this blocked-step branch to typed `reset_entity_movement_state`
 (ROM `0xB442`): it clears the blocked bit, restores the desired heading,
-resets the movement accumulator, selects C052, and re-evaluates collision at
-the current position. The QA then holds diagonal Up/Right at the wall corner,
-requires the source reset boundary to fire without committing either candidate
-coordinate, releases input, and verifies target/current heading equality,
-directional idle, and frame zero. Debug and Release pass; all 23 route BMPs
-match by SHA-256. Every Debug frame was reviewed at full-screen size; the wall,
-bypass, corner reset, player, and HUD remain visible, and no dialogue, stale
+selects C052, and re-evaluates collision at the current position. `0xB442`
+does not clear the frame index or animation accumulator; the next render pass
+resolves the selected one-frame C052 list. The QA then holds diagonal Up/Right
+at the wall corner, requires the source reset boundary to fire without
+committing either candidate coordinate, releases input, and verifies
+target/current heading equality,
+directional idle, and frame zero. Debug and Release pass; all 55 route BMPs
+match by SHA-256. Every Debug frame was reviewed in whole-screen contact sheets;
+the `actual.bmp` was inspected at native size. The wall, bypass, corner reset,
+player, and HUD remain visible, and no dialogue, stale
 menu, or duplicate control layer appears. This route still rejects the nearby
 record-2 object as Stoker's trigger; it does not identify the real Stoker
 property.
@@ -163,12 +172,15 @@ The route stays west of scene-2 record 91 (`0x173138`, C2), so this collision
 check does not fire the motel doorway event.
 
 The ROM step record keeps a separate `+0x36` animation heading for a diagonal
-fallback (`0xBADE`/`0xBB70`). The native state already retained that heading,
-but the renderer derived the player's direction from `+0x2E` instead. The
-connected field runtime now uses `animation_heading` for sprite direction;
-normal steps initialize it from the slewed heading and fallback steps may
-replace it. The QA checks the direction, C052/C062 selector, frame range, and
-world position on every recorded frame. `motel-street-movement.tsv` also logs
+fallback (`0xBADE`/`0xBB70`). Accepted walking uses that heading to select
+C062. The `0xB442` reset instead writes a C052 idle selector from restored
+current heading `+0x2E` and leaves `+0x36` untouched. The first Lua movement
+port exposed a mismatch at that boundary: the selected C052 list faced south,
+but the following render heartbeat reused stale `+0x36` and drew west-facing
+assets. Lua now returns the C052/C062 selector directly and keeps idle facing
+with the selected C052 list; C++ applies that returned selector. The QA checks
+idle facing against `+0x2E`, walking facing against `+0x36`, selector, frame,
+and world position on every recorded frame. `motel-street-movement.tsv` logs
 input, current/target/animation headings, event, and audio-event count.
 
 Debug and Release each pass this CTest. All 48 whole-screen BMPs match by
@@ -186,6 +198,19 @@ heading; it does not reproduce a permanent movement lock. The user's exact
 stuck sequence and an independent Genesis collision trace are still missing,
 so FIELD-02 remains open.
 
+## Related whole-screen review findings
+
+The same final screenshot pass covered the Stoker collision-to-dialogue,
+Ares shop, scene-20 physical-entry, and Security Terminal routes. Their field,
+dialogue, and shop frames replace one another cleanly; no stale button or
+panel layer remains visible underneath a later screen. The Stoker dialogue
+captures still show the portrait asset previously flagged by the user. This
+movement slice does not change it, and the portrait defect remains open. In
+the Stoker collision frames, a pale cluster under the building overhang stays
+fixed relative to the map as the camera moves. The screenshots do not identify
+its ROM/map source, so this review does not classify it as a live NPC or add it
+to the actor population.
+
 ## Eight-question visual review
 
 1. **Does it look correct?** Every Scene-2 motel-route capture shows the runner,
@@ -195,20 +220,22 @@ so FIELD-02 remains open.
    claim.
 2. **Does the look match behavior?** The per-frame trace checks current and
    target headings, ROM-derived `+0x36` animation heading, direction, C052/C062
-   selector, frame, position, event, and audio count. Held Up reaches the wall,
-   uses the source one-side-clear candidate, then settles; Up+Left and South
-   leave the frontage. Scene 2 remains active with event zero throughout.
+   selector, frame, position, event, and audio count. Walking facing follows
+   `+0x36`; a blocked reset's idle facing follows the C052 selector from
+   `+0x2E`, even when `+0x36` remains stale. Held Up reaches the wall, uses the
+   source one-side-clear candidate, then settles; Up+Left and South leave the
+   frontage. Scene 2 remains active with event zero throughout.
 3. **Are the visuals themselves correct?** Sprite frames are the named
-   source-derived assets selected by the native movement controller. Whole
+   source-derived assets selected by the Lua movement controller. Whole
    screen review confirms actor, map, and HUD are composited together. Exact
    Genesis pixels and placement for this movement route remain unverified.
 4. **Is it animated?** Accepted movement uses the four-frame C062 lists; the
    source `0x280 / 0x1000` accumulator advances at six- or seven-update
    intervals. The full movement QA observes all four poses and a loop wrap.
    Held Up returns to the static C052 selector/frame zero after the wall
-   fallback is exhausted. Diagonal fallback updates `+0x36`; the connected
-   Qt actor now follows that direction. The separate C0B2 transition remains
-   finite.
+   fallback is exhausted. Diagonal fallback updates `+0x36`; Lua selects C062
+   from that direction. A blocked reset uses the C052 selector selected from
+   `+0x2E`. The separate C0B2 transition remains finite.
 5. **Is there a sound?** The route's audio-event count increases by zero over
    169 movement updates. No movement cue or duration is assigned by this
    route; broader footstep/audio dispatch remains unresolved.
@@ -229,10 +256,11 @@ so FIELD-02 remains open.
 
 ## Outcome labels
 
-- **Code changed:** Qt uses source-selected C062 assets/timing for ordinary
-  movement and C052 on idle/reset; the live blocked-step branch calls the
-  typed B442 movement reset; the rendered direction consumes the typed
-  `+0x36` fallback heading; C0B2 remains a separate transition.
+- **Code changed:** Lua resolves player collision-route policy and returns
+  C052/C062 selectors; C++ supplies collision, route, and map-event services,
+  then applies the selected position and selector. The `0xB442` idle-facing
+  path follows C052 from `+0x2E` while diagonal walking uses `+0x36`; C0B2
+  remains a separate transition.
 - **Behavior implemented:** accepted D-pad movement shows a looping stride;
   release/rejected movement returns to its directional idle pose.
 - **Internally checked:** Debug/Release field-movement, Stoker, Ares, and

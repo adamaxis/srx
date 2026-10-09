@@ -55,11 +55,17 @@ The NPC Lua profile slice receives kind/action identity, initial delay, and
 heading; it does not yet receive the remaining `+0x10`, `+0x11`, `+0x4C`,
 `+0x9E`, or route fields needed for the general branch tree. The player
 heartbeat receives the normalized controller nibble and source heading table.
-Lua chooses its target heading and advances the current heading with the
-`0xB530` `0x0800`-step rule. The field host still resolves route and terrain
-collision, commits accepted positions, and reports collision-driven heading
-corrections to Lua. That collision and position path is an unfinished Lua
-ownership boundary.
+Lua chooses its target heading, advances the current heading with the `0xB530`
+`0x0800`-step rule, and now runs the `0xB77E`/`0xB732`/`0xBADE`/`0xBB86`
+movement decision path. It picks the initial candidate, handles preserved
+negative collision recovery, resolves aligned route markers, tries the
+diagonal alternate, updates movement flags, and resets blocked movement using
+the `0xB442` rules. The host exposes collision results (including the raw
+`FFDF64` terrain value), route-table facts, and the existing `0xB7B8` map-event
+recovery callback as explicit services; it applies Lua's selected position
+and C052/C062 animation selector to the field model. A blocked reset selects
+idle facing from `+0x2E`; the separate `+0x36` word remains unchanged as in
+the ROM. This policy port covers the controlled player only.
 The corresponding Lua-owned per-instance state lives at
 `game.actors[actor_id]`; it is shared script state rather than a transient
 heartbeat result or a C++ behavior-state object.
@@ -130,13 +136,15 @@ They are not yet the complete 16 live entity records. General target
 selection, general NPC movement, item/spell action selection, weapon firing,
 damage/death state, linked actors, and world activities remain outside the Lua
 heartbeat. The player now receives behavior and render heartbeats; Lua resolves
-controller/scripted target headings, applies the `0xB530` slew, and owns the
-player's animation clock. C++ still chooses collision routes, commits accepted
-positions, and can feed a collision-corrected heading back to Lua. The 16-slot
+controller/scripted target headings, applies the `0xB530` slew, owns the
+player's animation clock, and selects each player movement candidate and
+fallback plus the C052/C062 selector. C++ remains responsible for terrain
+collision sampling, source route data access, map-event recovery, and applying
+Lua's selected coordinates and selector to the field model. The 16-slot
 population and projectile animation paths are not yet all connected to these
-callbacks. General NPC movement, collision policy, and source actor-slot
-dispatch must move behind Lua actor packages before claiming complete
-Lua-owned movement or that every on-screen actor is connected.
+callbacks. General NPC movement, targeting, combat, and source actor-slot
+dispatch remain open; this slice does not establish that every on-screen actor
+is connected.
 
 The entry sounds selected by `0xB330` are kind-table events `0x2E` and `0x2F`.
 The extracted audio table maps both to silent slots, so the Lua request has no

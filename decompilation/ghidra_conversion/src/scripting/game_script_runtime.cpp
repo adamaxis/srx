@@ -10,6 +10,7 @@ extern "C" {
 #include <cstdint>
 #include <set>
 #include <system_error>
+#include <type_traits>
 #include <utility>
 
 namespace shadowrun::ghidra_conversion::scripting {
@@ -368,6 +369,7 @@ struct GameScriptRuntime::Impl {
     std::string location_text_profile;
     std::string location_speaker_id;
     ScriptFieldModeContext field_mode_context{};
+    const ScriptActorBehaviorContext* active_actor_context = nullptr;
     std::string bridge_failure;
     std::string failure;
 
@@ -501,6 +503,93 @@ struct GameScriptRuntime::Impl {
 
     static int field_context_newindex(lua_State* lua) {
         return luaL_error(lua, "game.field is native read-only context");
+    }
+
+    static int movement_collision(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        std::uint32_t x = 0U;
+        std::uint32_t y = 0U;
+        if (self == nullptr || self->active_actor_context == nullptr ||
+            !self->active_actor_context->movement_collision ||
+            !read_integer(lua, 1, 0xFFFFU, x) ||
+            !read_integer(lua, 2, 0xFFFFU, y)) {
+            return luaL_error(
+                lua,
+                "game.movement.collision expects x/y coordinates during an actor heartbeat");
+        }
+        try {
+            const auto result =
+                self->active_actor_context->movement_collision(
+                    static_cast<std::uint16_t>(x),
+                    static_cast<std::uint16_t>(y));
+            lua_pushinteger(lua, result.collision_code);
+            lua_pushinteger(lua, result.terrain_collision_code);
+            return 2;
+        } catch (...) {
+            return luaL_error(lua,
+                              "native movement collision query failed");
+        }
+    }
+
+    static int movement_route(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        std::uint32_t route_key = 0U;
+        if (self == nullptr || self->active_actor_context == nullptr ||
+            !self->active_actor_context->movement_route_lookup ||
+            !read_integer(lua, 1, 12U, route_key)) {
+            return luaL_error(
+                lua,
+                "game.movement.route expects a source route key during an actor heartbeat");
+        }
+        try {
+            const auto route =
+                self->active_actor_context->movement_route_lookup(
+                    static_cast<std::uint16_t>(route_key));
+            lua_createtable(lua, 0, 4);
+            lua_pushinteger(lua, route.primary_marker);
+            lua_setfield(lua, -2, "primary_marker");
+            lua_pushinteger(lua, route.secondary_marker);
+            lua_setfield(lua, -2, "secondary_marker");
+            lua_pushinteger(lua, route.primary_fallback_slot);
+            lua_setfield(lua, -2, "primary_fallback_slot");
+            lua_pushinteger(lua, route.secondary_fallback_slot);
+            lua_setfield(lua, -2, "secondary_fallback_slot");
+            return 1;
+        } catch (...) {
+            return luaL_error(lua, "native movement route lookup failed");
+        }
+    }
+
+    static int movement_recover_collision(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        std::uint32_t x = 0U;
+        std::uint32_t y = 0U;
+        std::uint32_t direction_slot = 0U;
+        if (self == nullptr || self->active_actor_context == nullptr ||
+            !self->active_actor_context->movement_collision_recovery ||
+            !read_integer(lua, 1, 0xFFFFU, x) ||
+            !read_integer(lua, 2, 0xFFFFU, y) ||
+            !lua_isinteger(lua, 3) || lua_tointeger(lua, 3) >= 0 ||
+            lua_tointeger(lua, 3) < -32768 ||
+            !read_integer(lua, 4, 14U, direction_slot) ||
+            (direction_slot & 1U) != 0U) {
+            return luaL_error(
+                lua,
+                "game.movement.recover_collision expects a negative collision and an even direction slot");
+        }
+        try {
+            const auto recovered =
+                self->active_actor_context->movement_collision_recovery(
+                    static_cast<std::uint16_t>(x),
+                    static_cast<std::uint16_t>(y),
+                    static_cast<std::int16_t>(lua_tointeger(lua, 3)),
+                    static_cast<std::uint8_t>(direction_slot));
+            lua_pushboolean(lua, recovered);
+            return 1;
+        } catch (...) {
+            return luaL_error(
+                lua, "native movement collision recovery failed");
+        }
     }
 
     static int actor_walk_heading_continuation(
@@ -749,6 +838,7 @@ struct GameScriptRuntime::Impl {
         location_text_profile.clear();
         location_speaker_id.clear();
         field_mode_context = ScriptFieldModeContext{};
+        active_actor_context = nullptr;
         bridge_failure.clear();
         failure.clear();
         if (state == nullptr) {
@@ -808,6 +898,17 @@ struct GameScriptRuntime::Impl {
         lua_pushcclosure(state, services_call, 1);
         lua_setfield(state, -2, "call");
         lua_setfield(state, -2, "services");
+        lua_newtable(state);
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, movement_collision, 1);
+        lua_setfield(state, -2, "collision");
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, movement_route, 1);
+        lua_setfield(state, -2, "route");
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, movement_recover_collision, 1);
+        lua_setfield(state, -2, "recover_collision");
+        lua_setfield(state, -2, "movement");
         lua_rawgeti(state, LUA_REGISTRYINDEX, modules_reference);
         lua_setfield(state, -2, "modules");
         lua_setglobal(state, "game");
@@ -1396,7 +1497,7 @@ GameScriptRuntime::actor_heartbeat(
     default:
         return fail("gameplay Lua actor animation mode is invalid");
     }
-    lua_createtable(state, 0, 18);
+    lua_createtable(state, 0, 36);
     lua_pushlstring(state, actor_id.data(), actor_id.size());
     lua_setfield(state, -2, "actor_id");
     lua_pushlstring(state, context.profile_id.data(),
@@ -1435,12 +1536,6 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "movement_heading_override");
-    if (context.movement_state_heading_override.has_value()) {
-        lua_pushinteger(state, *context.movement_state_heading_override);
-    } else {
-        lua_pushnil(state);
-    }
-    lua_setfield(state, -2, "movement_state_heading_override");
     lua_pushlstring(state, heartbeat_phase.data(), heartbeat_phase.size());
     lua_setfield(state, -2, "phase");
     lua_pushlstring(state, animation_mode.data(), animation_mode.size());
@@ -1457,8 +1552,73 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "animation_accumulator_override");
+    lua_pushboolean(
+        state,
+        context.movement_services_available &&
+            static_cast<bool>(context.movement_collision) &&
+            static_cast<bool>(context.movement_route_lookup) &&
+            static_cast<bool>(context.movement_collision_recovery));
+    lua_setfield(state, -2, "movement_services_available");
+    lua_createtable(state, 8, 0);
+    for (std::size_t index = 0; index < context.movement_offsets.size();
+         ++index) {
+        const auto& offset = context.movement_offsets[index];
+        lua_createtable(state, 2, 0);
+        lua_pushinteger(state, offset.x);
+        lua_rawseti(state, -2, 1);
+        lua_pushinteger(state, offset.y);
+        lua_rawseti(state, -2, 2);
+        lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
+    }
+    lua_setfield(state, -2, "movement_offsets");
+    lua_createtable(state, 8, 0);
+    for (std::size_t index = 0; index < context.movement_idle_selectors.size();
+         ++index) {
+        lua_pushinteger(state, context.movement_idle_selectors[index]);
+        lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
+    }
+    lua_setfield(state, -2, "movement_idle_selectors");
+    lua_createtable(state, 0, 13);
+    lua_pushinteger(state, context.movement_state.position_x);
+    lua_setfield(state, -2, "position_x");
+    lua_pushinteger(state, context.movement_state.position_y);
+    lua_setfield(state, -2, "position_y");
+    lua_pushinteger(state, context.movement_state.heading);
+    lua_setfield(state, -2, "heading");
+    lua_pushinteger(state, context.movement_state.animation_heading);
+    lua_setfield(state, -2, "animation_heading");
+    lua_pushinteger(state, context.movement_state.collision_context);
+    lua_setfield(state, -2, "collision_context");
+    lua_pushinteger(state, context.movement_state.movement_substate);
+    lua_setfield(state, -2, "movement_substate");
+    lua_pushinteger(state, context.movement_state.route_status);
+    lua_setfield(state, -2, "route_status");
+    lua_pushinteger(state, context.movement_state.route_flags);
+    lua_setfield(state, -2, "route_flags");
+    lua_pushinteger(state, context.movement_state.movement_flags);
+    lua_setfield(state, -2, "movement_flags");
+    lua_pushinteger(state, context.movement_state.collision_flags);
+    lua_setfield(state, -2, "collision_flags");
+    lua_pushinteger(state, context.movement_state.event_flags);
+    lua_setfield(state, -2, "event_flags");
+    lua_pushinteger(state, context.movement_state.collision_extent);
+    lua_setfield(state, -2, "collision_extent");
+    lua_pushinteger(state, context.movement_state.terrain_collision_code);
+    lua_setfield(state, -2, "terrain_collision_code");
+    lua_setfield(state, -2, "movement_state");
+    lua_pushinteger(state, context.movement_entity_flags);
+    lua_setfield(state, -2, "movement_entity_flags");
+    lua_pushboolean(state, context.movement_transition_active);
+    lua_setfield(state, -2, "movement_transition_active");
+    lua_pushinteger(state, context.movement_scene_id);
+    lua_setfield(state, -2, "movement_scene_id");
+    lua_pushinteger(state, context.movement_collision_mode);
+    lua_setfield(state, -2, "movement_collision_mode");
     ScopedInstructionBudget instruction_budget(state);
-    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+    impl_->active_actor_context = &context;
+    const auto actor_status = lua_pcall(state, 1, 1, 0);
+    impl_->active_actor_context = nullptr;
+    if (actor_status != LUA_OK) {
         return fail("actor_ai.heartbeat: " + stack_error(state));
     }
     if (!lua_istable(state, -1)) {
@@ -1516,6 +1676,17 @@ GameScriptRuntime::actor_heartbeat(
     }
     decision.animation_accumulator =
         static_cast<std::int16_t>(animation_accumulator);
+    lua_pop(state, 1);
+    lua_getfield(state, decision_table, "animation_selector");
+    if (lua_type(state, -1) != LUA_TNIL) {
+        if (!lua_isinteger(state, -1) || lua_tointeger(state, -1) < 0 ||
+            lua_tointeger(state, -1) > 0x07FF) {
+            return fail(
+                "actor_ai.heartbeat returned an invalid animation selector");
+        }
+        decision.animation_selector = static_cast<std::uint16_t>(
+            lua_tointeger(state, -1));
+    }
     lua_pop(state, 1);
     const auto read_boolean_field = [state, decision_table](
                                         const char* field,
@@ -1601,6 +1772,100 @@ GameScriptRuntime::actor_heartbeat(
         decision.movement_heading = static_cast<std::uint16_t>(heading);
     }
     lua_pop(state, 1);
+    lua_getfield(state, decision_table, "movement_step");
+    if (lua_type(state, -1) != LUA_TNIL) {
+        if (!lua_istable(state, -1) ||
+            context.profile_id != "field_runner_k03_none00" ||
+            context.phase != ScriptActorHeartbeatPhase::behavior ||
+            !context.movement_allowed ||
+            !context.movement_services_available) {
+            return fail("actor_ai.heartbeat returned an invalid movement step");
+        }
+        const auto movement_table = lua_absindex(state, -1);
+        ScriptActorMovementStep movement_step{};
+        std::string outcome;
+        if (!read_field_string(state, movement_table, "outcome", outcome) ||
+            (outcome != "accepted" && outcome != "reset")) {
+            return fail("actor_ai.heartbeat returned an invalid movement outcome");
+        }
+        movement_step.outcome = outcome == "reset"
+                                    ? ScriptActorMovementStep::Outcome::reset
+                                    : ScriptActorMovementStep::Outcome::accepted;
+        lua_getfield(state, movement_table, "state");
+        if (!lua_istable(state, -1)) {
+            return fail("actor_ai.heartbeat omitted movement state");
+        }
+        const auto movement_state_table = lua_absindex(state, -1);
+        std::uint32_t movement_value = 0U;
+        const auto read_movement = [&](const char* field,
+                                       const std::uint32_t maximum,
+                                       auto& destination) {
+            if (!read_field_integer(state, movement_state_table, field,
+                                    maximum, movement_value)) {
+                return false;
+            }
+            destination = static_cast<std::remove_reference_t<decltype(destination)>>(
+                movement_value);
+            return true;
+        };
+        if (!read_movement("position_x", 0xFFFFU,
+                           movement_step.state.position_x) ||
+            !read_movement("position_y", 0xFFFFU,
+                           movement_step.state.position_y) ||
+            !read_movement("heading", 0xFFFFU,
+                           movement_step.state.heading) ||
+            !read_movement("animation_heading", 0xFFFFU,
+                           movement_step.state.animation_heading) ||
+            !read_movement("collision_context", 0xFFFFU,
+                           movement_step.state.collision_context) ||
+            !read_movement("movement_substate", 0xFFFFU,
+                           movement_step.state.movement_substate) ||
+            !read_movement("route_flags", 0xFFU,
+                           movement_step.state.route_flags) ||
+            !read_movement("movement_flags", 0xFFU,
+                           movement_step.state.movement_flags) ||
+            !read_movement("collision_flags", 0xFFU,
+                           movement_step.state.collision_flags) ||
+            !read_movement("event_flags", 0xFFU,
+                           movement_step.state.event_flags)) {
+            return fail("actor_ai.heartbeat returned incomplete movement state");
+        }
+        lua_getfield(state, movement_state_table, "collision_extent");
+        if (!lua_isinteger(state, -1) || lua_tointeger(state, -1) < -32768 ||
+            lua_tointeger(state, -1) > 32767) {
+            return fail("actor_ai.heartbeat returned invalid collision extent");
+        }
+        movement_step.state.collision_extent =
+            static_cast<std::int16_t>(lua_tointeger(state, -1));
+        lua_pop(state, 1);
+        if (!read_movement("terrain_collision_code", 0xFFFFU,
+                           movement_step.state.terrain_collision_code)) {
+            return fail("actor_ai.heartbeat returned invalid terrain collision state");
+        }
+        lua_getfield(state, movement_state_table, "route_status");
+        if (!lua_isinteger(state, -1) || lua_tointeger(state, -1) < -32768 ||
+            lua_tointeger(state, -1) > 32767) {
+            return fail("actor_ai.heartbeat returned invalid movement route status");
+        }
+        movement_step.state.route_status =
+            static_cast<std::int16_t>(lua_tointeger(state, -1));
+        lua_pop(state, 1);
+        lua_pop(state, 1);
+        if (!read_field_integer(state, movement_table, "direction_animation",
+                                0xFFFFU, movement_value)) {
+            return fail("actor_ai.heartbeat omitted movement animation selector");
+        }
+        movement_step.direction_animation =
+            static_cast<std::uint16_t>(movement_value);
+        decision.movement_step = movement_step;
+    }
+    lua_pop(state, 1);
+    if (context.movement_services_available &&
+        context.phase == ScriptActorHeartbeatPhase::behavior &&
+        context.movement_allowed && decision.movement_heading.has_value() &&
+        !decision.movement_step.has_value()) {
+        return fail("actor_ai.heartbeat omitted the Lua movement step");
+    }
     if (context.action_kind == ScriptActorActionKind::item &&
         !decision.weapon_item_id.has_value()) {
         return fail("actor_ai.heartbeat omitted the source item action");
