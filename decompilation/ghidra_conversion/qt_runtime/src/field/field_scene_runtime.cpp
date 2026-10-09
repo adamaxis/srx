@@ -3442,7 +3442,16 @@ void FieldSceneRuntime::advance_command_overview_discard_confirmation(
             "field.command_overview.discard_confirmation.missing_selection");
         return;
     }
-    if (command_overview_discard_confirmation_.selected_option == 0U) {
+    const auto choice_index = static_cast<std::size_t>(
+        command_overview_discard_confirmation_.selected_option);
+    if (choice_index >= field_menu_text_.confirmation_choice_ids.size()) {
+        source_boundary(
+            "field.command_overview.discard_confirmation.choice_unresolved");
+        return;
+    }
+    const auto& choice_id =
+        field_menu_text_.confirmation_choice_ids[choice_index];
+    if (choice_id == "yes") {
         const auto mutation = discard_selected_item(
             active_runner_record(), *selected);
         if (mutation == EquipmentMutation::discarded) {
@@ -3455,9 +3464,12 @@ void FieldSceneRuntime::advance_command_overview_discard_confirmation(
             source_boundary(
                 "field.command_overview.inventory_action.discard_failed");
         }
-    } else {
+    } else if (choice_id == "no") {
         source_boundary(
             "field.command_overview.discard_confirmation.selected_no");
+    } else {
+        source_boundary(
+            "field.command_overview.discard_confirmation.choice_unresolved");
     }
 }
 
@@ -5781,7 +5793,8 @@ void FieldSceneRuntime::advance_frame() {
                 if (field_shop_definition_.has_value() &&
                     field_shop_menu_.open(
                         ShopId::ares_weapon_emporium,
-                        *field_shop_definition_)) {
+                        *field_shop_definition_,
+                        field_menu_text_.confirmation_choice_ids)) {
                     source_boundary("field.shop.ares.opened");
                 } else {
                     source_boundary("field.shop.ares.open_failed");

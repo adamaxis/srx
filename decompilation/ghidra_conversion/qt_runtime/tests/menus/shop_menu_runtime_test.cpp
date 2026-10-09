@@ -15,31 +15,41 @@ int main() {
     using namespace shadowrun::ghidra_conversion::qt_runtime;
 
     const auto ares = ShopId::ares_weapon_emporium;
-    const shadowrun::ghidra_conversion::scripting::ScriptShopDefinition
-        ares_definition{
-        "ares_weapon_emporium",
-        {{"weapons", {{0x01U, 0x00U, 0x00U}, {0x02U, 0x00U, 0x00U},
-                       {0x06U, 0x00U, 0x0FU}, {0x04U, 0x00U, 0x00U},
-                       {0x05U, 0x00U, 0x0DU}, {0x0DU, 0x06U, 0x14U},
-                       {0x0EU, 0x06U, 0x00U}}},
-         {"other_items", {{0x45U, 0x00U, 0x19U}, {0x0FU, 0x06U, 0x00U},
-                          {0x10U, 0x04U, 0x07U},
-                          {0x11U, 0x04U, 0x07U}}},
-         {"armor", {{0x2EU, 0x00U, 0x00U}, {0x2DU, 0x00U, 0x0CU}}},
-         {"source_action_3", {}}, {"source_action_4", {}}, {"sell", {}}}};
+    const std::array<std::string, 2> confirmation_choice_ids{{"yes", "no"}};
+    shadowrun::ghidra_conversion::scripting::ScriptShopDefinition
+        ares_definition;
+    ares_definition.id = "ares_weapon_emporium";
+    ares_definition.groups = {
+        {"weapons", {}, {{0x01U, 0x00U, 0x00U}, {0x02U, 0x00U, 0x00U},
+                          {0x06U, 0x00U, 0x0FU}, {0x04U, 0x00U, 0x00U},
+                          {0x05U, 0x00U, 0x0DU}, {0x0DU, 0x06U, 0x14U},
+                          {0x0EU, 0x06U, 0x00U}}},
+        {"other_items", {}, {{0x45U, 0x00U, 0x19U}, {0x0FU, 0x06U, 0x00U},
+                             {0x10U, 0x04U, 0x07U},
+                             {0x11U, 0x04U, 0x07U}}},
+        {"armor", {}, {{0x2EU, 0x00U, 0x00U}, {0x2DU, 0x00U, 0x0CU}}},
+        {"source_action_3", {}, {}}, {"source_action_4", {}, {}},
+        {"sell", {}, {}}};
     ShopMenuController menu;
-    if (!expect(menu.open(ares, ares_definition)) ||
+    if (!expect(menu.open(ares, ares_definition, confirmation_choice_ids)) ||
         !expect(menu.offer_count(ShopActionGroup::weapons) == 7U) ||
         !expect(menu.offer_count(ShopActionGroup::other_items) == 4U) ||
         !expect(menu.offer_count(ShopActionGroup::armor) == 2U) ||
         !expect(!menu.offer(ShopActionGroup::weapons, 7U).has_value())) {
         return 1;
     }
+    ShopMenuController invalid_confirmation_menu;
+    if (!expect(!invalid_confirmation_menu.open(
+            ares, ares_definition,
+            std::array<std::string, 2>{"no", "yes"}))) {
+        return 18;
+    }
     auto reordered_definition = ares_definition;
     std::swap(reordered_definition.groups[0],
               reordered_definition.groups[1]);
     ShopMenuController reordered_menu;
-    if (!expect(reordered_menu.open(ares, reordered_definition)) ||
+    if (!expect(reordered_menu.open(
+                    ares, reordered_definition, confirmation_choice_ids)) ||
         !expect(reordered_menu.selected_group() ==
                 ShopActionGroup::other_items) ||
         !expect(reordered_menu.offer_count(
@@ -210,7 +220,8 @@ int main() {
     }
 
     ShopMenuController transaction_menu;
-    if (!expect(transaction_menu.open(ares, ares_definition)) ||
+    if (!expect(transaction_menu.open(
+                    ares, ares_definition, confirmation_choice_ids)) ||
         !expect(transaction_menu.advance(0x0800U) ==
                 ShopMenuEvent::selection_moved) ||
         !expect(transaction_menu.advance(0x0200U) ==
@@ -290,7 +301,8 @@ int main() {
     }
 
     ShopMenuController sale_menu;
-    if (!expect(sale_menu.open(ares, ares_definition))) {
+    if (!expect(sale_menu.open(
+                    ares, ares_definition, confirmation_choice_ids))) {
         return 23;
     }
     for (int step = 0; step < 5; ++step) {

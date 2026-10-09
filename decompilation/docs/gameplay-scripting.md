@@ -173,6 +173,11 @@ access.
   The field menu catalog validates both lists against the native action order
   and resolves their ROM labels from the shared Lua text table. Cursor, reload,
   trade, ammunition, and runner-record state remain native.
+- `gameplay/scripts/ui.lua` declares the shared Yes/No confirmation menu in
+  ROM order. The field text catalog binds its extracted labels, and the Ares
+  shop and inventory discard paths use the selected stable ID when applying
+  the result. Cursor timing, default-No state, sound, and item/wallet effects
+  remain native.
 - `gameplay/scripts/startup.lua` declares the ordered New Game/Load Game,
   Save Slot, and archetype choices. The title-screen presenter validates each
   list against its typed native menu state and resolves its labels from the
@@ -182,7 +187,7 @@ access.
   Stoker dialogue, field object interactions, Ares mode-event paragraphs,
   Hotel menu/status text,
   Pocket Secretary root and Notebook title/separator/labels,
-  command-overview labels,
+  command-overview labels and shared confirmation labels,
   field-service titles, field-menu labels and feedback, all 96 Notebook Tips,
   startup and save/load copy, shop category headings and transaction copy,
   item names/categories/details, and the special clips text. Native presenters
@@ -198,9 +203,9 @@ The current slice connects the New Game trigger, native-backed story facts,
 the Michael quest branch, shared motel and debt menus, Hotel menu definitions,
 room/debt service calls, arrival/farewell/result dialogue, and the Qt
 presenters. Stoker, field interaction, Ares mode-event paragraphs, Hotel text,
-startup menu text/choices, Pocket Secretary root choices/labels, and
-command-overview root choices/labels, Clips selector choices/labels, and
-Notebook option IDs/labels are Lua content.
+startup menu text/choices, Pocket Secretary root choices/labels,
+command-overview root choices/labels, Clips selector choices/labels, Notebook
+option IDs/labels, and shared confirmation choices/labels are Lua content.
 Script dialogue menus carry
 their text profile and optional speaker into one generic panel projection;
 menu choices use generic presentation roles. Hotel cursor-menu choices come

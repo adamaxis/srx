@@ -61,10 +61,13 @@ bool is_action_confirmed(const std::uint16_t events) {
 
 bool ShopMenuController::open(
     const ShopId shop,
-    const scripting::ScriptShopDefinition& definition) {
+    const scripting::ScriptShopDefinition& definition,
+    const std::array<std::string, 2>& confirmation_choice_ids) {
     if (shop != ShopId::ares_weapon_emporium ||
         definition.id != "ares_weapon_emporium" ||
-        definition.groups.size() != group_ids_.size()) {
+        definition.groups.size() != group_ids_.size() ||
+        confirmation_choice_ids[0] != "yes" ||
+        confirmation_choice_ids[1] != "no") {
         return false;
     }
 
@@ -90,6 +93,7 @@ bool ShopMenuController::open(
     }
     shop_ = shop;
     group_ids_ = std::move(group_ids);
+    confirmation_choice_ids_ = confirmation_choice_ids;
     offer_groups_ = std::move(offer_groups);
     menu_mode_ = kAresMenuMode;
     source_state_ = FieldModeServiceState{};
@@ -110,6 +114,7 @@ void ShopMenuController::close() noexcept {
     reset_transaction();
     source_state_ = FieldModeServiceState{};
     group_ids_ = {};
+    confirmation_choice_ids_ = {};
     offer_groups_ = {};
     menu_mode_ = 0U;
 }
@@ -225,12 +230,25 @@ ShopTransactionEvent ShopMenuController::advance_transaction(
         return ShopTransactionEvent::no_change;
     }
     transaction_confirmation_open_ = false;
-    if (!transaction_confirmation_.accepted) {
+    if (transaction_confirmation_.selected_option >=
+        confirmation_choice_ids_.size()) {
+        clear_pending_action();
+        reset_transaction();
+        return ShopTransactionEvent::unresolved;
+    }
+    const auto& choice_id = confirmation_choice_ids_[
+        transaction_confirmation_.selected_option];
+    if (choice_id == "no") {
         last_purchase_result_ = FieldActionApplicationResult::cancelled;
         last_sale_outcome_.result = ShopSaleOutcome::Result::cancelled;
         clear_pending_action();
         reset_transaction();
         return ShopTransactionEvent::cancelled;
+    }
+    if (choice_id != "yes") {
+        clear_pending_action();
+        reset_transaction();
+        return ShopTransactionEvent::unresolved;
     }
 
     if (transaction_kind_ == TransactionKind::purchase && pending_action_ &&

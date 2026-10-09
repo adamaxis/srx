@@ -30,6 +30,7 @@ inline constexpr std::size_t kFieldMenuItemDetailLabelCount = 3U;
 inline constexpr std::size_t kFieldActionDetailTextCount = 32U;
 inline constexpr std::size_t kFieldMenuItemNameCount = 50U;
 inline constexpr std::size_t kFieldMenuClipsCommandCount = 4U;
+inline constexpr std::size_t kConfirmationChoiceCount = 2U;
 inline constexpr std::size_t kAttributeSkillLabelCount = 20U;
 inline constexpr std::size_t kCyberwareTitleLineCount = 2U;
 inline constexpr std::size_t kCyberwareEntryCount = 15U;
@@ -79,6 +80,8 @@ struct FieldMenuTextCatalog {
     std::string action_cannot_trade;
     std::string action_choice_no;
     std::string action_choice_yes;
+    std::array<std::string, kConfirmationChoiceCount>
+        confirmation_choice_ids{};
     // Ares shop headings and transaction copy are resolved from the Lua
     // content table during field bootstrap; the TSV stores no shop prose.
     std::string shop_transaction_prompt;

@@ -233,6 +233,9 @@ supports the panel placement; the differing-state comparison is still open.
 Discard now follows `0x12634`/`0x1275C`: it opens the source Yes/No
 confirmation with No selected, shows the equipped-item warning, protects item
 codes `0x29..0x2B` in slot 7, and clears the possession cell only after Yes.
+The shared `0x57B8C` Yes/No row is declared by `gameplay/scripts/ui.lua` in
+source order; discard and Ares transaction dispatch resolve the selected ID
+while keeping their existing typed state and input path.
 If the discarded cell is live equipment, its weapon or armor state is cleared
 with it. First Aid now follows `0x12298`/`0x1253E`: it builds the active
 record target list plus the source `CANCEL` row, preserves the target cursor,

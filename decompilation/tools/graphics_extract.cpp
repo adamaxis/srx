@@ -315,8 +315,8 @@ write_field_service_routes(
     emit("action.discard-prompt", action_text.discard_prompt);
     emit("action.cannot-discard", action_text.cannot_discard);
     emit("action.cannot-trade", action_text.cannot_trade);
-    emit("action.choice-no", action_text.choice_no);
-    emit("action.choice-yes", action_text.choice_yes);
+    emit("ui.option.yes", action_text.choice_yes);
+    emit("ui.option.no", action_text.choice_no);
     emit("action.automatic-use.message",
          escape_newlines(action_text.automatic_use_message));
     emit("first-aid.prompt", escape_newlines(action_text.first_aid_prompt));
@@ -1539,7 +1539,8 @@ void write_asset_readme(const std::filesystem::path& root) {
               "runtime. `gameplay/scripts/hotel.lua`, "
               "`gameplay/scripts/pocket_secretary.lua`, "
               "`gameplay/scripts/clips.lua`, and "
-              "`gameplay/scripts/startup.lua` provide cursor-menu choice IDs. "
+              "`gameplay/scripts/startup.lua` provide cursor-menu choice IDs; "
+              "`gameplay/scripts/ui.lua` provides shared confirmation choices. "
               "Separately traced cinematic resources belong under movies/<scene>; "
               "they must not be mixed into intro or field assets.\n\n"
            << "Audio is emitted here only as complete Windows-playable lossless "

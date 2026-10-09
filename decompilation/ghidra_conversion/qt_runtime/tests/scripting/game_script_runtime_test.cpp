@@ -300,6 +300,28 @@ int main() {
         return 1;
     }
 
+    const auto confirmation =
+        scripts.menu("ui", "confirmation", "ui", "confirmation");
+    constexpr std::array<std::string_view, 2> kConfirmationIds{{"yes", "no"}};
+    constexpr std::array<std::string_view, 2> kConfirmationLabels{{
+        "Yes", "No"}};
+    bool confirmation_rows_match = confirmation.has_value() &&
+        confirmation->choices.size() == kConfirmationIds.size();
+    if (confirmation_rows_match) {
+        for (std::size_t index = 0; index < kConfirmationIds.size(); ++index) {
+            const auto& choice = confirmation->choices[index];
+            const auto* label = scripts.dialogue_text(choice.label_key);
+            confirmation_rows_match = confirmation_rows_match &&
+                choice.id == kConfirmationIds[index] && label != nullptr &&
+                *label == kConfirmationLabels[index];
+        }
+    }
+    if (!expect(confirmation_rows_match,
+                "Lua confirmation choices or ROM labels changed order")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
     const auto shop = scripts.shop_definition("ares_weapon_emporium");
     if (!expect(shop.has_value() && shop->groups.size() == 6U,
                 "Lua shop catalog did not define the Ares selector groups") ||

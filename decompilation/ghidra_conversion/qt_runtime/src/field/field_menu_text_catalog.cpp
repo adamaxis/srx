@@ -19,6 +19,8 @@ constexpr std::array<std::string_view, kFieldMenuClipsCommandCount>
 constexpr std::array<std::string_view, kNotebookChoiceCount>
     kNotebookChoiceIds{{"current_run", "tips_and_clues", "contacts",
                         "mr_johnsons", "shadowrunners"}};
+constexpr std::array<std::string_view, kConfirmationChoiceCount>
+    kConfirmationChoiceIds{{"yes", "no"}};
 
 bool has_clips_menu_label_prefix(const std::string_view key) {
     return key.rfind("clips.option.", 0U) == 0U ||
@@ -56,6 +58,19 @@ bool is_notebook_menu_label_key(const std::string_view key) {
            std::find(kNotebookChoiceIds.begin(), kNotebookChoiceIds.end(),
                      key.substr(kChoicePrefix.size())) !=
                kNotebookChoiceIds.end();
+}
+
+bool has_confirmation_menu_label_prefix(const std::string_view key) {
+    return key.rfind("ui.option.", 0U) == 0U;
+}
+
+bool is_confirmation_menu_label_key(const std::string_view key) {
+    constexpr std::string_view kChoicePrefix = "ui.option.";
+    return key.rfind(kChoicePrefix, 0U) == 0U &&
+           std::find(kConfirmationChoiceIds.begin(),
+                     kConfirmationChoiceIds.end(),
+                     key.substr(kChoicePrefix.size())) !=
+               kConfirmationChoiceIds.end();
 }
 
 bool parse_indexed_key(const std::string& key, const std::string& prefix,
@@ -119,7 +134,8 @@ bool is_field_menu_text_key(const std::string& key) {
         "attribute.skill.", "cyberware.title.", "cyberware.entry.",
         "clips.", "dismiss.label.", "pocket-secretary.cyberdeck.line.",
         "pocket-secretary.group-item.", "pocket-secretary.group-items.empty.",
-        "notebook.option.", "notebook.no-run.", "notebook.mr-johnson.name.",
+        "ui.option.", "notebook.option.", "notebook.no-run.",
+        "notebook.mr-johnson.name.",
         "notebook.mr-johnson.detail.", "notebook.tip.", "magic.spell.name.",
         "magic.spell.description.", "power.", "armor.",
     };
@@ -134,7 +150,7 @@ bool is_field_menu_text_key(const std::string& key) {
         "metric.no-armor", "metric.weapons", "metric.guns", "metric.power",
         "action.item-equipped.prefix", "action.item-equipped.suffix",
         "action.discard-prompt", "action.cannot-discard",
-        "action.cannot-trade", "action.choice-no", "action.choice-yes",
+        "action.cannot-trade",
         "action.trade-recipient", "action.trade-full-inventory",
         "action.automatic-use.message", "attributes.upgrade.header",
         "attributes.upgrade.maximum-level", "attributes.upgrade.mage-only",
@@ -165,7 +181,8 @@ void load_script_menu_labels(
     const std::string_view text_profile, const std::string_view menu_id,
     const std::array<std::string_view, N>& expected_ids,
     std::array<std::string, N>& labels, std::vector<std::string>& errors,
-    std::string* title = nullptr) {
+    std::string* title = nullptr,
+    std::array<std::string, N>* choice_ids = nullptr) {
     const auto menu = scripts.menu(module, function, text_profile, menu_id);
     if (!menu.has_value()) {
         errors.emplace_back("Lua menu is unavailable: " +
@@ -193,6 +210,9 @@ void load_script_menu_labels(
                                 "native action order: " +
                                 std::string(function));
             return;
+        }
+        if (choice_ids != nullptr) {
+            (*choice_ids)[index] = choice.id;
         }
         const auto* label = scripts.dialogue_text(choice.label_key);
         if (label == nullptr) {
@@ -341,8 +361,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     bool action_discard_prompt_found = false;
     bool action_cannot_discard_found = false;
     bool action_cannot_trade_found = false;
-    bool action_choice_no_found = false;
-    bool action_choice_yes_found = false;
     bool action_trade_recipient_found = false;
     bool action_trade_full_inventory_found = false;
     bool action_automatic_use_message_found = false;
@@ -364,6 +382,13 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     bool magic_panel_metric_labels_found = false;
     bool magic_force_posture_labels_found = false;
     bool dismiss_runner_separator_found = false;
+    std::array<std::string, kConfirmationChoiceCount> confirmation_labels{};
+    load_script_menu_labels(
+        scripts, "ui", "confirmation", "ui", "confirmation",
+        kConfirmationChoiceIds, confirmation_labels, result.errors, nullptr,
+        &result.catalog.confirmation_choice_ids);
+    result.catalog.action_choice_yes = confirmation_labels[0];
+    result.catalog.action_choice_no = confirmation_labels[1];
     load_script_menu_labels(
         scripts, "clips", "commands", "clips", "commands",
         kClipsCommandIds, result.catalog.clips_commands, result.errors);
@@ -381,6 +406,13 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     std::copy(notebook_choice_labels.begin(), notebook_choice_labels.end(),
               result.catalog.notebook_labels.begin() + 1);
     for (const auto& [key, value] : text_rows) {
+        if (has_confirmation_menu_label_prefix(key)) {
+            if (!is_confirmation_menu_label_key(key)) {
+                result.errors.emplace_back(
+                    "unknown confirmation menu label key: " + key);
+            }
+            continue;
+        }
         if (has_notebook_menu_label_prefix(key)) {
             if (!is_notebook_menu_label_key(key)) {
                 result.errors.emplace_back(
@@ -579,10 +611,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             parse_named("action.cannot-trade",
                         result.catalog.action_cannot_trade,
                         action_cannot_trade_found) ||
-            parse_named("action.choice-no", result.catalog.action_choice_no,
-                        action_choice_no_found) ||
-            parse_named("action.choice-yes", result.catalog.action_choice_yes,
-                        action_choice_yes_found) ||
             parse_named("attributes.upgrade.header",
                         result.catalog.attributes_upgrade_header,
                         attributes_upgrade_header_found) ||
@@ -957,8 +985,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     require_named("action.discard-prompt", action_discard_prompt_found);
     require_named("action.cannot-discard", action_cannot_discard_found);
     require_named("action.cannot-trade", action_cannot_trade_found);
-    require_named("action.choice-no", action_choice_no_found);
-    require_named("action.choice-yes", action_choice_yes_found);
     require_named("attributes.upgrade.header",
                   attributes_upgrade_header_found);
     require_named("attributes.upgrade.maximum-level",

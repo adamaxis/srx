@@ -88,7 +88,8 @@ enum class ShopMenuEvent : std::uint8_t {
 class ShopMenuController final {
 public:
     bool open(ShopId shop,
-              const scripting::ScriptShopDefinition& definition);
+              const scripting::ScriptShopDefinition& definition,
+              const std::array<std::string, 2>& confirmation_choice_ids);
     void close() noexcept;
     void finish_action() noexcept;
 
@@ -161,6 +162,7 @@ private:
     FieldModeServiceState source_state_{};
     std::optional<ShopActionRequest> pending_action_;
     std::array<std::string, 6> group_ids_{};
+    std::array<std::string, 2> confirmation_choice_ids_{};
     std::array<std::vector<FieldActionCostRecord>, 6> offer_groups_{};
     MenuConfirmationState transaction_confirmation_{};
     TransactionKind transaction_kind_ = TransactionKind::none;
