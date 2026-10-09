@@ -27,6 +27,12 @@ constexpr std::array<std::string_view, kClipsTextCount> kClipsTextIds{{
     "item_without_clips_first", "item_without_clips_second",
     "item_without_clips_third", "no_party_first", "no_party_second",
     "no_party_third"}};
+constexpr std::array<std::string_view, kItemUiTextCount> kItemUiTextIds{{
+    "equipped_prefix", "equipped_suffix", "discard_prompt",
+    "cannot_discard", "cannot_trade", "trade_recipient",
+    "trade_full_inventory", "automatic_use", "first_aid_prompt",
+    "first_aid_label", "first_aid_cancel", "first_aid_not_injured",
+    "first_aid_slap_patch_used", "first_aid_medkit_used"}};
 constexpr std::array<std::string_view, kNotebookChoiceCount>
     kNotebookChoiceIds{{"current_run", "tips_and_clues", "contacts",
                         "mr_johnsons", "shadowrunners"}};
@@ -59,6 +65,17 @@ bool has_clips_menu_label_prefix(const std::string_view key) {
     return key.rfind("clips.option.", 0U) == 0U ||
            key.rfind("clips.trade.option.", 0U) == 0U ||
            key.rfind("clips.text.option.", 0U) == 0U;
+}
+
+bool has_item_ui_text_label_prefix(const std::string_view key) {
+    return key.rfind("items.text.option.", 0U) == 0U;
+}
+
+bool is_item_ui_text_label_key(const std::string_view key) {
+    constexpr std::string_view kTextPrefix = "items.text.option.";
+    return key.rfind(kTextPrefix, 0U) == 0U &&
+           std::find(kItemUiTextIds.begin(), kItemUiTextIds.end(),
+                     key.substr(kTextPrefix.size())) != kItemUiTextIds.end();
 }
 
 bool is_clips_menu_label_key(const std::string_view key) {
@@ -177,7 +194,8 @@ bool is_field_menu_text_key(const std::string& key) {
         "ui.option.", "notebook.option.", "notebook.no-run.",
         "notebook.mr-johnson.name.",
         "notebook.mr-johnson.detail.", "notebook.tip.",
-        "magic.spells.option.", "magic.spells.description.", "power.",
+        "magic.spells.option.", "magic.spells.description.",
+        "items.text.option.", "power.",
         "armor.",
     };
     for (const auto* prefix : prefixes) {
@@ -189,16 +207,10 @@ bool is_field_menu_text_key(const std::string& key) {
         "metric.physical", "metric.mental", "metric.attack",
         "metric.defense", "metric.damage", "metric.drain", "metric.none",
         "metric.no-armor", "metric.weapons", "metric.guns", "metric.power",
-        "action.item-equipped.prefix", "action.item-equipped.suffix",
-        "action.discard-prompt", "action.cannot-discard",
-        "action.cannot-trade",
-        "action.trade-recipient", "action.trade-full-inventory",
-        "action.automatic-use.message", "attributes.upgrade.header",
+        "attributes.upgrade.header",
         "attributes.upgrade.maximum-level", "attributes.upgrade.mage-only",
         "attributes.upgrade.insufficient-karma", "attributes.upgrade.prompt",
-        "first-aid.prompt", "first-aid.label", "first-aid.cancel",
-        "first-aid.not-injured", "first-aid.slap-patch-used",
-        "first-aid.medkit-used", "cyberware.empty",
+        "cyberware.empty",
         "magic.defense.title",
         "magic.heading.force-posture", "magic.label.success",
         "magic.label.force", "magic.label.availability",
@@ -419,20 +431,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     bool weapons_found = false;
     bool guns_found = false;
     bool power_metric_found = false;
-    bool action_item_equipped_prefix_found = false;
-    bool action_item_equipped_suffix_found = false;
-    bool action_discard_prompt_found = false;
-    bool action_cannot_discard_found = false;
-    bool action_cannot_trade_found = false;
-    bool action_trade_recipient_found = false;
-    bool action_trade_full_inventory_found = false;
-    bool action_automatic_use_message_found = false;
-    bool first_aid_prompt_found = false;
-    bool first_aid_label_found = false;
-    bool first_aid_cancel_found = false;
-    bool first_aid_not_injured_found = false;
-    bool first_aid_slap_patch_used_found = false;
-    bool first_aid_medkit_used_found = false;
     bool cyberware_empty_found = false;
     bool magic_defense_title_found = false;
     bool magic_force_posture_heading_found = false;
@@ -453,6 +451,25 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         scripts, "items", "inventory_actions", "items",
         "inventory_actions", kInventoryActionChoiceIds,
         result.catalog.inventory_action_choice_ids, result.errors);
+    std::array<std::string, kItemUiTextCount> item_ui_text{};
+    load_script_menu_labels(
+        scripts, "items", "ui_text_entries", "items.text", "catalog",
+        kItemUiTextIds, item_ui_text, result.errors, nullptr,
+        &result.catalog.item_ui_text_ids);
+    result.catalog.action_item_equipped_prefix = item_ui_text[0];
+    result.catalog.action_item_equipped_suffix = item_ui_text[1];
+    result.catalog.action_discard_prompt = item_ui_text[2];
+    result.catalog.action_cannot_discard = item_ui_text[3];
+    result.catalog.action_cannot_trade = item_ui_text[4];
+    result.catalog.action_trade_recipient_label = item_ui_text[5];
+    result.catalog.action_trade_full_inventory_message = item_ui_text[6];
+    result.catalog.action_automatic_use_message = item_ui_text[7];
+    result.catalog.first_aid_prompt = item_ui_text[8];
+    result.catalog.first_aid_label = item_ui_text[9];
+    result.catalog.first_aid_cancel = item_ui_text[10];
+    result.catalog.first_aid_not_injured = item_ui_text[11];
+    result.catalog.first_aid_slap_patch_used = item_ui_text[12];
+    result.catalog.first_aid_medkit_used = item_ui_text[13];
     std::array<std::string, kMagicSpellTextCount> magic_spell_names{};
     load_script_menu_labels(
         scripts, "magic", "spells", "magic.spells", "catalog",
@@ -516,6 +533,13 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             if (!is_clips_menu_label_key(key)) {
                 result.errors.emplace_back(
                     "unknown Clips menu label key: " + key);
+            }
+            continue;
+        }
+        if (has_item_ui_text_label_prefix(key)) {
+            if (!is_item_ui_text_label_key(key)) {
+                result.errors.emplace_back(
+                    "unknown Items UI text label key: " + key);
             }
             continue;
         }
@@ -666,21 +690,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             parse_named("metric.guns", result.catalog.guns_label, guns_found) ||
             parse_named("metric.power", result.catalog.power_label,
                         power_metric_found) ||
-            parse_named("action.item-equipped.prefix",
-                        result.catalog.action_item_equipped_prefix,
-                        action_item_equipped_prefix_found) ||
-            parse_named("action.item-equipped.suffix",
-                        result.catalog.action_item_equipped_suffix,
-                        action_item_equipped_suffix_found) ||
-            parse_named("action.discard-prompt",
-                        result.catalog.action_discard_prompt,
-                        action_discard_prompt_found) ||
-            parse_named("action.cannot-discard",
-                        result.catalog.action_cannot_discard,
-                        action_cannot_discard_found) ||
-            parse_named("action.cannot-trade",
-                        result.catalog.action_cannot_trade,
-                        action_cannot_trade_found) ||
             parse_named("attributes.upgrade.header",
                         result.catalog.attributes_upgrade_header,
                         attributes_upgrade_header_found) ||
@@ -696,33 +705,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             parse_named("attributes.upgrade.prompt",
                         result.catalog.attributes_upgrade_prompt,
                         attributes_upgrade_prompt_found) ||
-            parse_named("action.trade-recipient",
-                        result.catalog.action_trade_recipient_label,
-                        action_trade_recipient_found) ||
-            parse_named("action.trade-full-inventory",
-                        result.catalog.action_trade_full_inventory_message,
-                        action_trade_full_inventory_found) ||
-            parse_named("action.automatic-use.message",
-                        result.catalog.action_automatic_use_message,
-                        action_automatic_use_message_found) ||
-            parse_named("first-aid.prompt",
-                        result.catalog.first_aid_prompt,
-                        first_aid_prompt_found) ||
-            parse_named("first-aid.label",
-                        result.catalog.first_aid_label,
-                        first_aid_label_found) ||
-            parse_named("first-aid.cancel",
-                        result.catalog.first_aid_cancel,
-                        first_aid_cancel_found) ||
-            parse_named("first-aid.not-injured",
-                        result.catalog.first_aid_not_injured,
-                        first_aid_not_injured_found) ||
-            parse_named("first-aid.slap-patch-used",
-                        result.catalog.first_aid_slap_patch_used,
-                        first_aid_slap_patch_used_found) ||
-            parse_named("first-aid.medkit-used",
-                        result.catalog.first_aid_medkit_used,
-                        first_aid_medkit_used_found) ||
             parse_named("cyberware.empty",
                         result.catalog.cyberware_empty_message,
                         cyberware_empty_found) ||
@@ -989,13 +971,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     require_named("metric.weapons", weapons_found);
     require_named("metric.guns", guns_found);
     require_named("metric.power", power_metric_found);
-    require_named("action.item-equipped.prefix",
-                  action_item_equipped_prefix_found);
-    require_named("action.item-equipped.suffix",
-                  action_item_equipped_suffix_found);
-    require_named("action.discard-prompt", action_discard_prompt_found);
-    require_named("action.cannot-discard", action_cannot_discard_found);
-    require_named("action.cannot-trade", action_cannot_trade_found);
     require_named("attributes.upgrade.header",
                   attributes_upgrade_header_found);
     require_named("attributes.upgrade.maximum-level",
@@ -1006,18 +981,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                   attributes_upgrade_insufficient_karma_found);
     require_named("attributes.upgrade.prompt",
                   attributes_upgrade_prompt_found);
-    require_named("action.trade-recipient", action_trade_recipient_found);
-    require_named("action.trade-full-inventory",
-                  action_trade_full_inventory_found);
-    require_named("action.automatic-use.message",
-                  action_automatic_use_message_found);
-    require_named("first-aid.prompt", first_aid_prompt_found);
-    require_named("first-aid.label", first_aid_label_found);
-    require_named("first-aid.cancel", first_aid_cancel_found);
-    require_named("first-aid.not-injured", first_aid_not_injured_found);
-    require_named("first-aid.slap-patch-used",
-                  first_aid_slap_patch_used_found);
-    require_named("first-aid.medkit-used", first_aid_medkit_used_found);
     require_named("cyberware.empty", cyberware_empty_found);
     require_named("magic.defense.title", magic_defense_title_found);
     require_named("magic.heading.force-posture",

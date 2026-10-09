@@ -320,26 +320,33 @@ write_field_service_routes(
     emit("metric.power", field_labels.power);
     const auto action_text =
         shadowrun::graphics::read_genesis_field_menu_action_text(rom);
-    emit("action.item-equipped.prefix", action_text.item_equipped_prefix);
-    emit("action.item-equipped.suffix", action_text.item_equipped_suffix);
-    emit("action.discard-prompt", action_text.discard_prompt);
-    emit("action.cannot-discard", action_text.cannot_discard);
-    emit("action.cannot-trade", action_text.cannot_trade);
+    constexpr std::array<std::string_view, 14> kItemUiTextIds{{
+        "equipped_prefix", "equipped_suffix", "discard_prompt",
+        "cannot_discard", "cannot_trade", "trade_recipient",
+        "trade_full_inventory", "automatic_use", "first_aid_prompt",
+        "first_aid_label", "first_aid_cancel", "first_aid_not_injured",
+        "first_aid_slap_patch_used", "first_aid_medkit_used"}};
+    const std::array<std::string, 14> item_ui_text{{
+        action_text.item_equipped_prefix,
+        action_text.item_equipped_suffix,
+        action_text.discard_prompt,
+        action_text.cannot_discard,
+        action_text.cannot_trade,
+        action_text.trade_recipient_label,
+        escape_newlines(action_text.trade_full_inventory_message),
+        escape_newlines(action_text.automatic_use_message),
+        escape_newlines(action_text.first_aid_prompt),
+        action_text.first_aid_label,
+        action_text.first_aid_cancel,
+        escape_newlines(action_text.first_aid_not_injured),
+        action_text.first_aid_slap_patch_used,
+        action_text.first_aid_medkit_used}};
+    for (std::size_t index = 0; index < kItemUiTextIds.size(); ++index) {
+        emit("items.text.option." + std::string(kItemUiTextIds[index]),
+             item_ui_text[index]);
+    }
     emit("ui.option.yes", action_text.choice_yes);
     emit("ui.option.no", action_text.choice_no);
-    emit("action.automatic-use.message",
-         escape_newlines(action_text.automatic_use_message));
-    emit("first-aid.prompt", escape_newlines(action_text.first_aid_prompt));
-    emit("first-aid.label", action_text.first_aid_label);
-    emit("first-aid.cancel", action_text.first_aid_cancel);
-    emit("first-aid.not-injured",
-         escape_newlines(action_text.first_aid_not_injured));
-    emit("first-aid.slap-patch-used",
-         action_text.first_aid_slap_patch_used);
-    emit("first-aid.medkit-used", action_text.first_aid_medkit_used);
-    emit("action.trade-recipient", action_text.trade_recipient_label);
-    emit("action.trade-full-inventory",
-         escape_newlines(action_text.trade_full_inventory_message));
     const auto clips_text =
         shadowrun::graphics::read_genesis_field_menu_clips_text(rom);
     constexpr std::array<std::string_view, 4> kClipsCommandTextKeys{{
@@ -1552,7 +1559,8 @@ void write_asset_readme(const std::filesystem::path& root) {
               "the 12 service titles, 32 source-order action headings, Ares "
               "categories, and message keys, while "
               "`gameplay/scripts/items.lua` maps source item IDs to their "
-              "name/category/detail keys. The spell-capable Magic panel is an individually "
+              "name/category/detail keys and inventory/First Aid text IDs. "
+              "The spell-capable Magic panel is an individually "
               "named RGBA overlay. Item art is grouped under items/weapons, "
               "items/first-aid, items/miscellaneous, items/magic, and items/armor. "
               "The shared field dialogue frames and A/B/C marker sprites are "

@@ -34,4 +34,24 @@ function Items.inventory_actions()
     return { "equip_or_use", "discard", "trade", "cancel" }
 end
 
+-- Stable IDs for the ROM-backed inventory-action and First Aid copy.
+function Items.ui_text_entries()
+    return {
+        "equipped_prefix",
+        "equipped_suffix",
+        "discard_prompt",
+        "cannot_discard",
+        "cannot_trade",
+        "trade_recipient",
+        "trade_full_inventory",
+        "automatic_use",
+        "first_aid_prompt",
+        "first_aid_label",
+        "first_aid_cancel",
+        "first_aid_not_injured",
+        "first_aid_slap_patch_used",
+        "first_aid_medkit_used",
+    }
+end
+
 return Items

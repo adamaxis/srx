@@ -60,6 +60,12 @@ int main() {
         "item_without_clips_first", "item_without_clips_second",
         "item_without_clips_third", "no_party_first", "no_party_second",
         "no_party_third"}};
+    const std::array<std::string, kItemUiTextCount> expected_item_ui_text_ids{{
+        "equipped_prefix", "equipped_suffix", "discard_prompt",
+        "cannot_discard", "cannot_trade", "trade_recipient",
+        "trade_full_inventory", "automatic_use", "first_aid_prompt",
+        "first_aid_label", "first_aid_cancel", "first_aid_not_injured",
+        "first_aid_slap_patch_used", "first_aid_medkit_used"}};
     const std::array<std::string, kClipsTextCount> actual_clips_text{{
         text.catalog.clips_title, text.catalog.clips_separator,
         text.catalog.clips_counter_label,
@@ -192,6 +198,7 @@ int main() {
         text.catalog.inventory_action_choice_ids !=
             std::array<std::string, kInventoryActionChoiceCount>{
                 "equip_or_use", "discard", "trade", "cancel"} ||
+        text.catalog.item_ui_text_ids != expected_item_ui_text_ids ||
         !text.catalog.shop_transaction_prompt.empty() ||
         !text.catalog.shop_no_inventory_slot.empty() ||
         !text.catalog.shop_insufficient_funds.empty() ||
