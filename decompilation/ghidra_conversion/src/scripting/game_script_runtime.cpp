@@ -18,6 +18,8 @@ namespace {
 constexpr std::size_t kMaximumScriptModules = 128U;
 constexpr std::size_t kMaximumMapEventRules = 512U;
 constexpr std::size_t kMaximumMenuChoices = 3U;
+constexpr std::size_t kMaximumShopGroups = 8U;
+constexpr std::size_t kMaximumShopOffers = 8U;
 constexpr std::size_t kMaximumIdentifierLength = 96U;
 constexpr std::size_t kMaximumStoryFacts = 4096U;
 constexpr int kScriptInstructionBudget = 100000;
@@ -844,6 +846,106 @@ GameScriptRuntime::map_event_rules() {
     lua_pop(state, 2);
     impl_->failure.clear();
     return rules;
+}
+
+std::optional<ScriptShopDefinition> GameScriptRuntime::shop_definition(
+    const std::string_view shop_id) {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "Lua runtime is unavailable for shop data";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<ScriptShopDefinition> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!valid_identifier(shop_id) || !impl_->push_module("shop")) {
+        return fail("shop.lua module or shop identifier is invalid");
+    }
+
+    lua_getfield(state, -1, "catalog");
+    if (!lua_istable(state, -1)) {
+        return fail("shop.catalog must be a table");
+    }
+    lua_getfield(state, -1, std::string(shop_id).c_str());
+    if (!lua_istable(state, -1)) {
+        return fail("shop catalog entry is missing");
+    }
+    const auto definition_index = lua_absindex(state, -1);
+    ScriptShopDefinition definition;
+    definition.id = std::string(shop_id);
+    lua_getfield(state, definition_index, "groups");
+    if (!lua_istable(state, -1)) {
+        return fail("shop catalog groups must be an array");
+    }
+    const auto groups_index = lua_absindex(state, -1);
+    const auto group_count = lua_rawlen(state, groups_index);
+    if (group_count == 0U || group_count > kMaximumShopGroups) {
+        return fail("shop catalog has an invalid group count");
+    }
+
+    std::set<std::string> group_ids;
+    definition.groups.reserve(group_count);
+    for (std::size_t group_index = 1U; group_index <= group_count;
+         ++group_index) {
+        lua_rawgeti(state, groups_index,
+                    static_cast<lua_Integer>(group_index));
+        if (!lua_istable(state, -1)) {
+            return fail("shop catalog contains a non-table group");
+        }
+        const auto group_table = lua_absindex(state, -1);
+        ScriptShopOfferGroup group;
+        if (!read_field_string(state, group_table, "id", group.id) ||
+            !valid_identifier(group.id) ||
+            !group_ids.insert(group.id).second) {
+            return fail("shop catalog contains an invalid or duplicate group id");
+        }
+        lua_getfield(state, group_table, "offers");
+        if (!lua_istable(state, -1)) {
+            return fail("shop offer group must contain an offers array");
+        }
+        const auto offers_index = lua_absindex(state, -1);
+        const auto offer_count = lua_rawlen(state, offers_index);
+        if (offer_count > kMaximumShopOffers) {
+            return fail("shop offer group exceeds the eight-slot panel");
+        }
+        group.offers.reserve(offer_count);
+        for (std::size_t offer_index = 1U; offer_index <= offer_count;
+             ++offer_index) {
+            lua_rawgeti(state, offers_index,
+                        static_cast<lua_Integer>(offer_index));
+            if (!lua_istable(state, -1)) {
+                return fail("shop offer is not a record table");
+            }
+            const auto offer_table = lua_absindex(state, -1);
+            std::uint32_t type = 0U;
+            std::uint32_t value = 0U;
+            std::uint32_t quantity = 0U;
+            const bool valid =
+                read_field_integer(state, offer_table, "type", 0xFFU, type) &&
+                read_field_integer(state, offer_table, "value", 0xFFU, value) &&
+                read_field_integer(state, offer_table, "quantity", 0xFFU,
+                                   quantity);
+            lua_pop(state, 1);
+            if (!valid) {
+                return fail("shop offer has invalid type, value, or quantity");
+            }
+            group.offers.push_back(ScriptShopOffer{
+                static_cast<std::uint8_t>(type),
+                static_cast<std::uint8_t>(value),
+                static_cast<std::uint8_t>(quantity)});
+        }
+        lua_pop(state, 1);
+        lua_pop(state, 1);
+        definition.groups.push_back(std::move(group));
+    }
+
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return definition;
 }
 
 void GameScriptRuntime::set_story_state(const StoryFacts& facts) {

@@ -3933,6 +3933,13 @@ bool FieldSceneRuntime::bootstrap(
         source_boundary("field.bootstrap.map_event_scripts_invalid");
         return false;
     }
+    field_shop_definition_ =
+        game_scripts_.shop_definition("ares_weapon_emporium");
+    if (!field_shop_definition_.has_value()) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.bootstrap.shop_script_invalid");
+        return false;
+    }
     field_map_event_system_ = FieldMapEventSystem(*map_rules);
     field_map_event_state_flags_ = 0U;
     field_palette_fade_steps_ = 0U;
@@ -5744,8 +5751,10 @@ void FieldSceneRuntime::advance_frame() {
             source_boundary("field.mode_text_prompt.returned_to_caller");
             if (field_shop_route_pending_) {
                 field_shop_route_pending_ = false;
-                if (field_shop_menu_.open(
-                        ShopId::ares_weapon_emporium)) {
+                if (field_shop_definition_.has_value() &&
+                    field_shop_menu_.open(
+                        ShopId::ares_weapon_emporium,
+                        *field_shop_definition_)) {
                     source_boundary("field.shop.ares.opened");
                 } else {
                     source_boundary("field.shop.ares.open_failed");
@@ -6967,8 +6976,7 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
             const auto cursor = field_shop_menu_.selected_cursor();
             const auto selected_offer = group == ShopActionGroup::sell
                 ? std::optional<FieldActionCostRecord>{}
-                : ShopMenuController::offer(
-                      field_shop_menu_.shop(), group, cursor);
+                : field_shop_menu_.offer(group, cursor);
             std::uint8_t selected_item_code = 0U;
             if (group == ShopActionGroup::sell) {
                 if (cursor < active_runner_record().inventory_item_codes.size()) {
@@ -7102,7 +7110,7 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
 
     const auto count = group == ShopActionGroup::sell
         ? active_runner_record().inventory_item_codes.size()
-        : ShopMenuController::offer_count(field_shop_menu_.shop(), group);
+        : field_shop_menu_.offer_count(group);
     for (std::size_t index = 0; index < count && index < 8U; ++index) {
         if (group == ShopActionGroup::sell) {
             const auto item_code =
@@ -7115,8 +7123,7 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
             }
             continue;
         }
-        const auto offer = ShopMenuController::offer(
-            field_shop_menu_.shop(), group, index);
+        const auto offer = field_shop_menu_.offer(group, index);
         if (!offer.has_value()) {
             continue;
         }

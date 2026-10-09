@@ -4,8 +4,12 @@
 #include "shadowrun_ghidra/field/field_action_cost_conversion.hpp"
 #include "shadowrun_ghidra/field/field_action_selection_navigation_conversion.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
+#include <iterator>
+#include <string_view>
+#include <utility>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 namespace {
@@ -20,32 +24,34 @@ constexpr std::uint16_t kAlternateConfirm = 0x1000U;
 constexpr std::uint16_t kReturnToField = 0x8000U;
 
 constexpr std::uint8_t kAresMenuMode = 1U;
-constexpr std::uint8_t kUnavailable = 0xFFU;
 
-using OfferGroup = std::array<FieldActionCostRecord, 8>;
+std::string_view group_id(const ShopActionGroup group) {
+    switch (group) {
+    case ShopActionGroup::weapons:
+        return "weapons";
+    case ShopActionGroup::other_items:
+        return "other_items";
+    case ShopActionGroup::armor:
+        return "armor";
+    case ShopActionGroup::source_action_3:
+        return "source_action_3";
+    case ShopActionGroup::source_action_4:
+        return "source_action_4";
+    case ShopActionGroup::sell:
+        return "sell";
+    }
+    return {};
+}
 
-// US ROM records at 0x1AAC9E, 0x1AADD7, and 0x1AAD8F. Source action indices
-// 0, 1, and 2 select weapons, other items, and armor respectively at 0x56DC4.
-constexpr std::array<OfferGroup, 3> kAresOfferGroups{{
-    {{{0x01U, 0x00U, 0x00U}, {0x02U, 0x00U, 0x00U},
-      {0x06U, 0x00U, 0x0FU}, {0x04U, 0x00U, 0x00U},
-      {0x05U, 0x00U, 0x0DU}, {0x0DU, 0x06U, 0x14U},
-      {0x0EU, 0x06U, 0x00U},
-      {kUnavailable, kUnavailable, kUnavailable}}},
-    {{{0x45U, 0x00U, 0x19U}, {0x0FU, 0x06U, 0x00U},
-      {0x10U, 0x04U, 0x07U}, {0x11U, 0x04U, 0x07U},
-      {kUnavailable, kUnavailable, kUnavailable},
-      {kUnavailable, kUnavailable, kUnavailable},
-      {kUnavailable, kUnavailable, kUnavailable},
-      {kUnavailable, kUnavailable, kUnavailable}}},
-    {{{0x2EU, 0x00U, 0x00U}, {0x2DU, 0x00U, 0x0CU},
-      {kUnavailable, kUnavailable, kUnavailable},
-      {kUnavailable, kUnavailable, kUnavailable},
-      {kUnavailable, kUnavailable, kUnavailable},
-      {kUnavailable, kUnavailable, kUnavailable},
-      {kUnavailable, kUnavailable, kUnavailable},
-      {kUnavailable, kUnavailable, kUnavailable}}},
-}};
+std::optional<ShopActionGroup> group_from_id(const std::string_view id) {
+    for (std::int8_t index = 0; index <= 5; ++index) {
+        const auto group = static_cast<ShopActionGroup>(index);
+        if (group_id(group) == id) {
+            return group;
+        }
+    }
+    return std::nullopt;
+}
 
 bool is_action_confirmed(const std::uint16_t events) {
     return (events & (kConfirm | kAlternateConfirm)) != 0U;
@@ -53,11 +59,38 @@ bool is_action_confirmed(const std::uint16_t events) {
 
 } // namespace
 
-bool ShopMenuController::open(const ShopId shop) noexcept {
-    if (shop != ShopId::ares_weapon_emporium) {
+bool ShopMenuController::open(
+    const ShopId shop,
+    const scripting::ScriptShopDefinition& definition) {
+    if (shop != ShopId::ares_weapon_emporium ||
+        definition.id != "ares_weapon_emporium" ||
+        definition.groups.size() != group_ids_.size()) {
         return false;
     }
+
+    std::array<std::string, 6> group_ids{};
+    std::array<std::vector<FieldActionCostRecord>, 6> offer_groups{};
+    for (std::size_t index = 0; index < definition.groups.size(); ++index) {
+        const auto& scripted_group = definition.groups[index];
+        const auto previous = std::find(
+            group_ids.begin(), group_ids.begin() + index,
+            scripted_group.id);
+        if (!group_from_id(scripted_group.id).has_value() ||
+            previous != group_ids.begin() + index ||
+            scripted_group.offers.size() > 8U) {
+            return false;
+        }
+        group_ids[index] = scripted_group.id;
+        auto& offers = offer_groups[index];
+        offers.reserve(scripted_group.offers.size());
+        for (const auto& offer : scripted_group.offers) {
+            offers.push_back(FieldActionCostRecord{
+                offer.type, offer.value, offer.quantity});
+        }
+    }
     shop_ = shop;
+    group_ids_ = std::move(group_ids);
+    offer_groups_ = std::move(offer_groups);
     menu_mode_ = kAresMenuMode;
     source_state_ = FieldModeServiceState{};
     source_state_.action_selection.menu_result = -1;
@@ -76,6 +109,8 @@ void ShopMenuController::close() noexcept {
     pending_action_.reset();
     reset_transaction();
     source_state_ = FieldModeServiceState{};
+    group_ids_ = {};
+    offer_groups_ = {};
     menu_mode_ = 0U;
 }
 
@@ -255,33 +290,43 @@ void ShopMenuController::publish_selected_group() noexcept {
 
 ShopActionGroup ShopMenuController::selected_group() const noexcept {
     const auto group = source_state_.action_selection.selected_action;
-    if (group < 0 || group > 5) {
+    if (group < 0 || static_cast<std::size_t>(group) >= group_ids_.size()) {
         return ShopActionGroup::source_action_3;
     }
-    return static_cast<ShopActionGroup>(group);
+    const auto selected = group_from_id(
+        group_ids_[static_cast<std::size_t>(group)]);
+    return selected.value_or(ShopActionGroup::source_action_3);
 }
 
 std::size_t ShopMenuController::offer_count(
-    const ShopId shop, const ShopActionGroup group) noexcept {
-    if (shop != ShopId::ares_weapon_emporium ||
-        group < ShopActionGroup::weapons || group > ShopActionGroup::armor) {
+    const ShopActionGroup group) const noexcept {
+    if (!open_ || group < ShopActionGroup::weapons ||
+        group > ShopActionGroup::armor) {
         return 0U;
     }
-    const auto& rows = kAresOfferGroups[static_cast<std::size_t>(group)];
-    std::size_t count = 0U;
-    while (count < rows.size() && rows[count].type != kUnavailable) {
-        ++count;
+    const auto id = group_id(group);
+    const auto found = std::find(group_ids_.begin(), group_ids_.end(), id);
+    if (found == group_ids_.end()) {
+        return 0U;
     }
-    return count;
+    const auto group_index = static_cast<std::size_t>(
+        std::distance(group_ids_.begin(), found));
+    return offer_groups_[group_index].size();
 }
 
 std::optional<FieldActionCostRecord> ShopMenuController::offer(
-    const ShopId shop, const ShopActionGroup group,
-    const std::size_t index) noexcept {
-    if (index >= offer_count(shop, group)) {
+    const ShopActionGroup group, const std::size_t index) const noexcept {
+    if (index >= offer_count(group)) {
         return std::nullopt;
     }
-    return kAresOfferGroups[static_cast<std::size_t>(group)][index];
+    const auto id = group_id(group);
+    const auto found = std::find(group_ids_.begin(), group_ids_.end(), id);
+    if (found == group_ids_.end()) {
+        return std::nullopt;
+    }
+    const auto group_index = static_cast<std::size_t>(
+        std::distance(group_ids_.begin(), found));
+    return offer_groups_[group_index][index];
 }
 
 ShopMenuEvent ShopMenuController::advance(
@@ -349,7 +394,7 @@ ShopMenuEvent ShopMenuController::advance(
         request.cursor = static_cast<std::uint8_t>(selection.action_cursor);
         if (request.group >= ShopActionGroup::weapons &&
             request.group <= ShopActionGroup::armor) {
-            request.offer = offer(shop_, request.group, request.cursor);
+            request.offer = offer(request.group, request.cursor);
             if (!request.offer.has_value()) {
                 return ShopMenuEvent::offer_unavailable;
             }

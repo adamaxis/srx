@@ -24,6 +24,27 @@ int main() {
         return 1;
     }
 
+    const auto shop = scripts.shop_definition("ares_weapon_emporium");
+    if (!expect(shop.has_value() && shop->groups.size() == 6U,
+                "Lua shop catalog did not define the Ares selector groups") ||
+        !expect(shop->groups[0].id == "weapons" &&
+                    shop->groups[0].offers.size() == 7U &&
+                    shop->groups[1].id == "other_items" &&
+                    shop->groups[1].offers.size() == 4U &&
+                    shop->groups[2].id == "armor" &&
+                    shop->groups[2].offers.size() == 2U &&
+                    shop->groups[5].id == "sell",
+                "Lua shop catalog group order or stock was not preserved") ||
+        !expect(shop->groups[0].offers[2].type == 0x06U &&
+                    shop->groups[0].offers[2].quantity == 0x0FU &&
+                    shop->groups[1].offers[0].type == 0x45U &&
+                    shop->groups[2].offers[1].type == 0x2DU &&
+                    shop->groups[2].offers[1].quantity == 0x0CU,
+                "Lua shop offer records did not retain their native values")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
     const auto rules = scripts.map_event_rules();
     if (!expect(rules.has_value() && rules->size() == 1U,
                 "script package did not define its opening map event")) {

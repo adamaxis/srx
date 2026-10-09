@@ -1,5 +1,7 @@
 #include "shop_menu_runtime.hpp"
 
+#include <algorithm>
+
 namespace {
 
 bool expect(const bool condition) {
@@ -13,24 +15,41 @@ int main() {
     using namespace shadowrun::ghidra_conversion::qt_runtime;
 
     const auto ares = ShopId::ares_weapon_emporium;
-    if (!expect(ShopMenuController::offer_count(
-                    ares, ShopActionGroup::weapons) == 7U) ||
-        !expect(ShopMenuController::offer_count(
-                    ares, ShopActionGroup::other_items) == 4U) ||
-        !expect(ShopMenuController::offer_count(
-                    ares, ShopActionGroup::armor) == 2U) ||
-        !expect(!ShopMenuController::offer(
-                     ares, ShopActionGroup::weapons, 7U)
-                     .has_value())) {
+    const shadowrun::ghidra_conversion::scripting::ScriptShopDefinition
+        ares_definition{
+        "ares_weapon_emporium",
+        {{"weapons", {{0x01U, 0x00U, 0x00U}, {0x02U, 0x00U, 0x00U},
+                       {0x06U, 0x00U, 0x0FU}, {0x04U, 0x00U, 0x00U},
+                       {0x05U, 0x00U, 0x0DU}, {0x0DU, 0x06U, 0x14U},
+                       {0x0EU, 0x06U, 0x00U}}},
+         {"other_items", {{0x45U, 0x00U, 0x19U}, {0x0FU, 0x06U, 0x00U},
+                          {0x10U, 0x04U, 0x07U},
+                          {0x11U, 0x04U, 0x07U}}},
+         {"armor", {{0x2EU, 0x00U, 0x00U}, {0x2DU, 0x00U, 0x0CU}}},
+         {"source_action_3", {}}, {"source_action_4", {}}, {"sell", {}}}};
+    ShopMenuController menu;
+    if (!expect(menu.open(ares, ares_definition)) ||
+        !expect(menu.offer_count(ShopActionGroup::weapons) == 7U) ||
+        !expect(menu.offer_count(ShopActionGroup::other_items) == 4U) ||
+        !expect(menu.offer_count(ShopActionGroup::armor) == 2U) ||
+        !expect(!menu.offer(ShopActionGroup::weapons, 7U).has_value())) {
         return 1;
     }
+    auto reordered_definition = ares_definition;
+    std::swap(reordered_definition.groups[0],
+              reordered_definition.groups[1]);
+    ShopMenuController reordered_menu;
+    if (!expect(reordered_menu.open(ares, reordered_definition)) ||
+        !expect(reordered_menu.selected_group() ==
+                ShopActionGroup::other_items) ||
+        !expect(reordered_menu.offer_count(
+                    ShopActionGroup::other_items) == 4U)) {
+        return 17;
+    }
 
-    const auto weapon_offer = ShopMenuController::offer(
-        ares, ShopActionGroup::weapons, 2U);
-    const auto other_offer = ShopMenuController::offer(
-        ares, ShopActionGroup::other_items, 0U);
-    const auto armor_offer = ShopMenuController::offer(
-        ares, ShopActionGroup::armor, 1U);
+    const auto weapon_offer = menu.offer(ShopActionGroup::weapons, 2U);
+    const auto other_offer = menu.offer(ShopActionGroup::other_items, 0U);
+    const auto armor_offer = menu.offer(ShopActionGroup::armor, 1U);
     if (!expect(weapon_offer.has_value() && weapon_offer->type == 6U &&
                 weapon_offer->quantity == 15U) ||
         !expect(armor_offer.has_value() && armor_offer->type == 0x2DU &&
@@ -40,8 +59,7 @@ int main() {
         return 2;
     }
 
-    ShopMenuController menu;
-    if (!expect(menu.open(ares)) || !expect(menu.menu_mode() == 1U) ||
+    if (!expect(menu.menu_mode() == 1U) ||
         !expect(menu.source_state().action_selection.menu_result == -1) ||
         !expect(menu.advance(0x0800U) == ShopMenuEvent::selection_moved) ||
         !expect(menu.selected_group() == ShopActionGroup::other_items) ||
@@ -192,7 +210,7 @@ int main() {
     }
 
     ShopMenuController transaction_menu;
-    if (!expect(transaction_menu.open(ares)) ||
+    if (!expect(transaction_menu.open(ares, ares_definition)) ||
         !expect(transaction_menu.advance(0x0800U) ==
                 ShopMenuEvent::selection_moved) ||
         !expect(transaction_menu.advance(0x0200U) ==
@@ -272,7 +290,7 @@ int main() {
     }
 
     ShopMenuController sale_menu;
-    if (!expect(sale_menu.open(ares))) {
+    if (!expect(sale_menu.open(ares, ares_definition))) {
         return 23;
     }
     for (int step = 0; step < 5; ++step) {

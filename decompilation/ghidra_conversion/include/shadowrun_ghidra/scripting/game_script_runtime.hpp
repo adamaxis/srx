@@ -3,6 +3,7 @@
 #include "shadowrun_ghidra/field/field_map_event_system_conversion.hpp"
 
 #include <filesystem>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -25,6 +26,22 @@ struct ScriptMenuDefinition {
     std::string speaker_id;
     std::string title_key;
     std::vector<ScriptMenuChoice> choices;
+};
+
+struct ScriptShopOffer {
+    std::uint8_t type = 0;
+    std::uint8_t value = 0;
+    std::uint8_t quantity = 0;
+};
+
+struct ScriptShopOfferGroup {
+    std::string id;
+    std::vector<ScriptShopOffer> offers;
+};
+
+struct ScriptShopDefinition {
+    std::string id;
+    std::vector<ScriptShopOfferGroup> groups;
 };
 
 struct ScriptDialogueRequest {
@@ -84,6 +101,8 @@ public:
                               std::string_view speaker_id = {});
     std::optional<std::string> call_string(
         std::string_view module, std::string_view function);
+    std::optional<ScriptShopDefinition> shop_definition(
+        std::string_view shop_id);
     ScriptTaskStep start_task(
         std::string_view module, std::string_view function);
     ScriptTaskStep complete_native_operation(bool succeeded);

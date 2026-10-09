@@ -88,6 +88,14 @@ still validates wallet/story changes and updates native state. The Motel module
 handles the shared manager and room menu; Michael's quest module contributes
 the package option and debt menu. Each operation uses a 100,000-instruction
 limit on initial invocation and resume.
+
+The Ares Weapon Emporium stock is declared in `gameplay/scripts/shop.lua`.
+The script groups offers under stable category names; `GameScriptRuntime`
+validates the bounded catalog, and the native shop controller consumes those
+typed offers. The renderer, category cursor, purchase/sale confirmation, and
+wallet/inventory rules remain native. This is the first shop content moved out
+of the C++ menu implementation; the interaction loop and other shop menus are
+still to be migrated.
 Actor placement, destination movement, scripted animation, item operations,
 audio playback, additional speaker/event profiles, and save restoration are
 not connected yet. The runner has no `io`, `os`, `debug`, or package-loader
@@ -116,6 +124,9 @@ access.
   enters the shared motel manager, then opens the debt menu and selects
   payment/referral result pages. Other quests can add the same choice hook
   without adding per-building scripts or changing `motel.lua`.
+- `gameplay/scripts/shop.lua` is the shared shop catalog. It currently defines
+  the ordered Ares categories and stock; shops can reuse those categories
+  while native services continue to validate each transaction.
 - Future `quests/` and `scenes/` modules should call the same `game` facade.
   Menus and dialogue use the generic Qt presenters, and Lua supplies the
   available stable choice ids and story text keys.
@@ -126,9 +137,10 @@ arrival/farewell/result dialogue, and the Qt presenters. Script menus carry
 their text profile and optional speaker into one generic panel projection;
 menu choices use generic presentation roles. The native presenter draws panels
 and applies source input rules. Wallet and quest effects remain native service
-implementations. Other building dialogue, title/field menus, item operations,
-inventory screens, actor placement/animation, audio playback, and save
-restoration remain to be migrated or connected.
+implementations. Ares shop stock is script data, but its selector, transaction
+loop, and native UI still run in C++. Other building dialogue, title/field
+menus, item operations, inventory screens, actor placement/animation, audio
+playback, and save restoration remain to be migrated or connected.
 
 ## Source and visual verification
 
@@ -148,6 +160,8 @@ without an independent game capture.
 
 - ROM scene-2 descriptor/collision profile: `0x172DAA`, with Stoker record 91
   at `0x173138` and the scene event table at `0x172CDC`.
+- Ares shop stock: three-byte ROM records at `0x1AAC9E` (weapons), `0x1AAD8F`
+  (other items), and `0x1AADD7` (armor); the category dispatch is at `0x56DC4`.
 - New Game opening state and field handoff:
   `decompilation/export/SCRATCHPAD.md`, section
   `The startup distinction is explicit in the conversion source`.

@@ -4,11 +4,15 @@
 #include "shadowrun_ghidra/field/field_action_removal_conversion.hpp"
 #include "shadowrun_ghidra/field/field_mode_service_loop_conversion.hpp"
 #include "shadowrun_ghidra/menus/menu_confirmation_conversion.hpp"
+#include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <string>
+#include <vector>
+#include <vector>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
@@ -83,7 +87,8 @@ enum class ShopMenuEvent : std::uint8_t {
 // or inventory copy.
 class ShopMenuController final {
 public:
-    bool open(ShopId shop) noexcept;
+    bool open(ShopId shop,
+              const scripting::ScriptShopDefinition& definition);
     void close() noexcept;
     void finish_action() noexcept;
 
@@ -128,10 +133,9 @@ public:
         return pending_action_;
     }
 
-    static std::size_t offer_count(ShopId shop,
-                                   ShopActionGroup group) noexcept;
-    static std::optional<FieldActionCostRecord> offer(
-        ShopId shop, ShopActionGroup group, std::size_t index) noexcept;
+    std::size_t offer_count(ShopActionGroup group) const noexcept;
+    std::optional<FieldActionCostRecord> offer(
+        ShopActionGroup group, std::size_t index) const noexcept;
 
     ShopTransactionEvent begin_purchase(
         const FieldActionCostRecord& selected_offer,
@@ -156,6 +160,8 @@ private:
     std::uint8_t menu_mode_ = 0;
     FieldModeServiceState source_state_{};
     std::optional<ShopActionRequest> pending_action_;
+    std::array<std::string, 6> group_ids_{};
+    std::array<std::vector<FieldActionCostRecord>, 6> offer_groups_{};
     MenuConfirmationState transaction_confirmation_{};
     TransactionKind transaction_kind_ = TransactionKind::none;
     ShopTransactionMessage transaction_message_ = ShopTransactionMessage::none;

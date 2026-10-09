@@ -948,6 +948,7 @@ private:
     CommandMenuKarmaViewRuntime command_overview_attributes_skills_{};
     HotelKarmaUpgradeRuntime hotel_karma_skills_{};
     scripting::GameScriptRuntime game_scripts_;
+    std::optional<scripting::ScriptShopDefinition> field_shop_definition_;
     FieldDialogueRuntime field_dialogue_;
     HotelMenuRuntime hotel_menu_{};
     FieldModeTextRuntime field_mode_text_{};
