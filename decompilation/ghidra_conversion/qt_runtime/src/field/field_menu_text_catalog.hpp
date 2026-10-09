@@ -32,6 +32,9 @@ inline constexpr std::size_t kFieldMenuItemNameCount = 50U;
 inline constexpr std::size_t kFieldMenuClipsCommandCount = 4U;
 inline constexpr std::size_t kClipsTextCount = 21U;
 inline constexpr std::size_t kItemUiTextCount = 14U;
+inline constexpr std::size_t kItemDisplayTextCount =
+    kFieldMenuPowerLabelCount +
+    (kFieldMenuArmorCount * kFieldMenuArmorRowCount);
 inline constexpr std::size_t kConfirmationChoiceCount = 2U;
 inline constexpr std::size_t kInventoryActionChoiceCount = 4U;
 inline constexpr std::size_t kAttributeSkillLabelCount = 20U;
@@ -108,6 +111,7 @@ struct FieldMenuTextCatalog {
     std::string first_aid_slap_patch_used;
     std::string first_aid_medkit_used;
     std::array<std::string, kItemUiTextCount> item_ui_text_ids{};
+    std::array<std::string, kItemDisplayTextCount> item_display_text_ids{};
     std::array<std::string, kFieldMenuClipsCommandCount> clips_commands{};
     std::array<std::string, kFieldMenuClipsCommandCount> clips_trade_commands{};
     std::array<std::string, kClipsTextCount> clips_text_ids{};

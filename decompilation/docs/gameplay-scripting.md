@@ -149,8 +149,8 @@ access.
 - `gameplay/scripts/items.lua` maps each source item ID to its ROM-derived
   display name and category keys, maps the 32 source detail rows used by field
   item/shop panels, and declares the four inventory-action IDs in source order.
-  It also declares 14 semantic IDs for the inventory action and First Aid
-  text. `FieldSceneRuntime` validates the action list and dispatches Equip/Use,
+  It also declares semantic IDs for inventory/First Aid text, 13 weapon power
+  grades, and 14 armor label lines. `FieldSceneRuntime` validates the action list and dispatches Equip/Use,
   Discard, and Trade through the selected stable ID; the text catalog resolves
   the ROM copy through those IDs. Item codes, cursor state, and inventory
   behavior remain typed native state.

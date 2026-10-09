@@ -431,18 +431,29 @@ write_field_service_routes(
          ++index) {
         emit_clips_text(kNoPartyIds[index], clips_text.no_party_members[index]);
     }
-    for (std::size_t index = 0; index < assets.field_menu_power_labels.size();
-         ++index) {
-        emit("power." + std::to_string(index),
-             assets.field_menu_power_labels[index]);
+    constexpr std::array<std::string_view, 27> kItemDisplayTextIds{{
+        "power_meager", "power_minor", "power_very_low", "power_low",
+        "power_very_light", "power_light", "power_medium",
+        "power_medium_high", "power_high", "power_brutal", "power_severe",
+        "power_massive", "power_incredible", "armor_vest_top",
+        "armor_vest_bottom", "armor_clothing_top", "armor_clothing_bottom",
+        "armor_jacket_top", "armor_jacket_bottom", "armor_plates_top",
+        "armor_plates_bottom", "lined_duster_top", "lined_duster_bottom",
+        "light_combat_armor_top", "light_combat_armor_bottom",
+        "heavy_combat_armor_top", "heavy_combat_armor_bottom"}};
+    std::size_t item_display_text_index = 0U;
+    for (const auto& label : assets.field_menu_power_labels) {
+        emit("items.display.option." +
+                 std::string(kItemDisplayTextIds[item_display_text_index++]),
+             label);
     }
     for (std::size_t armor = 0; armor < assets.field_menu_armor_labels.size();
          ++armor) {
-        for (std::size_t row = 0;
-             row < assets.field_menu_armor_labels[armor].size(); ++row) {
-            emit("armor." + std::to_string(armor) + "." +
-                     std::to_string(row),
-                 assets.field_menu_armor_labels[armor][row]);
+        for (const auto& label : assets.field_menu_armor_labels[armor]) {
+            emit("items.display.option." +
+                     std::string(
+                         kItemDisplayTextIds[item_display_text_index++]),
+                 label);
         }
     }
     if (!output) {
@@ -1570,9 +1581,12 @@ void write_asset_readme(const std::filesystem::path& root) {
               "the 12 service titles, 32 source-order action headings, Ares "
               "categories, and message keys, while "
               "`gameplay/scripts/items.lua` maps source item IDs to their "
-              "name/category/detail keys and inventory/First Aid text IDs. "
+              "name/category/detail keys, inventory/First Aid copy, weapon "
+              "power grades, and armor display labels. "
               "`gameplay/scripts/attributes_skills.lua` maps the "
               "Attributes/Skills labels and upgrade copy to stable IDs. "
+              "`gameplay/scripts/items.lua` also maps weapon power grades and "
+              "armor labels to stable display IDs. "
               "The spell-capable Magic panel is an individually "
               "named RGBA overlay. Item art is grouped under items/weapons, "
               "items/first-aid, items/miscellaneous, items/magic, and items/armor. "

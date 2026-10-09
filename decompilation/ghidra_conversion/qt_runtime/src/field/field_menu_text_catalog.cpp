@@ -41,6 +41,17 @@ constexpr std::array<std::string_view, kAttributesSkillsTextCount>
         "biotech", "electronics", "reputation", "negotiation",
         "upgrade_header", "maximum_level", "mage_only",
         "insufficient_karma", "upgrade_prompt"}};
+constexpr std::array<std::string_view, kItemDisplayTextCount>
+    kItemDisplayTextIds{{
+        "power_meager", "power_minor", "power_very_low", "power_low",
+        "power_very_light", "power_light", "power_medium",
+        "power_medium_high", "power_high", "power_brutal", "power_severe",
+        "power_massive", "power_incredible", "armor_vest_top",
+        "armor_vest_bottom", "armor_clothing_top", "armor_clothing_bottom",
+        "armor_jacket_top", "armor_jacket_bottom", "armor_plates_top",
+        "armor_plates_bottom", "lined_duster_top", "lined_duster_bottom",
+        "light_combat_armor_top", "light_combat_armor_bottom",
+        "heavy_combat_armor_top", "heavy_combat_armor_bottom"}};
 constexpr std::array<std::string_view, kNotebookChoiceCount>
     kNotebookChoiceIds{{"current_run", "tips_and_clues", "contacts",
                         "mr_johnsons", "shadowrunners"}};
@@ -98,6 +109,18 @@ bool is_attributes_skills_text_label_key(const std::string_view key) {
                      kAttributesSkillsTextIds.end(),
                      key.substr(kTextPrefix.size())) !=
                kAttributesSkillsTextIds.end();
+}
+
+bool has_item_display_text_label_prefix(const std::string_view key) {
+    return key.rfind("items.display.option.", 0U) == 0U;
+}
+
+bool is_item_display_text_label_key(const std::string_view key) {
+    constexpr std::string_view kTextPrefix = "items.display.option.";
+    return key.rfind(kTextPrefix, 0U) == 0U &&
+           std::find(kItemDisplayTextIds.begin(), kItemDisplayTextIds.end(),
+                     key.substr(kTextPrefix.size())) !=
+               kItemDisplayTextIds.end();
 }
 
 bool is_clips_menu_label_key(const std::string_view key) {
@@ -172,30 +195,6 @@ bool parse_indexed_key(const std::string& key, const std::string& prefix,
     return true;
 }
 
-bool parse_double_indexed_key(const std::string& key,
-                             const std::string& prefix,
-                             std::size_t& first_index,
-                             std::size_t& second_index) {
-    if (key.rfind(prefix, 0) != 0U) {
-        return false;
-    }
-    const auto remainder = key.substr(prefix.size());
-    const auto separator = remainder.find('.');
-    if (separator == std::string::npos || separator == 0U ||
-        separator + 1U >= remainder.size()) {
-        return false;
-    }
-    const auto parse = [](const std::string& value,
-                          std::size_t& output) {
-        const auto* first = value.data();
-        const auto* last = first + value.size();
-        const auto parsed = std::from_chars(first, last, output);
-        return parsed.ec == std::errc{} && parsed.ptr == last;
-    };
-    return parse(remainder.substr(0, separator), first_index) &&
-           parse(remainder.substr(separator + 1U), second_index);
-}
-
 template <std::size_t N>
 void add_missing_entries(const std::array<bool, N>& found, const char* prefix,
                          std::vector<std::string>& errors) {
@@ -217,8 +216,8 @@ bool is_field_menu_text_key(const std::string& key) {
         "notebook.mr-johnson.name.",
         "notebook.mr-johnson.detail.", "notebook.tip.",
         "magic.spells.option.", "magic.spells.description.",
-        "items.text.option.", "attributes_skills.text.option.", "power.",
-        "armor.",
+        "items.text.option.", "items.display.option.",
+        "attributes_skills.text.option.",
     };
     for (const auto* prefix : prefixes) {
         if (key.rfind(prefix, 0U) == 0U) {
@@ -429,10 +428,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     bool notebook_tips_page_count_found = false;
     bool notebook_tips_page_number_clear_found = false;
     std::array<bool, kDismissRunnerLabelCount> dismiss_runner_label_found{};
-    std::array<bool, kFieldMenuPowerLabelCount> power_found{};
-    std::array<std::array<bool, kFieldMenuArmorRowCount>,
-               kFieldMenuArmorCount>
-        armor_found{};
     bool physical_found = false;
     bool mental_found = false;
     bool attack_found = false;
@@ -483,6 +478,21 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     result.catalog.first_aid_not_injured = item_ui_text[11];
     result.catalog.first_aid_slap_patch_used = item_ui_text[12];
     result.catalog.first_aid_medkit_used = item_ui_text[13];
+    std::array<std::string, kItemDisplayTextCount> item_display_text{};
+    load_script_menu_labels(
+        scripts, "items", "display_text_entries", "items.display",
+        "catalog", kItemDisplayTextIds, item_display_text, result.errors,
+        nullptr, &result.catalog.item_display_text_ids);
+    std::copy_n(item_display_text.begin(), kFieldMenuPowerLabelCount,
+                result.catalog.power_labels.begin());
+    for (std::size_t armor = 0; armor < kFieldMenuArmorCount; ++armor) {
+        for (std::size_t row = 0; row < kFieldMenuArmorRowCount; ++row) {
+            const auto index = kFieldMenuPowerLabelCount +
+                               (armor * kFieldMenuArmorRowCount) + row;
+            result.catalog.armor_labels[armor][row] =
+                item_display_text[index];
+        }
+    }
     std::array<std::string, kAttributesSkillsTextCount>
         attributes_skills_text{};
     load_script_menu_labels(
@@ -577,6 +587,13 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             if (!is_attributes_skills_text_label_key(key)) {
                 result.errors.emplace_back(
                     "unknown Attributes/Skills UI text label key: " + key);
+            }
+            continue;
+        }
+        if (has_item_display_text_label_prefix(key)) {
+            if (!is_item_display_text_label_key(key)) {
+                result.errors.emplace_back(
+                    "unknown item display text label key: " + key);
             }
             continue;
         }
@@ -923,32 +940,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             }
             continue;
         }
-        if (parse_indexed_key(key, "power.", index) &&
-            index < result.catalog.power_labels.size()) {
-            if (power_found[index]) {
-                result.errors.emplace_back("duplicate field menu text row: " +
-                                          key);
-            } else {
-                power_found[index] = true;
-                result.catalog.power_labels[index] = value;
-            }
-            continue;
-        }
-        std::size_t armor_index = 0;
-        std::size_t armor_row = 0;
-        if (parse_double_indexed_key(key, "armor.", armor_index,
-                                     armor_row) &&
-            armor_index < result.catalog.armor_labels.size() &&
-            armor_row < result.catalog.armor_labels[armor_index].size()) {
-            if (armor_found[armor_index][armor_row]) {
-                result.errors.emplace_back("duplicate field menu text row: " +
-                                          key);
-            } else {
-                armor_found[armor_index][armor_row] = true;
-                result.catalog.armor_labels[armor_index][armor_row] = value;
-            }
-            continue;
-        }
         result.errors.emplace_back("unknown field menu text row: " + key);
     }
     if (text_rows.empty()) {
@@ -999,16 +990,6 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                   notebook_tips_page_count_found);
     require_named("notebook.tips.page-number-clear",
                   notebook_tips_page_number_clear_found);
-    add_missing_entries(power_found, "power.", result.errors);
-    for (std::size_t armor = 0; armor < armor_found.size(); ++armor) {
-        for (std::size_t row = 0; row < armor_found[armor].size(); ++row) {
-            if (!armor_found[armor][row]) {
-                result.errors.emplace_back(
-                    "missing field menu text row: armor." +
-                    std::to_string(armor) + "." + std::to_string(row));
-            }
-        }
-    }
     for (std::size_t index = 0; index < magic_spell_description_found.size();
          ++index) {
         if (!magic_spell_description_found[index]) {

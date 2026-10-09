@@ -54,4 +54,37 @@ function Items.ui_text_entries()
     }
 end
 
+-- ROM-ordered item detail labels for weapon power and armor names.
+function Items.display_text_entries()
+    return {
+        "power_meager",
+        "power_minor",
+        "power_very_low",
+        "power_low",
+        "power_very_light",
+        "power_light",
+        "power_medium",
+        "power_medium_high",
+        "power_high",
+        "power_brutal",
+        "power_severe",
+        "power_massive",
+        "power_incredible",
+        "armor_vest_top",
+        "armor_vest_bottom",
+        "armor_clothing_top",
+        "armor_clothing_bottom",
+        "armor_jacket_top",
+        "armor_jacket_bottom",
+        "armor_plates_top",
+        "armor_plates_bottom",
+        "lined_duster_top",
+        "lined_duster_bottom",
+        "light_combat_armor_top",
+        "light_combat_armor_bottom",
+        "heavy_combat_armor_top",
+        "heavy_combat_armor_bottom",
+    }
+end
+
 return Items

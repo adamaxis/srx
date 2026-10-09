@@ -81,6 +81,33 @@ int main() {
             "Pistols", "SMGs", "Shotguns", "Melee Combat", "Throwing",
             "Computer", "Biotech", "Electronics", "Reputation",
             "Negotiation"}};
+    const std::array<std::string, kItemDisplayTextCount>
+        expected_item_display_text_ids{{
+            "power_meager", "power_minor", "power_very_low", "power_low",
+            "power_very_light", "power_light", "power_medium",
+            "power_medium_high", "power_high", "power_brutal",
+            "power_severe", "power_massive", "power_incredible",
+            "armor_vest_top", "armor_vest_bottom", "armor_clothing_top",
+            "armor_clothing_bottom", "armor_jacket_top", "armor_jacket_bottom",
+            "armor_plates_top", "armor_plates_bottom", "lined_duster_top",
+            "lined_duster_bottom", "light_combat_armor_top",
+            "light_combat_armor_bottom", "heavy_combat_armor_top",
+            "heavy_combat_armor_bottom"}};
+    const std::array<std::string, kFieldMenuPowerLabelCount>
+        expected_power_labels{{
+            "Meager", "Minor", "Very Low", "Low", "Very Light", "Light",
+            "Medium", "Medium High", "High", "Brutal", "Severe", "Massive",
+            "Incredible!"}};
+    const std::array<std::array<std::string, kFieldMenuArmorRowCount>,
+                     kFieldMenuArmorCount>
+        expected_armor_labels{{
+            {"", " Armor Vest "},
+            {"   Armor    ", "  Clothing  "},
+            {"   Armor    ", "   Jacket   "},
+            {"    Vest    ", "  w/Plates  "},
+            {"   Lined    ", "   Duster   "},
+            {"   Light    ", "Combat Armor"},
+            {"   Heavy    ", "Combat Armor"}}};
     const std::array<std::string, kClipsTextCount> actual_clips_text{{
         text.catalog.clips_title, text.catalog.clips_separator,
         text.catalog.clips_counter_label,
@@ -130,6 +157,9 @@ int main() {
         text.catalog.attributes_upgrade_insufficient_karma_message !=
             "You do not have enough" ||
         text.catalog.attributes_upgrade_prompt != "Upgrade?" ||
+        text.catalog.item_display_text_ids != expected_item_display_text_ids ||
+        text.catalog.power_labels != expected_power_labels ||
+        text.catalog.armor_labels != expected_armor_labels ||
         text.catalog.race_names !=
             std::array<std::string, kFieldMenuRaceNameCount>{
                 "Human", "  Elf", "Dwarf", "  Orc", "Troll"} ||
