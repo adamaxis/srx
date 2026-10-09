@@ -2,23 +2,33 @@
 -- FieldClipsMenuRuntime owns focus, input cadence, and item/party changes.
 local Clips = {}
 
+local function label_keys(ids, prefix)
+    local keys = {}
+    for index, id in ipairs(ids) do
+        keys[index] = prefix .. id
+    end
+    return keys
+end
+
 function Clips.commands()
-    return { "reload", "trade", "distribute", "cancel" }
+    local ids = { "reload", "trade", "distribute", "cancel" }
+    return ids, nil, label_keys(ids, "clips.option.")
 end
 
 function Clips.trade_commands()
-    return {
+    local ids = {
         "increase_clips",
         "decrease_clips",
         "trade_clips",
         "change_recipient",
     }
+    return ids, nil, label_keys(ids, "clips.trade.option.")
 end
 
 -- ROM-derived field copy uses stable semantic keys; source text remains in
 -- dialogue/script-text.lua and native state supplies runner/item names.
 function Clips.text_entries()
-    return {
+    local ids = {
         "header_title",
         "header_separator",
         "counter_label",
@@ -41,6 +51,7 @@ function Clips.text_entries()
         "no_party_second",
         "no_party_third",
     }
+    return ids, nil, label_keys(ids, "clips.text.option.")
 end
 
 return Clips

@@ -567,21 +567,67 @@ int main() {
         scripts.menu("clips", "commands", "clips", "commands");
     const auto clips_trade_commands = scripts.menu(
         "clips", "trade_commands", "clips.trade", "commands");
+    const auto clips_text_entries =
+        scripts.menu("clips", "text_entries", "clips.text", "catalog");
     constexpr std::array<std::string_view, 4> kClipsCommandIds{{
         "reload", "trade", "distribute", "cancel"}};
+    constexpr std::array<std::string_view, 4> kClipsCommandLabelKeys{{
+        "clips.option.reload", "clips.option.trade",
+        "clips.option.distribute", "clips.option.cancel"}};
     constexpr std::array<std::string_view, 4> kClipsCommandLabels{{
         "Reload", "Trade", "Distribute", "Cancel"}};
     constexpr std::array<std::string_view, 4> kClipsTradeCommandIds{{
         "increase_clips", "decrease_clips", "trade_clips",
         "change_recipient"}};
+    constexpr std::array<std::string_view, 4> kClipsTradeCommandLabelKeys{{
+        "clips.trade.option.increase_clips",
+        "clips.trade.option.decrease_clips",
+        "clips.trade.option.trade_clips",
+        "clips.trade.option.change_recipient"}};
     constexpr std::array<std::string_view, 4> kClipsTradeCommandLabels{{
         "Increase Clips", "Decrease Clips", "Trade Clips",
         "Change Recipient"}};
+    constexpr std::array<std::string_view, 21> kClipsTextIds{{
+        "header_title", "header_separator", "counter_label",
+        "trade_prompt_action", "trade_prompt_clips_to",
+        "trade_prompt_recipient", "exchange_complete_first",
+        "exchange_complete_second", "reload_prompt_ammo_remaining",
+        "reload_prompt_ammo_suffix", "reload_prompt_question",
+        "reload_success_first", "reload_success_second",
+        "out_of_ammo_name_suffix", "out_of_ammo_clips",
+        "item_without_clips_first", "item_without_clips_second",
+        "item_without_clips_third", "no_party_first", "no_party_second",
+        "no_party_third"}};
+    constexpr std::array<std::string_view, 21> kClipsTextLabelKeys{{
+        "clips.text.option.header_title",
+        "clips.text.option.header_separator",
+        "clips.text.option.counter_label",
+        "clips.text.option.trade_prompt_action",
+        "clips.text.option.trade_prompt_clips_to",
+        "clips.text.option.trade_prompt_recipient",
+        "clips.text.option.exchange_complete_first",
+        "clips.text.option.exchange_complete_second",
+        "clips.text.option.reload_prompt_ammo_remaining",
+        "clips.text.option.reload_prompt_ammo_suffix",
+        "clips.text.option.reload_prompt_question",
+        "clips.text.option.reload_success_first",
+        "clips.text.option.reload_success_second",
+        "clips.text.option.out_of_ammo_name_suffix",
+        "clips.text.option.out_of_ammo_clips",
+        "clips.text.option.item_without_clips_first",
+        "clips.text.option.item_without_clips_second",
+        "clips.text.option.item_without_clips_third",
+        "clips.text.option.no_party_first",
+        "clips.text.option.no_party_second",
+        "clips.text.option.no_party_third",
+    }};
     bool clips_rows_match =
         clips_commands.has_value() && clips_trade_commands.has_value() &&
+        clips_text_entries.has_value() &&
         clips_commands->choices.size() == kClipsCommandIds.size() &&
         clips_trade_commands->choices.size() ==
-            kClipsTradeCommandIds.size();
+            kClipsTradeCommandIds.size() &&
+        clips_text_entries->choices.size() == kClipsTextLabelKeys.size();
     if (clips_rows_match) {
         for (std::size_t index = 0; index < kClipsCommandIds.size(); ++index) {
             const auto* command_label = scripts.dialogue_text(
@@ -590,12 +636,24 @@ int main() {
                 clips_trade_commands->choices[index].label_key);
             clips_rows_match = clips_rows_match &&
                 clips_commands->choices[index].id == kClipsCommandIds[index] &&
+                clips_commands->choices[index].label_key ==
+                    kClipsCommandLabelKeys[index] &&
                 command_label != nullptr &&
                 *command_label == kClipsCommandLabels[index] &&
                 clips_trade_commands->choices[index].id ==
                     kClipsTradeCommandIds[index] &&
+                clips_trade_commands->choices[index].label_key ==
+                    kClipsTradeCommandLabelKeys[index] &&
                 trade_label != nullptr &&
                 *trade_label == kClipsTradeCommandLabels[index];
+        }
+        for (std::size_t index = 0; index < kClipsTextLabelKeys.size();
+             ++index) {
+            clips_rows_match = clips_rows_match &&
+                clips_text_entries->choices[index].id ==
+                    kClipsTextIds[index] &&
+                clips_text_entries->choices[index].label_key ==
+                    kClipsTextLabelKeys[index];
         }
     }
     if (!expect(clips_rows_match,

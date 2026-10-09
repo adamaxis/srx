@@ -319,10 +319,10 @@ button row CD33E for Clips, 0x11E7E installs CD37A for nested Trade, and
 presenter reused the inventory row for these states; it now consumes three
 separately extracted named assets and paints the matching selected focus.
 The top-level and nested selector IDs plus all 21 Clips panel and message
-text IDs live in `gameplay/scripts/clips.lua`; their generated label keys
-retain the selector tables at `D1DDC` and `D1E24` and the extracted prompt and
-status copy. The typed controller validates the script order before
-projecting selector labels or messages into the existing screen.
+text IDs live in `gameplay/scripts/clips.lua`, paired with explicit ordered
+label keys for the selector tables at `D1DDC` and `D1E24` and the extracted
+prompt and status copy. The typed controller validates the script order
+before projecting selector labels or messages into the existing screen.
 The source 0x12C36 clear starts at name-table C118 (screen 96,16), covers its
 20x20-cell center region, and leaves the separately composed field HUD intact.
 
