@@ -3,6 +3,7 @@
 #include "dialogue_panel.hpp"
 #include "dialogue_panel_presenter.hpp"
 #include "shadowrun_ghidra/field/mode_text_prompt_catalog_conversion.hpp"
+#include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 
 #include <cstdint>
 #include <string>
@@ -22,6 +23,8 @@ enum class FieldModeTextAdvanceResult : std::uint8_t {
 class FieldModeTextRuntime final {
 public:
     bool load_assets(const ConversionAssetCatalog& assets);
+    void set_script_runtime(
+        const scripting::GameScriptRuntime* scripts) noexcept;
 
     bool open(const FieldModeTextPromptContext& context);
     FieldModeTextAdvanceResult advance_controller_events(
@@ -43,6 +46,7 @@ private:
     ModeTextPromptDescriptor prompt_{};
     ModeTextPromptState prompt_state_{};
     DialoguePanelView panel_{};
+    const scripting::GameScriptRuntime* scripts_ = nullptr;
     std::string failure_;
     bool assets_loaded_ = false;
     bool open_ = false;

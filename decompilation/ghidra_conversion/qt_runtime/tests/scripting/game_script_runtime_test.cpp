@@ -102,6 +102,33 @@ int main() {
         return 1;
     }
 
+    const auto* ares_store_intro =
+        scripts.dialogue_text("field.mode.ares.store_intro");
+    const auto* ares_package_handoff =
+        scripts.dialogue_text("field.mode.ares.package_handoff");
+    const auto* ares_package_payment =
+        scripts.dialogue_text("field.mode.ares.package_payment");
+    if (!expect(ares_store_intro != nullptr &&
+                    *ares_store_intro ==
+                        "<A large man with the Ares logo on his huge coveralls "
+                        "grins at you over the counter.>\n\n"
+                        "You'll love this place, sir.  None'a that wimpy stuff "
+                        "here, no way!\n\nYou just point out what you want." &&
+                    ares_package_handoff != nullptr &&
+                    *ares_package_handoff ==
+                        "<The receptionist hands a package to you.>\n\n"
+                        "Please sign for it and it's all yours.\n\n"
+                        "<You scrawl a fake name and move on.>" &&
+                    ares_package_payment != nullptr &&
+                    *ares_package_payment ==
+                        "<The receptionist takes the package and looks it "
+                        "over.\n\nHappy, she transfers nuyen to your "
+                        "credstick account and wishes you a good day.>",
+                "ROM-imported Ares mode text did not load")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
     const auto hotel_options =
         scripts.menu("hotel", "options", "hotel", "options");
     const auto hotel_checkout =

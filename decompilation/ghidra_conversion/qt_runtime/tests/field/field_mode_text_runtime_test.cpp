@@ -1,6 +1,7 @@
 #include "field_mode_text_runtime.hpp"
 
 #include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
+#include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 
 #include <QColor>
 #include <QImage>
@@ -47,20 +48,31 @@ bool region_is_color(const QImage& image, const int x, const int y,
 } // namespace
 
 int main() {
+    using namespace shadowrun::ghidra_conversion::scripting;
+
     const auto assets = load_conversion_asset_catalog(
         std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT));
     if (!expect(assets.complete())) {
         return 1;
     }
 
-    FieldModeTextRuntime runtime;
-    if (!expect(runtime.load_assets(assets.catalog))) {
+    GameScriptRuntime scripts;
+    if (!expect(scripts.load_package(
+                    SHADOWRUN_GAMEPLAY_SCRIPT_ROOT,
+                    std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
+                        "dialogue" / "script-text.lua"))) {
         return 2;
+    }
+
+    FieldModeTextRuntime runtime;
+    runtime.set_script_runtime(&scripts);
+    if (!expect(runtime.load_assets(assets.catalog))) {
+        return 3;
     }
     if (!expect(runtime.open(FieldModeTextPromptContext{2U, 11U, 0})) ||
         !expect(runtime.open()) ||
         !expect(runtime.frames_remaining() == 30U)) {
-        return 3;
+        return 4;
     }
 
     const auto& intro = runtime.panel();
@@ -73,7 +85,7 @@ int main() {
         !expect(intro.text_segments[1].empty()) ||
         !expect(intro.text_segments[0].find("Ares logo") !=
                 std::string_view::npos)) {
-        return 4;
+        return 5;
     }
 
     QImage image(320, 224, QImage::Format_RGB32);
@@ -86,7 +98,7 @@ int main() {
                                  QColor(0, 0, 0))) ||
         !expect(region_is_color(image, 16, 152, 296, 72,
                                 QColor(0, 0, 0)))) {
-        return 5;
+        return 6;
     }
 
     // The source sentinel waits a full 30 frames. Button edges during the
@@ -100,24 +112,24 @@ int main() {
         !expect(runtime.advance_controller_events(0x2000U) ==
                 FieldModeTextAdvanceResult::returned_to_route) ||
         !expect(!runtime.open()) || !expect(!runtime.panel().open)) {
-        return 6;
+        return 7;
     }
 
     if (!expect(runtime.open(FieldModeTextPromptContext{2U, 11U, -1})) ||
         !expect(runtime.panel().text_segments[4].find("fake name") !=
                 std::string_view::npos)) {
-        return 7;
+        return 8;
     }
     runtime.close();
     if (!expect(runtime.open(FieldModeTextPromptContext{2U, 11U, 1})) ||
         !expect(runtime.panel().text_segments[0].find("receptionist") !=
                 std::string_view::npos)) {
-        return 8;
+        return 9;
     }
     runtime.close();
     if (!expect(!runtime.open(FieldModeTextPromptContext{2U, 2U, 0})) ||
         !expect(!runtime.open())) {
-        return 9;
+        return 10;
     }
     return 0;
 }

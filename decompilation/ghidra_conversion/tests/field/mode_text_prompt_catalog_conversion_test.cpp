@@ -37,19 +37,15 @@ int main() {
         }
     }
 
-    const auto intro_text = field_mode_text_prompt_text(intro->title_text);
-    const auto handoff_text = field_mode_text_prompt_text(handoff->title_text);
-    const auto payment_text = field_mode_text_prompt_text(payment->title_text);
-    if (!intro_text.has_value() || !handoff_text.has_value() ||
-        !payment_text.has_value() ||
-        *intro_text !=
-            "<A large man with the Ares logo on his huge coveralls grins at you "
-            "over the counter.>\n\nYou'll love this place, sir.  None'a that "
-            "wimpy stuff here, no way!\n\nYou just point out what you want." ||
-        handoff_text->find("hands a package to you") == std::string_view::npos ||
-        payment_text->find("transfers nuyen to your credstick account") ==
-            std::string_view::npos ||
-        field_mode_text_prompt_text(0xFFFFFFFFU).has_value()) {
+    const auto intro_key = field_mode_text_prompt_key(intro->title_text);
+    const auto handoff_key = field_mode_text_prompt_key(handoff->title_text);
+    const auto payment_key = field_mode_text_prompt_key(payment->title_text);
+    if (!intro_key.has_value() || !handoff_key.has_value() ||
+        !payment_key.has_value() ||
+        *intro_key != "field.mode.ares.store_intro" ||
+        *handoff_key != "field.mode.ares.package_handoff" ||
+        *payment_key != "field.mode.ares.package_payment" ||
+        field_mode_text_prompt_key(0xFFFFFFFFU).has_value()) {
         return 3;
     }
 

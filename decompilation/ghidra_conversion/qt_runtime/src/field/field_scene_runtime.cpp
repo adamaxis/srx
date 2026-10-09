@@ -4090,6 +4090,7 @@ bool FieldSceneRuntime::bootstrap(
     // 0x1F65A callback can bind direct assets without rebuilding a catalog on
     // every prompt or reaching back into the ROM.
     (void)field_dialogue_.load_assets(startup_state.asset_catalog.catalog);
+    field_mode_text_.set_script_runtime(&game_scripts_);
     (void)field_mode_text_.load_assets(startup_state.asset_catalog.catalog);
     if (!field_interaction_.load_assets(startup_state.asset_catalog.catalog)) {
         failure_ = field_interaction_.failure();

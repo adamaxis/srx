@@ -1074,9 +1074,11 @@ set_target_properties(shadowrun_ghidra_field_mode_text_runtime_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
     RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
 target_compile_definitions(shadowrun_ghidra_field_mode_text_runtime_test PRIVATE
-    SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets")
+    SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    SHADOWRUN_GAMEPLAY_SCRIPT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/scripts")
 target_link_libraries(shadowrun_ghidra_field_mode_text_runtime_test
-    PRIVATE shadowrun_ghidra_conversion_runtime Qt6::Gui)
+    PRIVATE shadowrun_ghidra_conversion_runtime
+            shadowrun_gameplay_script_runtime Qt6::Gui)
 add_test(NAME shadowrun_ghidra_field_mode_text_runtime
          COMMAND shadowrun_ghidra_field_mode_text_runtime_test)
 

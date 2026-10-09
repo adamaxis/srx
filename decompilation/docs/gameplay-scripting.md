@@ -172,7 +172,8 @@ access.
   shared Lua text table. The startup renderer keeps source-derived row
   placement; input cadence and menu transitions remain in C++.
 - `assets/dialogue/script-text.lua` is the ROM-derived shared text table for
-  Stoker dialogue, field object interactions, Hotel menu/status text,
+  Stoker dialogue, field object interactions, Ares mode-event paragraphs,
+  Hotel menu/status text,
   Pocket Secretary root title/separator/labels, command-overview labels,
   field-service titles, field-menu labels and feedback, all 96 Notebook Tips,
   startup and save/load copy, shop category headings and transaction copy,
@@ -188,9 +189,9 @@ access.
 The current slice connects the New Game trigger, native-backed story facts,
 the Michael quest branch, shared motel and debt menus, Hotel menu definitions,
 room/debt service calls, arrival/farewell/result dialogue, and the Qt
-presenters. Stoker, field interaction, Hotel text, startup menu
-text/choices, Pocket Secretary root choices/labels, and command-overview root
-choices/labels are Lua content.
+presenters. Stoker, field interaction, Ares mode-event paragraphs, Hotel text,
+startup menu text/choices, Pocket Secretary root choices/labels, and
+command-overview root choices/labels are Lua content.
 Script dialogue menus carry
 their text profile and optional speaker into one generic panel projection;
 menu choices use generic presentation roles. Hotel cursor-menu choices come

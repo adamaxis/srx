@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
+#include <initializer_list>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
@@ -598,6 +599,53 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
                      "   Press any button");
     write_text_entry("startup.message.save_success.2",
                      "to run in the shadows.");
+    // Generic Ares mode-text prompt paragraphs selected by ROM 0x1FA78.
+    // These adjacent variable-length records end with 0x80/0xFF controls, so
+    // decode their known visible spans rather than scanning into the next
+    // record with the standalone dialogue-segment reader.
+    const auto read_mode_prompt_paragraphs = [&rom](
+        const std::initializer_list<std::pair<std::size_t, std::size_t>>
+            records_to_read) {
+        const auto read_record = [&rom](const std::size_t source_offset,
+                                        const std::size_t byte_count) {
+            if (source_offset > rom.size() ||
+                byte_count > rom.size() - source_offset) {
+                throw std::runtime_error(
+                    "Ares mode-text prompt record exceeds the ROM");
+            }
+            std::string record;
+            record.reserve(byte_count);
+            for (std::size_t index = 0; index < byte_count; ++index) {
+                const auto byte = rom[source_offset + index];
+                if (byte < 0x20U || byte > 0x7EU) {
+                    throw std::runtime_error(
+                        "Ares mode-text prompt span contains a control byte");
+                }
+                record.push_back(static_cast<char>(byte));
+            }
+            return record;
+        };
+        std::string text;
+        for (const auto& [offset, length] : records_to_read) {
+            if (!text.empty()) {
+                text += "\n\n";
+            }
+            text += read_record(offset, length);
+        }
+        return text;
+    };
+    write_text_entry(
+        "field.mode.ares.store_intro",
+        read_mode_prompt_paragraphs(
+            {{0x118934U, 85U}, {0x11898BU, 67U}, {0x1189D0U, 33U}}));
+    write_text_entry(
+        "field.mode.ares.package_handoff",
+        read_mode_prompt_paragraphs(
+            {{0x1189F2U, 42U}, {0x118A1EU, 38U}, {0x118A46U, 37U}}));
+    write_text_entry(
+        "field.mode.ares.package_payment",
+        read_mode_prompt_paragraphs(
+            {{0x118A6CU, 54U}, {0x118AA4U, 80U}}));
     constexpr std::array<std::string_view, 12> kServiceTitleTextKeys{{
         "shop.service.title.weapons_world",
         "shop.ares.title",
@@ -1467,8 +1515,9 @@ void write_asset_readme(const std::filesystem::path& root) {
               "The shared field dialogue frames and A/B/C marker sprites are "
               "grouped under dialogue/panel, with speaker portraits under "
               "dialogue/portraits. ROM-derived Stoker and field interaction "
-              "text, Hotel menu and status text, Pocket Secretary root menu "
-              "text, field-service titles, shop text, and item descriptions are emitted as "
+              "text, Hotel menu and status text, Ares mode-event dialogue, "
+              "Pocket Secretary root menu text, field-service titles, shop "
+              "text, and item descriptions are emitted as "
               "`dialogue/script-text.lua` and consumed by the gameplay script "
               "runtime. `gameplay/scripts/hotel.lua`, "
               "`gameplay/scripts/pocket_secretary.lua`, and "

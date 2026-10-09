@@ -105,6 +105,11 @@ the field approach, fade, prompt, category page, and field return; see
   pairs, stock, special clips copy, and transaction-message keys. The shared
   `items.lua` catalog maps the 50 source item IDs and all 32 detail rows to
   ROM-generated text; the native controller still owns item codes and state.
+- Mode-text paragraphs selected by `0x1FA78` now come from ROM records at
+  `0x118934`, `0x11898B`, `0x1189D0`, `0x1189F2`, `0x118A1E`, `0x118A46`,
+  `0x118A6C`, and `0x118AA4` in `dialogue/script-text.lua`. The typed native
+  event/result selector chooses introduction, package handoff, or payment
+  text; the generic dialogue panel and 30-frame wait remain shared.
 - Mode-entry sprite: `0x1FA78` selects profile `0x1220C0`; its ROM pointers are
   palette `0x1219BC`, pattern stream `0x12C84E`, and sprite stream `0x12266A`.
   The offline importer emits the profile's 7x9 sprite as

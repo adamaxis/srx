@@ -19,10 +19,21 @@ bool FieldModeTextRuntime::load_assets(
     return assets_loaded_;
 }
 
+void FieldModeTextRuntime::set_script_runtime(
+    const scripting::GameScriptRuntime* scripts) noexcept {
+    scripts_ = scripts;
+}
+
 bool FieldModeTextRuntime::resolve_panel(const std::uint32_t text_key) {
-    const auto text = field_mode_text_prompt_text(text_key);
-    if (!text.has_value()) {
-        failure_ = "mode-text prompt has no source text for its selected key";
+    const auto key = field_mode_text_prompt_key(text_key);
+    if (!key.has_value() || scripts_ == nullptr) {
+        failure_ = "mode-text prompt has no Lua text binding for its key";
+        return false;
+    }
+    const auto* text = scripts_->dialogue_text(*key);
+    if (text == nullptr) {
+        failure_ = "mode-text prompt Lua text is missing: " +
+                   std::string(*key);
         return false;
     }
 
@@ -46,7 +57,7 @@ bool FieldModeTextRuntime::resolve_panel(const std::uint32_t text_key) {
                              ? text->size()
                              : separator;
         panel_.text_segments[panel_.text_segment_count++] =
-            text->substr(cursor, end - cursor);
+            std::string_view(*text).substr(cursor, end - cursor);
         if (separator == std::string_view::npos) {
             break;
         }

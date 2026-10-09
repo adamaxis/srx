@@ -6,22 +6,6 @@ namespace {
 constexpr std::uint8_t kAresFieldMode = 2U;
 constexpr std::uint8_t kAresEventCode = 11U;
 
-constexpr std::string_view kAresStoreIntro =
-    "<A large man with the Ares logo on his huge coveralls grins at you over "
-    "the counter.>\n\n"
-    "You'll love this place, sir.  None'a that wimpy stuff here, no way!\n\n"
-    "You just point out what you want.";
-
-constexpr std::string_view kAresPackageHandoff =
-    "<The receptionist hands a package to you.>\n\n"
-    "Please sign for it and it's all yours.\n\n"
-    "<You scrawl a fake name and move on.>";
-
-constexpr std::string_view kAresPackagePayment =
-    "<The receptionist takes the package and looks it over.\n\n"
-    "Happy, she transfers nuyen to your credstick account and wishes you a "
-    "good day.>";
-
 ModeTextPromptDescriptor narrative_prompt(
     const ModeTextPromptTextKey text_key) noexcept {
     ModeTextPromptDescriptor descriptor{};
@@ -53,15 +37,15 @@ std::optional<ModeTextPromptDescriptor> select_field_mode_text_prompt(
     return narrative_prompt(ModeTextPromptTextKey::ares_store_intro);
 }
 
-std::optional<std::string_view> field_mode_text_prompt_text(
+std::optional<std::string_view> field_mode_text_prompt_key(
     const std::uint32_t text_key) noexcept {
     switch (static_cast<ModeTextPromptTextKey>(text_key)) {
     case ModeTextPromptTextKey::ares_store_intro:
-        return kAresStoreIntro;
+        return "field.mode.ares.store_intro";
     case ModeTextPromptTextKey::ares_package_handoff:
-        return kAresPackageHandoff;
+        return "field.mode.ares.package_handoff";
     case ModeTextPromptTextKey::ares_package_payment:
-        return kAresPackagePayment;
+        return "field.mode.ares.package_payment";
     }
     return std::nullopt;
 }

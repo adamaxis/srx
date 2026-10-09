@@ -26,7 +26,7 @@ struct FieldModeTextPromptContext {
 std::optional<ModeTextPromptDescriptor> select_field_mode_text_prompt(
     const FieldModeTextPromptContext& context) noexcept;
 
-std::optional<std::string_view> field_mode_text_prompt_text(
+std::optional<std::string_view> field_mode_text_prompt_key(
     std::uint32_t text_key) noexcept;
 
 } // namespace shadowrun::ghidra_conversion
