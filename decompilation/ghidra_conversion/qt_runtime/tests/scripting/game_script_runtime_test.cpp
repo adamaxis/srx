@@ -727,6 +727,47 @@ int main() {
         return 1;
     }
 
+    const auto attributes_skills_text = scripts.menu(
+        "attributes_skills", "text_entries", "attributes_skills.text",
+        "catalog");
+    constexpr std::array<std::string_view, 25> kAttributesSkillsTextIds{{
+        "body", "quickness", "strength", "charisma", "intelligence",
+        "willpower", "essence", "magic", "sorcery", "firearms",
+        "pistols", "smgs", "shotguns", "melee_combat", "throwing",
+        "computer", "biotech", "electronics", "reputation", "negotiation",
+        "upgrade_header", "maximum_level", "mage_only", "insufficient_karma",
+        "upgrade_prompt"}};
+    constexpr std::array<std::string_view, 25> kAttributesSkillsTextLabels{{
+        "Body", "Quickness", "Strength", "Charisma", "Intelligence",
+        "Willpower", "Essence      .", "Magic", "Sorcery", "Firearms",
+        "Pistols", "SMGs", "Shotguns", "Melee Combat", "Throwing",
+        "Computer", "Biotech", "Electronics", "Reputation", "Negotiation",
+        "Upgrade to       Cost", "You are at the maximum level.",
+        "This skill is for mages", "You do not have enough", "Upgrade?"}};
+    bool attributes_skills_text_matches = attributes_skills_text.has_value() &&
+        attributes_skills_text->title_key.empty() &&
+        attributes_skills_text->choices.size() == kAttributesSkillsTextIds.size();
+    if (attributes_skills_text_matches) {
+        for (std::size_t index = 0;
+             index < kAttributesSkillsTextIds.size(); ++index) {
+            const auto& choice = attributes_skills_text->choices[index];
+            const auto* label = scripts.dialogue_text(choice.label_key);
+            const auto expected_key = std::string(
+                "attributes_skills.text.option.") +
+                std::string(kAttributesSkillsTextIds[index]);
+            attributes_skills_text_matches =
+                attributes_skills_text_matches &&
+                choice.id == kAttributesSkillsTextIds[index] &&
+                choice.label_key == expected_key && label != nullptr &&
+                *label == kAttributesSkillsTextLabels[index];
+        }
+    }
+    if (!expect(attributes_skills_text_matches,
+                "Lua Attributes/Skills keys or ROM text changed source order")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
     const auto inventory_actions =
         scripts.menu("items", "inventory_actions", "items",
                      "inventory_actions");

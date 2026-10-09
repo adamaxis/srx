@@ -34,6 +34,10 @@ give the command view a spending path it does not have.
   writes the Body marker/value at `0xC3A4/0xC3A8`. These are short row details,
   not prose descriptions. `0xD82A` redraws the selected lower label and
   current Karma; the command view suppresses Hotel's next-value/cost section.
+- `gameplay/scripts/attributes_skills.lua` binds the 20 labels and five
+  upgrade messages to explicit ordered `attributes_skills.text.option.*`
+  keys. Script QA checks all 25 IDs, keys, and resolved ROM strings; the field
+  catalog test checks the same source order and values.
 - The command-view A action requests sound event `0x24`, mapped to
   `audio.menu.command-024` (2.484 seconds including the release tail). The
   Attributes/Skills child is silent. Hotel selection and the Hotel Karma
@@ -69,7 +73,7 @@ give the command view a spending path it does not have.
   either Attributes/Skills Karma page. The generated captures are internal
   conversion evidence, not Genesis visual goldens.
 
-## Eight verification questions
+## Nine verification questions
 
 1. **Does each page look correct?** The source-derived command view shows the
    shared two-column grid, current Karma, focused row, Essence pair, and any
@@ -80,16 +84,19 @@ give the command view a spending path it does not have.
 2. **Does the visible state match behavior?** Yes in typed and pixel QA. Only
    the currently focused cell uses palette line 2; moving restores the prior
    row to line 3. Its name/value and the source-dependent details follow the
-   cursor and active record. Command-row focus alone does not open the page;
-   A/B/Start return without mutation. Hotel owns the preview and spend path.
+   cursor and active record. Lua's stable IDs and explicit label keys resolve
+   to the same source strings without owning focus or state. Command-row focus
+   alone does not open the page; A/B/Start return without mutation. Hotel owns
+   the preview and spend path.
 
 3. **Are the visuals correct?** Full-screen QA covers all 20 selectable
    cells, the special Essence positions, modifier markers and values, and the
    separate command/Hotel detail rows. The command page shows no upgrade
    preview; the Hotel page shows the selected next value and cost. With equal
    runner fixtures, pixel QA confines their difference to the lower
-   upgrade/cost row. This checks the conversion against its source-derived
-   layout, not against an independent Genesis image.
+   upgrade/cost row. Script QA checks each label key and exact ROM copy. This
+   checks the conversion against its source-derived layout, not against an
+   independent Genesis image.
 
 4. **Should either page animate?** No page animation is indicated by these
    source paths. The command view stays pixel-identical for 30 advanced frames;
@@ -121,18 +128,29 @@ give the command view a spending path it does not have.
    pixel-identical to the pre-page shell; Hotel return rebuilds Options with
    no Attributes/Skills labels or prompt pixels left behind.
 
+9. **Was the complete affected interval reviewed?** Yes for this content
+   slice: the 30 command-view BMPs were reviewed in two contact sheets, the
+   command and Hotel pages were opened at native size, and the Hotel sequence's
+   252 full-screen frames were reviewed in chronological contact sheets. The
+   current Debug/Release filename sets and SHA-256 hashes match for both route
+   directories.
+
 ## Result
 
-- **Code changed:** the Qt presenter now connects the existing typed `0xD5DC`
-  detail conversion to the Start-menu page. It paints source-selected labels
-  and values, the Essence pair, Magic, and installed-cyberware markers and
-  modifiers. Its base composition repaints the full screen before the page.
+- **Code changed:** the Qt presenter connects the existing typed `0xD5DC`
+  detail conversion to the command-view page. Lua now returns explicit keys
+  for all 20 labels and five upgrade messages. The presenter paints
+  source-selected values, the Essence pair, Magic, and installed-cyberware
+  markers and modifiers. Its base composition repaints the full screen before
+  the page.
 - **Behavior verified:** d-pad input covers all 20 cells; focus does not open
   the page; the view-only route preserves attributes, skills, Karma, and
   cyberware flags; A/B/Start return to a pixel-identical command shell. Hotel
   spending remains a separate typed route.
-- **Internal visual/audio verification:** the eight-question review covers
-  every full-screen dump. Debug and Release pass all 54 Qt CTests; their 30
-  command-view images match by SHA-256. The page holds static for 30 frames;
-  only the command A action requests event `0x24`.
+- **Internal visual/audio verification:** the nine-question review covers all
+  30 command-view and 252 Hotel full-screen BMPs. Relevant Debug and Release
+  CTests pass for script content, field text catalog, both Attributes/Skills
+  routes, Hotel behavior, and screen distinction. The 30 command-view and 252
+  Hotel frames match by SHA-256. The page holds static for 30 frames; only the
+  command A action requests event `0x24`.
 - **Independent Genesis verification:** unavailable for these exact pages.

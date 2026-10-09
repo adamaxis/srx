@@ -3,7 +3,7 @@
 local AttributesSkills = {}
 
 function AttributesSkills.text_entries()
-    return {
+    local ids = {
         "body",
         "quickness",
         "strength",
@@ -30,6 +30,11 @@ function AttributesSkills.text_entries()
         "insufficient_karma",
         "upgrade_prompt",
     }
+    local label_keys = {}
+    for index, id in ipairs(ids) do
+        label_keys[index] = "attributes_skills.text.option." .. id
+    end
+    return ids, nil, label_keys
 end
 
 return AttributesSkills

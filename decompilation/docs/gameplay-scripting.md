@@ -205,10 +205,10 @@ from the older convention incrementally.
   the UI and display copy from the Lua keys without duplicate runtime lists.
   QA checks key order and ROM copy. Item codes, cursor state, and inventory
   behavior remain typed native state.
-- `gameplay/scripts/attributes_skills.lua` declares stable IDs for the 20
-  Attributes/Skills labels and five upgrade messages in source order. The field
-  text catalog reads that list from Lua and resolves the ROM copy; catalog QA
-  checks the source ordering. Skill values, cursor movement, upgrade
+- `gameplay/scripts/attributes_skills.lua` declares stable IDs and explicit
+  ordered text keys for the 20 Attributes/Skills labels and five upgrade
+  messages. Script QA checks every ID/key/ROM-text tuple, and field catalog QA
+  checks the rendered catalog order. Skill values, cursor movement, upgrade
   eligibility, and karma spending remain native state.
 - `gameplay/scripts/cyberware.lua` declares stable IDs for the Cyberware title,
   separator, empty state, and 15 implant names in source order. The field text

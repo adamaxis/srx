@@ -379,6 +379,13 @@ species-limit records are at `0xC22A6`; attributes 6 and 7 cannot be upgraded.
 The skill branch preserves the source 2x and left-column middle-skill 1.5x
 costs, including its linked-skill zero-value dependency.
 
+The shared static copy comes from `gameplay/scripts/attributes_skills.lua` as
+explicit ordered keys for the 20 labels and five upgrade messages. The command
+view and Hotel spend screen intentionally share those keys while retaining
+separate lower detail lines and behavior. Script QA checks exact ID/key/text
+order, and the full-screen route QA checks that the view-only page has no cost
+preview while the Hotel page does.
+
 Debug QA covers both routes with separate multi-frame dump directories. A
 pixel comparison requires the same shared grid and current Karma amount in
 both captures, plus upgrade/cost text only on the Hotel screen's lower detail
