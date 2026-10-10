@@ -25,12 +25,12 @@ Genesis controller evidence remain open. See
 
 Puyallup's Tarislar Garden Apartments route is source-profiled but not
 connected. Scene 1 record 67/event 7 defaults to scene 13. Indexed title
-service 21 can set an activity marker; the main loop normalizes it to scene 55,
-unless a pending descriptor list overrides the destination to scene 15. Scene
-55 immediately starts the ROM's Tomb of Ellisia dialogue chain, which conflicts
-with the Tarislar entry text. The descriptor-list producer/lifetime on this
-route, Frosty authorization path, repeat dialogue, and intended handoff remain
-open. See the
+service 21 can set marker 1; because event 7 is below 8, the main loop jumps to
+the selector without changing it, which selects scene 54 unless a pending
+descriptor list overrides the destination to scene 15. Scene 54's extracted
+map is a tall 320x1344 layout, consistent with the apartment elevator text.
+The descriptor-list state, Frosty authorization path, repeat dialogue, and
+scene-54 completion/return remain open. See the
 [`Tarislar route audit`](visual-audits/puyallup-tarislar-apartments.md).
 
 The user-reported intro, field, HUD, menu, inventory, and sound defects are

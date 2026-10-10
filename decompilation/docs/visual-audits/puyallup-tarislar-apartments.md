@@ -1,13 +1,15 @@
 # Puyallup: Tarislar Garden Apartments
 
 Status: **source-profiled, not implemented or visually defended**. Scene 1
-record 67 is an event-7 trigger whose event-table default is scene 13. Indexed
-title service 21 may set a marker that the main loop converts to scene 55; a
-pending descriptor list can instead override that destination to scene 15.
-Scene 55 launches a Tomb of Ellisia dialogue chain, which conflicts with the
-Tarislar entry text. The event-specific descriptor state and actual Tarislar
-handoff are unresolved. The current Qt route does not connect service 21 or
-its dialogue.
+record 67 is an event-7 trigger whose event-table default is scene 13. When
+indexed title service 21 sets marker 1, event 7 takes a direct main-loop branch
+to selector `0x167AE`; the selector routes to scene 54. A pending descriptor
+list at `FFE162` can instead override that result to scene 15. Scene 55 is a
+separate marker-2 route that starts Tomb of Ellisia dialogue; it is not the
+event-7 marker-1 destination. Scene 54's extracted map is 320x1344, consistent
+with the apartment elevator passage, but that asset consistency is not an
+independent visual confirmation. The current Qt route does not connect
+service 21 or its dialogue.
 
 Mike's RPG Center labels Puyallup map marker 2 “Tarislar Garden Apartments.”
 Its walkthrough places the visit after the Sinsearach trials and meeting
@@ -45,16 +47,18 @@ conditions, and scene selection below come from the US ROM. See the
   into the elevator, and riding to the top floor.
 - Transition: after the shared prompt runner `0x1F246`, the handler tests
   `FFF0CC`. If nonzero, it leaves `D6=0` and sets `FFE186=1`; if zero, it sets
-  `D6=-1`. The main loop at `0x097C` normalizes nonzero `FFE186` to 2 before
-  selector `0x167AE` runs. That selects scene 55, unless the pending
-  descriptor list at `FFE162` is nonzero; in that case `0x16A26` publishes
-  descriptors and the destination is scene 15, which is subject to its
-  `FFFC1E` bit-29 gate. With no marker override, scene 13 is subject to its
-  bit-19 gate. When scene 55 is selected,
-  `0x0A44` queues `0x20938`, whose text graph begins at `0x0FDD1A` and whose
-  first text (`0x0FD2FE`) enters the Tomb of Ellisia antechamber. This conflicts
-  with the Tarislar passage. The event-specific `FFE162` producer/lifetime and
-  actual destination must be resolved before implementing the handoff.
+  `D6=-1`. In the main loop at `0x097C`, the event-7 branch checks
+  `FFFBF9 < 8` and jumps directly to selector `0x167AE` from inside the
+  original `FFE186==0` arm. It skips the adjacent `FFE186=2` assignment, so
+  marker 1 remains 1. Selector `0x167AE` reads row 7's default scene 13, then
+  selects scene 54 from marker 1. If `FFE162` contains a pending descriptor
+  list, `0x16A26` publishes it and selects scene 15 instead; scene 15 is
+  subject to its `FFFC1E` bit-29 gate. With no marker, scene 13 is subject to
+  its bit-19 gate. Marker 2 is a distinct selector route to scene 55; only
+  that route queues `0x20938`, whose text graph begins at `0x0FDD1A` and whose
+  first text (`0x0FD2FE`) enters the Tomb of Ellisia antechamber. The
+  event-specific `FFE162` producer/lifetime and the scene-54 completion route
+  remain unresolved.
 - The later branch, when bit 21 is already set, selects further Harlequin
   dialogue from flags 16, 26, 27, and 28 plus group-item flags. Those
   conditions and conversation choices are not yet connected.
@@ -69,13 +73,16 @@ conditions, and scene selection below come from the US ROM. See the
    bit 21, bits 16/26/27/28, and group-item flags. Their Qt/Lua binding is
    outstanding.
 3. **Are the visuals correct?** The source text nodes and portrait profile
-   have been identified. Scene 1 imports as 1600x1504, scene 13 and 15 as
-   320x224, and scene 55 as 512x288. Those extracted assets are useful
-   inspection inputs, not independent Genesis screenshots.
-4. **Is it animated, and under what conditions?** The first-entry path sets
-   `FFE186` before the scene handoff, but the event-specific descriptor state
-   determines whether the following route selects scene 15 or the scene-55
-   tomb sequence. No animation cadence or Qt result is claimed.
+   have been identified. Scene 1 imports as 1600x1504, scene 13, 15, and 54
+   as 320x224 frames, and scene 54's full map is 320x1344; scene 55 is
+   512x288. The tall scene-54 layout is consistent with the elevator text.
+   These extracted assets are inspection inputs, not independent Genesis
+   screenshots.
+4. **Is it animated, and under what conditions?** Service 21's marker selects
+   scene 54 on the event-7 route; pending `FFE162` descriptors select scene
+   15. The marker itself does not establish an animation policy. Scene-54
+   actor/activity cadence and the transition animation still need source
+   tracing. No Qt result is claimed.
 5. **Is there a sound?** Service `0x5447E` has no direct sound call in the
    traced path. Shared prompt/input audio and the rest of the scene handoff
    remain unverified.
@@ -94,10 +101,11 @@ conditions, and scene selection below come from the US ROM. See the
   typed story state.
 - Port service 21's guard/first-entry/repeat branches into a generic Lua
   event/dialogue flow. Preserve its source order and the phase-counter effect.
-- Trace the event-specific `FFE162` producer and determine how the
-  scene-55/Tomb route is excluded or intended; preserve event-table default
-  scene 13 and the scene-15 pending-descriptor override only as
-  source-conditional facts until then.
+- Trace which world-effect path can populate `FFE162`, whether it is active
+  for Tarislar's event-7 route, and how selector precedence reaches scene 54
+  or the pending scene-15 override.
+- Trace scene 54's entry, actor/activity setup, elevator/story completion,
+  exits, and return path against the ROM before connecting the route in Lua.
 - Capture the ordinary-input approach, every page, transition, and clean
   return/arrival as whole 320x224 screens. Review all surrounding pixels and
   check the seven questions above before changing this status.

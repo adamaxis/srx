@@ -459,3 +459,44 @@ Matrix pages identify node categories; and the scanned manual describes
 player-facing rules. None provides the ROM scene IDs, event order, exact
 coordinates, hidden state bits, actor heartbeat cadence, hit formulas, or UI
 pixel/timing goldens.
+
+#### Full Shadowrun-site reread: 2026-10-10
+
+I reopened the Shadowrun landing page and checked every linked HTML guide and
+map page listed above, plus the separate NPC page. The coverage is 12 catalog/
+walkthrough pages (including the map index), 6 city maps, 4 wilderness maps,
+4 cave maps, 14 Matrix maps, the landing page, and the separate NPC list. The
+linked Genesis manual PDF timed out in the current browser fetch; its existing
+manual notes above are based on the earlier page-image/OCR pass and should not
+be described as a fresh PDF inspection. The catalog pages consistently label
+prices as Negotiation 0 where stated. Spelling and map-label contradictions
+remain recorded rather than silently normalized.
+
+Current issue cross-checks from the reread:
+
+- The [Redmond map](https://mikesrpgcenter.com/shadowrun/maps/redmond_barrens.html)
+  labels Stoker's Motel as marker 6 and Rat's Nest as marker 9, in separate
+  parts of the map. The [Vigore walkthrough](https://mikesrpgcenter.com/shadowrun/walkthrough.html)
+  says Gunderson directs Joshua to the Rat's Nest after Harlequin's request;
+  Vigore has already left, and the Landmark Map becomes the quest target only
+  after showing Harlequin the first map and speaking to Gunderson about Vigore.
+  This supports the map-name/quest crosswalk, but neither source gives the
+  entrance collision bounds, entry dialogue text, exit destination, or ROM
+  state condition.
+- The [Puyallup map](https://mikesrpgcenter.com/shadowrun/maps/puyallup.html)
+  labels marker 2 as Tarislar Garden Apartments and marker 3 as Tarislar City
+  Inn (rest for 30 nuyen). The [walkthrough](https://mikesrpgcenter.com/shadowrun/walkthrough.html)
+  places the apartment visit after the Sinsearach trials and Frosty's
+  introduction. These names corroborate ROM text labels, but the map does not
+  establish that apartments and inn share a scene or entrance behavior.
+- The Redmond and Puyallup maps list different shop inventories, clip prices,
+  cyberware, and access requirements; use them to form a completeness checklist
+  for the shop catalog, not as transaction rules. The weapons and item pages
+  describe effect categories (including gun silencers, SMG suppressors,
+  smartgun prerequisites, passkey ratings, and spell foci) but do not supply
+  the firing cadence, alert update order, success formula, or selection pixels.
+- The fourteen Matrix maps include repeated node classes and page-specific
+  clue callouts. `Unlisted` contains several separate unnamed map diagrams;
+  preserve those as unassigned until ROM evidence identifies them. The map
+  labels are navigation aids, not proof that a node uses a particular ROM
+  entry or result handler.
