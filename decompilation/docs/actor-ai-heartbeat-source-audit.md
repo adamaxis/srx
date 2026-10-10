@@ -89,6 +89,44 @@ tables in `0x14D6A`; `+0x57` identifies the selected action row. Target
 candidates are collected at `0x1438C` and `0x14446`; actor links are not
 simply the nearest-screen-sprite rule.
 
+### Target candidate contract
+
+`0x13874` clears the shared candidate gate. When `FFDFE8` is nonzero, it builds
+both lists. Otherwise, the low six bits of `FFDF88` select the seven-entry
+list for `0x0B`, the three-entry list for `0x0F`, or neither list for other
+values. `0x1438C` scans seven records beginning at
+`FF0400`; it keeps records that are active, not effect-locked or transitioning,
+not on the high-effect route, clear of status bits 5 and 3, and whose `+0x0C`
+word is nonzero. `0x14446` scans only the three records beginning at
+`FF0100`; it keeps records that are active, not effect-locked or transitioning,
+and whose `+0x0C` word is nonzero. Keep the `+0x0C` predicate as a source fact
+until its wider lifecycle meaning is traced; the candidate scan alone does not
+justify naming it a collision or alive flag.
+
+`0x14492` uses the seven-entry list when the acting record's `+0x10` bit 3 is
+set; otherwise it uses the three-entry list. If its current `+0xA2` link still
+belongs to that pool, the ROM keeps it. If the link is no longer eligible, it
+selects an index with the source PRNG. Switching to a different record in the
+three-entry pool loads `+0xB5` with 6; the seven-entry path does not load that
+delay here. An empty pool clears `+0xA2`; the seven-entry path can also reset
+service records when `FFE162` is clear. The downstream `0x13FFE` caller only
+falls back to the controlled player for its flagged fallback branch. These
+rules explain why proximity alone cannot select a target and why a default
+map profile is not enough to authorize an NPC attack.
+
+The converted-source cross-check is split across
+`entities/entity_animation_link_conversion.cpp` and
+`entities/entity_action_candidate_conversion.cpp`; their named tests cover
+filters, target retention, replacement, and empty pools. Those conversion
+helpers are not connected to the live Qt actor records. `FieldSceneRuntime`
+currently stores profile, source order, initial position/heading, loadout, and
+presentation state for those actors; it does not yet have source-compatible
+state for the seven primary and three alternate candidate records. The next
+runtime slice must supply typed candidate facts from actual world entities, let
+Lua retain/select the target using the source PRNG service,
+and leave movement/collision resolution to the native field engine. Until that
+state exists, general NPC targeting and weapon use remain unimplemented.
+
 Movement is collision-coupled. `0xB77E` builds a directional probe and calls
 `0xB48C`; `0xB48C` calls terrain collision `0xE7C8` and stores the collision
 result in the actor record. `0xB7B8` then advances or rejects movement and
