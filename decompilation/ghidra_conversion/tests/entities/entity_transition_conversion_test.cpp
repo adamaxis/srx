@@ -11,6 +11,14 @@ int expect(const bool condition) {
     return condition ? 0 : 1;
 }
 
+std::optional<std::uint8_t> weapon_rounds_per_action(
+    const std::uint8_t action_code) {
+    if (action_code == 0U || action_code > 12U) {
+        return std::nullopt;
+    }
+    return action_code >= 8U && action_code <= 10U ? 3U : 1U;
+}
+
 } // namespace
 
 int main() {
@@ -190,6 +198,7 @@ int main() {
                         const std::uint8_t source_action_code) {
             return service_entity_ammo(
                 equipment, source_action_code,
+                weapon_rounds_per_action,
                 [&cycle_events, &equipment](const std::int8_t delta) {
                     cycle_events.push_back('w');
                     const auto adjusted =
@@ -242,6 +251,7 @@ int main() {
            const std::uint8_t source_action_code) {
             return service_entity_ammo(
                 equipment, source_action_code,
+                weapon_rounds_per_action,
                 [&equipment](const std::int8_t delta) {
                     const auto adjusted =
                         static_cast<int>(equipment.current_ammo) + delta;
@@ -273,6 +283,7 @@ int main() {
                                    const std::uint8_t source_action_code) {
             return service_entity_ammo(
                 equipment, source_action_code,
+                weapon_rounds_per_action,
                 [&unavailable_slot_events, &equipment](
                     const std::int8_t delta) {
                     unavailable_slot_events.push_back('w');
@@ -304,7 +315,8 @@ int main() {
         [](EntityEquipmentState& equipment,
            const std::uint8_t source_action_code) {
             return service_entity_ammo(
-                equipment, source_action_code, [](const std::int8_t) {});
+                equipment, source_action_code, weapon_rounds_per_action,
+                [](const std::int8_t) {});
         });
     if (expect(inactive_ammo.action ==
                    EntitySpawnCycleAction::ammo_service_inactive &&

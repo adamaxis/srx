@@ -88,6 +88,12 @@ struct ScriptWeaponTemplate {
     std::uint8_t damage_bar_index = 0;
     std::string power_profile;
     std::string power_label;
+    std::string fire_mode;
+    std::string trigger_behavior;
+    std::uint8_t rounds_per_action = 0;
+    std::string attack_cadence;
+    std::string attack_delay_scale;
+    std::string reload_delay_scale;
 };
 
 struct ScriptArmorTemplate {
@@ -99,6 +105,16 @@ struct ScriptArmorTemplate {
 };
 
 struct ScriptItemDefinition {
+    struct Pricing {
+        std::uint16_t purchase_base = 0;
+        std::uint16_t resale_base = 0;
+    };
+
+    struct Presentation {
+        std::string icon_resource_key;
+        std::string detail_resource_key;
+    };
+
     struct Detail {
         std::string kind;
         std::uint8_t value = 0;
@@ -109,7 +125,8 @@ struct ScriptItemDefinition {
     std::string kind;
     std::string name_key;
     std::string category_key;
-    std::uint16_t base_cost = 0;
+    Pricing pricing{};
+    Presentation presentation{};
     bool has_detail_art = false;
     std::optional<Detail> detail;
     std::optional<ScriptWeaponTemplate> weapon;

@@ -1,5 +1,6 @@
 #include "shadowrun_ghidra/entities/entity_combat_conversion.hpp"
 
+#include <optional>
 #include <vector>
 
 namespace {
@@ -33,7 +34,7 @@ int main() {
     }
 
     EntityEquipmentState empty{0U, 4};
-    if (!expect(service_entity_ammo(empty, 7U, {}) ==
+    if (!expect(service_entity_ammo(empty, 7U, {}, {}) ==
                     EntityAmmoServiceAction::no_action &&
                 empty.current_ammo == 0U)) {
         return 2;
@@ -42,7 +43,10 @@ int main() {
     EntityEquipmentState delegated{5U, 2};
     int weapon_services = 0;
     std::int8_t weapon_delta = 0;
-    if (!expect(service_entity_ammo(delegated, 7U, [&weapon_services, &weapon_delta](
+    if (!expect(service_entity_ammo(delegated, 7U,
+                    [](const std::uint8_t) {
+                        return std::optional<std::uint8_t>{1U};
+                    }, [&weapon_services, &weapon_delta](
                         const std::int8_t delta) {
                         ++weapon_services;
                         weapon_delta = delta;
@@ -56,6 +60,10 @@ int main() {
     weapon_delta = 0;
     if (!expect(service_entity_ammo(
                     multi_round_action, 9U,
+                    [](const std::uint8_t code) {
+                        return std::optional<std::uint8_t>{
+                            code >= 8U && code <= 10U ? 3U : 1U};
+                    },
                     [&weapon_delta](const std::int8_t delta) {
                         weapon_delta = delta;
                     }) == EntityAmmoServiceAction::delegated_to_weapon_service &&
@@ -64,14 +72,18 @@ int main() {
     }
 
     EntityEquipmentState unresolved{5U, 2};
-    if (!expect(service_entity_ammo(unresolved, 7U, {}) ==
+    if (!expect(service_entity_ammo(
+                    unresolved, 7U,
+                    [](const std::uint8_t) {
+                        return std::optional<std::uint8_t>{1U};
+                    }, {}) ==
                     EntityAmmoServiceAction::weapon_service_unresolved &&
                 unresolved.current_ammo == 5U)) {
         return 5;
     }
 
     EntityEquipmentState decremented{5U, 3};
-    if (!expect(service_entity_ammo(decremented, 7U, {}) ==
+    if (!expect(service_entity_ammo(decremented, 7U, {}, {}) ==
                     EntityAmmoServiceAction::decremented &&
                 decremented.current_ammo == 4U)) {
         return 6;

@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <optional>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -13,6 +14,7 @@ enum class PlayerActionDispatchStatus {
     waiting_for_loaded_rounds,
     waiting_for_clip_reserve,
     waiting_for_animation_gate,
+    weapon_template_unresolved,
     serviced,
 };
 
@@ -26,6 +28,9 @@ struct PlayerActionDispatchResult {
 struct PlayerActionDispatchCallbacks {
     std::function<void(std::uint16_t)> service_audio_event;
 };
+
+using WeaponReloadDelayModeLookup =
+    std::function<std::optional<std::uint16_t>(std::uint8_t)>;
 
 // ROM 0xA8EA decrements an active record's signed +0xDC animation gate once
 // per field behavior frame, stopping after it becomes negative.
@@ -45,6 +50,7 @@ PlayerActionDispatchResult dispatch_player_action_if_ready(
 PlayerActionDispatchResult dispatch_player_action_if_ready(
     RunnerRecordFields& record,
     const WeaponMagazineCapacityLookup& magazine_capacity,
+    const WeaponReloadDelayModeLookup& reload_delay_mode,
     const PlayerActionDispatchCallbacks& callbacks = {});
 
 } // namespace shadowrun::ghidra_conversion

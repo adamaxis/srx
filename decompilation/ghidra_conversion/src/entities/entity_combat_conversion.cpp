@@ -31,6 +31,7 @@ FieldCombatActionKind classify_field_combat_action(
 EntityAmmoServiceAction service_entity_ammo(
     EntityEquipmentState& state,
     const std::uint8_t source_action_code,
+    const EntityWeaponRoundsPerActionLookup& rounds_per_action,
     const std::function<void(std::int8_t)>& weapon_service) {
     if (state.current_ammo == 0U || source_action_code == 0U) {
         return EntityAmmoServiceAction::no_action;
@@ -40,10 +41,14 @@ EntityAmmoServiceAction service_entity_ammo(
         if (!weapon_service) {
             return EntityAmmoServiceAction::weapon_service_unresolved;
         }
-        const auto meter_delta =
-            source_action_code >= 8U && source_action_code <= 10U
-                ? static_cast<std::int8_t>(-3)
-                : static_cast<std::int8_t>(-1);
+        if (!rounds_per_action) {
+            return EntityAmmoServiceAction::weapon_service_unresolved;
+        }
+        const auto rounds = rounds_per_action(source_action_code);
+        if (!rounds.has_value() || *rounds == 0U || *rounds > 3U) {
+            return EntityAmmoServiceAction::weapon_service_unresolved;
+        }
+        const auto meter_delta = static_cast<std::int8_t>(-*rounds);
         weapon_service(meter_delta);
         return EntityAmmoServiceAction::delegated_to_weapon_service;
     }

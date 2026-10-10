@@ -23,7 +23,7 @@ int main() {
     shadowrun::ghidra_conversion::HeadingAnimationState field_state{};
     std::vector<int> field_events;
     shadowrun::ghidra_conversion::set_entity_heading_with_field_animation(
-        field_state, 0x2000, 0x0B, field_animations,
+        field_state, 0x2000, 1U, field_animations,
         [&field_events](const std::uint16_t delay_mode) {
             field_events.push_back(static_cast<int>(delay_mode));
         },
@@ -34,19 +34,19 @@ int main() {
         expect(field_state.continuation ==
                shadowrun::ghidra_conversion::MovementContinuation::
                    ReevaluateCollision) != 0 ||
-        expect(field_events == std::vector<int>{0, 2}) != 0) {
+        expect(field_events == std::vector<int>{1, 2}) != 0) {
         return 1;
     }
 
     field_events.clear();
     shadowrun::ghidra_conversion::set_entity_heading_with_field_animation(
-        field_state, 0x0000, 0x05, field_animations,
+        field_state, 0x0000, 0U, field_animations,
         [&field_events](const std::uint16_t delay_mode) {
             field_events.push_back(static_cast<int>(delay_mode));
         },
         [&field_events]() { field_events.push_back(2); });
     if (expect(field_state.direction_animation == 0x2000) != 0 ||
-        expect(field_events == std::vector<int>{1, 2}) != 0) {
+        expect(field_events == std::vector<int>{0, 2}) != 0) {
         return 1;
     }
 

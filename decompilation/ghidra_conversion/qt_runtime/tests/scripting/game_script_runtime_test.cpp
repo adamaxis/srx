@@ -2387,6 +2387,19 @@ int main() {
         10000U, 20000U}};
     constexpr std::array<std::uint8_t, 12U> kWeaponCapacities{{
         6U, 12U, 11U, 25U, 6U, 10U, 15U, 30U, 28U, 24U, 5U, 8U}};
+    constexpr std::array<std::string_view, 12U> kWeaponModes{{
+        "single_round", "single_round", "single_round", "single_round",
+        "single_round", "single_round", "single_round",
+        "three_round_burst", "three_round_burst", "three_round_burst",
+        "single_round", "single_round"}};
+    constexpr std::array<std::uint8_t, 12U> kRoundsPerAction{{
+        1U, 1U, 1U, 1U, 1U, 1U, 1U, 3U, 3U, 3U, 1U, 1U}};
+    constexpr std::array<std::string_view, 12U> kReloadDelayScales{{
+        "normal", "normal", "normal", "normal", "double", "normal",
+        "normal", "normal", "normal", "normal", "double", "double"}};
+    constexpr std::array<std::string_view, 12U> kAttackDelayScales{{
+        "half", "half", "half", "half", "half", "half", "half",
+        "half", "half", "half", "normal", "normal"}};
     constexpr std::array<std::string_view, 13U> kPowerProfiles{{
         "meager", "minor", "very_low", "low", "very_light", "light",
         "medium", "medium_high", "high", "brutal", "severe", "massive",
@@ -2396,11 +2409,27 @@ int main() {
         for (std::size_t index = 0; index < items->items.size(); ++index) {
             const auto& item = items->items[index];
             const auto& rom_item = us_item_catalog()[index];
+            const auto item_number = index + 1U < 10U
+                ? "0" + std::to_string(index + 1U)
+                : std::to_string(index + 1U);
+            const auto* image_family = index < 15U
+                ? "weapons"
+                : index < 18U ? "first.aid"
+                : index < 22U ? "miscellaneous"
+                : index < 43U ? "magic"
+                              : "armor";
+            const auto expected_icon_key = std::string("items.") +
+                image_family + ".icons.item." + item_number;
+            const auto expected_detail_key = std::string("items.") +
+                image_family + ".detail.item." + item_number;
             full_catalog_matches =
                 full_catalog_matches && item.code == index + 1U &&
                 item.id == kItemIds[index] && item.kind == kItemKinds[index] &&
-                item.base_cost == kBaseCosts[index] &&
-                item.base_cost == rom_item.base_cost &&
+                item.pricing.purchase_base == kBaseCosts[index] &&
+                item.pricing.purchase_base == rom_item.base_cost &&
+                item.pricing.resale_base == kBaseCosts[index] / 2U &&
+                item.presentation.icon_resource_key == expected_icon_key &&
+                item.presentation.detail_resource_key == expected_detail_key &&
                 item.has_detail_art == rom_item.has_detail_art &&
                 item.name_key == "items.name." + std::to_string(index + 1U) &&
                 item.category_key ==
@@ -2422,6 +2451,14 @@ int main() {
                         rom_item.signed_detail_asset_index) &&
                     power_index < kPowerProfiles.size() &&
                     weapon->power_profile == kPowerProfiles[power_index] &&
+                    weapon->fire_mode == kWeaponModes[index] &&
+                    weapon->rounds_per_action == kRoundsPerAction[index] &&
+                    weapon->attack_cadence == "runner_attribute" &&
+                    weapon->trigger_behavior == "repeat_while_held" &&
+                    weapon->attack_delay_scale ==
+                        kAttackDelayScales[index] &&
+                    weapon->reload_delay_scale ==
+                        kReloadDelayScales[index] &&
                     !item.detail.has_value() && !item.armor.has_value();
             } else if (index >= 12U && index <= 18U) {
                 full_catalog_matches =

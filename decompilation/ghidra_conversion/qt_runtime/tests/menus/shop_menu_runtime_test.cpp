@@ -1,6 +1,7 @@
 #include "shop_menu_runtime.hpp"
 
 #include <algorithm>
+#include <optional>
 
 namespace {
 
@@ -217,6 +218,14 @@ int main() {
         !expect(!ShopTransactionService::quote_sale(51U, cost_context)
                      .has_value())) {
         return 15;
+    }
+    const auto template_sale_quote = ShopTransactionService::quote_sale(
+        2U, cost_context,
+        [](const std::uint8_t catalog_index) {
+            return catalog_index == 1U ? 175U : 0U;
+        });
+    if (!expect(template_sale_quote == std::optional<std::uint32_t>{180U})) {
+        return 19;
     }
 
     ShopMenuController transaction_menu;

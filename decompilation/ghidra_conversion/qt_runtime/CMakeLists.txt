@@ -23,6 +23,7 @@ add_executable(shadowrun_ghidra_conversion_qt
     src/field/field_menu_text_catalog.cpp
     src/field/field_command_overview_bridge.cpp
     src/rendering/genesis_image_compositor.cpp
+    src/rendering/numeric_visual_renderer.cpp
     src/dialogue/dialogue_panel.cpp
     src/dialogue/dialogue_panel_presenter.cpp
     src/dialogue/field_dialogue_runtime.cpp
@@ -31,6 +32,22 @@ add_executable(shadowrun_ghidra_conversion_qt
     src/field/field_interaction_runtime.cpp
     src/audio/audio_playback.cpp
 )
+
+add_executable(shadowrun_numeric_visual_renderer_test
+    tests/rendering/numeric_visual_renderer_test.cpp
+    src/rendering/numeric_visual_renderer.cpp)
+set_target_properties(shadowrun_numeric_visual_renderer_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
+target_include_directories(shadowrun_numeric_visual_renderer_test
+    PRIVATE
+        ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS}
+        "${CMAKE_CURRENT_SOURCE_DIR}/../include")
+target_link_libraries(shadowrun_numeric_visual_renderer_test
+    PRIVATE shadowrun_ghidra_conversion_runtime Qt6::Widgets)
+add_test(NAME shadowrun_numeric_visual_renderer_qa
+         COMMAND shadowrun_numeric_visual_renderer_test)
 target_include_directories(shadowrun_ghidra_conversion_qt
     PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
 set_target_properties(shadowrun_ghidra_conversion_qt PROPERTIES

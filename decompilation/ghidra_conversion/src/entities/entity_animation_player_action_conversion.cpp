@@ -85,6 +85,7 @@ PlayerActionDispatchResult dispatch_player_action_if_ready(
 PlayerActionDispatchResult dispatch_player_action_if_ready(
     RunnerRecordFields& record,
     const WeaponMagazineCapacityLookup& magazine_capacity,
+    const WeaponReloadDelayModeLookup& reload_delay_mode,
     const PlayerActionDispatchCallbacks& callbacks) {
     if (record.ammo_rounds != 0U) {
         return {PlayerActionDispatchStatus::waiting_for_loaded_rounds,
@@ -98,6 +99,15 @@ PlayerActionDispatchResult dispatch_player_action_if_ready(
         return {PlayerActionDispatchStatus::waiting_for_animation_gate,
                 RunnerAssetOperationResult::no_change};
     }
+    if (!reload_delay_mode) {
+        return {PlayerActionDispatchStatus::weapon_template_unresolved,
+                RunnerAssetOperationResult::missing_source_data};
+    }
+    const auto delay_mode = reload_delay_mode(record.equipped_item_code);
+    if (!delay_mode.has_value()) {
+        return {PlayerActionDispatchStatus::weapon_template_unresolved,
+                RunnerAssetOperationResult::missing_source_data};
+    }
 
     RunnerAssetOperationResult asset_result =
         RunnerAssetOperationResult::no_change;
@@ -105,8 +115,9 @@ PlayerActionDispatchResult dispatch_player_action_if_ready(
     service_entity_animation_action(
         action_state,
         {[&callbacks] { service_audio(callbacks); },
-         [&record] { update_delay(record, action_delay_scale(
-                                                   record.equipped_item_code)); },
+         [&record, delay_mode] {
+             update_delay(record, decode_entity_delay_scale(*delay_mode));
+         },
          [&record, &magazine_capacity, &asset_result] {
              asset_result = advance_entity_asset_meter(
                  record, static_cast<std::int8_t>(0x26),

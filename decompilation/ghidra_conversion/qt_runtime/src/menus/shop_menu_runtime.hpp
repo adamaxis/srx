@@ -146,13 +146,14 @@ public:
     ShopTransactionEvent begin_sale(
         const FieldActionCostContext& cost_context,
         RunnerActionRemovalState& state,
-        const FieldActionBaseCostLookup& base_cost_lookup = {});
+        const FieldActionBaseCostLookup& resale_base_lookup = {});
     ShopTransactionEvent advance_transaction(
         std::uint16_t controller_events,
         const FieldActionCostContext& cost_context,
         FieldActionPurchaseState& purchase_state,
         RunnerActionRemovalState& sale_state,
-        const FieldActionBaseCostLookup& base_cost_lookup = {});
+        const FieldActionBaseCostLookup& purchase_base_lookup = {},
+        const FieldActionBaseCostLookup& resale_base_lookup = {});
     void clear_pending_action() noexcept;
 
 private:
@@ -195,12 +196,12 @@ public:
         const FieldActionCostContext& cost_context,
         RunnerActionRemovalState& state,
         bool confirmed,
-        const FieldActionBaseCostLookup& base_cost_lookup = {}) const;
+        const FieldActionBaseCostLookup& resale_base_lookup = {}) const;
 
     static std::optional<std::uint32_t> quote_sale(
         std::uint8_t item_code,
         const FieldActionCostContext& cost_context,
-        const FieldActionBaseCostLookup& base_cost_lookup = {});
+        const FieldActionBaseCostLookup& resale_base_lookup = {});
 };
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime

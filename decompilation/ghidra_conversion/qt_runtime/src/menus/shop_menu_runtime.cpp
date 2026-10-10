@@ -185,11 +185,11 @@ ShopTransactionEvent ShopMenuController::begin_purchase(
 ShopTransactionEvent ShopMenuController::begin_sale(
     const FieldActionCostContext& cost_context,
     RunnerActionRemovalState& state,
-    const FieldActionBaseCostLookup& base_cost_lookup) {
+    const FieldActionBaseCostLookup& resale_base_lookup) {
     reset_transaction();
     transaction_kind_ = TransactionKind::sale;
     last_sale_outcome_ = ShopTransactionService{}.sell(
-        cost_context, state, false, base_cost_lookup);
+        cost_context, state, false, resale_base_lookup);
     if (last_sale_outcome_.result == ShopSaleOutcome::Result::cancelled) {
         transaction_amount_ = last_sale_outcome_.quoted_refund;
         transaction_confirmation_ = MenuConfirmationState{};
@@ -214,7 +214,8 @@ ShopTransactionEvent ShopMenuController::advance_transaction(
     const FieldActionCostContext& cost_context,
     FieldActionPurchaseState& purchase_state,
     RunnerActionRemovalState& sale_state,
-    const FieldActionBaseCostLookup& base_cost_lookup) {
+    const FieldActionBaseCostLookup& purchase_base_lookup,
+    const FieldActionBaseCostLookup& resale_base_lookup) {
     if (transaction_waiting_for_event_) {
         if (controller_events == 0U) {
             return ShopTransactionEvent::no_change;
@@ -261,7 +262,7 @@ ShopTransactionEvent ShopMenuController::advance_transaction(
         pending_action_->offer.has_value()) {
         last_purchase_result_ = ShopTransactionService{}.purchase(
             *pending_action_->offer, cost_context, purchase_state, true,
-            base_cost_lookup);
+            purchase_base_lookup);
         if (last_purchase_result_ == FieldActionApplicationResult::applied) {
             clear_pending_action();
             reset_transaction();
@@ -289,7 +290,7 @@ ShopTransactionEvent ShopMenuController::advance_transaction(
 
     if (transaction_kind_ == TransactionKind::sale && pending_action_) {
         last_sale_outcome_ = ShopTransactionService{}.sell(
-            cost_context, sale_state, true, base_cost_lookup);
+            cost_context, sale_state, true, resale_base_lookup);
         if (last_sale_outcome_.result == ShopSaleOutcome::Result::removed) {
             clear_pending_action();
             reset_transaction();
@@ -464,7 +465,7 @@ ShopSaleOutcome ShopTransactionService::sell(
     const FieldActionCostContext& cost_context,
     RunnerActionRemovalState& state,
     const bool confirmed,
-    const FieldActionBaseCostLookup& base_cost_lookup) const {
+    const FieldActionBaseCostLookup& resale_base_lookup) const {
     ShopSaleOutcome outcome{};
     if (state.runner_slot >= state.runner.action_codes.size()) {
         outcome.result = ShopSaleOutcome::Result::empty_slot;
@@ -493,7 +494,7 @@ ShopSaleOutcome ShopTransactionService::sell(
         return outcome;
     }
 
-    const auto quote = quote_sale(item_code, cost_context, base_cost_lookup);
+    const auto quote = quote_sale(item_code, cost_context, resale_base_lookup);
     if (!quote.has_value()) {
         outcome.result = ShopSaleOutcome::Result::missing_item_record;
         return outcome;
@@ -523,23 +524,22 @@ ShopSaleOutcome ShopTransactionService::sell(
 std::optional<std::uint32_t> ShopTransactionService::quote_sale(
     const std::uint8_t item_code,
     const FieldActionCostContext& cost_context,
-    const FieldActionBaseCostLookup& base_cost_lookup) {
+    const FieldActionBaseCostLookup& resale_base_lookup) {
     if (item_code == 0U || item_code > 50U) {
         return std::nullopt;
     }
-    std::uint32_t base_cost = 0U;
-    if (base_cost_lookup) {
-        base_cost = base_cost_lookup(
+    std::uint32_t resale_base = 0U;
+    if (resale_base_lookup) {
+        resale_base = resale_base_lookup(
             static_cast<std::uint8_t>(item_code - 1U));
     } else {
         const auto* item = find_us_item_definition(item_code);
         if (item == nullptr) {
             return std::nullopt;
         }
-        base_cost = item->base_cost;
+        resale_base = item->base_cost / 2U;
     }
-    const auto half_price = base_cost / 2U;
-    return apply_runner_cost_surcharge(half_price, cost_context);
+    return apply_runner_cost_surcharge(resale_base, cost_context);
 }
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime

@@ -3,6 +3,29 @@
 -- stats live on the item they describe instead of in parallel partial lists.
 local Items = {}
 
+local image_family_by_kind = {
+    firearm = "weapons",
+    grenade = "weapons",
+    medical_kit = "first.aid",
+    stim_patch = "first.aid",
+    trauma_patch = "first.aid",
+    fetish = "miscellaneous",
+    passkey = "miscellaneous",
+    electronic_kit = "miscellaneous",
+    smart_goggles = "miscellaneous",
+    enchanted_dagger = "magic",
+    power_focus = "magic",
+    spell_focus = "magic",
+    talisman = "magic",
+    spell_lock = "magic",
+    totem = "magic",
+    armor = "armor",
+}
+
+local function item_image_suffix(code)
+    return code < 10 and ("0" .. code) or tostring(code)
+end
+
 local function label_keys(ids, prefix)
     local keys = {}
     for index, id in ipairs(ids) do
@@ -12,14 +35,29 @@ local function label_keys(ids, prefix)
 end
 
 local function define_item(id, code, kind, base_cost, has_detail_art, content)
+    local image_family = image_family_by_kind[kind]
+    assert(image_family ~= nil, "item kind has no image family: " .. kind)
+    local image_suffix = item_image_suffix(code)
     local item = {
         id = id,
         code = code,
         kind = kind,
         name_key = "items.name." .. code,
         category_key = "items.category." .. code,
-        base_cost = base_cost,
+        pricing = {
+            -- D4540 +0x22 is the purchase base. The source sale path starts
+            -- from half of that value before applying runner-dependent cost
+            -- adjustments, so retain both static terms on this item.
+            purchase_base = base_cost,
+            resale_base = math.floor(base_cost / 2),
+        },
         has_detail_art = has_detail_art,
+        presentation = {
+            icon_resource_key = "items." .. image_family ..
+                ".icons.item." .. image_suffix,
+            detail_resource_key = "items." .. image_family ..
+                ".detail.item." .. image_suffix,
+        },
     }
     if content ~= nil then
         for key, value in pairs(content) do
@@ -29,46 +67,108 @@ local function define_item(id, code, kind, base_cost, has_detail_art, content)
     return item
 end
 
--- base_cost and has_detail_art cover every row. Firearm capacities, Damage
--- bar rows, Power labels, fixed Uses details, and armor modifiers are bound to
--- their owning item. Other item details depend on live actor/menu state.
+-- Every row resolves to named icon/detail assets and has source-backed buy
+-- and resale bases. Firearm burst cost, firing family, actor-derived attack
+-- timing, reload timing, Damage rows, Power labels, Uses, and armor modifiers
+-- are bound to the item they describe. Other item details depend on live
+-- actor/menu state.
 Items.catalog = {
     define_item("streetline", 1, "firearm", 100, true,
         { weapon = { magazine_capacity = 6, damage_bar_index = 0,
-                     power_profile = "low" } }),
+                     power_profile = "low", fire_mode = "single_round",
+                     trigger_behavior = "repeat_while_held",
+                     rounds_per_action = 1,
+                     attack_cadence = "runner_attribute",
+                     attack_delay_scale = "half",
+                     reload_delay_scale = "normal" } }),
     define_item("model_101t", 2, "firearm", 350, true,
         { weapon = { magazine_capacity = 12, damage_bar_index = 0,
-                     power_profile = "light" } }),
+                     power_profile = "light", fire_mode = "single_round",
+                     trigger_behavior = "repeat_while_held",
+                     rounds_per_action = 1,
+                     attack_cadence = "runner_attribute",
+                     attack_delay_scale = "half",
+                     reload_delay_scale = "normal" } }),
     define_item("american_l36", 3, "firearm", 300, true,
         { weapon = { magazine_capacity = 11, damage_bar_index = 0,
-                     power_profile = "light" } }),
+                     power_profile = "light", fire_mode = "single_round",
+                     trigger_behavior = "repeat_while_held",
+                     rounds_per_action = 1,
+                     attack_cadence = "runner_attribute",
+                     attack_delay_scale = "half",
+                     reload_delay_scale = "normal" } }),
     define_item("security_500", 4, "firearm", 450, true,
         { weapon = { magazine_capacity = 25, damage_bar_index = 0,
-                     power_profile = "light" } }),
+                     power_profile = "light", fire_mode = "single_round",
+                     trigger_behavior = "repeat_while_held",
+                     rounds_per_action = 1,
+                     attack_cadence = "runner_attribute",
+                     attack_delay_scale = "half",
+                     reload_delay_scale = "normal" } }),
     define_item("warhawk", 5, "firearm", 500, true,
         { weapon = { magazine_capacity = 6, damage_bar_index = 1,
-                     power_profile = "brutal" } }),
+                     power_profile = "brutal", fire_mode = "single_round",
+                     trigger_behavior = "repeat_while_held",
+                     rounds_per_action = 1,
+                     attack_cadence = "runner_attribute",
+                     attack_delay_scale = "half",
+                     reload_delay_scale = "double" } }),
     define_item("max_power", 6, "firearm", 450, true,
         { weapon = { magazine_capacity = 10, damage_bar_index = 1,
-                     power_profile = "high" } }),
+                     power_profile = "high", fire_mode = "single_round",
+                     trigger_behavior = "repeat_while_held",
+                     rounds_per_action = 1,
+                     attack_cadence = "runner_attribute",
+                     attack_delay_scale = "half",
+                     reload_delay_scale = "normal" } }),
     define_item("predator", 7, "firearm", 450, true,
         { weapon = { magazine_capacity = 15, damage_bar_index = 1,
-                     power_profile = "high" } }),
+                     power_profile = "high", fire_mode = "single_round",
+                     trigger_behavior = "repeat_while_held",
+                     rounds_per_action = 1,
+                     attack_cadence = "runner_attribute",
+                     attack_delay_scale = "half",
+                     reload_delay_scale = "normal" } }),
     define_item("ak_97", 8, "firearm", 1000, true,
         { weapon = { magazine_capacity = 30, damage_bar_index = 1,
-                     power_profile = "light" } }),
+                     power_profile = "light", fire_mode = "three_round_burst",
+                     trigger_behavior = "repeat_while_held",
+                     rounds_per_action = 3,
+                     attack_cadence = "runner_attribute",
+                     attack_delay_scale = "half",
+                     reload_delay_scale = "normal" } }),
     define_item("hk227_s", 9, "firearm", 1500, true,
         { weapon = { magazine_capacity = 28, damage_bar_index = 1,
-                     power_profile = "medium" } }),
+                     power_profile = "medium", fire_mode = "three_round_burst",
+                     trigger_behavior = "repeat_while_held",
+                     rounds_per_action = 3,
+                     attack_cadence = "runner_attribute",
+                     attack_delay_scale = "half",
+                     reload_delay_scale = "normal" } }),
     define_item("mach_22", 10, "firearm", 800, true,
         { weapon = { magazine_capacity = 24, damage_bar_index = 1,
-                     power_profile = "light" } }),
+                     power_profile = "light", fire_mode = "three_round_burst",
+                     trigger_behavior = "repeat_while_held",
+                     rounds_per_action = 3,
+                     attack_cadence = "runner_attribute",
+                     attack_delay_scale = "half",
+                     reload_delay_scale = "normal" } }),
     define_item("allegiance", 11, "firearm", 1400, true,
         { weapon = { magazine_capacity = 5, damage_bar_index = 2,
-                     power_profile = "brutal" } }),
+                     power_profile = "brutal", fire_mode = "single_round",
+                     trigger_behavior = "repeat_while_held",
+                     rounds_per_action = 1,
+                     attack_cadence = "runner_attribute",
+                     attack_delay_scale = "normal",
+                     reload_delay_scale = "double" } }),
     define_item("roomsweeper", 12, "firearm", 1000, true,
         { weapon = { magazine_capacity = 8, damage_bar_index = 2,
-                     power_profile = "high" } }),
+                     power_profile = "high", fire_mode = "single_round",
+                     trigger_behavior = "repeat_while_held",
+                     rounds_per_action = 1,
+                     attack_cadence = "runner_attribute",
+                     attack_delay_scale = "normal",
+                     reload_delay_scale = "double" } }),
     define_item("frag", 13, "grenade", 300, true,
         { detail = { kind = "uses", value = 6 } }),
     define_item("scatter", 14, "grenade", 180, true,

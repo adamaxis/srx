@@ -30,6 +30,7 @@
 #include "shadowrun_ghidra/menus/menu_transfer_batch_conversion.hpp"
 #include "shadowrun_ghidra/menus/cyberware_detail_conversion.hpp"
 #include "genesis_image_compositor.hpp"
+#include "numeric_visual_renderer.hpp"
 
 #include <QPainter>
 #include <QColor>
@@ -179,6 +180,29 @@ FieldActionCostContext ares_cost_context(
     return FieldActionCostContext{menu_mode, 0U, runner.skills[11], 2U};
 }
 
+std::optional<std::uint16_t> source_delay_mode(
+    const std::string_view scale) {
+    if (scale == "normal") {
+        return 0U;
+    }
+    if (scale == "half") {
+        return 1U;
+    }
+    if (scale == "double") {
+        return 2U;
+    }
+    return std::nullopt;
+}
+
+void draw_command_overview_number(
+    QPainter& painter, const QImage& font, const int x, const int y,
+    const std::uint32_t value,
+    const NumericVisualAlignment alignment = NumericVisualAlignment::left,
+    const bool group_thousands = false) {
+    draw_numeric_visual(painter, font, x, y, value, alignment,
+                        group_thousands, QColor(0, 255, 0));
+}
+
 FieldActionPurchaseState make_purchase_state(
     const RunnerRecordFields& runner, const std::uint32_t funds) {
     FieldActionPurchaseState state{};
@@ -225,46 +249,19 @@ void apply_sale_state(const RunnerActionRemovalState& state,
     }
 }
 
-std::string command_overview_item_alias(const std::uint8_t item_code,
-                                        const std::uint8_t palette_variant) {
-    if (item_code == 0U || item_code > 50U) {
+std::string command_overview_item_alias(
+    const scripting::ScriptItemDefinition& item,
+    const std::uint8_t palette_variant) {
+    if (item.code == 0U || item.presentation.icon_resource_key.empty()) {
         return {};
     }
-    std::string category;
-    if (item_code <= 15U) {
-        category = "weapons";
-    } else if (item_code <= 18U) {
-        category = "first.aid";
-    } else if (item_code <= 22U) {
-        category = "miscellaneous";
-    } else if (item_code <= 43U) {
-        category = "magic";
-    } else {
-        category = "armor";
-    }
-    const auto item_number = item_code < 10U
-                                 ? "0" + std::to_string(item_code)
-                                 : std::to_string(item_code);
-    return "items." + category + ".icons.item." + item_number + "." +
+    return item.presentation.icon_resource_key + "." +
            std::to_string(palette_variant);
 }
 
 std::string command_overview_item_detail_alias(
-    const std::uint8_t item_code) {
-    auto alias = command_overview_item_alias(item_code, 0U);
-    const auto marker = alias.find(".icons.item.");
-    if (marker == std::string::npos) {
-        return {};
-    }
-    alias.replace(marker, std::string(".icons.item.").size(), ".detail.item.");
-    // The detail catalog has one source image per item.  Only the inventory
-    // icon table is palette-variant; do not carry the icon builder's `.0`
-    // suffix into the direct detail alias.
-    const auto palette_separator = alias.rfind('.');
-    if (palette_separator != std::string::npos) {
-        alias.erase(palette_separator);
-    }
-    return alias;
+    const scripting::ScriptItemDefinition& item) {
+    return item.presentation.detail_resource_key;
 }
 
 bool command_overview_uses_alternate_icon_palette(
@@ -1981,19 +1978,28 @@ bool FieldSceneRuntime::load_command_overview_assets(
         return false;
     }
 
-    for (std::size_t item = 1U; item <= 50U; ++item) {
+    for (std::size_t item_index = 0U;
+         item_index < field_menu_text_.items.size(); ++item_index) {
+        const auto& item = field_menu_text_.items[item_index].definition;
+        if (item.code != item_index + 1U ||
+            item.presentation.icon_resource_key.empty() ||
+            item.presentation.detail_resource_key.empty()) {
+            failure_ = "Lua item presentation catalog is incomplete at item " +
+                       std::to_string(item_index + 1U);
+            return false;
+        }
         for (std::size_t palette = 0U; palette < 2U; ++palette) {
             const auto alias = command_overview_item_alias(
-                static_cast<std::uint8_t>(item),
+                item,
                 static_cast<std::uint8_t>(palette));
-            if (!load_sprite(alias, command_overview_inventory_icons_[item - 1U]
+            if (!load_sprite(alias, command_overview_inventory_icons_[item_index]
                                              [palette])) {
                 return false;
             }
         }
         if (!load_sprite(command_overview_item_detail_alias(
-                             static_cast<std::uint8_t>(item)),
-                         command_overview_item_details_[item - 1U])) {
+                             item),
+                         command_overview_item_details_[item_index])) {
             return false;
         }
     }
@@ -5295,6 +5301,16 @@ void FieldSceneRuntime::service_player_weapon_action() {
         return;
     }
 
+    const auto* weapon_template =
+        weapon_template_for_item_code(runner.equipped_item_code);
+    const auto attack_delay_mode = weapon_template == nullptr
+        ? std::optional<std::uint16_t>{}
+        : source_delay_mode(weapon_template->attack_delay_scale);
+    if (!attack_delay_mode.has_value()) {
+        source_boundary("field.combat.weapon_template_unresolved");
+        return;
+    }
+
     const PlayerActionDispatchCallbacks reload_callbacks{
         [this](const std::uint16_t event) {
             if (source_audio_event_callback_) {
@@ -5305,12 +5321,23 @@ void FieldSceneRuntime::service_player_weapon_action() {
         [this](const std::uint8_t item_code) {
             return weapon_magazine_capacity_for_item(item_code);
         };
+    const WeaponReloadDelayModeLookup reload_delay_mode_lookup =
+        [this](const std::uint8_t item_code) {
+            const auto* weapon = weapon_template_for_item_code(item_code);
+            return weapon == nullptr
+                       ? std::optional<std::uint16_t>{}
+                       : source_delay_mode(weapon->reload_delay_scale);
+        };
     if (runner.ammo_rounds == 0U) {
         const auto reload = dispatch_player_action_if_ready(
-            runner, weapon_capacity_lookup, reload_callbacks);
+            runner, weapon_capacity_lookup, reload_delay_mode_lookup,
+            reload_callbacks);
         if (reload.status == PlayerActionDispatchStatus::serviced) {
             refresh_field_hud_runner_slot();
             source_boundary("field.combat.player_auto_reload");
+        } else if (reload.status ==
+                   PlayerActionDispatchStatus::weapon_template_unresolved) {
+            source_boundary("field.combat.reload_template_unresolved");
         }
         return;
     }
@@ -5377,13 +5404,22 @@ void FieldSceneRuntime::service_player_weapon_action() {
         [this](const std::uint16_t) {
             source_boundary("field.combat.mode_effect_transition_pending");
         },
-        [this, &runner,
-         &weapon_capacity_lookup](EntityEquipmentState& equipment,
+        [this, &runner, &weapon_capacity_lookup](EntityEquipmentState& equipment,
                         const std::uint8_t source_action_code) {
+            const EntityWeaponRoundsPerActionLookup rounds_per_action =
+                [this](const std::uint8_t item_code)
+                    -> std::optional<std::uint8_t> {
+                    const auto* weapon =
+                        weapon_template_for_item_code(item_code);
+                    return weapon == nullptr
+                               ? std::nullopt
+                               : std::optional<std::uint8_t>{
+                                     weapon->rounds_per_action};
+                };
             RunnerAssetOperationResult weapon_operation =
                 RunnerAssetOperationResult::no_change;
             const auto ammo_action = service_entity_ammo(
-                equipment, source_action_code,
+                equipment, source_action_code, rounds_per_action,
                 [this, &runner, &equipment,
                  &weapon_operation,
                  &weapon_capacity_lookup](const std::int8_t meter_delta) {
@@ -5487,9 +5523,13 @@ void FieldSceneRuntime::service_player_weapon_action() {
         if (spawn_cycle.action == EntitySpawnCycleAction::no_primary_slot ||
             spawn_cycle.action == EntitySpawnCycleAction::no_secondary_slot) {
             const auto fallback = dispatch_player_action_if_ready(
-                runner, weapon_capacity_lookup, reload_callbacks);
+                runner, weapon_capacity_lookup, reload_delay_mode_lookup,
+                reload_callbacks);
             if (fallback.status == PlayerActionDispatchStatus::serviced) {
                 refresh_field_hud_runner_slot();
+            } else if (fallback.status ==
+                       PlayerActionDispatchStatus::weapon_template_unresolved) {
+                source_boundary("field.combat.reload_template_unresolved");
             }
         }
         return;
@@ -5501,7 +5541,7 @@ void FieldSceneRuntime::service_player_weapon_action() {
         spawned_heading);
     set_entity_heading_with_field_animation(
         attack_pose, spawned_heading,
-        runner.equipped_item_code, kFieldAttackAnimationSelectors,
+        *attack_delay_mode, kFieldAttackAnimationSelectors,
         [this, &runner](const std::uint16_t delay_mode) {
             EntityDelayState delay{runner.animation_action_gate};
             update_entity_animation_delay(
@@ -6360,7 +6400,8 @@ void FieldSceneRuntime::advance_frame() {
             const auto transaction_event =
                 field_shop_menu_.advance_transaction(
                     field_controller_sample_state_.events, cost_context,
-                    purchase_state, sale_state, item_base_cost_lookup());
+                    purchase_state, sale_state, item_base_cost_lookup(),
+                    item_resale_base_lookup());
             if (transaction_event ==
                 ShopTransactionEvent::confirmation_moved) {
                 if (source_audio_event_callback_) {
@@ -6453,7 +6494,7 @@ void FieldSceneRuntime::advance_frame() {
                 const auto cost_context = ares_cost_context(
                     field_shop_menu_.menu_mode(), active_runner_record());
                 const auto transaction_event = field_shop_menu_.begin_sale(
-                    cost_context, sale_state, item_base_cost_lookup());
+                    cost_context, sale_state, item_resale_base_lookup());
                 if (transaction_event == ShopTransactionEvent::message_shown) {
                     source_boundary("field.shop.ares.sale_preflight_message");
                 } else if (transaction_event ==
@@ -7930,15 +7971,23 @@ FieldSceneRuntime::selected_shop_weapon_capacity() const {
 std::optional<std::uint8_t>
 FieldSceneRuntime::weapon_magazine_capacity_for_item(
     const std::uint8_t item_code) const {
+    const auto* weapon = weapon_template_for_item_code(item_code);
+    return weapon == nullptr
+               ? std::nullopt
+               : std::optional<std::uint8_t>{weapon->magazine_capacity};
+}
+
+const scripting::ScriptWeaponTemplate*
+FieldSceneRuntime::weapon_template_for_item_code(
+    const std::uint8_t item_code) const {
     if (item_code == 0U || item_code > field_menu_text_.items.size()) {
-        return std::nullopt;
+        return nullptr;
     }
     const auto& item = field_menu_text_.items[
         static_cast<std::size_t>(item_code - 1U)].definition;
     return item.code == item_code && item.weapon.has_value()
-               ? std::optional<std::uint8_t>{
-                     item.weapon->magazine_capacity}
-               : std::nullopt;
+               ? &*item.weapon
+               : nullptr;
 }
 
 std::optional<std::uint8_t> FieldSceneRuntime::selected_shop_item_uses() const {
@@ -7962,7 +8011,19 @@ FieldActionBaseCostLookup FieldSceneRuntime::item_base_cost_lookup() const {
         }
         const auto& item = field_menu_text_.items[catalog_index].definition;
         return item.code == static_cast<std::uint8_t>(catalog_index + 1U)
-                   ? static_cast<std::uint32_t>(item.base_cost)
+                   ? static_cast<std::uint32_t>(item.pricing.purchase_base)
+                   : 0U;
+    };
+}
+
+FieldActionBaseCostLookup FieldSceneRuntime::item_resale_base_lookup() const {
+    return [this](const std::uint8_t catalog_index) {
+        if (catalog_index >= field_menu_text_.items.size()) {
+            return 0U;
+        }
+        const auto& item = field_menu_text_.items[catalog_index].definition;
+        return item.code == static_cast<std::uint8_t>(catalog_index + 1U)
+                   ? static_cast<std::uint32_t>(item.pricing.resale_base)
                    : 0U;
     };
 }
@@ -8065,12 +8126,10 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                                            static_cast<std::ptrdiff_t>(
                                                currency_marker),
                                        '\n'));
-                        const auto amount =
-                            std::to_string(selected_offer->quantity);
-                        const auto amount_x = marker_x -
-                            static_cast<int>(amount.size() * 8U);
-                        draw_command_overview_text(painter, amount_x,
-                                                   56 + marker_row * 8, amount);
+                        draw_command_overview_number(
+                            painter, command_overview_font_, marker_x,
+                            56 + marker_row * 8, selected_offer->quantity,
+                            NumericVisualAlignment::right);
                     }
                 }
             }
@@ -8126,16 +8185,16 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                         draw_command_overview_text(
                             painter, 72, 56,
                             field_menu_text_.item_detail_labels[0]);
-                        draw_command_overview_text(
-                            painter, 104, 56,
-                            std::to_string(*weapon_capacity));
+                        draw_command_overview_number(
+                            painter, command_overview_font_, 104, 56,
+                            *weapon_capacity);
                     } else if (item_uses.has_value()) {
                         draw_command_overview_text(
                             painter, 72, 56,
                             field_menu_text_.item_detail_labels[1]);
-                        draw_command_overview_text(
-                            painter, 104, 56,
-                            std::to_string(*item_uses));
+                        draw_command_overview_number(
+                            painter, command_overview_font_, 104, 56,
+                            *item_uses);
                     }
                     const auto detail_text = select_field_action_detail_text(
                         static_cast<std::uint8_t>(selected_item_code - 1U));
@@ -8149,29 +8208,20 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                     }
                 }
 
-                const auto grouped_decimal = [](std::uint32_t amount) {
-                    auto value = std::to_string(amount);
-                    for (auto position = value.size(); position > 3U;
-                         position -= 3U) {
-                        value.insert(position - 3U, ",");
-                    }
-                    return value;
-                };
                 if (!transaction_replaces_detail &&
                     group != ShopActionGroup::sell &&
                     selected_offer.has_value()) {
                     draw_command_overview_text(
                         painter, 80, 112,
                         field_menu_text_.shop_purchase_price_heading);
-                    const auto amount = grouped_decimal(
-                        calculate_field_action_record_cost(
-                            *selected_offer,
-                            ares_cost_context(field_shop_menu_.menu_mode(),
-                                              active_runner_record()),
-                            item_base_cost_lookup()));
-                    const auto x = 184 -
-                        static_cast<int>(amount.size() * 8U);
-                    draw_command_overview_text(painter, x, 112, amount);
+                    const auto amount = calculate_field_action_record_cost(
+                        *selected_offer,
+                        ares_cost_context(field_shop_menu_.menu_mode(),
+                                          active_runner_record()),
+                        item_base_cost_lookup());
+                    draw_command_overview_number(
+                        painter, command_overview_font_, 184, 112, amount,
+                        NumericVisualAlignment::right, true);
                 }
             }
         } else {
@@ -8241,11 +8291,9 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
 
     paint_field_hud_overlays(painter);
     if (field_funds_.has_value()) {
-        auto amount = std::to_string(*field_funds_);
-        for (auto position = amount.size(); position > 3U; position -= 3U) {
-            amount.insert(position - 3U, ",");
-        }
-        draw_command_overview_text(painter, 144, 200, amount);
+        draw_command_overview_number(
+            painter, command_overview_font_, 144, 200, *field_funds_,
+            NumericVisualAlignment::left, true);
         draw_command_overview_text(painter, 200, 200, "$");
     }
 
@@ -8255,14 +8303,10 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
         if (group == ShopActionGroup::sell) {
             draw_command_overview_text(
                 painter, 56, 88, field_menu_text_.shop_sale_quote_heading);
-            auto amount = std::to_string(
-                field_shop_menu_.transaction_amount());
-            for (auto position = amount.size(); position > 3U;
-                 position -= 3U) {
-                amount.insert(position - 3U, ",");
-            }
-            const auto x = 224 - static_cast<int>(amount.size() * 8U);
-            draw_command_overview_text(painter, x, 88, amount);
+            draw_command_overview_number(
+                painter, command_overview_font_, 224, 88,
+                field_shop_menu_.transaction_amount(),
+                NumericVisualAlignment::right, true);
         }
         draw_command_overview_text(
             painter, 128, 96, field_menu_text_.action_choice_yes);
@@ -8550,9 +8594,9 @@ void FieldSceneRuntime::paint_command_overview_clips(
             draw_command_overview_text(painter, 120, 88,
                                        field_menu_text_.clips_trade_prompt[2]);
         }
-        draw_command_overview_text(
-            painter, 200, 72,
-            std::to_string(command_overview_clips_.trade_quantity()));
+        draw_command_overview_number(
+            painter, command_overview_font_, 200, 72,
+            command_overview_clips_.trade_quantity());
         const auto selection = command_overview_clips_.trade_selection();
         if (selection >= static_cast<std::uint8_t>(ClipsCommand::reload) &&
             selection <= static_cast<std::uint8_t>(ClipsCommand::cancel)) {
@@ -8600,9 +8644,9 @@ void FieldSceneRuntime::paint_command_overview_clips(
 
     draw_command_overview_text(painter, 136, 72,
                                field_menu_text_.clips_counter_label);
-    draw_command_overview_text(
-        painter, 208, 72,
-        std::to_string(active_runner_record().ammo_clips));
+    draw_command_overview_number(
+        painter, command_overview_font_, 208, 72,
+        active_runner_record().ammo_clips);
     const auto selection = command_overview_clips_.selection();
     if (selection >= static_cast<std::uint8_t>(ClipsCommand::reload) &&
         selection <= static_cast<std::uint8_t>(ClipsCommand::cancel)) {
@@ -8678,8 +8722,8 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
             const auto value_x = cell.label_index == 6U
                                      ? 272
                                      : (column == 0U ? 136 : 280);
-            draw_command_overview_text(
-                painter, value_x, y, std::to_string(cell.value));
+            draw_command_overview_number(
+                painter, command_overview_font_, value_x, y, cell.value);
         }
     }
 
@@ -8751,7 +8795,14 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
                 y = 56;
                 break;
             }
-            draw_detail_text(x, y, std::to_string(value), text_mode);
+            if (text_mode == 0x4000U) {
+                draw_numeric_visual(
+                    painter, hotel_checkout_font_, x, y, value,
+                    NumericVisualAlignment::left, false);
+            } else {
+                draw_command_overview_number(
+                    painter, command_overview_font_, x, y, value);
+            }
         };
     detail_callbacks.render_cyberware_modifier_label =
         [&](const CyberwareDetailModifierField field,
@@ -8771,9 +8822,9 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
         detail_values, {cursor.column, cursor.row}, 0x4000U,
         detail_callbacks);
 
-    draw_command_overview_text(
-        painter, 120, 160,
-        std::to_string(static_cast<unsigned>(record.auxiliary[2U])));
+    draw_command_overview_number(
+        painter, command_overview_font_, 120, 160,
+        static_cast<unsigned>(record.auxiliary[2U]));
 
     const auto& menu_state = menu.state();
     const auto& selected = selected_attribute_skill_cell(
@@ -8793,14 +8844,12 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
                 painter, 64, 200,
                 field_menu_text_.attributes_upgrade_header,
                 HotelMenuPaletteLine::checkout);
-            draw_hotel_menu_text(
-                painter, 160, 200,
-                std::to_string(static_cast<unsigned>(upgrade.next_value)),
-                HotelMenuPaletteLine::checkout);
-            draw_hotel_menu_text(
-                painter, 248, 200,
-                std::to_string(static_cast<unsigned>(upgrade.karma_cost)),
-                HotelMenuPaletteLine::checkout);
+            draw_numeric_visual(
+                painter, hotel_checkout_font_, 160, 200,
+                static_cast<unsigned>(upgrade.next_value));
+            draw_numeric_visual(
+                painter, hotel_checkout_font_, 248, 200,
+                static_cast<unsigned>(upgrade.karma_cost));
         }
     }
 
@@ -8920,10 +8969,9 @@ void FieldSceneRuntime::paint_command_overview_magic(
     draw_field_menu_font_text(
         painter, 160, 104, field_menu_text_.magic_force_posture_labels,
         magic_menu_font_);
-    draw_field_menu_font_text(
-        painter, 216, 104,
-        std::to_string(command_overview_magic_force_.current_force),
-        magic_menu_font_);
+        draw_numeric_visual(
+            painter, magic_menu_font_, 216, 104,
+            command_overview_magic_force_.current_force);
 
     const auto& runner = active_runner_record();
     MagicMenuValueRefreshInput success_input{};
@@ -9224,11 +9272,10 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     [this, &painter](const int right_edge,
                                      const int y,
                                      const std::size_t value) {
-                        const auto digits = std::to_string(value);
-                        const auto left_edge = right_edge -
-                            static_cast<int>(digits.size() - 1U) * 8;
-                        draw_command_overview_text(
-                            painter, left_edge, y, digits);
+                        draw_command_overview_number(
+                            painter, command_overview_font_, right_edge + 8,
+                            y, static_cast<std::uint32_t>(value),
+                            NumericVisualAlignment::right);
                     };
                 draw_right_aligned_decimal(
                     184, 184,

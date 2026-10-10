@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <optional>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -31,13 +32,18 @@ FieldCombatActionKind classify_field_combat_action(
     std::int16_t equipped_inventory_slot,
     std::uint8_t action_code);
 
-// ROM 0x38AC: service one entity's current ammo value. The source delegates
-// records below type 3 to the weapon-service routine with a -1 or -3 meter
-// delta; that routine remains an explicit boundary because its inventory and
-// presentation work is a separate hill.
+// ROM 0x38AC: service one entity's current ammo value. Player runner records
+// use the equipped Lua weapon template's rounds_per_action; the original
+// action codes 8..10 resolve to three rounds and all other firearms to one.
+// NPC records retain the source's one-round decrement. Inventory mutation
+// remains a host service boundary.
+using EntityWeaponRoundsPerActionLookup =
+    std::function<std::optional<std::uint8_t>(std::uint8_t)>;
+
 EntityAmmoServiceAction service_entity_ammo(
     EntityEquipmentState& state,
     std::uint8_t source_action_code,
+    const EntityWeaponRoundsPerActionLookup& rounds_per_action,
     const std::function<void(std::int8_t)>& weapon_service);
 
 using EntityAnimationPassBoundary = std::function<void()>;

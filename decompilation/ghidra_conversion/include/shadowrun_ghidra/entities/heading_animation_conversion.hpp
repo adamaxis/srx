@@ -19,12 +19,13 @@ using MovementDelayScheduler = std::function<void(std::uint16_t delay_mode)>;
 using AnimationReset = std::function<void()>;
 
 // ROM 0xB39A: install a normal movement heading, use the C042 directional
-// animation table, and schedule the source delay before resetting animation
-// state. The embedded B3EE continuation is represented by the typed enum.
+// animation table, and schedule the source delay mode supplied by the caller
+// before resetting animation state. The embedded B3EE continuation is
+// represented by the typed enum.
 void set_entity_heading_with_field_animation(
     HeadingAnimationState& entity,
     std::uint16_t heading,
-    std::uint8_t entity_behavior,
+    std::uint16_t delay_mode,
     const std::array<std::uint16_t, 8>& direction_animations,
     const MovementDelayScheduler& schedule_delay,
     const AnimationReset& reset_animation);

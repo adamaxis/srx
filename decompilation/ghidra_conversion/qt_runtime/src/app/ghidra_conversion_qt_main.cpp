@@ -2,6 +2,7 @@
 #include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_action_math_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_delay_conversion.hpp"
 #include "shadowrun_ghidra/menus/clips_menu_conversion.hpp"
 #include "shadowrun_ghidra/menus/menu_service_sequence_conversion.hpp"
 #include "shadowrun_ghidra/menus/menu_transfer_batch_conversion.hpp"
@@ -17065,8 +17066,10 @@ int main(int argc, char** argv) {
                 field_scene.refresh_field_hud_for_dump();
                 field_audio_events.clear();
                 const auto weapon_audio_is_source_valid =
-                    [](const std::vector<std::uint16_t>& events) {
-                        if (events.empty() || events.front() != 0x001CU) {
+                    [](const std::vector<std::uint16_t>& events,
+                       const std::uint16_t expected_event = 0x001CU) {
+                        if (events.empty() ||
+                            events.front() != expected_event) {
                             return false;
                         }
                         std::size_t impact_events = 0U;

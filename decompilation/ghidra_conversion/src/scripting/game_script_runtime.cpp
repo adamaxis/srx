@@ -1939,7 +1939,6 @@ std::optional<ScriptItemCatalog> GameScriptRuntime::item_catalog() {
         }
         const auto item_index = lua_absindex(state, -1);
         std::uint32_t code = 0U;
-        std::uint32_t base_cost = 0U;
         ScriptItemDefinition item;
         const bool base_fields_valid =
             read_field_integer(state, item_index, "code", 50U, code) &&
@@ -1953,15 +1952,48 @@ std::optional<ScriptItemCatalog> GameScriptRuntime::item_catalog() {
             read_field_string(state, item_index, "category_key",
                               item.category_key) &&
             valid_identifier(item.category_key) &&
-            read_field_integer(state, item_index, "base_cost", 65535U,
-                               base_cost) &&
             read_field_boolean(state, item_index, "has_detail_art",
                                item.has_detail_art);
         if (!base_fields_valid) {
             return fail("items.catalog contains an incomplete item record");
         }
         item.code = static_cast<std::uint8_t>(code);
-        item.base_cost = static_cast<std::uint16_t>(base_cost);
+
+        lua_getfield(state, item_index, "pricing");
+        if (!lua_istable(state, -1)) {
+            return fail("item pricing must be a record");
+        }
+        const auto pricing_index = lua_absindex(state, -1);
+        std::uint32_t purchase_base = 0U;
+        std::uint32_t resale_base = 0U;
+        if (!read_field_integer(state, pricing_index, "purchase_base",
+                                65535U, purchase_base) ||
+            !read_field_integer(state, pricing_index, "resale_base",
+                                65535U, resale_base) ||
+            resale_base != purchase_base / 2U) {
+            return fail("item pricing is incomplete");
+        }
+        item.pricing.purchase_base =
+            static_cast<std::uint16_t>(purchase_base);
+        item.pricing.resale_base = static_cast<std::uint16_t>(resale_base);
+        lua_pop(state, 1);
+
+        lua_getfield(state, item_index, "presentation");
+        if (!lua_istable(state, -1)) {
+            return fail("item presentation must be a record");
+        }
+        const auto presentation_index = lua_absindex(state, -1);
+        if (!read_field_string(state, presentation_index,
+                               "icon_resource_key",
+                               item.presentation.icon_resource_key) ||
+            !valid_identifier(item.presentation.icon_resource_key) ||
+            !read_field_string(state, presentation_index,
+                               "detail_resource_key",
+                               item.presentation.detail_resource_key) ||
+            !valid_identifier(item.presentation.detail_resource_key)) {
+            return fail("item presentation is incomplete");
+        }
+        lua_pop(state, 1);
 
         lua_getfield(state, item_index, "detail");
         if (!lua_isnil(state, -1)) {
@@ -1990,6 +2022,7 @@ std::optional<ScriptItemCatalog> GameScriptRuntime::item_catalog() {
             const auto weapon_index = lua_absindex(state, -1);
             std::uint32_t magazine_capacity = 0U;
             std::uint32_t damage_bar_index = 0U;
+            std::uint32_t rounds_per_action = 0U;
             ScriptWeaponTemplate weapon;
             weapon.id = item.id;
             weapon.item_code = item.code;
@@ -2000,13 +2033,43 @@ std::optional<ScriptItemCatalog> GameScriptRuntime::item_catalog() {
                                     2U, damage_bar_index) ||
                 !read_field_string(state, weapon_index, "power_profile",
                                    weapon.power_profile) ||
-                !valid_identifier(weapon.power_profile)) {
+                !valid_identifier(weapon.power_profile) ||
+                !read_field_string(state, weapon_index, "fire_mode",
+                                   weapon.fire_mode) ||
+                !valid_identifier(weapon.fire_mode) ||
+                !read_field_string(state, weapon_index, "trigger_behavior",
+                                   weapon.trigger_behavior) ||
+                weapon.trigger_behavior != "repeat_while_held" ||
+                !read_field_integer(state, weapon_index, "rounds_per_action",
+                                    3U, rounds_per_action) ||
+                rounds_per_action == 0U ||
+                !read_field_string(state, weapon_index, "attack_cadence",
+                                   weapon.attack_cadence) ||
+                weapon.attack_cadence != "runner_attribute" ||
+                !read_field_string(state, weapon_index,
+                                   "attack_delay_scale",
+                                   weapon.attack_delay_scale) ||
+                (weapon.attack_delay_scale != "half" &&
+                 weapon.attack_delay_scale != "normal") ||
+                !read_field_string(state, weapon_index,
+                                   "reload_delay_scale",
+                                   weapon.reload_delay_scale) ||
+                (weapon.reload_delay_scale != "normal" &&
+                 weapon.reload_delay_scale != "double") ||
+                (weapon.fire_mode == "single_round" &&
+                 rounds_per_action != 1U) ||
+                (weapon.fire_mode == "three_round_burst" &&
+                 rounds_per_action != 3U) ||
+                (weapon.fire_mode != "single_round" &&
+                 weapon.fire_mode != "three_round_burst")) {
                 return fail("item weapon template is incomplete");
             }
             weapon.magazine_capacity =
                 static_cast<std::uint8_t>(magazine_capacity);
             weapon.damage_bar_index =
                 static_cast<std::uint8_t>(damage_bar_index);
+            weapon.rounds_per_action =
+                static_cast<std::uint8_t>(rounds_per_action);
             item.weapon = std::move(weapon);
         }
         lua_pop(state, 1);

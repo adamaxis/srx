@@ -1,7 +1,9 @@
 #pragma once
 
 #include <cstdint>
+#include <cstddef>
 #include <functional>
+#include <string>
 #include <vector>
 
 namespace shadowrun::ghidra_conversion {
@@ -11,6 +13,19 @@ namespace shadowrun::ghidra_conversion {
 // separator is the table entry at byte offset 0x18.
 constexpr std::uint16_t kDecimalDigitGlyphTableBaseIndex = 0x10U;
 constexpr std::uint16_t kDecimalGroupSeparatorGlyphTableIndex = 0x0CU;
+
+// Host-side bitmap-font glyphs ordered for left-to-right drawing. This lets
+// shop, status, and other menus share one value-to-glyph conversion while
+// keeping the ROM's reverse write order in its adapter below.
+struct NumericVisual {
+    std::vector<char> glyphs;
+
+    std::string bitmap_font_text() const;
+    std::size_t pixel_width(std::size_t glyph_width = 8U) const noexcept;
+};
+
+NumericVisual build_numeric_visual(std::uint32_t value,
+                                   bool group_thousands = false);
 
 // ROM 0xC216: produce the source's least-significant-first glyph-table index
 // stream, inserting the separator table entry after every three digits.  The

@@ -6,6 +6,13 @@
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
+    if (build_numeric_visual(0U).bitmap_font_text() != "0" ||
+        build_numeric_visual(1234U, true).bitmap_font_text() != "1,234" ||
+        build_numeric_visual(1234567U, true).pixel_width() != 72U ||
+        build_numeric_visual(1234U, false).bitmap_font_text() != "1234") {
+        return 5;
+    }
+
     std::vector<int> order;
     prepare_numeric_menu_block(
         {[&order] { order.push_back(1); },
