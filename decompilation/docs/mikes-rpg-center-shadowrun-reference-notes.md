@@ -164,6 +164,118 @@ confirm access order, menu text, result flags, and alert effects from the ROM.
 | [UCAS Federal Government](https://mikesrpgcenter.com/shadowrun/maps/ucasfedgov.html) | Chernobyl-virus clue and system/prisoner/finance/management/security data with maglock, camera, HVAC, satellite, and alert controls. |
 | [Unlisted](https://mikesrpgcenter.com/shadowrun/maps/unlisted.html) | A collage of unnamed nodes with different datastore/control layouts. Preserve them as unlisted until ROM/map evidence identifies each system. |
 
+## Official Genesis manual cross-check
+
+The linked [official Genesis manual](https://mikesrpgcenter.com/manuals/genesis/Shadowrun.pdf)
+is a 27-page scanned PDF, so its text is not searchable in the original file.
+These notes come from OCR of the page images; OCR misspellings and collapsed
+column layouts are not treated as game facts.
+The manual describes intended controls and player-facing rules. It does not
+establish frame cadence, exact formulas, hidden prerequisites, or the ROM's
+implementation details.
+
+### Field controls and character screens
+
+- Overhead field controls: D-pad moves; A fires the equipped gun; B targets an
+  enemy; C switches team members; Start opens Character Info. In Character
+  Info, A/B select and Start exits; C switches team members. Cybercombat uses
+  A/B/C to launch a program in offensive/neutral/defensive posture.
+- The field HUD's portrait panel shows each active teammate, equipped firearm
+  or spell, remaining ammunition when holding a weapon, physical health, and
+  mental health. The target marker color communicates the target's condition;
+  targeting makes the selected character face the enemy.
+- Character Info exposes Clips, Attribute/Skills, Cyberware, Magic, and Pocket
+  Secretary. The manual explicitly distinguishes mage/shaman Magic Selection
+  from non-mage physical/mental defenses against magic. It says posture affects
+  attack and defense bars; magic users also see spell drain change with force
+  and posture. This supports the project's separate mage/non-mage panels but
+  does not identify the ROM variables or exact bar conversion.
+- The inventory holds up to eight items. Selecting a weapon changes the attack
+  bar; the item description appears beside its icon. Equip/Unequip, Trade,
+  Discard, and Cancel are the item actions. The manual describes Clips as a
+  screen for manual reload and team clip distribution, while field combat can
+  reload automatically. Save/Load is available outside and not in combat.
+- Posture controls the balance between offense and defense, changing those
+  bars; spell drain may also change. For computer-controlled characters,
+  defensive posture hangs back and may heal allies; offensive posture closes
+  distance to deal damage. This is a behavior clue to verify against actor AI,
+  not authorization to implement AI decisions in C++.
+- Gun handling description: semi-automatic light pistols have high fire rate
+  and short range; heavy pistols trade some rate for a bigger hit and better
+  range; shotguns fire slowly because of the pump; full-auto SMGs fire three
+  rounds at one close target or spread hits among distant targets. Movement,
+  moving targets, long range, and invisible targets make shots less likely to
+  hit; standing still and firing less can improve aim. Grenades are delayed,
+  area-effect throws with variable landing accuracy. This explains why one
+  input edge must not become an arbitrary burst, but exact shot cadence and
+  ammo decrements still require source tracing.
+- All weapons use the same ammo. The manual describes six uses per Medkit and
+  six uses per slap patch; Stim heals mental damage and Trauma heals physical
+  damage by 20%. Passkeys open locks at or below rating; an Electronics Kit
+  reduces difficulty but can fail and raise an alarm. Use these as checks on
+  item templates and actions, with the ROM deciding actual charges/formulas.
+- Magic: spells use Force, can cause mental drain, and may be resisted by
+  Willpower; Fetishes absorb drain and crumble. Targets must be in line of
+  sight. Combat spells ignore armor, with Flame resisted by Body and Mana/Sleep
+  by Willpower; Hellblast, Mana Storm, and Sleep are area spells. Heal Wounds
+  repairs physical damage only. Illusions have limited duration; invisibility
+  is less effective against CyberEyes and certain creatures. Foci can increase
+  spell success without the drain of increasing spell Force; a Power Focus
+  raises Force for all spells. These labels do not specify the ROM's targeting
+  checks, tick counts, drain formula, or spell-ammo presentation.
+
+### Locations, services, and quest flow
+
+- The manual calls out distinct service classes: bars/clubs, weapon/magic/deck
+  shops, hotels, hospitals, corporations, abandoned buildings, and wall
+  cyberterminals. Hotel stays can restore physical and mental health and open
+  karma spending; body affects healing rate. Hospitals handle severe wounds
+  and team knockouts. Cyberterminals provide taxi, vid-phone, and Matrix
+  options. This is a useful checklist for the shared location-service script,
+  not proof that every marker opens a new interior map.
+- Johnson jobs are recorded in the Notebook; another job is gated until the
+  existing run is completed, canceled, or its required carried item is lost.
+  Contacts offer information, services, equipment, and further contacts.
+  Runners can have good/bad/neutral attitudes and hire conditions affected by
+  mission outcomes, dismissal, abandonment, and team healing.
+- Corporation interiors have three to six floors according to the manual.
+  Alarms lock front doors, deploy guards, disable elevators, and make Matrix
+  systems active-alert; the manual lists waiting, terminals, and the Matrix as
+  ways to address the alarm. This is a broad system cross-check only; each
+  building's actual floors, devices, and transition targets must be profiled
+  from its ROM records.
+- The manual's maps section starts at printed page 38. The scanned map labels
+  complement the site's six map pages; use ROM scene/record data to correlate
+  entrances and exits. The map illustrations do not show event activation
+  conditions or prove whether a doorway requires collision, interaction, or a
+  scripted story trigger.
+
+### Matrix controls and mechanics
+
+- Matrix entry needs a Deck, Datajack, and functioning MPCP; field terminals
+  offer the access point. The deck interface separates the main view, right
+  node/IC information, left program/alert HUD, and persona condition.
+- Programs have load time based on size and compete for active memory. A second
+  program pauses while another runs. A/B/C launch with offensive/neutral/
+  defensive posture. The system map can retreat to the previous node before
+  combat; jack-out may be blocked by Black IC.
+- IC types have different roles: Access/Barrier block routes; Killer/Blaster
+  attack the persona; Trace IC can dump or burn the deck; Relocate may cancel a
+  trace. Alert packets can raise system alert if they reach the edge. These
+  descriptions are navigation cues for the ROM's typed node/IC logic, not a
+  substitute for its tables, outcomes, or timing.
+
+### Manual-to-ROM discrepancy log
+
+Keep discrepancies visible instead of silently reconciling them. The manual
+calls out details such as “semi-auto” pistols and three-round SMG bursts, while
+the game's own input/cadence implementation still has to be proven from the
+ROM service loop and actor records. The Mike's RPG Center walkthrough is
+shortened and omits the Rat's Nest shelter search narrative present in the ROM
+text table. Conversely, the manual's generic business descriptions do not
+name scene-specific service routes. The US ROM is the deciding source for all
+runtime branches; guide and manual prose are labeled external corroboration.
+
 ## Redmond ROM coordinate cross-check: Rat's Nest lead
 
 The Redmond map is a 480-by-320 image. A rough proportional overlay of the
