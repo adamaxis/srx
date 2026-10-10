@@ -202,7 +202,12 @@ int main(int argc, char** argv) {
     for (const auto& expected : kMappedEvents) {
         const auto calls_before = resolver_calls;
         const auto event_started_at = std::chrono::steady_clock::now();
-        playback.play_event(expected.event);
+        if (expected.event == 0x5CU) {
+            playback.begin_source_sequence();
+            playback.play_event_once_in_sequence(expected.event);
+        } else {
+            playback.play_event(expected.event);
+        }
         if (resolver_calls != calls_before + 1U ||
             resolved_alias != expected.alias) {
             std::cerr << "event " << expected.event
@@ -249,11 +254,10 @@ int main(int argc, char** argv) {
                 std::cerr << "first boot-shock request did not start one channel\n";
                 return 1;
             }
-            // ROM pre-title audio submits FF 10 5C every two source updates
-            // for 60 requests. The Z80 trace leaves earlier voices running
-            // and reuses the six FM voices individually; mirror that cadence
-            // with the host pool and ensure later starts do not silence all
-            // prior copies.
+            // ROM pre-title submits FF 10 5C every two source updates for 60
+            // requests. Preserve those events while testing the host policy:
+            // resource 92 is already a complete stereo render, so the source
+            // burst must not layer 60 copies of the complete FLAC.
             auto next_request_at = std::chrono::steady_clock::now();
             for (std::size_t request = 1U; request < 60U; ++request) {
                 next_request_at += std::chrono::milliseconds(33);
@@ -261,23 +265,13 @@ int main(int argc, char** argv) {
                     application.processEvents(QEventLoop::AllEvents, 5);
                     QThread::msleep(1U);
                 }
-                playback.play_event(expected.event);
+                playback.play_event_once_in_sequence(expected.event);
             }
-            const auto restart_deadline = std::chrono::steady_clock::now() +
-                                          std::chrono::seconds(3);
             status = playback.playback_status_for_event(expected.event);
-            while (std::chrono::steady_clock::now() < restart_deadline &&
-                   !status.error &&
-                   playback.playing_channel_count_for_event(expected.event) <
-                       6U) {
-                application.processEvents(QEventLoop::AllEvents, 20);
-                QThread::msleep(5U);
-                status = playback.playback_status_for_event(expected.event);
-            }
             if (!status.audio_available || !status.playing || status.error ||
                 playback.playing_channel_count_for_event(expected.event) !=
-                    6U) {
-                std::cerr << "rapid boot-shock starts did not leave six source-aligned voices playing; count="
+                    1U) {
+                std::cerr << "rapid boot-shock starts replayed the full mix; count="
                           << playback.playing_channel_count_for_event(
                                  expected.event)
                           << " loaded=" << status.source_ready
@@ -294,6 +288,27 @@ int main(int argc, char** argv) {
                 std::cerr << "boot-shock stop left a channel playing\n";
                 return 1;
             }
+            playback.begin_source_sequence();
+            playback.play_event_once_in_sequence(expected.event);
+            const auto replay_deadline = std::chrono::steady_clock::now() +
+                                         std::chrono::seconds(3);
+            status = playback.playback_status_for_event(expected.event);
+            while (std::chrono::steady_clock::now() < replay_deadline &&
+                   !status.error &&
+                   !(status.source_ready && status.audio_available &&
+                     status.playing)) {
+                application.processEvents(QEventLoop::AllEvents, 20);
+                QThread::msleep(5U);
+                status = playback.playback_status_for_event(expected.event);
+            }
+            if (!status.source_ready || !status.audio_available ||
+                !status.playing || status.error ||
+                playback.playing_channel_count_for_event(expected.event) !=
+                    1U) {
+                std::cerr << "new source sequence did not replay one shock cue\n";
+                return 1;
+            }
+            playback.stop_resource(expected.event);
         } else if (expected.event == 0x16U) {
             if (playback.playing_channel_count_for_event(expected.event) !=
                 1U) {

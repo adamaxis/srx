@@ -21,10 +21,11 @@ persistent event `0x30`, or every sound call in the ROM.
   those operations separate by service path.
 - The pre-title shock caller sends `FF 10 5C`, selecting table-2 resource 92
   (`audio.effects.resource.092`, 2.750 seconds). Its source repeats the start
-  during the lightning window; the ROM-driver trace shows six distinct FM
-  voices active before any is reused. Qt now overlaps the starts in a six-voice
-  pool. See the [boot shock audio audit](../visual-audits/boot-shock-audio.md)
-  for the source trace and independent audio/output checks.
+  during the lightning window. The extracted FLAC is already a complete stereo
+  render, not a single YM voice stem. Qt records every ROM request and plays
+  the full cue once per pre-title sequence. See the [boot shock audio
+  audit](../visual-audits/boot-shock-audio.md) for source, independent audio,
+  and loopback checks.
 - The electromagnetic-lock unlock path submits event `0x4B`, mapped to
   resource 75; its extracted FLAC contains 97,770 samples at 44.1 kHz, or
   2.2167 seconds.
@@ -53,11 +54,12 @@ types, and loading `menu-024.flac` changed its status from `Loading` to
 silent. Qt's [QSoundEffect documentation](https://doc.qt.io/qt-6/qsoundeffect.html)
 describes it as a player for uncompressed files, typically WAV.
 
-`AudioPlaybackService` now uses six `QMediaPlayer`/`QAudioOutput` channels.
-The existing FLAC files remain individually named runtime assets. Event
-selection and volume (`0.6`) are retained. The six-voice pool follows the
-distinct YM2612 voices seen during the repeated shock requests. The
-service exposes a small playback status for QA, including decoded audio
+`AudioPlaybackService` uses six `QMediaPlayer`/`QAudioOutput` channels for
+unrelated concurrent effects. The existing FLAC files remain individually
+named runtime assets. Event selection and volume (`0.6`) are retained. The
+pre-title resource-92 cue uses a source-sequence one-shot latch because the
+extracted file is a complete stereo mix; the 60 ROM requests remain recorded.
+The service exposes playback status for QA, including decoded audio
 availability, play state, duration, and errors. Unknown events remain
 unmapped.
 
@@ -70,23 +72,14 @@ decoded audio and `PlayingState`, checks the decoded duration against each
 source file, then stops the active channels. The test skips with CTest's
 `SKIP_RETURN_CODE` only if Windows reports no default audio output. Debug and
 Release pass on the current `Speakers (Realtek(R) Audio)` output. For `0x5C`,
-the test adds 59 starts at 33 ms intervals, checks that six channels remain
-playing, and verifies resource-stop behavior. Each test run reports resource
-92 at 2,750 ms with roughly 20-30 ms initial start latency.
+the test feeds 59 more requests at 33 ms intervals through the sequence
+one-shot policy, checks that only one channel remains playing, resets the
+sequence, and verifies a new cue can play. Each test run reports resource 92
+at 2,750 ms with roughly 20-30 ms initial start latency.
 
-A separate Windows WASAPI loopback recording captured the Release test output
-at 44.1 kHz stereo. During the repeated `0x5C` burst, the capture has a 0.370
-normalized correlation with the first 80 ms of resource 92 at 12.271 s, with
-additional matches through 13.631 s. The recording is
-`build/visual-review/boot-shock-release-loopback-aligned.wav` (ignored build
-output). This verifies that the effect reached the Windows output mix; it does
-not set Genesis VBlank timing.
-
-The ordinary Release game executable was also launched with the extracted
-asset directory and captured through the same default endpoint. Its loopback
-contains repeated 0.40-level resource-92 matches across the startup burst
-(1.971-3.571 s), then returns to the pre-effect output level after 4.3 s. The
-10-second WAV is `build/visual-review/boot-shock-release-game-loopback.wav`.
+The former six-player WASAPI captures are retained in ignored build output but
+do not verify the current boot-shock mix. The one-shot correction is checked in
+the section below.
 
 The shared scene paths also passed Debug and Release Qt QA:
 
@@ -105,6 +98,20 @@ The shared scene paths also passed Debug and Release Qt QA:
 The shop frame inspected at
 `field-shop-ares-qa/shop-item/actual.bmp` remains a clean 320x224 page. The
 audio service does not paint controls or change screen composition.
+
+## Boot shock audio correction
+
+The original six-full-file-player policy sounded fragmented. A new Release
+process-specific WASAPI capture matches the decoded resource-92 cue at NCC
+1.0000 across four consecutive 100 ms windows. The independent Genesis
+longplay has four overlapping 200 ms windows sampled 100 ms apart matching a
+single resource-92 render at NCC 0.9479, 0.9957, 0.9831, and 0.9529. The ROM still issues all 60
+requests every two VBlanks; the host coalesces them because this FLAC contains
+the complete stereo cue. See the [nine-question source and playback
+audit](../visual-audits/boot-shock-audio.md).
+
+The older six-player loopback artifacts and correlations are historical and
+do not verify the current output.
 
 ## Independent audio comparison
 
@@ -138,8 +145,9 @@ they do not establish exact emulator frame timing.
    `0x16` is specifically a stop operation, while other
    callers can start resource 22 with `FF 10 16`. The independent longplay
    repeatedly matches resource 37 and also supports resource 92 at 4.225 s.
-   Endpoint loopback captured the boot-shock resource on the current
-   default device. Process-specific loopback on the normal Release opening
+    Fresh process-specific loopback captured one complete boot-shock cue on
+    the current default device and matched it to the resource over four
+    consecutive windows. Process-specific loopback on the normal Release opening
    route captures stage 1 at opening entry, silence through stage 2, and stage
    3 at its entry; other event-specific routes remain open.
 6. **Are related screen parts also correct?** The Ares page, text, item art,
@@ -159,8 +167,9 @@ identified intro music assets. In the current Debug/Release runs, resource 22
 (`FF 10 16`) reported 17/31 ms startup and 2,750 ms duration; resource 92
 (`FF 10 5C`) reported approximately 20-30 ms and 2,750 ms. The boot callback
 uses the separate `FF 12` resource-stop operation for `0x16`; its repeated
-`0x5C` path now has source-aligned overlapping voices and recorded Windows
-loopback. The exact paired stage-2 request
+`0x5C` path now plays one complete stereo cue per source sequence, preserves
+all ROM requests, and has fresh Release Windows loopback matching the asset.
+The exact paired stage-2 request
 `FF 12 11`, `FF 10 11` produces setup/quieting writes but no YM key-on; the
 host intentionally leaves it unmapped. Source `0x53126` sends `FF 16` at
 stage boundaries, and Qt now stops all playback channels there. The intro

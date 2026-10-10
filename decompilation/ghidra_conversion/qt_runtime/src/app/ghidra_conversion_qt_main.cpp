@@ -5060,6 +5060,7 @@ private:
     }
 
     void reset_startup_presentation_state() {
+        audio_playback_.begin_source_sequence();
         title_loop_ = TitleLoopState{};
         title_mode_entry_service_ = TitleModeEntryServiceState{};
         title_idle_restart_fade_ = TitleIdleRestartFadeState{};
@@ -5210,16 +5211,18 @@ private:
                 }
                 // The 0x5D746 source path sends 0x16 through 0x530D2 as
                 // FF 12 16 (stop resource 22). Its 0x5C request uses
-                // 0x530DE's queue path, FF 10 5C (start resource 92). Each
-                // FF 10 is another source start; the host voice pool lets
-                // those instances overlap and recycles one channel at a time.
+                // 0x530DE's queue path, FF 10 5C (start resource 92). Keep
+                // recording every ROM request, but play the complete decoded
+                // stereo cue only once for this pre-title sequence; the FLAC
+                // contains a full source render rather than one YM voice.
                 // Ordinary FF 10 use of 0x16 remains a separate start alias;
                 // this callback must honor the direct FF 12 operation.
                 if (request.service_path ==
                     PreTitleAudioServicePath::enabled_variant_transaction) {
                     audio_playback_.stop_resource(request.command);
                 } else if (request.command == 0x005CU) {
-                    audio_playback_.play_event(request.command);
+                    audio_playback_.play_event_once_in_sequence(
+                        request.command);
                 }
                 note_presentation_boundary(
                     request.service_path ==

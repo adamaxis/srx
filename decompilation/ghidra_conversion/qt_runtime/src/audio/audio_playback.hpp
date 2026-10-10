@@ -11,6 +11,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
@@ -44,6 +45,14 @@ public:
     // a logged boundary by the caller) when the event has no verified alias.
     void play_event(std::uint16_t event);
 
+    // Clear one-shot event latches when a source audio sequence starts.
+    void begin_source_sequence();
+
+    // Publish a cue once during the current source sequence. This is for
+    // callers whose extracted asset already contains the complete rendered
+    // sound and which issue repeated source requests while that cue is active.
+    void play_event_once_in_sequence(std::uint16_t event);
+
     // Stop every channel playing this source resource. This is distinct from
     // the numeric command id: a ROM command may start or stop the same id
     // depending on whether it uses the FF 10 or FF 12 service path.
@@ -71,6 +80,7 @@ private:
     std::size_t next_channel_ = 0U;
     std::uint64_t request_sequence_ = 0U;
     std::unordered_map<std::uint16_t, std::string> event_aliases_;
+    std::unordered_set<std::uint16_t> sequence_one_shot_events_;
 };
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime

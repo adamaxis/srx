@@ -33,9 +33,10 @@ AudioPlaybackService::~AudioPlaybackService() = default;
 AudioPlaybackService::AudioPlaybackService(PathResolver resolver,
                                            QObject* parent)
     : QObject(parent), resolver_(std::move(resolver)) {
-    // The repeated SEGA-shock FF 10 requests occupy multiple FM voices in
-    // the ROM driver trace. Keep six host voices so those starts can overlap
-    // until a voice is reused, instead of cutting every previous copy off.
+    // Six host channels support overlapping independent effects. The
+    // pre-title SEGA shock uses a source-sequence one-shot policy because its
+    // extracted FLAC is a complete stereo render, not an individual YM voice
+    // stem; replaying the whole file for each source request distorts the cue.
     constexpr std::size_t kChannelCount = 6U;
     channels_.reserve(kChannelCount);
     for (std::size_t index = 0; index < kChannelCount; ++index) {
@@ -93,6 +94,17 @@ void AudioPlaybackService::play_event(const std::uint16_t event) {
         return;
     }
     start_alias(alias, event);
+}
+
+void AudioPlaybackService::begin_source_sequence() {
+    sequence_one_shot_events_.clear();
+}
+
+void AudioPlaybackService::play_event_once_in_sequence(
+    const std::uint16_t event) {
+    if (sequence_one_shot_events_.insert(event).second) {
+        play_event(event);
+    }
 }
 
 void AudioPlaybackService::stop_resource(const std::uint16_t resource_id) {

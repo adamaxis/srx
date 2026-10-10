@@ -59,11 +59,12 @@ clarification. None changes the original report's itemization.
 
 | Goal | Reported issue, itemized | Evidence check and closure condition |
 |---|---|---|
-| `BOOT-01` | The shock figure has no sound when it shocks the SEGA logo, and the same effect plays at the wrong time when the Decker intro starts. | **Resolved for the reported shock sound and mistimed effect.** ROM/Z80 tracing distinguishes the boot caller's `0x16` (`FF 12`, stop resource 22) from `0x5C` (`FF 10`, start table-2 resource 92). Resource 22 also has an `FF 10 16` start alias for other callers; the boot callback follows its own service operation. The callback starts a new resource-92 host voice for each FF 10 request, using six voices to match the six distinct YM2612 channels in the ROM-driver trace. Debug/Release QA submits the full 60-request cadence and checks six playing voices plus stop. WASAPI loopback from the Release game executable correlates with resource 92 across the 60-request burst (0.40-level matches at 1.971-3.571 s); see the audit for the recorded frames and output device. The full Release intro issues `0x5C` during the SEGA lightning sequence, not at Decker entry. Independent section 01 frame 120 shows the lightning and its audio correlates best with resource 92 (0.5589 at 4.225 s); see [the source and playback audit](visual-audits/boot-shock-audio.md). |
+| `BOOT-01` | The shock figure has no sound when it shocks the SEGA logo, and the same effect plays at the wrong time when the Decker intro starts. | **Resolved for sound presence and event placement.** ROM/Z80 tracing distinguishes the boot caller's `0x16` (`FF 12`, stop resource 22) from `0x5C` (`FF 10`, start table-2 resource 92). Resource 22 also has an `FF 10 16` start alias for other callers; the boot callback follows its own service operation. The full Release intro issues `0x5C` during the SEGA lightning sequence, not at Decker entry. Independent section 01 frame 120 shows the lightning; its audio supports resource 92. See [the source and playback audit](visual-audits/boot-shock-audio.md). The previous six-full-file-player mix was later found fragmented and is tracked separately as `BOOT-06`.
 | `BOOT-02` | The flame decal remains on the right after the logo is fully revealed. | Reproduced in the pre-fix Qt full-screen title capture. The typed reveal stops at 38 columns: the last active frame shows the flame at title frame 165, the first frame after the 0x1A9E reveal branch hides it at 166, and settled frame 900 has no right-edge overlay. Debug/Release CTest checks projection state and whole-screen right-edge pixels. Independent section 01 frames 000372, 000384, and 000390 show the same active-then-absent transition. Resolved for the reported post-reveal persistence. |
 | `BOOT-03` | The animated microchip/circuit background does not move upward. | **Resolved for the reported missing motion.** ROM `0x1D7A` initializes the Plane-B scroll and `0x26D0` advances it on the first title-loop VBlank, then every five VBlanks while the loop runs; Qt uses that typed offset to move only the circuit layer. Debug/Release startup QA checks the source cadence and whole-screen pixels at multiple offsets. Independent section 01 frames 000390→000396 show a two-pixel upward shift, and 000420→000450 show about twelve pixels; corresponding native frames 254→318 shift thirteen pixels. Full-plane wrap and the separate circuit brightness/texture mismatch remain open under `TITLE-03`. See [the title circuit scroll review](visual-analysis/qt-visual-audit.md#applied-review-title-circuit-vertical-scroll). |
 | `BOOT-04` | The title circuit appears before the Shadowrun logo has rolled across. | **Resolved for arrival order.** ROM `0x1E4E` completes the 38-column reveal before `0x1C1E` begins three palette steps at countdown values 64, 32, and 0. Typed palette-step state keeps the circuit black through the reveal. Debug/Release whole-screen QA checks title frames 188/189; independent section 01 frames 000384/000390 support logo-only then circuit-visible order. Brightness and texture remain separate under `TITLE-03`. See [title circuit arrival audit](visual-audits/title-circuit-arrival.md). |
 | `BOOT-05` | The black interval between the FASA fade-out and the first Shadowrun logo column was missing from the defect inventory. | **Inventory gap closed; no current rendering defect reproduced.** The US ROM title loop initializes `DD2C=0x5A` and calls the logo-column routine only after that countdown becomes negative, so all 90 delay updates are expected to remain black and the first 8-pixel column appears on update 91. Qt Debug/Release boot QA checks the full 320x224 image across the two post-FASA handoff frames and every title-delay update, verifies typed reveal/palette/sprite state, then saves the first-column frame. The complete Release capture shows native frames 540-650 black and the first mark at 651. Independent section 01 frames 000300/000330 show black and 000360 shows the partial mark; 30-fps timing is not treated as VBlank evidence. See [boot-to-title black interval audit](visual-audits/boot-title-black-interval.md). |
+| `BOOT-06` | The SEGA shock effect sounds fragmented and does not match the complete cue in the longplay. | **Resolved for the sampled shock cue.** Resource 92 is a complete 44.1 kHz stereo render (2,750 ms total; about 0.8 s audible), not an individual YM voice stem. The ROM still emits all 60 `FF 10 5C` requests every two VBlanks; the host records each request and plays this complete extracted cue once per pre-title sequence. Debug/Release audio CTest checks one active player across the request burst and replay on a new sequence. Four overlapping 200 ms longplay windows sampled 100 ms apart match a single resource-92 render at NCC 0.9479, 0.9957, 0.9831, and 0.9529; fresh Release process-loopback matches the same asset at 1.0000 across four consecutive 100 ms windows. The 30-fps recording bounds timing precision. See [the source and playback audit](visual-audits/boot-shock-audio.md). |
 | `TITLE-01` | The title's “PRESS START” label does not blink in and out. | Reproduced before the edit: the presenter set `title_prompt_visible_ = true` for both ROM variants. Resolved. ROM `0x1A9E` starts D7 at `0x0E10`, waits once per loop, then draws only when D7 is below `0x0C6C`; its low six bits select visible record A (`0x1F81`) or blank record B (`0x1F99`), both at `0xCA84` with palette `0x2000`. Qt now follows the selected typed text asset. Debug/Release typed and full-screen QA cover two cycles. Independent section 01 frames 000900/000906/000912 show visible/hidden/visible; their coarse 30-fps spacing supports blinking but does not establish absolute VBlank phase. Full review: [title prompt blink audit](visual-audits/title-prompt-blink.md). |
 | `TITLE-02` | Pressing Start skips the transition and immediately opens New Game/Load Game. | Resolved for the reported Start route: ROM `0x1A9E` exits only on the Start latch (`0x8000`), then performs 17 palette passes after 34 VBlanks; the `0x075E` caller runs six command-`0x14` audio transactions over 18 more VBlanks before `0x59092` draws Start Options. Debug/Release QA captures every pass and hold frame, proves A alone does not exit, and checks the default New Game selection and clean destination redraw. Independent section 01 frames 001637-001643 show title-to-black and 001670-001674 show the options shell followed by text. The clip has no input/VBlank log; exact input phase remains open. Shell-to-text ordering is defended separately under `TITLE-04`, although exact 60-Hz duration is not measurable from this 30-fps capture. Audio resource/playback/duration also remain unidentified. See [title Start transition audit](visual-audits/title-start-transition.md). |
 | `TITLE-03` | The title circuit background is much brighter and denser green in the native screen than in the independent game capture. | Reproduced in matched whole-screen comparisons after correcting a mislabeled native frame. ROM tracing supports the extracted base palette and identifies a separate seven-phase light update; the compressed reference does not establish the correct brightness of thin circuit lines. Keep open until source-backed color/texture equivalence can be established without a speculative color transform. See [title circuit palette audit](visual-audits/title-circuit-palette.md). |
@@ -144,10 +145,13 @@ clarification. None changes the original report's itemization.
   it gone. The larger circuit brightness/texture discrepancy remains open as
   `TITLE-03`.
 - The Qt pre-title audio callback routes `0x16` as FF 12 stop-resource-22 and
-  overlaps resource 92 for the source-timed FF 10 `0x5C` requests across six
-  host voices, matching the distinct ROM-driver FM voice trace. Debug and Release
-  audio QA covers all 60 requests, and WASAPI loopback captures the burst;
-  `BOOT-01` is resolved. Other source audio calls remain open under `global.audio`. The
+  preserves all 60 source-timed FF 10 `0x5C` request records while playing the
+  complete stereo resource 92 once per sequence. The earlier six-full-file
+  player implementation was audibly fragmented and has been superseded. Debug
+  and Release QA cover request coalescing and sequence replay; independent
+  longplay and fresh WASAPI loopback windows match the single cue. `BOOT-01`
+  covers missing/mistimed event placement and `BOOT-06` covers fragmentation.
+  Other source audio calls remain open under `global.audio`. The
   90-second ROM trace found no OPEN-01 within-stage restarts; the Release
   process-loopback capture confirms the Qt stage-2 interval is silent. The
   independent Genesis longplay does not isolate that command. Exact-route
@@ -181,10 +185,10 @@ clarification. None changes the original report's itemization.
 
 ## Goals
 
-### INTRO-01 — SEGA shock and logo reveal (`BOOT-01` through `BOOT-04`)
+### INTRO-01 — SEGA shock and logo reveal (`BOOT-01` through `BOOT-06`)
 
-**Reported:** the shock sound is missing at the logo shock and plays at the
-wrong intro point; the flame decal remains after the logo is fully revealed;
+**Reported:** the shock sound is missing at the logo shock, plays at the wrong
+intro point, and sounds fragmented; the flame decal remains after the logo is fully revealed;
 the chip background should scroll upward but does not; the title circuit must
 stay hidden until the Shadowrun logo has rolled across.
 
@@ -212,8 +216,12 @@ title keeps the circuit black through
 the 38-column logo reveal and uses the typed 0x1C1E palette-step counter; full
 screens at title frames 188 and 189 check the state and pixels. Independent
 section 01 frames 000384 and 000390 support the logo-only-to-circuit order.
-`BOOT-01` is resolved for the missing/mistimed shock effect; the title
-color/texture mismatch stays separate under `TITLE-03`.
+`BOOT-01` is resolved for the missing/mistimed shock effect. `BOOT-06` is
+resolved for the fragmented sound: the runtime now plays the full stereo cue
+once per source sequence, and consecutive independent longplay windows plus
+fresh Release process-loopback support that mapping. Exact source-to-device
+latency remains bounded by the 30-fps recording. The title color/texture
+mismatch stays separate under `TITLE-03`.
 
 ### INTRO-02 — Title loop, Push Start, and title-to-start transition (`TITLE-01`, `TITLE-02`, `TITLE-05`)
 
