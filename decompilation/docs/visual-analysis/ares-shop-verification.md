@@ -104,9 +104,11 @@ the field approach, fade, prompt, category page, and field return; see
   description from `0x1AACE2`; the row carries quantity/price 25. The art uses
   palette line 1 from field palette setup `0xD29D6` plus `0x18AC56`, and its
   name words retain horizontal/vertical flips. The host importer emits a
-  named 24x16 image and Lua text entries. The runtime draws detail art at `(128,32)`,
-  description at `(24,56)`, cost at `(192,112)`, title at `(104,144)`, and the
-  stock icon in the first offer cell. All 12 service titles, 32 fixed-width
+  named 24x16 image and Lua text entries. The runtime draws detail art at
+  `(128,32)`, description at `(24,56)`, and the amount immediately left of the
+  currency glyph embedded in that description (currently `(184,112)` for 25).
+  The title is at `(104,144)`, and the stock icon is in the first offer cell.
+  All 12 service titles, 32 fixed-width
   service headings, and shop transaction strings now live in
   `dialogue/script-text.lua`; `gameplay/scripts/shop.lua` declares their stable
   IDs and associates the Ares title, six category heading
@@ -158,7 +160,9 @@ the field approach, fade, prompt, category page, and field return; see
    input; it does not infer selection from pixels alone.
 3. **Are the visuals correct?** The independent 01:39:45 category and
    01:39:47 Universal Gun Clips frames were compared with `shop-category` and
-   `shop-special-clips/actual.bmp`. The two-line category heading preserves
+   `shop-special-clips/actual.bmp`. The quantity sits immediately before the
+   source currency glyph, so the final `5` no longer overlaps it. The
+   two-line category heading preserves
    its ROM spacing. The E offer's art shape, red/black palette, detail text,
    cost/quantity 25, tab, and item-row icon now match the longplay composition.
    The Stim Patch detail and confirmation captures were compared with
@@ -212,7 +216,8 @@ the field approach, fade, prompt, category page, and field return; see
    route and all 21 shop transaction captures were reopened at 320x224. The
    category page has only its active headings, tabs, offer row, wallet, and
    right HUD; confirmation and feedback states clear old detail text while
-   retaining only the intended item art, row, and HUD. Field return redraws
+   retaining only the intended item art, row, and HUD. The clips quantity and
+   currency glyph occupy adjacent eight-pixel cells. Field return redraws
    the field page and leaves no shop tabs, selector, or text behind. Debug and
    Release captures match by SHA-256; all 14 route captures also match the
    pre-migration hashes.
@@ -264,3 +269,26 @@ longplay frames support the Ares title, category, item, confirmation, and
 updated-funds sequence, but do not supply a second complete menu traversal.
 This is a text-binding/runtime consistency check, not a new Genesis fidelity
 claim.
+
+## Universal Gun Clips price spacing follow-up (2026-10-10)
+
+The independent 30-fps longplay frames at source time 01:39:47 show `25` in
+the two cells immediately left of the currency glyph on the final `Cost per
+Clip` line. The ROM-derived Lua text at `0x1AACE2` carries that glyph in the
+description itself: after drawing the description from `(24,56)`, its final
+line places the marker at `(200,112)`. The previous hard-coded quantity origin
+`(192,112)` put the final digit in the marker cell. The presenter now finds
+that marker in the Lua-fed text, computes its eight-pixel row and column, and
+right-aligns the quantity immediately before it. The amount and marker no
+longer share pixels.
+
+The Debug and Release Ares shop QA was rerun after this change. All 21 current
+full-screen checkpoints were inspected at 320x224, including the introduction,
+category, item focus, clips/patch details, purchase and sale prompts, feedback,
+and field returns. Their Debug/Release BMP hashes match. A leftover
+`shop-sale-quote` BMP dated 2026-10-04 was not produced by the current test and
+was excluded from this review. The independent captures at 01:39:47 and
+01:39:48 show the clips and patch price rows; no periodic shop animation or
+additional sound is associated with this layout-only fix. The shop remains
+partial: unaffordable-feedback duration and the reported category activation
+sequence are still open.

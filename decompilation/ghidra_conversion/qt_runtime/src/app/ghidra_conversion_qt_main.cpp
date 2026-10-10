@@ -19448,7 +19448,11 @@ int main(int argc, char** argv) {
                         QColor(255, 0, 0)) ||
                     !image_has_green_ink(universal_clips, 24, 56, 224, 64) ||
                     !image_has_green_ink(universal_clips, 104, 144, 64, 16) ||
-                    !image_has_green_ink(universal_clips, 192, 112, 32, 16) ||
+                    // The ROM-derived description places the currency glyph
+                    // at x=200; the first quantity digit must begin to its
+                    // left rather than letting the marker cover the final 5.
+                    !image_has_green_ink(universal_clips, 184, 112, 8, 8) ||
+                    !image_has_green_ink(universal_clips, 200, 112, 8, 8) ||
                     !save_scene("shop-special-clips/actual.bmp",
                                 universal_clips)) {
                     std::cerr << "field Ares shop QA: source-specific clips "

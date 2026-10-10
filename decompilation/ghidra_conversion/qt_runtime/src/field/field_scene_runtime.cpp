@@ -7939,21 +7939,43 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                 // description, 1AACCE title, and record quantity for the
                 // Universal Gun Clips row. These are source text/assets, not
                 // a fabricated inventory item-code mapping.
+                const auto& clips_description =
+                    field_menu_text_.field_service_universal_clips_description;
                 painter.drawImage(128, 32,
                                   field_service_universal_clips_icon_);
                 if (!transaction_replaces_detail) {
                     draw_command_overview_text(
-                        painter, 24, 56,
-                        field_menu_text_
-                            .field_service_universal_clips_description);
+                        painter, 24, 56, clips_description);
                 }
                 draw_command_overview_text(
                     painter, 104, 144,
                     field_menu_text_.field_service_universal_clips_title);
                 if (!transaction_replaces_detail) {
-                    draw_command_overview_text(
-                        painter, 192, 112,
-                        std::to_string(selected_offer->quantity));
+                    // The ROM-derived Lua description places its currency
+                    // glyph on the final line. Anchor the amount immediately
+                    // to its left so the last digit cannot overwrite it.
+                    const auto currency_marker = clips_description.rfind('$');
+                    if (currency_marker != std::string::npos) {
+                        const auto line_break =
+                            clips_description.rfind('\n', currency_marker);
+                        const auto line_begin = line_break == std::string::npos
+                            ? 0U
+                            : line_break + 1U;
+                        const auto marker_x = 24 + static_cast<int>(
+                            (currency_marker - line_begin) * 8U);
+                        const auto marker_row = static_cast<int>(
+                            std::count(clips_description.begin(),
+                                       clips_description.begin() +
+                                           static_cast<std::ptrdiff_t>(
+                                               currency_marker),
+                                       '\n'));
+                        const auto amount =
+                            std::to_string(selected_offer->quantity);
+                        const auto amount_x = marker_x -
+                            static_cast<int>(amount.size() * 8U);
+                        draw_command_overview_text(painter, amount_x,
+                                                   56 + marker_row * 8, amount);
+                    }
                 }
             }
             else if (selected_item_code > 0U &&
