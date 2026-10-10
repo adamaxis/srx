@@ -96,12 +96,27 @@ These are routes established by ROM collision records and dispatcher flow.
 Scene numbers are kept numeric when the ROM evidence does not identify a
 place-name or an interior.
 
+### Secondary map-name cross-check (added 2026-10-10)
+
+Mike's RPG Center's [Redmond Barrens map](mikes-rpg-center-shadowrun-reference-notes.md#redmond-rom-coordinate-cross-check-rats-nest-lead)
+provides a useful external label crosswalk. A proportional comparison of its
+480-by-320 map image with the scene-2 trigger coordinates places records 91,
+92, 93, and 97 near Stoker's Motel, Ares, Little Chiba, and Rat's Nest. This
+supports identifying scene 2 as Redmond Barrens, but these names are not
+stored in the ROM. The same guide distinguishes Stoker's Motel (marker 6)
+from Rat's Nest (marker 9). Its Rat's Nest item prerequisite is a clue to
+check against ROM story variables, not a runtime rule by itself. See the
+[full site notes](mikes-rpg-center-shadowrun-reference-notes.md) for the
+external-source inventory and unresolved questions.
+
 | Starting map/record | ROM event and route | Result established by ROM | Current Lua/native connection |
 |---|---|---|---|
 | Scene 2, records 89/90 at `0x173124` / `0x17312E`, raw `0x00C0`, event 0 | Scene 2 event-table row 0 at `0x172CDC` is `0x14` | Selects numeric field scene 20; entry then encounters the scene-20 interaction geometry. No place-name is inferred from the byte. | `building.lua` selects ROM row 0 and `run_world_activity_routine` loads scene 20; physical New Game route reaches record 117. |
 | Scene 2, record 91 at `0x173138`, raw `0x00C2`, event 2 | Story route override, despite table row 2 being `0x1A` | The completed New Game opening leaves `FFE18B` set; after field warmup, the normal movement continuation heads to this collision without controller input. The route opens Stoker arrival dialogue in scene 2. Hotel/karma interactions remain in scene 2; this is not a separate Stoker interior. Later entry phases depend on `FFFC1E` and the typed debt/package story state. | `building.lua` selects the same-map Stoker dialogue route; indexed title service and shared motel/quest scripts resolve arrival, manager offer, debt/payment handoff, and ordinary-motel state. Debug/Release QA connects New Game arrival through payment/handoff and clean return using a 250-nuyen test wallet. Typed story tests cover the unpaid repeat offer and completed-story ordinary motel. Restored-save story state and a physical repeat-entry route remain open. |
 | Scene 2, record 92 at `0x173142`, raw `0x00CB`, event 11 | Service route override, despite table row 11 being `0x33` | Opens the Ares service prompt; A opens the shop. | Connected to field-mode service and shop; physical scene-2 route has QA coverage. |
 | Scene 2, record 93 at `0x17314C`, raw `0x00C1`, event 1 | Scene 2 event-table row 1 at `0x172CDD` is `0x1A` | Selects resource-activity scene 26. The profile bound/cursor and the resource-scene preparation control the following state. | `building.lua` selects ROM row 1 and the world-activity coordinator enters scene 26. The end-to-end terminal path uses explicit QA fixtures for passkey, skill, and PRNG. |
+| Scene 2, record 97 at `0x173174`, raw `0x00C7`, event 7 | Event-table row 7 at `0x172CE3` is `0x1A` | Selects resource-activity scene 26. External map geometry aligns this trigger with Redmond's Rat's Nest marker; the guide says Landmark Map availability depends on prior Harlequin/Gunderson story progress. ROM story conditions, entry dialogue, selected resource, and return route are not yet profiled. | `building.lua` currently performs generic table lookup; no Rat's Nest-specific Lua entry/dialogue/exit hook is connected. |
+| Scene 2, record 96 at `0x17316A`, raw `0x00C7`, event 7 | Event-table row 7 at `0x172CE3` is `0x1A` | Also selects resource-activity scene 26. The external map crosswalk does not identify this second rectangle. | Generic table lookup; physical route and location remain unresolved. |
 | Scene 20, record 117 at `0x1D9724`, raw `0x0082`, event 2 | `field_events.lua` selects the maglock action under the scene/world-mode gate | Electromagnetic-lock prompt. A successful passkey/electronics path changes collision cell 483 from `0x82` to `0x81` after result acknowledgement. | Lua selects the action; `FieldInteractionRuntime` executes it. Several physical branches have Debug/Release route coverage. Story acquisition and exact independent Genesis prompt/result captures remain open. |
 | Scene 26, record 117 at `0x1D9E00`, raw `0x00A2`, event 2; record 110 at `0x1D9DBA`, raw `0x0082`, event 2 | Same conditional electromagnetic-lock continuation | Successful passkey action updates the sampled passage cells (`0xA2 -> 0xA1` and `0x82 -> 0x81`), after which ordinary movement crosses the lanes. | Connected to the shared maglock handling; physical route QA covers both gates with QA-seeded passkey state. |
 | Scene 26, records 124/125 at `0x1D9E46` / `0x1D9E50`, raw `0x00D8`, event `0x18` | Direct `0x20EC2` branch | Security Terminal prompt. Its outcome is a separate world-activity result path, not an elevator and not the scene-2 event-1 destination. | Prompt and joined physical route are connected. Source result handling has focused QA; story item/skill state and independent Genesis result capture remain open. |
