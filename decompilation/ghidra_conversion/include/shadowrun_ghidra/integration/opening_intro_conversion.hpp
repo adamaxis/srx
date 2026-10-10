@@ -268,7 +268,12 @@ struct OpeningIntroCallbacks {
     std::function<void()> clear_wilderness_left_region;
     std::function<void(const OpeningIntroTextRequest&)> render_text;
     std::function<void(std::string_view)> source_boundary;
+    // Read only where the matching ROM child loop checks FFDDC2, not as a
+    // free-running per-frame skip policy.
     std::function<bool()> stop_requested;
+    // ROM 0x59CE4 clears the Start marker after the airport loop before it
+    // always enters the post-intro cab sequence.
+    std::function<void()> clear_stop_request;
 };
 
 struct OpeningIntroState {

@@ -212,6 +212,7 @@ std::filesystem::path find_asset_root(
                    "<title-idle-frames> <output-dir>]"
                    " [--opening-rotor-qa <output-dir>]"
                    " [--opening-landing-qa <output-dir>]"
+                   " [--opening-start-skip-qa <output-dir>]"
                    " [--opening-wilderness-pan-qa <output-dir>]"
                    " [--opening-ambush-flash-qa <output-dir>]"
                    " [--opening-trivid-layer-qa <output-dir>]"
@@ -679,6 +680,31 @@ bool field_hud_chrome_survives(const QImage& scene,
         {QPoint(272, 0), QPoint(300, 0), QPoint(319, 0),
          QPoint(319, 32), QPoint(319, 80), QPoint(319, 160),
          QPoint(272, 223), QPoint(300, 223), QPoint(319, 223)});
+}
+
+bool dialogue_more_delimiters_are_mirrored(const QImage& scene) {
+    if (scene.size() != QSize(kSceneWidth, kSceneHeight)) {
+        return false;
+    }
+    // The source label is "          < MORE >" at (48,159). ROM character
+    // table word 0xC135C reuses the '<' tile with HFlip for the final '>'.
+    constexpr int kLeftDelimiterX = 128;
+    constexpr int kRightDelimiterX = 184;
+    constexpr int kDelimiterY = 159;
+    auto has_ink = false;
+    for (int y = 0; y < 8; ++y) {
+        for (int x = 0; x < 8; ++x) {
+            const auto left = scene.pixelColor(
+                kLeftDelimiterX + x, kDelimiterY + y);
+            const auto right = scene.pixelColor(
+                kRightDelimiterX + (7 - x), kDelimiterY + y);
+            has_ink = has_ink || left != QColor(Qt::black);
+            if (left != right) {
+                return false;
+            }
+        }
+    }
+    return has_ink;
 }
 
 bool field_hud_face_family_survives(const QImage& scene,
@@ -3025,6 +3051,160 @@ public:
         return 0;
     }
 
+    int run_opening_start_skip_qa(
+        const std::filesystem::path& output_directory) {
+        host_frame_timer_.stop();
+        std::filesystem::create_directories(output_directory);
+        if (prepare_opening_dump(0U) != 0) {
+            return 3;
+        }
+
+        // Let the opening advance before checking the input route. The ROM
+        // only latches Start as the skip edge; A must not leave this scene.
+        for (std::uint32_t frame = 0U; frame < 60U; ++frame) {
+            advance_one_source_frame();
+        }
+        QKeyEvent a_press(QEvent::KeyPress, Qt::Key_Z, Qt::NoModifier);
+        keyPressEvent(&a_press);
+        advance_one_source_frame();
+        if (state_.phase != StartupIntegrationPhase::opening_intro) {
+            std::cerr << "opening Start-skip QA: A incorrectly skipped the "
+                         "opening\n";
+            return 3;
+        }
+
+        QKeyEvent start_press(QEvent::KeyPress, Qt::Key_Space,
+                              Qt::NoModifier);
+        const auto boundary_start = presentation_boundaries_.size();
+        keyPressEvent(&start_press);
+        advance_one_source_frame();
+        if (state_.phase != StartupIntegrationPhase::field_ready ||
+            state_.opening_intro.stage != OpeningIntroStage::interrupted ||
+            !state_.new_game_opening_completed ||
+            !field_scene_runtime_.ready() ||
+            !field_scene_runtime_.opening_auto_walk_active_for_dump()) {
+            std::cerr << "opening Start-skip QA: Start did not return to the "
+                         "New Game field setup and arm its Lua event; phase="
+                      << startup_integration_phase_name(state_.phase)
+                      << " field=" << field_scene_runtime_.failure() << '\n';
+            return 3;
+        }
+        const auto start_sample = std::find(
+            presentation_boundaries_.begin() +
+                static_cast<std::ptrdiff_t>(boundary_start),
+            presentation_boundaries_.end(), "opening.sample_controller");
+        const auto start_latch = std::find(
+            presentation_boundaries_.begin() +
+                static_cast<std::ptrdiff_t>(boundary_start),
+            presentation_boundaries_.end(), "opening.latch_controller_events");
+        const auto exit_sample = std::find(
+            presentation_boundaries_.begin() +
+                static_cast<std::ptrdiff_t>(boundary_start),
+            presentation_boundaries_.end(),
+            "0x59CFE.sample_controller_input");
+        if (start_sample == presentation_boundaries_.end() ||
+            start_latch == presentation_boundaries_.end() ||
+            exit_sample == presentation_boundaries_.end() ||
+            !(start_sample < start_latch) || !(start_latch < exit_sample)) {
+            std::cerr << "opening Start-skip QA: source sample/latch/exit "
+                         "order was not preserved\n";
+            return 3;
+        }
+
+        QImage actual(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        actual.fill(Qt::black);
+        QPainter painter(&actual);
+        field_scene_runtime_.paint(painter);
+        painter.end();
+        if (count_playfield_lit(actual) < 100 ||
+            !field_hud_chrome_survives(actual, asset_root_)) {
+            std::cerr << "opening Start-skip QA: field frame is not a clean "
+                         "playable screen\n";
+            return 3;
+        }
+        const auto actual_path = output_directory / "actual.bmp";
+        if (!actual.save(QString::fromStdWString(actual_path.wstring())) ||
+            QImage(QString::fromStdWString(actual_path.wstring())) != actual) {
+            std::cerr << "opening Start-skip QA: field actual.bmp failed "
+                         "round-trip validation\n";
+            return 3;
+        }
+        const auto field_start_position =
+            field_scene_runtime_.field_entity_world_position();
+
+        // A skipped movie must take the same ROM-backed New Game field
+        // handoff as a completed movie: its scene-entry Lua rule walks the
+        // runner into Stoker's first-visit dialogue without controller input.
+        std::uint32_t arrival_frames = 0U;
+        for (; arrival_frames < 256U &&
+               !field_scene_runtime_.dialogue_open(); ++arrival_frames) {
+            field_scene_runtime_.advance_frame();
+        }
+        const auto& arrival = field_scene_runtime_.dialogue_panel();
+        const auto field_arrival_position =
+            field_scene_runtime_.field_entity_world_position();
+        if (!field_scene_runtime_.dialogue_open() ||
+            field_scene_runtime_.opening_auto_walk_active_for_dump() ||
+            (field_start_position.x == field_arrival_position.x &&
+             field_start_position.y == field_arrival_position.y) ||
+            arrival.actor_name != "Stoker" || arrival.option_count != 1U) {
+            std::cerr << "opening Start-skip QA: scripted field entry did not "
+                         "move the runner into Stoker's arrival dialogue\n";
+            return 3;
+        }
+        QImage arrival_image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        arrival_image.fill(Qt::black);
+        QPainter arrival_painter(&arrival_image);
+        field_scene_runtime_.paint(arrival_painter);
+        arrival_painter.end();
+        if (!dialogue_more_delimiters_are_mirrored(arrival_image)) {
+            std::cerr << "opening Start-skip QA: Stoker < MORE > markers "
+                         "do not face outward\n";
+            return 3;
+        }
+        const auto arrival_path = output_directory / "stoker-arrival.bmp";
+        if (!arrival_image.save(
+                QString::fromStdWString(arrival_path.wstring())) ||
+            QImage(QString::fromStdWString(arrival_path.wstring())) !=
+                arrival_image) {
+            std::cerr << "opening Start-skip QA: Stoker arrival BMP failed "
+                         "round-trip validation\n";
+            return 3;
+        }
+        std::ofstream trace(output_directory / "opening-start-skip-qa.tsv");
+        if (!trace) {
+            std::cerr << "opening Start-skip QA: could not write trace\n";
+            return 3;
+        }
+        trace << "result\topening_stage\topening_frame\tfield_scene\t"
+                 "arrival_frames\tstart_x\tstart_y\tarrival_x\tarrival_y\t"
+                 "arrival_speaker\timage\tarrival_image\n"
+              << "start_skipped\t"
+              << opening_intro_stage_name(state_.opening_intro.stage) << '\t'
+              << state_.opening_intro.source_frame << '\t'
+              << field_scene_runtime_.state().field_scene_buffers
+                     .scene_reference
+              << '\t' << arrival_frames << '\t' << field_start_position.x
+              << '\t' << field_start_position.y << '\t'
+              << field_arrival_position.x << '\t'
+              << field_arrival_position.y << '\t' << arrival.actor_name
+              << '\t' << actual_path.string() << '\t' << arrival_path.string()
+              << '\n';
+        trace.close();
+        if (!trace) {
+            std::cerr << "opening Start-skip QA: trace write failed\n";
+            return 3;
+        }
+        std::cout << "opening_start_skip_qa=passed opening_frame="
+                  << state_.opening_intro.source_frame << " scene="
+                  << field_scene_runtime_.state().field_scene_buffers
+                         .scene_reference
+                  << " arrival_frames=" << arrival_frames
+                  << " actual=" << actual_path.string()
+                  << " stoker_arrival=" << arrival_path.string() << '\n';
+        return 0;
+    }
+
     int run_startup_qa(const std::filesystem::path& output_directory) {
         host_frame_timer_.stop();
         std::filesystem::create_directories(output_directory);
@@ -4716,9 +4896,11 @@ protected:
             }
         }
 
-        const auto sample = state_.phase == StartupIntegrationPhase::title_ready
-                                ? sampled_title_byte(event->key())
-                                : sampled_menu_byte(event->key());
+        const auto sample =
+            state_.phase == StartupIntegrationPhase::title_ready ||
+                    state_.phase == StartupIntegrationPhase::opening_intro
+                ? sampled_title_byte(event->key())
+                : sampled_menu_byte(event->key());
         if (sample == 0U) {
             QWidget::keyPressEvent(event);
             return;
@@ -4730,6 +4912,14 @@ protected:
             pending_title_controller_word_ = static_cast<std::uint16_t>(
                 pending_title_controller_word_ |
                 (static_cast<std::uint16_t>(sample) << 8U));
+        } else if (state_.phase == StartupIntegrationPhase::opening_intro) {
+            // During the 0x59C5E movie, the ROM treats Start specially in
+            // 0x0BF2. Keep A/B/C from becoming a second skip command.
+            if (sample == kTitleStartButton) {
+                pending_opening_controller_word_ = static_cast<std::uint16_t>(
+                    pending_opening_controller_word_ |
+                    (static_cast<std::uint16_t>(sample) << 8U));
+            }
         } else if (state_.phase ==
                    StartupIntegrationPhase::start_options_shell) {
             // The ROM does not sample the menu until after the shell's
@@ -5353,9 +5543,20 @@ private:
                 });
         };
         startup_callbacks_.opening_intro.sample_controller = [this] {
+            // Preserve an edge sampled immediately before a child loop until
+            // the ROM's later latch_controller_events pass consumes it.
+            sampled_opening_controller_word_ |=
+                pending_opening_controller_word_;
+            pending_opening_controller_word_ = 0U;
             note_presentation_boundary("opening.sample_controller");
         };
         startup_callbacks_.opening_intro.latch_controller_events = [this] {
+            constexpr auto kStartEventMask = static_cast<std::uint16_t>(
+                static_cast<std::uint16_t>(kTitleStartButton) << 8U);
+            opening_start_event_latched_ =
+                opening_start_event_latched_ ||
+                (sampled_opening_controller_word_ & kStartEventMask) != 0U;
+            sampled_opening_controller_word_ = 0U;
             note_presentation_boundary("opening.latch_controller_events");
         };
         startup_callbacks_.opening_intro.prepare_mode_entry = [this] {
@@ -5499,9 +5700,22 @@ private:
             [this](const std::string_view boundary) {
                 note_presentation_boundary(boundary);
             };
-        startup_callbacks_.opening_intro.stop_requested = [] { return false; };
+        startup_callbacks_.opening_intro.stop_requested = [this] {
+            return opening_start_event_latched_;
+        };
+        startup_callbacks_.opening_intro.clear_stop_request = [this] {
+            opening_start_event_latched_ = false;
+            note_presentation_boundary("opening.clear_intro_stop_marker");
+        };
         startup_callbacks_.phase_changed =
             [this](const StartupIntegrationPhase phase) {
+                if (phase == StartupIntegrationPhase::opening_intro) {
+                    pending_opening_controller_word_ = 0U;
+                    sampled_opening_controller_word_ = 0U;
+                    opening_start_event_latched_ = false;
+                } else if (phase == StartupIntegrationPhase::field_ready) {
+                    opening_start_event_latched_ = false;
+                }
                 setWindowTitle(phase_title(phase));
             };
         startup_callbacks_.field_ready = [this] {
@@ -6635,9 +6849,12 @@ private:
     std::int16_t title_sprite_x_ = 0x98;
     std::uint16_t title_controller_events_ = 0;
     std::uint16_t pending_title_controller_word_ = 0;
+    std::uint16_t pending_opening_controller_word_ = 0;
+    std::uint16_t sampled_opening_controller_word_ = 0;
     std::uint8_t pending_start_options_controller_byte_ = 0;
     std::uint8_t field_controller_nibble_ = 0;
     std::uint8_t field_controller_port_byte_ = 0;
+    bool opening_start_event_latched_ = false;
     std::uint32_t title_vblanks_ = 0;
     std::size_t title_palette_steps_ = 0;
     std::size_t title_exit_palette_steps_ = 0;
@@ -14979,6 +15196,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> full_intro_capture_path;
         std::optional<std::filesystem::path> opening_rotor_qa_path;
         std::optional<std::filesystem::path> opening_landing_qa_path;
+        std::optional<std::filesystem::path> opening_start_skip_qa_path;
         std::optional<std::filesystem::path> opening_wilderness_pan_qa_path;
         std::optional<std::filesystem::path> opening_ambush_flash_qa_path;
         std::optional<std::filesystem::path> opening_death_layer_qa_path;
@@ -15045,6 +15263,7 @@ int main(int argc, char** argv) {
                        "<title-idle-frames> <output-dir>]"
                        " [--opening-rotor-qa <output-dir>]"
                        " [--opening-landing-qa <output-dir>]"
+                       " [--opening-start-skip-qa <output-dir>]"
                        " [--opening-wilderness-pan-qa <output-dir>]"
                        " [--opening-ambush-flash-qa <output-dir>]"
                        " [--opening-death-layer-qa <output-dir>]"
@@ -15442,6 +15661,11 @@ int main(int argc, char** argv) {
             if (std::string(argv[index]) == "--opening-landing-qa" &&
                 index + 1 < argc) {
                 opening_landing_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--opening-start-skip-qa" &&
+                index + 1 < argc) {
+                opening_start_skip_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--opening-wilderness-pan-qa" &&
@@ -26300,6 +26524,10 @@ int main(int argc, char** argv) {
         }
         if (opening_landing_qa_path.has_value()) {
             return window.run_opening_landing_qa(*opening_landing_qa_path);
+        }
+        if (opening_start_skip_qa_path.has_value()) {
+            return window.run_opening_start_skip_qa(
+                *opening_start_skip_qa_path);
         }
         if (opening_wilderness_pan_qa_path.has_value()) {
             return window.run_opening_wilderness_pan_qa(

@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -16,6 +17,8 @@ namespace {
 
 using namespace shadowrun::ghidra_conversion;
 using namespace shadowrun::ghidra_conversion::integration;
+
+constexpr std::uint16_t kControllerStartEventMask = 0x8000U;
 
 struct Observations {
     struct OpeningTextTimelineEntry {
@@ -37,6 +40,9 @@ struct Observations {
     std::vector<StartupIntegrationPhase> phases;
     std::size_t field_ready_count = 0;
     bool new_game_auto_walk_handoff_seen = false;
+    std::uint16_t pending_opening_controller_word = 0U;
+    std::uint16_t sampled_opening_controller_word = 0U;
+    bool opening_start_event_latched = false;
     bool resource_work_area_zeroed = false;
     JoshuaArchetypeChoice initialized_archetype =
         JoshuaArchetypeChoice::samurai;
@@ -267,9 +273,17 @@ StartupIntegrationCallbacks make_callbacks(
         });
     };
     callbacks.opening_intro.sample_controller = [&observations] {
+        observations.sampled_opening_controller_word |=
+            observations.pending_opening_controller_word;
+        observations.pending_opening_controller_word = 0U;
         record(observations, "opening_sample_controller");
     };
     callbacks.opening_intro.latch_controller_events = [&observations] {
+        observations.opening_start_event_latched =
+            observations.opening_start_event_latched ||
+            (observations.sampled_opening_controller_word &
+             kControllerStartEventMask) != 0U;
+        observations.sampled_opening_controller_word = 0U;
         record(observations, "opening_latch_controller_events");
     };
     callbacks.opening_intro.prepare_mode_entry = [&observations] {
@@ -323,7 +337,13 @@ StartupIntegrationCallbacks make_callbacks(
                                                   const std::string_view boundary) {
         observations.callbacks.emplace_back(boundary);
     };
-    callbacks.opening_intro.stop_requested = [] { return false; };
+    callbacks.opening_intro.stop_requested = [&observations] {
+        return observations.opening_start_event_latched;
+    };
+    callbacks.opening_intro.clear_stop_request = [&observations] {
+        observations.opening_start_event_latched = false;
+        record(observations, "opening.clear_intro_stop_marker");
+    };
 
     callbacks.phase_changed = [&observations](const StartupIntegrationPhase phase) {
         observations.phases.push_back(phase);
@@ -1018,6 +1038,221 @@ int main() {
             outline.width != expected[2] || outline.height != expected[3]) {
             return 24;
         }
+    }
+
+    // ROM 0x0BF2 turns the latched Start edge into DD C2. The opening checks
+    // that flag after its source stage returns, then follows 0x59CFE back to
+    // the caller's ordinary field setup. Other buttons must leave the movie
+    // running.
+    auto skipped_state = std::make_unique<StartupIntegrationState>();
+    auto skipped_observations = std::make_unique<Observations>();
+    const auto skipped_callbacks =
+        make_callbacks(*skipped_state, *skipped_observations);
+    if (start_startup_integration(
+            asset_root, *skipped_state, skipped_callbacks) !=
+            StartupIntegrationStartResult::title_ready ||
+        enter_start_options_integration(*skipped_state, skipped_callbacks) !=
+            StartupIntegrationEvent::entered_start_options ||
+        advance_startup_integration(
+            *skipped_state, kStartupMenuA, skipped_callbacks) !=
+            StartupIntegrationEvent::entered_joshua_archetype ||
+        advance_startup_integration(
+            *skipped_state, kStartupMenuA, skipped_callbacks) !=
+            StartupIntegrationEvent::opening_started ||
+        skipped_state->phase != StartupIntegrationPhase::opening_intro) {
+        return 31;
+    }
+    for (std::size_t frame = 0U; frame < 60U; ++frame) {
+        if (advance_startup_integration(
+                *skipped_state, 0U, skipped_callbacks) !=
+            StartupIntegrationEvent::opening_frame_advanced) {
+            return 32;
+        }
+    }
+    skipped_observations->pending_opening_controller_word = 0x4000U;
+    if (advance_startup_integration(
+            *skipped_state, 0U, skipped_callbacks) !=
+            StartupIntegrationEvent::opening_frame_advanced ||
+        skipped_state->phase != StartupIntegrationPhase::opening_intro ||
+        skipped_observations->opening_start_event_latched) {
+        return 33;
+    }
+    const auto callback_count_before_start =
+        skipped_observations->callbacks.size();
+    skipped_observations->pending_opening_controller_word =
+        kControllerStartEventMask;
+    if (advance_startup_integration(
+            *skipped_state, 0U, skipped_callbacks) !=
+            StartupIntegrationEvent::field_ready ||
+        skipped_state->phase != StartupIntegrationPhase::field_ready ||
+        skipped_state->opening_intro.stage != OpeningIntroStage::interrupted ||
+        !skipped_state->new_game_opening_completed ||
+        !skipped_observations->new_game_auto_walk_handoff_seen ||
+        skipped_observations->field_ready_count != 1U ||
+        !has_event(*skipped_state, "opening_intro.skipped_by_start") ||
+        !has_event(*skipped_state, "phase.field_ready")) {
+        return 34;
+    }
+    if (count_callback(*skipped_observations,
+                       "opening_enter_post_intro_mode") != 0U) {
+        return 35;
+    }
+    const auto cleanup_begin = skipped_observations->callbacks.begin() +
+                               static_cast<std::ptrdiff_t>(
+                                   callback_count_before_start);
+    const std::vector<std::string> cleanup_callbacks(
+        cleanup_begin, skipped_observations->callbacks.end());
+    const auto sample = std::find(cleanup_callbacks.begin(),
+                                  cleanup_callbacks.end(),
+                                  "opening_sample_controller");
+    const auto fade = std::find(cleanup_callbacks.begin(),
+                                cleanup_callbacks.end(),
+                                "opening_fade_palette_to_black");
+    const auto prepare = std::find(cleanup_callbacks.begin(),
+                                   cleanup_callbacks.end(),
+                                   "opening_prepare_mode_entry");
+    if (sample == cleanup_callbacks.end() || fade == cleanup_callbacks.end() ||
+        prepare == cleanup_callbacks.end() || !(sample < fade) ||
+        !(fade < prepare)) {
+        return 36;
+    }
+
+    // ROM 0x59D7C's first do-while returns to its second do-while after a
+    // Start edge; the second loop renders one pass before 0x59C5E exits.
+    auto stage2_state = std::make_unique<StartupIntegrationState>();
+    auto stage2_observations = std::make_unique<Observations>();
+    const auto stage2_callbacks =
+        make_callbacks(*stage2_state, *stage2_observations);
+    if (start_startup_integration(
+            asset_root, *stage2_state, stage2_callbacks) !=
+            StartupIntegrationStartResult::title_ready ||
+        enter_start_options_integration(*stage2_state, stage2_callbacks) !=
+            StartupIntegrationEvent::entered_start_options ||
+        advance_startup_integration(
+            *stage2_state, kStartupMenuA, stage2_callbacks) !=
+            StartupIntegrationEvent::entered_joshua_archetype ||
+        advance_startup_integration(
+            *stage2_state, kStartupMenuA, stage2_callbacks) !=
+            StartupIntegrationEvent::opening_started) {
+        return 37;
+    }
+    stage2_state->opening_intro.stage = OpeningIntroStage::stage2_first_loop;
+    stage2_observations->pending_opening_controller_word =
+        kControllerStartEventMask;
+    if (advance_startup_integration(
+            *stage2_state, 0U, stage2_callbacks) !=
+            StartupIntegrationEvent::opening_frame_advanced ||
+        stage2_state->opening_intro.stage !=
+            OpeningIntroStage::stage2_second_loop ||
+        !stage2_observations->opening_start_event_latched) {
+        return 38;
+    }
+    if (advance_startup_integration(
+            *stage2_state, 0U, stage2_callbacks) !=
+            StartupIntegrationEvent::field_ready ||
+        stage2_state->opening_intro.stage != OpeningIntroStage::interrupted ||
+        !has_event(*stage2_state, "opening_intro.skipped_by_start")) {
+        return 39;
+    }
+
+    // Palette transitions do not latch Start. It remains pending until the
+    // first child loop that samples and checks controller events.
+    auto fade_state = std::make_unique<StartupIntegrationState>();
+    auto fade_observations = std::make_unique<Observations>();
+    const auto fade_callbacks = make_callbacks(*fade_state, *fade_observations);
+    if (start_startup_integration(asset_root, *fade_state, fade_callbacks) !=
+            StartupIntegrationStartResult::title_ready ||
+        enter_start_options_integration(*fade_state, fade_callbacks) !=
+            StartupIntegrationEvent::entered_start_options ||
+        advance_startup_integration(
+            *fade_state, kStartupMenuA, fade_callbacks) !=
+            StartupIntegrationEvent::entered_joshua_archetype ||
+        advance_startup_integration(
+            *fade_state, kStartupMenuA, fade_callbacks) !=
+            StartupIntegrationEvent::opening_started) {
+        return 40;
+    }
+    fade_state->opening_intro.stage =
+        OpeningIntroStage::stage2_palette_fade_in;
+    fade_observations->pending_opening_controller_word =
+        kControllerStartEventMask;
+    while (fade_state->opening_intro.stage ==
+           OpeningIntroStage::stage2_palette_fade_in) {
+        if (advance_startup_integration(
+                *fade_state, 0U, fade_callbacks) !=
+                StartupIntegrationEvent::opening_frame_advanced ||
+            fade_observations->opening_start_event_latched ||
+            fade_observations->pending_opening_controller_word !=
+                kControllerStartEventMask) {
+            return 41;
+        }
+    }
+    if (fade_state->opening_intro.stage != OpeningIntroStage::stage2_first_loop ||
+        advance_startup_integration(
+            *fade_state, 0U, fade_callbacks) !=
+            StartupIntegrationEvent::opening_frame_advanced ||
+        fade_state->opening_intro.stage !=
+            OpeningIntroStage::stage2_second_loop ||
+        !fade_observations->opening_start_event_latched ||
+        advance_startup_integration(
+            *fade_state, 0U, fade_callbacks) !=
+            StartupIntegrationEvent::field_ready ||
+        !has_event(*fade_state, "opening_intro.skipped_by_start")) {
+        return 42;
+    }
+
+    // Unlike the earlier stages, 0x59C5E clears the airport loop's marker and
+    // always enters the cab route. The New Game flow completes that route
+    // unless a new Start edge arrives in the post-intro mode itself.
+    auto airport_state = std::make_unique<StartupIntegrationState>();
+    auto airport_observations = std::make_unique<Observations>();
+    const auto airport_callbacks =
+        make_callbacks(*airport_state, *airport_observations);
+    if (start_startup_integration(
+            asset_root, *airport_state, airport_callbacks) !=
+            StartupIntegrationStartResult::title_ready ||
+        enter_start_options_integration(*airport_state, airport_callbacks) !=
+            StartupIntegrationEvent::entered_start_options ||
+        advance_startup_integration(
+            *airport_state, kStartupMenuA, airport_callbacks) !=
+            StartupIntegrationEvent::entered_joshua_archetype ||
+        advance_startup_integration(
+            *airport_state, kStartupMenuA, airport_callbacks) !=
+            StartupIntegrationEvent::opening_started) {
+        return 43;
+    }
+    airport_state->opening_intro.stage = OpeningIntroStage::stage_loop;
+    airport_observations->pending_opening_controller_word =
+        kControllerStartEventMask;
+    if (advance_startup_integration(
+            *airport_state, 0U, airport_callbacks) !=
+            StartupIntegrationEvent::opening_frame_advanced ||
+        airport_state->phase != StartupIntegrationPhase::opening_intro ||
+        airport_state->opening_intro.stage != OpeningIntroStage::post_intro ||
+        airport_observations->opening_start_event_latched ||
+        airport_observations->field_ready_count != 0U ||
+        count_callback(*airport_observations,
+                       "opening_enter_post_intro_mode") != 1U) {
+        return 44;
+    }
+    bool airport_route_completed = false;
+    for (std::size_t frame = 0U;
+         frame < kPostIntroCabTotalFrames + 2U; ++frame) {
+        const auto event = advance_startup_integration(
+            *airport_state, 0U, airport_callbacks);
+        if (event == StartupIntegrationEvent::field_ready) {
+            airport_route_completed =
+                airport_state->opening_intro.stage == OpeningIntroStage::complete &&
+                has_event(*airport_state, "opening_intro.complete") &&
+                !has_event(*airport_state, "opening_intro.skipped_by_start");
+            break;
+        }
+        if (event != StartupIntegrationEvent::opening_frame_advanced) {
+            return 45;
+        }
+    }
+    if (!airport_route_completed) {
+        return 46;
     }
 
     return 0;

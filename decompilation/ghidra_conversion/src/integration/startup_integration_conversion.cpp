@@ -268,14 +268,20 @@ StartupIntegrationEvent advance_startup_opening_frame(
 
     const auto result = advance_opening_intro_frame(
         state.opening_intro, callbacks.opening_intro);
-    if (result == OpeningIntroAdvanceResult::callback_unresolved ||
-        result == OpeningIntroAdvanceResult::interrupted) {
+    if (result == OpeningIntroAdvanceResult::callback_unresolved) {
         append_event(state, "opening_intro.unresolved");
         set_phase(state, callbacks, StartupIntegrationPhase::failed);
         return StartupIntegrationEvent::callback_unresolved;
     }
-    if (result == OpeningIntroAdvanceResult::source_complete) {
-        append_event(state, "opening_intro.complete");
+    if (result == OpeningIntroAdvanceResult::interrupted ||
+        result == OpeningIntroAdvanceResult::source_complete) {
+        const bool skipped =
+            result == OpeningIntroAdvanceResult::interrupted;
+        append_event(state, skipped ? "opening_intro.skipped_by_start"
+                                    : "opening_intro.complete");
+        // The ROM sets its initial-New-Game activity marker on entry to
+        // 0x59C5E, before the optional Start exit. Both completion paths then
+        // return to the same field setup at 0x07F0.
         state.new_game_opening_completed = true;
         set_phase(state, callbacks, StartupIntegrationPhase::field_ready);
         if (callbacks.field_ready) {

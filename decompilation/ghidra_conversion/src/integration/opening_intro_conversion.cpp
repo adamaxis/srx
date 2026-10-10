@@ -1159,6 +1159,32 @@ void begin_post_intro(OpeningIntroState& state,
     source_boundary(callbacks, "0x13726.render_mode_selection");
 }
 
+OpeningIntroAdvanceResult finish_opening_start_exit(
+    OpeningIntroState& state, const OpeningIntroCallbacks& callbacks) {
+    // ROM 0x59CFE is reached only when 0x59C5E observes Start after one of its
+    // interruptible child loops, or when the post-intro mode returns.
+    invoke(callbacks.sample_controller);
+    source_boundary(callbacks, "0x59CFE.sample_controller_input");
+    invoke(callbacks.fade_palette_to_black);
+    source_boundary(callbacks, "0x59CFE.step_palette_transition");
+    invoke(callbacks.prepare_mode_entry);
+    source_boundary(callbacks, "0x59CFE.prepare_mode_entry");
+    set_stage(state, callbacks, OpeningIntroStage::interrupted);
+    return OpeningIntroAdvanceResult::interrupted;
+}
+
+void finish_airport_stage(OpeningIntroState& state,
+                          const OpeningIntroCallbacks& callbacks) {
+    // 0x59C5E deliberately clears the airport loop's stop marker and always
+    // enters the post-intro mode. Start can interrupt that later mode itself.
+    invoke(callbacks.clear_stop_request);
+    source_boundary(callbacks, "0x59CE4.clear_intro_stop_marker");
+    invoke(callbacks.fade_palette_to_black);
+    source_boundary(callbacks, "0x59CEA.step_palette_transition");
+    source_boundary(callbacks, "0x59CF0.publish_post_intro_mode");
+    begin_post_intro(state, callbacks);
+}
+
 } // namespace
 
 OpeningIntroStartResult begin_opening_intro(
@@ -1216,11 +1242,6 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
         return OpeningIntroAdvanceResult::interrupted;
     }
     const auto& plan = opening_intro_source_plan();
-    if (callbacks.stop_requested && callbacks.stop_requested()) {
-        set_stage(state, callbacks, OpeningIntroStage::interrupted);
-        return OpeningIntroAdvanceResult::interrupted;
-    }
-
     switch (state.stage) {
     case OpeningIntroStage::schedule: {
         begin_source_frame(state, callbacks);
@@ -1240,6 +1261,11 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
             state.seattle_outline_frame < kSeattleOutlineAnimationFrames) {
             ++state.seattle_outline_frame;
         }
+        // 0x5AF62 samples and checks Start once per schedule pass. The caller
+        // 0x59C5E then exits before entering stage 2.
+        if (callbacks.stop_requested && callbacks.stop_requested()) {
+            return finish_opening_start_exit(state, callbacks);
+        }
         if (schedule_complete &&
             state.seattle_outline_frame >= kSeattleOutlineAnimationFrames) {
             begin_stage2(state, callbacks);
@@ -1249,7 +1275,7 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
 
     case OpeningIntroStage::stage2_palette_fade_out:
         begin_source_frame(state, callbacks);
-        sample_and_latch(callbacks);
+        // 0x12F6 advances palette frames without sampling or latching input.
         if (advance_scene_palette_fade(state, true)) {
             install_stage2_scene(state, plan, callbacks);
         }
@@ -1257,7 +1283,7 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
 
     case OpeningIntroStage::stage2_palette_fade_in:
         begin_source_frame(state, callbacks);
-        sample_and_latch(callbacks);
+        // The stage-2 reveal finishes before its VBlank input loop begins.
         emit_sprite(callbacks,
                     opening_intro_sprite_handle(
                         OpeningIntroSpriteFamily::ambush_actor, 0),
@@ -1273,7 +1299,11 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
         begin_source_frame(state, callbacks);
         sample_and_latch(callbacks);
         advance_stage2_scene_frame(state, plan, callbacks);
-        if (state.stage2_first_loop_frame++ >= 0x00A0U) {
+        if ((callbacks.stop_requested && callbacks.stop_requested()) ||
+            state.stage2_first_loop_frame++ >= 0x00A0U) {
+            // The source's first do-while exits on Start, but still initializes
+            // and enters its second do-while, whose body runs once before the
+            // shared stop marker is checked again.
             reset_stage2_animation(state, callbacks);
             callbacks.sample_controller();
             state.stage2_second_loop_frame = 0;
@@ -1348,6 +1378,11 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
             kTitleIntroStage2StoryTextElapsedFrameIndex) {
             render_stage2_story_text(callbacks);
         }
+        // 0x59D7C checks its marker after the second loop body, then returns
+        // to 0x59C5E which takes the shared exit at 0x59CFE.
+        if (callbacks.stop_requested && callbacks.stop_requested()) {
+            return finish_opening_start_exit(state, callbacks);
+        }
         if (state.stage2_second_loop_frame++ >= 0x01F0U) {
             begin_orchestrator(state, callbacks);
         }
@@ -1355,7 +1390,7 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
 
     case OpeningIntroStage::orchestrator_palette_fade_out:
         begin_source_frame(state, callbacks);
-        sample_and_latch(callbacks);
+        // Resource preparation and the palette transition do not latch input.
         if (advance_scene_palette_fade(state, true)) {
             install_orchestrator(state, plan, callbacks);
         }
@@ -1363,7 +1398,7 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
 
     case OpeningIntroStage::orchestrator_palette_fade_in:
         begin_source_frame(state, callbacks);
-        sample_and_latch(callbacks);
+        // 0x5AA96 samples before the loop, then latches only inside its loop.
         if (advance_scene_palette_fade(state, false)) {
             callbacks.sample_controller();
             state.orchestrator_loop_frame = 0;
@@ -1373,6 +1408,9 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
 
     case OpeningIntroStage::orchestrator_loop:
         advance_orchestrator_frame(state, plan, callbacks);
+        if (callbacks.stop_requested && callbacks.stop_requested()) {
+            return finish_opening_start_exit(state, callbacks);
+        }
         if (state.orchestrator_loop_frame++ >= 0x0114U) {
             begin_stage_loop(state, callbacks);
         }
@@ -1380,7 +1418,7 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
 
     case OpeningIntroStage::stage_loop_palette_fade_out:
         begin_source_frame(state, callbacks);
-        sample_and_latch(callbacks);
+        // The airport resource transition runs before its input loop.
         if (advance_scene_palette_fade(state, true)) {
             install_stage_loop(state, plan, callbacks);
         }
@@ -1388,17 +1426,19 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
 
     case OpeningIntroStage::stage_loop:
         advance_stage_loop_frame(state, plan, callbacks);
-        if (state.stage_loop_frame++ >= kTitleIntroStageLoopLastFrame) {
-            source_boundary(callbacks, "0x59CDE.clear_intro_stop_marker");
-            invoke(callbacks.fade_palette_to_black);
-            source_boundary(callbacks, "0x59CF0.publish_post_intro_mode");
-            begin_post_intro(state, callbacks);
+        if ((callbacks.stop_requested && callbacks.stop_requested()) ||
+            state.stage_loop_frame++ >= kTitleIntroStageLoopLastFrame) {
+            finish_airport_stage(state, callbacks);
         }
         return OpeningIntroAdvanceResult::frame_advanced;
 
     case OpeningIntroStage::post_intro:
         begin_source_frame(state, callbacks);
         sample_and_latch(callbacks);
+        // 0x134D2 checks Start at the end of each mode-selection frame.
+        if (callbacks.stop_requested && callbacks.stop_requested()) {
+            return finish_opening_start_exit(state, callbacks);
+        }
         ++state.post_intro_frame;
         if (state.post_intro_frame >= kPostIntroCabTotalFrames) {
             callbacks.sample_controller();

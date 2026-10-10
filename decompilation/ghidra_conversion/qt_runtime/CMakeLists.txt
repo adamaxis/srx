@@ -120,6 +120,17 @@ add_test(NAME shadowrun_ghidra_conversion_qt_opening_landing_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_opening_landing_qa PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# The source Start edge is sampled and latched during the opening sequence,
+# then returns through the New Game field setup without running A/B as skips.
+add_test(NAME shadowrun_ghidra_conversion_qt_opening_start_skip_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --opening-start-skip-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/opening-start-skip-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_opening_start_skip_qa PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # During 0x59D7C the wilderness body layers pan with FFDD08/FFDD0A while the
 # Indian's head SAT advances with DD46/DD48. Verify their relative placement
 # and capture complete start/midpoint/settled screens from the Gator Shaman
