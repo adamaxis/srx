@@ -111,7 +111,7 @@ external-source inventory and unresolved questions.
 
 | Starting map/record | ROM event and route | Result established by ROM | Current Lua/native connection |
 |---|---|---|---|
-| Scene 1, record 67 at `0x17D9A2`, raw `0x00C7`, event 7 | Event-table row 7 at `0x17D620` is `0x0D`; indexed title service 21 at `0x5447E` runs before generic route selection | Source text in service 21 explicitly names the Tarislar Garden Apartments. It requires field mode 1/event 7 and alternate result 0. `FFFC1E` bit 30 selects the Harlequin-authorized entry; when clear, the source uses the armed-guard warning dialogue. With bit 30 set and bit 21 clear, it sets bit 21, adjusts each of three actor phase counters by 2, shows the first-entry text, then uses `FFF0CC` to decide whether `FFE186` is set. Main-loop code consumes that marker before `0x167AE` reads row 7 and selects field scene 13. Action 44 at `0x21FD0` is a producer of bit 30 and loads profile `0x121F4C` alongside text beginning “You are taken to Frosty”; this associates the profile with Frosty in context, while the upstream choice route remains unconnected. | Not connected in `building.lua` or the live indexed-title service. The trigger record and site crosswalk are source-profiled only; no physical-input QA or `actual.bmp` exists. See [the Tarislar route audit](visual-audits/puyallup-tarislar-apartments.md). |
+| Scene 1, record 67 at `0x17D9A2`, raw `0x00C7`, event 7 | Event-table row 7 at `0x17D620` defaults to `0x0D`; indexed title service 21 at `0x5447E` runs before generic route selection | The service handles field mode 1/event 7. `FFF0D5` selects one of two package-text paths; it does not gate the service. With it clear, `FFFC1E` bit 30 and bit 21 select the guarded, first-entry, or repeat passage. First entry sets bit 21 and adds 2 to three actor phase counters. A nonzero `FFF0CC` result sets `FFE186=1`; the main loop changes it to 2 before selector `0x167AE`, so the marker alone selects scene 55. If pending `FFE162` descriptors exist, the selector publishes them and instead selects scene 15. Scene 55 then starts routine `0x20938`, whose text graph begins with the Tomb of Ellisia antechamber. The `FFE162` value's producer/lifetime for this event is unresolved, so the actual Tarislar handoff is not established. Dispatcher index `0x44` reaches `0x21FD0`, which sets bit 30 and loads profile `0x121F4C` alongside text beginning “You are taken to Frosty”; the upstream choice route remains unconnected. | Not connected in `building.lua` or the live indexed-title service. The trigger record and site crosswalk are source-profiled only; no physical-input QA or `actual.bmp` exists. See [the Tarislar route audit](visual-audits/puyallup-tarislar-apartments.md). |
 | Scene 2, records 89/90 at `0x173124` / `0x17312E`, raw `0x00C0`, event 0 | Scene 2 event-table row 0 at `0x172CDC` is `0x14` | Selects numeric field scene 20; entry then encounters the scene-20 interaction geometry. No place-name is inferred from the byte. | `building.lua` selects ROM row 0 and `run_world_activity_routine` loads scene 20; physical New Game route reaches record 117. |
 | Scene 2, record 91 at `0x173138`, raw `0x00C2`, event 2 | Story route override, despite table row 2 being `0x1A` | The completed New Game opening leaves `FFE18B` set; after field warmup, the normal movement continuation heads to this collision without controller input. The route opens Stoker arrival dialogue in scene 2. Hotel/karma interactions remain in scene 2; this is not a separate Stoker interior. Later entry phases depend on `FFFC1E` and the typed debt/package story state. | `building.lua` selects the same-map Stoker dialogue route; indexed title service and shared motel/quest scripts resolve arrival, manager offer, debt/payment handoff, and ordinary-motel state. Debug/Release QA connects New Game arrival through payment/handoff and clean return using a 250-nuyen test wallet. Typed story tests cover the unpaid repeat offer and completed-story ordinary motel. Restored-save story state and a physical repeat-entry route remain open. |
 | Scene 2, record 92 at `0x173142`, raw `0x00CB`, event 11 | Service route override, despite table row 11 being `0x33` | Opens the Ares service prompt; A opens the shop. | Connected to field-mode service and shop; physical scene-2 route has QA coverage. |
@@ -142,14 +142,16 @@ The source path is:
    collision `0x00C7` publishes event 7. Event-table row 7 at `0x17D620`
    contains destination scene `0x0D`.
 2. The indexed service loop `0x53A78` calls entry 21, `0x5447E`, before the
-   generic event-table route. That service accepts only field mode 1/event 7
-   with `FFF0D5 == 0`.
-3. `FFFC1E` bit 30 is set by dispatcher action 44, handler `0x21FD0`. That
+   generic event-table route. That service matches field mode 1/event 7.
+   `FFF0D5` selects an alternate text chain; it does not gate the service.
+3. `FFFC1E` bit 30 is set by dispatcher index `0x44`, handler `0x21FD0`. That
    action loads profile `0x121F4C` and the text chain beginning at `0xF57F8`.
    The first text says “You are taken to Frosty”; this associates the profile
    with Frosty in context, though the extracted profile has no name label. The
    complete Frosty choice graph and its live action-44 route are not connected.
-4. With bit 30 clear, service 21 selects the armed-guard copy beginning at
+4. `FFF0D5` is not a gate: when nonzero the service chooses a separate text
+   path at `0x15FF20` or `0x15FF28` based on its sign. When it is zero and bit
+   30 is clear, service 21 selects the armed-guard copy beginning at
    `0xFBCC7`, followed by the challenge at `0xFBD5A` and leave narration at
    `0xFBD94`. With bit 30 set and bit 21 clear, it sets bit 21 through
    `0x2196C`, adds 2 to each of the three `FF018D`/`FF028D`/`FF038D` phase
@@ -157,17 +159,27 @@ The source path is:
    `0xFBE12`.
 5. After the shared prompt runner `0x1F246`, the service tests `FFF0CC`.
    A nonzero marker sets `FFE186=1` and leaves `D6=0`; otherwise it sets
-   `D6=-1`. The field loop consumes marker 1 at `0x097C`, then the generic
-   selector `0x167AE` loads the map's event-table result. Thus scene 13 is the
-   ROM-selected next field scene after the authorized first-entry prompt.
+   `D6=-1`. In the main loop at `0x097C`, any nonzero `FFE186` is changed to
+   `2` before `0x167AE` runs. The selector first reads event-table row 7
+   (scene 13), then chooses scene 55 for this normalized marker. If `FFE162`
+   contains a pending descriptor list, `0x16A26` publishes it and the selector
+   instead chooses scene 15, whose field-mode branch also tests `FFFC1E` bit
+   29. Without the marker override, scene 13 is subject to the selector's bit
+   19 gate. When scene 55 is selected, the main loop queues
+   routine `0x20938`; its graph begins at `0x0FDD1A` and its first text at
+   `0x0FD2FE` describes entering the antechamber to find a humanoid digging in
+   the dirt ahead, followed by the Tomb of Ellisia confrontation. That clashes
+   with the Tarislar entry passage. The event-specific `FFE162` producer and
+   actual handoff are unresolved; do not implement either destination as the
+   established Tarislar route.
 
 No screenshot-based scene-name claim should be made from the extracted map
-alone. Scene 1's imported map is 1600x1504; scene 13's is 320x224. The site
-map image has not yet been aligned to scene 1's coordinates, and neither the
-entry dialogue nor the scene-13 handoff has physical Qt QA. Keep the route
-source-profiled but unimplemented until the text/action state, actor phase
-counters, full-screen replacement, and post-dialogue transition are connected
-and captured.
+alone. The site map image has not yet been aligned to scene 1's coordinates,
+and the entry dialogue has no physical Qt QA. Keep the route source-profiled
+but unimplemented until the event-specific `FFE162` state and destination are
+resolved, the text/action state and actor phase counters are connected, the
+scene handoff/completion/return are traced, and full-screen replacement and
+clean redraw are captured.
 
 ### Reported Little Chiba / Redmond elevator transition
 

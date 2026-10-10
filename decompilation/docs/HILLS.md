@@ -23,6 +23,16 @@ Stoker exit defect is fixed, while general stuck-obstacle paths and independent
 Genesis controller evidence remain open. See
 [`visual-audits/field-movement-animation.md`](visual-audits/field-movement-animation.md).
 
+Puyallup's Tarislar Garden Apartments route is source-profiled but not
+connected. Scene 1 record 67/event 7 defaults to scene 13. Indexed title
+service 21 can set an activity marker; the main loop normalizes it to scene 55,
+unless a pending descriptor list overrides the destination to scene 15. Scene
+55 immediately starts the ROM's Tomb of Ellisia dialogue chain, which conflicts
+with the Tarislar entry text. The descriptor-list producer/lifetime on this
+route, Frosty authorization path, repeat dialogue, and intended handoff remain
+open. See the
+[`Tarislar route audit`](visual-audits/puyallup-tarislar-apartments.md).
+
 The user-reported intro, field, HUD, menu, inventory, and sound defects are
 tracked as independent goals in
 [`visual-defect-goals.md`](visual-defect-goals.md). Reported status and
