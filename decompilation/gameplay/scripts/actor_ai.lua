@@ -38,32 +38,52 @@ local fixed_long_mask = 0xffffffff
 local fixed_integer_shift = 16
 local fixed_fraction_scale = 0x100
 
+-- Semantic names for the source-template facts consumed by actor packages.
+-- Numeric values remain here as data; package definitions use game concepts.
+local EntityKind = {
+    field_runner = 3,
+    corp_guard = 5,
+    pedestrian = 11,
+}
+local ActionKind = {
+    none = "none",
+    item = "item",
+    spell = "spell",
+}
+local ItemAction = {
+    max_power_heavy_pistol = 6,
+}
+local ActorEntryCue = {
+    corp_guard = 0x2e,
+    pedestrian = 0x2f,
+}
+
 local profiles = {
     ["corp_guard_k05_item06"] = {
         package_id = "corp_security.max_power_heavy_pistol",
-        entity_kind = 5,
-        action_kind = "item",
-        action_code = 6,
-        weapon_item_id = 6,
-        entry_audio_event = 0x2e,
+        entity_kind = EntityKind.corp_guard,
+        action_kind = ActionKind.item,
+        action_code = ItemAction.max_power_heavy_pistol,
+        weapon_item_id = ItemAction.max_power_heavy_pistol,
+        entry_audio_event = ActorEntryCue.corp_guard,
     },
     ["pedestrian_k0b_none00"] = {
         package_id = "pedestrian.no_active_action",
-        entity_kind = 11,
-        action_kind = "none",
+        entity_kind = EntityKind.pedestrian,
+        action_kind = ActionKind.none,
         action_code = 0,
-        entry_audio_event = 0x2f,
+        entry_audio_event = ActorEntryCue.pedestrian,
     },
     ["field_runner_k03_none00"] = {
         package_id = "runner.field_controlled",
-        entity_kind = 3,
-        action_kind = "none",
+        entity_kind = EntityKind.field_runner,
+        action_kind = ActionKind.none,
         action_code = 0,
         controls_movement = true,
     },
     ["weapon_projectile"] = {
         package_id = "combat.weapon_projectile",
-        action_kind = "none",
+        action_kind = ActionKind.none,
         action_code = 0,
         projectile_animation = true,
     },
