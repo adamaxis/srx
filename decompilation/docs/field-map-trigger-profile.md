@@ -111,6 +111,7 @@ external-source inventory and unresolved questions.
 
 | Starting map/record | ROM event and route | Result established by ROM | Current Lua/native connection |
 |---|---|---|---|
+| Scene 1, record 67 at `0x17D9A2`, raw `0x00C7`, event 7 | Event-table row 7 at `0x17D620` is `0x0D`; indexed title service 21 at `0x5447E` runs before generic route selection | Source text in service 21 explicitly names the Tarislar Garden Apartments. It requires field mode 1/event 7 and alternate result 0. `FFFC1E` bit 30 selects the Harlequin-authorized entry; when clear, the source uses the armed-guard warning dialogue. With bit 30 set and bit 21 clear, it sets bit 21, adjusts each of three actor phase counters by 2, shows the first-entry text, then uses `FFF0CC` to decide whether `FFE186` is set. Main-loop code consumes that marker before `0x167AE` reads row 7 and selects field scene 13. Action 44 at `0x21FD0` is a producer of bit 30 and loads profile `0x121F4C` alongside text beginning “You are taken to Frosty”; this associates the profile with Frosty in context, while the upstream choice route remains unconnected. | Not connected in `building.lua` or the live indexed-title service. The trigger record and site crosswalk are source-profiled only; no physical-input QA or `actual.bmp` exists. See [the Tarislar route audit](visual-audits/puyallup-tarislar-apartments.md). |
 | Scene 2, records 89/90 at `0x173124` / `0x17312E`, raw `0x00C0`, event 0 | Scene 2 event-table row 0 at `0x172CDC` is `0x14` | Selects numeric field scene 20; entry then encounters the scene-20 interaction geometry. No place-name is inferred from the byte. | `building.lua` selects ROM row 0 and `run_world_activity_routine` loads scene 20; physical New Game route reaches record 117. |
 | Scene 2, record 91 at `0x173138`, raw `0x00C2`, event 2 | Story route override, despite table row 2 being `0x1A` | The completed New Game opening leaves `FFE18B` set; after field warmup, the normal movement continuation heads to this collision without controller input. The route opens Stoker arrival dialogue in scene 2. Hotel/karma interactions remain in scene 2; this is not a separate Stoker interior. Later entry phases depend on `FFFC1E` and the typed debt/package story state. | `building.lua` selects the same-map Stoker dialogue route; indexed title service and shared motel/quest scripts resolve arrival, manager offer, debt/payment handoff, and ordinary-motel state. Debug/Release QA connects New Game arrival through payment/handoff and clean return using a 250-nuyen test wallet. Typed story tests cover the unpaid repeat offer and completed-story ordinary motel. Restored-save story state and a physical repeat-entry route remain open. |
 | Scene 2, record 92 at `0x173142`, raw `0x00CB`, event 11 | Service route override, despite table row 11 being `0x33` | Opens the Ares service prompt; A opens the shop. | Connected to field-mode service and shop; physical scene-2 route has QA coverage. |
@@ -123,6 +124,50 @@ external-source inventory and unresolved questions.
 | Scenes 21-25, 26-29, 30-34, 35-40, and 41-43; event `0x1D` (`0xDD` raw) | `field_events.lua` selects the event-29 floor-selector action; `building.lua` resolves entry action, entry floor, and selected child scene from the extracted source groups | Groups are `[21,22,23,24]`, `[26,27,28]`, `[30,31,32,33]`, `[35,36,37,38,39]`, and `[41,42]`. Trigger scenes 25, 29, 34, 40, and 43 are not members of their child groups. Destinations remain numeric scene IDs. | Lua owns the elevator entry decision and destination lookup; the typed native selector owns input state/timing and the host loads the chosen scene. Debug and Release script tests and successful group routes are listed in [the elevator audit](visual-audits/field-elevator-selector.md). Physical approach probes currently fail in scenes 28 and 36; ordinary resource entry and saved-floor restoration remain open. |
 | Scene 4, record 96 at `0x15BDF6`, raw `0x00DB`, event `0x1B` | `field_events.lua` selects the event-27 world-activity continuation | Source selects the event-27 continuation; the table row is bypassed. Its complete downstream behavior is not established. | Lua selects the typed continuation; Qt has no corresponding pending field-scene handler binding yet. |
 | Scene 47, record 62 at `0x1D54B0`, raw `0x00B9`, event `0x19` | If `FFFC10 == 0x13`, direct `0x53EFA`; otherwise rewrite the collision result to `0x00A8`/event 8 | The route depends on field-transition context. The raw event-table row 25 is not a fixed destination; the rewrite path continues as event 8. | Typed dispatcher branch exists. This scene/context route is not physically exercised in the current Qt field runtime. |
+
+### Puyallup / Tarislar Garden Apartments crosswalk
+
+Mike's RPG Center labels Puyallup map marker 2 “Tarislar Garden
+Apartments”; its walkthrough says the player visits Frosty after the
+Sinsearach trials, then goes to the apartments to meet Harlequin. The ROM
+independently supports that story identity: service 21's text records mention
+Tarislar, the armed elves, the elevator, and Harlequin. The site is a secondary
+map-name and quest-order cross-check, not the source for the trigger or its
+conditions. See the [Puyallup map](https://mikesrpgcenter.com/shadowrun/maps/puyallup.html)
+and [walkthrough](https://mikesrpgcenter.com/shadowrun/walkthrough.html).
+
+The source path is:
+
+1. Scene 1 collision record 67 at `0x17D9A2` covers grid cell `(23,5)`;
+   collision `0x00C7` publishes event 7. Event-table row 7 at `0x17D620`
+   contains destination scene `0x0D`.
+2. The indexed service loop `0x53A78` calls entry 21, `0x5447E`, before the
+   generic event-table route. That service accepts only field mode 1/event 7
+   with `FFF0D5 == 0`.
+3. `FFFC1E` bit 30 is set by dispatcher action 44, handler `0x21FD0`. That
+   action loads profile `0x121F4C` and the text chain beginning at `0xF57F8`.
+   The first text says “You are taken to Frosty”; this associates the profile
+   with Frosty in context, though the extracted profile has no name label. The
+   complete Frosty choice graph and its live action-44 route are not connected.
+4. With bit 30 clear, service 21 selects the armed-guard copy beginning at
+   `0xFBCC7`, followed by the challenge at `0xFBD5A` and leave narration at
+   `0xFBD94`. With bit 30 set and bit 21 clear, it sets bit 21 through
+   `0x2196C`, adds 2 to each of the three `FF018D`/`FF028D`/`FF038D` phase
+   counters through `0x59C34`, and selects first-entry copy beginning at
+   `0xFBE12`.
+5. After the shared prompt runner `0x1F246`, the service tests `FFF0CC`.
+   A nonzero marker sets `FFE186=1` and leaves `D6=0`; otherwise it sets
+   `D6=-1`. The field loop consumes marker 1 at `0x097C`, then the generic
+   selector `0x167AE` loads the map's event-table result. Thus scene 13 is the
+   ROM-selected next field scene after the authorized first-entry prompt.
+
+No screenshot-based scene-name claim should be made from the extracted map
+alone. Scene 1's imported map is 1600x1504; scene 13's is 320x224. The site
+map image has not yet been aligned to scene 1's coordinates, and neither the
+entry dialogue nor the scene-13 handoff has physical Qt QA. Keep the route
+source-profiled but unimplemented until the text/action state, actor phase
+counters, full-screen replacement, and post-dialogue transition are connected
+and captured.
 
 ### Reported Little Chiba / Redmond elevator transition
 
