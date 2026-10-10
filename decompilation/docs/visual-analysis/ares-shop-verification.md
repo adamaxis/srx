@@ -292,3 +292,54 @@ was excluded from this review. The independent captures at 01:39:47 and
 additional sound is associated with this layout-only fix. The shop remains
 partial: unaffordable-feedback duration and the reported category activation
 sequence are still open.
+
+## Equipped weapon sale cleanup follow-up (2026-10-10)
+
+ROM `0x56DC4` compares the selected sale row against the active runner's
+equipped slot at `+0x56` and sets `FFF098=-1` on a match before calling
+`0x1275C`. The cleanup routine then writes the unarmed sentinel to `+0x56`,
+clears the active item marker at `+0x57`, and clears loaded rounds at `+0x4E`;
+it also clears the sold inventory code/value pair at `+0x66+slot` and
+`+0x6E+slot`. The typed sale adapter already cleared the equipped slot and
+item marker but had left `ammo_rounds` stale. It now clears all three fields
+for that source branch and refreshes the field HUD.
+
+The Ares QA sells Joshua's equipped Samurai weapon after dismissing the
+protected-Totem response. It drives the real sell cursor and default-No
+confirmation, captures confirmation, result, and settled full-screen frames,
+checks the refund and inventory row, then asserts the active slot/item/rounds
+and HUD counter are cleared.
+
+Visual review for this slice:
+
+1. **Does it look correct?** The post-sale screen shows the unarmed/Spurs HUD
+   icon with `00`; the selected inventory row and its sale detail are empty.
+2. **Does the visual match behavior?** The live runner and derived HUD
+   projection both report no equipped slot/item and zero displayed rounds;
+   the inventory code/value pair is cleared.
+3. **Are the visuals clean?** The Ares title, HUD frame, and lower controls
+   remain. The old confirmation/detail text is absent, and the right HUD
+   region changes from the equipped-gun presentation.
+4. **Animation?** ROM `0x56AC0` has no periodic shop animation. A 30-frame
+   post-sale hold is pixel-identical to the immediate result.
+5. **Sound?** The same confirmation route requests `0x24` on opening/closing
+   and `0x25` for moving the selection; the QA checks that request sequence.
+   Extracted event `0x24` lasts 2.484 seconds including its release tail.
+   Clearing the sold slot adds no separate sound. Windows route loopback is
+   still unrecorded.
+6. **Related screen elements?** The full 320x224 captures include the shared
+   shop shell, inventory row, wallet, and right HUD, so stale text and the old
+   weapon counter are reviewed together with the sale result.
+7. **Multiple frames?** The native captures cover confirmation, immediate
+   result, and 30-frame settled state. Longplay frames at source 01:39:47,
+   01:39:48, 01:39:50, and 01:39:52 show the clips/patch shop sequence, while
+   01:39:54 shows a 204-nuyen balance change; they do not show an equipped
+   weapon being sold, so no independent post-sale visual comparison is claimed.
+8. **Old UI underneath?** The sale confirmation is replaced by the empty-row
+   detail well. The full-screen result retains only the Ares page and its
+   shared controls; the 30-frame equality check catches leftover or animated
+   pixels.
+
+The three new Debug/Release full-screen checkpoints match by SHA-256 and were
+inspected at 320x224. General weapon stock detail and Spurs/unarmed combat
+presentation remain open under `SHOP-03` and `COMBAT-STATE-01`.

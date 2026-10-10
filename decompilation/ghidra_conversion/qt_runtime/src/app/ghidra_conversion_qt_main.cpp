@@ -19920,6 +19920,132 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
+                // ROM 0x56DC4 marks a sold row equal to the active +0x56
+                // slot, then 0x1275C clears +0x56, +0x57, and loaded rounds
+                // at +0x4E. Joshua's source Samurai template starts with an
+                // equipped weapon in slot zero, so sell it through the live
+                // shop controls and verify the full HUD/menu redraw.
+                press_field_input(0x40U); // Dismiss protected-item message.
+                const auto& runner_before_equipped_sale =
+                    field_scene.active_runner_record();
+                const auto equipped_slot_signed =
+                    runner_before_equipped_sale.equipped_inventory_slot;
+                if (!field_scene.shop_menu_open() ||
+                    field_scene.shop_transaction_waiting_for_event() ||
+                    !field_scene.shop_menu_offers_active() ||
+                    field_scene.shop_menu_group() != ShopActionGroup::sell ||
+                    equipped_slot_signed < 0 ||
+                    static_cast<std::size_t>(equipped_slot_signed) >=
+                        runner_before_equipped_sale.inventory_item_codes.size() ||
+                    runner_before_equipped_sale.equipped_item_code == 0U ||
+                    runner_before_equipped_sale.ammo_rounds == 0U ||
+                    runner_before_equipped_sale.inventory_item_codes[
+                        static_cast<std::size_t>(equipped_slot_signed)] !=
+                        runner_before_equipped_sale.equipped_item_code) {
+                    std::cerr << "field Ares shop QA: source Samurai record "
+                                 "does not expose its equipped weapon for "
+                                 "the sale cleanup route\n";
+                    return 3;
+                }
+                const auto equipped_slot = static_cast<std::size_t>(
+                    equipped_slot_signed);
+                field_audio_events.clear();
+                std::vector<std::uint16_t> expected_equipped_sale_audio;
+                while (field_scene.shop_menu_cursor() > equipped_slot) {
+                    press_field_input(0x04U); // Left to the equipped row.
+                    expected_equipped_sale_audio.push_back(0x25U);
+                }
+                while (field_scene.shop_menu_cursor() < equipped_slot) {
+                    press_field_input(0x08U);
+                    expected_equipped_sale_audio.push_back(0x25U);
+                }
+                const auto equipped_ammo_before_sale =
+                    runner_before_equipped_sale.ammo_rounds;
+                const auto funds_before_equipped_sale =
+                    field_scene.field_funds_for_dump();
+                if (field_scene.shop_menu_cursor() != equipped_slot ||
+                    !funds_before_equipped_sale.has_value()) {
+                    std::cerr << "field Ares shop QA: equipped sale row or "
+                                 "wallet was unavailable\n";
+                    return 3;
+                }
+
+                press_field_input(0x40U);
+                expected_equipped_sale_audio.push_back(0x24U);
+                const auto equipped_sale_confirmation = render_shop_scene();
+                const auto equipped_sale_refund =
+                    field_scene.shop_last_sale_outcome().quoted_refund;
+                if (!field_scene.shop_transaction_confirmation_open() ||
+                    field_scene.shop_transaction_confirmation()
+                            .selected_option != 1U ||
+                    equipped_sale_refund == 0U ||
+                    field_scene.field_funds_for_dump() !=
+                        funds_before_equipped_sale ||
+                    field_scene.active_runner_record().equipped_inventory_slot !=
+                        equipped_slot_signed ||
+                    field_scene.active_runner_record().ammo_rounds !=
+                        equipped_ammo_before_sale ||
+                    !save_scene("shop-equipped-sale-confirmation/actual.bmp",
+                                equipped_sale_confirmation)) {
+                    std::cerr << "field Ares shop QA: equipped sale "
+                                 "confirmation changed live weapon state or "
+                                 "failed to capture\n";
+                    return 3;
+                }
+                press_field_input(0x01U); // Select Yes.
+                expected_equipped_sale_audio.push_back(0x25U);
+                press_field_input(0x40U); // Commit equipped weapon sale.
+                expected_equipped_sale_audio.push_back(0x24U);
+                const auto equipped_weapon_sold = render_shop_scene();
+                const auto hud_after_equipped_sale =
+                    field_scene.field_hud_slot_state_for_dump(
+                        field_scene.field_active_party_slot_for_dump());
+                if (field_scene.shop_transaction_confirmation_open() ||
+                    field_scene.shop_last_sale_outcome().result !=
+                        ShopSaleOutcome::Result::removed ||
+                    field_scene.field_funds_for_dump() !=
+                        *funds_before_equipped_sale + equipped_sale_refund ||
+                    field_scene.active_runner_record()
+                            .inventory_item_codes[equipped_slot] != 0U ||
+                    field_scene.active_runner_record()
+                            .inventory_phase_bytes[equipped_slot] != 0U ||
+                    field_scene.active_runner_record().equipped_inventory_slot >=
+                        0 ||
+                    field_scene.active_runner_record().equipped_item_code != 0U ||
+                    field_scene.active_runner_record().ammo_rounds != 0U ||
+                    hud_after_equipped_sale.equipped_inventory_slot >= 0 ||
+                    hud_after_equipped_sale.equipped_item_code != 0U ||
+                    hud_after_equipped_sale.ammo_display_value != 0U ||
+                    image_has_green_ink(equipped_weapon_sold, 24, 80, 224,
+                                        40) ||
+                    !image_has_green_ink(equipped_weapon_sold, 64, 16, 144,
+                                         8) ||
+                    !image_region_differs(equipped_weapon_sold,
+                                          equipped_sale_confirmation, 16, 8,
+                                          256, 120) ||
+                    !image_region_differs(equipped_weapon_sold,
+                                          equipped_sale_confirmation, 272,
+                                          16, 48, 96) ||
+                    field_audio_events != expected_equipped_sale_audio ||
+                    !save_scene("shop-equipped-sale-applied/actual.bmp",
+                                equipped_weapon_sold)) {
+                    std::cerr << "field Ares shop QA: selling the equipped "
+                                 "weapon did not clear +0x56/+0x57/+0x4E and "
+                                 "refresh the unarmed HUD\n";
+                    return 3;
+                }
+                for (std::uint16_t frame = 0U; frame < 30U; ++frame) {
+                    field_scene.advance_frame();
+                }
+                const auto equipped_sale_settled = render_shop_scene();
+                if (equipped_sale_settled != equipped_weapon_sold ||
+                    !save_scene("shop-equipped-sale-settled/actual.bmp",
+                                equipped_sale_settled)) {
+                    std::cerr << "field Ares shop QA: sale page animated or "
+                                 "left stale pixels during a 30-frame hold\n";
+                    return 3;
+                }
+
                 std::cout << "field_ares_shop_qa=passed output="
                           << output.string() << "\n";
                 return 0;

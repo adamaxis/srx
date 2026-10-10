@@ -219,6 +219,9 @@ void apply_sale_state(const RunnerActionRemovalState& state,
     if (state.menu_selection_cleared) {
         runner.equipped_inventory_slot = -1;
         runner.equipped_item_code = 0U;
+        // ROM 0x56DC4 sets FFF098 when the sold row is +0x56; 0x1275C then
+        // clears the active record's +0x4E loaded rounds with +0x56/+0x57.
+        runner.ammo_rounds = 0U;
     }
 }
 

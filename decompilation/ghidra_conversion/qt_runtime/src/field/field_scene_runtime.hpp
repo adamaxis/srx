@@ -473,6 +473,10 @@ public:
     void refresh_field_hud_for_dump() {
         refresh_field_hud_runner_slot();
     }
+    FieldHudSlotState field_hud_slot_state_for_dump(
+        const std::size_t slot) const {
+        return field_hud_slot_state(slot);
+    }
     const std::array<RunnerRecordFields,
                      FieldPartyRosterRuntime::kSlotCount>&
     field_party_records_for_dump() const noexcept {
