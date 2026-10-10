@@ -295,11 +295,19 @@ scene-2 event-table row 7 (`0x172CE3`), which is `0x1A`; the ROM classifies
 that value as resource-activity scene 26. The guide independently says
 Rat's Nest is in the southwest and its Landmark Map availability requires
 showing the first map piece to Harlequin and asking Gunderson about Vigore.
-This makes record 97 the strongest identified Rat's Nest entry candidate.
-It does not establish the exact Lua story variables, whether entry dialogue
-is expected, which resource variant is selected, or the return route. Those
-must be traced in ROM before implementing a named story hook. Record 96 is a
-second event-7 rectangle and remains unassigned by this map crosswalk.
+ROM cross-check now confirms the dialogue half of this gate: the mode-command
+menu builder at `0x22F90` adds “What do you know about a Johnson named
+Vigore?” (`0x1045B0`) only when `FFFC1E` bit 26 is set. Selecting that option
+dispatches command `0xE7` to `0x249A4`, which sets `FFFC34` bit 13 and presents
+the Johnson response. The indexed service at `0x545B6` later requires scene 2,
+event 7, alternate result 0, `FFFC34` bit 13 set, and its consumed/one-shot
+bit 10 clear. It clears the prerequisite and several service bits, marks bit
+10, then displays the ROM's Rat's Nest search sequence. This makes record 97
+the strongest identified Rat's Nest event candidate and confirms a quest
+precondition; the producer of `FFFC1E` bit 26, exact selected resource, item
+grant, and return route still need tracing. Record 96 is a second event-7
+rectangle, so it receives the same ROM service; its relationship to the guide
+marker is not independently resolved by geometry.
 
 The site labels Stoker's Motel as Redmond location 6 and Rat's Nest as
 location 9. This supports keeping their events and dialogue separate; the
@@ -311,9 +319,11 @@ site does not say the motel has a dedicated interior map.
   trigger record (or another ROM-stable identity), rather than using scene ID
   26 alone as a building name. Several scene-2 table rows point into the same
   resource-activity class.
-- Trace the event-7/scene-26 path's resource index, actor/dialogue checks,
-  item grant, and exit/return state. Compare those exact flags with the guide's
-  Harlequin/Gunderson clues; preserve any mismatch as a guide discrepancy.
+- Trace the producer of `FFFC1E` bit 26, scene-26 resource selection, the
+  map-item grant, and exit/return state. The guide's Harlequin/Gunderson
+  prerequisite now has a ROM-correlated Johnson-menu gate (`FFFC1E` bit 26 ->
+  command `0xE7` -> `FFFC34` bit 13 -> scene-2/event-7 service), but bit 26's
+  producer remains unresolved.
 - Profile the other scene-2 event rectangles against the same map image and
   label only correspondences supported by both geometry and ROM paths.
 - The site provides no button/menu layout or animation timing evidence. Use
