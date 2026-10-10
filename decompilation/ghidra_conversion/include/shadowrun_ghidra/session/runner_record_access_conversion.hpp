@@ -84,7 +84,9 @@ struct RunnerRecordFields {
         inventory_phase_bytes{};
     std::array<std::uint8_t, kRunnerRecordAttributeCount> attributes{};
     std::array<std::uint8_t, kRunnerRecordSkillCount> skills{};
-    // The source leaves four auxiliary bytes between the displayed values.
+    // Auxiliary source bytes remain positional unless a caller has a proven
+    // meaning. ROM 0x59C34 adds the story-service Karma reward to index 2,
+    // which is the live-record byte at +0x8D.
     std::array<std::uint8_t, kRunnerRecordAuxiliaryCount> auxiliary{};
 };
 

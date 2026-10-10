@@ -1181,6 +1181,23 @@ int main() {
         return 1;
     }
 
+    const auto* resource_main_title =
+        scripts.dialogue_text("field.activity.main_menu.title");
+    const auto* resource_main_cyberspace = scripts.dialogue_text(
+        "field.activity.main_menu.option.cyberspace");
+    const auto* resource_main_exit =
+        scripts.dialogue_text("field.activity.main_menu.option.exit");
+    if (!expect(resource_main_title != nullptr &&
+                    *resource_main_title == "Main Menu" &&
+                    resource_main_cyberspace != nullptr &&
+                    *resource_main_cyberspace == "Cyberspace" &&
+                    resource_main_exit != nullptr &&
+                    *resource_main_exit == "Exit",
+                "Lua resource-scene main-menu labels were not preserved by extraction")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
     const auto stoker_speaker = scripts.speaker_profile("stoker");
     if (!expect(stoker_speaker.has_value() &&
                     stoker_speaker->id == "stoker" &&
@@ -3115,6 +3132,77 @@ int main() {
                 "Start did not select the Lua resource-scene Exit action")) {
         std::cerr << scripts.failure() << '\n';
         return 15;
+    }
+
+    scripts.set_story_fact_accessors({}, {});
+    scripts.set_story_state({
+        {"vigore_search_pending", true},
+        {"vigore_search_consumed", false},
+        {"vigore_search_completed", false},
+    });
+    scripts.set_location_context(
+        "field_map", "redmond_barrens", "field.world_event",
+        "field_narrator");
+    const auto vigore_search_decision = scripts.call_string(
+        "redmond_barrens", "should_run_vigore_search");
+    if (!expect(vigore_search_decision == "run",
+                "Lua did not select the pending Redmond event-7 story service")) {
+        std::cerr << scripts.failure() << '\n';
+        return 16;
+    }
+    auto vigore_search =
+        scripts.start_task("redmond_barrens", "run_vigore_search");
+    constexpr std::array<std::string_view, 3> vigore_search_pages{{
+        "redmond.vigore-search.page-0",
+        "redmond.vigore-search.page-1",
+        "redmond.vigore-search.page-2",
+    }};
+    for (std::size_t page = 0U; page < vigore_search_pages.size(); ++page) {
+        if (!expect(vigore_search.status ==
+                            ScriptTaskStep::Status::awaiting_native_operation &&
+                        vigore_search.operation.has_value() &&
+                        vigore_search.operation->type ==
+                            ScriptNativeOperation::Type::ui_say &&
+                        vigore_search.operation->dialogue.has_value() &&
+                        vigore_search.operation->dialogue->speaker_id ==
+                            "field_narrator" &&
+                        vigore_search.operation->dialogue->text_profile ==
+                            "field.world_event" &&
+                        vigore_search.operation->dialogue->event_id ==
+                            vigore_search_pages[page],
+                    "Lua Redmond event did not yield the ROM page in order")) {
+            std::cerr << scripts.failure() << '\n';
+            return 16;
+        }
+        const auto page_text = scripts.dialogue_event_text_keys(
+            "field_narrator", "field.world_event",
+            vigore_search_pages[page]);
+        const auto* continuation_text =
+            page_text.has_value() &&
+                    !page_text->continuation_key.empty()
+                ? scripts.dialogue_text(page_text->continuation_key)
+                : nullptr;
+        if (!expect(page_text.has_value() &&
+                        !page_text->title_key.empty() &&
+                        scripts.dialogue_text(page_text->title_key) != nullptr &&
+                        ((page < 2U && page_text->continuation_key ==
+                            "shared.more" && continuation_text != nullptr &&
+                          continuation_text->find("MORE") !=
+                              std::string_view::npos) ||
+                         (page == 2U && page_text->continuation_key.empty())),
+                    "Lua Redmond event page lost its ROM text or prompt state")) {
+            std::cerr << scripts.failure() << '\n';
+            return 16;
+        }
+        vigore_search = scripts.complete_native_operation(true);
+    }
+    if (!expect(vigore_search.status == ScriptTaskStep::Status::completed &&
+                    vigore_search.result_id ==
+                        std::optional<std::string>{"completed"} &&
+                    scripts.story_state().at("vigore_search_completed"),
+                "Lua Redmond event did not publish completion after its last page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 16;
     }
     return 0;
 }

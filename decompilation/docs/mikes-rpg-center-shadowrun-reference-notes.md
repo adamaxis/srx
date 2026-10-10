@@ -304,8 +304,7 @@ event 7, alternate result 0, `FFFC34` bit 13 set, and its consumed/one-shot
 bit 10 clear. It clears the prerequisite and several service bits, marks bit
 10, then displays the ROM's Rat's Nest search sequence. This makes record 97
 the strongest identified Rat's Nest event candidate and confirms a quest
-precondition; the producer of `FFFC1E` bit 26, exact selected resource, item
-grant, and return route still need tracing. Record 96 is a second event-7
+precondition; the service award and same-scene return are now implemented. The generic table value `0x1A` is bypassed by the source `D6=-1` result, so it does not load Scene 26. The `FFFC1E` bit-26 producer and live lead-option path remain open. Record 96 is a second event-7
 rectangle, so it receives the same ROM service; its relationship to the guide
 marker is not independently resolved by geometry.
 
@@ -319,11 +318,10 @@ site does not say the motel has a dedicated interior map.
   trigger record (or another ROM-stable identity), rather than using scene ID
   26 alone as a building name. Several scene-2 table rows point into the same
   resource-activity class.
-- Trace the producer of `FFFC1E` bit 26, scene-26 resource selection, the
-  map-item grant, and exit/return state. The guide's Harlequin/Gunderson
-  prerequisite now has a ROM-correlated Johnson-menu gate (`FFFC1E` bit 26 ->
-  command `0xE7` -> `FFFC34` bit 13 -> scene-2/event-7 service), but bit 26's
-  producer remains unresolved.
+- Finish the Redmond lead chain by tracing the producer of `FFFC1E` bit 26
+  and connecting the live Johnson-menu option to action `0xE7`. The downstream
+  event-7 pages and award now run through Lua after the prerequisite is present;
+  QA seeds that prerequisite, and the bit-26 producer remains unresolved.
 - Profile the other scene-2 event rectangles against the same map image and
   label only correspondences supported by both geometry and ROM paths.
 - The site provides no button/menu layout or animation timing evidence. Use

@@ -65,6 +65,28 @@ constexpr std::uint8_t kTitleStartButton = 0x80U;
 constexpr std::size_t kTitleCircuitPhaseCount = 7U;
 constexpr std::size_t kTitleCircuitPaletteRevealPassCount = 3U;
 
+bool finish_field_modal_return_transition(FieldSceneRuntime& field_scene) {
+    auto remaining =
+        field_scene.field_modal_return_transition_frames_for_dump();
+    if (remaining > 60U) {
+        return false;
+    }
+    while (remaining != 0U) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        remaining =
+            field_scene.field_modal_return_transition_frames_for_dump();
+    }
+    return field_scene.field_palette_fade_steps_for_dump() == 0U;
+}
+
+bool controller_event_contains_a(const std::uint16_t events) noexcept {
+    // The converted scene tests normally observe A's rising edge in the
+    // high byte. Some modal return paths expose the held low-byte sample
+    // instead; their closed-panel state is checked separately by each route.
+    return (events & 0x4000U) != 0U || (events & 0x0040U) != 0U;
+}
+
 bool image_has_green_ink(const QImage& image, const int x, const int y,
                          const int width, const int height) {
     const auto right = std::min(image.width(), x + width);
@@ -172,6 +194,7 @@ std::filesystem::path find_asset_root(
                    " [--field-movement-qa <output-dir>]"
                    " [--field-transition-qa <output-dir>]"
                    " [--field-world-activity-qa <output-dir>]"
+                   " [--field-redmond-vigore-search-qa <output-dir>]"
                    " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
                    " [--field-ares-collision-shop-qa <output-dir>]"
                    " [--field-scene20-physical-entry-qa <output-dir>]"
@@ -255,6 +278,11 @@ std::filesystem::path find_asset_root(
             continue;
         }
         if (argument == "--field-world-activity-qa" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-redmond-vigore-search-qa" &&
+            index + 1 < argc) {
             ++index;
             continue;
         }
@@ -4526,7 +4554,8 @@ public:
             return fail("Stoker leave choice did not replace the menu with its notice");
         }
         press_field_button(0x40U); // A: dismiss the notice.
-        if (field_scene_runtime_.dialogue_open() ||
+        if (!finish_field_modal_return_transition(field_scene_runtime_) ||
+            field_scene_runtime_.dialogue_open() ||
             field_scene_runtime_.opening_auto_walk_active_for_dump() ||
             !write_snapshot("opening_stoker_returned_to_field")) {
             return fail("Stoker dialogue did not cleanly return to the field");
@@ -10254,6 +10283,11 @@ int run_field_scene20_physical_entry_qa(
         field_scene.advance_frame();
         ++frame;
 
+        if (!finish_field_modal_return_transition(field_scene)) {
+            std::cerr << "Scene-20 passkey QA: field return fade did not complete\n";
+            return 3;
+        }
+
         const auto collision_map_after = field_scene.state()
                                              .field_scene_buffers
                                              .source_metadata
@@ -10609,6 +10643,10 @@ int run_field_scene20_physical_entry_qa(
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
         ++frame;
+        if (!finish_field_modal_return_transition(field_scene)) {
+            std::cerr << "Scene-20 Electronics QA: field return fade did not complete\n";
+            return 3;
+        }
         const auto returned_scene20 = render();
         const auto returned_field_only = render_field_scene_only();
         const auto& acknowledgement_panel =
@@ -10617,7 +10655,7 @@ int run_field_scene20_physical_entry_qa(
         const auto& returned_collision_map = field_scene.state()
             .field_scene_buffers.source_metadata.terrain_collision_map;
         const bool result_closed_cleanly =
-            (acknowledgement_event & 0xFF00U) == 0x4000U &&
+            controller_event_contains_a(acknowledgement_event) &&
             !field_scene.field_interaction_open() &&
             !field_scene.dialogue_open() &&
             !field_scene.field_mode_text_open_for_dump() &&
@@ -10828,6 +10866,12 @@ int run_field_scene20_physical_entry_qa(
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame(); // next field frame runs world logic
         ++frame;
+        if (!finish_field_modal_return_transition(field_scene)) {
+            std::cerr << "Scene-20 Electronics alert QA: field return fade did not complete\n";
+            return 3;
+        }
+        field_scene.advance_frame(); // resume the source world-service pass
+        ++frame;
 
         const auto returned_scene20 = render();
         const auto returned_field_only = render_field_scene_only();
@@ -10841,7 +10885,7 @@ int run_field_scene20_physical_entry_qa(
             std::count(source_boundaries.begin(), source_boundaries.end(),
                        "field.world_logic.select_entity_service_target"));
         const bool alert_return_correct =
-            (acknowledgement_event & 0xFF00U) == 0x4000U &&
+            controller_event_contains_a(acknowledgement_event) &&
             !field_scene.field_interaction_open() &&
             !field_scene.dialogue_open() &&
             !field_scene.field_mode_text_open_for_dump() &&
@@ -11074,6 +11118,10 @@ int run_field_scene20_physical_entry_qa(
             field_scene.set_controller_port_byte(0U);
             field_scene.advance_frame();
             ++frame;
+            if (!finish_field_modal_return_transition(field_scene)) {
+                std::cerr << "Scene-20 Electronics trials QA: field return fade did not complete\n";
+                return false;
+            }
             const auto returned_scene20 = render();
             const auto returned_field_only = render_field_scene_only();
             const auto& return_runner = field_scene.active_runner_record();
@@ -11093,7 +11141,7 @@ int run_field_scene20_physical_entry_qa(
                 }
             }
             const bool returned_cleanly =
-                (acknowledgement_event & 0xFF00U) == 0x4000U &&
+                controller_event_contains_a(acknowledgement_event) &&
                 !field_scene.field_interaction_open() &&
                 !field_scene.dialogue_open() &&
                 !field_scene.field_mode_text_open_for_dump() &&
@@ -11126,7 +11174,7 @@ int run_field_scene20_physical_entry_qa(
                              "restore a clean full-screen field after "
                              "the " << (unlocks ? "unlock" : "partial")
                           << " result (ack="
-                          << ((acknowledgement_event & 0xFF00U) == 0x4000U)
+                          << controller_event_contains_a(acknowledgement_event)
                           << ", interaction=" << field_scene.field_interaction_open()
                           << ", scene=" << field_scene.field_scene_reference_for_dump()
                           << ", hud=" << field_hud_chrome_survives(
@@ -11481,6 +11529,10 @@ int run_field_scene20_physical_entry_qa(
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
         ++frame;
+        if (!finish_field_modal_return_transition(field_scene)) {
+            std::cerr << "Scene-20 grenade QA: field return fade did not complete\n";
+            return 3;
+        }
         const auto returned_scene20 = render();
         const auto returned_field_only = render_field_scene_only();
         const bool returned_cleanly =
@@ -11512,6 +11564,10 @@ int run_field_scene20_physical_entry_qa(
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
         ++frame;
+        if (!finish_field_modal_return_transition(field_scene)) {
+            std::cerr << "Scene-20 walk-away QA: field return fade did not complete\n";
+            return 3;
+        }
         const auto returned_scene20 = render();
         const auto returned_field_only = render_field_scene_only();
         const auto& walk_away_panel = field_scene.field_interaction_panel();
@@ -14593,7 +14649,10 @@ int run_field_stoker_collision_to_dialogue_qa(
 
     press_button(0x40U);
     field_scene.advance_frame();
+    const bool modal_return_completed =
+        finish_field_modal_return_transition(field_scene);
     if (field_scene.dialogue_open() ||
+        !modal_return_completed ||
         field_scene.field_transition_pending_for_dump() ||
         field_scene.field_scene_reference_for_dump() != 2U ||
         field_scene.field_palette_fade_steps_for_dump() != 0U) {
@@ -14663,7 +14722,9 @@ int run_field_stoker_collision_to_dialogue_qa(
     write_state("motel-leave-dialogue");
 
     press_button(0x10U);
-    if (field_scene.dialogue_open() ||
+    const bool farewell_return_completed =
+        finish_field_modal_return_transition(field_scene);
+    if (!farewell_return_completed || field_scene.dialogue_open() ||
         field_scene.field_transition_pending_for_dump() ||
         field_scene.field_scene_reference_for_dump() != 2U ||
         field_scene.field_controller_nibble_for_dump() != 0U ||
@@ -15659,6 +15720,334 @@ int run_field_scene2_motel_street_collision_qa(
     return 0;
 }
 
+int run_field_redmond_vigore_search_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::filesystem::create_directories(output);
+    std::ofstream trace(output / "redmond-vigore-search.tsv");
+    if (!trace) {
+        std::cerr << "Redmond Vigore QA: could not create route trace\n";
+        return 3;
+    }
+    const auto render = [&field_scene] {
+        QImage image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        field_scene.paint(painter);
+        painter.end();
+        return image;
+    };
+    const auto save = [&](const std::string_view name) {
+        const auto image = render();
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+               image.save(QString::fromStdWString(
+                   (output / std::string(name)).wstring()));
+    };
+    const auto record = [&](const std::string_view phase, unsigned frame,
+                            std::uint8_t input) {
+        const auto position = field_scene.field_entity_world_position();
+        trace << phase << '\t' << frame << '\t'
+              << static_cast<unsigned>(input) << '\t' << position.x << '\t'
+              << position.y << '\t'
+              << static_cast<unsigned>(
+                     field_scene.field_mode_event_code_for_dump())
+              << '\t' << (field_scene.dialogue_open() ? 1 : 0) << '\t'
+              << field_audio_events.size() << '\n';
+    };
+    const auto& records_before = field_scene.field_party_records_for_dump();
+    std::vector<std::uint8_t> karma_before;
+    karma_before.reserve(records_before.size());
+    for (const auto& record : records_before) {
+        karma_before.push_back(record.auxiliary[2U]);
+    }
+    constexpr std::uint8_t kUpNibble = 0x01U;
+    field_scene.seed_vigore_search_for_dump();
+    field_scene.set_group_item_flags_for_dump(0U);
+    const auto audio_before = field_audio_events.size();
+    if (field_scene.field_scene_reference_for_dump() != 2U ||
+        field_scene.field_entity_world_position().x != 0x1B00U ||
+        field_scene.field_entity_world_position().y != 0x4600U ||
+        field_scene.dialogue_open() ||
+        field_scene.field_mode_event_code_for_dump() != 0U ||
+        !save("approach-start.bmp")) {
+        std::cerr << "Redmond Vigore QA: expected a clean scene-2 pre-trigger state\n";
+        return 3;
+    }
+    trace << "phase\tframe\tinput\tx\ty\tevent\tdialogue\taudio_count\n";
+    record("approach", 0U, 0U);
+    std::uint16_t approach_frames = 0U;
+    for (; approach_frames < 48U && !field_scene.dialogue_open();
+         ++approach_frames) {
+        field_scene.set_controller_nibble(kUpNibble);
+        field_scene.advance_frame();
+        record("approach", approach_frames + 1U, kUpNibble);
+        if (approach_frames == 0U || approach_frames == 3U ||
+            approach_frames == 7U || approach_frames == 15U) {
+            if (!save("approach-" +
+                      std::to_string(approach_frames + 1U) + ".bmp")) {
+                std::cerr << "Redmond Vigore QA: approach frame dump failed\n";
+                return 3;
+            }
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    const auto first_event = field_scene.dialogue_panel();
+    (void)save("page-0-candidate.bmp");
+    constexpr std::array<std::array<std::string_view, 5>, 3> expected_text{{
+        {{"This area seems to have been swept", "",
+          "Knowing Vigore must be somewhere", "",
+          "You get lucky and find a secret entrance"}},
+        {{"After a quick search of the bunker", "",
+          "In addition, the landmark map", "",
+          "Harlequin should be most interested"}},
+        {{"You leave cautiously, expecting", "",
+          "Fortunately, your luck holds out", "", ""}},
+    }};
+    const auto page_matches = [&](const DialoguePanelView& panel,
+                                  const std::size_t page) {
+        if (!panel.open || panel.actor_name != "Narration" ||
+            panel.portrait_alias != "none" ||
+            panel.option_count != (page < 2U ? 1U : 0U) ||
+            panel.text_segment_count != (page == 2U ? 3U : 5U) ||
+            panel.has_more != (page < 2U)) {
+            return false;
+        }
+        if (page < 2U &&
+            (panel.options[0].role !=
+                 DialoguePanelOptionRole::field_continue ||
+             panel.options[0].source_label.find("MORE") ==
+                 std::string_view::npos ||
+             panel.continuation_label.find("MORE") ==
+                 std::string_view::npos)) {
+            return false;
+        }
+        for (std::size_t segment = 0U;
+             segment < panel.text_segment_count; ++segment) {
+            if ((expected_text[page][segment].empty() &&
+                 !panel.text_segments[segment].empty()) ||
+                (!expected_text[page][segment].empty() &&
+                 panel.text_segments[segment].find(
+                     expected_text[page][segment]) == std::string_view::npos)) {
+                return false;
+            }
+        }
+        return true;
+    };
+    if (approach_frames == 48U ||
+        field_scene.field_scene_reference_for_dump() != 2U ||
+        !page_matches(first_event, 0U) ||
+        std::find(source_boundaries.begin(), source_boundaries.end(),
+                  "field.event.redmond_vigore_search_opened") ==
+            source_boundaries.end() ||
+        !save("page-0.bmp")) {
+        std::cerr << "Redmond Vigore QA: ordinary movement did not open source page 0"
+                  << "; frames=" << approach_frames << " scene="
+                  << field_scene.field_scene_reference_for_dump() << " event="
+                  << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << " dialogue=" << field_scene.dialogue_open() << '\n';
+        std::cerr << "  panel_open=" << first_event.open
+                  << " actor='" << first_event.actor_name << "' portrait='"
+                  << first_event.portrait_alias << "' segments="
+                  << first_event.text_segment_count << " more="
+                  << first_event.has_more << " label='"
+                  << first_event.continuation_label << "' options="
+                  << first_event.option_count << '\n';
+        for (std::size_t index = 0U;
+             index < first_event.text_segment_count; ++index) {
+            std::cerr << "  text[" << index << "]=\""
+                      << first_event.text_segments[index] << "\"\n";
+        }
+        const auto& metadata =
+            field_scene.state().field_scene_buffers.source_metadata;
+        std::cerr << "  runner=" << field_scene.field_entity_world_position().x
+                  << ',' << field_scene.field_entity_world_position().y
+                  << " active=" << field_scene.field_entity_active_for_dump()
+                  << " behavior=0x" << std::hex
+                  << static_cast<unsigned>(
+                         field_scene.field_entity_behavior_flags_for_dump())
+                  << " terrain=0x" << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << " bounds=0x" << metadata.terrain_x_inclusive_lower
+                  << "..0x" << metadata.terrain_x_exclusive_upper << ",0x"
+                  << metadata.terrain_y_inclusive_lower << "..0x"
+                  << metadata.terrain_y_exclusive_upper << std::dec
+                  << " failure=" << field_scene.failure() << '\n';
+        const auto& transition =
+            field_scene.last_field_movement_transition_for_dump();
+        std::cerr << "  mode=" << field_scene.field_interaction_mode_for_dump()
+                  << " transition_kind=" << static_cast<unsigned>(transition.kind)
+                  << " negative_probes="
+                  << static_cast<unsigned>(transition.negative_probe_count)
+                  << " transitioned_event="
+                  << static_cast<unsigned>(field_collision_event_value(
+                         transition.event_code))
+                  << " published=" << transition.mode_event_code_published
+                  << " controller=" << static_cast<unsigned>(
+                         field_scene.field_controller_nibble_for_dump())
+                  << '\n';
+        std::cerr << "  scene-2 collision cells near event-7 (x,y,value):";
+        for (const auto y : std::array<std::uint16_t, 3>{{
+                 0x0420U, 0x0440U, 0x0460U}}) {
+            for (const auto x : std::array<std::uint16_t, 4>{{
+                     0x0180U, 0x01A0U, 0x01C0U, 0x0200U}}) {
+                const auto index = static_cast<std::size_t>(
+                    (x >> 5U) + ((y & 0x7FE0U) << 1U));
+                if (index < metadata.terrain_collision_map.size()) {
+                    std::cerr << " (0x" << std::hex << x << ",0x" << y
+                              << ",0x" << static_cast<unsigned>(
+                                     metadata.terrain_collision_map[index])
+                              << ')';
+                }
+            }
+        }
+        std::cerr << std::dec << '\n';
+        const auto first_boundary = source_boundaries.size() > 8U
+            ? source_boundaries.end() - 8
+            : source_boundaries.begin();
+        for (auto boundary = first_boundary;
+             boundary != source_boundaries.end(); ++boundary) {
+            std::cerr << "  boundary=" << *boundary << '\n';
+        }
+        return 3;
+    }
+    record("page-0", approach_frames, 0U);
+
+    // A held dialogue page should not animate its text, prompt or speaker
+    // portrait. Save full frames and compare the modal rectangle while the
+    // field actor services continue underneath it.
+    const auto page_zero_image = render();
+    for (unsigned idle = 1U; idle <= 30U; ++idle) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        if (idle == 15U || idle == 30U) {
+            const auto image = render();
+            if (!image.save(QString::fromStdWString(
+                    (output / ("page-0-idle-" + std::to_string(idle) +
+                               ".bmp")).wstring()))) {
+                std::cerr << "Redmond Vigore QA: idle page dump failed\n";
+                return 3;
+            }
+            if (image_region_differs(page_zero_image, image, 0, 0,
+                                     kSceneWidth, kSceneHeight)) {
+                std::cerr << "Redmond Vigore QA: full-screen dialogue page changed during idle\n";
+                return 3;
+            }
+        }
+    }
+    const auto advance = [&field_scene] {
+        field_scene.set_controller_port_byte(0x40U);
+        field_scene.advance_frame();
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    };
+    for (std::size_t page = 1U; page < expected_text.size(); ++page) {
+        advance();
+        const auto& panel = field_scene.dialogue_panel();
+        if (!field_scene.dialogue_open() || !page_matches(panel, page) ||
+            !save("page-" + std::to_string(page) + ".bmp")) {
+            std::cerr << "Redmond Vigore QA: A did not advance to source page "
+                      << page << '\n';
+            return 3;
+        }
+        record("page-" + std::to_string(page), page, 0U);
+    }
+    advance();
+    const auto& records_after = field_scene.field_party_records_for_dump();
+    const auto item_flags = field_scene.group_item_flags_for_dump();
+    const auto expected_service_flags =
+        field_flag_mask(FieldTitleServiceFlag::redmond_vigore_search_consumed);
+    if (field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 2U ||
+        !item_flags.has_value() ||
+        (*item_flags & group_item_flag_mask(GroupItemFlag::landmark_map)) == 0U ||
+        (field_scene.field_world_fact_flags_for_dump() &
+         field_flag_mask(FieldWorldFactFlag::redmond_vigore_search_complete)) == 0U ||
+        (field_scene.field_mode_effect_flags_for_dump() & expected_service_flags) == 0U ||
+        (field_scene.field_render_effect_flags_for_dump() &
+         (field_flag_mask(FieldRenderEffectFlag::redmond_search_cleanup_09) |
+          field_flag_mask(FieldRenderEffectFlag::redmond_search_cleanup_14) |
+          field_flag_mask(FieldRenderEffectFlag::redmond_search_cleanup_19) |
+          field_flag_mask(FieldRenderEffectFlag::redmond_search_cleanup_29))) != 0U ||
+        records_after.size() != karma_before.size() ||
+        !std::equal(records_after.begin(), records_after.end(),
+                    karma_before.begin(), [](const auto& record,
+                                             const std::uint8_t karma) {
+                        return record.auxiliary[2U] ==
+                               static_cast<std::uint8_t>(karma + 2U);
+                    }) ||
+        field_audio_events.size() != audio_before ||
+        !save("returned-field.bmp")) {
+        std::cerr << "Redmond Vigore QA: completion did not grant the source map, "
+                     "one-shot flags and party Karma, or clear the dialogue cleanly\n";
+        return 3;
+    }
+    record("returned-field", approach_frames, 0U);
+    for (unsigned idle = 1U; idle <= 60U; ++idle) {
+        field_scene.advance_frame();
+        auto image = render();
+        std::ostringstream frame_name;
+        frame_name << "return-fade-" << std::setw(2) << std::setfill('0')
+                   << idle << ".bmp";
+        if (!image.save(QString::fromStdWString(
+                (output / frame_name.str()).wstring()))) {
+            std::cerr << "Redmond Vigore QA: return fade dump failed\n";
+            return 3;
+        }
+        const auto remaining = static_cast<unsigned>(
+            field_scene.field_modal_return_transition_frames_for_dump());
+        const auto expected_fade_steps = static_cast<std::uint8_t>(
+            (remaining * 9U + 30U) / 60U);
+        if (field_scene.dialogue_open() ||
+            field_scene.field_palette_fade_steps_for_dump() !=
+                expected_fade_steps) {
+            std::cerr << "Redmond Vigore QA: dialogue residue or source-timed "
+                         "60-frame return fade mismatch at frame "
+                      << idle << " remaining=" << remaining << " fade="
+                      << static_cast<unsigned>(
+                             field_scene.field_palette_fade_steps_for_dump())
+                      << '\n';
+            return 3;
+        }
+    }
+    if (field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 2U ||
+        field_scene.field_mode_event_code_for_dump() != 7U ||
+        field_scene.field_transition_pending_for_dump() ||
+        field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+        field_audio_events.size() != audio_before || !save("actual.bmp")) {
+        std::cerr << "Redmond Vigore QA: return did not settle on the original "
+                     "field route; scene="
+                  << field_scene.field_scene_reference_for_dump() << " event="
+                  << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << " modal=" << field_scene.dialogue_open()
+                  << " transition_frames=" << static_cast<unsigned>(
+                         field_scene.field_modal_return_transition_frames_for_dump())
+                  << " pending="
+                  << field_scene.field_transition_pending_for_dump()
+                  << " audio_delta="
+                  << (field_audio_events.size() - audio_before) << '\n';
+        return 3;
+    }
+    const auto final_image = render();
+    if (!field_hud_chrome_survives(final_image, asset_root) ||
+        count_playfield_lit(final_image) < 100U ||
+        final_image == page_zero_image) {
+        std::cerr << "Redmond Vigore QA: field HUD/playfield did not replace "
+                     "the full-screen dialogue panel cleanly\n";
+        return 3;
+    }
+    std::cout << "field_redmond_vigore_search_qa=passed scene=2 event=7 "
+                 "pages=3 landmark_map=yes all_party_karma_delta=2 "
+                 "audio_events=0 artifacts=" << output.string() << '\n';
+    return 0;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -15672,6 +16061,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_movement_qa_path;
         std::optional<std::filesystem::path> field_transition_qa_path;
         std::optional<std::filesystem::path> field_world_activity_qa_path;
+        std::optional<std::filesystem::path>
+            field_redmond_vigore_search_qa_path;
         std::optional<std::filesystem::path>
             field_stoker_collision_to_dialogue_qa_path;
         std::optional<std::filesystem::path>
@@ -15767,6 +16158,7 @@ int main(int argc, char** argv) {
                        " [--field-movement-qa <output-dir>]"
                        " [--field-transition-qa <output-dir>]"
                        " [--field-world-activity-qa <output-dir>]"
+                       " [--field-redmond-vigore-search-qa <output-dir>]"
                        " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
                        " [--field-ares-collision-shop-qa <output-dir>]"
                        " [--field-scene20-physical-entry-qa <output-dir>]"
@@ -15847,6 +16239,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_world_activity_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-redmond-vigore-search-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_redmond_vigore_search_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -16353,6 +16752,36 @@ int main(int argc, char** argv) {
             // synthetic controller press.
             smoke_state.new_game_opening_completed =
                 field_stoker_collision_to_dialogue_qa_path.has_value();
+            if (field_redmond_vigore_search_qa_path.has_value()) {
+                const auto scene2 = integration::make_field_scene_input(
+                    *smoke_state.field_session_source_assets, 2U);
+                if (!scene2.has_value() ||
+                    !smoke_state.joshua_selection.has_value()) {
+                    std::cerr << "Redmond Vigore QA: scene-2 source or New Game "
+                                 "runner record is unavailable\n";
+                    return 3;
+                }
+                SaveFieldRestoreState checkpoint{};
+                checkpoint.world_mode = 2U;
+                // Spawn inside the clear lane immediately south of event 7;
+                // the actor's source collision probes must stay off the wall
+                // records flanking this narrow entrance.
+                checkpoint.camera_x = 0x1B00U;
+                checkpoint.camera_y = 0x4600U;
+                for (std::size_t slot = 0U;
+                     slot < checkpoint.runner_positions.size(); ++slot) {
+                    const auto& spawn =
+                        scene2->source_metadata.initial_field_records[slot];
+                    checkpoint.runner_positions[slot] =
+                        RestoredRunnerPosition{spawn.x, spawn.y};
+                }
+                checkpoint.runner_positions[0U] =
+                    RestoredRunnerPosition{0x1B00U, 0x4600U};
+                checkpoint.roster.default_record.bytes =
+                    smoke_state.joshua_selection->live_joshua_record;
+                checkpoint.active_runner_slot = 0U;
+                smoke_state.restored_field_state = std::move(checkpoint);
+            }
             if (field_security_terminal_physical_entry_qa_path.has_value()) {
                 if (!smoke_state.field_session_source_assets.has_value() ||
                     !smoke_state.joshua_selection.has_value()) {
@@ -16503,6 +16932,12 @@ int main(int argc, char** argv) {
                 return run_field_world_activity_qa(
                     field_scene, asset_root,
                     *field_world_activity_qa_path, field_audio_events);
+            }
+            if (field_redmond_vigore_search_qa_path.has_value()) {
+                return run_field_redmond_vigore_search_qa(
+                    field_scene, asset_root,
+                    *field_redmond_vigore_search_qa_path,
+                    field_audio_events, field_source_boundaries);
             }
             if (field_stoker_collision_to_dialogue_qa_path.has_value()) {
                 return run_field_stoker_collision_to_dialogue_qa(
@@ -19842,21 +20277,24 @@ int main(int argc, char** argv) {
                 if (field_scene.advance_field_interaction_for_dump(
                         leave_event) !=
                         FieldInteractionAdvanceResult::returned_to_field ||
-                    field_scene.field_interaction_open()) {
+                    field_scene.field_interaction_open() ||
+                    field_scene
+                            .field_modal_return_transition_frames_for_dump() !=
+                        60U) {
                     std::cerr << "field interaction dump: modal did not return to the field\n";
                     return 3;
                 }
-                for (std::uint8_t frame = 0U; frame < 30U; ++frame) {
+                for (std::uint8_t frame = 0U; frame < 60U; ++frame) {
                     field_scene.set_controller_port_byte(0U);
                     field_scene.advance_frame();
-                    if (frame == 14U || frame == 29U) {
+                    if (frame == 29U || frame == 59U) {
                         QImage transition_frame(kSceneWidth, kSceneHeight,
                                                 QImage::Format_RGB32);
                         transition_frame.fill(Qt::black);
                         QPainter transition_painter(&transition_frame);
                         field_scene.paint(transition_painter);
                         transition_painter.end();
-                        const auto name = frame == 14U
+                        const auto name = frame == 29U
                             ? "return-transition-mid.bmp"
                             : "return-transition-complete.bmp";
                         const auto transition_path =
@@ -19868,6 +20306,13 @@ int main(int argc, char** argv) {
                             return 3;
                         }
                     }
+                }
+                if (field_scene
+                            .field_modal_return_transition_frames_for_dump() !=
+                        0U ||
+                    field_scene.field_palette_fade_steps_for_dump() != 0U) {
+                    std::cerr << "field interaction dump: 60-frame modal return did not complete\n";
+                    return 3;
                 }
                 QImage returned_field_scene(kSceneWidth, kSceneHeight,
                                             QImage::Format_RGB32);

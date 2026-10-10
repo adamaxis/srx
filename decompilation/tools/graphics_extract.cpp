@@ -598,7 +598,7 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         output << '"';
     };
 
-    const std::array<std::pair<const char*, std::size_t>, 44> records{{
+    const std::array<std::pair<const char*, std::size_t>, 47> records{{
         // Stoker prompt pointers consumed by the source event/profile path.
         {"stoker.motel.arrival.title", 0x1167EBU},
         {"stoker.motel.arrival.more", 0x0FE5BFU},
@@ -646,6 +646,11 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         {"field.security-terminal.floor.3", 0x11CF1FU},
         {"field.security-terminal.floor.4", 0x11CF2EU},
         {"field.security-terminal.floor.5", 0x11CF3CU},
+        // Scene 2/event 7 indexed title service 22. ROM 0x545B6 passes this
+        // three-record narrative to the shared field prompt runner.
+        {"redmond.vigore-search.page-0", 0x117193U},
+        {"redmond.vigore-search.page-1", 0x117266U},
+        {"redmond.vigore-search.page-2", 0x117314U},
     }};
 
     output << "-- Generated from the US ROM dialogue and menu text records.\n"
@@ -666,6 +671,22 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         write_lua_string(kCommandOverviewTextKeys[index]);
         output << "] = ";
         write_lua_string(command_labels[index]);
+        output << ",\n";
+    }
+    // Preserve the resource-scene menu copy previously authored directly in
+    // script-text.lua. This menu is consumed by field.activity.lua and is not
+    // part of the dialogue-record pointer table above.
+    constexpr std::array<std::pair<std::string_view, std::string_view>, 3>
+        kResourceMainMenuText{{
+            {"field.activity.main_menu.title", "Main Menu"},
+            {"field.activity.main_menu.option.cyberspace", "Cyberspace"},
+            {"field.activity.main_menu.option.exit", "Exit"},
+        }};
+    for (const auto& [key, value] : kResourceMainMenuText) {
+        output << "        [";
+        write_lua_string(key);
+        output << "] = ";
+        write_lua_string(value);
         output << ",\n";
     }
     for (std::size_t record_index = 0; record_index < records.size();
@@ -692,11 +713,19 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         // The two security-terminal floor records are single-string records
         // in the source continuation; retaining only their first segment
         // matches the former import's record-specific handling.
-        if (record_index >= 42U) {
+        if (record_index >= 42U && record_index < 44U) {
             text = segments.front();
         }
         write_lua_string(text);
         output << ",\n";
+        // The ROM's 0xFE5BF continuation caption is shared by dialogue and
+        // generic world-event prompts. Preserve the motel-specific alias for
+        // existing speaker data, and emit the semantic shared UI key too.
+        if (key == "stoker.motel.arrival.more") {
+            output << "        [\"shared.more\"] = ";
+            write_lua_string(text);
+            output << ",\n";
+        }
     }
     // Recruited-runner biographies and the converted Ricky/Winston/Trent
     // topic trees are imported from their ROM stream starts. The source

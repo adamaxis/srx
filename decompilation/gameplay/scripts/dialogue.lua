@@ -3,6 +3,25 @@
 local Dialogue = {}
 
 local speakers = {
+    field_narrator = {
+        name = "Narration",
+        text_profile = "field.world_event",
+        portrait_alias = "none",
+        events = {
+            ["redmond.vigore-search.page-0"] = {
+                title_key = "redmond.vigore-search.page-0",
+                continuation_key = "shared.more",
+            },
+            ["redmond.vigore-search.page-1"] = {
+                title_key = "redmond.vigore-search.page-1",
+                continuation_key = "shared.more",
+            },
+            ["redmond.vigore-search.page-2"] = {
+                title_key = "redmond.vigore-search.page-2",
+                continuation_key = "",
+            },
+        },
+    },
     stoker = {
         name = "Stoker",
         text_profile = "stoker.motel",

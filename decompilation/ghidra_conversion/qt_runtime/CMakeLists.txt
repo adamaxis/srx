@@ -1276,3 +1276,16 @@ add_test(NAME shadowrun_ghidra_audio_playback
          COMMAND shadowrun_ghidra_audio_playback_test)
 set_tests_properties(shadowrun_ghidra_audio_playback PROPERTIES
     SKIP_RETURN_CODE 77)
+
+# QA-seed FFFC34 bit 13, which the source E7 dialogue action normally writes,
+# then enter scene-2/event-7 with ordinary controller movement. This verifies
+# the downstream service; it does not exercise the still-unwired E7 dialogue
+# route. Capture each modal page, idle hold, one-shot award and clean return.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_redmond_vigore_search_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-redmond-vigore-search-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-redmond-vigore-search-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_redmond_vigore_search_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")

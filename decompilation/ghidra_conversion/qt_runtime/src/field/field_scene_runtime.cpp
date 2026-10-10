@@ -587,7 +587,52 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
         source_boundary("field.exit.select_mode_entry_resource");
     };
     callbacks.run_indexed_title_services =
-        [this, &event_route](FieldExitOrchestratorState& state) {
+        [this, &runtime_state, &event_route](
+            FieldExitOrchestratorState& state) {
+            // ROM 0x53A78 invokes service 22 before generic route selection.
+            // Its scene-2/event-7 branch runs the Redmond Vigore search only
+            // when Lua sees the pending service fact and the source one-shot
+            // bit is clear. Both event-7 records reach this same service; the
+            // ROM handler does not distinguish their collision-record IDs.
+            if (runtime_state.scene_id == 2U &&
+                event_route.kind == FieldScriptRouteKind::area_event &&
+                event_route.event_code == static_cast<std::uint8_t>(
+                    FieldCollisionEventCode::event_7) &&
+                event_route.area_event_target ==
+                    std::optional<std::uint8_t>{26U} &&
+                field_exit_alternate_result_ == 0) {
+                game_scripts_.set_location_context(
+                    "field_map", "redmond_barrens", "field.world_event",
+                    "field_narrator");
+                const auto decision = game_scripts_.call_string(
+                    "redmond_barrens", "should_run_vigore_search");
+                if (!decision.has_value()) {
+                    source_boundary(
+                        "field.event.redmond_vigore_search_decision_failed");
+                    state.caller_exit_status = -1;
+                    return true;
+                }
+                if (*decision == "run") {
+                    if (!field_dialogue_.open_gameplay_task(
+                            "redmond_barrens", "run_vigore_search")) {
+                        source_boundary(
+                            "field.event.redmond_vigore_search_open_failed");
+                    } else {
+                        field_palette_fade_steps_ = 0U;
+                        source_boundary(
+                            "field.event.redmond_vigore_search_opened");
+                    }
+                    state.caller_exit_status = -1;
+                    return true;
+                }
+                if (*decision != "skip") {
+                    source_boundary(
+                        "field.event.redmond_vigore_search_invalid_decision");
+                    state.caller_exit_status = -1;
+                    return true;
+                }
+            }
+
             // ROM 0x53A78 invokes indexed title service 0 before the generic
             // 0x1F65A selector. Its Stoker service is active for scene 2,
             // event 2 while FFFC1E bit 0 is clear and FFF0D5 is zero. Keep
@@ -4282,6 +4327,8 @@ bool FieldSceneRuntime::bootstrap(
     field_entity_behavior_flags_ = 0U;
     field_exit_alternate_result_ = 0;
     field_exit_world_flags_ = 0U;
+    field_mode_effect_flags_ = 0U;
+    field_render_effect_flags_ = 0U;
     stoker_motel_story_state_ = StokerMotelStoryState{};
     game_scripts_.set_story_fact_accessors(
         [this](const std::string_view name) -> std::optional<bool> {
@@ -4293,6 +4340,29 @@ bool FieldSceneRuntime::bootstrap(
             }
             if (name == "michael_package_collected") {
                 return stoker_motel_story_state_.michael_package_collected;
+            }
+            if (name == "vigore_lead_available") {
+                return (field_exit_world_flags_ & field_flag_mask(
+                    FieldWorldFactFlag::redmond_vigore_lead_available)) != 0U;
+            }
+            if (name == "vigore_search_pending") {
+                return (field_mode_effect_flags_ & field_flag_mask(
+                    FieldTitleServiceFlag::redmond_vigore_search_pending)) != 0U;
+            }
+            if (name == "vigore_search_consumed") {
+                return (field_mode_effect_flags_ & field_flag_mask(
+                    FieldTitleServiceFlag::redmond_vigore_search_consumed)) != 0U;
+            }
+            if (name == "vigore_search_completed") {
+                return (field_exit_world_flags_ & field_flag_mask(
+                    FieldWorldFactFlag::redmond_vigore_search_complete)) != 0U;
+            }
+            if (name == "landmark_map_owned") {
+                if (!group_item_flags_.has_value()) {
+                    return std::nullopt;
+                }
+                return (*group_item_flags_ & group_item_flag_mask(
+                    GroupItemFlag::landmark_map)) != 0U;
             }
             return std::nullopt;
         },
@@ -4307,6 +4377,78 @@ bool FieldSceneRuntime::bootstrap(
             }
             if (name == "michael_package_collected") {
                 stoker_motel_story_state_.michael_package_collected = value;
+                return true;
+            }
+            if (name == "vigore_lead_available") {
+                const auto mask = field_flag_mask(
+                    FieldWorldFactFlag::redmond_vigore_lead_available);
+                field_exit_world_flags_ = value
+                    ? field_exit_world_flags_ | mask
+                    : field_exit_world_flags_ & ~mask;
+                return true;
+            }
+            if (name == "vigore_search_pending") {
+                const auto mask = field_flag_mask(
+                    FieldTitleServiceFlag::redmond_vigore_search_pending);
+                field_mode_effect_flags_ = value
+                    ? field_mode_effect_flags_ | mask
+                    : field_mode_effect_flags_ & ~mask;
+                return true;
+            }
+            if (name == "landmark_map_owned") {
+                if (!group_item_flags_.has_value()) {
+                    return false;
+                }
+                const auto mask = group_item_flag_mask(
+                    GroupItemFlag::landmark_map);
+                *group_item_flags_ = value
+                    ? *group_item_flags_ | mask
+                    : *group_item_flags_ & ~mask;
+                return true;
+            }
+            if (name == "vigore_search_completed") {
+                if (!value) {
+                    return false;
+                }
+                const auto consumed = field_flag_mask(
+                    FieldTitleServiceFlag::redmond_vigore_search_consumed);
+                if ((field_mode_effect_flags_ & consumed) != 0U) {
+                    return true;
+                }
+                const auto pending = field_flag_mask(
+                    FieldTitleServiceFlag::redmond_vigore_search_pending);
+                if ((field_mode_effect_flags_ & pending) == 0U ||
+                    !group_item_flags_.has_value()) {
+                    return false;
+                }
+                const auto effect_cleanup =
+                    field_flag_mask(
+                        FieldTitleServiceFlag::redmond_search_cleanup_09) |
+                    field_flag_mask(
+                        FieldTitleServiceFlag::redmond_search_cleanup_12) |
+                    pending |
+                    field_flag_mask(
+                        FieldTitleServiceFlag::redmond_search_cleanup_15);
+                field_mode_effect_flags_ =
+                    (field_mode_effect_flags_ & ~effect_cleanup) | consumed;
+                const auto render_cleanup =
+                    field_flag_mask(
+                        FieldRenderEffectFlag::redmond_search_cleanup_09) |
+                    field_flag_mask(
+                        FieldRenderEffectFlag::redmond_search_cleanup_14) |
+                    field_flag_mask(
+                        FieldRenderEffectFlag::redmond_search_cleanup_19) |
+                    field_flag_mask(
+                        FieldRenderEffectFlag::redmond_search_cleanup_29);
+                field_render_effect_flags_ &= ~render_cleanup;
+                field_exit_world_flags_ |= field_flag_mask(
+                    FieldWorldFactFlag::redmond_vigore_search_complete);
+                *group_item_flags_ |= group_item_flag_mask(
+                    GroupItemFlag::landmark_map);
+                for (auto& record : field_party_roster_.records()) {
+                    record.auxiliary[2U] = static_cast<std::uint8_t>(
+                        record.auxiliary[2U] + 2U);
+                }
                 return true;
             }
             return false;
@@ -6451,8 +6593,8 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
 
 void FieldSceneRuntime::begin_field_modal_return_transition() {
     // ROM 0x2BD2 refreshes the field immediately after the modal callback.
-    // The native presentation adds a deliberate fade-in so that this handoff
-    // is visible and the button used to dismiss the panel is consumed.
+    // The native presentation adds a deliberate 60-frame fade-in so that
+    // this handoff is visible and the button used to dismiss the panel is consumed.
     field_modal_return_transition_frames_remaining_ =
         kFieldModalReturnTransitionFrames;
     field_modal_return_blocked_inputs_ = static_cast<std::uint8_t>(
@@ -6537,7 +6679,7 @@ void FieldSceneRuntime::advance_frame() {
         return;
     }
     // A modal dismissal owns the next host transition interval. Fade the
-    // replacement field in over thirty host frames and consume every
+    // replacement field in over sixty host frames and consume every
     // button held or pressed during that interval so its close input cannot
     // become a field action on the first live frame.
     field_modal_return_blocked_inputs_ = static_cast<std::uint8_t>(

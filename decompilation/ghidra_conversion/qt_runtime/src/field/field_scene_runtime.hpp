@@ -76,6 +76,50 @@ class QPainter;
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
+enum class FieldWorldFactFlag : std::uint8_t {
+    redmond_vigore_search_complete = 22,
+    redmond_vigore_lead_available = 26,
+};
+
+enum class FieldTitleServiceFlag : std::uint8_t {
+    redmond_search_cleanup_09 = 9,
+    redmond_vigore_search_consumed = 10,
+    redmond_search_cleanup_12 = 12,
+    redmond_vigore_search_pending = 13,
+    redmond_search_cleanup_15 = 15,
+};
+
+enum class FieldRenderEffectFlag : std::uint8_t {
+    redmond_search_cleanup_09 = 9,
+    redmond_search_cleanup_14 = 14,
+    redmond_search_cleanup_19 = 19,
+    redmond_search_cleanup_29 = 29,
+};
+
+enum class GroupItemFlag : std::uint8_t {
+    landmark_map = 7,
+};
+
+constexpr std::uint32_t field_flag_mask(
+    const FieldWorldFactFlag flag) noexcept {
+    return std::uint32_t{1U} << static_cast<std::uint8_t>(flag);
+}
+
+constexpr std::uint32_t field_flag_mask(
+    const FieldTitleServiceFlag flag) noexcept {
+    return std::uint32_t{1U} << static_cast<std::uint8_t>(flag);
+}
+
+constexpr std::uint32_t field_flag_mask(
+    const FieldRenderEffectFlag flag) noexcept {
+    return std::uint32_t{1U} << static_cast<std::uint8_t>(flag);
+}
+
+constexpr std::uint32_t group_item_flag_mask(
+    const GroupItemFlag flag) noexcept {
+    return std::uint32_t{1U} << static_cast<std::uint8_t>(flag);
+}
+
 enum class CommandOverviewMagicState {
     inactive,
     magical_defense_wait,
@@ -696,6 +740,22 @@ public:
     // word from quest-item event handling, which is not connected yet.
     void set_group_item_flags_for_dump(std::uint32_t flags) noexcept {
         group_item_flags_ = flags & 0x7FFFU;
+    }
+    std::optional<std::uint32_t> group_item_flags_for_dump() const noexcept {
+        return group_item_flags_;
+    }
+    void seed_vigore_search_for_dump() noexcept {
+        field_mode_effect_flags_ |=
+            field_flag_mask(FieldTitleServiceFlag::redmond_vigore_search_pending);
+    }
+    std::uint32_t field_mode_effect_flags_for_dump() const noexcept {
+        return field_mode_effect_flags_;
+    }
+    std::uint32_t field_world_fact_flags_for_dump() const noexcept {
+        return field_exit_world_flags_;
+    }
+    std::uint32_t field_render_effect_flags_for_dump() const noexcept {
+        return field_render_effect_flags_;
     }
     std::uint8_t pocket_secretary_selection() const noexcept {
         return pocket_secretary_.selection;
@@ -1351,6 +1411,10 @@ private:
     std::uint8_t field_entity_behavior_flags_ = 0;
     std::int8_t field_exit_alternate_result_ = 0;
     std::uint32_t field_exit_world_flags_ = 0;
+    // Typed counterparts for the field story-service registers. These remain
+    // session state until the save adapter restores their source facts.
+    std::uint32_t field_mode_effect_flags_ = 0;
+    std::uint32_t field_render_effect_flags_ = 0;
     std::optional<std::uint32_t> field_funds_{0x14U};
     // The fresh New Game runtime initializes these typed source globals to
     // zero. The loaded-save adapter does not restore them, so paid writes stay
