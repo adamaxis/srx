@@ -75,6 +75,17 @@ add_test(NAME shadowrun_ghidra_conversion_qt_startup_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_startup_qa PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Source no-input timeout returns to the ordinary boot/title cycle instead of
+# remaining on the fully faded black title frame.
+add_test(NAME shadowrun_ghidra_conversion_qt_title_idle_restart_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --title-idle-restart-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/title-idle-restart-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_title_idle_restart_qa PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Launch from the runtime build directory without --assets. The installed
 # executable must locate the checked-in named assets from its own path rather
 # than depending on the shell's working directory.

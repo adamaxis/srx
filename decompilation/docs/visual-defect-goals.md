@@ -68,6 +68,7 @@ clarification. None changes the original report's itemization.
 | `TITLE-02` | Pressing Start skips the transition and immediately opens New Game/Load Game. | Resolved for the reported Start route: ROM `0x1A9E` exits only on the Start latch (`0x8000`), then performs 17 palette passes after 34 VBlanks; the `0x075E` caller runs six command-`0x14` audio transactions over 18 more VBlanks before `0x59092` draws Start Options. Debug/Release QA captures every pass and hold frame, proves A alone does not exit, and checks the default New Game selection and clean destination redraw. Independent section 01 frames 001637-001643 show title-to-black and 001670-001674 show the options shell followed by text. The clip has no input/VBlank log; exact input phase remains open. Shell-to-text ordering is defended separately under `TITLE-04`, although exact 60-Hz duration is not measurable from this 30-fps capture. Audio resource/playback/duration also remain unidentified. See [title Start transition audit](visual-audits/title-start-transition.md). |
 | `TITLE-03` | The title circuit background is much brighter and denser green in the native screen than in the independent game capture. | Reproduced in matched whole-screen comparisons after correcting a mislabeled native frame. ROM tracing supports the extracted base palette and identifies a separate seven-phase light update; the compressed reference does not establish the correct brightness of thin circuit lines. Keep open until source-backed color/texture equivalence can be established without a speculative color transform. See [title circuit palette audit](visual-audits/title-circuit-palette.md). |
 | `TITLE-04` | Found during full-screen verification: the Genesis capture shows the Start Options shell without text for frames 001670-001671, then shows the text and selector from 001672; the original Qt destination rendered the complete page immediately. | Resolved for the source-supported ordering. ROM `0x10B5A` calls `0x10918`; `0x10952` clears/fills the menu display buffers and `0x1095E` waits for VBlank before menu assets, grid (`0x590B6`), heading/choices (`0x590CC`), and cursor (`0x0C376`) are drawn. Typed native `start_options_shell` renders only the bezel/background for the source-frame checkpoint, then reveals the active menu. Debug/Release QA and CLI `actual.bmp` dumps verify shell-only pixels, default New Game selection, and clean return from empty Load. Independent section 01 frames 001670-001671 show shell only, then 001672-001674 show the active menu. The 30-fps capture supports order but not exact 60-Hz display duration or time spent transferring assets. See [title Start transition audit](visual-audits/title-start-transition.md). |
+| `TITLE-05` | With no input, the title fades to black and the Qt game stalls instead of replaying the boot/title attract loop. | Implemented and internally defended against the US-ROM path: 3,601 no-input title updates, the caller's 18-VBlank audio service, a second 17-pass/34-VBlank fade, then a clean pre-title restart. Debug/Release QA checks the full-screen black hold, restart timing, recurring source shock request, and pixel-identical fresh/replay boot and title frames; see [title idle attract-loop audit](visual-audits/title-idle-attract-loop.md). The supplied independent longplay has no matching 3,601-update no-input loop, so this route lacks independent visual confirmation. The command-0x14 audio resource and audible duration also remain unidentified. |
 | `OPEN-01` | Opening music starts on the second screen instead of when the opening starts. | **Resolved for the reported late start and stage-boundary audio behavior.** ROM `0x530EA` submits paired `FF 12 id`, then `FF 10 id`; the ROM-driven trace has 6 YM key-ons for `0x10`, none for `0x11`, and 146 for `0x12`. Qt maps `0x10` to stage 1 and `0x12` to stage 3, leaves source-silent `0x11` unmapped, and stops active host channels at the source `FF 16` boundaries. Debug/Release playback and source-order CTests pass. In a visible ordinary Release run, the window advanced through `title_ready` -> `start_options` -> `joshua_archetype` -> `opening_intro`; process-specific loopback captured the stage-1 waveform beginning at 11.538 s (opening phase timestamp 11.588 s), the stream at capture noise floor from 21.76 s through the stage-2 interval, and stage 3 beginning at 33.938 s and playing its 21.005 s one-shot. Aligned track windows score at least 0.99 for stage 1 and 0.93 for stage 3. Independent section 02 audio supports the track identities but not exact VBlank or stage-2 silence; the ROM/Z80 trace establishes the source-silent pair. The 90-second ROM probe found no within-stage restart. See [`visual-audits/opening-music-start.md`](visual-audits/opening-music-start.md). |
 | `OPEN-02` | In the Gator Shaman route, the magic-user's head floats instead of staying attached to the character. | **Resolved for the reported head-to-body separation during the wilderness pan.** This is the Gator Shaman/magic-user, not the Decker. ROM 0x59D7C moves the wilderness plane offsets and head-list coordinates together; Qt now translates the named body layers by the typed source offsets. Debug/Release pan QA checks source-coordinate invariants and 1,924/1,924 body pixels at start, midpoint, and settled full-screen checkpoints. Independent section 02 frames 000480, 000510, 000570, and 000630 support the composition. The complete post-fix run is reviewed in [the full intro capture](visual-audits/full-intro-capture-2026-10-06-pan-fix.md); source and nine-question details are in [the pan audit](visual-audits/gator-shaman-head-pan.md). The Intro hill remains partial for other open defects. |
 | `OPEN-03` | Michael's death image is superimposed over another image in the opening. | **Resolved for the stale left actor plate under the death pose.** US ROM `0x59F8E` fills the 17x16 `$0600` region with blank tile `$07FF` at elapsed `0x168`, then draws the terminal pose. The Qt controller now clears both persistent left-region layers before that image. Debug/Release whole-screen QA checks the clear at opening frame 1209, the complete remaining pose lifetime, and the tri-vid replacement. Independent section 02 frames 730-780 support the clear and later projectile motion. The complete 6,782-frame Release run and nine-question audit are in [the death-layer audit](visual-audits/michael-death-layer-clear.md). The separate terminal command `0x2E` selects a verified silent table slot and is closed as a non-defect under `OPEN-07`. |
@@ -214,14 +215,16 @@ section 01 frames 000384 and 000390 support the logo-only-to-circuit order.
 `BOOT-01` is resolved for the missing/mistimed shock effect; the title
 color/texture mismatch stays separate under `TITLE-03`.
 
-### INTRO-02 — Push Start and title-to-start transition (`TITLE-01`, `TITLE-02`)
+### INTRO-02 — Title loop, Push Start, and title-to-start transition (`TITLE-01`, `TITLE-02`, `TITLE-05`)
 
-**Reported:** Push Start does not blink, and Start skips the transition into
-New Game/Load Game.
+**Reported:** Push Start does not blink, Start skips the transition into
+New Game/Load Game, and the title stalls at black after its no-input timeout.
 
 **Solve:** identify the source blink counter/visibility interval and the
 Start-edge transition/fade or wipe, then bind New Game/Load Game input only
-after the transition reaches its destination state.
+after the transition reaches its destination state. Also trace the natural
+no-input countdown through its caller-side audio/fade path and restore the
+attract loop through the same startup entry, clearing stale presentation state.
 
 **TITLE-01 result:** the Push Start blink is resolved. ROM-derived typed state
 selects a visible 34-frame opening phase, then blank for 10 frames, followed by
@@ -232,14 +235,21 @@ copyright row survives. Independent section 01 frames 000900, 000906, and
 [eight-question audit](visual-audits/title-prompt-blink.md).
 
 **Done when:** dumps include visible/hidden Push Start phases, Start pressed
-and released, every transition phase, and the clean destination menu. The
-independent section 01 frames support the blink phases; the title-to-options
-transition is not shown in the supplied video and stays source-verified only
-unless another matching capture is found.
+and released, every transition phase, the clean destination menu, the natural
+idle timeout, the black service interval, and the first frames of the restarted
+boot/title. The independent section 01 frames support the blink and Start
+transition, but the supplied video has no matching idle-timeout replay.
 
-**Status:** partial. `TITLE-01` is resolved. `TITLE-02` remains pending: the
-independent video cuts at the title-to-options transition, and its source
-transition timing still needs full-screen entry/phase/destination QA.
+**Status:** partial. `TITLE-01` and the reported Start-route skip (`TITLE-02`)
+are source-traced and covered by Debug/Release whole-screen QA; independent
+video supports the visible ordering but cannot establish exact input/VBlank
+phase. `TITLE-05` now follows the ROM's idle caller path and is internally
+defended by Debug/Release timing and full-screen QA, including a clean replay
+of the boot/title. No matching independent idle replay is present, so that
+route is not claimed as independently visually confirmed. The command-0x14
+resource identity and audible playback duration remain open. See the [Start
+transition audit](visual-audits/title-start-transition.md) and [idle
+attract-loop audit](visual-audits/title-idle-attract-loop.md).
 
 ### TITLE-03 — Circuit background color and texture (added by full-screen audit)
 

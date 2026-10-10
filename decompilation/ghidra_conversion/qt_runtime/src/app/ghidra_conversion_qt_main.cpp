@@ -207,6 +207,7 @@ std::filesystem::path find_asset_root(
                    " [--boot-fasa-qa <output-dir>]"
                    " [--startup-dump <stage> <selection> <frame> <file>]"
                    " [--startup-qa <output-dir>]"
+                   " [--title-idle-restart-qa <output-dir>]"
                    " [--full-intro-capture <archetype-0..2> "
                    "<title-idle-frames> <output-dir>]"
                    " [--opening-rotor-qa <output-dir>]"
@@ -224,6 +225,10 @@ std::filesystem::path find_asset_root(
             continue;
         }
         if (argument == "--startup-qa" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--title-idle-restart-qa" && index + 1 < argc) {
             ++index;
             continue;
         }
@@ -4392,6 +4397,269 @@ public:
         return 0;
     }
 
+    int run_title_idle_restart_qa(
+        const std::filesystem::path& output_directory) {
+        host_frame_timer_.stop();
+        std::filesystem::create_directories(output_directory);
+        const auto save = [&output_directory](const std::string_view name,
+                                              const QImage& image) {
+            return image.save(QString::fromStdWString(
+                (output_directory / std::string(name)).wstring()));
+        };
+        const auto is_black = [](const QImage& image) {
+            for (int y = 0; y < image.height(); ++y) {
+                for (int x = 0; x < image.width(); ++x) {
+                    if (image.pixelColor(x, y) != QColor(0, 0, 0)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        };
+        std::ofstream trace(output_directory / "title-idle-restart.tsv");
+        if (!trace) {
+            std::cerr << "title idle restart QA: could not write trace\n";
+            return 3;
+        }
+        trace << "label\tphase\tframe\tactivity_timer\t"
+                 "title_palette_passes\tmode_entry_vblanks\t"
+                 "restart_palette_passes\n";
+
+        if (state_.phase != StartupIntegrationPhase::pre_title ||
+            state_.pre_title.presentation_stage !=
+                PreTitleSequenceState::PresentationStage::sega_entry) {
+            std::cerr << "title idle restart QA: initial pre-title state "
+                         "was not clean\n";
+            return 3;
+        }
+        const auto fresh_boot = render_scene();
+        if (!save("fresh-boot.bmp", fresh_boot)) {
+            std::cerr << "title idle restart QA: fresh boot dump failed\n";
+            return 3;
+        }
+
+        std::uint32_t first_boot_frames = 0U;
+        while (state_.phase == StartupIntegrationPhase::pre_title &&
+               first_boot_frames < 1200U) {
+            advance_one_source_frame();
+            ++first_boot_frames;
+        }
+        if (state_.phase != StartupIntegrationPhase::title_ready ||
+            title_loop_.prompt.frames_remaining !=
+                TitlePromptSchedule::kInitialFrames ||
+            title_loop_.controller_events.activity_timer != 0) {
+            std::cerr << "title idle restart QA: first title did not start "
+                         "with a clean idle timer\n";
+            return 3;
+        }
+        const auto first_title = render_scene();
+        if (!save("first-title.bmp", first_title)) {
+            std::cerr << "title idle restart QA: first title dump failed\n";
+            return 3;
+        }
+        trace << "first_title\t"
+              << startup_integration_phase_name(state_.phase) << '\t'
+              << first_boot_frames << '\t'
+              << title_loop_.controller_events.activity_timer << '\t'
+              << static_cast<unsigned>(
+                     title_loop_.exit_palette_fade.passes_completed)
+              << '\t' << title_mode_entry_vblanks_ << '\t'
+              << static_cast<unsigned>(
+                     title_idle_restart_fade_.passes_completed)
+              << '\n';
+
+        // ROM uVar1 begins at 0xE10 and exits after the final zero-count
+        // iteration, so 3,601 title updates elapse before the caller path.
+        constexpr auto kNoInputTitleUpdates =
+            TitlePromptSchedule::kInitialFrames + 1U;
+        for (std::uint32_t frame = 0U; frame < kNoInputTitleUpdates - 1U;
+             ++frame) {
+            advance_one_source_frame();
+        }
+        if (state_.phase != StartupIntegrationPhase::title_ready ||
+            title_loop_.prompt.finished ||
+            title_loop_.controller_events.activity_timer != 0) {
+            std::cerr << "title idle restart QA: title ended before its "
+                         "source countdown\n";
+            return 3;
+        }
+        if (!save("title-before-timeout.bmp", render_scene())) {
+            std::cerr << "title idle restart QA: pre-timeout dump failed\n";
+            return 3;
+        }
+        advance_one_source_frame();
+        if (state_.phase != StartupIntegrationPhase::title_ready ||
+            !title_loop_.prompt.finished ||
+            !title_loop_.exit_palette_fade.active ||
+            title_loop_.controller_events.activity_timer != 0) {
+            std::cerr << "title idle restart QA: no-input timeout did not "
+                         "start the source fade\n";
+            return 3;
+        }
+        if (!save("title-timeout-edge.bmp", render_scene())) {
+            std::cerr << "title idle restart QA: timeout edge dump failed\n";
+            return 3;
+        }
+
+        std::uint32_t title_fade_frames = 0U;
+        while (!title_mode_entry_service_.active &&
+               state_.phase == StartupIntegrationPhase::title_ready &&
+               title_fade_frames < 40U) {
+            advance_one_source_frame();
+            ++title_fade_frames;
+        }
+        if (!title_mode_entry_service_.active || title_fade_frames != 34U) {
+            std::cerr << "title idle restart QA: initial fade was not 34 "
+                         "VBlanks\n";
+            return 3;
+        }
+        const auto black = render_scene();
+        if (!save("title-black-service-start.bmp", black)) {
+            std::cerr << "title idle restart QA: black hold dump failed\n";
+            return 3;
+        }
+        if (!is_black(black)) {
+            std::cerr << "title idle restart QA: source fade did not leave "
+                         "a full-screen black hold\n";
+            return 3;
+        }
+
+        const auto mode_entry_vblanks_before = title_mode_entry_vblanks_;
+        for (std::uint8_t frame = 0U; frame < 18U; ++frame) {
+            advance_one_source_frame();
+        }
+        if (state_.phase != StartupIntegrationPhase::title_ready ||
+            title_mode_entry_vblanks_ - mode_entry_vblanks_before != 18U ||
+            !title_idle_restart_fade_.active ||
+            !title_mode_entry_service_.complete) {
+            std::cerr << "title idle restart QA: idle caller did not begin "
+                         "its restart transition after 18 VBlanks\n";
+            return 3;
+        }
+        if (!save("title-black-after-audio-service.bmp", render_scene())) {
+            std::cerr << "title idle restart QA: post-service dump failed\n";
+            return 3;
+        }
+
+        const auto restart_vblanks_before = title_vblanks_;
+        const auto restart_palette_steps_before = title_exit_palette_steps_;
+        for (std::uint8_t frame = 1U; frame <= 34U; ++frame) {
+            advance_one_source_frame();
+            if (frame < 34U &&
+                state_.phase != StartupIntegrationPhase::title_ready) {
+                std::cerr << "title idle restart QA: boot restarted before "
+                             "the second 17-pass transition completed\n";
+                return 3;
+            }
+        }
+        if (state_.phase != StartupIntegrationPhase::pre_title ||
+            state_.pre_title.presentation_stage !=
+                PreTitleSequenceState::PresentationStage::sega_entry ||
+            title_vblanks_ - restart_vblanks_before != 34U ||
+            title_exit_palette_steps_ - restart_palette_steps_before != 17U ||
+            !state_.asset_catalog.complete()) {
+            std::cerr << "title idle restart QA: second fade did not restart "
+                         "the source pre-title state\n";
+            return 3;
+        }
+        const auto restarted_boot = render_scene();
+        if (restarted_boot.convertToFormat(QImage::Format_RGB32) !=
+                fresh_boot.convertToFormat(QImage::Format_RGB32) ||
+            !save("actual.bmp", restarted_boot)) {
+            std::cerr << "title idle restart QA: replay boot retained stale "
+                         "pixels or could not write actual.bmp\n";
+            return 3;
+        }
+        trace << "boot_restarted\t"
+              << startup_integration_phase_name(state_.phase) << '\t'
+              << (kNoInputTitleUpdates + title_fade_frames + 18U + 34U)
+              << '\t' << title_loop_.controller_events.activity_timer << '\t'
+              << static_cast<unsigned>(
+                     title_loop_.exit_palette_fade.passes_completed)
+              << '\t' << title_mode_entry_vblanks_ - mode_entry_vblanks_before
+              << '\t'
+              << static_cast<unsigned>(
+                     title_idle_restart_fade_.passes_completed)
+              << '\n';
+
+        bool replayed_shock_captured = false;
+        std::uint32_t replay_boot_frames = 0U;
+        while (state_.phase == StartupIntegrationPhase::pre_title &&
+               replay_boot_frames < 1200U) {
+            advance_one_source_frame();
+            ++replay_boot_frames;
+            if (!replayed_shock_captured &&
+                state_.pre_title.presentation_stage ==
+                    PreTitleSequenceState::PresentationStage::sega_shock) {
+                if (!save("replayed-sega-shock.bmp", render_scene())) {
+                    std::cerr << "title idle restart QA: replayed shock "
+                                 "dump failed\n";
+                    return 3;
+                }
+                replayed_shock_captured = true;
+            }
+        }
+        const auto replayed_shock_sound = std::any_of(
+            pre_title_audio_requests_.begin(), pre_title_audio_requests_.end(),
+            [](const PreTitleAudioRequest& request) {
+                return request.command == 0x5CU;
+            });
+        if (state_.phase != StartupIntegrationPhase::title_ready ||
+            !replayed_shock_captured || !replayed_shock_sound ||
+            title_loop_.prompt.frames_remaining !=
+                TitlePromptSchedule::kInitialFrames ||
+            title_loop_.logo.columns_revealed != 0U) {
+            std::cerr << "title idle restart QA: replay did not reach a clean "
+                         "title with its source shock request\n";
+            return 3;
+        }
+        const auto restarted_title = render_scene();
+        if (restarted_title.convertToFormat(QImage::Format_RGB32) !=
+                first_title.convertToFormat(QImage::Format_RGB32) ||
+            !save("restarted-title.bmp", restarted_title)) {
+            std::cerr << "title idle restart QA: replayed title differs from "
+                         "the first title or could not be dumped\n";
+            return 3;
+        }
+        for (std::uint8_t frame = 0U; frame < 90U; ++frame) {
+            advance_one_source_frame();
+        }
+        const auto restarted_title_delay = render_scene();
+        if (!is_black(restarted_title_delay) ||
+            !save("replayed-title-black-frame-90.bmp",
+                  restarted_title_delay)) {
+            std::cerr << "title idle restart QA: replayed logo delay did "
+                         "not preserve its full-screen black phase\n";
+            return 3;
+        }
+        advance_one_source_frame();
+        const auto restarted_first_logo_column = render_scene();
+        if (is_black(restarted_first_logo_column) ||
+            !save("replayed-title-first-logo-column.bmp",
+                  restarted_first_logo_column)) {
+            std::cerr << "title idle restart QA: logo did not emerge after "
+                         "the source black delay\n";
+            return 3;
+        }
+        trace << "restarted_title\t"
+              << startup_integration_phase_name(state_.phase) << '\t'
+              << replay_boot_frames << '\t'
+              << title_loop_.controller_events.activity_timer << '\t'
+              << static_cast<unsigned>(
+                     title_loop_.exit_palette_fade.passes_completed)
+              << '\t' << title_mode_entry_vblanks_ << '\t'
+              << static_cast<unsigned>(
+                     title_idle_restart_fade_.passes_completed)
+              << '\n';
+
+        std::cout << "title_idle_restart_qa=passed output="
+                  << output_directory.string() << " initial_boot_frames="
+                  << first_boot_frames << " replay_boot_frames="
+                  << replay_boot_frames << " title_fade_frames="
+                  << title_fade_frames << " idle_restart_fade_vblanks=34\n";
+        return 0;
+    }
+
 protected:
     void paintEvent(QPaintEvent*) override {
         const auto scene = render_scene();
@@ -4791,8 +5059,55 @@ private:
         return 0;
     }
 
+    void reset_startup_presentation_state() {
+        title_loop_ = TitleLoopState{};
+        title_mode_entry_service_ = TitleModeEntryServiceState{};
+        title_idle_restart_fade_ = TitleIdleRestartFadeState{};
+        logo_strobe_phase_ = 0U;
+        logo_strobe_palette_.fill(0U);
+        pre_title_sprite_records_.clear();
+        pre_title_audio_requests_.clear();
+        opening_scene_ = OpeningIntroScene::seattle;
+        opening_stage_ = OpeningIntroStage::not_started;
+        opening_sprites_.clear();
+        opening_wilderness_map_left_.reset();
+        opening_wilderness_map_center_.reset();
+        opening_wilderness_map_right_.reset();
+        opening_wilderness_overlay_.reset();
+        opening_wilderness_patch_.reset();
+        opening_wilderness_final_overlay_.reset();
+        opening_text_.clear();
+        opening_audio_commands_.clear();
+        selected_archetype_ = JoshuaArchetypeChoice::samurai;
+        start_options_cursor_ = StartOptionsChoice::new_game;
+        save_load_cursor_ = SaveSlotChoice::slot_one;
+        joshua_cursor_ = JoshuaArchetypeChoice::samurai;
+        joshua_preview_ = JoshuaArchetypeChoice::samurai;
+        save_load_requested_slot_ = SaveSlotChoice::slot_one;
+        save_load_message_ = SaveLoadMessage::none;
+        save_load_boundary_unresolved_ = false;
+        title_resources_loaded_ = false;
+        title_font_loaded_ = false;
+        title_prompt_visible_ = false;
+        title_copyright_visible_ = false;
+        title_completion_palette_copied_ = false;
+        title_prompt_variant_ = TitlePromptVariant::VariantA;
+        title_circuit_phase_ = 0U;
+        title_logo_columns_ = 0U;
+        title_sprite_phase_ = 0U;
+        title_sprite_x_ = 0x98;
+        title_controller_events_ = 0U;
+        pending_title_controller_word_ = 0U;
+        pending_start_options_controller_byte_ = 0U;
+        field_controller_nibble_ = 0U;
+        field_controller_port_byte_ = 0U;
+        display_initialized_ = false;
+        display_ready_ = false;
+    }
+
     void configure_startup_callbacks() {
         startup_callbacks_.initialize_display = [this] {
+            reset_startup_presentation_state();
             display_initialized_ = true;
         };
         startup_callbacks_.vdp_ready = {
@@ -5320,6 +5635,20 @@ private:
         if (state_.phase != StartupIntegrationPhase::title_ready) {
             return;
         }
+        if (title_idle_restart_fade_.active) {
+            if (advance_title_idle_restart_fade(
+                    title_idle_restart_fade_, title_loop_callbacks_)) {
+                const auto result = restart_startup_attract_loop(
+                    state_, startup_callbacks_);
+                if (result !=
+                    StartupIntegrationStartResult::boot_in_progress) {
+                    throw std::runtime_error(
+                        "title idle timeout could not restart pre-title "
+                        "sequence");
+                }
+            }
+            return;
+        }
         if (title_mode_entry_service_.complete) {
             return;
         }
@@ -5331,6 +5660,9 @@ private:
                 title_loop_.controller_events.activity_timer != 0) {
                 pending_title_controller_word_ = 0U;
                 enter_start_options_integration(state_, startup_callbacks_);
+            } else if (title_mode_entry_service_.complete &&
+                       title_loop_.controller_events.activity_timer == 0) {
+                begin_title_idle_restart_fade(title_idle_restart_fade_);
             }
             return;
         }
@@ -6230,6 +6562,7 @@ private:
     TitleLoopCallbacks title_loop_callbacks_;
     TitleModeEntryServiceState title_mode_entry_service_;
     TitleModeEntryServiceCallbacks title_mode_entry_callbacks_;
+    TitleIdleRestartFadeState title_idle_restart_fade_;
     QTimer host_frame_timer_;
     QElapsedTimer host_clock_;
     std::int64_t host_frame_deadline_ns_ = 0;
@@ -14615,6 +14948,7 @@ int main(int argc, char** argv) {
         std::optional<std::uint32_t> startup_dump_frame;
         std::optional<std::filesystem::path> startup_dump_path;
         std::optional<std::filesystem::path> startup_qa_path;
+        std::optional<std::filesystem::path> title_idle_restart_qa_path;
         std::optional<std::uint32_t> full_intro_capture_selection;
         std::optional<std::uint32_t> full_intro_capture_title_frames;
         std::optional<std::filesystem::path> full_intro_capture_path;
@@ -14681,6 +15015,7 @@ int main(int argc, char** argv) {
                        " [--boot-fasa-qa <output-dir>]"
                        " [--startup-dump <stage> <selection> <frame> <file>]"
                        " [--startup-qa <output-dir>]"
+                       " [--title-idle-restart-qa <output-dir>]"
                        " [--full-intro-capture <archetype-0..2> "
                        "<title-idle-frames> <output-dir>]"
                        " [--opening-rotor-qa <output-dir>]"
@@ -15060,6 +15395,11 @@ int main(int argc, char** argv) {
             if (std::string(argv[index]) == "--startup-qa" &&
                 index + 1 < argc) {
                 startup_qa_path = std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--title-idle-restart-qa" &&
+                index + 1 < argc) {
+                title_idle_restart_qa_path =
+                    std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--full-intro-capture" &&
                 index + 3 < argc) {
@@ -25901,6 +26241,10 @@ int main(int argc, char** argv) {
         GhidraConversionWindow window(asset_root);
         if (startup_qa_path.has_value()) {
             return window.run_startup_qa(*startup_qa_path);
+        }
+        if (title_idle_restart_qa_path.has_value()) {
+            return window.run_title_idle_restart_qa(
+                *title_idle_restart_qa_path);
         }
         if (full_intro_capture_selection.has_value() &&
             full_intro_capture_title_frames.has_value() &&

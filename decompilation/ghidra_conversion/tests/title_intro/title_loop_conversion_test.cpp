@@ -542,5 +542,53 @@ int main() {
             return 1;
         }
     }
+
+    TitleIdleRestartFadeState idle_restart_fade;
+    std::size_t idle_restart_vblanks = 0U;
+    std::size_t idle_restart_latches = 0U;
+    std::size_t idle_restart_palette_steps = 0U;
+    TitleLoopCallbacks idle_restart_callbacks{};
+    idle_restart_callbacks.wait_for_vblank = [&idle_restart_vblanks] {
+        ++idle_restart_vblanks;
+    };
+    idle_restart_callbacks.latch_palette_transition_events =
+        [&idle_restart_latches] { ++idle_restart_latches; };
+    idle_restart_callbacks.step_palette_transition =
+        [&idle_restart_palette_steps] { ++idle_restart_palette_steps; };
+    begin_title_idle_restart_fade(idle_restart_fade);
+    if (!expect(idle_restart_fade.active && !idle_restart_fade.complete &&
+                idle_restart_fade.passes_completed == 0U &&
+                idle_restart_fade.vblanks_in_pass == 0U)) {
+        return 1;
+    }
+    constexpr auto kIdleRestartVblankCount = static_cast<std::uint8_t>(
+        kTitleExitPalettePasses * kTitleExitVblanksPerPalettePass);
+    for (std::uint8_t vblank = 1U; vblank <= kIdleRestartVblankCount;
+         ++vblank) {
+        const auto complete = advance_title_idle_restart_fade(
+            idle_restart_fade, idle_restart_callbacks);
+        const auto expected_passes = static_cast<std::uint8_t>(
+            vblank / kTitleExitVblanksPerPalettePass);
+        const bool final_vblank = vblank == kIdleRestartVblankCount;
+        const auto expected_vblanks_in_pass = static_cast<std::uint8_t>(
+            vblank % kTitleExitVblanksPerPalettePass);
+        if (!expect(complete == final_vblank &&
+                    idle_restart_vblanks == vblank &&
+                    idle_restart_latches == vblank &&
+                    idle_restart_palette_steps == expected_passes &&
+                    idle_restart_fade.passes_completed == expected_passes &&
+                    idle_restart_fade.vblanks_in_pass ==
+                        expected_vblanks_in_pass &&
+                    idle_restart_fade.active == !final_vblank &&
+                    idle_restart_fade.complete == final_vblank)) {
+            return 1;
+        }
+    }
+    if (!expect(advance_title_idle_restart_fade(
+                    idle_restart_fade, idle_restart_callbacks) &&
+                idle_restart_vblanks == kIdleRestartVblankCount &&
+                idle_restart_palette_steps == kTitleExitPalettePasses)) {
+        return 1;
+    }
     return 0;
 }

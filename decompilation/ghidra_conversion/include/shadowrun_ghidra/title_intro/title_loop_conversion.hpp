@@ -225,6 +225,15 @@ struct TitleExitPaletteFadeState {
     bool complete = false;
 };
 
+// ROM 0x075E runs another 17-pass palette transition on the no-input branch
+// after the 18-VBlank mode-entry audio service, then re-enters run_game_loop.
+struct TitleIdleRestartFadeState {
+    std::uint8_t passes_completed = 0;
+    std::uint8_t vblanks_in_pass = 0;
+    bool active = false;
+    bool complete = false;
+};
+
 // The state owned by ROM 0x1A9E. Each child state remains typed and
 // independently testable; this coordinator preserves the source call order
 // without carrying Genesis addresses or VDP state into the host runtime.
@@ -276,6 +285,14 @@ struct TitleLoopCallbacks {
     std::function<void()> latch_palette_transition_events;
     std::function<void()> step_palette_transition;
 };
+
+void begin_title_idle_restart_fade(TitleIdleRestartFadeState& state);
+
+// Advances one of the caller's 34 VBlank waits. Returns true on the final
+// palette pass so the host can restart the ordinary boot/title path.
+bool advance_title_idle_restart_fade(
+    TitleIdleRestartFadeState& state,
+    const TitleLoopCallbacks& callbacks);
 
 // ROM 0x1A9E: execute one source title-loop frame in source order. This is
 // the conversion-side coordinator the Qt frontend consumes; it is not a

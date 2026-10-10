@@ -419,6 +419,43 @@ TitleLoopFrameResult advance_title_loop_frame(
     return TitleLoopFrameResult::running;
 }
 
+void begin_title_idle_restart_fade(TitleIdleRestartFadeState& state) {
+    state = TitleIdleRestartFadeState{};
+    state.active = true;
+}
+
+bool advance_title_idle_restart_fade(
+    TitleIdleRestartFadeState& state,
+    const TitleLoopCallbacks& callbacks) {
+    if (state.complete || !state.active) {
+        return state.complete;
+    }
+
+    if (callbacks.wait_for_vblank) {
+        callbacks.wait_for_vblank();
+    }
+    if (callbacks.latch_palette_transition_events) {
+        callbacks.latch_palette_transition_events();
+    }
+
+    ++state.vblanks_in_pass;
+    if (state.vblanks_in_pass < kTitleExitVblanksPerPalettePass) {
+        return false;
+    }
+
+    state.vblanks_in_pass = 0U;
+    ++state.passes_completed;
+    if (callbacks.step_palette_transition) {
+        callbacks.step_palette_transition();
+    }
+    if (state.passes_completed == kTitleExitPalettePasses) {
+        state.active = false;
+        state.complete = true;
+        return true;
+    }
+    return false;
+}
+
 void begin_title_mode_entry_service(
     TitleModeEntryServiceState& state,
     const TitleModeEntryServiceCallbacks& callbacks) {

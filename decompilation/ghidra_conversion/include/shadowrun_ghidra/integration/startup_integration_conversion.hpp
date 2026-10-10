@@ -152,6 +152,13 @@ StartupIntegrationStartResult begin_startup_integration(
     StartupIntegrationState& state,
     const StartupIntegrationCallbacks& callbacks);
 
+// ROM 0x075E's no-input title-timeout path returns to run_game_loop() after
+// the title fade and audio service. Re-enter the existing pre-title startup
+// flow while retaining the already verified host asset catalog.
+StartupIntegrationStartResult restart_startup_attract_loop(
+    StartupIntegrationState& state,
+    const StartupIntegrationCallbacks& callbacks);
+
 // Advances the source pre-title loop by one VBlank-sized step and publishes
 // title setup when the direct Sega/guy/FASA sequence reaches its handoff.
 StartupIntegrationEvent advance_startup_boot_frame(

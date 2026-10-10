@@ -90,6 +90,37 @@ StartupIntegrationStartResult load_startup_assets(
     return StartupIntegrationStartResult::boot_in_progress;
 }
 
+StartupIntegrationStartResult begin_pre_title_from_loaded_assets(
+    StartupIntegrationState& state,
+    const StartupIntegrationCallbacks& callbacks) {
+    if (!callbacks.initialize_display ||
+        !has_vdp_ready_callbacks(callbacks.vdp_ready) ||
+        !callbacks.title_setup.prepare_scene_resources ||
+        !callbacks.title_setup.load_title_resources ||
+        !callbacks.title_setup.load_title_font ||
+        !callbacks.title_setup.advance_palette_frames) {
+        set_phase(state, callbacks, StartupIntegrationPhase::failed);
+        enter_boot_stage(state, BootStartupStage::failed);
+        return StartupIntegrationStartResult::callback_unresolved;
+    }
+
+    enter_boot_stage(state, BootStartupStage::reset);
+    callbacks.initialize_display();
+    enter_boot_stage(state, BootStartupStage::vdp_ready);
+    wait_for_vdp_ready(callbacks.vdp_ready);
+    state.boot.display_ready = true;
+
+    enter_boot_stage(state, BootStartupStage::pre_title);
+    if (begin_pre_title_sequence(state.pre_title, callbacks.pre_title) !=
+        PreTitleSequenceResult::source_complete) {
+        set_phase(state, callbacks, StartupIntegrationPhase::failed);
+        enter_boot_stage(state, BootStartupStage::failed);
+        return StartupIntegrationStartResult::callback_unresolved;
+    }
+    set_phase(state, callbacks, StartupIntegrationPhase::pre_title);
+    return StartupIntegrationStartResult::boot_in_progress;
+}
+
 StartupIntegrationEvent map_menu_event(const StartOptionsMenuEvent event) {
     switch (event) {
     case StartOptionsMenuEvent::waiting:
@@ -166,31 +197,38 @@ StartupIntegrationStartResult begin_startup_integration(
         set_phase(state, callbacks, StartupIntegrationPhase::failed);
         return StartupIntegrationStartResult::assets_missing;
     }
-    if (!callbacks.initialize_display || !has_vdp_ready_callbacks(callbacks.vdp_ready) ||
-        !callbacks.title_setup.prepare_scene_resources ||
-        !callbacks.title_setup.load_title_resources ||
-        !callbacks.title_setup.load_title_font ||
-        !callbacks.title_setup.advance_palette_frames) {
+    return begin_pre_title_from_loaded_assets(state, callbacks);
+}
+
+StartupIntegrationStartResult restart_startup_attract_loop(
+    StartupIntegrationState& state,
+    const StartupIntegrationCallbacks& callbacks) {
+    if (!state.asset_catalog.complete() ||
+        !state.required_boot_assets.complete() ||
+        !state.startup_records.has_value() ||
+        !state.field_session_source_assets.has_value()) {
         set_phase(state, callbacks, StartupIntegrationPhase::failed);
-        enter_boot_stage(state, BootStartupStage::failed);
-        return StartupIntegrationStartResult::callback_unresolved;
+        return StartupIntegrationStartResult::assets_missing;
     }
 
-    enter_boot_stage(state, BootStartupStage::reset);
-    callbacks.initialize_display();
-    enter_boot_stage(state, BootStartupStage::vdp_ready);
-    wait_for_vdp_ready(callbacks.vdp_ready);
-    state.boot.display_ready = true;
-
-    enter_boot_stage(state, BootStartupStage::pre_title);
-    if (begin_pre_title_sequence(state.pre_title, callbacks.pre_title) !=
-        PreTitleSequenceResult::source_complete) {
-        set_phase(state, callbacks, StartupIntegrationPhase::failed);
-        enter_boot_stage(state, BootStartupStage::failed);
-        return StartupIntegrationStartResult::callback_unresolved;
-    }
-    set_phase(state, callbacks, StartupIntegrationPhase::pre_title);
-    return StartupIntegrationStartResult::boot_in_progress;
+    // The ROM re-enters run_game_loop() with the same imported content. Reset
+    // only run state, keeping the host's individually named assets resident.
+    state.boot = BootStartupState{};
+    state.pre_title = PreTitleSequenceState{};
+    state.opening_intro = OpeningIntroState{};
+    state.frame = VblankFrameState{};
+    state.title_setup = TitleSetupState{};
+    state.start_options = StartOptionsMenuState{};
+    state.save_load = SaveLoadMenuState{};
+    state.joshua_archetype = JoshuaArchetypeMenuState{};
+    state.save_roster_buffer.reset();
+    state.joshua_selection.reset();
+    state.restored_field_state.reset();
+    state.save_field_restore_result.reset();
+    state.pre_title_complete = false;
+    state.new_game_opening_completed = false;
+    state.event_log.emplace_back("attract_loop.restart");
+    return begin_pre_title_from_loaded_assets(state, callbacks);
 }
 
 StartupIntegrationEvent advance_startup_boot_frame(
