@@ -52,6 +52,7 @@ namespace {
 // that scene reference with the saved row; both paths use the same typed scene
 // resource selection below.
 constexpr std::uint16_t kInitialFieldSceneReference = 2U;
+constexpr std::uint8_t kFieldModalReturnTransitionFrames = 30U;
 constexpr std::array<FieldWorldActorSlot, 7> kFieldWorldActorSlots{{
     FieldWorldActorSlot::slot_3,
     FieldWorldActorSlot::slot_4,
@@ -2584,7 +2585,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         return field_controller_sample_state_.events;
     };
     field_runtime_callbacks_.service_entity_behavior_frames = [this] {
-        service_player_weapon_action();
+        advance_player_weapon_action_gate();
         advance_field_weapon_projectiles();
         advance_field_movement();
         advance_default_field_actors();
@@ -5034,6 +5035,28 @@ FieldSceneRuntime::heartbeat_field_player(
     actor_context.spawn = !field_player_actor_script_initialized_;
     actor_context.movement_allowed = script_movement_allowed;
     actor_context.phase = phase;
+    if (phase == scripting::ScriptActorHeartbeatPhase::behavior) {
+        const auto& runner = active_runner_record();
+        const bool valid_weapon_slot =
+            runner.equipped_inventory_slot >= 0 &&
+            static_cast<std::size_t>(runner.equipped_inventory_slot) <
+                runner.inventory_phase_bytes.size();
+        const bool weapon_action_available =
+            (runner.flags & 0x0300U) == 0x0300U && valid_weapon_slot &&
+            classify_field_combat_action(
+                runner.equipped_inventory_slot,
+                runner.equipped_item_code) ==
+                FieldCombatActionKind::weapon_ammo &&
+            weapon_template_for_item_code(runner.equipped_item_code) !=
+                nullptr;
+        actor_context.combat_confirm_held =
+            (field_controller_sample_state_.events & 0x0040U) != 0U;
+        actor_context.combat_action_ready =
+            runner.animation_action_gate < 0;
+        actor_context.combat_action_available = weapon_action_available;
+        actor_context.combat_input_blocked =
+            field_combat_input_suppressed_until_release_;
+    }
     if (phase == scripting::ScriptActorHeartbeatPhase::render) {
         actor_context.animation_mode = field_entity_attack_pose_active_
             ? scripting::ScriptActorAnimationMode::attack
@@ -5177,6 +5200,9 @@ void FieldSceneRuntime::advance_field_movement() {
         return;
     }
 
+    service_player_weapon_action(
+        actor_decision->combat_action_requested);
+
     if (!ready_) {
         // The source keeps the walking pose only while a direction is held.
         // When the controller goes idle, the heading animation returns to
@@ -5267,18 +5293,43 @@ void FieldSceneRuntime::advance_field_movement() {
     }
 }
 
-void FieldSceneRuntime::service_player_weapon_action() {
+void FieldSceneRuntime::advance_player_weapon_action_gate() {
     if (!ready_ || !field_entity_.active) {
         return;
     }
 
     auto& runner = active_runner_record();
     advance_active_entity_animation_action_gate(runner);
+    if (runner.animation_action_gate >= 0 ||
+        !field_entity_attack_pose_active_) {
+        return;
+    }
+
+    field_entity_attack_pose_active_ = false;
+    if (!field_entity_walking_) {
+        field_entity_animation_selector_ = static_cast<std::uint16_t>(
+            field_entity_attack_direction_ * 4U);
+        field_entity_animation_.frame = 0U;
+        field_entity_animation_.accumulator = 0;
+        field_entity_animation_.redraw_requested = true;
+    }
+    source_boundary("field.combat.player_attack_pose_expired");
+}
+
+void FieldSceneRuntime::service_player_weapon_action(
+    const bool requested_by_lua) {
+    if (!ready_ || !field_entity_.active) {
+        return;
+    }
+
+    auto& runner = active_runner_record();
 
     // ROM 0xA8EA only calls 0xACAE for an active record with source +0x10 bit
     // 1 set. The ordinary field profile starts at 0x05 (active plus mode-5),
     // so merely standing with an empty weapon must not reload it.
-    if ((runner.flags & 0x0200U) == 0U ||
+    if (!requested_by_lua || field_combat_input_suppressed_until_release_ ||
+        runner.animation_action_gate >= 0 ||
+        (runner.flags & 0x0200U) == 0U ||
         (field_controller_sample_state_.events & 0x0040U) == 0U) {
         return;
     }
@@ -5342,9 +5393,8 @@ void FieldSceneRuntime::service_player_weapon_action() {
         return;
     }
 
-    // 0x1514E refuses another spawn while the source +0x16 animation window
-    // is past 0x3C. B39A installs C042 selectors 0x40..0x5C, so movement must
-    // return the runner to idle/walk before another shot can enter the window.
+    // ROM 0x1514E also enforces the C042 animation window. The +0xDC action
+    // delay is checked above, independently of movement's walk/idle selector.
     if ((field_entity_animation_selector_ & 0x07FFU) > 0x003CU) {
         return;
     }
@@ -6218,6 +6268,21 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
     source_boundary("field.scene.transition.same_scene_reentered");
 }
 
+void FieldSceneRuntime::begin_field_modal_return_transition() {
+    // ROM 0x2BD2 refreshes the field immediately after the modal callback.
+    // The native presentation adds a deliberate fade-in so that this handoff
+    // is visible and the button used to dismiss the panel is consumed.
+    field_modal_return_transition_frames_remaining_ =
+        kFieldModalReturnTransitionFrames;
+    field_modal_return_blocked_inputs_ = static_cast<std::uint8_t>(
+        field_controller_sample_state_.held & 0x00FFU);
+    field_palette_fade_steps_ = 9U;
+    field_combat_input_suppressed_until_release_ =
+        (field_modal_return_blocked_inputs_ & 0x40U) != 0U;
+    field_entity_animation_.redraw_requested = true;
+    source_boundary("field.modal_return.transition_started");
+}
+
 void FieldSceneRuntime::dispatch_field_map_scene_entry(
     const std::uint16_t scene_id) {
     field_map_event_system_.begin_scene_visit(scene_id);
@@ -6281,6 +6346,35 @@ void FieldSceneRuntime::handle_game_script_task_step(
 
 void FieldSceneRuntime::advance_frame() {
     if (!ready_) {
+        return;
+    }
+    // A modal dismissal owns the next host transition interval. Fade the
+    // replacement field in over thirty host frames and consume every
+    // button held or pressed during that interval so its close input cannot
+    // become a field action on the first live frame.
+    field_modal_return_blocked_inputs_ = static_cast<std::uint8_t>(
+        field_modal_return_blocked_inputs_ & field_controller_port_byte_);
+    if (field_modal_return_transition_frames_remaining_ != 0U) {
+        field_modal_return_blocked_inputs_ = static_cast<std::uint8_t>(
+            field_modal_return_blocked_inputs_ | field_controller_port_byte_);
+        --field_modal_return_transition_frames_remaining_;
+        field_palette_fade_steps_ = static_cast<std::uint8_t>(
+            (static_cast<unsigned>(
+                 field_modal_return_transition_frames_remaining_) *
+                 9U +
+             (kFieldModalReturnTransitionFrames / 2U)) /
+            kFieldModalReturnTransitionFrames);
+        field_combat_input_suppressed_until_release_ =
+            (field_modal_return_blocked_inputs_ & 0x40U) != 0U;
+        if (field_modal_return_transition_frames_remaining_ == 0U) {
+            source_boundary("field.modal_return.transition_completed");
+        }
+        return;
+    }
+    field_combat_input_suppressed_until_release_ =
+        (field_modal_return_blocked_inputs_ & 0x40U) != 0U;
+    if (field_modal_return_blocked_inputs_ != 0U) {
+        source_boundary("field.modal_return.waiting_for_input_release");
         return;
     }
     if (field_elevator_scene_transition_.is_active()) {
@@ -6364,6 +6458,7 @@ void FieldSceneRuntime::advance_frame() {
         if (result == FieldDialogueAdvanceResult::returned_to_field) {
             source_boundary("field.dialogue.returned_to_field");
             advance_field_scene_transition_after_modal();
+            begin_field_modal_return_transition();
         } else if (result ==
                    FieldDialogueAdvanceResult::hotel_options_requested) {
             begin_hotel_menu();
@@ -7161,6 +7256,7 @@ FieldSceneRuntime::advance_field_interaction(
         field_runtime_state_.display_service_word = 0U;
         source_boundary("field.interaction.returned_to_field");
         advance_field_scene_transition_after_modal();
+        begin_field_modal_return_transition();
     }
     refresh_field_hud_runner_slot();
     return result;

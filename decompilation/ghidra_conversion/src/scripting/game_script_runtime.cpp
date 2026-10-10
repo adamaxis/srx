@@ -2289,7 +2289,7 @@ GameScriptRuntime::actor_heartbeat(
     default:
         return fail("gameplay Lua actor animation mode is invalid");
     }
-    lua_createtable(state, 0, 36);
+    lua_createtable(state, 0, 40);
     lua_pushlstring(state, actor_id.data(), actor_id.size());
     lua_setfield(state, -2, "actor_id");
     lua_pushlstring(state, context.profile_id.data(),
@@ -2313,6 +2313,14 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "spawn");
     lua_pushboolean(state, context.movement_allowed);
     lua_setfield(state, -2, "movement_allowed");
+    lua_pushboolean(state, context.combat_confirm_held);
+    lua_setfield(state, -2, "combat_confirm_held");
+    lua_pushboolean(state, context.combat_action_ready);
+    lua_setfield(state, -2, "combat_action_ready");
+    lua_pushboolean(state, context.combat_action_available);
+    lua_setfield(state, -2, "combat_action_available");
+    lua_pushboolean(state, context.combat_input_blocked);
+    lua_setfield(state, -2, "combat_input_blocked");
     lua_pushinteger(state, context.controller_nibble);
     lua_setfield(state, -2, "controller_nibble");
     lua_createtable(state, 16, 0);
@@ -2561,8 +2569,18 @@ GameScriptRuntime::actor_heartbeat(
     if (!read_boolean_field("transition_started",
                             decision.transition_started) ||
         !read_boolean_field("transition_complete",
-                            decision.transition_complete)) {
+                            decision.transition_complete) ||
+        !read_boolean_field("combat_action_requested",
+                            decision.combat_action_requested)) {
         return fail("actor_ai.heartbeat returned invalid transition state");
+    }
+    if (decision.combat_action_requested &&
+        (context.profile_id != "field_runner_k03_none00" ||
+         context.phase != ScriptActorHeartbeatPhase::behavior ||
+         !context.combat_action_available ||
+         !context.combat_confirm_held || !context.combat_action_ready ||
+         context.combat_input_blocked)) {
+        return fail("actor_ai.heartbeat requested an unavailable player action");
     }
     if (action == "hold" &&
         (decision.animation_id == "idle" ||

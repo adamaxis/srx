@@ -152,6 +152,7 @@ local function initial_state(context, profile)
         transition_started = false,
         transition_frame_list_finished = false,
         transition_complete = false,
+        combat_action_requested = false,
     }
     if profile.projectile_animation then
         local animation = context.projectile_animation
@@ -193,6 +194,7 @@ local function snapshot(state, action, audio_event, projectile_movement)
         animation_accumulator = state.animation_accumulator,
         transition_started = state.transition_started,
         transition_complete = state.transition_complete,
+        combat_action_requested = state.combat_action_requested,
         audio_event = audio_event,
         weapon_item_id = state.weapon_item_id,
         animation_increment = state.animation_increment,
@@ -761,6 +763,12 @@ function ActorAI.heartbeat(context)
             return projectile_heartbeat(state, context)
         end
         if profile.controls_movement then
+            state.combat_action_requested =
+                context.phase == "behavior" and
+                context.combat_action_available == true and
+                context.combat_confirm_held == true and
+                context.combat_action_ready == true and
+                context.combat_input_blocked ~= true
             state.movement_step = nil
             if context.phase == "behavior" then
                 state.movement_heading =
@@ -788,6 +796,15 @@ function ActorAI.heartbeat(context)
     local action = "hold"
     local audio_event
     if profile.controls_movement then
+        -- ROM 0xACAE observes the held A bit and only dispatches a player
+        -- action after the source +0xDC delay gate expires. The host supplies
+        -- those typed source facts; this Lua heartbeat owns the input policy.
+        state.combat_action_requested =
+            context.phase == "behavior" and
+            context.combat_action_available == true and
+            context.combat_confirm_held == true and
+            context.combat_action_ready == true and
+            context.combat_input_blocked ~= true
         if context.phase == "render" then
             state.movement_step = nil
             state.movement_heading = nil

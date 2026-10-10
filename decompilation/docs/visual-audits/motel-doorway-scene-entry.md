@@ -685,3 +685,62 @@ Release. The wall-collision and general movement routes also pass in both
 configurations. This closes the reproduced Stoker post-farewell retry defect;
 physical second re-entry, other building exit paths, exact Genesis input
 evidence, and the Stoker portrait correction remain open.
+
+## Dialogue-dismissal transition and A-input isolation (2026-10-10)
+
+The player reported that pressing A to dismiss Stoker's opening dialogue could
+fire the equipped gun on the field frame immediately after the panel closed.
+The ROM's `0x2BD2` field refresh is immediate, so the duration below is a native
+presentation choice rather than a claimed Genesis timing rule. The Qt field
+runtime now fades the refreshed scene in over 30 host frames (0.5 seconds at
+60 FPS), holds field behavior during the fade, and keeps every button held or
+pressed during that interval latched until release. A cannot reach Lua combat
+policy until it has been released and pressed again.
+
+The manager-package QA opens the package-handoff dialogue, dismisses it with
+ordinary A, and keeps A held through all 30 frames. It confirms no ammunition
+change and no shot audio during the transition, then releases A and checks that
+release alone still produces no action. A fresh A press fires one round and
+requests one `0x1C` shot event. Whole-screen checkpoints are saved at transition
+start, midpoint, completion with A still held, and the fresh shot. A separate
+field-interaction route checks the same fade and clean redraw after its modal
+returns.
+
+1. **Does it look correct?** The 320x224 field image starts black, passes
+   through a dark midpoint, and reaches the normal field/HUD view at frame 30.
+   The original dismissal looked instantaneous; this makes the return visible.
+2. **Does appearance reflect behavior?** Field behavior stays suspended for
+   all 30 frames, and A remains blocked after the fade until released. The QA
+   checks ammo and the audio event spy on every transition frame.
+3. **Are the visuals correct?** The complete map, Joshua sprite, portrait,
+   weapon/ammo panel, and right-side controls are present after the fade. The
+   same-scene background is revealed without a leftover dialogue panel.
+4. **Is it animated?** The palette overlay changes across the 30 host frames.
+   It advances once per runtime frame; it uses no wall-clock timer. It runs only
+   after dialogue or field-interaction return.
+5. **Is there a sound?** `0x2BD2` has no new sound request in this route. The
+   dismissal produces no `0x1C`; the fresh A press after release produces one
+   `0x1C` shot event. The event's mapped playback duration is documented in the
+   [weapon action audit](weapon-spawn-ammo-consumption.md).
+6. **Are other screen regions correct?** The full frame is captured through the
+   fade. The map, player, HUD, and controls fade together; no old panel or
+   button is drawn over the field.
+7. **Do multiple frames support this interpretation?** The QA saves start,
+   midpoint, and completion frames, checks every one of the 30 transition
+   updates, then saves the fresh-press shot. Debug and Release exercise the
+   same input sequence. The longplay does not record controller input and is
+   not used to claim a ROM-derived duration.
+8. **Are old controls cleared before new graphics are drawn?** The dialogue is
+   closed before the field image is painted. The transition uses one whole-frame
+   fade over the refreshed field; it does not stack new controls over the old
+   dialogue panel.
+9. **Was the whole interval reviewed?** All 30 frames are checked for leaked
+   input, ammo change, and extra audio. The saved midpoint/complete screenshots
+   and field-interaction return were inspected at 320x224. The final fresh A
+   shot confirms the latch releases on button-up and does not permanently
+   disable combat.
+
+The dialogue-return and physical interaction CTests pass in Debug and Release,
+and all 270 field-action QA screenshots match by SHA-256 across configurations.
+The transition remains partial until an independent Genesis timing reference
+is available; the 30-frame fade is explicitly a host presentation choice.

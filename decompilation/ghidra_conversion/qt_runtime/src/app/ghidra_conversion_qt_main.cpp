@@ -7023,6 +7023,10 @@ int run_field_world_activity_qa(
         std::cerr << "field world-activity QA: terminal page did not return to the selected scene\n";
         return 3;
     }
+    for (std::uint8_t frame = 0U; frame < 30U; ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
     const auto returned_field = render_field_scene();
     const bool return_dump_saved = save("return-field.bmp", returned_field);
     if (returned_field != resource_scene_before_prompt ||
@@ -8611,6 +8615,18 @@ int run_field_security_terminal_physical_entry_qa(
         std::cerr << "Security Terminal physical-entry QA: Walk Away did not "
                      "return without a new sound request\n";
         return 3;
+    }
+    for (std::uint8_t transition_frame = 0U; transition_frame < 30U;
+         ++transition_frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++frame;
+        if (transition_frame == 14U || transition_frame == 29U) {
+            if (!save_sequence_frame()) {
+                std::cerr << "Security Terminal physical-entry QA: transition checkpoint write failed\n";
+                return 3;
+            }
+        }
     }
     const auto returned_field = render(false);
     if (!save("return-field") || returned_field != render(true) ||
@@ -17492,9 +17508,11 @@ int main(int argc, char** argv) {
                     const auto delay_name =
                         std::string("action-delay-") +
                         std::to_string(delay_frame);
+                    const bool attack_pose_expected = next_delay >= 0;
                     if (next_delay >= prior_delay ||
-                        !weapon_fire_scene
-                             .field_entity_attack_pose_for_dump() ||
+                        weapon_fire_scene
+                                .field_entity_attack_pose_for_dump() !=
+                            attack_pose_expected ||
                         !weapon_audio_is_source_valid(weapon_fire_audio) ||
                         !save_weapon_fire_scene(delay_name, delay_image)) {
                         std::cerr << "field player action dump: C042 pose, action delay, HUD, or source weapon audio changed during the source +0xDC delay\n";
@@ -17605,8 +17623,8 @@ int main(int argc, char** argv) {
                     fire_hold = render_weapon_fire_scene();
                     const auto hold_name = std::string("hold-") +
                                            std::to_string(hold_frame);
-                    if (!weapon_fire_scene
-                             .field_entity_attack_pose_for_dump() ||
+                    if (weapon_fire_scene
+                            .field_entity_attack_pose_for_dump() ||
                         weapon_fire_audio != settled_weapon_audio ||
                         !same_full_frame(settled_weapon_image, fire_hold) ||
                         !save_weapon_fire_scene(hold_name, fire_hold)) {
@@ -18220,12 +18238,235 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
+                // Keep A held across the entire source +0xDC action delay.
+                // The second round must arrive only when the countdown is
+                // negative, even though the actor's static C042 pose would
+                // otherwise leave the +0x16 spawn window closed.
+                auto& held_fire_runner =
+                    weapon_fire_scene.active_runner_record();
+                if (held_fire_runner.ammo_rounds != 5U ||
+                    held_fire_runner.animation_action_gate >= 0 ||
+                    weapon_fire_scene.field_entity_attack_pose_for_dump()) {
+                    std::cerr << "field player action dump: weapon 1 did not return to a ready neutral pose before held-fire cadence QA\n";
+                    return 3;
+                }
+                std::ofstream held_fire_trace(
+                    weapon_fire_dump_path / "held-fire-cadence.tsv",
+                    std::ios::trunc);
+                if (!held_fire_trace) {
+                    std::cerr << "field player action dump: could not write held-fire-cadence.tsv\n";
+                    return 3;
+                }
+                held_fire_trace
+                    << "phase\telapsed\tinput\taction_gate\tammo\t"
+                       "attack_pose\taudio_events\n";
+                weapon_fire_audio.clear();
+                weapon_fire_scene.set_controller_port_byte(0x40U);
+                weapon_fire_scene.advance_frame();
+                const auto held_first_shot = render_weapon_fire_scene();
+                const auto held_first_delay =
+                    held_fire_runner.animation_action_gate;
+                if (held_fire_runner.ammo_rounds != 4U ||
+                    held_first_delay <= 0 ||
+                    weapon_fire_audio !=
+                        std::vector<std::uint16_t>{0x001CU} ||
+                    !weapon_fire_scene.field_entity_attack_pose_for_dump() ||
+                    !save_weapon_fire_scene("held-first-shot",
+                                            held_first_shot)) {
+                    std::cerr << "field player action dump: held A did not produce exactly one initial weapon action\n";
+                    return 3;
+                }
+                held_fire_trace
+                    << "first-shot\t0\t64\t" << held_first_delay << "\t"
+                    << static_cast<unsigned>(held_fire_runner.ammo_rounds)
+                    << "\t1\t" << weapon_fire_audio.size() << '\n';
+                for (std::int32_t elapsed = 1;
+                     elapsed <= static_cast<std::int32_t>(held_first_delay) +
+                                    1;
+                     ++elapsed) {
+                    weapon_fire_scene.set_controller_port_byte(0x40U);
+                    weapon_fire_scene.advance_frame();
+                    const auto gate =
+                        held_fire_runner.animation_action_gate;
+                    const bool repeated = elapsed > held_first_delay;
+                    const auto expected_rounds = repeated ? 3U : 4U;
+                    const auto expected_shot_sounds = repeated ? 2U : 1U;
+                    const auto shot_sounds = static_cast<std::size_t>(
+                        std::count(weapon_fire_audio.begin(),
+                                   weapon_fire_audio.end(), 0x001CU));
+                    const auto expected_gate = repeated
+                        ? held_fire_runner.animation_action_gate
+                        : static_cast<std::int16_t>(
+                              held_first_delay - elapsed);
+                    if (held_fire_runner.ammo_rounds != expected_rounds ||
+                        held_fire_runner.animation_action_gate !=
+                            expected_gate ||
+                        shot_sounds != expected_shot_sounds ||
+                        (repeated && gate <= 0) ||
+                        !weapon_audio_is_source_valid(weapon_fire_audio)) {
+                        std::cerr << "field player action dump: held A violated the source action-delay cadence at frame "
+                                  << elapsed << " gate=" << gate
+                                  << " ammo=" << static_cast<unsigned>(
+                                         held_fire_runner.ammo_rounds)
+                                  << " sounds=" << weapon_fire_audio.size()
+                                  << " events=";
+                        for (const auto event : weapon_fire_audio) {
+                            std::cerr << event << ',';
+                        }
+                        std::cerr << '\n';
+                        return 3;
+                    }
+                    held_fire_trace
+                        << "held\t" << elapsed << "\t64\t" << gate << '\t'
+                        << static_cast<unsigned>(held_fire_runner.ammo_rounds)
+                        << '\t'
+                        << (weapon_fire_scene
+                                    .field_entity_attack_pose_for_dump()
+                                ? 1
+                                : 0)
+                        << '\t' << weapon_fire_audio.size() << '\n';
+                }
+                const auto held_second_shot = render_weapon_fire_scene();
+                if (held_fire_runner.ammo_rounds != 3U ||
+                    held_fire_runner.animation_action_gate <= 0 ||
+                    !weapon_fire_scene.field_entity_attack_pose_for_dump() ||
+                    !save_weapon_fire_scene("held-second-shot",
+                                            held_second_shot)) {
+                    std::cerr << "field player action dump: continuous A did not repeat exactly once at the source delay boundary\n";
+                    return 3;
+                }
+
+                weapon_fire_scene.set_controller_port_byte(0U);
+                std::uint16_t pose_settle_frames = 0U;
+                while (held_fire_runner.animation_action_gate >= 0 &&
+                       pose_settle_frames < 512U) {
+                    weapon_fire_scene.advance_frame();
+                    ++pose_settle_frames;
+                }
+                const auto held_neutral = render_weapon_fire_scene();
+                if (held_fire_runner.animation_action_gate >= 0 ||
+                    weapon_fire_scene.field_entity_attack_pose_for_dump() ||
+                    weapon_fire_scene.field_entity_animation_selector_for_dump() >
+                        0x001CU ||
+                    same_full_frame(held_second_shot, held_neutral) ||
+                    std::count(weapon_fire_audio.begin(),
+                               weapon_fire_audio.end(), 0x001CU) != 2 ||
+                    !save_weapon_fire_scene("held-neutral-after-delay",
+                                            held_neutral) ||
+                    !held_fire_trace) {
+                    std::cerr << "field player action dump: C042 attack pose did not return to the directional neutral sprite after the action delay\n";
+                    return 3;
+                }
+                held_fire_trace
+                    << "neutral\t" << pose_settle_frames << "\t0\t"
+                    << held_fire_runner.animation_action_gate << '\t'
+                    << static_cast<unsigned>(held_fire_runner.ammo_rounds)
+                    << "\t0\t" << weapon_fire_audio.size() << '\n';
+
+                weapon_fire_audio.clear();
+                const auto moving_start =
+                    weapon_fire_scene.field_entity_world_position();
+                weapon_fire_scene.set_controller_port_byte(0x48U);
+                weapon_fire_scene.advance_frame();
+                const auto moving_action_delay =
+                    held_fire_runner.animation_action_gate;
+                const auto moving_first_shot = render_weapon_fire_scene();
+                const auto moving_after_first =
+                    weapon_fire_scene.field_entity_world_position();
+                if (held_fire_runner.ammo_rounds != 2U ||
+                    moving_action_delay <= 0 ||
+                    weapon_fire_audio !=
+                        std::vector<std::uint16_t>{0x001CU} ||
+                    !save_weapon_fire_scene("moving-held-first-shot",
+                                            moving_first_shot)) {
+                    std::cerr << "field player action dump: moving A did not produce one initial weapon action; ammo="
+                              << static_cast<unsigned>(
+                                     held_fire_runner.ammo_rounds)
+                              << " gate=" << moving_action_delay
+                              << " events=";
+                    for (const auto event : weapon_fire_audio) {
+                        std::cerr << event << ',';
+                    }
+                    std::cerr << " walking="
+                              << weapon_fire_scene
+                                     .field_entity_walking_for_dump()
+                              << " selector=0x" << std::hex
+                              << weapon_fire_scene
+                                     .field_entity_animation_selector_for_dump()
+                              << std::dec << '\n';
+                    return 3;
+                }
+                bool moving_position_advanced =
+                    moving_after_first.x != moving_start.x ||
+                    moving_after_first.y != moving_start.y;
+                for (std::int32_t elapsed = 1;
+                     elapsed <= static_cast<std::int32_t>(
+                                    moving_action_delay) +
+                                    1;
+                     ++elapsed) {
+                    weapon_fire_scene.set_controller_port_byte(0x48U);
+                    weapon_fire_scene.advance_frame();
+                    const bool repeated = elapsed > moving_action_delay;
+                    const auto shot_sounds = static_cast<std::size_t>(
+                        std::count(weapon_fire_audio.begin(),
+                                   weapon_fire_audio.end(), 0x001CU));
+                    const auto expected_sounds = repeated ? 2U : 1U;
+                    const auto current_position =
+                        weapon_fire_scene.field_entity_world_position();
+                    const bool position_changed =
+                        current_position.x != moving_start.x ||
+                        current_position.y != moving_start.y;
+                    moving_position_advanced =
+                        moving_position_advanced || position_changed;
+                    const auto expected_remaining_rounds =
+                        repeated ? 1U : 2U;
+                    if (held_fire_runner.ammo_rounds !=
+                            expected_remaining_rounds ||
+                        shot_sounds != expected_sounds ||
+                        (repeated && held_fire_runner.animation_action_gate <=
+                                         0) ||
+                        !position_changed ||
+                        !weapon_audio_is_source_valid(weapon_fire_audio)) {
+                        std::cerr << "field player action dump: moving held A violated the source fire cadence or stopped movement at frame "
+                                  << elapsed << " gate="
+                                  << held_fire_runner.animation_action_gate
+                                  << " ammo=" << static_cast<unsigned>(
+                                         held_fire_runner.ammo_rounds)
+                                  << " shot_sounds=" << shot_sounds << '\n';
+                        return 3;
+                    }
+                    if (elapsed == 1 || elapsed == 15 ||
+                        elapsed == moving_action_delay || repeated) {
+                        const auto frame_name =
+                            std::string("moving-held-") +
+                            std::to_string(elapsed);
+                        if (!save_weapon_fire_scene(frame_name,
+                                                    render_weapon_fire_scene())) {
+                            std::cerr << "field player action dump: moving cadence checkpoint could not be saved\n";
+                            return 3;
+                        }
+                    }
+                }
+                if (held_fire_runner.ammo_rounds != 1U ||
+                    std::count(weapon_fire_audio.begin(),
+                               weapon_fire_audio.end(), 0x001CU) != 2 ||
+                    !moving_position_advanced) {
+                    std::cerr << "field player action dump: moving hold did not consume exactly one round per source delay\n";
+                    return 3;
+                }
+
                 std::cout << "field_player_action_dump=written path="
                           << output.string()
                           << " weapon1_rounds=6 weapon2_rounds=12"
                           << " weapon2_fire_rounds=11"
                           << " reserve_clips=1 reload_audio_events=4"
                           << " action_delay_frames=" << action_delay_frames
+                          << " held_fire_repeat_delay="
+                          << held_first_delay
+                          << " moving_fire_repeat_delay="
+                          << moving_action_delay
+                          << " attack_pose_reset_frames="
+                          << pose_settle_frames
                           << " weapon_switch_route_frames="
                           << weapon_switch_frame
                           << " active_runner_route_frames=5"
@@ -18526,6 +18767,133 @@ int main(int argc, char** argv) {
                     if (!notebook_tips_scene.save(QString::fromStdWString(
                             notebook_tips_dump_path.wstring()))) {
                         std::cerr << "field dialogue dump: could not write Tips image\n";
+                        return 3;
+                    }
+                }
+                if (*field_dialogue_dump_prompt == "manager-package") {
+                    std::vector<std::uint16_t> modal_return_audio;
+                    qt_runtime::FieldSceneRuntime modal_return_scene(
+                        [](const std::string_view) {},
+                        [&modal_return_audio](const std::uint16_t event) {
+                            modal_return_audio.push_back(event);
+                        });
+                    if (!modal_return_scene.bootstrap(smoke_state)) {
+                        std::cerr << "field dialogue dump: modal-return field bootstrap failed: "
+                                  << modal_return_scene.failure() << '\n';
+                        return 3;
+                    }
+                    modal_return_audio.clear();
+                    auto& modal_runner =
+                        modal_return_scene.active_runner_record();
+                    modal_runner.flags = static_cast<std::uint16_t>(
+                        modal_runner.flags | 0x0300U);
+                    modal_runner.inventory_item_codes[0] = 1U;
+                    modal_runner.equipped_inventory_slot = 0;
+                    modal_runner.equipped_item_code = 1U;
+                    modal_runner.ammo_rounds = 6U;
+                    modal_runner.ammo_clips = 2U;
+                    modal_runner.animation_action_gate = -1;
+                    modal_return_scene.refresh_field_hud_for_dump();
+                    if (!modal_return_scene.open_stoker_dialogue_for_dump(
+                            StokerMotelPromptId::package_handoff)) {
+                        std::cerr << "field dialogue dump: modal-return handoff prompt did not open\n";
+                        return 3;
+                    }
+                    bool modal_returned = false;
+                    for (std::uint8_t step = 0U; step < 8U &&
+                                                  !modal_returned;
+                         ++step) {
+                        modal_return_scene.set_controller_port_byte(0x40U);
+                        modal_return_scene.advance_frame();
+                        modal_returned =
+                            !modal_return_scene.dialogue_open();
+                        if (!modal_returned) {
+                            modal_return_scene.set_controller_port_byte(0U);
+                            modal_return_scene.advance_frame();
+                        }
+                    }
+                    const auto modal_return_path =
+                        field_dialogue_dump_path->parent_path() /
+                        "modal-return";
+                    std::filesystem::create_directories(modal_return_path);
+                    const auto render_modal_return = [&] {
+                        QImage image(kSceneWidth, kSceneHeight,
+                                     QImage::Format_RGB32);
+                        image.fill(Qt::black);
+                        QPainter painter(&image);
+                        modal_return_scene.paint(painter);
+                        painter.end();
+                        return image;
+                    };
+                    const auto modal_close_image = render_modal_return();
+                    if (!modal_returned ||
+                        modal_return_scene
+                                .field_modal_return_transition_frames_for_dump() !=
+                            30U ||
+                        modal_return_scene
+                                .field_modal_return_blocked_inputs_for_dump() !=
+                            0x40U ||
+                        modal_runner.ammo_rounds != 6U ||
+                        !modal_close_image.save(QString::fromStdWString(
+                            (modal_return_path / "transition-start.bmp")
+                                .wstring()))) {
+                        std::cerr << "field dialogue dump: A dismissal did not start the visible, input-blocked field return\n";
+                        return 3;
+                    }
+                    for (std::uint8_t frame = 0U; frame < 30U; ++frame) {
+                        modal_return_scene.set_controller_port_byte(0x40U);
+                        modal_return_scene.advance_frame();
+                        if (modal_runner.ammo_rounds != 6U ||
+                            modal_return_scene.dialogue_open() ||
+                            modal_return_audio.size() != 0U) {
+                            std::cerr << "field dialogue dump: the dialogue A input leaked into field gameplay during the transition\n";
+                            return 3;
+                        }
+                        if (frame == 14U || frame == 29U) {
+                            const auto transition_frame =
+                                render_modal_return();
+                            const auto name = frame == 14U
+                                ? "transition-mid.bmp"
+                                : "transition-complete-held.bmp";
+                            if (!transition_frame.save(
+                                    QString::fromStdWString(
+                                        (modal_return_path / name).wstring()))) {
+                                std::cerr << "field dialogue dump: modal-return transition checkpoint could not be saved\n";
+                                return 3;
+                            }
+                        }
+                    }
+                    if (modal_return_scene
+                                .field_modal_return_transition_frames_for_dump() !=
+                            0U ||
+                        modal_return_scene
+                                .field_modal_return_blocked_inputs_for_dump() !=
+                            0x40U ||
+                        modal_runner.ammo_rounds != 6U ||
+                        !modal_return_audio.empty()) {
+                        std::cerr << "field dialogue dump: held A was not consumed after the visible field transition completed\n";
+                        return 3;
+                    }
+                    modal_return_scene.set_controller_port_byte(0U);
+                    modal_return_scene.advance_frame();
+                    if (modal_return_scene
+                                .field_modal_return_blocked_inputs_for_dump() !=
+                            0U ||
+                        modal_runner.ammo_rounds != 6U ||
+                        !modal_return_audio.empty()) {
+                        std::cerr << "field dialogue dump: input release did not clear the modal handoff gate cleanly\n";
+                        return 3;
+                    }
+                    modal_return_scene.set_controller_port_byte(0x40U);
+                    modal_return_scene.advance_frame();
+                    const auto fresh_press_image = render_modal_return();
+                    if (modal_runner.ammo_rounds != 5U ||
+                        modal_return_audio !=
+                            std::vector<std::uint16_t>{0x001CU} ||
+                        !fresh_press_image.save(QString::fromStdWString(
+                            (modal_return_path / "fresh-press-shot.bmp")
+                                .wstring()))) {
+                        std::cerr << "field dialogue dump: a fresh A press after release did not produce exactly one weapon action\n";
                         return 3;
                     }
                 }
@@ -19213,6 +19581,29 @@ int main(int argc, char** argv) {
                     field_scene.field_interaction_open()) {
                     std::cerr << "field interaction dump: modal did not return to the field\n";
                     return 3;
+                }
+                for (std::uint8_t frame = 0U; frame < 30U; ++frame) {
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    if (frame == 14U || frame == 29U) {
+                        QImage transition_frame(kSceneWidth, kSceneHeight,
+                                                QImage::Format_RGB32);
+                        transition_frame.fill(Qt::black);
+                        QPainter transition_painter(&transition_frame);
+                        field_scene.paint(transition_painter);
+                        transition_painter.end();
+                        const auto name = frame == 14U
+                            ? "return-transition-mid.bmp"
+                            : "return-transition-complete.bmp";
+                        const auto transition_path =
+                            field_interaction_dump_path->parent_path() / name;
+                        if (!transition_frame.save(
+                                QString::fromStdWString(
+                                    transition_path.wstring()))) {
+                            std::cerr << "field interaction dump: transition checkpoint could not be saved\n";
+                            return 3;
+                        }
+                    }
                 }
                 QImage returned_field_scene(kSceneWidth, kSceneHeight,
                                             QImage::Format_RGB32);

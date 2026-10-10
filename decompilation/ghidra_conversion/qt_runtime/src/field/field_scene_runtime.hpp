@@ -396,6 +396,12 @@ public:
     std::uint8_t field_palette_fade_steps_for_dump() const noexcept {
         return field_palette_fade_steps_;
     }
+    std::uint8_t field_modal_return_transition_frames_for_dump() const noexcept {
+        return field_modal_return_transition_frames_remaining_;
+    }
+    std::uint8_t field_modal_return_blocked_inputs_for_dump() const noexcept {
+        return field_modal_return_blocked_inputs_;
+    }
     FieldInteractionAdvanceResult advance_field_interaction_for_dump(
         std::uint16_t event_word) {
         return advance_field_interaction(event_word);
@@ -820,12 +826,13 @@ private:
     void configure_runtime_coordinator_callbacks();
     std::optional<scripting::ScriptActorBehaviorDecision>
     heartbeat_field_player(scripting::ScriptActorHeartbeatPhase phase);
+    void advance_player_weapon_action_gate();
     void advance_field_movement();
     void advance_field_actor_animation();
     void advance_default_field_actor_animations();
     void advance_field_weapon_projectile_animations();
     void advance_field_weapon_projectiles();
-    void service_player_weapon_action();
+    void service_player_weapon_action(bool requested_by_lua);
     void initialize_field_entity_selection_state();
     void refresh_field_runner_state_and_assets();
     void handle_field_mode_action_event();
@@ -838,6 +845,7 @@ private:
     bool recover_blocked_field_movement(
         const MovementProbeResult& initial_probe);
     void advance_field_scene_transition_after_modal();
+    void begin_field_modal_return_transition();
     void handle_field_map_event_activations(
         const std::vector<FieldMapEventActivation>& activations);
     void handle_game_script_task_step(
@@ -1226,6 +1234,7 @@ private:
     bool field_entity_walking_ = false;
     bool field_entity_attack_pose_active_ = false;
     std::uint8_t field_entity_attack_direction_ = 0U;
+    bool field_combat_input_suppressed_until_release_ = false;
     std::array<MovementOffset, integration::kFieldMovementDirectionCount>
         field_movement_direction_offsets_{};
     CollisionProbeOffsetBank field_collision_probe_offset_banks_{};
@@ -1256,6 +1265,8 @@ private:
     EntityMovementModeTransitionResult last_field_movement_transition_result_{};
     std::optional<FieldScriptRoute> active_field_script_route_;
     std::uint8_t field_palette_fade_steps_ = 0U;
+    std::uint8_t field_modal_return_transition_frames_remaining_ = 0U;
+    std::uint8_t field_modal_return_blocked_inputs_ = 0U;
     bool field_world_activity_scene_entry_pending_ = false;
     WorldActivityState field_world_activity_state_{};
     WorldActivityTimeoutState field_world_activity_timeout_state_{};

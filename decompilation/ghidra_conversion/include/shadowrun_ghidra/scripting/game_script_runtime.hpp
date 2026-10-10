@@ -321,6 +321,13 @@ struct ScriptActorBehaviorContext {
     std::uint16_t initial_heading = 0;
     bool spawn = false;
     bool movement_allowed = false;
+    // Field-player action inputs and source-derived readiness facts. Lua
+    // decides whether this heartbeat should service the equipped action;
+    // the native host validates and performs the resulting ROM operation.
+    bool combat_confirm_held = false;
+    bool combat_action_ready = false;
+    bool combat_action_available = false;
+    bool combat_input_blocked = false;
     std::uint8_t controller_nibble = 0;
     std::array<std::uint16_t, 16> controller_heading_table{};
     std::optional<std::uint16_t> movement_heading_override;
@@ -358,6 +365,7 @@ struct ScriptActorBehaviorDecision {
     std::uint8_t direction = 0;
     std::uint8_t animation_frame = 0;
     std::optional<std::uint16_t> animation_selector;
+    bool combat_action_requested = false;
     bool transition_started = false;
     bool transition_complete = false;
     std::optional<std::uint16_t> audio_event;

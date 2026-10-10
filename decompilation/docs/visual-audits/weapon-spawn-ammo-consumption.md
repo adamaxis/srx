@@ -59,9 +59,10 @@ service resolves every table result to a named resource. Debug/Release
 playback checks measure 0x1C/0x1D/0x3F/0x51 at 2.483/2.817/2.150/2.567 seconds;
 0x1E/0x4A are checked at 2.283/2.267 seconds.
 
-`FieldSceneRuntime::service_player_weapon_action()` runs from the ordinary
-field-frame callback and calls `process_entity_spawn_cycle` using the decoded
-runner, equipped action, heading, status byte, and loaded ammo. The decoded
+`FieldSceneRuntime::service_player_weapon_action()` runs only after the Lua
+actor behavior heartbeat requests a combat action. Lua receives held-A,
+weapon-valid, cooldown-ready, and input-blocked facts; C++ still validates the
+source gate and performs the typed spawn operation. The decoded
 Joshua archetype already has `+0x10=0x0F`, including the action bit; firing QA
 checks that source state rather than forcing it. The typed spawn result selects
 the direction/action-class asset list and submits event `0x1C`. The Qt field
@@ -75,9 +76,15 @@ in the actual Qt field scene. Primary movement and collision recovery remain
 native C++ behavior and are an explicit port boundary.
 The live test uses item 1 with six rounds, fires through ordinary A input, then
 checks the typed ammo service (6->5), unchanged shared reserve (2), C042
-pose/delay, selector 0, and HUD count. The Qt application routes the audio
-callback to playback; field QA uses an event spy, while the separate playback
-CTest checks the mapped resource and duration.
+pose/delay, selector 0, and HUD count. A single A press produces one action.
+Separate stationary and moving held-A routes check the full 51-frame source
+delay: ammo stays fixed through gate zero and changes by one only after the
+gate becomes negative. The moving route holds Right+A, verifies that the
+runner's position advances, and confirms the same delay and one shot per
+expiry. After the stationary attack delay expires, the actor returns to its
+directional C052 idle selector and neutral pose. The Qt application routes the
+audio callback to playback; field QA uses an event spy, while the separate
+playback CTest checks the mapped resource and duration.
 
 The same field QA also takes the ordinary Start/Right/A menu route to equip
 item 2, reloads it to its own 12-round capacity, waits for the reload delay to
@@ -149,36 +156,44 @@ no travel behavior in the traced source path.
    actor-hit animation yet.
 5. **What sound plays and how long?** Items 1 and 2 request event `0x1C`,
    resource 028, a one-shot measured at 2.483 seconds. Holding A during the delay
-   does not repeat it. Terrain terminal event `0x3C` is source-requested but maps
-   to omitted silent resource 060, so it has no host clip or audible duration.
+   does not repeat it. Stationary and moving held-A traces each issue exactly
+   two `0x1C` requests across two source delays. Terrain terminal event `0x3C`
+   is source-requested but maps to omitted silent resource 060, so it has no
+   host clip or audible duration.
    Mapped playback state/duration is checked by the separate Debug/Release audio
    CTest; route loopback and independent Genesis audio correlation remain open.
 6. **Were other screen regions checked?** All full-screen output includes the
    map, actor, HUD, selector, and right-side controls. QA captures the before/shot
-   frames, all 52 delay updates, 30 idle holds, and the item-2 equip/reload/fire
-   return route. The map and HUD remain intact as both records move and retire.
+   frames, all 52 delay updates, 30 idle holds, the item-2 equip/reload/fire
+   return route, and moving held-A checkpoints through the second cooldown.
+   The map and HUD remain intact as both records move and retire.
 7. **Do multiple frames support this interpretation?** After moving projectile
-   behavior into Lua, all 262 Debug and Release screenshots still matched by
-   SHA-256. The current full-screen captures were reviewed in nine fresh
-   contact sheets of 30 frames each; the before/shot/three-delay/retirement
-   frames were also inspected at native size. Independent sections 06/07 were
+   behavior into Lua, all 270 Debug and Release screenshots still match by
+   SHA-256. The Debug weapon-fire frames were reviewed in four fresh contact
+   sheets; the before/shot/three-delay/retirement and moving-shot frames were
+   also inspected at native size. Independent sections 06/07 were
    reviewed, but they contain no identified player firing example or matching
    pose. Internal native frames prove route consistency, not Genesis visual
    fidelity.
 8. **Are new visuals cleanly redrawn?** Firing opens no page and adds no
-   controls. The C042 pose replaces the actor's field sprite; projectile images
-   follow the source entity draw order with the player. Both slots are released
+   controls. The stationary C042 pose replaces the actor's field sprite until
+   its action delay expires. While moving, the C062 walk selector remains free
+   to animate; the cooldown gate stays independent of that selector. Projectile
+   images follow the source entity draw order with the player. Both slots are released
    when their own continuations end, and no projectile pixels remain in the
    settled captures.
 9. **Was the whole time window reviewed?** QA starts from a loaded idle screen,
    captures the action and every delay update, then captures 30 post-delay idle
-   frames. It also captures the item-2 route from equip/reload through firing and
-   cleanup. Movement cancellation and linked actor hit/damage are not covered.
+   frames. It also captures the item-2 route from equip/reload through firing
+   and cleanup, then holds A+Right across a full delay while checking movement,
+   ammo, sound requests, and full-screen checkpoints. Movement cancellation and
+   linked actor hit/damage are not covered.
 
 ## Verification and status
 
-`shadowrun_ghidra_conversion_qt_field_player_action_qa` saves 85 BMPs in its
-weapon-fire folder: before/shot, 52 action-delay frames, 30 idle-hold frames,
+`shadowrun_ghidra_conversion_qt_field_player_action_qa` saves 93 full-screen
+BMPs in its weapon-fire folder, including before/shot, 52 action-delay frames,
+30 idle-hold frames, stationary held-fire cadence, moving held-fire cadence,
 and the final hold alias. `projectile-animation.tsv` records both records'
 counts, primary position/origin, offsets, retry count, secondary
 selector/frame/completion, and whole-screen change for every delay update. It
@@ -189,13 +204,13 @@ events. The Lua runtime test now directly checks four ordered probes, terrain
 rejection, retry wrap/exhaustion, outside-bound sound/retirement, target
 position handoff, stopped-list retirement, and the unresolved linked-action
 outcome. The remaining item/action/menu/runner route supplies 177 additional
-full-screen captures. The extra item-2 terminal checkpoint brings the total to
-262 Debug and Release BMPs; all match by SHA-256. The current Debug screens were
-reviewed in nine fresh full-screen contact sheets, and the firing window was
-inspected at native size. Qt field action and player-action CTests pass in
-Debug and Release. The audio playback test checks mapped resources and
-durations. No matching independent Genesis firing frame or audio correlation
-has been found.
+full-screen captures. The expanded route now produces 270 Debug and Release
+BMPs; all match by SHA-256. The Debug weapon-fire frames were reviewed in four
+fresh contact sheets and key frames inspected at native size. Qt field action,
+dialogue return, interaction return, world-activity return, physical-entry, and
+gameplay-script CTests pass in Debug and Release. The audio playback test checks
+mapped resources and durations. No matching independent Genesis firing frame
+or audio correlation has been found.
 
 Ordinary A input now connects the source spawn helper, weapon ammo/HUD update,
 mapped shot sound, C042 pose, six-slot weapon allocator, Lua-owned

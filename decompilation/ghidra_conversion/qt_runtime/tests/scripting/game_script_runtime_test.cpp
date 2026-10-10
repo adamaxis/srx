@@ -589,6 +589,22 @@ int main() {
     player_movement.controller_nibble = 6U;
     const auto player_behavior_after_render =
         scripts.actor_heartbeat(player_movement);
+    player_movement.combat_action_available = true;
+    player_movement.combat_confirm_held = true;
+    player_movement.combat_action_ready = true;
+    player_movement.combat_input_blocked = false;
+    const auto player_combat_moving =
+        scripts.actor_heartbeat(player_movement);
+    player_movement.movement_allowed = false;
+    player_movement.controller_nibble = 0U;
+    const auto player_combat_stationary =
+        scripts.actor_heartbeat(player_movement);
+    player_movement.combat_action_ready = false;
+    const auto player_combat_cooldown = scripts.actor_heartbeat(player_movement);
+    player_movement.combat_action_ready = true;
+    player_movement.combat_input_blocked = true;
+    const auto player_combat_modal_block =
+        scripts.actor_heartbeat(player_movement);
     if (!expect(
             player_walk_start.has_value() &&
                 player_walk_start->animation_id == "walk" &&
@@ -613,8 +629,16 @@ int main() {
                 player_behavior_after_render->animation_id == "walk" &&
                 player_behavior_after_render->movement_heading == 0x4000U &&
                 player_behavior_after_render->movement_current_heading ==
-                    0x1800U,
-            "Lua heartbeat did not own player animation and movement cadence")) {
+                    0x1800U &&
+                player_combat_moving.has_value() &&
+                player_combat_moving->combat_action_requested &&
+                player_combat_stationary.has_value() &&
+                player_combat_stationary->combat_action_requested &&
+                player_combat_cooldown.has_value() &&
+                !player_combat_cooldown->combat_action_requested &&
+                player_combat_modal_block.has_value() &&
+                !player_combat_modal_block->combat_action_requested,
+            "Lua heartbeat did not own player animation, movement, and source-gated combat cadence")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
     }
