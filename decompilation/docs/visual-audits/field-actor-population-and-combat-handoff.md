@@ -7,9 +7,11 @@ allocation limit are traced for profile-selected actors in scenes 2 and
 ROM-seeded item/spell/none action class and code; native C++ presents its
 finite entry animation. In the scene-`0x14` default-list QA route, only the
 first seven of eight rows become active. New Game bootstrap does not activate
-the scene-2 profile list. Pending-list occupancy, the paired effect-slot pool,
-post-entry behavior, actor movement, interaction, collision targets, hits,
-status, and damage are not implemented. `LOADOUT-01` remains partial.
+the scene-2 profile list. The scene-`0x14` mode-1 post-entry completion branch
+is now source-traced and checked for a no-spawn result; general post-entry
+behavior, pending-list occupancy, the paired effect-slot pool, actor movement,
+interaction, collision targets, hits, status, and damage are not implemented.
+`LOADOUT-01` remains partial.
 
 ## Source path
 
@@ -270,9 +272,11 @@ Lua instance by stable scene/source-order ID. Each field behavior-service pass
 calls Lua once per active profile actor. The compositor sorts actors by
 effective Y depth with source order as the stable tie-break, draws the
 Lua-selected idle or transition frame, then redraws the shared HUD. The
-existing scene-`0x14` captures and QA artifacts were generated before this
-ownership change; they are historical evidence for the old native transition
-and must be regenerated before they can validate the Lua heartbeat.
+The scene-`0x14` physical-entry QA now runs against this Lua ownership path.
+It captures entry, transition, and post-entry frames, and checks Lua actor
+snapshots, audio requests, full-screen UI state, and visible guard pixels at
+each named checkpoint. Those internal Debug/Release captures establish
+renderer consistency only; they are not an independent Genesis visual golden.
 
 The dedicated C++ `FieldActorBehaviorState` and its test target have been
 removed. The broader AI source trace, exact call cadence, animation/render
@@ -313,6 +317,31 @@ by the live Qt field compositor. That presentation does not allocate or update
 the ROM's live entity records. Keep special list `0x1E552` separate until an
 actual event path selects it.
 
+## Scene-`0x14` post-entry completion branch
+
+The source path after the two-frame transition is not a generic idle callback.
+`0xA8EA` reaches `0xAB02` from five completion branches. For these default-list
+actors, the initialized service byte at `+0x10` is `0x05`, so bit 3 is clear
+and `0xAB02` calls `0x16B98`. The weighted-spawn routine first handles special
+kind 7/12/13 cases; for ordinary kinds it admits only world modes 0 and 2.
+The scene-`0x14` route is world mode 1 (`0x1684C`), so `0x16B98` returns before
+checking projection capacity, selecting a random table row, or creating an
+additional scene entity. Control returns to `0xAB02`, which sets service bit 6
+on the completing actor. The spawn countdown and deferred-activity path only
+run if the spawned record returns `+0x9E` bit 6; this route does not set that
+bit. The linked-record propagation and field activity countdown gates are
+also not activated by these default records. In particular, completion does
+not request the entry sound a second time.
+
+The Qt physical-entry QA advances the source behavior loop through ticks 41
+to 82 after the transition checkpoint at 40. At ticks 61 and 82 it confirms
+seven active profile actors, two visible guards, seven completed entry
+transitions, the guard transition frame still selected, unchanged entry cue
+counts, and no dialogue/shop/field prompt overlay. Two full-screen guard
+regions are pixel-identical to tick 40. This is evidence that the tested Qt
+route remains stable through the traced no-spawn branch; it does not establish
+general NPC idle, movement, attack, or independent-ROM visual fidelity.
+
 ## Visual verification questions
 
 1. **Does it look correct?** New Game's whole-screen field image contains the
@@ -332,24 +361,27 @@ actual event path selects it.
 3. **Are the visuals correct?** Named assets use the traced kind, selector,
    palette, descriptor, frame, and signed origin. The exact live projection
    slot assignment through `0x481E` remains unresolved.
-4. **Is it animated, and when?** Each active row has a 0–15 field-update
-   entry delay; each of two C0B2 frames lasts nine updates. The final frame
+4. **Is it animated, and when?** Each active row has a delay of zero through
+   fifteen field updates;
+   each of two C0B2 frames lasts nine updates. The final frame
    stays selected through the 21-update behavior check. The inactive eighth
-   row gets no behavior or render heartbeat. Later actor states are still
-   open.
+   row gets no behavior or render heartbeat. For this mode-1 route, the
+   completed transition's weighted-spawn branch returns without adding an
+   actor. Later actor states are still open.
 5. **Is there a sound effect, and how long?** Entry requests `0x2E` or `0x2F`
    by actor kind. Both map to silent slots, so neither has audible playback
    duration. Other actor sounds are unresolved.
-6. **Are the rest of the screen and state correct?** All 43 current full-screen
-   route captures were re-reviewed at 320x224 across five contact sheets.
-   Map, runner, HUD, and prompt/menu state were checked together; Debug and
-   Release BMP hashes match for all 43 captures.
+6. **Are the rest of the screen and state correct?** All 45 current full-screen
+   route captures were reviewed at 320x224 across five contact sheets, with
+   the two post-entry frames also inspected individually. Map, runner, HUD,
+   and prompt/menu state were checked together; Debug and Release BMP hashes
+   match for all 45 captures.
 7. **Do multiple frames support the interpretation?** The route includes
-   entry and frames 8, 30, and 40, with matching typed state checkpoints;
-   the actor-package trace records the seven source slots and inactive eighth
-   row.
-   Frame 30 differs from entry; frame 40 matches frame 30 after all transitions
-   complete. No same-scene Genesis visual golden is available.
+   entry and frames 8, 30, 40, 61, and 82, with matching typed state
+   checkpoints; the actor-package trace records the seven source slots and
+   inactive eighth row. Frame 30 differs from entry; frame 40 reaches the
+   completed transition, and frames 61 and 82 retain the same guard regions
+   and cue counts. No same-scene Genesis visual golden is available.
 8. **Are new graphics drawn over stale UI?** Scene loading replaces the map;
    active actors draw in the map's entity pass; the HUD is redrawn afterwards.
    Full-screen routes confirm the previous panel and controls are gone. The

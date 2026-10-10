@@ -9014,6 +9014,44 @@ int run_field_scene20_physical_entry_qa(
         return 3;
     }
 
+    const auto actor_audio_2e_after_entry = actor_audio_event_count(0x2EU);
+    const auto actor_audio_2f_after_entry = actor_audio_event_count(0x2FU);
+    for (std::uint16_t elapsed = 41U; elapsed <= 82U; ++elapsed) {
+        field_scene.advance_frame();
+        ++frame;
+        if (elapsed != 61U && elapsed != 82U) {
+            continue;
+        }
+        const auto name = "scene20-post-entry-" + std::to_string(elapsed);
+        const auto image = render();
+        const auto order_3_frame =
+            field_scene.default_actor_animation_frame_for_dump(3U);
+        const auto order_4_frame =
+            field_scene.default_actor_animation_frame_for_dump(4U);
+        if (field_scene.default_actor_count_for_dump() != 7U ||
+            field_scene.visible_default_actor_count_for_dump() != 2U ||
+            field_scene.default_actor_transition_complete_count_for_dump() !=
+                7U ||
+            order_3_frame != std::optional<std::uint8_t>{1U} ||
+            order_4_frame != std::optional<std::uint8_t>{1U} ||
+            actor_audio_event_count(0x2EU) != actor_audio_2e_after_entry ||
+            actor_audio_event_count(0x2FU) != actor_audio_2f_after_entry ||
+            field_scene.dialogue_open() ||
+            field_scene.command_overview_open() ||
+            field_scene.field_interaction_open() ||
+            field_scene.field_mode_text_open_for_dump() ||
+            field_scene.shop_menu_open() ||
+            image_region_differs(actor_frame_40, image, 20, 128, 60, 48) ||
+            image_region_differs(actor_frame_40, image, 216, 128, 56, 48) ||
+            !save_image(name, image) || !record_actor_animation(elapsed)) {
+            std::cerr << "Scene-20 physical-entry QA: post-entry NPC state, "
+                         "entry audio, visible guard pixels, or clean "
+                         "full-screen state changed at tick "
+                      << elapsed << '\n';
+            return 3;
+        }
+    }
+
     constexpr std::size_t maglock_record_index = 117U;
     const auto& scene20_rectangles = field_scene.state()
                                          .field_scene_buffers.source_metadata
