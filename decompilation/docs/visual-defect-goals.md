@@ -439,17 +439,22 @@ inventory/map/selection and action-sound count unchanged. The ordinary New Game
 Decker has Electronics 1 and no kit. QA seed `0x0006` yields one successful
 no-kit roll, changes the current interaction selection 2->1, and shows the
 source partial-result page without sound or map change. After A returns to the
-field, normal Up reaches record 117 again; ROM `0xB994` reloads selection 2
-from the collision event. The QA then seeds kit item `0x15` into the live
+field, holding Up at the contact edge slides along the lock face instead of
+submitting a new collision. The corrected ordinary-input route clears the
+contact envelope with Down, navigates the corridor with Up+Right and
+Down+Left, aligns with Left, then physically recontacts record 117 with Up;
+ROM `0xB994` reloads selection 2 from that collision event. The QA then seeds kit item `0x15` into the live
 Decker record and uses seed `0x0004`; two of three target-3 rolls succeed,
 requesting `0x4B` and selecting the success page. The result page keeps map
 index 483 at `0x82`; ordinary A dismisses it, after which `0x2BD2` changes the
 cell to `0x81`. The test-seeded kit does not establish gameplay acquisition.
-The route writes 56 BMPs/60 artifacts; all Debug/Release files match by
-SHA-256. All seven scene-20 route sets contain 334 BMPs per configuration
-and match across Debug/Release. The six earlier routes contain 286 BMPs and
-77 distinct full-screen images; the alert route contains 48 BMPs and 37 distinct
-frames within that route. The downstream alert actor/effect remains unresolved.
+The route writes 62 BMPs/67 artifacts, including 43 distinct full-screen
+images; all Debug/Release files match by SHA-256. The seven active scene-20
+route directories contain 352 BMPs per configuration and match across
+Debug/Release, with 82 distinct images across the route set. The six routes
+before the alert contain 302 BMPs and 81 distinct images; the alert route
+contains 50 BMPs and 37 distinct frames. The downstream alert actor/effect
+remains unresolved.
 
 Scene 26's descriptor-spawn route separately uses QA-seeded passkeys at
 records 117 and 110, crosses both passages, and reaches the D8 Security
@@ -1017,14 +1022,17 @@ cover quality-2 success and quality-1 insufficiency against selection 2.
 
 The ordinary Samurai path reaches the zero-skill Electronics page and returns
 cleanly. The ordinary Decker path reaches a partial no-kit result at selection
-1, acknowledges it, then physically recontacts the lock; ROM `0xB994` resets
-the selection from event 2. A QA-seeded kit in the live Decker inventory and
+1 and acknowledges it. A single Up hold slides along the lock face; the
+verified retry clears the contact envelope and physically approaches record
+117 again, where ROM `0xB994` resets the selection from event 2. A QA-seeded
+kit in the live Decker inventory and
 source-seeded PRNG exercise the positive Electronics success branch through
 the same physical lock; success requests `0x4B`, then A returns after map cell
 483 changes on the source `0x2BD2` transition. Debug and Release each produce
-334 matching scene-20 BMPs across seven route tests. The six earlier routes
-contain 77 distinct full-screen images; the alert route contains 37 distinct
-frames within its 48 captures. The downstream alert actor/effect remains open. The test kit does not verify item acquisition, and the
+352 matching scene-20 BMPs across the seven active route directories, with 82
+distinct images across the set. The six routes before the alert contain 302
+BMPs and 81 distinct images; the alert route has 50 captures and 37 distinct
+frames. The downstream alert actor/effect remains open. The test kit does not verify item acquisition, and the
 downstream security actor/effect, independent Genesis visuals, other passkey qualities,
 and grenade consumption remain open. Scene 26 separately reaches the D8
 terminal prompt after two QA-seeded passkey successes; the terminal's ordinary

@@ -179,17 +179,27 @@ The ordinary-input Decker trials route then tests both positive-skill outcomes.
 The New Game Decker has Electronics 1 and no kit. Seed `0x0006` produces one
 success against the no-kit threshold, reducing selection 2->1 and showing the
 partial-result page without sound or map mutation. After the source 30-frame
-wait and A return, ordinary Up contacts record 117 again; ROM `0xB994` reloads
-the collision event selection as 2. The QA then inserts kit item `0x15` in the
+wait and A return, holding Up at the contact edge slides along the lock face
+and does not create a new collision. The corrected route uses Down to clear
+the contact envelope, Up+Right and Down+Left to navigate the corridor, Left
+to realign, then Up to physically contact record 117. That blocked probe
+reaches ROM `0xB994`, which reloads the collision event selection as 2. The QA
+then inserts kit item `0x15` in the
 live Decker inventory as an explicit fixture. Seed `0x0004` yields two
 successful rolls from three kit-enabled trials, selecting the success page and
 requesting `0x4B`. The map remains `0x82` through the result page and changes to
 `0x81` on A return via `0x2BD2`. The kit is test-seeded; its story acquisition
 is not connected. The zero-success alert page and timeout handoff are covered; the downstream entity-target selector and exact Genesis maglock
-visuals remain open. This route writes 56 BMPs/60 artifacts; all Debug/Release
-files match by relative-path SHA-256.
+visuals remain open. This route writes 62 full-screen BMPs/67 artifacts, with
+43 distinct images; all Debug/Release files match by relative-path SHA-256.
 
-Across the seven physical scene-20 CTests, 334 BMPs were reviewed. The six earlier routes produced 286 BMPs and 77 distinct 320x224 images; the alert route produced 48 BMPs and 37 distinct images within that route. The scene-20 result, alert hold, and field return were reviewed at full resolution. All 334 Debug/Release BMP pairs match. The alert timeout reaches the entity-target selection boundary; its actor/effect remains unresolved. These internal captures
+Across the seven physical scene-20 CTests, 352 BMPs are present in the active
+route directories, with 82 distinct 320x224 images across those routes. The six
+routes before the alert route contain 302 BMPs and 81 distinct images; the
+alert route contains 50 BMPs and 37 distinct images. The retry path's corridor,
+dialogue, choices, result, and return were reviewed as full-screen frames. All
+352 Debug/Release BMP pairs match. The alert timeout reaches the entity-target
+selection boundary; its actor/effect remains unresolved. These internal captures
 verify complete redraws and adjacent field/HUD state, not Genesis fidelity.
 
 The joined scene-2-to-scene-26 terminal route writes 546 whole-screen BMPs

@@ -10903,6 +10903,120 @@ int run_field_scene20_physical_entry_qa(
         expected_inventory = decker_with_kit.inventory_item_codes;
         expected_inventory_phase = decker_with_kit.inventory_phase_bytes;
 
+        // The partial result returns Joshua to the contact edge. Holding Up
+        // there does not create a new ROM collision: the Lua movement policy
+        // routes along the lock face (the old QA stopped at x=0x46A,y=0x107).
+        // First clear the source contact envelope, then use ordinary
+        // Up+Right input to return to the documented approach lane so B7B8
+        // receives a fresh blocked probe from the south.
+        const auto partial_return_position = world_position();
+        std::uint16_t retry_backoff_ticks = 0U;
+        for (; retry_backoff_ticks < 120U &&
+               world_position().second <= 0x0107U &&
+               !field_scene.field_interaction_open(); ++retry_backoff_ticks) {
+            field_scene.set_controller_nibble(0x02U); // ordinary Down
+            field_scene.advance_frame();
+            ++frame;
+        }
+        field_scene.set_controller_nibble(0U);
+        field_scene.advance_frame();
+        ++frame;
+        const auto retry_backoff_position = world_position();
+        if (field_scene.field_interaction_open() ||
+            field_scene.field_scene_reference_for_dump() != 0x14U ||
+            retry_backoff_position.second <= 0x0107U ||
+            retry_backoff_position.second <= partial_return_position.second ||
+            !save("electronics-retry-backoff")) {
+            std::cerr << "Scene-20 Electronics trials QA: ordinary Down did "
+                         "not clear the maglock contact before retry "
+                         "(ticks=" << retry_backoff_ticks << ", position="
+                      << retry_backoff_position.first << ','
+                      << retry_backoff_position.second << ")\n";
+            return 3;
+        }
+        write_state("electronics-retry-backoff");
+
+        std::uint16_t retry_lane_ticks = 0U;
+        for (; retry_lane_ticks < 120U &&
+               world_position().first < 0x047CU &&
+               !field_scene.field_interaction_open(); ++retry_lane_ticks) {
+            field_scene.set_controller_nibble(0x09U); // ordinary Up + Right
+            field_scene.advance_frame();
+            ++frame;
+        }
+        field_scene.set_controller_nibble(0U);
+        field_scene.advance_frame();
+        ++frame;
+        const auto retry_lane_position = world_position();
+        if (field_scene.field_scene_reference_for_dump() != 0x14U ||
+            (!field_scene.field_interaction_open() &&
+             retry_lane_position.first < 0x047CU) ||
+            !save("electronics-retry-approach-lane")) {
+            std::cerr << "Scene-20 Electronics trials QA: ordinary Up+Right "
+                         "did not return to the clear maglock approach lane "
+                         "(ticks=" << retry_lane_ticks << ", position="
+                      << retry_lane_position.first << ','
+                      << retry_lane_position.second << ")\n";
+            return 3;
+        }
+        write_state("electronics-retry-approach-lane");
+
+        std::uint16_t retry_south_edge_ticks = 0U;
+        for (; retry_south_edge_ticks < 16U &&
+               world_position().second < 0x010CU &&
+               !field_scene.field_interaction_open();
+             ++retry_south_edge_ticks) {
+            field_scene.set_controller_nibble(0x06U); // ordinary Down + Left
+            field_scene.advance_frame();
+            ++frame;
+        }
+        field_scene.set_controller_nibble(0U);
+        field_scene.advance_frame();
+        ++frame;
+        const auto retry_south_edge_position = world_position();
+        if (field_scene.field_scene_reference_for_dump() != 0x14U ||
+            (!field_scene.field_interaction_open() &&
+             (retry_south_edge_position.second < 0x010CU ||
+              retry_south_edge_position.first < 0x0454U ||
+              retry_south_edge_position.first > 0x0494U)) ||
+            !save("electronics-retry-south-edge")) {
+            std::cerr << "Scene-20 Electronics trials QA: ordinary Down+Left "
+                         "did not reach the clear south edge of record 117 "
+                         "(ticks=" << retry_south_edge_ticks << ", position="
+                      << retry_south_edge_position.first << ','
+                      << retry_south_edge_position.second << ")\n";
+            return 3;
+        }
+        write_state("electronics-retry-south-edge");
+
+        std::uint16_t retry_heading_alignment_ticks = 0U;
+        for (; retry_heading_alignment_ticks < 16U &&
+               world_position().first > 0x047CU &&
+               world_position().second >= 0x010CU &&
+               !field_scene.field_interaction_open();
+             ++retry_heading_alignment_ticks) {
+            field_scene.set_controller_nibble(0x04U); // ordinary Left
+            field_scene.advance_frame();
+            ++frame;
+        }
+        field_scene.set_controller_nibble(0U);
+        field_scene.advance_frame();
+        ++frame;
+        const auto retry_approach_position = world_position();
+        if (field_scene.field_scene_reference_for_dump() != 0x14U ||
+            (!field_scene.field_interaction_open() &&
+             (retry_approach_position.first > 0x047CU ||
+              retry_approach_position.second < 0x010CU)) ||
+            !save("electronics-retry-northbound-approach")) {
+            std::cerr << "Scene-20 Electronics trials QA: ordinary Left did "
+                         "not align with the source maglock approach lane "
+                         "(ticks=" << retry_heading_alignment_ticks
+                      << ", position=" << retry_approach_position.first
+                      << ',' << retry_approach_position.second << ")\n";
+            return 3;
+        }
+        write_state("electronics-retry-northbound-approach");
+
         std::uint16_t retry_contact_ticks = 0U;
         for (; retry_contact_ticks < 120U &&
                !field_scene.field_interaction_open(); ++retry_contact_ticks) {
@@ -10927,9 +11041,11 @@ int run_field_scene20_physical_entry_qa(
             retry_intro_panel.actor_kind != DialoguePanelActorKind::none ||
             field_hud_chrome_survives(retry_intro_image, asset_root) ||
             !save("electronics-retry-introduction")) {
-            std::cerr << "Scene-20 Electronics trials QA: ordinary Up did "
-                         "not reopen the same physical lock with collision "
-                         "selection 2 (ticks=" << retry_contact_ticks
+            std::cerr << "Scene-20 Electronics trials QA: after a clear "
+                         "south-corridor retreat, ordinary Up did not "
+                         "reopen the physical lock with collision selection "
+                         "2 (backoff=" << retry_backoff_ticks << ", ticks="
+                      << retry_contact_ticks
                       << ", position=" << retry_position.first << ','
                       << retry_position.second << ", projected=0x"
                       << std::hex << retry_projected_code << std::dec

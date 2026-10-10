@@ -36,11 +36,16 @@ the source partial-result text at `0x11CD42`; it adds no action sound and does
 not change the collision map. The result page is held for 30 frames and
 ordinary A returns to the field.
 
-The physical retry is a fresh collision. ROM `0xB994` writes the collision
-event value back to `FFE16E`, so ordinary Up opens the same lock with selection
-2 again. The QA asserts this reset; it does not carry partial progress across
-field re-entry. The route then adds item `0x15` to the live Decker inventory
-as an explicit test fixture. With Electronics 1 plus the kit, ROM uses three
+The first retry audit incorrectly assumed that holding Up at the contact edge
+would make a new collision. It does not: the Lua movement route slides along
+the lock face and never submits the blocked probe to `0xB7B8`. The corrected QA
+returns through ordinary field controls: Down clears the contact envelope,
+Up+Right and Down+Left navigate around the corridor geometry, Left aligns with
+the south approach, and Up physically contacts record 117 again. The route
+trace and assertions require the new `0xFF82` collision and selection 2;
+`0xB994` writes that event value back to `FFE16E`. Partial progress does not
+carry across field re-entry. The route then adds item `0x15` to the live Decker
+inventory as an explicit test fixture. With Electronics 1 plus the kit, ROM uses three
 trials against target 3. Test-only seed `0x0004` yields faces 4, 2, 4, giving
 two successes and selecting the success result at `0x11CD3A`. The handler sets
 `FFE16E=0xFF`, calls `0x21616`, and requests sound `0x4B`. The result screen
@@ -79,10 +84,11 @@ field/HUD frame equal to the field-only render.
 
 ## Eight-question full-screen review
 
-1. **Does it look correct?** The six earlier routes contain 286 BMPs; the new
-   alert route contains 48 BMPs, with 37 distinct full-screen frames. I reviewed
-   all 37 alert-route frames in contact sheets and inspected the alert result,
-   its held frame, and clean field return at native 320x224 resolution. The
+1. **Does it look correct?** The six routes before the alert route contain
+   302 BMPs and 81 distinct images; the alert route contains 50 BMPs, with 37
+   distinct full-screen frames. I reviewed all 37 alert-route frames in contact
+   sheets and inspected the alert result, its held frame, and clean field
+   return at native 320x224 resolution. The
    result uses the shared full-screen panel, fits both text segments inside the
    text well, and has no option rows or field HUD underneath.
 2. **Does the appearance reflect the behavioral state?** Traces and assertions
@@ -92,7 +98,9 @@ field/HUD frame equal to the field-only render.
    zero-roll trace checks Decker skill 1, no kit/passkey, seed 0, unchanged
    selection/inventory/map, timeout marker -1, and 120 frames. For
    Electronics, the partial result holds selection 1 only until field return;
-   the next physical contact resets it to 2 per `0xB994`. Kit success sets
+   Up alone does not create the retry collision. The traced ordinary-input
+   retreat/approach does, and the resulting `0xFF82` event resets it to 2 at
+   `0xB994`. Kit success sets
    selection `0xFF`; map index 483 changes only after the result is dismissed.
 3. **Are the visuals independently correct?** The supplied longplay has no
    exact scene-20 maglock introduction, choice, or result frame. Sections 03
@@ -114,12 +122,12 @@ field/HUD frame equal to the field-only render.
    timeout; the tested action adds no sound request, including `0x30`.
 6. **Are other screen areas correct too?** The review covers the whole map,
    right HUD, transition fade, player, panel frame, portrait well, text well,
-   option rows, and result/return composition. All seven Debug and Release sets
-   match by relative-path SHA-256: 334 BMPs per configuration, zero
-   mismatches. The routes contain 43 physical-entry, 48 no-grenade, 46
-   passkey-success, 45 insufficient-passkey, 48 no-skill, 48 alert, and 56
-   Electronics-trial captures.
-7. **Do multiple frames support the interpretation?** The earlier 77 distinct
+   option rows, and result/return composition. All seven active Debug and
+   Release route directories match by relative-path SHA-256: 352 BMPs per
+   configuration, zero mismatches. The Electronics-trials route contains 62
+   captures (43 distinct full-screen images), including the newly inspected
+   retreat, corridor alignment, recontact, result, and return frames.
+7. **Do multiple frames support the interpretation?** The earlier 81 distinct
    images include route approaches, fade phases, field movement, the introduction,
    choices, result entry/holds, and clean returns. The alert route's 37 distinct
    images include its approach, transition, choices, alert result, held result,
@@ -147,10 +155,10 @@ CTest names are `shadowrun_ghidra_conversion_qt_field_scene20_physical_entry_qa`
    `--field-scene20-electronics-alert-qa <output-dir>`.
 
 Debug and Release artifacts are under
-`build/conversion/qt/{debug,release}/qt_runtime/` in the corresponding
-`field-scene20-*-qa/` folders. The seven route outputs contain 334 BMPs; the
-new alert route has 48 BMPs and 37 distinct frames. Debug/Release relative-path
-hashes match for the new route. Trial QA pins the PRNG only at action
+`build-ghidra-conversion-qt-{debug,release}/qt_runtime/` in the corresponding
+`field-scene20-*-qa/` folders. The seven active route outputs contain 352 BMPs;
+the Electronics-trials route has 62 BMPs and 43 distinct frames. Debug/Release
+relative-path hashes match for all seven routes. Trial QA pins the PRNG only at action
 boundaries and seeds item `0x15` only in the QA runner. These captures verify
 the connected native route and clean redraw, not independent Genesis visual
 fidelity.
