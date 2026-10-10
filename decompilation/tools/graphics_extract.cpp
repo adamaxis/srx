@@ -3756,6 +3756,25 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
+    if (argc == 5 &&
+        std::string(argv[3]) == "--field-mode-profile-sprite") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto profile = static_cast<std::size_t>(
+                parse_number(argv[4]));
+            const auto image =
+                shadowrun::graphics::decode_genesis_field_mode_profile_sprite(
+                    rom, profile);
+            shadowrun::graphics::write_bmp32(argv[2], image);
+            std::cout << "field mode profile sprite " << profile << ": "
+                      << image.width << "x" << image.height << "\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
     if (argc == 4 && std::string(argv[3]) ==
                          "--field-dialogue-panel-alternate") {
         try {
@@ -3997,6 +4016,8 @@ int main(int argc, char** argv) {
                       "--field-dialogue-panel\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
                       "--field-dialogue-portrait <profile-index>\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
+                      "--field-mode-profile-sprite <rom-offset>\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
                       "--field-dialogue-panel-alternate\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out-dir> "
