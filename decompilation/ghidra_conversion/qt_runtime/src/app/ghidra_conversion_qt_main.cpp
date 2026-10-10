@@ -8792,10 +8792,10 @@ int run_field_scene20_physical_entry_qa(
         field_scene.state().field_scene_buffers.source_metadata;
     const auto expected_scene20_position =
         scene20_metadata.initial_field_records[0U];
-    if (field_scene.default_actor_count_for_dump() != 8U ||
+    if (field_scene.default_actor_count_for_dump() != 7U ||
         field_scene.visible_default_actor_count_for_dump() != 2U) {
-        std::cerr << "Scene-20 physical-entry QA: default actor sprites did "
-                     "not match the active map's visible population (loaded="
+        std::cerr << "Scene-20 physical-entry QA: source-slot-limited default "
+                     "actor population did not match (loaded="
                   << field_scene.default_actor_count_for_dump()
                   << ", on-screen="
                   << field_scene.visible_default_actor_count_for_dump()
@@ -8846,7 +8846,17 @@ int run_field_scene20_physical_entry_qa(
         return 3;
     }
     actor_package_trace
-        << "source_order\tprofile_id\tpackage_id\tweapon_item_id\n";
+        << "source_order\trecord_slot\tprofile_id\tpackage_id\t"
+           "weapon_item_id\n";
+    constexpr std::array<FieldWorldActorSlot, 7> expected_actor_slots{{
+        FieldWorldActorSlot::slot_3,
+        FieldWorldActorSlot::slot_4,
+        FieldWorldActorSlot::slot_5,
+        FieldWorldActorSlot::slot_6,
+        FieldWorldActorSlot::slot_7,
+        FieldWorldActorSlot::slot_8,
+        FieldWorldActorSlot::slot_9,
+    }};
     for (std::uint16_t source_order = 0U; source_order < 8U;
          ++source_order) {
         const auto profile_id =
@@ -8855,6 +8865,19 @@ int run_field_scene20_physical_entry_qa(
             field_scene.default_actor_ai_package_for_dump(source_order);
         const auto weapon_item =
             field_scene.default_actor_weapon_item_for_dump(source_order);
+        const auto record_slot =
+            field_scene.default_actor_record_slot_for_dump(source_order);
+        if (source_order >= expected_actor_slots.size()) {
+            if (profile_id.has_value() || package.has_value() ||
+                weapon_item.has_value() || record_slot.has_value()) {
+                std::cerr << "Scene-20 physical-entry QA: the eighth default "
+                             "list row bypassed the ROM's seven actor slots\n";
+                return 3;
+            }
+            actor_package_trace << source_order
+                                << "\tinactive\tinactive\tinactive\tnone\n";
+            continue;
+        }
         const auto is_guard = source_order < 5U;
         const auto expected_profile = is_guard
             ? "corp_guard_k05_item06"
@@ -8864,6 +8887,8 @@ int run_field_scene20_physical_entry_qa(
             : "pedestrian.no_active_action";
         if (!profile_id.has_value() || *profile_id != expected_profile ||
             !package.has_value() || *package != expected_package ||
+            record_slot != std::optional<FieldWorldActorSlot>{
+                               expected_actor_slots[source_order]} ||
             (is_guard && weapon_item != std::optional<std::uint8_t>{6U}) ||
             (!is_guard && weapon_item.has_value())) {
             std::cerr << "Scene-20 physical-entry QA: Lua actor package "
@@ -8881,8 +8906,9 @@ int run_field_scene20_physical_entry_qa(
             std::cerr << ")\n";
             return 3;
         }
-        actor_package_trace << source_order << '\t' << *profile_id << '\t'
-                            << *package << '\t';
+        actor_package_trace << source_order << '\t'
+                            << static_cast<unsigned>(*record_slot) << '\t'
+                            << *profile_id << '\t' << *package << '\t';
         if (weapon_item.has_value()) {
             actor_package_trace << static_cast<unsigned>(*weapon_item);
         } else {
@@ -8957,16 +8983,17 @@ int run_field_scene20_physical_entry_qa(
             }
         }
     }
-    if (field_scene.default_actor_transition_started_count_for_dump() != 8U) {
-        std::cerr << "Scene-20 physical-entry QA: not all eight default actors "
-                     "entered their finite behavior animation within 30 ticks\n";
+    if (field_scene.default_actor_transition_started_count_for_dump() != 7U) {
+        std::cerr << "Scene-20 physical-entry QA: the seven allocated default "
+                     "actors did not enter their finite behavior animation "
+                     "within 30 ticks\n";
         return 3;
     }
     for (std::uint8_t tick = 30U; tick < 40U; ++tick) {
         field_scene.advance_frame();
         ++frame;
     }
-    if (field_scene.default_actor_transition_complete_count_for_dump() != 8U ||
+    if (field_scene.default_actor_transition_complete_count_for_dump() != 7U ||
         actor_audio_event_count(0x2EU) <= actor_audio_2e_at_entry ||
         actor_audio_event_count(0x2FU) <= actor_audio_2f_at_entry ||
         field_scene.dialogue_open() || field_scene.command_overview_open() ||

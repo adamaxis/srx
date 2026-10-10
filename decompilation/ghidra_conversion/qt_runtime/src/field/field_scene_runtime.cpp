@@ -51,6 +51,15 @@ namespace {
 // that scene reference with the saved row; both paths use the same typed scene
 // resource selection below.
 constexpr std::uint16_t kInitialFieldSceneReference = 2U;
+constexpr std::array<FieldWorldActorSlot, 7> kFieldWorldActorSlots{{
+    FieldWorldActorSlot::slot_3,
+    FieldWorldActorSlot::slot_4,
+    FieldWorldActorSlot::slot_5,
+    FieldWorldActorSlot::slot_6,
+    FieldWorldActorSlot::slot_7,
+    FieldWorldActorSlot::slot_8,
+    FieldWorldActorSlot::slot_9,
+}};
 
 constexpr std::string_view kFieldHudAlias = "field.hud.background";
 constexpr std::string_view kFieldHudFaceAliasPrefix = "field.hud.face.";
@@ -1401,11 +1410,24 @@ void FieldSceneRuntime::initialize_default_field_actors(
     const std::uint16_t scene_reference) {
     for (auto& actor : field_default_actors_) {
         actor.active = false;
+        actor.source_record_slot.reset();
         actor.ai_package_id.clear();
         actor.ai_weapon_item_id.reset();
+    }
+
+    std::size_t next_source_slot = 0U;
+    for (auto& actor : field_default_actors_) {
         if (actor.scene_reference != scene_reference) {
             continue;
         }
+        // For this default-list-only projection, 0x1A342's seven ordinary
+        // actor slots are available as 3..9. 0x4466 stops at the first row
+        // that cannot allocate; later rows remain definitions, not actors.
+        // Earlier 0xA800 pending-list occupancy is a separate open boundary.
+        if (next_source_slot >= kFieldWorldActorSlots.size()) {
+            continue;
+        }
+        actor.source_record_slot = kFieldWorldActorSlots[next_source_slot++];
         actor.active = true;
         actor.initial_behavior_delay = static_cast<std::uint8_t>(
             advance_source_random_seed(field_random_seed_) & 0x000FU);
@@ -10000,6 +10022,23 @@ FieldSceneRuntime::default_actor_animation_frame_for_dump(
                ? std::nullopt
                : std::optional<std::uint8_t>{
                      actor->animation_frame};
+}
+
+std::optional<FieldWorldActorSlot>
+FieldSceneRuntime::default_actor_record_slot_for_dump(
+    const std::uint16_t source_order) const noexcept {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.scene_reference == scene_reference &&
+                   candidate.active &&
+                   candidate.source_order == source_order;
+        });
+    return actor == field_default_actors_.end()
+               ? std::nullopt
+               : actor->source_record_slot;
 }
 
 std::optional<std::string>

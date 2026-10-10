@@ -101,6 +101,19 @@ enum class CommandOverviewActionMessage {
     cannot_trade,
 };
 
+// ROM 0x1A342 allocates ordinary world actors from seven live entity records.
+// Keep these host identities typed so map population does not depend on RAM
+// address arithmetic.
+enum class FieldWorldActorSlot : std::uint8_t {
+    slot_3 = 3,
+    slot_4 = 4,
+    slot_5 = 5,
+    slot_6 = 6,
+    slot_7 = 7,
+    slot_8 = 8,
+    slot_9 = 9,
+};
+
 struct MagicDefenseStripView {
     std::uint16_t value = 0;
     std::uint8_t bar_row = 0;
@@ -147,6 +160,8 @@ public:
     std::optional<std::uint8_t> default_actor_direction_for_dump(
         std::uint16_t source_order) const noexcept;
     std::optional<std::uint8_t> default_actor_animation_frame_for_dump(
+        std::uint16_t source_order) const noexcept;
+    std::optional<FieldWorldActorSlot> default_actor_record_slot_for_dump(
         std::uint16_t source_order) const noexcept;
     std::optional<std::string> default_actor_script_profile_for_dump(
         std::uint16_t source_order) const;
@@ -946,6 +961,7 @@ private:
         bool active = false;
         std::uint16_t scene_reference = 0;
         std::uint16_t source_order = 0;
+        std::optional<FieldWorldActorSlot> source_record_slot;
         std::uint16_t entity_kind = 0;
         std::string actor_instance_id;
         std::string script_profile_id;

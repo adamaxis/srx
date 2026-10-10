@@ -1,12 +1,13 @@
 # Field actor population and combat handoff audit
 
 **Status:** ROM population, initial behavior entry, direction, animation,
-action/item codes, and sound-request paths are traced for the profile-selected
-actors in scenes 2 and `0x14`. Lua selects a package by stable source-template
-profile ID and the ROM-seeded item/spell/none action class and code; native
-C++ executes its finite entry animation.
-New Game bootstrap does not activate the scene-2 profile list. Scene changes
-activate the supported list for the destination. This remains partial:
+action/item codes, sound-request paths, and the seven-record ordinary actor
+allocation limit are traced for profile-selected actors in scenes 2 and
+`0x14`. Lua selects a package by stable source-template profile ID and the
+ROM-seeded item/spell/none action class and code; native C++ presents its
+finite entry animation. In the scene-`0x14` default-list QA route, only the
+first seven of eight rows become active. New Game bootstrap does not activate
+the scene-2 profile list. Pending-list occupancy, the paired effect-slot pool,
 post-entry behavior, actor movement, interaction, collision targets, hits,
 status, and damage are not implemented. `LOADOUT-01` remains partial.
 
@@ -96,6 +97,19 @@ byte-value pairs and a zero word; preserve the pair order. The tested alternate
 scenes 6, 9, and `0x2C..0x31` have empty default lists. These records prove map
 population, but not movement, animation, interaction, or damageability. Do
 not treat presence in a map list as proof that an actor is a weapon target.
+
+The default list is bounded by the live record allocator. `0x43B6` prepares
+pending lists first, then drains `FFE124`, `FFE120`, and finally the default
+list at `FFDDF0`. Each `0x4466` entry calls `0x1A342`, which scans seven
+ordinary world-actor records and returns carry when all are occupied; the
+caller then returns from the current list. It also calls `0x1A2CC` for a
+paired effect slot and stops if that allocation fails. With those records
+free when the default list starts, the ROM can instantiate only its first
+seven rows. The typed Qt projection now assigns those rows the enum identities
+`slot_3` through `slot_9`; the eighth scene-`0x14` definition remains source
+data but is inactive in that route. The separate `0xA800` pending-list gates
+and their earlier occupancy are not represented by this projection, so this
+does not claim complete actor-pool allocation for every world activity.
 
 The live template type also selects the initial animation table. `0x44BC`
 copies the template's first word into live `+0x0E`; this is kind 5 for the
@@ -248,25 +262,32 @@ actual event path selects it.
    longplay has supporting field-character examples but does not identify
    this exact scene or pose.
 2. **Does the current image reflect behavior?** The trace ties source
-   directions 2 and 6 to records 3 and 4. The typed table supplies five
-   `corp_guard_k05_item06` records (item action 6) and three
-   `pedestrian_k0b_none00` records (no action); Lua resolves all eight to their
-   matching packages. QA records eight starts, eight completions, and the two
-   visible guards' animation frame at each captured checkpoint.
+   directions 2 and 6 to records 3 and 4. The typed table has five
+   `corp_guard_k05_item06` rows (item action 6) and three
+   `pedestrian_k0b_none00` rows (no action). The scene-`0x14` default-list
+   route has seven available actor records, so Lua receives five guards and
+   the first two pedestrians; the final pedestrian row is inactive. QA checks
+   slots 3 through 9, seven starts and completions, and the visible guards'
+   animation frame at each captured checkpoint.
 3. **Are the visuals correct?** Named assets use the traced kind, selector,
    palette, descriptor, frame, and signed origin. The exact live projection
    slot assignment through `0x481E` remains unresolved.
-4. **Is it animated, and when?** The entry delay is 0–15 field updates; each
-   of two C0B2 frames lasts nine updates. The final frame stays selected
-   through the 21-update behavior check. Later actor states are still open.
+4. **Is it animated, and when?** Each active row has a 0–15 field-update
+   entry delay; each of two C0B2 frames lasts nine updates. The final frame
+   stays selected through the 21-update behavior check. The inactive eighth
+   row gets no behavior or render heartbeat. Later actor states are still
+   open.
 5. **Is there a sound effect, and how long?** Entry requests `0x2E` or `0x2F`
    by actor kind. Both map to silent slots, so neither has audible playback
    duration. Other actor sounds are unresolved.
-6. **Are the rest of the screen and state correct?** All 43 full-screen
-   scene-20 route captures were reviewed across four sheets. Map, runner, HUD,
-   and prompt/menu state were checked together.
+6. **Are the rest of the screen and state correct?** All 43 current full-screen
+   route captures were re-reviewed at 320x224 across five contact sheets.
+   Map, runner, HUD, and prompt/menu state were checked together; Debug and
+   Release BMP hashes match for all 43 captures.
 7. **Do multiple frames support the interpretation?** The route includes
-   entry and frames 8, 30, and 40, with matching typed state checkpoints.
+   entry and frames 8, 30, and 40, with matching typed state checkpoints;
+   the actor-package trace records the seven source slots and inactive eighth
+   row.
    Frame 30 differs from entry; frame 40 matches frame 30 after all transitions
    complete. No same-scene Genesis visual golden is available.
 8. **Are new graphics drawn over stale UI?** Scene loading replaces the map;

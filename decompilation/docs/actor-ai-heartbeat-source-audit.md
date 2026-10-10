@@ -70,6 +70,18 @@ The corresponding Lua-owned per-instance state lives at
 `game.actors[actor_id]`; it is shared script state rather than a transient
 heartbeat result or a C++ behavior-state object.
 
+The actor-service pass scans 16 records, but the ordinary template-list
+allocator does not offer 16 default NPC slots. `0x43B6` prepares any pending
+list, drains `FFE124` and `FFE120`, then processes the scene default list.
+Each row at `0x4466` asks `0x1A342` to scan seven records from `FF0400` at a
+`0x100` stride; the returned list indices are 3 through 9. If no record is
+free, the list ends immediately. The paired effect allocator at `0x1A2CC`
+can also stop the list. The Qt default-list projection now retains those
+indices as typed `FieldWorldActorSlot` identities and caps the current
+scene-`0x14` route at seven active rows. `0xA800` pending-list occupancy and
+effect-slot exhaustion are not part of that projection, so it is not a
+general-purpose replacement for the ROM entity pool.
+
 ## AI cadence, targeting, action data, and movement
 
 `0x138B8` and `0x13904` decrement the actor's word timer at `+0xB6`. When it
