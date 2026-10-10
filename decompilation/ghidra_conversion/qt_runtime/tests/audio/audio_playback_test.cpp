@@ -38,10 +38,10 @@ int main(int argc, char** argv) {
         SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_074_PATH);
     const auto spawn_resource_081 = std::filesystem::path(
         SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_081_PATH);
-    const auto boot_shock_resource = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_BOOT_SHOCK_RESOURCE_PATH);
-    const auto title_logo_resource = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_TITLE_LOGO_RESOURCE_PATH);
+    const auto boot_shock_sequence = std::filesystem::path(
+        SHADOWRUN_GHIDRA_AUDIO_BOOT_SHOCK_SEQUENCE_PATH);
+    const auto title_logo_sequence = std::filesystem::path(
+        SHADOWRUN_GHIDRA_AUDIO_TITLE_LOGO_SEQUENCE_PATH);
     const auto title_theme_resource = std::filesystem::path(
         SHADOWRUN_GHIDRA_AUDIO_TITLE_THEME_RESOURCE_PATH);
     const auto intro_stage_1 = std::filesystem::path(
@@ -83,11 +83,11 @@ int main(int argc, char** argv) {
         if (alias == "audio.effects.resource.081") {
             return spawn_resource_081;
         }
-        if (alias == "audio.effects.resource.092") {
-            return boot_shock_resource;
+        if (alias == "audio.intro.sega-logo-shock-sequence") {
+            return boot_shock_sequence;
         }
-        if (alias == "audio.effects.resource.093") {
-            return title_logo_resource;
+        if (alias == "audio.intro.shadowrun-logo-reveal-sequence") {
+            return title_logo_sequence;
         }
         if (alias == "audio.music.resource.000") {
             return title_theme_resource;
@@ -172,15 +172,17 @@ int main(int argc, char** argv) {
         return 1;
     }
     if (playback.alias_for_event(0x5CU) !=
-            "audio.effects.resource.092" ||
-        !std::filesystem::is_regular_file(boot_shock_resource)) {
-        std::cerr << "pre-title command 0x5C did not select resource 92\n";
+            "audio.intro.sega-logo-shock-sequence" ||
+        !std::filesystem::is_regular_file(boot_shock_sequence)) {
+        std::cerr << "pre-title command 0x5C did not select its complete "
+                     "source-cadenced render\n";
         return 1;
     }
     if (playback.alias_for_event(0x5DU) !=
-            "audio.effects.resource.093" ||
-        !std::filesystem::is_regular_file(title_logo_resource)) {
-        std::cerr << "title logo command 0x5D did not select resource 93\n";
+            "audio.intro.shadowrun-logo-reveal-sequence" ||
+        !std::filesystem::is_regular_file(title_logo_sequence)) {
+        std::cerr << "title logo command 0x5D did not select its complete "
+                     "source-cadenced render\n";
         return 1;
     }
     if (playback.alias_for_event(0x00U) != "audio.music.resource.000" ||
@@ -218,8 +220,8 @@ int main(int argc, char** argv) {
         {0x4AU, "audio.effects.resource.074", 2200, 2350},
         {0x4BU, "audio.effects.resource.075", 2100, 2300},
         {0x51U, "audio.effects.resource.081", 2530, 2600},
-        {0x5CU, "audio.effects.resource.092", 2700, 2800},
-        {0x5DU, "audio.effects.resource.093", 2400, 2500},
+        {0x5CU, "audio.intro.sega-logo-shock-sequence", 4700, 4900},
+        {0x5DU, "audio.intro.shadowrun-logo-reveal-sequence", 2680, 2720},
         {0x12U, "audio.intro.title.stage-3", 20900, 21200},
     }};
     for (const auto& expected : kMappedEvents) {
@@ -277,9 +279,9 @@ int main(int argc, char** argv) {
                 std::cerr << "first one-shot source request did not start one channel\n";
                 return 1;
             }
-            // ROM repeats each complete extracted render during its visual
-            // sequence: 60 requests for 0x5C, 19 for 0x5D. Preserve each
-            // request while checking that the host does not layer copies.
+            // The mapped asset already contains the ROM-timed repeated chip
+            // stream: 60 starts for 0x5C, 19 starts for 0x5D. Verify that
+            // each source callback does not restart the full composite file.
             const std::size_t request_count = expected.event == 0x5CU
                 ? 60U
                 : 19U;
@@ -299,7 +301,8 @@ int main(int argc, char** argv) {
             if (!status.audio_available || !status.playing || status.error ||
                 playback.playing_channel_count_for_event(expected.event) !=
                     1U) {
-                std::cerr << "repeated source starts layered a complete FLAC; count="
+                std::cerr << "repeated source callbacks restarted the "
+                             "sequence render; count="
                           << playback.playing_channel_count_for_event(
                                  expected.event)
                           << " loaded=" << status.source_ready

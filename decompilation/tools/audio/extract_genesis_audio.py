@@ -64,12 +64,20 @@ class GenesisSoundMachine:
     """Offline host for the ROM's Z80 driver and Genesis bank window."""
 
     def __init__(self, rom: bytes, command_argument: int,
-                 command_sequence: tuple[int, ...] = (0x10,)):
+                 command_sequence: tuple[int, ...] = (0x10,),
+                 repeat_count: int = 1,
+                 repeat_interval_frames: int = 0):
+        if repeat_count < 1:
+            raise ValueError("repeat_count must be at least one")
+        if repeat_count > 1 and repeat_interval_frames < 1:
+            raise ValueError(
+                "repeated command sequences need a positive frame interval")
         machine_type = _load_z80()
         self.machine = machine_type()
         self.rom = rom
         self.bank = 0
         self.ticks = 0
+        self.first_command_ticks: int | None = None
         self.writes: list[ChipWrite] = []
         self.loop_start_ticks: int | None = None
         # Keep every qualifying return per source stream.  The first return
@@ -121,7 +129,12 @@ class GenesisSoundMachine:
         queue = bytearray()
         for opcode in command_sequence:
             queue.extend((0xFF, opcode & 0xFF, command_argument & 0xFF))
-        self._queue_bytes(bytes(queue))
+        if queue:
+            self.first_command_ticks = self.ticks
+            self._queue_bytes(bytes(queue))
+            for _ in range(1, repeat_count):
+                self._run_frames(repeat_interval_frames)
+                self._queue_bytes(bytes(queue))
 
     def _read(self, address: int) -> int:
         if (self.machine.pc == STREAM_FETCH_PC and
@@ -200,13 +213,15 @@ def _write_u32(buffer: bytearray, offset: int, value: int) -> None:
     struct.pack_into("<I", buffer, offset, value)
 
 
-def write_vgm(path: pathlib.Path, writes: list[ChipWrite], total_ticks: int) -> None:
+def write_vgm(path: pathlib.Path, writes: list[ChipWrite], total_ticks: int,
+              origin_ticks: int = 0) -> None:
     """Write a VGM 1.70 stream with Genesis YM2612 and PSG clocks."""
 
     commands = bytearray()
     previous_samples = 0
     for event in writes:
-        sample = round(event.ticks * VGM_RATE / Z80_TICKS_PER_FRAME / 60)
+        sample = round(max(0, event.ticks - origin_ticks) * VGM_RATE /
+                       Z80_TICKS_PER_FRAME / 60)
         wait = max(0, sample - previous_samples)
         while wait:
             amount = min(wait, 0xFFFF)
@@ -222,7 +237,8 @@ def write_vgm(path: pathlib.Path, writes: list[ChipWrite], total_ticks: int) -> 
 
     total_samples = max(
         previous_samples,
-        round(total_ticks * VGM_RATE / Z80_TICKS_PER_FRAME / 60),
+        round(max(0, total_ticks - origin_ticks) * VGM_RATE /
+              Z80_TICKS_PER_FRAME / 60),
     )
     wait = max(0, total_samples - previous_samples)
     while wait:
@@ -280,28 +296,67 @@ def main() -> int:
     )
     parser.add_argument(
         "--seconds", type=float, default=60.0,
-        help="maximum trace duration; use a long window so source loops can be found",
+        help="additional trace duration after the final command; use a long window so source loops can be found",
+    )
+    parser.add_argument(
+        "--repeat-count", type=int, default=1,
+        help="queue the command sequence this many times after driver setup",
+    )
+    parser.add_argument(
+        "--repeat-interval-frames", type=int, default=0,
+        help="source-frame spacing between repeated command sequences",
+    )
+    parser.add_argument(
+        "--timeline-from-first-command", action="store_true",
+        help="place the first queued command at VGM time zero, retaining driver setup writes",
     )
     args = parser.parse_args()
+    if args.repeat_count < 1:
+        parser.error("--repeat-count must be at least one")
+    if args.repeat_count > 1 and args.repeat_interval_frames < 1:
+        parser.error("--repeat-interval-frames must be positive when repeating")
     rom = args.rom.read_bytes()
     for track_id in args.ids:
-        trace = GenesisSoundMachine(rom, track_id, args.sequence)
+        trace = GenesisSoundMachine(
+            rom, track_id, args.sequence, args.repeat_count,
+            args.repeat_interval_frames)
         writes = trace.run(args.seconds)
+        origin_ticks = 0
+        if args.timeline_from_first_command and trace.first_command_ticks is not None:
+            origin_ticks = trace.first_command_ticks
         write_vgm(
             args.vgm_dir / f"track-{track_id:03d}.vgm",
             writes,
             trace.ticks,
+            origin_ticks,
         )
-        loop_seconds = (trace.loop_start_ticks / Z80_TICKS_PER_FRAME / 60
-                        if trace.loop_start_ticks is not None else None)
-        loop_samples = (round(trace.loop_start_ticks * VGM_RATE /
-                               (Z80_TICKS_PER_FRAME * 60))
-                        if trace.loop_start_ticks is not None else None)
+        loop_ticks = (
+            trace.loop_start_ticks - origin_ticks
+            if trace.loop_start_ticks is not None
+            else None
+        )
+        loop_seconds = (
+            loop_ticks / Z80_TICKS_PER_FRAME / 60
+            if loop_ticks is not None
+            else None
+        )
+        loop_samples = (
+            round(loop_ticks * VGM_RATE / (Z80_TICKS_PER_FRAME * 60))
+            if loop_ticks is not None
+            else None
+        )
         restart_count = sum(len(points) for points in trace.stream_restart_ticks.values())
+        ym_key_on_count = sum(
+            write.chip == "ym" and write.register == 0x28 and
+            (write.value & 0x0F) != 0
+            for write in writes
+        )
         suffix = (f", first stream restart at {loop_seconds:.6f}s ({loop_samples} samples), "
                   f"{restart_count} source restart(s) recorded"
                   if loop_seconds is not None else ", one-shot/no loop seen")
-        print(f"track-{track_id:03d}: {len(writes)} chip writes{suffix}")
+        print(
+            f"track-{track_id:03d}: {len(writes)} chip writes, "
+            f"{ym_key_on_count} YM key-on writes{suffix}")
     return 0
 
 

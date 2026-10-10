@@ -1961,6 +1961,8 @@ audio.music.resource.012	audio/music/resource-012.flac	audio	0	0
 audio.music.resource.013	audio/music/resource-013.flac	audio	0	0
 audio.music.resource.014	audio/music/resource-014.flac	audio	0	0
 audio.music.resource.015	audio/music/resource-015.flac	audio	0	0
+audio.intro.sega-logo-shock-sequence	audio/intro/sega-logo-shock-sequence.flac	audio	0	0
+audio.intro.shadowrun-logo-reveal-sequence	audio/intro/shadowrun-logo-reveal-sequence.flac	audio	0	0
 audio.intro.title.stage-1	audio/intro/title-stage-1.flac	audio	0	0
 audio.intro.title.stage-3	audio/intro/title-stage-3.flac	audio	0	0
 audio.music.resource.019	audio/music/resource-019.flac	audio	0	0

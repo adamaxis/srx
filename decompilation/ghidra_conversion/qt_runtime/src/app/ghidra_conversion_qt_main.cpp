@@ -5403,9 +5403,9 @@ private:
                 // The 0x5D746 source path sends 0x16 through 0x530D2 as
                 // FF 12 16 (stop resource 22). Its 0x5C request uses
                 // 0x530DE's queue path, FF 10 5C (start resource 92). Keep
-                // recording every ROM request, but play the complete decoded
-                // stereo cue only once for this pre-title sequence; the FLAC
-                // contains a full source render rather than one YM voice.
+                // recording every ROM request. Its sequence asset contains
+                // all 60 source-cadenced starts rendered through the Z80
+                // driver and Genesis chips, so start that composite once.
                 // Ordinary FF 10 use of 0x16 remains a separate start alias;
                 // this callback must honor the direct FF 12 operation.
                 if (request.service_path ==
@@ -5752,9 +5752,9 @@ private:
             [this](const TitleAudioCommand command) {
                 const auto event = static_cast<std::uint16_t>(command);
                 if (command == TitleAudioCommand::LogoReveal) {
-                    // The 19 source requests are retained, but resource 93
-                    // is a complete stereo cue. Play it once per title
-                    // sequence instead of layering 19 full-file players.
+                    // The sequence asset represents all 19 source starts at
+                    // their ROM cadence. Play that composite once instead of
+                    // layering 19 copies of the complete render.
                     audio_playback_.play_event_once_in_sequence(event);
                     note_presentation_boundary(
                         "title.logo_reveal.audio_command_5d");

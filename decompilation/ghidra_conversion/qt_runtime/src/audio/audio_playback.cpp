@@ -33,10 +33,10 @@ AudioPlaybackService::~AudioPlaybackService() = default;
 AudioPlaybackService::AudioPlaybackService(PathResolver resolver,
                                            QObject* parent)
     : QObject(parent), resolver_(std::move(resolver)) {
-    // Six host channels support overlapping independent effects. The
-    // pre-title SEGA shock uses a source-sequence one-shot policy because its
-    // extracted FLAC is a complete stereo render, not an individual YM voice
-    // stem; replaying the whole file for each source request distorts the cue.
+    // Six host channels support overlapping independent effects. Repeated
+    // ROM starts for the pre-title and logo cues are rendered offline as one
+    // source-cadenced stereo sequence each; the first request starts that
+    // sequence asset rather than layering complete sequence renders.
     constexpr std::size_t kChannelCount = 6U;
     channels_.reserve(kChannelCount);
     for (std::size_t index = 0; index < kChannelCount; ++index) {
@@ -69,14 +69,15 @@ AudioPlaybackService::AudioPlaybackService(PathResolver resolver,
         {0x25U, "audio.effects.resource.037"},
         {0x29U, "audio.menu.command-029"},
         {0x4AU, "audio.effects.resource.074"},
-        // At the SEGA logo, queued command 0x5C starts table-2 resource 92;
-        // the source repeats that start request during the shock window.
+        // At the SEGA logo, queued command 0x5C starts table-2 resource 92.
+        // The mapped asset contains all 60 starts at the ROM's two-frame
+        // cadence, rendered together through the Z80 driver and Genesis chips.
         // The adjacent pre-title command 0x16 is FF 12 (stop resource 22),
         // despite that id's valid FF 10 start alias above.
-        {0x5CU, "audio.effects.resource.092"},
-        // ROM 0x1E4E submits 0x5D on alternating logo columns; the named
-        // asset is the complete extracted table-2 resource 93 render.
-        {0x5DU, "audio.effects.resource.093"},
+        {0x5CU, "audio.intro.sega-logo-shock-sequence"},
+        // ROM 0x1E4E submits 0x5D on alternating logo columns. The asset
+        // contains all 19 resource-93 starts at the four-frame cadence.
+        {0x5DU, "audio.intro.shadowrun-logo-reveal-sequence"},
         // The maglock unlock routine sends command 0x4B (table-2 resource 75).
         {0x4BU, "audio.effects.resource.075"},
         // 0x2C/resource 44 is a verified silent table slot and has no asset.

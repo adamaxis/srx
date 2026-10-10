@@ -1265,8 +1265,8 @@ target_compile_definitions(shadowrun_ghidra_audio_playback_test PRIVATE
     SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_063_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-063.flac"
     SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_074_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-074.flac"
     SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_081_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-081.flac"
-    SHADOWRUN_GHIDRA_AUDIO_BOOT_SHOCK_RESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-092.flac"
-    SHADOWRUN_GHIDRA_AUDIO_TITLE_LOGO_RESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-093.flac"
+    SHADOWRUN_GHIDRA_AUDIO_BOOT_SHOCK_SEQUENCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/intro/sega-logo-shock-sequence.flac"
+    SHADOWRUN_GHIDRA_AUDIO_TITLE_LOGO_SEQUENCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/intro/shadowrun-logo-reveal-sequence.flac"
     SHADOWRUN_GHIDRA_AUDIO_TITLE_THEME_RESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/music/resource-000.flac"
     SHADOWRUN_GHIDRA_AUDIO_INTRO_STAGE_1_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/intro/title-stage-1.flac"
     SHADOWRUN_GHIDRA_AUDIO_INTRO_STAGE_3_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/intro/title-stage-3.flac")

@@ -29,9 +29,52 @@ more specific semantic name.
 
 Offline sources:
 
-- `../input/shadowrun_genesis_us.bin`
-- `../tools/audio/extract_genesis_audio.py`
-- `../tools/audio/trim_wav.py`
+- `../../input/shadowrun_genesis_us.bin`
+- `../../tools/audio/extract_genesis_audio.py`
+- `../../tools/audio/render_vgm_flac.py`
+- `../../tools/audio/trim_wav.py`
+
+## Source-cadenced intro effects
+
+ROM requests `0x5C` 60 times, every two VBlanks during the SEGA shock, and
+requests `0x5D` 19 times, every four VBlanks while revealing the Shadowrun
+logo. Their individual resource renders (`resource-092.flac` and
+`resource-093.flac`) are useful catalog evidence, but neither one represents
+the complete repeated-start sequence. The runtime aliases
+`audio.intro.sega-logo-shock-sequence` and
+`audio.intro.shadowrun-logo-reveal-sequence` point to composite renders made
+from the source-timed Z80 driver and its YM2612/SN76489 register writes. The
+host plays one composite file per source sequence; it does not stack complete
+stereo files for each source start.
+
+The sequence VGM and FLAC files can be regenerated offline from the US ROM:
+run these commands from the `decompilation/` directory.
+
+```powershell
+python tools/audio/extract_genesis_audio.py `
+  input/shadowrun_genesis_us.bin build/intro-audio-vgm `
+  --ids 92 --sequence 0x10 --repeat-count 60 `
+  --repeat-interval-frames 2 --seconds 3 `
+  --timeline-from-first-command
+python tools/audio/render_vgm_flac.py `
+  build/intro-audio-vgm/track-092.vgm `
+  assets/audio/intro/sega-logo-shock-sequence.flac `
+  --library $env:SHADOWRUN_LIBGME --tail-seconds 2
+python tools/audio/extract_genesis_audio.py `
+  input/shadowrun_genesis_us.bin build/intro-audio-vgm `
+  --ids 93 --sequence 0x10 --repeat-count 19 `
+  --repeat-interval-frames 4 --seconds 3 `
+  --timeline-from-first-command
+python tools/audio/render_vgm_flac.py `
+  build/intro-audio-vgm/track-093.vgm `
+  assets/audio/intro/shadowrun-logo-reveal-sequence.flac `
+  --library $env:SHADOWRUN_LIBGME --max-duration-seconds 2.7
+```
+
+`SHADOWRUN_LIBGME` should point to an installed libgme shared library. The
+offline extractor requires the `z80` Python package; the renderer requires
+NumPy and SoundFile. Neither tool nor the Z80/VGM machinery is used by the
+game at runtime.
 
 The intermediate VGM files belong in a temporary extraction directory and
 must not be copied into this runtime asset tree.

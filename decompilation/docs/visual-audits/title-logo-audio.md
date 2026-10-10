@@ -28,40 +28,44 @@ The US ROM is primary; Ghidra output was used only as a cross-check.
 ## Native playback
 
 The title-loop conversion publishes each audio request at the source transition.
-The Qt callback maps command `0x5D` to resource 93 and command `0x00` to resource
-0. The 19 logo requests remain observable, while the complete resource-93
-render plays once per title sequence; the host does not layer 19 copies of a
-complete stereo file. A new source sequence clears that one-shot latch. The
-theme stops/restarts its own resource before playback, matching the title audio
-command handoff.
+The original Qt callback mapped command `0x5D` directly to one standalone
+resource-93 render and latched it once. That lost the other 18 ROM starts. The
+corrected offline asset, `audio/intro/shadowrun-logo-reveal-sequence.flac`, is
+rendered by replaying all 19 `FF 10 5D` commands through the ROM Z80 driver at
+four-frame intervals, then rendering the resulting YM2612/SN76489 writes. Its
+2.700-second endpoint is the ROM transition to the title theme: command `0x00`
+stops/restarts the title resource at that point. Qt starts this source-cadenced
+sequence once at the first `0x5D` callback; it does not layer complete stereo
+copies or discard the source-timed retriggers. A new source sequence clears
+the playback latch.
 
 `shadowrun_ghidra_conversion_test` verifies the 19 even-column requests and the
 theme request after the 91-update countdown transition, before copyright
 presentation. `shadowrun_ghidra_audio_playback` verifies both catalog mappings,
-FLAC decoding, default-output playback, reported durations, one active resource
-93 channel across 19 source requests, replay on a new sequence, and stop.
-Debug and Release pass. The Qt startup QA logs 19
+FLAC decoding, default-output playback, reported durations, one active
+composite channel across 19 source callbacks, replay on a new sequence, and
+stop. Debug and Release CTests pass on the corrected sequence asset.
+The Qt startup QA logs 19
 `title.logo_reveal.audio_command_5d` boundaries followed by one
 `title.theme.audio_command_00` boundary.
 
-A normal Release Qt process was captured through WASAPI application loopback.
-The 44.1 kHz capture is `build/visual-review/title-logo-process-loopback.wav`.
-After anti-aliased 4:1 resampling for rate alignment, overlapping 400 ms
-windows match resource 93 at NCC `0.964`, `0.918`, `0.906`, `0.987`, and `0.994`
-for source offsets 0, 0.2, 0.5, 1.0, and 1.5 seconds. The same capture matches
-resource 0 at NCC `0.995`, `0.997`, `0.998`, `0.991`, `0.996`, and `0.960` for
-offsets 0, 0.5, 1, 2, 4, and 8 seconds. The observed starts are 11.148 seconds
-for the logo cue and 13.828 seconds for the theme. The 19 command requests
-therefore do not produce 19 overlapping host players; the complete sound
-decays before the title music begins.
+A Release path trace confirmed that the Qt runtime opened
+`audio.intro.shadowrun-logo-reveal-sequence` and then the title music alias. A
+fresh 16-second uninstrumented process-loopback capture matches the reveal
+asset at full-window PCM NCC 0.9885 and 50 ms RMS envelope Pearson 1.000 across
+the 2.5-second active interval. The reveal starts near 11.17 seconds; the title
+music transition follows near 13.9 seconds. The earlier partial capture gave a
+lower raw-sample score, so the full clean recapture is the current route
+verification.
 
 The independent Genesis longplay in section 01 supports the same order: frame
 000342 shows the partial logo, frame 000384 shows the completed logo, and frame
-000420 shows the copyright row with the circuit visible. In its 44.1 kHz audio,
-250 ms asset windows from resource 93 and resource 0 match at NCC `0.831` and
-`0.852` respectively near their reveal and title transitions. These short
-compressed-recording matches support cue identity/order but do not establish
-exact VBlank or speaker latency.
+000420 shows the copyright row with the circuit visible. Comparing 50 ms RMS
+envelopes across the full 2.5-second active reveal interval gives Pearson 0.980
+at about 11.25 seconds with a 1.03 time scale. Short 250 ms raw-audio windows
+also support resource 93 and resource 0 identity at NCC 0.831 and 0.852. The
+compressed video supports the repeated reveal envelope and ordering; it does
+not establish exact VBlank timing, chip waveform phase, or speaker latency.
 
 ## Full-screen review
 
@@ -89,23 +93,25 @@ is not an extra control drawn over the skyline.
    appearance, copyright row, and prompt phases. Existing circuit color and
    texture concerns remain under `TITLE-03`.
 4. **Is it animated?** Yes. The logo advances one column every two source
-   updates. The reveal cue is requested on every other column. The title theme
-   is a continuous music track, not a per-column effect.
-5. **What sound plays and how long?** The reveal requests resource 93, whose
-   extracted render is 2.4503 seconds. The title text transition requests
-   resource 0, whose extracted render is 120.0007 seconds. Qt process-loopback
-   confirms both play in the ordinary title route. The source loop metadata is
-   retained; applying music loop points outside the title route remains a
-   separate audio-lifecycle question.
+   updates. The reveal cue is requested on every other column, 19 starts total
+   at four-frame intervals. The title theme starts after the completed-logo
+   countdown, about 2.7 seconds after the first reveal request.
+5. **What sound plays and how long?** The standalone resource-93 render is
+   2.4503 seconds, but it represents only one start. The source-cadenced asset
+   contains all 19 starts and ends at the 2.700-second ROM theme handoff. Its
+   independent 50 ms amplitude envelope matches the longplay across the active
+   reveal interval; the normal Release route starts the expected asset and its
+   envelope matches at 1.000. This clean capture supersedes the earlier partial
+   capture; the independent chip waveform phase remains unverified.
 6. **Are other screen parts also correct?** The full QA frames show no new
    menu or intro controls placed over an old panel. The circuit, title text,
    prompt, options menu, and Seattle outline were checked against their state
    or reference frames; unrelated open defects remain tracked separately.
-7. **Do multiple frames support the interpretation?** Yes. Native full-screen
-   captures cover the reveal, palette, copyright, prompt, menu, and opening
-   transitions. Independent section 01 frames 000342/000384/000420 support the
-   logo-to-title visual sequence, and its audio supplies short matching windows
-   for both resources.
+7. **Do multiple frames support the interpretation?** The independent frames
+   000342/000384/000420 support logo completion, theme/copyright ordering, and
+   the section-01 audio envelope matches the full repeated reveal at Pearson
+   0.980. The Qt process capture separately confirms the expected sequence
+   asset and matching amplitude envelope.
 8. **Were old buttons or graphics left under new UI?** The audio transition
    draws no controls. The complete title and Start Options captures show clean
    transitions; the return-from-empty-load route clears the old menu text before
@@ -117,13 +123,14 @@ is not an extra control drawn over the skyline.
 
 ## Disposition
 
-- **Code changed:** title audio request publication, event-to-resource mapping,
-  Qt playback connection, and regression checks.
-- **Behavior implemented:** command `0x5D` during the logo reveal and command
-  `0x00` before the copyright row are connected to named extracted assets.
-- **Independently checked:** the supplied longplay supports the visual/audio
-  order; process-specific loopback confirms the normal Qt route plays each
-  mapped asset.
-- **Reported defect:** resolved for the missing/mistimed logo cue and title
-  theme. The source loop metadata and audio lifetimes on other title/menu
-  routes remain open.
+- **Code changed:** the offline source driver emits repeated timed requests;
+  Qt maps `0x5D` to a 19-start chip-rendered sequence and `0x00` to the theme.
+- **Behavior implemented:** the host preserves every source retrigger and
+  plays the reveal through its source boundary at the theme handoff.
+- **Independently checked:** section-01 video and audio support logo order and
+  the full 2.5-second reveal envelope (Pearson 0.980); the ordinary Release
+  capture opened the expected asset and matches at PCM NCC 0.9885/envelope
+  Pearson 1.000.
+- **Reported defect:** `BOOT-07` is resolved for repeated-cue count and audible
+  duration. Exact waveform phase and source-to-device timing remain bounded by
+  chip differences and the 30-fps reference.

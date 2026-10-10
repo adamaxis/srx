@@ -64,8 +64,8 @@ clarification. None changes the original report's itemization.
 | `BOOT-03` | The animated microchip/circuit background does not move upward. | **Resolved for the reported missing motion.** ROM `0x1D7A` initializes the Plane-B scroll and `0x26D0` advances it on the first title-loop VBlank, then every five VBlanks while the loop runs; Qt uses that typed offset to move only the circuit layer. Debug/Release startup QA checks the source cadence and whole-screen pixels at multiple offsets. Independent section 01 frames 000390→000396 show a two-pixel upward shift, and 000420→000450 show about twelve pixels; corresponding native frames 254→318 shift thirteen pixels. Full-plane wrap and the separate circuit brightness/texture mismatch remain open under `TITLE-03`. See [the title circuit scroll review](visual-analysis/qt-visual-audit.md#applied-review-title-circuit-vertical-scroll). |
 | `BOOT-04` | The title circuit appears before the Shadowrun logo has rolled across. | **Resolved for arrival order.** ROM `0x1E4E` completes the 38-column reveal before `0x1C1E` begins three palette steps at countdown values 64, 32, and 0. Typed palette-step state keeps the circuit black through the reveal. Debug/Release whole-screen QA checks title frames 188/189; independent section 01 frames 000384/000390 support logo-only then circuit-visible order. Brightness and texture remain separate under `TITLE-03`. See [title circuit arrival audit](visual-audits/title-circuit-arrival.md). |
 | `BOOT-05` | The black interval between the FASA fade-out and the first Shadowrun logo column was missing from the defect inventory. | **Inventory gap closed; no current rendering defect reproduced.** The US ROM title loop initializes `DD2C=0x5A` and calls the logo-column routine only after that countdown becomes negative, so all 90 delay updates are expected to remain black and the first 8-pixel column appears on update 91. Qt Debug/Release boot QA checks the full 320x224 image across the two post-FASA handoff frames and every title-delay update, verifies typed reveal/palette/sprite state, then saves the first-column frame. The complete Release capture shows native frames 540-650 black and the first mark at 651. Independent section 01 frames 000300/000330 show black and 000360 shows the partial mark; 30-fps timing is not treated as VBlank evidence. See [boot-to-title black interval audit](visual-audits/boot-title-black-interval.md). |
-| `BOOT-06` | The SEGA shock effect sounds fragmented and does not match the complete cue in the longplay. | **Resolved for the sampled shock cue.** Resource 92 is a complete 44.1 kHz stereo render (2,750 ms total; about 0.8 s audible), not an individual YM voice stem. The ROM still emits all 60 `FF 10 5C` requests every two VBlanks; the host records each request and plays this complete extracted cue once per pre-title sequence. Debug/Release audio CTest checks one active player across the request burst and replay on a new sequence. Four overlapping 200 ms longplay windows sampled 100 ms apart match a single resource-92 render at NCC 0.9479, 0.9957, 0.9831, and 0.9529; fresh Release process-loopback matches the same asset at 1.0000 across four consecutive 100 ms windows. The 30-fps recording bounds timing precision. See [the source and playback audit](visual-audits/boot-shock-audio.md). |
-| `BOOT-07` | The Shadowrun logo rolls without its reveal cue, and the title theme does not start after the reveal. | **Resolved for title cue identity, ordering, and Qt playback.** ROM `0x1E4E` requests `0x5D` on even column indices `0..36` (19 source requests), which maps to resource 93; the Qt sequence plays the complete extracted render once. ROM `0x1C1E` requests command `0x00` after the `0x5A` completed-logo countdown, immediately before copyright; this maps to music resource 0. Debug/Release title-loop tests check all 19 requests and theme-before-copyright order. Audio CTest checks playback/durations, one active cue across the repeated requests, and new-sequence replay. A normal Release process-loopback capture matches resource 93 at NCC 0.91–0.99 and resource 0 at 0.96–1.00 across 400 ms windows. Independent section 01 frames 000342/000384/000420 support the logo-to-title order, and short 250 ms audio windows match the assets at NCC 0.831/0.852. See [the title logo and theme audit](visual-audits/title-logo-audio.md). |
+| `BOOT-06` | The SEGA shock effect sounds fragmented/too short and does not match the complete cue in the longplay. | **Resolved for repeated starts and audible duration.** ROM traces 60 `FF 10 5C` requests every two VBlanks. The single-start resource-92 render was not the whole cue; the new asset replays all requests through the ROM Z80 driver and YM2612/SN76489 renderer (30 YM key-ons, 25 stream restarts) and has about 2.84 seconds of chip output. Debug/Release CTest checks the 4.842-second file and one composite player; the Release runtime uses that asset and matches at PCM NCC 0.9998 and envelope Pearson 1.000. Independent section-01 50 ms RMS envelope matches at Pearson 0.983 over the active interval. Raw sample phase and exact 60 Hz latency remain unverified. See [the source and playback audit](visual-audits/boot-shock-audio.md). |
+| `BOOT-07` | The Shadowrun logo reveal sound plays too few times/too briefly, and the title theme transition may be wrong. | **Resolved for repeated starts, audible envelope, and source handoff.** ROM `0x1E4E` issues 19 `0x5D` starts for even columns at four-frame intervals; the original resource 93 was only one start. The new Z80/YM2612/SN76489 render has 50 YM key-ons and five stream restarts, ending at the 2.7-second source theme command. Release process-loopback confirms the sequence alias at PCM NCC 0.9885 and envelope Pearson 1.000; independent section-01 50 ms RMS envelope matches at Pearson 0.980 across the active 2.5 seconds. The title theme command `0x00` remains ordered before copyright. Exact waveform phase and 30 Hz-to-VBlank timing remain open. See [the title logo audio audit](visual-audits/title-logo-audio.md). |
 | `TITLE-01` | The title's “PRESS START” label does not blink in and out. | Reproduced before the edit: the presenter set `title_prompt_visible_ = true` for both ROM variants. Resolved. ROM `0x1A9E` starts D7 at `0x0E10`, waits once per loop, then draws only when D7 is below `0x0C6C`; its low six bits select visible record A (`0x1F81`) or blank record B (`0x1F99`), both at `0xCA84` with palette `0x2000`. Qt now follows the selected typed text asset. Debug/Release typed and full-screen QA cover two cycles. Independent section 01 frames 000900/000906/000912 show visible/hidden/visible; their coarse 30-fps spacing supports blinking but does not establish absolute VBlank phase. Full review: [title prompt blink audit](visual-audits/title-prompt-blink.md). |
 | `TITLE-02` | Pressing Start skips the transition and immediately opens New Game/Load Game. | Resolved for the reported Start route: ROM `0x1A9E` exits only on the Start latch (`0x8000`), then performs 17 palette passes after 34 VBlanks; the `0x075E` caller runs six command-`0x14` audio transactions over 18 more VBlanks before `0x59092` draws Start Options. Debug/Release QA captures every pass and hold frame, proves A alone does not exit, and checks the default New Game selection and clean destination redraw. Independent section 01 frames 001637-001643 show title-to-black and 001670-001674 show the options shell followed by text. The clip has no input/VBlank log; exact input phase remains open. Shell-to-text ordering is defended separately under `TITLE-04`, although exact 60-Hz duration is not measurable from this 30-fps capture. The caller's command-`0x14` resource/playback/duration remain unidentified. See [title Start transition audit](visual-audits/title-start-transition.md). |
 | `TITLE-03` | The title circuit background is much brighter and denser green in the native screen than in the independent game capture. | Reproduced in matched whole-screen comparisons after correcting a mislabeled native frame. ROM tracing supports the extracted base palette and identifies a separate seven-phase light update; the compressed reference does not establish the correct brightness of thin circuit lines. Keep open until source-backed color/texture equivalence can be established without a speculative color transform. See [title circuit palette audit](visual-audits/title-circuit-palette.md). |
@@ -154,18 +154,16 @@ The current full-screen pass added two independently actionable goals:
   01 frame 000372 shows the transient flame; frames 000384 and 000390 show
   it gone. The larger circuit brightness/texture discrepancy remains open as
   `TITLE-03`.
-- The Qt pre-title audio callback routes `0x16` as FF 12 stop-resource-22 and
-  preserves all 60 source-timed FF 10 `0x5C` request records while playing the
-  complete stereo resource 92 once per sequence. The earlier six-full-file
-  player implementation was audibly fragmented and has been superseded. Debug
-  and Release QA cover request coalescing and sequence replay; independent
-  longplay and fresh WASAPI loopback windows match the single cue. `BOOT-01`
-  covers missing/mistimed event placement and `BOOT-06` covers fragmentation.
-  Other source audio calls remain open under `global.audio`. The
-  90-second ROM trace found no OPEN-01 within-stage restarts; the Release
-  process-loopback capture confirms the Qt stage-2 interval is silent. The
-  independent Genesis longplay does not isolate that command. Exact-route
-  captures for other sounds remain open under SOUND-03.
+- The boot audio callback routes `0x16` as FF 12 stop-resource-22 and
+  preserves all 60 source-timed FF 10 `0x5C` requests. The standalone resource
+  92 was one start; the new alias uses the full Z80/YM2612/SN76489 render, with
+  chip output lasting about 2.84 seconds. Its Release process envelope matches
+  the asset at PCM NCC 0.9998 and envelope Pearson 1.000; the independent longplay's full active RMS envelope
+  matches at Pearson 0.983. `BOOT-06` is resolved for repeat cadence and
+  audible duration. Other source audio calls remain open under `global.audio`.
+  The 90-second ROM trace found no OPEN-01 within-stage restarts; the Release
+  process-loopback capture confirms the Qt stage-2 interval is silent. Exact-
+  route captures for other sounds remain open under SOUND-03.
 - Independent section 02 samples show Start Options, archetype selection, and
   later opening-story scenes. They do not yet isolate the reported Decker
   head/body, propeller, landing, or taxi states.
@@ -204,7 +202,7 @@ while C++ supplies typed host services and presentation.
 
 | Goal | Reported issue and scope | Current evidence state | Closure gate |
 |---|---|---|---|
-| `AUDIO-RECHECK-01` | Fragmented shock cue; missing/mistimed logo explosion cue and title theme (`BOOT-06/07`). | **Recheck requested.** Prior source and loopback audits marked sampled cues resolved; this report says the current experience still sounds wrong. | Capture a clean normal Release boot with process loopback; trace ROM request order and start/stop boundaries; compare cue identity, overlap, timing, and audible duration with the independent longplay. Update the earlier audit if the current route differs. |
+| `AUDIO-RECHECK-01` | Intro shock and logo-reveal sounds played too few times or too briefly (`BOOT-06/07`). | **Resolved for ROM-cadenced retriggers and audible duration.** Both effects now use offline renders of the exact ROM Z80 driver start cadence and YM2612/SN76489 writes; the Qt route and independent longplay envelopes support the complete cues. | See the source, process-loopback, duration, and independent-envelope evidence in the [shock audit](visual-audits/boot-shock-audio.md) and [logo audit](visual-audits/title-logo-audio.md). Raw chip waveform phase is not claimed from the compressed capture. |
 | `AUDIO-RECHECK-02` | Intro music and cutscene effects are missing, mistimed, or too short (`OPEN-01`, `SOUND-03`). | **Open/recheck.** Existing stage music has source and playback evidence; full event-by-event cutscene SFX coverage is incomplete. | Inventory ROM audio requests for each intro stage, trace channels and stop calls, then capture stage boundaries and one-shot effects with loopback and full-screen frames. Record audible duration and repeat conditions per cue. |
 | `TITLE-LOOP-01` | No-input title returns to a black screen instead of replaying the boot/title sequence (`TITLE-05`). | **Recheck requested.** The internal 3,601-update loop was defended, but no matching independent longplay loop exists. | Run the ordinary Release executable without input through the complete idle interval and replay; verify visible frames and audio at each transition and add a normal-window regression route. |
 | `OPEN-SKIP-TIMING-01` | Start skips to Redmond and the Stoker auto-walk, but the pause and walking speed feel wrong (`OPEN-11`). | **Recheck requested.** The route is source-connected and internally covered; user timing/speed complaint remains unverified. | Compare ROM wait/movement cadence to consecutive longplay frames; capture skip, black handoff, field spawn, pause, zero-input walk, and arrival. Preserve the source-defined pause and per-update travel rate. |
@@ -265,17 +263,16 @@ title keeps the circuit black through
 the 38-column logo reveal and uses the typed 0x1C1E palette-step counter; full
 screens at title frames 188 and 189 check the state and pixels. Independent
 section 01 frames 000384 and 000390 support the logo-only-to-circuit order.
-`BOOT-01` is resolved for the missing/mistimed shock effect. `BOOT-06` is
-resolved for the fragmented sound: the runtime now plays the full stereo cue
-once per source sequence, and consecutive independent longplay windows plus
-fresh Release process-loopback support that mapping. Exact source-to-device
-latency remains bounded by the 30-fps recording. The title color/texture
-mismatch stays separate under `TITLE-03`. `BOOT-07` is resolved for the title
-audio route: all 19 ROM logo-cue requests are preserved while the complete
-resource-93 render plays once, and command 0 starts resource 0 before the
-copyright row. Debug/Release source tests, Qt playback CTests, the normal-route
-process-loopback capture, and the independent longplay support the cue order
-and asset mapping. See the [title logo and theme audit](visual-audits/title-logo-audio.md).
+`BOOT-01` is resolved for sound presence and event placement. The source-
+cadenced shock asset contains all 60 starts, and both process and independent
+longplay amplitude envelopes support its full audible duration; `BOOT-06` is
+resolved for that reported defect. The title color/texture mismatch stays
+separate under `TITLE-03`. The reveal asset contains all 19 `0x5D` starts and
+ends at the `0x00` theme handoff. Process and independent longplay envelopes
+support its repeated sound and full active interval; `BOOT-07` is resolved for
+that reported defect. Raw sample-phase correlation and exact source-to-device
+timing remain bounded by chip differences and the 30-fps reference. See the
+[title logo and theme audit](visual-audits/title-logo-audio.md).
 
 ### INTRO-02 — Title loop, Push Start, and title-to-start transition (`TITLE-01`, `TITLE-02`, `TITLE-05`)
 
