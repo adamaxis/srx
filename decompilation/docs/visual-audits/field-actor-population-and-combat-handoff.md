@@ -64,6 +64,66 @@ through its event-phase/world-mode/context gates. Those entries are not the
 three actor groups above and must not be inserted as generic enemies to make
 the weapon appear to hit something.
 
+The random-pedestrian branch in `0xA800` requires byte `FFFBED` value 5,
+world mode `FFDF40` value 2, word `FFE12C` equal to word `FFF0C8`, and dword
+`FFFC3C` equal to zero. When `FFE183` is zero, it calls `0x0D3A` with bound 2,
+adds one to the `0..2` result, and keeps the resulting one-based choice until
+source code clears the byte.
+`0x5BA98` then indexes `0x1EDB88` by `scene_id - 0x15` and that choice minus
+one. The selected pending list is placed in `FFE124`; `0x43B6` drains it
+before the `FFE120` list and scene default list. This order matters because
+each spawned row consumes an ordinary actor slot before later lists run.
+
+All 69 choices contain one root-tagged `0x1D6988` pedestrian template (kind
+11, palette line 3, no initial item/spell action), one position, and the same
+ordered record overrides: `+0x9E=0x20`, `+0x2E=<heading byte>`, then
+`+0x9E=0x08`. Preserve both writes to `+0x9E`; reducing them to an unordered
+set would change the initialized record. The table below records the ROM
+position and `+0x2E` value for each one-of-three choice. These are candidate
+spawn inputs, not evidence that every one is live on every visit. Coordinates
+and heading bytes in the table are hexadecimal.
+
+| Scene | Choice 1: position / `+0x2E` | Choice 2: position / `+0x2E` | Choice 3: position / `+0x2E` |
+|---|---|---|---|
+| `0x15` | `2800,0580 / C0` | `4700,2D80 / C0` | `4800,1000 / 80` |
+| `0x16` | `0300,0700 / 40` | `2300,2B80 / 40` | `0880,3480 / E0` |
+| `0x17` | `0680,0580 / 80` | `1700,4980 / 40` | `4780,1000 / 80` |
+| `0x18` | `0300,0700 / 40` | `2300,2B80 / 40` | `0880,3480 / E0` |
+| `0x19` | `1780,2C80 / 80` | `3000,2C80 / 80` | `3B80,1000 / 40` |
+| `0x1A` | `2000,0500 / A0` | `2D00,2300 / 60` | `3B00,2500 / 00` |
+| `0x1B` | `1B00,0A00 / 80` | `4B00,1B80 / 80` | `4900,0F00 / 40` |
+| `0x1C` | `1000,2500 / A0` | `2080,1100 / 80` | `4D00,2600 / 40` |
+| `0x1D` | `1000,2500 / A0` | `2080,1100 / 80` | `4D00,2600 / 40` |
+| `0x1E` | `2300,3400 / C0` | `0900,0B00 / 40` | `0A00,2600 / 20` |
+| `0x1F` | `1800,0F00 / C0` | `0380,4880 / 00` | `3A00,3900 / C0` |
+| `0x20` | `0500,1F00 / 40` | `2500,4F00 / 00` | `3A00,1500 / A0` |
+| `0x21` | `0500,1F00 / 40` | `2500,4F00 / 00` | `3A00,1500 / A0` |
+| `0x22` | `1800,0F00 / C0` | `0380,4880 / 00` | `3A00,3900 / C0` |
+| `0x23` | `0400,0980 / 40` | `1B00,2880 / 20` | `5580,0600 / 80` |
+| `0x24` | `0B00,1080 / 00` | `4F00,2300 / 00` | `1F00,2300 / 20` |
+| `0x25` | `0B00,1080 / 00` | `4F00,2300 / 00` | `1F00,2300 / 20` |
+| `0x26` | `0D00,0500 / 80` | `1500,3000 / 80` | `4E80,3F00 / 00` |
+| `0x27` | `1600,2F00 / A0` | `1180,1400 / 80` | `2900,1B80 / 40` |
+| `0x28` | `0300,0700 / 40` | `3380,3900 / C0` | `3000,2500 / 40` |
+| `0x29` | `1500,0E80 / 00` | `3A00,4280 / 00` | `3A00,4280 / 00` |
+| `0x2A` | `2000,0B00 / C0` | `2900,2C00 / C0` | `0500,3880 / 80` |
+| `0x2B` | `2000,0B00 / C0` | `2900,2C00 / C0` | `0500,3880 / 80` |
+
+This table does not supply scene-`0x14`'s physical-entry actors. In the ROM
+transition, `0x1684C` sets world mode 1 for scene IDs below `0x15`; the
+`0x1688E` scene-`0x14` branch exits before selecting the `0x16FD4` pending
+list. The random-pedestrian branch in `0xA800` requires mode 2, and the
+mode-entry initialization clears its higher-priority `FFE180`/`FFE182` flags.
+Thus the scene-20 route's seven-row cap applies to its default list, while the
+`0x15..0x2B` candidates remain unspawned there.
+
+The converted helpers are `prepare_pending_entity_template_list` and
+`select_pending_entity_template_list` in
+`ghidra_conversion/src/entities/entity_template_conversion.cpp`; the Qt field
+runtime does not yet feed this table into Lua actor instances. No pending
+pedestrian is added to a scene until that runtime gate and allocation order
+are connected.
+
 Spawn lists also are not always flat pointer pairs. After each template and
 position pointer pair, `0x44BC` checks the following word for override mode
 `2`. It then reads byte-offset/value pairs until a zero word. For example, the

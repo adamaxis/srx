@@ -111,6 +111,10 @@ that seven rows activate and the eighth stays inactive. This covers the
 default-only route; pending-list allocation and the complete 16-record actor
 lifecycle remain partial.
 
+The `0xA800` gated pedestrian branch and all 69 ROM candidate positions for
+scenes `0x15..0x2B` are now profiled in the actor population audit. They remain
+unconnected to Lua/runtime population; they are not drawn as ambient scenery.
+
 The Stoker and field-object ROM dialogue strings have moved from separate TSV
 catalogs into `assets/dialogue/script-text.lua`. The offline importer writes
 that keyed Lua table; native presenters resolve it through `GameScriptRuntime`,
