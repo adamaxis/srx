@@ -160,6 +160,54 @@ scenes 6, 9, and `0x2C..0x31` have empty default lists. These records prove map
 population, but not movement, animation, interaction, or damageability. Do
 not treat presence in a map list as proof that an actor is a weapon target.
 
+## Default-actor waypoint data and movement handoff
+
+The position pointers above are route tables as well as initial positions.
+`0x44BC` copies the pointer into live `+0xE0`, initializes the waypoint cursor
+`+0xE4` to zero from the common record template at `0x7361A`, and copies the
+first coordinate pair into the actor's current position. `0x142AE` advances
+the cursor by one coordinate pair, reads the next X/Y target, and resets the
+cursor to zero when the next X word is zero. A negative first X word selects
+the player-target branch instead of a coordinate list; none of these default
+route lists uses that sentinel. Scene default-list templates are root-tagged,
+so `0x44BC` marks them with behavior bit 5, which is the source gate for the
+route-list branch.
+
+For route movement, `0x145A2` derives the target heading and distance, then
+installs the `0xB574` continuation. The ordinary continuation steps the
+current heading toward its target through `0xB530`, selects a directional
+animation list, and calls `0xBADE`. That step calls `0xB77E` for a directional
+terrain probe; `0xB7B8` handles blocked probes and map-event continuations,
+and `0xBBE4` commits accepted positions. The separate `0x4618` render pass
+advances the selected actor animation. Waypoint choice, movement policy, and
+the behavior/render split therefore all need to reach Lua; a compositor-only
+waypoint table would not move an actor.
+
+The ROM coordinate pairs decoded from the profile-selected position pointers
+are:
+
+| Scene | Source order / actor | Position-list offset | Ordered route points (hex X,Y) |
+|---|---|---:|---|
+| 2 | 0 / pedestrian | `0x172D58` | `3480,2200` -> `2800,2200` -> `2800,3D80` -> `3480,3700` -> `5300,3700` -> `5300,2500` -> `5600,2500` -> `5600,1900` -> `6280,1900` -> `6280,0B80` -> `7300,1380` -> `0700,1380` |
+| 2 | 1 / pedestrian | `0x172D68` | `5300,3700` -> `5300,2500` -> `5600,2500` -> `5600,1900` -> `6280,1900` -> `6280,0B80` -> `7300,1380` -> `0700,1380` |
+| 2 | 2 / pedestrian | `0x172D78` | `6280,1900` -> `6280,0B80` -> `7300,1380` -> `0700,1380` |
+| `0x14` | 0 / corp guard | `0x1D9248` | `0600,1100` -> `4F80,1100` |
+| `0x14` | 1 / corp guard | `0x1D9252` | `0600,2300` -> `4F80,2300` |
+| `0x14` | 2 / corp guard | `0x1D925C` | `0800,3500` -> `4F80,3500` |
+| `0x14` | 3 / corp guard | `0x1D9266` | `5400,0A00` |
+| `0x14` | 4 / corp guard | `0x1D926C` | `6080,0A00` |
+| `0x14` | 5 / pedestrian | `0x1D922E` | `1600,0580` -> `1600,0A80` |
+| `0x14` | 6 / pedestrian | `0x1D9238` | `3680,1800` |
+| `0x14` | 7 / pedestrian | `0x1D923E` | `0B00,2A80` -> `0F00,2A80` |
+
+The three scene-2 pointers share tails of one ROM coordinate stream. The
+one-point scene-`0x14` lists have no additional destination before the zero
+terminator. This is route-data evidence, not proof that every actor walks it
+on every visit: the `0x13904` actor-state, target, world-activity, and
+collision gates still decide which path runs. The Lua package currently gets
+only the source spawn position and heading; the path points and cursor are
+not yet exposed to its instance state, and NPC movement remains unimplemented.
+
 The default list is bounded by the live record allocator. `0x43B6` prepares
 pending lists first, then drains `FFE124`, `FFE120`, and finally the default
 list at `FFDDF0`. Each `0x4466` entry calls `0x1A342`, which scans seven
