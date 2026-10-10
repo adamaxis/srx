@@ -63,6 +63,28 @@ conditions, and scene selection below come from the US ROM. See the
   dialogue from flags 16, 26, 27, and 28 plus group-item flags. Those
   conditions and conversation choices are not yet connected.
 
+## Scene 54 entry profile and collision evidence
+
+Scene 54 (`0x36`) is a scripted-activity scene in the ROM selector. The map
+profile is `0x1E98EC`; its field bounds are 320 by 1344 map units, initial
+camera `(1, 70)`, and all three profile runner anchors are `(10, 81.5)`. The
+individually extracted background is 320 by 1344 pixels. Those coordinates
+explain the tall asset but do not establish what the player sees in a complete
+Genesis sequence.
+
+The profile has no event-table pointer. Its 29 collision rectangles comprise
+28 records with raw value `0x007F` (event code 31) and one record at grid cell
+`(4,1)` with raw value `0x00C0` (event code 0). The standard scene-entity list
+pointer resolves to a zero first entry, so the ordinary scene entity-table
+loader adds no placed actors. This does not rule out actor setup through a
+separate scripted path. The profile also has no elevator child-scene group;
+scene 54 must not be treated as one floor in the normal elevator selector.
+
+The current trace therefore does not establish scene 54's exit destination.
+The empty event table means the map's event-31 collision handling and its
+event-0 opening need to be traced through their direct source branches before
+we assign either one an exit or a dialogue. No reverse route has been added.
+
 ## Seven visual and behavioral checks
 
 1. **Does it look correct?** No Qt route capture exists yet. Mike's map names
@@ -104,8 +126,9 @@ conditions, and scene selection below come from the US ROM. See the
 - Trace which world-effect path can populate `FFE162`, whether it is active
   for Tarislar's event-7 route, and how selector precedence reaches scene 54
   or the pending scene-15 override.
-- Trace scene 54's entry, actor/activity setup, elevator/story completion,
-  exits, and return path against the ROM before connecting the route in Lua.
+- Trace scene 54's direct event-31/event-0 handling, any non-table actor setup,
+  the activity completion condition, exits, and return path against the ROM
+  before connecting the route in Lua.
 - Capture the ordinary-input approach, every page, transition, and clean
   return/arrival as whole 320x224 screens. Review all surrounding pixels and
   check the seven questions above before changing this status.
