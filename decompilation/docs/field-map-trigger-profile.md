@@ -109,6 +109,32 @@ place-name or an interior.
 | Scene 4, record 96 at `0x15BDF6`, raw `0x00DB`, event `0x1B` | `field_events.lua` selects the event-27 world-activity continuation | Source selects the event-27 continuation; the table row is bypassed. Its complete downstream behavior is not established. | Lua selects the typed continuation; Qt has no corresponding pending field-scene handler binding yet. |
 | Scene 47, record 62 at `0x1D54B0`, raw `0x00B9`, event `0x19` | If `FFFC10 == 0x13`, direct `0x53EFA`; otherwise rewrite the collision result to `0x00A8`/event 8 | The route depends on field-transition context. The raw event-table row 25 is not a fixed destination; the rewrite path continues as event 8. | Typed dispatcher branch exists. This scene/context route is not physically exercised in the current Qt field runtime. |
 
+### Reported Little Chiba / Redmond elevator transition
+
+The ROM evidence establishes a two-step numeric route, but does not assign
+either scene a place-name. In scene 2, record 93 at `0x17314C` publishes
+collision `0x00C1`/event 1. Event-table row 1 at `0x172CDD` contains `0x1A`,
+which `0x167AE` classifies as resource-activity scene 26. The normal route QA
+loads scene 26 at its descriptor spawn `(0x0A00,0x0500)`.
+
+Scene 26's elevator selector is a separate movement trigger: records 102 and
+103 at `0x1D9D6A` and `0x1D9D74` combine into event-29 bounds
+`x=0x0080..0x00BF`, `y=0x0020..0x003F`. ROM `0xB7B8` requires its movement and
+collision gates before dispatching event 29 to `0x58D94`; `building.lua` only
+returns `open_elevator_selector` for that event when the extracted scene group
+exists. The scene-26 spawn is outside these bounds, so scene entry alone does
+not contact this trigger. The current Qt route-entry test holds scene 26 for
+30 field updates without opening the selector. Separate elevator QA starts
+from a QA-restored scene-26 state and physically approaches the event-29
+rectangle; it does not join the normal scene-2 route to that trigger.
+
+Therefore the source does not support an elevator opening automatically as
+part of the scene-2-to-26 entry. It also does not identify scene 2 or scene 26
+as Redmond or Little Chiba. A joined ordinary-input capture from the user's
+reported route is still needed to determine which interaction was taken and
+which visible map was being named. Keep unprofiled place names and reverse
+routes unresolved.
+
 The event `0x1A` rectangles (168 records, raw `0xDA`) are projected-terrain
 markers. `0xB7B8` calls `0x16760` to mark the projected cell and only starts
 continuation `0x20C90` if the source marker condition succeeds. Events `0x1C`,
