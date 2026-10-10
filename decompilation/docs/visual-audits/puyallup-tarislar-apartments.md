@@ -18,6 +18,11 @@ conditions, and scene selection below come from the US ROM. See the
 [Puyallup map](https://mikesrpgcenter.com/shadowrun/maps/puyallup.html) and
 [walkthrough](https://mikesrpgcenter.com/shadowrun/walkthrough.html).
 
+The ROM text itself has a spelling split: the guarded passage at `0xFBCC7`
+says “Tarislar,” while the authorized first-entry passage at `0xFBE12` says
+“Tarlisar.” Preserve each imported string as encoded unless the game-text
+catalog's source policy explicitly authorizes a correction.
+
 ## ROM trace
 
 - Scene 1 descriptor: `0x3236`; collision stream begins at `0x17D704`.
