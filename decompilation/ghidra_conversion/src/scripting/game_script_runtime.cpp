@@ -847,6 +847,51 @@ struct GameScriptRuntime::Impl {
         return lua_yieldk(lua, 0, 1, actor_walk_heading_continuation);
     }
 
+    static int ui_cursor_menu(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        if (self == nullptr || self->task_state != lua ||
+            self->task_waiting || self->pending_task_operation.has_value() ||
+            self->active_native_operation.has_value()) {
+            if (self != nullptr) {
+                self->bridge_failure =
+                    "game.ui.cursor_menu must run inside an active task";
+            }
+            lua_pushnil(lua);
+            return 1;
+        }
+
+        std::string menu_id;
+        ScriptMenuDefinition menu{};
+        const bool valid_selection = lua_isinteger(lua, 3) != 0 &&
+            lua_tointeger(lua, 3) >= 1 &&
+            lua_tointeger(lua, 3) <=
+                static_cast<lua_Integer>(kMaximumMenuChoices);
+        if (!read_string(lua, 1, menu_id) ||
+            !valid_identifier(menu_id) || !valid_selection ||
+            !valid_identifier(self->location_text_profile) ||
+            !parse_menu_choices(lua, 2, menu_id,
+                                self->location_text_profile,
+                                self->location_speaker_id, menu,
+                                kMaximumMenuChoices) ||
+            lua_tointeger(lua, 3) >
+                static_cast<lua_Integer>(menu.choices.size())) {
+            self->bridge_failure =
+                "game.ui.cursor_menu expects a menu name, choices, and a valid one-based selection in a profiled location";
+            lua_pushnil(lua);
+            return 1;
+        }
+
+        menu.input_mode = ScriptMenuInputMode::cursor;
+        menu.selected_index = static_cast<std::size_t>(
+            lua_tointeger(lua, 3) - 1);
+        ScriptNativeOperation operation{};
+        operation.type = ScriptNativeOperation::Type::ui_menu;
+        operation.menu = std::move(menu);
+        self->pending_task_operation = std::move(operation);
+        self->task_waiting = true;
+        return lua_yieldk(lua, 0, 1, actor_walk_heading_continuation);
+    }
+
     static int ui_say(lua_State* lua) {
         auto* self = from_upvalue(lua);
         if (self == nullptr || self->task_state != lua ||
@@ -1063,6 +1108,9 @@ struct GameScriptRuntime::Impl {
         lua_pushlightuserdata(state, this);
         lua_pushcclosure(state, ui_menu, 1);
         lua_setfield(state, -2, "menu");
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, ui_cursor_menu, 1);
+        lua_setfield(state, -2, "cursor_menu");
         lua_pushlightuserdata(state, this);
         lua_pushcclosure(state, ui_say, 1);
         lua_setfield(state, -2, "say");
@@ -3118,6 +3166,29 @@ ScriptTaskStep GameScriptRuntime::complete_native_menu_choice(
     impl_->task_waiting = false;
     impl_->active_native_operation.reset();
     lua_pushlstring(task, choice_id.data(), choice_id.size());
+    return impl_->resume_task(1);
+}
+
+ScriptTaskStep GameScriptRuntime::complete_native_menu_input(
+    const std::string_view input_id) {
+    auto* state = impl_->state;
+    auto* task = impl_->task_state;
+    const auto& operation = impl_->active_native_operation;
+    const bool recognized_input = input_id == "up" || input_id == "down" ||
+                                  input_id == "confirm" ||
+                                  input_id == "cancel";
+    if (state == nullptr || task == nullptr || !impl_->task_waiting ||
+        impl_->pending_task_operation.has_value() || !operation.has_value() ||
+        operation->type != ScriptNativeOperation::Type::ui_menu ||
+        !operation->menu.has_value() ||
+        operation->menu->input_mode != ScriptMenuInputMode::cursor ||
+        !recognized_input) {
+        return impl_->failed_task(
+            "gameplay script task is not waiting for a valid cursor-menu input");
+    }
+    impl_->task_waiting = false;
+    impl_->active_native_operation.reset();
+    lua_pushlstring(task, input_id.data(), input_id.size());
     return impl_->resume_task(1);
 }
 

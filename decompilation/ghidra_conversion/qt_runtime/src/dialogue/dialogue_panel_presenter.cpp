@@ -236,7 +236,17 @@ void DialoguePanelPresenter::paint(QPainter& painter,
     for (std::size_t index = 0U; index < panel.option_count && index < 3U;
          ++index) {
         const auto row_y = 152 + static_cast<int>(index * 24U);
-        painter.drawImage(16, row_y, option_markers_[index]);
+        if (panel.cursor_selection) {
+            if (index == panel.selected_option) {
+                // ROM 0xC376 rewrites the menu-row cursor as a separate tile
+                // pair; represent that state with the extracted UI font
+                // until the source cursor glyph is added to the asset set.
+                draw_pixel_text(painter, 24, row_y, ">", 1, 1,
+                                dialogue_green);
+            }
+        } else {
+            painter.drawImage(16, row_y, option_markers_[index]);
+        }
         draw_wrapped_segment(painter, 48, row_y,
                              panel.options[index].source_label, 32, 2,
                              dialogue_green);

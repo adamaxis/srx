@@ -516,11 +516,15 @@ DialoguePanelView make_script_menu_panel_view(
     const std::optional<DialogueSpeakerPresentation>& speaker,
     const std::string_view title_key,
     const std::vector<std::pair<std::string, std::string>>& choices,
-    const DialogueTextResolver& resolve_text) {
+    const DialogueTextResolver& resolve_text,
+    const bool cursor_selection,
+    const std::size_t selected_option) {
     DialoguePanelView view{};
     view.open = true;
     view.actor_kind = DialoguePanelActorKind::none;
     view.kind = DialoguePanelKind::field_npc_prompt;
+    view.cursor_selection = cursor_selection;
+    view.selected_option = selected_option;
     if (speaker.has_value()) {
         if (speaker->id.empty() || speaker->name.empty() ||
             speaker->text_profile.empty() ||

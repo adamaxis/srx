@@ -52,7 +52,7 @@ namespace {
 // that scene reference with the saved row; both paths use the same typed scene
 // resource selection below.
 constexpr std::uint16_t kInitialFieldSceneReference = 2U;
-constexpr std::uint8_t kFieldModalReturnTransitionFrames = 30U;
+constexpr std::uint8_t kFieldModalReturnTransitionFrames = 60U;
 constexpr std::array<FieldWorldActorSlot, 7> kFieldWorldActorSlots{{
     FieldWorldActorSlot::slot_3,
     FieldWorldActorSlot::slot_4,
@@ -1042,6 +1042,9 @@ bool FieldSceneRuntime::transition_to_elevator_destination(
     field_world_activity_timeout_state_ = WorldActivityTimeoutState{};
     field_world_activity_timeout_state_.scene_id = scene_reference;
     world_activity_routine_state_ = WorldActivityRoutineState{};
+    world_activity_request_state_ = WorldActivityRoutineRequestState{};
+    world_activity_request_start_state_ = WorldActivityStartState{};
+    world_activity_return_snapshot_.reset();
     field_weapon_projectiles_.clear();
     field_weapon_slots_occupied_.fill(false);
     field_weapon_collision_targets_pending_reported_ = false;
@@ -2429,7 +2432,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 source_boundary("field.world_activity.publish_descriptors");
             };
             activity_callbacks.snapshot_scene_state = [this] {
-                source_boundary("field.world_activity.snapshot_scene_state");
+                snapshot_world_activity_source_scene();
             };
             activity_callbacks.prepare_field_scene_buffers =
                 [this, &prepared, preparation_scene] {
@@ -2480,6 +2483,37 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 result ==
                     WorldActivityResult::resource_activity_sample_out_of_range) {
                 source_boundary("field.world_activity.resource_selection_unresolved");
+                runtime.field_transition_requested = true;
+            }
+        };
+    field_runtime_callbacks_.handle_world_activity_request =
+        [this](integration::FieldRuntimeCoordinatorState& runtime) {
+            std::array<WorldActivityRequestSlot,
+                       kWorldActivityRequestSlotCount> request_slots{};
+            const auto& entities = state_.behavior_entities;
+            for (std::size_t index = 0U;
+                 index < request_slots.size() && index < entities.size(); ++index) {
+                request_slots[index].flags_byte =
+                    entities[index].active ? 0x01U : 0U;
+                request_slots[index].route_flags = entities[index].route_flags;
+            }
+            const bool activity_started =
+                ::shadowrun::ghidra_conversion::handle_world_activity_request(
+                    world_activity_request_state_, request_slots,
+                    world_activity_request_start_state_);
+            if (activity_started) {
+                runtime.world_activity_countdown =
+                    world_activity_request_start_state_.timer_frames;
+                begin_world_activity(
+                    field_world_activity_state_,
+                    static_cast<std::uint16_t>(
+                        world_activity_request_start_state_.activity_pointer));
+                source_boundary("field.world_activity.request_started");
+            }
+        };
+    field_runtime_callbacks_.initialize_field_scene_state =
+        [this](integration::FieldRuntimeCoordinatorState& runtime) {
+            if (!restore_world_activity_source_scene(runtime)) {
                 runtime.field_transition_requested = true;
             }
         };
@@ -2536,6 +2570,25 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         const auto continuation = field_activity_continuation_;
         field_activity_continuation_ =
             MovementModeTransitionContinuation::none;
+        if (continuation ==
+            MovementModeTransitionContinuation::event_31_world_activity) {
+            if (state_.field_scene_buffers.scene_reference != 26U) {
+                source_boundary(
+                    "field.activity.event31_scene_route_unresolved");
+                return integration::PendingFieldSceneHandlerResult::resumed_field;
+            }
+            game_scripts_.set_location_context(
+                "activity", "resource_scene", "field.activity");
+            if (!field_dialogue_.open_gameplay_task(
+                    "field_activities", "resource_scene_main_menu")) {
+                source_boundary(
+                    "field.activity.resource_main_menu_open_failed");
+            } else {
+                source_boundary(
+                    "field.activity.resource_main_menu_opened");
+            }
+            return integration::PendingFieldSceneHandlerResult::resumed_field;
+        }
         if (continuation ==
             MovementModeTransitionContinuation::event_29_world_activity) {
             if (!open_field_elevator_selector(
@@ -4211,6 +4264,9 @@ bool FieldSceneRuntime::bootstrap(
     field_world_activity_state_ = WorldActivityState{};
     field_world_activity_timeout_state_ = WorldActivityTimeoutState{};
     world_activity_routine_state_ = WorldActivityRoutineState{};
+    world_activity_request_state_ = WorldActivityRoutineRequestState{};
+    world_activity_request_start_state_ = WorldActivityStartState{};
+    world_activity_return_snapshot_.reset();
     field_weapon_projectiles_.clear();
     field_weapon_slots_occupied_.fill(false);
     field_weapon_collision_targets_pending_reported_ = false;
@@ -4632,6 +4688,8 @@ void FieldSceneRuntime::record_field_activity_start(
         continuation ==
             MovementModeTransitionContinuation::building_security_terminal ||
         continuation ==
+            MovementModeTransitionContinuation::event_31_world_activity ||
+        continuation ==
             MovementModeTransitionContinuation::event_29_world_activity) {
         field_runtime_state_.pending_field_scene_handler = true;
     }
@@ -4761,6 +4819,20 @@ bool FieldSceneRuntime::initialize_world_activity_for_dump(
                world_activity_routine_state_.scene_id &&
            field_security_floor_index_.value() <
                world_activity_routine_state_.resource_random_index_bound;
+}
+
+bool FieldSceneRuntime::return_from_world_activity_for_dump() {
+    if (!ready_ || !world_activity_return_snapshot_.has_value()) {
+        return false;
+    }
+    const auto source_scene =
+        world_activity_return_snapshot_->scene_buffers.scene_reference;
+    field_runtime_state_.field_transition_requested = true;
+    advance_frame();
+    return !world_activity_return_snapshot_.has_value() &&
+           !field_runtime_state_.field_transition_requested &&
+           state_.field_scene_buffers.initialized &&
+           state_.field_scene_buffers.scene_reference == source_scene;
 }
 
 bool FieldSceneRuntime::dispatch_selected_security_terminal_for_dump() {
@@ -5050,7 +5122,7 @@ FieldSceneRuntime::heartbeat_field_player(
             weapon_template_for_item_code(runner.equipped_item_code) !=
                 nullptr;
         actor_context.combat_confirm_held =
-            (field_controller_sample_state_.events & 0x0040U) != 0U;
+            (field_controller_sample_state_.held & 0x0040U) != 0U;
         actor_context.combat_action_ready =
             runner.animation_action_gate < 0;
         actor_context.combat_action_available = weapon_action_available;
@@ -5330,7 +5402,7 @@ void FieldSceneRuntime::service_player_weapon_action(
     if (!requested_by_lua || field_combat_input_suppressed_until_release_ ||
         runner.animation_action_gate >= 0 ||
         (runner.flags & 0x0200U) == 0U ||
-        (field_controller_sample_state_.events & 0x0040U) == 0U) {
+        (field_controller_sample_state_.held & 0x0040U) == 0U) {
         return;
     }
 
@@ -5393,11 +5465,10 @@ void FieldSceneRuntime::service_player_weapon_action(
         return;
     }
 
-    // ROM 0x1514E also enforces the C042 animation window. The +0xDC action
-    // delay is checked above, independently of movement's walk/idle selector.
-    if ((field_entity_animation_selector_ & 0x07FFU) > 0x003CU) {
-        return;
-    }
+    // The source actor's +0x16 animation timer is not the host's selected
+    // movement sprite list. Use the source +0xDC action delay above as the
+    // firing cadence so changing between idle and walking lists cannot reset
+    // the weapon's rate.
 
     const auto source_status_flags = runner.inventory_phase_bytes[
         static_cast<std::size_t>(runner.equipped_inventory_slot)];
@@ -5412,7 +5483,7 @@ void FieldSceneRuntime::service_player_weapon_action(
     spawn_state.parent.field_0x9d = runner.magic_force;
     spawn_state.equipment = EntityEquipmentState{
         runner.ammo_rounds, static_cast<std::int16_t>(runner.record_type)};
-    spawn_state.animation_counter = field_entity_animation_selector_;
+    spawn_state.animation_counter = field_entity_animation_.frame;
     spawn_state.global_mode = static_cast<std::uint8_t>(
         field_runtime_state_.field_scene_gate);
     spawn_state.entity_flags = spawn_state.parent.flags;
@@ -6159,6 +6230,116 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
     return true;
 }
 
+void FieldSceneRuntime::snapshot_world_activity_source_scene() {
+    WorldActivityReturnSnapshot snapshot{};
+    snapshot.scene_buffers = state_.field_scene_buffers;
+    snapshot.scene_entry = state_.field_scene_entry;
+    snapshot.controlled_actor = field_entity_;
+    snapshot.movement = field_movement_state_;
+    snapshot.movement_transition = field_movement_transition_state_;
+    snapshot.camera_follow = field_camera_follow_;
+    snapshot.default_actors = field_default_actors_;
+    snapshot.render_entities = state_.render_entities;
+    snapshot.activity_state = field_world_activity_state_;
+    snapshot.activity_timeout = field_world_activity_timeout_state_;
+    snapshot.player_animation = field_entity_animation_;
+    snapshot.player_animation_selector = field_entity_animation_selector_;
+    snapshot.player_animation_id = field_entity_animation_id_;
+    snapshot.player_animation_reset_pending =
+        field_player_animation_reset_pending_;
+    snapshot.player_walking = field_entity_walking_;
+    snapshot.player_attack_pose = field_entity_attack_pose_active_;
+    snapshot.player_attack_direction = field_entity_attack_direction_;
+    snapshot.target_heading = field_target_heading_;
+    world_activity_return_snapshot_ = std::move(snapshot);
+
+    // ROM 0x16E30 retires pending entity effects and clears effect-slot
+    // occupancy before the resource scene is prepared. Gun projectiles use
+    // those typed host slots in this field presenter.
+    field_weapon_projectiles_.clear();
+    field_weapon_slots_occupied_.fill(false);
+    field_weapon_collision_targets_pending_reported_ = false;
+    source_boundary("field.world_activity.source_scene_snapshotted");
+}
+
+bool FieldSceneRuntime::restore_world_activity_source_scene(
+    integration::FieldRuntimeCoordinatorState& runtime_state) {
+    if (!world_activity_return_snapshot_.has_value()) {
+        source_boundary("field.world_activity.return_snapshot_missing");
+        return false;
+    }
+
+    const auto& snapshot = *world_activity_return_snapshot_;
+    const auto source_scene = snapshot.scene_buffers.scene_reference;
+    if (!snapshot.scene_buffers.initialized ||
+        source_scene >= kFieldSceneProfileCount) {
+        source_boundary("field.world_activity.return_snapshot_invalid");
+        return false;
+    }
+
+    // Restore the source scene before the common scene-entry path runs. That
+    // lets prepare_runtime_field_scene recognize this as a same-scene rebuild
+    // and retain its camera and runner position while replacing the complete
+    // resource-scene image.
+    state_.field_scene_buffers = snapshot.scene_buffers;
+    state_.field_scene_entry = snapshot.scene_entry;
+    state_.field_resource_mode = snapshot.scene_buffers.field_resource_mode;
+    state_.render_entities = snapshot.render_entities;
+    field_entity_ = snapshot.controlled_actor;
+    field_movement_state_ = snapshot.movement;
+    field_movement_transition_state_ = snapshot.movement_transition;
+    field_camera_follow_ = snapshot.camera_follow;
+    field_default_actors_ = snapshot.default_actors;
+    field_world_activity_state_ = snapshot.activity_state;
+    field_world_activity_timeout_state_ = snapshot.activity_timeout;
+    field_entity_animation_ = snapshot.player_animation;
+    field_entity_animation_selector_ = snapshot.player_animation_selector;
+    field_entity_animation_id_ = snapshot.player_animation_id;
+    field_player_animation_reset_pending_ =
+        snapshot.player_animation_reset_pending;
+    field_entity_walking_ = snapshot.player_walking;
+    field_entity_attack_pose_active_ = snapshot.player_attack_pose;
+    field_entity_attack_direction_ = snapshot.player_attack_direction;
+    field_target_heading_ = snapshot.target_heading;
+
+    field_world_activity_scene_entry_pending_ = false;
+    field_security_floor_index_.reset();
+    field_world_activity_timeout_state_.scene_id = source_scene;
+    field_movement_transition_state_.scene_id = source_scene;
+    field_movement_transition_state_.world_interaction_lock = false;
+    field_movement_transition_state_.interaction_transition_pending = false;
+    field_movement_transition_state_.interaction_transition_timer = 0;
+    field_palette_fade_steps_ = 0U;
+    field_runtime_state_.scene_id = source_scene;
+    field_runtime_state_.field_mode =
+        snapshot.scene_buffers.field_resource_mode;
+    field_runtime_state_.field_scene_gate = 0U;
+    field_runtime_state_.field_transition_requested = false;
+    field_runtime_state_.pending_field_scene_handler = false;
+    field_runtime_state_.world_activity_countdown = 0U;
+    field_runtime_state_.scene_refresh_marker = -1;
+    runtime_state.scene_id = source_scene;
+    runtime_state.field_mode = snapshot.scene_buffers.field_resource_mode;
+    runtime_state.field_scene_gate = 0U;
+    runtime_state.field_transition_requested = false;
+    runtime_state.pending_field_scene_handler = false;
+    runtime_state.world_activity_countdown = 0U;
+    world_frame_logic_state_.world_mode = source_scene;
+
+    advance_field_scene_transition_after_modal();
+    if (!state_.field_scene_buffers.initialized ||
+        state_.field_scene_buffers.scene_reference != source_scene) {
+        source_boundary("field.world_activity.return_scene_prepare_failed");
+        return false;
+    }
+
+    field_runtime_state_.field_transition_requested = false;
+    runtime_state.field_transition_requested = false;
+    source_boundary("field.world_activity.source_scene_restored");
+    world_activity_return_snapshot_.reset();
+    return true;
+}
+
 void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
     // The modal Qt loop is non-blocking. Keep the 0x2BD2 transition pending
     // while the page owns the screen; once it closes, run the ROM-selected
@@ -6275,10 +6456,17 @@ void FieldSceneRuntime::begin_field_modal_return_transition() {
     field_modal_return_transition_frames_remaining_ =
         kFieldModalReturnTransitionFrames;
     field_modal_return_blocked_inputs_ = static_cast<std::uint8_t>(
-        field_controller_sample_state_.held & 0x00FFU);
+        (field_controller_sample_state_.held & 0x00FFU) | 0x0040U);
     field_palette_fade_steps_ = 9U;
     field_combat_input_suppressed_until_release_ =
         (field_modal_return_blocked_inputs_ & 0x40U) != 0U;
+    // The A edge that dismissed the modal belongs to that modal. Keep the
+    // held snapshot so a still-held key cannot become a fresh edge when the
+    // field loop resumes, but discard its queued high-byte press edge.
+    field_controller_sample_state_.events =
+        static_cast<std::uint16_t>(field_controller_sample_state_.held &
+                                   0x00FFU);
+    field_controller_latch_state_ = ControllerLatchState{};
     field_entity_animation_.redraw_requested = true;
     source_boundary("field.modal_return.transition_started");
 }
@@ -6459,6 +6647,14 @@ void FieldSceneRuntime::advance_frame() {
             source_boundary("field.dialogue.returned_to_field");
             advance_field_scene_transition_after_modal();
             begin_field_modal_return_transition();
+        } else if (result ==
+                   FieldDialogueAdvanceResult::returned_from_world_activity) {
+            if (!restore_world_activity_source_scene(field_runtime_state_)) {
+                failure_ = "resource activity return lost its source scene";
+                source_boundary("field.activity.return_source_failed");
+            } else {
+                begin_field_modal_return_transition();
+            }
         } else if (result ==
                    FieldDialogueAdvanceResult::hotel_options_requested) {
             begin_hotel_menu();

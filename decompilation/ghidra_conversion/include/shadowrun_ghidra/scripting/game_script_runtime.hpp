@@ -26,12 +26,19 @@ struct ScriptMenuChoice {
     std::string label_key;
 };
 
+enum class ScriptMenuInputMode : std::uint8_t {
+    button_choice,
+    cursor,
+};
+
 struct ScriptMenuDefinition {
     std::string id;
     std::string text_profile;
     std::string speaker_id;
     std::string title_key;
     std::vector<ScriptMenuChoice> choices;
+    ScriptMenuInputMode input_mode = ScriptMenuInputMode::button_choice;
+    std::size_t selected_index = 0U;
 };
 
 using ScriptStringMap = std::unordered_map<std::string, std::string>;
@@ -473,6 +480,7 @@ public:
         std::string_view module, std::string_view function);
     ScriptTaskStep complete_native_operation(bool succeeded);
     ScriptTaskStep complete_native_menu_choice(std::string_view choice_id);
+    ScriptTaskStep complete_native_menu_input(std::string_view input_id);
     ScriptTaskStep complete_native_service_result(std::string_view result_id);
     bool task_waiting_for_native_operation() const noexcept;
     void cancel_task() noexcept;

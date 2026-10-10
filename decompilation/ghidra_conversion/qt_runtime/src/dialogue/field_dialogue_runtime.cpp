@@ -15,6 +15,8 @@ constexpr std::uint16_t kControllerAEvent = 0x4000U;
 constexpr std::uint16_t kControllerBEvent = 0x1000U;
 constexpr std::uint16_t kControllerCEvent = 0x2000U;
 constexpr std::uint16_t kControllerStartEvent = 0x8000U;
+constexpr std::uint16_t kControllerUpEvent = 0x0100U;
+constexpr std::uint16_t kControllerDownEvent = 0x0200U;
 constexpr std::uint16_t kAnyDialogueEvent = kControllerAEvent |
                                              kControllerBEvent |
                                              kControllerCEvent |
@@ -171,6 +173,15 @@ bool FieldDialogueRuntime::open_stoker_interaction() {
     }
     return start_script_task("michael_package", "stoker_interaction",
                              StokerMotelPromptId::manager_greeting);
+}
+
+bool FieldDialogueRuntime::open_gameplay_task(
+    const std::string_view module, const std::string_view function) {
+    if (panel_.open) {
+        return false;
+    }
+    return start_script_task(module, function,
+                             StokerMotelPromptId::source_boundary);
 }
 
 bool FieldDialogueRuntime::open_stoker_interaction_for_dump(
@@ -411,8 +422,15 @@ bool FieldDialogueRuntime::present_script_operation(
         for (const auto& choice : menu.choices) {
             choices.emplace_back(choice.id, choice.label_key);
         }
+        if (menu.input_mode == scripting::ScriptMenuInputMode::cursor &&
+            menu.selected_index >= menu.choices.size()) {
+            return open_source_boundary(
+                "Lua cursor menu selected an index outside its choices");
+        }
         panel_ = make_script_menu_panel_view(
-            speaker, menu.title_key, choices, resolver);
+            speaker, menu.title_key, choices, resolver,
+            menu.input_mode == scripting::ScriptMenuInputMode::cursor,
+            menu.selected_index);
         if (!panel_.source_complete) {
             return open_source_boundary(
                 panel_.source_boundary_reason.empty()
@@ -565,7 +583,13 @@ std::string_view FieldDialogueRuntime::resolve_text(
 
 FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
     const std::uint16_t event_word) {
-    if (!panel_.open || (event_word & kAnyDialogueEvent) == 0U) {
+    if (!panel_.open || event_word == 0U) {
+        return FieldDialogueAdvanceResult::waiting_for_controller;
+    }
+    const bool cursor_menu = active_script_menu_.has_value() &&
+        active_script_menu_->input_mode ==
+            scripting::ScriptMenuInputMode::cursor;
+    if (!cursor_menu && (event_word & kAnyDialogueEvent) == 0U) {
         return FieldDialogueAdvanceResult::waiting_for_controller;
     }
     if (!panel_.source_complete) {
@@ -608,6 +632,62 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
                 ? "dialogue script failed after the speaker page"
                 : script_runtime_->failure());
         return FieldDialogueAdvanceResult::source_boundary;
+    }
+
+    if (cursor_menu) {
+        std::string_view input_id;
+        if ((event_word & kControllerUpEvent) != 0U) {
+            input_id = "up";
+        } else if ((event_word & kControllerDownEvent) != 0U) {
+            input_id = "down";
+        } else if ((event_word & kControllerAEvent) != 0U) {
+            input_id = "confirm";
+        } else if ((event_word & kControllerStartEvent) != 0U) {
+            input_id = "cancel";
+        } else {
+            return FieldDialogueAdvanceResult::waiting_for_controller;
+        }
+        if (!script_task_waiting_ || script_runtime_ == nullptr) {
+            open_source_boundary(
+                "Lua cursor menu is not waiting for controller input");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+        const auto prompt = active_prompt_;
+        const auto task =
+            script_runtime_->complete_native_menu_input(input_id);
+        if (task.status ==
+            scripting::ScriptTaskStep::Status::awaiting_native_operation) {
+            if (!task.operation.has_value() ||
+                !present_script_operation(*task.operation, prompt)) {
+                return FieldDialogueAdvanceResult::source_boundary;
+            }
+            return FieldDialogueAdvanceResult::prompt_advanced;
+        }
+        if (task.status != scripting::ScriptTaskStep::Status::completed) {
+            open_source_boundary(script_runtime_->failure().empty()
+                                     ? "Lua cursor menu failed to process input"
+                                     : script_runtime_->failure());
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+        script_task_waiting_ = false;
+        active_script_operation_.reset();
+        active_script_menu_.reset();
+        const bool returned_from_activity =
+            task.result_id ==
+            std::optional<std::string>{"return_from_world_activity"};
+        const bool unsupported_cyberspace =
+            task.result_id ==
+            std::optional<std::string>{"cyberspace_not_converted"};
+        close();
+        if (returned_from_activity) {
+            return FieldDialogueAdvanceResult::returned_from_world_activity;
+        }
+        if (unsupported_cyberspace) {
+            open_source_boundary(
+                "Cyberspace entry from this field menu is not converted yet");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+        return FieldDialogueAdvanceResult::returned_to_field;
     }
 
     // 0x1F3C4 tests A first, then B and C. A title-only source record uses

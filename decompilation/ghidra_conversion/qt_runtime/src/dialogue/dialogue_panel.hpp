@@ -131,6 +131,7 @@ struct DialoguePanelView {
     std::array<DialoguePanelOption, 3> options{};
     std::size_t option_count = 0;
     std::size_t selected_option = 0;
+    bool cursor_selection = false;
 
     bool has_more = false;
     bool returns_to_conversation = false;
@@ -202,6 +203,8 @@ DialoguePanelView make_script_menu_panel_view(
     const std::optional<DialogueSpeakerPresentation>& speaker,
     std::string_view title_key,
     const std::vector<std::pair<std::string, std::string>>& choices,
-    const DialogueTextResolver& resolve_text);
+    const DialogueTextResolver& resolve_text,
+    bool cursor_selection = false,
+    std::size_t selected_option = 0U);
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime

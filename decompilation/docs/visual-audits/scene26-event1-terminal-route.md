@@ -1,12 +1,13 @@
-# Scene-2 event 1 through the Scene-26 Security Terminal result
+# Scene-2 event 1 through Scene-26 resource activity and Security Terminal
 
-Date: 2026-10-07
+Date: 2026-10-10
 
-**Status:** partial. One live `FieldSceneRuntime` now carries the ordinary
-New Game route through scene-2 collision record 93, row 1 of the map event
-table, scene-26 resource setup, the physical maglock/collision route, and the
-D8 Security Terminal result. The QA seeds the passkey, Electronics skill, and
-PRNG state. It does not prove how story gameplay supplies those inputs or the
+**Status:** partial. One live `FieldSceneRuntime` carries the ordinary New
+Game route through scene-2 collision record 93, row 1 of the map event table,
+scene-26 resource setup, the physical maglock/collision route, the D8 Security
+Terminal result, and a physical Scene-26 event-31 main-menu/Exit route. The QA
+seeds the passkey, Electronics skill, PRNG state, and adjacent-cell starting
+position. It does not prove how story gameplay supplies those inputs or the
 exact Genesis appearance.
 
 ## ROM route and native state
@@ -33,45 +34,55 @@ stays static through its 30-frame wait; ordinary A returns to scene 26 with
 the floor state intact. The full return image equals the current field-only
 render.
 
+After returning to Scene 26, the route places the runner in the open cell
+immediately south of collision record 126 at `0x1D9E5A`. The record covers
+`x/y=0x0200..0x021F` (grid cell 16/16), carries raw `0x00DF`, and takes the
+direct event-31 continuation (`0x0DB26`). A normal Up input crosses into the
+rectangle and opens the Lua-authored `Main Menu` with `Cyberspace` and `Exit`.
+Down moves the Lua-owned cursor from `Cyberspace` to `Exit`; A restores the
+captured Scene-2 map and actor state. The adjacent-cell seed is QA setup; the
+trigger itself is crossed through the ordinary field input/movement path.
+Cyberspace remains an explicit unconverted boundary.
+
 ## Eight-question full-screen review
 
-1. **Does it look correct?** I reviewed all 546 full-screen BMPs. The 500
-   scene-26 route frames were inspected in ten chronological contact sheets;
-   I also checked the terminal prompt, first-floor result, timed result, and
-   field return at full resolution. The scene-26 route shows the expected map,
-   actor, HUD, modal, and clean return. The scene-2 event-1 prefix still has
-   the previously recorded actor/HUD overlap during its long eastward hold;
-   that remains an unresolved visual anomaly.
-2. **Does the look reflect the behavioral state?** The trace records the
-   physical `0xC1` event, row 1, scene `0x1A`, resource bound 3, selected
-   index 0, scene-26 spawn, both passkey door changes, D8 event `0x18`, the
-   Electronics result, event `0x30`, and return with the same selected floor.
-   Passkey, skill, and PRNG values are explicit QA fixtures.
+1. **Does it look correct?** I reviewed all 674 full-screen BMPs in eleven
+   chronological contact sheets, then checked the terminal and event-31 menu
+   at native size. The route shows the expected map, HUD, terminal prompt and
+   result, then a full-screen `Main Menu` with `Cyberspace` and `Exit`. The
+   returned Scene-2 image still has the known runner/HUD overlap at the event-1
+   doorway; that visual anomaly remains open.
+2. **Does the look reflect the behavioral state?** The route trace records
+   event 1 and scene `0x1A`, selected floor 0, both passkey door changes, D8
+   event `0x18`, terminal result, return to Scene 26, physical event-31 entry,
+   Lua cursor indices 0 then 1, and Exit restoring Scene 2. Passkey, skill,
+   PRNG, and the adjacent-cell starting position are QA fixtures.
 3. **Are the visuals independently correct?** No matching Genesis capture
-   shows this event-1-to-terminal route or its result. Independent section 03
-   frames support the scene-2 spawn only. Internal assets and matching
-   Debug/Release images do not establish Genesis pixel fidelity.
-4. **Is it animated, and when?** The actor walks during held directional
-   input. The terminal prompt holds for ten source frames before accepting A;
-   the result is pixel-identical across its 30-frame source wait. No ambient
-   animation was observed during the modal.
-5. **Is there a sound, and how long?** Successful terminal access requests
-   event `0x30`, which maps to persistent resource 048. This route verifies
-   the request, not audible playback or its source stop lifetime; duration
-   remains unknown.
-6. **Are the other screen areas correct too?** The full images include the
-   map, moving actor, HUD, dialog frame, text wells, and return. The modal
-   replaces the field composition. The scene-2 actor/HUD overlap remains
-   explicitly open.
-7. **Do multiple frames support this interpretation?** Yes internally: the
-   route captures all 500 scene-26 updates, the 15 scene-2 event-1 frames,
-   the source prompt/result waits, and the return. All 557 Debug and Release
-   test artifacts match by relative path and SHA-256. This remains one host
+   shows this event-1-to-terminal or event-31 menu route. The host uses `>` as
+   a temporary cursor glyph; exact source selector tile art and Genesis pixel
+   fidelity are not established. Internal assets and matching Debug/Release
+   images are not an independent visual oracle.
+4. **Is it animated, and when?** The field actor walks during held directional
+   input. The terminal prompt uses its source ten-frame input delay and its
+   result stays static through the 30-frame source wait. The event-31 menu is
+   pixel-identical during 30 neutral frames. Its expected Genesis animation
+   cadence is not independently established.
+5. **Is there a sound, and how long?** Terminal success requests event `0x30`,
+   mapped to persistent resource 048; audible playback and source stop
+   lifetime remain unknown. The tested event-31 menu open, 30-frame idle, and
+   cursor movement produced no new audio request. No separate cursor sound is
+   identified in the traced helper.
+6. **Are the other screen areas correct too?** Full frames include the map,
+   runner, HUD, terminal dialog, menu, and return. The menu replaces the field
+   composition; the Scene-2 actor/HUD overlap remains explicitly open.
+7. **Do multiple frames support this interpretation?** The 674 captured
+   frames include the Scene-2 prefix, 500 Scene-26 route updates, terminal
+   waits, menu open/navigation/30-frame idle hold, and return. Debug and
+   Release artifact sets match by relative path and SHA-256. This is one host
    route, not multiple independent Genesis examples.
-8. **Are new controls drawn over stale controls?** The terminal result
-   replaces the Electronics/Walk Away rows with a text-only page. After A,
-   the full field return matches the field-only render, with no old dialog
-   frame or choices left over.
+8. **Are new controls drawn over stale controls?** The full-screen activity
+   pane replaces the field HUD; no field buttons remain beneath it. The return
+   restores the field-only composition with no leftover menu panel or choices.
 
 ## Verification and limits
 
@@ -79,10 +90,13 @@ render.
 Release. Its output is
 `build/conversion/qt/{debug,release}/qt_runtime/scene26-event1-terminal-qa/`;
 `actual.bmp` is the first-floor result. The route keeps one native runtime
-instance alive across both existing route paths and the terminal action.
+instance alive across both existing route paths, terminal action, and Exit.
 
 This verifies the selected floor survives physical map traversal into the
-generic terminal result. It does not implement a new game system. Story-driven
-passkey acquisition, non-fixture Electronics outcomes, independent Genesis
-visuals, the scene-2 actor/HUD overlap, and event-`0x30` playback/stop timing
-remain open.
+generic terminal result and that Scene-26 record 126 opens a Lua-controlled
+activity menu whose Exit returns to the captured source scene. The modal return
+uses a 60-frame host fade and consumes the modal's held A input; that duration
+is a presentation choice, not a ROM timing claim. Story-driven passkey
+acquisition, non-fixture Electronics outcomes, Cyberspace, exact cursor art,
+independent Genesis visuals, the scene-2 actor/HUD overlap, and event-`0x30`
+playback/stop timing remain open.

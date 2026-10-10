@@ -3069,5 +3069,52 @@ int main() {
         std::cerr << sequence_scripts.failure() << '\n';
         return 14;
     }
+
+    scripts.set_location_context(
+        "activity", "resource_scene", "field.activity");
+    auto resource_menu = scripts.start_task(
+        "field_activities", "resource_scene_main_menu");
+    if (!expect(resource_menu.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    resource_menu.operation.has_value() &&
+                    resource_menu.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    resource_menu.operation->menu.has_value() &&
+                    resource_menu.operation->menu->input_mode ==
+                        ScriptMenuInputMode::cursor &&
+                    resource_menu.operation->menu->selected_index == 0U &&
+                    resource_menu.operation->menu->choices.size() == 2U,
+                "resource Main Menu did not yield its Lua cursor state")) {
+        std::cerr << scripts.failure() << '\n';
+        return 15;
+    }
+    resource_menu = scripts.complete_native_menu_input("down");
+    if (!expect(resource_menu.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    resource_menu.operation.has_value() &&
+                    resource_menu.operation->menu.has_value() &&
+                    resource_menu.operation->menu->selected_index == 1U,
+                "Lua did not advance its cursor selection after Down")) {
+        std::cerr << scripts.failure() << '\n';
+        return 15;
+    }
+    resource_menu = scripts.complete_native_menu_input("up");
+    if (!expect(resource_menu.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    resource_menu.operation.has_value() &&
+                    resource_menu.operation->menu.has_value() &&
+                    resource_menu.operation->menu->selected_index == 0U,
+                "Lua did not wrap its cursor selection after Up")) {
+        std::cerr << scripts.failure() << '\n';
+        return 15;
+    }
+    resource_menu = scripts.complete_native_menu_input("cancel");
+    if (!expect(resource_menu.status == ScriptTaskStep::Status::completed &&
+                    resource_menu.result_id == std::optional<std::string>{
+                        "return_from_world_activity"},
+                "Start did not select the Lua resource-scene Exit action")) {
+        std::cerr << scripts.failure() << '\n';
+        return 15;
+    }
     return 0;
 }

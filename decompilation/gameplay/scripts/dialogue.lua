@@ -71,6 +71,15 @@ local menu_profiles = {
             },
         },
     },
+    ["field.activity"] = {
+        resource_main = {
+            title_key = "field.activity.main_menu.title",
+            choice_label_keys = {
+                cyberspace = "field.activity.main_menu.option.cyberspace",
+                exit = "field.activity.main_menu.option.exit",
+            },
+        },
+    },
 }
 
 -- Content is grouped by speaker and topic. The controller supplies only the

@@ -25,6 +25,7 @@ enum class FieldDialogueAdvanceResult {
     waiting_for_controller,
     prompt_advanced,
     returned_to_field,
+    returned_from_world_activity,
     hotel_options_requested,
     source_boundary,
 };
@@ -89,6 +90,8 @@ public:
     bool open_stoker_interaction();
     bool open_stoker_interaction_for_dump(
         const StokerMotelStoryState& story_state);
+    bool open_gameplay_task(std::string_view module,
+                            std::string_view function);
 
     FieldDialogueAdvanceResult advance_controller_events(
         std::uint16_t event_word);

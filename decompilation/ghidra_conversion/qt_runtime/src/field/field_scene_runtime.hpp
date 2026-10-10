@@ -332,6 +332,7 @@ public:
         std::optional<std::uint8_t> security_floor_index = std::nullopt);
     bool initialize_world_activity_for_dump(std::uint8_t mode_event_code,
                                             std::uint16_t random_seed);
+    bool return_from_world_activity_for_dump();
     bool dispatch_selected_security_terminal_for_dump();
     std::uint16_t field_scene_reference_for_dump() const noexcept {
         return state_.field_scene_buffers.scene_reference;
@@ -744,6 +745,22 @@ public:
     const SceneRunnerPosition& field_entity_world_position() const noexcept {
         return field_entity_.world_position;
     }
+    bool field_entity_active_for_dump() const noexcept {
+        return field_entity_.active;
+    }
+    std::uint8_t controller_nibble_for_dump() const noexcept {
+        return field_controller_nibble_;
+    }
+    void set_field_entity_world_position_for_dump(
+        std::uint16_t x, std::uint16_t y) noexcept {
+        field_entity_.world_position.x = x;
+        field_entity_.world_position.y = y;
+        field_movement_state_.position_x = x;
+        field_movement_state_.position_y = y;
+        field_entity_.projection.world_x = x;
+        field_entity_.projection.world_y = y;
+        field_entity_.visible = true;
+    }
     bool field_entity_visible_for_dump() const noexcept {
         return field_entity_.visible;
     }
@@ -845,6 +862,9 @@ private:
     bool recover_blocked_field_movement(
         const MovementProbeResult& initial_probe);
     void advance_field_scene_transition_after_modal();
+    void snapshot_world_activity_source_scene();
+    bool restore_world_activity_source_scene(
+        integration::FieldRuntimeCoordinatorState& runtime_state);
     void begin_field_modal_return_transition();
     void handle_field_map_event_activations(
         const std::vector<FieldMapEventActivation>& activations);
@@ -1023,6 +1043,31 @@ private:
         std::array<std::array<QImage, 2>, 8> entry_images{};
         std::array<std::array<int, 2>, 8> entry_origin_x{};
         std::array<std::array<int, 2>, 8> entry_origin_y{};
+    };
+
+    // Resource-activity scenes are temporary field excursions. Preserve the
+    // active typed scene and runner presentation so source 0x2F32 can rebuild
+    // that scene on return without looking for an event table on the resource
+    // map.
+    struct WorldActivityReturnSnapshot {
+        FieldSceneBuffers scene_buffers{};
+        FieldSceneEntryState scene_entry{};
+        FieldEntityPresentation controlled_actor{};
+        EntityMovementStepState movement{};
+        EntityMovementModeTransitionState movement_transition{};
+        FieldCameraFollowState camera_follow{};
+        std::vector<DefaultFieldActorPresentation> default_actors;
+        std::array<RenderEntityState, 16> render_entities{};
+        WorldActivityState activity_state{};
+        WorldActivityTimeoutState activity_timeout{};
+        EntityAnimationState player_animation{};
+        std::uint16_t player_animation_selector = 0U;
+        std::string player_animation_id = "idle";
+        bool player_animation_reset_pending = false;
+        bool player_walking = false;
+        bool player_attack_pose = false;
+        std::uint8_t player_attack_direction = 0U;
+        std::uint16_t target_heading = 0U;
     };
 
     struct DefaultActorSpriteView {
@@ -1271,6 +1316,10 @@ private:
     WorldActivityState field_world_activity_state_{};
     WorldActivityTimeoutState field_world_activity_timeout_state_{};
     WorldActivityRoutineState world_activity_routine_state_{};
+    WorldActivityRoutineRequestState world_activity_request_state_{};
+    WorldActivityStartState world_activity_request_start_state_{};
+    std::optional<WorldActivityReturnSnapshot>
+        world_activity_return_snapshot_;
     MovementModeTransitionContinuation field_activity_continuation_ =
         MovementModeTransitionContinuation::none;
     // FFE12C selects a floor label on the successful Security Terminal file

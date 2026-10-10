@@ -7294,6 +7294,40 @@ int run_field_scene26_maglock_descriptor_route_qa(
         ++frame;
         return capture(stage, input);
     };
+    const auto finish_modal_return_transition =
+        [&](const std::string_view stage) {
+            const auto starting_frames =
+                field_scene.field_modal_return_transition_frames_for_dump();
+            if (starting_frames == 0U || starting_frames > 60U ||
+                field_scene.field_palette_fade_steps_for_dump() != 9U) {
+                return false;
+            }
+            auto previous_fade_step =
+                field_scene.field_palette_fade_steps_for_dump();
+            while (field_scene
+                       .field_modal_return_transition_frames_for_dump() != 0U) {
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                ++frame;
+                const auto fade_step =
+                    field_scene.field_palette_fade_steps_for_dump();
+                if (fade_step > previous_fade_step ||
+                    !capture(stage, "neutral")) {
+                    return false;
+                }
+                previous_fade_step = fade_step;
+                const auto remaining = field_scene
+                    .field_modal_return_transition_frames_for_dump();
+                if ((remaining == 30U || remaining == 0U) &&
+                    !save(remaining == 0U
+                              ? std::string(stage) + "-complete"
+                              : std::string(stage) + "-midpoint")) {
+                    return false;
+                }
+            }
+            return field_scene.field_palette_fade_steps_for_dump() == 0U &&
+                   render() == render(true);
+        };
 
     field_scene.set_controller_nibble(0U);
     field_scene.advance_frame();
@@ -7534,6 +7568,12 @@ int run_field_scene26_maglock_descriptor_route_qa(
     if (!capture("maglock-passkey-result-acknowledged", "a")) {
         return 3;
     }
+    if (field_scene.field_modal_return_transition_frames_for_dump() != 60U ||
+        field_scene.field_palette_fade_steps_for_dump() != 9U) {
+        std::cerr << "Scene-26 passkey route QA: A acknowledgement did not "
+                     "start the 60-frame return fade\n";
+        return 3;
+    }
     field_scene.set_controller_port_byte(0U);
     field_scene.advance_frame();
     ++frame;
@@ -7546,6 +7586,11 @@ int run_field_scene26_maglock_descriptor_route_qa(
     field_scene.advance_frame();
     ++frame;
     if (!capture("maglock-passkey-event-state-settled", "neutral")) {
+        return 3;
+    }
+    if (!finish_modal_return_transition("maglock-passkey-field-fade")) {
+        std::cerr << "Scene-26 passkey route QA: the return fade did not "
+                     "finish with a clean, unobscured field\n";
         return 3;
     }
     const auto& collision_map_after_passkey =
@@ -7574,14 +7619,37 @@ int run_field_scene26_maglock_descriptor_route_qa(
         field_scene.shop_menu_open() ||
         !field_scene.field_entity_visible_for_dump() ||
         !field_hud_chrome_survives(field_after_passkey, asset_root) ||
-        field_after_passkey != render(true) || !one_a2_event_advanced ||
+        field_after_passkey != render(true) ||
+        !one_a2_event_advanced ||
         field_audio_events.size() != audio_before_passkey + 1U ||
         !save("field-after-passkey") ||
         !save("field-after-passkey-field-only", true)) {
         std::cerr << "Scene-26 passkey route QA: field return did not redraw "
                      "cleanly and advance exactly the sampled A2 map cell "
                      "from 0xA2 to 0xA1 (changed cells="
-                  << collision_map_changes.size() << ")\n";
+                  << collision_map_changes.size() << ", scene="
+                  << field_scene.state().field_scene_buffers.scene_reference
+                  << ", interaction=" << field_scene.field_interaction_open()
+                  << ", dialogue=" << field_scene.dialogue_open()
+                  << ", mode_text="
+                  << field_scene.field_mode_text_open_for_dump()
+                  << ", shop=" << field_scene.shop_menu_open()
+                  << ", actor="
+                  << field_scene.field_entity_visible_for_dump()
+                  << ", hud="
+                  << field_hud_chrome_survives(field_after_passkey, asset_root)
+                  << ", field_only="
+                  << (field_after_passkey == render(true))
+                  << ", map_delta=";
+        if (!collision_map_changes.empty()) {
+            const auto& [index, before, after] = collision_map_changes.front();
+            std::cerr << index << ":0x" << std::hex
+                      << static_cast<unsigned>(before) << "->0x"
+                      << static_cast<unsigned>(after) << std::dec;
+        } else {
+            std::cerr << "none";
+        }
+        std::cerr << ")\n";
         return 3;
     }
     {
@@ -7827,6 +7895,12 @@ int run_field_scene26_maglock_descriptor_route_qa(
     if (!capture("secondary-passkey-result-acknowledged", "a")) {
         return 3;
     }
+    if (field_scene.field_modal_return_transition_frames_for_dump() != 60U ||
+        field_scene.field_palette_fade_steps_for_dump() != 9U) {
+        std::cerr << "Scene-26 descriptor route QA: second A acknowledgement "
+                     "did not start the 60-frame return fade\n";
+        return 3;
+    }
     field_scene.set_controller_port_byte(0U);
     field_scene.advance_frame();
     ++frame;
@@ -7836,6 +7910,12 @@ int run_field_scene26_maglock_descriptor_route_qa(
     field_scene.advance_frame();
     ++frame;
     if (!capture("secondary-passkey-event-state-settled", "neutral")) {
+        return 3;
+    }
+    if (!finish_modal_return_transition(
+            "secondary-passkey-field-fade")) {
+        std::cerr << "Scene-26 descriptor route QA: the second return fade "
+                     "did not finish with a clean field\n";
         return 3;
     }
     const auto& collision_map_after_secondary_passkey =
@@ -8108,7 +8188,7 @@ int run_field_scene26_event1_terminal_qa(
             source_boundaries) != 0) {
         return 3;
     }
-    const auto selected_floor = field_scene.security_floor_index_for_dump();
+    auto selected_floor = field_scene.security_floor_index_for_dump();
     const auto& activity = field_scene.world_activity_state_for_dump();
     if (field_scene.field_scene_reference_for_dump() != 26U ||
         !selected_floor.has_value() || *selected_floor != 0U ||
@@ -8122,6 +8202,161 @@ int run_field_scene26_event1_terminal_qa(
                      "preserve the selected resource-floor state\n";
         return 3;
     }
+
+    // Keep the physical event-31 route in the same end-to-end session, but
+    // run it after the terminal result has returned to ordinary scene-26
+    // movement. Its Exit choice restores the source scene captured by the
+    // original scene-2 resource entry.
+    const auto exercise_resource_scene_exit_menu = [&]() {
+    const auto exit_render = [&field_scene](const bool field_only = false) {
+        QImage frame(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        frame.fill(Qt::black);
+        QPainter painter(&frame);
+        if (field_only) {
+            field_scene.paint_field_scene_for_dump(painter);
+        } else {
+            field_scene.paint(painter);
+        }
+        painter.end();
+        return frame;
+    };
+    const auto save_exit_frame = [&output, &exit_render](
+                                     const std::string_view name) {
+        return exit_render().save(QString::fromStdWString(
+            (output / (std::string(name) + ".bmp")).wstring()));
+    };
+    const auto menu_audio_before = field_audio_events.size();
+    for (std::uint8_t warmup = 0U; warmup < 90U; ++warmup) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    // Collision records use 12.4 world coordinates after the terrain probe
+    // normalizes actor positions. Seed one source pixel south of record 126:
+    // x=0x0210, y=0x0230 in the record's integer coordinate space.
+    field_scene.set_field_entity_world_position_for_dump(
+        static_cast<std::uint16_t>(0x0210U << 4U),
+        static_cast<std::uint16_t>(0x0230U << 4U));
+    for (std::uint8_t input_frame = 0U;
+         input_frame < 48U && !field_scene.dialogue_open(); ++input_frame) {
+        field_scene.set_controller_nibble(0x01U); // Ordinary Up.
+        field_scene.advance_frame();
+        if (field_scene.last_field_movement_transition_for_dump().event_code ==
+                FieldCollisionEventCode::event_31 &&
+            field_scene.last_field_movement_transition_for_dump()
+                .mode_event_code_published) {
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    for (std::uint8_t settle = 0U;
+         settle < 4U && !field_scene.dialogue_open(); ++settle) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    const auto main_menu = exit_render();
+    const auto& main_menu_panel = field_scene.dialogue_panel();
+    const bool main_menu_content_matches =
+        main_menu_panel.text_segment_count != 0U &&
+        main_menu_panel.text_segments[0] == "Main Menu" &&
+        main_menu_panel.option_count == 2U &&
+        main_menu_panel.options[0].source_label == "Cyberspace" &&
+        main_menu_panel.options[1].source_label == "Exit";
+    if (!field_scene.dialogue_open() ||
+        !main_menu_panel.cursor_selection ||
+        main_menu_panel.option_count != 2U ||
+        main_menu_panel.selected_option != 0U ||
+        !main_menu_content_matches ||
+        !image_has_green_ink(main_menu, 88, 16, 216, 24) ||
+        field_hud_chrome_survives(main_menu, asset_root) ||
+        main_menu == exit_render(true) ||
+        !save_exit_frame("scene26-main-menu-cyberspace-selected")) {
+        std::cerr << "Scene-26 event-31 QA: south approach did not open the "
+                     "scripted Main Menu; pos="
+                  << std::hex << field_scene.field_entity_world_position().x
+                  << ',' << field_scene.field_entity_world_position().y
+                  << " event=" << static_cast<unsigned>(
+                         field_scene.last_field_movement_transition_for_dump()
+                             .event_code)
+                  << " continuation=" << static_cast<unsigned>(
+                         field_scene.last_field_movement_transition_for_dump()
+                             .continuation)
+                  << " kind=" << static_cast<unsigned>(
+                         field_scene.last_field_movement_transition_for_dump()
+                             .kind)
+                  << " terrain=0x" << field_scene
+                         .field_terrain_collision_code_for_dump()
+                  << " controller=0x" << field_scene
+                         .controller_event_word_for_dump()
+                  << " lock=" << field_scene.field_runtime_state_for_dump()
+                         .field_activity_lock
+                  << " active=" << field_scene.field_entity_active_for_dump()
+                  << " visible=" << field_scene.field_entity_visible_for_dump()
+                  << " timeout=" << static_cast<unsigned>(
+                         field_scene.world_activity_request_timeout_for_dump())
+                  << '\n';
+        return 3;
+    }
+    for (std::uint8_t idle_frame = 1U; idle_frame <= 30U; ++idle_frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        if (exit_render() != main_menu ||
+            field_scene.dialogue_panel().selected_option != 0U ||
+            field_audio_events.size() != menu_audio_before) {
+            std::cerr << "Scene-26 event-31 QA: the Main Menu changed or "
+                         "requested audio during its 30-frame idle hold\n";
+            return 3;
+        }
+        if ((idle_frame == 1U || idle_frame == 15U || idle_frame == 30U) &&
+            !save_exit_frame(
+                idle_frame == 1U ? "scene26-main-menu-hold-01"
+                : idle_frame == 15U ? "scene26-main-menu-hold-15"
+                                    : "scene26-main-menu-hold-30")) {
+            return 3;
+        }
+    }
+    field_scene.set_controller_nibble(0x02U); // Lua-owned Down selection.
+    field_scene.advance_frame();
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    if (field_scene.dialogue_panel().selected_option != 1U ||
+        field_audio_events.size() != menu_audio_before ||
+        !save_exit_frame("scene26-main-menu-exit-selected")) {
+        std::cerr << "Scene-26 event-31 QA: Lua Down did not select Exit "
+                     "without a navigation sound\n";
+        return 3;
+    }
+    field_scene.set_controller_port_byte(0x40U); // Confirm Exit with A.
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    if (field_scene.dialogue_open() ||
+        field_scene.field_modal_return_transition_frames_for_dump() != 60U ||
+        field_scene.field_scene_reference_for_dump() != 2U ||
+        field_audio_events.size() != menu_audio_before) {
+        std::cerr << "Scene-26 event-31 QA: Exit did not restore Scene 2\n";
+        return 3;
+    }
+    for (std::uint8_t transition_frame = 0U; transition_frame < 60U;
+         ++transition_frame) {
+        field_scene.advance_frame();
+        if ((transition_frame == 29U || transition_frame == 59U) &&
+            !save_exit_frame(transition_frame == 29U
+                                 ? "resource-exit-return-midpoint"
+                                 : "resource-exit-return-complete")) {
+            return 3;
+        }
+    }
+    const auto returned_source_field = exit_render();
+    if (field_scene.field_palette_fade_steps_for_dump() != 0U ||
+        !field_hud_chrome_survives(returned_source_field, asset_root) ||
+        returned_source_field != exit_render(true) ||
+        !save_exit_frame("source-field-return-after-resource-scene")) {
+        std::cerr << "Scene-26 event-31 QA: completed Exit redraw is not clean\n";
+        return 3;
+    }
+
+    return 0;
+    };
 
     const auto physical_route_output = output / "scene26-physical-route";
     if (run_field_scene26_maglock_descriptor_route_qa(
@@ -8228,11 +8463,30 @@ int run_field_scene26_event1_terminal_qa(
     }
     field_scene.set_controller_port_byte(0x40U); // ordinary A dismisses
     field_scene.advance_frame();
+    if (field_scene.field_modal_return_transition_frames_for_dump() != 60U ||
+        field_scene.field_palette_fade_steps_for_dump() != 9U) {
+        std::cerr << "Scene-26 event-1 terminal QA: result acknowledgement "
+                     "did not start the 60-frame return fade\n";
+        return 3;
+    }
     field_scene.set_controller_port_byte(0U);
-    field_scene.advance_frame();
-    field_scene.advance_frame();
+    for (std::uint8_t transition_frame = 0U; transition_frame < 60U;
+         ++transition_frame) {
+        field_scene.advance_frame();
+        if ((transition_frame == 29U || transition_frame == 59U) &&
+            !save(transition_frame == 29U
+                      ? "scene26-terminal-return-midpoint"
+                      : "scene26-terminal-return-complete",
+                  render())) {
+            std::cerr << "Scene-26 event-1 terminal QA: return-fade frame "
+                         "could not be saved\n";
+            return 3;
+        }
+    }
     const auto returned_field = render();
-    if (field_scene.field_interaction_open() ||
+    if (field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+        field_scene.field_palette_fade_steps_for_dump() != 0U ||
+        field_scene.field_interaction_open() ||
         field_scene.field_scene_reference_for_dump() != 26U ||
         field_scene.security_floor_index_for_dump() != selected_floor ||
         !field_scene.field_entity_visible_for_dump() ||
@@ -8244,6 +8498,10 @@ int run_field_scene26_event1_terminal_qa(
         return 3;
     }
 
+    if (exercise_resource_scene_exit_menu() != 0) {
+        return 3;
+    }
+
     std::ofstream route_state(output / "selected-floor-route.tsv",
                               std::ios::trunc);
     if (!route_state) {
@@ -8251,14 +8509,15 @@ int run_field_scene26_event1_terminal_qa(
     }
     route_state << "scene2_collision_event\tmap_row\tresource_scene\t"
                    "resource_bound\tselected_floor\tterminal_event\t"
-                   "terminal_sound_request\n"
+                   "terminal_sound_request\tevent31_menu\treturn_scene\n"
                 << "1\t1\t0x1A\t3\t"
                 << static_cast<unsigned>(*selected_floor)
-                << "\t0x18\t0x30\n";
+                 << "\t0x18\t0x30\tmain_menu_exit\t2\n";
     std::cout << "field_scene26_event1_terminal_qa=passed "
                  "collision_event=1 resource_scene=0x1A floor="
               << static_cast<unsigned>(*selected_floor)
               << " terminal_event=0x18 outcome=first-floor audio=0x30 "
+                 "event31_menu=main_menu_exit return_scene=2 "
                  "passkey_and_skill=qa-seeded artifacts="
               << output.string() << '\n';
     return 0;
@@ -8611,17 +8870,20 @@ int run_field_security_terminal_physical_entry_qa(
     if (!save_sequence_frame() ||
         return_result != FieldInteractionAdvanceResult::returned_to_field ||
         field_scene.field_interaction_open() ||
-        field_audio_events.size() != audio_before_prompt) {
+        field_audio_events.size() != audio_before_prompt ||
+        field_scene.field_modal_return_transition_frames_for_dump() != 60U ||
+        field_scene.field_palette_fade_steps_for_dump() != 9U) {
         std::cerr << "Security Terminal physical-entry QA: Walk Away did not "
-                     "return without a new sound request\n";
+                     "return with the expected 60-frame fade and no new "
+                     "sound request\n";
         return 3;
     }
-    for (std::uint8_t transition_frame = 0U; transition_frame < 30U;
+    for (std::uint8_t transition_frame = 0U; transition_frame < 60U;
          ++transition_frame) {
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
         ++frame;
-        if (transition_frame == 14U || transition_frame == 29U) {
+        if (transition_frame == 29U || transition_frame == 59U) {
             if (!save_sequence_frame()) {
                 std::cerr << "Security Terminal physical-entry QA: transition checkpoint write failed\n";
                 return 3;
@@ -8629,7 +8891,9 @@ int run_field_security_terminal_physical_entry_qa(
         }
     }
     const auto returned_field = render(false);
-    if (!save("return-field") || returned_field != render(true) ||
+    if (field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+        field_scene.field_palette_fade_steps_for_dump() != 0U ||
+        !save("return-field") || returned_field != render(true) ||
         !field_hud_chrome_survives(returned_field, asset_root) ||
         !field_scene.field_entity_visible_for_dump() ||
         field_scene.field_mode_text_open_for_dump() ||
@@ -18829,7 +19093,7 @@ int main(int argc, char** argv) {
                     if (!modal_returned ||
                         modal_return_scene
                                 .field_modal_return_transition_frames_for_dump() !=
-                            30U ||
+                            60U ||
                         modal_return_scene
                                 .field_modal_return_blocked_inputs_for_dump() !=
                             0x40U ||
@@ -18840,7 +19104,7 @@ int main(int argc, char** argv) {
                         std::cerr << "field dialogue dump: A dismissal did not start the visible, input-blocked field return\n";
                         return 3;
                     }
-                    for (std::uint8_t frame = 0U; frame < 30U; ++frame) {
+                    for (std::uint8_t frame = 0U; frame < 60U; ++frame) {
                         modal_return_scene.set_controller_port_byte(0x40U);
                         modal_return_scene.advance_frame();
                         if (modal_runner.ammo_rounds != 6U ||
@@ -18849,10 +19113,10 @@ int main(int argc, char** argv) {
                             std::cerr << "field dialogue dump: the dialogue A input leaked into field gameplay during the transition\n";
                             return 3;
                         }
-                        if (frame == 14U || frame == 29U) {
+                        if (frame == 29U || frame == 59U) {
                             const auto transition_frame =
                                 render_modal_return();
-                            const auto name = frame == 14U
+                            const auto name = frame == 29U
                                 ? "transition-mid.bmp"
                                 : "transition-complete-held.bmp";
                             if (!transition_frame.save(

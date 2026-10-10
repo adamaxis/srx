@@ -259,11 +259,14 @@ enums rather than ROM address interpretation.
 - The final TSV column marks which exact records have focused physical-input
   coverage. The remaining coordinates are profiled, but their physical
   reachability is not thereby proven.
-- `FieldSceneRuntime::record_field_activity_start` currently sets the pending
-  scene-handler bit for maglock, Security Terminal, and event 29. Event 26,
-  27, 28, 30, 31, and context-dependent event 25 have typed source branches,
-  but lack a connected native gameplay handler or a complete source-derived
-  downstream action.
+- `FieldSceneRuntime::record_field_activity_start` connects maglock,
+  Security Terminal, event 29, and the Scene-26 event-31 resource main menu.
+  Scene 26 record 126 (`0x1D9E5A`, x/y `0x0200..0x021F`, event `0x1F`) now has
+  a physical-input QA route: Up from the adjacent cell opens Lua's `Main
+  Menu`; Down selects `Exit`; A restores the captured Scene-2 field state.
+  This is partial coverage of one event-31 record only. Other event-31 map
+  records, events 26-28 and 30, context-dependent event 25, the Cyberspace
+  branch, and a source-derived cursor graphic remain unresolved.
 - Scene 2 event 0 and event 1 have a numeric target in the event table, but
   that target does not supply a place-name. No unsupported Stokers-to-office route is listed in this inventory.
 - Visual correctness is not established by the trigger data. The map geometry
