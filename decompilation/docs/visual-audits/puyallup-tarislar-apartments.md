@@ -80,10 +80,14 @@ loader adds no placed actors. This does not rule out actor setup through a
 separate scripted path. The profile also has no elevator child-scene group;
 scene 54 must not be treated as one floor in the normal elevator selector.
 
-The current trace therefore does not establish scene 54's exit destination.
-The empty event table means the map's event-31 collision handling and its
-event-0 opening need to be traced through their direct source branches before
-we assign either one an exit or a dialogue. No reverse route has been added.
+The event-31 branch is now traced through ROM `0xB7B8` to handler `0xDB26`.
+Because scene 54 uses scripted-activity mode 3, the handler takes its nonzero
+mode path. Scene 54 matches none of that path's explicit scene cases, so it
+returns at `0xDEE6` without opening a floor selector, dialogue, or destination
+route. The event-0 record uses the generic projected-interaction path; helper
+`0x1651E` has no scene-54/mode-3 map write. Its later main-loop effect remains
+unresolved. The current trace therefore does not establish scene 54's exit
+destination, and no reverse route has been added.
 
 ## Seven visual and behavioral checks
 
