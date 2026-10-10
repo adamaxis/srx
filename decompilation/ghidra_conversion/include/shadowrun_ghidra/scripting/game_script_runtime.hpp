@@ -170,13 +170,18 @@ struct ScriptMovementCollisionResult {
     std::uint16_t terrain_collision_code = 0;
 };
 
+struct ScriptMovementCollisionRecoveryResult {
+    bool movement_recovered = false;
+    std::uint8_t route_flags = 0;
+};
+
 using ScriptMovementCollisionQuery =
     std::function<ScriptMovementCollisionResult(std::uint16_t, std::uint16_t)>;
 using ScriptMovementRouteLookup =
     std::function<ScriptMovementRouteFacts(std::uint16_t)>;
 using ScriptMovementCollisionRecovery =
-    std::function<bool(std::uint16_t, std::uint16_t, std::int16_t,
-                      std::uint8_t)>;
+    std::function<ScriptMovementCollisionRecoveryResult(
+        std::uint16_t, std::uint16_t, std::int16_t, std::uint8_t)>;
 
 struct ScriptActorProjectileAnimation {
     std::uint16_t selector = 0;

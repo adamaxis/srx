@@ -611,3 +611,77 @@ did not. The importer now applies the flip bits for all field-font characters,
 and the regenerated arrival screenshot has outward-facing `< MORE >` glyphs.
 See the [font flip audit](dialogue-font-flip-orientation.md) for the ROM words,
 pixel regression, and full-screen comparison.
+
+## Post-farewell Stoker exit and event retry lifetime (2026-10-10)
+
+The Stoker route now continues past the farewell dismissal and checks normal
+Down input from the scene-2 doorway contact. The ROM listing at `0xAC5E`
+checks actor `+0x10` bit 3 and `FFDF64`; when the raw terrain word is zero it
+clears actor `+0xB0` bit 5 and returns, while a negative sample calls `0xB7B8`.
+At `0xB7B8`, the field path sets that retry bit before dispatch and returns
+without redispatch when the bit is already set. This is the source debounce
+that lets the runner turn away from a property without replaying its event.
+
+The prior host callback returned only the movement decision (`+0xB0` bit 0).
+Lua then copied its stale route-flags byte back to the native record and erased
+bit 5 immediately after `0xB7B8` set it. The first normal Down update therefore
+dispatched the same C2 event a second time. `ScriptMovementCollisionRecoveryResult`
+now carries the decision and post-service route-flags byte together;
+`actor_ai.lua` merges bit 5 from that result into Lua movement state before
+returning its step. The movement decision remains a separate return value,
+and the other route-state bits stay in the script snapshot.
+
+The route starts at the ordinary New Game spawn, reaches scene-2 record 91 at
+`0x173138` through the opening's zero-input Up walk, completes the Stoker offer
+and farewell states, returns to `(15584, 10840)`, then holds ordinary Down for
+16 field updates. The runner remains in scene 2, event dispatch stays at one,
+and no dialogue or scene transition reopens. `+0xB0` bit 5 remains set while
+`FFDF64` is `0xFFC2` through updates 1-15; update 16 samples clear terrain at
+`(15664, 10880)` and clears the bit. The trace records position, current and
+target heading, animation heading, selector, frame, walking state, route flags,
+collision word, event dispatch count, and audio-event count on every update.
+For the ordinary-manager leg, QA opens the shared Lua menu through the
+dump-only helper after the paid handoff; the farewell dismissal and all
+post-return movement use ordinary controller input. This does not claim
+physical second-entry coverage.
+
+1. **Does it look correct?** The five exit checkpoints show the runner turning
+   at the motel frontage and returning to open pavement. The screen remains
+   the ordinary scene-2 field view throughout.
+2. **Does appearance reflect behavior?** The 16-row trace confirms the actor
+   follows the ROM heading updates, stays in the same field scene, keeps the
+   retry bit while the candidate still samples C2, and clears it when terrain
+   becomes clear. The event count remains one.
+3. **Are the visuals correct?** The 320x224 full-screen images include the
+   whole map, runner, and HUD. The returned screen has no dialogue rows or
+   panel under it. This route does not fix the separately reported Stoker
+   portrait crop.
+4. **Is it animated?** Held Down requests south while the actor starts facing
+   north. Lua advances heading during behavior updates; movement and the
+   C052/C062 selector are logged per frame. The blocked reset at update 8
+   switches to the source idle selector before southward walking resumes.
+   This route adds no new animation clock or wall-time timer.
+5. **Is there sound?** In the scene-2 C2 interaction route, the 16 exit
+   updates add zero runtime audio events. The retry-state change adds no sound
+   operation, so it adds no clip or playback duration to this route. Other
+   mode-entry audio service is separately traced in the arrival audit.
+6. **Are other screen regions correct?** The entire map and HUD remain visible
+   in each checkpoint; no menu or dialogue graphic is layered over the field.
+7. **Do multiple frames support this interpretation?** The route includes all
+   16 movement updates in its trace and screenshots at updates 1, 2, 4, 8,
+   and 16, plus the arrival, dialogue, fade, and return states. The longplay's
+   section 03 footage shows the Stoker scene family but has no matching
+   controller log, so it cannot independently verify this Down sequence.
+8. **Was the old UI cleared before field graphics returned?** The entire
+   field/HUD is redrawn after the farewell modal closes; no old dialogue
+   panel or menu button remains under the gameplay image.
+9. **Was the full sequence reviewed?** All 21 Debug BMPs were opened at their
+   original 320x224 size. Every matching Release BMP has the same SHA-256.
+   The field remains visually stable apart from the expected runner and camera
+   movement.
+
+The Lua runtime QA and Stoker collision-to-dialogue route pass in Debug and
+Release. The wall-collision and general movement routes also pass in both
+configurations. This closes the reproduced Stoker post-farewell retry defect;
+physical second re-entry, other building exit paths, exact Genesis input
+evidence, and the Stoker portrait correction remain open.

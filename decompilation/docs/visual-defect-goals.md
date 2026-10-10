@@ -473,6 +473,21 @@ trace. The inspected longplay shows the same street at rest, but does not
 contain matching controller input. This narrows the report without closing
 FIELD-02: the user's exact stuck sequence and independent Genesis collision
 trace remain unavailable.
+
+The Stoker route now also exercises leaving the scene-2 C2 contact after the
+farewell page. The first version redispatched event 2 on Down because the
+native collision callback set `+0xB0` bit 5, then Lua copied its stale route
+flags over that result. The typed recovery result now returns the post-service
+flags to Lua, and the script merges the retry bit while retaining its other
+route state. Across the 16-update Down hold, the retry bit stays set while
+the candidate terrain is `0xFFC2`, the event dispatch count stays at one, and
+the bit clears on the first clear-terrain sample (`0xAC5E`, frame 16). The
+runner remains on scene 2 and reaches clear terrain without reopening the
+dialogue. The focused Debug/Release CTest cases pass; the full suites retain
+other open failures tracked with their respective defects. All 21 full-screen
+checkpoints match by SHA-256 and were reviewed. This resolves the reproduced
+Stoker exit retry defect; physical second entry, other building exits, general terrain recovery,
+and an independent Genesis controller trace remain open.
 The distinct scene-2 record-2 candidate at `0x172DBE` remains unrelated and
 still produces event 0; see the [candidate audit](visual-audits/stoker-collision-candidate.md),
 [Ares audit](visual-audits/ares-physical-entry.md), and [scene-20 maglock audit](visual-audits/scene20-maglock-physical-entry.md).
@@ -496,7 +511,8 @@ survive; Stoker's dialog is reached by the physical source property without
 an injected event tuple.
 
 **Status:** partial. `STOKER-01` is resolved for the physical motel doorway;
-scene-2 Ares entry and scene-20 Walk Away, unavailable-grenade, passkey,
+the Stoker post-farewell exit retry path is also resolved. Scene-2 Ares entry
+and scene-20 Walk Away, unavailable-grenade, passkey,
 no-skill Electronics, positive-skill partial, and QA-seeded kit-success
 branches are verified in Qt. The Electronics partial result reduces selection
 only for the current interaction; collision re-entry resets it to 2. The success

@@ -5096,9 +5096,13 @@ FieldSceneRuntime::heartbeat_field_player(
                 [this](const std::uint16_t x, const std::uint16_t y,
                        const std::int16_t collision_code,
                        const std::uint8_t direction_slot) {
-                    return recover_blocked_field_movement(
-                        MovementProbeResult{collision_code, x, y,
-                                            direction_slot});
+                    const auto movement_recovered =
+                        recover_blocked_field_movement(
+                            MovementProbeResult{collision_code, x, y,
+                                                direction_slot});
+                    return scripting::ScriptMovementCollisionRecoveryResult{
+                        movement_recovered,
+                        field_movement_behavior_record_.route_flags};
                 };
         }
     }

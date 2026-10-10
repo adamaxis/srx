@@ -997,7 +997,9 @@ int main() {
         }};
         context.movement_collision_recovery =
             [](const std::uint16_t, const std::uint16_t,
-               const std::int16_t, const std::uint8_t) { return false; };
+               const std::int16_t, const std::uint8_t) {
+                return ScriptMovementCollisionRecoveryResult{false, 0U};
+            };
         return context;
     };
 
@@ -1056,6 +1058,27 @@ int main() {
         [](const std::uint16_t) { return ScriptMovementRouteFacts{}; };
     const auto slide_step = scripts.actor_heartbeat(slide_step_context);
 
+    auto pending_event_context = player_step_context(
+        "movement_pending_world_event", 0U, 0U);
+    pending_event_context.movement_entity_flags = 0x02U;
+    pending_event_context.movement_state.route_flags = 0U;
+    pending_event_context.movement_collision =
+        [](const std::uint16_t, const std::uint16_t) {
+            return ScriptMovementCollisionResult{-62, 0xFFC2U};
+        };
+    std::size_t pending_event_recoveries = 0U;
+    pending_event_context.movement_collision_recovery =
+        [&pending_event_recoveries](const std::uint16_t, const std::uint16_t,
+                                    const std::int16_t,
+                                    const std::uint8_t) {
+            ++pending_event_recoveries;
+            return ScriptMovementCollisionRecoveryResult{false, 0x20U};
+        };
+    pending_event_context.movement_route_lookup =
+        [](const std::uint16_t) { return ScriptMovementRouteFacts{}; };
+    const auto pending_event_step =
+        scripts.actor_heartbeat(pending_event_context);
+
     auto reset_step_context = player_step_context(
         "movement_blocked_reset", 0x2000U, 0x4000U);
     std::size_t reset_collision_queries = 0U;
@@ -1088,6 +1111,11 @@ int main() {
                 slide_step->movement_step->state.route_status == 0 &&
                 slide_step->movement_step->state.movement_flags == 0x0CU &&
                 slide_collision_queries == 3U &&
+                pending_event_step.has_value() &&
+                pending_event_step->movement_step.has_value() &&
+                pending_event_step->movement_step->state.route_flags == 0x20U &&
+                pending_event_step->movement_step->state.position_x == 110U &&
+                pending_event_recoveries == 1U &&
                 reset_step.has_value() && reset_step->movement_step.has_value() &&
                 reset_step->movement_step->outcome ==
                     ScriptActorMovementStep::Outcome::reset &&
@@ -1099,7 +1127,7 @@ int main() {
                 clear_step->movement_step->direction_animation == 0x40U &&
                 route_step->movement_step->direction_animation == 0x42U &&
                 reset_collision_queries == 4U,
-            "Lua movement policy did not resolve clear, route, slide, and reset cases")) {
+            "Lua movement policy did not preserve event retry state or resolve clear, route, slide, and reset cases")) {
         std::cerr << scripts.failure() << '\n';
         return 18;
     }

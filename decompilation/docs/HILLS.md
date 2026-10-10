@@ -13,10 +13,14 @@ diagonal escape, and retreat. Lua now decides the player collision route and
 returns C052/C062 animation selectors; C++ provides terrain/route/recovery
 services and applies the returned position and selector. The idle reset uses
 the selected C052 facing from `+0x2E` even though ROM `0xB442` leaves `+0x36`
-unchanged. All 48 Debug/Release screenshots match and were reviewed full-screen.
-The Walk / collide hill remains partial; this runtime QA is not independent
-Genesis fidelity proof and does not close the user's stuck-obstacle defect by
-itself. See
+unchanged. The Stoker collision-to-dialogue route now continues through the
+farewell and a held Down exit. It verifies that Lua retains the `0xB7B8`
+`+0xB0` retry bit across the same-scene modal return, then releases it on the
+first clear terrain sample through `0xAC5E`; the C2 interaction does not
+redispatch during the turn. Debug/Release produce 21 matching full-screen
+frames, all reviewed. The Walk / collide hill remains partial: the reproduced
+Stoker exit defect is fixed, while general stuck-obstacle paths and independent
+Genesis controller evidence remain open. See
 [`visual-audits/field-movement-animation.md`](visual-audits/field-movement-animation.md).
 
 The user-reported intro, field, HUD, menu, inventory, and sound defects are

@@ -13642,7 +13642,7 @@ int run_field_stoker_collision_to_dialogue_qa(
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries) {
     std::filesystem::create_directories(output);
-    constexpr std::array<std::string_view, 33> stale_or_current_frames{
+    constexpr std::array<std::string_view, 38> stale_or_current_frames{
         "actual.bmp",
         "destination-entry.bmp",
         "destination-idle-01.bmp",
@@ -13654,6 +13654,11 @@ int run_field_stoker_collision_to_dialogue_qa(
         "fade-08.bmp",
         "fade-16.bmp",
         "fade-17.bmp",
+        "leave-walk-01.bmp",
+        "leave-walk-02.bmp",
+        "leave-walk-04.bmp",
+        "leave-walk-08.bmp",
+        "leave-walk-16.bmp",
         "movement-8.bmp",
         "movement-16.bmp",
         "movement-32.bmp",
@@ -14254,6 +14259,133 @@ int run_field_stoker_collision_to_dialogue_qa(
     }
     write_state("leave-returned-to-field");
 
+    // ROM 0xAC5E releases B7B8's one-shot retry bit only after FFDF64 reports
+    // clear terrain. Check the first player-controlled movement after the
+    // same-scene modal return: the runner should step out of the C2 bounds,
+    // not immediately dispatch the Stoker interaction again.
+    const auto departure_start = field_scene.field_entity_world_position();
+    const auto dispatches_before_departure =
+        field_scene.field_map_event_system_for_dump().collision_dispatch_count();
+    const auto audio_events_before_departure = field_audio_events.size();
+    if ((field_scene.field_movement_route_flags_for_dump() & 0x20U) == 0U) {
+        std::cerr << "Stoker collision QA: B7B8 retry bit was lost across "
+                     "the same-scene dialogue return\n";
+        return 3;
+    }
+    std::ofstream departure_trace(output / "stoker-field-exit-movement.tsv");
+    if (!departure_trace) {
+        std::cerr << "Stoker collision QA: could not write departure trace\n";
+        return 3;
+    }
+    departure_trace
+        << "frame\tx\ty\theading\ttarget_heading\tanimation_heading"
+           "\tselector\tanimation_frame\twalking\troute_flags"
+           "\traw_collision\tevent\ttransition\tinteraction\tdialogue"
+           "\tdispatches\taudio_events\n";
+    constexpr std::array<std::uint32_t, 5> departure_checkpoints{
+        1U, 2U, 4U, 8U, 16U};
+    bool departure_moved_south = false;
+    field_scene.set_controller_nibble(0x02U); // ordinary Down hold
+    for (std::uint32_t departure_frame = 1U;
+         departure_frame <= departure_checkpoints.back();
+         ++departure_frame) {
+        field_scene.advance_frame();
+        const auto position = field_scene.field_entity_world_position();
+        departure_moved_south = departure_moved_south ||
+                                position.y > departure_start.y;
+        const auto collision_code =
+            field_scene.field_terrain_collision_code_for_dump();
+        const auto route_flags =
+            field_scene.field_movement_route_flags_for_dump();
+        const bool retry_bit_is_set = (route_flags & 0x20U) != 0U;
+        departure_trace
+            << departure_frame << '\t' << position.x << '\t' << position.y
+            << '\t' << field_scene.field_entity_heading_for_dump()
+            << '\t' << field_scene.field_entity_target_heading_for_dump()
+            << '\t' << field_scene.field_entity_animation_heading_for_dump()
+            << '\t' << field_scene.field_entity_animation_selector_for_dump()
+            << '\t' << field_scene.field_entity_animation_frame_for_dump()
+            << '\t' << (field_scene.field_entity_walking_for_dump() ? 1 : 0)
+            << '\t' << static_cast<unsigned>(route_flags)
+            << '\t' << collision_code
+            << '\t' << static_cast<unsigned>(
+                   field_scene.field_mode_event_code_for_dump())
+            << '\t' << (field_scene.field_transition_pending_for_dump() ? 1 : 0)
+            << '\t' << (field_scene.field_interaction_open() ? 1 : 0)
+            << '\t' << (field_scene.dialogue_open() ? 1 : 0)
+            << '\t' << field_scene.field_map_event_system_for_dump()
+                                .collision_dispatch_count()
+            << '\t' << field_audio_events.size()
+            << '\n';
+        if ((collision_code == 0U && retry_bit_is_set) ||
+            (collision_code != 0U && !retry_bit_is_set)) {
+            field_scene.set_controller_nibble(0U);
+            departure_trace.close();
+            std::cerr << "Stoker collision QA: 0xAC5E retry-bit lifetime "
+                         "did not match its terrain sample at frame "
+                      << departure_frame << " (terrain=0x" << std::hex
+                      << collision_code << ", route_flags=0x"
+                      << static_cast<unsigned>(route_flags) << ")\n";
+            return 3;
+        }
+        if (field_scene.field_transition_pending_for_dump() ||
+            field_scene.field_interaction_transition_active_for_dump() ||
+            field_scene.field_interaction_open() ||
+            field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 2U) {
+            field_scene.set_controller_nibble(0U);
+            departure_trace.close();
+            std::cerr << "Stoker collision QA: Down after the farewell "
+                         "re-entered a modal/scene transition at frame "
+                      << departure_frame << " (scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << ", x=" << position.x << ", y=" << position.y
+                      << ", event="
+                      << static_cast<unsigned>(
+                             field_scene.field_mode_event_code_for_dump())
+                      << ", dispatches="
+                      << field_scene.field_map_event_system_for_dump()
+                             .collision_dispatch_count()
+                      << ")\n";
+            return 3;
+        }
+        if (std::find(departure_checkpoints.begin(),
+                      departure_checkpoints.end(), departure_frame) !=
+            departure_checkpoints.end()) {
+            const auto frame_name = std::string("leave-walk-") +
+                (departure_frame < 10U ? "0" : "") +
+                std::to_string(departure_frame);
+            if (!save_frame(frame_name, true)) {
+                field_scene.set_controller_nibble(0U);
+                departure_trace.close();
+                return 3;
+            }
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    departure_trace.close();
+    const auto departure_end = field_scene.field_entity_world_position();
+    const auto dispatches_after_departure =
+        field_scene.field_map_event_system_for_dump().collision_dispatch_count();
+    if (!departure_moved_south ||
+        departure_end.y <= departure_start.y ||
+        (field_scene.field_movement_route_flags_for_dump() & 0x20U) != 0U ||
+        field_scene.field_terrain_collision_code_for_dump() != 0U ||
+        dispatches_after_departure != dispatches_before_departure ||
+        field_audio_events.size() != audio_events_before_departure ||
+        !save_frame("actual", true)) {
+        std::cerr << "Stoker collision QA: ordinary Down did not leave the "
+                     "doorway cleanly (start="
+                  << departure_start.x << ',' << departure_start.y
+                  << ", end=" << departure_end.x << ',' << departure_end.y
+                  << ", dispatches=" << dispatches_before_departure << "->"
+                  << dispatches_after_departure << ", audio="
+                  << audio_events_before_departure << "->"
+                  << field_audio_events.size() << ")\n";
+        return 3;
+    }
+    write_state("leave-walk-16");
+
     trace.close();
 
     const auto mode_entry_commands_after = std::count(
@@ -14304,6 +14436,11 @@ int run_field_stoker_collision_to_dialogue_qa(
         "fade-08.bmp",
         "fade-16.bmp",
         "fade-17.bmp",
+        "leave-walk-01.bmp",
+        "leave-walk-02.bmp",
+        "leave-walk-04.bmp",
+        "leave-walk-08.bmp",
+        "leave-walk-16.bmp",
         "movement-16.bmp",
         "movement-8.bmp",
         "returned-to-field.bmp",
@@ -14331,7 +14468,7 @@ int run_field_stoker_collision_to_dialogue_qa(
     }
     std::sort(actual_bmp_names.begin(), actual_bmp_names.end());
     if (actual_bmp_names != expected_bmp_names) {
-        std::cerr << "Stoker collision QA: expected 16 full-screen checkpoints, "
+        std::cerr << "Stoker collision QA: expected 21 full-screen checkpoints, "
                      "found " << actual_bmp_names.size() << '\n';
         for (const auto& name : actual_bmp_names) {
             std::cerr << "  frame: " << name << '\n';

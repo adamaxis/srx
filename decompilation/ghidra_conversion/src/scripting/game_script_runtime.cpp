@@ -660,14 +660,15 @@ struct GameScriptRuntime::Impl {
                 "game.movement.recover_collision expects a negative collision and an even direction slot");
         }
         try {
-            const auto recovered =
+            const auto recovery =
                 self->active_actor_context->movement_collision_recovery(
                     static_cast<std::uint16_t>(x),
                     static_cast<std::uint16_t>(y),
                     static_cast<std::int16_t>(lua_tointeger(lua, 3)),
                     static_cast<std::uint8_t>(direction_slot));
-            lua_pushboolean(lua, recovered);
-            return 1;
+            lua_pushboolean(lua, recovery.movement_recovered);
+            lua_pushinteger(lua, recovery.route_flags);
+            return 2;
         } catch (...) {
             return luaL_error(
                 lua, "native movement collision recovery failed");

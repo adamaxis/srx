@@ -352,7 +352,12 @@ behavior and the full 16-record population remain unconnected.
   `game.movement.collision`, and chooses the accepted route/fallback. The
   `game.movement.route` service returns source marker and fallback data after
   the preceding terrain sample; `game.movement.recover_collision` invokes the
-  existing map-event recovery boundary for preserved negative results. A
+  existing map-event recovery boundary for preserved negative results and
+  returns both the movement result and the updated `+0xB0` route-flags byte.
+  Lua merges ROM `0xB7B8`'s one-shot event retry bit from that result into its
+  movement state, while keeping the other route bits in the script snapshot.
+  This retains the event latch through modal returns until `0xAC5E` observes
+  clear terrain. A
   separate render heartbeat owns the player's C062/C052 animation clock and
 returns the pose and C052/C062 selector. On a blocked reset, Lua takes the
 visible idle facing from C052 selected via current heading `+0x2E`, because

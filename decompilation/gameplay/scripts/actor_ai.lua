@@ -632,9 +632,21 @@ local function advance_player_movement(context, state)
     end
 
     if initial.collision_code < 0 then
-        local recovered = game.movement.recover_collision(
+        local recovered, route_flags = game.movement.recover_collision(
             initial.candidate_x, initial.candidate_y,
             initial.collision_code, initial.direction_slot)
+        if type(recovered) ~= "boolean" or
+           type(route_flags) ~= "number" or route_flags < 0 or
+           route_flags > 0xff then
+            return nil
+        end
+        -- ROM 0xB7B8 sets the actor +0xB0 retry bit before dispatching the
+        -- map event. Preserve that native collision side effect across the
+        -- Lua movement snapshot; 0xAC5E clears it after clear terrain. The
+        -- recovery result already carries the transition's separate movement
+        -- outcome, so keep the other route-state bits in Lua's snapshot.
+        movement_state.route_flags =
+            (movement_state.route_flags & 0xdf) | (route_flags & 0x20)
         if not recovered then
             movement_state.movement_substate = 0x1000
             commit_movement_candidate(movement_state, initial)
