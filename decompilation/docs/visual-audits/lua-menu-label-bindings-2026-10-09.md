@@ -14,8 +14,13 @@ portrait pixels.
    opened the command-overview runner summary and two Notebook pages at native
    320x224 resolution. Text stays within its existing wells, the selected
    command row and Notebook cursor remain visible, and adjacent field/shop/
-   dialogue regions are intact. The Stoker portrait asset still has its
-   previously reported art defect; this script binding does not fix it.
+   dialogue regions are intact. This script binding does not change portrait
+   pixels. The previously reported Stoker extraction defect was corrected by
+   the shared sprite-repeat decoder fix (`7a8dfd3ab8`); the current 56x72
+   portrait matches the independent section-03 frames 000082, 000301, and
+   000601 at its in-panel position, with face-crop RGB MAE 8.914, 8.574, and
+   8.564 respectively. This closes the Stoker extraction symptom only; it
+   does not establish fidelity for other head assets.
 2. **Does the look reflect behavioral state?** Lua returns ordered IDs and
    explicit label keys for rendered menus and text catalogs. Native typed
    state still selects the runner, menu row, and Notebook page. Pure ID lists
