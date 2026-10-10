@@ -6884,6 +6884,23 @@ int run_field_world_activity_qa(
     const std::filesystem::path& output,
     std::vector<std::uint16_t>& field_audio_events) {
     std::filesystem::create_directories(output);
+    std::error_code output_directory_error;
+    for (std::filesystem::directory_iterator item(output,
+                                                  output_directory_error),
+         end;
+         !output_directory_error && item != end;
+         item.increment(output_directory_error)) {
+        if (item->is_regular_file(output_directory_error) &&
+            item->path().extension() == ".bmp") {
+            std::filesystem::remove(item->path(), output_directory_error);
+        }
+    }
+    if (output_directory_error) {
+        std::cerr << "field world-activity QA: could not clear stale BMP "
+                     "checkpoints: "
+                  << output_directory_error.message() << "\n";
+        return 3;
+    }
     const auto render_field = [&field_scene] {
         QImage image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
         image.fill(Qt::black);
@@ -6910,7 +6927,9 @@ int run_field_world_activity_qa(
         return 3;
     }
     if (!field_scene.initialize_world_activity_for_dump(2U, 0x1234U)) {
-        std::cerr << "field world-activity QA: source table, bound, or scene preparation failed\n";
+        std::cerr << "field world-activity QA: source table, Lua route, "
+                     "bound, or scene preparation failed: "
+                  << field_scene.failure() << "\n";
         return 3;
     }
     const auto& activity = field_scene.world_activity_state_for_dump();

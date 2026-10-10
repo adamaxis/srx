@@ -26,10 +26,14 @@ field. The feature remains partial where noted.
    matching independent Genesis frame was found to compare its pixels.
 
 2. **Does the look match the behavioral state? — Yes, internally.** The QA
-   injects already-resolved `FFFBF9 = 2` for scene 2. The active `FFDE14` event
-   table selects scene `0x1A`. The extracted profile has random bound 3 and its
-   bundle cursor fields are `+0x14 = 0x18` and `+0x16 = 0`. With deterministic
-   host seed `0x1234`, the source-shaped PRNG callbacks publish
+   injects already-resolved `FFFBF9 = 2` for scene 2. ROM `0x167AE` uses this
+   byte as an index into the active `FFDE14` table; scene 2's entry 2 selects
+   resource scene `0x1A`. This differs from collision event 2 in
+   building-interaction mode, which selects Stoker's dialogue. The focused QA
+   resolves its generic world-activity table route through `building.lua`,
+   keeping those meanings separate. The selected resource has random bound 3;
+   its bundle cursor fields are `+0x14 = 0x18` and `+0x16 = 0`. With
+   deterministic host seed `0x1234`, the source-shaped PRNG callbacks publish
    `FFE12C = 2` and `FFE185 = 2`; the successful result text says “third
    floor.” QA compares each typed field and the resulting visible text. The
    physical collision that writes this focused QA's resolved event code is
@@ -94,6 +98,17 @@ field. The feature remains partial where noted.
   floor-result frames identified.
 - **Reported defect resolved:** no visual defect-resolution claim; independent
   pixel evidence is unavailable.
+
+On 2026-10-10, the dispatcher QA setup was repaired after the Lua route
+migration left it injecting `FFFBF9` without constructing the typed area-event
+route required by the shared executor. It now uses the explicit
+`FieldExitMode::world_activity_table` context, resolves scene 2 table entry 2
+to scene `0x1A` through Lua, and keeps the physical collision route outside
+this focused dispatcher test. Its output directory clears old BMPs before a
+run. All nine Debug full-screen frames were reviewed; the Release counterparts
+match by SHA-256. Scene replacement, the terminal overlay, and clean return
+remain intact. This is a test setup correction, not new independent Genesis
+visual evidence.
 
 The dedicated dispatcher QA still injects its resolved event byte, while the
 joined scene-2 event-1 route now verifies one normal collision-to-resource-

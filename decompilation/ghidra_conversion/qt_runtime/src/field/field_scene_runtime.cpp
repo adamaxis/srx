@@ -4698,6 +4698,44 @@ bool FieldSceneRuntime::initialize_world_activity_for_dump(
     field_runtime_state_.field_transition_requested = false;
     field_runtime_state_.scene_refresh_marker = 0;
 
+    // 0x167AE consumes FFFBF9 as an active-map table index. This focused QA
+    // injects that byte directly, outside the collision-driven building
+    // interaction branch, so resolve the same active-map table through Lua.
+    const auto& event_metadata = state_.field_scene_buffers.source_metadata;
+    const auto event_route = game_scripts_.resolve_field_location_route(
+        FieldScriptRouteContext{
+            static_cast<std::uint8_t>(field_runtime_state_.scene_id),
+            field_exit_mode_value(FieldExitMode::world_activity_table),
+            field_collision_event_code_from_id(mode_event_code),
+            event_metadata.event_table_available,
+            event_metadata.event_mode_table});
+    if (!event_route.has_value() ||
+        event_route->kind != FieldScriptRouteKind::area_event ||
+        event_route->area_event_destination_mode !=
+            WorldActivityMode::resource_activity ||
+        !event_route->area_event_target.has_value()) {
+        if (event_route.has_value()) {
+            failure_ =
+                "injected world-activity event did not resolve to a "
+                "resource area (scene=" +
+                std::to_string(field_runtime_state_.scene_id) + ", mode=" +
+                std::to_string(field_runtime_state_.field_mode) +
+                ", event=" + std::to_string(mode_event_code) +
+                ", route-kind=" +
+                std::to_string(static_cast<int>(event_route->kind)) +
+                ", target=" +
+                (event_route->area_event_target.has_value()
+                     ? std::to_string(*event_route->area_event_target)
+                     : "none") +
+                ")";
+        } else {
+            failure_ = game_scripts_.failure();
+        }
+        source_boundary("field.world_activity.qa_route_unresolved");
+        return false;
+    }
+    active_field_script_route_ = *event_route;
+
     field_runtime_callbacks_.initialize_world_activity_mode(
         field_runtime_state_);
     if (field_runtime_state_.field_transition_requested ||

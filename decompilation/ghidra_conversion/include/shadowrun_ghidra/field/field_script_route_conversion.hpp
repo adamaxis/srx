@@ -19,6 +19,9 @@ constexpr std::uint8_t field_scene_id_value(
 }
 
 enum class FieldExitMode : std::uint8_t {
+    // 0x167AE's resolved event-table path does not select a direct building
+    // interaction override.
+    world_activity_table = 0,
     building_interaction = 2,
 };
 
