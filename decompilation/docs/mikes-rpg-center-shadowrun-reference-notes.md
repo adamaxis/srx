@@ -31,6 +31,7 @@ the player's current Negotiation skill.
 | [Johnsons](https://mikesrpgcenter.com/shadowrun/johnsons.html) | Five Johnson entries, rough job role, and meeting place. Useful as a dialogue/quest contact cross-check. |
 | [Manual (27-page PDF)](https://mikesrpgcenter.com/manuals/genesis/Shadowrun.pdf) | Officially linked Genesis manual. It is a separate document from this walkthrough/reference index; verify interface instructions against the actual ROM and captures. |
 | [Maps index](https://mikesrpgcenter.com/shadowrun/maps.html) | Names and links for all exterior, wilderness/cave, and Matrix maps listed below. |
+| [NPCs](https://mikesrpgcenter.com/shadowrun/npcs.html) | Additional named-runner list and Stark recovery chain. This page is not in the main Shadowrun index navigation. |
 | [Programs](https://mikesrpgcenter.com/shadowrun/programs.html) | Matrix program roles and where to buy/find them; includes program decay/repair descriptions. |
 | [Shadowrunners](https://mikesrpgcenter.com/shadowrun/shadowrunners.html) | Ten recruitable runners with archetype and location; Stark has a multi-step rescue/healing/recruitment dependency. |
 | [Spells](https://mikesrpgcenter.com/shadowrun/spells.html) | Fourteen spell names, broad effects, and merchant locations. Spell level, target rules, resource cost, and timing still need ROM derivation. |
@@ -344,3 +345,117 @@ site does not say the motel has a dedicated interior map.
 - Item descriptions are useful labels, not complete item templates. Price,
   icon, item code, stack rules, clip type/capacity, equip state, and combat
   behavior should come from the ROM's item/weapon records and UI routines.
+
+## Expanded site comb: exact map labels and actionable cross-checks
+
+This pass inspected the individual map pages as well as the category index,
+catalog pages, walkthrough, and linked manual. The site has 6 city-area maps,
+4 wilderness maps, 4 cave maps, and 14 Matrix layouts. The lists below keep
+the site's numbered labels intact so they can be crosswalked against ROM map
+records later. The site does not provide ROM scene IDs or coordinates.
+
+### City-area maps and site-listed service gates
+
+| Map | Numbered location labels and noteworthy details from the page |
+|---|---|
+| [Redmond Barrens](https://www.mikesrpgcenter.com/shadowrun/maps/redmond_barrens.html) | 1 Jump House: Gunderson, Wilma Temmenhoff contact (1,000), Ilene after rescue; 2 Jackal's Lantern: Ricky; 3 Boris' Greenhouse (100 to hear story; forged Salish-Shidhe passport 1,000; Rating-2 passkey 10,000; Mach 22 1,200); 4 ghoul warehouse; 5 Hollywood Correctional; 6 Stoker's (rest 20); 7 Ares Weapon Emporium; 8 Little Chiba's (medical/cyberware); 9 Rat's Nest; 10 Shiawase Atomics; 11 Halloweeners/Ratspike (1,500 or reputation-adjusted to talk; Halloweener Patch 3,000; Agira contact 10,000). |
+| [Downtown Seattle](https://www.mikesrpgcenter.com/shadowrun/maps/downtown.html) | 1 Penumbra connection; 2 Renraku connection; 3 Space Needle/Trent and free Prof. Jefferson contact; 4 Gates Undersound (rest 75); 5 Fuchi; 6 Mitsuhama; 7 Matchstick (150 nuyen or reputation 6), Rianna, Julius Strouther, Quinton Jaymes contact (1,000); 8 Icarus Descending (reputation 6), Caleb Brightmore, Kipp David and Sergeant Chillicut contacts (2,000 each); 9 Roscoe buys data files; 10-11 abandoned buildings; 12 Seattle General Hospital (medical/cyberware). |
+| [Penumbra District](https://www.mikesrpgcenter.com/shadowrun/maps/penumbra.html) | 1 Downtown connection; 2 Fuchi; 3 Mitsuhama; 4 abandoned building; 5 Lone Star; 6 Big Rhino/Mortimer Reed, Alesandro Hobbs contact (1,500), Winston Marrs; 7-8 abandoned buildings; 9 Wylie's Gala Inn (rest 50); 10 Eye-Fivers/Mauler (2,000 or reputation 6 to speak; Ear Cuff 4,000; Faradouchi contact 10,000); 11 Club Penumbra (reputation 4 and 75 nuyen), Freya. |
+| [Renraku Arcology](https://www.mikesrpgcenter.com/shadowrun/maps/renraku_arcology.html) | 1 Downtown connection; 2 Renraku Computer Systems; 3 Weapon's World; 4 Wire-Masters; 5 Merlin's Lore; 6 Microtronics; 7 The Frag Grenade (entry 25), Phantom. Pages enumerate the stock of those stores, including weapons/clip, armor/medical items, cyberware, spells/foci, programs, decks, and deck upgrades. |
+| [Puyallup Barrens](https://www.mikesrpgcenter.com/shadowrun/maps/puyallup.html) | 1 abandoned building; 2 Tarislar Garden Apartments; 3 Tarislar City Inn (rest 30); 4 Crime Mall (weapons, armor, clips, passkeys, electronics kit, accessories, programs, decks, upgrades); 5 Underground 93 (100 nuyen or reputation 6); 6 Ares Macrotechnology; 7 Riannon's Magic Shop; 8 The Wanderer/Vigore and Jarl, Max contact (750), Peter Uvehr; 9 Dr. Bob's Quickstitch Clinic; 10 and 12 abandoned buildings; 11 Orc Gang/Roadrash (750 or reputation 5; Ork Armband 2,000; Henry J. Culver contact). |
+| [Council Island](https://www.mikesrpgcenter.com/shadowrun/maps/council_island.html) | 1 Passport Lodge (500 if security check passes); 2 Friendship Restaurant/Walking Bear; 3 inn (rest 40); 4 Medicine Lodge (magic/foci); 5 Orc Embassy; 6 hospital (medical/cyberware); 7 Spirit Eyes. |
+
+The guide and its own location pages separate several easily conflated facts:
+Gunderson is in Redmond's Jump House and is the lead to the Rat's Nest, while
+the Johnsons catalog places Vigore and Jarl in Puyallup's Wanderer. The
+walkthrough says Vigore is absent from the Rat's Nest and the player finds the
+Landmark Map there. This is an external-site cross-reference, not proof that
+the game spawns or moves those people in those places at every quest state.
+The site calls the Redmond location 6 Stoker's and location 9 the Rat's Nest;
+it gives no Rat's Nest interior map. Do not create an interior or place a
+scenery corpse from these listings.
+
+### Wilderness/cave route graph as labeled by the site
+
+| Map | Numbered labels / links |
+|---|---|
+| [Wilderness 1](https://www.mikesrpgcenter.com/shadowrun/maps/wild1.html) | 1 arrival; 2 David Owlfeather; 3 Red Buffalo Woman; 4 Cave 1; 5 Cave 2; 6 cave with no listed point of interest. |
+| [Wilderness 2](https://www.mikesrpgcenter.com/shadowrun/maps/wild2.html) | 1 and 2 are separate Cave 1 connections; 3 cave with no listed point of interest; 4 Cave 3. |
+| [Wilderness 3](https://www.mikesrpgcenter.com/shadowrun/maps/wild3.html) | 1 Cave 2; 2 Cave 3; 3 Stark. |
+| [Wilderness 4](https://www.mikesrpgcenter.com/shadowrun/maps/wild4.html) | 1 Cave 3; 2 Cave 4; 3 Sinsearach; 4 cave with no listed point of interest. |
+| [Cave 1](https://www.mikesrpgcenter.com/shadowrun/maps/cave1.html) | 1 Wilderness 1; 2 and 3 are separate Wilderness 2 connections. |
+| [Cave 2](https://www.mikesrpgcenter.com/shadowrun/maps/cave2.html) | 1 Wilderness 1; 2 Wilderness 3. |
+| [Cave 3](https://www.mikesrpgcenter.com/shadowrun/maps/cave3.html) | 1 Wilderness 2; 2 Wilderness 3; 3 Wilderness 4. |
+| [Cave 4](https://www.mikesrpgcenter.com/shadowrun/maps/cave4.html) | 1 Wilderness 4; 2 Renraku strike team; 3 Feathered Serpent. |
+
+The diagram establishes the site's intended connectivity and named markers,
+but its arrows/labels are not enough to establish transition trigger geometry,
+one-way state, collision bounds, encounter placement, or story gating. The ROM
+map/door records must settle those details.
+
+### Full Matrix page inventory
+
+These are the numbered nodes as the site's pages label them. Datastore names
+are useful quest-search hints; the page doesn't specify the ROM's option text,
+passcode checks, alert-update order, or what a successful search changes.
+
+| Matrix page | Numbered node labels and page callouts |
+|---|---|
+| [Ares](https://www.mikesrpgcenter.com/shadowrun/maps/ares.html) | 1 Outdated Files; 2 Project Files; 3 System Files; 4 Management Files; 5 Security Files; 6 Legal Files; 7 Confidential Data (Chernobyl letters H/R; Ilene tip); 8 Maglocks; 9 Security Control; 10 Cameras; 11-12 Automated Equipment; 13 HVAC System; 14 Elevator Control; 15 Alert Control. |
+| [Aztechnology](https://www.mikesrpgcenter.com/shadowrun/maps/aztechnology.html) | 1 Confidential Data (Chernobyl B); 2 Project Files; 3 Competition; 4 Marketing Data; 5 Project Files; 6-7 System Files; 8 Outdated Files; 9 Security Files; 10 Project Files; 11 Alert Control; 12 Elevator Control; 13-14 Automated Equipment; 15 Alert Control; 16 Cameras. |
+| [City Hall](https://www.mikesrpgcenter.com/shadowrun/maps/cityhall.html) | 1 Management Files; 2 Outdated Files; 3 Project Files; 4 Financial Data; 5 Security Files; 6 Confidential Data; 7 HVAC Systems; 8 Automated Equipment; 9 Satellite Feed; 10 Cameras; 11 Maglocks; 12 Alert Control; 13 Cameras. |
+| [Club Penumbra](https://www.mikesrpgcenter.com/shadowrun/maps/clubpenumbra.html) | 1 System Files; 2 Financial Data; 3 Outdated Files; 4 System Files; 5 Security Files; 6 Automated Equipment; 7 Cameras. |
+| [Fuchi](https://www.mikesrpgcenter.com/shadowrun/maps/fuchi.html) | 1 Outdated Files; 2 System Files; 3 Security Files (prototype cybernetic clue and Chernobyl N/L); 4 Sinsense Files; 5 Financial Data; 6 Management Files (cybernetic-heart clue); 7 HVAC Systems; 8 Maglocks; 9 Satellite Feed; 10 Alert Control; 11 Cameras; 12 Elevator Control. |
+| [Gates Undersound](https://www.mikesrpgcenter.com/shadowrun/maps/gatesundersound.html) | 1 System Files; 2 Outdated Files; 3 Security Files; 4 Management Files; 5 Financial Data; 6 Elevator Control; 7 Automated Equipment; 8 Maglocks; 9 Cameras; 10 Underwater Equipment. |
+| [Hollywood Correctional](https://www.mikesrpgcenter.com/shadowrun/maps/hlywdcorrfac.html) | 1 Outdated Files; 2 System Files; 3 Security Files; 4 Financial Data; 5 Management Files; 6 Prisoner Files (Ilene Two Fists tip); 7 HVAC Systems; 8 Maglocks. |
+| [Ito's System](https://www.mikesrpgcenter.com/shadowrun/maps/itossystem.html) | 1 System Files; 2 Management Files (Renraku strike-team tip); 3 Financial Data (map tip); 4 Confidential Data (Vigore/Thon tip); 5 Project Files (Tomb of Ellisia tip). |
+| [Lone Star](https://www.mikesrpgcenter.com/shadowrun/maps/lonestar.html) | 1 Case Files; 2 System Files; 3 Outdated Files; 4 Legal Files; 5 Prisoner Files (Vigore tip); 6 Security Files; 7 Management Files; 8 Financial Data (cybernetic-heart tip); 9 Automated Equipment; 10 Elevator Control; 11 Automated Equipment; 12 Alert Control; 13 Maglocks; 14 Alert Control; 15 Cameras. |
+| [Mitsuhama](https://www.mikesrpgcenter.com/shadowrun/maps/mitsuhama.html) | 1 Outdated Files; 2 Security Files (AmerIndian prisoner tip); 3 Management Files; 4 Project Files; 5 Competition; 6 System Files; 7 Financial Data; 8 Confidential Data (Chernobyl C/O); 9 Maglocks; 10 Cameras; 11 Elevator Control; 12 Alert Control; 13 Automated Equipment. |
+| [Renraku](https://www.mikesrpgcenter.com/shadowrun/maps/renraku.html) | 1 Financial Data; 2 Management Files (Mako tip); 3 Outdated Files; 4 Confidential Data (Chernobyl E/Y and Ito tip); 5 Project Files (Ellisia map tip); 6 Competition; 7 System Files; 8 Project Files; 9 Security Files (Frosty and Joshua tips); 10 HVAC Systems; 11 Cameras; 12 Satellite Feed; 13 Maglocks; 14 Alert Control. |
+| [Seattle General Hospital](https://www.mikesrpgcenter.com/shadowrun/maps/seattlegenhosp.html) | 1 Outdated Files; 2 System Files; 3 Management Files; 4 Automated Equipment. |
+| [UCAS Federal Government](https://www.mikesrpgcenter.com/shadowrun/maps/ucasfedgov.html) | 1 Outdated Files; 2 Project Files; 3 System Files (Chernobyl virus); 4 Prisoner Files; 5 Financial Data; 6 Management Files; 7 Security Files; 8 Maglocks; 9 Alert Control; 10 Maglocks; 11 Satellite Feed; 12 HVAC Systems; 13 Cameras; 14 Alert Control. |
+| [Unlisted](https://www.mikesrpgcenter.com/shadowrun/maps/unlisted.html) | Multiple unnamed layouts/collage groups. Across them the page labels management/system/project/security/financial/outdated/legal/prisoner/simsense files, dead projects, HVAC, cameras, automated equipment, security control, maglocks, and alert control. Keep unnamed rather than assigning a corporation from visual resemblance. |
+
+### NPC and catalog cross-check additions
+
+- The separate [NPCs page](https://www.mikesrpgcenter.com/shadowrun/npcs.html)
+  lists nine runners: Peter Uvehr, Phantom, Rianna, Ricky, Trent, Ilene Two
+  Fists, Stark, Walking Bear, Winston Marrs. The [Shadowrunners page](https://www.mikesrpgcenter.com/shadowrun/shadowrunners.html)
+  also lists Freya, for ten total; the discrepancy suggests the NPC page may be
+  incomplete/stale, so do not use it as the full recruitment roster.
+- The NPC page adds Stark's route: wilderness/cave find -> Seattle General
+  Hospital diagnosis -> Fuchi third-floor prototype cyberheart -> recovery ->
+  optional recruitment at Underground 93. The map/walkthrough pages should be
+  cross-checked for the exact transitions and state gates.
+- The [Johnsons page](https://mikesrpgcenter.com/shadowrun/johnsons.html)
+  lists Gunderson (small-time/courier), Julius Strouther (mid-level),
+  Mortimer Reed (mid-level), Vigore and Jarl (mid-level acquisitions), and
+  Caleb Brightmore (upper-level Matrix runs). The separate map/walkthrough
+  pages don't always refer to the same Johnson as a physical occupant: the
+  guide says Gunderson directs the player to Rat's Nest, while Vigore and Jarl
+  are listed at The Wanderer in Puyallup. Treat “points to a location” and
+  “is physically present there” as different facts.
+- Contact-page spellings vary: `Alesandro`/`Alessandro`, `Allesandro`, and
+  Quinton `Jaymes`/`James`; the contact list also describes Agira as available
+  from Ratspike and Max as available from Vigore in Puyallup. Use ROM strings
+  and contact indices for canonical identity, not normalization by guess.
+- Catalog exactness caveats: the site calls the initial deck `Allegience
+  Alpha`, labels Mach 22 `SMG` on Redmond and `MSG` on Puyallup, and the
+  Redmond map alone gives Ratspike's reputation-adjusted 1,500-nuyen talk
+  threshold. Keep the source wording in notes, then resolve spelling/type
+  questions against ROM item/contact data.
+
+### Site-wide source coverage and use limits
+
+The site's main index covers Armor, Contacts, Cyberdecks, Cyberware, Items,
+Johnsons, Manual, Programs, Shadowrunners, Spells, Walkthrough, Weapons, six
+city-area maps, four wilderness maps, four cave maps, and fourteen Matrix maps.
+The separate NPC list is additional. Printable variants and thumbnails are
+presentation duplicates rather than separate game-behavior sources. For
+implementation research, the walkthrough is a quest dependency checklist;
+catalog pages are a naming/stat/price cross-check; city maps are the best
+human-readable location index; wilderness/cave pages give a rough edge graph;
+Matrix pages identify node categories; and the scanned manual describes
+player-facing rules. None provides the ROM scene IDs, event order, exact
+coordinates, hidden state bits, actor heartbeat cadence, hit formulas, or UI
+pixel/timing goldens.
