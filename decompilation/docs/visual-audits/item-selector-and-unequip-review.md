@@ -169,6 +169,23 @@ inventory, First Aid target, automatic-use result, and Trade confirmation
 were opened individually. No old button row, stale overlay, or new text overlap
 appeared after the Lua key migration.
 
+On 2026-10-10, the field-action route was rerun after its unequip assertion
+failed. The rendered frame showed `00` as expected by ROM `0x36FC`: the
+unequipped record retains its 50% value in `+0x4E`, but that percentage is not
+the visible unarmed ammo count. The assertion had incorrectly compared the HUD
+to `ammo-counter-50.bmp`; both weapon unequip checks now assert the zero-counter
+asset while separately checking the retained 50% state. Region-to-asset QA
+also compares pixel colors instead of QImage storage encodings. The Debug
+output folder contained five BMPs left by older runs; the QA now removes old
+BMP checkpoints in its own output folder before capturing a route. The clean
+Debug and Release runs each produced 55 full-screen frames with matching
+SHA-256 hashes. All 55 native-size frames were reviewed together, with the
+unequip, confirmation, Clips return, and gear unequip checkpoints reopened
+individually. No black box, stale child controls, or unrelated panel changes
+reproduced. This fixes the false QA failure and stale-artifact ambiguity; it
+does not independently prove the reported black box absent from the original
+Genesis game, so `EQUIP-02` remains open.
+
 ## Outcome
 
 - **Code changed:** the typed armor toggle now follows the ROM's any-armor

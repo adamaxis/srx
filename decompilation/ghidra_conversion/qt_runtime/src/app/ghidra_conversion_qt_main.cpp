@@ -24139,6 +24139,26 @@ int main(int argc, char** argv) {
             }
             if (field_action_dump_path.has_value()) {
                 std::filesystem::create_directories(*field_action_dump_path);
+                std::error_code field_action_directory_error;
+                for (std::filesystem::directory_iterator item(
+                         *field_action_dump_path,
+                         field_action_directory_error),
+                     end;
+                     !field_action_directory_error && item != end;
+                     item.increment(field_action_directory_error)) {
+                    if (item->is_regular_file(field_action_directory_error) &&
+                        item->path().extension() == ".bmp") {
+                        std::filesystem::remove(item->path(),
+                                                field_action_directory_error);
+                    }
+                }
+                if (field_action_directory_error) {
+                    std::cerr << "field action dump: could not clear stale "
+                                 "BMP checkpoints: "
+                              << field_action_directory_error.message()
+                              << "\n";
+                    return 3;
+                }
                 const auto render_scene = [&] {
                     QImage action_scene(kSceneWidth, kSceneHeight,
                                         QImage::Format_RGB32);
@@ -24216,8 +24236,12 @@ int main(int argc, char** argv) {
                     }
                     for (int y = 0; y < asset.height(); ++y) {
                         for (int x = 0; x < asset.width(); ++x) {
-                            if (scene.pixel(origin_x + x, origin_y + y) !=
-                                asset.pixel(x, y)) {
+                            // Compare rendered colors rather than each
+                            // QImage's storage encoding. The scene is RGB32,
+                            // while extracted BMPs may load as indexed or
+                            // RGB images even when every visible pixel agrees.
+                            if (scene.pixelColor(origin_x + x, origin_y + y) !=
+                                asset.pixelColor(x, y)) {
                                 return false;
                             }
                         }
@@ -24639,22 +24663,39 @@ int main(int argc, char** argv) {
                     fresh_unequipped_scene);
                 const auto weapon_one_unequipped_icon =
                     direct_weapon_icon(1U, 0U);
-                if (!field_inventory_selector_survives(unequipped_scene, 0U,
-                                                        0U) ||
-                    !ammo_counter_matches(unequipped_scene, 50U) ||
-                    !icon_interior_matches(unequipped_scene,
-                                           weapon_one_unequipped_icon, 16,
-                                           120) ||
-                    unequipped_scene.pixelColor(11, 116) !=
-                        QColor(36, 36, 36) ||
-                    !same_inventory_grid(unequipped_scene,
-                                         fresh_unequipped_scene) ||
+                const auto unequipped_selector_ok =
+                    field_inventory_selector_survives(unequipped_scene, 0U,
+                                                       0U);
+                // ROM 0x36FC renders the unarmed zero-counter while the
+                // unequipped +0x4E percentage remains stored in the record.
+                const auto unequipped_ammo_ok =
+                    ammo_counter_matches(unequipped_scene, 0U);
+                const auto unequipped_icon_ok = icon_interior_matches(
+                    unequipped_scene, weapon_one_unequipped_icon, 16, 120);
+                const auto unequipped_cell_treatment_ok =
+                    unequipped_scene.pixelColor(11, 116) ==
+                    QColor(36, 36, 36);
+                const auto unequipped_grid_matches_fresh =
+                    same_inventory_grid(unequipped_scene,
+                                        fresh_unequipped_scene);
+                const auto unequipped_scene_saved =
+                    save_scene("05_weapon_1_unequipped", unequipped_scene);
+                if (!unequipped_selector_ok || !unequipped_ammo_ok ||
+                    !unequipped_icon_ok || !unequipped_cell_treatment_ok ||
+                    !unequipped_grid_matches_fresh ||
                     !fresh_unequipped_scene_saved ||
-                    !save_scene("05_weapon_1_unequipped", unequipped_scene)) {
+                    !unequipped_scene_saved) {
                     std::cerr << "field action dump: unequip left a stale "
                                  "cell treatment, lost the source cursor, or "
                                  "changed the unequipped icon or failed to "
-                                 "match a fresh scene redraw\n";
+                                 "match a fresh scene redraw; selector="
+                              << unequipped_selector_ok << " ammo="
+                              << unequipped_ammo_ok << " icon="
+                              << unequipped_icon_ok << " cell="
+                              << unequipped_cell_treatment_ok << " grid="
+                              << unequipped_grid_matches_fresh << " fresh_saved="
+                              << fresh_unequipped_scene_saved << " scene_saved="
+                              << unequipped_scene_saved << "\n";
                     return 3;
                 }
                 for (int frame = 0; frame < 30; ++frame) {
@@ -24798,7 +24839,7 @@ int main(int argc, char** argv) {
                     field_scene.active_runner_record().ammo_rounds != 50U ||
                     !field_inventory_selector_survives(
                         weapon_two_unequipped_scene, 1U, 0U) ||
-                    !ammo_counter_matches(weapon_two_unequipped_scene, 50U) ||
+                    !ammo_counter_matches(weapon_two_unequipped_scene, 0U) ||
                     !icon_interior_matches(weapon_two_unequipped_scene,
                                            weapon_two_unequipped_icon, 56,
                                            120) ||
