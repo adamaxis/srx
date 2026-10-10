@@ -123,11 +123,11 @@ std::vector<FieldHudOverlay> compose_field_hud_overlays(
                              slots[slot].unarmed_item_variant,
                              ordinary_item_palette_variant(slots[slot])));
         }
-        if (slots[slot].ammo_rounds < kFieldHudAmmoCounterCount) {
+        if (slots[slot].ammo_display_value < kFieldHudAmmoCounterCount) {
             overlays.push_back(make_overlay(
                 FieldHudOverlayKind::ammo, slot,
                 slot_vram(kFieldHudAmmoVram, slot),
-                slots[slot].ammo_rounds));
+                slots[slot].ammo_display_value));
         }
     }
     return overlays;

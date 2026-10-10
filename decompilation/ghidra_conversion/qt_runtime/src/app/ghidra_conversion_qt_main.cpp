@@ -26073,6 +26073,10 @@ int main(int argc, char** argv) {
                     ricky_unarmed.equipped_inventory_slot;
                 const auto ricky_equipped_item =
                     ricky_unarmed.equipped_item_code;
+                // Model a source-valid partial magazine before unequipping.
+                // The equipment operation must retain it as a percentage,
+                // while the HUD must show 00 beside the unarmed/cyberware icon.
+                ricky_unarmed.ammo_rounds = 1U;
                 std::optional<SelectedInventoryItem> ricky_item;
                 if (ricky_equipped_slot >= 0) {
                     ricky_item = read_selected_inventory_item(
@@ -26091,12 +26095,16 @@ int main(int argc, char** argv) {
                         EquipmentMutation::unequipped ||
                     ricky_unarmed.equipped_inventory_slot != -1 ||
                     ricky_unarmed.equipped_item_code != 0U ||
-                    ricky_unarmed.ammo_rounds != 100U) {
+                    ricky_unarmed.ammo_rounds == 0U ||
+                    ricky_unarmed.ammo_rounds >=
+                        kFieldHudAmmoCounterCount) {
                     std::cerr << "field HUD party QA: Ricky's unarmed state "
-                                 "did not follow the live source equipment "
-                                 "record and unequip transition\n";
+                                 "did not preserve the partial magazine as "
+                                 "a visible-range percentage\n";
                     return 3;
                 }
+                const auto ricky_unarmed_percentage =
+                    ricky_unarmed.ammo_rounds;
                 party_scene.install_party_member_for_dump(
                     1U, ricky_unarmed, "Ricky", 3U);
                 const auto& installed_ricky_unarmed =
@@ -26108,7 +26116,8 @@ int main(int argc, char** argv) {
                 if (!save_party_frame("party-ricky-unarmed", party_unarmed) ||
                     installed_ricky_unarmed.equipped_inventory_slot != -1 ||
                     installed_ricky_unarmed.equipped_item_code != 0U ||
-                    installed_ricky_unarmed.ammo_rounds != 100U ||
+                    installed_ricky_unarmed.ammo_rounds !=
+                        ricky_unarmed_percentage ||
                     !field_hud_party_slot_asset_survives(
                         party_unarmed, asset_root,
                         "field/hud/party/unarmed-item-0-palette-" +
@@ -26120,12 +26129,19 @@ int main(int argc, char** argv) {
                         "field/hud/ammo-counter-0.bmp",
                         field_hud_vram_x(kFieldHudAmmoVram),
                         ricky_unarmed_ammo_y, QSize(16, 8)) ||
+                    field_hud_party_slot_asset_survives(
+                        party_unarmed, asset_root,
+                        "field/hud/ammo-counter-" +
+                            std::to_string(ricky_unarmed_percentage) +
+                            ".bmp",
+                        field_hud_vram_x(kFieldHudAmmoVram),
+                        ricky_unarmed_ammo_y, QSize(16, 8)) ||
                     party_equipped.copy(QRect(288, 128, 24, 16)) ==
                         party_unarmed.copy(QRect(288, 128, 24, 16))) {
                     std::cerr << "field HUD party QA: Ricky's source-style "
-                                 "unarmed state lost its percentage, drew a "
-                                 "nonzero field counter, or retained the old "
-                                 "item image\n";
+                                 "unarmed state lost its percentage, showed "
+                                 "that percentage as bullets, or retained the "
+                                 "old item image\n";
                     return 3;
                 }
 

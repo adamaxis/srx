@@ -70,7 +70,9 @@ struct FieldHudSlotState {
     std::int8_t equipped_inventory_slot = 0;
     std::uint8_t equipped_item_code = 0;
     std::uint8_t class_code = 0; // Live record +0x9B, used by 0x3602.
-    std::uint8_t ammo_rounds = 0;
+    // Rendered counter from the 0x36FC D2 result. It can differ from live
+    // +0x4E, which stores an unequipped weapon's percentage and is not shown.
+    std::uint8_t ammo_display_value = 0;
     // Live record +0x4C and +0x9C. The source clamps both displayed meters
     // to 0..10; the physical bar and mental/behavior bar use separate tables.
     std::int8_t delay_meter = 0;

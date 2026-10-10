@@ -2791,7 +2791,20 @@ FieldHudSlotState FieldSceneRuntime::field_hud_slot_state(
     slot.equipped_inventory_slot = record.equipped_inventory_slot;
     slot.equipped_item_code = record.equipped_item_code;
     slot.class_code = record.archetype_index;
-    slot.ammo_rounds = record.ammo_rounds;
+    FieldHudAmmoMeterState ammo_meter{};
+    ammo_meter.slot_word = record.record_type;
+    ammo_meter.flags_byte = slot.flags_byte;
+    ammo_meter.equipped_inventory_slot = record.equipped_inventory_slot;
+    ammo_meter.source_type = record.equipped_item_code;
+    ammo_meter.ammo = record.ammo_rounds;
+    ammo_meter.clip_counts = record.inventory_phase_bytes;
+    ammo_meter.clip_aux = record.inventory_item_codes;
+    // The displayed counter is the 0x36FC D2 result, not always the live
+    // +0x4E value. In particular, an unequipped record keeps its ammo
+    // percentage in +0x4E while the ROM draws the zero counter beside the
+    // unarmed/cyberware icon.
+    slot.ammo_display_value =
+        advance_field_hud_ammo_meter(ammo_meter, 0).displayed;
     slot.delay_meter = static_cast<std::int8_t>(record.delay_meter);
     slot.behavior_meter = static_cast<std::int8_t>(record.behavior_meter);
     slot.primary_runner = index == field_party_roster_.active_slot();

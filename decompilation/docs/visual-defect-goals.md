@@ -83,7 +83,7 @@ clarification. None changes the original report's itemization.
 | `OPEN-10` | The troll/orc death explosion is surrounded by a visible square border. | **Resolved for the reported square.** ROM `0x5A0B2` reads four map-patch records at `0x5A1D2`; the offline 0x1728 extractor now preserves empty/color-zero cells as transparent and regenerates four named assets. The four phase holds match the ROM's 12/24/60/12 updates. Connected Debug/Release startup QA passes. Native frame `frame-004446.png` no longer has the rectangle; independent section 02 frames 000640/000642/000644/000646/000648 show the same interval without a square. The 6,782-frame native route and all changed full-screen frames were reviewed. See [the intro explosion visual audit](visual-audits/ambush-explosion-border.md).
 | `TAXI-01` | The taxi-window callout is missing its top/bottom edges and appears as two parallel side lines instead of a closed white outline. | **Resolved for the missing horizontal edges.** `draw_cab_mode_selection()` used hyphenated aliases while `resources.tsv` names six corner/middle tiles with dot-separated aliases, so only the left/right assets loaded. The renderer now uses all eight catalog aliases. Startup QA first reproduced the missing top-left tile, then passed pixel checks for all eight tiles across five phases and both settled mode holds. Debug/Release startup-QA images match byte for byte; the full Release capture reviewed all 182 cab-map frames and 120 field-handoff hold frames. Independent section 02 frames 001729-001735 and 001800 show closed outlines at multiple map states. The visible map-plate extent still differs and exact 30-fps-to-VBlank alignment remains unknown; both stay separate from this resolved edge defect. See the [taxi outline audit](visual-audits/taxi-window-outline.md). |
 | `HUD-01` | The field portrait has unexpected color over the runner's face. | Resolved for the reported Gator face-color symptom: ROM `0x35D4` applies `+0x2C` to the 4x4 face; the old Qt path used `0x3602`. Corrected assets/runtime and per-record QA select Gator line 1 (`+0x2C=0x2000`); independent section 04/06 frames support that palette. See [the eight-question portrait audit](visual-audits/hud-portrait-palette.md). Ammo remains separately tracked as `HUD-02`. |
-| `HUD-02` | Ammunition is inconsistent: the report cites 32 bullets initially, 37 on the unequipped hand, and 4 after equipping the gun. | ROM Gator record `0x72B1A` starts at 32 with item code 2; the `0x39F2` field refresh reaches `0x36FC`, which clamps it to the item-2 capacity 12 at `0xD4570 + 0x24`. The Qt path applies that refresh. ROM `0x125FA`/`0x121E0` plus item code 3 capacity 11 reproduce `4/11 -> 37 -> 4`, but the ordinary unarmed field-HUD branch draws `00` while preserving the +0x4E percentage. The user's visible 37-on-hand route remains unreconciled. The former Ricky QA image used an impossible raw-template/unarmed state and is corrected to use a refreshed live record and typed unequip. See [ammo capacity audit](visual-audits/hud-ammo-capacity-refresh.md); keep the reported sequence partial until independently reconciled. |
+| `HUD-02` | Ammunition is inconsistent: the report cites 32 bullets initially, 37 on the unequipped hand, and 4 after equipping the gun. | ROM Gator record `0x72B1A` starts at 32 with item code 2; the `0x39F2` field refresh reaches `0x36FC`, which clamps it to item-2 capacity 12 at `0xD4570 + 0x24`. ROM `0x125FA`/`0x121E0` plus item code 3 capacity 11 reproduce `4/11 -> 37 -> 4`. The normal unarmed HUD branch draws `00` while preserving +0x4E as a percentage. Qt previously passed raw +0x4E to the overlay, so low retained percentages appeared as bullets; it now uses the typed `0x36FC` display result. A source-valid partial-magazine regression checks that a nonzero percentage below 64 survives unequip while the full-screen HUD shows `00` and clears the old item icon. All 12 HUD outputs were reviewed and their Debug/Release hashes match; the complete 262-image Release player-action set was reviewed in 14 sheets. The user's visible 37-on-hand route remains unreconciled with the normal ROM unarmed `00` path, so the combined report stays partial. See [ammo capacity and display audit](visual-audits/hud-ammo-capacity-refresh.md). |
 | `FIELD-01` | Walking previously used the dying/fallen animation; leftward movement also showed the right-facing walk pose. | The fallen-pose family is separated from ordinary C062 movement. ROM direction 6 (`0xC062` selector `0x38`) shares direction-2 tiles and sets attribute `0x0800`; the Qt runtime applies that horizontal facing to idle and walk images. Release normal-input QA now exercises all eight headings, including six additional full-screen movement/release routes. Exact-scene visual matching and movement audio remain open. |
 | `SOUND-01` | Pocket Secretary selection/cancel sounds are absent on some screens or use the wrong sound. | **Partial.** Notebook C now follows `0xF236` → `0x391A` and requests event `0x25`, then resumes the same selected row. Tips C already uses that route. Notebook row movement, A child dispatch, B/Start return, Tips page movement/return, and Tips entry are source-silent. Event `0x25` maps to `audio.effects.resource.037` (2.134 seconds including release tail); shared Debug/Release audio QA verifies decoded playback, default-output state, and duration. Debug/Release Notebook route QA checks event `0x25`, retained page/selection, and full-screen continuity. Mr. Johnsons C requests the same event; its A/B details, movement, and Start return are source-silent. Route loopback, other child-page handlers, and independent Pocket Secretary frames remain open; see [the selection/cancel audio audit](visual-audits/pocket-secretary-selection-cancel-audio.md). |
 | `SOUND-02` | Moving between Pocket Secretary menu items has no navigation sound. | **Closed as a non-defect under the US ROM.** `0xC2A6` services the parent loop through VBlank/input, `0xE660`, and the `0xC376` cursor writer; it makes no sound request on Up/Down. The parent command overview requests event `0x24` once when A opens the page (2.484-second extracted clip including its release tail); that entry cue is not a navigation sound. Debug/Release route QA checks the single entry request, four accepted Down moves, and wrap to row 0 with no additional audio events. Navigation has no playback duration because no sound is requested. The root-menu screenshot series is internally reviewed, but the supplied Genesis capture has no matching Pocket Secretary visit; external visual fidelity remains unverified. See [the root navigation audio audit](visual-audits/pocket-secretary-navigation-audio.md). |
@@ -589,21 +589,28 @@ four by the source half-up scale. This establishes concrete source arithmetic,
 not the user's exact weapon/state. The independent recording has no matching
 equip/unequip sequence. Reserve `+0x4F` is tracked separately by `LOADOUT-01`.
 
-**Code changed:** `FieldSceneRuntime::refresh_field_hud_runner_slot()` now
-applies the typed zero-delta ammo-meter refresh to each live record before
-building its HUD slot snapshot. It writes the source-clamped ammo and any
-source item-clear fields back to typed runner state.
+**Code changed:** `FieldSceneRuntime::refresh_field_hud_runner_slot()` applies
+the typed zero-delta ammo-meter refresh to each live record before building
+its HUD slot snapshot. `field_hud_slot_state()` also projects the visible
+counter through `advance_field_hud_ammo_meter()` and records the result as
+`ammo_display_value`; it no longer sends raw +0x4E to the overlay compositor.
+An unarmed live record retains its percentage while the HUD draws the
+source-selected `00` counter.
 
 **Internally checked:** a typed regression asserts item code 2, 32 rounds,
-and a zero-delta refresh produce 12 and the correct counter tiles. The
-inventory-action regression checks code 3 capacity 11 and the exact
-4/11 -> 37 -> 4 equip/unequip round trip. The direct ROM-backed graphics test
-preserves Gator's raw template value 32 and asserts the item-3 capacity 11.
-Field-HUD and field-action CTests pass 2/2 in Debug and Release; graphics and
-catalog CTests pass 2/2 in both configurations. All 28 current full-screen
-field-action checkpoints were reviewed; the Debug and Release BMP hashes
-match. The route covers inventory selection, equip, cancel, unequip, weapon
-switching, reload confirmation, empty magazine, and return to the Clips parent.
+and a zero-delta refresh produce 12 and the correct counter tiles. It also
+asserts an unarmed record retains +0x4E=18 while its display plan and overlay
+select counter zero. Qt HUD QA starts with one loaded round, applies the typed
+unequip, checks that the retained percentage is nonzero and below 64, then
+checks the full-screen output draws `00`, not the percentage asset, and clears
+the old item icon. The inventory-action regression checks code 3 capacity 11
+and the exact 4/11 -> 37 -> 4 equip/unequip round trip. The direct ROM-backed
+graphics test preserves Gator's raw template value 32 and asserts item-3
+capacity 11. Qt field-HUD and field-player-action CTests pass 2/2 in Debug and
+Release; the workbench field-HUD CTest passes 1/1 in both. All 12 full-screen
+HUD images were reviewed and Debug/Release hashes match. The full 262-image
+Release player-action set was reviewed in 14 chronological contact sheets;
+Debug hash parity is not claimed for that larger set.
 
 **Independently visually checked:** section 06 frames `002550`, `002560`,
 `002580`, `002610`, `002640`, and `002699`, plus section 07 frames `000030`
@@ -612,11 +619,13 @@ field HUD, inventory, Magic, and First Aid states, but none shows the reported
 weapon transfer. Independent confirmation of the precise 32/37/4 sequence is
 unavailable.
 
-**Status:** partial. The host now follows the source's initial capacity
-refresh, and ROM arithmetic explains a plausible percentage-to-rounds
-conversion. Keep the combined reported sequence open until an independent
-capture or a reproduced normal-play state identifies the weapon, capacity,
-and live values.
+**Status:** partial. The stale unarmed percentage-as-bullets rendering is
+fixed in the host and covered by a source-valid transition. The initial
+capacity refresh and ROM arithmetic explain a plausible percentage-to-rounds
+conversion, but the reported visible 37-on-hand state is not shown in the
+independent capture and does not match the traced ordinary unarmed draw path.
+Keep the combined sequence open until a normal-play reproduction or matching
+independent capture identifies the weapon, capacity, and live values.
 
 ### MENU-01 — Pocket Secretary navigation, Magic, and Cyberware pages (`SOUND-01/02`, `SEC-MAGIC`, `SEC-CYBERWARE`)
 

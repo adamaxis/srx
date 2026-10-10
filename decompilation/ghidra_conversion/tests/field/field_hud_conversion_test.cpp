@@ -109,12 +109,12 @@ int main() {
     joshua[0].flags_byte = 0x0FU;
     joshua[0].equipped_inventory_slot = 0;
     joshua[0].equipped_item_code = 1U;
-    joshua[0].ammo_rounds = 18U;
+    joshua[0].ammo_display_value = 18U;
     joshua[0].delay_meter = 5;
     joshua[0].behavior_meter = 7;
     joshua[0].primary_runner = true;
     joshua[1].equipped_item_code = 2U;
-    joshua[1].ammo_rounds = 7U;
+    joshua[1].ammo_display_value = 7U;
     const auto active = compose_field_hud_overlays(joshua);
     if (!expect(active.size() == 5U &&
                 active[0].kind == FieldHudOverlayKind::portrait &&
@@ -138,17 +138,32 @@ int main() {
 
     joshua[0].equipped_inventory_slot = 0x7F;
     joshua[0].equipped_item_code = 0U;
+    FieldHudAmmoMeterState unarmed_meter{};
+    unarmed_meter.flags_byte = joshua[0].flags_byte;
+    unarmed_meter.equipped_inventory_slot = 0x7F;
+    unarmed_meter.ammo = 18U;
+    const auto unarmed_meter_plan =
+        advance_field_hud_ammo_meter(unarmed_meter, 0);
+    if (!expect(unarmed_meter.ammo == 18U &&
+                unarmed_meter_plan.displayed == 0U &&
+                unarmed_meter_plan.tiles == kFieldHudAmmoMeterTiles[0])) {
+        return 51;
+    }
+    joshua[0].ammo_display_value = unarmed_meter_plan.displayed;
     const auto unarmed = compose_field_hud_overlays(joshua);
     if (!expect(unarmed.size() == 5U &&
                 unarmed[3].kind == FieldHudOverlayKind::unarmed_item &&
                 unarmed[3].x == 288 && unarmed[3].y == 64 &&
-                unarmed[3].palette_variant == 0U)) {
+                unarmed[3].palette_variant == 0U &&
+                unarmed[4].kind == FieldHudOverlayKind::ammo &&
+                unarmed[4].asset_index == 0U)) {
         return 9;
     }
 
     joshua[0].equipped_inventory_slot = -1;
     joshua[0].equipped_item_code = 8U; // D4EA0 row 7: Mana Zap.
     joshua[0].class_code = 2U;
+    joshua[0].ammo_display_value = 0U;
     const auto magic = compose_field_hud_overlays(joshua);
     if (!expect(magic.size() == 5U &&
                 magic[3].kind == FieldHudOverlayKind::magic_item &&
@@ -177,7 +192,7 @@ int main() {
     // meters and ammo stay value-indexed.
     joshua[0].equipped_inventory_slot = 0;
     joshua[0].equipped_item_code = 1U;
-    joshua[0].ammo_rounds = 18U;
+    joshua[0].ammo_display_value = 18U;
     joshua[0].asset_family_index = 2U;
     const auto family = compose_field_hud_overlays(joshua);
     if (!expect(family.size() == 5U &&
@@ -236,7 +251,7 @@ int main() {
 
     std::array<FieldHudSlotState, kFieldHudSlotCount> companion{};
     companion[1].flags_byte = 0x01U;
-    companion[1].ammo_rounds = 4U;
+    companion[1].ammo_display_value = 4U;
     const auto secondary = compose_field_hud_overlays(companion);
     if (!expect(secondary.size() == 5U && secondary[0].slot == 1U &&
                 secondary[0].y == 88 && secondary[4].asset_index == 4U &&
@@ -255,7 +270,7 @@ int main() {
 
     joshua[0].equipped_inventory_slot = 0;
     joshua[0].equipped_item_code = 1U;
-    joshua[0].ammo_rounds = 64U;
+    joshua[0].ammo_display_value = 64U;
     const auto ammo_overflow = compose_field_hud_overlays(joshua);
     if (!expect(ammo_overflow.size() == 4U &&
                 ammo_overflow[3].kind == FieldHudOverlayKind::item)) {
