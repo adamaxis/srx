@@ -40,6 +40,10 @@ int main(int argc, char** argv) {
         SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_081_PATH);
     const auto boot_shock_resource = std::filesystem::path(
         SHADOWRUN_GHIDRA_AUDIO_BOOT_SHOCK_RESOURCE_PATH);
+    const auto title_logo_resource = std::filesystem::path(
+        SHADOWRUN_GHIDRA_AUDIO_TITLE_LOGO_RESOURCE_PATH);
+    const auto title_theme_resource = std::filesystem::path(
+        SHADOWRUN_GHIDRA_AUDIO_TITLE_THEME_RESOURCE_PATH);
     const auto intro_stage_1 = std::filesystem::path(
         SHADOWRUN_GHIDRA_AUDIO_INTRO_STAGE_1_PATH);
     const auto intro_stage_3 = std::filesystem::path(
@@ -81,6 +85,12 @@ int main(int argc, char** argv) {
         }
         if (alias == "audio.effects.resource.092") {
             return boot_shock_resource;
+        }
+        if (alias == "audio.effects.resource.093") {
+            return title_logo_resource;
+        }
+        if (alias == "audio.music.resource.000") {
+            return title_theme_resource;
         }
         if (alias == "audio.intro.title.stage-1") {
             return intro_stage_1;
@@ -167,6 +177,17 @@ int main(int argc, char** argv) {
         std::cerr << "pre-title command 0x5C did not select resource 92\n";
         return 1;
     }
+    if (playback.alias_for_event(0x5DU) !=
+            "audio.effects.resource.093" ||
+        !std::filesystem::is_regular_file(title_logo_resource)) {
+        std::cerr << "title logo command 0x5D did not select resource 93\n";
+        return 1;
+    }
+    if (playback.alias_for_event(0x00U) != "audio.music.resource.000" ||
+        !std::filesystem::is_regular_file(title_theme_resource)) {
+        std::cerr << "title theme command 0x00 did not select resource 0\n";
+        return 1;
+    }
     if (playback.alias_for_event(0x16U) != "audio.field.effect-016" ||
         !std::filesystem::is_regular_file(field_effect_016)) {
         std::cerr << "FF 10 command 0x16 did not select resource 22\n";
@@ -184,7 +205,8 @@ int main(int argc, char** argv) {
         std::int64_t min_duration_ms;
         std::int64_t max_duration_ms;
     };
-    constexpr std::array<PlaybackExpectation, 13> kMappedEvents{{
+    constexpr std::array<PlaybackExpectation, 15> kMappedEvents{{
+        {0x00U, "audio.music.resource.000", 119900, 120100},
         {0x10U, "audio.intro.title.stage-1", 14800, 14900},
         {0x16U, "audio.field.effect-016", 2700, 2800},
         {0x24U, "audio.menu.command-024", 2400, 2600},
@@ -197,12 +219,13 @@ int main(int argc, char** argv) {
         {0x4BU, "audio.effects.resource.075", 2100, 2300},
         {0x51U, "audio.effects.resource.081", 2530, 2600},
         {0x5CU, "audio.effects.resource.092", 2700, 2800},
+        {0x5DU, "audio.effects.resource.093", 2400, 2500},
         {0x12U, "audio.intro.title.stage-3", 20900, 21200},
     }};
     for (const auto& expected : kMappedEvents) {
         const auto calls_before = resolver_calls;
         const auto event_started_at = std::chrono::steady_clock::now();
-        if (expected.event == 0x5CU) {
+        if (expected.event == 0x5CU || expected.event == 0x5DU) {
             playback.begin_source_sequence();
             playback.play_event_once_in_sequence(expected.event);
         } else {
@@ -248,19 +271,24 @@ int main(int argc, char** argv) {
                   << " start_latency_ms=" << start_latency_ms
                   << " duration_ms=" << status.duration_ms << '\n';
 
-        if (expected.event == 0x5CU) {
+        if (expected.event == 0x5CU || expected.event == 0x5DU) {
             if (playback.playing_channel_count_for_event(expected.event) !=
                 1U) {
-                std::cerr << "first boot-shock request did not start one channel\n";
+                std::cerr << "first one-shot source request did not start one channel\n";
                 return 1;
             }
-            // ROM pre-title submits FF 10 5C every two source updates for 60
-            // requests. Preserve those events while testing the host policy:
-            // resource 92 is already a complete stereo render, so the source
-            // burst must not layer 60 copies of the complete FLAC.
+            // ROM repeats each complete extracted render during its visual
+            // sequence: 60 requests for 0x5C, 19 for 0x5D. Preserve each
+            // request while checking that the host does not layer copies.
+            const std::size_t request_count = expected.event == 0x5CU
+                ? 60U
+                : 19U;
+            const auto request_interval = expected.event == 0x5CU
+                ? std::chrono::milliseconds(33)
+                : std::chrono::milliseconds(67);
             auto next_request_at = std::chrono::steady_clock::now();
-            for (std::size_t request = 1U; request < 60U; ++request) {
-                next_request_at += std::chrono::milliseconds(33);
+            for (std::size_t request = 1U; request < request_count; ++request) {
+                next_request_at += request_interval;
                 while (std::chrono::steady_clock::now() < next_request_at) {
                     application.processEvents(QEventLoop::AllEvents, 5);
                     QThread::msleep(1U);
@@ -271,7 +299,7 @@ int main(int argc, char** argv) {
             if (!status.audio_available || !status.playing || status.error ||
                 playback.playing_channel_count_for_event(expected.event) !=
                     1U) {
-                std::cerr << "rapid boot-shock starts replayed the full mix; count="
+                std::cerr << "repeated source starts layered a complete FLAC; count="
                           << playback.playing_channel_count_for_event(
                                  expected.event)
                           << " loaded=" << status.source_ready
@@ -285,7 +313,7 @@ int main(int argc, char** argv) {
             if (playback.playback_status_for_event(expected.event).playing ||
                 playback.playing_channel_count_for_event(expected.event) !=
                     0U) {
-                std::cerr << "boot-shock stop left a channel playing\n";
+                std::cerr << "one-shot stop left a channel playing\n";
                 return 1;
             }
             playback.begin_source_sequence();
@@ -305,7 +333,7 @@ int main(int argc, char** argv) {
                 !status.playing || status.error ||
                 playback.playing_channel_count_for_event(expected.event) !=
                     1U) {
-                std::cerr << "new source sequence did not replay one shock cue\n";
+                std::cerr << "new source sequence did not replay one cue\n";
                 return 1;
             }
             playback.stop_resource(expected.event);

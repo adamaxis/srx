@@ -49,6 +49,7 @@ AudioPlaybackService::AudioPlaybackService(PathResolver resolver,
     // the exact 0x11 pair has no YM key-on, so it remains intentionally
     // unmapped; source track-stop/lifetime behavior is still open.
     event_aliases_ = {
+        {0x00U, "audio.music.resource.000"},
         {0x10U, "audio.intro.title.stage-1"},
         {0x12U, "audio.intro.title.stage-3"},
         // Event 0x16 starts table-2 resource 22 on ordinary FF 10 paths.
@@ -73,6 +74,9 @@ AudioPlaybackService::AudioPlaybackService(PathResolver resolver,
         // The adjacent pre-title command 0x16 is FF 12 (stop resource 22),
         // despite that id's valid FF 10 start alias above.
         {0x5CU, "audio.effects.resource.092"},
+        // ROM 0x1E4E submits 0x5D on alternating logo columns; the named
+        // asset is the complete extracted table-2 resource 93 render.
+        {0x5DU, "audio.effects.resource.093"},
         // The maglock unlock routine sends command 0x4B (table-2 resource 75).
         {0x4BU, "audio.effects.resource.075"},
         // 0x2C/resource 44 is a verified silent table slot and has no asset.

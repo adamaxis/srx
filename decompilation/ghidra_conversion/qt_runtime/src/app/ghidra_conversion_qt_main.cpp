@@ -5533,6 +5533,28 @@ private:
                     });
                 }
             };
+        title_loop_callbacks_.request_audio_command =
+            [this](const TitleAudioCommand command) {
+                const auto event = static_cast<std::uint16_t>(command);
+                if (command == TitleAudioCommand::LogoReveal) {
+                    // The 19 source requests are retained, but resource 93
+                    // is a complete stereo cue. Play it once per title
+                    // sequence instead of layering 19 full-file players.
+                    audio_playback_.play_event_once_in_sequence(event);
+                    note_presentation_boundary(
+                        "title.logo_reveal.audio_command_5d");
+                } else if (command == TitleAudioCommand::ThemeStart) {
+                    // The ROM's command-0 wrapper stops then starts this same
+                    // music resource before drawing the copyright text.
+                    audio_playback_.stop_resource(event);
+                    audio_playback_.play_event(event);
+                    note_presentation_boundary(
+                        "title.theme.audio_command_00");
+                } else {
+                    note_presentation_boundary(
+                        "title.audio_command_unmapped");
+                }
+            };
         title_loop_callbacks_.publish_circuit_light_phase =
             [this](const std::uint8_t phase) { title_circuit_phase_ = phase; };
         title_loop_callbacks_.publish_animation_offset =

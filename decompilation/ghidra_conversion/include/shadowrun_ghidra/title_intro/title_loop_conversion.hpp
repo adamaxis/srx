@@ -91,6 +91,11 @@ constexpr std::uint8_t kTitleModeEntryAudioCommand = 0x14U;
 constexpr std::uint8_t kTitleModeEntryAudioTransactions = 6U;
 constexpr std::uint8_t kTitleModeEntryVblanksPerTransaction = 3U;
 
+enum class TitleAudioCommand : std::uint8_t {
+    ThemeStart = 0x00U,
+    LogoReveal = 0x5DU,
+};
+
 struct TitleInputHistory {
     std::array<std::uint8_t, kTitleInputHistoryCapacity> events{};
     std::size_t count = 0;
@@ -265,6 +270,9 @@ struct TitleLoopCallbacks {
     // ROM 0x1C1E, 0x2634, and 0x26D0: presentation updates resulting from
     // the already-converted state transitions.
     std::function<void(TitleTextAction)> apply_text_action;
+    // ROM 0x1C1E and 0x1E4E: publish source audio requests before their
+    // adjacent text or logo presentation operations.
+    std::function<void(TitleAudioCommand)> request_audio_command;
     std::function<void(std::uint8_t)> publish_circuit_light_phase;
     std::function<void(std::uint16_t)> publish_animation_offset;
 

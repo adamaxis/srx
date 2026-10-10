@@ -329,6 +329,12 @@ TitleLoopFrameResult advance_title_loop_frame(
     }
 
     const auto text_action = advance_title_text_state(state.text);
+    if (text_action == TitleTextAction::ShowCopyright &&
+        callbacks.request_audio_command) {
+        // ROM 0x1C5A loads D0=0 and services the title music before 0x1DF6
+        // draws the copyright row.
+        callbacks.request_audio_command(TitleAudioCommand::ThemeStart);
+    }
     if (text_action != TitleTextAction::None && callbacks.apply_text_action) {
         callbacks.apply_text_action(text_action);
     }
@@ -364,6 +370,15 @@ TitleLoopFrameResult advance_title_loop_frame(
         if (state.logo_column_cadence < 0) {
             state.logo_column_cadence = 1;
             const auto logo_result = advance_title_logo_column(state.logo);
+            if ((logo_result.column_index & 1U) == 0U &&
+                callbacks.request_audio_command) {
+                // ROM 0x1E4E services command 0x5D on even source column
+                // indices, before uploading that column. Preserve every
+                // source request; the host decides how its complete FLAC is
+                // played without layering a fresh copy for each request.
+                callbacks.request_audio_command(
+                    TitleAudioCommand::LogoReveal);
+            }
             if (logo_result.completed) {
                 state.text.completion_state = 1U;
                 state.text.countdown = 0x5AU;

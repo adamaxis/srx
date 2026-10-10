@@ -286,6 +286,58 @@ int main() {
         return 1;
     }
 
+    // ROM 0x1E4E requests 0x5D on even reveal-column indices (19 requests
+    // across 38 columns). ROM 0x1C1E requests title music 0x00 91 loop updates
+    // after the 0x25 completion count is set, immediately before copyright.
+    TitleLoopState title_audio;
+    title_audio.logo_reveal_delay = 0;
+    std::vector<TitleAudioCommand> title_audio_commands;
+    std::vector<std::uint8_t> title_presentation_order;
+    TitleLoopCallbacks title_audio_callbacks{};
+    title_audio_callbacks.request_audio_command =
+        [&title_audio_commands, &title_presentation_order](
+            const TitleAudioCommand command) {
+            title_audio_commands.push_back(command);
+            title_presentation_order.push_back(
+                static_cast<std::uint8_t>(command));
+        };
+    title_audio_callbacks.apply_text_action =
+        [&title_presentation_order](const TitleTextAction action) {
+            if (action == TitleTextAction::ShowCopyright) {
+                title_presentation_order.push_back(0xFEU);
+            }
+        };
+    for (int update = 0; update < 73; ++update) {
+        advance_title_loop_frame(title_audio, title_audio_callbacks);
+    }
+    if (!expect(title_audio.logo.columns_revealed == 37U &&
+                title_audio.text.completion_state == 1U &&
+                title_audio.text.countdown == 0x5AU &&
+                title_audio_commands.size() == 19U &&
+                std::all_of(title_audio_commands.begin(),
+                            title_audio_commands.end(), [](const auto command) {
+                                return command == TitleAudioCommand::LogoReveal;
+                            }))) {
+        return 1;
+    }
+    for (int update = 0; update < 90; ++update) {
+        advance_title_loop_frame(title_audio, title_audio_callbacks);
+    }
+    if (!expect(title_audio.text.countdown == 0 &&
+                title_audio_commands.size() == 19U)) {
+        return 1;
+    }
+    advance_title_loop_frame(title_audio, title_audio_callbacks);
+    if (!expect(title_audio.text.completion_state == 2U &&
+                title_audio_commands.size() == 20U &&
+                title_audio_commands.back() == TitleAudioCommand::ThemeStart &&
+                title_presentation_order.size() == 21U &&
+                title_presentation_order[19] == static_cast<std::uint8_t>(
+                    TitleAudioCommand::ThemeStart) &&
+                title_presentation_order[20] == 0xFEU)) {
+        return 1;
+    }
+
     TitleSpriteState sprite;
     const auto first_sprite = advance_title_sprite_state(sprite);
     if (!expect(first_sprite.phase_changed &&

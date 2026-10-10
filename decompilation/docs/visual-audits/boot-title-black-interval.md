@@ -79,7 +79,8 @@ cannot measure the ROM's 60-Hz update count.
    eight-pixel column every two updates; the source stops at 38 columns.
 5. **Is there sound? — No call is traced during the black hold.** The separate
    command `0x5D` occurs on alternating logo-column calls after the hold;
-   source sound identity and playback duration are outside this visual slice.
+   resource identity and playback duration are covered in the [title logo and
+   theme audio audit](title-logo-audio.md).
    The earlier SEGA shock event is covered separately under `BOOT-01`.
 6. **Are the other visible parts correct? — Yes in the reviewed frames.** The
    complete image has no old logo, circuit, button, text, or stray sprite over
