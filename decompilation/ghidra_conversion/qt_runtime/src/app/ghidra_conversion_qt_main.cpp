@@ -19326,6 +19326,9 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
+                // Scope the sound assertion to menu navigation; the generic
+                // prompt/entry work above is a separate route.
+                field_audio_events.clear();
                 field_scene.set_controller_port_byte(0x02U); // Down: offers.
                 field_scene.advance_frame();
                 field_scene.set_controller_port_byte(0U);
@@ -19336,14 +19339,29 @@ int main(int argc, char** argv) {
                                  "first available weapon\n";
                     return 3;
                 }
+                const auto original_loaded_rounds =
+                    field_scene.active_runner_record().ammo_rounds;
+                field_scene.active_runner_record().ammo_rounds = 5U;
+                field_scene.refresh_field_hud_for_dump();
                 const auto first_item = render_shop_scene();
-                if (!field_shop_selector_survives(first_item, 16) ||
+                if (field_scene.active_runner_record().ammo_rounds != 5U ||
+                    field_scene.shop_selected_weapon_capacity_for_dump() !=
+                        std::optional<std::uint8_t>{12U} ||
+                    field_scene.shop_selected_item_uses_for_dump().has_value() ||
+                    !image_has_green_ink(first_item, 104, 56, 16, 8) ||
+                    !field_shop_selector_survives(first_item, 16) ||
+                    !save_scene("shop-weapon-template-item-02/actual.bmp",
+                                first_item) ||
                     !save_scene("shop-item/actual.bmp", first_item)) {
-                    std::cerr << "field Ares shop QA: item focus is not a "
-                                 "one-pixel 24x16 outline or actual.bmp is "
-                                 "missing\n";
+                    std::cerr << "field Ares shop QA: selected Model 101T "
+                                 "capacity is missing beside ammo, active "
+                                 "rounds were altered, selector is wrong, or "
+                                 "actual.bmp is missing\n";
                     return 3;
                 }
+                field_scene.active_runner_record().ammo_rounds =
+                    original_loaded_rounds;
+                field_scene.refresh_field_hud_for_dump();
 
                 field_scene.set_controller_port_byte(0x08U); // Right.
                 field_scene.advance_frame();
@@ -19356,10 +19374,18 @@ int main(int argc, char** argv) {
                 }
                 const auto moved_item = render_shop_scene();
                 if (moved_item == first_item ||
+                    field_scene.shop_selected_weapon_capacity_for_dump() !=
+                        std::optional<std::uint8_t>{11U} ||
+                    field_scene.shop_selected_item_uses_for_dump().has_value() ||
+                    !image_region_differs(moved_item, first_item,
+                                          104, 56, 16, 8) ||
                     !field_shop_selector_survives(moved_item, 48) ||
+                    !save_scene("shop-weapon-template-item-03/actual.bmp",
+                                moved_item) ||
                     !save_scene("shop-cursor-moved/actual.bmp", moved_item)) {
                     std::cerr << "field Ares shop QA: item pixels did not "
-                                 "follow the typed cursor\n";
+                                 "follow the typed cursor or its ROM ammo "
+                                 "capacity did not update\n";
                     return 3;
                 }
 
@@ -19369,6 +19395,93 @@ int main(int argc, char** argv) {
                                  "do not match the source service\n";
                     return 3;
                 }
+
+                constexpr std::array<std::optional<std::uint8_t>, 7U>
+                    ares_weapon_capacities{{12U, 11U, 15U, 6U, 10U,
+                                            std::nullopt, std::nullopt}};
+                constexpr std::array<std::optional<std::uint8_t>, 7U>
+                    ares_item_uses{{std::nullopt, std::nullopt, std::nullopt,
+                                    std::nullopt, std::nullopt, 6U, 6U}};
+                auto previous_stock_detail = moved_item;
+                for (std::size_t offer_index = 2U;
+                     offer_index < ares_weapon_capacities.size();
+                     ++offer_index) {
+                    field_scene.set_controller_port_byte(0x08U);
+                    field_scene.advance_frame();
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    if (field_scene.shop_menu_cursor() != offer_index) {
+                        std::cerr << "field Ares shop QA: weapon detail "
+                                     "cursor did not reach source offer "
+                                  << offer_index << '\n';
+                        return 3;
+                    }
+                    const auto weapon_detail = render_shop_scene();
+                    if (field_scene
+                            .shop_selected_weapon_capacity_for_dump() !=
+                            ares_weapon_capacities[offer_index] ||
+                        field_scene.shop_selected_item_uses_for_dump() !=
+                            ares_item_uses[offer_index]) {
+                        std::cerr << "field Ares shop QA: weapon template or "
+                                     "item uses do not match ROM offer "
+                                  << offer_index << '\n';
+                        return 3;
+                    }
+                    const auto detail_name =
+                        std::string("shop-stock-detail-offer-") +
+                        std::to_string(offer_index) + "/actual.bmp";
+                    const auto expected_display_value =
+                        ares_weapon_capacities[offer_index].has_value()
+                            ? ares_weapon_capacities[offer_index]
+                            : ares_item_uses[offer_index];
+                    if (!image_has_green_ink(weapon_detail, 104, 56, 16, 8) ||
+                        !field_shop_selector_survives(
+                            weapon_detail,
+                            16 + static_cast<int>(offer_index) * 32) ||
+                        (expected_display_value !=
+                                 (ares_weapon_capacities[offer_index - 1U]
+                                      .has_value()
+                                      ? ares_weapon_capacities[offer_index - 1U]
+                                      : ares_item_uses[offer_index - 1U]) &&
+                         !image_region_differs(
+                             weapon_detail, previous_stock_detail,
+                             104, 56, 16, 8)) ||
+                        !save_scene(detail_name, weapon_detail)) {
+                        std::cerr << "field Ares shop QA: semantic detail "
+                                     "value or selector is wrong for offer "
+                                  << offer_index << '\n';
+                        return 3;
+                    }
+                    previous_stock_detail = weapon_detail;
+                }
+                if (field_audio_events !=
+                    std::vector<std::uint16_t>{
+                        0x25U, 0x25U, 0x25U, 0x25U,
+                        0x25U, 0x25U, 0x25U}) {
+                    std::cerr << "field Ares shop QA: weapon cursor "
+                                 "movement sound requests do not match seven "
+                                 "source input moves\n";
+                    return 3;
+                }
+                for (std::uint16_t frame = 0U; frame < 30U; ++frame) {
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    const auto held_stock_detail = render_shop_scene();
+                    if (held_stock_detail != previous_stock_detail ||
+                        field_audio_events.size() != 7U) {
+                        std::cerr << "field Ares shop QA: selected weapon "
+                                     "detail animated or repeated audio "
+                                     "during a 30-frame idle hold\n";
+                        return 3;
+                    }
+                }
+                if (!save_scene("shop-stock-detail-hold/actual.bmp",
+                                render_shop_scene())) {
+                    std::cerr << "field Ares shop QA: could not write the "
+                                 "stock-detail idle-hold full-screen image\n";
+                    return 3;
+                }
+                field_audio_events.clear();
 
                 field_scene.set_controller_port_byte(0x80U); // Start return.
                 field_scene.advance_frame();
@@ -19459,8 +19572,8 @@ int main(int argc, char** argv) {
                                  "detail or slim row selector is missing\n";
                     return 3;
                 }
-                if (field_audio_events != std::vector<std::uint16_t>{
-                                              0x25U, 0x25U, 0x25U, 0x25U}) {
+                if (field_audio_events !=
+                    std::vector<std::uint16_t>{0x25U, 0x25U}) {
                     std::cerr << "field Ares shop QA: category and row "
                                  "movement audio requests are unexpected\n";
                     return 3;

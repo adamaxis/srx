@@ -141,15 +141,18 @@ public:
     ShopTransactionEvent begin_purchase(
         const FieldActionCostRecord& selected_offer,
         const FieldActionCostContext& cost_context,
-        FieldActionPurchaseState& state);
+        FieldActionPurchaseState& state,
+        const FieldActionBaseCostLookup& base_cost_lookup = {});
     ShopTransactionEvent begin_sale(
         const FieldActionCostContext& cost_context,
-        RunnerActionRemovalState& state);
+        RunnerActionRemovalState& state,
+        const FieldActionBaseCostLookup& base_cost_lookup = {});
     ShopTransactionEvent advance_transaction(
         std::uint16_t controller_events,
         const FieldActionCostContext& cost_context,
         FieldActionPurchaseState& purchase_state,
-        RunnerActionRemovalState& sale_state);
+        RunnerActionRemovalState& sale_state,
+        const FieldActionBaseCostLookup& base_cost_lookup = {});
     void clear_pending_action() noexcept;
 
 private:
@@ -185,16 +188,19 @@ public:
         const FieldActionCostRecord& offer,
         const FieldActionCostContext& cost_context,
         FieldActionPurchaseState& state,
-        bool confirmed) const;
+        bool confirmed,
+        const FieldActionBaseCostLookup& base_cost_lookup = {}) const;
 
     ShopSaleOutcome sell(
         const FieldActionCostContext& cost_context,
         RunnerActionRemovalState& state,
-        bool confirmed) const;
+        bool confirmed,
+        const FieldActionBaseCostLookup& base_cost_lookup = {}) const;
 
     static std::optional<std::uint32_t> quote_sale(
         std::uint8_t item_code,
-        const FieldActionCostContext& cost_context) noexcept;
+        const FieldActionCostContext& cost_context,
+        const FieldActionBaseCostLookup& base_cost_lookup = {});
 };
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime

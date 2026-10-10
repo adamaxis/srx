@@ -865,7 +865,7 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_shop_qa
          COMMAND shadowrun_ghidra_conversion_qt
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-shop-dump
-                 "${CMAKE_CURRENT_BINARY_DIR}/field-shop-ares-qa")
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-shop-ares-template-qa")
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_shop_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 

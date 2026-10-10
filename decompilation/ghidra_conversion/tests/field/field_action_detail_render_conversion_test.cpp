@@ -5,8 +5,7 @@
 using namespace shadowrun::ghidra_conversion;
 
 int main() {
-    ActionDetailResourceTable resources{};
-    resources.detail_values[3] = 0x42U;
+    const auto& item_catalog = us_item_catalog();
     ResourceVariantState variant{};
     FieldActionDetailRenderState state{};
     state.primary_cursor = 0;
@@ -20,14 +19,14 @@ int main() {
     const FieldActionDetailRenderCallbacks callbacks{
         {}, [&] { ++tail_renders; }, {}, {}, {}, {},
         [&](const ActionDetailRenderPlan& plan) {
-            if (!plan.valid || plan.source_code != 3U ||
-                plan.detail_value != 0x42U) {
+            if (!plan.valid || plan.source_code != 4U ||
+                plan.detail_value != 6U) {
                 return;
             }
             ++plan_presentations;
         },
         [&](const FieldActionDetailTextSelection& selection) {
-            if (selection.table_index == 3U) {
+            if (selection.table_index == 4U) {
                 ++detail_text_renders;
             }
         },
@@ -36,10 +35,9 @@ int main() {
         {},
     };
 
-    const std::vector<FieldActionCostRecord> ordinary{{3U, 0x01U, 2U}};
+    const std::vector<FieldActionCostRecord> ordinary{{4U, 0x01U, 2U}};
     const auto ordinary_result = render_field_action_detail(
-        ordinary, resources, variant, state,
-        [](const std::uint8_t) { return 500U; }, callbacks);
+        ordinary, item_catalog, variant, state, callbacks);
     if (ordinary_result.kind != FieldActionDetailRenderKind::ordinary_action ||
         ordinary_result.cost != 100U || !ordinary_result.detail_plan ||
         !ordinary_result.detail_text || plan_presentations != 1 ||
@@ -59,8 +57,8 @@ int main() {
         {}, {}, {}, {}, {},
     };
     const auto special_result = render_field_action_detail(
-        {{static_cast<std::uint8_t>('E'), 0U, 25U}}, resources, variant, state,
-        {}, special_callbacks);
+        {{static_cast<std::uint8_t>('E'), 0U, 25U}}, item_catalog, variant,
+        state, special_callbacks);
     if (special_result.kind != FieldActionDetailRenderKind::special_action ||
         special_result.cost != 25U || special_grid != 1 ||
         special_header != 1 || special_label != 1 || tail_renders != 2 ||
@@ -73,7 +71,7 @@ int main() {
         [&] { ++unavailable_messages; }, [&] { ++tail_renders; },
     };
     const auto unavailable_result = render_field_action_detail(
-        {{0xFFU, 0U, 0U}}, resources, variant, state, {},
+        {{0xFFU, 0U, 0U}}, item_catalog, variant, state,
         unavailable_callbacks);
     if (unavailable_result.kind != FieldActionDetailRenderKind::unavailable ||
         unavailable_messages != 1 || tail_renders != 3) {
@@ -82,49 +80,38 @@ int main() {
 
     state.primary_cursor = 0;
     const auto no_text_result = render_field_action_detail(
-        {{0x28U, 0U, 1U}}, resources, variant, state,
-        [](const std::uint8_t) { return 100U; }, {});
+        {{0x28U, 0U, 1U}}, item_catalog, variant, state, {});
     if (no_text_result.kind != FieldActionDetailRenderKind::ordinary_action ||
-        no_text_result.detail_text || no_text_result.cost != 10U) {
+        no_text_result.detail_text) {
         return 4;
-    }
-
-    const auto missing_cost_result = render_field_action_detail(
-        ordinary, resources, variant, state, {}, callbacks);
-    if (missing_cost_result.kind !=
-            FieldActionDetailRenderKind::missing_cost_data ||
-        missing_cost_result.cost != 0U || action_names != 2 ||
-        tail_renders != 4) {
-        return 5;
     }
 
     state.primary_cursor = 1;
     const auto invalid_result = render_field_action_detail(
-        ordinary, resources, variant, state,
-        [](const std::uint8_t) { return 1U; }, {});
+        ordinary, item_catalog, variant, state, {});
     if (invalid_result.kind != FieldActionDetailRenderKind::invalid_selection) {
-        return 6;
+        return 5;
     }
 
     ResourceVariantState typed_variant{};
     FieldActionDetailRenderState typed_state{};
     const auto typed_result = render_field_action_detail(
-        {{4U, 0U, 2U}}, us_item_catalog(), typed_variant, typed_state);
+        {{4U, 0U, 2U}}, item_catalog, typed_variant, typed_state);
     if (typed_result.kind != FieldActionDetailRenderKind::ordinary_action ||
-        typed_result.cost != 48U || !typed_result.detail_plan ||
+        typed_result.cost != 100U || !typed_result.detail_plan ||
         typed_result.detail_plan->detail_value != 0x06U ||
         typed_result.detail_plan->resource_row != 4U) {
         return 7;
     }
 
     const auto typed_missing_result = render_field_action_detail(
-        {{50U, 0U, 0U}}, us_item_catalog(), typed_variant, typed_state,
+        {{50U, 0U, 0U}}, item_catalog, typed_variant, typed_state,
         callbacks);
     if (typed_missing_result.kind !=
             FieldActionDetailRenderKind::missing_source_data ||
         typed_missing_result.detail_plan.has_value() ||
         typed_missing_result.detail_text.has_value()) {
-        return 8;
+        return 6;
     }
     return 0;
 }

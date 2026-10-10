@@ -1,4 +1,6 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
+#include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
+#include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
 
 #include <array>
 #include <cstdint>
@@ -2349,15 +2351,110 @@ int main() {
     }
 
     const auto items = scripts.item_catalog();
+    constexpr std::array<std::string_view, 50U> kItemIds{{
+        "streetline", "model_101t", "american_l36", "security_500",
+        "warhawk", "max_power", "predator", "ak_97", "hk227_s",
+        "mach_22", "allegiance", "roomsweeper", "frag", "scatter",
+        "concussion", "medkit", "stim_patch", "trauma_patch", "fetish",
+        "maglock_passkey", "electronic_kit", "smart_goggles",
+        "enchanted_dagger", "power_focus", "flame_dart_focus",
+        "flame_bolt_focus", "hellblast_focus", "invisibility_focus",
+        "sleep_focus", "stink_focus", "supr_barrier_focus",
+        "mana_zap_focus", "mana_blast_focus", "mana_storm_focus",
+        "rockskin_focus", "heal_wounds_focus", "confusion_focus",
+        "barrier_focus", "protection_talisman", "combat_sense_spell_lock",
+        "rat_totem", "gator_totem", "bear_totem", "armor_vest",
+        "armor_clothing", "armor_jacket", "vest_with_plates",
+        "lined_duster", "light_combat_armor", "heavy_combat_armor"}};
+    constexpr std::array<std::string_view, 50U> kItemKinds{{
+        "firearm", "firearm", "firearm", "firearm", "firearm",
+        "firearm", "firearm", "firearm", "firearm", "firearm",
+        "firearm", "firearm", "grenade", "grenade", "grenade",
+        "medical_kit", "stim_patch", "trauma_patch", "fetish", "passkey",
+        "electronic_kit", "smart_goggles", "enchanted_dagger", "power_focus",
+        "spell_focus", "spell_focus", "spell_focus", "spell_focus",
+        "spell_focus", "spell_focus", "spell_focus", "spell_focus",
+        "spell_focus", "spell_focus", "spell_focus", "spell_focus",
+        "spell_focus", "spell_focus", "talisman", "spell_lock", "totem",
+        "totem", "totem", "armor", "armor", "armor", "armor", "armor",
+        "armor", "armor"}};
+    constexpr std::array<std::uint16_t, 50U> kBaseCosts{{
+        100U, 350U, 300U, 450U, 500U, 450U, 450U, 1000U, 1500U, 800U,
+        1400U, 1000U, 300U, 180U, 180U, 200U, 300U, 300U, 500U, 10000U,
+        1000U, 3000U, 50000U, 15000U, 4000U, 4000U, 4000U, 4000U, 4000U,
+        4000U, 4000U, 4000U, 4000U, 4000U, 4000U, 4000U, 4000U, 4000U,
+        17500U, 17500U, 2U, 65535U, 0U, 200U, 500U, 900U, 600U, 700U,
+        10000U, 20000U}};
+    constexpr std::array<std::uint8_t, 12U> kWeaponCapacities{{
+        6U, 12U, 11U, 25U, 6U, 10U, 15U, 30U, 28U, 24U, 5U, 8U}};
+    constexpr std::array<std::string_view, 13U> kPowerProfiles{{
+        "meager", "minor", "very_low", "low", "very_light", "light",
+        "medium", "medium_high", "high", "brutal", "severe", "massive",
+        "incredible"}};
+    bool full_catalog_matches = items.has_value() && items->items.size() == 50U;
+    if (full_catalog_matches) {
+        for (std::size_t index = 0; index < items->items.size(); ++index) {
+            const auto& item = items->items[index];
+            const auto& rom_item = us_item_catalog()[index];
+            full_catalog_matches =
+                full_catalog_matches && item.code == index + 1U &&
+                item.id == kItemIds[index] && item.kind == kItemKinds[index] &&
+                item.base_cost == kBaseCosts[index] &&
+                item.base_cost == rom_item.base_cost &&
+                item.has_detail_art == rom_item.has_detail_art &&
+                item.name_key == "items.name." + std::to_string(index + 1U) &&
+                item.category_key ==
+                    "items.category." + std::to_string(index + 1U) &&
+                scripts.dialogue_text(item.name_key) != nullptr &&
+                scripts.dialogue_text(item.category_key) != nullptr;
+
+            if (index < kWeaponCapacities.size()) {
+                const auto& weapon = item.weapon;
+                const auto power_index = static_cast<std::size_t>(
+                    rom_item.detail_selector - 1U);
+                full_catalog_matches =
+                    full_catalog_matches && weapon.has_value() &&
+                    weapon->id == item.id && weapon->item_code == item.code &&
+                    weapon->magazine_capacity == kWeaponCapacities[index] &&
+                    weapon->magazine_capacity ==
+                        rom_item.source_combat_factor &&
+                    weapon->damage_bar_index == static_cast<std::uint8_t>(
+                        rom_item.signed_detail_asset_index) &&
+                    power_index < kPowerProfiles.size() &&
+                    weapon->power_profile == kPowerProfiles[power_index] &&
+                    !item.detail.has_value() && !item.armor.has_value();
+            } else if (index >= 12U && index <= 18U) {
+                full_catalog_matches =
+                    full_catalog_matches && item.detail.has_value() &&
+                    item.detail->kind == "uses" &&
+                    item.detail->value == rom_item.source_combat_factor &&
+                    !item.weapon.has_value() && !item.armor.has_value();
+            } else if (index >= 43U) {
+                const auto* armor = find_us_armor_definition_for_item_code(
+                    item.code);
+                full_catalog_matches =
+                    full_catalog_matches && item.armor.has_value() &&
+                    armor != nullptr &&
+                    item.armor->item_id == item.id &&
+                    item.armor->item_code == item.code &&
+                    item.armor->armor_index == armor->armor_index &&
+                    item.armor->primary_modifier == armor->primary_modifier &&
+                    item.armor->secondary_modifier ==
+                        armor->secondary_modifier &&
+                    !item.detail.has_value() && !item.weapon.has_value();
+            } else {
+                full_catalog_matches =
+                    full_catalog_matches && !item.detail.has_value() &&
+                    !item.weapon.has_value() && !item.armor.has_value();
+            }
+        }
+    }
     if (!expect(items.has_value() && items->items.size() == 50U &&
                     items->detail_text_keys.size() == 32U &&
                     items->detail_label_keys.size() == 3U &&
-                    items->items[0].code == 1U &&
-                    items->items[0].name_key == "items.name.1" &&
-                    items->items[49].code == 50U &&
-                    items->items[49].category_key == "items.category.50" &&
+                    full_catalog_matches &&
                     items->detail_text_keys[31] == "items.action_detail.31",
-                "Lua item catalog does not map the source item/detail tables") ||
+                "Lua item catalog does not match the complete source item/weapon/armor data") ||
         !expect(scripts.dialogue_text(items->items[0].name_key) != nullptr &&
                     *scripts.dialogue_text(items->items[0].name_key) ==
                         "Streetline" &&

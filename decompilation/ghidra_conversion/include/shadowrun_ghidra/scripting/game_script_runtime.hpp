@@ -81,14 +81,43 @@ struct ScriptShopDefinition {
     std::vector<ScriptShopOfferGroup> groups;
 };
 
-struct ScriptItemTextKeys {
+struct ScriptWeaponTemplate {
+    std::string id;
+    std::uint8_t item_code = 0;
+    std::uint8_t magazine_capacity = 0;
+    std::uint8_t damage_bar_index = 0;
+    std::string power_profile;
+    std::string power_label;
+};
+
+struct ScriptArmorTemplate {
+    std::string item_id;
+    std::uint8_t item_code = 0;
+    std::uint8_t armor_index = 0;
+    std::uint8_t primary_modifier = 0;
+    std::uint8_t secondary_modifier = 0;
+};
+
+struct ScriptItemDefinition {
+    struct Detail {
+        std::string kind;
+        std::uint8_t value = 0;
+    };
+
     std::uint8_t code = 0;
+    std::string id;
+    std::string kind;
     std::string name_key;
     std::string category_key;
+    std::uint16_t base_cost = 0;
+    bool has_detail_art = false;
+    std::optional<Detail> detail;
+    std::optional<ScriptWeaponTemplate> weapon;
+    std::optional<ScriptArmorTemplate> armor;
 };
 
 struct ScriptItemCatalog {
-    std::vector<ScriptItemTextKeys> items;
+    std::vector<ScriptItemDefinition> items;
     std::vector<std::string> detail_text_keys;
     std::array<std::string, 3> detail_label_keys{};
 };

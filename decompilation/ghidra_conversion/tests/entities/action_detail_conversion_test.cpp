@@ -37,17 +37,13 @@ int main() {
         return 3;
     }
 
-    ActionDetailResourceTable resources{};
-    for (std::size_t index = 0; index < resources.detail_values.size();
-         ++index) {
-        resources.detail_values[index] = static_cast<std::uint8_t>(index + 1U);
-    }
+    const auto& item_catalog = us_item_catalog();
     ResourceVariantState variant{};
     int uploads = 0;
     const auto field = build_field_action_detail_plan(
-        FieldActionDetailInput{3U, 0x25U}, resources, variant,
+        FieldActionDetailInput{3U, 0x25U}, item_catalog, variant,
         [&] { ++uploads; });
-    if (!field.valid || field.resource_row != 3U || field.detail_value != 4U ||
+    if (!field.valid || field.resource_row != 3U || field.detail_value != 25U ||
         field.label != ActionDetailLabelVariant::ordinary ||
         field.phase_overlays != std::array<bool, 6U>{false, true, true, false,
                                                       false, true} ||
@@ -57,7 +53,7 @@ int main() {
     }
 
     const auto extended = build_field_action_detail_plan(
-        FieldActionDetailInput{12U, 0U}, resources, variant,
+        FieldActionDetailInput{12U, 0U}, item_catalog, variant,
         [&] { ++uploads; });
     if (!extended.valid ||
         extended.label != ActionDetailLabelVariant::extended ||
@@ -67,7 +63,7 @@ int main() {
     }
 
     const auto flagged = build_field_action_detail_plan(
-        FieldActionDetailInput{0x13U, 0xA5U}, resources, variant,
+        FieldActionDetailInput{0x13U, 0xA5U}, item_catalog, variant,
         [&] { ++uploads; });
     if (!flagged.valid ||
         flagged.label != ActionDetailLabelVariant::action_dependent ||
@@ -76,10 +72,10 @@ int main() {
     }
 
     const auto item = build_inventory_action_detail_plan(
-        InventoryActionDetailInput{1U, 0x06U, std::nullopt}, resources, variant,
-        [&] { ++uploads; });
+        InventoryActionDetailInput{1U, 0x06U, std::nullopt}, item_catalog,
+        variant, [&] { ++uploads; });
     if (!item.has_value() || item->resource_row != 0U ||
-        item->detail_value != 1U ||
+        item->detail_value != 6U ||
         item->label != ActionDetailLabelVariant::ordinary ||
         item->phase_overlays != std::array<bool, 6U>{true, true, false, false,
                                                       false, false}) {
@@ -87,7 +83,7 @@ int main() {
     }
 
     const auto action_item = build_inventory_action_detail_plan(
-        InventoryActionDetailInput{0x14U, 0x02U, 0x27U}, resources, variant,
+        InventoryActionDetailInput{0x14U, 0x02U, 0x27U}, item_catalog, variant,
         [&] { ++uploads; });
     if (!action_item.has_value() ||
         action_item->label != ActionDetailLabelVariant::action_dependent ||
@@ -98,13 +94,12 @@ int main() {
     }
 
     if (build_inventory_action_detail_plan(
-            InventoryActionDetailInput{0U, 0U, std::nullopt}, resources,
+            InventoryActionDetailInput{0U, 0U, std::nullopt}, item_catalog,
             variant)
             .has_value()) {
         return 9;
     }
 
-    const auto& item_catalog = us_item_catalog();
     ResourceVariantState typed_variant{};
     const auto typed_field = build_field_action_detail_plan(
         FieldActionDetailInput{4U, 0U}, item_catalog, typed_variant);

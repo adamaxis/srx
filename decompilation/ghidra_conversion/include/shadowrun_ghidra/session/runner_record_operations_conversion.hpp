@@ -6,6 +6,7 @@
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <optional>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -17,6 +18,11 @@ enum class RunnerAssetOperationResult {
     invalid_equipped_slot,
     missing_source_data,
 };
+
+// Runtime callers may supply the magazine capacity resolved from the Lua
+// weapon template instead of consulting the ROM conversion catalog.
+using WeaponMagazineCapacityLookup =
+    std::function<std::optional<std::uint8_t>(std::uint8_t item_code)>;
 
 // ROM 0x0D82A reads these values from the active live record while building
 // the Attributes/Skills view. Drawing text remains a separate concern.
@@ -55,6 +61,10 @@ RunnerAssetOperationResult advance_entity_asset_meter(
     RunnerRecordFields& record, std::int8_t delta,
     const UsItemCatalog& item_catalog);
 
+RunnerAssetOperationResult advance_entity_asset_meter(
+    RunnerRecordFields& record, std::int8_t delta,
+    const WeaponMagazineCapacityLookup& magazine_capacity);
+
 // ROM 0x038AC. Record types below three delegate to 0x036FC; other record
 // types consume one round directly.
 RunnerAssetOperationResult service_entity_ammo(
@@ -67,6 +77,10 @@ RunnerAssetOperationResult service_entity_ammo(
 RunnerAssetOperationResult service_entity_ammo(
     RunnerRecordFields& record, std::int8_t meter_delta,
     const UsItemCatalog& item_catalog);
+
+RunnerAssetOperationResult service_entity_ammo(
+    RunnerRecordFields& record, std::int8_t meter_delta,
+    const WeaponMagazineCapacityLookup& magazine_capacity);
 
 // ROM 0x107CE's record mutation, without its VDP/menu side effects.
 std::uint8_t adjust_runner_posture(RunnerRecordFields& record,

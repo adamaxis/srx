@@ -104,6 +104,22 @@ RunnerAssetOperationResult advance_entity_asset_meter(
     return advance_entity_asset_meter(record, delta, 0U);
 }
 
+RunnerAssetOperationResult advance_entity_asset_meter(
+    RunnerRecordFields& record, const std::int8_t delta,
+    const WeaponMagazineCapacityLookup& magazine_capacity) {
+    if (record.equipped_item_code >= 1U &&
+        record.equipped_item_code < 0x0DU) {
+        const auto capacity = magazine_capacity
+                                  ? magazine_capacity(record.equipped_item_code)
+                                  : std::nullopt;
+        if (!capacity.has_value()) {
+            return RunnerAssetOperationResult::missing_source_data;
+        }
+        return advance_entity_asset_meter(record, delta, *capacity);
+    }
+    return advance_entity_asset_meter(record, delta, 0U);
+}
+
 RunnerAssetOperationResult service_entity_ammo(
     RunnerRecordFields& record, const std::int8_t meter_delta,
     const std::uint8_t ammo_limit) {
@@ -128,6 +144,22 @@ RunnerAssetOperationResult service_entity_ammo(
     }
     // 0x038AC's non-runner branch consumes one round directly and therefore
     // never consults the item catalog.
+    --record.ammo_rounds;
+    return RunnerAssetOperationResult::ammo_changed;
+}
+
+RunnerAssetOperationResult service_entity_ammo(
+    RunnerRecordFields& record, const std::int8_t meter_delta,
+    const WeaponMagazineCapacityLookup& magazine_capacity) {
+    if (record.ammo_rounds == 0U || record.equipped_item_code == 0U) {
+        return RunnerAssetOperationResult::no_change;
+    }
+    if (record.record_type < 3U) {
+        return advance_entity_asset_meter(record, meter_delta,
+                                          magazine_capacity);
+    }
+    // Later runner records use the same loaded-round counter but do not
+    // consult a weapon template in this source branch.
     --record.ammo_rounds;
     return RunnerAssetOperationResult::ammo_changed;
 }

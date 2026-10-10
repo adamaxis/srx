@@ -411,6 +411,13 @@ public:
     bool shop_menu_offers_active() const noexcept {
         return field_shop_menu_.offers_panel_active();
     }
+    std::optional<std::uint8_t>
+    shop_selected_weapon_capacity_for_dump() const {
+        return selected_shop_weapon_capacity();
+    }
+    std::optional<std::uint8_t> shop_selected_item_uses_for_dump() const {
+        return selected_shop_item_uses();
+    }
     bool shop_transaction_confirmation_open() const noexcept {
         return field_shop_menu_.transaction_confirmation_open();
     }
@@ -879,6 +886,12 @@ private:
     void paint_command_overview(QPainter& painter) const;
     void paint_command_overview_clips(QPainter& painter) const;
     void paint_field_shop(QPainter& painter) const;
+    std::optional<std::uint8_t> selected_shop_item_code() const;
+    std::optional<std::uint8_t> weapon_magazine_capacity_for_item(
+        std::uint8_t item_code) const;
+    std::optional<std::uint8_t> selected_shop_weapon_capacity() const;
+    std::optional<std::uint8_t> selected_shop_item_uses() const;
+    FieldActionBaseCostLookup item_base_cost_lookup() const;
     void begin_hotel_menu();
     bool load_command_overview_menu_content();
     bool load_hotel_menu_content();

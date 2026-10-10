@@ -124,36 +124,6 @@ std::optional<ActionDetailRenderPlan> select_entity_action_detail(
 
 ActionDetailRenderPlan build_field_action_detail_plan(
     const FieldActionDetailInput& input,
-    const ActionDetailResourceTable& resources,
-    ResourceVariantState& resource_variant,
-    const std::function<void()>& upload_resource) {
-    ActionDetailRenderPlan plan{};
-    plan.source_code = input.action_code;
-    plan.resource_row = input.action_code;
-
-    if (plan.resource_row >= resources.detail_values.size()) {
-        return plan;
-    }
-
-    const auto previous_variant = resource_variant.alternate;
-    update_resource_variant(resource_variant,
-                            static_cast<std::int16_t>(input.action_code) + 1,
-                            upload_resource);
-    plan.valid = true;
-    plan.detail_value = resources.detail_values[plan.resource_row];
-    plan.phase_overlays = build_phase_overlays(input.flags);
-    plan.label = label_for_field_action(input.action_code);
-    plan.detail_value = plan.label == ActionDetailLabelVariant::action_dependent
-                            ? input.flags
-                            : plan.detail_value;
-    plan.alternate_resource_variant = resource_variant.alternate;
-    plan.resource_upload_requested =
-        previous_variant != resource_variant.alternate;
-    return plan;
-}
-
-ActionDetailRenderPlan build_field_action_detail_plan(
-    const FieldActionDetailInput& input,
     const UsItemCatalog& items,
     ResourceVariantState& resource_variant,
     const std::function<void()>& upload_resource) {
@@ -178,42 +148,6 @@ ActionDetailRenderPlan build_field_action_detail_plan(
     plan.detail_value = plan.label == ActionDetailLabelVariant::action_dependent
                             ? input.flags
                             : plan.detail_value;
-    plan.alternate_resource_variant = resource_variant.alternate;
-    plan.resource_upload_requested =
-        previous_variant != resource_variant.alternate;
-    return plan;
-}
-
-std::optional<ActionDetailRenderPlan> build_inventory_action_detail_plan(
-    const InventoryActionDetailInput& input,
-    const ActionDetailResourceTable& resources,
-    ResourceVariantState& resource_variant,
-    const std::function<void()>& upload_resource) {
-    if (input.item_code == 0U) {
-        return std::nullopt;
-    }
-
-    const auto row = static_cast<std::size_t>(input.item_code - 1U);
-    if (row >= resources.detail_values.size()) {
-        return std::nullopt;
-    }
-
-    const auto previous_variant = resource_variant.alternate;
-    update_resource_variant(resource_variant,
-                            static_cast<std::int16_t>(input.item_code),
-                            upload_resource);
-
-    ActionDetailRenderPlan plan{};
-    plan.valid = true;
-    plan.source_code = input.item_code;
-    plan.resource_row = row;
-    plan.detail_value = resources.detail_values[row];
-    plan.phase_overlays = build_phase_overlays(input.phase);
-    plan.label = label_for_inventory_item(input.item_code);
-    if (plan.label == ActionDetailLabelVariant::action_dependent) {
-        plan.detail_value = input.phase;
-        plan.action_code = input.action_lookup_code;
-    }
     plan.alternate_resource_variant = resource_variant.alternate;
     plan.resource_upload_requested =
         previous_variant != resource_variant.alternate;

@@ -3,19 +3,11 @@
 namespace shadowrun::ghidra_conversion {
 namespace {
 
-using FieldActionDetailPlanBuilder = std::function<
-    ActionDetailRenderPlan(const FieldActionDetailInput&,
-                           ResourceVariantState&,
-                           const std::function<void()>&)>;
-using FieldActionCostCalculator = std::function<
-    std::uint32_t(const FieldActionCostRecord&, const FieldActionCostContext&)>;
-
 FieldActionDetailRenderResult render_field_action_detail_impl(
     const std::vector<FieldActionCostRecord>& records,
+    const UsItemCatalog& item_catalog,
     ResourceVariantState& resource_variant,
     FieldActionDetailRenderState& state,
-    const FieldActionDetailPlanBuilder& build_detail_plan,
-    const FieldActionCostCalculator& calculate_cost,
     const FieldActionDetailRenderCallbacks& callbacks) {
     FieldActionDetailRenderResult result{};
     if (state.primary_cursor < 0 ||
@@ -58,9 +50,9 @@ FieldActionDetailRenderResult render_field_action_detail_impl(
     }
 
     result.kind = FieldActionDetailRenderKind::ordinary_action;
-    result.detail_plan = build_detail_plan(
+    result.detail_plan = build_field_action_detail_plan(
         FieldActionDetailInput{result.record.type, result.record.value},
-        resource_variant, callbacks.upload_resource);
+        item_catalog, resource_variant, callbacks.upload_resource);
     if (callbacks.present_detail_plan) {
         callbacks.present_detail_plan(*result.detail_plan);
     }
@@ -72,17 +64,8 @@ FieldActionDetailRenderResult render_field_action_detail_impl(
         callbacks.render_normal_header();
     }
 
-    if (!calculate_cost) {
-        result.kind = FieldActionDetailRenderKind::missing_cost_data;
-        if (callbacks.render_action_name) {
-            callbacks.render_action_name();
-        }
-        if (callbacks.render_tail_text) {
-            callbacks.render_tail_text();
-        }
-        return result;
-    }
-    result.cost = calculate_cost(result.record, state.cost_context);
+    result.cost = calculate_field_action_record_cost(
+        result.record, state.cost_context, item_catalog);
     if (callbacks.build_grouped_decimal) {
         callbacks.build_grouped_decimal();
     }
@@ -96,34 +79,6 @@ FieldActionDetailRenderResult render_field_action_detail_impl(
 }
 
 } // namespace
-
-FieldActionDetailRenderResult render_field_action_detail(
-    const std::vector<FieldActionCostRecord>& records,
-    const ActionDetailResourceTable& detail_resources,
-    ResourceVariantState& resource_variant,
-    FieldActionDetailRenderState& state,
-    const FieldActionBaseCostLookup& base_cost_lookup,
-    const FieldActionDetailRenderCallbacks& callbacks) {
-    const FieldActionDetailPlanBuilder build_detail_plan =
-        [&detail_resources](const FieldActionDetailInput& input,
-                            ResourceVariantState& variant,
-                            const std::function<void()>& upload_resource) {
-            return build_field_action_detail_plan(
-                input, detail_resources, variant, upload_resource);
-        };
-    FieldActionCostCalculator calculate_cost;
-    if (base_cost_lookup) {
-        calculate_cost =
-            [&base_cost_lookup](const FieldActionCostRecord& record,
-                                const FieldActionCostContext& context) {
-                return calculate_field_action_record_cost(
-                    record, context, base_cost_lookup);
-            };
-    }
-    return render_field_action_detail_impl(
-        records, resource_variant, state, build_detail_plan, calculate_cost,
-        callbacks);
-}
 
 FieldActionDetailRenderResult render_field_action_detail(
     const std::vector<FieldActionCostRecord>& records,
@@ -149,22 +104,8 @@ FieldActionDetailRenderResult render_field_action_detail(
         }
     }
 
-    const FieldActionDetailPlanBuilder build_detail_plan =
-        [&item_catalog](const FieldActionDetailInput& input,
-                        ResourceVariantState& variant,
-                        const std::function<void()>& upload_resource) {
-            return build_field_action_detail_plan(
-                input, item_catalog, variant, upload_resource);
-        };
-    const FieldActionCostCalculator calculate_cost =
-        [&item_catalog](const FieldActionCostRecord& record,
-                        const FieldActionCostContext& context) {
-            return calculate_field_action_record_cost(record, context,
-                                                       item_catalog);
-        };
     return render_field_action_detail_impl(
-        records, resource_variant, state, build_detail_plan, calculate_cost,
-        callbacks);
+        records, item_catalog, resource_variant, state, callbacks);
 }
 
 } // namespace shadowrun::ghidra_conversion

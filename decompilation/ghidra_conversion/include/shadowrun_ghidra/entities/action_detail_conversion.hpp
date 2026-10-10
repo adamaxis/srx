@@ -12,7 +12,6 @@
 namespace shadowrun::ghidra_conversion {
 
 constexpr std::size_t kActionDetailLabelCount = 13U;
-constexpr std::size_t kActionDetailResourceRecordCount = 0x40U;
 
 enum class ActionDetailLabelVariant {
     none,
@@ -64,21 +63,10 @@ struct FieldActionDetailInput {
     std::uint8_t flags = 0;       // selected field-action record byte 1
 };
 
-struct ActionDetailResourceTable {
-    std::array<std::uint8_t, kActionDetailResourceRecordCount>
-        detail_values{}; // source 0xD4540 row +0x24
-};
-
 // ROM 0x130C0. Builds the detail plan for a field-action record and reports
 // the source's 0x12A54 resource-variant upload through ResourceVariantState.
-ActionDetailRenderPlan build_field_action_detail_plan(
-    const FieldActionDetailInput& input,
-    const ActionDetailResourceTable& resources,
-    ResourceVariantState& resource_variant,
-    const std::function<void()>& upload_resource = {});
-
-// Source-data-bound 0x130C0 path. The action byte is the zero-based D4540
-// row index; the typed row supplies the source +0x24 detail value.
+// The action byte is the zero-based D4540 row index; the named item record
+// supplies the source value and its item-specific meaning.
 ActionDetailRenderPlan build_field_action_detail_plan(
     const FieldActionDetailInput& input,
     const UsItemCatalog& items,
@@ -99,14 +87,8 @@ struct InventoryActionDetailInput {
 // the field-service menu. Items 0x14 and 0x18..0x28 request the source
 // 0x12148 action-code lookup; the returned value is a source call result, not
 // the key used by the enclosing 0x58540 renderer.
-std::optional<ActionDetailRenderPlan> build_inventory_action_detail_plan(
-    const InventoryActionDetailInput& input,
-    const ActionDetailResourceTable& resources,
-    ResourceVariantState& resource_variant,
-    const std::function<void()>& upload_resource = {});
-
 // Source-data-bound 0x13228 path. Inventory item codes are one-based and
-// select the corresponding typed D4540 row before the source +0x24 read.
+// select the corresponding typed D4540 item record before reading its detail.
 std::optional<ActionDetailRenderPlan> build_inventory_action_detail_plan(
     const InventoryActionDetailInput& input,
     const UsItemCatalog& items,

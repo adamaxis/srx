@@ -395,8 +395,8 @@ int main() {
         !text.catalog.field_action_detail_texts[0].empty() ||
         !text.catalog.field_action_detail_texts[16].empty() ||
         !text.catalog.item_detail_labels[0].empty() ||
-        !text.catalog.item_names[0].empty() ||
-        !text.catalog.item_categories[15].empty() ||
+        !text.catalog.items[0].name.empty() ||
+        !text.catalog.items[15].category.empty() ||
         text.catalog.action_trade_recipient_label != "Give to" ||
         text.catalog.action_trade_full_inventory_message !=
             "  has a full\n  inventory.\n\nPress a button\n to continue." ||

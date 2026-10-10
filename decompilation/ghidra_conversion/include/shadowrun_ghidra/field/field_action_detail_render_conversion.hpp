@@ -22,7 +22,6 @@ enum class FieldActionDetailRenderKind {
     unavailable,
     special_action,
     ordinary_action,
-    missing_cost_data,
 };
 
 struct FieldActionDetailRenderResult {
@@ -57,21 +56,9 @@ struct FieldActionDetailRenderCallbacks {
     std::function<void()> upload_resource;
 };
 
-// ROM 0x586CA. Select the three-byte record at primary_cursor, preserve the
-// unavailable and special-'E' branches, and build the ordinary detail plan
-// and cost using typed source data. The table is supplied as a flat host
-// sequence of records because the source's A0 + cursor*3 arithmetic is a
-// presentation-table detail, not runtime state.
-FieldActionDetailRenderResult render_field_action_detail(
-    const std::vector<FieldActionCostRecord>& records,
-    const ActionDetailResourceTable& detail_resources,
-    ResourceVariantState& resource_variant,
-    FieldActionDetailRenderState& state,
-    const FieldActionBaseCostLookup& base_cost_lookup,
-    const FieldActionDetailRenderCallbacks& callbacks = {});
-
-// Source-data-bound 0x586CA path. The typed catalog supplies both the
-// zero-based 0x130C0 detail row and the zero-based 0x57A44 cost row.
+// ROM 0x586CA. Select the three-byte offer at primary_cursor, preserve the
+// unavailable and special-'E' branches, and resolve ordinary details and
+// price from the matching typed item record.
 FieldActionDetailRenderResult render_field_action_detail(
     const std::vector<FieldActionCostRecord>& records,
     const UsItemCatalog& item_catalog,

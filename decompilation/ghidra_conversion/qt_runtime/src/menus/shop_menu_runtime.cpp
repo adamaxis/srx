@@ -148,18 +148,22 @@ void ShopMenuController::reset_transaction() noexcept {
 ShopTransactionEvent ShopMenuController::begin_purchase(
     const FieldActionCostRecord& selected_offer,
     const FieldActionCostContext& cost_context,
-    FieldActionPurchaseState& state) {
+    FieldActionPurchaseState& state,
+    const FieldActionBaseCostLookup& base_cost_lookup) {
     reset_transaction();
     transaction_kind_ = TransactionKind::purchase;
     last_purchase_result_ = ShopTransactionService{}.purchase(
-        selected_offer, cost_context, state, false);
+        selected_offer, cost_context, state, false, base_cost_lookup);
     if (last_purchase_result_ == FieldActionApplicationResult::cancelled) {
         transaction_amount_ =
             selected_offer.type == static_cast<std::uint8_t>('E')
                 ? apply_field_action_cost_discounts(
                       selected_offer.quantity, cost_context)
-                : calculate_field_action_record_cost(
-                      selected_offer, cost_context, us_item_catalog());
+                : base_cost_lookup
+                      ? calculate_field_action_record_cost(
+                            selected_offer, cost_context, base_cost_lookup)
+                      : calculate_field_action_record_cost(
+                            selected_offer, cost_context, us_item_catalog());
         transaction_confirmation_ = MenuConfirmationState{};
         transaction_confirmation_open_ = true;
         return ShopTransactionEvent::confirmation_opened;
@@ -180,11 +184,12 @@ ShopTransactionEvent ShopMenuController::begin_purchase(
 
 ShopTransactionEvent ShopMenuController::begin_sale(
     const FieldActionCostContext& cost_context,
-    RunnerActionRemovalState& state) {
+    RunnerActionRemovalState& state,
+    const FieldActionBaseCostLookup& base_cost_lookup) {
     reset_transaction();
     transaction_kind_ = TransactionKind::sale;
     last_sale_outcome_ = ShopTransactionService{}.sell(
-        cost_context, state, false);
+        cost_context, state, false, base_cost_lookup);
     if (last_sale_outcome_.result == ShopSaleOutcome::Result::cancelled) {
         transaction_amount_ = last_sale_outcome_.quoted_refund;
         transaction_confirmation_ = MenuConfirmationState{};
@@ -208,7 +213,8 @@ ShopTransactionEvent ShopMenuController::advance_transaction(
     const std::uint16_t controller_events,
     const FieldActionCostContext& cost_context,
     FieldActionPurchaseState& purchase_state,
-    RunnerActionRemovalState& sale_state) {
+    RunnerActionRemovalState& sale_state,
+    const FieldActionBaseCostLookup& base_cost_lookup) {
     if (transaction_waiting_for_event_) {
         if (controller_events == 0U) {
             return ShopTransactionEvent::no_change;
@@ -254,7 +260,8 @@ ShopTransactionEvent ShopMenuController::advance_transaction(
     if (transaction_kind_ == TransactionKind::purchase && pending_action_ &&
         pending_action_->offer.has_value()) {
         last_purchase_result_ = ShopTransactionService{}.purchase(
-            *pending_action_->offer, cost_context, purchase_state, true);
+            *pending_action_->offer, cost_context, purchase_state, true,
+            base_cost_lookup);
         if (last_purchase_result_ == FieldActionApplicationResult::applied) {
             clear_pending_action();
             reset_transaction();
@@ -282,7 +289,7 @@ ShopTransactionEvent ShopMenuController::advance_transaction(
 
     if (transaction_kind_ == TransactionKind::sale && pending_action_) {
         last_sale_outcome_ = ShopTransactionService{}.sell(
-            cost_context, sale_state, true);
+            cost_context, sale_state, true, base_cost_lookup);
         if (last_sale_outcome_.result == ShopSaleOutcome::Result::removed) {
             clear_pending_action();
             reset_transaction();
@@ -442,17 +449,22 @@ FieldActionApplicationResult ShopTransactionService::purchase(
     const FieldActionCostRecord& offer,
     const FieldActionCostContext& cost_context,
     FieldActionPurchaseState& state,
-    const bool confirmed) const {
+    const bool confirmed,
+    const FieldActionBaseCostLookup& base_cost_lookup) const {
     FieldActionApplicationCallbacks callbacks{};
     callbacks.confirm_purchase = [confirmed] { return confirmed; };
-    return apply_selected_field_action(offer, cost_context, state,
-                                       us_item_catalog(), callbacks);
+    return base_cost_lookup
+               ? apply_selected_field_action(offer, cost_context, state,
+                                             base_cost_lookup, callbacks)
+               : apply_selected_field_action(offer, cost_context, state,
+                                             us_item_catalog(), callbacks);
 }
 
 ShopSaleOutcome ShopTransactionService::sell(
     const FieldActionCostContext& cost_context,
     RunnerActionRemovalState& state,
-    const bool confirmed) const {
+    const bool confirmed,
+    const FieldActionBaseCostLookup& base_cost_lookup) const {
     ShopSaleOutcome outcome{};
     if (state.runner_slot >= state.runner.action_codes.size()) {
         outcome.result = ShopSaleOutcome::Result::empty_slot;
@@ -481,7 +493,7 @@ ShopSaleOutcome ShopTransactionService::sell(
         return outcome;
     }
 
-    const auto quote = quote_sale(item_code, cost_context);
+    const auto quote = quote_sale(item_code, cost_context, base_cost_lookup);
     if (!quote.has_value()) {
         outcome.result = ShopSaleOutcome::Result::missing_item_record;
         return outcome;
@@ -510,12 +522,23 @@ ShopSaleOutcome ShopTransactionService::sell(
 
 std::optional<std::uint32_t> ShopTransactionService::quote_sale(
     const std::uint8_t item_code,
-    const FieldActionCostContext& cost_context) noexcept {
-    const auto* item = find_us_item_definition(item_code);
-    if (item == nullptr) {
+    const FieldActionCostContext& cost_context,
+    const FieldActionBaseCostLookup& base_cost_lookup) {
+    if (item_code == 0U || item_code > 50U) {
         return std::nullopt;
     }
-    const auto half_price = static_cast<std::uint32_t>(item->base_cost / 2U);
+    std::uint32_t base_cost = 0U;
+    if (base_cost_lookup) {
+        base_cost = base_cost_lookup(
+            static_cast<std::uint8_t>(item_code - 1U));
+    } else {
+        const auto* item = find_us_item_definition(item_code);
+        if (item == nullptr) {
+            return std::nullopt;
+        }
+        base_cost = item->base_cost;
+    }
+    const auto half_price = base_cost / 2U;
     return apply_runner_cost_surcharge(half_price, cost_context);
 }
 

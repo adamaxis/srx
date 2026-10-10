@@ -13,7 +13,9 @@ and file durations are recorded below. Shared audio QA decodes and starts
 events `0x24`, `0x25`, and `0x4B` on the default output and checks duration and
 stop behavior; Windows loopback for the exact shop route remains unrecorded.
 The Ares hill remains partial. The introduction and shop were independently
-reviewed against the longplay sequence around frames 5983-5994. Separate
+reviewed at source timestamps 5983-5994 seconds (01:39:43-01:39:54). In the
+30fps section dump, source timestamp 5983 seconds is local frame `004890`;
+frame filenames are section-local and are not source-second numbers. Separate
 physical-entry QA starts at New Game and uses ordinary Right/Up input to
 contact scene-2 record 92 (`0xCB`/event 11), waits through the generic prompt,
 enters the shop with A, and returns with Start. Debug/Release captures cover
@@ -128,9 +130,19 @@ the field approach, fade, prompt, category page, and field return; see
   complete screen composition.
 - Offers: `0x56DC4` chooses one of three action tables. Source action indices
   0, 1, and 2 map to weapons, other items, and armor at `0x1AAC9E`, `0x1AADD7`,
-  and `0x1AAD8F`. Direct US ROM reads confirm item codes `01,02,06,04,05,0D,0E`,
-  `45,0F,10,11`, and `2E,2D` respectively. `0xFF` in byte 0 ends each offer
-  list. Those rows are represented as typed records in `shop_menu_runtime.cpp`.
+  and `0x1AAD8F`. Direct US-ROM reads confirm zero-based action row types
+  `01,02,06,04,05,0D,0E`, `45,0F,10,11`, and `2E,2D` respectively. `0xFF` in
+  byte 0 ends each offer list. `type + 1` selects the one-based item record.
+  Those rows are represented as Lua-defined typed records. `0x586CA` sends
+  selected ordinary offers through `0x130C0`, whose source detail class
+  distinguishes firearm `ammo` from item `uses`. The single `items.lua`
+  catalog defines all 50 item records. Each of the twelve firearm records
+  owns its source-derived magazine capacity, Damage profile, and Power
+  profile; there is no parallel weapons list. The Ares offer order resolves to
+  Model 101T, American L36, Predator, Warhawk, and Max Power, with capacities
+  12, 11, 15, 6, and 10, followed by Scatter and Concussion grenades with six
+  uses each. Grenades are not assigned firearm magazines. The right HUD count
+  remains the active runner's loaded rounds.
 - Purchase: `0x5794E` applies a selected offer; `0x57A44` reads its full word
   base cost from `0xD4540 + type * 0x30 + 0x22`; `0x57A6E` applies the mode and
   runner adjustment; `0x57B8C` confirms before inventory or funds mutate.
@@ -170,27 +182,38 @@ the field approach, fade, prompt, category page, and field return; see
    title, row, and HUD, clears the old description, defaults to No, and does
    not leave price text under the prompt. The sale quote appears on its
    confirmation line; it no longer collides with the idle item description.
+   The five Ares firearm offers resolve through their zero-based action rows
+   to named Lua item templates and display capacities 12, 11, 15, 6, and 10
+   beside `ammo` at `(104,56)`. Scatter and Concussion are item-use records
+   and display `uses 6`; they do not show magazine capacities. The number sits
+   between the label at `(72,56)` and art beginning at `(128,32)` without
+   obscuring the label, art, selector, or HUD. No supplied longplay frame
+   selects these details, so exact Genesis spacing is not independently
+   verified.
    Selector QA requires a one-pixel 24x16 border and rejects extra selector
    color elsewhere in the 32x24 offer cell. Native captures are conversion
    evidence; the longplay remains the visual authority.
 4. **Animation?** The mode prompt waits 30 frames and has no periodic motion.
    The shop loop and confirmation are static between controller events. The
    same selected item art persists through the prompt; input moves the Yes/No
-   cursor or ends the transaction. No extra animation was observed in the
-   adjacent longplay frames.
+   cursor or ends the transaction. All seven Ares stock detail rows and the
+   selected number remain pixel-identical through a 30-frame native idle
+   hold, with no repeated sound request. No extra animation was observed in
+   the adjacent independent longplay frames.
 5. **Sound?** The generic prompt makes no direct sound request. The ROM shop
    loop at `0x56C72..0x56CCC` requests `0x25` for selection movement; that
    byte is table-2 index 37 and maps to `audio.effects.resource.037`. Its FLAC
    is 2.134 seconds including the extractor's two-second release tail, and
-    the Qt service sends it through `QMediaPlayer`/`QAudioOutput`.
-    Confirm/cancel paths request
+   the Qt service sends it through `QMediaPlayer`/`QAudioOutput`.
+   Confirm/cancel paths request
    `0x24`, mapped to `audio.menu.command-024` (2.484 seconds). A
    pre-emphasized waveform comparison against longplay audio from seconds
    5980-6000 found repeated strong matches for resource 037 at 5985.289,
-    5987.022, and 5993.456. Debug/Release QA verifies FLAC decoding,
-    `PlayingState` on the default output, duration, and stop behavior for event
-    `0x25` (along with `0x24` and `0x4B`). It does not record Windows loopback
-    for the exact shop action.
+   5987.022, and 5993.456. Debug/Release QA verifies FLAC decoding,
+   `PlayingState` on the default output, duration, and stop behavior for event
+   `0x25` (along with `0x24` and `0x4B`). The seven ordinary stock-row
+   movements request seven `0x25` events; an idle hold requests none. It does
+   not record Windows loopback for the exact shop action.
 6. **Related screen content?** The independent sequence includes the mode
    prompt, black transition, shop category, selected clips/patch details,
    and a later transaction prompt. QA also inspects the insufficient-funds,
@@ -198,29 +221,43 @@ the field approach, fade, prompt, category page, and field return; see
    frame and HUD backing; the presenter redraws the selected tab, item detail,
    selector, transaction text, and wallet from current state. Modal text
    replaces the item detail in the shared text well while leaving the intended
-   item art and lower row in place.
+   item art and lower row in place. The first firearm capacity is tested with
+   the active runner's loaded count set to 5, so the 12-round template and
+   sidebar's loaded ammunition remain distinct. The two grenade rows instead
+   show their Lua item-use count. The full-screen review checks the right HUD,
+   wallet, all offer cells, service tabs, description, price, and item art
+   together; no unrelated region changed.
 7. **Multiple frames?** The interpretation uses longplay frames 5983 (intro),
    5986 (shop/category), 5987 (clips), 5988-5989 (Stim/Trauma Patch), 5992
    (Stim Patch confirmation), and 5994 (updated funds), plus fifteen adjacent
-   frames near 01:39:54. The native QA produces separate `actual.bmp` files for
-   category, item, confirmation-No, confirmation-Yes, purchase, sale, protected
-   sale, and return. Independent longplay frames anchor the visual reading;
-   native frames verify the typed state transitions.
+   frames near 01:39:54. In `section_25_source_5820-6120`, those source-second
+   positions map to local 30fps files `frame_004890`, `004950`, `005010`,
+   `005040`, `005160`, and `005220`, respectively. The local file
+   `frame_005983` is a later street-map frame; it is not the Ares intro.
+   The longplay does not show a selected firearm or grenade detail page. Native
+   QA writes five full-screen template-capacity states, two grenade-use states,
+   and a 30-frame static hold. The complete current route has 32 named
+   full-screen `actual.bmp` checkpoints; every Debug image was inspected at
+   320x224, and all 32 relative paths have matching Release SHA-256 hashes.
+   These verify source values and redraw behavior, not independent visual
+   equivalence. Independent frames still anchor category, clips, patch,
+   confirmation, and balance screens.
 8. **Stale UI?** The mode prompt and shop each draw their own full-screen base.
    Shop QA saves category, selected item, purchase modal, sale modal, failure
    message, protected-item message, and field return as separate `actual.bmp`
-   frames. It checks that modal redraw removes stale description/price text,
-   preserves the intended item art/title/row, and that Start return replaces
-   the whole service page, including tabs, item art, details, and selector.
+   frames. It checks that modal redraw removes stale description, price, and
+   selected-item numeric text, preserves the intended item art/title/row,
+   and that Start return replaces the whole service page, including tabs, item
+   art, details, and selector.
 9. **Do new UI elements cover old UI that should be gone?** The full-screen
-   route and all 21 shop transaction captures were reopened at 320x224. The
+   route and all 32 current shop checkpoints were reopened at 320x224. The
    category page has only its active headings, tabs, offer row, wallet, and
    right HUD; confirmation and feedback states clear old detail text while
-   retaining only the intended item art, row, and HUD. The clips quantity and
-   currency glyph occupy adjacent eight-pixel cells. Field return redraws
-   the field page and leaves no shop tabs, selector, or text behind. Debug and
-   Release captures match by SHA-256; all 14 route captures also match the
-   pre-migration hashes.
+   retaining only the intended item art, row, and HUD. Template capacity and
+   item uses fit the existing detail line without covering another control.
+   The clips quantity and currency glyph occupy adjacent eight-pixel cells.
+   Field return redraws the field page and leaves no shop tabs, selector, or
+   text behind. Debug and Release captures match by SHA-256.
 
 ## Implemented controller slice
 
@@ -232,8 +269,9 @@ heading records, existing named item images, and a dedicated E-offer art/text
 asset. `shop.lua` binds the common prompt, transaction feedback, service
 labels, action headings, purchase/sale headings, and special clips text; its
 menu functions return explicit ordered text keys with the stable IDs.
-`items.lua` maps the 50 item records and 32 detail strings generated from the
-ROM pointer table. `ShopTransactionService` delegates to the
+`items.lua` contains all 50 item records; each name and category resolves
+through a stable key in the extracted text catalog. Its 32 detail strings
+remain keyed to the ROM pointer table. `ShopTransactionService` delegates to the
 existing typed purchase/removal conversions, and the field session applies
 successful mutations to its active runner and new-game wallet. Debug QA writes
 introduction, category, selected-item, purchase failure/cancel/accept, Stim
@@ -343,3 +381,40 @@ Visual review for this slice:
 The three new Debug/Release full-screen checkpoints match by SHA-256 and were
 inspected at 320x224. General weapon stock detail and Spurs/unarmed combat
 presentation remain open under `SHOP-03` and `COMBAT-STATE-01`.
+
+## Semantic weapon templates and shop detail follow-up (2026-10-10)
+
+The ROM's D4540 item records 1..12 are the firearm templates: `+0x24`
+supplies the magazine capacity used by the ammo service and weapon-switch path, `+0x25`
+selects a Damage display profile, and `+0x26` selects a Power display profile.
+Direct US-ROM reads match those fields to the twelve nested firearm templates
+in the single `items.lua` catalog. The next three item codes are grenades, not
+firearms; their source action-detail label is `uses`, so they carry a semantic
+item `uses` count and never receive a magazine capacity. The catalog also
+binds all 50 names, categories, base costs, and detail-art flags, plus the
+seven D4D50 armor templates. Item-detail conversion now requires the typed
+item catalog instead of a separate synthetic detail-value array.
+
+The presenter resolves the selected item to its Lua content: firearm templates
+draw `ammo` plus `magazine_capacity`, while grenade records draw `uses` plus
+their item-use count. The right HUD remains the live runner's loaded-round
+state. QA deliberately sets that HUD count to 5 while selecting the 12-round
+Model 101T, then verifies all five Ares firearm templates, both grenade-use
+records, detail labels, selector position, seven movement sound requests, and
+a 30-frame static hold with no additional sound.
+
+Debug and Release CTest pass the script runtime, Ares collision/shop route,
+shop transaction, and shop menu runtime tests (4/4 in each configuration).
+The three workbench item-detail conversion tests also pass in Debug and
+Release; both shop-action and inventory detail now resolve through typed
+source item records without a parallel numeric detail table.
+The test writes 32 whole-screen `actual.bmp` checkpoints per configuration;
+all 32 Debug/Release paths match by SHA-256, and all 32 Debug images were
+reviewed at 320x224, including the eight selected-capacity/idle states, modal
+redraws, equipped-sale HUD, both field returns, and the intro/category/other
+item pages. No stale numeric detail remains on modal screens or the returned
+field. Selected firearm and grenade detail pages are absent from the longplay,
+so their placement is supported by ROM data and renderer QA but remains
+unverified against Genesis pixels. The route's exact Windows output loopback remains
+unrecorded; event 0x25 duration and default-output playback are covered by
+shared audio QA.

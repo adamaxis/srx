@@ -98,12 +98,43 @@ bool read_field_string(lua_State* state, const int table_index,
     return valid;
 }
 
+bool read_optional_field_string(lua_State* state, const int table_index,
+                                const char* field, std::string& value) {
+    lua_getfield(state, table_index, field);
+    if (lua_isnil(state, -1)) {
+        lua_pop(state, 1);
+        return true;
+    }
+    const bool valid = read_string(state, -1, value);
+    lua_pop(state, 1);
+    return valid;
+}
+
 bool read_field_integer(lua_State* state, const int table_index,
                         const char* field, const std::uint32_t maximum,
                         std::uint32_t& value) {
     lua_getfield(state, table_index, field);
     const bool valid = read_integer(state, -1, maximum, value);
     lua_pop(state, 1);
+    return valid;
+}
+
+bool read_optional_field_integer(
+    lua_State* state, const int table_index, const char* field,
+    const std::uint32_t maximum,
+    std::optional<std::uint8_t>& value) {
+    lua_getfield(state, table_index, field);
+    if (lua_isnil(state, -1)) {
+        lua_pop(state, 1);
+        value.reset();
+        return true;
+    }
+    std::uint32_t parsed = 0U;
+    const bool valid = read_integer(state, -1, maximum, parsed);
+    lua_pop(state, 1);
+    if (valid) {
+        value = static_cast<std::uint8_t>(parsed);
+    }
     return valid;
 }
 
@@ -1899,6 +1930,8 @@ std::optional<ScriptItemCatalog> GameScriptRuntime::item_catalog() {
     }
     catalog.items.reserve(item_count);
     std::set<std::uint8_t> item_codes;
+    std::set<std::string> item_ids;
+    std::set<std::uint8_t> armor_codes;
     for (std::size_t index = 1U; index <= item_count; ++index) {
         lua_rawgeti(state, items_index, static_cast<lua_Integer>(index));
         if (!lua_istable(state, -1)) {
@@ -1906,21 +1939,127 @@ std::optional<ScriptItemCatalog> GameScriptRuntime::item_catalog() {
         }
         const auto item_index = lua_absindex(state, -1);
         std::uint32_t code = 0U;
-        ScriptItemTextKeys item;
-        const bool valid =
+        std::uint32_t base_cost = 0U;
+        ScriptItemDefinition item;
+        const bool base_fields_valid =
             read_field_integer(state, item_index, "code", 50U, code) &&
             code > 0U &&
+            read_field_string(state, item_index, "id", item.id) &&
+            valid_identifier(item.id) &&
+            read_field_string(state, item_index, "kind", item.kind) &&
+            valid_identifier(item.kind) &&
             read_field_string(state, item_index, "name_key", item.name_key) &&
             valid_identifier(item.name_key) &&
             read_field_string(state, item_index, "category_key",
                               item.category_key) &&
-            valid_identifier(item.category_key);
-        lua_pop(state, 1);
-        if (!valid ||
-            !item_codes.insert(static_cast<std::uint8_t>(code)).second) {
-            return fail("items.catalog contains an invalid or duplicate ID");
+            valid_identifier(item.category_key) &&
+            read_field_integer(state, item_index, "base_cost", 65535U,
+                               base_cost) &&
+            read_field_boolean(state, item_index, "has_detail_art",
+                               item.has_detail_art);
+        if (!base_fields_valid) {
+            return fail("items.catalog contains an incomplete item record");
         }
         item.code = static_cast<std::uint8_t>(code);
+        item.base_cost = static_cast<std::uint16_t>(base_cost);
+
+        lua_getfield(state, item_index, "detail");
+        if (!lua_isnil(state, -1)) {
+            if (!lua_istable(state, -1)) {
+                return fail("item detail must be a record");
+            }
+            const auto detail_index = lua_absindex(state, -1);
+            std::uint32_t value = 0U;
+            ScriptItemDefinition::Detail detail;
+            if (!read_field_string(state, detail_index, "kind", detail.kind) ||
+                !valid_identifier(detail.kind) || detail.kind != "uses" ||
+                !read_field_integer(state, detail_index, "value", 255U,
+                                    value)) {
+                return fail("item detail has an unsupported kind or value");
+            }
+            detail.value = static_cast<std::uint8_t>(value);
+            item.detail = std::move(detail);
+        }
+        lua_pop(state, 1);
+
+        lua_getfield(state, item_index, "weapon");
+        if (!lua_isnil(state, -1)) {
+            if (!lua_istable(state, -1)) {
+                return fail("item weapon template must be a record");
+            }
+            const auto weapon_index = lua_absindex(state, -1);
+            std::uint32_t magazine_capacity = 0U;
+            std::uint32_t damage_bar_index = 0U;
+            ScriptWeaponTemplate weapon;
+            weapon.id = item.id;
+            weapon.item_code = item.code;
+            if (!read_field_integer(state, weapon_index, "magazine_capacity",
+                                    255U, magazine_capacity) ||
+                magazine_capacity == 0U ||
+                !read_field_integer(state, weapon_index, "damage_bar_index",
+                                    2U, damage_bar_index) ||
+                !read_field_string(state, weapon_index, "power_profile",
+                                   weapon.power_profile) ||
+                !valid_identifier(weapon.power_profile)) {
+                return fail("item weapon template is incomplete");
+            }
+            weapon.magazine_capacity =
+                static_cast<std::uint8_t>(magazine_capacity);
+            weapon.damage_bar_index =
+                static_cast<std::uint8_t>(damage_bar_index);
+            item.weapon = std::move(weapon);
+        }
+        lua_pop(state, 1);
+
+        lua_getfield(state, item_index, "armor");
+        if (!lua_isnil(state, -1)) {
+            if (!lua_istable(state, -1)) {
+                return fail("item armor template must be a record");
+            }
+            const auto armor_index = lua_absindex(state, -1);
+            std::uint32_t source_armor_index = 0U;
+            std::uint32_t primary_modifier = 0U;
+            std::uint32_t secondary_modifier = 0U;
+            ScriptArmorTemplate armor;
+            armor.item_id = item.id;
+            armor.item_code = item.code;
+            if (!read_field_integer(state, armor_index, "armor_index", 7U,
+                                    source_armor_index) ||
+                source_armor_index == 0U ||
+                !read_field_integer(state, armor_index, "primary_modifier",
+                                    255U, primary_modifier) ||
+                !read_field_integer(state, armor_index, "secondary_modifier",
+                                    255U, secondary_modifier)) {
+                return fail("item armor template is incomplete");
+            }
+            armor.armor_index =
+                static_cast<std::uint8_t>(source_armor_index);
+            armor.primary_modifier =
+                static_cast<std::uint8_t>(primary_modifier);
+            armor.secondary_modifier =
+                static_cast<std::uint8_t>(secondary_modifier);
+            item.armor = std::move(armor);
+        }
+        lua_pop(state, 1);
+        lua_pop(state, 1);
+
+        const bool firearm = item.kind == "firearm";
+        const bool armor_item = item.kind == "armor";
+        const bool fixed_uses_item = code >= 13U && code <= 19U;
+        const bool content_shape_valid =
+            (code <= 12U) == firearm &&
+            (code >= 44U && code <= 50U) == armor_item &&
+            (fixed_uses_item == item.detail.has_value()) &&
+            (firearm == item.weapon.has_value()) &&
+            (armor_item == item.armor.has_value()) &&
+            (!item.weapon.has_value() || !item.armor.has_value());
+        if (!content_shape_valid ||
+            !item_codes.insert(item.code).second ||
+            !item_ids.insert(item.id).second ||
+            (item.armor.has_value() &&
+             !armor_codes.insert(item.code).second)) {
+            return fail("items.catalog contains duplicate or mismatched item data");
+        }
         catalog.items.push_back(std::move(item));
     }
     lua_pop(state, 1);
@@ -1963,6 +2102,8 @@ std::optional<ScriptItemCatalog> GameScriptRuntime::item_catalog() {
             return fail("items.detail_label_keys contains an invalid key");
         }
     }
+    lua_pop(state, 1);
+    lua_pop(state, 1);
 
     lua_settop(state, stack_base);
     impl_->failure.clear();

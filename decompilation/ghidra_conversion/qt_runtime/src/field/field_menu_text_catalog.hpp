@@ -1,16 +1,14 @@
 #pragma once
 
 #include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
+#include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
-
-namespace shadowrun::ghidra_conversion::scripting {
-class GameScriptRuntime;
-}
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
@@ -221,8 +219,12 @@ struct FieldMenuTextCatalog {
     std::array<std::string, 2> clips_out_of_ammo{};
     std::array<std::string, 3> clips_item_no_clips{};
     std::array<std::string, 3> clips_no_party{};
-    std::array<std::string, kFieldMenuItemNameCount> item_names{};
-    std::array<std::string, kFieldMenuItemNameCount> item_categories{};
+    struct Item {
+        scripting::ScriptItemDefinition definition;
+        std::string name;
+        std::string category;
+    };
+    std::array<Item, kFieldMenuItemNameCount> items{};
     std::array<std::string, kFieldActionDetailTextCount>
         field_action_detail_texts{};
 };

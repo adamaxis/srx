@@ -3391,10 +3391,8 @@ void FieldSceneRuntime::advance_command_overview_magic(
 
 void FieldSceneRuntime::advance_command_overview_clips(
     const std::uint16_t controller_events) {
-    const auto* item = find_us_item_definition(
-        active_runner_record().equipped_item_code);
-    const auto capacity = item == nullptr ? std::uint8_t{0}
-                                           : item->source_combat_factor;
+    const auto capacity = weapon_magazine_capacity_for_item(
+        active_runner_record().equipped_item_code).value_or(0U);
     const auto event = command_overview_clips_.advance(
         controller_events, field_party_roster_.records(),
         field_party_roster_.active_slot(), capacity);
@@ -3569,10 +3567,9 @@ void FieldSceneRuntime::dispatch_command_overview_inventory_action(
             classify_selected_item(result.item->item_code, true));
         if (branch == SelectedItemBranch::weapon_or_gear ||
             branch == SelectedItemBranch::armor) {
-            const auto item_factor = [](const std::uint8_t item_code) {
-                const auto* definition = find_us_item_definition(item_code);
-                return definition == nullptr ? std::uint8_t{0}
-                                             : definition->source_combat_factor;
+            const auto item_factor = [this](const std::uint8_t item_code) {
+                return weapon_magazine_capacity_for_item(item_code)
+                    .value_or(0U);
             };
             const auto mutation = toggle_selected_equipment(
                 active_runner_record(), *result.item,
@@ -5304,9 +5301,13 @@ void FieldSceneRuntime::service_player_weapon_action() {
                 source_audio_event_callback_(event);
             }
         }};
+    const WeaponMagazineCapacityLookup weapon_capacity_lookup =
+        [this](const std::uint8_t item_code) {
+            return weapon_magazine_capacity_for_item(item_code);
+        };
     if (runner.ammo_rounds == 0U) {
         const auto reload = dispatch_player_action_if_ready(
-            runner, us_item_catalog(), reload_callbacks);
+            runner, weapon_capacity_lookup, reload_callbacks);
         if (reload.status == PlayerActionDispatchStatus::serviced) {
             refresh_field_hud_runner_slot();
             source_boundary("field.combat.player_auto_reload");
@@ -5376,16 +5377,18 @@ void FieldSceneRuntime::service_player_weapon_action() {
         [this](const std::uint16_t) {
             source_boundary("field.combat.mode_effect_transition_pending");
         },
-        [this, &runner](EntityEquipmentState& equipment,
+        [this, &runner,
+         &weapon_capacity_lookup](EntityEquipmentState& equipment,
                         const std::uint8_t source_action_code) {
             RunnerAssetOperationResult weapon_operation =
                 RunnerAssetOperationResult::no_change;
             const auto ammo_action = service_entity_ammo(
                 equipment, source_action_code,
                 [this, &runner, &equipment,
-                 &weapon_operation](const std::int8_t meter_delta) {
+                 &weapon_operation,
+                 &weapon_capacity_lookup](const std::int8_t meter_delta) {
                     weapon_operation = service_entity_ammo(
-                        runner, meter_delta, us_item_catalog());
+                        runner, meter_delta, weapon_capacity_lookup);
                     equipment.current_ammo = runner.ammo_rounds;
                 });
 
@@ -5484,7 +5487,7 @@ void FieldSceneRuntime::service_player_weapon_action() {
         if (spawn_cycle.action == EntitySpawnCycleAction::no_primary_slot ||
             spawn_cycle.action == EntitySpawnCycleAction::no_secondary_slot) {
             const auto fallback = dispatch_player_action_if_ready(
-                runner, us_item_catalog(), reload_callbacks);
+                runner, weapon_capacity_lookup, reload_callbacks);
             if (fallback.status == PlayerActionDispatchStatus::serviced) {
                 refresh_field_hud_runner_slot();
             }
@@ -6357,7 +6360,7 @@ void FieldSceneRuntime::advance_frame() {
             const auto transaction_event =
                 field_shop_menu_.advance_transaction(
                     field_controller_sample_state_.events, cost_context,
-                    purchase_state, sale_state);
+                    purchase_state, sale_state, item_base_cost_lookup());
             if (transaction_event ==
                 ShopTransactionEvent::confirmation_moved) {
                 if (source_audio_event_callback_) {
@@ -6426,7 +6429,8 @@ void FieldSceneRuntime::advance_frame() {
                 const auto transaction_event =
                     field_shop_menu_.begin_purchase(
                         *field_shop_menu_.pending_action()->offer,
-                        cost_context, purchase_state);
+                        cost_context, purchase_state,
+                        item_base_cost_lookup());
                 if (transaction_event == ShopTransactionEvent::message_shown) {
                     source_boundary("field.shop.ares.purchase_preflight_message");
                 } else if (transaction_event ==
@@ -6449,7 +6453,7 @@ void FieldSceneRuntime::advance_frame() {
                 const auto cost_context = ares_cost_context(
                     field_shop_menu_.menu_mode(), active_runner_record());
                 const auto transaction_event = field_shop_menu_.begin_sale(
-                    cost_context, sale_state);
+                    cost_context, sale_state, item_base_cost_lookup());
                 if (transaction_event == ShopTransactionEvent::message_shown) {
                     source_boundary("field.shop.ares.sale_preflight_message");
                 } else if (transaction_event ==
@@ -7468,7 +7472,7 @@ bool FieldSceneRuntime::load_item_menu_content() {
     };
     const auto catalog = game_scripts_.item_catalog();
     if (!catalog.has_value() ||
-        catalog->items.size() != field_menu_text_.item_names.size() ||
+        catalog->items.size() != field_menu_text_.items.size() ||
         catalog->detail_text_keys.size() !=
             field_menu_text_.field_action_detail_texts.size()) {
         return fail(game_scripts_.failure().empty()
@@ -7485,8 +7489,20 @@ bool FieldSceneRuntime::load_item_menu_content() {
         if (name == nullptr || category == nullptr) {
             return fail("Lua item name or category text is incomplete");
         }
-        field_menu_text_.item_names[index] = *name;
-        field_menu_text_.item_categories[index] = *category;
+        auto& presentation = field_menu_text_.items[index];
+        presentation.definition = item;
+        presentation.name = *name;
+        presentation.category = *category;
+        if (presentation.definition.weapon.has_value()) {
+            const auto& profile =
+                presentation.definition.weapon->power_profile;
+            const auto* label = game_scripts_.dialogue_text(
+                "items.display.option.power_" + profile);
+            if (label == nullptr) {
+                return fail("Lua weapon power profile has no display label");
+            }
+            presentation.definition.weapon->power_label = *label;
+        }
     }
     for (std::size_t index = 0; index < catalog->detail_text_keys.size();
          ++index) {
@@ -7874,6 +7890,83 @@ void FieldSceneRuntime::paint_field_hud_overlays(QPainter& painter) const {
     }
 }
 
+std::optional<std::uint8_t> FieldSceneRuntime::selected_shop_item_code() const {
+    if (!field_shop_menu_.offers_panel_active()) {
+        return std::nullopt;
+    }
+    std::uint8_t item_code = 0U;
+    if (field_shop_menu_.selected_group() == ShopActionGroup::sell) {
+        const auto cursor = field_shop_menu_.selected_cursor();
+        const auto& item_codes = active_runner_record().inventory_item_codes;
+        if (cursor >= item_codes.size()) {
+            return std::nullopt;
+        }
+        item_code = item_codes[cursor];
+    } else {
+        const auto offer = field_shop_menu_.offer(
+            field_shop_menu_.selected_group(),
+            field_shop_menu_.selected_cursor());
+        if (!offer.has_value() ||
+            offer->type == static_cast<std::uint8_t>('E')) {
+            return std::nullopt;
+        }
+        item_code = static_cast<std::uint8_t>(offer->type + 1U);
+    }
+    if (item_code == 0U || item_code > field_menu_text_.items.size()) {
+        return std::nullopt;
+    }
+    return item_code;
+}
+
+std::optional<std::uint8_t>
+FieldSceneRuntime::selected_shop_weapon_capacity() const {
+    const auto item_code = selected_shop_item_code();
+    if (!item_code.has_value()) {
+        return std::nullopt;
+    }
+    return weapon_magazine_capacity_for_item(*item_code);
+}
+
+std::optional<std::uint8_t>
+FieldSceneRuntime::weapon_magazine_capacity_for_item(
+    const std::uint8_t item_code) const {
+    if (item_code == 0U || item_code > field_menu_text_.items.size()) {
+        return std::nullopt;
+    }
+    const auto& item = field_menu_text_.items[
+        static_cast<std::size_t>(item_code - 1U)].definition;
+    return item.code == item_code && item.weapon.has_value()
+               ? std::optional<std::uint8_t>{
+                     item.weapon->magazine_capacity}
+               : std::nullopt;
+}
+
+std::optional<std::uint8_t> FieldSceneRuntime::selected_shop_item_uses() const {
+    const auto item_code = selected_shop_item_code();
+    if (!item_code.has_value()) {
+        return std::nullopt;
+    }
+    const auto& item = field_menu_text_.items[
+        static_cast<std::size_t>(*item_code - 1U)].definition;
+    if (item.code != *item_code || !item.detail.has_value() ||
+        item.detail->kind != "uses") {
+        return std::nullopt;
+    }
+    return item.detail->value;
+}
+
+FieldActionBaseCostLookup FieldSceneRuntime::item_base_cost_lookup() const {
+    return [this](const std::uint8_t catalog_index) {
+        if (catalog_index >= field_menu_text_.items.size()) {
+            return 0U;
+        }
+        const auto& item = field_menu_text_.items[catalog_index].definition;
+        return item.code == static_cast<std::uint8_t>(catalog_index + 1U)
+                   ? static_cast<std::uint32_t>(item.base_cost)
+                   : 0U;
+    };
+}
+
 void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
     if (field_service_background_.isNull()) {
         return;
@@ -7982,12 +8075,12 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                 }
             }
             else if (selected_item_code > 0U &&
-                     selected_item_code <= field_menu_text_.item_names.size()) {
+                     selected_item_code <= field_menu_text_.items.size()) {
                 const auto item_index =
                     static_cast<std::size_t>(selected_item_code - 1U);
-                const auto& item_name = field_menu_text_.item_names[item_index];
+                const auto& item_name = field_menu_text_.items[item_index].name;
                 const auto& item_category =
-                    field_menu_text_.item_categories[item_index];
+                    field_menu_text_.items[item_index].category;
                 const auto space = item_name.find(' ');
                 if (!item_category.empty()) {
                     draw_command_overview_text(
@@ -8024,13 +8117,26 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                 }
 
                 if (!transaction_replaces_detail) {
-                    const auto detail_label_index = selected_item_code <= 15U
-                        ? 0U
-                        : selected_item_code <= 22U ? 1U : 2U;
-                    draw_command_overview_text(
-                        painter, 72, 56,
-                        field_menu_text_
-                            .item_detail_labels[detail_label_index]);
+                    const auto weapon_capacity =
+                        selected_shop_weapon_capacity();
+                    const auto item_uses = selected_shop_item_uses();
+                    if (weapon_capacity.has_value()) {
+                        // A named Lua weapon template supplies stock capacity;
+                        // the active runner's loaded rounds stay in the HUD.
+                        draw_command_overview_text(
+                            painter, 72, 56,
+                            field_menu_text_.item_detail_labels[0]);
+                        draw_command_overview_text(
+                            painter, 104, 56,
+                            std::to_string(*weapon_capacity));
+                    } else if (item_uses.has_value()) {
+                        draw_command_overview_text(
+                            painter, 72, 56,
+                            field_menu_text_.item_detail_labels[1]);
+                        draw_command_overview_text(
+                            painter, 104, 56,
+                            std::to_string(*item_uses));
+                    }
                     const auto detail_text = select_field_action_detail_text(
                         static_cast<std::uint8_t>(selected_item_code - 1U));
                     if (detail_text.has_value() &&
@@ -8062,7 +8168,7 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                             *selected_offer,
                             ares_cost_context(field_shop_menu_.menu_mode(),
                                               active_runner_record()),
-                            us_item_catalog()));
+                            item_base_cost_lookup()));
                     const auto x = 184 -
                         static_cast<int>(amount.size() * 8U);
                     draw_command_overview_text(painter, x, 112, amount);
@@ -9339,11 +9445,12 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         [this, &painter](const std::uint8_t item_code,
                          const std::optional<std::size_t> selected_slot,
                          const bool include_art) {
-            if (item_code == 0U || item_code > us_item_catalog().size()) {
+            if (item_code == 0U || item_code > field_menu_text_.items.size()) {
                 return;
             }
-            const auto* item = find_us_item_definition(item_code);
-            if (item == nullptr) {
+            const auto& item = field_menu_text_.items[
+                static_cast<std::size_t>(item_code - 1U)].definition;
+            if (item.code != item_code) {
                 return;
             }
             if (include_art && selected_slot.has_value() &&
@@ -9353,25 +9460,23 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                                   command_overview_item_details_[item_code - 1U]);
             }
 
-            // ROM 0x12E9E uses the item record's +0x25/+0x26 only for the
-            // weapon detail rows. The typed catalog retains those bytes under
-            // their action/detail names; no host damage statistic is derived.
-            if (item_code < 0x10U) {
+            // The Lua item owns the firearm's named Damage row and Power
+            // profile; loaded rounds remain live actor state in the HUD.
+            if (item.weapon.has_value()) {
+                const auto& weapon = *item.weapon;
                 const auto damage_index = static_cast<std::size_t>(
-                    static_cast<std::uint8_t>(item->signed_detail_asset_index));
+                    weapon.damage_bar_index);
                 if (damage_index < command_overview_damage_bars_.size()) {
                     draw_command_overview_text(painter, 112, 80,
                                                 field_menu_text_.damage_label);
                     painter.drawImage(168, 80,
                                       command_overview_damage_bars_[damage_index]);
                 }
-                if (item->detail_selector != 0U &&
-                    item->detail_selector <= field_menu_text_.power_labels.size()) {
+                if (!weapon.power_label.empty()) {
                     draw_command_overview_text(painter, 112, 88,
                                                 field_menu_text_.power_label);
-                    draw_command_overview_text(
-                        painter, 168, 88,
-                        field_menu_text_.power_labels[item->detail_selector - 1U]);
+                    draw_command_overview_text(painter, 168, 88,
+                                               weapon.power_label);
                 }
             }
 
@@ -9419,7 +9524,14 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                                    field_menu_text_.weapons_label);
         draw_command_overview_text(painter, 136, 152,
                                    field_menu_text_.guns_label);
-        const auto* armor = find_us_armor_definition(armor_index);
+        const scripting::ScriptArmorTemplate* armor = nullptr;
+        for (const auto& item : field_menu_text_.items) {
+            if (item.definition.armor.has_value() &&
+                item.definition.armor->armor_index == armor_index) {
+                armor = &*item.definition.armor;
+                break;
+            }
+        }
         if (armor == nullptr) {
             return;
         }
@@ -9470,7 +9582,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         const auto equipped_item_code =
             active_runner_record().equipped_item_code;
         if (equipped_item_code > 0U &&
-            equipped_item_code <= field_menu_text_.item_names.size()) {
+            equipped_item_code <= field_menu_text_.items.size()) {
             // ROM 0x111E8 renders the active equipment title before the
             // 0x12EAE damage/power detail rows. These two ROM-backed Lua
             // catalog entries occupy the same name/category rows used by
@@ -9478,12 +9590,11 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             const auto item_index =
                 static_cast<std::size_t>(equipped_item_code - 1U);
             draw_command_overview_text(
-                painter, 128, 64, field_menu_text_.item_names[item_index]);
-            if (item_index < field_menu_text_.item_categories.size() &&
-                !field_menu_text_.item_categories[item_index].empty()) {
+                painter, 128, 64, field_menu_text_.items[item_index].name);
+            if (!field_menu_text_.items[item_index].category.empty()) {
                 draw_command_overview_text(
                     painter, 128, 72,
-                    field_menu_text_.item_categories[item_index]);
+                    field_menu_text_.items[item_index].category);
             }
         }
         draw_item_detail_rows(active_runner_record().equipped_item_code,
@@ -9515,25 +9626,24 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         if (slot < active_runner_record().inventory_item_codes.size()) {
             const auto item_code =
                 active_runner_record().inventory_item_codes[slot];
-            if (item_code >= 1U && item_code <= field_menu_text_.item_names.size()) {
+            if (item_code >= 1U && item_code <= field_menu_text_.items.size()) {
                 draw_command_overview_text(
                     painter, 128, 64,
-                    field_menu_text_.item_names[item_code - 1U]);
+                    field_menu_text_.items[item_code - 1U].name);
                 draw_command_overview_text(
                     painter, 128, 72,
-                    field_menu_text_.item_categories[item_code - 1U]);
+                    field_menu_text_.items[item_code - 1U].category);
                 draw_item_detail_rows(item_code, slot, true);
                 // ROM 0x12A8C sends selected armor to 0x11352. It previews
                 // the selected D4D50 row in the lower armor summary at
                 // C820/C922/C92C/C9AC, then restores the equipped record.
                 // Repaint that panel from typed state rather than placing a
                 // second Wpns/Guns pair beside the selected-item text.
-                if (item_code >= 0x2CU && item_code <= 0x32U) {
-                    const auto* armor =
-                        find_us_armor_definition_for_item_code(item_code);
-                    if (armor != nullptr) {
-                        draw_armor_summary(armor->armor_index);
-                    }
+                const auto& selected_item = field_menu_text_.items[
+                    static_cast<std::size_t>(item_code - 1U)].definition;
+                if (selected_item.armor.has_value()) {
+                    draw_armor_summary(
+                        selected_item.armor->armor_index);
                 }
             }
         }

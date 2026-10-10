@@ -42,4 +42,9 @@ PlayerActionDispatchResult dispatch_player_action_if_ready(
     RunnerRecordFields& record, const UsItemCatalog& item_catalog,
     const PlayerActionDispatchCallbacks& callbacks = {});
 
+PlayerActionDispatchResult dispatch_player_action_if_ready(
+    RunnerRecordFields& record,
+    const WeaponMagazineCapacityLookup& magazine_capacity,
+    const PlayerActionDispatchCallbacks& callbacks = {});
+
 } // namespace shadowrun::ghidra_conversion

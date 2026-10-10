@@ -23,15 +23,11 @@ struct FieldInventoryActionDetailState {
     FieldActionCostContext cost_context{};
 };
 
-using InventoryRunnerCostLookup =
-    std::function<std::optional<std::uint16_t>(std::uint8_t code)>;
-
 enum class FieldInventoryActionDetailRenderKind {
     presented,
     unavailable,
     invalid_cursor,
     missing_detail_data,
-    missing_cost_data,
 };
 
 struct FieldInventoryActionDetailRenderResult {
@@ -60,23 +56,11 @@ struct FieldInventoryActionDetailRenderCallbacks {
     std::function<void()> upload_resource;
 };
 
-// ROM 0x58540. Validate the selected runner inventory item, use the typed
-// 0x13228 plan and 0x5878E detail-text selector, preserve the source's
-// runner-cost suppression flag, and finish through the selected item's
-// encoded name. The action-code lookup inside 0x13228 is retained as a typed
-// source call boundary, but it does not replace the item-code key used by the
-// enclosing 0x58540 renderer.
-FieldInventoryActionDetailRenderResult render_field_inventory_action_detail(
-    const FieldInventoryActionDetailState& state,
-    const ActionDetailResourceTable& detail_resources,
-    ResourceVariantState& resource_variant,
-    const std::optional<std::uint8_t>& action_lookup_code,
-    const InventoryRunnerCostLookup& runner_cost_lookup,
-    const FieldInventoryActionDetailRenderCallbacks& callbacks = {});
-
-// Source-data-bound 0x58540 path. The typed catalog supplies both the
-// selected row's +0x24 detail value and its +0x22 cost word; no generic ROM
-// table callback is needed.
+// ROM 0x58540. Validate the selected runner inventory item, use the matching
+// typed item record for its detail and price, preserve the source's runner-cost
+// suppression flag, and finish through the selected item's encoded name. The
+// action-code lookup inside 0x13228 is retained as a typed source call
+// boundary, but it does not replace the item-code key used by the renderer.
 FieldInventoryActionDetailRenderResult render_field_inventory_action_detail(
     const FieldInventoryActionDetailState& state,
     const UsItemCatalog& item_catalog,
