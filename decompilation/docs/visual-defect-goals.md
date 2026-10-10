@@ -103,6 +103,14 @@ clarification. None changes the original report's itemization.
 | `SEC-JOHNSONS` | The Notebook Mr. Johnsons row did not have a functional child page in the Qt conversion. | **Partial.** ROM `0xF416` now has typed FFFC27-filtered rows, source-imported names/details, A/B detail waits, C event `0x25`, cursor wrapping, and clean Start return. Debug/Release QA covers all five paths and every frame of a 30-VBlank hold. All-five coverage uses diagnostic FFFC27=`0x1F`; only bit 0 has a verified story writer, other story/save bits remain open, and no matching Genesis frame is available. See [the page audit](visual-audits/notebook-mr-johnsons-page.md). |
 | `MAGIC-SPLIT` | The Magic screen differs by user type. | **Partially verified.** ROM `0xFBA6` branches to the yellow spell page for class `<2` with `+0x7F != 0`; other records get the two-bar Magical Defense overlay. Debug/Release QA uses the actual Gator Shaman (class 1, `+0x7F=6`) and unmodified Samurai (class 2, `+0x7F=0`) startup records, and the test covers the zero-resource Shaman edge plus class 2/3 fallback. Independent section 06 supports the magic-user page and nested actions, but no non-magic Defense capture was found. See [the Magic split audit](visual-audits/magic-user-screen-split.md); keep open for independent non-magic visual evidence and spell target/effect handling. |
 
+### Newly verified findings
+
+The current full-screen pass added two independently actionable goals:
+
+| Goal | Reported issue | Status |
+|---|---|---|
+| `DIALOGUE-01` | Stoker `< MORE >` and closing punctuation render with incorrect directions. | **Resolved for the ROM HFlip glyphs.** The text catalog was already correct. ROM table words `0xC135C` (`>`) and `0xC1332` (`)`) reuse `<` and `(` with HFlip; the offline field-font extractor now applies those bits and the local assets were regenerated. The `shadowrun_graphics` CTest checks both pairs. Debug/Release startup QA writes the whole-screen Stoker arrival and manager pages; they now match section 03 frames `000090` and `000300` in glyph direction and layout. See [dialogue font flip audit](visual-audits/dialogue-font-flip-orientation.md). |
+
 ### Earlier reported items carried forward
 
 | Goal | Reported issue | Closure condition |

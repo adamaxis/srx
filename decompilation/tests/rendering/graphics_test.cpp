@@ -561,6 +561,26 @@ int main() {
     assert(field_menu_font.width == 128U && field_menu_font.height == 48U);
     assert(field_menu_font_palette_2.width == field_menu_font.width &&
            field_menu_font_palette_2.height == field_menu_font.height);
+    // ROM character-table words 0xC135C and 0xC1332 reuse the '<' and '('
+    // tiles for '>' and ')' with HFlip. The extracted atlas must preserve
+    // those source name-word orientations.
+    const auto assert_horizontal_flip = [&field_menu_font](
+        const std::size_t left_x, const std::size_t right_x,
+        const std::size_t y_origin) {
+        for (std::size_t y = 0U; y < 8U; ++y) {
+            for (std::size_t x = 0U; x < 8U; ++x) {
+                const auto& left = field_menu_font.pixels[
+                    (y_origin + y) * field_menu_font.width + (left_x + x)];
+                const auto& right = field_menu_font.pixels[
+                    (y_origin + y) * field_menu_font.width +
+                    (right_x + (7U - x))];
+                assert(left.red == right.red && left.green == right.green &&
+                       left.blue == right.blue && left.alpha == right.alpha);
+            }
+        }
+    };
+    assert_horizontal_flip(96U, 112U, 8U);
+    assert_horizontal_flip(64U, 72U, 0U);
     assert(std::any_of(
         field_menu_font_palette_2.pixels.begin(),
         field_menu_font_palette_2.pixels.end(), [](const auto& pixel) {

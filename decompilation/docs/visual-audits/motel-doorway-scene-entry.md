@@ -598,3 +598,16 @@ These checks validate the native conversion route and Lua content binding;
 the independent capture remains the visual authority. The older static
 street-ambush and package-question prompt paths still need to move into the
 shared script flow.
+
+## Full-screen review correction (2026-10-10)
+
+Reviewing the complete arrival screenshot against section 03 frame `000090`
+found a visual defect that the earlier pass missed: the source text was
+`< MORE >`, but both glyphs pointed left in the Qt output. The field font
+extractor had ignored the ROM HFlip bit on the `>` character-table entry. The
+previous statements that the arrival glyphs visually matched were too broad;
+the panel, portrait, and text placement matched, but the delimiter direction
+did not. The importer now applies the flip bits for all field-font characters,
+and the regenerated arrival screenshot has outward-facing `< MORE >` glyphs.
+See the [font flip audit](dialogue-font-flip-orientation.md) for the ROM words,
+pixel regression, and full-screen comparison.

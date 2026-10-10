@@ -3541,8 +3541,8 @@ RgbaImage decode_genesis_field_menu_font_with_palette(
     const auto font_vram = decode_genesis_1530_vram(
         rom, kFontStreamOffset, kFontVramOffset);
 
-    // 0xC0DA applies the caller's palette flags to these source glyph tiles.
-    // The caller supplies the screen-specific CRAM set and palette line.
+    // 0xC0DA applies the source name-word palette and flip flags to each
+    // glyph tile. The caller supplies the screen-specific CRAM set and line.
     RgbaImage atlas{
         static_cast<std::uint16_t>(kAtlasColumns * 8U),
         static_cast<std::uint16_t>(kAtlasRows * 8U),
@@ -3553,7 +3553,8 @@ RgbaImage decode_genesis_field_menu_font_with_palette(
     for (std::size_t character_index = 0;
          character_index < kCharacterCount; ++character_index) {
         // C0DA uses the same compact table index adjustment as the ROM text
-        // writer: the four reserved codes between '=' and '>' are absent.
+        // writer: four reserved glyph codes after '\\' and before lowercase
+        // 'a' are absent.
         auto table_index = character_index;
         if (table_index >= 0x3DU) {
             table_index -= 4U;
@@ -3567,12 +3568,16 @@ RgbaImage decode_genesis_field_menu_font_with_palette(
         }
         const auto tile = decode_genesis_tile(
             font_vram.data() + tile_index * 32U, 32U);
+        const auto hflip = (table_entry & 0x0800U) != 0U;
+        const auto vflip = (table_entry & 0x1000U) != 0U;
         const auto atlas_x = (character_index % kAtlasColumns) * 8U;
         const auto atlas_y = (character_index / kAtlasColumns) * 8U;
         for (std::size_t pixel_y = 0; pixel_y < 8U; ++pixel_y) {
             for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
+                const auto source_x = hflip ? 7U - pixel_x : pixel_x;
+                const auto source_y = vflip ? 7U - pixel_y : pixel_y;
                 const auto color_index =
-                    tile.pixels[pixel_y * 8U + pixel_x];
+                    tile.pixels[source_y * 8U + source_x];
                 auto color = palette[palette_line * 16U + color_index];
                 color.alpha = color_index == 0U ? 0U : 255U;
                 atlas.pixels[(atlas_y + pixel_y) * atlas.width +
@@ -5811,9 +5816,9 @@ void draw_genesis_startup_line(
                 "Genesis startup line contains an unsupported text byte");
         }
         auto character_index = static_cast<std::size_t>(character - 0x20U);
-        // C0DA compares the post-' ' index with $3D.  The four omitted
-        // character slots are the codes immediately after '='; using $1D
-        // here shifts every capital letter after 'M' onto the wrong tile.
+        // C0DA compares the post-' ' index with $3D. The four reserved codes
+        // ']', '^', '_', and '`' are omitted before lowercase 'a'; using $1D
+        // here would start remapping at '=' and shift capital letters too.
         if (character_index >= 0x3DU) {
             character_index -= 4U;
         }
