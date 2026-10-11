@@ -43,6 +43,7 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QPlainTextEdit,
+    QScrollArea,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -85,6 +86,7 @@ PART_ROLES = (
     "background_attachment",
 )
 DRAW_LAYERS = ("ground", "behind_actor", "actor_depth", "foreground")
+COLLISION_MODES = ("unreviewed", "blocking", "walkable", "nonblocking")
 
 
 def read_tsv(path: Path) -> tuple[list[str], list[dict[str, str]]]:
@@ -163,6 +165,18 @@ class Interactable:
 
 
 @dataclass
+class EntityCollisionRegion:
+    collision_id: str
+    local_x: int
+    local_y: int
+    width: int
+    height: int
+    collision_mode: str = "unreviewed"
+    evidence: str = ""
+    review_status: str = "unreviewed"
+
+
+@dataclass
 class EntityDefinition:
     entity_id: str
     name: str
@@ -170,15 +184,28 @@ class EntityDefinition:
     evidence: str = ""
     parts: list[EntityPart] = field(default_factory=list)
     interactables: list[Interactable] = field(default_factory=list)
+    collision_regions: list[EntityCollisionRegion] = field(default_factory=list)
 
     @property
     def bounds(self) -> tuple[int, int, int, int]:
-        if not self.parts:
+        rectangles = [
+            (part.local_x, part.local_y, part.width, part.height)
+            for part in self.parts
+        ]
+        rectangles.extend(
+            (item.local_x, item.local_y, item.width, item.height)
+            for item in self.interactables
+        )
+        rectangles.extend(
+            (item.local_x, item.local_y, item.width, item.height)
+            for item in self.collision_regions
+        )
+        if not rectangles:
             return (0, 0, 1, 1)
-        x0 = min(part.local_x for part in self.parts)
-        y0 = min(part.local_y for part in self.parts)
-        x1 = max(part.local_x + part.width for part in self.parts)
-        y1 = max(part.local_y + part.height for part in self.parts)
+        x0 = min(rect[0] for rect in rectangles)
+        y0 = min(rect[1] for rect in rectangles)
+        x1 = max(rect[0] + rect[2] for rect in rectangles)
+        y1 = max(rect[1] + rect[3] for rect in rectangles)
         return (x0, y0, max(1, x1 - x0), max(1, y1 - y0))
 
 
@@ -276,6 +303,10 @@ class WorldContent:
         "interaction_id", "local_x", "local_y", "width", "height",
         "lua_handler", "source_event", "evidence",
     )
+    COLLISION_HEADER = (
+        "collision_id", "local_x", "local_y", "width", "height",
+        "collision_mode", "evidence", "review_status",
+    )
     AREA_HEADER = ("instance_id", "entity_id", "origin_x", "origin_y")
     TRIGGER_HEADER = (
         "trigger_id", "x", "y", "width", "height", "script_module",
@@ -344,6 +375,20 @@ class WorldContent:
             )
             for row in interaction_rows
         ]
+        _, collision_rows = read_tsv(directory / "collisions.tsv")
+        entity.collision_regions = [
+            EntityCollisionRegion(
+                collision_id=row.get("collision_id", "collision"),
+                local_x=as_int(row, "local_x"),
+                local_y=as_int(row, "local_y"),
+                width=as_int(row, "width", 1),
+                height=as_int(row, "height", 1),
+                collision_mode=row.get("collision_mode", "unreviewed"),
+                evidence=row.get("evidence", ""),
+                review_status=row.get("review_status", "unreviewed"),
+            )
+            for row in collision_rows
+        ]
         return entity
 
     def save_entity(self, entity: EntityDefinition) -> None:
@@ -360,6 +405,11 @@ class WorldContent:
             directory / "interactables.tsv",
             self.INTERACTION_HEADER,
             [interaction.__dict__ for interaction in entity.interactables],
+        )
+        write_tsv(
+            directory / "collisions.tsv",
+            self.COLLISION_HEADER,
+            [collision.__dict__ for collision in entity.collision_regions],
         )
 
     def load_scene(self, scene_id: int) -> list[EntityInstance]:
@@ -492,12 +542,25 @@ class WorldContent:
                         f"evidence = {self.lua_quote(interaction.evidence)} "
                         "}"
                     )
+                collision_values = []
+                for collision in entity.collision_regions:
+                    collision_values.append(
+                        "{ "
+                        f"id = {self.lua_quote(collision.collision_id)}, "
+                        f"local_x = {collision.local_x}, local_y = {collision.local_y}, "
+                        f"width = {collision.width}, height = {collision.height}, "
+                        f"mode = {self.lua_quote(collision.collision_mode)}, "
+                        f"evidence = {self.lua_quote(collision.evidence)}, "
+                        f"review_status = {self.lua_quote(collision.review_status)} "
+                        "}"
+                    )
                 entity_lines.append(
                     f"    [{self.lua_quote(entity.entity_id)}] = {{ "
                     f"id = {self.lua_quote(entity.entity_id)}, name = {self.lua_quote(entity.name)}, "
                     f"category = {self.lua_quote(entity.category)}, evidence = {self.lua_quote(entity.evidence)}, "
                     f"parts = {{ {', '.join(part_values)} }}, "
-                    f"interactables = {{ {', '.join(interaction_values)} }} "
+                    f"interactables = {{ {', '.join(interaction_values)} }}, "
+                    f"collision_regions = {{ {', '.join(collision_values)} }} "
                     "},"
                 )
 
@@ -1044,6 +1107,29 @@ class FieldMapView(QGraphicsView):
                 hit.setData(1, instance.instance_id)
                 hit.setData(2, interaction.interaction_id)
                 group.addToGroup(hit)
+            for collision in entity.collision_regions:
+                region = self.scene().addRect(
+                    QRectF(
+                        instance.origin_x + collision.local_x,
+                        instance.origin_y + collision.local_y,
+                        collision.width,
+                        collision.height,
+                    ),
+                    QPen(QColor(190, 255, 55, 245), 2, Qt.PenStyle.DashDotLine),
+                    QBrush(Qt.BrushStyle.NoBrush),
+                )
+                region.setZValue(14)
+                region.setToolTip(
+                    f"Authored collision: {collision.collision_id}\n"
+                    f"Mode: {collision.collision_mode}; review: {collision.review_status}\n"
+                    f"Entity-local: {collision.local_x},{collision.local_y} "
+                    f"{collision.width}x{collision.height}\n"
+                    f"Evidence: {collision.evidence or '(not recorded)'}"
+                )
+                region.setData(0, "entity_collision")
+                region.setData(1, instance.instance_id)
+                region.setData(2, collision.collision_id)
+                group.addToGroup(region)
             self.annotation_items.append(group)
 
     def evidence_at(self, point: QPointF) -> MapEvidenceRegion | None:
@@ -1132,7 +1218,7 @@ class FieldMapView(QGraphicsView):
             self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
             super().mousePressEvent(event)
             return
-        if event.button() == Qt.MouseButton.LeftButton and self.mode in {"add_entity", "add_part", "add_interaction"}:
+        if event.button() == Qt.MouseButton.LeftButton and self.mode in {"add_entity", "add_part", "add_interaction", "add_collision"}:
             self.drag_start = self.mapToScene(event.position().toPoint())
             self.drag_rect = self.scene().addRect(QRectF(self.drag_start, self.drag_start), QPen(QColor(255, 255, 255), 2, Qt.PenStyle.DashLine))
             self.drag_rect.setZValue(30)
@@ -1325,6 +1411,20 @@ class MapEntityViewer(QMainWindow):
         interaction_buttons.addWidget(self.remove_interaction_button)
         layout.addLayout(interaction_buttons)
 
+        layout.addWidget(QLabel("Entity collision regions (authored, green dash-dot)"))
+        self.collisions_list = QListWidget()
+        self.collisions_list.setMaximumHeight(72)
+        self.collisions_list.currentItemChanged.connect(self.collision_selection_changed)
+        layout.addWidget(self.collisions_list)
+        collision_buttons = QHBoxLayout()
+        self.edit_collision_button = QPushButton("Edit collision")
+        self.edit_collision_button.clicked.connect(self.edit_selected_collision)
+        self.remove_collision_button = QPushButton("Remove collision")
+        self.remove_collision_button.clicked.connect(self.remove_selected_collision)
+        collision_buttons.addWidget(self.edit_collision_button)
+        collision_buttons.addWidget(self.remove_collision_button)
+        layout.addLayout(collision_buttons)
+
         layout.addWidget(QLabel("Authored map logic (purple T / orange S / blue R)"))
         behavior_buttons = QHBoxLayout()
         self.edit_behavior_button = QPushButton("Edit map record")
@@ -1368,7 +1468,11 @@ class MapEntityViewer(QMainWindow):
         self.delete_button.clicked.connect(self.remove_selected)
         layout.addWidget(self.save_button)
         layout.addWidget(self.delete_button)
-        dock.setWidget(panel)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        scroll.setWidget(panel)
+        dock.setWidget(scroll)
         dock.setMinimumWidth(350)
         dock.setMaximumWidth(460)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
@@ -1386,7 +1490,7 @@ class MapEntityViewer(QMainWindow):
         self.actor_toggle = self._add_toggle(bar, "ROM default actors", True)
         self.behavior_toggle = self._add_toggle(bar, "Authored behavior", True)
         bar.addSeparator()
-        legend = QLabel("Unreviewed: yellow   Building: cyan   Terrain: gray   Foliage: green")
+        legend = QLabel("Unreviewed: yellow   Building: cyan   Terrain: gray   Foliage: green   Entity collision: green dash-dot")
         bar.addWidget(legend)
         self.addToolBarBreak(Qt.ToolBarArea.TopToolBarArea)
         tools = self.addToolBar("Map editing")
@@ -1395,6 +1499,7 @@ class MapEntityViewer(QMainWindow):
         self._add_tool(tools, "Add object", "add_entity")
         self._add_tool(tools, "Add visual part", "add_part")
         self._add_tool(tools, "Add interactable", "add_interaction")
+        self._add_tool(tools, "Add collision", "add_collision")
         self._add_tool(tools, "Add trigger", "add_scripted_trigger")
         self._add_tool(tools, "Add spawn", "add_actor_spawn")
         self._add_tool(tools, "Add encounter", "add_encounter_region")
@@ -1419,8 +1524,8 @@ class MapEntityViewer(QMainWindow):
         self.tool_buttons[mode] = button
 
     def set_mode(self, mode: str) -> None:
-        if mode in {"add_interaction", "add_part"} and self.selected_instance is None:
-            self.statusBar().showMessage("Select an entity instance before adding a visual part or interaction region.", 5000)
+        if mode in {"add_interaction", "add_part", "add_collision"} and self.selected_instance is None:
+            self.statusBar().showMessage("Select an entity instance before adding a visual part, interaction, or collision region.", 5000)
             mode = "select"
         self.mode = mode
         self.map_view.mode = mode
@@ -1431,6 +1536,7 @@ class MapEntityViewer(QMainWindow):
             "add_entity": "Drag a rectangle around one object or decal. It will be saved as unreviewed.",
             "add_part": "Drag another source-map region owned by the selected entity; assign its visual role and depth.",
             "add_interaction": "Drag an interaction rectangle inside the selected entity; enter a Lua handler only when verified.",
+            "add_collision": "Drag an authored collision rectangle inside the selected entity; choose its mode only when supported.",
             "add_scripted_trigger": "Drag a map region for a Lua trigger. It is authored content, separate from read-only ROM event evidence.",
             "add_actor_spawn": "Click a world position to author an actor spawn point. Link a Lua actor profile and conditions only when supported.",
             "add_encounter_region": "Drag a region for an expandable Lua encounter pool; leave it unreviewed until sourced.",
@@ -1525,9 +1631,11 @@ class MapEntityViewer(QMainWindow):
             self.evidence_edit, self.delete_button, self.parts_list,
             self.interactions_list, self.edit_part_button,
             self.remove_part_button, self.edit_interaction_button,
-            self.remove_interaction_button,
+            self.remove_interaction_button, self.collisions_list,
         ):
             widget.setEnabled(enabled)
+        self.edit_collision_button.setEnabled(False)
+        self.remove_collision_button.setEnabled(False)
         self.edit_behavior_button.setEnabled(False)
         self.delete_behavior_button.setEnabled(False)
         if not enabled:
@@ -1536,6 +1644,7 @@ class MapEntityViewer(QMainWindow):
             self.category_combo.setCurrentText("unreviewed")
             self.parts_list.clear()
             self.interactions_list.clear()
+            self.collisions_list.clear()
             self.info.setPlainText(
                 "Click a map cell for its ROM layer words. Click a yellow ROM trigger or red collision region for its source record. "
                 "Click a ROM actor marker to inspect its list entry. Click an authored T/S/R mark to inspect its Lua data. "
@@ -1564,6 +1673,26 @@ class MapEntityViewer(QMainWindow):
             if interaction.interaction_id == selected_interaction:
                 self.interactions_list.setCurrentItem(item)
         self.interactions_list.blockSignals(False)
+        selected_collision = (
+            self.collisions_list.currentItem().data(Qt.ItemDataRole.UserRole)
+            if self.collisions_list.currentItem() else None
+        )
+        self.collisions_list.blockSignals(True)
+        self.collisions_list.clear()
+        for collision in entity.collision_regions:
+            item = QListWidgetItem(
+                f"{collision.collision_id}: {collision.collision_mode} @ "
+                f"{collision.local_x},{collision.local_y} "
+                f"{collision.width}x{collision.height} [{collision.review_status}]"
+            )
+            item.setData(Qt.ItemDataRole.UserRole, collision.collision_id)
+            self.collisions_list.addItem(item)
+            if collision.collision_id == selected_collision:
+                self.collisions_list.setCurrentItem(item)
+        self.collisions_list.blockSignals(False)
+        has_selected_collision = self.collisions_list.currentItem() is not None
+        self.edit_collision_button.setEnabled(has_selected_collision)
+        self.remove_collision_button.setEnabled(has_selected_collision)
         self.name_edit.setText(entity.name)
         self.category_combo.setCurrentText(entity.category if entity.category in ENTITY_CATEGORIES else "unreviewed")
         self.x_spin.setValue(instance.origin_x); self.y_spin.setValue(instance.origin_y)
@@ -1576,7 +1705,19 @@ class MapEntityViewer(QMainWindow):
             f"• {item.interaction_id}: {item.local_x},{item.local_y} {item.width}×{item.height}; Lua: {item.lua_handler or '(unassigned)'}; event: {item.source_event or '(unmapped)'}"
             for item in entity.interactables
         ) or "No interaction regions"
-        self.info.setPlainText(f"ID: {entity.entity_id}\nVisual parts:\n{part_summary}\nInteractions:\n{interaction_summary}\n\nImage pixels remain in the extracted map; this editor changes annotations and scene placement metadata.")
+        collision_summary = "\n".join(
+            f"- {item.collision_id}: {item.collision_mode} at "
+            f"{item.local_x},{item.local_y} {item.width}x{item.height}; "
+            f"{item.review_status}; evidence: {item.evidence or '(not recorded)'}"
+            for item in entity.collision_regions
+        ) or "No authored collision regions"
+        self.info.setPlainText(
+            f"ID: {entity.entity_id}\nVisual parts:\n{part_summary}"
+            f"\nInteractions:\n{interaction_summary}"
+            f"\nAuthored collision:\n{collision_summary}\n\n"
+            "ROM collision remains separate evidence; these entity records do not "
+            "modify the preassembled map or live field collision."
+        )
         map_info = self.map_by_id[self.scene_id]
         bounds = QRectF(
             instance.origin_x + entity.bounds[0],
@@ -1719,6 +1860,127 @@ class MapEntityViewer(QMainWindow):
         self._show_properties(instance)
         self.map_view.redraw_annotations()
 
+    def _add_collision_region(self, x: int, y: int, width: int, height: int) -> None:
+        instance = self.selected_instance
+        if instance is None:
+            return
+        entity = self.entities[instance.entity_id]
+        serial = 1
+        existing = {item.collision_id for item in entity.collision_regions}
+        while f"collision_{serial:02d}" in existing:
+            serial += 1
+        entity.collision_regions.append(EntityCollisionRegion(
+            collision_id=f"collision_{serial:02d}",
+            local_x=x - instance.origin_x,
+            local_y=y - instance.origin_y,
+            width=width,
+            height=height,
+        ))
+        self.dirty = True
+        self._show_properties(instance)
+        self.map_view.redraw_annotations()
+        self.statusBar().showMessage(
+            "Added an unreviewed entity collision region. It is separate from ROM collision evidence.",
+            6000,
+        )
+
+    def collision_selection_changed(self, current, _previous) -> None:
+        enabled = current is not None and self.selected_instance is not None
+        self.edit_collision_button.setEnabled(enabled)
+        self.remove_collision_button.setEnabled(enabled)
+
+    def edit_selected_collision(self) -> None:
+        instance = self.selected_instance
+        item = self.collisions_list.currentItem()
+        if instance is None or item is None:
+            return
+        entity = self.entities[instance.entity_id]
+        collision = next(
+            (record for record in entity.collision_regions
+             if record.collision_id == item.data(Qt.ItemDataRole.UserRole)),
+            None,
+        )
+        if collision is None:
+            return
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Edit collision region: {collision.collision_id}")
+        form = QFormLayout(dialog)
+        collision_id = QLineEdit(collision.collision_id)
+        form.addRow("Stable ID", collision_id)
+        fields: dict[str, QSpinBox] = {}
+        for key, label, value, minimum, maximum in (
+            ("local_x", "Entity-local X", collision.local_x, -32768, 32767),
+            ("local_y", "Entity-local Y", collision.local_y, -32768, 32767),
+            ("width", "Width", collision.width, 1, 8192),
+            ("height", "Height", collision.height, 1, 8192),
+        ):
+            spin = QSpinBox()
+            spin.setRange(minimum, maximum)
+            spin.setValue(value)
+            fields[key] = spin
+            form.addRow(label, spin)
+        collision_mode = QComboBox()
+        collision_mode.addItems(COLLISION_MODES)
+        collision_mode.setCurrentText(
+            collision.collision_mode
+            if collision.collision_mode in COLLISION_MODES else "unreviewed"
+        )
+        form.addRow("Collision mode", collision_mode)
+        evidence = QLineEdit(collision.evidence)
+        evidence.setPlaceholderText("ROM trace or explicit new-content rationale")
+        form.addRow("Evidence", evidence)
+        review_status = QComboBox()
+        review_status.addItems(["unreviewed", "source_verified", "new_content"])
+        review_status.setCurrentText(
+            collision.review_status
+            if collision.review_status in {"unreviewed", "source_verified", "new_content"}
+            else "unreviewed"
+        )
+        form.addRow("Review status", review_status)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        form.addRow(buttons)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        try:
+            new_id = safe_id(collision_id.text())
+        except ValueError:
+            QMessageBox.warning(self, "Invalid collision ID", "Enter an ID with at least one letter or number.")
+            return
+        if any(
+            other is not collision and other.collision_id == new_id
+            for other in entity.collision_regions
+        ):
+            QMessageBox.warning(self, "Duplicate collision ID", f"{new_id} is already used by this entity.")
+            return
+        collision.collision_id = new_id
+        for key, spin in fields.items():
+            setattr(collision, key, spin.value())
+        collision.collision_mode = collision_mode.currentText()
+        collision.evidence = evidence.text().strip()
+        collision.review_status = review_status.currentText()
+        self.dirty = True
+        self._show_properties(instance)
+        self.map_view.redraw_annotations()
+
+    def remove_selected_collision(self) -> None:
+        instance = self.selected_instance
+        item = self.collisions_list.currentItem()
+        if instance is None or item is None:
+            return
+        collision_id = item.data(Qt.ItemDataRole.UserRole)
+        entity = self.entities[instance.entity_id]
+        entity.collision_regions = [
+            collision for collision in entity.collision_regions
+            if collision.collision_id != collision_id
+        ]
+        self.dirty = True
+        self._show_properties(instance)
+        self.map_view.redraw_annotations()
+
     def select_at(self, point: QPointF) -> EntityInstance | None:
         matches = []
         for instance in reversed(self.instances):
@@ -1735,6 +1997,7 @@ class MapEntityViewer(QMainWindow):
         return None
 
     def show_evidence(self, evidence: MapEvidenceRegion) -> None:
+        self.select_instance(None)
         self.selected_evidence = evidence
         self.selected_behavior = None
         self.edit_behavior_button.setEnabled(False)
@@ -1833,6 +2096,9 @@ class MapEntityViewer(QMainWindow):
             return
         if self.mode == "add_interaction":
             self._add_interactable(x, y, width, height)
+            return
+        if self.mode == "add_collision":
+            self._add_collision_region(x, y, width, height)
             return
         if self.mode == "add_part":
             self._add_visual_part(x, y, width, height)

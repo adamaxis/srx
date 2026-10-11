@@ -33,6 +33,13 @@ metadata only; it does not erase, extract, or move pixels in the composed BMP.
 A separate image-composition/import step is still required before authored
 entity parts can replace pixels in a runtime map.
 
+Select an entity and use **Add collision** to draw an entity-local rectangle.
+It appears as a green dash-dot outline and moves with the grouped entity
+origin. ROM collision rectangles remain red, independent read-only evidence.
+The Lua `world_content.collision_at(scene_id, x, y)` lookup resolves reviewed
+entity collision against area placements; it returns nothing for unreviewed
+regions. The live movement/collision path does not yet call this lookup.
+
 The viewer also separates ROM evidence from authored map logic. Purple **T**
 regions are Lua trigger areas, orange **S** marks are authored actor spawn
 points, and blue **R** regions are authored encounter areas. These records have
@@ -51,6 +58,10 @@ Each entity has its own folder under `entities/<entity-id>/`:
   body, overhang, shadow, and decals while keeping one world origin.
 - `interactables.tsv`: local interaction rectangles and their Lua handler,
   ROM event, and evidence fields. Unknown handlers and events remain blank.
+- `collisions.tsv`: local collision rectangles, an authored mode
+  (`blocking`, `walkable`, or `nonblocking`), review status, and evidence.
+  New regions remain `unreviewed` until supported by ROM evidence or an
+  explicit new-content decision.
 
 Area-level ROM actor origins are not scenery entities. The viewer reads the
 source-derived `decompilation/assets/field/entities/default-actors.tsv` and
@@ -116,8 +127,9 @@ and authoring files from the adjacent repository checkout. Keep the executable
 inside that checkout (or launch it with `--assets` and `--world` paths).
 
 Use **Add object** to mark a map region for review. Use **Add visual part**
-to add another source crop to the selected entity, and **Add interactable** to
-add a local hit region. **Add trigger**, **Add spawn**, and **Add encounter**
+to add another source crop to the selected entity, **Add interactable** to
+add a local hit region, and **Add collision** to add an entity-local collision
+rectangle. **Add trigger**, **Add spawn**, and **Add encounter**
 create separate map-scoped Lua content records. Select a record on the map to
 inspect/edit it. Set an entity category only after checking the source layers
 and ROM evidence. Available categories include buildings, terrain features,
@@ -128,8 +140,9 @@ On save, the viewer refreshes
 `decompilation/gameplay/scripts/world_content_data.lua` from these TSV files.
 The Lua package loader loads the module, and `game.modules.world_content`
 provides entity/placement lookups plus `triggers_in_scene`,
-`actor_spawns_in_scene`, and `encounter_regions_in_scene`. The live field
-renderer and event loop do not yet consume these authored records. The scene 2
-map therefore still renders from its extracted composite and ROM collision,
-event, and default-actor records; this editor does not imply authored entities
-or event zones are already active game objects.
+`actor_spawns_in_scene`, `encounter_regions_in_scene`, and `collision_at`.
+The live field renderer, movement/collision path, and event loop do not yet
+consume these authored records. The scene 2 map therefore still renders from
+its extracted composite and ROM collision, event, and default-actor records;
+this editor does not imply authored entities or event zones are already active
+game objects.

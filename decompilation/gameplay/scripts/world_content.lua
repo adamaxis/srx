@@ -51,6 +51,41 @@ function World.encounter_regions_in_scene(scene_id)
     return records_in_scene("encounter_regions", scene_id)
 end
 
+-- Collision rectangles belong to reusable entity definitions and are
+-- translated by the area's entity origin. Unreviewed records are inspectable
+-- in the viewer but are not exposed as runtime collision results.
+function World.collision_at(scene_id, x, y)
+    if type(scene_id) ~= "number" or type(x) ~= "number" or
+       type(y) ~= "number" then
+        return nil
+    end
+    for _, instance in ipairs(World.instances_in_scene(scene_id)) do
+        local entity = World.entity(instance.entity_id)
+        if entity then
+            for _, region in ipairs(entity.collision_regions or {}) do
+                local x0 = instance.origin_x + region.local_x
+                local y0 = instance.origin_y + region.local_y
+                local reviewed = region.review_status == "source_verified" or
+                    region.review_status == "new_content"
+                if reviewed and region.mode ~= "unreviewed" and
+                   x >= x0 and y >= y0 and
+                   x < x0 + region.width and
+                   y < y0 + region.height then
+                    return {
+                        instance_id = instance.instance_id,
+                        entity_id = entity.id,
+                        collision_id = region.id,
+                        mode = region.mode,
+                        evidence = region.evidence,
+                        review_status = region.review_status,
+                    }
+                end
+            end
+        end
+    end
+    return nil
+end
+
 -- Resolve a manually authored interaction at map-pixel coordinates. ROM
 -- event records remain the authority for existing interactions; authored
 -- rectangles provide the reusable extension point for new world content.
