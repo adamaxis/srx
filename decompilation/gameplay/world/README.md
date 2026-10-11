@@ -59,6 +59,18 @@ Then open a map:
 python decompilation/tools/map_entity_viewer.py --scene 2
 ```
 
+The Qt menu bar has a **Scene** menu containing every extracted map. Choosing a
+scene there or in the side-panel selector keeps both controls synchronized and
+saves pending edits before switching.
+
+To make a standalone Windows executable, double-click
+`decompilation/tools/build_map_entity_viewer.cmd` or run it from PowerShell.
+The executable is written to
+`build/map-entity-viewer/shadowrun_map_entity_viewer.exe`. It includes Python,
+PyQt6, and the viewer code; it reads the individually named extracted assets
+and authoring files from the adjacent repository checkout. Keep the executable
+inside that checkout (or launch it with `--assets` and `--world` paths).
+
 Use **Add object region** to mark a map region for review. Use **Add visual
 part** to add another source crop to the selected entity, and **Add
 interactable** to add a local hit region. Select a part or interaction in the

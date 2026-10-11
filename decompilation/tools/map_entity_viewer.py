@@ -20,7 +20,7 @@ import os
 from typing import Iterable
 
 from PyQt6.QtCore import QPointF, QRectF, Qt
-from PyQt6.QtGui import QBrush, QColor, QFont, QFontDatabase, QImage, QPainter, QPen, QPixmap
+from PyQt6.QtGui import QAction, QActionGroup, QBrush, QColor, QFont, QFontDatabase, QImage, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -47,7 +47,20 @@ from PyQt6.QtWidgets import (
 )
 
 
-ROOT = Path(__file__).resolve().parents[2]
+def find_project_root() -> Path:
+    """Find the checkout when running from source or from a packaged exe."""
+    starts = [Path(__file__).resolve()]
+    if getattr(sys, "frozen", False):
+        starts.insert(0, Path(sys.executable).resolve())
+    for start in starts:
+        for candidate in (start.parent, *start.parents):
+            if (candidate / "decompilation" / "assets" / "field" / "maps" / "index.tsv").is_file():
+                return candidate
+    # Preserve source-mode defaults so the error can explain which assets are missing.
+    return Path(__file__).resolve().parents[2]
+
+
+ROOT = find_project_root()
 DEFAULT_ASSETS = ROOT / "decompilation" / "assets"
 DEFAULT_WORLD = ROOT / "decompilation" / "gameplay" / "world"
 ENTITY_CATEGORIES = (
@@ -667,6 +680,7 @@ class MapEntityViewer(QMainWindow):
 
         self.map_view = FieldMapView(self.region_created, self.select_at, self.cursor_moved)
         self.setCentralWidget(self.map_view)
+        self._build_menus()
         self._build_dock()
         self._build_toolbar()
         scene_index = self.scene_combo.findData(initial_scene)
@@ -674,6 +688,33 @@ class MapEntityViewer(QMainWindow):
             self.scene_combo.setCurrentIndex(scene_index)
         self.load_scene(initial_scene)
         self.statusBar().showMessage("No automatic object classifier is active. New annotations start unreviewed.")
+
+    def _build_menus(self) -> None:
+        file_menu = self.menuBar().addMenu("&File")
+        save_action = QAction("Save scene and definitions", self)
+        save_action.setShortcut("Ctrl+S")
+        save_action.triggered.connect(self.save_all)
+        file_menu.addAction(save_action)
+        file_menu.addSeparator()
+        exit_action = QAction("Exit", self)
+        exit_action.setShortcut("Ctrl+Q")
+        exit_action.triggered.connect(self.close)
+        file_menu.addAction(exit_action)
+
+        scene_menu = self.menuBar().addMenu("&Scene")
+        self.scene_action_group = QActionGroup(self)
+        self.scene_action_group.setExclusive(True)
+        self.scene_actions: dict[int, QAction] = {}
+        for info in self.maps:
+            action = QAction(f"Scene {info.scene_id:02d}  ({info.width} × {info.height})", self)
+            action.setCheckable(True)
+            action.setData(info.scene_id)
+            action.triggered.connect(
+                lambda checked=False, scene_id=info.scene_id: self.select_scene(scene_id)
+            )
+            self.scene_action_group.addAction(action)
+            scene_menu.addAction(action)
+            self.scene_actions[info.scene_id] = action
 
     def _build_dock(self) -> None:
         dock = QDockWidget("Map content", self)
@@ -811,6 +852,14 @@ class MapEntityViewer(QMainWindow):
         if scene_id not in self.map_by_id:
             return
         self.scene_id = scene_id
+        if hasattr(self, "scene_combo"):
+            index = self.scene_combo.findData(scene_id)
+            if index >= 0 and self.scene_combo.currentIndex() != index:
+                self.scene_combo.blockSignals(True)
+                self.scene_combo.setCurrentIndex(index)
+                self.scene_combo.blockSignals(False)
+        if hasattr(self, "scene_actions") and scene_id in self.scene_actions:
+            self.scene_actions[scene_id].setChecked(True)
         self.dirty = False
         self.instances = self.world.load_scene(scene_id)
         self.entities = {}
@@ -828,9 +877,14 @@ class MapEntityViewer(QMainWindow):
         if index >= 0:
             scene_id = self.scene_combo.itemData(index)
             if scene_id is not None and scene_id != self.scene_id:
-                if self.dirty:
-                    self.save_all()
-                self.load_scene(int(scene_id))
+                self.select_scene(int(scene_id))
+
+    def select_scene(self, scene_id: int) -> None:
+        if scene_id not in self.map_by_id or scene_id == self.scene_id:
+            return
+        if self.dirty:
+            self.save_all()
+        self.load_scene(scene_id)
 
     def _refresh_list(self) -> None:
         self.entity_list.blockSignals(True)
