@@ -135,11 +135,16 @@ Use **Add object** to mark a map region for review. Use **Add visual part**
 to add another source crop to the selected entity, **Add interactable** to
 add a local hit region, and **Add collision** to add an entity-local collision
 rectangle. **Add trigger**, **Add spawn**, and **Add encounter**
-create separate map-scoped Lua content records. Select a record on the map to
-inspect/edit it. Set an entity category only after checking the source layers
-and ROM evidence. Available categories include buildings, terrain features,
-foliage, decals, props, and structures. `Ctrl+S` saves the current scene and
-exports the records to Lua.
+create separate map-scoped Lua content records. A trigger with a nonzero
+runtime event ID is compiled into the typed field event registry; its trigger
+kind, exact scope, state flags, handler, and repeat policy are read from the
+same TSV record by the game. Display coordinates are map pixels, while
+`field_fixed_4` preserves exact actor coordinates from the source. The viewer
+draws the containing 32-pixel cell for an exact point scope. Select a record on
+the map to inspect/edit it. Set an entity category only after checking the
+source layers and ROM evidence. Available categories include buildings,
+terrain features, foliage, decals, props, and structures. `Ctrl+S` saves the
+current scene and exports the records to Lua.
 
 On save, the viewer refreshes
 `decompilation/gameplay/scripts/world_content_data.lua` from these TSV files.
@@ -152,6 +157,12 @@ around that doorway, and the first named image is a transparent crop from the
 scene's priority overlay. The site's marker 6 corroborates the building name.
 The ROM route is same-map Stoker dialogue, not an interior transition. The
 building's lower visual pixels still come from the preassembled composite.
-The live field renderer, movement/collision path, and event loop do not yet
-consume the world entity records or generated part assets; this editor does
-not imply these records are already active game objects.
+The same scene also exposes the source-profiled New Game entry event. Its exact
+scope is the scene-2 spawn `(0x3CE0,0x2D00)` and its marker appears in map cell
+`(30,22)`, two 32-pixel cells below the motel doorway cell. ROM-derived
+behavior is a one-time scene-entry rule at that exact spawn point, not a
+three-cell walking region. The runtime reads the rule from generated
+`world_content_data.lua` and calls the existing Lua heading-zero walk handler.
+Entity drawings and generated part assets are still authoring data; the live
+field renderer and movement/collision path do not yet consume entity
+definitions or their collision regions.

@@ -5,7 +5,8 @@ The extracted mode-N bitmap is already a composed picture. This tool does not
 pretend that pixels identify semantic objects: new regions start unreviewed,
 and ROM priority, collision, and event data are shown as independent evidence.
 Entity definitions and placements are saved as human-readable TSV files under
-gameplay/world so they can be consumed by a native world-data loader later.
+gameplay/world. Map-event rows can also be compiled into the current typed Lua
+event registry without duplicating their placement or state-gate data.
 """
 
 from __future__ import annotations
@@ -249,11 +250,20 @@ class MapBehaviorRecord:
     source_table: str = ""
     evidence: str = ""
     review_status: str = "unreviewed"
+    event_id: int = 0
+    trigger_type: str = "actor_within_scope"
+    coordinate_space: str = "map_pixels"
+    scope_min_x: int = -1
+    scope_max_x: int = -1
+    scope_min_y: int = -1
+    scope_max_y: int = -1
+    required_flags: str = ""
+    action: str = "run_lua_handler"
 
     @property
     def title(self) -> str:
         labels = {
-            "scripted_trigger": "Map script trigger",
+            "scripted_trigger": "Runtime map event" if self.event_id > 0 else "Map script trigger",
             "actor_spawn": "Authored actor spawn",
             "random_encounter": "Random encounter region",
         }
@@ -267,11 +277,22 @@ class MapBehaviorRecord:
         ]
         if self.kind == "scripted_trigger":
             lines.extend((
+                f"Event ID: {self.event_id if self.event_id > 0 else '(editor-only)'}",
+                f"Trigger type: {self.trigger_type}",
+                f"Coordinate space: {self.coordinate_space}",
+                f"Required state flags: {self.required_flags or '(none)'}",
+                f"Action: {self.action}",
                 f"Script: {self.script_module or '(unassigned)'}.{self.script_function or '(unassigned)'}",
                 f"Condition: {self.condition_module or '(unassigned)'}"
                 f".{self.condition_function or '(unassigned)'}",
                 f"Repeat policy: {self.repeat_policy or '(unassigned)'}",
             ))
+            if self.coordinate_space == "field_fixed_4":
+                lines.append(
+                    "Exact field scope: "
+                    f"X {self.scope_min_x}..{self.scope_max_x}, "
+                    f"Y {self.scope_min_y}..{self.scope_max_y}"
+                )
         elif self.kind == "actor_spawn":
             lines.extend((
                 f"Actor Lua profile: {self.actor_profile or '(unassigned)'}",
@@ -289,7 +310,7 @@ class MapBehaviorRecord:
             ))
         lines.extend((
             f"Evidence: {self.evidence or '(not recorded)'}",
-            "This is authored map content; it does not assert that the ROM uses this behavior.",
+            "This map marker is an editor view; only records accepted by the runtime event loader execute.",
         ))
         return "\n".join(lines)
 
@@ -310,9 +331,11 @@ class WorldContent:
     )
     AREA_HEADER = ("instance_id", "entity_id", "origin_x", "origin_y")
     TRIGGER_HEADER = (
-        "trigger_id", "x", "y", "width", "height", "script_module",
-        "script_function", "condition_module", "condition_function",
-        "repeat_policy", "evidence", "review_status",
+        "trigger_id", "event_id", "trigger_type", "coordinate_space",
+        "scope_min_x", "scope_max_x", "scope_min_y", "scope_max_y",
+        "required_flags", "action", "x", "y", "width", "height",
+        "script_module", "script_function", "condition_module",
+        "condition_function", "repeat_policy", "evidence", "review_status",
     )
     SPAWN_HEADER = (
         "spawn_id", "actor_profile", "x", "y", "heading",
@@ -501,6 +524,15 @@ class WorldContent:
                     source_table=row.get("source_table", ""),
                     evidence=row.get("evidence", ""),
                     review_status=row.get("review_status", "unreviewed"),
+                    event_id=as_int(row, "event_id"),
+                    trigger_type=row.get("trigger_type", "actor_within_scope"),
+                    coordinate_space=row.get("coordinate_space", "map_pixels"),
+                    scope_min_x=as_int(row, "scope_min_x", -1),
+                    scope_max_x=as_int(row, "scope_max_x", -1),
+                    scope_min_y=as_int(row, "scope_min_y", -1),
+                    scope_max_y=as_int(row, "scope_max_y", -1),
+                    required_flags=row.get("required_flags", ""),
+                    action=row.get("action", "run_lua_handler"),
                 ))
         return records
 
@@ -512,7 +544,16 @@ class WorldContent:
         for item in records:
             if item.kind == "scripted_trigger":
                 triggers.append({
-                    "trigger_id": item.record_id, "x": item.x, "y": item.y,
+                    "trigger_id": item.record_id, "event_id": item.event_id,
+                    "trigger_type": item.trigger_type,
+                    "coordinate_space": item.coordinate_space,
+                    "scope_min_x": item.scope_min_x,
+                    "scope_max_x": item.scope_max_x,
+                    "scope_min_y": item.scope_min_y,
+                    "scope_max_y": item.scope_max_y,
+                    "required_flags": item.required_flags,
+                    "action": item.action,
+                    "x": item.x, "y": item.y,
                     "width": item.width, "height": item.height,
                     "script_module": item.script_module,
                     "script_function": item.script_function,
@@ -573,7 +614,11 @@ class WorldContent:
             for key, item in value.items():
                 if isinstance(key, int):
                     rendered_key = f"[{key}]"
-                elif isinstance(key, str) and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
+                elif isinstance(key, str) and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key) and key not in {
+                    "and", "break", "do", "else", "elseif", "end", "false",
+                    "for", "function", "goto", "if", "in", "local", "nil",
+                    "not", "or", "repeat", "return", "then", "true", "until", "while",
+                }:
                     rendered_key = key
                 elif isinstance(key, str):
                     rendered_key = f"[{cls.lua_quote(key)}]"
@@ -590,6 +635,7 @@ class WorldContent:
             "entities": {},
             "areas": {},
             "map_triggers": {},
+            "map_events": [],
             "actor_spawns": {},
             "encounter_regions": {},
         }
@@ -654,6 +700,7 @@ class WorldContent:
         area_root = self.root / "areas"
         if area_root.is_dir():
             scene_ids: set[int] = set()
+            map_event_ids: set[int] = set()
             for path in sorted(area_root.glob("scene-*.tsv")):
                 match = re.fullmatch(r"scene-(\d+)(?:-(?:triggers|spawns|encounters))?\.tsv", path.name)
                 if not match:
@@ -675,9 +722,102 @@ class WorldContent:
                 encounter_values = []
                 for item in self.load_behaviors(scene_id):
                     if item.kind == "scripted_trigger":
+                        if item.event_id > 0:
+                            if item.event_id > 0xFFFFFFFF:
+                                raise ValueError(
+                                    f"Runtime map event ID for {item.record_id} exceeds 32 bits"
+                                )
+                            if item.event_id in map_event_ids:
+                                raise ValueError(
+                                    f"Duplicate Lua map event ID {item.event_id}"
+                                )
+                            map_event_ids.add(item.event_id)
+                            if item.script_module != "field_events":
+                                raise ValueError(
+                                    f"Runtime map event {item.record_id} must use the field_events Lua module"
+                                )
+                            if item.repeat_policy not in {
+                                "every_match", "once_per_scene_visit", "once_per_session"
+                            }:
+                                raise ValueError(
+                                    f"Runtime map event {item.record_id} has unsupported repeat policy {item.repeat_policy!r}"
+                                )
+                            if item.coordinate_space == "field_fixed_4":
+                                bounds = (
+                                    item.scope_min_x, item.scope_max_x,
+                                    item.scope_min_y, item.scope_max_y,
+                                )
+                                if any(value < 0 or value > 0xFFFF for value in bounds):
+                                    raise ValueError(
+                                        f"Runtime map event {item.record_id} has an invalid source-coordinate scope"
+                                    )
+                                min_x, max_x, min_y, max_y = bounds
+                            elif item.coordinate_space == "map_pixels":
+                                min_x = item.x * 16
+                                max_x = (item.x + item.width) * 16 - 1
+                                min_y = item.y * 16
+                                max_y = (item.y + item.height) * 16 - 1
+                                if min_x < 0 or min_y < 0 or max_x > 0xFFFF or max_y > 0xFFFF:
+                                    raise ValueError(
+                                        f"Runtime map event {item.record_id} exceeds the field-coordinate range"
+                                    )
+                            else:
+                                raise ValueError(
+                                    f"Runtime map event {item.record_id} has unsupported coordinate space {item.coordinate_space!r}"
+                                )
+                            if min_x > max_x or min_y > max_y:
+                                raise ValueError(
+                                    f"Runtime map event {item.record_id} has an inverted coordinate scope"
+                                )
+                            if item.trigger_type not in {"scene_entry", "actor_within_scope"}:
+                                raise ValueError(
+                                    f"Runtime map event {item.record_id} has unsupported trigger type {item.trigger_type!r}"
+                                )
+                            if item.action not in {"run_lua_handler", "dispatch_native_script"}:
+                                raise ValueError(
+                                    f"Runtime map event {item.record_id} has unsupported action {item.action!r}"
+                                )
+                            required_flags = [
+                                value.strip() for value in item.required_flags.split(",")
+                                if value.strip()
+                            ]
+                            if any(flag != "new_game_opening_completed" for flag in required_flags):
+                                raise ValueError(
+                                    f"Runtime map event {item.record_id} has an unsupported state flag"
+                                )
+                            event_record = {
+                                "id": item.event_id,
+                                "scene": scene_id,
+                                "trigger": item.trigger_type,
+                                "scope": {
+                                    "min_x": min_x,
+                                    "max_x": max_x,
+                                    "min_y": min_y,
+                                    "max_y": max_y,
+                                },
+                                "requires": required_flags,
+                                "repeat": item.repeat_policy,
+                                "action": item.action,
+                            }
+                            if item.action == "run_lua_handler":
+                                if not item.script_function:
+                                    raise ValueError(
+                                        f"Runtime map event {item.record_id} has no Lua handler"
+                                    )
+                                event_record["handler"] = item.script_function
+                            data["map_events"].append(event_record)
                         trigger_values.append(
                             {
                                 "id": item.record_id,
+                                "event_id": item.event_id,
+                                "trigger_type": item.trigger_type,
+                                "coordinate_space": item.coordinate_space,
+                                "scope_min_x": item.scope_min_x,
+                                "scope_max_x": item.scope_max_x,
+                                "scope_min_y": item.scope_min_y,
+                                "scope_max_y": item.scope_max_y,
+                                "required_flags": item.required_flags,
+                                "action": item.action,
                                 "x": item.x,
                                 "y": item.y,
                                 "width": item.width,
@@ -1027,6 +1167,9 @@ class FieldMapView(QGraphicsView):
         self.event_rectangles = read_event_rectangles(repo_root, info.scene_id)
         self.actor_positions = read_default_actor_positions(assets, info.scene_id)
         self.scene().clear()
+        # QGraphicsScene.clear() deletes its items; discard the Python wrappers
+        # before a redraw tries to remove overlays from the previous scene.
+        self.behavior_items = []
         base = QImage(str(info.asset)).convertToFormat(QImage.Format.Format_ARGB32)
         if self.show_priority and info.priority_asset.is_file():
             overlay = QImage(str(info.priority_asset)).convertToFormat(QImage.Format.Format_ARGB32)
@@ -1285,14 +1428,14 @@ class FieldMapView(QGraphicsView):
             item.setZValue(11)
             item.setData(0, "map_behavior")
             item.setData(1, index)
-            item.setToolTip(record.title + " — authored, not ROM evidence")
+            item.setToolTip(record.title + f" — {record.review_status}; {record.evidence or 'evidence not recorded'}")
             label = self.scene().addText(labels.get(record.kind, "?"))
             label.setDefaultTextColor(color)
             label.setPos(record.x + (8 if record.kind == "actor_spawn" else 2), record.y - 2)
             label.setZValue(11)
             label.setData(0, "map_behavior")
             label.setData(1, index)
-            label.setToolTip(record.title + " — authored, not ROM evidence")
+            label.setToolTip(record.title + f" — {record.review_status}; {record.evidence or 'evidence not recorded'}")
             self.behavior_items.extend((item, label))
 
     def entity_group_at(self, point: QPointF) -> tuple[str, QGraphicsItemGroup] | None:
@@ -1528,7 +1671,7 @@ class MapEntityViewer(QMainWindow):
         collision_buttons.addWidget(self.remove_collision_button)
         layout.addLayout(collision_buttons)
 
-        layout.addWidget(QLabel("Authored map logic (purple T / orange S / blue R)"))
+        layout.addWidget(QLabel("Map event logic (purple T / orange S / blue R)"))
         behavior_buttons = QHBoxLayout()
         self.edit_behavior_button = QPushButton("Edit map record")
         self.edit_behavior_button.clicked.connect(self.edit_selected_behavior)
@@ -1561,7 +1704,7 @@ class MapEntityViewer(QMainWindow):
         self.info.setMaximumHeight(220)
         self.info.setPlainText(
             "Click a map cell for its ROM layer words. Click a yellow ROM trigger or red collision region for its source record. "
-            "Click a ROM actor marker to inspect its list entry. Click an authored T/S/R mark to inspect its Lua data. "
+            "Click a ROM actor marker to inspect its list entry. Click a purple runtime-event or T/S/R marker to inspect its Lua data. "
             "Drag entity outlines to move grouped annotations."
         )
         layout.addWidget(self.info)
@@ -1575,6 +1718,7 @@ class MapEntityViewer(QMainWindow):
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QScrollArea.Shape.NoFrame)
         scroll.setWidget(panel)
+        self.right_scroll = scroll
         dock.setWidget(scroll)
         dock.setMinimumWidth(350)
         dock.setMaximumWidth(460)
@@ -1591,7 +1735,7 @@ class MapEntityViewer(QMainWindow):
         self.collision_toggle = self._add_toggle(bar, "ROM collision", False)
         self.event_toggle = self._add_toggle(bar, "ROM event triggers", True)
         self.actor_toggle = self._add_toggle(bar, "ROM default actors", True)
-        self.behavior_toggle = self._add_toggle(bar, "Authored behavior", True)
+        self.behavior_toggle = self._add_toggle(bar, "Map events / spawns", True)
         bar.addSeparator()
         legend = QLabel("Unreviewed: yellow   Building: cyan   Terrain: gray   Foliage: green   Entity collision: green dash-dot")
         bar.addWidget(legend)
@@ -2117,6 +2261,7 @@ class MapEntityViewer(QMainWindow):
         self.edit_behavior_button.setEnabled(False)
         self.delete_behavior_button.setEnabled(False)
         self.info.setPlainText(evidence.details)
+        self.right_scroll.ensureWidgetVisible(self.info, 0, 0)
         self.statusBar().showMessage(
             f"Inspecting {evidence.title}; source-derived evidence is read-only.",
             7000,
@@ -2179,10 +2324,9 @@ class MapEntityViewer(QMainWindow):
         self.edit_behavior_button.setEnabled(True)
         self.delete_behavior_button.setEnabled(True)
         self.info.setPlainText(record.describe(self.scene_id))
-        self.statusBar().showMessage(
-            f"Selected authored {record.kind}; this record is separate from ROM event evidence.",
-            6000,
-        )
+        self.right_scroll.ensureWidgetVisible(self.info, 0, 0)
+        origin = "source-profiled" if record.review_status == "source_verified" else "authored"
+        self.statusBar().showMessage(f"Selected {origin} {record.kind} record.", 6000)
 
     def list_selection_changed(self, current, previous) -> None:
         if current is None:
@@ -2306,7 +2450,49 @@ class MapEntityViewer(QMainWindow):
                 form.addRow(label, spin)
 
         fields: dict[str, QLineEdit] = {}
+        event_controls: dict[str, QWidget] = {}
         if record.kind == "scripted_trigger":
+            event_id = QSpinBox()
+            event_id.setRange(0, 0x7FFFFFFF)
+            event_id.setValue(record.event_id)
+            event_controls["event_id"] = event_id
+            form.addRow("Runtime event ID (0 = editor only)", event_id)
+
+            trigger_type = QComboBox()
+            trigger_type.addItems(["scene_entry", "actor_within_scope"])
+            trigger_type.setCurrentText(record.trigger_type)
+            event_controls["trigger_type"] = trigger_type
+            form.addRow("Runtime trigger", trigger_type)
+
+            coordinate_space = QComboBox()
+            coordinate_space.addItems(["map_pixels", "field_fixed_4"])
+            coordinate_space.setCurrentText(record.coordinate_space)
+            event_controls["coordinate_space"] = coordinate_space
+            form.addRow("Runtime coordinate space", coordinate_space)
+
+            for name, label in (
+                ("scope_min_x", "Exact scope min X"),
+                ("scope_max_x", "Exact scope max X"),
+                ("scope_min_y", "Exact scope min Y"),
+                ("scope_max_y", "Exact scope max Y"),
+            ):
+                spin = QSpinBox()
+                spin.setRange(-1, 0xFFFF)
+                spin.setValue(getattr(record, name))
+                event_controls[name] = spin
+                form.addRow(label, spin)
+
+            required_flags = QLineEdit(record.required_flags)
+            required_flags.setPlaceholderText("Comma-separated typed state flags")
+            event_controls["required_flags"] = required_flags
+            form.addRow("Required state flags", required_flags)
+
+            action = QComboBox()
+            action.addItems(["run_lua_handler", "dispatch_native_script"])
+            action.setCurrentText(record.action)
+            event_controls["action"] = action
+            form.addRow("Runtime action", action)
+
             field_specs = (
                 ("script_module", "Lua script module"),
                 ("script_function", "Lua event function"),
@@ -2357,7 +2543,27 @@ class MapEntityViewer(QMainWindow):
         if any(item is not record and item.record_id == new_id for item in self.behaviors):
             QMessageBox.warning(self, "Duplicate map record ID", f"{new_id} is already used in this scene.")
             return
+        if record.kind == "scripted_trigger":
+            next_event_id = event_controls["event_id"].value()
+            if next_event_id > 0 and any(
+                item is not record and item.event_id == next_event_id
+                for item in self.behaviors
+            ):
+                QMessageBox.warning(
+                    self,
+                    "Duplicate runtime event ID",
+                    f"Runtime event ID {next_event_id} is already used in this scene.",
+                )
+                return
         record.record_id = new_id
+        if record.kind == "scripted_trigger":
+            record.event_id = event_controls["event_id"].value()
+            record.trigger_type = event_controls["trigger_type"].currentText()
+            record.coordinate_space = event_controls["coordinate_space"].currentText()
+            for name in ("scope_min_x", "scope_max_x", "scope_min_y", "scope_max_y"):
+                setattr(record, name, event_controls[name].value())
+            record.required_flags = event_controls["required_flags"].text().strip()
+            record.action = event_controls["action"].currentText()
         for name, widget in coordinate_fields.items():
             setattr(record, name, widget.value())
         for name, widget in fields.items():

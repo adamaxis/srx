@@ -1933,22 +1933,27 @@ GameScriptRuntime::resolve_field_collision_event(
 std::optional<std::vector<FieldMapEventRule>>
 GameScriptRuntime::map_event_rules() {
     auto* state = impl_->state;
-    if (!impl_->push_module("field_events")) {
-        impl_->failure = "field_events.lua module is missing";
+    if (!impl_->push_module("world_content_data")) {
+        impl_->failure = "world_content_data.lua module is missing";
         return std::nullopt;
     }
     lua_getfield(state, -1, "map_events");
     if (!lua_istable(state, -1)) {
         lua_pop(state, 2);
-        impl_->failure = "field_events.map_events must be an array";
+        impl_->failure = "world_content_data.map_events must be an array";
         return std::nullopt;
     }
     const auto rules_table = lua_absindex(state, -1);
-    const auto module_table = lua_absindex(state, -2);
+    if (!impl_->push_module("field_events")) {
+        lua_pop(state, 2);
+        impl_->failure = "field_events.lua module is missing";
+        return std::nullopt;
+    }
+    const auto module_table = lua_absindex(state, -1);
     const auto count = lua_rawlen(state, rules_table);
     if (count == 0U || count > kMaximumMapEventRules) {
-        lua_pop(state, 2);
-        impl_->failure = "field_events.map_events has invalid rule count";
+        lua_pop(state, 3);
+        impl_->failure = "world_content_data.map_events has invalid rule count";
         return std::nullopt;
     }
     std::vector<FieldMapEventRule> rules;
@@ -1967,13 +1972,13 @@ GameScriptRuntime::map_event_rules() {
         }
         lua_pop(state, 1);
         if (!valid) {
-            lua_pop(state, 2);
-            impl_->failure = "field_events.map_events contains an invalid or duplicate rule";
+            lua_pop(state, 3);
+            impl_->failure = "world_content_data.map_events contains an invalid or duplicate rule";
             return std::nullopt;
         }
         rules.push_back(std::move(rule));
     }
-    lua_pop(state, 2);
+    lua_pop(state, 3);
     impl_->failure.clear();
     return rules;
 }

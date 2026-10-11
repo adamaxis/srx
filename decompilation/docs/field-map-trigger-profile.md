@@ -246,15 +246,18 @@ overrides still select their traced mode. The ROM event table remains named
 host data and C++ remains the scene/activity executor. Invalid or absent
 table routes remain explicit `no_route` results.
 
-The scene-entry registry consumes Lua-authored rules from `field_events.lua`.
-Each rule names a scene, optional inclusive coordinate scope, required typed
-state flags, an action, and a repeat policy (`every_match`, once per scene
-visit, or once per session). The first registered rule is the ROM-backed New
-Game opening handoff: scene 2, spawn `(0x3CE0,0x2D00)`, and the completed-intro
-marker start the normal heading-zero movement once. The restored-save path
-does not publish the intro-complete flag. The native registry tracks trigger
-lifetime and dispatches the Lua handler; future scene triggers are authored in
-Lua and can use the same collision/movement seam.
+The scene-entry registry consumes map-event records compiled from
+`gameplay/world/areas/scene-NN-triggers.tsv` into
+`gameplay/scripts/world_content_data.lua`. Each rule names a scene, trigger
+kind, optional inclusive coordinate scope, required typed state flags, an
+action, a Lua handler, and a repeat policy (`every_match`, once per scene
+visit, or once per session). Handler functions remain in `field_events.lua`.
+The scene-2 New Game handoff is the first such row: the scene descriptor's
+spawn `(0x3CE0,0x2D00)` and the completed-intro fact start the normal
+heading-zero movement once. The restored-save path does not publish the
+intro-complete flag. The native registry tracks trigger lifetime and dispatches
+the Lua handler; the map viewer displays the exact source scope in its
+containing 32-pixel cell.
 
 One important unresolved record is scene 20 record 110 at `0x1D96DE`: raw
 `0x00C0`, event 0, source bounds `x=0x0580..0x059F`,

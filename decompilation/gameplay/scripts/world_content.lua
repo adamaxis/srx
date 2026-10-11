@@ -7,7 +7,7 @@ local function content()
     local data = game.modules.world_content_data
     if type(data) ~= "table" then
         return {
-            entities = {}, areas = {}, map_triggers = {},
+            entities = {}, areas = {}, map_triggers = {}, map_events = {},
             actor_spawns = {}, encounter_regions = {},
         }
     end
@@ -41,6 +41,23 @@ end
 
 function World.triggers_in_scene(scene_id)
     return records_in_scene("map_triggers", scene_id)
+end
+
+-- Runtime map-event rules are also authored with the area's other map data.
+-- Their exact coordinate scope, trigger type, state gates, and repeat policy
+-- are compiled into world_content_data.lua from the viewer TSV records.
+function World.events_in_scene(scene_id)
+    if type(scene_id) ~= "number" or scene_id % 1 ~= 0 then
+        return {}
+    end
+    local events = content().map_events or {}
+    local result = {}
+    for _, event in ipairs(events) do
+        if event.scene == scene_id then
+            result[#result + 1] = event
+        end
+    end
+    return result
 end
 
 function World.actor_spawns_in_scene(scene_id)
