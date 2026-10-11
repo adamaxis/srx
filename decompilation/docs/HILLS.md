@@ -158,8 +158,12 @@ default-only route; pending-list allocation and the complete 16-record actor
 lifecycle remain partial.
 
 The `0xA800` gated pedestrian branch and all 69 ROM candidate positions for
-scenes `0x15..0x2B` are now profiled in the actor population audit. They remain
-unconnected to Lua/runtime population; they are not drawn as ambient scenery.
+scenes `0x15..0x2B` are profiled in the actor population audit and extracted
+from the US ROM into a checked named TSV. The standalone map viewer now shows
+all three source candidates per scene with pedestrian art and the exact
+selection gate, distinguished from active/default-list records. These
+conditional candidates remain unconnected to Lua/runtime population and are
+not asserted to be alive NPCs.
 
 The Stoker and field-object ROM dialogue strings have moved from separate TSV
 catalogs into `assets/dialogue/script-text.lua`. The offline importer writes

@@ -445,3 +445,25 @@ kind-specific action dispatch. Add only source-backed states and keep actor
 targeting outside combat until collision, hit, damage, and retirement paths
 are traced and connected. The hill remains partial; exact independent Genesis
 captures for these scene actors are not identified.
+
+## Map-viewer actor population evidence
+
+The standalone map viewer consumes the profile-selected actor rows above and
+the gated pedestrian choices at `0x1EDB88`. The offline importer
+`decompilation/tools/extract_field_actor_candidates.py` follows the scene
+pointer table for `0x15..0x2B`, then each scene's three list pointers. It checks
+that all 69 entries are one root-tagged kind-11 pedestrian, each list has one
+position, the ordered overrides remain `+0x9E=0x20`, `+0x2E=<heading>`,
+`+0x9E=0x08`, and the source list terminates after that record. `--check`
+re-reads the US ROM and compares the result with
+`decompilation/assets/field/entities/conditional-actor-candidates.tsv`.
+
+The viewer keeps these candidates separate from default-list rows and
+authored spawn marks. It derives the eight-way pose using the `0xB36A`
+rotate/round direction operation and uses the corresponding source-extracted
+actor frame and origin. Candidate markers are faded and dashed because they
+are mutually exclusive, gated spawn inputs rather than proof of active NPCs.
+The viewer does not yet model the timed activity lists at `0x1E552`, `0x1E5C4`,
+and `0x1E628`, nor all event-created actor paths. Scenes without one of the
+currently profiled records must therefore not be interpreted as ROM-proven
+empty maps.

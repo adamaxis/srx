@@ -190,18 +190,18 @@ class EntityDefinition:
 
     @property
     def bounds(self) -> tuple[int, int, int, int]:
+        # This is the visual selection frame. Collision and interaction
+        # rectangles are separate authoring/evidence layers and must not swell
+        # a building's artwork outline or imply extra pixels belong to it.
         rectangles = [
             (part.local_x, part.local_y, part.width, part.height)
             for part in self.parts
         ]
-        rectangles.extend(
-            (item.local_x, item.local_y, item.width, item.height)
-            for item in self.interactables
-        )
-        rectangles.extend(
-            (item.local_x, item.local_y, item.width, item.height)
-            for item in self.collision_regions
-        )
+        if not rectangles:
+            rectangles = [
+                (item.local_x, item.local_y, item.width, item.height)
+                for item in self.interactables
+            ]
         if not rectangles:
             return (0, 0, 1, 1)
         x0 = min(rect[0] for rect in rectangles)
@@ -228,6 +228,10 @@ class MapEvidenceRegion:
     height: int
     title: str
     details: str
+    sprite_path: Path | None = None
+    sprite_origin_x: int = 0
+    sprite_origin_y: int = 0
+    conditional: bool = False
 
 
 @dataclass
@@ -1038,49 +1042,170 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
     return result
 
 
-def read_default_actor_positions(asset_root: Path, scene_id: int) -> list[MapEvidenceRegion]:
-    """Read ROM default-list coordinates without treating them as scenery."""
-    path = asset_root / "field" / "entities" / "default-actors.tsv"
-    _, rows = read_tsv(path)
-    result: list[MapEvidenceRegion] = []
+def actor_direction_from_heading(heading: int) -> int:
+    """Use the source 0xB36A rotate/round operation for the C052 direction."""
+    rotated = ((heading << 3) | (heading >> 13)) & 0xFFFF
+    if rotated & 0x8000:
+        rotated = (rotated + 1) & 0xFFFF
+    return rotated & 0x7
+
+
+def read_actor_sprite_catalog(asset_root: Path) -> dict[str, tuple[int, int, int, int]]:
+    """Return extracted sprite offsets/sizes from the named asset catalog."""
+    _, rows = read_tsv(asset_root / "catalog.tsv")
+    result: dict[str, tuple[int, int, int, int]] = {}
     for row in rows:
-        if as_int(row, "scene", -1) != scene_id:
+        path = row.get("asset", "")
+        if not path.startswith("field/entities/actors/"):
             continue
-        try:
-            raw_x = int(row.get("world_x", "0"), 0)
-            raw_y = int(row.get("world_y", "0"), 0)
-        except ValueError:
-            continue
-        # Actor world coordinates are 12.4 fixed point. The map editor uses
-        # integer world pixels, matching the coordinate shift in the native
-        # field projection path.
+        result[path] = (
+            as_int(row, "x"), as_int(row, "y"),
+            as_int(row, "width"), as_int(row, "height"),
+        )
+    return result
+
+
+def read_actor_positions(asset_root: Path, scene_id: int) -> list[MapEvidenceRegion]:
+    """Read exact ROM actor placements and draw their source kind/direction art.
+
+    Default-list rows are listed separately from conditional candidates. The
+    latter are three alternatives for one selected pedestrian, not three
+    simultaneously active actors.
+    """
+    sprite_catalog = read_actor_sprite_catalog(asset_root)
+    result: list[MapEvidenceRegion] = []
+    actor_names = {5: "Corp guard", 11: "Pedestrian"}
+    actor_stems = {5: "corp-guard", 11: "pedestrian"}
+
+    def add_actor(
+        *,
+        actor_kind: int,
+        raw_x: int,
+        raw_y: int,
+        heading: int,
+        title: str,
+        details: list[str],
+        conditional: bool,
+    ) -> None:
         x, y = raw_x >> 4, raw_y >> 4
-        source_order = as_int(row, "source_order", len(result))
-        profile_id = row.get("profile_id", "unprofiled")
-        kind = as_int(row, "entity_kind", -1)
-        details = "\n".join((
-            "ROM default actor-list position",
-            f"Scene: {scene_id:02d}; list order: {source_order}",
-            f"Actor profile: {profile_id}; ROM kind: {kind}",
-            f"World position: ({raw_x:04X}, {raw_y:04X}) fixed point",
-            f"Map pixel anchor: ({x}, {y})",
-            f"Initial action: {row.get('action_kind', 'unknown')} "
-            f"{row.get('initial_action_code', '')}; heading: {row.get('initial_heading', 'unknown')}",
-            f"Template: {row.get('template_offset', '(unknown)')}; position record: "
-            f"{row.get('position_offset', '(unknown)')}; list: {row.get('list_offset', '(unknown)')}",
-            f"Ordered overrides: {row.get('ordered_overrides', '(none)')}",
-            "This is a ROM default-list position, not proof that the actor is active on every visit.",
-            f"Extracted source record: {path}",
+        direction = actor_direction_from_heading(heading)
+        stem = actor_stems.get(actor_kind)
+        actor_name = actor_names.get(actor_kind, f"ROM actor kind {actor_kind}")
+        filename = (
+            f"{stem}-idle.bmp" if direction == 0
+            else f"{stem}-idle-dir-{direction}.bmp"
+        ) if stem else ""
+        sprite_relative = f"field/entities/actors/{filename}" if filename else ""
+        sprite_path = asset_root / sprite_relative if sprite_relative else None
+        offset_x, offset_y, width, height = sprite_catalog.get(
+            sprite_relative, (0, -16, 1, 1)
+        )
+        if sprite_path is not None and not sprite_path.is_file():
+            sprite_path = None
+        details.extend((
+            f"Actor: {actor_name} (ROM entity kind {actor_kind})",
+            f"Heading: 0x{heading:04X}; source direction: {direction}",
+            f"World coordinate: (0x{raw_x:04X}, 0x{raw_y:04X}) 12.4 fixed point",
+            f"Map anchor: ({x}, {y}) pixels",
+            f"Sprite asset: {sprite_relative or '(unsupported ROM kind)'}",
         ))
         result.append(MapEvidenceRegion(
-            kind="rom_default_actor",
-            x=x - 9,
-            y=y - 9,
-            width=18,
-            height=18,
-            title=f"ROM actor {source_order}: {profile_id}",
-            details=details,
+            kind="rom_actor",
+            x=x + offset_x,
+            y=y + offset_y,
+            width=max(1, width),
+            height=max(1, height),
+            title=title,
+            details="\n".join(details),
+            sprite_path=sprite_path,
+            sprite_origin_x=offset_x,
+            sprite_origin_y=offset_y,
+            conditional=conditional,
         ))
+
+    default_path = asset_root / "field" / "entities" / "default-actors.tsv"
+    _, default_rows = read_tsv(default_path)
+    for row in default_rows:
+        if as_int(row, "scene", -1) != scene_id:
+            continue
+        raw_x = as_int(row, "world_x", -1)
+        raw_y = as_int(row, "world_y", -1)
+        if raw_x < 0 or raw_y < 0:
+            continue
+        source_order = as_int(row, "source_order", len(result))
+        actor_kind = as_int(row, "entity_kind", -1)
+        heading = as_int(row, "initial_heading")
+        details = [
+            "ROM profile-selected default actor record",
+            f"Scene: {scene_id:02d}; source-list order: {source_order}",
+            f"Profile: {row.get('profile_id', '(unprofiled)')}",
+            f"Initial action: {row.get('action_kind', 'unknown')} "
+            f"{row.get('initial_action_code', '')}",
+            f"Template: {row.get('template_offset', '(unknown)')}; "
+            f"position list: {row.get('position_offset', '(unknown)')}; "
+            f"actor list: {row.get('list_offset', '(unknown)')}",
+            f"Ordered template overrides: {row.get('ordered_overrides', '(none)')}",
+            "Activation: selected by the scene profile; this source row does not prove "
+            "it is active on every transition or gameplay mode.",
+        ]
+        add_actor(
+            actor_kind=actor_kind,
+            raw_x=raw_x,
+            raw_y=raw_y,
+            heading=heading,
+            title=f"{actor_names.get(actor_kind, 'Actor')} — default record {source_order}",
+            details=details,
+            conditional=False,
+        )
+
+    candidate_path = asset_root / "field" / "entities" / "conditional-actor-candidates.tsv"
+    _, candidate_rows = read_tsv(candidate_path)
+    candidate_groups: dict[tuple[int, int, int, int], list[dict[str, str]]] = {}
+    for row in candidate_rows:
+        if as_int(row, "scene", -1) != scene_id:
+            continue
+        raw_x = as_int(row, "world_x", -1)
+        raw_y = as_int(row, "world_y", -1)
+        if raw_x < 0 or raw_y < 0:
+            continue
+        key = (
+            raw_x, raw_y,
+            as_int(row, "entity_kind", -1),
+            as_int(row, "heading_word"),
+        )
+        candidate_groups.setdefault(key, []).append(row)
+
+    for (raw_x, raw_y, actor_kind, heading), group_rows in candidate_groups.items():
+        choices = [as_int(row, "choice", 0) for row in group_rows]
+        first = group_rows[0]
+        details = [
+            "ROM conditional actor candidate; one choice is selected, not all three.",
+            f"Scene: {scene_id:02d}; candidate choice(s): {', '.join(map(str, choices))} of 3",
+            f"Candidate group: {first.get('selection_group', '(unknown)')}",
+            f"Activation gate: {first.get('activation_gate', '(unknown)')}",
+            "The ROM selector retains its one-based choice until the source clears it.",
+        ]
+        for row in group_rows:
+            choice = as_int(row, "choice", 0)
+            details.extend((
+                f"Choice {choice}: template {row.get('template_offset', '(unknown)')}; "
+                f"candidate list {row.get('list_offset', '(unknown)')}; "
+                f"position {row.get('position_offset', '(unknown)')}",
+                f"Choice {choice} ordered template overrides: "
+                f"{row.get('ordered_overrides', '(none)')}",
+            ))
+        title = f"Pedestrian - conditional candidates {', '.join(map(str, choices))}/3"
+        if len(group_rows) > 1:
+            title += " (shared position)"
+        add_actor(
+            actor_kind=actor_kind,
+            raw_x=raw_x,
+            raw_y=raw_y,
+            heading=heading,
+            title=title,
+            details=details,
+            conditional=True,
+        )
     return result
 
 
@@ -1165,20 +1290,28 @@ class FieldMapView(QGraphicsView):
         self.behaviors = behaviors
         self.collision_rectangles = read_collision_rectangles(assets, info.scene_id)
         self.event_rectangles = read_event_rectangles(repo_root, info.scene_id)
-        self.actor_positions = read_default_actor_positions(assets, info.scene_id)
+        self.actor_positions = read_actor_positions(assets, info.scene_id)
         self.scene().clear()
         # QGraphicsScene.clear() deletes its items; discard the Python wrappers
         # before a redraw tries to remove overlays from the previous scene.
         self.behavior_items = []
         base = QImage(str(info.asset)).convertToFormat(QImage.Format.Format_ARGB32)
+        self.background_item = self.scene().addPixmap(QPixmap.fromImage(base))
+        self.background_item.setZValue(0)
+        self.background_item.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+        # Keep ROM priority pixels as a real foreground layer. Compositing them
+        # into the background made actor sprites appear over foreground art and
+        # hid which image pixels belonged to the priority plane.
         if self.show_priority and info.priority_asset.is_file():
             overlay = QImage(str(info.priority_asset)).convertToFormat(QImage.Format.Format_ARGB32)
             if overlay.size() == base.size():
-                painter = QPainter(base)
-                painter.drawImage(0, 0, overlay)
-                painter.end()
-        self.background_item = self.scene().addPixmap(QPixmap.fromImage(base))
-        self.background_item.setZValue(0)
+                self.priority_item = self.scene().addPixmap(QPixmap.fromImage(overlay))
+                self.priority_item.setZValue(7)
+                self.priority_item.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+            else:
+                self.priority_item = None
+        else:
+            self.priority_item = None
         self.scene().setSceneRect(0, 0, base.width(), base.height())
         self.annotation_items = []
         self.evidence_items = []
@@ -1240,25 +1373,50 @@ class FieldMapView(QGraphicsView):
                 self.evidence_items.append(rect)
         if self.show_actors:
             for index, region in enumerate(self.actor_positions):
-                marker = self.scene().addEllipse(
-                    QRectF(region.x, region.y, region.width, region.height),
-                    QPen(QColor(90, 255, 190, 245), 2),
-                    QColor(20, 90, 75, 185),
-                )
-                marker.setZValue(10)
+                if region.sprite_path is not None:
+                    marker = self.scene().addPixmap(QPixmap(str(region.sprite_path)))
+                    marker.setPos(region.x, region.y)
+                    marker.setTransformationMode(
+                        Qt.TransformationMode.FastTransformation
+                    )
+                    marker.setZValue(6)
+                    marker.setOpacity(0.66 if region.conditional else 1.0)
+                else:
+                    marker = self.scene().addEllipse(
+                        QRectF(region.x, region.y, region.width, region.height),
+                        QPen(QColor(90, 255, 190, 245), 2),
+                        QColor(20, 90, 75, 185),
+                    )
+                    marker.setZValue(6)
                 marker.setData(0, "map_evidence")
                 marker.setData(1, "actor")
                 marker.setData(2, index)
                 marker.setToolTip(region.title)
                 self.evidence_items.append(marker)
-                label = self.scene().addText(f"A{index}")
-                label.setDefaultTextColor(QColor(145, 255, 210))
-                label.setPos(region.x + region.width, region.y - 2)
-                label.setZValue(10)
-                label.setData(0, "map_evidence")
-                label.setData(1, "actor")
-                label.setData(2, index)
-                self.evidence_items.append(label)
+                if region.conditional:
+                    # This outline marks an alternative ROM spawn input. Its
+                    # reduced-opacity source sprite is not a claim that this
+                    # NPC is currently alive in the gameplay world.
+                    outline = self.scene().addRect(
+                        QRectF(region.x, region.y, region.width, region.height),
+                        QPen(QColor(255, 198, 82, 230), 1.5, Qt.PenStyle.DashLine),
+                        QBrush(Qt.BrushStyle.NoBrush),
+                    )
+                    outline.setZValue(10)
+                    outline.setData(0, "map_evidence")
+                    outline.setData(1, "actor")
+                    outline.setData(2, index)
+                    outline.setToolTip(region.title)
+                    self.evidence_items.append(outline)
+                    label = self.scene().addText("?")
+                    label.setDefaultTextColor(QColor(255, 220, 130))
+                    label.setPos(region.x + region.width, region.y - 8)
+                    label.setZValue(10)
+                    label.setData(0, "map_evidence")
+                    label.setData(1, "actor")
+                    label.setData(2, index)
+                    label.setToolTip(region.title)
+                    self.evidence_items.append(label)
 
     def redraw_annotations(self) -> None:
         for item in self.annotation_items:
@@ -1704,7 +1862,7 @@ class MapEntityViewer(QMainWindow):
         self.info.setMaximumHeight(220)
         self.info.setPlainText(
             "Click a map cell for its ROM layer words. Click a yellow ROM trigger or red collision region for its source record. "
-            "Click a ROM actor marker to inspect its list entry. Click a purple runtime-event or T/S/R marker to inspect its Lua data. "
+            "Click a ROM actor sprite to inspect its type, source record, direction, and gate. Click a purple runtime-event or T/S/R marker to inspect its Lua data. "
             "Drag entity outlines to move grouped annotations."
         )
         layout.addWidget(self.info)
@@ -1734,10 +1892,13 @@ class MapEntityViewer(QMainWindow):
         self.grid_toggle = self._add_toggle(bar, "32 px grid", True)
         self.collision_toggle = self._add_toggle(bar, "ROM collision", False)
         self.event_toggle = self._add_toggle(bar, "ROM event triggers", True)
-        self.actor_toggle = self._add_toggle(bar, "ROM default actors", True)
+        self.actor_toggle = self._add_toggle(bar, "ROM actor populations", True)
         self.behavior_toggle = self._add_toggle(bar, "Map events / spawns", True)
         bar.addSeparator()
-        legend = QLabel("Unreviewed: yellow   Building: cyan   Terrain: gray   Foliage: green   Entity collision: green dash-dot")
+        legend = QLabel(
+            "ROM actor sprites: solid = default list; faded amber outline = gated candidate   "
+            "Unreviewed: yellow   Building: cyan   Entity collision: green dash-dot"
+        )
         bar.addWidget(legend)
         self.addToolBarBreak(Qt.ToolBarArea.TopToolBarArea)
         tools = self.addToolBar("Map editing")
@@ -1862,11 +2023,13 @@ class MapEntityViewer(QMainWindow):
     def _update_scene_summary(self) -> None:
         info = self.map_by_id[self.scene_id]
         unreviewed = sum(1 for instance in self.instances if self.entities.get(instance.entity_id, EntityDefinition("", "")).category == "unreviewed")
+        default_actors = sum(1 for actor in self.map_view.actor_positions if not actor.conditional)
+        conditional_actors = sum(1 for actor in self.map_view.actor_positions if actor.conditional)
         self.statusBar().showMessage(
             f"Scene {self.scene_id:02d}: {info.width}×{info.height}; {len(self.instances)} annotations, {unreviewed} unreviewed. "
             f"Source encoding: {info.metatile_encoding}; collision regions: {len(self.map_view.collision_rectangles)}; "
             f"event regions: {len(self.map_view.event_rectangles)}; "
-            f"ROM default-list actor positions: {len(self.map_view.actor_positions)}; "
+            f"ROM actor markers: {default_actors} default-list, {conditional_actors} gated positions; "
             f"authored logic records: {len(self.behaviors)}."
         )
 
@@ -1896,7 +2059,7 @@ class MapEntityViewer(QMainWindow):
             self.collisions_list.clear()
             self.info.setPlainText(
                 "Click a map cell for its ROM layer words. Click a yellow ROM trigger or red collision region for its source record. "
-                "Click a ROM actor marker to inspect its list entry. Click an authored T/S/R mark to inspect its Lua data. "
+                "Click a ROM actor sprite to inspect its type, source record, direction, and gate. Click an authored T/S/R mark to inspect its Lua data. "
                 "Drag entity outlines to move grouped annotations."
             )
             self._loading_fields = False

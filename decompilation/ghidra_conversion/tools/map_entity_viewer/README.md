@@ -20,16 +20,19 @@ primary/secondary ROM tilemap words, coordinates, dimensions, and extracted
 record paths. These are source metatile indices, not semantic object labels.
 Click a yellow trigger or a visible red collision rectangle to inspect its ROM
 record, decoded route, addresses, and recorded runtime/QA owners in the side
-panel. The **ROM default actors** layer marks coordinates
-from the extracted default actor lists; click a marker to inspect its template,
-fixed-point position, ordered overrides, and source record. A listed position
-does not claim the actor is active on every visit. These ROM overlays are
-read-only evidence.
+panel. The **ROM actor populations** layer draws the source actor sprite and
+direction at each extracted map anchor. Click an icon to inspect its type,
+template/list/position addresses, fixed-point coordinates, ordered overrides,
+and activation rule. Default-list records and faded conditional alternatives
+have different styling; neither claims an actor is alive on every visit.
+These ROM overlays are read-only evidence.
 
-An authored entity is a grouped annotation: its bounding region, visual-part
-regions, and interaction regions share one area origin. Click the outline to
-inspect the entity and drag it to move the whole group. This edits placement
-metadata only; it does not erase, extract, or move pixels in the composed BMP.
+An authored entity is a grouped annotation: its visual-part regions and
+interaction regions share one area origin. Its selection frame follows the
+visual parts, while collision and interaction rectangles remain separate
+layers. Click the outline to inspect the entity and drag it to move the whole
+group. This edits placement metadata only; it does not erase, extract, or move
+pixels in the composed BMP.
 A separate image-composition/import step is still required before authored
 entity parts can replace pixels in a runtime map.
 
@@ -68,13 +71,28 @@ Each entity has its own folder under `entities/<entity-id>/`:
   New regions remain `unreviewed` until supported by ROM evidence or an
   explicit new-content decision.
 
-Area-level ROM actor origins are not scenery entities. The viewer reads the
-source-derived `decompilation/assets/field/entities/default-actors.tsv` and
-shows these as a separate evidence layer. Random/conditional encounter tables
-must be profiled separately; a default-list position is not an encounter rule.
-The default actor markers are ROM list entries; the orange authored spawn marks
-are separate authoring records and must not be mistaken for verified ROM
-spawns.
+Area-level ROM actor origins are not scenery entities. The viewer reads both
+`field/entities/default-actors.tsv` and the ROM-imported
+`field/entities/conditional-actor-candidates.tsv`. The first has the two
+profile-selected lists currently traced end to end (three scene-2 pedestrians
+and eight scene-20 records). The second contains the ROM's 69 one-of-three
+pedestrian candidates for scenes `0x15..0x2B`; it records the event/world-mode
+gate, retained selection, template, position, heading, and ordered overrides.
+Each marker uses the extracted pedestrian or corp-guard sprite in its ROM
+direction with the source frame origin. Solid sprites are default-list
+records; faded sprites with amber dashed outlines are conditional candidates.
+The three candidate icons describe alternatives and do not mean that three
+NPCs are simultaneously active. They are separate from the orange authored
+spawn marks, which remain unverified until their source behavior is traced.
+
+The conditional table can be regenerated and checked directly against the US
+ROM with `decompilation/tools/extract_field_actor_candidates.py`. The graphics
+importer exports all eight directional idle and entry poses for the actor
+kinds used by the source lists. Actor markers are drawn between the composed
+map and the independent priority-pixel layer so foreground pixels can occlude
+them; map selection and event/collision evidence remain separate overlays.
+Other timed activity lists and event-created actors are still open and are not
+invented as ambient NPCs.
 
 The first row in each file is a header. Keep one record per line; tabs and
 newlines are reserved as separators.

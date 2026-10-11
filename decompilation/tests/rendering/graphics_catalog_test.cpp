@@ -158,6 +158,12 @@ int main() {
                 character = '/';
             }
         }
+        // Map-viewer entity-part PNGs are authoring assets materialized from
+        // source map crops, not products of the ROM graphics catalog.
+        if (entry.path().extension() == ".png" &&
+            relative.rfind("field/entities/", 0U) == 0U) {
+            continue;
+        }
         files.insert(relative);
     }
     if (files != listed) {

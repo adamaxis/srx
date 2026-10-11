@@ -3129,7 +3129,14 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     }};
     constexpr std::size_t kIdleSelectorTableOffset = 0xC052U;
     constexpr std::size_t kEntrySelectorTableOffset = 0xC0B2U;
+    // The map viewer overlays source-defined one-of-three pedestrian
+    // candidates from the 0x1EDB88 table. Their heading overrides cover all
+    // eight C052 directions, even though the two profile-selected default
+    // lists above only use directions 0, 2, and 6. Import every directional
+    // pose so the viewer can show the actual ROM actor at each candidate
+    // position instead of a generic marker or a mismatched facing.
     std::array<bool, 8> used_actor_directions{};
+    used_actor_directions.fill(true);
     for (const auto& actor : default_actor_records) {
         auto rotated = static_cast<std::uint16_t>(
             static_cast<std::uint16_t>(actor.initial_heading << 3U) |

@@ -1415,21 +1415,51 @@ field/maps/mode-55-priority-overlay.png	priority-overlay	0	0	512	288	ROM field t
 field/entities/actors/corp-guard-idle.bmp	sprite	-13	-26	24	30	0xB45C/0xC052/0x600E kind=5 template=0x1D6A1C descriptor=0x86E0A selector=0x0 palette-line=2	extracted
 field/entities/actors/corp-guard-entry-dir-0-frame-0.bmp	sprite	-21	-23	28	27	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8B1EA selector=0xE8 frame=0 palette-line=2	extracted
 field/entities/actors/corp-guard-entry-dir-0-frame-1.bmp	sprite	-21	-23	31	31	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8B40E selector=0xE8 frame=1 palette-line=2	extracted
+field/entities/actors/corp-guard-idle-dir-1.bmp	sprite	-9	-25	20	29	0xB45C/0xC052/0x600E kind=5 template=0x1D6A1C descriptor=0x874F6 selector=0x4 palette-line=2	extracted
+field/entities/actors/corp-guard-entry-dir-1-frame-0.bmp	sprite	-21	-23	28	27	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8B1EA selector=0xEC frame=0 palette-line=2	extracted
+field/entities/actors/corp-guard-entry-dir-1-frame-1.bmp	sprite	-21	-23	31	31	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8B40E selector=0xEC frame=1 palette-line=2	extracted
 field/entities/actors/corp-guard-idle-dir-2.bmp	sprite	-8	-22	18	27	0xB45C/0xC052/0x600E kind=5 template=0x1D6A1C descriptor=0x87B06 selector=0x8 palette-line=2	extracted
 field/entities/actors/corp-guard-entry-dir-2-frame-0.bmp	sprite	-21	-23	28	27	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8B1EA selector=0xF0 frame=0 palette-line=2	extracted
 field/entities/actors/corp-guard-entry-dir-2-frame-1.bmp	sprite	-21	-23	31	31	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8B40E selector=0xF0 frame=1 palette-line=2	extracted
+field/entities/actors/corp-guard-idle-dir-3.bmp	sprite	-10	-24	20	27	0xB45C/0xC052/0x600E kind=5 template=0x1D6A1C descriptor=0x87FF2 selector=0xC palette-line=2	extracted
+field/entities/actors/corp-guard-entry-dir-3-frame-0.bmp	sprite	-5	-18	29	31	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8ADB4 selector=0xF4 frame=0 palette-line=2	extracted
+field/entities/actors/corp-guard-entry-dir-3-frame-1.bmp	sprite	-5	-15	31	28	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8AFD8 selector=0xF4 frame=1 palette-line=2	extracted
+field/entities/actors/corp-guard-idle-dir-4.bmp	sprite	-11	-26	28	29	0xB45C/0xC052/0x600E kind=5 template=0x1D6A1C descriptor=0x883CC selector=0x10 palette-line=2	extracted
+field/entities/actors/corp-guard-entry-dir-4-frame-0.bmp	sprite	-5	-18	29	31	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8ADB4 selector=0xF8 frame=0 palette-line=2	extracted
+field/entities/actors/corp-guard-entry-dir-4-frame-1.bmp	sprite	-5	-15	31	28	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8AFD8 selector=0xF8 frame=1 palette-line=2	extracted
+field/entities/actors/corp-guard-idle-dir-5.bmp	sprite	-12	-24	20	27	0xB45C/0xC052/0x600E kind=5 template=0x1D6A1C descriptor=0x88004 selector=0x14 palette-line=2	extracted
+field/entities/actors/corp-guard-entry-dir-5-frame-0.bmp	sprite	-27	-18	29	31	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8ADA2 selector=0xFC frame=0 palette-line=2	extracted
+field/entities/actors/corp-guard-entry-dir-5-frame-1.bmp	sprite	-27	-15	31	28	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8AFC6 selector=0xFC frame=1 palette-line=2	extracted
 field/entities/actors/corp-guard-idle-dir-6.bmp	sprite	-4	-22	18	27	0xB45C/0xC052/0x600E kind=5 template=0x1D6A1C descriptor=0x87B18 selector=0x18 palette-line=2	extracted
 field/entities/actors/corp-guard-entry-dir-6-frame-0.bmp	sprite	-5	-23	28	27	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8B1FC selector=0x100 frame=0 palette-line=2	extracted
 field/entities/actors/corp-guard-entry-dir-6-frame-1.bmp	sprite	-11	-23	31	31	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8B420 selector=0x100 frame=1 palette-line=2	extracted
+field/entities/actors/corp-guard-idle-dir-7.bmp	sprite	-15	-25	20	29	0xB45C/0xC052/0x600E kind=5 template=0x1D6A1C descriptor=0x87508 selector=0x1C palette-line=2	extracted
+field/entities/actors/corp-guard-entry-dir-7-frame-0.bmp	sprite	-5	-23	28	27	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8B1FC selector=0x104 frame=0 palette-line=2	extracted
+field/entities/actors/corp-guard-entry-dir-7-frame-1.bmp	sprite	-11	-23	31	31	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8B420 selector=0x104 frame=1 palette-line=2	extracted
 field/entities/actors/pedestrian-idle.bmp	sprite	-14	-24	27	28	0xB45C/0xC052/0x600E kind=11 template=0x1D6988 descriptor=0xA7684 selector=0x0 palette-line=3	extracted
 field/entities/actors/pedestrian-entry-dir-0-frame-0.bmp	sprite	-20	-22	27	31	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6988 descriptor=0xA467E selector=0xE8 frame=0 palette-line=3	extracted
 field/entities/actors/pedestrian-entry-dir-0-frame-1.bmp	sprite	-13	-24	29	29	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6988 descriptor=0xA445A selector=0xE8 frame=1 palette-line=3	extracted
+field/entities/actors/pedestrian-idle-dir-1.bmp	sprite	-10	-26	22	30	0xB45C/0xC052/0x600E kind=11 template=0x1D6988 descriptor=0xA6CF4 selector=0x4 palette-line=3	extracted
+field/entities/actors/pedestrian-entry-dir-1-frame-0.bmp	sprite	-20	-22	27	31	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6988 descriptor=0xA467E selector=0xEC frame=0 palette-line=3	extracted
+field/entities/actors/pedestrian-entry-dir-1-frame-1.bmp	sprite	-13	-24	29	29	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6988 descriptor=0xA445A selector=0xEC frame=1 palette-line=3	extracted
 field/entities/actors/pedestrian-idle-dir-2.bmp	sprite	-9	-25	17	27	0xB45C/0xC052/0x600E kind=11 template=0x1D6988 descriptor=0xA6440 selector=0x8 palette-line=3	extracted
 field/entities/actors/pedestrian-entry-dir-2-frame-0.bmp	sprite	-20	-22	27	31	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6988 descriptor=0xA467E selector=0xF0 frame=0 palette-line=3	extracted
 field/entities/actors/pedestrian-entry-dir-2-frame-1.bmp	sprite	-13	-24	29	29	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6988 descriptor=0xA445A selector=0xF0 frame=1 palette-line=3	extracted
+field/entities/actors/pedestrian-idle-dir-3.bmp	sprite	-11	-24	23	28	0xB45C/0xC052/0x600E kind=11 template=0x1D6988 descriptor=0xA6078 selector=0xC palette-line=3	extracted
+field/entities/actors/pedestrian-entry-dir-3-frame-0.bmp	sprite	-14	-20	27	31	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6988 descriptor=0xA4236 selector=0xF4 frame=0 palette-line=3	extracted
+field/entities/actors/pedestrian-entry-dir-3-frame-1.bmp	sprite	-11	-12	32	25	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6988 descriptor=0xA4012 selector=0xF4 frame=1 palette-line=3	extracted
+field/entities/actors/pedestrian-idle-dir-4.bmp	sprite	-13	-23	30	28	0xB45C/0xC052/0x600E kind=11 template=0x1D6988 descriptor=0xA7AA8 selector=0x10 palette-line=3	extracted
+field/entities/actors/pedestrian-entry-dir-4-frame-0.bmp	sprite	-14	-20	27	31	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6988 descriptor=0xA4236 selector=0xF8 frame=0 palette-line=3	extracted
+field/entities/actors/pedestrian-entry-dir-4-frame-1.bmp	sprite	-11	-12	32	25	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6988 descriptor=0xA4012 selector=0xF8 frame=1 palette-line=3	extracted
+field/entities/actors/pedestrian-idle-dir-5.bmp	sprite	-13	-24	23	28	0xB45C/0xC052/0x600E kind=11 template=0x1D6988 descriptor=0xA608A selector=0x14 palette-line=3	extracted
+field/entities/actors/pedestrian-entry-dir-5-frame-0.bmp	sprite	-18	-20	27	31	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6988 descriptor=0xA4224 selector=0xFC frame=0 palette-line=3	extracted
+field/entities/actors/pedestrian-entry-dir-5-frame-1.bmp	sprite	-21	-12	32	25	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6988 descriptor=0xA4000 selector=0xFC frame=1 palette-line=3	extracted
 field/entities/actors/pedestrian-idle-dir-6.bmp	sprite	-15	-25	17	27	0xB45C/0xC052/0x600E kind=11 template=0x1D6988 descriptor=0xA6452 selector=0x18 palette-line=3	extracted
 field/entities/actors/pedestrian-entry-dir-6-frame-0.bmp	sprite	-12	-22	27	31	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6988 descriptor=0xA466C selector=0x100 frame=0 palette-line=3	extracted
 field/entities/actors/pedestrian-entry-dir-6-frame-1.bmp	sprite	-19	-24	29	29	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6988 descriptor=0xA4448 selector=0x100 frame=1 palette-line=3	extracted
+field/entities/actors/pedestrian-idle-dir-7.bmp	sprite	-14	-26	22	30	0xB45C/0xC052/0x600E kind=11 template=0x1D6988 descriptor=0xA6D06 selector=0x1C palette-line=3	extracted
+field/entities/actors/pedestrian-entry-dir-7-frame-0.bmp	sprite	-12	-22	27	31	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6988 descriptor=0xA466C selector=0x104 frame=0 palette-line=3	extracted
+field/entities/actors/pedestrian-entry-dir-7-frame-1.bmp	sprite	-19	-24	29	29	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6988 descriptor=0xA4448 selector=0x104 frame=1 palette-line=3	extracted
 field/entities/idle-0.bmp	sprite	0	0	24	31	0x5A62/0x5FDC	extracted
 field/entities/idle-1.bmp	sprite	0	0	22	30	0x5A62/0x5FDC	extracted
 field/entities/idle-2.bmp	sprite	0	2	15	30	0x5A62/0x5FDC	extracted
