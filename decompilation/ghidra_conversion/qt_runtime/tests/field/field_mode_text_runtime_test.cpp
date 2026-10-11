@@ -127,9 +127,44 @@ int main() {
         return 9;
     }
     runtime.close();
-    if (!expect(!runtime.open(ScriptFieldModeContext{2U, 2U, 0})) ||
-        !expect(!runtime.open())) {
+    if (!expect(runtime.open_if_matched(
+                    ScriptFieldModeContext{2U, 1U, 0}) ==
+                FieldModeTextOpenResult::opened) ||
+        !expect(runtime.open()) ||
+        !expect(runtime.frames_remaining() == 30U) ||
+        !expect(runtime.panel().portrait_alias ==
+                "field.mode.entry.little.chiba.sprite") ||
+        !expect(runtime.panel().text_segment_count == 3U) ||
+        !expect(runtime.panel().text_segments[0].find("Little Chiba's") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().text_segments[2].find("cyberware") !=
+                std::string_view::npos)) {
         return 10;
+    }
+    image.fill(Qt::black);
+    QPainter little_chiba_painter(&image);
+    runtime.paint(little_chiba_painter);
+    little_chiba_painter.end();
+    if (!expect(has_green_ink(image, 88, 16, 216, 120)) ||
+        !expect(!region_is_color(image, 16, 32, 56, 72, QColor(0, 0, 0)))) {
+        return 11;
+    }
+    runtime.close();
+    if (!expect(runtime.open(ScriptFieldModeContext{2U, 1U, -1})) ||
+        !expect(runtime.panel().text_segments[0].find("bulky package") !=
+                std::string_view::npos)) {
+        return 12;
+    }
+    runtime.close();
+    if (!expect(runtime.open(ScriptFieldModeContext{2U, 1U, 1})) ||
+        !expect(runtime.panel().text_segments[0].find("eyes light up") !=
+                std::string_view::npos)) {
+        return 13;
+    }
+    runtime.close();
+    if (!expect(!runtime.open(ScriptFieldModeContext{2U, 2U, 0})) ||
+        !expect(!runtime.open()) || !expect(runtime.failure().empty())) {
+        return 14;
     }
     return 0;
 }

@@ -18,6 +18,12 @@ enum class FieldModeTextAdvanceResult : std::uint8_t {
     returned_to_route,
 };
 
+enum class FieldModeTextOpenResult : std::uint8_t {
+    opened,
+    no_content,
+    failed,
+};
+
 // Host presenter for the source's generic mode-text prompt. Lua selects its
 // content from native field context; this class owns only generic prompt
 // timing and the resolved panel view.
@@ -28,6 +34,8 @@ public:
         scripting::GameScriptRuntime* scripts) noexcept;
 
     bool open(const scripting::ScriptFieldModeContext& context);
+    FieldModeTextOpenResult open_if_matched(
+        const scripting::ScriptFieldModeContext& context);
     FieldModeTextAdvanceResult advance_controller_events(
         std::uint16_t event_word, std::uint16_t elapsed_frames = 1U);
 

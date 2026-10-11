@@ -931,6 +931,7 @@ private:
     void snapshot_world_activity_source_scene();
     bool restore_world_activity_source_scene(
         integration::FieldRuntimeCoordinatorState& runtime_state);
+    bool resume_field_mode_entry_route();
     bool resume_jump_house_entry_transition();
     void begin_field_modal_return_transition();
     void handle_field_map_event_activations(
@@ -1381,6 +1382,8 @@ private:
     // modal yields across frames, so retain the selected area route and resume
     // its scene-entry tail only after the player dismisses the entry page.
     bool jump_house_entry_transition_pending_ = false;
+    bool field_mode_entry_transition_pending_ = false;
+    std::optional<std::uint16_t> field_mode_entry_destination_scene_;
     std::int8_t field_indexed_title_service_result_ = 0;
     std::uint8_t field_palette_fade_steps_ = 0U;
     std::uint8_t field_modal_return_transition_frames_remaining_ = 0U;

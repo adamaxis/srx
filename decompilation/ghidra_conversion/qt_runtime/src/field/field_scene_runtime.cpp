@@ -848,12 +848,41 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
         return event_route.script == FieldScriptId::ares_weapon_emporium;
     };
     callbacks.prepare_field_mode_exit =
-        [this, &is_ares_shop_event, &continues_through_area_event_table](
-                                            FieldExitOrchestratorState& state) {
+        [this, &runtime_state, &event_route, &is_ares_shop_event,
+         &continues_through_area_event_table](
+            FieldExitOrchestratorState& state) {
         if (is_ares_shop_event()) {
             return false;
         }
         if (continues_through_area_event_table()) {
+            const auto content = field_mode_text_.open_if_matched(
+                scripting::ScriptFieldModeContext{
+                    runtime_state.field_mode,
+                    field_movement_transition_state_.mode_event_code,
+                    field_exit_alternate_result_});
+            if (content == FieldModeTextOpenResult::opened) {
+                if (!event_route.area_event_target.has_value()) {
+                    field_mode_text_.close();
+                    source_boundary(
+                        "field.mode_text.entry_destination_missing");
+                    state.caller_exit_status = -1;
+                    return true;
+                }
+                field_mode_entry_transition_pending_ = true;
+                field_mode_entry_destination_scene_ =
+                    *event_route.area_event_target;
+                field_palette_fade_steps_ = 0U;
+                source_boundary(
+                    "field.mode_text.area_event_entry_opened");
+                state.caller_exit_status = -1;
+                return true;
+            }
+            if (content == FieldModeTextOpenResult::failed) {
+                source_boundary(
+                    "field.mode_text.area_event_entry_failed");
+                state.caller_exit_status = -1;
+                return true;
+            }
             source_boundary("field.exit.area_event_table_continuation");
             return false;
         }
@@ -4411,6 +4440,8 @@ bool FieldSceneRuntime::bootstrap(
         QRandomGenerator::global()->generate());
     field_opening_auto_walk_ = FieldOpeningAutoWalkState{};
     jump_house_entry_transition_pending_ = false;
+    field_mode_entry_transition_pending_ = false;
+    field_mode_entry_destination_scene_.reset();
     field_indexed_title_service_result_ = 0;
     field_controller_sample_state_ = ControllerSampleState{};
     field_controller_latch_state_ = ControllerLatchState{};
@@ -4919,6 +4950,8 @@ bool FieldSceneRuntime::bootstrap(
     // continuation (0xB574); a restored save never takes this branch.
     field_opening_auto_walk_ = FieldOpeningAutoWalkState{};
     jump_house_entry_transition_pending_ = false;
+    field_mode_entry_transition_pending_ = false;
+    field_mode_entry_destination_scene_.reset();
     field_indexed_title_service_result_ = 0;
     field_runtime_state_ = integration::FieldRuntimeCoordinatorState{};
     field_runtime_state_.scene_id =
@@ -6823,6 +6856,61 @@ bool FieldSceneRuntime::resume_jump_house_entry_transition() {
     return true;
 }
 
+bool FieldSceneRuntime::resume_field_mode_entry_route() {
+    if (!field_mode_entry_transition_pending_ ||
+        !field_mode_entry_destination_scene_.has_value()) {
+        return false;
+    }
+    field_mode_entry_transition_pending_ = false;
+    const auto expected_scene = *field_mode_entry_destination_scene_;
+    field_mode_entry_destination_scene_.reset();
+
+    if (!active_field_script_route_.has_value() ||
+        active_field_script_route_->kind != FieldScriptRouteKind::area_event ||
+        active_field_script_route_->area_event_target !=
+            std::optional<std::uint8_t>{
+                static_cast<std::uint8_t>(expected_scene)}) {
+        source_boundary("field.mode_text.area_event_route_lost");
+        return false;
+    }
+
+    const auto initialize =
+        field_runtime_callbacks_.initialize_world_activity_mode;
+    if (!initialize) {
+        source_boundary(
+            "field.mode_text.area_event_route_resume_unavailable");
+        return false;
+    }
+
+    field_runtime_state_.scene_id =
+        state_.field_scene_buffers.scene_reference;
+    field_runtime_state_.field_mode =
+        state_.field_scene_buffers.field_resource_mode;
+    field_runtime_state_.scene_runtime_state = 0U;
+    field_runtime_state_.field_scene_gate = 0U;
+    field_runtime_state_.field_transition_requested = false;
+    initialize(field_runtime_state_);
+
+    if (field_runtime_state_.field_transition_requested ||
+        field_runtime_state_.scene_id != expected_scene) {
+        source_boundary("field.mode_text.area_event_scene_prepare_failed");
+        return false;
+    }
+
+    field_runtime_state_.scene_refresh_marker = -1;
+    field_movement_transition_state_.scene_id = static_cast<std::uint8_t>(
+        field_runtime_state_.scene_id);
+    world_frame_logic_state_.world_mode =
+        static_cast<std::uint8_t>(field_runtime_state_.scene_id);
+    advance_field_scene_transition_after_modal();
+    if (state_.field_scene_buffers.scene_reference != expected_scene) {
+        source_boundary("field.mode_text.area_event_scene_reentry_failed");
+        return false;
+    }
+    source_boundary("field.mode_text.area_event_scene_entered");
+    return true;
+}
+
 void FieldSceneRuntime::begin_field_modal_return_transition() {
     // ROM 0x2BD2 refreshes the field immediately after the modal callback.
     // The native presentation adds a deliberate 60-frame fade-in so that
@@ -7000,6 +7088,12 @@ void FieldSceneRuntime::advance_frame() {
                 } else {
                     source_boundary("field.shop.ares.open_failed");
                 }
+            } else if (field_mode_entry_transition_pending_) {
+                if (!resume_field_mode_entry_route()) {
+                    source_boundary(
+                        "field.mode_text.area_event_route_resume_failed");
+                }
+                begin_field_modal_return_transition();
             }
         }
         return;

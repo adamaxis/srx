@@ -11976,9 +11976,76 @@ int run_field_scene26_event1_physical_entry_qa(
 
     for (std::uint16_t settle = 0U;
          settle < 180U &&
-         field_scene.field_scene_reference_for_dump() == 2U;
+         field_scene.field_scene_reference_for_dump() == 2U &&
+         !field_scene.field_mode_text_open_for_dump();
          ++settle) {
         step(0U);
+    }
+    const auto& entry_panel =
+        field_scene.field_mode_text_panel_for_dump();
+    const bool little_chiba_entry_text =
+        entry_panel.open &&
+        entry_panel.portrait_alias ==
+            "field.mode.entry.little.chiba.sprite" &&
+        entry_panel.text_segment_count >= 3U &&
+        entry_panel.text_segments[0].find("Little Chiba's Chop Shop") !=
+            std::string_view::npos &&
+        entry_panel.text_segments[2].find("install powerful cyberware") !=
+            std::string_view::npos &&
+        entry_panel.option_count == 0U;
+    if (field_scene.field_scene_reference_for_dump() != 2U ||
+        !field_scene.field_mode_text_open_for_dump() ||
+        !little_chiba_entry_text ||
+        field_scene.field_mode_text_frames_remaining_for_dump() != 30U ||
+        !save("little-chiba-entry")) {
+        std::cerr << "Scene-26 event-1 entry QA: source-selected Little Chiba "
+                     "mode text did not replace the whole field screen "
+                     "before the destination route (scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", mode_text="
+                  << field_scene.field_mode_text_open_for_dump()
+                  << ", frames="
+                  << field_scene.field_mode_text_frames_remaining_for_dump()
+                  << ", portrait=" << entry_panel.portrait_alias << ")\n";
+        for (std::size_t segment = 0U;
+             segment < entry_panel.text_segment_count; ++segment) {
+            std::cerr << "  text[" << segment << "]: "
+                      << entry_panel.text_segments[segment] << '\n';
+        }
+        return 3;
+    }
+    write_state("little-chiba-entry");
+
+    const auto mode_text_audio_count = field_audio_events.size();
+    field_scene.set_controller_port_byte(0x40U); // early A is ignored
+    field_scene.advance_frame();
+    ++frame;
+    field_scene.set_controller_port_byte(0U);
+    for (std::uint8_t delay = 0U; delay < 29U; ++delay) {
+        field_scene.advance_frame();
+        ++frame;
+    }
+    if (!field_scene.field_mode_text_open_for_dump() ||
+        field_scene.field_mode_text_frames_remaining_for_dump() != 0U ||
+        field_audio_events.size() != mode_text_audio_count ||
+        !save("little-chiba-entry-delay-30")) {
+        std::cerr << "Scene-26 event-1 entry QA: early input dismissed the "
+                     "30-frame source prompt or unexpected audio played\n";
+        return 3;
+    }
+    field_scene.set_controller_port_byte(0x40U); // fresh A after delay
+    field_scene.advance_frame();
+    ++frame;
+    field_scene.set_controller_port_byte(0U);
+    for (std::uint16_t settle = 0U;
+         settle < 180U &&
+         (field_scene.field_scene_reference_for_dump() == 2U ||
+          field_scene.field_transition_pending_for_dump() ||
+          field_scene.field_interaction_transition_active_for_dump() ||
+          field_scene.field_modal_return_transition_frames_for_dump() != 0U);
+         ++settle) {
+        field_scene.advance_frame();
+        ++frame;
     }
     const auto& destination_metadata =
         field_scene.state().field_scene_buffers.source_metadata;
@@ -12048,16 +12115,21 @@ int run_field_scene26_event1_physical_entry_qa(
         return 3;
     }
 
-    const auto route_continuation = std::find(
+    const auto entry_page_opened = std::find(
         source_boundaries.begin(), source_boundaries.end(),
-        "field.exit.area_event_table_continuation");
+        "field.mode_text.area_event_entry_opened");
+    const auto resumed_route = std::find(
+        source_boundaries.begin(), source_boundaries.end(),
+        "field.mode_text.area_event_scene_entered");
     const auto scene_prepared = std::find(
         source_boundaries.begin(), source_boundaries.end(),
         "field.world_activity.scene_prepared");
-    if (route_continuation == source_boundaries.end() ||
+    if (entry_page_opened == source_boundaries.end() ||
+        resumed_route == source_boundaries.end() ||
         scene_prepared == source_boundaries.end()) {
-        std::cerr << "Scene-26 event-1 entry QA: source area-table route or "
-                     "destination preparation boundary was not reached\n";
+        std::cerr << "Scene-26 event-1 entry QA: source entry page, resumed "
+                     "area-table route, or destination preparation boundary "
+                     "was not reached\n";
         return 3;
     }
     {

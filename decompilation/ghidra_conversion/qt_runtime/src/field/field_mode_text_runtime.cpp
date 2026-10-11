@@ -2,6 +2,7 @@
 
 #include <QPainter>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -63,7 +64,12 @@ bool FieldModeTextRuntime::resolve_panel(const std::string_view text_key) {
             panel_ = DialoguePanelView{};
             return false;
         }
-        const auto separator = text->find('\n', cursor);
+        const auto newline = text->find('\n', cursor);
+        const auto pipe = text->find('|', cursor);
+        const auto separator =
+            newline == std::string_view::npos ? pipe
+            : pipe == std::string_view::npos ? newline
+                                             : std::min(newline, pipe);
         const auto end = separator == std::string_view::npos
                              ? text->size()
                              : separator;
@@ -79,16 +85,21 @@ bool FieldModeTextRuntime::resolve_panel(const std::string_view text_key) {
 
 bool FieldModeTextRuntime::open(
     const scripting::ScriptFieldModeContext& context) {
+    return open_if_matched(context) == FieldModeTextOpenResult::opened;
+}
+
+FieldModeTextOpenResult FieldModeTextRuntime::open_if_matched(
+    const scripting::ScriptFieldModeContext& context) {
     close();
     failure_.clear();
     if (!assets_loaded_) {
         failure_ = "mode-text prompt presentation assets are not loaded";
-        return false;
+        return FieldModeTextOpenResult::failed;
     }
 
     if (scripts_ == nullptr) {
         failure_ = "mode-text prompt has no Lua script runtime";
-        return false;
+        return FieldModeTextOpenResult::failed;
     }
     scripts_->set_field_mode_context(context);
     const auto content =
@@ -97,7 +108,7 @@ bool FieldModeTextRuntime::open(
         failure_ = scripts_->failure().empty()
                        ? "Lua field-mode prompt content is unavailable"
                        : scripts_->failure();
-        return false;
+        return FieldModeTextOpenResult::failed;
     }
     const auto status = content->find("status");
     const auto text_key = content->find("text_key");
@@ -105,18 +116,17 @@ bool FieldModeTextRuntime::open(
     if (status == content->end() || text_key == content->end() ||
         portrait_alias == content->end()) {
         failure_ = "Lua field-mode prompt content is incomplete";
-        return false;
+        return FieldModeTextOpenResult::failed;
     }
     if (status->second == "unmatched") {
-        failure_ = "field mode/event has no Lua mode-text prompt";
-        return false;
+        return FieldModeTextOpenResult::no_content;
     }
     if (status->second != "matched") {
         failure_ = "Lua field-mode prompt has an unknown status";
-        return false;
+        return FieldModeTextOpenResult::failed;
     }
     if (!resolve_panel(text_key->second)) {
-        return false;
+        return FieldModeTextOpenResult::failed;
     }
     if (portrait_alias->second != "none") {
         portrait_alias_storage_ = portrait_alias->second;
@@ -132,10 +142,10 @@ bool FieldModeTextRuntime::open(
         failure_ =
             "generic mode-text prompt did not enter its timed exit phase";
         panel_ = DialoguePanelView{};
-        return false;
+        return FieldModeTextOpenResult::failed;
     }
     open_ = true;
-    return true;
+    return FieldModeTextOpenResult::opened;
 }
 
 FieldModeTextAdvanceResult FieldModeTextRuntime::advance_controller_events(

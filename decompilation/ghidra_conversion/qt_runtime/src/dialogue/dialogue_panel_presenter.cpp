@@ -18,6 +18,8 @@ bool DialoguePanelPresenter::load_assets(
     portraits_.clear();
 
     constexpr std::string_view kPortraitPrefix = "dialogue.portraits.";
+    constexpr std::string_view kFieldModePortraitPrefix =
+        "field.mode.entry.";
     constexpr std::array<std::string_view, 2> kFrameAliases{{
         "dialogue.panel.frame",
         "dialogue.panel.frame.alternate.left.panel",
@@ -79,7 +81,9 @@ bool DialoguePanelPresenter::load_assets(
             alias.size() >= kPortraitPrefix.size() &&
             alias.substr(0U, kPortraitPrefix.size()) == kPortraitPrefix;
         const bool is_mode_profile =
-            alias == "field.mode.entry.ares.sprite";
+            alias.size() >= kFieldModePortraitPrefix.size() &&
+            alias.substr(0U, kFieldModePortraitPrefix.size()) ==
+                kFieldModePortraitPrefix;
         if (record.kind != "image" ||
             (!is_dialogue_portrait && !is_mode_profile)) {
             continue;

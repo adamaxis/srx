@@ -599,7 +599,7 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         output << '"';
     };
 
-    const std::array<std::pair<const char*, std::size_t>, 83> records{{
+    const std::array<std::pair<const char*, std::size_t>, 86> records{{
         // Stoker prompt pointers consumed by the source event/profile path.
         {"stoker.motel.arrival.title", 0x1167EBU},
         {"stoker.motel.arrival.more", 0x0FE5BFU},
@@ -647,6 +647,12 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         {"field.security-terminal.floor.3", 0x11CF1FU},
         {"field.security-terminal.floor.4", 0x11CF2EU},
         {"field.security-terminal.floor.5", 0x11CF3CU},
+        // Redmond scene-2/event-1 mode-exit text. ROM 0x1F830 chooses the
+        // description when FFF0D5 is clear, the payment text when positive,
+        // and the package handoff when negative.
+        {"field.mode.little_chiba.description", 0x11739EU},
+        {"field.mode.little_chiba.package_handoff", 0x1176BBU},
+        {"field.mode.little_chiba.package_payment", 0x117718U},
         // Scene 2/event 7 indexed title service 22. ROM 0x545B6 passes this
         // three-record narrative to the shared field prompt runner.
         {"redmond.vigore-search.page-0", 0x117193U},
@@ -2453,6 +2459,14 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                                          ares_mode_sprite.height,
                                          ares_mode_sprite.pixels},
           "sprite", "0x1FA78/0x1F246/0x1F292/0x1220C0", true);
+    const auto little_chiba_mode_sprite =
+        shadowrun::graphics::decode_genesis_field_mode_profile_sprite(
+            rom, 0x12200CU);
+    write("field/mode-entry/little-chiba-sprite.bmp",
+          shadowrun::native::NativeImage{little_chiba_mode_sprite.width,
+                                         little_chiba_mode_sprite.height,
+                                         little_chiba_mode_sprite.pixels},
+          "sprite", "0x1F830/0x1F246/0x1F292/0x12200C", true);
     write_array("field/hud/face-", assets.field_hud_faces, "sprite", "0x3404",
                 true);
     write_array("field/hud/item-", assets.field_hud_item_blocks, "sprite",
