@@ -214,4 +214,14 @@ DialoguePanelView make_script_menu_panel_view(
     bool cursor_selection = false,
     std::size_t selected_option = 0U);
 
+// A dynamic prompt and its choices share one full redraw of the dialogue
+// panel, so no old title or button art can remain underneath the new page.
+DialoguePanelView make_script_menu_prompt_panel_view(
+    const std::optional<DialogueSpeakerPresentation>& speaker,
+    std::string_view inline_text,
+    const std::vector<std::pair<std::string, std::string>>& choices,
+    const DialogueTextResolver& resolve_text,
+    bool cursor_selection = false,
+    std::size_t selected_option = 0U);
+
 } // namespace shadowrun::ghidra_conversion::qt_runtime

@@ -2,15 +2,17 @@
 -- selection and the escort's actor behavior are owned by this run module.
 local BodyguardEscort = {}
 
-function BodyguardEscort.prepare_offer(context)
+function BodyguardEscort.prepare_offer(context, source_record)
     local support = game.modules.run_support
+    local payment = support.negotiate_payment(source_record)
     local route = support.choose_contract_route(context)
     local offer = game.modules.run_support.new_offer(
         "bodyguard_escort",
         "escort",
         "escort_client_to_destination",
         "client_reaches_destination_alive",
-        route)
+        route,
+        payment)
     game.runs.registry.current_offer = offer
     return offer.id
 end
@@ -22,12 +24,16 @@ function BodyguardEscort.present_offer()
     game.ui.say_text(
         "Go to " .. route.origin.location_name .. " " ..
         route.origin.area_suffix .. "|There you will meet my client, " ..
-        route.client_name .. ".|Escort my client to " ..
-        route.destination.location_name .. " " ..
+        route.client_name .. ".", true)
+    local terms =
+        "Escort my client to " .. route.destination.location_name .. " " ..
         route.destination.area_suffix ..
-        "|You will be paid by my client upon safe arrival at the specified destination.",
-        true)
-    return "description_presented"
+        "|You will be paid by my client upon safe arrival at the specified destination."
+    -- ROM 0x214CE invokes this handler-specific second description and
+    -- returns its text-only descriptor; the ghoul and courier branches instead
+    -- enter the shared 0x214F6 payment/confirmation screen.
+    game.ui.say_text(terms, false)
+    return game.runs.registry.resolve_current_offer("yes")
 end
 
 return BodyguardEscort

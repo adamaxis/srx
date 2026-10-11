@@ -36,6 +36,10 @@ struct ScriptMenuDefinition {
     std::string text_profile;
     std::string speaker_id;
     std::string title_key;
+    // Dynamic menu prompts stay in the same menu panel as their choices.
+    // Empty selects the catalog-backed title_key path.
+    std::string inline_text;
+    bool inline_prompt = false;
     std::vector<ScriptMenuChoice> choices;
     ScriptMenuInputMode input_mode = ScriptMenuInputMode::button_choice;
     std::size_t selected_index = 0U;

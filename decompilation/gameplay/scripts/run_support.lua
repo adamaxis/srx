@@ -104,6 +104,41 @@ function Support.bounded_random(bound)
     return roll
 end
 
+function Support.negotiate_payment(source_record)
+    assert(type(source_record) == "table")
+    local base = source_record.base_payment
+    local scale = source_record.negotiation_scale
+    assert(type(base) == "number" and base >= 0 and base % 1 == 0)
+    assert(type(scale) == "number" and scale >= 0 and scale % 1 == 0)
+
+    -- ROM 0x1E69C reads the first live runner's Negotiation skill, draws
+    -- below (source row scale * skill) + 1, then adds five per result.
+    local result = game.services.call("runner", "negotiation_skill")
+    local skill_text = type(result) == "string" and
+        result:match("^skill_(%d+)$") or nil
+    local skill = skill_text ~= nil and tonumber(skill_text) or nil
+    assert(skill ~= nil and skill >= 0 and skill % 1 == 0,
+        "runner service returned an invalid Negotiation skill")
+    local bound = scale * skill + 1
+    local roll = Support.bounded_random(bound)
+    return {
+        base_amount = base,
+        negotiated_amount = base + roll * 5,
+        negotiation_skill = skill,
+        negotiation_bound = bound,
+        negotiation_roll = roll,
+    }
+end
+
+function Support.amount_in_reserved_field(amount, width)
+    assert(type(amount) == "number" and amount >= 0 and amount % 1 == 0)
+    assert(type(width) == "number" and width > 0 and width % 1 == 0)
+    local digits = tostring(amount)
+    assert(#digits <= width,
+        "run amount exceeds the ROM payment text field")
+    return string.rep(" ", width - #digits) .. digits
+end
+
 local function choose_location(area_id)
     local roll = Support.bounded_random(10)
     local local_index = Support.location_rolls_by_area[area_id][roll + 1]
@@ -160,7 +195,7 @@ function Support.choose_contract_route(context)
 end
 
 function Support.new_offer(id, category, objective, completion_condition,
-                           route)
+                           route, payment)
     assert(type(id) == "string" and id ~= "")
     assert(type(category) == "string" and category ~= "")
     assert(type(objective) == "string" and objective ~= "")
@@ -176,7 +211,24 @@ function Support.new_offer(id, category, objective, completion_condition,
     if route ~= nil then
         offer.route = route
     end
+    if payment ~= nil then
+        offer.payment = payment
+    end
     return offer
+end
+
+function Support.resolve_offer_decision(choice)
+    local result = game.runs.registry.resolve_current_offer(choice)
+    if result == "accepted" then
+        -- ROM text 0x105F81/0x105FDD/0x105FF1 follows an accepted offer.
+        local acceptance_text =
+            "<\"Mr. Johnson\" logs the run on his pocket secretary and " ..
+            "downloads the information to you.>|Thanks, my friend!|" ..
+            "You keep comin' to me and I'll keep ya' runnin'."
+        game.ui.say_text(
+            acceptance_text, false)
+    end
+    return result
 end
 
 return Support

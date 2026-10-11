@@ -121,11 +121,12 @@ int main() {
     StokerMotelRoomPaymentOutcome room_payment_outcome{};
     std::uint32_t decker_contact_funds = 1000U;
     std::size_t decker_contact_purchase_calls = 0U;
-    const std::array<std::string_view, 4> run_random_services{{
-        "random.bounded_8", "random.bounded_10", "random.bounded_12",
+    std::array<std::string_view, 6> run_random_services{{
+        "random.bounded_8", "runner.negotiation_skill",
+        "random.bounded_4", "random.bounded_10", "random.bounded_12",
         "random.bounded_10"}};
-    std::array<std::string_view, 4> run_random_results{{
-        "roll_2", "roll_9", "roll_0", "roll_5"}};
+    std::array<std::string_view, 6> run_random_results{{
+        "roll_4", "skill_3", "roll_3", "roll_9", "roll_0", "roll_5"}};
     std::size_t run_random_call = 0U;
     FieldDialogueRuntime runtime(
         [&boundary](const std::string_view reason) { boundary = reason; },
@@ -175,7 +176,8 @@ int main() {
         [&decker_contact_funds, &decker_contact_purchase_calls,
          &run_random_services, &run_random_results, &run_random_call](
             const std::string_view service_id) -> std::optional<std::string> {
-            if (service_id.rfind("random.bounded_", 0U) == 0U) {
+            if (service_id.rfind("random.bounded_", 0U) == 0U ||
+                service_id == "runner.negotiation_skill") {
                 if (run_random_call >= run_random_services.size() ||
                     service_id != run_random_services[run_random_call]) {
                     return std::nullopt;
@@ -510,9 +512,15 @@ int main() {
         return 107;
     }
 
-    // The work option now enters the Lua run registry. Context zero chooses
-    // a weighted ROM contract, then the selected run script supplies its own
-    // independently-generated route and description through the common panel.
+    // Context zero consumes the ROM selection and Negotiation rolls before
+    // route generation. The run-specific Lua flow then presents the source
+    // description followed by an inline payment decision panel.
+    run_random_services = {{
+        "random.bounded_8", "runner.negotiation_skill",
+        "random.bounded_4", "random.bounded_10", "random.bounded_12",
+        "random.bounded_10"}};
+    run_random_results = {{
+        "roll_4", "skill_3", "roll_3", "roll_9", "roll_0", "roll_5"}};
     run_random_call = 0U;
     if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
         !expect(runtime.advance_controller_events(0x1000U) ==
@@ -538,22 +546,65 @@ int main() {
         !expect(capture_jump_house("run-package-description")) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
-        !expect(runtime.panel().option_count == 3U) ||
-        !expect(runtime.advance_controller_events(0x2000U) ==
+        !expect(runtime.panel().source_complete) ||
+        !expect(!runtime.panel().has_more) ||
+        !expect(runtime.panel().option_count == 2U) ||
+        !expect(runtime.panel().text_segment_count == 7U) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "You are offered    40$") != std::string_view::npos) ||
+        !expect(runtime.panel().text_segments[5].find("55$.") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().text_segments[6].find(
+                    "Whatta' you say, friend?") != std::string_view::npos) ||
+        !expect(runtime.panel().text_segments[0].find("Ares Weapon") ==
+                std::string_view::npos) ||
+        !expect(runtime.panel().options[0].source_label == "Yes") ||
+        !expect(runtime.panel().options[1].source_label == "No") ||
+        !expect(capture_jump_house("run-package-payment-prompt")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(gameplay_scripts.call_string("run_registry", "active_run_id") ==
+                std::optional<std::string>{"package_delivery"}) ||
+        !expect(gameplay_scripts.call_string(
+                    "run_registry", "last_offer_result") ==
+                std::optional<std::string>{"accepted"}) ||
+        !expect(gameplay_scripts.call_string(
+                    "run_registry", "active_completion_condition") ==
+                std::optional<std::string>{"package_delivered_safely"}) ||
+        !expect([&gameplay_scripts]() {
+            const auto route =
+                gameplay_scripts.string_map("run_registry", "active_route_ids");
+            return route.has_value() &&
+                   route->at("origin_location") == "location_11" &&
+                   route->at("destination_location") == "location_5";
+        }()) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "logs the run on his pocket secretary") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().option_count == 0U) ||
+        !expect(!runtime.panel().has_more) ||
+        !expect(capture_jump_house("run-package-accepted")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::returned_to_field)) {
-        std::cerr << "Gunderson's work option did not prepare and present the "
-                     "selected Lua run description\n";
+        std::cerr << "Gunderson's courier offer did not show the ROM-derived "
+                     "payment, accept it in Lua, and clear the panel before "
+                     "the acceptance response\n";
         return 108;
     }
 
-    run_random_results.fill("roll_0");
+    run_random_services = {{
+        "random.bounded_8", "runner.negotiation_skill",
+        "random.bounded_10", "random.bounded_10", "random.bounded_12",
+        "random.bounded_10"}};
+    run_random_results = {{
+        "roll_0", "skill_3", "roll_2", "roll_0", "roll_0", "roll_0"}};
     run_random_call = 0U;
     if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
         !expect(runtime.advance_controller_events(0x1000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
-        !expect(run_random_call == 1U) ||
+        !expect(run_random_call == 3U) ||
         !expect(runtime.panel().text_segments[0].find("Ghouls somewhere") !=
                 std::string_view::npos) ||
         !expect(runtime.panel().text_segments[0].find("Redmond Barrens") !=
@@ -561,16 +612,44 @@ int main() {
         !expect(runtime.panel().text_segments[2].find("Kill as many") !=
                 std::string_view::npos) ||
         !expect(capture_jump_house("run-ghoul-bounty-description")) ||
-        !expect(runtime.advance_controller_events(0x4000U) ==
+        !expect([&runtime, &boundary]() {
+            const auto result = runtime.advance_controller_events(0x4000U);
+            if (result != FieldDialogueAdvanceResult::prompt_advanced) {
+                std::cerr << "ghoul prompt transition result="
+                          << static_cast<int>(result) << " boundary="
+                          << boundary << " runtime=" << runtime.failure()
+                          << '\n';
+            }
+            return result == FieldDialogueAdvanceResult::prompt_advanced;
+        }()) ||
+        !expect(capture_jump_house("run-ghoul-payment-prompt")) ||
+        !expect(runtime.panel().option_count == 2U) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "You are offered    10$") != std::string_view::npos) ||
+        !expect(runtime.panel().text_segments[5].find(
+                    "20$ each, up to twenty") != std::string_view::npos) ||
+        !expect(runtime.advance_controller_events(0x1000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(gameplay_scripts.call_string(
+                    "run_registry", "last_offer_result") ==
+                std::optional<std::string>{"declined"}) ||
+        !expect(runtime.panel().option_count == 3U) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "You are offered") == std::string_view::npos) ||
+        !expect(capture_jump_house("run-ghoul-declined-root")) ||
         !expect(runtime.advance_controller_events(0x2000U) ==
                 FieldDialogueAdvanceResult::returned_to_field)) {
-        std::cerr << "Gunderson's ghoul bounty did not present its own Lua "
-                     "description\n";
+        std::cerr << "Gunderson's ghoul bounty did not show its per-ghoul "
+                     "terms, honor No, and redraw the root menu cleanly\n";
         return 109;
     }
 
-    run_random_results = {{"roll_1", "roll_4", "roll_6", "roll_5"}};
+    run_random_services = {{
+        "random.bounded_8", "runner.negotiation_skill",
+        "random.bounded_4", "random.bounded_10", "random.bounded_12",
+        "random.bounded_10"}};
+    run_random_results = {{
+        "roll_1", "skill_3", "roll_3", "roll_4", "roll_6", "roll_5"}};
     run_random_call = 0U;
     if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
         !expect(runtime.advance_controller_events(0x1000U) ==
@@ -582,15 +661,26 @@ int main() {
                 std::string_view::npos) ||
         !expect(runtime.panel().text_segments[1].find("Heinrich Michaels") !=
                 std::string_view::npos) ||
-        !expect(runtime.panel().text_segments[2].find(
-                    "the Jackal's Lantern") != std::string_view::npos) ||
-        !expect(runtime.panel().text_segments[3].find("safe arrival") !=
-                std::string_view::npos) ||
-        !expect(capture_jump_house("run-bodyguard-description")) ||
+        !expect(capture_jump_house("run-bodyguard-origin-page")) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
-        !expect(runtime.advance_controller_events(0x2000U) ==
-                FieldDialogueAdvanceResult::returned_to_field)) {
+        !expect(!runtime.panel().has_more) ||
+        !expect(runtime.panel().option_count == 0U) ||
+        !expect(runtime.panel().text_segment_count == 2U) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "the Jackal's Lantern") != std::string_view::npos) ||
+        !expect(runtime.panel().text_segments[1].find("safe arrival") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "You are offered") == std::string_view::npos) ||
+        !expect(capture_jump_house("run-bodyguard-terms")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(gameplay_scripts.call_string("run_registry", "active_run_id") ==
+                std::optional<std::string>{"bodyguard_escort"}) ||
+        !expect(gameplay_scripts.call_string(
+                    "run_registry", "last_offer_result") ==
+                std::optional<std::string>{"accepted"})) {
         std::cerr << "Gunderson's bodyguard offer did not present its own "
                      "Lua route and description\n";
         return 110;

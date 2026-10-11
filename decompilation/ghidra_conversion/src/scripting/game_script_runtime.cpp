@@ -847,6 +847,49 @@ struct GameScriptRuntime::Impl {
         return lua_yieldk(lua, 0, 1, actor_walk_heading_continuation);
     }
 
+    static int ui_prompt_text(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        if (self == nullptr || self->task_state != lua ||
+            self->task_waiting || self->pending_task_operation.has_value() ||
+            self->active_native_operation.has_value()) {
+            if (self != nullptr) {
+                self->bridge_failure =
+                    "game.ui.prompt_text must run inside an active task";
+            }
+            lua_pushnil(lua);
+            return 1;
+        }
+
+        std::string menu_id;
+        std::size_t text_length = 0U;
+        const auto* text = lua_type(lua, 2) == LUA_TSTRING
+                               ? lua_tolstring(lua, 2, &text_length)
+                               : nullptr;
+        ScriptMenuDefinition menu{};
+        if (!read_string(lua, 1, menu_id) ||
+            !valid_identifier(menu_id) || text == nullptr ||
+            text_length > kMaximumDialogueTextBytes ||
+            !valid_identifier(self->location_text_profile) ||
+            !parse_menu_choices(lua, 3, menu_id,
+                                self->location_text_profile,
+                                self->location_speaker_id, menu,
+                                kMaximumMenuChoices)) {
+            self->bridge_failure =
+                "game.ui.prompt_text expects a menu name, bounded prompt, and unique stable choice ids in a profiled speaker location";
+            lua_pushnil(lua);
+            return 1;
+        }
+
+        menu.inline_text.assign(text, text_length);
+        menu.inline_prompt = true;
+        ScriptNativeOperation operation{};
+        operation.type = ScriptNativeOperation::Type::ui_menu;
+        operation.menu = std::move(menu);
+        self->pending_task_operation = std::move(operation);
+        self->task_waiting = true;
+        return lua_yieldk(lua, 0, 1, actor_walk_heading_continuation);
+    }
+
     static int ui_cursor_menu(lua_State* lua) {
         auto* self = from_upvalue(lua);
         if (self == nullptr || self->task_state != lua ||
@@ -1155,6 +1198,9 @@ struct GameScriptRuntime::Impl {
         lua_pushlightuserdata(state, this);
         lua_pushcclosure(state, ui_menu, 1);
         lua_setfield(state, -2, "menu");
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, ui_prompt_text, 1);
+        lua_setfield(state, -2, "prompt_text");
         lua_pushlightuserdata(state, this);
         lua_pushcclosure(state, ui_cursor_menu, 1);
         lua_setfield(state, -2, "cursor_menu");
@@ -3554,8 +3600,13 @@ std::optional<ScriptMenuDefinition> GameScriptRuntime::resolve_dialogue_menu(
 
     const auto table_index = lua_absindex(state, -1);
     lua_getfield(state, table_index, "title_key");
-    const bool title_valid = read_string(state, -1, menu.title_key) &&
-                             valid_identifier(menu.title_key);
+    bool title_valid = false;
+    if (!menu.inline_prompt) {
+        title_valid = read_string(state, -1, menu.title_key) &&
+                      valid_identifier(menu.title_key);
+    } else {
+        title_valid = lua_isnil(state, -1) != 0;
+    }
     lua_pop(state, 1);
     lua_getfield(state, table_index, "choice_label_keys");
     bool labels_valid = lua_istable(state, -1) &&

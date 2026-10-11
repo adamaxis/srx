@@ -66,7 +66,8 @@ bool verify_dynamic_run_module(const std::filesystem::path& source_directory,
     {
         std::ofstream plugin(temporary_directory / "run_dynamic_probe.lua",
                              std::ios::binary);
-        plugin << "local Probe = { new_game_weight = 1 }\n"
+        plugin << "local Probe = { new_game_weight = 1,\n"
+                  "  new_game_payment = { base_payment = 40, negotiation_scale = 1 } }\n"
                   "function Probe.prepare_offer(context)\n"
                   "  local offer = game.modules.run_support.new_offer(\n"
                   "    'dynamic_probe', 'test', 'probe', 'probe_complete')\n"
@@ -164,18 +165,32 @@ int main() {
         std::cerr << scripts.failure() << '\n';
         return 3;
     }
-    run_selection = scripts.complete_native_service_result("roll_2");
+    run_selection = scripts.complete_native_service_result("roll_4");
+    if (!expect(run_selection.operation.has_value() &&
+                    run_selection.operation->service_id ==
+                        "runner.negotiation_skill",
+                "ROM offer selection did not read the primary Negotiation skill")) {
+        return 4;
+    }
+    run_selection = scripts.complete_native_service_result("skill_3");
+    if (!expect(run_selection.operation.has_value() &&
+                    run_selection.operation->service_id ==
+                        "random.bounded_4",
+                "courier offer did not use the ROM skill-scaled payment bound")) {
+        return 4;
+    }
+    run_selection = scripts.complete_native_service_result("roll_3");
     if (!expect(
             run_selection.status ==
                 ScriptTaskStep::Status::awaiting_native_operation &&
                 run_selection.operation.has_value() &&
                 run_selection.operation->service_id ==
                     "random.bounded_10",
-            "courier run did not request the ROM source-location roll")) {
+            "courier run did not request its origin-location roll after negotiation")) {
         std::cerr << scripts.failure() << '\n';
         return 4;
     }
-    run_selection = scripts.complete_native_service_result("roll_0");
+    run_selection = scripts.complete_native_service_result("roll_9");
     if (!expect(
             run_selection.status ==
                 ScriptTaskStep::Status::awaiting_native_operation &&
@@ -197,9 +212,11 @@ int main() {
         std::cerr << scripts.failure() << '\n';
         return 6;
     }
-    run_selection = scripts.complete_native_service_result("roll_1");
+    run_selection = scripts.complete_native_service_result("roll_5");
     const auto courier_route =
         scripts.string_map("run_registry", "current_route_ids");
+    const auto courier_payment =
+        scripts.string_map("run_registry", "current_payment_values");
     if (!expect(run_selection.status == ScriptTaskStep::Status::completed &&
                     run_selection.result_id ==
                         std::optional<std::string>{"package_delivery"} &&
@@ -210,13 +227,18 @@ int main() {
                         std::optional<std::string>{
                             "package_delivered_safely"} &&
                     courier_route.has_value() &&
-                    courier_route->at("origin_location") == "location_0" &&
+                    courier_route->at("origin_location") == "location_11" &&
                     courier_route->at("origin_area") == "area_2" &&
                     courier_route->at("client") == "client_0" &&
                     courier_route->at("destination_location") ==
-                        "location_1" &&
+                        "location_5" &&
                     courier_route->at("destination_area") ==
-                        "area_2",
+                        "area_2" && courier_payment.has_value() &&
+                    courier_payment->at("base_amount") == "40" &&
+                    courier_payment->at("negotiated_amount") == "55" &&
+                    courier_payment->at("negotiation_bound") == "4" &&
+                    courier_payment->at("negotiation_roll") == "3" &&
+                    courier_payment->at("negotiation_skill") == "3",
                 "weighted run selection did not initialize its own Lua offer")) {
         std::cerr << scripts.failure() << '\n';
         return 7;
@@ -231,8 +253,24 @@ int main() {
         return 8;
     }
     run_selection = scripts.complete_native_service_result("roll_0");
+    if (!expect(run_selection.operation.has_value() &&
+                    run_selection.operation->service_id ==
+                        "runner.negotiation_skill",
+                "ghoul offer did not read the primary Negotiation skill")) {
+        return 9;
+    }
+    run_selection = scripts.complete_native_service_result("skill_3");
+    if (!expect(run_selection.operation.has_value() &&
+                    run_selection.operation->service_id ==
+                        "random.bounded_10",
+                "ghoul offer did not use its ROM negotiation scale")) {
+        return 9;
+    }
+    run_selection = scripts.complete_native_service_result("roll_2");
     const auto bounty_route =
         scripts.string_map("run_registry", "current_route_ids");
+    const auto bounty_payment =
+        scripts.string_map("run_registry", "current_payment_values");
     if (!expect(run_selection.status == ScriptTaskStep::Status::completed &&
                     run_selection.result_id ==
                         std::optional<std::string>{"ghoul_bounty"} &&
@@ -241,7 +279,11 @@ int main() {
                         std::optional<std::string>{
                             "return_to_johnson_for_payment"} &&
                     bounty_route.has_value() &&
-                    bounty_route->at("origin_location") == "none",
+                    bounty_route->at("origin_location") == "none" &&
+                    bounty_payment.has_value() &&
+                    bounty_payment->at("base_amount") == "10" &&
+                    bounty_payment->at("negotiated_amount") == "20" &&
+                    bounty_payment->at("negotiation_bound") == "10",
                 "ghoul bounty did not keep its distinct Lua objective")) {
         std::cerr << scripts.failure() << '\n';
         return 9;
@@ -252,15 +294,25 @@ int main() {
     run_selection = scripts.complete_native_service_result("roll_1");
     if (!expect(run_selection.operation.has_value() &&
                     run_selection.operation->service_id ==
-                        "random.bounded_10",
-                "escort script did not select its own route")) {
+                        "runner.negotiation_skill",
+                "escort offer did not read the primary Negotiation skill")) {
         return 10;
     }
+    run_selection = scripts.complete_native_service_result("skill_3");
+    if (!expect(run_selection.operation.has_value() &&
+                    run_selection.operation->service_id ==
+                        "random.bounded_4",
+                "escort offer did not use its ROM negotiation scale")) {
+        return 10;
+    }
+    run_selection = scripts.complete_native_service_result("roll_3");
     run_selection = scripts.complete_native_service_result("roll_4");
     run_selection = scripts.complete_native_service_result("roll_6");
     run_selection = scripts.complete_native_service_result("roll_5");
     const auto escort_route =
         scripts.string_map("run_registry", "current_route_ids");
+    const auto escort_payment =
+        scripts.string_map("run_registry", "current_payment_values");
     if (!expect(run_selection.status == ScriptTaskStep::Status::completed &&
                     run_selection.result_id ==
                         std::optional<std::string>{"bodyguard_escort"} &&
@@ -275,10 +327,93 @@ int main() {
                     escort_route->at("destination_location") ==
                         "location_5" &&
                     escort_route->at("destination_area") ==
-                        "area_2",
+                        "area_2" && escort_payment.has_value() &&
+                    escort_payment->at("base_amount") == "45" &&
+                    escort_payment->at("negotiated_amount") == "60",
                 "escort contract did not use its Lua route and client data")) {
         std::cerr << scripts.failure() << '\n';
         return 11;
+    }
+
+    struct ExpectedFirstOffer {
+        std::string_view run_id;
+        std::string_view base_amount;
+        std::string_view negotiation_bound;
+    };
+    constexpr std::array<ExpectedFirstOffer, 8> kExpectedFirstOffers{{
+        {"ghoul_bounty", "10", "10"},
+        {"bodyguard_escort", "45", "4"},
+        {"package_delivery", "35", "4"},
+        {"bodyguard_escort", "50", "4"},
+        {"package_delivery", "40", "4"},
+        {"bodyguard_escort", "55", "4"},
+        {"package_delivery", "45", "4"},
+        {"ghoul_bounty", "20", "7"},
+    }};
+    for (std::size_t slot = 0U; slot < kExpectedFirstOffers.size(); ++slot) {
+        run_selection =
+            scripts.start_task("run_registry", "prepare_new_game_offer");
+        if (!expect(run_selection.operation.has_value() &&
+                        run_selection.operation->service_id ==
+                            "random.bounded_8",
+                    "first-run source table did not use its eight slots")) {
+            return 12;
+        }
+        run_selection = scripts.complete_native_service_result(
+            "roll_" + std::to_string(slot));
+        if (!expect(run_selection.operation.has_value() &&
+                        run_selection.operation->service_id ==
+                            "runner.negotiation_skill",
+                    "selected run row skipped Negotiation lookup")) {
+            return 12;
+        }
+        run_selection = scripts.complete_native_service_result("skill_3");
+        const auto expected_bound = std::string("random.bounded_") +
+            std::string(kExpectedFirstOffers[slot].negotiation_bound);
+        if (!expect(run_selection.operation.has_value() &&
+                        run_selection.operation->service_id == expected_bound,
+                    "selected run row used the wrong negotiation scale")) {
+            return 12;
+        }
+        run_selection = scripts.complete_native_service_result("roll_0");
+        if (kExpectedFirstOffers[slot].run_id != "ghoul_bounty") {
+            if (!expect(run_selection.operation.has_value() &&
+                            run_selection.operation->service_id ==
+                                "random.bounded_10",
+                        "route run did not request an origin after payment")) {
+                return 12;
+            }
+            run_selection = scripts.complete_native_service_result("roll_1");
+            if (!expect(run_selection.operation.has_value() &&
+                            run_selection.operation->service_id ==
+                                "random.bounded_12",
+                        "route run did not request its source client roll")) {
+                return 12;
+            }
+            run_selection = scripts.complete_native_service_result("roll_0");
+            if (!expect(run_selection.operation.has_value() &&
+                            run_selection.operation->service_id ==
+                                "random.bounded_10",
+                        "route run did not request its destination roll")) {
+                return 12;
+            }
+            run_selection = scripts.complete_native_service_result("roll_2");
+        }
+        const auto payment =
+            scripts.string_map("run_registry", "current_payment_values");
+        if (!expect(run_selection.status == ScriptTaskStep::Status::completed &&
+                        run_selection.result_id == std::optional<std::string>{
+                            std::string(kExpectedFirstOffers[slot].run_id)} &&
+                        payment.has_value() &&
+                        payment->at("base_amount") ==
+                            kExpectedFirstOffers[slot].base_amount &&
+                        payment->at("negotiated_amount") ==
+                            kExpectedFirstOffers[slot].base_amount &&
+                        payment->at("negotiation_bound") ==
+                            kExpectedFirstOffers[slot].negotiation_bound,
+                    "one of the eight source payment rows was reconstructed incorrectly")) {
+            return 12;
+        }
     }
 
     FieldScriptRouteContext scene2_location{};

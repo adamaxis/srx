@@ -441,6 +441,20 @@ FieldSceneRuntime::FieldSceneRuntime(
                 return "roll_" +
                        std::to_string(static_cast<std::uint16_t>(roll));
             }
+            if (service_id == "runner.negotiation_skill") {
+                if (!field_party_roster_.available()) {
+                    return std::nullopt;
+                }
+                const auto skill_index = static_cast<std::size_t>(
+                    RunnerSkillIndex::negotiation);
+                const auto& first_runner =
+                    field_party_roster_.records().front();
+                if (skill_index >= first_runner.skills.size()) {
+                    return std::nullopt;
+                }
+                return "skill_" + std::to_string(
+                    first_runner.skills[skill_index]);
+            }
             if (service_id != "johnson.purchase_decker_contact") {
                 return std::nullopt;
             }

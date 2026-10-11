@@ -195,6 +195,12 @@ local menu_profiles = {
                 different_subject = "gunderson.information.option.back",
             },
         },
+        run_acceptance = {
+            choice_label_keys = {
+                yes = "ui.option.yes",
+                no = "ui.option.no",
+            },
+        },
         vigore_response = {
             title_key = "gunderson.question.vigore.response",
             choice_label_keys = {

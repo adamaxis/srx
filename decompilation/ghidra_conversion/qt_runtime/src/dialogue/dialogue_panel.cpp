@@ -604,6 +604,54 @@ DialoguePanelView make_script_menu_panel_view(
     return view;
 }
 
+DialoguePanelView make_script_menu_prompt_panel_view(
+    const std::optional<DialogueSpeakerPresentation>& speaker,
+    const std::string_view inline_text,
+    const std::vector<std::pair<std::string, std::string>>& choices,
+    const DialogueTextResolver& resolve_text,
+    const bool cursor_selection,
+    const std::size_t selected_option) {
+    DialoguePanelView view{};
+    view.open = true;
+    view.actor_kind = DialoguePanelActorKind::none;
+    view.kind = DialoguePanelKind::field_npc_prompt;
+    view.cursor_selection = cursor_selection;
+    view.selected_option = selected_option;
+    if (speaker.has_value()) {
+        if (speaker->id.empty() || speaker->name.empty() ||
+            speaker->text_profile.empty() || speaker->portrait_alias.empty()) {
+            mark_missing_text(view, speaker->id);
+        } else {
+            set_script_speaker(view, *speaker);
+        }
+    }
+    if (!inline_text.empty()) {
+        copy_text_segments(view, inline_text, "inline menu prompt");
+    }
+    if (choices.size() > view.options.size()) {
+        view.source_complete = false;
+        view.source_boundary_reason =
+            "script menu exceeds the panel choice limit";
+    }
+    for (const auto& [choice_id, label_key] : choices) {
+        if (view.option_count >= view.options.size()) {
+            break;
+        }
+        const auto label = resolve_text ? resolve_text(label_key)
+                                        : std::string_view{};
+        if (choice_id.empty() || label.empty()) {
+            mark_missing_text(view, label_key);
+            continue;
+        }
+        add_option(view, DialoguePanelOptionRole::script_menu_choice, label,
+                   DialoguePanelCommand::script_menu_choice);
+    }
+    if (!view.source_complete) {
+        view.kind = DialoguePanelKind::source_boundary;
+    }
+    return view;
+}
+
 std::optional<DialoguePanelCommand>
 dialogue_panel_option_command(const DialoguePanelView& view,
                               const std::size_t option_index) {

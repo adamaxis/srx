@@ -5,7 +5,7 @@ local Johnson = {}
 
 local function present_work_offer()
     game.ui.say("work-opening")
-    game.runs.registry.present_new_game_offer()
+    return game.runs.registry.present_new_game_offer()
 end
 
 local function question_choices()
@@ -120,13 +120,17 @@ function Johnson.interaction()
             if information_result == "leave" then
                 return information_result
             elseif information_result == "work" then
-                present_work_offer()
+                if present_work_offer() == "accepted" then
+                    return "accepted"
+                end
             end
             -- ROM descriptor 0x10514C supplies a different title after an
             -- information branch, while retaining the same A/B/C labels.
             root_menu = "opening_after_information"
         elseif choice == "work" then
-            present_work_offer()
+            if present_work_offer() == "accepted" then
+                return "accepted"
+            end
         end
     end
 end

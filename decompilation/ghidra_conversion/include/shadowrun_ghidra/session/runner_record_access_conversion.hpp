@@ -15,6 +15,24 @@ constexpr std::size_t kRunnerRecordAttributeCount = 8U;
 constexpr std::size_t kRunnerRecordSkillCount = 12U;
 constexpr std::size_t kRunnerRecordAuxiliaryCount = 4U;
 
+// ROM 0x1E69C reads the first live runner's +0x8C skill byte when it
+// calculates a Johnson offer's negotiation roll. This is the last entry in
+// the source Attributes/Skills skill sequence at ROM 0xC1A2A.
+enum class RunnerSkillIndex : std::uint8_t {
+    sorcery = 0U,
+    firearms = 1U,
+    pistols = 2U,
+    smgs = 3U,
+    shotguns = 4U,
+    melee_combat = 5U,
+    throwing = 6U,
+    computer = 7U,
+    biotech = 8U,
+    electronics = 9U,
+    reputation = 10U,
+    negotiation = 11U,
+};
+
 // The source keeps a live runner in a 0x100-byte record. These are the
 // fields already proven by the ROM consumers; bytes not represented here are
 // intentionally left opaque rather than assigned invented meanings.

@@ -447,10 +447,17 @@ bool FieldDialogueRuntime::present_script_operation(
             return open_source_boundary(
                 "Lua cursor menu selected an index outside its choices");
         }
-        panel_ = make_script_menu_panel_view(
-            speaker, menu.title_key, choices, resolver,
-            menu.input_mode == scripting::ScriptMenuInputMode::cursor,
-            menu.selected_index);
+        if (!menu.inline_prompt) {
+            panel_ = make_script_menu_panel_view(
+                speaker, menu.title_key, choices, resolver,
+                menu.input_mode == scripting::ScriptMenuInputMode::cursor,
+                menu.selected_index);
+        } else {
+            panel_ = make_script_menu_prompt_panel_view(
+                speaker, menu.inline_text, choices, resolver,
+                menu.input_mode == scripting::ScriptMenuInputMode::cursor,
+                menu.selected_index);
+        }
         if (!panel_.source_complete) {
             return open_source_boundary(
                 panel_.source_boundary_reason.empty()
