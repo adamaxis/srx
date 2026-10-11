@@ -6,7 +6,10 @@ local World = {}
 local function content()
     local data = game.modules.world_content_data
     if type(data) ~= "table" then
-        return { entities = {}, areas = {} }
+        return {
+            entities = {}, areas = {}, map_triggers = {},
+            actor_spawns = {}, encounter_regions = {},
+        }
     end
     return data
 end
@@ -23,6 +26,29 @@ function World.instances_in_scene(scene_id)
         return {}
     end
     return content().areas[scene_id] or {}
+end
+
+local function records_in_scene(field, scene_id)
+    if type(scene_id) ~= "number" or scene_id % 1 ~= 0 then
+        return {}
+    end
+    local records = content()[field]
+    if type(records) ~= "table" then
+        return {}
+    end
+    return records[scene_id] or {}
+end
+
+function World.triggers_in_scene(scene_id)
+    return records_in_scene("map_triggers", scene_id)
+end
+
+function World.actor_spawns_in_scene(scene_id)
+    return records_in_scene("actor_spawns", scene_id)
+end
+
+function World.encounter_regions_in_scene(scene_id)
+    return records_in_scene("encounter_regions", scene_id)
 end
 
 -- Resolve a manually authored interaction at map-pixel coordinates. ROM

@@ -201,6 +201,71 @@ class MapEvidenceRegion:
     details: str
 
 
+@dataclass
+class MapBehaviorRecord:
+    record_id: str
+    kind: str
+    x: int
+    y: int
+    width: int = 1
+    height: int = 1
+    script_module: str = ""
+    script_function: str = ""
+    condition_module: str = ""
+    condition_function: str = ""
+    repeat_policy: str = ""
+    actor_profile: str = ""
+    heading: str = ""
+    event_pool: str = ""
+    source_record: str = ""
+    source_table: str = ""
+    evidence: str = ""
+    review_status: str = "unreviewed"
+
+    @property
+    def title(self) -> str:
+        labels = {
+            "scripted_trigger": "Map script trigger",
+            "actor_spawn": "Authored actor spawn",
+            "random_encounter": "Random encounter region",
+        }
+        return f"{labels.get(self.kind, 'Map behavior')}: {self.record_id}"
+
+    def describe(self, scene_id: int) -> str:
+        lines = [
+            self.title,
+            f"Scene: {scene_id:02d}; region: {self.x},{self.y} {self.width}×{self.height}",
+            f"Review: {self.review_status}",
+        ]
+        if self.kind == "scripted_trigger":
+            lines.extend((
+                f"Script: {self.script_module or '(unassigned)'}.{self.script_function or '(unassigned)'}",
+                f"Condition: {self.condition_module or '(unassigned)'}"
+                f".{self.condition_function or '(unassigned)'}",
+                f"Repeat policy: {self.repeat_policy or '(unassigned)'}",
+            ))
+        elif self.kind == "actor_spawn":
+            lines.extend((
+                f"Actor Lua profile: {self.actor_profile or '(unassigned)'}",
+                f"Heading: {self.heading or '(unassigned)'}",
+                f"Condition: {self.condition_module or '(unassigned)'}"
+                f".{self.condition_function or '(unassigned)'}",
+                f"ROM source record: {self.source_record or '(new content / unverified)'}",
+            ))
+        elif self.kind == "random_encounter":
+            lines.extend((
+                f"Lua event pool: {self.event_pool or '(unassigned)'}",
+                f"Condition: {self.condition_module or '(unassigned)'}"
+                f".{self.condition_function or '(unassigned)'}",
+                f"ROM source table: {self.source_table or '(new content / unverified)'}",
+            ))
+        lines.extend((
+            f"Evidence: {self.evidence or '(not recorded)'}",
+            "This is authored map content; it does not assert that the ROM uses this behavior.",
+        ))
+        return "\n".join(lines)
+
+
 class WorldContent:
     ENTITY_HEADER = ("entity_id", "name", "category", "evidence")
     PART_HEADER = (
@@ -212,6 +277,21 @@ class WorldContent:
         "lua_handler", "source_event", "evidence",
     )
     AREA_HEADER = ("instance_id", "entity_id", "origin_x", "origin_y")
+    TRIGGER_HEADER = (
+        "trigger_id", "x", "y", "width", "height", "script_module",
+        "script_function", "condition_module", "condition_function",
+        "repeat_policy", "evidence", "review_status",
+    )
+    SPAWN_HEADER = (
+        "spawn_id", "actor_profile", "x", "y", "heading",
+        "condition_module", "condition_function", "source_record",
+        "evidence", "review_status",
+    )
+    ENCOUNTER_HEADER = (
+        "region_id", "event_pool", "x", "y", "width", "height",
+        "condition_module", "condition_function", "source_table",
+        "evidence", "review_status",
+    )
 
     def __init__(self, root: Path):
         self.root = root
@@ -301,6 +381,78 @@ class WorldContent:
             [instance.__dict__ for instance in instances],
         )
 
+    def load_behaviors(self, scene_id: int) -> list[MapBehaviorRecord]:
+        directory = self.root / "areas"
+        records: list[MapBehaviorRecord] = []
+        sources = (
+            ("scripted_trigger", f"scene-{scene_id:02d}-triggers.tsv", "trigger_id"),
+            ("actor_spawn", f"scene-{scene_id:02d}-spawns.tsv", "spawn_id"),
+            ("random_encounter", f"scene-{scene_id:02d}-encounters.tsv", "region_id"),
+        )
+        for kind, filename, id_column in sources:
+            _, rows = read_tsv(directory / filename)
+            for row in rows:
+                records.append(MapBehaviorRecord(
+                    record_id=row.get(id_column, ""),
+                    kind=kind,
+                    x=as_int(row, "x"),
+                    y=as_int(row, "y"),
+                    width=as_int(row, "width", 1),
+                    height=as_int(row, "height", 1),
+                    script_module=row.get("script_module", ""),
+                    script_function=row.get("script_function", ""),
+                    condition_module=row.get("condition_module", ""),
+                    condition_function=row.get("condition_function", ""),
+                    repeat_policy=row.get("repeat_policy", ""),
+                    actor_profile=row.get("actor_profile", ""),
+                    heading=row.get("heading", ""),
+                    event_pool=row.get("event_pool", ""),
+                    source_record=row.get("source_record", ""),
+                    source_table=row.get("source_table", ""),
+                    evidence=row.get("evidence", ""),
+                    review_status=row.get("review_status", "unreviewed"),
+                ))
+        return records
+
+    def save_behaviors(self, scene_id: int, records: list[MapBehaviorRecord]) -> None:
+        directory = self.root / "areas"
+        triggers = []
+        spawns = []
+        encounters = []
+        for item in records:
+            if item.kind == "scripted_trigger":
+                triggers.append({
+                    "trigger_id": item.record_id, "x": item.x, "y": item.y,
+                    "width": item.width, "height": item.height,
+                    "script_module": item.script_module,
+                    "script_function": item.script_function,
+                    "condition_module": item.condition_module,
+                    "condition_function": item.condition_function,
+                    "repeat_policy": item.repeat_policy,
+                    "evidence": item.evidence, "review_status": item.review_status,
+                })
+            elif item.kind == "actor_spawn":
+                spawns.append({
+                    "spawn_id": item.record_id, "actor_profile": item.actor_profile,
+                    "x": item.x, "y": item.y, "heading": item.heading,
+                    "condition_module": item.condition_module,
+                    "condition_function": item.condition_function,
+                    "source_record": item.source_record, "evidence": item.evidence,
+                    "review_status": item.review_status,
+                })
+            elif item.kind == "random_encounter":
+                encounters.append({
+                    "region_id": item.record_id, "event_pool": item.event_pool,
+                    "x": item.x, "y": item.y, "width": item.width,
+                    "height": item.height, "condition_module": item.condition_module,
+                    "condition_function": item.condition_function,
+                    "source_table": item.source_table, "evidence": item.evidence,
+                    "review_status": item.review_status,
+                })
+        write_tsv(directory / f"scene-{scene_id:02d}-triggers.tsv", self.TRIGGER_HEADER, triggers)
+        write_tsv(directory / f"scene-{scene_id:02d}-spawns.tsv", self.SPAWN_HEADER, spawns)
+        write_tsv(directory / f"scene-{scene_id:02d}-encounters.tsv", self.ENCOUNTER_HEADER, encounters)
+
     @staticmethod
     def lua_quote(value: str) -> str:
         escaped = value.replace("\\", "\\\\").replace('"', '\\"')
@@ -350,13 +502,18 @@ class WorldContent:
                 )
 
         area_lines: list[str] = []
+        trigger_lines: list[str] = []
+        spawn_lines: list[str] = []
+        encounter_lines: list[str] = []
         area_root = self.root / "areas"
         if area_root.is_dir():
+            scene_ids: set[int] = set()
             for path in sorted(area_root.glob("scene-*.tsv")):
-                match = re.fullmatch(r"scene-(\d+)\.tsv", path.name)
+                match = re.fullmatch(r"scene-(\d+)(?:-(?:triggers|spawns|encounters))?\.tsv", path.name)
                 if not match:
                     continue
-                scene_id = int(match.group(1))
+                scene_ids.add(int(match.group(1)))
+            for scene_id in sorted(scene_ids):
                 instances = self.load_scene(scene_id)
                 values = ", ".join(
                     "{ "
@@ -367,12 +524,50 @@ class WorldContent:
                     for item in instances
                 )
                 area_lines.append(f"    [{scene_id}] = {{ {values} }},")
+                trigger_values: list[str] = []
+                spawn_values: list[str] = []
+                encounter_values: list[str] = []
+                for item in self.load_behaviors(scene_id):
+                    common = (
+                        f"id = {self.lua_quote(item.record_id)}, x = {item.x}, y = {item.y}, "
+                        f"evidence = {self.lua_quote(item.evidence)}, "
+                        f"review_status = {self.lua_quote(item.review_status)}"
+                    )
+                    condition = (
+                        f"condition_module = {self.lua_quote(item.condition_module)}, "
+                        f"condition_function = {self.lua_quote(item.condition_function)}"
+                    )
+                    if item.kind == "scripted_trigger":
+                        trigger_values.append(
+                            "{ " + common + f", width = {item.width}, height = {item.height}, "
+                            f"script_module = {self.lua_quote(item.script_module)}, "
+                            f"script_function = {self.lua_quote(item.script_function)}, "
+                            f"{condition}, repeat_policy = {self.lua_quote(item.repeat_policy)} " + "}"
+                        )
+                    elif item.kind == "actor_spawn":
+                        spawn_values.append(
+                            "{ " + common + f", actor_profile = {self.lua_quote(item.actor_profile)}, "
+                            f"heading = {self.lua_quote(item.heading)}, {condition}, "
+                            f"source_record = {self.lua_quote(item.source_record)} " + "}"
+                        )
+                    elif item.kind == "random_encounter":
+                        encounter_values.append(
+                            "{ " + common + f", event_pool = {self.lua_quote(item.event_pool)}, "
+                            f"width = {item.width}, height = {item.height}, {condition}, "
+                            f"source_table = {self.lua_quote(item.source_table)} " + "}"
+                        )
+                trigger_lines.append(f"    [{scene_id}] = {{ {', '.join(trigger_values)} }},")
+                spawn_lines.append(f"    [{scene_id}] = {{ {', '.join(spawn_values)} }},")
+                encounter_lines.append(f"    [{scene_id}] = {{ {', '.join(encounter_values)} }},")
 
         content = (
             "-- Generated by ghidra_conversion/tools/map_entity_viewer/map_entity_viewer.py from gameplay/world TSV files.\n"
             "return {\n"
             "  entities = {\n" + "\n".join(entity_lines) + "\n  },\n"
             "  areas = {\n" + "\n".join(area_lines) + "\n  },\n"
+            "  map_triggers = {\n" + "\n".join(trigger_lines) + "\n  },\n"
+            "  actor_spawns = {\n" + "\n".join(spawn_lines) + "\n  },\n"
+            "  encounter_regions = {\n" + "\n".join(encounter_lines) + "\n  },\n"
             "}\n"
         )
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -554,7 +749,7 @@ class GridOverlay(QGraphicsItem):
 
 
 class FieldMapView(QGraphicsView):
-    def __init__(self, on_region, on_select, on_cursor, on_evidence, on_move):
+    def __init__(self, on_region, on_select, on_cursor, on_evidence, on_behavior, on_move):
         super().__init__()
         self.setScene(QGraphicsScene(self))
         self.setRenderHints(QPainter.RenderHint.Antialiasing)
@@ -565,6 +760,7 @@ class FieldMapView(QGraphicsView):
         self.on_select = on_select
         self.on_cursor = on_cursor
         self.on_evidence = on_evidence
+        self.on_behavior = on_behavior
         self.on_move = on_move
         self.mode = "select"
         self.map_info: MapInfo | None = None
@@ -573,12 +769,14 @@ class FieldMapView(QGraphicsView):
         self.collision_rectangles: list[MapEvidenceRegion] = []
         self.event_rectangles: list[MapEvidenceRegion] = []
         self.actor_positions: list[MapEvidenceRegion] = []
+        self.behaviors: list[MapBehaviorRecord] = []
         self.instances: list[EntityInstance] = []
         self.entities: dict[str, EntityDefinition] = {}
         self.show_grid = True
         self.show_collision = False
         self.show_events = True
         self.show_actors = True
+        self.show_behaviors = True
         self.show_priority = True
         self.assets_root = DEFAULT_ASSETS
         self.repo_root = ROOT
@@ -589,15 +787,25 @@ class FieldMapView(QGraphicsView):
         self.move_instance_id: str | None = None
         self.move_group: QGraphicsItemGroup | None = None
         self.annotation_items: list[QGraphicsItem] = []
+        self.behavior_items: list[QGraphicsItem] = []
         self.entity_groups: dict[str, QGraphicsItemGroup] = {}
         self.setBackgroundBrush(QColor(28, 29, 33))
 
-    def load_scene(self, info: MapInfo, assets: Path, repo_root: Path, instances: list[EntityInstance], entities: dict[str, EntityDefinition]) -> None:
+    def load_scene(
+        self,
+        info: MapInfo,
+        assets: Path,
+        repo_root: Path,
+        instances: list[EntityInstance],
+        entities: dict[str, EntityDefinition],
+        behaviors: list[MapBehaviorRecord],
+    ) -> None:
         self.map_info = info
         self.assets_root = assets
         self.repo_root = repo_root
         self.instances = instances
         self.entities = entities
+        self.behaviors = behaviors
         self.collision_rectangles = read_collision_rectangles(assets, info.scene_id)
         self.event_rectangles = read_event_rectangles(repo_root, info.scene_id)
         self.actor_positions = read_default_actor_positions(assets, info.scene_id)
@@ -619,23 +827,26 @@ class FieldMapView(QGraphicsView):
         self.scene().addItem(self.grid)
         self.draw_evidence_overlays()
         self.redraw_annotations()
+        self.redraw_behaviors()
         self.resetTransform()
         self.fitInView(self.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
 
-    def set_layer_options(self, priority: bool, grid: bool, collision: bool, events: bool, actors: bool) -> None:
+    def set_layer_options(self, priority: bool, grid: bool, collision: bool, events: bool, actors: bool, behaviors: bool) -> None:
         changed_priority = self.show_priority != priority
         self.show_priority = priority
         self.show_grid = grid
         self.show_collision = collision
         self.show_events = events
         self.show_actors = actors
+        self.show_behaviors = behaviors
         if changed_priority and self.map_info is not None:
             info = self.map_info
-            self.load_scene(info, self.assets_root, self.repo_root, self.instances, self.entities)
+            self.load_scene(info, self.assets_root, self.repo_root, self.instances, self.entities, self.behaviors)
             return
         if self.grid:
             self.grid.setVisible(grid)
         self.draw_evidence_overlays()
+        self.redraw_behaviors()
 
     def draw_evidence_overlays(self) -> None:
         for item in getattr(self, "evidence_items", []):
@@ -793,6 +1004,57 @@ class FieldMapView(QGraphicsView):
                 return regions[index]
         return None
 
+    def behavior_at(self, point: QPointF) -> MapBehaviorRecord | None:
+        for item in self.scene().items(point):
+            if item.data(0) == "map_behavior":
+                index = item.data(1)
+                if isinstance(index, int) and 0 <= index < len(self.behaviors):
+                    return self.behaviors[index]
+        return None
+
+    def redraw_behaviors(self) -> None:
+        for item in getattr(self, "behavior_items", []):
+            self.scene().removeItem(item)
+        self.behavior_items = []
+        if not self.show_behaviors:
+            return
+        colors = {
+            "scripted_trigger": QColor(215, 90, 255, 235),
+            "actor_spawn": QColor(255, 150, 65, 245),
+            "random_encounter": QColor(90, 150, 255, 235),
+        }
+        labels = {
+            "scripted_trigger": "T",
+            "actor_spawn": "S",
+            "random_encounter": "R",
+        }
+        for index, record in enumerate(self.behaviors):
+            color = colors.get(record.kind, QColor(230, 230, 230, 235))
+            if record.kind == "actor_spawn":
+                item = self.scene().addEllipse(
+                    QRectF(record.x - 8, record.y - 8, 16, 16),
+                    QPen(color, 2),
+                    QColor(color.red(), color.green(), color.blue(), 90),
+                )
+            else:
+                item = self.scene().addRect(
+                    QRectF(record.x, record.y, record.width, record.height),
+                    QPen(color, 2, Qt.PenStyle.DashLine),
+                    QColor(color.red(), color.green(), color.blue(), 30),
+                )
+            item.setZValue(11)
+            item.setData(0, "map_behavior")
+            item.setData(1, index)
+            item.setToolTip(record.title + " — authored, not ROM evidence")
+            label = self.scene().addText(labels.get(record.kind, "?"))
+            label.setDefaultTextColor(color)
+            label.setPos(record.x + (8 if record.kind == "actor_spawn" else 2), record.y - 2)
+            label.setZValue(11)
+            label.setData(0, "map_behavior")
+            label.setData(1, index)
+            label.setToolTip(record.title + " — authored, not ROM evidence")
+            self.behavior_items.extend((item, label))
+
     def entity_group_at(self, point: QPointF) -> tuple[str, QGraphicsItemGroup] | None:
         for item in self.scene().items(point):
             current = item
@@ -819,8 +1081,18 @@ class FieldMapView(QGraphicsView):
             self.drag_rect.setZValue(30)
             event.accept()
             return
+        if event.button() == Qt.MouseButton.LeftButton and self.mode == "add_actor_spawn":
+            point = self.mapToScene(event.position().toPoint())
+            self.on_region(QRectF(round(point.x()), round(point.y()), 1, 1))
+            event.accept()
+            return
         if event.button() == Qt.MouseButton.LeftButton:
             point = self.mapToScene(event.position().toPoint())
+            behavior = self.behavior_at(point)
+            if behavior is not None:
+                self.on_behavior(behavior)
+                event.accept()
+                return
             evidence = self.evidence_at(point)
             if evidence is not None:
                 self.on_evidence(evidence)
@@ -893,7 +1165,9 @@ class MapEntityViewer(QMainWindow):
         self.scene_id = initial_scene
         self.instances: list[EntityInstance] = []
         self.entities: dict[str, EntityDefinition] = {}
+        self.behaviors: list[MapBehaviorRecord] = []
         self.selected_instance: EntityInstance | None = None
+        self.selected_behavior: MapBehaviorRecord | None = None
         self.dirty = False
         self.mode = "select"
         self.selected_evidence: MapEvidenceRegion | None = None
@@ -907,6 +1181,7 @@ class MapEntityViewer(QMainWindow):
             self.select_at,
             self.cursor_moved,
             self.show_evidence,
+            self.show_behavior,
             self.move_instance,
         )
         self.setCentralWidget(self.map_view)
@@ -988,6 +1263,16 @@ class MapEntityViewer(QMainWindow):
         interaction_buttons.addWidget(self.remove_interaction_button)
         layout.addLayout(interaction_buttons)
 
+        layout.addWidget(QLabel("Authored map logic (purple T / orange S / blue R)"))
+        behavior_buttons = QHBoxLayout()
+        self.edit_behavior_button = QPushButton("Edit map record")
+        self.edit_behavior_button.clicked.connect(self.edit_selected_behavior)
+        self.delete_behavior_button = QPushButton("Remove map record")
+        self.delete_behavior_button.clicked.connect(self.remove_selected_behavior)
+        behavior_buttons.addWidget(self.edit_behavior_button)
+        behavior_buttons.addWidget(self.delete_behavior_button)
+        layout.addLayout(behavior_buttons)
+
         form = QFormLayout()
         self.name_edit = QLineEdit()
         self.name_edit.editingFinished.connect(self.properties_changed)
@@ -1011,7 +1296,8 @@ class MapEntityViewer(QMainWindow):
         self.info.setMaximumHeight(220)
         self.info.setPlainText(
             "Click a yellow ROM trigger or red collision region for its source record. "
-            "Click an entity outline to inspect it; drag the outline to move the whole grouped annotation."
+            "Click a ROM actor marker to inspect its list entry. Click an authored T/S/R mark to inspect its Lua data. "
+            "Drag entity outlines to move grouped annotations."
         )
         layout.addWidget(self.info)
         self.save_button = QPushButton("Save scene and definitions")
@@ -1026,7 +1312,7 @@ class MapEntityViewer(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
 
     def _build_toolbar(self) -> None:
-        bar = self.addToolBar("Map tools")
+        bar = self.addToolBar("Map evidence layers")
         bar.setMovable(False)
         self.tool_buttons: dict[str, QPushButton] = {}
         scene_label = QLabel("  View layers: ")
@@ -1036,17 +1322,23 @@ class MapEntityViewer(QMainWindow):
         self.collision_toggle = self._add_toggle(bar, "ROM collision", False)
         self.event_toggle = self._add_toggle(bar, "ROM event triggers", True)
         self.actor_toggle = self._add_toggle(bar, "ROM default actors", True)
-        bar.addSeparator()
-        self._add_tool(bar, "Select", "select")
-        self._add_tool(bar, "Add object region", "add_entity")
-        self._add_tool(bar, "Add visual part", "add_part")
-        self._add_tool(bar, "Add interactable", "add_interaction")
+        self.behavior_toggle = self._add_toggle(bar, "Authored behavior", True)
         bar.addSeparator()
         legend = QLabel("Unreviewed: yellow   Building: cyan   Terrain: gray   Foliage: green")
         bar.addWidget(legend)
-        bar.addSeparator()
+        self.addToolBarBreak(Qt.ToolBarArea.TopToolBarArea)
+        tools = self.addToolBar("Map editing")
+        tools.setMovable(False)
+        self._add_tool(tools, "Select / move", "select")
+        self._add_tool(tools, "Add object", "add_entity")
+        self._add_tool(tools, "Add visual part", "add_part")
+        self._add_tool(tools, "Add interactable", "add_interaction")
+        self._add_tool(tools, "Add trigger", "add_scripted_trigger")
+        self._add_tool(tools, "Add spawn", "add_actor_spawn")
+        self._add_tool(tools, "Add encounter", "add_encounter_region")
+        tools.addSeparator()
         self.coordinate_label = QLabel(" x: —  y: — ")
-        bar.addWidget(self.coordinate_label)
+        tools.addWidget(self.coordinate_label)
 
     def _add_toggle(self, toolbar, text: str, checked: bool) -> QPushButton:
         button = QPushButton(text)
@@ -1077,13 +1369,16 @@ class MapEntityViewer(QMainWindow):
             "add_entity": "Drag a rectangle around one object or decal. It will be saved as unreviewed.",
             "add_part": "Drag another source-map region owned by the selected entity; assign its visual role and depth.",
             "add_interaction": "Drag an interaction rectangle inside the selected entity; enter a Lua handler only when verified.",
+            "add_scripted_trigger": "Drag a map region for a Lua trigger. It is authored content, separate from read-only ROM event evidence.",
+            "add_actor_spawn": "Click a world position to author an actor spawn point. Link a Lua actor profile and conditions only when supported.",
+            "add_encounter_region": "Drag a region for an expandable Lua encounter pool; leave it unreviewed until sourced.",
         }[mode])
 
     def layers_changed(self) -> None:
         self.map_view.set_layer_options(
             self.priority_toggle.isChecked(), self.grid_toggle.isChecked(),
             self.collision_toggle.isChecked(), self.event_toggle.isChecked(),
-            self.actor_toggle.isChecked(),
+            self.actor_toggle.isChecked(), self.behavior_toggle.isChecked(),
         )
 
     def load_scene(self, scene_id: int) -> None:
@@ -1100,14 +1395,19 @@ class MapEntityViewer(QMainWindow):
             self.scene_actions[scene_id].setChecked(True)
         self.dirty = False
         self.instances = self.world.load_scene(scene_id)
+        self.behaviors = self.world.load_behaviors(scene_id)
         self.entities = {}
         for instance in self.instances:
             entity = self.world.load_entity(instance.entity_id)
             if entity:
                 self.entities[entity.entity_id] = entity
         self.selected_instance = None
+        self.selected_behavior = None
         self._refresh_list()
-        self.map_view.load_scene(self.map_by_id[scene_id], self.assets, self.repo_root, self.instances, self.entities)
+        self.map_view.load_scene(
+            self.map_by_id[scene_id], self.assets, self.repo_root,
+            self.instances, self.entities, self.behaviors,
+        )
         self._show_properties(None)
         self._update_scene_summary()
 
@@ -1130,6 +1430,7 @@ class MapEntityViewer(QMainWindow):
         # mutating the list originally handed to FieldMapView.
         self.map_view.instances = self.instances
         self.map_view.entities = self.entities
+        self.map_view.behaviors = self.behaviors
         self.entity_list.blockSignals(True)
         self.entity_list.clear()
         for instance in self.instances:
@@ -1141,6 +1442,7 @@ class MapEntityViewer(QMainWindow):
             self.entity_list.addItem(item)
         self.entity_list.blockSignals(False)
         self.map_view.redraw_annotations()
+        self.map_view.redraw_behaviors()
 
     def _update_scene_summary(self) -> None:
         info = self.map_by_id[self.scene_id]
@@ -1149,7 +1451,8 @@ class MapEntityViewer(QMainWindow):
             f"Scene {self.scene_id:02d}: {info.width}×{info.height}; {len(self.instances)} annotations, {unreviewed} unreviewed. "
             f"Source encoding: {info.metatile_encoding}; collision regions: {len(self.map_view.collision_rectangles)}; "
             f"event regions: {len(self.map_view.event_rectangles)}; "
-            f"ROM default-list actor positions: {len(self.map_view.actor_positions)}."
+            f"ROM default-list actor positions: {len(self.map_view.actor_positions)}; "
+            f"authored logic records: {len(self.behaviors)}."
         )
 
     def _show_properties(self, instance: EntityInstance | None) -> None:
@@ -1163,6 +1466,8 @@ class MapEntityViewer(QMainWindow):
             self.remove_interaction_button,
         ):
             widget.setEnabled(enabled)
+        self.edit_behavior_button.setEnabled(False)
+        self.delete_behavior_button.setEnabled(False)
         if not enabled:
             self.name_edit.clear(); self.evidence_edit.clear()
             self.x_spin.setValue(0); self.y_spin.setValue(0)
@@ -1171,7 +1476,8 @@ class MapEntityViewer(QMainWindow):
             self.interactions_list.clear()
             self.info.setPlainText(
                 "Click a yellow ROM trigger or red collision region for its source record. "
-                "Click an entity outline to inspect it; drag the outline to move the whole grouped annotation."
+                "Click a ROM actor marker to inspect its list entry. Click an authored T/S/R mark to inspect its Lua data. "
+                "Drag entity outlines to move grouped annotations."
             )
             self._loading_fields = False
             return
@@ -1368,6 +1674,9 @@ class MapEntityViewer(QMainWindow):
 
     def show_evidence(self, evidence: MapEvidenceRegion) -> None:
         self.selected_evidence = evidence
+        self.selected_behavior = None
+        self.edit_behavior_button.setEnabled(False)
+        self.delete_behavior_button.setEnabled(False)
         self.info.setPlainText(evidence.details)
         self.statusBar().showMessage(
             f"Inspecting {evidence.title}; source-derived evidence is read-only.",
@@ -1395,6 +1704,9 @@ class MapEntityViewer(QMainWindow):
 
     def select_instance(self, instance: EntityInstance | None) -> None:
         self.selected_evidence = None
+        self.selected_behavior = None
+        self.edit_behavior_button.setEnabled(False)
+        self.delete_behavior_button.setEnabled(False)
         self.selected_instance = instance
         selected_row = None
         if instance:
@@ -1408,6 +1720,22 @@ class MapEntityViewer(QMainWindow):
         self.entity_list.blockSignals(False)
         self._show_properties(instance)
 
+    def show_behavior(self, record: MapBehaviorRecord) -> None:
+        self.selected_evidence = None
+        self.selected_behavior = record
+        self.selected_instance = None
+        self.entity_list.blockSignals(True)
+        self.entity_list.setCurrentItem(None)
+        self.entity_list.blockSignals(False)
+        self._show_properties(None)
+        self.edit_behavior_button.setEnabled(True)
+        self.delete_behavior_button.setEnabled(True)
+        self.info.setPlainText(record.describe(self.scene_id))
+        self.statusBar().showMessage(
+            f"Selected authored {record.kind}; this record is separate from ROM event evidence.",
+            6000,
+        )
+
     def list_selection_changed(self, current, previous) -> None:
         if current is None:
             return
@@ -1416,10 +1744,22 @@ class MapEntityViewer(QMainWindow):
         self.select_instance(instance)
 
     def region_created(self, rect: QRectF) -> None:
-        if rect.width() < 2 or rect.height() < 2:
-            return
         x, y = round(rect.x()), round(rect.y())
         width, height = max(1, round(rect.width())), max(1, round(rect.height()))
+        if self.mode == "add_actor_spawn":
+            self.add_behavior_record("actor_spawn", x, y, 1, 1)
+            return
+        if rect.width() < 2 or rect.height() < 2:
+            return
+        if self.mode in {"add_scripted_trigger", "add_encounter_region"}:
+            right = round((rect.x() + rect.width()) / 32) * 32
+            bottom = round((rect.y() + rect.height()) / 32) * 32
+            x = round(rect.x() / 32) * 32
+            y = round(rect.y() / 32) * 32
+            width, height = max(32, right - x), max(32, bottom - y)
+            kind = "scripted_trigger" if self.mode == "add_scripted_trigger" else "random_encounter"
+            self.add_behavior_record(kind, x, y, width, height)
+            return
         if self.mode == "add_interaction":
             self._add_interactable(x, y, width, height)
             return
@@ -1427,6 +1767,137 @@ class MapEntityViewer(QMainWindow):
             self._add_visual_part(x, y, width, height)
             return
         self._add_entity_region(x, y, width, height)
+
+    def add_behavior_record(self, kind: str, x: int, y: int, width: int, height: int) -> None:
+        prefixes = {
+            "scripted_trigger": "trigger",
+            "actor_spawn": "spawn",
+            "random_encounter": "encounter",
+        }
+        prefix = prefixes[kind]
+        serial = 1
+        existing = {item.record_id for item in self.behaviors}
+        while f"scene{self.scene_id:02d}_{prefix}{serial:03d}" in existing:
+            serial += 1
+        record = MapBehaviorRecord(
+            record_id=f"scene{self.scene_id:02d}_{prefix}{serial:03d}",
+            kind=kind,
+            x=x,
+            y=y,
+            width=width,
+            height=height,
+        )
+        self.behaviors.append(record)
+        self.dirty = True
+        self._refresh_list()
+        self.show_behavior(record)
+        self.edit_selected_behavior()
+        self._update_scene_summary()
+
+    def edit_selected_behavior(self) -> None:
+        record = self.selected_behavior
+        if record is None:
+            return
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Edit {record.title}")
+        form = QFormLayout(dialog)
+        record_id = QLineEdit(record.record_id)
+        form.addRow("Stable ID", record_id)
+        coordinate_fields: dict[str, QSpinBox] = {}
+        for name, label, value in (
+            ("x", "Map X", record.x),
+            ("y", "Map Y", record.y),
+        ):
+            spin = QSpinBox()
+            spin.setRange(-32768, 32767)
+            spin.setValue(value)
+            coordinate_fields[name] = spin
+            form.addRow(label, spin)
+        if record.kind != "actor_spawn":
+            for name, label, value in (
+                ("width", "Width", record.width),
+                ("height", "Height", record.height),
+            ):
+                spin = QSpinBox()
+                spin.setRange(1, 8192)
+                spin.setValue(value)
+                coordinate_fields[name] = spin
+                form.addRow(label, spin)
+
+        fields: dict[str, QLineEdit] = {}
+        if record.kind == "scripted_trigger":
+            field_specs = (
+                ("script_module", "Lua script module"),
+                ("script_function", "Lua event function"),
+                ("condition_module", "Condition module"),
+                ("condition_function", "Condition function"),
+                ("repeat_policy", "Repeat policy"),
+            )
+        elif record.kind == "actor_spawn":
+            field_specs = (
+                ("actor_profile", "Lua actor profile"),
+                ("heading", "Initial heading"),
+                ("condition_module", "Condition module"),
+                ("condition_function", "Condition function"),
+                ("source_record", "ROM source record"),
+            )
+        else:
+            field_specs = (
+                ("event_pool", "Lua event pool"),
+                ("condition_module", "Condition module"),
+                ("condition_function", "Condition function"),
+                ("source_table", "ROM source table"),
+            )
+        for name, label in field_specs:
+            edit = QLineEdit(getattr(record, name))
+            edit.setPlaceholderText("Leave blank until known")
+            fields[name] = edit
+            form.addRow(label, edit)
+        evidence = QLineEdit(record.evidence)
+        evidence.setPlaceholderText("ROM trace or explicit new-content rationale")
+        form.addRow("Evidence", evidence)
+        review_status = QComboBox()
+        review_status.addItems(["unreviewed", "source_verified", "new_content"])
+        review_status.setCurrentText(
+            record.review_status if record.review_status in {"unreviewed", "source_verified", "new_content"} else "unreviewed"
+        )
+        form.addRow("Review status", review_status)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        form.addRow(buttons)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        try:
+            new_id = safe_id(record_id.text())
+        except ValueError:
+            QMessageBox.warning(self, "Invalid map record ID", "Enter a stable ID with at least one letter or number.")
+            return
+        if any(item is not record and item.record_id == new_id for item in self.behaviors):
+            QMessageBox.warning(self, "Duplicate map record ID", f"{new_id} is already used in this scene.")
+            return
+        record.record_id = new_id
+        for name, widget in coordinate_fields.items():
+            setattr(record, name, widget.value())
+        for name, widget in fields.items():
+            setattr(record, name, widget.text().strip())
+        record.evidence = evidence.text().strip()
+        record.review_status = review_status.currentText()
+        self.dirty = True
+        self._refresh_list()
+        self.show_behavior(record)
+        self._update_scene_summary()
+
+    def remove_selected_behavior(self) -> None:
+        record = self.selected_behavior
+        if record is None:
+            return
+        self.behaviors = [item for item in self.behaviors if item is not record]
+        self.selected_behavior = None
+        self.dirty = True
+        self._refresh_list()
+        self._show_properties(None)
+        self._update_scene_summary()
 
     def _add_entity_region(self, x: int, y: int, width: int, height: int) -> None:
         existing = {entity_id for entity_id in self.entities}
@@ -1549,6 +2020,7 @@ class MapEntityViewer(QMainWindow):
             for entity in self.entities.values():
                 self.world.save_entity(entity)
             self.world.save_scene(self.scene_id, self.instances)
+            self.world.save_behaviors(self.scene_id, self.behaviors)
             self.world.export_lua(self.world.root.parent / "scripts" / "world_content_data.lua")
         except (OSError, ValueError) as error:
             QMessageBox.critical(self, "Could not save map content", str(error))
@@ -1559,6 +2031,10 @@ class MapEntityViewer(QMainWindow):
     def keyPressEvent(self, event) -> None:
         if event.key() == Qt.Key.Key_S and event.modifiers() & Qt.KeyboardModifier.ControlModifier:
             self.save_all()
+            event.accept()
+            return
+        if event.key() == Qt.Key.Key_Delete and self.selected_behavior is not None:
+            self.remove_selected_behavior()
             event.accept()
             return
         if event.key() == Qt.Key.Key_Delete and self.selected_instance is not None:

@@ -30,6 +30,14 @@ metadata only; it does not erase, extract, or move pixels in the composed BMP.
 A separate image-composition/import step is still required before authored
 entity parts can replace pixels in a runtime map.
 
+The viewer also separates ROM evidence from authored map logic. Purple **T**
+regions are Lua trigger areas, orange **S** marks are authored actor spawn
+points, and blue **R** regions are authored encounter areas. These records have
+condition/module/function fields and evidence/review status. They are saved as
+separate scene files and exported as Lua data; blank handlers stay unassigned.
+Click a mark to inspect it, edit it in the side panel, or remove it. They do
+not overwrite or reinterpret the yellow ROM event rectangles.
+
 ## Entity definition
 
 Each entity has its own folder under `entities/<entity-id>/`:
@@ -45,6 +53,9 @@ Area-level ROM actor origins are not scenery entities. The viewer reads the
 source-derived `decompilation/assets/field/entities/default-actors.tsv` and
 shows these as a separate evidence layer. Random/conditional encounter tables
 must be profiled separately; a default-list position is not an encounter rule.
+The default actor markers are ROM list entries; the orange authored spawn marks
+are separate authoring records and must not be mistaken for verified ROM
+spawns.
 
 The first row in each file is a header. Keep one record per line; tabs and
 newlines are reserved as separators.
@@ -60,6 +71,18 @@ instance_id    entity_id    origin_x    origin_y
 The area file only places an entity definition. Visual composition and
 interaction behavior stay with the entity definition and its Lua handler.
 The same entity definition can be placed in more than one scene.
+
+Area behavior is kept in typed files alongside placements:
+
+- `areas/scene-NN-triggers.tsv`: map rectangles, Lua event/condition functions,
+  repeat policy, evidence, and review status.
+- `areas/scene-NN-spawns.tsv`: actor profile, map point, initial heading,
+  condition, source record, evidence, and review status.
+- `areas/scene-NN-encounters.tsv`: encounter region, Lua event pool, condition,
+  source table, evidence, and review status.
+
+These authored tables are extension content. The viewer does not seed them
+from gameplay-video bodies, and an unreviewed entry does not become a ROM fact.
 
 ## Use
 
@@ -89,22 +112,21 @@ PyQt6, and the viewer code; it reads the individually named extracted assets
 and authoring files from the adjacent repository checkout. Keep the executable
 inside that checkout (or launch it with `--assets` and `--world` paths).
 
-Use **Add object region** to mark a map region for review. Use **Add visual
-part** to add another source crop to the selected entity, and **Add
-interactable** to add a local hit region. Select a part or interaction in the
-right panel to edit or remove its metadata. Set the entity category only after
-checking the source layers and ROM evidence. Available categories include
-buildings, terrain features, foliage, decals, props, and structures. `Ctrl+S`
-saves the current scene and its entity definitions.
+Use **Add object** to mark a map region for review. Use **Add visual part**
+to add another source crop to the selected entity, and **Add interactable** to
+add a local hit region. **Add trigger**, **Add spawn**, and **Add encounter**
+create separate map-scoped Lua content records. Select a record on the map to
+inspect/edit it. Set an entity category only after checking the source layers
+and ROM evidence. Available categories include buildings, terrain features,
+foliage, decals, props, and structures. `Ctrl+S` saves the current scene and
+exports the records to Lua.
 
 On save, the viewer refreshes
 `decompilation/gameplay/scripts/world_content_data.lua` from these TSV files.
 The Lua package loader loads the module, and `game.modules.world_content`
-provides `entity(id)`, `instances_in_scene(scene_id)`, and
-`interaction_at(scene_id, x, y, event)`. The live field renderer and interaction
-path do not yet consume these authored entities. The scene 2 map therefore
-still renders from its extracted composite and source collision/event records;
-this editor does not imply that an authored entity is already a runtime game
-object. Authored actor spawn points and random-encounter regions are not yet
-part of the editable content schema; the visible default actor layer is the
-ROM's source-list evidence only.
+provides entity/placement lookups plus `triggers_in_scene`,
+`actor_spawns_in_scene`, and `encounter_regions_in_scene`. The live field
+renderer and event loop do not yet consume these authored records. The scene 2
+map therefore still renders from its extracted composite and ROM collision,
+event, and default-actor records; this editor does not imply authored entities
+or event zones are already active game objects.
