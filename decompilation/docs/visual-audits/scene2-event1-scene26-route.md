@@ -27,6 +27,13 @@ rectangles, and the descriptor spawn `(0x0A00, 0x0500)`. Its imported
 metadata has no map event table. The captured route holds the destination
 stable for 30 further field updates.
 
+The geometry is a strong crosswalk to Redmond map marker 8, Little Chiba's
+Chop Shop. ROM contract-location data independently names Redmond area-2
+location index 1 “Little Chiba.” The event table still provides only numeric
+resource scene `0x1A`; neither source labels the scene-26 map an office. The
+map's exact interior identity and any site-specific speaker/dialogue remain
+unverified.
+
 The Qt test is
 `shadowrun_ghidra_conversion_qt_field_scene26_event1_entry_qa`. Debug and
 Release each produce 15 full 320x224 BMP captures in
@@ -70,7 +77,9 @@ contains no runtime audio events.
    playfield and sidebar. The map scrolls through the captured route; the
    portrait and item slots remain in the same HUD positions. The HUD begins
    at x=272 and covers the runner in the long-hold captures. There is no
-   dialogue or shop owner during the field route or destination hold.
+   dialogue or shop owner during the field route or destination hold. The
+   shared renderer now draws the ROM priority overlay above the actor and
+   below the HUD; this does not change the unresolved right-edge HUD overlap.
 7. **Do multiple frames support the interpretation?** Yes for the internal
    route: 15 whole-screen frames cover spawn, movement, doorway approach,
    contact, fade, destination entry, and hold. Independent section-03 frames
@@ -97,7 +106,9 @@ contains no runtime audio events.
   held-east route remains open, as do route audio and exact scene-26 visual
   fidelity.
 
-Before calling the map-route hill defended, trace the source sprite clipping
-and camera state against an independent Genesis capture, find the normal
-descriptor-spawn route to the Security Terminal within scene 26, and cover
-the return route and event-specific sound behavior.
+The joined [scene-26 terminal route](scene26-event1-terminal-route.md) now
+covers the event-31 menu Exit and return to the captured Scene-2 state, plus
+the physical route to the Security Terminal using explicit passkey, skill, and
+PRNG fixtures. To defend the map-route hill, still compare the scene-2 runner
+clipping and scene-26 interior against independent Genesis captures, resolve
+the field-route sound, and connect the source story inputs without QA fixtures.

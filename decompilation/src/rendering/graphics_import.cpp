@@ -1821,9 +1821,13 @@ native::NativePortAssets decode_genesis_native_assets(
     }
 
     const auto resources = read_genesis_mode2_field_resources(rom);
-    auto field_map = decode_genesis_mode2_field_map(rom, resources);
+    auto field_map = decode_genesis_mode2_field_map_layers(rom, resources);
     assets.field_map = {
-        field_map.width, field_map.height, std::move(field_map.pixels)};
+        field_map.map.width, field_map.map.height,
+        std::move(field_map.map.pixels)};
+    assets.field_map_priority_overlay = {
+        field_map.priority_overlay.width, field_map.priority_overlay.height,
+        std::move(field_map.priority_overlay.pixels)};
     assets.field_terrain = decode_genesis_mode2_terrain_map(rom, resources);
     for (std::size_t index = 0; index < assets.initial_field_records.size();
          ++index) {
@@ -1849,6 +1853,7 @@ native::NativePortAssets decode_genesis_native_assets(
     native::NativeFieldArea mode2_area;
     mode2_area.mode_id = 2;
     mode2_area.map = assets.field_map;
+    mode2_area.priority_overlay = assets.field_map_priority_overlay;
     mode2_area.terrain = assets.field_terrain;
     mode2_area.initial_camera_x_fixed = assets.initial_camera_x_fixed;
     mode2_area.initial_camera_y_fixed = assets.initial_camera_y_fixed;
@@ -1867,11 +1872,16 @@ native::NativePortAssets decode_genesis_native_assets(
         try {
             const auto area_resources = read_genesis_field_mode_resources(
                 rom, mode_id);
-            const auto area_map = decode_genesis_field_mode_map(
+            const auto area_map = decode_genesis_field_mode_map_layers(
                 rom, area_resources);
             native::NativeFieldArea area;
             area.mode_id = mode_id;
-            area.map = {area_map.width, area_map.height, area_map.pixels};
+            area.map = {area_map.map.width, area_map.map.height,
+                        area_map.map.pixels};
+            area.priority_overlay = {
+                area_map.priority_overlay.width,
+                area_map.priority_overlay.height,
+                area_map.priority_overlay.pixels};
             area.terrain = decode_genesis_field_mode_terrain_map(
                 rom, area_resources);
             area.initial_camera_x_fixed = area_resources.initial_camera_x_fixed;
@@ -4849,7 +4859,13 @@ RgbaImage decode_tile_atlas(
 RgbaImage decode_genesis_mode2_field_map(
     const std::vector<std::uint8_t>& rom,
     const GenesisMode2FieldResources& resources) {
-    return decode_genesis_mode2_field_map(
+    return decode_genesis_mode2_field_map_layers(rom, resources).map;
+}
+
+GenesisFieldMapLayers decode_genesis_mode2_field_map_layers(
+    const std::vector<std::uint8_t>& rom,
+    const GenesisMode2FieldResources& resources) {
+    return decode_genesis_mode2_field_map_layers(
         rom, resources.pattern_data_offset, resources.pattern_byte_count,
         resources.metatile_stream_offset, resources.primary_tilemap_offset,
         resources.secondary_tilemap_offset, resources.tilemap_width,
@@ -4863,7 +4879,30 @@ RgbaImage decode_genesis_field_mode_map(
     return decode_genesis_mode2_field_map(rom, resources);
 }
 
+GenesisFieldMapLayers decode_genesis_field_mode_map_layers(
+    const std::vector<std::uint8_t>& rom,
+    const GenesisFieldModeResources& resources) {
+    return decode_genesis_mode2_field_map_layers(rom, resources);
+}
+
 RgbaImage decode_genesis_mode2_field_map(
+    const std::vector<std::uint8_t>& rom,
+    std::size_t pattern_data_offset,
+    std::size_t pattern_byte_count,
+    std::size_t metatile_stream_offset,
+    std::size_t primary_tilemap_offset,
+    std::size_t secondary_tilemap_offset,
+    std::size_t tilemap_width,
+    std::size_t tilemap_height,
+    std::size_t palette_offset,
+    GenesisMetatileEncoding metatile_encoding) {
+    return decode_genesis_mode2_field_map_layers(
+        rom, pattern_data_offset, pattern_byte_count, metatile_stream_offset,
+        primary_tilemap_offset, secondary_tilemap_offset, tilemap_width,
+        tilemap_height, palette_offset, metatile_encoding).map;
+}
+
+GenesisFieldMapLayers decode_genesis_mode2_field_map_layers(
     const std::vector<std::uint8_t>& rom,
     std::size_t pattern_data_offset,
     std::size_t pattern_byte_count,
@@ -5073,31 +5112,44 @@ RgbaImage decode_genesis_mode2_field_map(
     }
     render_layer(primary_tilemap_offset, 0U, primary_layer);
     render_layer(secondary_tilemap_offset, 0x8000U, secondary_layer);
-    RgbaImage image{
+    GenesisFieldMapLayers result{
+        RgbaImage{
         static_cast<std::uint16_t>(output_width),
         static_cast<std::uint16_t>(output_height),
         std::vector<native::Rgba8>(output_width * output_height),
+        },
+        RgbaImage{
+            static_cast<std::uint16_t>(output_width),
+            static_cast<std::uint16_t>(output_height),
+            std::vector<native::Rgba8>(
+                output_width * output_height, native::Rgba8{0, 0, 0, 0}),
+        },
     };
-    for (std::size_t index = 0; index < image.pixels.size(); ++index) {
+    for (std::size_t index = 0; index < result.map.pixels.size(); ++index) {
         // Genesis resolves a high-priority tile ahead of a low-priority tile;
         // with equal priority Plane A is the front plane. The reviewed ROM
         // forces the secondary map high, so its authored overlay wins unless
         // the primary map explicitly authored a high-priority tile too.
         const auto& primary = primary_layer[index];
         const auto& secondary = secondary_layer[index];
+        const LayerPixel* selected = nullptr;
         if (!secondary.visible) {
-            image.pixels[index] = primary.color;
+            selected = &primary;
         } else if (!primary.visible) {
-            image.pixels[index] = secondary.color;
+            selected = &secondary;
         } else {
-            image.pixels[index] =
-                primary.high_priority != secondary.high_priority
-                    ? secondary.high_priority ? secondary.color
-                                               : primary.color
-                    : primary.color;
+            selected = primary.high_priority != secondary.high_priority
+                ? secondary.high_priority ? &secondary : &primary
+                : &primary;
+        }
+        result.map.pixels[index] = selected->color;
+        if (selected->high_priority) {
+            auto& overlay = result.priority_overlay.pixels[index];
+            overlay = selected->color;
+            overlay.alpha = 255;
         }
     }
-    return image;
+    return result;
 }
 
 RgbaImage decode_genesis_entity_frame(

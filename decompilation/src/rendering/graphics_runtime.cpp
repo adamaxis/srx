@@ -9,19 +9,21 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <limits>
 #include <unordered_map>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <zlib.h>
 
 namespace shadowrun::graphics {
 
 namespace {
-
 
 void write_u16(std::ostream& output, std::uint16_t value) {
     output.put(static_cast<char>(value & 0xFFU));
@@ -189,6 +191,8 @@ const ResourceManifestEntry& find_resource_manifest_entry(
 
 
 } // namespace
+
+static RgbaImage read_png32(const std::string& path);
 
 static void fill_grayscale_entity_assets(native::NativePortAssets& assets);
 
@@ -436,7 +440,9 @@ native::NativePortAssets read_native_asset_directory(const std::string& root) {
                                      entry.kind);
         }
         try {
-            const auto decoded = read_bmp32(path.string());
+            const auto decoded = path.extension() == ".png"
+                ? read_png32(path.string())
+                : read_bmp32(path.string());
             native::NativeImage image{
                 decoded.width, decoded.height, decoded.pixels,
                 entry.origin_x, entry.origin_y};
@@ -687,8 +693,13 @@ native::NativePortAssets read_native_asset_directory(const std::string& root) {
     }
 
     assets.field_map = load("field/maps/mode-2.bmp");
+    assets.field_map_priority_overlay =
+        load("field/maps/mode-2-priority-overlay.png");
     for (auto& area : assets.field_areas) {
         area.map = load("field/maps/mode-" + std::to_string(area.mode_id) + ".bmp");
+        area.priority_overlay = load(
+            "field/maps/mode-" + std::to_string(area.mode_id) +
+            "-priority-overlay.png");
     }
     for (std::size_t index = 0; index < assets.entity_frames.size(); ++index) {
         const auto image = load("field/entities/idle-" + std::to_string(index) + ".bmp");
@@ -1131,6 +1142,177 @@ RgbaImage read_bmp32(const std::string& path) {
                 static_cast<std::uint8_t>(alpha),
             };
         }
+    }
+    return image;
+}
+
+static RgbaImage read_png32(const std::string& path) {
+    std::ifstream input(path, std::ios::binary);
+    if (!input) {
+        throw std::runtime_error("cannot open PNG input");
+    }
+    std::vector<std::uint8_t> bytes(
+        (std::istreambuf_iterator<char>(input)),
+        std::istreambuf_iterator<char>());
+    constexpr std::array<std::uint8_t, 8> signature{
+        0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
+    if (bytes.size() < signature.size() ||
+        !std::equal(signature.begin(), signature.end(), bytes.begin())) {
+        throw std::runtime_error("invalid PNG signature");
+    }
+
+    const auto read_big_endian = [&bytes](const std::size_t offset) {
+        if (offset > bytes.size() || bytes.size() - offset < 4U) {
+            throw std::out_of_range("PNG chunk header is truncated");
+        }
+        return (static_cast<std::uint32_t>(bytes[offset]) << 24U) |
+               (static_cast<std::uint32_t>(bytes[offset + 1U]) << 16U) |
+               (static_cast<std::uint32_t>(bytes[offset + 2U]) << 8U) |
+               static_cast<std::uint32_t>(bytes[offset + 3U]);
+    };
+    std::uint32_t width = 0U;
+    std::uint32_t height = 0U;
+    std::vector<std::uint8_t> compressed;
+    bool saw_header = false;
+    bool saw_end = false;
+    std::size_t cursor = signature.size();
+    while (cursor < bytes.size()) {
+        const auto length = static_cast<std::size_t>(read_big_endian(cursor));
+        cursor += 4U;
+        if (cursor > bytes.size() || bytes.size() - cursor < 4U ||
+            length > bytes.size() - cursor - 4U ||
+            bytes.size() - cursor - 4U - length < 4U) {
+            throw std::out_of_range("PNG chunk is truncated");
+        }
+        const auto type_offset = cursor;
+        const auto data_offset = cursor + 4U;
+        const auto crc_offset = data_offset + length;
+        const auto expected_crc = read_big_endian(crc_offset);
+        const auto actual_crc = crc32(
+            crc32(0L, Z_NULL, 0), bytes.data() + type_offset,
+            static_cast<uInt>(4U + length));
+        if (static_cast<std::uint32_t>(actual_crc) != expected_crc) {
+            throw std::runtime_error("PNG chunk checksum mismatch");
+        }
+
+        const auto is_type = [&bytes, type_offset](const char* type) {
+            return bytes[type_offset] == static_cast<std::uint8_t>(type[0]) &&
+                   bytes[type_offset + 1U] == static_cast<std::uint8_t>(type[1]) &&
+                   bytes[type_offset + 2U] == static_cast<std::uint8_t>(type[2]) &&
+                   bytes[type_offset + 3U] == static_cast<std::uint8_t>(type[3]);
+        };
+        if (is_type("IHDR")) {
+            if (saw_header || length != 13U) {
+                throw std::runtime_error("invalid PNG header chunk");
+            }
+            width = read_big_endian(data_offset);
+            height = read_big_endian(data_offset + 4U);
+            if (width == 0U || height == 0U || width > 8192U ||
+                height > 8192U || bytes[data_offset + 8U] != 8U ||
+                bytes[data_offset + 9U] != 6U ||
+                bytes[data_offset + 10U] != 0U ||
+                bytes[data_offset + 11U] != 0U ||
+                bytes[data_offset + 12U] != 0U) {
+                throw std::runtime_error(
+                    "unsupported PNG (expected non-interlaced RGBA8)");
+            }
+            saw_header = true;
+        } else if (is_type("IDAT")) {
+            if (!saw_header || saw_end ||
+                length > std::numeric_limits<std::size_t>::max() -
+                             compressed.size()) {
+                throw std::runtime_error("invalid PNG image-data chunk");
+            }
+            compressed.insert(compressed.end(), bytes.begin() + data_offset,
+                              bytes.begin() + data_offset + length);
+        } else if (is_type("IEND")) {
+            if (length != 0U) {
+                throw std::runtime_error("invalid PNG end chunk");
+            }
+            saw_end = true;
+            cursor = crc_offset + 4U;
+            break;
+        }
+        cursor = crc_offset + 4U;
+    }
+    if (!saw_header || !saw_end || compressed.empty()) {
+        throw std::runtime_error("PNG is missing required chunks");
+    }
+
+    const auto row_bytes = static_cast<std::size_t>(width) * 4U;
+    if (height > std::numeric_limits<std::size_t>::max() /
+                     (row_bytes + 1U)) {
+        throw std::overflow_error("PNG dimensions overflow host size");
+    }
+    const auto decoded_size =
+        (row_bytes + 1U) * static_cast<std::size_t>(height);
+    if (decoded_size > std::numeric_limits<uLongf>::max() ||
+        compressed.size() > std::numeric_limits<uLong>::max()) {
+        throw std::overflow_error("PNG image exceeds zlib limits");
+    }
+    std::vector<std::uint8_t> filtered(decoded_size);
+    auto filtered_size = static_cast<uLongf>(filtered.size());
+    const auto inflate_result = uncompress(
+        filtered.data(), &filtered_size, compressed.data(),
+        static_cast<uLong>(compressed.size()));
+    if (inflate_result != Z_OK || filtered_size != filtered.size()) {
+        throw std::runtime_error("cannot decompress PNG image rows");
+    }
+
+    const auto paeth = [](const std::uint8_t left, const std::uint8_t above,
+                          const std::uint8_t upper_left) {
+        const auto estimate = static_cast<int>(left) + static_cast<int>(above) -
+                              static_cast<int>(upper_left);
+        const auto left_distance = std::abs(estimate - static_cast<int>(left));
+        const auto above_distance =
+            std::abs(estimate - static_cast<int>(above));
+        const auto upper_left_distance =
+            std::abs(estimate - static_cast<int>(upper_left));
+        if (left_distance <= above_distance &&
+            left_distance <= upper_left_distance) {
+            return left;
+        }
+        return above_distance <= upper_left_distance ? above : upper_left;
+    };
+    std::vector<std::uint8_t> pixels(
+        row_bytes * static_cast<std::size_t>(height));
+    for (std::size_t y = 0U; y < height; ++y) {
+        const auto source_offset = y * (row_bytes + 1U);
+        const auto filter = filtered[source_offset];
+        if (filter > 4U) {
+            throw std::runtime_error("unsupported PNG row filter");
+        }
+        auto* destination = pixels.data() + y * row_bytes;
+        const auto* source = filtered.data() + source_offset + 1U;
+        const auto* previous = y == 0U ? nullptr : destination - row_bytes;
+        for (std::size_t x = 0U; x < row_bytes; ++x) {
+            const auto left = x >= 4U ? destination[x - 4U] : 0U;
+            const auto above = previous == nullptr ? 0U : previous[x];
+            const auto upper_left =
+                previous == nullptr || x < 4U ? 0U : previous[x - 4U];
+            std::uint8_t predictor = 0U;
+            switch (filter) {
+            case 0U: predictor = 0U; break;
+            case 1U: predictor = left; break;
+            case 2U: predictor = above; break;
+            case 3U:
+                predictor = static_cast<std::uint8_t>(
+                    (static_cast<unsigned>(left) + above) / 2U);
+                break;
+            case 4U: predictor = paeth(left, above, upper_left); break;
+            }
+            destination[x] = static_cast<std::uint8_t>(source[x] + predictor);
+        }
+    }
+
+    RgbaImage image{static_cast<std::uint16_t>(width),
+                    static_cast<std::uint16_t>(height),
+                    std::vector<native::Rgba8>(
+                        static_cast<std::size_t>(width) * height)};
+    for (std::size_t index = 0U; index < image.pixels.size(); ++index) {
+        image.pixels[index] = {pixels[index * 4U], pixels[index * 4U + 1U],
+                               pixels[index * 4U + 2U],
+                               pixels[index * 4U + 3U]};
     }
     return image;
 }

@@ -31,6 +31,7 @@
 #include "shadowrun_ghidra/menus/cyberware_detail_conversion.hpp"
 #include "genesis_image_compositor.hpp"
 #include "numeric_visual_renderer.hpp"
+#include "field_map_composition.hpp"
 
 #include <QPainter>
 #include <QColor>
@@ -4750,8 +4751,13 @@ bool FieldSceneRuntime::bootstrap(
 
     const auto field_map_alias =
         std::string("field.maps.mode.") + std::to_string(scene_reference);
+    const auto field_map_priority_overlay_alias =
+        field_map_alias + ".priority.overlay";
     if (!load_image(startup_state.asset_catalog.catalog, field_map_alias,
                     field_map_) ||
+        !load_image(startup_state.asset_catalog.catalog,
+                    field_map_priority_overlay_alias,
+                    field_map_priority_overlay_) ||
         !load_image(startup_state.asset_catalog.catalog, kFieldHudAlias,
                     field_hud_) ||
         !load_image(startup_state.asset_catalog.catalog,
@@ -4764,6 +4770,11 @@ bool FieldSceneRuntime::bootstrap(
         !load_field_elevator_selector_assets(
             startup_state.asset_catalog.catalog)) {
         source_boundary("field.bootstrap.direct_assets_missing");
+        return false;
+    }
+    if (field_map_priority_overlay_.size() != field_map_.size()) {
+        failure_ = "field map priority overlay dimensions do not match map";
+        source_boundary("field.bootstrap.field_map_priority_overlay_mismatch");
         return false;
     }
     for (std::size_t index = 0; index < field_service_tab_images_.size();
@@ -6452,8 +6463,16 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
     }
     const auto alias =
         std::string("field.maps.mode.") + std::to_string(scene_reference);
+    const auto priority_overlay_alias = alias + ".priority.overlay";
     QImage next_field_map;
-    if (!load_image(*field_asset_catalog_, alias, next_field_map)) {
+    QImage next_field_map_priority_overlay;
+    if (!load_image(*field_asset_catalog_, alias, next_field_map) ||
+        !load_image(*field_asset_catalog_, priority_overlay_alias,
+                    next_field_map_priority_overlay) ||
+        next_field_map_priority_overlay.size() != next_field_map.size()) {
+        if (failure_.empty()) {
+            failure_ = "field map priority overlay dimensions do not match map";
+        }
         return false;
     }
 
@@ -6494,6 +6513,8 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
 
     state_.field_scene_buffers = std::move(next_buffers);
     field_map_ = std::move(next_field_map);
+    field_map_priority_overlay_ =
+        std::move(next_field_map_priority_overlay);
     if (!same_scene) {
         initialize_default_field_actors(scene_reference);
         field_weapon_projectiles_.clear();
@@ -11036,8 +11057,13 @@ void FieldSceneRuntime::paint_field_scene(QPainter& painter) const {
     const auto max_y = std::max(0, field_map_.height() - 224);
     const auto viewport_x = std::min(camera_x, max_x);
     const auto viewport_y = std::min(camera_y, max_y);
-    painter.drawImage(0, 0, field_map_, viewport_x, viewport_y, 320, 224);
-    paint_field_scene_entities(painter);
+    // ROM 0x481E builds ordinary field actors with sprite priority clear.
+    // Preserve the source map's high-priority tiles over those actors; the
+    // same draw order must hold for every scene loaded from a map resource.
+    paint_field_map_composition(
+        painter, field_map_, field_map_priority_overlay_,
+        QRect(viewport_x, viewport_y, 320, 224),
+        [this](QPainter& target) { paint_field_scene_entities(target); });
 
     // 0x334C supplies the static chrome. 0x35D4/0x35F0/0x36FC/0x3674 stamp
     // the live face, item, and counter overlays at the $F000 nametable

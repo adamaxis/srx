@@ -18,6 +18,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <zlib.h>
 
 namespace {
 
@@ -1796,6 +1797,91 @@ std::string format_resource_source(
     return output.str();
 }
 
+void write_png32(const std::string& path,
+                 const shadowrun::graphics::RgbaImage& image) {
+    if (image.width == 0U || image.height == 0U || image.pixels.empty()) {
+        throw std::runtime_error("cannot write an empty PNG image");
+    }
+
+    std::vector<std::uint8_t> scanlines;
+    scanlines.reserve(static_cast<std::size_t>(image.height) *
+                      (static_cast<std::size_t>(image.width) * 4U + 1U));
+    for (std::size_t y = 0U; y < image.height; ++y) {
+        scanlines.push_back(0U);
+        for (std::size_t x = 0U; x < image.width; ++x) {
+            const auto& pixel =
+                image.pixels[y * static_cast<std::size_t>(image.width) + x];
+            scanlines.push_back(pixel.red);
+            scanlines.push_back(pixel.green);
+            scanlines.push_back(pixel.blue);
+            scanlines.push_back(pixel.alpha);
+        }
+    }
+
+    uLongf compressed_size =
+        compressBound(static_cast<uLong>(scanlines.size()));
+    std::vector<std::uint8_t> compressed(compressed_size);
+    const auto compression = compress2(
+        compressed.data(), &compressed_size, scanlines.data(),
+        static_cast<uLong>(scanlines.size()), Z_BEST_COMPRESSION);
+    if (compression != Z_OK) {
+        throw std::runtime_error("cannot compress PNG image rows");
+    }
+    compressed.resize(static_cast<std::size_t>(compressed_size));
+
+    std::vector<std::uint8_t> png{
+        0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
+    const auto append_big_endian = [&png](const std::uint32_t value) {
+        png.push_back(static_cast<std::uint8_t>(value >> 24U));
+        png.push_back(static_cast<std::uint8_t>(value >> 16U));
+        png.push_back(static_cast<std::uint8_t>(value >> 8U));
+        png.push_back(static_cast<std::uint8_t>(value));
+    };
+    const auto append_chunk = [&png, &append_big_endian](
+                                  const std::array<std::uint8_t, 4>& type,
+                                  const std::vector<std::uint8_t>& data) {
+        append_big_endian(static_cast<std::uint32_t>(data.size()));
+        const auto crc_begin = png.size();
+        png.insert(png.end(), type.begin(), type.end());
+        png.insert(png.end(), data.begin(), data.end());
+        const auto checksum = crc32(
+            crc32(0L, Z_NULL, 0), png.data() + crc_begin,
+            static_cast<uInt>(png.size() - crc_begin));
+        append_big_endian(static_cast<std::uint32_t>(checksum));
+    };
+
+    std::vector<std::uint8_t> header;
+    header.reserve(13U);
+    const auto append_header_word = [&header](const std::uint32_t value) {
+        header.push_back(static_cast<std::uint8_t>(value >> 24U));
+        header.push_back(static_cast<std::uint8_t>(value >> 16U));
+        header.push_back(static_cast<std::uint8_t>(value >> 8U));
+        header.push_back(static_cast<std::uint8_t>(value));
+    };
+    append_header_word(image.width);
+    append_header_word(image.height);
+    header.push_back(8U);
+    header.push_back(6U);
+    header.push_back(0U);
+    header.push_back(0U);
+    header.push_back(0U);
+    append_chunk(std::array<std::uint8_t, 4>{{'I', 'H', 'D', 'R'}}, header);
+    append_chunk(std::array<std::uint8_t, 4>{{'I', 'D', 'A', 'T'}}, compressed);
+    append_chunk(std::array<std::uint8_t, 4>{{'I', 'E', 'N', 'D'}}, {});
+
+    std::filesystem::create_directories(
+        std::filesystem::path(path).parent_path());
+    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    if (!output) {
+        throw std::runtime_error("cannot create PNG image: " + path);
+    }
+    output.write(reinterpret_cast<const char*>(png.data()),
+                 static_cast<std::streamsize>(png.size()));
+    if (!output) {
+        throw std::runtime_error("cannot finish PNG image: " + path);
+    }
+}
+
 void write_catalog_asset(const std::filesystem::path& root,
                          const std::string& relative_name,
                          const shadowrun::graphics::RgbaImage& image,
@@ -1843,7 +1929,11 @@ void write_catalog_asset(const std::filesystem::path& root,
     }
     const auto path = root / relative_name;
     std::filesystem::create_directories(path.parent_path());
-    shadowrun::graphics::write_bmp32(path.string(), asset.image);
+    if (path.extension() == ".png") {
+        write_png32(path.string(), asset.image);
+    } else {
+        shadowrun::graphics::write_bmp32(path.string(), asset.image);
+    }
     manifest << relative_name << '\t' << kind << '\t' << asset.origin_x
              << '\t' << asset.origin_y << '\t' << asset.image.width << '\t'
              << asset.image.height << '\t' << provenance << '\t' << status
@@ -1883,7 +1973,8 @@ void write_asset_readme(const std::filesystem::path& root) {
            << "Generated from the US Genesis ROM by "
               "shadowrun_graphics_extract --all-assets.\n\n"
            << "The native and Ghidra-conversion runtimes consume these "
-              "individually named BMPs, direct text records, native/state.bin, "
+              "individually named BMP and PNG images, direct text records, "
+              "native/state.bin, "
               "and resources.tsv directly. This tree deliberately contains "
               "semantic folders: menu, intro, field, and item categories. "
               "Static intro plates and independently extracted intro sprites "
@@ -2722,6 +2813,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     for (const auto& area : assets.field_areas) {
         write("field/maps/mode-" + std::to_string(area.mode_id) + ".bmp",
               area.map, "background", "mode resource catalog", false);
+        write("field/maps/mode-" + std::to_string(area.mode_id) +
+                  "-priority-overlay.png",
+              area.priority_overlay, "priority-overlay",
+              "ROM field tile priority bits", false);
     }
 
     // Keep each rendered map tied to the descriptor that selected it. This is
@@ -2738,7 +2833,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
            "\tmetatile_stream\tprimary_tilemap\tsecondary_tilemap"
            "\ttilemap_width\ttilemap_height\tmetatile_encoding"
            "\tevent_table\tobject_pattern\tobject_vram"
-           "\tobject_pattern_bytes\tasset\timage_width\timage_height\n";
+           "\tobject_pattern_bytes\tasset\timage_width\timage_height"
+           "\tpriority_overlay_asset\n";
     const auto write_hex = [&map_index](std::size_t value) {
         map_index << "0x" << std::uppercase << std::hex << value << std::dec;
     };
@@ -2791,7 +2887,9 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         write_hex(resources.object_pattern_vram_offset);
         map_index << '\t' << resources.object_pattern_byte_count
                   << "\tfield/maps/mode-" << mode_id << ".bmp\t"
-                  << area->map.width << '\t' << area->map.height << '\n';
+                  << area->map.width << '\t' << area->map.height
+                  << "\tfield/maps/mode-" << mode_id
+                  << "-priority-overlay.png\n";
     }
     map_index.flush();
 

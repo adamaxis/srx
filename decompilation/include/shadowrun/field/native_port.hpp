@@ -350,6 +350,8 @@ struct NativeFieldRecord {
 struct NativeFieldArea {
     std::uint16_t mode_id = 0;
     NativeImage map;
+    // Sparse ROM high-priority tile pixels, drawn after low-priority actors.
+    NativeImage priority_overlay;
     terrain::Map terrain;
     std::uint16_t initial_camera_x_fixed = 0;
     std::uint16_t initial_camera_y_fixed = 0;
@@ -667,6 +669,7 @@ struct NativePortAssets {
     NativeImage cab_map;
     std::array<NativeImage, 8> cab_cursor_tiles{};
     NativeImage field_map;
+    NativeImage field_map_priority_overlay;
     std::vector<NativeEntityFrame> entity_frames;
     // Baked luminance copies of the color walk/idle frames. Extract stores
     // both; runtime never palette-swaps a sprite to grey.

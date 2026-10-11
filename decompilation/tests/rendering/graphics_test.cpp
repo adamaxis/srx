@@ -802,12 +802,30 @@ int main() {
     assert(bounds_probe.raw_status == 0x7FU &&
            bounds_probe.status == 0x7FU && bounds_probe.blocked &&
            bounds_probe.out_of_bounds);
-    const auto field_map = decode_genesis_mode2_field_map(
+    const auto field_map_layers = decode_genesis_mode2_field_map_layers(
         rom, field_resources);
+    const auto& field_map = field_map_layers.map;
     assert(field_map.width == 1920 && field_map.height == 1344);
     assert(field_map.pixels.size() ==
            static_cast<std::size_t>(field_map.width) * field_map.height);
+    assert(field_map_layers.priority_overlay.width == field_map.width);
+    assert(field_map_layers.priority_overlay.height == field_map.height);
+    assert(field_map_layers.priority_overlay.pixels.size() ==
+           field_map.pixels.size());
     assert(field_map.pixels.front().alpha == 255);
+    std::size_t high_priority_pixels = 0;
+    for (std::size_t index = 0; index < field_map.pixels.size(); ++index) {
+        const auto& background = field_map.pixels[index];
+        const auto& overlay = field_map_layers.priority_overlay.pixels[index];
+        if (overlay.alpha == 0U) {
+            continue;
+        }
+        ++high_priority_pixels;
+        assert(overlay.red == background.red &&
+               overlay.green == background.green &&
+               overlay.blue == background.blue);
+    }
+    assert(high_priority_pixels > 0U);
     const auto first_pixel = field_map.pixels.front();
     bool varied = false;
     for (const auto pixel : field_map.pixels) {
@@ -1616,6 +1634,22 @@ int main() {
     assert(loaded_assets.field_map.height == native_assets.field_map.height);
     assert(loaded_assets.field_map.pixels.size() ==
            native_assets.field_map.pixels.size());
+    assert(loaded_assets.field_map_priority_overlay.width ==
+           native_assets.field_map_priority_overlay.width);
+    assert(loaded_assets.field_map_priority_overlay.height ==
+           native_assets.field_map_priority_overlay.height);
+    assert(loaded_assets.field_map_priority_overlay.pixels.size() ==
+           native_assets.field_map_priority_overlay.pixels.size());
+    for (std::size_t pixel = 0;
+         pixel < native_assets.field_map_priority_overlay.pixels.size();
+         ++pixel) {
+        const auto& loaded =
+            loaded_assets.field_map_priority_overlay.pixels[pixel];
+        const auto& native =
+            native_assets.field_map_priority_overlay.pixels[pixel];
+        assert(loaded.red == native.red && loaded.green == native.green &&
+               loaded.blue == native.blue && loaded.alpha == native.alpha);
+    }
     assert(loaded_assets.entity_frames.size() ==
            native_assets.entity_frames.size());
     for (std::size_t index = 0;
@@ -1668,6 +1702,22 @@ int main() {
                 loaded_assets.field_areas[index].map.pixels[pixel];
             const auto& native =
                 native_assets.field_areas[index].map.pixels[pixel];
+            assert(loaded.red == native.red && loaded.green == native.green &&
+                   loaded.blue == native.blue && loaded.alpha == native.alpha);
+        }
+        assert(loaded_assets.field_areas[index].priority_overlay.width ==
+               native_assets.field_areas[index].priority_overlay.width);
+        assert(loaded_assets.field_areas[index].priority_overlay.height ==
+               native_assets.field_areas[index].priority_overlay.height);
+        assert(loaded_assets.field_areas[index].priority_overlay.pixels.size() ==
+               native_assets.field_areas[index].priority_overlay.pixels.size());
+        for (std::size_t pixel = 0;
+             pixel < native_assets.field_areas[index].priority_overlay.pixels.size();
+             ++pixel) {
+            const auto& loaded =
+                loaded_assets.field_areas[index].priority_overlay.pixels[pixel];
+            const auto& native =
+                native_assets.field_areas[index].priority_overlay.pixels[pixel];
             assert(loaded.red == native.red && loaded.green == native.green &&
                    loaded.blue == native.blue && loaded.alpha == native.alpha);
         }

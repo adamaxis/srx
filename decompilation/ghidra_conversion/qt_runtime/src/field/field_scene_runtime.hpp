@@ -1188,6 +1188,7 @@ private:
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
     std::size_t field_joshua_archetype_selection_ = 0U;
     QImage field_map_;
+    QImage field_map_priority_overlay_;
     QImage field_hud_;
     QImage field_service_background_;
     std::array<QImage, kElevatorSelectorAnimationFrameCount>

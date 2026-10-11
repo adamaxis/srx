@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -27,6 +28,14 @@ std::uint32_t read_u32(const std::vector<std::uint8_t>& bytes,
         (static_cast<std::uint32_t>(bytes[offset + 1U]) << 8U) |
         (static_cast<std::uint32_t>(bytes[offset + 2U]) << 16U) |
         (static_cast<std::uint32_t>(bytes[offset + 3U]) << 24U);
+}
+
+std::uint32_t read_u32_be(const std::vector<std::uint8_t>& bytes,
+                          std::size_t offset) {
+    return (static_cast<std::uint32_t>(bytes[offset]) << 24U) |
+           (static_cast<std::uint32_t>(bytes[offset + 1U]) << 16U) |
+           (static_cast<std::uint32_t>(bytes[offset + 2U]) << 8U) |
+           static_cast<std::uint32_t>(bytes[offset + 3U]);
 }
 
 bool fail(const std::string& message) {
@@ -64,14 +73,21 @@ int main() {
         const auto has_bmp_suffix =
             relative.size() >= 4U && relative.compare(relative.size() - 4U, 4U,
                                                        ".bmp") == 0;
+        const auto has_png_suffix =
+            relative.size() >= 4U && relative.compare(relative.size() - 4U, 4U,
+                                                       ".png") == 0;
+        const auto is_map_priority_overlay =
+            relative.rfind("field/maps/mode-", 0U) == 0U &&
+            relative.find("-priority-overlay.png") != std::string::npos;
         if (relative.empty() || relative.find("..") != std::string::npos ||
-            !has_bmp_suffix) {
-            return fail("catalog path is not a safe BMP path: " + relative)
+            (!has_bmp_suffix && (!has_png_suffix || !is_map_priority_overlay))) {
+            return fail("catalog path is not a safe extracted image path: " +
+                        relative)
                 ? 0
                 : 1;
         }
         if (fields[1] != "background" && fields[1] != "sprite" &&
-            fields[1] != "overlay") {
+            fields[1] != "overlay" && fields[1] != "priority-overlay") {
             return fail("unknown asset kind for " + relative) ? 0 : 1;
         }
         if (fields[7] != "extracted" && fields[7] != "extracted-empty") {
@@ -85,17 +101,41 @@ int main() {
         if (!image) {
             return fail("catalog file is missing: " + path.string()) ? 0 : 1;
         }
-        std::vector<std::uint8_t> header(26U, 0U);
+        std::vector<std::uint8_t> header(has_png_suffix ? 24U : 26U, 0U);
         image.read(reinterpret_cast<char*>(header.data()),
                    static_cast<std::streamsize>(header.size()));
-        if (image.gcount() != static_cast<std::streamsize>(header.size()) ||
-            header[0] != 'B' || header[1] != 'M') {
-            return fail("asset is not a readable BMP: " + path.string()) ? 0
-                                                                            : 1;
+        if (image.gcount() != static_cast<std::streamsize>(header.size())) {
+            return fail("asset image header is truncated: " + path.string())
+                ? 0
+                : 1;
+        }
+        std::uint32_t image_width = 0U;
+        std::uint32_t image_height = 0U;
+        if (has_png_suffix) {
+            const std::vector<std::uint8_t> png_signature{
+                0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
+            if (!is_map_priority_overlay ||
+                !std::equal(png_signature.begin(), png_signature.end(),
+                            header.begin()) ||
+                header[12] != 'I' || header[13] != 'H' ||
+                header[14] != 'D' || header[15] != 'R') {
+                return fail("asset is not a supported map-overlay PNG: " +
+                            path.string()) ? 0 : 1;
+            }
+            image_width = read_u32_be(header, 16U);
+            image_height = read_u32_be(header, 20U);
+        } else {
+            if (header[0] != 'B' || header[1] != 'M') {
+                return fail("asset is not a readable BMP: " + path.string())
+                    ? 0
+                    : 1;
+            }
+            image_width = read_u32(header, 18U);
+            image_height = read_u32(header, 22U);
         }
         const auto width = std::stoul(fields[4]);
         const auto height = std::stoul(fields[5]);
-        if (read_u32(header, 18U) != width || read_u32(header, 22U) != height ||
+        if (image_width != width || image_height != height ||
             width == 0U || height == 0U) {
             return fail("catalog dimensions do not match " + path.string())
                 ? 0
@@ -107,7 +147,9 @@ int main() {
     std::set<std::string> files;
     for (const auto& entry :
          std::filesystem::recursive_directory_iterator(root)) {
-        if (!entry.is_regular_file() || entry.path().extension() != ".bmp") {
+        if (!entry.is_regular_file() ||
+            (entry.path().extension() != ".bmp" &&
+             entry.path().extension() != ".png")) {
             continue;
         }
         auto relative = std::filesystem::relative(entry.path(), root).string();
@@ -119,7 +161,7 @@ int main() {
         files.insert(relative);
     }
     if (files != listed) {
-        return fail("catalog and BMP file set differ") ? 0 : 1;
+        return fail("catalog and extracted image file set differ") ? 0 : 1;
     }
     if (row_count == 0U ||
         listed.find("intro/background-0.bmp") == listed.end() ||

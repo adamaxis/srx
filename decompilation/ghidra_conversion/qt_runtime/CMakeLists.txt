@@ -15,6 +15,7 @@ set(SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS
 add_executable(shadowrun_ghidra_conversion_qt
     src/app/ghidra_conversion_qt_main.cpp
     src/field/field_scene_runtime.cpp
+    src/field/field_map_composition.cpp
     src/field/elevator_selector_runtime.cpp
     src/menus/attributes_skills_menu_runtime.cpp
     src/field/field_clips_menu_runtime.cpp
@@ -61,6 +62,22 @@ target_link_libraries(shadowrun_ghidra_conversion_qt
         Qt6::Widgets
         Qt6::Multimedia
 )
+
+add_executable(shadowrun_field_map_composition_test
+    tests/field/field_map_composition_test.cpp
+    src/field/field_map_composition.cpp)
+target_include_directories(shadowrun_field_map_composition_test
+    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
+set_target_properties(shadowrun_field_map_composition_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
+target_compile_definitions(shadowrun_field_map_composition_test PRIVATE
+    SHADOWRUN_FIELD_MAP_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets")
+target_link_libraries(shadowrun_field_map_composition_test
+    PRIVATE Qt6::Gui)
+add_test(NAME shadowrun_ghidra_conversion_qt_field_map_composition_qa
+         COMMAND shadowrun_field_map_composition_test)
 
 add_executable(shadowrun_gameplay_script_runtime_test
     tests/scripting/game_script_runtime_test.cpp)

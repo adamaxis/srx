@@ -1300,61 +1300,117 @@ menu/field/magic-damage-bar-7.bmp	sprite	0	0	56	8	0x105E6/0xC86F8[7]	extracted
 menu/field/magic-damage-bar-8.bmp	sprite	0	0	56	8	0x105E6/0xC86F8[8]	extracted
 menu/field/magic-damage-bar-9.bmp	sprite	0	0	56	8	0x105E6/0xC86F8[9]	extracted
 field/maps/mode-2.bmp	background	0	0	1920	1344	mode resource catalog	extracted
+field/maps/mode-2-priority-overlay.png	priority-overlay	0	0	1920	1344	ROM field tile priority bits	extracted
 field/maps/mode-0.bmp	background	0	0	1920	960	mode resource catalog	extracted
+field/maps/mode-0-priority-overlay.png	priority-overlay	0	0	1920	960	ROM field tile priority bits	extracted
 field/maps/mode-1.bmp	background	0	0	1600	1504	mode resource catalog	extracted
+field/maps/mode-1-priority-overlay.png	priority-overlay	0	0	1600	1504	ROM field tile priority bits	extracted
 field/maps/mode-3.bmp	background	0	0	2016	1344	mode resource catalog	extracted
+field/maps/mode-3-priority-overlay.png	priority-overlay	0	0	2016	1344	ROM field tile priority bits	extracted
 field/maps/mode-4.bmp	background	0	0	1920	960	mode resource catalog	extracted
+field/maps/mode-4-priority-overlay.png	priority-overlay	0	0	1920	960	ROM field tile priority bits	extracted
 field/maps/mode-5.bmp	background	0	0	1600	1056	mode resource catalog	extracted
+field/maps/mode-5-priority-overlay.png	priority-overlay	0	0	1600	1056	ROM field tile priority bits	extracted
 field/maps/mode-6.bmp	background	0	0	1920	1920	mode resource catalog	extracted
+field/maps/mode-6-priority-overlay.png	priority-overlay	0	0	1920	1920	ROM field tile priority bits	extracted
 field/maps/mode-7.bmp	background	0	0	1920	1920	mode resource catalog	extracted
+field/maps/mode-7-priority-overlay.png	priority-overlay	0	0	1920	1920	ROM field tile priority bits	extracted
 field/maps/mode-8.bmp	background	0	0	1920	1920	mode resource catalog	extracted
+field/maps/mode-8-priority-overlay.png	priority-overlay	0	0	1920	1920	ROM field tile priority bits	extracted
 field/maps/mode-9.bmp	background	0	0	1920	1920	mode resource catalog	extracted
+field/maps/mode-9-priority-overlay.png	priority-overlay	0	0	1920	1920	ROM field tile priority bits	extracted
 field/maps/mode-10.bmp	background	0	0	320	224	mode resource catalog	extracted
+field/maps/mode-10-priority-overlay.png	priority-overlay	0	0	320	224	ROM field tile priority bits	extracted
 field/maps/mode-11.bmp	background	0	0	320	672	mode resource catalog	extracted
+field/maps/mode-11-priority-overlay.png	priority-overlay	0	0	320	672	ROM field tile priority bits	extracted
 field/maps/mode-12.bmp	background	0	0	320	224	mode resource catalog	extracted
+field/maps/mode-12-priority-overlay.png	priority-overlay	0	0	320	224	ROM field tile priority bits	extracted
 field/maps/mode-13.bmp	background	0	0	320	224	mode resource catalog	extracted
+field/maps/mode-13-priority-overlay.png	priority-overlay	0	0	320	224	ROM field tile priority bits	extracted
 field/maps/mode-14.bmp	background	0	0	320	224	mode resource catalog	extracted
+field/maps/mode-14-priority-overlay.png	priority-overlay	0	0	320	224	ROM field tile priority bits	extracted
 field/maps/mode-15.bmp	background	0	0	320	224	mode resource catalog	extracted
+field/maps/mode-15-priority-overlay.png	priority-overlay	0	0	320	224	ROM field tile priority bits	extracted
 field/maps/mode-16.bmp	background	0	0	320	224	mode resource catalog	extracted
+field/maps/mode-16-priority-overlay.png	priority-overlay	0	0	320	224	ROM field tile priority bits	extracted
 field/maps/mode-17.bmp	background	0	0	320	224	mode resource catalog	extracted
+field/maps/mode-17-priority-overlay.png	priority-overlay	0	0	320	224	ROM field tile priority bits	extracted
 field/maps/mode-18.bmp	background	0	0	320	224	mode resource catalog	extracted
+field/maps/mode-18-priority-overlay.png	priority-overlay	0	0	320	224	ROM field tile priority bits	extracted
 field/maps/mode-19.bmp	background	0	0	320	224	mode resource catalog	extracted
+field/maps/mode-19-priority-overlay.png	priority-overlay	0	0	320	224	ROM field tile priority bits	extracted
 field/maps/mode-20.bmp	background	0	0	1600	960	mode resource catalog	extracted
+field/maps/mode-20-priority-overlay.png	priority-overlay	0	0	1600	960	ROM field tile priority bits	extracted
 field/maps/mode-21.bmp	background	0	0	1216	1312	mode resource catalog	extracted
+field/maps/mode-21-priority-overlay.png	priority-overlay	0	0	1216	1312	ROM field tile priority bits	extracted
 field/maps/mode-22.bmp	background	0	0	1216	1312	mode resource catalog	extracted
+field/maps/mode-22-priority-overlay.png	priority-overlay	0	0	1216	1312	ROM field tile priority bits	extracted
 field/maps/mode-23.bmp	background	0	0	1216	1312	mode resource catalog	extracted
+field/maps/mode-23-priority-overlay.png	priority-overlay	0	0	1216	1312	ROM field tile priority bits	extracted
 field/maps/mode-24.bmp	background	0	0	1216	1312	mode resource catalog	extracted
+field/maps/mode-24-priority-overlay.png	priority-overlay	0	0	1216	1312	ROM field tile priority bits	extracted
 field/maps/mode-25.bmp	background	0	0	1216	1120	mode resource catalog	extracted
+field/maps/mode-25-priority-overlay.png	priority-overlay	0	0	1216	1120	ROM field tile priority bits	extracted
 field/maps/mode-26.bmp	background	0	0	1504	960	mode resource catalog	extracted
+field/maps/mode-26-priority-overlay.png	priority-overlay	0	0	1504	960	ROM field tile priority bits	extracted
 field/maps/mode-27.bmp	background	0	0	1504	1088	mode resource catalog	extracted
+field/maps/mode-27-priority-overlay.png	priority-overlay	0	0	1504	1088	ROM field tile priority bits	extracted
 field/maps/mode-28.bmp	background	0	0	1504	1088	mode resource catalog	extracted
+field/maps/mode-28-priority-overlay.png	priority-overlay	0	0	1504	1088	ROM field tile priority bits	extracted
 field/maps/mode-29.bmp	background	0	0	1504	1088	mode resource catalog	extracted
+field/maps/mode-29-priority-overlay.png	priority-overlay	0	0	1504	1088	ROM field tile priority bits	extracted
 field/maps/mode-30.bmp	background	0	0	992	1312	mode resource catalog	extracted
+field/maps/mode-30-priority-overlay.png	priority-overlay	0	0	992	1312	ROM field tile priority bits	extracted
 field/maps/mode-31.bmp	background	0	0	992	1312	mode resource catalog	extracted
+field/maps/mode-31-priority-overlay.png	priority-overlay	0	0	992	1312	ROM field tile priority bits	extracted
 field/maps/mode-32.bmp	background	0	0	992	1312	mode resource catalog	extracted
+field/maps/mode-32-priority-overlay.png	priority-overlay	0	0	992	1312	ROM field tile priority bits	extracted
 field/maps/mode-33.bmp	background	0	0	992	1312	mode resource catalog	extracted
+field/maps/mode-33-priority-overlay.png	priority-overlay	0	0	992	1312	ROM field tile priority bits	extracted
 field/maps/mode-34.bmp	background	0	0	992	1312	mode resource catalog	extracted
+field/maps/mode-34-priority-overlay.png	priority-overlay	0	0	992	1312	ROM field tile priority bits	extracted
 field/maps/mode-35.bmp	background	0	0	1600	1088	mode resource catalog	extracted
+field/maps/mode-35-priority-overlay.png	priority-overlay	0	0	1600	1088	ROM field tile priority bits	extracted
 field/maps/mode-36.bmp	background	0	0	1600	1088	mode resource catalog	extracted
+field/maps/mode-36-priority-overlay.png	priority-overlay	0	0	1600	1088	ROM field tile priority bits	extracted
 field/maps/mode-37.bmp	background	0	0	1600	1088	mode resource catalog	extracted
+field/maps/mode-37-priority-overlay.png	priority-overlay	0	0	1600	1088	ROM field tile priority bits	extracted
 field/maps/mode-38.bmp	background	0	0	1600	1088	mode resource catalog	extracted
+field/maps/mode-38-priority-overlay.png	priority-overlay	0	0	1600	1088	ROM field tile priority bits	extracted
 field/maps/mode-39.bmp	background	0	0	960	960	mode resource catalog	extracted
+field/maps/mode-39-priority-overlay.png	priority-overlay	0	0	960	960	ROM field tile priority bits	extracted
 field/maps/mode-40.bmp	background	0	0	960	960	mode resource catalog	extracted
+field/maps/mode-40-priority-overlay.png	priority-overlay	0	0	960	960	ROM field tile priority bits	extracted
 field/maps/mode-41.bmp	background	0	0	992	1376	mode resource catalog	extracted
+field/maps/mode-41-priority-overlay.png	priority-overlay	0	0	992	1376	ROM field tile priority bits	extracted
 field/maps/mode-42.bmp	background	0	0	992	1184	mode resource catalog	extracted
+field/maps/mode-42-priority-overlay.png	priority-overlay	0	0	992	1184	ROM field tile priority bits	extracted
 field/maps/mode-43.bmp	background	0	0	992	1184	mode resource catalog	extracted
+field/maps/mode-43-priority-overlay.png	priority-overlay	0	0	992	1184	ROM field tile priority bits	extracted
 field/maps/mode-44.bmp	background	0	0	1600	960	mode resource catalog	extracted
+field/maps/mode-44-priority-overlay.png	priority-overlay	0	0	1600	960	ROM field tile priority bits	extracted
 field/maps/mode-45.bmp	background	0	0	1600	960	mode resource catalog	extracted
+field/maps/mode-45-priority-overlay.png	priority-overlay	0	0	1600	960	ROM field tile priority bits	extracted
 field/maps/mode-46.bmp	background	0	0	1600	960	mode resource catalog	extracted
+field/maps/mode-46-priority-overlay.png	priority-overlay	0	0	1600	960	ROM field tile priority bits	extracted
 field/maps/mode-47.bmp	background	0	0	1600	960	mode resource catalog	extracted
+field/maps/mode-47-priority-overlay.png	priority-overlay	0	0	1600	960	ROM field tile priority bits	extracted
 field/maps/mode-48.bmp	background	0	0	960	1600	mode resource catalog	extracted
+field/maps/mode-48-priority-overlay.png	priority-overlay	0	0	960	1600	ROM field tile priority bits	extracted
 field/maps/mode-49.bmp	background	0	0	1600	960	mode resource catalog	extracted
+field/maps/mode-49-priority-overlay.png	priority-overlay	0	0	1600	960	ROM field tile priority bits	extracted
 field/maps/mode-50.bmp	background	0	0	896	1248	mode resource catalog	extracted
+field/maps/mode-50-priority-overlay.png	priority-overlay	0	0	896	1248	ROM field tile priority bits	extracted
 field/maps/mode-51.bmp	background	0	0	1056	1248	mode resource catalog	extracted
+field/maps/mode-51-priority-overlay.png	priority-overlay	0	0	1056	1248	ROM field tile priority bits	extracted
 field/maps/mode-52.bmp	background	0	0	960	768	mode resource catalog	extracted
+field/maps/mode-52-priority-overlay.png	priority-overlay	0	0	960	768	ROM field tile priority bits	extracted
 field/maps/mode-53.bmp	background	0	0	960	768	mode resource catalog	extracted
+field/maps/mode-53-priority-overlay.png	priority-overlay	0	0	960	768	ROM field tile priority bits	extracted
 field/maps/mode-54.bmp	background	0	0	320	1344	mode resource catalog	extracted
+field/maps/mode-54-priority-overlay.png	priority-overlay	0	0	320	1344	ROM field tile priority bits	extracted
 field/maps/mode-55.bmp	background	0	0	512	288	mode resource catalog	extracted
+field/maps/mode-55-priority-overlay.png	priority-overlay	0	0	512	288	ROM field tile priority bits	extracted
 field/entities/actors/corp-guard-idle.bmp	sprite	-13	-26	24	30	0xB45C/0xC052/0x600E kind=5 template=0x1D6A1C descriptor=0x86E0A selector=0x0 palette-line=2	extracted
 field/entities/actors/corp-guard-entry-dir-0-frame-0.bmp	sprite	-21	-23	28	27	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8B1EA selector=0xE8 frame=0 palette-line=2	extracted
 field/entities/actors/corp-guard-entry-dir-0-frame-1.bmp	sprite	-21	-23	31	31	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8B40E selector=0xE8 frame=1 palette-line=2	extracted

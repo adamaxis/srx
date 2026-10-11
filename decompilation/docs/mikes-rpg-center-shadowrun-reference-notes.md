@@ -283,23 +283,60 @@ runtime branches; guide and manual prose are labeled external corroboration.
 
 ## Redmond ROM coordinate cross-check: Jump House and Rat's Nest
 
+### Run targets are not ordinary street-entry routes
+
+The converted [`run_support.lua`](../gameplay/scripts/run_support.lua) data
+preserves the ROM contract-location strings at `0xF1E58`/`0xF1F1A` and the
+area-specific location roll table at `0xF3E80`. Its area 2 suffix is Redmond
+Barrens; its Redmond target names are Hollywood Correctional, Little Chiba,
+Stoker's, Shiawase Nuke Plant, Jump House, Jackal's Lantern, Boris'
+Greenhouse, Rat's Nest, Halloweeners, and Ares Weapon Emporium. None is named
+an office. The explicit office strings in this table belong to other area
+contexts (Downtown Seattle, Puyallup, Penumbra, or Renraku Arcology).
+
+This is evidence about **run-contract destinations**; it is not a substitute
+for the ordinary map collision/event table below. Keep those paths separate:
+the ROM must establish whether a street marker is a door, a same-map service,
+or an activity transition before a run-target label can be attached to it.
+
 The Mike's RPG Center Redmond map image is 479-by-326 pixels; the extracted
 scene-2 background is 1920-by-1344 pixels. A proportional overlay (about four
 background pixels per site-map pixel) places these ROM collision centers near
 the site's numbered markers:
 
-| Site map marker | ROM crosswalk candidate | Event and source geometry |
+| Guide marker / crosswalk candidate | ROM collision record | ROM event and destination/service established |
 |---|---|---|
-| 1 Jump House | Scene 2, record 85 at `0x1730FC` | Event 4, grid cell `(14,4)`, bounds `x=0x01C0..0x01DF`, `y=0x0080..0x009F`; event-table row 4 selects scene `0x0D` (13). This is the strongest Jump House entry candidate. |
-| 6 Stoker's Coffin Motel | Scene 2, record 91 at `0x173138` | Event 2, grid cell `(30,20)`, bounds `x=0x03C0..0x03DF`, `y=0x0280..0x029F`; opening story route overrides the generic row. |
-| 7 Ares Weapon Emporium | Scene 2, record 92 at `0x173142` | Event 11, grid cell `(38,17)`, bounds `x=0x04C0..0x04DF`, `y=0x0220..0x023F`; service route overrides the generic row. |
-| 8 Little Chiba's Chop Shop | Scene 2, record 93 at `0x17314C` | Event 1, grid cell `(55,17)`, bounds `x=0x06E0..0x06FF`, `y=0x0220..0x023F`; table row selects resource-activity scene `0x1A` (26). |
-| 9 Rat's Nest | Scene 2, record 97 at `0x173174` | Event 7, grid cell `(13,34)`, bounds `x=0x01A0..0x01BF`, `y=0x0440..0x045F`; special story service runs before the generic row. |
+| 1 Jump House | Scene 2, record 85 at `0x1730FC` | Event 4, cell `(14,4)`. Row 4 at `0x172CE0` selects field scene `0x0D` (13), subject to the source scene gate. |
+| 2 Jackal's Lantern | Scene 2, record 86 at `0x173106` | Event 5, cell `(22,4)`. Row 5 selects field scene `0x13` (19). The guide name is a map crosswalk, not ROM data. |
+| 3 Boris' Greenhouse | Scene 2, record 87 at `0x173110` | Event 6, cell `(41,2)`. Row 6 selects resource-activity scene `0x1A` (26); the numeric target does not identify an interior by name. |
+| 4 Ghoul warehouse | Scene 2, record 88 at `0x17311A` | Event 8, cell `(56,4)`. Row 8 selects scripted-activity scene `0x34` (52). The downstream script/entry remains unverified. |
+| 5 Hollywood Correctional Facility | Scene 2, records 89/90 at `0x173124` / `0x17312E` | Both publish event 0. Row 0 selects field scene `0x14` (20), where the source flag/timeout gate applies. |
+| 6 Stoker's Coffin Motel | Scene 2, record 91 at `0x173138` | Event 2, cell `(30,20)`. The story handler opens same-map Stoker dialogue; this is not a motel interior transition. |
+| 7 Ares Weapon Emporium | Scene 2, record 92 at `0x173142` | Event 11, cell `(38,17)`. The scene-specific handler opens the Ares service/shop route, bypassing event-table row 11. |
+| 8 Little Chiba's Chop Shop | Scene 2, record 93 at `0x17314C` | Event 1, cell `(55,17)`. Row 1 selects resource-activity scene `0x1A` (26). The ROM supplies no place-name such as “office.” |
+| 9 Rat's Nest | Scene 2, record 97 at `0x173174` | Event 7, cell `(13,34)`. The indexed story service can consume the event and return to Scene 2; row 7 is `0x1A` (26) if the generic route continues. |
+| 10 Shiawase Atomics (nearby candidate) | Scene 2, record 95 at `0x173160` | Event 3, cell `(34,37)`. The conditional interaction path precedes row 3, which selects resource-activity scene `0x1A` (26). No named building destination is established by that byte. |
+| 11 Halloweeners/Ratspike (nearby candidate) | Scene 2, record 94 at `0x173156` | Event 9, cell `(52,36)`. Row 9 selects resource-activity scene `0x1A` (26); the ROM does not label this a building interior. |
+| No confident site-marker match | Scene 2, record 96 at `0x17316A` | Event 7, cell `(23,37)`. It shares the Rat's Nest event service and has the same `0x1A` generic table byte, but the map overlay places it away from marker 9. |
 
 This supports identifying scene 2 as Redmond Barrens and record 97 as the
 Rat's Nest approach. It also supports record 85 as the Jump House route into
 scene 13. These are secondary-source name crosswalks, not names stored in the
-ROM; the approximate overlay is not exact world-to-image calibration.
+ROM; the approximate overlay is not exact world-to-image calibration. The
+scene-2 table has 18 entries: `14 1A 1A 1A 0D 13 1A 1A 34 1A 32 33 00 00 00 00 1E 00`.
+`0x167AE` classifies targets `0x15..0x2B` as resource-activity scenes and
+`0x2C..0x37` as scripted activities. That classifier does not rename a target
+to an office, store, or any other site. Treat guide marker alignment as a
+candidate label and preserve the numeric ROM destination until a downstream
+script or independent gameplay evidence establishes more.
+
+For record 93 specifically, the guide's marker 8 says Little Chiba's Chop
+Shop, and the ROM contract table independently names Redmond area-2 location
+index 1 “Little Chiba.” That makes Little Chiba the supported site label for
+the C1 event. Its route byte still loads numeric resource-activity scene 26;
+the ROM does not call that shared map an office. Several Redmond events use
+scene 26, so map art alone cannot establish which site's dialogue/content is
+active.
 
 Scene 2 record 96 is another event-7 rectangle at cell `(23,37)` with bounds
 `x=0x02E0..0x02FF`, `y=0x04A0..0x04BF`. The site overlay places it away from
@@ -307,9 +344,11 @@ marker 9, but the ROM routes both event-7 records through the same indexed
 service. Keep the physical record distinction visible; do not silently label
 both rectangles Rat's Nest.
 
-For record 97, the ROM collision dispatcher publishes event 7 and reads
-scene-2 event-table row 7 (`0x172CE3`), which is `0x1A`; the ROM classifies
-that value as resource-activity scene 26. The guide says the Landmark Map
+For record 97, the ROM collision dispatcher publishes event 7. Indexed story
+service `0x545B6` runs before generic route selection; on its successful
+Landmark Map branch it returns to Scene 2. If it does not consume the event,
+the dispatcher reads scene-2 event-table row 7 (`0x172CE3`), which is `0x1A`;
+the ROM classifies that value as resource-activity scene 26. The guide says the Landmark Map
 search follows Harlequin's request and asking Gunderson about Vigore. ROM
 cross-check confirms the menu's conditional branches: the mode-command menu
 builder at `0x22F90` includes “What do you know about a Johnson named

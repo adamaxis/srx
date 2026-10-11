@@ -118,8 +118,11 @@ add_test(NAME shadowrun_leftover_clear COMMAND shadowrun_leftover_clear_test)
 add_executable(shadowrun_graphics_extract
     tools/graphics_extract.cpp
 )
+set(ZLIB_USE_STATIC_LIBS ON)
+find_package(ZLIB REQUIRED)
+target_link_libraries(shadowrun_port PRIVATE ZLIB::ZLIB)
 target_link_libraries(shadowrun_graphics_extract PRIVATE
-    shadowrun_graphics_import shadowrun_port)
+    shadowrun_graphics_import shadowrun_port ZLIB::ZLIB)
 
 add_library(shadowrun_audio_extract_lib STATIC
     src/audio/audio_extract.cpp

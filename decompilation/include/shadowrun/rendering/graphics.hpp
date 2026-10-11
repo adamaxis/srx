@@ -23,6 +23,14 @@ struct RgbaImage {
     std::vector<native::Rgba8> pixels;
 };
 
+// A field map keeps its established flattened image for asset inspection and
+// background rendering, plus a sparse copy of the ROM's high-priority tile
+// pixels. Low-priority field sprites are drawn between those two passes.
+struct GenesisFieldMapLayers {
+    RgbaImage map;
+    RgbaImage priority_overlay;
+};
+
 // A source sprite/map resource extracted from a ROM pointer table. The
 // renderer-facing image is precolored RGBA; the table and pointer metadata
 // remain in the catalog so a duplicate-looking resource is still auditable
@@ -553,7 +561,15 @@ RgbaImage decode_genesis_mode2_field_map(
     const std::vector<std::uint8_t>& rom,
     const GenesisMode2FieldResources& resources);
 
+GenesisFieldMapLayers decode_genesis_mode2_field_map_layers(
+    const std::vector<std::uint8_t>& rom,
+    const GenesisMode2FieldResources& resources);
+
 RgbaImage decode_genesis_field_mode_map(
+    const std::vector<std::uint8_t>& rom,
+    const GenesisFieldModeResources& resources);
+
+GenesisFieldMapLayers decode_genesis_field_mode_map_layers(
     const std::vector<std::uint8_t>& rom,
     const GenesisFieldModeResources& resources);
 
@@ -567,6 +583,19 @@ RgbaImage decode_genesis_mode2_field_map(
     std::size_t tilemap_width = 60,
     std::size_t tilemap_height = 42,
     std::size_t palette_offset = 0xD29D6,
+    GenesisMetatileEncoding metatile_encoding =
+        GenesisMetatileEncoding::CompressedResource);
+
+GenesisFieldMapLayers decode_genesis_mode2_field_map_layers(
+    const std::vector<std::uint8_t>& rom,
+    std::size_t pattern_data_offset,
+    std::size_t pattern_byte_count,
+    std::size_t metatile_stream_offset,
+    std::size_t primary_tilemap_offset,
+    std::size_t secondary_tilemap_offset,
+    std::size_t tilemap_width,
+    std::size_t tilemap_height,
+    std::size_t palette_offset,
     GenesisMetatileEncoding metatile_encoding =
         GenesisMetatileEncoding::CompressedResource);
 
