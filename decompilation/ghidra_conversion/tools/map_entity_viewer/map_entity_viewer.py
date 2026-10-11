@@ -19,7 +19,7 @@ from pathlib import Path
 import os
 from typing import Iterable
 
-from PyQt6.QtCore import QPointF, QRectF, Qt
+from PyQt6.QtCore import QPointF, QRect, QRectF, Qt
 from PyQt6.QtGui import QAction, QActionGroup, QBrush, QColor, QFont, QFontDatabase, QImage, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
@@ -150,6 +150,7 @@ class EntityPart:
     draw_layer: str = "ground"
     role: str = "unreviewed"
     evidence: str = ""
+    asset_path: str = ""
 
 
 @dataclass
@@ -297,7 +298,7 @@ class WorldContent:
     ENTITY_HEADER = ("entity_id", "name", "category", "evidence")
     PART_HEADER = (
         "part_id", "source_kind", "source_scene", "source_x", "source_y",
-        "width", "height", "local_x", "local_y", "draw_layer", "role", "evidence",
+        "width", "height", "local_x", "local_y", "draw_layer", "role", "evidence", "asset_path",
     )
     INTERACTION_HEADER = (
         "interaction_id", "local_x", "local_y", "width", "height",
@@ -358,6 +359,7 @@ class WorldContent:
                 draw_layer=row.get("draw_layer", "ground"),
                 role=row.get("role", "unreviewed"),
                 evidence=row.get("evidence", ""),
+                asset_path=row.get("asset_path", ""),
             )
             for row in part_rows
         ]
@@ -411,6 +413,44 @@ class WorldContent:
             self.COLLISION_HEADER,
             [collision.__dict__ for collision in entity.collision_regions],
         )
+
+    def export_part_assets(
+        self, assets_root: Path, entities: Iterable[EntityDefinition]
+    ) -> None:
+        """Materialize each authored visual part as its own named PNG crop."""
+        for entity in entities:
+            entity_id = safe_id(entity.entity_id)
+            for part in entity.parts:
+                if part.source_kind == "map_composite":
+                    source_path = assets_root / "field" / "maps" / f"mode-{part.source_scene}.bmp"
+                elif part.source_kind == "priority_overlay":
+                    source_path = assets_root / "field" / "maps" / f"mode-{part.source_scene}-priority-overlay.png"
+                else:
+                    raise ValueError(
+                        f"Unsupported visual-part source kind {part.source_kind!r} "
+                        f"for {entity_id}/{part.part_id}"
+                    )
+                source = QImage(str(source_path))
+                if source.isNull():
+                    raise ValueError(f"Could not read visual-part source image: {source_path}")
+                if (
+                    part.width <= 0 or part.height <= 0 or
+                    part.source_x < 0 or part.source_y < 0 or
+                    part.source_x + part.width > source.width() or
+                    part.source_y + part.height > source.height()
+                ):
+                    raise ValueError(
+                        f"Visual part {entity_id}/{part.part_id} exceeds source image bounds"
+                    )
+                crop = source.copy(QRect(
+                    part.source_x, part.source_y, part.width, part.height
+                ))
+                relative_path = Path("field") / "entities" / entity_id / f"{safe_id(part.part_id)}.png"
+                output_path = assets_root / relative_path
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                if not crop.save(str(output_path), "PNG"):
+                    raise OSError(f"Could not write named entity-part asset: {output_path}")
+                part.asset_path = relative_path.as_posix()
 
     def load_scene(self, scene_id: int) -> list[EntityInstance]:
         _, rows = read_tsv(self.root / "areas" / f"scene-{scene_id:02d}.tsv")
@@ -509,8 +549,50 @@ class WorldContent:
         escaped = escaped.replace("\r", "\\r").replace("\n", "\\n").replace("\t", "\\t")
         return f'"{escaped}"'
 
+    @classmethod
+    def lua_value(cls, value, indent: int = 0) -> str:
+        if isinstance(value, str):
+            return cls.lua_quote(value)
+        if value is None:
+            return "nil"
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        if isinstance(value, (int, float)):
+            return repr(value)
+        pad = " " * indent
+        child_pad = " " * (indent + 2)
+        if isinstance(value, list):
+            if not value:
+                return "{}"
+            rows = [f"{child_pad}{cls.lua_value(item, indent + 2)}," for item in value]
+            return "{\n" + "\n".join(rows) + f"\n{pad}}}"
+        if isinstance(value, dict):
+            if not value:
+                return "{}"
+            rows = []
+            for key, item in value.items():
+                if isinstance(key, int):
+                    rendered_key = f"[{key}]"
+                elif isinstance(key, str) and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
+                    rendered_key = key
+                elif isinstance(key, str):
+                    rendered_key = f"[{cls.lua_quote(key)}]"
+                else:
+                    raise TypeError(f"Unsupported Lua table key: {key!r}")
+                rows.append(
+                    f"{child_pad}{rendered_key} = {cls.lua_value(item, indent + 2)},"
+                )
+            return "{\n" + "\n".join(rows) + f"\n{pad}}}"
+        raise TypeError(f"Unsupported Lua table value: {type(value).__name__}")
+
     def export_lua(self, destination: Path) -> None:
-        entity_lines: list[str] = []
+        data = {
+            "entities": {},
+            "areas": {},
+            "map_triggers": {},
+            "actor_spawns": {},
+            "encounter_regions": {},
+        }
         entity_root = self.root / "entities"
         if entity_root.is_dir():
             for directory in sorted(path for path in entity_root.iterdir() if path.is_dir()):
@@ -518,56 +600,57 @@ class WorldContent:
                 entity = self.load_entity(entity_id)
                 if entity is None:
                     continue
-                part_values = []
-                for part in entity.parts:
-                    part_values.append(
-                        "{ "
-                        f"id = {self.lua_quote(part.part_id)}, "
-                        f"source_kind = {self.lua_quote(part.source_kind)}, "
-                        f"source_scene = {part.source_scene}, source_x = {part.source_x}, source_y = {part.source_y}, "
-                        f"width = {part.width}, height = {part.height}, local_x = {part.local_x}, local_y = {part.local_y}, "
-                        f"draw_layer = {self.lua_quote(part.draw_layer)}, role = {self.lua_quote(part.role)}, "
-                        f"evidence = {self.lua_quote(part.evidence)} "
-                        "}"
-                    )
-                interaction_values = []
-                for interaction in entity.interactables:
-                    interaction_values.append(
-                        "{ "
-                        f"id = {self.lua_quote(interaction.interaction_id)}, "
-                        f"local_x = {interaction.local_x}, local_y = {interaction.local_y}, "
-                        f"width = {interaction.width}, height = {interaction.height}, "
-                        f"lua_handler = {self.lua_quote(interaction.lua_handler)}, "
-                        f"source_event = {self.lua_quote(interaction.source_event)}, "
-                        f"evidence = {self.lua_quote(interaction.evidence)} "
-                        "}"
-                    )
-                collision_values = []
-                for collision in entity.collision_regions:
-                    collision_values.append(
-                        "{ "
-                        f"id = {self.lua_quote(collision.collision_id)}, "
-                        f"local_x = {collision.local_x}, local_y = {collision.local_y}, "
-                        f"width = {collision.width}, height = {collision.height}, "
-                        f"mode = {self.lua_quote(collision.collision_mode)}, "
-                        f"evidence = {self.lua_quote(collision.evidence)}, "
-                        f"review_status = {self.lua_quote(collision.review_status)} "
-                        "}"
-                    )
-                entity_lines.append(
-                    f"    [{self.lua_quote(entity.entity_id)}] = {{ "
-                    f"id = {self.lua_quote(entity.entity_id)}, name = {self.lua_quote(entity.name)}, "
-                    f"category = {self.lua_quote(entity.category)}, evidence = {self.lua_quote(entity.evidence)}, "
-                    f"parts = {{ {', '.join(part_values)} }}, "
-                    f"interactables = {{ {', '.join(interaction_values)} }}, "
-                    f"collision_regions = {{ {', '.join(collision_values)} }} "
-                    "},"
-                )
+                data["entities"][entity.entity_id] = {
+                    "id": entity.entity_id,
+                    "name": entity.name,
+                    "category": entity.category,
+                    "evidence": entity.evidence,
+                    "parts": [
+                        {
+                            "id": part.part_id,
+                            "source_kind": part.source_kind,
+                            "source_scene": part.source_scene,
+                            "source_x": part.source_x,
+                            "source_y": part.source_y,
+                            "width": part.width,
+                            "height": part.height,
+                            "local_x": part.local_x,
+                            "local_y": part.local_y,
+                            "draw_layer": part.draw_layer,
+                            "role": part.role,
+                            "evidence": part.evidence,
+                            "asset_path": part.asset_path,
+                        }
+                        for part in entity.parts
+                    ],
+                    "interactables": [
+                        {
+                            "id": item.interaction_id,
+                            "local_x": item.local_x,
+                            "local_y": item.local_y,
+                            "width": item.width,
+                            "height": item.height,
+                            "lua_handler": item.lua_handler,
+                            "source_event": item.source_event,
+                            "evidence": item.evidence,
+                        }
+                        for item in entity.interactables
+                    ],
+                    "collision_regions": [
+                        {
+                            "id": item.collision_id,
+                            "local_x": item.local_x,
+                            "local_y": item.local_y,
+                            "width": item.width,
+                            "height": item.height,
+                            "mode": item.collision_mode,
+                            "evidence": item.evidence,
+                            "review_status": item.review_status,
+                        }
+                        for item in entity.collision_regions
+                    ],
+                }
 
-        area_lines: list[str] = []
-        trigger_lines: list[str] = []
-        spawn_lines: list[str] = []
-        encounter_lines: list[str] = []
         area_root = self.root / "areas"
         if area_root.is_dir():
             scene_ids: set[int] = set()
@@ -578,60 +661,74 @@ class WorldContent:
                 scene_ids.add(int(match.group(1)))
             for scene_id in sorted(scene_ids):
                 instances = self.load_scene(scene_id)
-                values = ", ".join(
-                    "{ "
-                    f"instance_id = {self.lua_quote(item.instance_id)}, "
-                    f"entity_id = {self.lua_quote(item.entity_id)}, "
-                    f"origin_x = {item.origin_x}, origin_y = {item.origin_y} "
-                    "}"
+                data["areas"][scene_id] = [
+                    {
+                        "instance_id": item.instance_id,
+                        "entity_id": item.entity_id,
+                        "origin_x": item.origin_x,
+                        "origin_y": item.origin_y,
+                    }
                     for item in instances
-                )
-                area_lines.append(f"    [{scene_id}] = {{ {values} }},")
-                trigger_values: list[str] = []
-                spawn_values: list[str] = []
-                encounter_values: list[str] = []
+                ]
+                trigger_values = []
+                spawn_values = []
+                encounter_values = []
                 for item in self.load_behaviors(scene_id):
-                    common = (
-                        f"id = {self.lua_quote(item.record_id)}, x = {item.x}, y = {item.y}, "
-                        f"evidence = {self.lua_quote(item.evidence)}, "
-                        f"review_status = {self.lua_quote(item.review_status)}"
-                    )
-                    condition = (
-                        f"condition_module = {self.lua_quote(item.condition_module)}, "
-                        f"condition_function = {self.lua_quote(item.condition_function)}"
-                    )
                     if item.kind == "scripted_trigger":
                         trigger_values.append(
-                            "{ " + common + f", width = {item.width}, height = {item.height}, "
-                            f"script_module = {self.lua_quote(item.script_module)}, "
-                            f"script_function = {self.lua_quote(item.script_function)}, "
-                            f"{condition}, repeat_policy = {self.lua_quote(item.repeat_policy)} " + "}"
+                            {
+                                "id": item.record_id,
+                                "x": item.x,
+                                "y": item.y,
+                                "width": item.width,
+                                "height": item.height,
+                                "script_module": item.script_module,
+                                "script_function": item.script_function,
+                                "condition_module": item.condition_module,
+                                "condition_function": item.condition_function,
+                                "repeat_policy": item.repeat_policy,
+                                "evidence": item.evidence,
+                                "review_status": item.review_status,
+                            }
                         )
                     elif item.kind == "actor_spawn":
                         spawn_values.append(
-                            "{ " + common + f", actor_profile = {self.lua_quote(item.actor_profile)}, "
-                            f"heading = {self.lua_quote(item.heading)}, {condition}, "
-                            f"source_record = {self.lua_quote(item.source_record)} " + "}"
+                            {
+                                "id": item.record_id,
+                                "actor_profile": item.actor_profile,
+                                "x": item.x,
+                                "y": item.y,
+                                "heading": item.heading,
+                                "condition_module": item.condition_module,
+                                "condition_function": item.condition_function,
+                                "source_record": item.source_record,
+                                "evidence": item.evidence,
+                                "review_status": item.review_status,
+                            }
                         )
                     elif item.kind == "random_encounter":
                         encounter_values.append(
-                            "{ " + common + f", event_pool = {self.lua_quote(item.event_pool)}, "
-                            f"width = {item.width}, height = {item.height}, {condition}, "
-                            f"source_table = {self.lua_quote(item.source_table)} " + "}"
+                            {
+                                "id": item.record_id,
+                                "event_pool": item.event_pool,
+                                "x": item.x,
+                                "y": item.y,
+                                "width": item.width,
+                                "height": item.height,
+                                "condition_module": item.condition_module,
+                                "condition_function": item.condition_function,
+                                "source_table": item.source_table,
+                                "evidence": item.evidence,
+                                "review_status": item.review_status,
+                            }
                         )
-                trigger_lines.append(f"    [{scene_id}] = {{ {', '.join(trigger_values)} }},")
-                spawn_lines.append(f"    [{scene_id}] = {{ {', '.join(spawn_values)} }},")
-                encounter_lines.append(f"    [{scene_id}] = {{ {', '.join(encounter_values)} }},")
+                data["map_triggers"][scene_id] = trigger_values
+                data["actor_spawns"][scene_id] = spawn_values
+                data["encounter_regions"][scene_id] = encounter_values
 
         content = (
             "-- Generated by ghidra_conversion/tools/map_entity_viewer/map_entity_viewer.py from gameplay/world TSV files.\n"
-            "return {\n"
-            "  entities = {\n" + "\n".join(entity_lines) + "\n  },\n"
-            "  areas = {\n" + "\n".join(area_lines) + "\n  },\n"
-            "  map_triggers = {\n" + "\n".join(trigger_lines) + "\n  },\n"
-            "  actor_spawns = {\n" + "\n".join(spawn_lines) + "\n  },\n"
-            "  encounter_regions = {\n" + "\n".join(encounter_lines) + "\n  },\n"
-            "}\n"
+            "return " + self.lua_value(data) + "\n"
         )
         destination.parent.mkdir(parents=True, exist_ok=True)
         temp = destination.with_suffix(destination.suffix + ".tmp")
@@ -1388,7 +1485,13 @@ class MapEntityViewer(QMainWindow):
         layout.addWidget(QLabel("Owned visual parts"))
         self.parts_list = QListWidget()
         self.parts_list.setMaximumHeight(95)
+        self.parts_list.currentItemChanged.connect(self.part_selection_changed)
         layout.addWidget(self.parts_list)
+        self.part_preview = QLabel("Select a visual part to preview its named asset.")
+        self.part_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.part_preview.setMinimumHeight(78)
+        self.part_preview.setMaximumHeight(112)
+        layout.addWidget(self.part_preview)
         part_buttons = QHBoxLayout()
         self.edit_part_button = QPushButton("Edit part")
         self.edit_part_button.clicked.connect(self.edit_selected_part)
@@ -1411,7 +1514,7 @@ class MapEntityViewer(QMainWindow):
         interaction_buttons.addWidget(self.remove_interaction_button)
         layout.addLayout(interaction_buttons)
 
-        layout.addWidget(QLabel("Entity collision regions (authored, green dash-dot)"))
+        layout.addWidget(QLabel("Entity collision regions (green dash-dot)"))
         self.collisions_list = QListWidget()
         self.collisions_list.setMaximumHeight(72)
         self.collisions_list.currentItemChanged.connect(self.collision_selection_changed)
@@ -1643,6 +1746,8 @@ class MapEntityViewer(QMainWindow):
             self.x_spin.setValue(0); self.y_spin.setValue(0)
             self.category_combo.setCurrentText("unreviewed")
             self.parts_list.clear()
+            self.part_preview.setPixmap(QPixmap())
+            self.part_preview.setText("Select a visual part to preview its named asset.")
             self.interactions_list.clear()
             self.collisions_list.clear()
             self.info.setPlainText(
@@ -1658,16 +1763,23 @@ class MapEntityViewer(QMainWindow):
         self.parts_list.blockSignals(True)
         self.parts_list.clear()
         for part in entity.parts:
-            item = QListWidgetItem(f"{part.part_id}: {part.role} / {part.draw_layer} @ {part.local_x},{part.local_y}")
+            item = QListWidgetItem(
+                f"{part.part_id} @ {part.local_x},{part.local_y}"
+            )
             item.setData(Qt.ItemDataRole.UserRole, part.part_id)
             self.parts_list.addItem(item)
             if part.part_id == selected_part:
                 self.parts_list.setCurrentItem(item)
         self.parts_list.blockSignals(False)
+        self.part_selection_changed(self.parts_list.currentItem(), None)
         self.interactions_list.blockSignals(True)
         self.interactions_list.clear()
         for interaction in entity.interactables:
-            item = QListWidgetItem(f"{interaction.interaction_id}: {interaction.width}x{interaction.height}; {interaction.lua_handler or '(no Lua handler)'}")
+            item = QListWidgetItem(
+                f"{interaction.interaction_id}: {interaction.source_event or '(unmapped)'} @ "
+                f"{interaction.local_x},{interaction.local_y} "
+                f"{interaction.width}x{interaction.height}"
+            )
             item.setData(Qt.ItemDataRole.UserRole, interaction.interaction_id)
             self.interactions_list.addItem(item)
             if interaction.interaction_id == selected_interaction:
@@ -1683,7 +1795,7 @@ class MapEntityViewer(QMainWindow):
             item = QListWidgetItem(
                 f"{collision.collision_id}: {collision.collision_mode} @ "
                 f"{collision.local_x},{collision.local_y} "
-                f"{collision.width}x{collision.height} [{collision.review_status}]"
+                f"{collision.width}x{collision.height}"
             )
             item.setData(Qt.ItemDataRole.UserRole, collision.collision_id)
             self.collisions_list.addItem(item)
@@ -1698,7 +1810,9 @@ class MapEntityViewer(QMainWindow):
         self.x_spin.setValue(instance.origin_x); self.y_spin.setValue(instance.origin_y)
         self.evidence_edit.setText(entity.evidence)
         part_summary = "\n".join(
-            f"• {part.part_id}: {part.role}, source scene {part.source_scene:02d} at {part.source_x},{part.source_y} {part.width}×{part.height}; {part.draw_layer}"
+            f"- {part.part_id}: {part.role}, source scene {part.source_scene:02d} at "
+            f"{part.source_x},{part.source_y} {part.width}x{part.height}; "
+            f"{part.draw_layer}; asset {part.asset_path or '(created on save)'}"
             for part in entity.parts
         ) or "No visual parts"
         interaction_summary = "\n".join(
@@ -2077,6 +2191,36 @@ class MapEntityViewer(QMainWindow):
         instance = next((item for item in self.instances if item.instance_id == target), None)
         self.select_instance(instance)
 
+    def part_selection_changed(self, current, _previous) -> None:
+        self.part_preview.setPixmap(QPixmap())
+        if current is None or self.selected_instance is None:
+            self.part_preview.setText("Select a visual part to preview its named asset.")
+            return
+        entity = self.entities.get(self.selected_instance.entity_id)
+        if entity is None:
+            self.part_preview.setText("Entity definition is unavailable.")
+            return
+        part_id = current.data(Qt.ItemDataRole.UserRole)
+        part = next((item for item in entity.parts if item.part_id == part_id), None)
+        if part is None or not part.asset_path:
+            self.part_preview.setText("Save the scene to generate this part asset.")
+            return
+        asset_path = self.assets / Path(part.asset_path)
+        pixmap = QPixmap(str(asset_path))
+        if pixmap.isNull():
+            self.part_preview.setText(f"Asset not found: {part.asset_path}")
+            return
+        self.part_preview.setText("")
+        self.part_preview.setPixmap(pixmap.scaled(
+            self.part_preview.size(),
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.FastTransformation,
+        ))
+        self.part_preview.setToolTip(
+            f"{part.asset_path}\n{part.width}x{part.height}; "
+            f"{part.role} / {part.draw_layer}\n{part.evidence}"
+        )
+
     def region_created(self, rect: QRectF) -> None:
         x, y = round(rect.x()), round(rect.y())
         width, height = max(1, round(rect.width())), max(1, round(rect.height()))
@@ -2354,6 +2498,7 @@ class MapEntityViewer(QMainWindow):
 
     def save_all(self) -> None:
         try:
+            self.world.export_part_assets(self.assets, self.entities.values())
             for entity in self.entities.values():
                 self.world.save_entity(entity)
             self.world.save_scene(self.scene_id, self.instances)
@@ -2363,6 +2508,7 @@ class MapEntityViewer(QMainWindow):
             QMessageBox.critical(self, "Could not save map content", str(error))
             return
         self.dirty = False
+        self.part_selection_changed(self.parts_list.currentItem(), None)
         self.statusBar().showMessage(f"Saved scene {self.scene_id:02d} and {len(self.entities)} entity definitions under {self.world.root}", 6000)
 
     def keyPressEvent(self, event) -> None:

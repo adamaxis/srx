@@ -1,0 +1,2 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path
+front_priority_pixels	priority_overlay	2	832	352	256	160	-128	-288	foreground	foreground	Scene 2 ROM-selected priority overlay, from the 0x172C80 profile and priority-bit field-map path. Crop is snapped to 32-pixel cells x=26..33 and y=11..15, preserves transparency, and contains the guide-marker-6 structure's foreground art. Lower building pixels remain in the composite.	field/entities/stoker_coffin_motel/front_priority_pixels.png

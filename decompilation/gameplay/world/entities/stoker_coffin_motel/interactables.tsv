@@ -1,0 +1,2 @@
+interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
+rom_event_02	0	0	32	32	building.resolve_field_location_route	event_2	ROM scene 2 collision record 91 at 0x173138, raw 0x00C2; 0xB7B8 -> 0x1F5CA -> 0x1F65A selects Stoker's same-map dialogue. Converted Lua route: field_events.lua and building.resolve_field_location_route.

@@ -54,8 +54,13 @@ Each entity has its own folder under `entities/<entity-id>/`:
 
 - `entity.tsv`: stable ID, display name, reviewed category, and evidence.
 - `parts.tsv`: one row per visual part, with its source scene and source crop,
-  entity-local position, draw depth, role, and evidence. A building can own a
-  body, overhang, shadow, and decals while keeping one world origin.
+  entity-local position, draw depth, role, evidence, and generated asset path.
+  Saving materializes each crop as a named PNG under
+  `decompilation/assets/field/entities/<entity-id>/`, preserving alpha from a
+  priority-overlay source. The source kind and crop coordinates remain in the
+  TSV as provenance. Selecting a part previews that exact named image in the
+  properties panel. A building can own separate body, overhang, shadow, and
+  decal images while keeping one world origin.
 - `interactables.tsv`: local interaction rectangles and their Lua handler,
   ROM event, and evidence fields. Unknown handlers and events remain blank.
 - `collisions.tsv`: local collision rectangles, an authored mode
@@ -141,8 +146,12 @@ On save, the viewer refreshes
 The Lua package loader loads the module, and `game.modules.world_content`
 provides entity/placement lookups plus `triggers_in_scene`,
 `actor_spawns_in_scene`, `encounter_regions_in_scene`, and `collision_at`.
+Scene 2 currently has one source-backed Stoker's Coffin Motel definition. Its
+origin is ROM event 2 at `(960,640)`; ROM collision records 32-36 are attached
+around that doorway, and the first named image is a transparent crop from the
+scene's priority overlay. The site's marker 6 corroborates the building name.
+The ROM route is same-map Stoker dialogue, not an interior transition. The
+building's lower visual pixels still come from the preassembled composite.
 The live field renderer, movement/collision path, and event loop do not yet
-consume these authored records. The scene 2 map therefore still renders from
-its extracted composite and ROM collision, event, and default-actor records;
-this editor does not imply authored entities or event zones are already active
-game objects.
+consume the world entity records or generated part assets; this editor does
+not imply these records are already active game objects.

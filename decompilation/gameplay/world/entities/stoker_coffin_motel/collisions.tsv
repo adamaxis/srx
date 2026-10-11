@@ -1,0 +1,6 @@
+collision_id	local_x	local_y	width	height	collision_mode	evidence	review_status
+rom_collision_032	-96	-224	224	224	blocking	ROM scene 2 record 32 at 0x172EEA; raw 0x007F; ROM 0x0EE10 rasterizes the scene collision record; 0xE7C8 samples terrain; source trace in docs/field-map-trigger-profile.md	source_verified
+rom_collision_033	-96	0	32	32	blocking	ROM scene 2 record 33 at 0x172EF4; raw 0x007F; ROM 0x0EE10 rasterizes the scene collision record; 0xE7C8 samples terrain; source trace in docs/field-map-trigger-profile.md	source_verified
+rom_collision_034	-32	0	32	32	blocking	ROM scene 2 record 34 at 0x172EFE; raw 0x007F; ROM 0x0EE10 rasterizes the scene collision record; 0xE7C8 samples terrain; source trace in docs/field-map-trigger-profile.md	source_verified
+rom_collision_035	32	0	32	32	blocking	ROM scene 2 record 35 at 0x172F08; raw 0x007F; ROM 0x0EE10 rasterizes the scene collision record; 0xE7C8 samples terrain; source trace in docs/field-map-trigger-profile.md	source_verified
+rom_collision_036	96	0	32	32	blocking	ROM scene 2 record 36 at 0x172F12; raw 0x007F; ROM 0x0EE10 rasterizes the scene collision record; 0xE7C8 samples terrain; source trace in docs/field-map-trigger-profile.md	source_verified

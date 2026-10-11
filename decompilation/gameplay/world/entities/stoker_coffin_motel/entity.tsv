@@ -1,0 +1,2 @@
+entity_id	name	category	evidence
+stoker_coffin_motel	Stoker's Coffin Motel	building	Mike's RPG Center Redmond Barrens map marker 6 names Stoker's Coffin Motel. ROM scene 2 event record 91 at 0x173138 (0x00C2) routes to same-map Stoker dialogue, not an interior. Event path: ROM 0xB7B8 -> 0x1F5CA -> 0x1F65A; converted owners include GameScriptRuntime, advance_entity_movement_and_mode_transition, run_field_exit_orchestrator, field_events.lua, and building.lua. See docs/field-map-trigger-records.tsv. Entity origin is the source event cell at (960,640).
