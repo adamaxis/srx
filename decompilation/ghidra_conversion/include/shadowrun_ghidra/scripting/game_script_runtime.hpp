@@ -164,6 +164,20 @@ struct ScriptFieldModeContext {
     std::int8_t alternate_result = 0;
 };
 
+enum class ScriptRunFieldEventAction : std::uint8_t {
+    no_action,
+    objective_advanced,
+    completed,
+};
+
+struct ScriptRunFieldEventDecision {
+    ScriptRunFieldEventAction action =
+        ScriptRunFieldEventAction::no_action;
+    std::string run_id;
+    std::uint32_t reward_nuyen = 0;
+    std::uint8_t runner_progress_delta = 0;
+};
+
 enum class ScriptLocationEntryAction {
     no_action,
     open_elevator_selector,
@@ -442,6 +456,8 @@ public:
     dialogue_text_entries() const noexcept;
     std::optional<FieldScriptRoute> resolve_field_location_route(
         const FieldScriptRouteContext& context);
+    std::optional<ScriptRunFieldEventDecision> resolve_active_run_field_event(
+        std::uint8_t map_id, std::uint8_t event_id);
     std::optional<ScriptLocationEntryDecision> resolve_field_location_entry(
         std::uint16_t scene_id, FieldCollisionEventCode event_code,
         const std::vector<std::vector<std::uint16_t>>& source_elevator_groups);

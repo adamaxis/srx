@@ -1568,6 +1568,78 @@ GameScriptRuntime::resolve_field_location_route(
     return route;
 }
 
+std::optional<ScriptRunFieldEventDecision>
+GameScriptRuntime::resolve_active_run_field_event(
+    const std::uint8_t map_id, const std::uint8_t event_id) {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "Lua runtime is unavailable for run field events";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<ScriptRunFieldEventDecision> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("run_registry")) {
+        return fail("run_registry.lua module is missing");
+    }
+    lua_getfield(state, -1, "resolve_field_event");
+    if (!lua_isfunction(state, -1)) {
+        return fail("run_registry field-event resolver is missing");
+    }
+    lua_remove(state, -2);
+    lua_pushinteger(state, map_id);
+    lua_pushinteger(state, event_id);
+    if (lua_pcall(state, 2, 1, 0) != LUA_OK) {
+        return fail("run_registry field-event resolver failed: " +
+                    stack_error(state));
+    }
+    if (!lua_istable(state, -1)) {
+        return fail("run_registry field-event resolver returned no decision");
+    }
+
+    const auto result_index = lua_absindex(state, -1);
+    std::string action_name;
+    std::string run_id;
+    std::uint32_t reward_nuyen = 0U;
+    std::uint32_t progress_delta = 0U;
+    if (!read_field_string(state, result_index, "action", action_name) ||
+        !read_field_string(state, result_index, "run_id", run_id) ||
+        !valid_identifier(run_id) ||
+        !read_field_integer(state, result_index, "reward_nuyen",
+                            0xFFFFFFFFU, reward_nuyen) ||
+        !read_field_integer(state, result_index, "runner_progress_delta",
+                            0xFFU, progress_delta)) {
+        return fail("run field-event decision has invalid fields");
+    }
+
+    ScriptRunFieldEventDecision decision{};
+    if (action_name == "no_action") {
+        decision.action = ScriptRunFieldEventAction::no_action;
+    } else if (action_name == "objective_advanced") {
+        decision.action = ScriptRunFieldEventAction::objective_advanced;
+    } else if (action_name == "completed") {
+        decision.action = ScriptRunFieldEventAction::completed;
+    } else {
+        return fail("run field-event decision has an unknown action");
+    }
+    if (decision.action == ScriptRunFieldEventAction::completed &&
+        run_id == "none") {
+        return fail("completed run field-event decision has no run id");
+    }
+    decision.run_id = std::move(run_id);
+    decision.reward_nuyen = reward_nuyen;
+    decision.runner_progress_delta =
+        static_cast<std::uint8_t>(progress_delta);
+
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return decision;
+}
+
 std::optional<ScriptLocationEntryDecision>
 GameScriptRuntime::resolve_field_location_entry(
     const std::uint16_t scene_id,

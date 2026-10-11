@@ -12,7 +12,8 @@ function BodyguardEscort.prepare_offer(context, source_record)
         "escort_client_to_destination",
         "client_reaches_destination_alive",
         route,
-        payment)
+        payment,
+        source_record.runner_progress_delta)
     game.runs.registry.current_offer = offer
     return offer.id
 end

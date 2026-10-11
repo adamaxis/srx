@@ -10,11 +10,19 @@ function GhoulBounty.prepare_offer(context, source_record)
         "kill_ghouls_in_redmond",
         "return_to_johnson_for_payment",
         nil,
-        payment)
+        payment,
+        source_record.runner_progress_delta)
     offer.context = context
     offer.area_id = 2
     game.runs.registry.current_offer = offer
     return offer.id
+end
+
+function GhoulBounty.resolve_field_event(offer, map_id, event_id)
+    -- The ROM counts eligible ghoul deaths in its actor/combat path. Its
+    -- event-return and payout branch has not been connected to Lua yet, so
+    -- this run deliberately does not treat an arbitrary map event as success.
+    return { action = "no_action" }
 end
 
 function GhoulBounty.present_offer()

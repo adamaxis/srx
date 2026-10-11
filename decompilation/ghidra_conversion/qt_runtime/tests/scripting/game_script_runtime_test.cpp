@@ -120,6 +120,124 @@ bool verify_dynamic_run_module(const std::filesystem::path& source_directory,
                   "new Lua run was not selected and dispatched independently");
 }
 
+bool verify_package_delivery_field_events(
+    const std::filesystem::path& script_directory,
+    const std::filesystem::path& dialogue_text) {
+    using namespace shadowrun::ghidra_conversion::scripting;
+
+    GameScriptRuntime scripts;
+    if (!scripts.load_package(script_directory, dialogue_text)) {
+        std::cerr << scripts.failure() << '\n';
+        return expect(false, "run event Lua package did not load");
+    }
+    scripts.set_location_context(
+        "building", "jump_house", "gunderson.jump_house", "gunderson");
+
+    auto task = scripts.start_task("run_registry", "prepare_new_game_offer");
+    if (!expect(task.operation.has_value() &&
+                    task.operation->service_id == "random.bounded_8",
+                "package event fixture did not start from the source offer pool")) {
+        return false;
+    }
+    task = scripts.complete_native_service_result("roll_2");
+    if (!expect(task.operation.has_value() &&
+                    task.operation->service_id == "runner.negotiation_skill",
+                "package offer skipped the source Negotiation lookup")) {
+        return false;
+    }
+    task = scripts.complete_native_service_result("skill_3");
+    task = scripts.complete_native_service_result("roll_2");
+    if (!expect(task.operation.has_value() &&
+                    task.operation->service_id == "random.bounded_10",
+                "package offer skipped the source origin-location roll")) {
+        return false;
+    }
+    task = scripts.complete_native_service_result("roll_4");
+    if (!expect(task.operation.has_value() &&
+                    task.operation->service_id == "random.bounded_12",
+                "package offer skipped the source client roll")) {
+        return false;
+    }
+    task = scripts.complete_native_service_result("roll_0");
+    if (!expect(task.operation.has_value() &&
+                    task.operation->service_id == "random.bounded_10",
+                "package offer skipped the source destination-location roll")) {
+        return false;
+    }
+    task = scripts.complete_native_service_result("roll_5");
+    const auto route = scripts.string_map(
+        "run_registry", "current_route_ids");
+    const auto payment = scripts.string_map(
+        "run_registry", "current_payment_values");
+    if (!expect(task.status == ScriptTaskStep::Status::completed &&
+                    task.result_id ==
+                        std::optional<std::string>{"package_delivery"} &&
+                    route.has_value() &&
+                    route->at("origin_area") == "area_2" &&
+                    route->at("origin_location") == "location_4" &&
+                    route->at("destination_area") == "area_2" &&
+                    route->at("destination_location") == "location_5" &&
+                    payment.has_value() &&
+                    payment->at("negotiated_amount") == "45" &&
+                    payment->at("runner_progress_delta") == "1",
+                "package event fixture does not match its selected ROM offer")) {
+        return false;
+    }
+
+    task = scripts.start_task("run_package_delivery", "present_offer");
+    if (!expect(task.operation.has_value() &&
+                    task.operation->type == ScriptNativeOperation::Type::ui_say,
+                "package offer did not present its source-derived description")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.operation.has_value() &&
+                    task.operation->type == ScriptNativeOperation::Type::ui_menu,
+                "package offer did not open the acceptance prompt")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("yes");
+    if (!expect(task.operation.has_value() &&
+                    task.operation->type == ScriptNativeOperation::Type::ui_say,
+                "accepted package offer did not run its confirmation dialogue")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.status == ScriptTaskStep::Status::completed &&
+                    task.result_id == std::optional<std::string>{"accepted"},
+                "package offer did not become an active run after acceptance")) {
+        return false;
+    }
+
+    const auto before_origin = scripts.resolve_active_run_field_event(2U, 5U);
+    const auto origin = scripts.resolve_active_run_field_event(2U, 4U);
+    const auto between = scripts.resolve_active_run_field_event(2U, 6U);
+    const auto destination = scripts.resolve_active_run_field_event(2U, 5U);
+    const auto after_completion = scripts.resolve_active_run_field_event(2U, 5U);
+    return expect(
+        before_origin.has_value() &&
+            before_origin->action == ScriptRunFieldEventAction::no_action &&
+            origin.has_value() &&
+            origin->action ==
+                ScriptRunFieldEventAction::objective_advanced &&
+            origin->run_id == "package_delivery" && between.has_value() &&
+            between->action == ScriptRunFieldEventAction::no_action &&
+            destination.has_value() &&
+            destination->action == ScriptRunFieldEventAction::completed &&
+            destination->run_id == "package_delivery" &&
+            destination->reward_nuyen == 45U &&
+            destination->runner_progress_delta == 1U &&
+            after_completion.has_value() &&
+            after_completion->action ==
+                ScriptRunFieldEventAction::no_action &&
+            scripts.call_string("run_registry", "active_run_id") ==
+                std::optional<std::string>{"none"} &&
+            scripts.call_string(
+                "run_registry", "last_completed_offer_id") ==
+                std::optional<std::string>{"package_delivery"},
+        "package run did not collect at origin, pay once at destination, and clear");
+}
+
 } // namespace
 
 int main() {
@@ -149,6 +267,13 @@ int main() {
             SHADOWRUN_GAMEPLAY_SCRIPT_ROOT,
             std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
                 "dialogue" / "script-text.lua")) {
+        return 3;
+    }
+    if (!verify_package_delivery_field_events(
+            SHADOWRUN_GAMEPLAY_SCRIPT_ROOT,
+            std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
+                "dialogue" / "script-text.lua")) {
+        std::cerr << scripts.failure() << '\n';
         return 3;
     }
     auto run_selection =

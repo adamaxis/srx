@@ -78,6 +78,7 @@ namespace shadowrun::ghidra_conversion::qt_runtime {
 
 enum class FieldWorldFactFlag : std::uint8_t {
     errascoe_question_available = 1,
+    run_objective_active = 9,
     redmond_vigore_search_complete = 22,
     redmond_vigore_lead_available = 26,
 };

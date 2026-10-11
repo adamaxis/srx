@@ -6,14 +6,38 @@ local Registry = {}
 local new_game_selection = {
     -- ROM 0x1E69C source rows in F3EBC, context zero. The handler selects the
     -- Lua run module; payment and negotiation values are typed content data.
-    { run_id = "ghoul_bounty", base_payment = 10, negotiation_scale = 3 },
-    { run_id = "bodyguard_escort", base_payment = 45, negotiation_scale = 1 },
-    { run_id = "package_delivery", base_payment = 35, negotiation_scale = 1 },
-    { run_id = "bodyguard_escort", base_payment = 50, negotiation_scale = 1 },
-    { run_id = "package_delivery", base_payment = 40, negotiation_scale = 1 },
-    { run_id = "bodyguard_escort", base_payment = 55, negotiation_scale = 1 },
-    { run_id = "package_delivery", base_payment = 45, negotiation_scale = 1 },
-    { run_id = "ghoul_bounty", base_payment = 20, negotiation_scale = 2 },
+    {
+        run_id = "ghoul_bounty", base_payment = 10, negotiation_scale = 3,
+        runner_progress_delta = 1,
+    },
+    {
+        run_id = "bodyguard_escort", base_payment = 45,
+        negotiation_scale = 1, runner_progress_delta = 1,
+    },
+    {
+        run_id = "package_delivery", base_payment = 35,
+        negotiation_scale = 1, runner_progress_delta = 1,
+    },
+    {
+        run_id = "bodyguard_escort", base_payment = 50,
+        negotiation_scale = 1, runner_progress_delta = 1,
+    },
+    {
+        run_id = "package_delivery", base_payment = 40,
+        negotiation_scale = 1, runner_progress_delta = 1,
+    },
+    {
+        run_id = "bodyguard_escort", base_payment = 55,
+        negotiation_scale = 1, runner_progress_delta = 1,
+    },
+    {
+        run_id = "package_delivery", base_payment = 45,
+        negotiation_scale = 1, runner_progress_delta = 1,
+    },
+    {
+        run_id = "ghoul_bounty", base_payment = 20, negotiation_scale = 2,
+        runner_progress_delta = 1,
+    },
 }
 
 function Registry.available_run_ids()
@@ -102,6 +126,63 @@ function Registry.resolve_current_offer(choice)
     return Registry._last_offer_result
 end
 
+function Registry.resolve_field_event(map_id, event_id)
+    assert(type(map_id) == "number" and map_id >= 0 and
+           map_id <= 255 and map_id % 1 == 0)
+    assert(type(event_id) == "number" and event_id >= 0 and
+           event_id <= 255 and event_id % 1 == 0)
+
+    local offer = Registry.active_offer
+    if offer == nil then
+        return {
+            action = "no_action",
+            run_id = "none",
+            reward_nuyen = 0,
+            runner_progress_delta = 0,
+        }
+    end
+
+    local run = game.runs[offer.id]
+    local handler = type(run) == "table" and run.resolve_field_event or nil
+    if type(handler) ~= "function" then
+        return {
+            action = "no_action",
+            run_id = offer.id,
+            reward_nuyen = 0,
+            runner_progress_delta = 0,
+        }
+    end
+
+    local result = handler(offer, map_id, event_id)
+    assert(type(result) == "table" and
+           (result.action == "no_action" or
+            result.action == "objective_advanced" or
+            result.action == "completed"),
+        "run field-event handler returned an invalid action")
+
+    local decision = {
+        action = result.action,
+        run_id = offer.id,
+        reward_nuyen = result.reward_nuyen or 0,
+        runner_progress_delta = offer.runner_progress_delta or 0,
+    }
+    assert(type(decision.reward_nuyen) == "number" and
+           decision.reward_nuyen >= 0 and decision.reward_nuyen % 1 == 0 and
+           decision.reward_nuyen <= 0xFFFFFFFF,
+        "run field-event handler returned an invalid reward")
+    assert(type(decision.runner_progress_delta) == "number" and
+           decision.runner_progress_delta >= 0 and
+           decision.runner_progress_delta <= 255 and
+           decision.runner_progress_delta % 1 == 0,
+        "run offer has an invalid runner progress delta")
+
+    if decision.action == "completed" then
+        Registry.last_completed_offer = offer
+        Registry.active_offer = nil
+    end
+    return decision
+end
+
 function Registry.active_run_id()
     return Registry.active_offer and Registry.active_offer.id or "none"
 end
@@ -109,6 +190,11 @@ end
 function Registry.active_completion_condition()
     return Registry.active_offer and
         Registry.active_offer.completion_condition or "none"
+end
+
+function Registry.last_completed_offer_id()
+    return Registry.last_completed_offer and
+        Registry.last_completed_offer.id or "none"
 end
 
 function Registry.last_offer_result()
@@ -163,6 +249,7 @@ function Registry.current_payment_values()
             negotiation_bound = "none",
             negotiation_roll = "none",
             negotiation_skill = "none",
+            runner_progress_delta = "none",
         }
     end
     return {
@@ -171,6 +258,7 @@ function Registry.current_payment_values()
         negotiation_bound = tostring(payment.negotiation_bound),
         negotiation_roll = tostring(payment.negotiation_roll),
         negotiation_skill = tostring(payment.negotiation_skill),
+        runner_progress_delta = tostring(offer.runner_progress_delta or 0),
     }
 end
 

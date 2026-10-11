@@ -195,7 +195,7 @@ function Support.choose_contract_route(context)
 end
 
 function Support.new_offer(id, category, objective, completion_condition,
-                           route, payment)
+                           route, payment, runner_progress_delta)
     assert(type(id) == "string" and id ~= "")
     assert(type(category) == "string" and category ~= "")
     assert(type(objective) == "string" and objective ~= "")
@@ -207,6 +207,7 @@ function Support.new_offer(id, category, objective, completion_condition,
         category = category,
         objective = objective,
         completion_condition = completion_condition,
+        runner_progress_delta = runner_progress_delta or 0,
     }
     if route ~= nil then
         offer.route = route

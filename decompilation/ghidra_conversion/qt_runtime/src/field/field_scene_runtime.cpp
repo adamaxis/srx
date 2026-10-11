@@ -637,6 +637,50 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
     callbacks.select_mode_entry_resource = [this] {
         source_boundary("field.exit.select_mode_entry_resource");
     };
+    callbacks.dispatch_world_effect =
+        [this, &runtime_state](FieldExitOrchestratorState& state) {
+            // ROM 0x1EEDC dispatches FFFBED through F3E56. The shared
+            // bodyguard/package handler at 0x1EF2C compares the current map
+            // and event with the selected run's origin/destination tuple.
+            if (!field_funds_.has_value() ||
+                !field_party_roster_.available()) {
+                return false;
+            }
+            const auto run_event =
+                game_scripts_.resolve_active_run_field_event(
+                    static_cast<std::uint8_t>(runtime_state.scene_id),
+                    static_cast<std::uint8_t>(
+                        field_movement_transition_state_.mode_event_code));
+            if (!run_event.has_value()) {
+                source_boundary("field.run.event_script_failed");
+                state.caller_exit_status = -1;
+                return true;
+            }
+            if (run_event->action ==
+                scripting::ScriptRunFieldEventAction::objective_advanced) {
+                field_exit_alternate_result_ = -1;
+                field_exit_world_flags_ |= field_flag_mask(
+                    FieldWorldFactFlag::run_objective_active);
+                source_boundary("field.run.package_collected");
+            } else if (run_event->action ==
+                       scripting::ScriptRunFieldEventAction::completed) {
+                // ROM 0x1EF2C selects result 1 and clears FFFC22 bit 9;
+                // 0x1F00A adds the negotiated amount and +0x8D progress to
+                // each of the three runner records.
+                field_exit_alternate_result_ = 1;
+                field_exit_world_flags_ &= ~field_flag_mask(
+                    FieldWorldFactFlag::run_objective_active);
+                *field_funds_ += run_event->reward_nuyen;
+                for (auto& runner : field_party_roster_.records()) {
+                    runner.auxiliary[2] = static_cast<std::uint8_t>(
+                        runner.auxiliary[2] +
+                        run_event->runner_progress_delta);
+                }
+                field_entity_animation_.redraw_requested = true;
+                source_boundary("field.run.package_delivered");
+            }
+            return false;
+        };
     callbacks.run_indexed_title_services =
         [this, &runtime_state, &event_route](
             FieldExitOrchestratorState& state) {

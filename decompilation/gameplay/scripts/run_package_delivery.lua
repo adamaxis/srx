@@ -11,7 +11,8 @@ function PackageDelivery.prepare_offer(context, source_record)
         "deliver_package_to_destination",
         "package_delivered_safely",
         route,
-        payment)
+        payment,
+        source_record.runner_progress_delta)
     game.runs.registry.current_offer = offer
     return offer.id
 end
@@ -39,6 +40,41 @@ function PackageDelivery.present_offer()
     local choice = game.ui.prompt_text(
         "run_acceptance", prompt, { "yes", "no" })
     return game.modules.run_support.resolve_offer_decision(choice)
+end
+
+function PackageDelivery.resolve_field_event(offer, map_id, event_id)
+    local route = offer.route
+    if type(route) ~= "table" then
+        return { action = "no_action" }
+    end
+
+    -- ROM 0x1EF2C compares FFFBF8/FFFBF9 against the chosen origin first,
+    -- then checks the destination after the run's active bit has been set.
+    -- For type 2 it changes the alternate result at each match; the origin
+    -- match arms delivery, and the destination match enters the common payout.
+    local origin_matches =
+        map_id == route.origin.area_id and
+        event_id == route.origin.location_id
+    local destination_matches =
+        map_id == route.destination.area_id and
+        event_id == route.destination.location_id
+
+    if not offer.package_collected then
+        if origin_matches then
+            offer.package_collected = true
+            return { action = "objective_advanced" }
+        end
+        return { action = "no_action" }
+    end
+
+    if destination_matches then
+        offer.completed = true
+        return {
+            action = "completed",
+            reward_nuyen = offer.payment.negotiated_amount,
+        }
+    end
+    return { action = "no_action" }
 end
 
 return PackageDelivery
