@@ -463,7 +463,7 @@ public:
         const std::vector<std::vector<std::uint16_t>>& source_elevator_groups);
     std::optional<std::uint16_t> resolve_elevator_destination(
         const ScriptElevatorFloorGroup& group,
-        std::uint8_t selected_floor);
+        std::uint8_t floor_index);
     std::optional<FieldMapEventPolicyDecision> resolve_field_collision_event(
         const FieldMapCollisionEventInput& input);
     std::optional<std::vector<FieldMapEventRule>> map_event_rules();

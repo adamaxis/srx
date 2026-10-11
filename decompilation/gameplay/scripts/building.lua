@@ -116,8 +116,9 @@ function Building.present_entry_description()
 end
 
 -- Elevator trigger scenes and their child scene lists are supplied from the
--- extracted US ROM records. The script owns the entry action, entry floor,
--- and selected destination; the native menu owns only selection and timing.
+-- extracted US ROM records. The script owns the entry action and floor list.
+-- A floor index may preview a destination, but confirmed travel uses the
+-- current floor, which changes only after the A-button lift animation.
 function Building.resolve_field_location_entry(context)
     if type(context) ~= "table" or
        type(context.scene_id) ~= "number" or
@@ -162,14 +163,14 @@ end
 function Building.resolve_elevator_destination(context)
     if type(context) ~= "table" or
        type(context.floor_scenes) ~= "table" or
-       type(context.selected_floor) ~= "number" or
-       context.selected_floor % 1 ~= 0 or
-       context.selected_floor < 0 or
-       context.selected_floor >= #context.floor_scenes then
+       type(context.floor_index) ~= "number" or
+       context.floor_index % 1 ~= 0 or
+       context.floor_index < 0 or
+       context.floor_index >= #context.floor_scenes then
         return nil
     end
 
-    local destination = context.floor_scenes[context.selected_floor + 1]
+    local destination = context.floor_scenes[context.floor_index + 1]
     if type(destination) ~= "number" or destination % 1 ~= 0 or
        destination < 0 or destination > 255 then
         return nil

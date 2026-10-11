@@ -67,7 +67,10 @@ public:
         return navigation_feedback_frames_remaining_;
     }
     bool destination_changed() const noexcept {
-        return selected_floor_ != entry_floor_;
+        // ROM 0x58D94 compares the selector's saved floor with FFF0C8 after
+        // 0x58DE0 returns. FFF0CA is only the highlighted choice; A must run
+        // the lift animation before FFF0C8 changes and a destination is due.
+        return current_floor_ != entry_floor_;
     }
 
 private:

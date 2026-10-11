@@ -2,13 +2,11 @@
 
 Date: 2026-10-09
 
-**Status: partial.** The selector's route choice runs through Lua:
-`building.resolve_field_location_entry` resolves the source-backed group and
-entry floor, and `building.resolve_elevator_destination` maps the selected
-floor to its scene ID. The typed native selector owns input timing, lift
-animation, fades, and map loading. Focused Debug and Release route suites now
-pass 12/12, including the event-29 groups 21-24, 26-28, 30-33, 35-39, and
-41-42 and non-member entries 25, 29, 34, 40, and 43.
+**Status: partial.** Lua resolves the source-backed floor list and maps an
+explicit floor index to its numeric scene ID. The native selector keeps the
+highlighted floor (`FFF0CA`) separate from the lift's current floor (`FFF0C8`).
+Focused Debug and Release route suites cover event-29 groups 21-24, 26-28,
+30-33, 35-39, and 41-42 and non-member entries 25, 29, 34, 40, and 43.
 
 The prior scene-28 and scene-36 follow-up probes started while the previous
 world activity was still active. ROM routine `0x1E2E0` starts a 60-field-frame
@@ -20,22 +18,38 @@ and the native transition result's reporting of an already-running activity;
 it does not establish independent visual fidelity or the immediate-input
 experience against a scene-labeled Genesis recording.
 
-Ordinary resource entry and saved-session floor restoration remain open. Map
-identities remain unnamed. The Qt fade uses a black overlay rather than the
-ROM's per-color CRAM arithmetic, and route-specific audio output has not been
-captured with loopback.
+Ordinary resource-entry points and saved-session floor restoration remain
+open. The numeric scene IDs in this audit have no verified place-name
+crosswalk. The Qt fade uses a black overlay rather than the ROM's per-color
+CRAM arithmetic, and route-specific audio output has not been captured with
+loopback.
 ## Source trace and native behavior
 
 The scene-26 terrain records 102 and 103 carry collision value `0xDD`. The
 same paired trigger rectangle occurs in scene 28 records 112/113 and scene 27
 records 131/132. The ordinary field collision path publishes event 29 and
-enters ROM routine `0x58D94`, which calls the floor-selector routine at
-`0x58DE0`. It reads the current-floor state at `FFF0C8` and the selected-floor
-state at `FFF0CA`. The selector's child scene list is imported offline as
+enters ROM routine `0x58D94`. That caller saves `FFF0C8`, calls selector
+routine `0x58DE0`, then reloads the destination only if `FFF0C8` changed. At
+selector entry, `0x58DE0` copies current floor `FFF0C8` to highlighted floor
+`FFF0CA`. D-pad input changes only `FFF0CA`. A (`bit 14`) calls `0x58FF8`; its
+timed animation advances `FFF0C8` one floor at a time. Start (`bit 15`)
+returns from the selector. Therefore D-pad plus Start cannot change floors
+without A. The selector's child scene list is imported offline as
 `records/field/elevator-scene-groups.bin`; for each of scenes 26, 27, and 28,
 the group contains scene IDs 26, 27, and 28. Runtime code consumes the typed
 scene list and named extracted art; it does not read the ROM or interpret ROM
-addresses.
+addresses. The native confirmation path resolves the destination from
+`current_floor`, even if the player changes the highlight again after a
+confirmed lift trip.
+
+The ordinary doorway entry and an elevator arrival are separate routes. On
+floor travel, the native route reloads the selected scene profile and places
+the runner at that destination profile's lift landing; source-floor coordinates
+are map-local and are not copied into the next floor. The profile coordinates
+are close to their event-29 rectangles in groups 21-24, 26-28, 30-33, and
+35-39. This does not establish each building's ordinary doorway position.
+The `0x3074` conditional override (`FFFC0E`/`FFE10E`) remains a separate
+coordinate path and must be traced for each ordinary entry route.
 
 ### Source-data trigger census
 
@@ -62,14 +76,17 @@ QA restore checkpoints seeded with each scene's descriptor camera and runner
 coordinates, then set the scene-derived interaction mode through a test-only
 mode setter. They validate physical input through each non-member trigger and
 the host's index-0 fallback; they do not exercise the ordinary `0x167AE`
-scene-entry path or prove saved-game floor restoration. In the 34-group route,
+scene-entry path, prove the actual story-entry point, or prove saved-game
+floor restoration. A descriptor coordinate is only the harness's reproducible
+starting checkpoint; it is not proof that the player entered from that scene's
+normal doorway. In the 34-group route,
 six held Right updates align the runner with the narrow trigger lane in scenes
 31-34; held Up then enters the paired event-29 rectangles. Scene 30's
 descriptor spawn is already centered in its lane and reaches its trigger with
 Up. The extracted collision records explain why a direct north start fails at
 the west edge of the lane. After the initial scene-34 QA checkpoint, the
-remaining group entries are actual selector scene transitions that load each
-destination descriptor spawn.
+remaining group entries are actual selector scene transitions that place the
+runner at the destination profile's lift landing.
 Scene 25 starts from its descriptor-spawn checkpoint and chains through
 22->23->24->21->22, entering each member-scene event-29 trigger through the
 selector and carrying current-floor indices 1, 2, 3, and 0 into the next leg.
@@ -95,11 +112,12 @@ event-29 records 100/101 are at `0x1D794E`/`0x1D7958`; scene 22's records
 terrain bytes match the extracted named collision records for all four
 scenes.
 
-Up and Down change the selected floor and show the corresponding active arrow
-for eight VBlanks. A moves the lift between the current and selected floor;
-the 17 animation frames are each held for eight VBlanks. Once the lift reaches
-the selected floor, Start begins the map transition. The ROM path at `0x58DB2`
-chooses the destination scene from the group and prepares it through `0x16A8E`.
+Up and Down change only the highlighted floor and show the corresponding
+active arrow for eight VBlanks. A moves the lift between current and
+highlighted floors; each of 17 animation frames is held for eight VBlanks.
+Start returns from the selector. The caller compares `FFF0C8` to the saved
+current floor and only then loads the scene for the actual current floor via
+`0x16A8E`.
 The scene transition runs 17 palette steps toward black, changes scenes, then
 runs 17 steps toward the destination palette. Each palette step waits two
 VBlanks through `0x1342`; `0x131C` and `0x12F6` provide the fade directions.
@@ -152,6 +170,10 @@ the paired `0xDD` rectangles at X `0x260..0x27F` and `0x280..0x29F`, Y
 `0x20..0x3F`. The five profiles share destination group `[35,36,37,38,39]`.
 Scenes 35-38 spawn at `(0x2800,0x1580)` with camera `(0x1F00,0x0B80)`;
 scene 39 spawns at `(0x1600,0x0500)` with camera `(0x0C80,0x0300)`.
+Their profile coordinates are close to their paired event-29 elevator
+rectangles and define destination lift landings for selector travel. They do
+not establish the ordinary entry point for any building; that must come from
+the corresponding ROM mode/event transition and its pending coordinate state.
 
 ## Full-screen capture and evidence
 
@@ -162,7 +184,7 @@ After B requests audio event `0x25`, QA visits all four selections, checks
 eight-VBlank arrow feedback, and returns to destination 22. A moves the lift
 through 17 animation frames at eight VBlanks each; Start initiates the two
 fades and scene change. Its timeline contains 332 consecutive 320x224 frames,
-from the descriptor-spawn field through a 30-frame destination hold. Scene
+from the source profile-coordinate checkpoint through a 30-frame destination hold. Scene
 22's camera settles after the fade in three updates (`camera_y` 96, 64, 32,
 then 0); the test saves the immediate post-fade frame separately and only
 starts its stable hold after camera motion stops.
@@ -174,8 +196,8 @@ event `0x25`, QA visits each destination and returns to 27. A moves the lift
 through 17 animation frames at eight VBlanks each; Start initiates the fades
 and scene change. Its timeline contains 304 consecutive 320x224 frames,
 through a 30-frame destination hold. Both non-member tests check the full-black
-handoff, destination descriptor spawn and HUD, and absence of stale modal
-graphics. They use restored checkpoints at their source descriptor spawns, so
+handoff, destination profile lift landing and HUD, and absence of stale modal graphics.
+They use restored checkpoints at their source profile coordinates, so
 they establish the collision/UI route rather than map reachability from
 another scene.
 
@@ -195,8 +217,11 @@ the runner through a wall or synthesize a trigger event.
 The scene-40 route checks ROM profile table entry `0x32D2` (profile
 `0x1DDD1A`), group list `[35,36,37,38,39]`, and paired event-29 records
 70/71 at `0x1DE112`/`0x1DE11C`. Its descriptor camera is `(0x0C80, 0x0300)`
-and runner spawn is `(0x1600, 0x0500)`. The source collision grid leaves a
-northward lane from the spawn into the `0xDD` rectangles. Ordinary Up opens at
+and profile runner coordinate is `(0x1600, 0x0500)`; its event-29 rectangle is
+at X `0x140..0x17F`, Y `0x20..0x3F`, well away from that coordinate in the map.
+The profile coordinate is the QA checkpoint, not a verified story-entry
+coordinate. The source collision grid leaves a northward lane from the
+checkpoint into the `0xDD` rectangles. Ordinary Up opens at
 index 0; QA visits destinations 36 through 39, returns to 36, plays the
 17-step lift animation at eight VBlanks per step, and transitions to scene 36.
 The 340 consecutive 320x224 frames cover the field approach, selector,
@@ -212,7 +237,7 @@ records 76/77 at `0x1DECD2`/`0x1DECDC`; their X spans are `0x20..0x3F` and
 `0x40..0x5F`, and their Y span is `0x1E0..0x1FF`. Ordinary Up input enters
 the selector from that checkpoint. QA requests B's sound event `0x25`, selects
 scene 42, checks the 17-frame lift animation and Start transition, then checks
-the black handoff, scene-42 descriptor spawn, HUD, and idle stability after the
+the black handoff, destination profile lift landing, HUD, and idle stability after the
 camera's normal lookahead alignment. Its complete capture has 335 consecutive
 320x224 frames. All 349 Debug and Release artifacts match by SHA-256. The
 timeline was reviewed in nine chronological whole-screen sheets, and the

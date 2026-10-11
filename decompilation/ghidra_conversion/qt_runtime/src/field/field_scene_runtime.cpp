@@ -1197,14 +1197,19 @@ bool FieldSceneRuntime::transition_to_elevator_destination(
         return false;
     }
 
-    const auto spawn = state_.field_scene_buffers.source_metadata
-                           .initial_field_records[0U];
-    field_entity_.world_position = spawn;
+    // ROM 0x58D94 hands off only after FFF0C8 changes; 0x16A8E selects the
+    // destination scene and reloads its profile through 0x03074/0x03084.
+    // For this event-29 group the destination profile's runner record is the
+    // lift landing. Coordinates from another floor are map-local and must not
+    // be carried across the scene change.
+    const auto elevator_landing = state_.field_scene_buffers.source_metadata
+                                      .initial_field_records[0U];
+    field_entity_.world_position = elevator_landing;
     field_entity_.projection = EntityProjectionState{};
     field_entity_.visible = false;
     field_entity_.direction = 0U;
-    field_movement_state_.position_x = spawn.x;
-    field_movement_state_.position_y = spawn.y;
+    field_movement_state_.position_x = elevator_landing.x;
+    field_movement_state_.position_y = elevator_landing.y;
     field_movement_state_.heading = 0U;
     field_movement_state_.movement_substate = 0U;
     field_target_heading_ = 0U;
@@ -1318,7 +1323,7 @@ void FieldSceneRuntime::advance_field_elevator_selector() {
         }
         const auto destination = game_scripts_.resolve_elevator_destination(
             *field_elevator_floor_group_,
-            field_elevator_selector_.selected_floor());
+            field_elevator_selector_.current_floor());
         if (!destination.has_value()) {
             failure_ = game_scripts_.failure();
             source_boundary("field.elevator.destination_script_failed");

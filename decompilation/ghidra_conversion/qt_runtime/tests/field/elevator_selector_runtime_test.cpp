@@ -45,6 +45,12 @@ int main() {
         return 5;
     }
     update = selector.advance(elevator_selector_button_mask(
+        ElevatorSelectorButton::start));
+    if (!update.confirmed || selector.current_floor() != 1U ||
+        selector.selected_floor() != 2U || selector.destination_changed()) {
+        return 23;
+    }
+    update = selector.advance(elevator_selector_button_mask(
         ElevatorSelectorButton::confirm));
     if (!update.animation_started || !selector.is_animating() ||
         selector.animation_frame() != 16U) {
@@ -68,7 +74,8 @@ int main() {
         update = selector.advance(0U);
     }
     if (!update.animation_finished || selector.is_animating() ||
-        selector.current_floor() != 2U || selector.selected_floor() != 2U) {
+        selector.current_floor() != 2U || selector.selected_floor() != 2U ||
+        !selector.destination_changed()) {
         return 9;
     }
 

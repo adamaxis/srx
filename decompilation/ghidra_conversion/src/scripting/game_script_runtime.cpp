@@ -1756,7 +1756,7 @@ GameScriptRuntime::resolve_field_location_entry(
 
 std::optional<std::uint16_t> GameScriptRuntime::resolve_elevator_destination(
     const ScriptElevatorFloorGroup& group,
-    const std::uint8_t selected_floor) {
+    const std::uint8_t floor_index) {
     auto* state = impl_->state;
     if (state == nullptr) {
         impl_->failure = "Lua runtime is unavailable for elevator routing";
@@ -1770,7 +1770,7 @@ std::optional<std::uint16_t> GameScriptRuntime::resolve_elevator_destination(
         return std::nullopt;
     };
     if (group.scene_ids.size() < 2U || group.scene_ids.size() > 5U ||
-        selected_floor >= group.scene_ids.size()) {
+        floor_index >= group.scene_ids.size()) {
         return fail("elevator destination request has an invalid floor");
     }
     if (!impl_->push_module("building")) {
@@ -1791,8 +1791,8 @@ std::optional<std::uint16_t> GameScriptRuntime::resolve_elevator_destination(
                     static_cast<lua_Integer>(floor + 1U));
     }
     lua_setfield(state, input_index, "floor_scenes");
-    lua_pushinteger(state, selected_floor);
-    lua_setfield(state, input_index, "selected_floor");
+    lua_pushinteger(state, floor_index);
+    lua_setfield(state, input_index, "floor_index");
 
     if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
         return fail("building.lua elevator-destination resolution failed");

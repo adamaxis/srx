@@ -12649,6 +12649,25 @@ int run_field_elevator_physical_entry_qa(
     if (third_floor_preview.isNull()) {
         return 3;
     }
+    tap_dpad(0x02U); // highlight the previous floor without moving the lift
+    for (std::uint8_t tick = 0U;
+         field_scene
+                 .elevator_selector_navigation_feedback_frames_remaining_for_dump() !=
+             0U &&
+         tick < kElevatorSelectorNavigationFeedbackFrameCount;
+         ++tick) {
+        tick_frame();
+    }
+    const auto current_three_selected_two =
+        save("selector-current-3-selected-2-unconfirmed");
+    if (current_three_selected_two.isNull() ||
+        field_scene.elevator_selector_current_floor_for_dump() != 2U ||
+        field_scene.elevator_selector_selected_floor_for_dump() != 1U ||
+        field_scene.elevator_selector_animating_for_dump()) {
+        std::cerr << "Elevator physical-entry QA: moving the highlight after "
+                     "A changed the lift floor without another A press\n";
+        return 3;
+    }
     tap_button(0x80U); // Start begins the source 0x131C palette fade.
     if (!field_scene.elevator_selector_open_for_dump() ||
         field_scene.elevator_scene_transition_phase_for_dump() !=
@@ -12694,10 +12713,6 @@ int run_field_elevator_physical_entry_qa(
             return 3;
         }
     }
-    const auto& destination_metadata =
-        field_scene.state().field_scene_buffers.source_metadata;
-    const auto destination_spawn =
-        destination_metadata.initial_field_records[0U];
     const auto black_handoff = save("destination-black-handoff");
     QImage expected_black(kSceneWidth, kSceneHeight, QImage::Format_ARGB32);
     expected_black.fill(Qt::black);
@@ -12742,6 +12757,9 @@ int run_field_elevator_physical_entry_qa(
     }
     const auto destination_position =
         field_scene.field_entity_world_position();
+    const auto destination_landing_position =
+        field_scene.state().field_scene_buffers.source_metadata
+            .initial_field_records[0U];
     const auto destination = save("scene28-entry");
     if (destination.isNull() ||
         field_scene.field_scene_reference_for_dump() != 28U ||
@@ -12749,13 +12767,13 @@ int run_field_elevator_physical_entry_qa(
         field_scene.elevator_scene_transition_phase_for_dump() !=
             ElevatorSceneTransitionPhase::idle ||
         field_scene.elevator_scene_transition_fade_alpha_for_dump() != 0U ||
-        destination_position.x != destination_spawn.x ||
-        destination_position.y != destination_spawn.y ||
+        destination_position.x != destination_landing_position.x ||
+        destination_position.y != destination_landing_position.y ||
         !field_scene.field_entity_visible_for_dump() ||
         !field_hud_chrome_survives(destination, asset_root) ||
         destination == third_floor_preview || !no_modal_screen()) {
         std::cerr << "Elevator physical-entry QA: selected child scene did not "
-                     "replace the selector at its descriptor spawn\n";
+                     "use its ROM profile lift landing\n";
         return 3;
     }
     const auto activity_boundary_count_after = static_cast<std::size_t>(
@@ -13496,7 +13514,7 @@ int run_field_elevator_group_route_qa(
         }
     }
     const auto destination_position = field_scene.field_entity_world_position();
-    const auto destination_spawn =
+    const auto destination_landing_position =
         field_scene.state().field_scene_buffers.source_metadata
             .initial_field_records[0U];
     const auto entry_after_fade = render();
@@ -13506,8 +13524,8 @@ int run_field_elevator_group_route_qa(
         field_scene.elevator_scene_transition_phase_for_dump() !=
             ElevatorSceneTransitionPhase::idle ||
         field_scene.elevator_scene_transition_fade_alpha_for_dump() != 0U ||
-        destination_position.x != destination_spawn.x ||
-        destination_position.y != destination_spawn.y ||
+        destination_position.x != destination_landing_position.x ||
+        destination_position.y != destination_landing_position.y ||
         !field_scene.field_entity_visible_for_dump() ||
         !field_hud_chrome_survives(entry_after_fade, asset_root) ||
         entry_after_fade == selector_open ||
@@ -13515,8 +13533,8 @@ int run_field_elevator_group_route_qa(
               "-entry-after-fade")) {
         std::cerr << "Elevator group route QA: selected scene "
                   << destination_scene
-                  << " did not replace the selector cleanly at its descriptor "
-                     "spawn\n";
+                  << " did not place the runner at its ROM profile lift "
+                     "landing\n";
         return 3;
     }
 
@@ -13551,8 +13569,10 @@ int run_field_elevator_group_route_qa(
     const auto destination = render();
     if (stable_camera_frames != 3U ||
         field_scene.field_scene_reference_for_dump() != destination_scene ||
-        field_scene.field_entity_world_position().x != destination_spawn.x ||
-        field_scene.field_entity_world_position().y != destination_spawn.y ||
+        field_scene.field_entity_world_position().x !=
+            destination_landing_position.x ||
+        field_scene.field_entity_world_position().y !=
+            destination_landing_position.y ||
         !no_modal_screen() || !field_hud_chrome_survives(destination, asset_root) ||
         !save("scene" + std::to_string(destination_scene) + "-destination")) {
         std::cerr << "Elevator group route QA: destination camera did not settle "
@@ -14022,12 +14042,12 @@ int run_field_elevator_floor_group_roundtrip_qa(
                     return QImage{};
                 }
             }
-            const auto& metadata = field_scene.state()
-                                       .field_scene_buffers.source_metadata;
-            const auto expected_spawn = metadata.initial_field_records[0U];
             const auto destination = save(label + "-entry");
             const auto destination_position =
                 field_scene.field_entity_world_position();
+            const auto destination_landing_position =
+                field_scene.state().field_scene_buffers.source_metadata
+                    .initial_field_records[0U];
             if (destination.isNull() ||
                 field_scene.field_scene_reference_for_dump() !=
                     destination_scene ||
@@ -14036,8 +14056,8 @@ int run_field_elevator_floor_group_roundtrip_qa(
                     ElevatorSceneTransitionPhase::idle ||
                 field_scene.elevator_scene_transition_fade_alpha_for_dump() !=
                     0U ||
-                destination_position.x != expected_spawn.x ||
-                destination_position.y != expected_spawn.y ||
+                destination_position.x != destination_landing_position.x ||
+                destination_position.y != destination_landing_position.y ||
                 !field_scene.field_entity_visible_for_dump() ||
                 !field_hud_chrome_survives(destination, asset_root) ||
                 destination == selector_frame || !no_modal_screen()) {

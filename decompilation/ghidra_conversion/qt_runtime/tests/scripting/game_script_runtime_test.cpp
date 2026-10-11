@@ -1791,22 +1791,40 @@ int main() {
     const auto ares_intro = mode_prompt_content(2U, 11U, 0);
     const auto ares_handoff = mode_prompt_content(2U, 11U, -1);
     const auto ares_payment = mode_prompt_content(2U, 11U, 1);
+    const auto little_chiba_intro = mode_prompt_content(2U, 1U, 0);
+    const auto little_chiba_handoff = mode_prompt_content(2U, 1U, -1);
+    const auto little_chiba_payment = mode_prompt_content(2U, 1U, 1);
     const auto unmatched_mode_prompt = mode_prompt_content(2U, 2U, 0);
     const auto valid_mode_prompt = [&](const auto& content,
-                                       const std::string_view text_key) {
+                                       const std::string_view text_key,
+                                       const std::string_view portrait_alias) {
         return content.has_value() && content->size() == 3U &&
                content->at("status") == "matched" &&
                content->at("text_key") == text_key &&
-               content->at("portrait_alias") ==
-                   "field.mode.entry.ares.sprite" &&
+               content->at("portrait_alias") == portrait_alias &&
                scripts.dialogue_text(text_key) != nullptr;
     };
     if (!expect(valid_mode_prompt(ares_intro,
-                                  "field.mode.ares.store_intro") &&
+                                  "field.mode.ares.store_intro",
+                                  "field.mode.entry.ares.sprite") &&
                     valid_mode_prompt(ares_handoff,
-                                      "field.mode.ares.package_handoff") &&
+                                      "field.mode.ares.package_handoff",
+                                      "field.mode.entry.ares.sprite") &&
                     valid_mode_prompt(ares_payment,
-                                      "field.mode.ares.package_payment") &&
+                                      "field.mode.ares.package_payment",
+                                      "field.mode.entry.ares.sprite") &&
+                    valid_mode_prompt(
+                        little_chiba_intro,
+                        "field.mode.little_chiba.description",
+                        "field.mode.entry.little.chiba.sprite") &&
+                    valid_mode_prompt(
+                        little_chiba_handoff,
+                        "field.mode.little_chiba.package_handoff",
+                        "field.mode.entry.little.chiba.sprite") &&
+                    valid_mode_prompt(
+                        little_chiba_payment,
+                        "field.mode.little_chiba.package_payment",
+                        "field.mode.entry.little.chiba.sprite") &&
                     unmatched_mode_prompt.has_value() &&
                     unmatched_mode_prompt->at("status") == "unmatched" &&
                     unmatched_mode_prompt->at("text_key") == "none" &&
