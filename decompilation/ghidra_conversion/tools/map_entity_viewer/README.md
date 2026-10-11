@@ -15,9 +15,12 @@ actor's ROM fixed-point coordinates are a separate representation.
 
 The BMP is already a composed map image. The priority overlay is a separate
 sparse image, and the viewer can draw the ROM collision rectangles and event
-triggers over it. Click a yellow trigger or a visible red collision rectangle
-to inspect its ROM record, decoded route, addresses, and recorded runtime/QA
-owners in the side panel. The **ROM default actors** layer marks coordinates
+triggers over it. Click an otherwise unmarked map cell to inspect its row-major
+primary/secondary ROM tilemap words, coordinates, dimensions, and extracted
+record paths. These are source metatile indices, not semantic object labels.
+Click a yellow trigger or a visible red collision rectangle to inspect its ROM
+record, decoded route, addresses, and recorded runtime/QA owners in the side
+panel. The **ROM default actors** layer marks coordinates
 from the extracted default actor lists; click a marker to inspect its template,
 fixed-point position, ordered overrides, and source record. A listed position
 does not claim the actor is active on every visit. These ROM overlays are

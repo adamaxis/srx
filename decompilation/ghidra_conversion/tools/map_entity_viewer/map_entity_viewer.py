@@ -603,6 +603,62 @@ def read_map_catalog(asset_root: Path) -> list[MapInfo]:
     return maps
 
 
+def read_map_cell_evidence(
+    asset_root: Path, info: MapInfo, x: int, y: int
+) -> MapEvidenceRegion | None:
+    """Describe the ROM tilemap words beneath one rendered 32 px cell."""
+    cell_size = 32
+    cell_x, cell_y = x // cell_size, y // cell_size
+    if x < 0 or y < 0 or cell_x >= info.tilemap_width or cell_y >= info.tilemap_height:
+        return None
+    index = cell_y * info.tilemap_width + cell_x
+    path = asset_root / "records" / "field" / "scenes" / f"scene-{info.scene_id:02d}"
+    layers: list[str] = []
+    for layer_name, filename in (
+        ("Primary layer A", "terrain-layer-a.bin"),
+        ("Secondary layer B", "terrain-layer-b.bin"),
+    ):
+        source = path / filename
+        try:
+            with source.open("rb") as stream:
+                stream.seek(index * 2)
+                raw = stream.read(2)
+        except OSError:
+            raw = b""
+        if len(raw) != 2:
+            layers.append(f"{layer_name}: unavailable ({source})")
+        else:
+            value = int.from_bytes(raw, "big")
+            layers.append(
+                f"{layer_name} metatile word: 0x{value:04X} ({value}); "
+                f"record: {source}"
+            )
+    map_index = asset_root / "field" / "maps" / "index.tsv"
+    return MapEvidenceRegion(
+        kind="rom_map_cell",
+        x=cell_x * cell_size,
+        y=cell_y * cell_size,
+        width=cell_size,
+        height=cell_size,
+        title=f"ROM map cell {cell_x},{cell_y}",
+        details="\n".join((
+            "ROM map cell; raw source tilemap values",
+            f"Scene: {info.scene_id:02d}",
+            f"Map pixel cell: ({cell_x}, {cell_y}); bounds "
+            f"({cell_x * cell_size}, {cell_y * cell_size}) {cell_size}x{cell_size}",
+            f"Tilemap dimensions: {info.tilemap_width}x{info.tilemap_height}; "
+            f"row-major entry: {index}",
+            f"{layers[0]}",
+            f"{layers[1]}",
+            f"Primary ROM tilemap offset: {info.primary_tilemap or '(not indexed)' }",
+            f"Secondary ROM tilemap offset: {info.secondary_tilemap or '(not indexed)' }",
+            "Words are source metatile indices, not semantic object classifications.",
+            f"Extracted records: {path}",
+            f"ROM map index: {map_index}",
+        )),
+    )
+
+
 def read_collision_rectangles(asset_root: Path, scene_id: int) -> list[MapEvidenceRegion]:
     path = asset_root / "records" / "field" / "scenes" / f"scene-{scene_id:02d}" / "terrain-collision-rectangles.bin"
     if not path.is_file():
@@ -749,7 +805,7 @@ class GridOverlay(QGraphicsItem):
 
 
 class FieldMapView(QGraphicsView):
-    def __init__(self, on_region, on_select, on_cursor, on_evidence, on_behavior, on_move):
+    def __init__(self, on_region, on_select, on_cursor, on_evidence, on_behavior, on_cell, on_move):
         super().__init__()
         self.setScene(QGraphicsScene(self))
         self.setRenderHints(QPainter.RenderHint.Antialiasing)
@@ -761,6 +817,7 @@ class FieldMapView(QGraphicsView):
         self.on_cursor = on_cursor
         self.on_evidence = on_evidence
         self.on_behavior = on_behavior
+        self.on_cell = on_cell
         self.on_move = on_move
         self.mode = "select"
         self.map_info: MapInfo | None = None
@@ -1107,6 +1164,10 @@ class FieldMapView(QGraphicsView):
                 self.move_group = entity_group[1]
                 event.accept()
                 return
+            if selected is None:
+                self.on_cell(point)
+                event.accept()
+                return
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event) -> None:
@@ -1182,6 +1243,7 @@ class MapEntityViewer(QMainWindow):
             self.cursor_moved,
             self.show_evidence,
             self.show_behavior,
+            self.show_map_cell,
             self.move_instance,
         )
         self.setCentralWidget(self.map_view)
@@ -1295,7 +1357,7 @@ class MapEntityViewer(QMainWindow):
         self.info.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
         self.info.setMaximumHeight(220)
         self.info.setPlainText(
-            "Click a yellow ROM trigger or red collision region for its source record. "
+            "Click a map cell for its ROM layer words. Click a yellow ROM trigger or red collision region for its source record. "
             "Click a ROM actor marker to inspect its list entry. Click an authored T/S/R mark to inspect its Lua data. "
             "Drag entity outlines to move grouped annotations."
         )
@@ -1475,7 +1537,7 @@ class MapEntityViewer(QMainWindow):
             self.parts_list.clear()
             self.interactions_list.clear()
             self.info.setPlainText(
-                "Click a yellow ROM trigger or red collision region for its source record. "
+                "Click a map cell for its ROM layer words. Click a yellow ROM trigger or red collision region for its source record. "
                 "Click a ROM actor marker to inspect its list entry. Click an authored T/S/R mark to inspect its Lua data. "
                 "Drag entity outlines to move grouped annotations."
             )
@@ -1682,6 +1744,15 @@ class MapEntityViewer(QMainWindow):
             f"Inspecting {evidence.title}; source-derived evidence is read-only.",
             7000,
         )
+
+    def show_map_cell(self, point: QPointF) -> None:
+        info = self.map_by_id.get(self.scene_id)
+        if info is None:
+            return
+        x, y = int(point.x()), int(point.y())
+        evidence = read_map_cell_evidence(self.assets, info, x, y)
+        if evidence is not None:
+            self.show_evidence(evidence)
 
     def move_instance(self, instance_id: str, delta_x: int, delta_y: int) -> None:
         instance = next(
