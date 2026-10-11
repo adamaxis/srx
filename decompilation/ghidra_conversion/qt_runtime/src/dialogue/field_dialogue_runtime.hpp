@@ -72,6 +72,8 @@ public:
     void set_followup_command_callback(
         std::function<std::optional<StokerMotelFollowupOutcome>(
             StokerMotelFollowupCommand)> callback);
+    void set_native_script_service_callback(
+        std::function<std::optional<std::string>(std::string_view)> callback);
     void set_script_runtime(scripting::GameScriptRuntime* runtime) noexcept;
 
     // Bind the selection made by converted 0x1F65A to a common NPC panel.
@@ -137,6 +139,8 @@ private:
         debt_payment_callback_;
     std::function<std::optional<StokerMotelFollowupOutcome>(
         StokerMotelFollowupCommand)> followup_command_callback_;
+    std::function<std::optional<std::string>(std::string_view)>
+        native_script_service_callback_;
     std::string failure_;
     std::string boundary_reason_;
     bool assets_loaded_ = false;

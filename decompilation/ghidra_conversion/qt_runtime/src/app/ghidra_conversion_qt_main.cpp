@@ -15904,14 +15904,78 @@ int run_field_jump_house_entry_qa(
         return 3;
     }
 
+    // Continue on the same FieldSceneRuntime instance through the production
+    // Gunderson Lua task and its wallet service. This deterministic dialogue
+    // entry isolates the conversation after the real scene-2/event-4 route;
+    // movement into scene-13/event-30 remains a separate QA gap.
+    const auto panel_contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count;
+             ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    field_scene.set_field_funds_for_dump(1000U);
+    if (!field_scene.open_gunderson_interaction_for_dump() ||
+        !field_scene.dialogue_open() ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !save("gunderson-root", false) ||
+        field_scene.advance_stoker_dialogue_for_dump(0x4000U) !=
+            FieldDialogueAdvanceResult::prompt_advanced ||
+        !panel_contains("Info, eh?") ||
+        !save("gunderson-information-opening", false) ||
+        field_scene.advance_stoker_dialogue_for_dump(0x4000U) !=
+            FieldDialogueAdvanceResult::prompt_advanced ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !save("gunderson-information-topics", false) ||
+        field_scene.advance_stoker_dialogue_for_dump(0x1000U) !=
+            FieldDialogueAdvanceResult::prompt_advanced ||
+        !panel_contains("Contacts!") ||
+        !save("gunderson-contacts-introduction", false) ||
+        field_scene.advance_stoker_dialogue_for_dump(0x4000U) !=
+            FieldDialogueAdvanceResult::prompt_advanced ||
+        field_scene.dialogue_panel().option_count != 2U ||
+        !panel_contains("1000$") ||
+        !save("gunderson-decker-offer", false) ||
+        field_scene.advance_stoker_dialogue_for_dump(0x4000U) !=
+            FieldDialogueAdvanceResult::prompt_advanced ||
+        field_scene.field_funds_for_dump() !=
+            std::optional<std::uint32_t>{0U} ||
+        !panel_contains("Wilma Temmenhoff") ||
+        !save("gunderson-contact-purchased", false) ||
+        field_scene.advance_stoker_dialogue_for_dump(0x1000U) !=
+            FieldDialogueAdvanceResult::prompt_advanced ||
+        !panel_contains("Contacts!") ||
+        !save("gunderson-contacts-repeat", false) ||
+        field_scene.advance_stoker_dialogue_for_dump(0x4000U) !=
+            FieldDialogueAdvanceResult::prompt_advanced ||
+        field_scene.advance_stoker_dialogue_for_dump(0x4000U) !=
+            FieldDialogueAdvanceResult::prompt_advanced ||
+        field_scene.field_funds_for_dump() !=
+            std::optional<std::uint32_t>{0U} ||
+        !panel_contains("short on nuyen") ||
+        !save("gunderson-contact-repeat-insufficient", false) ||
+        field_scene.advance_stoker_dialogue_for_dump(0x2000U) !=
+            FieldDialogueAdvanceResult::returned_to_field ||
+        field_scene.dialogue_open()) {
+        std::cerr << "Jump House entry QA: the connected Gunderson Lua/wallet "
+                     "route did not present, debit, repeat, and reject the "
+                     "unfunded contact purchase cleanly\n";
+        return 3;
+    }
+
     std::ofstream route(output / "route.tsv", std::ios::trunc);
     if (!route) {
         return 3;
     }
     route << "trigger_record\tcollision\tevent\tdestination_scene\t"
-             "movement_ticks\taudio_requests\n"
+             "movement_ticks\taudio_requests\tcontact_wallet_after_purchase\n"
           << "85\t0x00C4\t4\t13\t" << movement_ticks << '\t'
-          << field_audio_events.size() << '\n';
+          << field_audio_events.size() << "\t0\n";
     std::cout << "field_jump_house_entry_qa=passed record=85 event=4 "
                  "movement=ordinary-up entry=lua dismissal=ordinary-A "
                  "destination_scene=13 clean_redraw=yes audio_requests="

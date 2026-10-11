@@ -40,15 +40,25 @@ page and, after A, resumes its numeric scene-13 route. The separate entry
 portrait `0x121EBC` matches frame 001200; profile `0x121E80` matches
 Gunderson in frame 001500. The initial root, information pages, topic selector,
 dynamic question selector, Johnson answer/follow-up, conditional Vigore and
-Errascoe branches, and the alternate post-information root/menu are bound
-through shared Lua content. Debug and Release QA capture fourteen full-screen
-states; question screens were compared against longplay frames 002100, 002200,
-002550, and 002850. The Debug and Release captures match byte-for-byte. The
-field entry route verifies ordinary collision, modal dismissal, transition,
-and a clean scene-13 redraw. This hill remains partial: scene-13 event-30
-movement QA, the FFFC27 alternate Vigore response, contact purchase and
-work/quest branches, source actor placement, audio/timing, and scene-13 event-0
-exit semantics remain open. See
+Errascoe branches, alternate root, and Decker contact purchase/failure route
+are bound through shared Lua content. ROM action `0x4D` deducts 1,000 nuyen
+through the host wallet service; exact-1,000 and 999-nuyen cases, repeat
+contact selection, and full-screen confirmation/failure panels have Debug and
+Release QA. The field-entry route continues on the same runtime instance
+through the production Lua interaction and wallet service: it buys the
+contact from a QA-seeded 1,000 nuyen, then rejects the repeat purchase at zero.
+The separate dialogue-runtime test verifies that 999 remains unchanged.
+Twenty full-screen dialogue states and fourteen field-entry captures match
+between Debug and Release; the latter were inspected as complete 320x224
+screens. Question screens were compared against longplay frames 002100,
+002200, 002550, and 002850. The independent longplay has no Decker purchase
+sequence, so those new screens have host regression evidence only. The field
+entry route verifies ordinary collision, modal dismissal, transition, and a
+clean scene-13 redraw.
+This hill remains partial: scene-13 event-30 movement QA, the FFFC27 alternate
+Vigore response, work/quest branches, source actor placement, audio/timing,
+independent Decker-branch visuals, and scene-13 event-0 exit semantics remain
+open. See
 [`Jump House entry and Gunderson audit`](visual-audits/jump-house-entry-and-gunderson.md).
 
 The user-reported intro, field, HUD, menu, inventory, and sound defects are

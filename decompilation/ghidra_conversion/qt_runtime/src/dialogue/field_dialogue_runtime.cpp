@@ -80,6 +80,11 @@ void FieldDialogueRuntime::set_followup_command_callback(
     followup_command_callback_ = std::move(callback);
 }
 
+void FieldDialogueRuntime::set_native_script_service_callback(
+    std::function<std::optional<std::string>(std::string_view)> callback) {
+    native_script_service_callback_ = std::move(callback);
+}
+
 void FieldDialogueRuntime::set_script_runtime(
     scripting::GameScriptRuntime* runtime) noexcept {
     script_runtime_ = runtime;
@@ -546,7 +551,9 @@ std::optional<std::string> FieldDialogueRuntime::invoke_script_service(
         }
         return std::nullopt;
     }
-    return std::nullopt;
+    return native_script_service_callback_
+               ? native_script_service_callback_(service_id)
+               : std::nullopt;
 }
 
 bool FieldDialogueRuntime::open_source_boundary(std::string reason) {

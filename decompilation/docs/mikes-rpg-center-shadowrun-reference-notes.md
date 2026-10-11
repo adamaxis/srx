@@ -93,8 +93,12 @@ The Ritual, The Sinsearach Elves, Renraku, Vigore, Ellisia's Tomb, and the
 optional Chernobyl side quest. Its useful high-level dependency chain is:
 
 1. Stoker's Coffin Motel: the guide says Michael's belongings are held for
-   250 nuyen; Gunderson is the early job source. The listed contents include
-   a letter, Allegiance Alpha, wristband, two holopix, and 500 nuyen.
+   250 nuyen; Gunderson is the early job source. At the Jump House, the guide
+   describes his work as randomized courier/escort jobs and warns that the
+   ghoul hunt is difficult early. The listed motel contents include a letter,
+   Allegiance Alpha, wristband, two holopix, and 500 nuyen. These job-selection
+   descriptions are guide-level hints; ROM tables and dialogue decide the
+   actual available contract.
 2. Seattle/Puyallup information leads through Tabatha Shade, Boris, Caleb
    Brightmore, Frosty, and the Salish-Shidhe lead.
 3. Reach David Owlfeather by a valid travel path; free Aragorn from Mitsuhama
@@ -522,25 +526,47 @@ pixel/timing goldens.
 
 I reopened the Shadowrun landing page and checked every linked HTML guide and
 map page listed above, plus the separate NPC page. The coverage is 12 catalog/
-walkthrough pages (including the map index), 6 city maps, 4 wilderness maps,
+walkthrough pages, the map index, 6 city maps, 4 wilderness maps,
 4 cave maps, 14 Matrix maps, the landing page, and the separate NPC list. The
-linked Genesis manual PDF timed out in the current browser fetch; its existing
-manual notes above are based on the earlier page-image/OCR pass and should not
-be described as a fresh PDF inspection. The catalog pages consistently label
-prices as Negotiation 0 where stated. Spelling and map-label contradictions
-remain recorded rather than silently normalized.
+linked Genesis manual opens as a 27-page PDF, but the current browser text
+extractor returned no page text; its existing manual notes above are based on
+the earlier page-image/OCR pass and are not a fresh page-by-page manual read.
+The catalog pages consistently label prices as Negotiation 0 where stated.
+Spelling and map-label contradictions remain recorded rather than silently
+normalized.
 
 Current issue cross-checks from the reread:
 
 - The [Redmond map](https://mikesrpgcenter.com/shadowrun/maps/redmond_barrens.html)
-  labels Stoker's Motel as marker 6 and Rat's Nest as marker 9, in separate
-  parts of the map. The [Vigore walkthrough](https://mikesrpgcenter.com/shadowrun/walkthrough.html)
-  says Gunderson directs Joshua to the Rat's Nest after Harlequin's request;
-  Vigore has already left, and the Landmark Map becomes the quest target only
-  after showing Harlequin the first map and speaking to Gunderson about Vigore.
-  This supports the map-name/quest crosswalk, but neither source gives the
-  entrance collision bounds, entry dialogue text, exit destination, or ROM
-  state condition.
+  labels Jump House as marker 1, Stoker's Coffin Motel as marker 6, and Rat's
+  Nest as marker 9. The map image and labels place these as separate named
+  locations. Jump House lists Gunderson and a 1,000-nuyen Wilma Temmenhoff
+  contact; the motel lists a 20-nuyen rest service; Rat's Nest has no listed
+  shop or occupant. This confirms the human-readable location crosswalk, but
+  gives no ROM scene IDs, collision bounds, entry dialogue, or exit target.
+- The [Johnsons page](https://mikesrpgcenter.com/shadowrun/johnsons.html)
+  calls Gunderson a small-time Johnson who mostly handles courier runs. The
+  [walkthrough](https://mikesrpgcenter.com/shadowrun/walkthrough.html) says
+  his jobs are randomized, usually courier or escort duty, and warns against
+  taking the ghoul hunt early. Treat those as guide-level expectations for the
+  contract catalog: ROM dialogue, availability flags, job tables, and payout
+  code must establish the actual offer and choice each time.
+- The [Contacts page](https://mikesrpgcenter.com/shadowrun/contacts.html)
+  identifies Wilma's offer as Matrix information plus Level 3 Rebound and
+  Degrade programs, obtained from Gunderson for 1,000 nuyen. This independently
+  cross-checks the ROM contact purchase price and name, but does not establish
+  repeat-purchase behavior or an acquisition flag.
+- The walkthrough says Stoker holds Michael's belongings until the player pays
+  250 nuyen; it lists a letter, `Allegience Alpha`, wristband, two holopix, and
+  500 nuyen among the contents. The same guide recommends Gunderson as an early
+  job source. This remains separate from the motel's map-listed 20-nuyen rest
+  service and should not be collapsed into one building menu.
+- The [Items page](https://mikesrpgcenter.com/shadowrun/items.html) says the
+  Landmark Map becomes available at Rat's Nest after the first map has been
+  shown to Harlequin and the player has spoken to Gunderson about Vigore. The
+  walkthrough describes that same ordering after the Ellisia map is acquired.
+  This is a strong quest-gate checklist for ROM tracing, not a substitute for
+  its actual flags, map writes, and event handlers.
 - The [Puyallup map](https://mikesrpgcenter.com/shadowrun/maps/puyallup.html)
   labels marker 2 as Tarislar Garden Apartments and marker 3 as Tarislar City
   Inn (rest for 30 nuyen). The [walkthrough](https://mikesrpgcenter.com/shadowrun/walkthrough.html)
@@ -558,3 +584,14 @@ Current issue cross-checks from the reread:
   preserve those as unassigned until ROM evidence identifies them. The map
   labels are navigation aids, not proof that a node uses a particular ROM
   entry or result handler.
+- Across all six city maps, the site is useful as a place/service/stock
+  checklist: shops can share item types but vary prices and stock, hotels have
+  distinct rest prices, and some entrances carry money or reputation gates.
+  The four wilderness and four cave pages provide a rough adjacency graph;
+  duplicate or one-way-looking labels need verification against map exits and
+  ROM transitions. Neither map set supplies exact collision coordinates.
+- The catalog pages consistently state prices at Negotiation 0. The site has
+  naming and typo differences such as `Allegience Alpha` for the starting deck,
+  `Mach 22 MSG` on the Puyallup map versus `SMG` elsewhere, and multiple
+  spellings for contact names. Preserve source wording in the research index,
+  but resolve runtime identifiers against ROM tables and text.

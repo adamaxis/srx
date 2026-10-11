@@ -118,6 +118,8 @@ int main() {
     };
     std::uint32_t room_payment_funds = 20U;
     StokerMotelRoomPaymentOutcome room_payment_outcome{};
+    std::uint32_t decker_contact_funds = 1000U;
+    std::size_t decker_contact_purchase_calls = 0U;
     FieldDialogueRuntime runtime(
         [&boundary](const std::string_view reason) { boundary = reason; },
         arrival_callbacks);
@@ -162,6 +164,20 @@ int main() {
         return std::optional<StokerMotelDebtPaymentOutcome>(
             debt_payment_outcome);
     });
+    runtime.set_native_script_service_callback(
+        [&decker_contact_funds, &decker_contact_purchase_calls](
+            const std::string_view service_id) -> std::optional<std::string> {
+            if (service_id != "johnson.purchase_decker_contact") {
+                return std::nullopt;
+            }
+            ++decker_contact_purchase_calls;
+            constexpr std::uint32_t kFinderFee = 1000U;
+            if (decker_contact_funds < kFinderFee) {
+                return "insufficient";
+            }
+            decker_contact_funds -= kFinderFee;
+            return "purchased";
+        });
     if (!expect(runtime.load_assets(assets.catalog))) {
         return 2;
     }
@@ -373,6 +389,110 @@ int main() {
         !expect(runtime.advance_controller_events(0x2000U) ==
                 FieldDialogueAdvanceResult::returned_to_field)) {
         return 105;
+    }
+
+    // The site walkthrough names Gunderson's work, while the native purchase
+    // flow below follows ROM descriptor 0x105200/action 0x4D. The successful
+    // paid descriptor and its low-funds branch have no matching longplay
+    // capture, so these are functional/full-screen regression checks only.
+    const auto reach_decker_offer = [&runtime, &capture_jump_house]() {
+        if (!runtime.open_gameplay_task("johnson", "interaction") ||
+            runtime.advance_controller_events(0x4000U) !=
+                FieldDialogueAdvanceResult::prompt_advanced ||
+            runtime.advance_controller_events(0x4000U) !=
+                FieldDialogueAdvanceResult::prompt_advanced ||
+            runtime.advance_controller_events(0x1000U) !=
+                FieldDialogueAdvanceResult::prompt_advanced ||
+            runtime.panel().text_segments[0].find("Contacts!") ==
+                std::string_view::npos ||
+            !capture_jump_house("contacts-introduction") ||
+            runtime.advance_controller_events(0x4000U) !=
+                FieldDialogueAdvanceResult::prompt_advanced) {
+            std::cerr << "Failed while moving from Gunderson topics to the "
+                         "Decker offer\n";
+            return false;
+        }
+        if (runtime.panel().option_count != 2U ||
+            runtime.panel().text_segments[0].find("Decker") ==
+                std::string_view::npos ||
+            runtime.panel().text_segments[4].find("1000$") ==
+                std::string_view::npos ||
+            runtime.panel().options[0].source_label !=
+                "Easy money, chummer.  I'll pay." ||
+            runtime.panel().options[1].source_label !=
+                "Let's talk about a different subject.") {
+            std::cerr << "Decker offer projection: options="
+                      << runtime.panel().option_count << " segments="
+                      << runtime.panel().text_segment_count << " text='"
+                      << runtime.panel().text_segments[0] << "' | '"
+                      << runtime.panel().text_segments[1] << "' | '"
+                      << runtime.panel().text_segments[2] << "' | '"
+                      << runtime.panel().text_segments[3] << "' | '"
+                      << runtime.panel().text_segments[4] << "'"
+                      << " labels='" << runtime.panel().options[0].source_label
+                      << "' / '" << runtime.panel().options[1].source_label
+                      << "'\n";
+            capture_jump_house("decker-offer-debug");
+            return false;
+        }
+        return capture_jump_house("decker-offer");
+    };
+
+    if (!expect(reach_decker_offer()) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(decker_contact_purchase_calls == 1U) ||
+        !expect(decker_contact_funds == 0U) ||
+        !expect(runtime.panel().option_count == 3U) ||
+        !expect(runtime.panel().text_segments[0].find("Credstick") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().text_segments[2].find("finders fee") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().text_segments[4].find("Wilma Temmenhoff") !=
+                std::string_view::npos) ||
+        !expect(capture_jump_house("contact-purchased")) ||
+        !expect(runtime.advance_controller_events(0x1000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().text_segments[0].find("Contacts!") !=
+                std::string_view::npos) ||
+        !expect(capture_jump_house("contacts-after-purchase")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 2U) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(decker_contact_purchase_calls == 2U) ||
+        !expect(decker_contact_funds == 0U) ||
+        !expect(runtime.panel().text_segments[2].find("short on nuyen") !=
+                std::string_view::npos) ||
+        !expect(capture_jump_house("contact-insufficient-after-purchase")) ||
+        !expect(runtime.advance_controller_events(0x2000U) ==
+                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(!runtime.open())) {
+        std::cerr << "Gunderson's paid Decker-contact route did not debit, "
+                     "return to the ROM contacts path, and reject a repeat "
+                     "purchase without sufficient funds\n";
+        return 106;
+    }
+
+    decker_contact_funds = 999U;
+    if (!expect(reach_decker_offer()) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(decker_contact_purchase_calls == 3U) ||
+        !expect(decker_contact_funds == 999U) ||
+        !expect(runtime.panel().option_count == 3U) ||
+        !expect(runtime.panel().text_segments[0].find("Credstick") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().text_segments[2].find("short on nuyen") !=
+                std::string_view::npos) ||
+        !expect(capture_jump_house("contact-insufficient-999")) ||
+        !expect(runtime.advance_controller_events(0x2000U) ==
+                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(!runtime.open())) {
+        std::cerr << "Gunderson's low-funds contact route changed the wallet "
+                     "or missed the ROM fallback descriptor\n";
+        return 107;
     }
 
     FieldDialogueEventResolver event_resolver;

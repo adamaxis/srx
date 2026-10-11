@@ -247,6 +247,7 @@ public:
         }
         return field_dialogue_.open_stoker_prompt_for_dump(prompt);
     }
+    bool open_gunderson_interaction_for_dump();
     bool open_stoker_arrival_result_for_dump(std::uint8_t random_roll) {
         return field_dialogue_.open_stoker_arrival_result_for_dump(
             random_roll);
@@ -919,6 +920,7 @@ private:
     void run_field_mode_exit_transition();
     bool run_field_exit_orchestrator(
         integration::FieldRuntimeCoordinatorState& runtime_state);
+    bool open_gunderson_interaction();
     bool project_field_world_interaction();
     void update_source_field_camera();
     void service_pending_field_viewports();

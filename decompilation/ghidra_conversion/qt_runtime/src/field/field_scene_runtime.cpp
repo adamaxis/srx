@@ -417,6 +417,22 @@ FieldSceneRuntime::FieldSceneRuntime(
             }
             return outcome;
         });
+    field_dialogue_.set_native_script_service_callback(
+        [this](const std::string_view service_id)
+            -> std::optional<std::string> {
+            if (service_id != "johnson.purchase_decker_contact") {
+                return std::nullopt;
+            }
+            if (!field_funds_.has_value()) {
+                return std::nullopt;
+            }
+            constexpr std::uint32_t kFinderFee = 1000U;
+            if (*field_funds_ < kFinderFee) {
+                return "insufficient";
+            }
+            *field_funds_ -= kFinderFee;
+            return "purchased";
+        });
     configure_callbacks();
 }
 
@@ -2651,11 +2667,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                     "field.activity.event30_scene_route_unresolved");
                 return integration::PendingFieldSceneHandlerResult::resumed_field;
             }
-            game_scripts_.set_location_context(
-                "building", "jump_house", "gunderson.jump_house",
-                "gunderson");
-            if (!field_dialogue_.open_gameplay_task(
-                    "johnson", "interaction")) {
+            if (!open_gunderson_interaction()) {
                 source_boundary(
                     "field.dialogue.gunderson_script_open_failed");
             } else {
@@ -7693,6 +7705,19 @@ FieldSceneRuntime::advance_stoker_dialogue_for_dump(
         begin_hotel_menu();
     }
     return result;
+}
+
+bool FieldSceneRuntime::open_gunderson_interaction() {
+    if (!ready_ || state_.field_scene_buffers.scene_reference != 13U) {
+        return false;
+    }
+    game_scripts_.set_location_context(
+        "building", "jump_house", "gunderson.jump_house", "gunderson");
+    return field_dialogue_.open_gameplay_task("johnson", "interaction");
+}
+
+bool FieldSceneRuntime::open_gunderson_interaction_for_dump() {
+    return open_gunderson_interaction();
 }
 
 FieldInteractionAdvanceResult

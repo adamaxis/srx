@@ -157,6 +157,29 @@ local menu_profiles = {
                 back = "gunderson.information.option.back",
             },
         },
+        decker_offer = {
+            title_key = "gunderson.contacts.decker_offer",
+            choice_label_keys = {
+                accept = "gunderson.contacts.option.accept",
+                back = "gunderson.information.option.back",
+            },
+        },
+        contacts_purchased = {
+            title_key = "gunderson.contacts.purchase",
+            choice_label_keys = {
+                questions = "gunderson.information.option.questions",
+                contacts = "gunderson.information.option.contacts",
+                back = "gunderson.information.option.back",
+            },
+        },
+        contacts_insufficient = {
+            title_key = "gunderson.work.followup",
+            choice_label_keys = {
+                information = "gunderson.option.information",
+                work = "gunderson.option.work",
+                leave = "gunderson.option.leave",
+            },
+        },
         question_selection = {
             title_key = "gunderson.question.prompt",
             choice_label_keys = {

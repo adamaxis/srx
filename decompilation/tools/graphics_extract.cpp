@@ -598,7 +598,7 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         output << '"';
     };
 
-    const std::array<std::pair<const char*, std::size_t>, 81> records{{
+    const std::array<std::pair<const char*, std::size_t>, 83> records{{
         // Stoker prompt pointers consumed by the source event/profile path.
         {"stoker.motel.arrival.title", 0x1167EBU},
         {"stoker.motel.arrival.more", 0x0FE5BFU},
@@ -677,6 +677,8 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         {"gunderson.work.followup", 0x10659BU},
         {"gunderson.contacts.introduction", 0x1069EDU},
         {"gunderson.contacts.decker_offer", 0x106AA8U},
+        {"gunderson.contacts.option.accept", 0x103A7AU},
+        {"gunderson.contacts.purchase", 0x106B64U},
         {"gunderson.question.answer", 0x10662BU},
         {"gunderson.question.followup", 0x106701U},
         {"gunderson.question.vigore.alternate_response", 0x1067AEU},
