@@ -926,6 +926,51 @@ struct GameScriptRuntime::Impl {
         return lua_yieldk(lua, 0, 1, actor_walk_heading_continuation);
     }
 
+    static int ui_say_text(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        if (self == nullptr || self->task_state != lua ||
+            self->task_waiting || self->pending_task_operation.has_value() ||
+            self->active_native_operation.has_value()) {
+            if (self != nullptr) {
+                self->bridge_failure =
+                    "game.ui.say_text must run inside an active task";
+            }
+            lua_pushboolean(lua, 0);
+            return 1;
+        }
+
+        std::size_t text_length = 0U;
+        const auto* text = lua_type(lua, 1) == LUA_TSTRING
+                               ? lua_tolstring(lua, 1, &text_length)
+                               : nullptr;
+        const bool valid_continuation =
+            lua_isnoneornil(lua, 2) || lua_type(lua, 2) == LUA_TBOOLEAN;
+        if (text == nullptr || text_length == 0U ||
+            text_length > kMaximumDialogueTextBytes ||
+            !valid_continuation ||
+            !valid_identifier(self->location_text_profile) ||
+            !valid_identifier(self->location_speaker_id)) {
+            self->bridge_failure =
+                "game.ui.say_text expects bounded text and an optional continuation flag in a profiled speaker location";
+            lua_pushboolean(lua, 0);
+            return 1;
+        }
+
+        ScriptNativeOperation operation{};
+        operation.type = ScriptNativeOperation::Type::ui_say;
+        ScriptDialogueRequest dialogue{};
+        dialogue.speaker_id = self->location_speaker_id;
+        dialogue.text_profile = self->location_text_profile;
+        dialogue.inline_text.assign(text, text_length);
+        if (!lua_isnoneornil(lua, 2) && lua_toboolean(lua, 2) != 0) {
+            dialogue.continuation_key = "shared.more";
+        }
+        operation.dialogue = std::move(dialogue);
+        self->pending_task_operation = std::move(operation);
+        self->task_waiting = true;
+        return lua_yieldk(lua, 0, 1, actor_walk_heading_continuation);
+    }
+
     static int services_call(lua_State* lua) {
         auto* self = from_upvalue(lua);
         if (self == nullptr || self->task_state != lua ||
@@ -1071,6 +1116,8 @@ struct GameScriptRuntime::Impl {
         lua_newtable(state);
         lua_newtable(state); // game.actors registry; Lua owns actor behavior state
         lua_setfield(state, -2, "actors");
+        lua_newtable(state); // Independently-authored run scripts register here.
+        lua_setfield(state, -2, "runs");
         lua_newtable(state); // game.state proxy
         lua_newtable(state); // game.state metatable
         lua_pushlightuserdata(state, this);
@@ -1114,6 +1161,9 @@ struct GameScriptRuntime::Impl {
         lua_pushlightuserdata(state, this);
         lua_pushcclosure(state, ui_say, 1);
         lua_setfield(state, -2, "say");
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, ui_say_text, 1);
+        lua_setfield(state, -2, "say_text");
         lua_setfield(state, -2, "ui");
         lua_newtable(state);
         lua_pushlightuserdata(state, this);
@@ -1219,11 +1269,34 @@ bool GameScriptRuntime::load_package(
             lua_pop(state, 1);
             return false;
         }
+        const auto definition_index = lua_absindex(state, -1);
         lua_rawgeti(state, LUA_REGISTRYINDEX, impl_->modules_reference);
-        lua_insert(state, -2);
         lua_pushlstring(state, module.data(), module.size());
-        lua_insert(state, -2);
+        lua_pushvalue(state, definition_index);
         lua_settable(state, -3);
+        lua_pop(state, 1);
+
+        // Run content is a Lua plug-in family. Adding run_<id>.lua makes its
+        // returned table available to other scripts through game.runs[id];
+        // no native per-run switch or registration edit is needed.
+        constexpr std::string_view kRunModulePrefix = "run_";
+        if (module.rfind(kRunModulePrefix, 0U) == 0U &&
+            module.size() > kRunModulePrefix.size()) {
+            const auto run_id = std::string_view(module).substr(
+                kRunModulePrefix.size());
+            if (!valid_identifier(run_id)) {
+                impl_->failure = "invalid Lua run id in module name: " +
+                                 module;
+                lua_pop(state, 1);
+                return false;
+            }
+            lua_getglobal(state, "game");
+            lua_getfield(state, -1, "runs");
+            lua_pushlstring(state, run_id.data(), run_id.size());
+            lua_pushvalue(state, definition_index);
+            lua_settable(state, -3);
+            lua_pop(state, 2);
+        }
         lua_pop(state, 1);
     }
 

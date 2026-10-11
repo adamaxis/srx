@@ -37,6 +37,7 @@
 #include <QRandomGenerator>
 
 #include <algorithm>
+#include <charconv>
 #include <fstream>
 #include <cstdint>
 #include <filesystem>
@@ -420,6 +421,26 @@ FieldSceneRuntime::FieldSceneRuntime(
     field_dialogue_.set_native_script_service_callback(
         [this](const std::string_view service_id)
             -> std::optional<std::string> {
+            constexpr std::string_view kBoundedRandomPrefix =
+                "random.bounded_";
+            if (service_id.rfind(kBoundedRandomPrefix, 0U) == 0U) {
+                const auto bound_text = service_id.substr(
+                    kBoundedRandomPrefix.size());
+                std::uint32_t bound = 0U;
+                const auto parsed = std::from_chars(
+                    bound_text.data(), bound_text.data() + bound_text.size(),
+                    bound);
+                if (bound_text.empty() ||
+                    parsed.ec != std::errc{} ||
+                    parsed.ptr != bound_text.data() + bound_text.size() ||
+                    bound == 0U || bound > 0x7FFFU) {
+                    return std::nullopt;
+                }
+                const auto roll = sample_source_random_bound(
+                    field_random_seed_, static_cast<std::uint16_t>(bound));
+                return "roll_" +
+                       std::to_string(static_cast<std::uint16_t>(roll));
+            }
             if (service_id != "johnson.purchase_decker_contact") {
                 return std::nullopt;
             }

@@ -348,7 +348,7 @@ bool FieldDialogueRuntime::present_script_operation(
             return open_source_boundary(
                 "dialogue script emitted an empty speaker/event request");
         }
-        const auto& dialogue = *operation.dialogue;
+        const auto& dialogue = *active_script_operation_->dialogue;
         active_speaker_profile_ =
             script_runtime_ != nullptr
                 ? script_runtime_->speaker_profile(dialogue.speaker_id)
@@ -358,23 +358,38 @@ bool FieldDialogueRuntime::present_script_operation(
             return open_source_boundary(
                 "dialogue script selected an unbound Lua speaker profile");
         }
-        const auto text_keys =
-            script_runtime_->dialogue_event_text_keys(
-                dialogue.speaker_id, dialogue.text_profile,
-                dialogue.event_id);
-        if (!text_keys.has_value()) {
-            return open_source_boundary(
-                script_runtime_->failure().empty()
-                    ? "dialogue script selected an unbound Lua event"
-                    : script_runtime_->failure());
-        }
         const DialogueTextResolver resolver =
             [this](const std::string_view alias) {
                 return resolve_text(alias);
             };
-        const auto view = make_script_dialogue_panel_view(
-            present_speaker(*active_speaker_profile_), text_keys->title_key,
-            text_keys->continuation_key, resolver);
+        std::optional<DialoguePanelView> view;
+        if (!dialogue.inline_text.empty()) {
+            if (!dialogue.event_id.empty()) {
+                return open_source_boundary(
+                    "inline dialogue also supplied a catalog event id");
+            }
+            view = make_script_dialogue_panel_view_text(
+                present_speaker(*active_speaker_profile_),
+                dialogue.inline_text, dialogue.continuation_key, resolver);
+        } else {
+            if (!dialogue.continuation_key.empty()) {
+                return open_source_boundary(
+                    "catalog dialogue supplied an inline continuation key");
+            }
+            const auto text_keys =
+                script_runtime_->dialogue_event_text_keys(
+                    dialogue.speaker_id, dialogue.text_profile,
+                    dialogue.event_id);
+            if (!text_keys.has_value()) {
+                return open_source_boundary(
+                    script_runtime_->failure().empty()
+                        ? "dialogue script selected an unbound Lua event"
+                        : script_runtime_->failure());
+            }
+            view = make_script_dialogue_panel_view(
+                present_speaker(*active_speaker_profile_),
+                text_keys->title_key, text_keys->continuation_key, resolver);
+        }
         if (!view.has_value()) {
             return open_source_boundary(
                 "dialogue script selected an unbound speaker profile");

@@ -3,6 +3,11 @@
 -- owns the reusable conversation flow.
 local Johnson = {}
 
+local function present_work_offer()
+    game.ui.say("work-opening")
+    game.runs.registry.present_new_game_offer()
+end
+
 local function question_choices()
     local choices = { "johnson" }
     if game.state.vigore_lead_available then
@@ -115,13 +120,13 @@ function Johnson.interaction()
             if information_result == "leave" then
                 return information_result
             elseif information_result == "work" then
-                game.ui.say("work-opening")
+                present_work_offer()
             end
             -- ROM descriptor 0x10514C supplies a different title after an
             -- information branch, while retaining the same A/B/C labels.
             root_menu = "opening_after_information"
         elseif choice == "work" then
-            game.ui.say("work-opening")
+            present_work_offer()
         end
     end
 end

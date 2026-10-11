@@ -120,12 +120,11 @@ void set_script_speaker(DialoguePanelView& view,
     view.portrait_alias = speaker.portrait_alias;
 }
 
-void copy_text_alias_stream(DialoguePanelView& view,
-                            const std::string_view text,
-                            const DialogueTextResolver& resolve_text) {
-    const auto resolved = resolve_text ? resolve_text(text) : std::string_view{};
+void copy_text_segments(DialoguePanelView& view,
+                        const std::string_view resolved,
+                        const std::string_view missing_alias) {
     if (resolved.empty()) {
-        mark_missing_text(view, text);
+        mark_missing_text(view, missing_alias);
         return;
     }
     std::size_t start = 0U;
@@ -148,6 +147,13 @@ void copy_text_alias_stream(DialoguePanelView& view,
         view.source_boundary_reason =
             "dialogue text stream exceeds the shared panel capacity";
     }
+}
+
+void copy_text_alias_stream(DialoguePanelView& view,
+                            const std::string_view text,
+                            const DialogueTextResolver& resolve_text) {
+    const auto resolved = resolve_text ? resolve_text(text) : std::string_view{};
+    copy_text_segments(view, resolved, text);
 }
 
 void copy_text_stream(DialoguePanelView& view,
@@ -496,6 +502,39 @@ std::optional<DialoguePanelView> make_script_dialogue_panel_view(
     view.kind = DialoguePanelKind::field_npc_prompt;
 
     copy_text_alias_stream(view, title_key, resolve_text);
+
+    const auto more = resolve_continuation_label(resolve_text,
+                                                continuation_key);
+    if (!more.empty()) {
+        view.has_more = true;
+        view.continuation_label = more;
+        view.options[0] = {DialoguePanelOptionRole::field_continue, more,
+                           DialoguePanelCommand::field_continue};
+        view.option_count = 1U;
+    }
+    if (!view.source_complete) {
+        view.kind = DialoguePanelKind::source_boundary;
+    }
+    return view;
+}
+
+std::optional<DialoguePanelView> make_script_dialogue_panel_view_text(
+    const DialogueSpeakerPresentation& speaker,
+    const std::string_view text,
+    const std::string_view continuation_key,
+    const DialogueTextResolver& resolve_text) {
+    if (speaker.id.empty() || speaker.name.empty() ||
+        speaker.text_profile.empty() || speaker.portrait_alias.empty() ||
+        text.empty()) {
+        return std::nullopt;
+    }
+
+    DialoguePanelView view{};
+    view.open = true;
+    view.actor_kind = DialoguePanelActorKind::field_npc;
+    set_script_speaker(view, speaker);
+    view.kind = DialoguePanelKind::field_npc_prompt;
+    copy_text_segments(view, text, "inline dialogue");
 
     const auto more = resolve_continuation_label(resolve_text,
                                                 continuation_key);

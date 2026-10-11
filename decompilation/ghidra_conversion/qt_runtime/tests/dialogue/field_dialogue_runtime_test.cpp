@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <iostream>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <utility>
 
@@ -120,6 +121,12 @@ int main() {
     StokerMotelRoomPaymentOutcome room_payment_outcome{};
     std::uint32_t decker_contact_funds = 1000U;
     std::size_t decker_contact_purchase_calls = 0U;
+    const std::array<std::string_view, 4> run_random_services{{
+        "random.bounded_8", "random.bounded_10", "random.bounded_12",
+        "random.bounded_10"}};
+    std::array<std::string_view, 4> run_random_results{{
+        "roll_2", "roll_9", "roll_0", "roll_5"}};
+    std::size_t run_random_call = 0U;
     FieldDialogueRuntime runtime(
         [&boundary](const std::string_view reason) { boundary = reason; },
         arrival_callbacks);
@@ -165,8 +172,16 @@ int main() {
             debt_payment_outcome);
     });
     runtime.set_native_script_service_callback(
-        [&decker_contact_funds, &decker_contact_purchase_calls](
+        [&decker_contact_funds, &decker_contact_purchase_calls,
+         &run_random_services, &run_random_results, &run_random_call](
             const std::string_view service_id) -> std::optional<std::string> {
+            if (service_id.rfind("random.bounded_", 0U) == 0U) {
+                if (run_random_call >= run_random_services.size() ||
+                    service_id != run_random_services[run_random_call]) {
+                    return std::nullopt;
+                }
+                return std::string(run_random_results[run_random_call++]);
+            }
             if (service_id != "johnson.purchase_decker_contact") {
                 return std::nullopt;
             }
@@ -493,6 +508,92 @@ int main() {
         std::cerr << "Gunderson's low-funds contact route changed the wallet "
                      "or missed the ROM fallback descriptor\n";
         return 107;
+    }
+
+    // The work option now enters the Lua run registry. Context zero chooses
+    // a weighted ROM contract, then the selected run script supplies its own
+    // independently-generated route and description through the common panel.
+    run_random_call = 0U;
+    if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
+        !expect(runtime.advance_controller_events(0x1000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().text_segments[2].find("beauty for you") !=
+                std::string_view::npos) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(run_random_call == run_random_services.size()) ||
+        !expect(runtime.panel().source_complete) ||
+        !expect(runtime.panel().has_more) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "Ares Weapon Emporium") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().text_segments[0].find("Redmond Barrens") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().text_segments[1].find("package") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().text_segments[2].find("Jackal's Lantern") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().text_segments[3].find("safe delivery") !=
+                std::string_view::npos) ||
+        !expect(capture_jump_house("run-package-description")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 3U) ||
+        !expect(runtime.advance_controller_events(0x2000U) ==
+                FieldDialogueAdvanceResult::returned_to_field)) {
+        std::cerr << "Gunderson's work option did not prepare and present the "
+                     "selected Lua run description\n";
+        return 108;
+    }
+
+    run_random_results.fill("roll_0");
+    run_random_call = 0U;
+    if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
+        !expect(runtime.advance_controller_events(0x1000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(run_random_call == 1U) ||
+        !expect(runtime.panel().text_segments[0].find("Ghouls somewhere") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().text_segments[0].find("Redmond Barrens") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().text_segments[2].find("Kill as many") !=
+                std::string_view::npos) ||
+        !expect(capture_jump_house("run-ghoul-bounty-description")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.advance_controller_events(0x2000U) ==
+                FieldDialogueAdvanceResult::returned_to_field)) {
+        std::cerr << "Gunderson's ghoul bounty did not present its own Lua "
+                     "description\n";
+        return 109;
+    }
+
+    run_random_results = {{"roll_1", "roll_4", "roll_6", "roll_5"}};
+    run_random_call = 0U;
+    if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
+        !expect(runtime.advance_controller_events(0x1000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(run_random_call == run_random_services.size()) ||
+        !expect(runtime.panel().text_segments[0].find("the Jump House") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().text_segments[1].find("Heinrich Michaels") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().text_segments[2].find(
+                    "the Jackal's Lantern") != std::string_view::npos) ||
+        !expect(runtime.panel().text_segments[3].find("safe arrival") !=
+                std::string_view::npos) ||
+        !expect(capture_jump_house("run-bodyguard-description")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.advance_controller_events(0x2000U) ==
+                FieldDialogueAdvanceResult::returned_to_field)) {
+        std::cerr << "Gunderson's bodyguard offer did not present its own "
+                     "Lua route and description\n";
+        return 110;
     }
 
     FieldDialogueEventResolver event_resolver;

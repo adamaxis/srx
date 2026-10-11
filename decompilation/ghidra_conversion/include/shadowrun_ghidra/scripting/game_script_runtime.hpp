@@ -150,6 +150,8 @@ struct ScriptDialogueRequest {
     std::string speaker_id;
     std::string text_profile;
     std::string event_id;
+    std::string inline_text;
+    std::string continuation_key;
 };
 
 struct ScriptFieldModeContext {

@@ -3,8 +3,10 @@
 #include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
 
 #include <array>
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <optional>
 #include <string>
@@ -18,6 +20,103 @@ bool expect(const bool condition, const char* message) {
         std::cerr << message << '\n';
     }
     return condition;
+}
+
+bool verify_dynamic_run_module(const std::filesystem::path& source_directory,
+                               const std::filesystem::path& dialogue_text) {
+    using namespace shadowrun::ghidra_conversion::scripting;
+
+    std::error_code error;
+    const auto unique_suffix = std::chrono::steady_clock::now()
+                                   .time_since_epoch()
+                                   .count();
+    const auto temporary_directory =
+        std::filesystem::temp_directory_path(error) /
+        ("shadowrun_dynamic_run_" + std::to_string(unique_suffix));
+    if (error || !std::filesystem::create_directories(
+                     temporary_directory, error) || error) {
+        return expect(false, "could not create temporary Lua run package");
+    }
+    struct RemoveTemporaryDirectory {
+        std::filesystem::path path;
+        ~RemoveTemporaryDirectory() {
+            std::error_code cleanup_error;
+            std::filesystem::remove_all(path, cleanup_error);
+        }
+    } cleanup{temporary_directory};
+
+    for (std::filesystem::directory_iterator iterator(source_directory, error),
+         end;
+         !error && iterator != end; iterator.increment(error)) {
+        if (iterator->is_regular_file(error) &&
+            iterator->path().extension() == ".lua") {
+            std::filesystem::copy_file(
+                iterator->path(), temporary_directory / iterator->path().filename(),
+                std::filesystem::copy_options::overwrite_existing, error);
+            if (error) {
+                return expect(false,
+                              "could not copy Lua modules to temporary package");
+            }
+        }
+    }
+    if (error) {
+        return expect(false, "could not enumerate Lua modules for plugin test");
+    }
+
+    {
+        std::ofstream plugin(temporary_directory / "run_dynamic_probe.lua",
+                             std::ios::binary);
+        plugin << "local Probe = { new_game_weight = 1 }\n"
+                  "function Probe.prepare_offer(context)\n"
+                  "  local offer = game.modules.run_support.new_offer(\n"
+                  "    'dynamic_probe', 'test', 'probe', 'probe_complete')\n"
+                  "  offer.context = context\n"
+                  "  game.runs.registry.current_offer = offer\n"
+                  "  return offer.id\n"
+                  "end\n"
+                  "function Probe.present_offer() return 'probe_presented' end\n"
+                  "return Probe\n";
+        if (!plugin) {
+            return expect(false, "could not write temporary Lua run module");
+        }
+    }
+
+    GameScriptRuntime extensible_scripts;
+    if (!extensible_scripts.load_package(temporary_directory,
+                                        dialogue_text)) {
+        std::cerr << extensible_scripts.failure() << '\n';
+        return expect(false, "temporary Lua run package did not load");
+    }
+    const auto run_ids =
+        extensible_scripts.string_list("run_registry", "available_run_ids");
+    const std::vector<std::string> expected_run_ids{
+        "bodyguard_escort", "dynamic_probe", "ghoul_bounty",
+        "package_delivery"};
+    if (!expect(run_ids.has_value() && *run_ids == expected_run_ids,
+                "new run module was not discovered from the Lua package")) {
+        return false;
+    }
+
+    auto selection = extensible_scripts.start_task(
+        "run_registry", "prepare_new_game_offer");
+    if (!expect(selection.status ==
+                    ScriptTaskStep::Status::awaiting_native_operation &&
+                    selection.operation.has_value() &&
+                    selection.operation->service_id == "random.bounded_9",
+                "Lua extension weight was not added to the offer pool")) {
+        return false;
+    }
+    selection = extensible_scripts.complete_native_service_result("roll_8");
+    return expect(selection.status == ScriptTaskStep::Status::completed &&
+                      selection.result_id ==
+                          std::optional<std::string>{"dynamic_probe"} &&
+                      extensible_scripts.call_string(
+                          "run_registry", "current_offer_id") ==
+                          std::optional<std::string>{"dynamic_probe"} &&
+                      extensible_scripts.call_string(
+                          "run_dynamic_probe", "present_offer") ==
+                          std::optional<std::string>{"probe_presented"},
+                  "new Lua run was not selected and dispatched independently");
 }
 
 } // namespace
@@ -34,6 +133,152 @@ int main() {
                 "gameplay Lua package did not load")) {
         std::cerr << scripts.failure() << '\n';
         return 1;
+    }
+
+    const auto run_ids =
+        scripts.string_list("run_registry", "available_run_ids");
+    const std::vector<std::string> expected_run_ids{
+        "bodyguard_escort", "ghoul_bounty", "package_delivery"};
+    if (!expect(run_ids.has_value() && *run_ids == expected_run_ids,
+                "separate Lua run modules were not auto-registered")) {
+        std::cerr << scripts.failure() << '\n';
+        return 2;
+    }
+    if (!verify_dynamic_run_module(
+            SHADOWRUN_GAMEPLAY_SCRIPT_ROOT,
+            std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
+                "dialogue" / "script-text.lua")) {
+        return 3;
+    }
+    auto run_selection =
+        scripts.start_task("run_registry", "prepare_new_game_offer");
+    if (!expect(
+            run_selection.status ==
+                ScriptTaskStep::Status::awaiting_native_operation &&
+                run_selection.operation.has_value() &&
+                run_selection.operation->type ==
+                    ScriptNativeOperation::Type::service_call &&
+                run_selection.operation->service_id ==
+                    "random.bounded_8",
+            "Lua run selection did not request the source bounded random service")) {
+        std::cerr << scripts.failure() << '\n';
+        return 3;
+    }
+    run_selection = scripts.complete_native_service_result("roll_2");
+    if (!expect(
+            run_selection.status ==
+                ScriptTaskStep::Status::awaiting_native_operation &&
+                run_selection.operation.has_value() &&
+                run_selection.operation->service_id ==
+                    "random.bounded_10",
+            "courier run did not request the ROM source-location roll")) {
+        std::cerr << scripts.failure() << '\n';
+        return 4;
+    }
+    run_selection = scripts.complete_native_service_result("roll_0");
+    if (!expect(
+            run_selection.status ==
+                ScriptTaskStep::Status::awaiting_native_operation &&
+                run_selection.operation.has_value() &&
+                run_selection.operation->service_id ==
+                    "random.bounded_12",
+            "courier run did not request a client from the ROM name table")) {
+        std::cerr << scripts.failure() << '\n';
+        return 5;
+    }
+    run_selection = scripts.complete_native_service_result("roll_0");
+    if (!expect(
+            run_selection.status ==
+                ScriptTaskStep::Status::awaiting_native_operation &&
+                run_selection.operation.has_value() &&
+                run_selection.operation->service_id ==
+                    "random.bounded_10",
+            "courier run did not request the destination-location roll")) {
+        std::cerr << scripts.failure() << '\n';
+        return 6;
+    }
+    run_selection = scripts.complete_native_service_result("roll_1");
+    const auto courier_route =
+        scripts.string_map("run_registry", "current_route_ids");
+    if (!expect(run_selection.status == ScriptTaskStep::Status::completed &&
+                    run_selection.result_id ==
+                        std::optional<std::string>{"package_delivery"} &&
+                    scripts.call_string("run_registry", "current_offer_id") ==
+                        std::optional<std::string>{"package_delivery"} &&
+                    scripts.call_string(
+                        "run_registry", "current_completion_condition") ==
+                        std::optional<std::string>{
+                            "package_delivered_safely"} &&
+                    courier_route.has_value() &&
+                    courier_route->at("origin_location") == "location_0" &&
+                    courier_route->at("origin_area") == "area_2" &&
+                    courier_route->at("client") == "client_0" &&
+                    courier_route->at("destination_location") ==
+                        "location_1" &&
+                    courier_route->at("destination_area") ==
+                        "area_2",
+                "weighted run selection did not initialize its own Lua offer")) {
+        std::cerr << scripts.failure() << '\n';
+        return 7;
+    }
+
+    run_selection =
+        scripts.start_task("run_registry", "prepare_new_game_offer");
+    if (!expect(run_selection.operation.has_value() &&
+                    run_selection.operation->service_id ==
+                        "random.bounded_8",
+                "ghoul contract selection did not start at the ROM pool")) {
+        return 8;
+    }
+    run_selection = scripts.complete_native_service_result("roll_0");
+    const auto bounty_route =
+        scripts.string_map("run_registry", "current_route_ids");
+    if (!expect(run_selection.status == ScriptTaskStep::Status::completed &&
+                    run_selection.result_id ==
+                        std::optional<std::string>{"ghoul_bounty"} &&
+                    scripts.call_string(
+                        "run_registry", "current_completion_condition") ==
+                        std::optional<std::string>{
+                            "return_to_johnson_for_payment"} &&
+                    bounty_route.has_value() &&
+                    bounty_route->at("origin_location") == "none",
+                "ghoul bounty did not keep its distinct Lua objective")) {
+        std::cerr << scripts.failure() << '\n';
+        return 9;
+    }
+
+    run_selection =
+        scripts.start_task("run_registry", "prepare_new_game_offer");
+    run_selection = scripts.complete_native_service_result("roll_1");
+    if (!expect(run_selection.operation.has_value() &&
+                    run_selection.operation->service_id ==
+                        "random.bounded_10",
+                "escort script did not select its own route")) {
+        return 10;
+    }
+    run_selection = scripts.complete_native_service_result("roll_4");
+    run_selection = scripts.complete_native_service_result("roll_6");
+    run_selection = scripts.complete_native_service_result("roll_5");
+    const auto escort_route =
+        scripts.string_map("run_registry", "current_route_ids");
+    if (!expect(run_selection.status == ScriptTaskStep::Status::completed &&
+                    run_selection.result_id ==
+                        std::optional<std::string>{"bodyguard_escort"} &&
+                    scripts.call_string(
+                        "run_registry", "current_completion_condition") ==
+                        std::optional<std::string>{
+                            "client_reaches_destination_alive"} &&
+                    escort_route.has_value() &&
+                    escort_route->at("origin_location") == "location_4" &&
+                    escort_route->at("origin_area") == "area_2" &&
+                    escort_route->at("client") == "client_6" &&
+                    escort_route->at("destination_location") ==
+                        "location_5" &&
+                    escort_route->at("destination_area") ==
+                        "area_2",
+                "escort contract did not use its Lua route and client data")) {
+        std::cerr << scripts.failure() << '\n';
+        return 11;
     }
 
     FieldScriptRouteContext scene2_location{};

@@ -197,6 +197,13 @@ std::optional<DialoguePanelView> make_script_dialogue_panel_view(
     std::string_view continuation_key,
     const DialogueTextResolver& resolve_text);
 
+// Dynamic script-authored dialogue uses the same panel and source-aware
+// continuation label while keeping the text storage with the active Lua op.
+std::optional<DialoguePanelView> make_script_dialogue_panel_view_text(
+    const DialogueSpeakerPresentation& speaker, std::string_view text,
+    std::string_view continuation_key,
+    const DialogueTextResolver& resolve_text);
+
 // Generic Lua menu presentation. The script owns title/choice order and
 // stable IDs; this shared view resolves labels and optional speaker artwork.
 DialoguePanelView make_script_menu_panel_view(
