@@ -1,9 +1,10 @@
 # Active and archived CMake output is centralized at the repository root.
 /build/
-# Legacy generated output excluded until it can be archived under /build/.
+# Guard the old source-local output paths for older commands/checkouts.
 /decompilation/build-debug/
 /decompilation/ghidra_conversion/build-ghidra-conversion-qt-debug/
 /decompilation/ghidra_conversion/build-ghidra-conversion-qt-release/
+/decompilation/ghidra_conversion/tools/map_entity_viewer/dist/
 **/bin/
 **/obj/
 **/Testing/

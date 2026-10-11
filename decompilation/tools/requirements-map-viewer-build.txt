@@ -1,2 +1,0 @@
--r requirements-map-viewer.txt
-PyInstaller>=6.8,<7

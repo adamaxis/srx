@@ -1,6 +1,7 @@
 # Field map entity authoring data
 
-`tools/map_entity_viewer.py` opens the extracted `field/maps/mode-N` images and
+`decompilation/ghidra_conversion/tools/map_entity_viewer/map_entity_viewer.py`
+opens the extracted `field/maps/mode-N` images and
 the independent priority, terrain-collision, and event-trigger evidence. It
 does not run an image classifier. New annotations start as `unreviewed` so a
 background decal is not silently treated as scenery or as an entity.
@@ -50,13 +51,13 @@ Requires Python 3.10 or newer and PyQt6 6.x. Install the dependency from the
 repository root:
 
 ```powershell
-python -m pip install -r decompilation/tools/requirements-map-viewer.txt
+python -m pip install -r decompilation/ghidra_conversion/tools/map_entity_viewer/requirements.txt
 ```
 
 Then open a map:
 
 ```powershell
-python decompilation/tools/map_entity_viewer.py --scene 2
+python decompilation/ghidra_conversion/tools/map_entity_viewer/map_entity_viewer.py --scene 2
 ```
 
 The Qt menu bar has a **Scene** menu containing every extracted map. Choosing a
@@ -64,9 +65,10 @@ scene there or in the side-panel selector keeps both controls synchronized and
 saves pending edits before switching.
 
 To make a standalone Windows executable, double-click
-`decompilation/tools/build_map_entity_viewer.cmd` or run it from PowerShell.
-The executable is written to
-`build/map-entity-viewer/shadowrun_map_entity_viewer.exe`. It includes Python,
+`decompilation/ghidra_conversion/tools/map_entity_viewer/build.cmd` or run
+`build.ps1` from PowerShell. The executable is written beside the viewer at
+`decompilation/ghidra_conversion/tools/map_entity_viewer/dist/shadowrun_map_entity_viewer.exe`.
+It includes Python,
 PyQt6, and the viewer code; it reads the individually named extracted assets
 and authoring files from the adjacent repository checkout. Keep the executable
 inside that checkout (or launch it with `--assets` and `--world` paths).
@@ -78,7 +80,7 @@ right panel to edit or remove its metadata. Set the entity category only after
 checking the source layers and ROM evidence. `Ctrl+S` saves the current scene
 and its entity definitions.
 
-On save, the viewer refreshes `gameplay/scripts/world_content_data.lua` from
+On save, the viewer refreshes `decompilation/gameplay/scripts/world_content_data.lua` from
 these TSV files. The normal Lua package loader loads that data with the game.
 `game.modules.world_content` provides `entity(id)`,
 `instances_in_scene(scene_id)`, and `interaction_at(scene_id, x, y, event)` for

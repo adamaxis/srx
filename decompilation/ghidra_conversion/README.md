@@ -1,12 +1,14 @@
-# Ghidra conversion workspace
+# Ghidra conversion project
 
-This is the readable-C++ conversion area for behavior recovered from the
-canonical Ghidra export. It is intentionally separate from both the native
-game and the GenesisBus emulator:
+This is the active C++/Qt project for behavior recovered from the canonical
+ROM and Ghidra export. The parent `decompilation/` directory is the shared
+source-data and research root; its top-level native-port sources are historical
+and inactive:
 
-- `decompilation/CMakeLists.txt` does not include this directory.
-- It has no dependency on `GenesisBus`, ROM-addressed RAM, VDP objects, or the
-  `shadowrun_port` library.
+- Build this project from its own CMake files and presets. The parent native
+  project is not an entry point for current work.
+- This project has no dependency on `GenesisBus`, ROM-addressed RAM, VDP
+  objects, or the legacy `shadowrun_port` library.
 - Its functions use ordinary typed values and fixed-size host containers.
 - Source addresses are provenance comments, not runtime lookup keys.
 
@@ -20,26 +22,21 @@ prompt, copyright, controller, and termination requests. Vblank waits,
 resource setup, and unresolved hardware calls remain explicit boundaries until
 their source inputs are understood.
 
-Build this directory independently when validating the conversion slice. Its
-presets write to the repository-level
-`build/conversion/workbench/{debug,release}` directories. The native-port
-presets write to `build/native/`, and the separate Qt host writes to
-`build/conversion/qt/`; the target prefix remains `shadowrun_ghidra_*`.
+Build this directory when validating the conversion slice. Its presets write
+to the repository-level `build/conversion/workbench/{debug,release}` and
+`build/conversion/qt/{debug,release}` directories. The target prefix remains
+`shadowrun_ghidra_*`.
 
 The domain ownership and source/test layout are documented in
 [`../WORKSPACE.md`](../WORKSPACE.md) and
 [`../docs/ghidra-conversion-source-layout.md`](../docs/ghidra-conversion-source-layout.md).
 
-When using VS Code, open the repository-level `shadowrun.code-workspace` file
-or the repository folder. CMake Tools exposes this directory as a separate
-active project alongside the native-port project. Use `CMake: Select Active
-Folder` to choose this directory before selecting its configure/build preset.
+When using VS Code, open the repository-level `shadowrun.code-workspace` file.
+Its CMake Tools source directory, build/test tasks, and launch configurations
+point only to this Ghidra project.
 
-For full Visual Studio 2022, open the repository root as a CMake project and
-choose the `Shadowrun IDE (Debug, MSYS2 UCRT64)` configure preset. The IDE-only
-root umbrella exposes `Build Ghidra Conversion (IDE Debug)` and the
-`shadowrun_ghidra_conversion_runner` startup item without merging this source
-tree into the native-port runtime.
+For Visual Studio 2022, open `decompilation/ghidra_conversion/` directly as a
+CMake project. Do not select the historical parent native-port project.
 
 ```text
 C:/msys64/ucrt64/bin/cmake.exe --preset ghidra-conversion-debug
@@ -97,26 +94,30 @@ are explicit conversion boundaries; a `title_ready` result means the parent
 control flow and asset requirements were exercised, not that the native port
 is playable or that those child systems have been source-verified.
 
-## Separate Qt conversion frontend
+## Standalone map and entity viewer
 
-The runnable Qt host for the converted code is a separate target from both
-`shadowrun_qt` and `shadowrun_native`. Its source is under `qt_runtime/`, its
+The independent Qt authoring app is in
+[`tools/map_entity_viewer/`](tools/map_entity_viewer/). Its source, Python
+requirements, build launcher, and README are kept together. Run `build.cmd`
+there to create `dist/shadowrun_map_entity_viewer.exe`; it loads the shared
+`../assets/` maps and writes annotation data under `../gameplay/world/`.
+Building or running the viewer does not require the game executable.
+
+## Qt conversion frontend
+
+The runnable Qt host for the converted code is built from `qt_runtime/`. Its
 build directories are `../../build/conversion/qt/debug/` and
-`../../build/conversion/qt/release/`, and its only project runtime dependency
-is `shadowrun_ghidra_conversion_runtime` plus Qt Widgets. It does not link the
-native-port library or the emulator.
+`../../build/conversion/qt/release/`, and its runtime dependencies are
+`shadowrun_ghidra_conversion_runtime` and Qt Widgets.
 
 The live binary is the build-directory root copy, for example
 `../../build/conversion/qt/release/shadowrun_ghidra_conversion_qt.exe`.
 Close that process before rebuilding; Windows will not overwrite a running
 exe. Do not launch `qt_runtime/shadowrun_ghidra_conversion_qt.exe`.
 
-CMake Tools defaults to this folder and the
-`ghidra-conversion-qt-release` configure, build, and workflow presets, so the
-status-bar preset picker and Build button target
-`shadowrun_ghidra_conversion_qt.exe` at the Qt release build-directory root.
-Switch the active folder to `decompilation` for native-port presets. Close the
-running exe before rebuilding.
+The `ghidra-conversion-qt-release` configure, build, and workflow presets
+target `shadowrun_ghidra_conversion_qt.exe` at the Qt Release build-directory
+root. Close the running executable before rebuilding.
 
 Build the separate Debug application from this directory:
 
@@ -162,7 +163,8 @@ transitions and walking animation records remain explicit conversion
 boundaries.
 
 The Qt callbacks remain explicit presentation/source boundaries; they do not
-replace unresolved source behavior with a native-port implementation. Dynamic
+replace unresolved source behavior with code from the inactive native-port
+tree. Dynamic
 runner records, event-driven field transitions, walking animation, and
 save-slot restoration are still incomplete conversion boundaries.
 `--field-smoke` loads the direct catalog, runs the converted field bootstrap,

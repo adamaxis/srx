@@ -1,11 +1,15 @@
 $ErrorActionPreference = "Stop"
 
-$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
-$Requirements = Join-Path $PSScriptRoot "requirements-map-viewer-build.txt"
+$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..\..\..")).Path
+$Requirements = Join-Path $PSScriptRoot "requirements-build.txt"
 $EntryPoint = Join-Path $PSScriptRoot "map_entity_viewer.py"
-$OutputDirectory = Join-Path $RepoRoot "build\map-entity-viewer"
-$WorkDirectory = Join-Path $OutputDirectory "pyinstaller-work"
-$SpecDirectory = Join-Path $OutputDirectory "pyinstaller-spec"
+$OutputDirectory = Join-Path $PSScriptRoot "dist"
+$WorkDirectory = Join-Path $RepoRoot "build\map-entity-viewer\pyinstaller-work"
+$SpecDirectory = Join-Path $RepoRoot "build\map-entity-viewer\pyinstaller-spec"
+
+if (-not (Test-Path (Join-Path $RepoRoot "decompilation\assets\field\maps\index.tsv"))) {
+    throw "Could not locate the Shadowrun checkout from the viewer folder: $RepoRoot"
+}
 
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 python -m pip install -r $Requirements

@@ -1,102 +1,72 @@
-# Workspace ownership map
+# Workspace ownership
 
-This file defines where new Shadowrun reconstruction work belongs. The native
-port, the source-conversion workbench, and its Qt host are separate products
-with separate runtime state. They share source evidence and named assets, not
-game-state implementations.
+## Active project
 
-## Repository root
+Current implementation work belongs to `ghidra_conversion/`. This is the
+active CMake project and the source of the Release Qt executable:
 
 | Path | Responsibility |
 | --- | --- |
-| `AGENTS.md` | Project constraints and reconstruction rules |
-| `CMakeLists.txt`, `CMakePresets.json` | Visual Studio IDE umbrella only |
-| `decompilation/` | ROM research, extracted host assets, native port, and conversion workbench |
-| `video analysis/` | Independent gameplay capture and numbered reference frames |
-| `build/` | All generated builds and build-derived captures; ignored by Git |
+| `ghidra_conversion/include/`, `src/`, `tests/` | Typed source-derived C++ model and checks |
+| `ghidra_conversion/qt_runtime/` | Qt application, presentation adapters, and runtime checks |
+| `ghidra_conversion/tools/map_entity_viewer/` | Standalone Qt map/entity authoring application |
 
-## `decompilation/`
-
-| Path | Responsibility |
-| --- | --- |
-| `input/` | Canonical binary inputs, including the US Genesis ROM |
-| `export/` | Read-only Ghidra export and conversion scratch evidence |
-| `analysis/` | Ghidra project-local analysis data and notes |
-| `analysis/retired/` | Retired capture analyses kept only as historical evidence |
-| `assets/` | Individually named host resources generated from source assets |
-| `include/shadowrun/<domain>/` | Native-port public contracts |
-| `src/<domain>/` | Native-port implementation, organized by behavior owner |
-| `src/app/` | Native and Qt executable entry/presentation adapters |
-| `tests/<domain>/` | Native-port checks grouped by the behavior they defend |
-| `tools/` | Offline extractors, visual dumpers, ROM analyzer, and asset scripts |
-| `ghidra_conversion/` | Independent source-derived conversion workbench and Qt host |
-| `docs/` | Screen maps, ROM audits, visual review, hill status, and source evidence |
-| `ShadowRunGenesis.gpr`, `ShadowRunGenesis.rep/` | Local Ghidra project state; ignored and not runtime input |
-
-Native domains use the subsystem boundaries already present in the conversion
-workbench: `audio`, `core`, `entities`, `field`, `rendering`, `session`, and
-`title_intro`. Menu behavior remains within the native field/menu controller;
-menu-focused evidence lives in `tests/menus/`.
-
-## Ghidra conversion workbench
-
-`ghidra_conversion/include/shadowrun_ghidra/<domain>/`, `src/<domain>/`, and
-`tests/<domain>/` own the typed behavior contracts recovered from the ROM.
-`src/integration/` composes those contracts across subsystems and is not a new
-domain owner.
-
-`ghidra_conversion/qt_runtime/` is the Qt presentation and executable layer:
+The active project reads shared source data from sibling folders. These paths
+are data/evidence inputs; they do not make the old native-port project active:
 
 | Path | Responsibility |
 | --- | --- |
-| `src/app/` | Qt host entry point and process-level scene routing |
-| `src/audio/` | Audio output adapter |
-| `src/dialogue/` | Generic dialogue presentation, text catalog, and event-fed dialogue state |
-| `src/field/` | Field screen, command, interaction, and roster adapters |
-| `src/menus/` | Attributes/skills, hotel, shop, and menu presentation state |
-| `src/rendering/` | Qt image compositing helpers |
-| `tests/<domain>/` | Qt adapter checks grouped by subsystem |
+| `input/` | Canonical ROM input |
+| `export/` | Ghidra C export and reverse-engineering evidence |
+| `assets/` | Individually named extracted host assets |
+| `gameplay/scripts/` | Lua content loaded by the Ghidra Qt runtime |
+| `docs/` | ROM maps, screen audits, source traces, and visual evidence |
+| `../video analysis/` | Independent gameplay video and reference frames |
 
-Generic dialogue panels consume speaker/event properties and trigger state;
-they do not own the world event that supplies the text. Qt controls present
-typed conversion/native state and must not create a competing game-state
-machine.
+## Inactive historical project
 
-## Build output layout
+The older native-port CMake project and its source remain under
+`CMakeLists.txt`, `include/`, `src/`, and `tests/` at this directory level.
+They are retained for reference, but current changes, builds, and launch
+configurations belong to `ghidra_conversion/`. Do not select the parent CMake
+project for ordinary work.
 
-Every configure preset writes under the ignored repository-level `build/`
-directory. Release is the normal build and launch configuration; Debug remains
-available for diagnosis and the Debug/Release validation required by a
-completed hill. Qt, IDE umbrella, and MSVC output have distinct paths:
+## Build outputs
+
+Configure and build from `ghidra_conversion/`. Its presets keep active products
+separate and centralized at the repository root:
 
 ```text
 build/
-  ide/{debug,release,msvc/debug}/
-  native/{debug,release,qt/debug,qt/release,msvc/debug,msvc/release}/
-  conversion/{workbench/{debug,release},qt/{debug,release}}/
-  archive/       # earlier builds and their captures, retained for reference
+  conversion/
+    workbench/{debug,release}/
+    qt/{debug,release}/
+  archive/
+    source-local-builds/   # former build trees moved out of source folders
+    visual-review-runs/    # earlier menu/field screenshot review sessions
+    ghidra-investigations/ # one-off source-trace and entity experiments
+    workspace-root-generated/ # stray root CMake/test/packaging output
+    ...                    # earlier binaries and QA evidence, retained
+  visual-audits/           # current visual-review artifacts
 ```
 
-Do not add a `build-*` directory beneath a source domain. Add a preset under
-the owning CMake project and route it to the matching `build/` subtree. Keep
-generated screenshots/logs with their build or under `build/archive/`; source
-evidence and independent reference frames belong under `docs/` and
-`video analysis/`.
+The normal app is the Release Qt executable at
+`build/conversion/qt/release/shadowrun_ghidra_conversion_qt.exe`. Debug builds
+are for diagnosis. Do not create build directories under source folders.
+Historical source-local build trees were moved under
+`build/archive/source-local-builds/`. Archived captures and one-off analysis
+outputs remain available under their named archive folders; use only the
+centralized `build/conversion/` paths for current Ghidra executables.
 
-`build/archive/` preserves old build outputs and captures after relocation.
-Their CMake caches still name the previous output locations, so treat those
-trees as artifact storage; configure and build through the current presets.
+## Ownership rules
 
-Two older generated trees still sit under their former project folders:
-`decompilation/build-debug/` and
-`decompilation/ghidra_conversion/build-ghidra-conversion-qt-debug/`. Windows
-denied moving these directories, so they remain ignored in place until they
-can be archived. All new configure presets point to the centralized layout.
-
-## Ownership rule
-
-Put implementation, public contract, and focused check beside their domain
-counterparts. Use `app/` only for executable startup and cross-screen Qt
-composition, `integration/` only for multi-domain conversion composition, and
-`tools/` only for offline/import/inspection executables or scripts. A new
-directory needs a single written ownership rule before files are added to it.
+- Keep conversion behavior in `ghidra_conversion/src/<domain>/` and its public
+  types in `ghidra_conversion/include/shadowrun_ghidra/<domain>/`.
+- Put Qt presentation adapters in `ghidra_conversion/qt_runtime/`; they must
+  present the conversion/Lua state instead of introducing a competing game
+  state machine.
+- Put multi-domain composition in `ghidra_conversion/src/integration/`.
+- Keep extracted assets and Lua content as named files in their shared data
+  folders; the runtime consumes those files directly.
+- Keep generated binaries and visual captures under `build/`, not next to
+  source files.

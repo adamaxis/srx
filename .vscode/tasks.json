@@ -2,258 +2,13 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "CMake: Configure (Debug)",
-      "type": "shell",
-      "command": "cmake",
-      "args": ["--preset", "debug"],
-      "options": {
-        "cwd": "${workspaceFolder}/decompilation"
-      },
-      "problemMatcher": "$gcc"
-    },
-    {
-      "label": "Shadowrun: Build Native (Debug)",
-      "type": "shell",
-      "command": "cmake",
-      "args": ["--build", "--preset", "debug-native"],
-      "options": {
-        "cwd": "${workspaceFolder}/decompilation"
-      },
-      "dependsOn": ["CMake: Configure (Debug)"],
-      "group": {
-        "kind": "build",
-        "isDefault": false
-      },
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      },
-      "problemMatcher": "$gcc"
-    },
-    {
-      "label": "Shadowrun: Build Qt Frontend (Debug)",
-      "type": "shell",
-      "command": "cmake",
-      "args": ["--build", "--preset", "debug-qt"],
-      "options": {
-        "cwd": "${workspaceFolder}/decompilation",
-        "env": {
-          "PATH": "C:\\Qt\\6.9.1\\mingw_64\\bin;C:\\msys64\\ucrt64\\bin;${env:PATH}"
-        }
-      },
-      "dependsOn": ["CMake: Configure (Qt Debug)"],
-      "group": "build",
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      },
-      "problemMatcher": "$gcc"
-    },
-    {
-      "label": "CMake: Configure (Qt Debug)",
-      "type": "shell",
-      "command": "cmake",
-      "args": ["--preset", "qt-debug"],
-      "options": {
-        "cwd": "${workspaceFolder}/decompilation"
-      },
-      "problemMatcher": "$gcc"
-    },
-    {
-      "label": "Shadowrun: Build Tests (Debug)",
-      "type": "shell",
-      "command": "cmake",
-      "args": ["--build", "--preset", "debug-tests"],
-      "options": {
-        "cwd": "${workspaceFolder}/decompilation"
-      },
-      "dependsOn": ["CMake: Configure (Debug)"],
-      "group": "build",
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      },
-      "problemMatcher": "$gcc"
-    },
-    {
-      "label": "Shadowrun: Test (Debug)",
-      "type": "shell",
-      "command": "ctest",
-      "args": ["--preset", "debug"],
-      "options": {
-        "cwd": "${workspaceFolder}/decompilation"
-      },
-      "dependsOn": ["Shadowrun: Build Tests (Debug)"],
-      "group": {
-        "kind": "test",
-        "isDefault": false
-      },
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Shadowrun: Build Native (Release)",
-      "type": "shell",
-      "command": "cmake",
-      "args": ["--build", "--preset", "release-native"],
-      "options": {
-        "cwd": "${workspaceFolder}/decompilation"
-      },
-      "dependsOn": ["CMake: Configure (Release)"],
-      "group": {
-        "kind": "build",
-        "isDefault": false
-      },
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      },
-      "problemMatcher": "$gcc"
-    },
-    {
-      "label": "Shadowrun: Build Tests (Release)",
-      "type": "shell",
-      "command": "cmake",
-      "args": ["--build", "--preset", "release-tests"],
-      "options": {
-        "cwd": "${workspaceFolder}/decompilation"
-      },
-      "dependsOn": ["CMake: Configure (Release)"],
-      "group": "build",
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      },
-      "problemMatcher": "$gcc"
-    },
-    {
-      "label": "Shadowrun: Test (Release)",
-      "type": "shell",
-      "command": "ctest",
-      "args": ["--preset", "release"],
-      "options": {
-        "cwd": "${workspaceFolder}/decompilation"
-      },
-      "dependsOn": ["Shadowrun: Build Tests (Release)"],
-      "group": {
-        "kind": "test",
-        "isDefault": true
-      },
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "CMake: Configure (Release)",
-      "type": "shell",
-      "command": "cmake",
-      "args": ["--preset", "release"],
-      "options": {
-        "cwd": "${workspaceFolder}/decompilation"
-      },
-      "problemMatcher": "$gcc"
-    },
-    {
-      "label": "Shadowrun: Run Native (Release)",
-      "type": "process",
-      "command": "${workspaceFolder}/build/native/release/shadowrun_native.exe",
-      "options": {
-        "cwd": "${workspaceFolder}/build/native/release"
-      },
-      "dependsOn": ["Shadowrun: Build Native (Release)"],
-      "presentation": {
-        "reveal": "never",
-        "panel": "shared"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Shadowrun: Run Native (Debug)",
-      "type": "process",
-      "command": "${workspaceFolder}/build/native/debug/shadowrun_native.exe",
-      "options": {
-        "cwd": "${workspaceFolder}/build/native/debug"
-      },
-      "dependsOn": ["Shadowrun: Build Native (Debug)"],
-      "presentation": {
-        "reveal": "never",
-        "panel": "shared"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "CMake: Configure (Qt Release)",
-      "type": "shell",
-      "command": "cmake",
-      "args": ["--preset", "qt-release"],
-      "options": {
-        "cwd": "${workspaceFolder}/decompilation"
-      },
-      "problemMatcher": "$gcc"
-    },
-    {
-      "label": "Shadowrun: Build Qt Frontend (Release)",
-      "type": "shell",
-      "command": "cmake",
-      "args": ["--build", "--preset", "release-qt"],
-      "options": {
-        "cwd": "${workspaceFolder}/decompilation",
-        "env": {
-          "PATH": "C:\\Qt\\6.9.1\\mingw_64\\bin;C:\\msys64\\ucrt64\\bin;${env:PATH}"
-        }
-      },
-      "dependsOn": ["CMake: Configure (Qt Release)"],
-      "group": "build",
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      },
-      "problemMatcher": "$gcc"
-    },
-    {
-      "label": "Shadowrun: Run Qt Frontend (Release)",
-      "type": "process",
-      "command": "${workspaceFolder}/build/native/qt/release/shadowrun_qt.exe",
-      "options": {
-        "cwd": "${workspaceFolder}/build/native/qt/release",
-        "env": {
-          "PATH": "C:\\Qt\\6.9.1\\mingw_64\\bin;C:\\msys64\\ucrt64\\bin;${env:PATH}"
-        }
-      },
-      "dependsOn": ["Shadowrun: Build Qt Frontend (Release)"],
-      "presentation": {
-        "reveal": "never",
-        "panel": "shared"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Shadowrun: Run Qt Frontend (Debug)",
-      "type": "process",
-      "command": "${workspaceFolder}/build/native/qt/debug/shadowrun_qt.exe",
-      "options": {
-        "cwd": "${workspaceFolder}/build/native/qt/debug",
-        "env": {
-          "PATH": "C:\\Qt\\6.9.1\\mingw_64\\bin;C:\\msys64\\ucrt64\\bin;${env:PATH}"
-        }
-      },
-      "dependsOn": ["Shadowrun: Build Qt Frontend (Debug)"],
-      "presentation": {
-        "reveal": "never",
-        "panel": "shared"
-      },
-      "problemMatcher": []
-    },
-    {
       "label": "CMake: Configure Ghidra Conversion (Release)",
       "type": "shell",
       "command": "C:/msys64/ucrt64/bin/cmake.exe",
-      "args": ["--preset", "ghidra-conversion-release"],
+      "args": [
+        "--preset",
+        "ghidra-conversion-release"
+      ],
       "options": {
         "cwd": "${workspaceFolder}/decompilation/ghidra_conversion"
       },
@@ -263,14 +18,20 @@
       "label": "Shadowrun Conversion: Build (Release)",
       "type": "shell",
       "command": "C:/msys64/ucrt64/bin/cmake.exe",
-      "args": ["--build", "--preset", "ghidra-conversion-release"],
+      "args": [
+        "--build",
+        "--preset",
+        "ghidra-conversion-release"
+      ],
       "options": {
         "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
         "env": {
           "PATH": "C:\\msys64\\ucrt64\\bin;${env:PATH}"
         }
       },
-      "dependsOn": ["CMake: Configure Ghidra Conversion (Release)"],
+      "dependsOn": [
+        "CMake: Configure Ghidra Conversion (Release)"
+      ],
       "group": "build",
       "presentation": {
         "reveal": "always",
@@ -292,7 +53,9 @@
           "PATH": "C:\\msys64\\ucrt64\\bin;${env:PATH}"
         }
       },
-      "dependsOn": ["Shadowrun Conversion: Build (Release)"],
+      "dependsOn": [
+        "Shadowrun Conversion: Build (Release)"
+      ],
       "presentation": {
         "reveal": "never",
         "panel": "shared"
@@ -303,7 +66,10 @@
       "label": "CMake: Configure Ghidra Conversion (Debug)",
       "type": "shell",
       "command": "C:/msys64/ucrt64/bin/cmake.exe",
-      "args": ["--preset", "ghidra-conversion-debug"],
+      "args": [
+        "--preset",
+        "ghidra-conversion-debug"
+      ],
       "options": {
         "cwd": "${workspaceFolder}/decompilation/ghidra_conversion"
       },
@@ -313,14 +79,20 @@
       "label": "Shadowrun Conversion: Build (Debug)",
       "type": "shell",
       "command": "C:/msys64/ucrt64/bin/cmake.exe",
-      "args": ["--build", "--preset", "ghidra-conversion-debug"],
+      "args": [
+        "--build",
+        "--preset",
+        "ghidra-conversion-debug"
+      ],
       "options": {
         "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
         "env": {
           "PATH": "C:\\msys64\\ucrt64\\bin;${env:PATH}"
         }
       },
-      "dependsOn": ["CMake: Configure Ghidra Conversion (Debug)"],
+      "dependsOn": [
+        "CMake: Configure Ghidra Conversion (Debug)"
+      ],
       "group": "build",
       "presentation": {
         "reveal": "always",
@@ -332,7 +104,10 @@
       "label": "CMake: Configure Ghidra Conversion Qt (Debug)",
       "type": "shell",
       "command": "C:/msys64/ucrt64/bin/cmake.exe",
-      "args": ["--preset", "ghidra-conversion-qt-debug"],
+      "args": [
+        "--preset",
+        "ghidra-conversion-qt-debug"
+      ],
       "options": {
         "cwd": "${workspaceFolder}/decompilation/ghidra_conversion"
       },
@@ -342,14 +117,20 @@
       "label": "Shadowrun Conversion Qt: Build (Debug)",
       "type": "shell",
       "command": "C:/msys64/ucrt64/bin/cmake.exe",
-      "args": ["--build", "--preset", "ghidra-conversion-qt-debug"],
+      "args": [
+        "--build",
+        "--preset",
+        "ghidra-conversion-qt-debug"
+      ],
       "options": {
         "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
         "env": {
           "PATH": "C:\\msys64\\ucrt64\\bin;C:\\Qt\\6.9.1\\mingw_64\\bin;${env:PATH}"
         }
       },
-      "dependsOn": ["CMake: Configure Ghidra Conversion Qt (Debug)"],
+      "dependsOn": [
+        "CMake: Configure Ghidra Conversion Qt (Debug)"
+      ],
       "group": "build",
       "presentation": {
         "reveal": "always",
@@ -361,7 +142,10 @@
       "label": "CMake: Configure Ghidra Conversion Qt (Release)",
       "type": "shell",
       "command": "C:/msys64/ucrt64/bin/cmake.exe",
-      "args": ["--preset", "ghidra-conversion-qt-release"],
+      "args": [
+        "--preset",
+        "ghidra-conversion-qt-release"
+      ],
       "options": {
         "cwd": "${workspaceFolder}/decompilation/ghidra_conversion"
       },
@@ -371,14 +155,20 @@
       "label": "Shadowrun Conversion Qt: Build (Release)",
       "type": "shell",
       "command": "C:/msys64/ucrt64/bin/cmake.exe",
-      "args": ["--build", "--preset", "ghidra-conversion-qt-release"],
+      "args": [
+        "--build",
+        "--preset",
+        "ghidra-conversion-qt-release"
+      ],
       "options": {
         "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
         "env": {
           "PATH": "C:\\msys64\\ucrt64\\bin;C:\\Qt\\6.9.1\\mingw_64\\bin;${env:PATH}"
         }
       },
-      "dependsOn": ["CMake: Configure Ghidra Conversion Qt (Release)"],
+      "dependsOn": [
+        "CMake: Configure Ghidra Conversion Qt (Release)"
+      ],
       "group": {
         "kind": "build",
         "isDefault": true
@@ -403,7 +193,9 @@
           "PATH": "C:\\msys64\\ucrt64\\bin;C:\\Qt\\6.9.1\\mingw_64\\bin;${env:PATH}"
         }
       },
-      "dependsOn": ["Shadowrun Conversion Qt: Build (Release)"],
+      "dependsOn": [
+        "Shadowrun Conversion Qt: Build (Release)"
+      ],
       "presentation": {
         "reveal": "never",
         "panel": "shared"
@@ -424,7 +216,9 @@
           "PATH": "C:\\msys64\\ucrt64\\bin;C:\\Qt\\6.9.1\\mingw_64\\bin;${env:PATH}"
         }
       },
-      "dependsOn": ["Shadowrun Conversion Qt: Build (Debug)"],
+      "dependsOn": [
+        "Shadowrun Conversion Qt: Build (Debug)"
+      ],
       "presentation": {
         "reveal": "never",
         "panel": "shared"
@@ -435,14 +229,20 @@
       "label": "Shadowrun Conversion: Build Tests (Debug)",
       "type": "shell",
       "command": "C:/msys64/ucrt64/bin/cmake.exe",
-      "args": ["--build", "--preset", "ghidra-conversion-debug-all"],
+      "args": [
+        "--build",
+        "--preset",
+        "ghidra-conversion-debug-all"
+      ],
       "options": {
         "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
         "env": {
           "PATH": "C:\\msys64\\ucrt64\\bin;${env:PATH}"
         }
       },
-      "dependsOn": ["CMake: Configure Ghidra Conversion (Debug)"],
+      "dependsOn": [
+        "CMake: Configure Ghidra Conversion (Debug)"
+      ],
       "group": "build",
       "presentation": {
         "reveal": "always",
@@ -454,14 +254,19 @@
       "label": "Shadowrun Conversion: Test (Debug)",
       "type": "shell",
       "command": "C:/msys64/ucrt64/bin/ctest.exe",
-      "args": ["--preset", "ghidra-conversion-debug"],
+      "args": [
+        "--preset",
+        "ghidra-conversion-debug"
+      ],
       "options": {
         "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
         "env": {
           "PATH": "C:\\msys64\\ucrt64\\bin;${env:PATH}"
         }
       },
-      "dependsOn": ["Shadowrun Conversion: Build Tests (Debug)"],
+      "dependsOn": [
+        "Shadowrun Conversion: Build Tests (Debug)"
+      ],
       "group": {
         "kind": "test",
         "isDefault": false

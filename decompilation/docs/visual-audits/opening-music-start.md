@@ -57,7 +57,7 @@ the exact source pair:
 ```text
 python decompilation/tools/audio/extract_genesis_audio.py \
   decompilation/input/shadowrun_genesis_us.bin \
-  build/audio-open-stage-probe/paired-reset-play \
+  build/archive/ghidra-investigations/audio-open-stage-probe/paired-reset-play \
   --ids 16,17,18 --sequence 0x12,0x10 --seconds 40
 ```
 
@@ -83,7 +83,7 @@ same paired command sequence and US ROM:
 ```text
 python decompilation/tools/audio/extract_genesis_audio.py \
   decompilation/input/shadowrun_genesis_us.bin \
-  build/audio-open-stage-probe/long-loop-trace \
+  build/archive/ghidra-investigations/audio-open-stage-probe/long-loop-trace \
   --ids 16,18 --sequence 0x12,0x10 --seconds 90
 ```
 

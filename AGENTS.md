@@ -1,20 +1,32 @@
-# Shadowrun Native Port Instructions
+# Shadowrun Ghidra Conversion Project Instructions
+
+## Current project focus
+
+Current development is exclusively in `decompilation/ghidra_conversion/`, the
+typed C++/Qt project built from the Ghidra source analysis. The outer
+`decompilation/` directory is a shared ROM/evidence/asset root and still holds
+an older native-port project in its top-level `CMakeLists.txt`, `include/`,
+`src/`, and `tests/`; that native port is historical and is not the current
+implementation target. Do not extend or build it unless the user explicitly
+reactivates it. The active Ghidra project consumes shared files from
+`decompilation/input/`, `export/`, `assets/`, `gameplay/scripts/`, and `docs/`.
+
+This current scope supersedes the older native-port objective and any workflow
+below that treats the two CMake projects as equal active targets. The ROM and
+Ghidra exports remain source evidence; the host implementation being changed is
+the project under `decompilation/ghidra_conversion/`.
 
 ## Objective
 
-Reconstruct US Genesis Shadowrun as a native x86 C++ Windows game. Qt (or GDI)
-presents the game using extracted host assets and ordinary native game logic.
-The presentation size is chosen to reproduce the supplied reference images;
-Genesis resolution and VDP limits are not runtime requirements. The finished
-program is efficient, modern Qt/C++ (or a suitable Qt-compatible game engine),
-not a pile of Ghidra C, a disassembly, or a test-only bus harness.
+Reconstruct the US Genesis game in the active `decompilation/ghidra_conversion/`
+project. Its Qt executable is the host application; the C++ conversion model
+and Lua content should express recovered behavior through readable, typed
+systems. The older native-port tree in the parent directory is inactive.
 
-The ROM and Ghidra output are de-engineering references. They explain how the
-original game behaves, how its systems interact, how screens are arranged, and
-which assets and timings produce the observed result. They are not a runtime
-implementation specification to be copied literally. Reconstruct the
-behavior in clear native C++ abstractions and choose the simplest appropriate
-host representation.
+Use the ROM and Ghidra export together to recover behavior. Keep source
+addresses as provenance, then implement behavior through the active project's
+C++/Lua abstractions rather than copying disassembly or introducing another
+emulator-shaped runtime.
 
 Before adding more emulation-shaped code, de-engineer what has already been
 constructed: identify runtime code that reproduces bytecode, VDP/name-table
@@ -25,8 +37,7 @@ runtime machinery with explicit native state, assets, layouts, and systems.
 ## Non-goals
 
 - Do not ship a 68000 interpreter, Genesis emulator, or VDP as the runtime.
-- `GenesisBus` is a reconstruction/verification museum. Do not grow it unless
-  a hill lifts a proven leaf into `NativePortShell`.
+- Do not move current behavior work into the inactive native-port project.
 - Do not implement menus or game systems as bytecode copies, ROM-address
   interpreters, VDP simulations, or generic runtime "decode" pipelines. A
   decoder may exist in an offline extractor to turn source resources into host
@@ -86,13 +97,9 @@ Screen map: `decompilation/docs/screen-system-audit.md` and
 
 ## Runtime shape
 
-- The native/Qt executables consume `decompilation/assets/` directly. Each
-  background, sprite, animation frame, map, and HUD resource remains an
-  individually named extracted file. `assets/native/state.bin` contains only
-  the small typed non-graphics state needed to start without the ROM.
-- Native/Qt executables consume the named files under `decompilation/assets/`
-  and `assets/native/state.bin` directly. Do not create or depend on an
-  aggregate serializer or pack.
+- The Ghidra Qt executable consumes individually named files under
+  `decompilation/assets/` directly. Do not create or depend on an aggregate
+  serializer or pack.
 - `shadowrun_graphics_extract --all-assets` is the explicit offline import
   step. Do not attach extraction to CTest or ordinary executable builds.
 - Genesis 4-bit tiles and 9-bit CRAM become RGBA8 at extraction. Preserve the
@@ -114,9 +121,8 @@ Screen map: `decompilation/docs/screen-system-audit.md` and
   playback, and persistence. Scripts own movement/path policy, animation
   timing, AI, combat decisions, quest/dialogue flow, and menu behavior. C++ may
   return structured collision results and render the resulting Lua state, but
-  it must not run a second movement or animation state machine. Existing
-  native paths remain partial migration work until their policy and state have
-  moved into Lua.
+  it must not run a second movement or animation state machine. The inactive
+  native-port tree is not a migration target for current work.
 - A software framebuffer/widget remains valid for scenes that need exact
   sprite compositing, but it is a presentation choice, not a requirement that
   every screen be rendered as a Genesis-style tile plane.
@@ -127,29 +133,30 @@ Screen map: `decompilation/docs/screen-system-audit.md` and
 
 ## De-engineering and modernization rule
 
-The existing reconstruction is subject to deliberate de-engineering. When a
+The active Ghidra reconstruction is subject to deliberate de-engineering. When a
 runtime function is shaped like `decode_*`, walks ROM tables, reproduces name
 tables, or mimics a source renderer solely because the ROM did so, determine
 what behavior it was trying to recover and replace that runtime path with a
-small native model. Keep offline extraction code only where it produces a
+small typed host model. Keep offline extraction code only where it produces a
 stable host asset or records source evidence. Keep source addresses and
 disassembly references in comments or documentation as provenance, not as
 runtime dependencies.
 
 For static or lightly animated interfaces, prefer authored Qt layouts and
-explicit sprite/background placement. For moving scenes, use a native update
-loop and sprite components with source-derived states, paths, and durations.
-The goal is visual and behavioral equivalence on x86, not implementation
+explicit sprite/background placement. For moving scenes, use host update loops
+and sprite components with source-derived states, paths, and durations. The
+goal is visual and behavioral equivalence on x86, not implementation
 equivalence with the Genesis.
 
 ## Build
 
-C++17, existing CMake presets under `decompilation/`. Debug + Release CTest
-for each completed hill. Visual dump:
+C++17. Use the presets in `decompilation/ghidra_conversion/CMakePresets.json`;
+Release Qt is the normal executable. Debug + Release CTest applies to each
+completed hill. Visual dump:
 
 ```text
-shadowrun_visual_dump.exe <asset-dir> <out-dir> --scene title --frames 0,90,128,500
+shadowrun_ghidra_conversion_qt.exe --startup-dump start_options 2 500 frame.bmp --assets <asset-dir>
 ```
 
-Do not describe the project as playable until a native/Qt executable accepts
+Do not describe the project as playable until the Ghidra Qt executable accepts
 controls and produces visible game graphics that a defended hill covers.
