@@ -29,6 +29,7 @@ from PyQt6.QtWidgets import (
     QDockWidget,
     QFormLayout,
     QGraphicsItem,
+    QGraphicsItemGroup,
     QGraphicsPixmapItem,
     QGraphicsRectItem,
     QGraphicsScene,
@@ -41,6 +42,7 @@ from PyQt6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QPlainTextEdit,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -66,6 +68,8 @@ DEFAULT_WORLD = ROOT / "decompilation" / "gameplay" / "world"
 ENTITY_CATEGORIES = (
     "unreviewed",
     "building",
+    "terrain_feature",
+    "foliage",
     "decal",
     "prop",
     "structure",
@@ -184,6 +188,17 @@ class EntityInstance:
     entity_id: str
     origin_x: int
     origin_y: int
+
+
+@dataclass(frozen=True)
+class MapEvidenceRegion:
+    kind: str
+    x: int
+    y: int
+    width: int
+    height: int
+    title: str
+    details: str
 
 
 class WorldContent:
@@ -393,26 +408,42 @@ def read_map_catalog(asset_root: Path) -> list[MapInfo]:
     return maps
 
 
-def read_collision_rectangles(asset_root: Path, scene_id: int) -> list[tuple[int, int, int, int, int]]:
+def read_collision_rectangles(asset_root: Path, scene_id: int) -> list[MapEvidenceRegion]:
     path = asset_root / "records" / "field" / "scenes" / f"scene-{scene_id:02d}" / "terrain-collision-rectangles.bin"
     if not path.is_file():
         return []
     data = path.read_bytes()
     if len(data) % 10:
         return []
-    result = []
-    for offset in range(0, len(data), 10):
+    result: list[MapEvidenceRegion] = []
+    for record_index, offset in enumerate(range(0, len(data), 10)):
         words = [int.from_bytes(data[offset + i:offset + i + 2], "big") for i in range(0, 10, 2)]
         x0, x1, y0, y1, code = words
         if x1 >= x0 and y1 >= y0:
-            result.append((x0, y0, x1 - x0 + 1, y1 - y0 + 1, code))
+            width, height = x1 - x0 + 1, y1 - y0 + 1
+            result.append(MapEvidenceRegion(
+                kind="rom_collision",
+                x=x0,
+                y=y0,
+                width=width,
+                height=height,
+                title=f"ROM terrain collision 0x{code:04X}",
+                details=(
+                    f"ROM terrain collision\nScene: {scene_id:02d}\n"
+                    f"Rectangle: {x0},{y0} {width}×{height}\n"
+                    f"Raw bounds: X {x0:04X}..{x1:04X}, Y {y0:04X}..{y1:04X}\n"
+                    f"Collision value: 0x{code:04X}\n"
+                    f"Record: {record_index} (file offset 0x{offset:04X})\n"
+                    f"Source: {path}"
+                ),
+            ))
     return result
 
 
-def read_event_rectangles(repo_root: Path, scene_id: int) -> list[tuple[int, int, int, int, str]]:
+def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceRegion]:
     path = repo_root / "decompilation" / "docs" / "field-map-trigger-records.tsv"
     _, rows = read_tsv(path)
-    result = []
+    result: list[MapEvidenceRegion] = []
     for row in rows:
         if as_int(row, "scene_id", -1) != scene_id:
             continue
@@ -421,7 +452,84 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[tuple[int, int
         y0 = as_int(row, "y_start_raw")
         y1 = as_int(row, "y_end_raw")
         if x1 >= x0 and y1 >= y0:
-            result.append((x0, y0, x1 - x0 + 1, y1 - y0 + 1, row.get("event_id_low_5_bits", "")))
+            width, height = x1 - x0 + 1, y1 - y0 + 1
+            event_id = row.get("event_id_low_5_bits", "")
+            dispatcher = row.get("dispatcher_family", "unprofiled") or "unprofiled"
+            route = row.get("event_table_route_or_bypass", "") or "unresolved route"
+            record_index = row.get("record_index_zero_based", "?")
+            record_address = row.get("record_address", "?")
+            details = [
+                "ROM field trigger",
+                f"Scene: {scene_id:02d}; event: {event_id or '(unknown)'}",
+                f"Rectangle: {x0},{y0} {width}×{height} pixels",
+                f"Grid cells: X {row.get('x_start_grid_cell', '?')}..{row.get('x_end_grid_cell', '?')}, "
+                f"Y {row.get('y_start_grid_cell', '?')}..{row.get('y_end_grid_cell', '?')}",
+                f"Collision value: {row.get('raw_collision_value', '(unknown)')}",
+                f"ROM record: {record_index} at {record_address}",
+                f"Profile: {row.get('profile_address', '(unknown)')}; collision table: "
+                f"{row.get('collision_records_address', '(unknown)')}",
+                f"Route: {route}",
+                f"Dispatch: {dispatcher}; target: {row.get('event_table_target_class', '(unknown)')}",
+                f"ROM handlers: {row.get('rom_handler_addresses', '(unrecorded)')}",
+                f"Converted owners: {row.get('converted_cpp_functions_or_runtime_owners', '(unrecorded)')}",
+                f"Physical QA: {row.get('known_physical_qa_route', '(unrecorded)')}",
+                f"Evidence table: {path}",
+            ]
+            result.append(MapEvidenceRegion(
+                kind="rom_event",
+                x=x0,
+                y=y0,
+                width=width,
+                height=height,
+                title=f"ROM event {event_id or '(unknown)'} — {dispatcher}",
+                details="\n".join(details),
+            ))
+    return result
+
+
+def read_default_actor_positions(asset_root: Path, scene_id: int) -> list[MapEvidenceRegion]:
+    """Read ROM default-list coordinates without treating them as scenery."""
+    path = asset_root / "field" / "entities" / "default-actors.tsv"
+    _, rows = read_tsv(path)
+    result: list[MapEvidenceRegion] = []
+    for row in rows:
+        if as_int(row, "scene", -1) != scene_id:
+            continue
+        try:
+            raw_x = int(row.get("world_x", "0"), 0)
+            raw_y = int(row.get("world_y", "0"), 0)
+        except ValueError:
+            continue
+        # Actor world coordinates are 12.4 fixed point. The map editor uses
+        # integer world pixels, matching the coordinate shift in the native
+        # field projection path.
+        x, y = raw_x >> 4, raw_y >> 4
+        source_order = as_int(row, "source_order", len(result))
+        profile_id = row.get("profile_id", "unprofiled")
+        kind = as_int(row, "entity_kind", -1)
+        details = "\n".join((
+            "ROM default actor-list position",
+            f"Scene: {scene_id:02d}; list order: {source_order}",
+            f"Actor profile: {profile_id}; ROM kind: {kind}",
+            f"World position: ({raw_x:04X}, {raw_y:04X}) fixed point",
+            f"Map pixel anchor: ({x}, {y})",
+            f"Initial action: {row.get('action_kind', 'unknown')} "
+            f"{row.get('initial_action_code', '')}; heading: {row.get('initial_heading', 'unknown')}",
+            f"Template: {row.get('template_offset', '(unknown)')}; position record: "
+            f"{row.get('position_offset', '(unknown)')}; list: {row.get('list_offset', '(unknown)')}",
+            f"Ordered overrides: {row.get('ordered_overrides', '(none)')}",
+            "This is a ROM default-list position, not proof that the actor is active on every visit.",
+            f"Extracted source record: {path}",
+        ))
+        result.append(MapEvidenceRegion(
+            kind="rom_default_actor",
+            x=x - 9,
+            y=y - 9,
+            width=18,
+            height=18,
+            title=f"ROM actor {source_order}: {profile_id}",
+            details=details,
+        ))
     return result
 
 
@@ -446,7 +554,7 @@ class GridOverlay(QGraphicsItem):
 
 
 class FieldMapView(QGraphicsView):
-    def __init__(self, on_region, on_select, on_cursor):
+    def __init__(self, on_region, on_select, on_cursor, on_evidence, on_move):
         super().__init__()
         self.setScene(QGraphicsScene(self))
         self.setRenderHints(QPainter.RenderHint.Antialiasing)
@@ -456,23 +564,32 @@ class FieldMapView(QGraphicsView):
         self.on_region = on_region
         self.on_select = on_select
         self.on_cursor = on_cursor
+        self.on_evidence = on_evidence
+        self.on_move = on_move
         self.mode = "select"
         self.map_info: MapInfo | None = None
         self.background_item: QGraphicsPixmapItem | None = None
         self.grid: GridOverlay | None = None
-        self.collision_rectangles: list[tuple[int, int, int, int, int]] = []
-        self.event_rectangles: list[tuple[int, int, int, int, str]] = []
+        self.collision_rectangles: list[MapEvidenceRegion] = []
+        self.event_rectangles: list[MapEvidenceRegion] = []
+        self.actor_positions: list[MapEvidenceRegion] = []
         self.instances: list[EntityInstance] = []
         self.entities: dict[str, EntityDefinition] = {}
         self.show_grid = True
         self.show_collision = False
         self.show_events = True
+        self.show_actors = True
         self.show_priority = True
         self.assets_root = DEFAULT_ASSETS
         self.repo_root = ROOT
         self.drag_start: QPointF | None = None
         self.drag_rect: QGraphicsRectItem | None = None
+        self.move_start: QPointF | None = None
+        self.move_origin = QPointF()
+        self.move_instance_id: str | None = None
+        self.move_group: QGraphicsItemGroup | None = None
         self.annotation_items: list[QGraphicsItem] = []
+        self.entity_groups: dict[str, QGraphicsItemGroup] = {}
         self.setBackgroundBrush(QColor(28, 29, 33))
 
     def load_scene(self, info: MapInfo, assets: Path, repo_root: Path, instances: list[EntityInstance], entities: dict[str, EntityDefinition]) -> None:
@@ -483,6 +600,7 @@ class FieldMapView(QGraphicsView):
         self.entities = entities
         self.collision_rectangles = read_collision_rectangles(assets, info.scene_id)
         self.event_rectangles = read_event_rectangles(repo_root, info.scene_id)
+        self.actor_positions = read_default_actor_positions(assets, info.scene_id)
         self.scene().clear()
         base = QImage(str(info.asset)).convertToFormat(QImage.Format.Format_ARGB32)
         if self.show_priority and info.priority_asset.is_file():
@@ -504,12 +622,13 @@ class FieldMapView(QGraphicsView):
         self.resetTransform()
         self.fitInView(self.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
 
-    def set_layer_options(self, priority: bool, grid: bool, collision: bool, events: bool) -> None:
+    def set_layer_options(self, priority: bool, grid: bool, collision: bool, events: bool, actors: bool) -> None:
         changed_priority = self.show_priority != priority
         self.show_priority = priority
         self.show_grid = grid
         self.show_collision = collision
         self.show_events = events
+        self.show_actors = actors
         if changed_priority and self.map_info is not None:
             info = self.map_info
             self.load_scene(info, self.assets_root, self.repo_root, self.instances, self.entities)
@@ -523,25 +642,63 @@ class FieldMapView(QGraphicsView):
             self.scene().removeItem(item)
         self.evidence_items: list[QGraphicsItem] = []
         if self.show_collision:
-            for x, y, width, height, code in self.collision_rectangles:
-                rect = self.scene().addRect(QRectF(x, y, width, height), QPen(QColor(255, 55, 55, 210), 1), QColor(255, 35, 35, 22))
+            for index, region in enumerate(self.collision_rectangles):
+                rect = self.scene().addRect(
+                    QRectF(region.x, region.y, region.width, region.height),
+                    QPen(QColor(255, 55, 55, 210), 1),
+                    QColor(255, 35, 35, 22),
+                )
                 rect.setZValue(8)
-                rect.setToolTip(f"ROM terrain collision: code 0x{code:04X}; {x},{y} {width}x{height}")
+                rect.setData(0, "map_evidence")
+                rect.setData(1, "collision")
+                rect.setData(2, index)
+                rect.setToolTip(region.title)
                 self.evidence_items.append(rect)
         if self.show_events:
-            for x, y, width, height, event in self.event_rectangles:
-                rect = self.scene().addRect(QRectF(x, y, width, height), QPen(QColor(255, 190, 35, 245), 2), QColor(255, 190, 35, 24))
+            for index, region in enumerate(self.event_rectangles):
+                rect = self.scene().addRect(
+                    QRectF(region.x, region.y, region.width, region.height),
+                    QPen(QColor(255, 190, 35, 245), 2),
+                    QColor(255, 190, 35, 24),
+                )
                 rect.setZValue(9)
-                rect.setToolTip(f"ROM event trigger {event}: {x},{y} {width}x{height}")
+                rect.setData(0, "map_evidence")
+                rect.setData(1, "event")
+                rect.setData(2, index)
+                rect.setToolTip(region.title)
                 self.evidence_items.append(rect)
+        if self.show_actors:
+            for index, region in enumerate(self.actor_positions):
+                marker = self.scene().addEllipse(
+                    QRectF(region.x, region.y, region.width, region.height),
+                    QPen(QColor(90, 255, 190, 245), 2),
+                    QColor(20, 90, 75, 185),
+                )
+                marker.setZValue(10)
+                marker.setData(0, "map_evidence")
+                marker.setData(1, "actor")
+                marker.setData(2, index)
+                marker.setToolTip(region.title)
+                self.evidence_items.append(marker)
+                label = self.scene().addText(f"A{index}")
+                label.setDefaultTextColor(QColor(145, 255, 210))
+                label.setPos(region.x + region.width, region.y - 2)
+                label.setZValue(10)
+                label.setData(0, "map_evidence")
+                label.setData(1, "actor")
+                label.setData(2, index)
+                self.evidence_items.append(label)
 
     def redraw_annotations(self) -> None:
         for item in self.annotation_items:
             self.scene().removeItem(item)
         self.annotation_items = []
+        self.entity_groups = {}
         colors = {
             "unreviewed": QColor(255, 245, 90, 220),
             "building": QColor(80, 210, 255, 225),
+            "terrain_feature": QColor(190, 190, 190, 230),
+            "foliage": QColor(80, 220, 100, 230),
             "decal": QColor(240, 90, 255, 230),
             "prop": QColor(70, 255, 130, 225),
             "structure": QColor(255, 130, 60, 230),
@@ -560,6 +717,11 @@ class FieldMapView(QGraphicsView):
             entity = self.entities.get(instance.entity_id)
             if not entity:
                 continue
+            group = QGraphicsItemGroup()
+            group.setData(0, "entity_instance")
+            group.setData(1, instance.instance_id)
+            self.scene().addItem(group)
+            self.entity_groups[instance.instance_id] = group
             color = colors.get(entity.category, colors["unreviewed"])
             x0, y0, width, height = entity.bounds
             box = self.scene().addRect(
@@ -570,13 +732,13 @@ class FieldMapView(QGraphicsView):
             box.setZValue(12)
             box.setData(0, instance.instance_id)
             box.setToolTip(f"{entity.name} [{entity.category}]\n{instance.entity_id} @ {instance.origin_x},{instance.origin_y}")
-            self.annotation_items.append(box)
+            group.addToGroup(box)
             label = self.scene().addText(f"{entity.name} [{entity.category}]")
             label.setDefaultTextColor(color)
             label.setPos(instance.origin_x + x0 + 2, instance.origin_y + y0 + 2)
             label.setZValue(13)
             label.setData(0, instance.instance_id)
-            self.annotation_items.append(label)
+            group.addToGroup(label)
             for part in entity.parts:
                 part_color = role_colors.get(part.role, role_colors["unreviewed"])
                 part_item = self.scene().addRect(
@@ -596,7 +758,7 @@ class FieldMapView(QGraphicsView):
                     f"{part.source_x},{part.source_y}, {part.width}x{part.height}\n"
                     f"Entity-local: {part.local_x},{part.local_y}"
                 )
-                self.annotation_items.append(part_item)
+                group.addToGroup(part_item)
             for interaction in entity.interactables:
                 hit = self.scene().addRect(
                     QRectF(
@@ -610,7 +772,37 @@ class FieldMapView(QGraphicsView):
                 )
                 hit.setZValue(14)
                 hit.setToolTip(f"Lua handler: {interaction.lua_handler or '(unassigned)'}\nROM event: {interaction.source_event or '(not mapped)'}")
-                self.annotation_items.append(hit)
+                hit.setData(0, "entity_interaction")
+                hit.setData(1, instance.instance_id)
+                hit.setData(2, interaction.interaction_id)
+                group.addToGroup(hit)
+            self.annotation_items.append(group)
+
+    def evidence_at(self, point: QPointF) -> MapEvidenceRegion | None:
+        """Return the topmost enabled ROM evidence region under the cursor."""
+        for item in self.scene().items(point):
+            if item.data(0) != "map_evidence":
+                continue
+            index = item.data(2)
+            regions = {
+                "event": self.event_rectangles,
+                "collision": self.collision_rectangles,
+                "actor": self.actor_positions,
+            }.get(item.data(1), [])
+            if isinstance(index, int) and 0 <= index < len(regions):
+                return regions[index]
+        return None
+
+    def entity_group_at(self, point: QPointF) -> tuple[str, QGraphicsItemGroup] | None:
+        for item in self.scene().items(point):
+            current = item
+            while current is not None:
+                if current.data(0) == "entity_instance":
+                    instance_id = current.data(1)
+                    if isinstance(instance_id, str):
+                        return instance_id, current
+                current = current.parentItem()
+        return None
 
     def wheelEvent(self, event) -> None:
         factor = 1.15 if event.angleDelta().y() > 0 else 1 / 1.15
@@ -629,12 +821,29 @@ class FieldMapView(QGraphicsView):
             return
         if event.button() == Qt.MouseButton.LeftButton:
             point = self.mapToScene(event.position().toPoint())
-            self.on_select(point)
+            evidence = self.evidence_at(point)
+            if evidence is not None:
+                self.on_evidence(evidence)
+                event.accept()
+                return
+            selected = self.on_select(point)
+            entity_group = self.entity_group_at(point)
+            if selected is not None and entity_group is not None and entity_group[0] == selected.instance_id:
+                self.move_start = point
+                self.move_origin = entity_group[1].pos()
+                self.move_instance_id = selected.instance_id
+                self.move_group = entity_group[1]
+                event.accept()
+                return
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event) -> None:
         point = self.mapToScene(event.position().toPoint())
         self.on_cursor(int(point.x()), int(point.y()))
+        if self.move_start is not None and self.move_group is not None:
+            self.move_group.setPos(self.move_origin + point - self.move_start)
+            event.accept()
+            return
         if self.drag_start is not None and self.drag_rect is not None:
             self.drag_rect.setRect(QRectF(self.drag_start, point).normalized())
             event.accept()
@@ -656,6 +865,20 @@ class FieldMapView(QGraphicsView):
             self.on_region(rect)
             event.accept()
             return
+        if event.button() == Qt.MouseButton.LeftButton and self.move_start is not None:
+            end = self.mapToScene(event.position().toPoint())
+            instance_id = self.move_instance_id
+            delta = end - self.move_start
+            moved = abs(delta.x()) >= 2 or abs(delta.y()) >= 2
+            if self.move_group is not None:
+                self.move_group.setPos(self.move_origin)
+            self.move_start = None
+            self.move_instance_id = None
+            self.move_group = None
+            if moved and instance_id is not None:
+                self.on_move(instance_id, round(delta.x()), round(delta.y()))
+            event.accept()
+            return
         super().mouseReleaseEvent(event)
 
 
@@ -673,12 +896,19 @@ class MapEntityViewer(QMainWindow):
         self.selected_instance: EntityInstance | None = None
         self.dirty = False
         self.mode = "select"
+        self.selected_evidence: MapEvidenceRegion | None = None
         self._loading_fields = False
         self.setWindowTitle("Shadowrun Map and Entity Viewer")
         self.resize(1500, 980)
         self.setFont(QFont("Arial", 9))
 
-        self.map_view = FieldMapView(self.region_created, self.select_at, self.cursor_moved)
+        self.map_view = FieldMapView(
+            self.region_created,
+            self.select_at,
+            self.cursor_moved,
+            self.show_evidence,
+            self.move_instance,
+        )
         self.setCentralWidget(self.map_view)
         self._build_menus()
         self._build_dock()
@@ -775,8 +1005,14 @@ class MapEntityViewer(QMainWindow):
         form.addRow("Origin Y", self.y_spin)
         form.addRow("Evidence", self.evidence_edit)
         layout.addLayout(form)
-        self.info = QLabel("Select an annotation to inspect its parts and interactions.")
-        self.info.setWordWrap(True)
+        self.info = QPlainTextEdit()
+        self.info.setReadOnly(True)
+        self.info.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+        self.info.setMaximumHeight(220)
+        self.info.setPlainText(
+            "Click a yellow ROM trigger or red collision region for its source record. "
+            "Click an entity outline to inspect it; drag the outline to move the whole grouped annotation."
+        )
         layout.addWidget(self.info)
         self.save_button = QPushButton("Save scene and definitions")
         self.save_button.clicked.connect(self.save_all)
@@ -799,13 +1035,14 @@ class MapEntityViewer(QMainWindow):
         self.grid_toggle = self._add_toggle(bar, "32 px grid", True)
         self.collision_toggle = self._add_toggle(bar, "ROM collision", False)
         self.event_toggle = self._add_toggle(bar, "ROM event triggers", True)
+        self.actor_toggle = self._add_toggle(bar, "ROM default actors", True)
         bar.addSeparator()
         self._add_tool(bar, "Select", "select")
         self._add_tool(bar, "Add object region", "add_entity")
         self._add_tool(bar, "Add visual part", "add_part")
         self._add_tool(bar, "Add interactable", "add_interaction")
         bar.addSeparator()
-        legend = QLabel("Unreviewed: yellow   Building: cyan   Decal: magenta   Prop: green")
+        legend = QLabel("Unreviewed: yellow   Building: cyan   Terrain: gray   Foliage: green")
         bar.addWidget(legend)
         bar.addSeparator()
         self.coordinate_label = QLabel(" x: —  y: — ")
@@ -846,6 +1083,7 @@ class MapEntityViewer(QMainWindow):
         self.map_view.set_layer_options(
             self.priority_toggle.isChecked(), self.grid_toggle.isChecked(),
             self.collision_toggle.isChecked(), self.event_toggle.isChecked(),
+            self.actor_toggle.isChecked(),
         )
 
     def load_scene(self, scene_id: int) -> None:
@@ -887,6 +1125,11 @@ class MapEntityViewer(QMainWindow):
         self.load_scene(scene_id)
 
     def _refresh_list(self) -> None:
+        # Keep the graphics scene on the current authoritative editor records.
+        # Delete/scene-switch paths can replace the list object rather than
+        # mutating the list originally handed to FieldMapView.
+        self.map_view.instances = self.instances
+        self.map_view.entities = self.entities
         self.entity_list.blockSignals(True)
         self.entity_list.clear()
         for instance in self.instances:
@@ -905,7 +1148,8 @@ class MapEntityViewer(QMainWindow):
         self.statusBar().showMessage(
             f"Scene {self.scene_id:02d}: {info.width}×{info.height}; {len(self.instances)} annotations, {unreviewed} unreviewed. "
             f"Source encoding: {info.metatile_encoding}; collision regions: {len(self.map_view.collision_rectangles)}; "
-            f"event regions: {len(self.map_view.event_rectangles)}."
+            f"event regions: {len(self.map_view.event_rectangles)}; "
+            f"ROM default-list actor positions: {len(self.map_view.actor_positions)}."
         )
 
     def _show_properties(self, instance: EntityInstance | None) -> None:
@@ -925,7 +1169,10 @@ class MapEntityViewer(QMainWindow):
             self.category_combo.setCurrentText("unreviewed")
             self.parts_list.clear()
             self.interactions_list.clear()
-            self.info.setText("Select an annotation to inspect its source rectangle, visual-part roles, and Lua interaction regions.")
+            self.info.setPlainText(
+                "Click a yellow ROM trigger or red collision region for its source record. "
+                "Click an entity outline to inspect it; drag the outline to move the whole grouped annotation."
+            )
             self._loading_fields = False
             return
         entity = self.entities[instance.entity_id]
@@ -961,7 +1208,7 @@ class MapEntityViewer(QMainWindow):
             f"• {item.interaction_id}: {item.local_x},{item.local_y} {item.width}×{item.height}; Lua: {item.lua_handler or '(unassigned)'}; event: {item.source_event or '(unmapped)'}"
             for item in entity.interactables
         ) or "No interaction regions"
-        self.info.setText(f"ID: {entity.entity_id}\nVisual parts:\n{part_summary}\nInteractions:\n{interaction_summary}\n\nImage pixels remain in the extracted map; this editor changes annotations and scene placement metadata.")
+        self.info.setPlainText(f"ID: {entity.entity_id}\nVisual parts:\n{part_summary}\nInteractions:\n{interaction_summary}\n\nImage pixels remain in the extracted map; this editor changes annotations and scene placement metadata.")
         map_info = self.map_by_id[self.scene_id]
         bounds = QRectF(
             instance.origin_x + entity.bounds[0],
@@ -970,12 +1217,12 @@ class MapEntityViewer(QMainWindow):
             entity.bounds[3],
         )
         collision_hits = sum(
-            1 for x, y, width, height, _code in self.map_view.collision_rectangles
-            if bounds.intersects(QRectF(x, y, width, height))
+            1 for region in self.map_view.collision_rectangles
+            if bounds.intersects(QRectF(region.x, region.y, region.width, region.height))
         )
         event_hits = sum(
-            1 for x, y, width, height, _event in self.map_view.event_rectangles
-            if bounds.intersects(QRectF(x, y, width, height))
+            1 for region in self.map_view.event_rectangles
+            if bounds.intersects(QRectF(region.x, region.y, region.width, region.height))
         )
         evidence_summary = (
             f"\nMap evidence: {map_info.tilemap_width}×{map_info.tilemap_height} metatile cells, "
@@ -983,7 +1230,7 @@ class MapEntityViewer(QMainWindow):
             f"secondary {map_info.secondary_tilemap}. Region intersects {collision_hits} ROM collision rectangles "
             f"and {event_hits} ROM event triggers. The base bitmap is precomposed; the priority toggle shows its sparse overlay."
         )
-        self.info.setText(self.info.text() + evidence_summary)
+        self.info.setPlainText(self.info.toPlainText() + evidence_summary)
         self._loading_fields = False
 
     def edit_selected_part(self) -> None:
@@ -1104,7 +1351,7 @@ class MapEntityViewer(QMainWindow):
         self._show_properties(instance)
         self.map_view.redraw_annotations()
 
-    def select_at(self, point: QPointF) -> None:
+    def select_at(self, point: QPointF) -> EntityInstance | None:
         matches = []
         for instance in reversed(self.instances):
             entity = self.entities.get(instance.entity_id)
@@ -1115,8 +1362,39 @@ class MapEntityViewer(QMainWindow):
                 matches.append(instance)
         if matches:
             self.select_instance(matches[0])
+            return matches[0]
+        self.select_instance(None)
+        return None
+
+    def show_evidence(self, evidence: MapEvidenceRegion) -> None:
+        self.selected_evidence = evidence
+        self.info.setPlainText(evidence.details)
+        self.statusBar().showMessage(
+            f"Inspecting {evidence.title}; source-derived evidence is read-only.",
+            7000,
+        )
+
+    def move_instance(self, instance_id: str, delta_x: int, delta_y: int) -> None:
+        instance = next(
+            (item for item in self.instances if item.instance_id == instance_id),
+            None,
+        )
+        if instance is None or (delta_x == 0 and delta_y == 0):
+            return
+        instance.origin_x += delta_x
+        instance.origin_y += delta_y
+        self.dirty = True
+        self._refresh_list()
+        self.select_instance(instance)
+        self._update_scene_summary()
+        self.statusBar().showMessage(
+            f"Moved grouped annotation {instance_id} by {delta_x},{delta_y} pixels. "
+            "The extracted map bitmap itself is unchanged.",
+            6000,
+        )
 
     def select_instance(self, instance: EntityInstance | None) -> None:
+        self.selected_evidence = None
         self.selected_instance = instance
         selected_row = None
         if instance:
@@ -1241,6 +1519,8 @@ class MapEntityViewer(QMainWindow):
                 "prop": "body",
                 "structure": "body",
                 "foreground_part": "foreground",
+            "terrain_feature": "body",
+            "foliage": "decal",
             }.get(entity.category, "unreviewed")
         instance.origin_x = self.x_spin.value()
         instance.origin_y = self.y_spin.value()

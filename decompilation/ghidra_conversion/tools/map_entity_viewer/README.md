@@ -15,9 +15,20 @@ actor's ROM fixed-point coordinates are a separate representation.
 
 The BMP is already a composed map image. The priority overlay is a separate
 sparse image, and the viewer can draw the ROM collision rectangles and event
-triggers over it. An annotation does not erase or move pixels in the BMP. A
-map asset must be decomposed and rebuilt before moving a visual part can change
-the image shown by the game.
+triggers over it. Click a yellow trigger or a visible red collision rectangle
+to inspect its ROM record, decoded route, addresses, and recorded runtime/QA
+owners in the side panel. The **ROM default actors** layer marks coordinates
+from the extracted default actor lists; click a marker to inspect its template,
+fixed-point position, ordered overrides, and source record. A listed position
+does not claim the actor is active on every visit. These ROM overlays are
+read-only evidence.
+
+An authored entity is a grouped annotation: its bounding region, visual-part
+regions, and interaction regions share one area origin. Click the outline to
+inspect the entity and drag it to move the whole group. This edits placement
+metadata only; it does not erase, extract, or move pixels in the composed BMP.
+A separate image-composition/import step is still required before authored
+entity parts can replace pixels in a runtime map.
 
 ## Entity definition
 
@@ -29,6 +40,11 @@ Each entity has its own folder under `entities/<entity-id>/`:
   body, overhang, shadow, and decals while keeping one world origin.
 - `interactables.tsv`: local interaction rectangles and their Lua handler,
   ROM event, and evidence fields. Unknown handlers and events remain blank.
+
+Area-level ROM actor origins are not scenery entities. The viewer reads the
+source-derived `decompilation/assets/field/entities/default-actors.tsv` and
+shows these as a separate evidence layer. Random/conditional encounter tables
+must be profiled separately; a default-list position is not an encounter rule.
 
 The first row in each file is a header. Keep one record per line; tabs and
 newlines are reserved as separators.
@@ -77,14 +93,18 @@ Use **Add object region** to mark a map region for review. Use **Add visual
 part** to add another source crop to the selected entity, and **Add
 interactable** to add a local hit region. Select a part or interaction in the
 right panel to edit or remove its metadata. Set the entity category only after
-checking the source layers and ROM evidence. `Ctrl+S` saves the current scene
-and its entity definitions.
+checking the source layers and ROM evidence. Available categories include
+buildings, terrain features, foliage, decals, props, and structures. `Ctrl+S`
+saves the current scene and its entity definitions.
 
-On save, the viewer refreshes `decompilation/gameplay/scripts/world_content_data.lua` from
-these TSV files. The normal Lua package loader loads that data with the game.
-`game.modules.world_content` provides `entity(id)`,
-`instances_in_scene(scene_id)`, and `interaction_at(scene_id, x, y, event)` for
-map scripts. Existing ROM collision and event routes remain authoritative
-until a specific authored interaction is traced and connected to its Lua
-handler. The viewer does not erase pixels from the precomposed map or change
-the running map renderer.
+On save, the viewer refreshes
+`decompilation/gameplay/scripts/world_content_data.lua` from these TSV files.
+The Lua package loader loads the module, and `game.modules.world_content`
+provides `entity(id)`, `instances_in_scene(scene_id)`, and
+`interaction_at(scene_id, x, y, event)`. The live field renderer and interaction
+path do not yet consume these authored entities. The scene 2 map therefore
+still renders from its extracted composite and source collision/event records;
+this editor does not imply that an authored entity is already a runtime game
+object. Authored actor spawn points and random-encounter regions are not yet
+part of the editable content schema; the visible default actor layer is the
+ROM's source-list evidence only.
