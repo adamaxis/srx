@@ -77,6 +77,7 @@ class QPainter;
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
 enum class FieldWorldFactFlag : std::uint8_t {
+    errascoe_question_available = 1,
     redmond_vigore_search_complete = 22,
     redmond_vigore_lead_available = 26,
 };
@@ -87,6 +88,8 @@ enum class FieldTitleServiceFlag : std::uint8_t {
     redmond_search_cleanup_12 = 12,
     redmond_vigore_search_pending = 13,
     redmond_search_cleanup_15 = 15,
+    mode_command_e7_clear_15 = 15,
+    mode_command_e7_clear_21 = 21,
 };
 
 enum class FieldRenderEffectFlag : std::uint8_t {
@@ -925,6 +928,7 @@ private:
     void snapshot_world_activity_source_scene();
     bool restore_world_activity_source_scene(
         integration::FieldRuntimeCoordinatorState& runtime_state);
+    bool resume_jump_house_entry_transition();
     void begin_field_modal_return_transition();
     void handle_field_map_event_activations(
         const std::vector<FieldMapEventActivation>& activations);
@@ -1369,6 +1373,11 @@ private:
     // handler has consumed its pending state.
     EntityMovementModeTransitionResult last_field_movement_transition_result_{};
     std::optional<FieldScriptRoute> active_field_script_route_;
+    // The ROM blocks inside scene-2/event-4's indexed title service. The Qt
+    // modal yields across frames, so retain the selected area route and resume
+    // its scene-entry tail only after the player dismisses the entry page.
+    bool jump_house_entry_transition_pending_ = false;
+    std::int8_t field_indexed_title_service_result_ = 0;
     std::uint8_t field_palette_fade_steps_ = 0U;
     std::uint8_t field_modal_return_transition_frames_remaining_ = 0U;
     std::uint8_t field_modal_return_blocked_inputs_ = 0U;

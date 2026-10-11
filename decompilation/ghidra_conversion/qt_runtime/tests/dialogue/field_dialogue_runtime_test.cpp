@@ -129,6 +129,11 @@ int main() {
         std::cerr << gameplay_scripts.failure() << '\n';
         return 70;
     }
+    gameplay_scripts.set_story_state({
+        {"vigore_lead_available", false},
+        {"vigore_search_pending", false},
+        {"errascoe_question_available", false},
+    });
     runtime.set_script_runtime(&gameplay_scripts);
     runtime.set_room_payment_callback([&room_payment_funds,
                                        &room_payment_outcome]() {
@@ -159,6 +164,215 @@ int main() {
     });
     if (!expect(runtime.load_assets(assets.catalog))) {
         return 2;
+    }
+
+    // The entry service and the booth conversation are separate source
+    // states with separate ROM portraits. Exercise the script package through
+    // the shared presenter, and save the full panels for whole-screen review.
+    const auto capture_jump_house = [&runtime](const std::string_view scene) {
+        const auto output_dir =
+            std::filesystem::current_path() / "jump-house-visual-audit" /
+            std::filesystem::path(scene);
+        std::filesystem::create_directories(output_dir);
+        QImage image(320, 224, QImage::Format_ARGB32_Premultiplied);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        runtime.paint(painter);
+        painter.end();
+        return image.save(QString::fromStdWString(
+                              (output_dir / "actual.bmp").wstring()),
+                          "BMP");
+    };
+    gameplay_scripts.set_location_context(
+        "building", "jump_house", "jump_house.entry", "jump_house_entry");
+    if (!expect(runtime.open_gameplay_task(
+            "building", "present_entry_description")) ||
+        !expect(runtime.panel().source_complete) ||
+        !expect(runtime.panel().portrait_alias ==
+                "dialogue.portraits.jump.house.entry") ||
+        !expect(runtime.panel().option_count == 0U) ||
+        !expect(runtime.panel().text_segment_count == 5U) ||
+        !expect(runtime.panel().text_segments[4].find("fat man") !=
+                std::string_view::npos) ||
+        !expect(capture_jump_house("entry"))) {
+        std::cerr << "Jump House entry page did not use its ROM profile and copy\n";
+        return 90;
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(!runtime.open())) {
+        return 91;
+    }
+
+    gameplay_scripts.set_location_context(
+        "building", "jump_house", "gunderson.jump_house", "gunderson");
+    if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
+        !expect(runtime.panel().source_complete) ||
+        !expect(runtime.panel().portrait_alias ==
+                "dialogue.portraits.gunderson.jump.house") ||
+        !expect(runtime.panel().option_count == 3U) ||
+        !expect(runtime.panel().text_segments[0].find("Hoi, friend") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().options[0].source_label ==
+                "I'm looking for some information.") ||
+        !expect(runtime.panel().options[1].source_label ==
+                "I'm lookin' for some work.") ||
+        !expect(runtime.panel().options[2].source_label ==
+                "I'll talk to you later, chum.") ||
+        !expect(capture_jump_house("gunderson-root"))) {
+        std::cerr << "Gunderson root page did not use the ROM menu profile\n";
+        return 92;
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().has_more) ||
+        !expect(runtime.panel().text_segments[0].find("Info, eh?") !=
+                std::string_view::npos) ||
+        !expect(capture_jump_house("information-opening"))) {
+        return 93;
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 3U) ||
+        !expect(runtime.panel().text_segments[0].find("special contacts") !=
+                std::string_view::npos) ||
+        !expect(capture_jump_house("information-topics"))) {
+        return 94;
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 1U) ||
+        !expect(runtime.panel().text_segments[0].find("Hurry up and ask") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().options[0].source_label ==
+                "What exactly is a Mr. Johnson?") ||
+        !expect(capture_jump_house("question-selection"))) {
+        std::cerr << "Gunderson question selector did not use ROM builder "
+                     "0x22F90's base question\n";
+        return 94;
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().has_more) ||
+        !expect(runtime.panel().text_segments[0].find("Geeze, you are green") !=
+                std::string_view::npos) ||
+        !expect(capture_jump_house("question-johnson-answer"))) {
+        return 95;
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 2U) ||
+        !expect(runtime.panel().text_segments[0].find("I receive jobs") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().options[0].source_label ==
+                "I've got another question for you.") ||
+        !expect(capture_jump_house("question-followup"))) {
+        return 96;
+    }
+    if (!expect(runtime.advance_controller_events(0x1000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 3U) ||
+        !expect(runtime.panel().text_segments[0].find("You just tell me") !=
+                std::string_view::npos) ||
+        !expect(capture_jump_house("gunderson-return"))) {
+        std::cerr << "Gunderson different-subject choice did not use ROM "
+                     "descriptor 0x10514C\n";
+        return 97;
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 3U) ||
+        !expect(runtime.panel().text_segments[0].find("Natch, chum") !=
+                std::string_view::npos) ||
+        !expect(capture_jump_house("information-after-return"))) {
+        std::cerr << "Gunderson alternate root did not use ROM descriptor "
+                     "0x105198's information menu\n";
+        return 98;
+    }
+    if (!expect(runtime.advance_controller_events(0x2000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 3U) ||
+        !expect(runtime.panel().text_segments[0].find("You just tell me") !=
+                std::string_view::npos) ||
+        !expect(capture_jump_house("gunderson-return-after-information"))) {
+        return 99;
+    }
+    if (!expect(runtime.advance_controller_events(0x2000U) ==
+                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(!runtime.open())) {
+        return 100;
+    }
+
+    // 0x22F90 adds story-dependent questions to the same Lua menu. Selecting
+    // Vigore's question runs action 0xE7 and returns the 0x105270 follow-up.
+    gameplay_scripts.set_story_state({
+        {"vigore_lead_available", true},
+        {"vigore_search_pending", false},
+        {"errascoe_question_available", false},
+    });
+    if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 2U) ||
+        !expect(runtime.panel().options[1].source_label ==
+                "What do you know about a Johnson named Vigore?") ||
+        !expect(capture_jump_house("question-vigore-option"))) {
+        return 101;
+    }
+    if (!expect(runtime.advance_controller_events(0x1000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(gameplay_scripts.story_state().at(
+            "vigore_search_pending")) ||
+        !expect(runtime.panel().option_count == 2U) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "Word on the Johnson grapevine") !=
+                std::string_view::npos) ||
+        !expect(capture_jump_house("question-vigore-response"))) {
+        return 102;
+    }
+    if (!expect(runtime.advance_controller_events(0x1000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().text_segments[0].find("You just tell me") !=
+                std::string_view::npos) ||
+        !expect(runtime.advance_controller_events(0x2000U) ==
+                FieldDialogueAdvanceResult::returned_to_field)) {
+        return 103;
+    }
+
+    gameplay_scripts.set_story_state({
+        {"vigore_lead_available", false},
+        {"vigore_search_pending", false},
+        {"errascoe_question_available", true},
+    });
+    if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 2U) ||
+        !expect(runtime.panel().options[1].source_label ==
+                "Who's this guy Errascoe?") ||
+        !expect(capture_jump_house("question-errascoe-option"))) {
+        return 104;
+    }
+    if (!expect(runtime.advance_controller_events(0x1000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().text_segments[0].find("Strictly small time") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().options[0].source_label ==
+                "I've got another question for you.") ||
+        !expect(capture_jump_house("question-errascoe-response")) ||
+        !expect(runtime.advance_controller_events(0x1000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.advance_controller_events(0x2000U) ==
+                FieldDialogueAdvanceResult::returned_to_field)) {
+        return 105;
     }
 
     FieldDialogueEventResolver event_resolver;

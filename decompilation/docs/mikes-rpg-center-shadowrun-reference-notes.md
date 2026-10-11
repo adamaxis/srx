@@ -277,37 +277,85 @@ text table. Conversely, the manual's generic business descriptions do not
 name scene-specific service routes. The US ROM is the deciding source for all
 runtime branches; guide and manual prose are labeled external corroboration.
 
-## Redmond ROM coordinate cross-check: Rat's Nest lead
+## Redmond ROM coordinate cross-check: Jump House and Rat's Nest
 
-The Redmond map is a 480-by-320 image. A rough proportional overlay of the
-scene-2 field coordinates places four independent collision landmarks near
-the map's labels: Stoker's Motel (scene-2 record 91, `0x173138`, bounds
-`0x03C0..0x03DF` by `0x0280..0x029F`), Ares (record 92, `0x173142`,
-`0x04C0..0x04DF` by `0x0220..0x023F`), Little Chiba (record 93, `0x17314C`,
-`0x06E0..0x06FF` by `0x0220..0x023F`), and Rat's Nest (record 97, `0x173174`,
-`0x01A0..0x01BF` by `0x0440..0x045F`). This supports identifying scene 2 as
-Redmond Barrens and the event-1 and event-7 rectangles as the Little Chiba
-and Rat's Nest approaches, respectively. The proportional overlay is a
-secondary-source name crosswalk, not a ROM-stored map label or a substitute
-for exact world-to-image calibration.
+The Mike's RPG Center Redmond map image is 479-by-326 pixels; the extracted
+scene-2 background is 1920-by-1344 pixels. A proportional overlay (about four
+background pixels per site-map pixel) places these ROM collision centers near
+the site's numbered markers:
 
-For record 97, the ROM's collision dispatcher publishes event 7 and reads
+| Site map marker | ROM crosswalk candidate | Event and source geometry |
+|---|---|---|
+| 1 Jump House | Scene 2, record 85 at `0x1730FC` | Event 4, grid cell `(14,4)`, bounds `x=0x01C0..0x01DF`, `y=0x0080..0x009F`; event-table row 4 selects scene `0x0D` (13). This is the strongest Jump House entry candidate. |
+| 6 Stoker's Coffin Motel | Scene 2, record 91 at `0x173138` | Event 2, grid cell `(30,20)`, bounds `x=0x03C0..0x03DF`, `y=0x0280..0x029F`; opening story route overrides the generic row. |
+| 7 Ares Weapon Emporium | Scene 2, record 92 at `0x173142` | Event 11, grid cell `(38,17)`, bounds `x=0x04C0..0x04DF`, `y=0x0220..0x023F`; service route overrides the generic row. |
+| 8 Little Chiba's Chop Shop | Scene 2, record 93 at `0x17314C` | Event 1, grid cell `(55,17)`, bounds `x=0x06E0..0x06FF`, `y=0x0220..0x023F`; table row selects resource-activity scene `0x1A` (26). |
+| 9 Rat's Nest | Scene 2, record 97 at `0x173174` | Event 7, grid cell `(13,34)`, bounds `x=0x01A0..0x01BF`, `y=0x0440..0x045F`; special story service runs before the generic row. |
+
+This supports identifying scene 2 as Redmond Barrens and record 97 as the
+Rat's Nest approach. It also supports record 85 as the Jump House route into
+scene 13. These are secondary-source name crosswalks, not names stored in the
+ROM; the approximate overlay is not exact world-to-image calibration.
+
+Scene 2 record 96 is another event-7 rectangle at cell `(23,37)` with bounds
+`x=0x02E0..0x02FF`, `y=0x04A0..0x04BF`. The site overlay places it away from
+marker 9, but the ROM routes both event-7 records through the same indexed
+service. Keep the physical record distinction visible; do not silently label
+both rectangles Rat's Nest.
+
+For record 97, the ROM collision dispatcher publishes event 7 and reads
 scene-2 event-table row 7 (`0x172CE3`), which is `0x1A`; the ROM classifies
-that value as resource-activity scene 26. The guide independently says
-Rat's Nest is in the southwest and its Landmark Map availability requires
-showing the first map piece to Harlequin and asking Gunderson about Vigore.
-ROM cross-check now confirms the dialogue half of this gate: the mode-command
-menu builder at `0x22F90` adds “What do you know about a Johnson named
-Vigore?” (`0x1045B0`) only when `FFFC1E` bit 26 is set. Selecting that option
-dispatches command `0xE7` to `0x249A4`, which sets `FFFC34` bit 13 and presents
-the Johnson response. The indexed service at `0x545B6` later requires scene 2,
-event 7, alternate result 0, `FFFC34` bit 13 set, and its consumed/one-shot
-bit 10 clear. It clears the prerequisite and several service bits, marks bit
-10, then displays the ROM's Rat's Nest search sequence. This makes record 97
-the strongest identified Rat's Nest event candidate and confirms a quest
-precondition; the service award and same-scene return are now implemented. The generic table value `0x1A` is bypassed by the source `D6=-1` result, so it does not load Scene 26. The `FFFC1E` bit-26 producer and live lead-option path remain open. Record 96 is a second event-7
-rectangle, so it receives the same ROM service; its relationship to the guide
-marker is not independently resolved by geometry.
+that value as resource-activity scene 26. The guide says the Landmark Map
+search follows Harlequin's request and asking Gunderson about Vigore. ROM
+cross-check confirms the menu's conditional branches: the mode-command menu
+builder at `0x22F90` includes “What do you know about a Johnson named
+Vigore?” (`0x1045B0`) when `FFFC1E` bit 26 is set, and also includes a distinct
+non-prerequisite response when that bit is clear and `FFFC27` bit 3 is set.
+Selecting the bit-26 option dispatches action `0xE7` to `0x249A4`, which sets
+`FFFC34` bit 13. The writers of the relevant world flag are now identified:
+handlers `0x22018` and `0x22072` branch on `FFFC22` dialogue-state bits and
+can set `FFFC1E` bit 26; handler `0x22072` also has a separate bit-27 / service
+bit-14 outcome. These writers are traced in the ROM, but their originating
+Harlequin choice and the live menu-to-action connection have not yet been
+reconstructed in the Qt game.
+
+The indexed service at `0x545B6` later requires scene 2, event 7, alternate
+result 0, `FFFC34` bit 13 set, and consumed/one-shot bit 10 clear. It consumes
+the prerequisite, marks bit 10 and the Landmark Map group item, awards +2
+Karma to each runner record, and displays ROM text records `0x117193`,
+`0x117266`, and `0x117314`. Its source `D6=-1` result bypasses the generic
+table destination, so this search does not load scene 26. The service's Lua
+pages and host effects are connected, but current QA seeds the prerequisite;
+the complete lead-to-search route remains partial.
+
+The Jump House path is now profiled as two separate behaviors. Scene-2 record
+85 (`0x1730FC`, event 4) selects scene 13 through row 4 at `0x172CE0`. Before
+the scene transition, indexed title service 22's branch at `0x20484..0x204C6`
+selects descriptor `0x110D1E`, whose first text record is `0x116C12`: the
+location description seen in longplay frame 001200. After the scene loads,
+scene-13 event-30 records 11/12 (`0x1B3CF8`, `0x1B3D02`) lead through
+`0xB7B8 -> 0x20990`. That scene branch selects row 0 of `0x12CC50`, profile
+`0x121E80`, and the first Gunderson A/B/C prompt at `0x105114`. The 56x72 ROM
+profile sprite at `0x121E80` matches the portrait in longplay frame 001500.
+The site map names marker 1 Jump House and Mr. Gunderson; the walkthrough says
+the player speaks to him in a booth. These external names now align with ROM
+scene/event data and independent frames. The entry page uses a different
+56x72 portrait at `0x121EBC`; the full Qt frame matches frame 001200. The live
+scene-2/event-4 route now opens that Lua entry page and resumes scene 13 after
+A. Scene-13/event-30 is bound to the Lua Johnson interaction, including the
+initial root, information menu, dynamic question selector, Johnson answer,
+question follow-up, and state-gated Vigore/Errascoe responses. The question
+screens were compared with the numbered longplay frames; site names remain a
+cross-check, not trigger or dialogue authority. Its ordinary-movement trigger
+still lacks end-to-end QA, and the work/contact transaction branches remain
+partial.
+
+Scene 13 records 9/10 (`0x1B3CE4`, `0x1B3CEE`) are separate event-0 rectangles
+at cells `(2,7)` and `(3,7)`. Their exact ROM exit/action semantics and return
+destination are still unresolved. The site does not document a Rat's Nest
+interior map, and it does not specify trigger mechanics for either location.
+See the [Jump House entry and Gunderson visual audit](visual-audits/jump-house-entry-and-gunderson.md)
+for the source trace and the 30-fps frame sequence.
 
 The site labels Stoker's Motel as Redmond location 6 and Rat's Nest as
 location 9. This supports keeping their events and dialogue separate; the
@@ -319,14 +367,24 @@ site does not say the motel has a dedicated interior map.
   trigger record (or another ROM-stable identity), rather than using scene ID
   26 alone as a building name. Several scene-2 table rows point into the same
   resource-activity class.
-- Finish the Redmond lead chain by tracing the producer of `FFFC1E` bit 26
-  and connecting the live Johnson-menu option to action `0xE7`. The downstream
-  event-7 pages and award now run through Lua after the prerequisite is present;
-  QA seeds that prerequisite, and the bit-26 producer remains unresolved.
+- Finish the Redmond lead chain by connecting the ROM-traced `FFFC1E` bit-26
+  writers and Harlequin choices to the live Johnson-menu option at `0x1045B0`
+  and action `0xE7`. The downstream event-7 pages and award run after the
+  prerequisite is present; current QA seeds that prerequisite.
+- Finish the source-profiled Jump House script: ordinary-movement QA for
+  scene-13/event-30; full question/contact/work flows and their state/wallet
+  effects; entry and work audio/timing; and the unknown event-0 exit route.
+  The first work contract composes location/message records around `0xF2196`,
+  `0xF21DD`, and `0xF23B2..0xF241F`; its formatted salary prompt is at
+  `0x1060E0` or `0x106171` according to the source branch.
+- Trace scene-13 event-0 records 9/10 before implementing the exit route and
+  its return destination.
 - Profile the other scene-2 event rectangles against the same map image and
   label only correspondences supported by both geometry and ROM paths.
-- The site provides no button/menu layout or animation timing evidence. Use
-  independent Genesis frames or ROM draw/cadence traces for those claims.
+- The site provides no button/menu layout or animation timing evidence. The
+  section-03 longplay independently shows the entry narration, A/B/C menu,
+  portrait, and page order; use ROM draw/cadence traces for exact animation and
+  timing claims.
 
 ## Implementation cautions from this pass
 

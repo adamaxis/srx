@@ -598,7 +598,7 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         output << '"';
     };
 
-    const std::array<std::pair<const char*, std::size_t>, 47> records{{
+    const std::array<std::pair<const char*, std::size_t>, 81> records{{
         // Stoker prompt pointers consumed by the source event/profile path.
         {"stoker.motel.arrival.title", 0x1167EBU},
         {"stoker.motel.arrival.more", 0x0FE5BFU},
@@ -651,6 +651,41 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         {"redmond.vigore-search.page-0", 0x117193U},
         {"redmond.vigore-search.page-1", 0x117266U},
         {"redmond.vigore-search.page-2", 0x117314U},
+        // Scene-2/event-4 entry service and scene-13 Gunderson dialogue.
+        {"jump-house.entry", 0x116C12U},
+        {"gunderson.greeting", 0x106266U},
+        {"gunderson.greeting.continuation", 0x106289U},
+        {"gunderson.greeting.after_information", 0x106396U},
+        {"gunderson.option.information", 0x104051U},
+        {"gunderson.option.work", 0x103A3AU},
+        {"gunderson.option.leave", 0x104FEBU},
+        {"gunderson.information.opening", 0x1063D9U},
+        {"gunderson.information.contacts", 0x1064AAU},
+        {"gunderson.information.after_return", 0x106533U},
+        {"gunderson.information.option.questions", 0x1047D4U},
+        {"gunderson.information.option.contacts", 0x104666U},
+        {"gunderson.information.option.back", 0x104817U},
+        {"gunderson.information.page.1", 0x1063E4U},
+        {"gunderson.information.page.2", 0x106417U},
+        {"gunderson.information.page.3", 0x106450U},
+        {"gunderson.information.page.4", 0x106503U},
+        {"gunderson.question.johnson", 0x104B81U},
+        {"gunderson.answer.johnson", 0x106642U},
+        {"gunderson.answer.johnson.more", 0x1066A0U},
+        {"gunderson.work.opening", 0x106C74U},
+        {"gunderson.work.page", 0x106CC5U},
+        {"gunderson.work.followup", 0x10659BU},
+        {"gunderson.contacts.introduction", 0x1069EDU},
+        {"gunderson.contacts.decker_offer", 0x106AA8U},
+        {"gunderson.question.answer", 0x10662BU},
+        {"gunderson.question.followup", 0x106701U},
+        {"gunderson.question.vigore.alternate_response", 0x1067AEU},
+        {"gunderson.question.option.local", 0x1047F4U},
+        {"gunderson.question.prompt", 0x1069D5U},
+        {"gunderson.question.option.vigore", 0x1045B0U},
+        {"gunderson.question.option.errascoe", 0x103D24U},
+        {"gunderson.question.vigore.response", 0x106CD2U},
+        {"gunderson.question.errascoe.response", 0x106929U},
     }};
 
     output << "-- Generated from the US ROM dialogue and menu text records.\n"
@@ -710,10 +745,10 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         output << "        [";
         write_lua_string(key);
         output << "] = ";
-        // The two security-terminal floor records are single-string records
-        // in the source continuation; retaining only their first segment
-        // matches the former import's record-specific handling.
-        if (record_index >= 42U && record_index < 44U) {
+        // The two upper security-terminal floor records are single-string
+        // records in the source continuation; retain their first segment.
+        if (key == "field.security-terminal.floor.4" ||
+            key == "field.security-terminal.floor.5") {
             text = segments.front();
         }
         write_lua_string(text);
@@ -1874,7 +1909,7 @@ void write_asset_readme(const std::filesystem::path& root) {
               "items/first-aid, items/miscellaneous, items/magic, and items/armor. "
               "The shared field dialogue frames and A/B/C marker sprites are "
               "grouped under dialogue/panel, with speaker portraits under "
-              "dialogue/portraits. ROM-derived Stoker and field interaction "
+              "dialogue/portraits. ROM-derived Stoker, Gunderson, and field interaction "
               "text, Hotel menu and status text, Ares mode-event dialogue, "
               "Pocket Secretary menu and child-page text, field-service "
               "titles, shop "
@@ -2269,6 +2304,24 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         shadowrun::graphics::decode_genesis_field_dialogue_portrait(rom, 0U),
         "sprite", "0x1F65A/0x121FA0/0x1287C6/0x122420", false, manifest,
         written, missing, blank);
+    // Scene 13's mode-0 entry in 0x12CC50 selects the 0x121E80 speaker
+    // profile for the event-30 Jump House conversation. Keep this separate
+    // from Stoker's field-exit profile: it is Gunderson's distinct ROM art.
+    write_catalog_asset(
+        root, "dialogue/portraits/gunderson-jump-house.bmp",
+        shadowrun::graphics::decode_genesis_field_mode_profile_sprite(
+            rom, 0x121E80U),
+        "sprite", "0x12CC50/0x121E80/0x20990", false, manifest, written,
+        missing, blank);
+    // The scene-2/event-4 indexed title service uses a different profile for
+    // the Jump House arrival description. Keep its face as separate host art;
+    // it is not the later booth-conversation portrait.
+    write_catalog_asset(
+        root, "dialogue/portraits/jump-house-entry.bmp",
+        shadowrun::graphics::decode_genesis_field_mode_profile_sprite(
+            rom, 0x121EBCU),
+        "sprite", "0x20484/0x121EBC/0x110D1E", false, manifest, written,
+        missing, blank);
     write_catalog_asset(
         root, "dialogue/panel/frame.bmp",
         shadowrun::graphics::decode_genesis_field_dialogue_panel_background(

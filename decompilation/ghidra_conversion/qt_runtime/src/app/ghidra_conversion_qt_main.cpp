@@ -195,6 +195,7 @@ std::filesystem::path find_asset_root(
                    " [--field-transition-qa <output-dir>]"
                    " [--field-world-activity-qa <output-dir>]"
                    " [--field-redmond-vigore-search-qa <output-dir>]"
+                   " [--field-jump-house-entry-qa <output-dir>]"
                    " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
                    " [--field-ares-collision-shop-qa <output-dir>]"
                    " [--field-scene20-physical-entry-qa <output-dir>]"
@@ -15720,6 +15721,205 @@ int run_field_scene2_motel_street_collision_qa(
     return 0;
 }
 
+int run_field_jump_house_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Jump House entry QA: could not clear prior captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Jump House entry QA: could not create capture folder: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    constexpr std::size_t kJumpHouseRecord = 85U;
+    constexpr std::uint16_t kJumpHouseCollision = 0x00C4U;
+    constexpr std::uint8_t kJumpHouseEvent = 4U;
+    constexpr std::uint8_t kJumpHouseScene = 13U;
+    const auto& metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    const auto& rectangles = metadata.terrain_collision_rectangles;
+    const auto initial_position = field_scene.field_entity_world_position();
+    if (field_scene.field_scene_reference_for_dump() != 2U ||
+        initial_position.x != 0x1D00U || initial_position.y != 0x0A00U ||
+        rectangles.size() <= kJumpHouseRecord ||
+        rectangles[kJumpHouseRecord].left != 0x01C0U ||
+        rectangles[kJumpHouseRecord].right != 0x01DFU ||
+        rectangles[kJumpHouseRecord].top != 0x0080U ||
+        rectangles[kJumpHouseRecord].bottom != 0x009FU ||
+        rectangles[kJumpHouseRecord].value != kJumpHouseCollision) {
+        std::cerr << "Jump House entry QA: scene-2 spawn or ROM record 85 "
+                     "does not match (scene="
+                  << field_scene.field_scene_reference_for_dump() << ", x="
+                  << initial_position.x << ", y=" << initial_position.y
+                  << ", records=" << rectangles.size() << ")\n";
+        return 3;
+    }
+
+    const auto render = [&field_scene] {
+        QImage image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        field_scene.paint(painter);
+        painter.end();
+        return image;
+    };
+    const auto save = [&](const std::string_view name,
+                          const std::optional<bool> expect_field_hud) {
+        const auto image = render();
+        const auto path = output / (std::string(name) + ".bmp");
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            (expect_field_hud.has_value() &&
+             field_hud_chrome_survives(image, asset_root) !=
+                 *expect_field_hud) ||
+            (expect_field_hud == std::optional<bool>{true} &&
+             count_playfield_lit(image) < 100U) ||
+            !image.save(QString::fromStdWString(path.wstring()))) {
+            std::cerr << "Jump House entry QA: full-screen capture failed for "
+                      << name << '\n';
+            return false;
+        }
+        return true;
+    };
+
+    if (!save("spawn", true)) {
+        return 3;
+    }
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 60U; ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up into record 85
+        field_scene.advance_frame();
+        if (field_scene.field_interaction_transition_active_for_dump() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 2U) {
+            ++movement_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto doorway_position = field_scene.field_entity_world_position();
+    const auto& movement =
+        field_scene.last_field_movement_transition_for_dump();
+    if (movement_ticks == 0U || movement_ticks >= 60U ||
+        field_scene.field_terrain_collision_code_for_dump() != 0xFFC4U ||
+        field_scene.field_projected_code_for_dump() != 0xFFC4U ||
+        field_scene.field_mode_event_code_for_dump() != kJumpHouseEvent ||
+        !field_scene.field_interaction_transition_active_for_dump()) {
+        std::cerr << "Jump House entry QA: ordinary movement did not contact "
+                     "record 85/event 4 (ticks=" << movement_ticks
+                  << ", position=" << doorway_position.x << ','
+                  << doorway_position.y << ", collision=0x" << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << ", projected=0x"
+                  << field_scene.field_projected_code_for_dump() << std::dec
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ", continuation="
+                  << static_cast<unsigned>(movement.continuation) << ")\n";
+        return 3;
+    }
+    if (!save("doorway-contact", std::nullopt)) {
+        return 3;
+    }
+
+    for (std::uint8_t settle = 0U;
+         settle < 80U && !field_scene.dialogue_open() &&
+         field_scene.field_scene_reference_for_dump() == 2U;
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto& entry = field_scene.dialogue_panel();
+    bool entry_text_found = false;
+    for (std::size_t index = 0U; index < entry.text_segment_count; ++index) {
+        entry_text_found = entry_text_found ||
+            entry.text_segments[index].find("The Jump House") !=
+                std::string_view::npos;
+    }
+    const auto entry_image = render();
+    if (!field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 2U ||
+        !entry.source_complete || entry.option_count != 0U ||
+        entry.portrait_alias != "dialogue.portraits.jump.house.entry" ||
+        !entry_text_found || field_hud_chrome_survives(entry_image, asset_root) ||
+        !image_has_green_ink(entry_image, 88, 16, 216, 120) ||
+        !save("entry-description", false)) {
+        std::cerr << "Jump House entry QA: collision did not display the "
+                     "source entry description as a clean modal page\n";
+        return 3;
+    }
+    const auto entry_opened = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.entry.jump_house_description_opened"));
+    if (entry_opened != 1) {
+        std::cerr << "Jump House entry QA: indexed ROM service did not open "
+                     "exactly one entry page\n";
+        return 3;
+    }
+
+    field_scene.set_controller_port_byte(0x40U); // ordinary A dismisses page
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    if (field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != kJumpHouseScene ||
+        field_scene.field_modal_return_transition_frames_for_dump() != 60U ||
+        !save("scene13-transition-start", std::nullopt)) {
+        std::cerr << "Jump House entry QA: dismissing the entry page did not "
+                     "resume the retained scene-13 route\n";
+        return 3;
+    }
+    for (std::uint8_t frame = 0U; frame < 60U; ++frame) {
+        field_scene.advance_frame();
+        if (frame == 29U &&
+            !save("scene13-transition-midpoint", std::nullopt)) {
+            return 3;
+        }
+    }
+    const auto final_image = render();
+    const auto entered_scene = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.entry.jump_house_scene_entered"));
+    const bool clean_scene =
+        field_scene.field_scene_reference_for_dump() == kJumpHouseScene &&
+        !field_scene.dialogue_open() && !field_scene.field_interaction_open() &&
+        field_scene.field_modal_return_transition_frames_for_dump() == 0U &&
+        field_scene.field_palette_fade_steps_for_dump() == 0U &&
+        field_scene.field_entity_visible_for_dump() &&
+        field_hud_chrome_survives(final_image, asset_root) &&
+        count_playfield_lit(final_image) >= 100U;
+    if (!clean_scene || entered_scene != 1 || !save("actual", true)) {
+        std::cerr << "Jump House entry QA: scene 13 did not finish with a "
+                     "clean full-screen field redraw (scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", entered=" << entered_scene << ")\n";
+        return 3;
+    }
+
+    std::ofstream route(output / "route.tsv", std::ios::trunc);
+    if (!route) {
+        return 3;
+    }
+    route << "trigger_record\tcollision\tevent\tdestination_scene\t"
+             "movement_ticks\taudio_requests\n"
+          << "85\t0x00C4\t4\t13\t" << movement_ticks << '\t'
+          << field_audio_events.size() << '\n';
+    std::cout << "field_jump_house_entry_qa=passed record=85 event=4 "
+                 "movement=ordinary-up entry=lua dismissal=ordinary-A "
+                 "destination_scene=13 clean_redraw=yes audio_requests="
+              << field_audio_events.size() << " artifacts=" << output.string()
+              << '\n';
+    return 0;
+}
+
 int run_field_redmond_vigore_search_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -16064,6 +16264,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_redmond_vigore_search_qa_path;
         std::optional<std::filesystem::path>
+            field_jump_house_entry_qa_path;
+        std::optional<std::filesystem::path>
             field_stoker_collision_to_dialogue_qa_path;
         std::optional<std::filesystem::path>
             field_ares_collision_shop_qa_path;
@@ -16159,6 +16361,7 @@ int main(int argc, char** argv) {
                        " [--field-transition-qa <output-dir>]"
                        " [--field-world-activity-qa <output-dir>]"
                        " [--field-redmond-vigore-search-qa <output-dir>]"
+                       " [--field-jump-house-entry-qa <output-dir>]"
                        " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
                        " [--field-ares-collision-shop-qa <output-dir>]"
                        " [--field-scene20-physical-entry-qa <output-dir>]"
@@ -16246,6 +16449,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_redmond_vigore_search_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-jump-house-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_jump_house_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -16782,6 +16992,37 @@ int main(int argc, char** argv) {
                 checkpoint.active_runner_slot = 0U;
                 smoke_state.restored_field_state = std::move(checkpoint);
             }
+            if (field_jump_house_entry_qa_path.has_value()) {
+                const auto scene2 = integration::make_field_scene_input(
+                    *smoke_state.field_session_source_assets, 2U);
+                if (!scene2.has_value() ||
+                    !smoke_state.joshua_selection.has_value()) {
+                    std::cerr << "Jump House entry QA: scene-2 source or New "
+                                 "Game runner record is unavailable\n";
+                    return 3;
+                }
+                SaveFieldRestoreState checkpoint{};
+                checkpoint.world_mode = 2U;
+                // Begin one collision-grid cell south of ROM record 85 and
+                // enter it with ordinary Up input. This controls the QA
+                // starting coordinate while leaving collision/event routing,
+                // transition timing, and dialogue selection on the live path.
+                checkpoint.camera_x = 0x1D00U;
+                checkpoint.camera_y = 0x0A00U;
+                for (std::size_t slot = 0U;
+                     slot < checkpoint.runner_positions.size(); ++slot) {
+                    const auto& spawn =
+                        scene2->source_metadata.initial_field_records[slot];
+                    checkpoint.runner_positions[slot] =
+                        RestoredRunnerPosition{spawn.x, spawn.y};
+                }
+                checkpoint.runner_positions[0U] =
+                    RestoredRunnerPosition{0x1D00U, 0x0A00U};
+                checkpoint.roster.default_record.bytes =
+                    smoke_state.joshua_selection->live_joshua_record;
+                checkpoint.active_runner_slot = 0U;
+                smoke_state.restored_field_state = std::move(checkpoint);
+            }
             if (field_security_terminal_physical_entry_qa_path.has_value()) {
                 if (!smoke_state.field_session_source_assets.has_value() ||
                     !smoke_state.joshua_selection.has_value()) {
@@ -16937,6 +17178,12 @@ int main(int argc, char** argv) {
                 return run_field_redmond_vigore_search_qa(
                     field_scene, asset_root,
                     *field_redmond_vigore_search_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_jump_house_entry_qa_path.has_value()) {
+                return run_field_jump_house_entry_qa(
+                    field_scene, asset_root,
+                    *field_jump_house_entry_qa_path,
                     field_audio_events, field_source_boundaries);
             }
             if (field_stoker_collision_to_dialogue_qa_path.has_value()) {

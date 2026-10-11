@@ -103,6 +103,18 @@ function Building.resolve_field_location_route(context)
     }
 end
 
+-- Location text, speaker properties, and conditional building content are
+-- selected by the active location profile. Keep the operation generic so a
+-- building's ROM-backed entry page is not hardcoded into the renderer.
+function Building.present_entry_description()
+    if game.location.type ~= "building" or
+       game.location.id == nil then
+        return "skip"
+    end
+    game.ui.say("entry")
+    return "shown"
+end
+
 -- Elevator trigger scenes and their child scene lists are supplied from the
 -- extracted US ROM records. The script owns the entry action, entry floor,
 -- and selected destination; the native menu owns only selection and timing.

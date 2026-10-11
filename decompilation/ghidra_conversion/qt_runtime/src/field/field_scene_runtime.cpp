@@ -589,6 +589,35 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
     callbacks.run_indexed_title_services =
         [this, &runtime_state, &event_route](
             FieldExitOrchestratorState& state) {
+            // ROM 0x20484 handles the Redmond scene-2/event-4 doorway before
+            // the event-table scene transition. With FFF0D5 == 0 it selects
+            // the 0x121EBC portrait and text 0x110D1E, then resumes the saved
+            // route after the blocking prompt. The Qt dialogue yields, so
+            // keep that route typed until the page is dismissed.
+            if (runtime_state.scene_id == 2U &&
+                event_route.kind == FieldScriptRouteKind::area_event &&
+                event_route.event_code == static_cast<std::uint8_t>(
+                    FieldCollisionEventCode::event_4) &&
+                event_route.area_event_target ==
+                    std::optional<std::uint8_t>{13U} &&
+                field_exit_alternate_result_ == 0) {
+                game_scripts_.set_location_context(
+                    "building", "jump_house", "jump_house.entry",
+                    "jump_house_entry");
+                if (!field_dialogue_.open_gameplay_task(
+                        "building", "present_entry_description")) {
+                    source_boundary(
+                        "field.entry.jump_house_script_open_failed");
+                    return false;
+                }
+                field_indexed_title_service_result_ = -1;
+                jump_house_entry_transition_pending_ = true;
+                field_palette_fade_steps_ = 0U;
+                source_boundary("field.entry.jump_house_description_opened");
+                state.caller_exit_status = -1;
+                return true;
+            }
+
             // ROM 0x53A78 invokes service 22 before generic route selection.
             // Its scene-2/event-7 branch runs the Redmond Vigore search only
             // when Lua sees the pending service fact and the source one-shot
@@ -2616,6 +2645,26 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         field_activity_continuation_ =
             MovementModeTransitionContinuation::none;
         if (continuation ==
+            MovementModeTransitionContinuation::event_30_world_activity) {
+            if (state_.field_scene_buffers.scene_reference != 13U) {
+                source_boundary(
+                    "field.activity.event30_scene_route_unresolved");
+                return integration::PendingFieldSceneHandlerResult::resumed_field;
+            }
+            game_scripts_.set_location_context(
+                "building", "jump_house", "gunderson.jump_house",
+                "gunderson");
+            if (!field_dialogue_.open_gameplay_task(
+                    "johnson", "interaction")) {
+                source_boundary(
+                    "field.dialogue.gunderson_script_open_failed");
+            } else {
+                source_boundary(
+                    "field.dialogue.gunderson_interaction_opened");
+            }
+            return integration::PendingFieldSceneHandlerResult::resumed_field;
+        }
+        if (continuation ==
             MovementModeTransitionContinuation::event_31_world_activity) {
             if (state_.field_scene_buffers.scene_reference != 26U) {
                 source_boundary(
@@ -4269,6 +4318,8 @@ bool FieldSceneRuntime::bootstrap(
     field_random_seed_ = static_cast<std::uint16_t>(
         QRandomGenerator::global()->generate());
     field_opening_auto_walk_ = FieldOpeningAutoWalkState{};
+    jump_house_entry_transition_pending_ = false;
+    field_indexed_title_service_result_ = 0;
     field_controller_sample_state_ = ControllerSampleState{};
     field_controller_latch_state_ = ControllerLatchState{};
     field_target_heading_ = 0U;
@@ -4341,6 +4392,10 @@ bool FieldSceneRuntime::bootstrap(
             if (name == "michael_package_collected") {
                 return stoker_motel_story_state_.michael_package_collected;
             }
+            if (name == "errascoe_question_available") {
+                return (field_exit_world_flags_ & field_flag_mask(
+                    FieldWorldFactFlag::errascoe_question_available)) != 0U;
+            }
             if (name == "vigore_lead_available") {
                 return (field_exit_world_flags_ & field_flag_mask(
                     FieldWorldFactFlag::redmond_vigore_lead_available)) != 0U;
@@ -4379,6 +4434,14 @@ bool FieldSceneRuntime::bootstrap(
                 stoker_motel_story_state_.michael_package_collected = value;
                 return true;
             }
+            if (name == "errascoe_question_available") {
+                const auto mask = field_flag_mask(
+                    FieldWorldFactFlag::errascoe_question_available);
+                field_exit_world_flags_ = value
+                    ? field_exit_world_flags_ | mask
+                    : field_exit_world_flags_ & ~mask;
+                return true;
+            }
             if (name == "vigore_lead_available") {
                 const auto mask = field_flag_mask(
                     FieldWorldFactFlag::redmond_vigore_lead_available);
@@ -4390,9 +4453,16 @@ bool FieldSceneRuntime::bootstrap(
             if (name == "vigore_search_pending") {
                 const auto mask = field_flag_mask(
                     FieldTitleServiceFlag::redmond_vigore_search_pending);
-                field_mode_effect_flags_ = value
-                    ? field_mode_effect_flags_ | mask
-                    : field_mode_effect_flags_ & ~mask;
+                if (value) {
+                    const auto clear_15 = field_flag_mask(
+                        FieldTitleServiceFlag::mode_command_e7_clear_15);
+                    const auto clear_21 = field_flag_mask(
+                        FieldTitleServiceFlag::mode_command_e7_clear_21);
+                    field_mode_effect_flags_ &= ~(clear_15 | clear_21);
+                    field_mode_effect_flags_ |= mask;
+                } else {
+                    field_mode_effect_flags_ &= ~mask;
+                }
                 return true;
             }
             if (name == "landmark_map_owned") {
@@ -4746,6 +4816,8 @@ bool FieldSceneRuntime::bootstrap(
     // consumes that startup state to begin the ordinary heading-zero field
     // continuation (0xB574); a restored save never takes this branch.
     field_opening_auto_walk_ = FieldOpeningAutoWalkState{};
+    jump_house_entry_transition_pending_ = false;
+    field_indexed_title_service_result_ = 0;
     field_runtime_state_ = integration::FieldRuntimeCoordinatorState{};
     field_runtime_state_.scene_id =
         state_.field_scene_buffers.scene_reference;
@@ -4829,6 +4901,8 @@ void FieldSceneRuntime::record_field_activity_start(
             MovementModeTransitionContinuation::maglock_door_interaction ||
         continuation ==
             MovementModeTransitionContinuation::building_security_terminal ||
+        continuation ==
+            MovementModeTransitionContinuation::event_30_world_activity ||
         continuation ==
             MovementModeTransitionContinuation::event_31_world_activity ||
         continuation ==
@@ -6591,6 +6665,52 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
     source_boundary("field.scene.transition.same_scene_reentered");
 }
 
+bool FieldSceneRuntime::resume_jump_house_entry_transition() {
+    if (!jump_house_entry_transition_pending_) {
+        return false;
+    }
+    jump_house_entry_transition_pending_ = false;
+
+    const auto initialize =
+        field_runtime_callbacks_.initialize_world_activity_mode;
+    if (!initialize) {
+        source_boundary("field.entry.jump_house_route_resume_unavailable");
+        return false;
+    }
+
+    // This is the synchronous tail that the ROM reaches after its blocking
+    // 0x20484 title-service prompt. The retained route still names scene 13;
+    // consume it through the same typed world-activity scene preparation used
+    // by ordinary field event-table transitions.
+    field_runtime_state_.scene_id =
+        state_.field_scene_buffers.scene_reference;
+    field_runtime_state_.field_mode =
+        state_.field_scene_buffers.field_resource_mode;
+    field_runtime_state_.scene_runtime_state = 0U;
+    field_runtime_state_.field_scene_gate = 0U;
+    field_runtime_state_.field_transition_requested = false;
+    initialize(field_runtime_state_);
+
+    if (field_runtime_state_.field_transition_requested ||
+        !state_.field_scene_buffers.initialized ||
+        state_.field_scene_buffers.scene_reference != 13U) {
+        source_boundary("field.entry.jump_house_scene_prepare_failed");
+        return false;
+    }
+
+    field_runtime_state_.scene_refresh_marker = -1;
+    field_movement_transition_state_.scene_id = 13U;
+    field_runtime_state_.scene_id = 13U;
+    world_frame_logic_state_.world_mode = 13U;
+    advance_field_scene_transition_after_modal();
+    if (state_.field_scene_buffers.scene_reference != 13U) {
+        source_boundary("field.entry.jump_house_scene_reentry_failed");
+        return false;
+    }
+    source_boundary("field.entry.jump_house_scene_entered");
+    return true;
+}
+
 void FieldSceneRuntime::begin_field_modal_return_transition() {
     // ROM 0x2BD2 refreshes the field immediately after the modal callback.
     // The native presentation adds a deliberate 60-frame fade-in so that
@@ -6787,7 +6907,9 @@ void FieldSceneRuntime::advance_frame() {
             field_controller_sample_state_.events);
         if (result == FieldDialogueAdvanceResult::returned_to_field) {
             source_boundary("field.dialogue.returned_to_field");
-            advance_field_scene_transition_after_modal();
+            if (!resume_jump_house_entry_transition()) {
+                advance_field_scene_transition_after_modal();
+            }
             begin_field_modal_return_transition();
         } else if (result ==
                    FieldDialogueAdvanceResult::returned_from_world_activity) {

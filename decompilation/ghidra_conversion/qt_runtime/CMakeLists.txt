@@ -300,6 +300,18 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_world_activity_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Start one cell south of the ROM's Jump House trigger, walk into record 85
+# using normal movement, dismiss its Lua-owned entry narration with A, and
+# verify the retained scene-13 route completes with a clean 320x224 redraw.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_jump_house_entry_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-jump-house-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-jump-house-entry-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_jump_house_entry_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # The completed New Game opening starts the source heading-zero automatic walk
 # from the scene-2 spawn. It reaches the motel doorway's source C2 collision,
 # event 2, and indexed Stoker title service without controller input. A opens

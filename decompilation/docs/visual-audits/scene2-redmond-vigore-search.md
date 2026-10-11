@@ -8,13 +8,16 @@ identified, so this audit does not claim Genesis visual fidelity.
 
 ## Source and route evidence
 
-- The Redmond Barrens map at Mike's RPG Center labels location 9 Rat's Nest in
-  the southwest, separate from location 6 Stoker's Coffin Motel. This is a
-  secondary name crosswalk; the ROM does not store those place names.
+- Mike's [Redmond Barrens map](https://mikesrpgcenter.com/shadowrun/maps/redmond_barrens.html)
+  labels location 9 Rat's Nest in the southwest, separate from location 6
+  Stoker's Coffin Motel. Overlaying the 479-by-326 site map against the
+  1920-by-1344 scene places record 97 at cell `(13,34)` near marker 9. This is
+  a secondary name crosswalk; the ROM does not store those place names.
 - Scene 2 record 97 at `0x173174` is event `0x07`, with bounds
-  `x=0x01A0..0x01BF`, `y=0x0440..0x045F`. Record 96 is also event `0x07` and
-  reaches the same service, so the guide's label cannot distinguish the two
-  records by itself.
+  `x=0x01A0..0x01BF`, `y=0x0440..0x045F`. Record 96 is also event `0x07`, at
+  cell `(23,37)` / bounds `x=0x02E0..0x02FF`, `y=0x04A0..0x04BF`; the site-map
+  overlay places that record away from marker 9. Both still reach the same ROM
+  service, so only record 97 is the strong Rat's Nest location crosswalk.
 - Indexed title service 22 at `0x545B6` runs before generic route selection.
   It requires scene 2/event 7, alternate result 0, `FFFC34` bit 13 set, and
   consumed bit 10 clear. It consumes the prerequisite and related service
@@ -23,8 +26,18 @@ identified, so this audit does not claim Genesis visual fidelity.
   `D6=-1` so the generic event-table destination does not load scene 26.
 - The three narrative records are ROM `0x117193`, `0x117266`, and `0x117314`.
   The upstream command-menu option at `0x1045B0` is gated by `FFFC1E` bit 26;
-  action `0xE7` / handler `0x249A4` writes the bit-13 prerequisite. The live
-  bit-26 producer and dialogue option route remain unconnected.
+  action `0xE7` / handler `0x249A4` writes the bit-13 prerequisite. ROM
+  handlers `0x22018` and `0x22072` are writers of the bit-26 world flag from
+  `FFFC22` dialogue-state conditions; `0x22072` also has a distinct bit-27 /
+  service-bit-14 outcome. The bit-26 producer is therefore known, but its
+  originating Harlequin choice and live choice-to-action route are still
+  unconnected. When bit 26 is clear, `FFFC27` bit 3 exposes a different
+  Vigore response; it is not the Rat's Nest prerequisite branch.
+- The walkthrough says Gunderson directs the player to the Rat's Nest after
+  Harlequin's request, and that Vigore has already left. This corroborates the
+  lead order but does not identify a collision rectangle or dialogue speaker
+  in the ROM; use the [walkthrough](https://mikesrpgcenter.com/shadowrun/walkthrough.html)
+  only as a name/order cross-check.
 - QA restores a typed Scene 2 field checkpoint at `(0x1B00, 0x4600)` and uses
   ordinary Up input. The collision service opens the Lua event after 18
   frames. The test deliberately seeds bit 13; it does not claim the player

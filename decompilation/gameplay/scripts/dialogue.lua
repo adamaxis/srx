@@ -22,6 +22,40 @@ local speakers = {
             },
         },
     },
+    jump_house_entry = {
+        name = "The Jump House",
+        text_profile = "jump_house.entry",
+        portrait_alias = "dialogue.portraits.jump.house.entry",
+        events = {
+            entry = {
+                title_key = "jump-house.entry",
+                continuation_key = "",
+            },
+        },
+    },
+    gunderson = {
+        name = "Gunderson",
+        text_profile = "gunderson.jump_house",
+        portrait_alias = "dialogue.portraits.gunderson.jump.house",
+        events = {
+            ["information-opening"] = {
+                title_key = "gunderson.information.opening",
+                continuation_key = "shared.more",
+            },
+            ["work-opening"] = {
+                title_key = "gunderson.work.opening",
+                continuation_key = "shared.more",
+            },
+            ["johnson-definition"] = {
+                title_key = "gunderson.question.answer",
+                continuation_key = "shared.more",
+            },
+            ["contacts-introduction"] = {
+                title_key = "gunderson.contacts.introduction",
+                continuation_key = "shared.more",
+            },
+        },
+    },
     stoker = {
         name = "Stoker",
         text_profile = "stoker.motel",
@@ -87,6 +121,69 @@ local menu_profiles = {
             choice_label_keys = {
                 ["debt-payment"] = "stoker.motel.option.debt-payment",
                 ["jump-house"] = "stoker.motel.option.jump-house",
+            },
+        },
+    },
+    ["gunderson.jump_house"] = {
+        opening = {
+            title_key = "gunderson.greeting",
+            choice_label_keys = {
+                information = "gunderson.option.information",
+                work = "gunderson.option.work",
+                leave = "gunderson.option.leave",
+            },
+        },
+        opening_after_information = {
+            title_key = "gunderson.greeting.after_information",
+            choice_label_keys = {
+                information = "gunderson.option.information",
+                work = "gunderson.option.work",
+                leave = "gunderson.option.leave",
+            },
+        },
+        information = {
+            title_key = "gunderson.information.contacts",
+            choice_label_keys = {
+                questions = "gunderson.information.option.questions",
+                contacts = "gunderson.information.option.contacts",
+                back = "gunderson.information.option.back",
+            },
+        },
+        information_after_return = {
+            title_key = "gunderson.information.after_return",
+            choice_label_keys = {
+                questions = "gunderson.information.option.questions",
+                contacts = "gunderson.information.option.contacts",
+                back = "gunderson.information.option.back",
+            },
+        },
+        question_selection = {
+            title_key = "gunderson.question.prompt",
+            choice_label_keys = {
+                johnson = "gunderson.question.johnson",
+                vigore = "gunderson.question.option.vigore",
+                errascoe = "gunderson.question.option.errascoe",
+            },
+        },
+        question_followup = {
+            title_key = "gunderson.question.followup",
+            choice_label_keys = {
+                another_question = "gunderson.question.option.local",
+                different_subject = "gunderson.information.option.back",
+            },
+        },
+        vigore_response = {
+            title_key = "gunderson.question.vigore.response",
+            choice_label_keys = {
+                another_question = "gunderson.question.option.local",
+                different_subject = "gunderson.information.option.back",
+            },
+        },
+        errascoe_response = {
+            title_key = "gunderson.question.errascoe.response",
+            choice_label_keys = {
+                another_question = "gunderson.question.option.local",
+                different_subject = "gunderson.information.option.back",
             },
         },
     },
