@@ -119,10 +119,26 @@ be caught and fired upon. This is distinct from the undercover-woman prompt:
 the doctor calls a uniformed patrol, while the woman branch reveals an agent
 already posing as a law official.
 
-The outcome table now includes those two encounter graphs plus the direct
-patrol, Company Man, injured-person, alley-seller, and scene-41-to-43 Lone Star
-paths. Rows marked `partial` name a specific follow-up still open; a handler
-with some traced rows is not automatically treated as complete.
+The outcome table includes those two encounter graphs plus the direct patrol,
+Company Man, injured-person, alley-seller, watcher, and scene-41-to-43 Lone
+Star paths. Rows marked `partial` name a specific follow-up still open; a
+handler with some traced rows is not automatically treated as complete.
+
+**Phantasmal watcher (`0x20F2A`, scenes 0, 3, and 5; sums 1-2 and 8).** The
+opening prompt at `0x120F00` links the two responses directly to data nodes:
+refusing reaches `0x120F18`, where the player is rebuked and the watcher
+vanishes; accepting reaches `0x120F20`, where the watcher leads the player to
+an old man being beaten by Eye-Fivers. Dispatch `0x9A` (`0x23812`) loads the
+player field at `FF0177`, runs the threshold-6 trial counter, then branches on
+`FFF0DD`. Result 0 selects four attackers from `0x1D6DAE` (two Eye Fiver 2,
+two Eye Fiver 1); result 1 selects two Eye Fiver 1 from `0x1D6DB6`. Both
+successful sequence starts show the gangers turning on the player and link to
+the message at `0x120F5C`, which says the watcher waves thanks and fades as the
+gangers come at the player. The source branch that actually resumes or exits
+that combat, and any post-fight reward path, is still partial. Results above 1,
+or failure to start the selected sequence, instead add 200 nuyen and show the
+mage's thanks and payment at `0x120F64`/`0x11DAF8`; that no-combat branch is
+traced to its end. The encounter does not introduce Lone Star.
 
 **Company Man (`0x20F5A`, scenes 3 and 5).** Attack can make him flee or make
 him draw a gun; Talk and Walk Away each have state/roll branches that can bring
@@ -188,7 +204,16 @@ map-wide pursuit route and its wanted-state conditions remain untraced.
 
 There is also a separate player legal-state path to resolve. The third 32-entry Tips pointer table at `0xC2816` maps global entries 65-96; entries 70-73 point to text starts `0xC4390`, `0xC4465`, `0xC451E`, and `0xC45E1`. Entry 70 contains the wanted-for-questioning notice (including `0xC442C`); entry 71 is addressed to detectives and describes the suspect as armed and dangerous; entry 72 is addressed to hunting parties and calls the player a fugitive; entry 73 is a Lone Star Records prisoner-transfer notice about Vigore. Since the selector tests each table's local zero-based entry index, these four entries correspond to `FFFC38` bits 5-8; the wanted/fugitive notices are bits 5-7. These are Notebook display-eligibility bits; the source trace has not shown them to be the wanted-state values consumed by field pursuit. ROM contact text at `0xC63CF` and `0xC651C` offers to delete the Lone Star record, while `0x10E3C1` and `0x10F009` describe a Weapon Permit and patrols flagging the player down. Those strings establish that the record/permit mechanics exist, but they do not establish the writer/checker for the first three tip bits or the map-wide patrol spawn condition. The general patrol pursuit route remains untraced; this known-selector profile therefore cannot say which other maps support it or how often it occurs.
 
-A separate actor-transition path, `0xAB02 -> 0x16B98`, spawns weighted scene records under record-kind and world-mode gates. Its ROM result sentinels `0x5A` and `0x5B` mean equipped-item and clear-item outcomes. The other weighted results have not yet been mapped to named templates or event roles, so this path remains unresolved for broad patrol coverage and stays separate from the verified dialogue-event actor list below.
+A separate nearby-effect path runs through `0xAB02 -> 0x16B98`. It can place
+one of ten `FF164C` records near the transitioning actor with a weighted
+interaction code; `0x1DF34` later checks a strict `+/-0x100` radius and sends
+that code to the reward handler `0x133A6`. The `0x5A` and `0x5B` weighted
+sentinels select an equipped-item result or clear the record. This is a
+proximity-effect/reward route, not evidence of a general Lone Star patrol
+spawn. The ordinary weighted interaction codes still need their player-facing
+effects mapped, and the wanted-state map-wide patrol route remains unresolved.
+Keep this path separate from the random dialogue and dynamic actor tables
+below.
 
 ### Broad dynamic creature coverage
 
