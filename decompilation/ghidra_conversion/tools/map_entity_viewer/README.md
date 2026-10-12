@@ -64,11 +64,12 @@ shows the selected ROM descriptor, camera setup, default three-member party
 placement, and the profile-selected actor list. ROM `0x03084` loads the three
 profile positions;
 `0x02B34` copies them into the three ordinary actor records when the entry
-route has no pending coordinate-list override. The **Default party spawns**
-layer marks all three defaults. An incoming transition can replace them, so
-the profile points are not claimed as every route's arrival positions. Scene 2
-slot 1 is the traced New Game lead position before the automatic Stoker walk.
-Camera setup remains a separate value and is not treated as a player spawn.
+route has no pending coordinate-list override. The **Default spawn** layer
+marks the profile's fallback party positions. The lead position is the generic
+map spawn; an incoming transition can replace it, so it is not claimed as
+every route's arrival position. Scene 2 slot 1 is the traced New Game lead
+position before the automatic Stoker walk. Camera setup remains a separate
+value and is not treated as a player spawn.
 
 ## Current evidence coverage
 
@@ -129,16 +130,21 @@ Camera setup remains a separate value and is not treated as a player spawn.
   restaurant connector, west lake dock, and narrow central bridge. These labels
   describe visible art only and do not invent collision behavior. The
   **Map profile** lists character types, map positions, recorded
-  waypoints, conditional alternatives, and the usual party arrival points.
+  waypoints, conditional alternatives, and the descriptor's default fallback
+  spawn positions.
 - The source actor layer is data-driven across the extracted map catalog: the
   viewer uses each ROM record's actor type and sprite art, shows default scene
   records separately from conditional choices, and keeps special event lists
   separate from ordinary map populations. Event-character controls only appear
   on scenes that contain those lists. It does not synthesize scenery NPCs.
   Selecting a character shows its source list, position, facing, and route data.
-- **Map audio** is present, but map-scoped music remains unresolved until the
-  ROM's scene-entry and persistent-audio paths are traced. Menu music is shown
-  separately and is not assigned to a map without evidence.
+- **Map audio** reports the field-entry trace. The traced New Game and ordinary
+  scene-entry branches expose no scene-ID-to-track selection, and the scene
+  descriptor has no music resource ID. This does not prove field silence:
+  audio already active or queued by the previous mode may carry over, and
+  field events can request sounds. Menu-mode music and effects are shown
+  separately rather than assigned to maps without evidence. See
+  `decompilation/docs/field-map-audio-profile.md` for the trace and limits.
 - **Field events** lists the ROM's conditional random field-event outcomes for
   every extracted map context. The source maps 56 scenes through the 16-group
   table at `0x3312`, then uses two bound-five random draws to select one of

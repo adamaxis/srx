@@ -634,18 +634,26 @@ def read_map_audio_details(repo_root: Path, assets: Path, info: MapInfo) -> str:
     lines = [
         f"Scene {info.scene_id:02d} map audio",
         "",
-        "Map-scoped background music: unresolved.",
-        "The extracted scene descriptor and the traced scene-profile loader "
-        "(ROM 0x03084) do not provide a music resource ID. The world-frame "
-        "service (0x02900) advances pending audio commands but does not select "
-        "a scene track. This does not establish that the map is silent; a "
-        "scene-entry or persistent audio path still needs to be traced.",
+        "Map-specific background music: no scene track is selected by the "
+        "field-entry path traced in the ROM.",
+        "The scene descriptor and profile loader (0x03084) contain no music "
+        "resource ID. New Game enters the field through 0x007F0 and 0x0281E; "
+        "ordinary field transitions are processed through 0x02BD2/0x02CE0. "
+        "In the entry and transition branches traced so far, no scene-ID-to-song "
+        "lookup or map-specific track request was found. The field loop's "
+        "audio service (0x02900) passes pending commands to the audio driver; "
+        "it does not map the current scene ID to a song.",
+        "The scene number alone therefore does not identify the track audible "
+        "after entry. Audio already active or queued by the previous mode can "
+        "carry over, and event-triggered sound requests can occur during play. "
+        "No per-map music assignment is inferred here, and this trace does not "
+        "prove the field is silent.",
         "",
         "Separate menu-mode audio found in the ROM:",
-        "  0x173F2 enters prepare_menu_mode_resources, which calls 0x1745E. "
-        "That routine submits event 0x5B as a start/stop pair and event 0x03 "
-        "at 0x17652 under the FFFC08 audio gate. This path is menu-mode setup "
-        "and is not assigned to the selected map.",
+        "  The menu-mode HUD loop submits event 0x5B through conditional audio "
+        "wrappers around 0x1763A/0x1764C, and sends event 0x03 to the audio "
+        "command-frame service at 0x17652. These calls are in the menu loop "
+        "and are not assigned to the selected map.",
     ]
     aliases_path = assets / "resources.tsv"
     _, aliases = read_tsv(aliases_path)
@@ -679,9 +687,9 @@ def read_map_audio_details(repo_root: Path, assets: Path, info: MapInfo) -> str:
         )
     lines.extend((
         "",
-        "No music is inferred from the map artwork, guide label, or nearby "
-        "audio filename. The map-level track remains open pending a complete "
-        "ROM entry/exit audio trace.",
+        "The viewer keeps menu and intro music separate from map audio. The "
+        "remaining audio question is the exact driver state carried into each "
+        "field route and its stop lifetime, not a scene-to-track table.",
     ))
     return "\n".join(lines)
 
@@ -1707,7 +1715,7 @@ def read_profile_entry_positions(
         if raw_x == 0 and raw_y == 0:
             continue
         is_new_game_entry = info.scene_id == 2 and slot == 1
-        title = f"Default party entry {slot}: {party_roles[slot - 1]}"
+        title = f"Default spawn {slot}: {party_roles[slot - 1]}"
         details = [
             title,
             f"Scene: {info.scene_id:02d}; descriptor: {descriptor}",
@@ -3420,7 +3428,7 @@ class MapEntityViewer(QMainWindow):
         self.world_activity_group_combo.setCurrentIndex(1)
         self.world_activity_group_combo.currentIndexChanged.connect(self.layers_changed)
         bar.addWidget(self.world_activity_group_combo)
-        self.profile_entry_toggle = self._add_toggle(bar, "Usual party arrival", True)
+        self.profile_entry_toggle = self._add_toggle(bar, "Default spawn", True)
         self.behavior_toggle = self._add_toggle(bar, "Scripted events / spawns", True)
         bar.addSeparator()
         legend = QLabel(
@@ -3644,10 +3652,14 @@ class MapEntityViewer(QMainWindow):
             descriptor = b""
         if len(descriptor) >= 0x4E:
             lines.append(
-                "Usual party arrival points (an incoming doorway or map "
-                "transition can set a different position):"
+                "Default fallback spawn positions used when the route into "
+                "this map supplies no arrival override:"
             )
-            party_roles = ("lead actor", "party member 2", "party member 3")
+            party_roles = (
+                "lead actor (generic fallback)",
+                "party member 2",
+                "party member 3",
+            )
             for slot, offset in enumerate((0x42, 0x46, 0x4A), start=1):
                 raw_x = int.from_bytes(descriptor[offset:offset + 2], "big")
                 raw_y = int.from_bytes(descriptor[offset + 2:offset + 4], "big")
@@ -3658,16 +3670,17 @@ class MapEntityViewer(QMainWindow):
                     f"map pixel ({raw_x / 16:.2f}, {raw_y / 16:.2f})"
                 )
             lines.append(
-                "These are the usual entry positions when the route that "
-                "brought the party here does not set its own arrival point."
+                "The lead actor point is the generic map spawn. Incoming "
+                "doorways and map transitions can override it with route-specific "
+                "positions."
             )
             if self.scene_id == 2:
                 lines.append(
-                    "  New Game starts the lead actor at map pixel (974, 720) "
-                    "and runs the opening walk toward Stoker's Coffin Motel."
+                    "  New Game uses the lead point (974, 720), then runs the "
+                    "opening walk toward Stoker's Coffin Motel."
                 )
         else:
-            lines.append("Usual party arrival positions are unavailable for this map.")
+            lines.append("Default fallback spawn positions are unavailable for this map.")
         default_actors = sum(
             1 for actor in self.map_view.actor_positions
             if actor.population_class == "default"
@@ -3684,8 +3697,8 @@ class MapEntityViewer(QMainWindow):
             f"People in the map records: {default_actors} usual scene characters, "
             f"{conditional_actors} conditional choices, and "
             f"{world_activity_actors} event-specific character records.",
-            "Character locations and usual party arrival points are shown as "
-            "separate layers. A door or map transition can use another arrival point.",
+            "Character locations and default spawn points are separate layers. "
+            "A door or map transition can supply another arrival position.",
             "Some timed and event-created character behavior still needs source "
             "tracing. Use Event characters to inspect the separately recorded lists.",
         ))
@@ -3757,8 +3770,8 @@ class MapEntityViewer(QMainWindow):
                 "draw them on the map."
             )
         lines.append(
-            "Usual party arrival markers are visible by default. Turn off "
-            "Usual party arrival to hide them."
+            "Default spawn markers are visible by default. Turn off "
+            "Default spawn to hide them."
         )
         self.scene_info.setPlainText("\n".join(lines))
 
