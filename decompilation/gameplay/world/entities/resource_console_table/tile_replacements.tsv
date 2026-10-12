@@ -29,6 +29,34 @@ cell_dx	cell_dy	source_primary	source_secondary	background_primary	background_se
 1	2	0x0024	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_07
 2	2	0x0024	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_07
 3	2	0x0025	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_07
+0	2	0x002A	0x0085	0x0006	-1	Scene 28 scene28_console_01 shadow: restore Plane A floor tile 0x0006 while retaining the existing Plane B artwork.	scene28_console_01
+1	2	0x0024	0x0085	0x0006	-1	Scene 28 scene28_console_01 shadow: restore Plane A floor tile 0x0006 while retaining the existing Plane B artwork.	scene28_console_01
+2	2	0x0024	0x0085	0x0006	-1	Scene 28 scene28_console_01 shadow: restore Plane A floor tile 0x0006 while retaining the existing Plane B artwork.	scene28_console_01
+3	2	0x0025	0x0085	0x0006	-1	Scene 28 scene28_console_01 shadow: restore Plane A floor tile 0x0006 while retaining the existing Plane B artwork.	scene28_console_01
+0	2	0x002A	0x0094	0x0006	-1	Scene 28 scene28_console_02 shadow: restore Plane A floor tile 0x0006 while retaining Plane B tile 0x0094.	scene28_console_02
+1	2	0x0024	0x0085	0x0006	-1	Scene 28 scene28_console_02 shadow: restore Plane A floor tile 0x0006 while retaining the existing Plane B artwork.	scene28_console_02
+2	2	0x0024	0x0085	0x0006	-1	Scene 28 scene28_console_02 shadow: restore Plane A floor tile 0x0006 while retaining the existing Plane B artwork.	scene28_console_02
+3	2	0x0025	0x0085	0x0006	-1	Scene 28 scene28_console_02 shadow: restore Plane A floor tile 0x0006 while retaining the existing Plane B artwork.	scene28_console_02
+0	2	0x002A	0x0094	0x0006	-1	Scene 28 scene28_console_03 shadow: restore Plane A floor tile 0x0006 while retaining Plane B tile 0x0094.	scene28_console_03
+1	2	0x0024	0x0085	0x0006	-1	Scene 28 scene28_console_03 shadow: restore Plane A floor tile 0x0006 while retaining the existing Plane B artwork.	scene28_console_03
+2	2	0x0024	0x0094	0x0006	-1	Scene 28 scene28_console_03 shadow: restore Plane A floor tile 0x0006 while retaining Plane B tile 0x0094.	scene28_console_03
+3	2	0x0025	0x0085	0x0006	-1	Scene 28 scene28_console_03 shadow: restore Plane A floor tile 0x0006 while retaining the existing Plane B artwork.	scene28_console_03
+0	2	0x002A	0x00A9	0x0006	-1	Scene 28 scene28_console_04 shadow: restore Plane A floor tile 0x0006 and keep the separate Plane B chair/console pixels at this location.	scene28_console_04
+1	2	0x0024	0x00AA	0x0006	-1	Scene 28 scene28_console_04 shadow: restore Plane A floor tile 0x0006 and keep the separate Plane B chair/console pixels at this location.	scene28_console_04
+2	2	0x0024	0x00BB	0x0006	-1	Scene 28 scene28_console_04 shadow: restore Plane A floor tile 0x0006 and keep the separate Plane B chair/console pixels at this location.	scene28_console_04
+3	2	0x0025	0x00AC	0x0006	-1	Scene 28 scene28_console_04 shadow: restore Plane A floor tile 0x0006 and keep the separate Plane B chair/console pixels at this location.	scene28_console_04
+0	2	0x002A	0x0094	0x0006	-1	Scene 28 scene28_console_05 shadow: restore Plane A floor tile 0x0006 while retaining Plane B tile 0x0094.	scene28_console_05
+1	2	0x0024	0x0085	0x0006	-1	Scene 28 scene28_console_05 shadow: restore Plane A floor tile 0x0006 while retaining the existing Plane B artwork.	scene28_console_05
+2	2	0x0024	0x0094	0x0006	-1	Scene 28 scene28_console_05 shadow: restore Plane A floor tile 0x0006 while retaining Plane B tile 0x0094.	scene28_console_05
+3	2	0x0024	0x0085	0x0006	-1	Scene 28 scene28_console_05 shadow: restore Plane A floor tile 0x0006 while retaining the existing Plane B artwork.	scene28_console_05
+0	2	0x0024	0x009D	0x0006	-1	Scene 28 scene28_console_06 shadow: restore Plane A floor tile 0x0006 and preserve the independent Plane B artwork.	scene28_console_06
+1	2	0x0024	0x009E	0x0006	-1	Scene 28 scene28_console_06 shadow: restore Plane A floor tile 0x0006 and preserve the independent Plane B artwork.	scene28_console_06
+2	2	0x0024	0x009B	0x0006	-1	Scene 28 scene28_console_06 shadow: restore Plane A floor tile 0x0006 and preserve the independent Plane B artwork.	scene28_console_06
+3	2	0x0025	0x0085	0x0006	-1	Scene 28 scene28_console_06 shadow: restore Plane A floor tile 0x0006 while retaining the existing Plane B artwork.	scene28_console_06
+0	2	0x002A	0x0085	0x0006	-1	Scene 28 scene28_console_07 shadow: restore Plane A floor tile 0x0006 while retaining the existing Plane B artwork.	scene28_console_07
+1	2	0x0024	0x0085	0x0006	-1	Scene 28 scene28_console_07 shadow: restore Plane A floor tile 0x0006 while retaining the existing Plane B artwork.	scene28_console_07
+2	2	0x0024	0x0085	0x0006	-1	Scene 28 scene28_console_07 shadow: restore Plane A floor tile 0x0006 while retaining the existing Plane B artwork.	scene28_console_07
+3	2	0x0025	0x0085	0x0006	-1	Scene 28 scene28_console_07 shadow: restore Plane A floor tile 0x0006 while retaining the existing Plane B artwork.	scene28_console_07
 0	2	0x002A	0x009E	0x0006	-1	Scene 27 scene27_console_01 shadow cell; source A/B words 0x002A/0x009E. Restore the matching floor A word and preserve the source B word.	scene27_console_01
 1	2	0x0024	0x0085	0x0006	-1	Scene 27 scene27_console_01 shadow cell; source A/B words 0x0024/0x0085. Restore the matching floor A word and preserve the source B word.	scene27_console_01
 2	2	0x0024	0x0085	0x0006	-1	Scene 27 scene27_console_01 shadow cell; source A/B words 0x0024/0x0085. Restore the matching floor A word and preserve the source B word.	scene27_console_01
@@ -79,3 +107,84 @@ cell_dx	cell_dy	source_primary	source_secondary	background_primary	background_se
 1	2	0x0024	0x0085	0x0006	-1	Scene 27 scene27_console_13 shadow cell; source A/B words 0x0024/0x0085. Restore the matching floor A word and preserve the source B word.	scene27_console_13
 2	2	0x0024	0x0085	0x0006	-1	Scene 27 scene27_console_13 shadow cell; source A/B words 0x0024/0x0085. Restore the matching floor A word and preserve the source B word.	scene27_console_13
 3	2	0x0025	0x0085	0x0006	-1	Scene 27 scene27_console_13 shadow cell; source A/B words 0x0025/0x0085. Restore the matching floor A word and preserve the source B word.	scene27_console_13
+0	0	0x0006	0x00A5	0x0006	0x0085	Scene 26 scene26_console_01 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene26_console_01
+1	0	0x0006	0x00A6	0x0006	0x0085	Scene 26 scene26_console_01 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene26_console_01
+2	0	0x0006	0x00A7	0x0006	0x0085	Scene 26 scene26_console_01 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene26_console_01
+0	0	0x0006	0x00A5	0x0006	0x0085	Scene 26 scene26_console_02 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene26_console_02
+1	0	0x0006	0x00A6	0x0006	0x0085	Scene 26 scene26_console_02 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene26_console_02
+2	0	0x0006	0x00A7	0x0006	0x0085	Scene 26 scene26_console_02 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene26_console_02
+0	0	0x002C	0x00A5	0x002C	0x0085	Scene 26 scene26_console_03 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x002C.	scene26_console_03
+1	0	0x002A	0x00A6	0x002A	0x0085	Scene 26 scene26_console_03 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x002A.	scene26_console_03
+2	0	0x0025	0x00A7	0x0025	0x0085	Scene 26 scene26_console_03 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0025.	scene26_console_03
+0	0	0x0006	0x00A5	0x0006	0x0085	Scene 26 scene26_console_04 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene26_console_04
+1	0	0x0006	0x00A6	0x0006	0x0085	Scene 26 scene26_console_04 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene26_console_04
+2	0	0x0006	0x00A7	0x0006	0x0085	Scene 26 scene26_console_04 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene26_console_04
+0	0	0x0006	0x00A5	0x0006	0x0085	Scene 26 scene26_console_05 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene26_console_05
+1	0	0x0006	0x00A6	0x0006	0x0085	Scene 26 scene26_console_05 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene26_console_05
+2	0	0x0006	0x00A7	0x0006	0x0085	Scene 26 scene26_console_05 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene26_console_05
+0	0	0x0006	0x00A5	0x0006	0x0085	Scene 26 scene26_console_06 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene26_console_06
+1	0	0x0006	0x00A6	0x0006	0x0085	Scene 26 scene26_console_06 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene26_console_06
+2	0	0x0006	0x00A7	0x0006	0x0085	Scene 26 scene26_console_06 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene26_console_06
+0	0	0x0032	0x00A5	0x0032	0x0085	Scene 26 scene26_console_07 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0032.	scene26_console_07
+1	0	0x0006	0x00A6	0x0006	0x0085	Scene 26 scene26_console_07 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene26_console_07
+2	0	0x0006	0x00A7	0x0006	0x0085	Scene 26 scene26_console_07 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene26_console_07
+0	0	0x0024	0x00A5	0x0024	0x0085	Scene 27 scene27_console_01 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0024.	scene27_console_01
+1	0	0x0024	0x00A6	0x0024	0x0085	Scene 27 scene27_console_01 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0024.	scene27_console_01
+2	0	0x00C0	0x00A7	0x00C0	0x0085	Scene 27 scene27_console_01 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x00C0.	scene27_console_01
+0	0	0x0006	0x00A5	0x0006	0x0085	Scene 27 scene27_console_02 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_02
+1	0	0x0006	0x00A6	0x0006	0x0085	Scene 27 scene27_console_02 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_02
+2	0	0x0006	0x00A7	0x0006	0x0085	Scene 27 scene27_console_02 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_02
+0	0	0x0006	0x00A5	0x0006	0x0085	Scene 27 scene27_console_03 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_03
+1	0	0x0006	0x00A6	0x0006	0x0085	Scene 27 scene27_console_03 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_03
+2	0	0x0006	0x00A7	0x0006	0x0085	Scene 27 scene27_console_03 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_03
+0	0	0x0006	0x00A5	0x0006	0x0085	Scene 27 scene27_console_04 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_04
+1	0	0x0006	0x00A6	0x0006	0x0085	Scene 27 scene27_console_04 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_04
+2	0	0x0006	0x00A7	0x0006	0x0085	Scene 27 scene27_console_04 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_04
+0	0	0x0006	0x00A5	0x0006	0x0085	Scene 27 scene27_console_05 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_05
+1	0	0x002A	0x00A6	0x002A	0x0085	Scene 27 scene27_console_05 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x002A.	scene27_console_05
+2	0	0x0025	0x00A7	0x0025	0x0085	Scene 27 scene27_console_05 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0025.	scene27_console_05
+0	0	0x0006	0x00A5	0x0006	0x0085	Scene 27 scene27_console_06 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_06
+1	0	0x0006	0x00A6	0x0006	0x0085	Scene 27 scene27_console_06 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_06
+2	0	0x0006	0x00A7	0x0006	0x0085	Scene 27 scene27_console_06 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_06
+0	0	0x0024	0x00A5	0x0024	0x0085	Scene 27 scene27_console_07 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0024.	scene27_console_07
+1	0	0x0024	0x00A6	0x0024	0x0085	Scene 27 scene27_console_07 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0024.	scene27_console_07
+2	0	0x0024	0x00A7	0x0024	0x0085	Scene 27 scene27_console_07 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0024.	scene27_console_07
+0	0	0x0006	0x00A5	0x0006	0x0085	Scene 27 scene27_console_08 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_08
+1	0	0x0006	0x00A6	0x0006	0x0085	Scene 27 scene27_console_08 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_08
+2	0	0x0006	0x00A7	0x0006	0x0085	Scene 27 scene27_console_08 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_08
+0	0	0x0006	0x00A5	0x0006	0x0085	Scene 27 scene27_console_09 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_09
+1	0	0x0006	0x00A6	0x0006	0x0085	Scene 27 scene27_console_09 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_09
+2	0	0x0006	0x00A7	0x0006	0x0085	Scene 27 scene27_console_09 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_09
+0	0	0x0006	0x00A5	0x0006	0x0085	Scene 27 scene27_console_10 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_10
+1	0	0x0006	0x00A6	0x0006	0x0085	Scene 27 scene27_console_10 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_10
+2	0	0x0006	0x00A7	0x0006	0x0085	Scene 27 scene27_console_10 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_10
+0	0	0x0006	0x00A5	0x0006	0x0085	Scene 27 scene27_console_11 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_11
+1	0	0x0006	0x00A6	0x0006	0x0085	Scene 27 scene27_console_11 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_11
+2	0	0x0006	0x00A7	0x0006	0x0085	Scene 27 scene27_console_11 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_11
+0	0	0x0006	0x00A5	0x0006	0x0085	Scene 27 scene27_console_12 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_12
+1	0	0x0006	0x00A6	0x0006	0x0085	Scene 27 scene27_console_12 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_12
+2	0	0x0006	0x00A7	0x0006	0x0085	Scene 27 scene27_console_12 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_12
+0	0	0x0006	0x00A5	0x0006	0x0085	Scene 27 scene27_console_13 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_13
+1	0	0x0006	0x00A6	0x0006	0x0085	Scene 27 scene27_console_13 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_13
+2	0	0x0006	0x00A7	0x0006	0x0085	Scene 27 scene27_console_13 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene27_console_13
+0	0	0x0006	0x00A5	0x0006	0x0085	Scene 28 scene28_console_01 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene28_console_01
+1	0	0x0006	0x00A6	0x0006	0x0085	Scene 28 scene28_console_01 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene28_console_01
+2	0	0x0006	0x00A7	0x0006	0x0085	Scene 28 scene28_console_01 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene28_console_01
+0	0	0x0006	0x00A5	0x0006	0x0085	Scene 28 scene28_console_02 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene28_console_02
+1	0	0x0006	0x00A6	0x0006	0x0085	Scene 28 scene28_console_02 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene28_console_02
+2	0	0x0006	0x00A7	0x0006	0x0085	Scene 28 scene28_console_02 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene28_console_02
+0	0	0x0006	0x00A5	0x0006	0x0085	Scene 28 scene28_console_03 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene28_console_03
+1	0	0x0006	0x00A6	0x0006	0x0085	Scene 28 scene28_console_03 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene28_console_03
+2	0	0x0006	0x00A7	0x0006	0x0085	Scene 28 scene28_console_03 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene28_console_03
+0	0	0x0025	0x00A5	0x0025	0x0085	Scene 28 scene28_console_04 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0025.	scene28_console_04
+1	0	0x0006	0x00A6	0x0006	0x0085	Scene 28 scene28_console_04 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene28_console_04
+2	0	0x0006	0x00A7	0x0006	0x0085	Scene 28 scene28_console_04 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene28_console_04
+0	0	0x0006	0x00A5	0x0006	0x0085	Scene 28 scene28_console_05 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene28_console_05
+1	0	0x0006	0x00A6	0x0006	0x0085	Scene 28 scene28_console_05 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene28_console_05
+2	0	0x0006	0x00A7	0x0006	0x0085	Scene 28 scene28_console_05 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0006.	scene28_console_05
+0	0	0x0025	0x00A5	0x0025	0x0085	Scene 28 scene28_console_06 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0025.	scene28_console_06
+1	0	0x002A	0x00A6	0x002A	0x0085	Scene 28 scene28_console_06 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x002A.	scene28_console_06
+2	0	0x0025	0x00A7	0x0025	0x0085	Scene 28 scene28_console_06 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0025.	scene28_console_06
+0	0	0x002A	0x00A5	0x002A	0x0085	Scene 28 scene28_console_07 monitor/lamp Plane-B tile 0x00A5; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x002A.	scene28_console_07
+1	0	0x0025	0x00A6	0x0025	0x0085	Scene 28 scene28_console_07 monitor/lamp Plane-B tile 0x00A6; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x0025.	scene28_console_07
+2	0	0x002A	0x00A7	0x002A	0x0085	Scene 28 scene28_console_07 monitor/lamp Plane-B tile 0x00A7; restore Plane B to transparent floor tile 0x0085 and retain Plane-A tile 0x002A.	scene28_console_07

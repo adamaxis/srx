@@ -1538,6 +1538,26 @@ def matching_source_tile_cells(
     ]
 
 
+def matching_source_layer_cells(
+    assets_root: Path,
+    scene_id: int,
+    source_kind: str,
+    tile_id: int,
+) -> list[tuple[int, int]]:
+    """Return cells with a named Plane A or Plane B source tile."""
+    if source_kind not in {"primary_plane", "secondary_plane"}:
+        return []
+    width, height, words = read_source_tile_grid(assets_root, scene_id)
+    if not words:
+        return []
+    layer_index = 0 if source_kind == "primary_plane" else 1
+    return [
+        (index % width, index // width)
+        for index, pair in enumerate(words)
+        if pair[layer_index] == tile_id
+    ]
+
+
 def part_source_path(assets_root: Path, source_kind: str, scene_id: int) -> Path:
     maps = assets_root / "field" / "maps"
     if source_kind == "map_composite":
@@ -1610,6 +1630,20 @@ def make_source_tile_difference_mask(
                 candidates = matching_source_tile_cells(
                     assets_root, part.source_scene, *background_pair
                 )
+                used_layer_fallback = False
+                if not candidates and part.source_kind in {
+                    "primary_plane", "secondary_plane"
+                }:
+                    used_layer_fallback = True
+                    layer_tile = (
+                        background_pair[0]
+                        if part.source_kind == "primary_plane"
+                        else background_pair[1]
+                    )
+                    candidates = matching_source_layer_cells(
+                        assets_root, part.source_scene,
+                        part.source_kind, layer_tile,
+                    )
                 if not candidates:
                     raise ValueError(
                         f"No source cell has background tile pair "
@@ -1619,6 +1653,16 @@ def make_source_tile_difference_mask(
                 donor = source.copy(QRect(
                     candidates[0][0] * 32, candidates[0][1] * 32, 32, 32
                 )).convertToFormat(QImage.Format.Format_RGBA8888)
+                if used_layer_fallback:
+                    for candidate_x, candidate_y in candidates[1:]:
+                        candidate = source.copy(QRect(
+                            candidate_x * 32, candidate_y * 32, 32, 32
+                        )).convertToFormat(QImage.Format.Format_RGBA8888)
+                        if candidate != donor:
+                            raise ValueError(
+                                f"Source layer tile {layer_tile:#06x} has "
+                                f"different pixels in scene {part.source_scene}"
+                            )
                 donor_cache[background_pair] = donor
             donor_color = donor.pixelColor(map_x % 32, map_y % 32)
             source_offset = map_y * source_stride + map_x * 4
@@ -2797,6 +2841,7 @@ class FieldMapView(QGraphicsView):
         self.mode = "select"
         self.map_info: MapInfo | None = None
         self.background_item: QGraphicsPixmapItem | None = None
+        self.secondary_item: QGraphicsPixmapItem | None = None
         self.priority_item: QGraphicsPixmapItem | None = None
         self.grid: GridOverlay | None = None
         self.collision_rectangles: list[MapEvidenceRegion] = []
@@ -2818,6 +2863,7 @@ class FieldMapView(QGraphicsView):
         self.show_behaviors = True
         self.show_priority = True
         self.map_art_layer = "composite"
+        self.layered_editable = False
         self.assets_root = DEFAULT_ASSETS
         self.repo_root = ROOT
         self.drag_start: QPointF | None = None
@@ -2854,14 +2900,21 @@ class FieldMapView(QGraphicsView):
         self.event_rectangles = read_event_rectangles(repo_root, info.scene_id)
         self.actor_positions = read_actor_positions(assets, info)
         self.profile_entry_positions = read_profile_entry_positions(assets, info)
+        self.layered_editable = (
+            self.map_art_layer == "editable"
+            and self._can_use_layered_editable(info, instances, entities)
+        )
         self.scene().clear()
         # QGraphicsScene.clear() deletes its items; discard the Python wrappers
         # before a redraw tries to remove overlays from the previous scene.
         self.behavior_items = []
         self.background_item = None
+        self.secondary_item = None
         self.priority_item = None
         base_path = info.asset
-        if (
+        if self.layered_editable and info.source_primary_plane_asset is not None:
+            base_path = info.source_primary_plane_asset
+        elif (
             self.map_art_layer == "primary"
             and info.source_primary_plane_asset is not None
             and info.source_primary_plane_asset.is_file()
@@ -2876,9 +2929,22 @@ class FieldMapView(QGraphicsView):
         elif self.map_art_layer not in {"composite", "editable"}:
             self.map_art_layer = "composite"
         base = QImage(str(base_path)).convertToFormat(QImage.Format.Format_ARGB32)
+        secondary = QImage()
+        if self.layered_editable and info.source_secondary_plane_asset is not None:
+            secondary = QImage(str(info.source_secondary_plane_asset)).convertToFormat(
+                QImage.Format.Format_ARGB32
+            )
+            if secondary.isNull() or secondary.size() != base.size():
+                self.layered_editable = False
+                base = QImage(str(info.asset)).convertToFormat(QImage.Format.Format_ARGB32)
+                secondary = QImage()
         self.background_item = self.scene().addPixmap(QPixmap.fromImage(base))
         self.background_item.setZValue(0)
         self.background_item.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+        if self.layered_editable:
+            self.secondary_item = self.scene().addPixmap(QPixmap.fromImage(secondary))
+            self.secondary_item.setZValue(2)
+            self.secondary_item.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
         # Keep ROM priority pixels as a real foreground layer. Compositing them
         # into the background made actor sprites appear over foreground art and
         # hid which image pixels belonged to the priority plane.
@@ -2908,6 +2974,35 @@ class FieldMapView(QGraphicsView):
         self.resetTransform()
         self.fitInView(self.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
 
+    @staticmethod
+    def _can_use_layered_editable(
+        info: MapInfo,
+        instances: list[EntityInstance],
+        entities: dict[str, EntityDefinition],
+    ) -> bool:
+        if (
+            info.source_primary_plane_asset is None
+            or not info.source_primary_plane_asset.is_file()
+            or info.source_secondary_plane_asset is None
+            or not info.source_secondary_plane_asset.is_file()
+        ):
+            return False
+        part_count = 0
+        layered_sources = {
+            "primary_plane", "secondary_plane", "priority_overlay"
+        }
+        for instance in instances:
+            entity = entities.get(instance.entity_id)
+            if entity is None:
+                continue
+            for part in entity.parts:
+                if part.source_instance_id and part.source_instance_id != instance.instance_id:
+                    continue
+                part_count += 1
+                if part.source_kind not in layered_sources:
+                    return False
+        return part_count > 0
+
     def set_map_art_layer(self, layer: str) -> None:
         if layer == self.map_art_layer or self.map_info is None:
             return
@@ -2929,14 +3024,17 @@ class FieldMapView(QGraphicsView):
         )
 
     def _rebuild_editable_backdrop(self) -> None:
-        """Restore authored source cells before detaching their named art."""
+        """Restore source cells before detaching their named art."""
         self.detachable_parts = set()
         if self.map_info is None or self.map_art_layer != "editable":
             return
 
-        base = QImage(str(self.map_info.asset)).convertToFormat(
-            QImage.Format.Format_ARGB32
+        base_path = (
+            self.map_info.source_primary_plane_asset
+            if self.layered_editable
+            else self.map_info.asset
         )
+        base = QImage(str(base_path)).convertToFormat(QImage.Format.Format_ARGB32)
         overlay_source = QImage()
         if self.map_info.priority_asset.is_file():
             overlay_source = QImage(str(self.map_info.priority_asset)).convertToFormat(
@@ -2952,6 +3050,24 @@ class FieldMapView(QGraphicsView):
             ).convertToFormat(QImage.Format.Format_ARGB32)
             if primary_plane.size() != base.size():
                 primary_plane = QImage()
+        secondary_source = QImage()
+        secondary_image = QImage()
+        if self.layered_editable and self.map_info.source_secondary_plane_asset is not None:
+            secondary_source = QImage(
+                str(self.map_info.source_secondary_plane_asset)
+            ).convertToFormat(QImage.Format.Format_ARGB32)
+            if secondary_source.size() == base.size():
+                secondary_image = secondary_source.copy()
+            else:
+                self.layered_editable = False
+                base = QImage(str(self.map_info.asset)).convertToFormat(
+                    QImage.Format.Format_ARGB32
+                )
+                if self.background_item is not None:
+                    self.background_item.setPixmap(QPixmap.fromImage(base))
+                if self.secondary_item is not None:
+                    self.scene().removeItem(self.secondary_item)
+                    self.secondary_item = None
 
         if base.isNull():
             return
@@ -2961,6 +3077,7 @@ class FieldMapView(QGraphicsView):
         )
         original_base = base.copy()
         donor_cache: dict[tuple[int, int], tuple[int, int, QImage]] = {}
+        layer_donor_cache: dict[tuple[str, int], QImage | None] = {}
         restored_by_instance: dict[str, set[tuple[int, int]]] = {}
 
         def donor_cell(pair: tuple[int, int]) -> tuple[int, int, QImage] | None:
@@ -2985,7 +3102,47 @@ class FieldMapView(QGraphicsView):
             donor_cache[pair] = result
             return result
 
+        def donor_layer_tile(source_kind: str, tile_id: int) -> QImage | None:
+            key = (source_kind, tile_id)
+            if key in layer_donor_cache:
+                return layer_donor_cache[key]
+            source_layer = (
+                primary_plane if source_kind == "primary_plane"
+                else secondary_source
+            )
+            if source_layer.isNull():
+                layer_donor_cache[key] = None
+                return None
+            candidates = matching_source_layer_cells(
+                self.assets_root, self.map_info.scene_id,
+                source_kind, tile_id,
+            )
+            if not candidates:
+                layer_donor_cache[key] = None
+                return None
+            first_x, first_y = candidates[0]
+            patch = source_layer.copy(QRect(first_x * 32, first_y * 32, 32, 32))
+            for candidate_x, candidate_y in candidates[1:]:
+                candidate = source_layer.copy(QRect(
+                    candidate_x * 32, candidate_y * 32, 32, 32
+                ))
+                if candidate != patch:
+                    layer_donor_cache[key] = None
+                    return None
+            layer_donor_cache[key] = patch
+            return patch
+
         base_painter = QPainter(base)
+        secondary_painter = (
+            QPainter(secondary_image) if not secondary_image.isNull() else None
+        )
+        if secondary_painter is not None:
+            # Plane B is sparse. SourceOver would leave the old nontransparent
+            # sprite pixels visible wherever a replacement floor tile is
+            # transparent, producing a ghost at the entity's original origin.
+            secondary_painter.setCompositionMode(
+                QPainter.CompositionMode.CompositionMode_Source
+            )
         for instance in self.instances:
             entity = self.entities.get(instance.entity_id)
             applicable_tiles = (
@@ -2997,7 +3154,7 @@ class FieldMapView(QGraphicsView):
                 continue
             origin_cell_x = int(instance.source_origin_x or 0) // 32
             origin_cell_y = int(instance.source_origin_y or 0) // 32
-            resolved: list[tuple[int, int, QImage]] = []
+            resolved: list[tuple[int, int, QImage, QImage | None]] = []
             valid = True
             for replacement in applicable_tiles:
                 cell_x = origin_cell_x + replacement.cell_dx
@@ -3013,27 +3170,53 @@ class FieldMapView(QGraphicsView):
                 ):
                     valid = False
                     break
-                background_secondary = (
-                    replacement.background_secondary
-                    if replacement.background_secondary >= 0
-                    else source_pair[1]
-                )
-                donor = donor_cell((
-                    replacement.background_primary,
-                    background_secondary,
-                ))
-                if donor is None:
-                    valid = False
-                    break
-                resolved.append((cell_x, cell_y, donor[2]))
+                if self.layered_editable:
+                    primary_donor = donor_layer_tile(
+                        "primary_plane", replacement.background_primary
+                    )
+                    if primary_donor is None:
+                        valid = False
+                        break
+                    secondary_donor = None
+                    if (
+                        replacement.background_secondary >= 0
+                        and replacement.background_secondary != source_pair[1]
+                    ):
+                        secondary_donor = donor_layer_tile(
+                            "secondary_plane", replacement.background_secondary
+                        )
+                        if secondary_donor is None:
+                            valid = False
+                            break
+                    resolved.append((cell_x, cell_y, primary_donor, secondary_donor))
+                else:
+                    background_secondary = (
+                        replacement.background_secondary
+                        if replacement.background_secondary >= 0
+                        else source_pair[1]
+                    )
+                    donor = donor_cell((
+                        replacement.background_primary,
+                        background_secondary,
+                    ))
+                    if donor is None:
+                        valid = False
+                        break
+                    resolved.append((cell_x, cell_y, donor[2], None))
             if not valid:
                 continue
             restored_cells: set[tuple[int, int]] = set()
-            for cell_x, cell_y, patch in resolved:
-                base_painter.drawImage(cell_x * 32, cell_y * 32, patch)
+            for cell_x, cell_y, primary_patch, secondary_patch in resolved:
+                base_painter.drawImage(cell_x * 32, cell_y * 32, primary_patch)
+                if secondary_patch is not None and secondary_painter is not None:
+                    secondary_painter.drawImage(
+                        cell_x * 32, cell_y * 32, secondary_patch
+                    )
                 restored_cells.add((cell_x, cell_y))
             restored_by_instance[instance.instance_id] = restored_cells
         base_painter.end()
+        if secondary_painter is not None:
+            secondary_painter.end()
 
         overlay_reference = (
             overlay_source.convertToFormat(QImage.Format.Format_RGBA8888)
@@ -3137,6 +3320,8 @@ class FieldMapView(QGraphicsView):
             overlay_painter.end()
         if self.background_item is not None:
             self.background_item.setPixmap(QPixmap.fromImage(base))
+        if self.secondary_item is not None and not secondary_image.isNull():
+            self.secondary_item.setPixmap(QPixmap.fromImage(secondary_image))
         if overlay.isNull():
             if self.priority_item is not None:
                 self.scene().removeItem(self.priority_item)
@@ -3597,7 +3782,17 @@ class FieldMapView(QGraphicsView):
                                 Qt.TransformationMode.FastTransformation
                             )
                             artwork.setData(1, "entity_art")
-                            if part.source_kind == "priority_overlay":
+                            if (
+                                self.layered_editable
+                                and part.source_kind == "primary_plane"
+                            ):
+                                artwork.setZValue(1)
+                            elif (
+                                self.layered_editable
+                                and part.source_kind == "secondary_plane"
+                            ):
+                                artwork.setZValue(3)
+                            elif part.source_kind == "priority_overlay":
                                 artwork.setZValue(8)
                             else:
                                 artwork.setZValue({
@@ -4036,7 +4231,7 @@ class MapEntityViewer(QMainWindow):
         self.info_tabs.addTab(self.scene_info, "Profile")
         self.info_tabs.addTab(self.character_info, "Characters")
         self.info_tabs.addTab(self.audio_info, "Audio")
-        self.info_tabs.addTab(self.activity_info, "Events")
+        self.info_tabs.addTab(self.activity_info, "Random events")
         self.info_tabs.setMinimumWidth(0)
         self.info_tabs.setMinimumHeight(400)
         layout.addWidget(self.info_tabs)
@@ -4390,11 +4585,24 @@ class MapEntityViewer(QMainWindow):
             1 for actor in self.map_view.actor_positions
             if actor.population_class == "world_activity"
         )
+        possible_encounter_types = {
+            (row.get("actor_name", "").strip(), row.get("sprite_stem", "").strip())
+            for row in self.dynamic_world_actor_rows
+            if as_int(row, "scene", -1) == self.scene_id
+        }
+        dynamic_event_rolls = {
+            row.get("random_sum", "").strip()
+            for row in self.field_activity_rows
+            if as_int(row, "scene", -1) == self.scene_id
+            and row.get("outcome_kind", "") == "dynamic_world_effect_sequence"
+        }
         self.statusBar().showMessage(
             f"Scene {self.scene_id:02d}: {info.width}×{info.height}; {len(self.instances)} annotations, {unreviewed} unreviewed. "
             f"{len(self.map_view.event_rectangles)} map events; "
             f"{default_actors} usual characters, {conditional_actors} conditional choices, "
-            f"{activity_actors} event-specific characters; "
+            f"{activity_actors} event-specific placements; "
+            f"{len(possible_encounter_types)} possible encounter types in "
+            f"{len(dynamic_event_rolls)} random-event outcomes; "
             f"{len(self.map_view.collision_rectangles)} movement regions."
         )
 
@@ -4737,13 +4945,14 @@ class MapEntityViewer(QMainWindow):
         if not dynamic_types:
             page.append(
                 "<p>No separate encounter character is listed for this map. "
-                "The Events tab shows the outcomes recorded for it.</p>"
+                "The Random events tab shows the outcomes recorded for it.</p>"
             )
         else:
             page.append(
-                "<p>The game can choose these characters during a map encounter. "
-                "Their position is chosen when the encounter starts, so no fixed map "
-                "position is shown.</p>"
+                "<p>The ROM chooses an open screen-edge position and checks terrain "
+                "when the event starts. These candidates have no fixed map coordinate, "
+                "so they are listed here with their source sprites instead of being "
+                "drawn as permanent map residents.</p>"
             )
             page.append('<table border="0" cellspacing="6" cellpadding="3">')
             for (actor_name, sprite_stem), roll_sums in sorted(dynamic_types.items()):
@@ -4764,7 +4973,7 @@ class MapEntityViewer(QMainWindow):
                 page.append(
                     "<tr><td width=56 valign=top>" + sprite + "</td><td>"
                     f"<b>{html.escape(actor_name)}</b><br>"
-                    f"Possible encounter outcomes: {html.escape(sums or 'see Events tab')}"
+                    f"Possible encounter outcomes: {html.escape(sums or 'see Random events tab')}"
                     "</td></tr>"
                 )
             page.append("</table>")
@@ -6109,7 +6318,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--inspect-tab",
-        choices=("Source", "What happens", "Profile", "Characters", "Audio", "Events"),
+        choices=("Source", "What happens", "Profile", "Characters", "Audio", "Random events"),
         help="select a right-dock evidence tab, useful with --snapshot",
     )
     parser.add_argument(

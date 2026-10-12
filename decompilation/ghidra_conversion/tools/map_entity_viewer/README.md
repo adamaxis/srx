@@ -22,13 +22,18 @@ record paths. These are source metatile indices, not semantic object labels.
 The **Map artwork** selector includes the full map, each source artwork plane,
 and **Editable objects**. The two planes are inspection views: ROM planes are
 not semantic object layers, and a building can use pixels from both planes and
-the priority overlay. Editable objects starts from the full image, removes the
-outlined pixels of placed entity parts from their source locations, and draws
-those named part images at their entity-local positions. Dragging an entity
-moves those pixels with its annotations; if the outline or part list is
-incomplete, unclassified pixels remain at their original location. A drag from
-the full-map view automatically switches to this editable view. This is an
-authoring preview, not a claim that every map object has already been classified.
+the priority overlay. When all placed parts use source-plane crops, Editable
+objects keeps Plane A, Plane B, and priority art separate. It restores the
+original Plane-A floor tiles, then draws named Plane-A parts, independent
+Plane-B art, and priority art in source order. This preserves a separate
+Plane-B object over a moved Plane-A shadow. Restoring a sparse Plane-B tile
+replaces transparent pixels too, so a moved sprite cannot remain as a ghost at
+its source position. Scenes with composite-source parts
+use the full image and can only detach parts whose source pixels match. Dragging
+an entity moves matched artwork with its annotations; incomplete outlines leave
+unclassified pixels in place. A drag from the full-map view automatically
+switches to this editable view. This is an authoring preview, not a claim that
+every map object has been classified.
 The area record keeps both the current placement and the original map position,
 so a saved move can still clear its old pixels after the viewer is reopened.
 Part images detach only when their visible source pixels match; mismatched parts
@@ -249,7 +254,7 @@ not that the ROM has no way into the map.
   Selecting a character shows its source list, position, facing, and route data.
 - **Characters** gives a per-scene census with the matching extracted sprite,
   map position, and a plain-language category for ordinary actors, conditional
-  alternatives, and event-only actors. The separate **Events** tab lists
+  alternatives, and event-only actors. The separate **Random events** tab lists
   the source event outcomes that can select temporary actors. A scene with no
   ordinary actor records stays explicitly empty; map artwork is never used to
   invent a person.
@@ -260,7 +265,7 @@ not that the ROM has no way into the map.
   field events can request sounds. Menu-mode music and effects are shown
   separately rather than assigned to maps without evidence. See
   `decompilation/docs/field-map-audio-profile.md` for the trace and limits.
-- **Events** lists the ROM's conditional random field-event outcomes for
+- **Random events** lists the ROM's conditional random field-event outcomes for
   every extracted map context. The source maps 56 scenes through the 16-group
   table at `0x3312`, then uses two bound-five random draws to select one of
   nine sums. The 246 enabled scene/sum cells select 26 unique ROM handlers;
@@ -278,8 +283,12 @@ interaction regions share one area origin. The outline and hit area follow
 each visual part independently, while collision and interaction rectangles
 remain separate layers. No bounding rectangle bridges empty space between
 parts. Click a part outline to inspect the entity and drag it to move the whole
-group. This edits placement metadata only; it does not erase, extract, or move
-pixels in the composed BMP.
+group. Switch to **Editable objects** to preview the move: the viewer restores
+the source Plane-A tiles, draws named parts at their new origin, and keeps
+Plane-B and priority art on their own layers. If a source part cannot be
+matched to its recorded pixels or tile row, it stays at the source position
+and the details panel reports it. The preview does not rewrite the extracted
+map BMP.
 Entity names remain in the inventory and appear on the map only for the
 selected object, so dense rooms do not get covered by overlapping labels.
 Unattached event callouts avoid other event rectangles and callouts; when a
@@ -510,23 +519,27 @@ separately. The map entities distinguish the bar assembly, booth, pool tables,
 lamp tables, square lamps, and east-wall fixtures across the composite and
 priority layers.
 
-Scenes 26 and 27 each have a source-backed `Console table` prop definition:
-seven placements in scene 26 and thirteen in scene 27. The scene-27 candidates
-are anchored by the repeated Plane-A words `0x0057/0x0058/0x0059`; their table
-body and priority equipment crops match the scene-26 source art. Each table's
-ground shadow is a separate, instance-scoped part, with the nearby 0x7E
-movement records kept independent. The scene-2 routes that select scene 26
-remain numeric resource-activity routes; the repeated console art does not
-identify a named building or establish an office interior. Scene 27's other
-furniture, partitions, elevator geometry, and entry context still need
-classification, so these table annotations do not mean either scene is fully
-profiled.
+Scenes 26, 27, and 28 each have a source-backed `Console table` prop
+definition: seven placements in scene 26, thirteen in scene 27, and seven in
+scene 28. The candidates are anchored by repeated Plane-A words
+`0x0057/0x0058/0x0059`; all 27 table-body and priority-equipment crops match
+the same source parts pixel for pixel. The 96x28 Plane-B monitor/lamp crop also
+matches the priority-plane equipment crop pixel for pixel at all 27 instances;
+the viewer keeps those as independent behind-actor and foreground parts. Each
+ground shadow is a separate, instance-scoped part. The Scene 28 editable
+preview restores Plane A and replaces sparse Plane-B cells, including their
+transparent pixels, while keeping separate Plane-B furniture under two
+overlapping shadows. Nearby 0x7E movement records remain independent. The
+scene-2 routes that select scene 26 remain numeric resource-activity routes;
+the repeated console art does not identify a named building or establish an
+office interior. Scene 27's furniture, partitions, elevator geometry, and
+entry context, and Scene 28's other room geometry, still need classification.
 
 When inspecting a route, use **What happens** for the location name, player
 flow, destination, dialogue pages, menu labels, shop contents, and known state
 conditions. **Source** retains ROM records, Lua module paths, and low-level
 cross-references. **Profile** lists ordinary scene actors and generic fallback
-arrival positions; **Events** lists conditional actor/event alternatives
+arrival positions; **Random events** lists conditional actor/event alternatives
 without converting them into permanent map scenery. **Audio**
 is present for every scene, but currently reports that no map-specific track
 has been confirmed rather than assigning a guessed song.
