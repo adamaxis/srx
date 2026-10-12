@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+puyallup_site_02_tarislar_garden_apartments	Tarislar Garden Apartments	building	Visual bounds traced from the extracted ROM scene-1 composite (mode-1.bmp) and its priority overlay. Mike's RPG Center Puyallup marker 2 supplies the displayed place name; it is a name crosswalk, not a ROM label. ROM scene-1 event record(s) 67 at 0x17D9A2. The interaction rectangles remain separate from the facade and concrete forecourt.	-	-	-

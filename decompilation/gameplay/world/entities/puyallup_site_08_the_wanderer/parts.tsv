@@ -1,0 +1,3 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+priority_overhang_1	priority_overlay	1	560	736	336	128	-208	-160	foreground	overhang	ROM priority-overlay pixels for the facade upper structure at scene-1 map pixels (560,736)..(896,864); clipped to this frontage.	field/entities/puyallup_site_08_the_wanderer/priority_overhang_1.png	-208,-160;128,-160;128,-32;-208,-32
+frontage_body_1	map_composite	1	560	864	336	64	-208	-32	behind_actor	body	ROM scene-1 composite frontage at map pixels (560,864)..(896,928); excludes the separately authored cracked-concrete forecourt.	field/entities/puyallup_site_08_the_wanderer/frontage_body_1.png	-208,-32;128,-32;128,32;-208,32

@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+puyallup_site_09_dr_bobs_quickstitch_forecourt	Dr. Bob's Quickstitch Clinic concrete forecourt	terrain_feature	Separate cracked-concrete ground region from the ROM scene-1 map composite at (1152,928) with size 352x64. Authored as a terrain entity independent of the adjacent building facade; the outline follows the visible paved landing; surface props and ROM collision remain separate evidence layers.	-	-	-

@@ -75,10 +75,14 @@ Camera setup remains a separate value and is not treated as a player spawn.
   its 13 ROM event records. The entity list includes the named storefronts,
   facility/perimeter, and southern shelters. Routes keep numeric destinations
   numeric when the ROM does not identify a place or interior.
-- Scene 1 has a route crosswalk for the twelve Puyallup guide sites and all
-  seventeen ROM event rectangles, including the four event-31 records whose
-  destination is still unresolved. These are location and route labels; scene 1
-  does not yet have authored building silhouettes.
+- Scene 1 has twelve named Puyallup site entities with their ROM doorway/event
+  rectangles attached. The facades, priority overhangs, and cracked-concrete
+  forecourts are separate named parts/entities; the unnamed west-central
+  frontage stays unnamed rather than inheriting a nearby shop's identity. The
+  seventeen-event crosswalk still keeps the four event-31 records unresolved.
+  Selecting a doorway or building shows its known route, branch, and available
+  Lua text keys; missing dialogue, menu, shop inventory, and interior links are
+  identified as unresolved instead of being inferred from the guide map.
 - **Map audio** is present, but map-scoped music remains unresolved until the
   ROM's scene-entry and persistent-audio paths are traced. Menu music is shown
   separately and is not assigned to a map without evidence.

@@ -1,0 +1,3 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+priority_overhang_1	priority_overlay	1	480	0	544	64	-256	-160	foreground	overhang	ROM priority-overlay pixels for the facade upper structure at scene-1 map pixels (480,0)..(1024,64); clipped to this frontage.	field/entities/puyallup_site_02_tarislar_garden_apartments/priority_overhang_1.png	-256,-160;288,-160;288,-96;-256,-96
+frontage_body_1	map_composite	1	480	64	544	128	-256	-96	behind_actor	body	ROM scene-1 composite frontage at map pixels (480,64)..(1024,192); excludes the separately authored cracked-concrete forecourt.	field/entities/puyallup_site_02_tarislar_garden_apartments/frontage_body_1.png	-256,-96;288,-96;288,32;-256,32

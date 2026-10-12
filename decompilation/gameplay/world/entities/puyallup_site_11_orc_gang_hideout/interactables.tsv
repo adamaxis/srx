@@ -1,0 +1,3 @@
+interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
+rom_event_76	0	0	32	32	building.resolve_field_location_route	ROM record 76 at 0x17D9FC	Exact 32x32 event cell from field-map-trigger-records.tsv. The viewer resolves this address through areas/scene-01-site-routes.tsv; route-table destination and any unresolved branch are displayed there.
+rom_event_77	128	0	32	32	building.resolve_field_location_route	ROM record 77 at 0x17DA06	Exact 32x32 event cell from field-map-trigger-records.tsv. The viewer resolves this address through areas/scene-01-site-routes.tsv; route-table destination and any unresolved branch are displayed there.
