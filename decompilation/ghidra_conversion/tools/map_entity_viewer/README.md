@@ -15,7 +15,8 @@ actor's ROM fixed-point coordinates are a separate representation.
 
 The BMP is already a composed map image. The priority overlay is a separate
 sparse image, and the viewer can draw the ROM collision rectangles and event
-triggers over it. Click an otherwise unmarked map cell to inspect its row-major
+triggers over it; `--show-collision` includes the terrain bounds in a saved
+viewer snapshot. Click an otherwise unmarked map cell to inspect its row-major
 primary/secondary ROM tilemap words, coordinates, dimensions, and extracted
 record paths. These are source metatile indices, not semantic object labels.
 Click a yellow trigger or a visible red collision rectangle to inspect its ROM
@@ -163,6 +164,16 @@ group. This edits placement metadata only; it does not erase, extract, or move
 pixels in the composed BMP.
 A separate image-composition/import step is still required before authored
 entity parts can replace pixels in a runtime map.
+
+The **Terrain / event bounds** layer describes movement and route behavior,
+not the visible identity of a wall, street, or building. It labels ROM
+interaction records with the profiled site name and destination where those
+are known, and distinguishes directional edges, object-bounds checks, the
+always-blocked `0x7E` marker, and the `0x7F` boundary/event handoff. Raw values
+and source record offsets remain available in the details. Visible map
+features still require their own reviewed entity part; a collision rectangle
+does not tell the viewer whether the pixels are pavement, a wall, or a shadow.
+See `decompilation/docs/field-map-geometry-classification.md` for the ROM trace.
 
 Select an entity and use **Add collision** to draw an entity-local rectangle.
 It appears as a green dash-dot outline and moves with the grouped entity

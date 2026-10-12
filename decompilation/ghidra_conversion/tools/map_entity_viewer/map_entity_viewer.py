@@ -1746,32 +1746,155 @@ def read_profile_entry_positions(
     return result
 
 
-def read_collision_rectangles(asset_root: Path, scene_id: int) -> list[MapEvidenceRegion]:
+def terrain_collision_meaning(value: int) -> tuple[str, str]:
+    """Describe the source collision class without using its code as its name."""
+    if value == 0x7F:
+        return (
+            "Blocked boundary / special event",
+            "The source sampler returns blocked value 0x7F; the movement "
+            "dispatcher uses its low five bits for the event-31 continuation.",
+        )
+    if value == 0x7E:
+        return (
+            "Always-blocked terrain edge",
+            "The source terrain probe treats 0x7E as blocked before checking "
+            "the directional edge relation.",
+        )
+    if value & 0x80:
+        return (
+            "Map interaction area",
+            f"The high-bit terrain value selects map event {value & 0x1F:02d} "
+            "through the field interaction dispatcher.",
+        )
+    if value & 0x40:
+        return (
+            "Directional terrain edge",
+            "The source movement probe checks the actor's point against one of "
+            "four directional edge profiles selected by this terrain value.",
+        )
+    if value & 0x20:
+        return (
+            "Directional terrain boundary",
+            "The source movement probe applies a directional boundary check "
+            "to this terrain value.",
+        )
+    if 0 < value < 0x20:
+        return (
+            "Object-bounds collision area",
+            "The source terrain check resolves this value to a record in the "
+            "terrain collision list, then tests the actor against that record's "
+            "bounds. This value does not identify the visible art by itself.",
+        )
+    return (
+        "Terrain collision area",
+        "The current source trace does not assign a more specific visual or "
+        "movement label to this value.",
+    )
+
+
+def read_collision_rectangles(
+    repo_root: Path, asset_root: Path, scene_id: int
+) -> list[MapEvidenceRegion]:
     path = asset_root / "records" / "field" / "scenes" / f"scene-{scene_id:02d}" / "terrain-collision-rectangles.bin"
     if not path.is_file():
         return []
     data = path.read_bytes()
     if len(data) % 10:
         return []
+    trigger_path = repo_root / "decompilation" / "docs" / "field-map-trigger-records.tsv"
+    _, trigger_rows = read_tsv(trigger_path)
+    triggers_by_record = {
+        as_int(row, "record_index_zero_based"): row
+        for row in trigger_rows
+        if as_int(row, "scene_id", -1) == scene_id
+    }
+    site_routes = read_site_route_index(repo_root, scene_id)
     result: list[MapEvidenceRegion] = []
     for record_index, offset in enumerate(range(0, len(data), 10)):
         words = [int.from_bytes(data[offset + i:offset + i + 2], "big") for i in range(0, 10, 2)]
         x0, x1, y0, y1, code = words
-        if x1 >= x0 and y1 >= y0:
-            width, height = x1 - x0 + 1, y1 - y0 + 1
+        if all(0 <= bound <= 0xFFFF for bound in (x0, x1, y0, y1)):
+            raw_x0, raw_y0 = x0, y0
+            # ROM 0xEE10 rasterizes 32-unit cells. Its do-while loops paint
+            # the start cell before checking the inclusive end, even when an
+            # endpoint is reversed. Coordinates are snapped to the cell grid.
+            cell_x = x0 & 0xFFE0
+            cell_y = y0 & 0xFFE0
+            columns = 1 + (x1 - x0) // 0x20 if x1 >= x0 else 1
+            rows = 1 + (y1 - y0) // 0x20 if y1 >= y0 else 1
+            width = columns * 0x20
+            height = rows * 0x20
+            x0, y0 = cell_x, cell_y
+            meaning, explanation = terrain_collision_meaning(code)
+            trigger = triggers_by_record.get(record_index, {})
+            record_address = trigger.get("record_address", "")
+            site = site_routes.get(record_address.strip().upper(), {})
+            site_name = site.get("site_name", "").strip()
+            title = meaning
+            if code & 0x80:
+                name_status = site.get("crosswalk_status", "unresolved")
+                if site_name and name_status == "rom_guide_corroborated":
+                    title = f"{site_name} interaction area"
+                elif site_name and name_status == "guide_name_crosswalk":
+                    title = f"Guide map label: {site_name}"
+                elif site_name and name_status == "nearby_candidate":
+                    title = f"Nearby candidate: {site_name}"
+                target = (
+                    site.get("player_destination", "").strip()
+                    or site.get("rom_destination", "").strip()
+                    or trigger.get("event_table_target_class", "")
+                )
+                if site:
+                    destination = describe_site_destination(target, scene_id)
+                else:
+                    destination = describe_event_table_target(target)
+                if site_name and name_status != "unresolved":
+                    explanation += f" Location: {site_name}."
+                    explanation += (
+                        " Name evidence: "
+                        + describe_site_crosswalk(name_status) + "."
+                    )
+                explanation += f" Result: {destination}."
+                player_summary = site.get("player_summary", "").strip()
+                if site:
+                    action_summary = (
+                        player_summary
+                        or describe_site_behavior(site.get("rom_route", ""))
+                    )
+                    if action_summary:
+                        explanation += f" What happens: {action_summary}"
+                elif trigger:
+                    explanation += (
+                        " Action: " + describe_trigger_action(
+                            trigger.get("event_table_route_or_bypass", "")
+                        ) + "."
+                    )
+                conditions = describe_site_conditions(site)
+                if conditions:
+                    explanation += f" Story conditions: {conditions}"
+            if code == 0x7F:
+                record_address = "special event-31 continuation"
             result.append(MapEvidenceRegion(
                 kind="rom_collision",
                 x=x0,
                 y=y0,
                 width=width,
                 height=height,
-                title=f"ROM terrain collision 0x{code:04X}",
+                title=title,
                 details=(
-                    f"ROM terrain collision\nScene: {scene_id:02d}\n"
+                    f"{meaning}\nScene: {scene_id:02d}\n"
+                    f"Behavior: {explanation}\n"
                     f"Rectangle: {x0},{y0} {width}×{height}\n"
-                    f"Raw bounds: X {x0:04X}..{x1:04X}, Y {y0:04X}..{y1:04X}\n"
+                    f"Raw bounds: X {raw_x0:04X}..{x1:04X}, Y {raw_y0:04X}..{y1:04X}\n"
+                    f"Rasterized terrain cells: X {x0 // 0x20}..{(x0 + width - 1) // 0x20}, "
+                    f"Y {y0 // 0x20}..{(y0 + height - 1) // 0x20}\n"
+                    "ROM 0xEE10 paints the start cell before checking the end, "
+                    "so a reversed endpoint still paints one cell on that axis.\n"
                     f"Collision value: 0x{code:04X}\n"
-                    f"Record: {record_index} (file offset 0x{offset:04X})\n"
+                    f"Source collision record: {record_index} (file offset 0x{offset:04X})\n"
+                    f"ROM event record: {record_address or '(not an interaction record)'}\n"
+                    "Source behavior: terrain probe 0xE7C8; object bounds "
+                    "0xE9EE; directional edge 0xEAD2; map event dispatcher 0xB7B8.\n"
                     f"Source: {path}"
                 ),
             ))
@@ -2625,7 +2748,9 @@ class FieldMapView(QGraphicsView):
         self.instances = instances
         self.entities = entities
         self.behaviors = behaviors
-        self.collision_rectangles = read_collision_rectangles(assets, info.scene_id)
+        self.collision_rectangles = read_collision_rectangles(
+            repo_root, assets, info.scene_id
+        )
         self.event_rectangles = read_event_rectangles(repo_root, info.scene_id)
         self.actor_positions = read_actor_positions(assets, info)
         self.profile_entry_positions = read_profile_entry_positions(assets, info)
@@ -3415,7 +3540,7 @@ class MapEntityViewer(QMainWindow):
         bar.addWidget(scene_label)
         self.priority_toggle = self._add_toggle(bar, "Priority pixels", True)
         self.grid_toggle = self._add_toggle(bar, "32 px grid", True)
-        self.collision_toggle = self._add_toggle(bar, "Collision boxes", False)
+        self.collision_toggle = self._add_toggle(bar, "Terrain / event bounds", False)
         self.event_toggle = self._add_toggle(bar, "Map interactions", True)
         self.actor_toggle = self._add_toggle(bar, "Characters", True)
         self.actor_route_toggle = self._add_toggle(bar, "Character paths", False)
@@ -4948,6 +5073,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--scene", type=int, default=2, help="scene/mode id to open")
     parser.add_argument("--snapshot", type=Path, help="render the viewer window to an image and exit (for headless inspection)")
     parser.add_argument(
+        "--show-collision",
+        action="store_true",
+        help="show ROM terrain and event bounds in a snapshot",
+    )
+    parser.add_argument(
         "--show-actor-routes",
         action="store_true",
         help="show ROM default-actor waypoint lines (useful with --snapshot)",
@@ -4988,10 +5118,11 @@ def main(argv: list[str] | None = None) -> int:
         QFontDatabase.addApplicationFont(str(windows_font))
     app.setFont(QFont("Arial", 9))
     viewer = MapEntityViewer(args.assets, args.world, args.scene)
-    if args.show_actor_routes or args.show_world_activity:
+    if args.show_actor_routes or args.show_world_activity or args.show_collision:
         viewer.map_view.show_actor_routes = args.show_actor_routes
         viewer.map_view.show_world_activity = args.show_world_activity
         viewer.map_view.world_activity_group = args.activity_list
+        viewer.map_view.show_collision = args.show_collision
         viewer.map_view.draw_evidence_overlays()
     if args.inspect_rom_event:
         address = args.inspect_rom_event.strip().lower()
