@@ -204,6 +204,17 @@ Facility; this trace does not yet establish names for the remaining scene
 IDs. The three entries are present in the ROM event-cell tables, and the
 branch behavior comes from their linked handlers and dialogue records.
 
+**Renraku team/security prompts (`0x210CC`, `0x210E4`, scenes 35-40).** The
+team prompt is selected at sum `1`; MORE command `0xE2` calls `0x24918`, which
+attempts the list at `0x1D6FD0` (two Strike Team templates at `0x1D6AFA`),
+starts the world-effect transition, and returns response data at `0x12156C`.
+The security prompt is selected at sum `4`; MORE command `0xE3` calls
+`0x24936`, which attempts one corporate guard from `0x1D705C`, starts the same
+transition, and returns that same `0x12156C` data. The shared response begins
+“There he is, that's Joshua!! Open fire!” and then contains the Renraku
+Security line and another `0xE3` continuation. This ROM data is cross-linked;
+the exact end of the repeated/shared dialogue and combat exit remain partial.
+
 **Urban disturbance / Renraku (`0x20EFA`, scenes 0-3 and 5).** MORE command
 `0x93` reaches `0x2333A`. If `FFFBFB <= 1` or bit 8 of `FFFC22` is set, the
 ROM chooses one resource bundle from the 20-entry table at `0x12D09C` and
