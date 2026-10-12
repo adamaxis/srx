@@ -510,6 +510,18 @@ separately. The map entities distinguish the bar assembly, booth, pool tables,
 lamp tables, square lamps, and east-wall fixtures across the composite and
 priority layers.
 
+Scenes 26 and 27 each have a source-backed `Console table` prop definition:
+seven placements in scene 26 and thirteen in scene 27. The scene-27 candidates
+are anchored by the repeated Plane-A words `0x0057/0x0058/0x0059`; their table
+body and priority equipment crops match the scene-26 source art. Each table's
+ground shadow is a separate, instance-scoped part, with the nearby 0x7E
+movement records kept independent. The scene-2 routes that select scene 26
+remain numeric resource-activity routes; the repeated console art does not
+identify a named building or establish an office interior. Scene 27's other
+furniture, partitions, elevator geometry, and entry context still need
+classification, so these table annotations do not mean either scene is fully
+profiled.
+
 When inspecting a route, use **What happens** for the location name, player
 flow, destination, dialogue pages, menu labels, shop contents, and known state
 conditions. **Source** retains ROM records, Lua module paths, and low-level
