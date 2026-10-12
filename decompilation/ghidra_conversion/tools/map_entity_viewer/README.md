@@ -179,6 +179,16 @@ value and is not treated as a player spawn.
   the route and collision layers remain independent. **Map profile** presents
   route records in marker order and keeps guide descriptions distinct from
   numeric ROM destinations.
+- Scene 9 is Wilderness Area 4 by full-map visual cross-check. Its guide
+  marker 3 aligns with the Sinsearach village gate; markers 1, 2, and 4 align
+  with three cave-route rectangles. All four event-table rows select shared
+  field scene 13. The next scene-selection step checks FFFC1E bit 19 and, when
+  set, compares runner marker 7 before choosing either the field scene or a
+  separate world script. The flag's story meaning and that script's dialogue
+  remain unresolved. The gate's feathered monument and two fence panels are
+  separate visual parts; its open passage stays clear. Two timber bridges are
+  grouped scenery entities. The default actor list is empty, so map artwork is
+  not promoted to residents.
 - The source actor layer is data-driven across the extracted map catalog: the
   viewer uses each ROM record's actor type and sprite art, shows default scene
   records separately from conditional choices, and keeps special event lists

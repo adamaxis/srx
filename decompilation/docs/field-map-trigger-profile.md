@@ -354,6 +354,21 @@ interaction is inferred from these static images. See
 `gameplay/world/areas/scene-08-site-routes.tsv`, and
 `gameplay/world/areas/scene-08.tsv` for the route and entity placements.
 
+The [Wilderness Area 4 guide](https://mikesrpgcenter.com/shadowrun/maps/wild4.html)
+matches the extracted Scene 9 map. Event 0 at `0x1B578E` crosses the open
+village gate aligned with guide marker 3, Sinsearach. Events 8, 9, and 10
+(`0x1B5798`, `0x1B57A2`, `0x1B57AC`) align with guide markers 4, 1, and 2.
+The four table bytes at `0x1B4E76` select field scene 13. The subsequent
+`0x167AE` selector returns before choosing a path when FFFC1E bit 19 is clear;
+when set, scene-index 3 resolves runner value 6 and compares marker 7 against
+the primary and secondary runner markers. A match retains field scene 13;
+otherwise the script pointer at `0x1706C` is selected. This source trace does
+not establish the flag's narrative meaning, script dialogue, or a distinct
+cave interior. Scene 9's default actor list is empty. The feathered gate
+monument, fence panels, and two visually matching timber bridges are authored
+as scenery entities in `gameplay/world/areas/scene-09.tsv`; static rocks and
+trees are not classified as people.
+
 ## Converted code and runtime wiring
 
 | ROM/source operation | Converted C++ function or runtime owner |
