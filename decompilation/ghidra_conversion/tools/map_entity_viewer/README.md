@@ -273,6 +273,13 @@ Each entity has its own folder under `entities/<entity-id>/`:
   New regions remain `unreviewed` until supported by ROM evidence or an
   explicit new-content decision.
 
+Selecting an authored building or object opens **What happens** automatically.
+The panel presents the linked location name, interaction behavior, destination,
+known speaker/dialogue, menu choices, shop catalog, and conditions. Clicking a
+ROM doorway/event rectangle also opens this panel for that exact record.
+Unlinked material stays marked unresolved; ROM addresses and internal handler
+names remain in **Source**.
+
 Area-level ROM actor origins are not scenery entities. The viewer reads
 `field/entities/default-actors.tsv`, the 56-row
 `field/entities/default-actor-lists.tsv` source census, and the ROM-imported

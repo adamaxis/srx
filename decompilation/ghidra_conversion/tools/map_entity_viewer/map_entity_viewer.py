@@ -4775,6 +4775,12 @@ class MapEntityViewer(QMainWindow):
         self.entity_list.setCurrentItem(selected_row)
         self.entity_list.blockSignals(False)
         self._show_properties(instance)
+        if instance is not None:
+            # Entity selection is an exploration action: show linked dialogue,
+            # destination, choices, and shop information rather than leaving
+            # the user on an unrelated map or source tab.
+            self.info_tabs.setCurrentWidget(self.flow_info)
+            self.right_scroll.ensureWidgetVisible(self.flow_info, 0, 0)
 
     def show_behavior(self, record: MapBehaviorRecord) -> None:
         self.selected_evidence = None
