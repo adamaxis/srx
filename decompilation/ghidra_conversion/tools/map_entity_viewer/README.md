@@ -95,7 +95,12 @@ not that the ROM has no way into the map.
 - Scene 2 currently has 22 authored visual entities and a route crosswalk for
   its 13 ROM event records. The entity list includes the named storefronts,
   facility/perimeter, and southern shelters. Routes keep numeric destinations
-  numeric when the ROM does not identify a place or interior.
+  numeric when the ROM does not identify a place or interior. Selecting the
+  Rat's Nest record shows the existing three-page Vigore-search narrative,
+  its pending/not-consumed condition, Landmark Map and Karma result, and the
+  ordinary resource-activity fallback. The dialogue choice that sets the
+  prerequisite remains unconnected, and this event does not prove a separate
+  Rat's Nest interior.
 - Scene 0 has a crosswalk for all 21 ROM event rectangles, including ten
   guide-named sites, both labeled map edges, and four direct event-31 handlers.
   A local event-table result of scene 0 is kept distinct from the guide's
@@ -195,6 +200,11 @@ not that the ROM has no way into the map.
   separate visual parts; its open passage stays clear. Two timber bridges are
   grouped scenery entities. The default actor list is empty, so map artwork is
   not promoted to residents.
+- ROM event-29 floor selectors show the child-scene list extracted from the
+  scene profiles, the Up/Down highlight behavior, A-button confirmation, and
+  the separate Start exit. The panel keeps the lift landing distinct from a
+  map's generic spawn and ordinary building entrance. These are numeric scene
+  groups; the ROM evidence does not name the building.
 - The source actor layer is data-driven across the extracted map catalog: the
   viewer uses each ROM record's actor type and sprite art, shows default scene
   records separately from conditional choices, and keeps special event lists

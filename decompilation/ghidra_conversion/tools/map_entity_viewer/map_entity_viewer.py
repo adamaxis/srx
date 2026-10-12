@@ -1902,6 +1902,26 @@ def describe_site_conditions(site: dict[str, str]) -> str:
     return descriptions.get(route, "")
 
 
+def read_elevator_scene_group(asset_root: Path, scene_id: int) -> list[int]:
+    """Read the offline ROM-derived child-map list for one elevator trigger."""
+    path = asset_root / "records" / "field" / "elevator-scene-groups.bin"
+    try:
+        data = path.read_bytes()
+    except OSError:
+        return []
+    record_size = 6  # one count byte and five scene-reference bytes
+    offset = scene_id * record_size
+    if scene_id < 0 or offset + record_size > len(data):
+        return []
+    count = data[offset]
+    if count > record_size - 1:
+        return []
+    group = list(data[offset + 1:offset + 1 + count])
+    if any(scene >= 56 for scene in group) or len(set(group)) != len(group):
+        return []
+    return group
+
+
 def describe_trigger_action(route: str) -> str:
     """Describe how the ROM reaches a route-table row or direct handler."""
     value = route.strip().lower()
@@ -2012,11 +2032,17 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
             if site:
                 marker = site.get("guide_marker", "").strip()
                 if site_name:
+                    name_status = (
+                        site.get("crosswalk_status", "unresolved").strip()
+                        or "unresolved"
+                    )
                     match = describe_site_crosswalk(
-                        site.get("crosswalk_status", "unresolved")
+                        name_status
                     )
                     crosswalk = f"Guide marker {marker}: {match}" if marker else match
-                    confidence_prefix = "" if match == "rom_guide_corroborated" else "? "
+                    confidence_prefix = (
+                        "" if name_status == "rom_guide_corroborated" else "? "
+                    )
                     map_label = f"{confidence_prefix}{marker + ': ' if marker else ''}{site_name}"
                     details.extend((
                         f"Name evidence: {crosswalk}; {site.get('evidence', '').strip() or '(not recorded)' }",
@@ -2089,6 +2115,44 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
                 ))
                 if not site_name:
                     title = f"Map interaction: {destination}"
+            if dispatcher == "floor_selector":
+                group = read_elevator_scene_group(
+                    repo_root / "decompilation" / "assets", scene_id
+                )
+                stops = ", ".join(f"Scene {stop:02d}" for stop in group)
+                if group:
+                    current_stop = (
+                        f"Scene {scene_id:02d} is one of these floors."
+                        if scene_id in group else
+                        "This trigger map is outside the listed floor group; "
+                        "the source uses its first-floor fallback."
+                    )
+                else:
+                    current_stop = "The extracted floor list is unavailable."
+                title = "Elevator floor selector"
+                map_label = "Elevator floor selector"
+                details.extend((
+                    "Source action: elevator floor selector.",
+                    f"Available scene stops: {stops or '(not extracted)' }.",
+                    "ROM profile: docs/visual-audits/field-elevator-selector.md",
+                ))
+                route_lines = [
+                    "Location: Elevator floor selector",
+                    "Up and Down move the highlighted floor only. A confirms "
+                    "the selection and starts travel when it differs from the "
+                    "current floor; Start leaves without changing floors.",
+                    f"Available stops: {stops or '(floor list unavailable)' }.",
+                    current_stop,
+                    "After travel, the destination map places the runner at its "
+                    "lift landing. The map's generic spawn and ordinary entry "
+                    "route are separate.",
+                    "Selecting another floor plays the elevator navigation "
+                    "sound. The decoded host sample is 2.134 seconds including "
+                    "its release tail; exact Genesis playback duration has not "
+                    "been captured on this route.",
+                    "The ROM supplies numeric scene IDs here; the building's "
+                    "name and ordinary doorway location are not established.",
+                ]
             result.append(MapEvidenceRegion(
                 kind="rom_event",
                 x=x0,
