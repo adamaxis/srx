@@ -1,0 +1,4 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+back_shelving	map_composite	10	192	16	128	48	64	16	behind_actor	body	Upper display and shelving visible on the north wall; outline follows the wall-mounted fixtures as one built-in section.	field/entities/restaurant_backbar/back_shelving.png	64,16;192,16;192,64;64,64
+counter_front	map_composite	10	160	72	160	32	32	72	behind_actor	body	Long counter front and rail; this crop excludes the adjacent floor and the potted palm at the east end.	field/entities/restaurant_backbar/counter_front.png	32,72;192,72;192,104;32,104
+central_support	map_composite	10	128	16	40	88	0	16	behind_actor	body	Tall red-and-gray support at the west end of the service counter, traced around its visible silhouette.	field/entities/restaurant_backbar/central_support.png	0,16;40,16;40,80;32,88;8,88;0,80

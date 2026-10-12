@@ -200,6 +200,16 @@ not that the ROM has no way into the map.
   separate visual parts; its open passage stays clear. Two timber bridges are
   grouped scenery entities. The default actor list is empty, so map artwork is
   not promoted to residents.
+- Scene 10 is labeled as the Friendship Restaurant route map because Council
+  Island's guide marker 2 and Scene 4 event 1 identify that route. Scene 3 also
+  yields numeric Scene 10 from an east-edge event, but that route's context is
+  unresolved, so the label is not treated as a universal map identity. The
+  editor separates the northwest doorway surround, back-bar/counter, seven
+  potted palms, and five table fixtures. Each palm and table uses separate
+  background and ROM-priority foreground parts. Its default actor list is
+  empty; Walking Bear is guide-associated, but no static ROM actor placement
+  or first-contact dialogue is added. The northwest event-30 continuation
+  remains unresolved, as do the destinations of the two south-edge exits.
 - ROM event-29 floor selectors show the child-scene list extracted from the
   scene profiles, the Up/Down highlight behavior, A-button confirmation, and
   the separate Start exit. The panel keeps the lift landing distinct from a
@@ -238,6 +248,11 @@ remain separate layers. No bounding rectangle bridges empty space between
 parts. Click a part outline to inspect the entity and drag it to move the whole
 group. This edits placement metadata only; it does not erase, extract, or move
 pixels in the composed BMP.
+Entity names remain in the inventory and appear on the map only for the
+selected object, so dense rooms do not get covered by overlapping labels.
+Unattached event callouts avoid other event rectangles and callouts; when a
+clear position is unavailable, the event remains clickable and its name stays
+in the right-hand details panel.
 A separate image-composition/import step is still required before authored
 entity parts can replace pixels in a runtime map.
 

@@ -1,0 +1,2 @@
+interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
+rom_event_30	0	8	32	32		event_30	Exact ROM event-30 rectangle at scene-10 record 11, 0x1D618C. The scene-specific direct continuation has not been identified; no dialogue, menu, or destination is assigned.

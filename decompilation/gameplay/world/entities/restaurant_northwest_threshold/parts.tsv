@@ -1,0 +1,4 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+arch_lintel	map_composite	10	0	24	64	16	0	0	behind_actor	body	Top brick and stone course of the northwest wall opening; the dark doorway aperture is excluded.	field/entities/restaurant_northwest_threshold/arch_lintel.png	0,0;64,0;64,16;0,16
+west_jamb	map_composite	10	0	40	12	32	0	16	behind_actor	body	Left brick jamb clipped at the west map edge; follows the visible masonry and excludes the dark doorway aperture.	field/entities/restaurant_northwest_threshold/west_jamb.png	0,16;12,16;12,48;0,48
+east_jamb	map_composite	10	48	40	16	32	48	16	behind_actor	body	Right brick jamb and trim of the northwest wall opening.	field/entities/restaurant_northwest_threshold/east_jamb.png	48,16;64,16;64,48;48,48

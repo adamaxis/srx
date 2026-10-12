@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+restaurant_northwest_threshold	Northwest wall opening	structure	Scene 10 composite art shows a brick arch at map cells (0,1)-(1,2). ROM event record 11 at 0x1D618C occupies cell (0,1) and starts direct continuation 0x20990; the scene-specific result remains unresolved.	-	-	-

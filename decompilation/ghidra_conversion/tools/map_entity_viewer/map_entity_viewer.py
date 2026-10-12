@@ -881,6 +881,8 @@ class MapEvidenceRegion:
     conditional: bool = False
     route_details: str = ""
     map_label: str = ""
+    source_record_address: str = ""
+    event_id: str = ""
     path_points: tuple[tuple[int, int], ...] = ()
     population_class: str = "default"
     activity_group: str = ""
@@ -1948,6 +1950,7 @@ def describe_trigger_action(route: str) -> str:
 def describe_site_crosswalk(status: str) -> str:
     return {
         "rom_guide_corroborated": "ROM text and the guide map support this name",
+        "rom_event_profiled": "map art and the ROM event position support this location label; the destination remains unresolved",
         "guide_name_crosswalk": "name comes from the guide map; the ROM uses a numeric event",
         "nearby_candidate": "nearby guide marker; exact match is tentative",
         "unresolved": "place name not established",
@@ -2041,7 +2044,9 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
                     )
                     crosswalk = f"Guide marker {marker}: {match}" if marker else match
                     confidence_prefix = (
-                        "" if name_status == "rom_guide_corroborated" else "? "
+                        "" if name_status in {
+                            "rom_guide_corroborated", "rom_event_profiled",
+                        } else "? "
                     )
                     map_label = f"{confidence_prefix}{marker + ': ' if marker else ''}{site_name}"
                     details.extend((
@@ -2163,6 +2168,8 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
                 details="\n".join(details),
                 route_details="\n".join(route_lines),
                 map_label=map_label,
+                source_record_address=str(record_address),
+                event_id=str(event_id),
             ))
     return result
 
@@ -2539,6 +2546,7 @@ class FieldMapView(QGraphicsView):
         self.behaviors: list[MapBehaviorRecord] = []
         self.instances: list[EntityInstance] = []
         self.entities: dict[str, EntityDefinition] = {}
+        self.selected_instance_id: str | None = None
         self.show_grid = True
         self.show_collision = False
         self.show_events = True
@@ -2577,6 +2585,7 @@ class FieldMapView(QGraphicsView):
         self.instances = instances
         self.entities = entities
         self.behaviors = behaviors
+        self.selected_instance_id: str | None = None
         self.collision_rectangles = read_collision_rectangles(
             repo_root, assets, info.scene_id
         )
@@ -2722,13 +2731,31 @@ class FieldMapView(QGraphicsView):
                 self.evidence_items.append(rect)
         if self.show_events:
             attached_source_events = {
-                interaction.source_event.strip().lower()
+                address.lower()
                 for instance in self.instances
                 for entity in (self.entities.get(instance.entity_id),)
                 if entity is not None
                 for interaction in entity.interactables
-                if interaction.source_event.strip()
+                for source_text in (
+                    interaction.source_event,
+                    interaction.evidence,
+                )
+                for address in re.findall(
+                    r"\b0x[0-9a-f]{4,8}\b", source_text, re.IGNORECASE
+                )
             }
+            event_label_rects: list[QRectF] = []
+            event_rects = [
+                QRectF(region.x, region.y, region.width, region.height)
+                for region in self.event_rectangles
+            ]
+            map_bounds = QRectF(
+                0, 0, self.map_info.width, self.map_info.height
+            )
+            actor_marker_rects = [
+                QRectF(region.x, region.y, region.width, region.height)
+                for region in (*self.profile_entry_positions, *self.actor_positions)
+            ]
             for index, region in enumerate(self.event_rectangles):
                 rect = self.scene().addRect(
                     QRectF(region.x, region.y, region.width, region.height),
@@ -2741,39 +2768,79 @@ class FieldMapView(QGraphicsView):
                 rect.setData(2, index)
                 rect.setToolTip(region.title)
                 self.evidence_items.append(rect)
-                source_event_match = re.search(
-                    r"\b0x[0-9a-f]{6}\b", region.details, re.IGNORECASE
-                )
-                source_event = source_event_match.group(0).lower() if source_event_match else ""
                 # Named map entities carry the public-facing label for their
                 # entrance. Drawing the same site name on the ROM trigger too
                 # creates overlapping, noisy UI. Keep the trigger rectangle
                 # selectable and show its source details when selected.
                 show_event_label = (
-                    region.map_label and source_event not in attached_source_events
+                    region.map_label and
+                    event_rects[index].intersects(map_bounds) and
+                    region.source_record_address.lower() not in attached_source_events
                 )
                 if show_event_label:
                     label = self.scene().addText(region.map_label)
                     label.setDefaultTextColor(QColor(255, 224, 158, 255))
                     label.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
-                    label.setTextWidth(184)
+                    max_label_width = min(180, max(64, self.map_info.width - 8))
+                    if label.document().idealWidth() > max_label_width:
+                        label.setTextWidth(max_label_width)
                     label_rect = label.boundingRect().adjusted(-3, -2, 3, 2)
-                    label_x = min(
-                        max(2, region.x + region.width + 4),
-                        max(2, self.map_info.width - label_rect.width() - 2),
+                    marker = event_rects[index]
+                    x_right = marker.right() + 4
+                    x_left = marker.left() - label_rect.width() - 4
+                    y_above = marker.top() - label_rect.height() - 4
+                    y_below = marker.bottom() + 4
+                    x_center = marker.center().x() - label_rect.width() / 2
+                    candidates = (
+                        (x_right, marker.top()),
+                        (x_left, marker.top()),
+                        (x_center, y_above),
+                        (x_center, y_below),
+                        (x_right, y_above),
+                        (x_left, y_above),
+                        (x_right, y_below),
+                        (x_left, y_below),
                     )
-                    label_y = min(
-                        max(2, region.y),
-                        max(2, self.map_info.height - label_rect.height() - 2),
-                    )
+                    placed_rect = None
+                    for candidate_x, candidate_y in candidates:
+                        label_x = min(
+                            max(2, candidate_x),
+                            max(2, self.map_info.width - label_rect.width() - 2),
+                        )
+                        label_y = min(
+                            max(2, candidate_y),
+                            max(2, self.map_info.height - label_rect.height() - 2),
+                        )
+                        candidate_rect = QRectF(
+                            label_x, label_y, label_rect.width(), label_rect.height()
+                        )
+                        other_markers = (
+                            marker_rect for other_index, marker_rect
+                            in enumerate(event_rects) if other_index != index
+                        )
+                        if any(candidate_rect.intersects(other.adjusted(-2, -2, 2, 2))
+                               for other in other_markers):
+                            continue
+                        if any(candidate_rect.intersects(previous.adjusted(-2, -2, 2, 2))
+                               for previous in event_label_rects):
+                            continue
+                        if any(candidate_rect.intersects(actor.adjusted(-2, -2, 2, 2))
+                               for actor in actor_marker_rects):
+                            continue
+                        placed_rect = candidate_rect
+                        break
+                    if placed_rect is None:
+                        self.scene().removeItem(label)
+                        continue
                     background = self.scene().addRect(
-                        QRectF(label_x, label_y, label_rect.width(), label_rect.height()),
+                        placed_rect,
                         QPen(QColor(255, 190, 35, 150), 1),
                         QColor(8, 13, 20, 210),
                     )
                     background.setZValue(9.5)
-                    label.setPos(label_x + 3, label_y + 2)
+                    label.setPos(placed_rect.left() + 3, placed_rect.top() + 2)
                     label.setZValue(10)
+                    event_label_rects.append(placed_rect)
                     for marker in (background, label):
                         marker.setData(0, "map_evidence")
                         marker.setData(1, "event")
@@ -2886,6 +2953,8 @@ class FieldMapView(QGraphicsView):
             self.scene().removeItem(item)
         self.annotation_items = []
         self.entity_groups = {}
+        if self.map_info is None:
+            return
         colors = {
             "unreviewed": QColor(255, 245, 90, 220),
             "building": QColor(80, 210, 255, 225),
@@ -2934,6 +3003,7 @@ class FieldMapView(QGraphicsView):
             label.setDefaultTextColor(color)
             label.setPos(instance.origin_x + x0 + 2, instance.origin_y + y0 - 18)
             label.setZValue(13)
+            label.setVisible(instance.instance_id == self.selected_instance_id)
             label.setData(0, instance.instance_id)
             label.setData(1, "entity_label")
             group.addToGroup(label)
@@ -4609,6 +4679,10 @@ class MapEntityViewer(QMainWindow):
         self.edit_behavior_button.setEnabled(False)
         self.delete_behavior_button.setEnabled(False)
         self.selected_instance = instance
+        self.map_view.selected_instance_id = (
+            instance.instance_id if instance is not None else None
+        )
+        self.map_view.redraw_annotations()
         selected_row = None
         if instance:
             for index in range(self.entity_list.count()):
