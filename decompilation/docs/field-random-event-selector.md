@@ -249,6 +249,19 @@ pursuit system or other map event. The general map-wide pursuit route and its
 wanted-state conditions remain untraced, so “only these maps” would be an
 unsupported conclusion.
 
+### Selector boundary for wanted-state pursuit
+
+The ROM field tick at `0x1E166` applies its actor/effect guards, checks the
+`FFDF88 & 0x3FF == 10` cadence and source random threshold, then calls
+`0x59986`. That selector draws twice with bound 5, adds the results, maps the
+current scene byte `FFFBF8` through `0x3312`, and indexes the enable/pointer
+tables at `0x1D70E4` and `0x1D7174`. The selector itself does not read the
+`FFFBFA` counter or the `FFFC22` state word. Thus the confirmed city-map
+police branches above are table and dialogue outcomes, not a global wanted
+flag that makes the same patrol event eligible in every scene. A separate
+map-trigger or timed actor path could still provide broader pursuit; its
+entry, state gate, and scene coverage have not been established yet.
+
 There is also a separate player legal-state path to resolve. The third 32-entry Tips pointer table at `0xC2816` maps global entries 65-96; entries 70-73 point to text starts `0xC4390`, `0xC4465`, `0xC451E`, and `0xC45E1`. Entry 70 contains the wanted-for-questioning notice (including `0xC442C`); entry 71 is addressed to detectives and describes the suspect as armed and dangerous; entry 72 is addressed to hunting parties and calls the player a fugitive; entry 73 is a Lone Star Records prisoner-transfer notice about Vigore. Since the selector tests each table's local zero-based entry index, these four entries correspond to `FFFC38` bits 5-8; the wanted/fugitive notices are bits 5-7. These are Notebook display-eligibility bits; the source trace has not shown them to be the wanted-state values consumed by field pursuit. ROM contact text at `0xC63CF` and `0xC651C` offers to delete the Lone Star record, while `0x10E3C1` and `0x10F009` describe a Weapon Permit and patrols flagging the player down. Those strings establish that the record/permit mechanics exist, but they do not establish the writer/checker for the first three tip bits or the map-wide patrol spawn condition. The general patrol pursuit route remains untraced; this known-selector profile therefore cannot say which other maps support it or how often it occurs.
 
 A separate nearby-effect path runs through `0xAB02 -> 0x16B98`. It can place
