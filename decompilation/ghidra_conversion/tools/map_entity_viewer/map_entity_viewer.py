@@ -21,7 +21,7 @@ import os
 from typing import Iterable
 
 from PyQt6.QtCore import QPointF, QRect, QRectF, Qt
-from PyQt6.QtGui import QAction, QActionGroup, QBrush, QColor, QFont, QFontDatabase, QImage, QPainter, QPen, QPixmap
+from PyQt6.QtGui import QAction, QActionGroup, QBrush, QColor, QFont, QFontDatabase, QImage, QPainter, QPainterPath, QPen, QPixmap, QPolygonF
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -123,6 +123,28 @@ def safe_id(value: str) -> str:
     return result
 
 
+def parse_outline_paths(value: str) -> list[list[QPointF]]:
+    """Parse entity-local polygons encoded as x,y;x,y|x,y;x,y."""
+    paths: list[list[QPointF]] = []
+    for path_text in value.split("|"):
+        if not path_text.strip():
+            continue
+        points: list[QPointF] = []
+        for point_text in path_text.split(";"):
+            components = point_text.split(",")
+            if len(components) != 2:
+                raise ValueError(f"Invalid entity outline point: {point_text!r}")
+            try:
+                x, y = (int(component.strip(), 10) for component in components)
+            except ValueError as error:
+                raise ValueError(f"Invalid entity outline point: {point_text!r}") from error
+            points.append(QPointF(x, y))
+        if len(points) < 3:
+            raise ValueError("An entity outline needs at least three points")
+        paths.append(points)
+    return paths
+
+
 @dataclass
 class MapInfo:
     scene_id: int
@@ -152,6 +174,7 @@ class EntityPart:
     role: str = "unreviewed"
     evidence: str = ""
     asset_path: str = ""
+    outline_points: str = ""
 
 
 @dataclass
@@ -193,10 +216,18 @@ class EntityDefinition:
         # This is the visual selection frame. Collision and interaction
         # rectangles are separate authoring/evidence layers and must not swell
         # a building's artwork outline or imply extra pixels belong to it.
-        rectangles = [
-            (part.local_x, part.local_y, part.width, part.height)
-            for part in self.parts
-        ]
+        rectangles = []
+        for part in self.parts:
+            paths = parse_outline_paths(part.outline_points)
+            if paths:
+                points = [point for path in paths for point in path]
+                x0 = min(int(point.x()) for point in points)
+                y0 = min(int(point.y()) for point in points)
+                x1 = max(int(point.x()) for point in points)
+                y1 = max(int(point.y()) for point in points)
+                rectangles.append((x0, y0, x1 - x0, y1 - y0))
+            else:
+                rectangles.append((part.local_x, part.local_y, part.width, part.height))
         if not rectangles:
             rectangles = [
                 (item.local_x, item.local_y, item.width, item.height)
@@ -209,6 +240,31 @@ class EntityDefinition:
         x1 = max(rect[0] + rect[2] for rect in rectangles)
         y1 = max(rect[1] + rect[3] for rect in rectangles)
         return (x0, y0, max(1, x1 - x0), max(1, y1 - y0))
+
+    def contains_local_point(self, x: float, y: float) -> bool:
+        if self.parts:
+            for part in self.parts:
+                paths = parse_outline_paths(part.outline_points)
+                if paths:
+                    if any(
+                        QPolygonF(path).containsPoint(
+                            QPointF(x, y), Qt.FillRule.WindingFill
+                        )
+                        for path in paths
+                    ):
+                        return True
+                elif (
+                    part.local_x <= x <= part.local_x + part.width and
+                    part.local_y <= y <= part.local_y + part.height
+                ):
+                    return True
+            return False
+        regions = self.interactables or self.collision_regions
+        return any(
+            region.local_x <= x <= region.local_x + region.width and
+            region.local_y <= y <= region.local_y + region.height
+            for region in regions
+        )
 
 
 @dataclass
@@ -323,7 +379,7 @@ class WorldContent:
     ENTITY_HEADER = ("entity_id", "name", "category", "evidence")
     PART_HEADER = (
         "part_id", "source_kind", "source_scene", "source_x", "source_y",
-        "width", "height", "local_x", "local_y", "draw_layer", "role", "evidence", "asset_path",
+        "width", "height", "local_x", "local_y", "draw_layer", "role", "evidence", "asset_path", "outline_points",
     )
     INTERACTION_HEADER = (
         "interaction_id", "local_x", "local_y", "width", "height",
@@ -387,6 +443,7 @@ class WorldContent:
                 role=row.get("role", "unreviewed"),
                 evidence=row.get("evidence", ""),
                 asset_path=row.get("asset_path", ""),
+                outline_points=row.get("outline_points", ""),
             )
             for row in part_rows
         ]
@@ -472,6 +529,22 @@ class WorldContent:
                 crop = source.copy(QRect(
                     part.source_x, part.source_y, part.width, part.height
                 ))
+                outline_paths = parse_outline_paths(part.outline_points)
+                if outline_paths:
+                    clip_path = QPainterPath()
+                    for outline in outline_paths:
+                        crop_points = [
+                            QPointF(point.x() - part.local_x, point.y() - part.local_y)
+                            for point in outline
+                        ]
+                        clip_path.addPolygon(QPolygonF(crop_points))
+                    masked = QImage(crop.size(), QImage.Format.Format_ARGB32)
+                    masked.fill(Qt.GlobalColor.transparent)
+                    painter = QPainter(masked)
+                    painter.setClipPath(clip_path)
+                    painter.drawImage(0, 0, crop)
+                    painter.end()
+                    crop = masked
                 relative_path = Path("field") / "entities" / entity_id / f"{safe_id(part.part_id)}.png"
                 output_path = assets_root / relative_path
                 output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -670,6 +743,7 @@ class WorldContent:
                             "role": part.role,
                             "evidence": part.evidence,
                             "asset_path": part.asset_path,
+                            "outline_points": part.outline_points,
                         }
                         for part in entity.parts
                     ],
@@ -1437,7 +1511,7 @@ class FieldMapView(QGraphicsView):
             "unreviewed": QColor(255, 245, 90, 230),
             "body": QColor(80, 210, 255, 225),
             "overhang": QColor(255, 135, 50, 235),
-            "shadow": QColor(90, 90, 110, 235),
+            "shadow": QColor(220, 220, 245, 245),
             "decal": QColor(240, 90, 255, 230),
             "foreground": QColor(255, 90, 90, 235),
             "background_attachment": QColor(90, 220, 130, 235),
@@ -1453,41 +1527,57 @@ class FieldMapView(QGraphicsView):
             self.entity_groups[instance.instance_id] = group
             color = colors.get(entity.category, colors["unreviewed"])
             x0, y0, width, height = entity.bounds
-            box = self.scene().addRect(
-                QRectF(instance.origin_x + x0, instance.origin_y + y0, width, height),
-                QPen(color, 2),
-                QColor(color.red(), color.green(), color.blue(), 28),
-            )
-            box.setZValue(12)
-            box.setData(0, instance.instance_id)
-            box.setToolTip(f"{entity.name} [{entity.category}]\n{instance.entity_id} @ {instance.origin_x},{instance.origin_y}")
-            group.addToGroup(box)
+            if not entity.parts:
+                box = self.scene().addRect(
+                    QRectF(instance.origin_x + x0, instance.origin_y + y0, width, height),
+                    QPen(color, 2),
+                    QBrush(Qt.BrushStyle.NoBrush),
+                )
+                box.setZValue(12)
+                box.setData(0, instance.instance_id)
+                box.setToolTip(f"{entity.name} [{entity.category}]\n{instance.entity_id} @ {instance.origin_x},{instance.origin_y}")
+                group.addToGroup(box)
             label = self.scene().addText(f"{entity.name} [{entity.category}]")
             label.setDefaultTextColor(color)
-            label.setPos(instance.origin_x + x0 + 2, instance.origin_y + y0 + 2)
+            label.setPos(instance.origin_x + x0 + 2, instance.origin_y + y0 - 18)
             label.setZValue(13)
             label.setData(0, instance.instance_id)
             group.addToGroup(label)
             for part in entity.parts:
                 part_color = role_colors.get(part.role, role_colors["unreviewed"])
-                part_item = self.scene().addRect(
-                    QRectF(
-                        instance.origin_x + part.local_x,
-                        instance.origin_y + part.local_y,
-                        part.width,
-                        part.height,
-                    ),
-                    QPen(part_color, 1, Qt.PenStyle.DashLine),
-                    QBrush(Qt.BrushStyle.NoBrush),
-                )
-                part_item.setZValue(13)
-                part_item.setToolTip(
-                    f"{entity.entity_id}/{part.part_id}: {part.role} ({part.draw_layer})\n"
-                    f"Source scene {part.source_scene:02d} {part.source_kind} at "
-                    f"{part.source_x},{part.source_y}, {part.width}x{part.height}\n"
-                    f"Entity-local: {part.local_x},{part.local_y}"
-                )
-                group.addToGroup(part_item)
+                paths = parse_outline_paths(part.outline_points)
+                if paths:
+                    part_items = []
+                    for outline in paths:
+                        polygon = QPolygonF([
+                            QPointF(instance.origin_x + point.x(), instance.origin_y + point.y())
+                            for point in outline
+                        ])
+                        part_items.append(self.scene().addPolygon(
+                            polygon,
+                            QPen(part_color, 1.5, Qt.PenStyle.SolidLine),
+                            QBrush(Qt.BrushStyle.NoBrush),
+                        ))
+                else:
+                    part_items = [self.scene().addRect(
+                        QRectF(
+                            instance.origin_x + part.local_x,
+                            instance.origin_y + part.local_y,
+                            part.width,
+                            part.height,
+                        ),
+                        QPen(part_color, 1.5, Qt.PenStyle.SolidLine),
+                        QBrush(Qt.BrushStyle.NoBrush),
+                    )]
+                for part_item in part_items:
+                    part_item.setZValue(13)
+                    part_item.setToolTip(
+                        f"{entity.entity_id}/{part.part_id}: {part.role} ({part.draw_layer})\n"
+                        f"Source scene {part.source_scene:02d} {part.source_kind} at "
+                        f"{part.source_x},{part.source_y}, {part.width}x{part.height}\n"
+                        f"Entity-local: {part.local_x},{part.local_y}"
+                    )
+                    group.addToGroup(part_item)
             for interaction in entity.interactables:
                 hit = self.scene().addRect(
                     QRectF(
@@ -2119,7 +2209,9 @@ class MapEntityViewer(QMainWindow):
         part_summary = "\n".join(
             f"- {part.part_id}: {part.role}, source scene {part.source_scene:02d} at "
             f"{part.source_x},{part.source_y} {part.width}x{part.height}; "
-            f"{part.draw_layer}; asset {part.asset_path or '(created on save)'}"
+            f"{part.draw_layer}; "
+            f"{len(parse_outline_paths(part.outline_points))} polygon outline(s); "
+            f"asset {part.asset_path or '(created on save)'}"
             for part in entity.parts
         ) or "No visual parts"
         interaction_summary = "\n".join(
@@ -2136,7 +2228,10 @@ class MapEntityViewer(QMainWindow):
             f"ID: {entity.entity_id}\nVisual parts:\n{part_summary}"
             f"\nInteractions:\n{interaction_summary}"
             f"\nAuthored collision:\n{collision_summary}\n\n"
-            "ROM collision remains separate evidence; these entity records do not "
+            "Part outlines and selection follow each source object independently; "
+            "a union rectangle is not drawn across empty space. Map-composite part "
+            "previews are clipped to their outlines. ROM collision remains separate "
+            "evidence; these entity records do not "
             "modify the preassembled map or live field collision."
         )
         map_info = self.map_by_id[self.scene_id]
@@ -2193,9 +2288,13 @@ class MapEntityViewer(QMainWindow):
         role = QComboBox(); role.addItems(PART_ROLES); role.setCurrentText(part.role)
         depth = QComboBox(); depth.addItems(DRAW_LAYERS); depth.setCurrentText(part.draw_layer)
         evidence = QLineEdit(part.evidence)
+        outline_points = QLineEdit(part.outline_points)
+        outline_points.setPlaceholderText("x,y;x,y;x,y | another polygon")
         form.insertRow(0, "Part ID", part_id)
         form.insertRow(1, "Source kind", source_kind)
-        form.addRow("Role", role); form.addRow("Draw depth", depth); form.addRow("Evidence", evidence)
+        form.addRow("Role", role); form.addRow("Draw depth", depth)
+        form.addRow("Entity-local outline polygons", outline_points)
+        form.addRow("Evidence", evidence)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(dialog.accept); buttons.rejected.connect(dialog.reject)
         form.addRow(buttons)
@@ -2203,9 +2302,15 @@ class MapEntityViewer(QMainWindow):
             return
         part.part_id = safe_id(part_id.text())
         part.source_kind = source_kind.currentText()
+        try:
+            parse_outline_paths(outline_points.text())
+        except ValueError as error:
+            QMessageBox.warning(self, "Invalid visual outline", str(error))
+            return
         for key, spin in fields.items():
             setattr(part, key, spin.value())
         part.role = role.currentText(); part.draw_layer = depth.currentText(); part.evidence = evidence.text().strip()
+        part.outline_points = outline_points.text().strip()
         self.dirty = True
         self._show_properties(instance)
         self.map_view.redraw_annotations()
@@ -2408,8 +2513,10 @@ class MapEntityViewer(QMainWindow):
             entity = self.entities.get(instance.entity_id)
             if not entity:
                 continue
-            x, y, width, height = entity.bounds
-            if instance.origin_x + x <= point.x() <= instance.origin_x + x + width and instance.origin_y + y <= point.y() <= instance.origin_y + y + height:
+            if entity.contains_local_point(
+                point.x() - instance.origin_x,
+                point.y() - instance.origin_y,
+            ):
                 matches.append(instance)
         if matches:
             self.select_instance(matches[0])

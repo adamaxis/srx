@@ -28,9 +28,10 @@ have different styling; neither claims an actor is alive on every visit.
 These ROM overlays are read-only evidence.
 
 An authored entity is a grouped annotation: its visual-part regions and
-interaction regions share one area origin. Its selection frame follows the
-visual parts, while collision and interaction rectangles remain separate
-layers. Click the outline to inspect the entity and drag it to move the whole
+interaction regions share one area origin. The outline and hit area follow
+each visual part independently, while collision and interaction rectangles
+remain separate layers. No bounding rectangle bridges empty space between
+parts. Click a part outline to inspect the entity and drag it to move the whole
 group. This edits placement metadata only; it does not erase, extract, or move
 pixels in the composed BMP.
 A separate image-composition/import step is still required before authored
@@ -58,6 +59,9 @@ Each entity has its own folder under `entities/<entity-id>/`:
 - `entity.tsv`: stable ID, display name, reviewed category, and evidence.
 - `parts.tsv`: one row per visual part, with its source scene and source crop,
   entity-local position, draw depth, role, evidence, and generated asset path.
+  `outline_points` stores one or more entity-local polygons (`x,y;x,y|...`);
+  the viewer outlines and hit-tests each part separately, clips its named crop
+  to those polygons, and does not draw a union rectangle across empty space.
   Saving materializes each crop as a named PNG under
   `decompilation/assets/field/entities/<entity-id>/`, preserving alpha from a
   priority-overlay source. The source kind and crop coordinates remain in the
@@ -170,17 +174,22 @@ The Lua package loader loads the module, and `game.modules.world_content`
 provides entity/placement lookups plus `triggers_in_scene`,
 `actor_spawns_in_scene`, `encounter_regions_in_scene`, and `collision_at`.
 Scene 2 currently has one source-backed Stoker's Coffin Motel definition. Its
-origin is ROM event 2 at `(960,640)`; ROM collision records 32-36 are attached
-around that doorway, and the first named image is a transparent crop from the
-scene's priority overlay. The site's marker 6 corroborates the building name.
-The ROM route is same-map Stoker dialogue, not an interior transition. The
-building's lower visual pixels still come from the preassembled composite.
+origin is ROM event 2 at `(960,640)`. The entity has separate outlines for the
+main facade, priority roof, left pipe-like attachment, three roof stripes,
+entry threshold, sign, and two shadow components. The preview crops are
+polygon-masked; the adjacent concrete is excluded. ROM collision records stay
+in the scene's ROM-collision evidence layer and are not claimed as motel-owned
+collision. The site's marker 6 corroborates the building name. The ROM route
+is same-map Stoker dialogue, not an interior transition.
 The same scene also exposes the source-profiled New Game entry event. Its exact
 scope is the scene-2 spawn `(0x3CE0,0x2D00)` and its marker appears in map cell
 `(30,22)`, two 32-pixel cells below the motel doorway cell. ROM-derived
 behavior is a one-time scene-entry rule at that exact spawn point, not a
 three-cell walking region. The runtime reads the rule from generated
 `world_content_data.lua` and calls the existing Lua heading-zero walk handler.
-Entity drawings and generated part assets are still authoring data; the live
-field renderer and movement/collision path do not yet consume entity
-definitions or their collision regions.
+The other Redmond structures still need a reviewed entity pass. Actor markers
+also remain incomplete: scene 2 and scene 20 have profile-selected default
+lists, scenes 21-43 have gated pedestrian candidates, and timed activity or
+event-created populations still require source profiling. Entity drawings and
+generated part assets are authoring data; the live field renderer does not yet
+consume these entity definitions.
