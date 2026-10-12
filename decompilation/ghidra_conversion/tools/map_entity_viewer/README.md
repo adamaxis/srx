@@ -44,7 +44,7 @@ the adjacent selector shows one group at a time by default. Choose all groups
 only for comparison; that view does not claim the ROM runs them together.
 
 The scene selector uses the ROM-backed contract district names for scenes 0–5
-and labels scenes 6–7 with explicitly marked guide cross-references.
+and labels scenes 6–9 with explicitly marked map-guide cross-references.
 **Map profile** lists the ROM-derived run-location names for those districts;
 these names describe contract destinations and are not treated as proof of a
 doorway route. Scene-1 (Puyallup) event markers have guide-marker crosswalks
@@ -159,17 +159,26 @@ value and is not treated as a player spawn.
   additional world-script gate, the named locations' actual dialogue/speaker
   branches, return routes, and field audio remain unresolved.
   Its selector label is a guide cross-reference, not a ROM scene name.
-- Scene 7 profiles all four event-table rectangles. The northwest, west, and
-  east edge triggers cross-reference Wilderness Area 2 guide markers 1, 3,
-  and 4; each ROM row selects shared field map 13. Marker 2 remains a
-  guide-only route because no matching event rectangle has been identified.
-  The visible building is a separate entity with an exact entrance event,
-  front facade, priority roof, and foreground window detail. Its room,
-  speaker, and entry text are not identified by the route. The Scene 7 actor
+- Scene 7 is Wilderness Area 3 by full-map visual cross-check. Its four ROM
+  event rectangles are kept separate: marker 1 aligns with the Cave 2 guide
+  route, marker 2 with Cave 3, and marker 3 with the visible longhouse the
+  guide labels Stark. The fourth east-edge event has no matching named guide
+  marker. Each event-table row selects shared field map 13; the guide labels
+  do not establish that map's interior, speaker, dialogue, or return point.
+  The longhouse remains a separate entity with an exact entrance event,
+  front facade, priority roof, and foreground window detail. The Scene 7 actor
   list is empty, so the viewer does not turn its static map art into NPCs.
-  **Map profile** now lists ROM-linked routes and unmatched guide references
-  together, while keeping numeric ROM destinations distinct from guide names.
-  Its selector label is a guide cross-reference, not a ROM scene name.
+- Scene 8 is Wilderness Area 2 by full-map visual cross-check. Its four edge
+  event rectangles align with guide markers 1–4, including the guide's two
+  Cave 1 routes, a cave listed as having no point of interest, and a Cave 3
+  route. All four ROM event-table rows select shared field map 13; the guide
+  descriptions do not prove the contents of that destination. Scene 8's actor
+  list is empty. Its fixed carved posts are annotated from isolated priority
+  plane sprites, and its timber bridge reuses the Scene 6 entity definition
+  after a pixel comparison. These are scenery entities, not spawned actors;
+  the route and collision layers remain independent. **Map profile** presents
+  route records in marker order and keeps guide descriptions distinct from
+  numeric ROM destinations.
 - The source actor layer is data-driven across the extracted map catalog: the
   viewer uses each ROM record's actor type and sprite art, shows default scene
   records separately from conditional choices, and keeps special event lists

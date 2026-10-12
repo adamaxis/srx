@@ -328,6 +328,32 @@ are source-traced; they are not populated as scenery residents. See the
 for the secondary coordinate/name crosswalk and
 `gameplay/world/areas/scene-06-site-routes.tsv` for the clickable route rows.
 
+### Scenes 7 and 8: wilderness route crosswalk
+
+The extracted Scene 7 image visually matches Mike's RPG Center Wilderness Area
+3 map, and Scene 8 matches Wilderness Area 2. This is a guide crosswalk, not a
+ROM scene-name lookup. The [Wilderness Area 3 guide](https://mikesrpgcenter.com/shadowrun/maps/wild3.html)
+labels marker 1 Cave 2, marker 2 Cave 3, and marker 3 Stark. Scene 7 records
+207 and 208 (events 8 and 9) align with markers 1 and 2; record 206 (event 0)
+aligns with the longhouse at marker 3. All three route bytes select shared
+field map 13. Record 209 (event 10) is a separate east-edge trigger with no
+named guide marker. The map's default actor list is empty; the guide's Stark
+label does not authorize synthesizing an NPC or assigning entry dialogue.
+
+The [Wilderness Area 2 guide](https://mikesrpgcenter.com/shadowrun/maps/wild2.html)
+labels Scene 8's four edge routes as Cave 1, Cave 1, a cave with no listed
+point of interest, and Cave 3. Scene 8 records 198–201 (events 8–11) align
+with those four map markers in order. Every table row selects field map 13;
+the guide wording does not establish that the destination interior is empty,
+or identify its room or return point. The default actor list is also empty.
+The fixed red-crested, blue-crested, and winged-post sprites are extracted
+from the scene's priority plane and annotated as scenery props; the timber
+bridge artwork visually matches the Scene 6 bridge entity. No actor or
+interaction is inferred from these static images. See
+`gameplay/world/areas/scene-07-site-routes.tsv`,
+`gameplay/world/areas/scene-08-site-routes.tsv`, and
+`gameplay/world/areas/scene-08.tsv` for the route and entity placements.
+
 ## Converted code and runtime wiring
 
 | ROM/source operation | Converted C++ function or runtime owner |
