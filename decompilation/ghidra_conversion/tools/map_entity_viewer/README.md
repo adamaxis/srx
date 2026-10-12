@@ -125,6 +125,10 @@ not that the ROM has no way into the map.
   ordinary resource-activity fallback. The dialogue choice that sets the
   prerequisite remains unconnected, and this event does not prove a separate
   Rat's Nest interior.
+- Scene 19 is labeled as the Jackal's Lantern route destination because
+  Redmond event record 86 at `0x173106` selects numeric field scene 19 and the
+  guide names that incoming site. This is a route cross-reference, not a ROM
+  scene name; scene-19 entry dialogue and its return path remain unresolved.
 - Scene 0 has a crosswalk for all 21 ROM event rectangles, including ten
   guide-named sites, both labeled map edges, and four direct event-31 handlers.
   A local event-table result of scene 0 is kept distinct from the guide's
