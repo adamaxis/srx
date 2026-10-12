@@ -5360,7 +5360,13 @@ class MapEntityViewer(QMainWindow):
             if row.get("outcome_kind", "") == "dialogue_event"
         ]
         lone_star_dialogue: set[int] = set()
-        renraku_dialogue: set[int] = set()
+        disturbance_rows: list[dict[str, str]] = []
+        injured_person_rows: list[dict[str, str]] = []
+        company_man_rows: list[dict[str, str]] = []
+        flustered_woman_rows: list[dict[str, str]] = []
+        haggard_man_rows: list[dict[str, str]] = []
+        alley_seller_rows: list[dict[str, str]] = []
+        renraku_dialogue_rows: list[dict[str, str]] = []
         security_mage_rows: list[dict[str, str]] = []
         security_guard_rows: list[dict[str, str]] = []
         renraku_security_rows: list[dict[str, str]] = []
@@ -5371,8 +5377,20 @@ class MapEntityViewer(QMainWindow):
                 continue
             if "lone star" in name:
                 lone_star_dialogue.add(scene)
+            if "sudden disturbance up ahead" in name:
+                disturbance_rows.append(row)
+            if "man lying on the street" in name:
+                injured_person_rows.append(row)
+            if "company man storms up" in name:
+                company_man_rows.append(row)
+            if "flustered woman passes by" in name:
+                flustered_woman_rows.append(row)
+            if "haggard man collapses" in name:
+                haggard_man_rows.append(row)
+            if "calls to you from a dark alleyway" in name:
+                alley_seller_rows.append(row)
             if "renraku strike team" in name:
-                renraku_dialogue.add(scene)
+                renraku_dialogue_rows.append(row)
             if "security mage spots you" in name:
                 security_mage_rows.append(row)
             if "secuity guard spots you" in name or "security guard spots you" in name:
@@ -5388,16 +5406,63 @@ class MapEntityViewer(QMainWindow):
             return "Selector sums " + (", ".join(map(str, sums)) if sums else "not indexed") + "."
 
         lone_star_templates: set[int] = set()
-        hell_hound_templates: set[int] = set()
         for row in self.dynamic_world_actor_rows:
             template_name = row.get("actor_name", "").strip().casefold()
             scene = as_int(row, "scene", -1)
+            if scene >= 0 and template_name in {"lone11", "lone13", "lonemage"}:
+                lone_star_templates.add(scene)
+
+        lone_star_scenes = set(lone_star_dialogue) | lone_star_templates
+        lone_star_scenes.update(
+            as_int(row, "scene", -1)
+            for row in (
+                injured_person_rows + company_man_rows + flustered_woman_rows +
+                haggard_man_rows + alley_seller_rows
+            )
+            if as_int(row, "scene", -1) >= 0
+        )
+        wilderness_disturbance_rows = [
+            row for row in disturbance_rows
+            if row.get("handler_offset", "").casefold() == "0x2115c"
+        ]
+        wilderness_disturbance_scenes = {
+            as_int(row, "scene", -1) for row in wilderness_disturbance_rows
+            if as_int(row, "scene", -1) >= 0
+        }
+        disturbance_scenes = {
+            as_int(row, "scene", -1) for row in disturbance_rows
+            if as_int(row, "scene", -1) >= 0
+        }
+        renraku_dialogue_scenes = {
+            as_int(row, "scene", -1) for row in renraku_dialogue_rows
+            if as_int(row, "scene", -1) >= 0
+        }
+
+        events_by_handler: dict[str, dict[str, object]] = {}
+        for row in event_rows:
+            handler = row.get("handler_offset", "")
+            event = events_by_handler.setdefault(handler, {
+                "name": row.get("event_name", "ROM field event"),
+                "scenes": set(),
+                "sums": set(),
+            })
+            event["scenes"].add(as_int(row, "scene", -1))
+            event["sums"].add(as_int(row, "random_sum", -1))
+
+        dynamic_actors: dict[str, dict[str, object]] = {}
+        for actor in self.dynamic_world_actor_rows:
+            scene = as_int(actor, "scene", -1)
+            total = as_int(actor, "random_sum", -1)
             if scene < 0:
                 continue
-            if template_name in {"lone11", "lone13", "lonemage"}:
-                lone_star_templates.add(scene)
-            if template_name == "hell hound":
-                hell_hound_templates.add(scene)
+            name = self._dynamic_actor_display_name(actor)
+            profile = dynamic_actors.setdefault(name, {
+                "scenes": set(),
+                "sums": set(),
+            })
+            profile["scenes"].add(scene)
+            if total >= 0:
+                profile["sums"].add(total)
 
         renraku_team_lists = [
             row for row in self.world_activity_actor_rows
@@ -5413,55 +5478,73 @@ class MapEntityViewer(QMainWindow):
             if row.get("list_id", "").strip()
         })
 
+        hell_hound_profile = dynamic_actors.get("Hell Hound", {})
+        hell_hound_scenes = set(hell_hound_profile.get("scenes", set()))
+        wendigo_scenes = set(dynamic_actors.get("Wendigo", {}).get("scenes", set()))
+        bandersnatch_scenes = set(
+            dynamic_actors.get("Bandersnatch", {}).get("scenes", set())
+        )
+        gargoyle_scenes = set(dynamic_actors.get("Gargoyle", {}).get("scenes", set()))
         rows = [
             (
-                "Lone Star patrol dialogue",
-                self._format_scene_ids(lone_star_dialogue),
-                "Enabled dialogue outcomes in the field-event selector.",
+                "Lone Star on five of six city maps",
+                self._format_scene_ids(lone_star_scenes),
+                "These traced paths reach five of the six ROM-named city-area maps: Downtown Seattle (scene 0), Puyallup Barrens (1), Redmond Barrens (2), Penumbra District (3), and Renraku Arcology (5). Scene 4, Council Island, has no Lone Star handler in this random selector. Direct patrol prompts occur on scenes 0, 3, and 41-43; the Company Man, undercover woman, injured-person, haggard-man, and alley-seller continuations broaden the area-map coverage. Dynamic Lone Star templates occur on scenes 1 and 41-43. ROM Notebook tips 71-73 progress from wanted for questioning to armed-and-dangerous and fugitive/hunting-party language; that separate wanted progression may broaden police coverage, and its map-wide spawn logic still needs tracing. Undercover branches use ROM templates named bodyguard.",
             ),
             (
-                "Lone Star actor templates",
-                self._format_scene_ids(lone_star_templates),
-                "Dynamic actor sequences containing ROM templates named lone11, lone13, or lonemage.",
+                "Hell Hounds across 26 scene contexts",
+                self._format_scene_ids(hell_hound_scenes),
+                "The zero-cell dynamic actor table selects Hell Hounds in 26 scene contexts: Downtown Seattle (0), Wilderness Areas 1-4 (6-9), Hollywood Correctional Facility (20), and additional contexts 26-29 and 35-50. These are temporary, terrain-checked screen-edge event actors.",
             ),
             (
-                "Hell Hound actor templates",
-                self._format_scene_ids(hell_hound_templates),
-                "Dynamic actor sequences; placement is selected at runtime from open screen-edge positions.",
+                "Creature templates across broad map sets",
+                self._format_scene_ids(wendigo_scenes | bandersnatch_scenes | gargoyle_scenes),
+                "The dynamic table includes Wendigos and Bandersnatches on scenes 1, 4, 6-9, and 44-50, plus Gargoyles on scenes 4, 6-9, and 44-55. The complete per-template scene and random-sum list follows below.",
             ),
             (
-                "Renraku Strike Team dialogue",
-                self._format_scene_ids(renraku_dialogue),
-                "Enabled dialogue outcome; the initial prompt is not itself proof of a spawned team.",
+                "Later-stage Strike Teams across nine of ten area maps",
+                self._format_scene_ids(disturbance_scenes),
+                "Three disturbance handlers share the FFFBFB progression counter and FFFC22 bit-8 gate across scenes 0-3, 5-9, and 44-50. On the named area maps, these cells reach nine of ten: Downtown (0), Puyallup (1), Redmond (2), Penumbra (3), Renraku Arcology (5), and Wilderness Areas 1-4 (6-9); Council Island (4) has no disturbance handler. Contexts 44-50 are additional scene IDs whose map names are not established here. With the bit clear, stages 2-3 select 2 Strike Team actors, stages 4-6 select 4, and stages 7-8 select 5. This is a shared later-game route across area maps, separate from the scene-47 story lists.",
             ),
             (
-                "Security mage encounter text",
-                self._format_scene_ids({as_int(row, "scene", -1) for row in security_mage_rows}),
-                "The ROM calls this a security mage, but does not name a company. " + event_outcome_detail(security_mage_rows),
+                "Creature packs after a wilderness disturbance",
+                self._format_scene_ids(wilderness_disturbance_scenes),
+                "At stages 0-1 or with bit 8 set, this branch rolls 0-99: 30% three Hell Hounds, 30% two Wendigos, 20% two Bandersnatches, 5% a Rat Shaman with two Indian warriors, 10% an Elven mage with two Elven warriors, or 5% no actor list. At stages 2-8 with the bit clear, it selects the Strike Team groups above.",
             ),
             (
-                "Security guard encounter text",
-                self._format_scene_ids({as_int(row, "scene", -1) for row in security_guard_rows}),
-                "The ROM prompt is ‘A secuity guard spots you.’ The affiliation is unspecified. " + event_outcome_detail(security_guard_rows),
+                "Explicit Renraku Strike Team encounter",
+                self._format_scene_ids(renraku_dialogue_scenes),
+                "The MORE choice creates two Strike Team actors on scenes 35-40. This is separate from the later-stage disturbance branch.",
             ),
             (
-                "Renraku Security encounter text",
+                "Renraku Security encounter",
                 self._format_scene_ids({as_int(row, "scene", -1) for row in renraku_security_rows}),
-                "Named Renraku security prompt. " + event_outcome_detail(renraku_security_rows),
+                "The follow-up creates one corporate-guard actor. The ROM text names Renraku Security; this is separate from the Strike Team.",
             ),
             (
-                "Strike Team actor records",
+                "Security mage event text",
+                self._format_scene_ids({as_int(row, "scene", -1) for row in security_mage_rows}),
+                "The ROM calls this a security mage but does not name a company. " + event_outcome_detail(security_mage_rows),
+            ),
+            (
+                "Security guard event text",
+                self._format_scene_ids({as_int(row, "scene", -1) for row in security_guard_rows}),
+                "The ROM prompt says a security guard spots you; its affiliation is unspecified. " + event_outcome_detail(security_guard_rows),
+            ),
+            (
+                "Scene 47 mode-0x13 Strike Team lists",
                 self._format_scene_ids(renraku_team_scenes),
-                "Separate pending lists " + (", ".join(list_ids) if list_ids else "not indexed") + "; loaded through the world-activity transition path, not yet linked to the dialogue handler above.",
+                "Separate story-event lists " + (", ".join(list_ids) if list_ids else "not indexed") + "; one contains a Strike Team, two bodyguards, and a pedestrian, and the other contains three Strike Teams and a corporate guard. These are distinct from the disturbance encounter and the scene-35-40 prompt.",
             ),
         ]
         page = [
-            "<h3>Cross-map encounter source index</h3>",
-            "<p>This index keeps dialogue handlers, dynamic actor sequences, and "
-            "story-triggered actor lists separate. A listed context means the ROM "
-            "contains that source path there; its gates still decide whether it runs. "
-            "This selector index is not a claim that an actor cannot be created by "
-            "another stateful path on other maps.</p>",
+            "<h3>ROM-indexed encounter evidence (partial)</h3>",
+            "<p>This index combines the field selector, its dynamic actor "
+            "templates, and traced choice-created actor lists. Scene ranges are "
+            "eligible contexts, not permanent residents or guaranteed encounters. "
+            "The state-driven wanted/fugitive path and every map-event spawn are "
+            "not fully traced yet; do not treat this as the complete encounter "
+            "roster.</p>",
         ]
         for name, scenes, evidence in rows:
             page.append(
@@ -5469,7 +5552,42 @@ class MapEntityViewer(QMainWindow):
                 html.escape(scenes) + "</i><br>" +
                 html.escape(evidence) + "</p>"
             )
+
+        page.append("<h4>Dynamic actor-template coverage</h4>")
+        page.append(
+            "<p>These templates are selected by the zero-cell world-effect "
+            "sequence path. The ROM chooses temporary screen-edge positions "
+            "after selecting the scene-specific sequence.</p>"
+        )
+        page.append("<ul>")
+        for name, profile in sorted(dynamic_actors.items(), key=lambda item: item[0].casefold()):
+            scenes = self._format_scene_ids(profile["scenes"])
+            sums = ", ".join(str(value) for value in sorted(profile["sums"]))
+            page.append(
+                "<li><b>" + html.escape(name) + "</b>: " + html.escape(scenes) +
+                "; random sums " + html.escape(sums) + ".</li>"
+            )
+        page.append("</ul>")
+
+        page.append("<h4>Dialogue-event selector coverage</h4>")
+        page.append(
+            "<p>Each row groups the enabled ROM handler's scene contexts and "
+            "random-sum cells. Choice-dependent actor effects are described above "
+            "where their dispatch path has been traced.</p>"
+        )
+        page.append("<ul>")
+        for event in sorted(events_by_handler.values(), key=lambda item: str(item["name"]).casefold()):
+            scene_values = {value for value in event["scenes"] if value >= 0}
+            sum_values = {value for value in event["sums"] if value >= 0}
+            page.append(
+                "<li><b>" + html.escape(str(event["name"])) + "</b>: " +
+                html.escape(self._format_scene_ids(scene_values)) +
+                "; random sums " + html.escape(", ".join(str(value) for value in sorted(sum_values))) +
+                ".</li>"
+            )
+        page.append("</ul>")
         return "\n".join(page)
+
 
     def _update_scene_character_info(self) -> None:
         info = self.map_by_id[self.scene_id]
