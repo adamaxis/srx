@@ -52,6 +52,7 @@ Scene IDs below are ROM field-scene IDs. The tables cover the field random-event
 | Injured-person event, handler `0x20F72` | Scenes `0`, `1`, and `3`; sums `5` and `7` | The ordinary injured-man Attack choice can queue one Lone Star detective at `0x1D6FE4`. A separate pale-figure variant can reveal a vampire; its sequence starts at `0x1D6D8A`, after the Hell Hound pointer in the shared list. |
 | Open security panel, handler `0x20FBA` | Scenes `21-25` sums `1, 7`; `26-29` sum `2`; `30-34` sum `0` | Re-wiring uses the active party's highest Electronics value. A zero result trips the building alarm and enters the map-effect path; a result above 1 disables the current world-effect service through `FFE170`. Walking away chains into the scientist prompt. |
 | Scientist, handler `0x20FD4` | Scenes `21-25` and `30-34`; sums `4` and `6` | Asking for information uses slot 0's source field `+0x7A` at threshold 5. Both result branches return refusal/suspicion text; walking away returns a leave-behind and floor-text sequence. Neither command directly queues an actor. |
+| Hidden-camera event, handler `0x21004` | Scene `20` sum `0`; scenes `26-29` sum `0`; scenes `35-40` sum `7`; scenes `41-43` sum `1` | MORE tests the party as a group: target 4 with one active runner, 5 with two, 6 with three. Zero successes start the map-effect path and show the alarm text; any success gives the nerves text. The handler names no police roster. |
 | Alley grenade seller, handler `0x2112C` | Scenes `0`, `2`, `3`, and `5`; sums `5-7` | Attack rolls `0-59` try the one-bodyguard list at `0x1D7054`; a successful start leads to a gun battle. Rolls `60-99`, or failure to start that actor, reveal undercover Lone Star. Buying the grenades has its own 60/40 split: rolls `0-59` continue through funds/slot checks; `60-99` expose the undercover agent. |
 | Company Man confrontation, handler `0x20F5A` | Scenes `3` and `5`; sums `1` and `4` | One continuation says the man remains irate and a Lone Star patrol arrives. The response text then says the officers turn their attention to the player. |
 | Flustered-woman event, handler `0x20F8A` | Scenes `0-1`; sums `3-4` | The MORE continuation divides into suspected-harm and apparent-law-official versions. The law-official version can reveal an undercover Lone Star agent; its Attack/Comply/Run choices can end in a gun battle, questioning/release, fine, arrest/confiscation, escape, or being overtaken and shot. See the terminal branch table below. |
@@ -179,6 +180,22 @@ then refuses); results 1 or higher return the refusal at `0x121214`. Walking
 away returns `0x12121C`, beginning with the leave-behind text and the floor
 string sequence. These routines do not write funds or queue actors. The linked
 floor/security continuation after these returned text records remains partial.
+
+**Hidden-camera check (`0x21004`, scenes 20, 26-29, 35-43).** The MORE command
+(`0xD4` -> `0x244D2`) calls `0x23750`, which leaves the active-runner count in
+`D6` and the sum of runner `+0x78` bytes in `D0`. This handler uses the count:
+it sets the threshold to 4, then adds 1 for each active support slot
+(`FF0210` and `FF0310`). The roll helper therefore makes one threshold trial
+per active runner, with targets 4, 5, or 6 for a one-, two-, or three-runner
+party. The `+0x78` sum is not used by this handler. Its entry stub also clears
+`FFF10C` and writes `0xFF` to `FFF0B5`; their meanings are not established here.
+
+If `FFF0DD` is zero, `0x244D2` calls `0x1E04A` and returns `0x121320`: the
+alarm sounds and the player recognizes the hidden camera. Any nonzero result
+returns `0x121328`: nothing happens and the player suspects nerves. This event
+does not write the heat byte `FFFBFA` or name a Lone Star/corporate roster; the
+alarm's actor result comes from the current map-effect data and remains
+unresolved.
 
 **Security-guard stop (`0x20FEC`, scenes 20, 26-34, and 41-43).** The opening
 record `0x121238` asks for an ID and dispatches command `0xCC` to `0x242FA`.
@@ -547,7 +564,7 @@ sums identify the enabled cells that return that handler.
 | You notice an open security panel. | `21-25`; `26-29`; `30-34` | `1, 7`; `2`; `0` (paired by scene range) | `0x20FBA` |
 | A scientist walks by, deep in thought. | `21-25`, `30-34` | `4`, `6` | `0x20FD4` |
 | A security guard spots you. | `20`, `26-34`, `41-43` | `4-5`, `7` | `0x20FEC` |
-| A shiver runs down your spine. | `20`, `26-29`, `35-43` | `0-1`, `7` | `0x21004` |
+| A shiver runs down your spine. | `20`; `26-29`; `35-40`; `41-43` | `0`; `0`; `7`; `1` (paired by scene range) | `0x21004` |
 | An old custodian wiping the floor squints up at you. | `20` | `1` | `0x2101E` |
 | You look down and notice you are about to step on a concealed security plate. | `20-34`, `41-43` | `2`, `5-6` | `0x21036` |
 | With no warning, a low-level laser detection field activates. | `35-40` | `8` | `0x21050` |
