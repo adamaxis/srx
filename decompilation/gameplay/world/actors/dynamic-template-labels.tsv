@@ -3,8 +3,8 @@ Hell Hound	12	1	actor-kind-12-palette-1	Hell Hound	Name read from the ROM actor 
 vampire	9	3	actor-kind-9-palette-3	Vampire	Name read from the ROM actor template at +0x0A; capitalization normalized for display.
 eye5r 2	7	2	actor-kind-7-palette-2	Eye-Fiver 2	ROM actor-template name is eye5r 2; Eye-Fivers are named by the ROM contract text and the scene-3 guide crosswalk.
 eye5r 1	7	2	actor-kind-7-palette-2	Eye-Fiver 1	ROM actor-template name is eye5r 1; Eye-Fivers are named by the ROM contract text and the scene-3 guide crosswalk.
-lone11	5	1	actor-kind-5-palette-1	Lone template 11	Display spelling preserves the ROM template prefix and number; affiliation is not expanded here.
-lonemage	10	2	actor-kind-10-palette-2	Lone mage	Display spacing follows the ROM template name; affiliation is not expanded here.
+lone11	5	1	actor-kind-5-palette-1	Lone Star officer 11	The ROM template uses the lone prefix; group 13 pairs lone13 and lonemage with the explicit Lone Star patrol event.
+lonemage	10	2	actor-kind-10-palette-2	Lone Star mage	The ROM template uses the lone prefix; group 13 pairs this actor with lone13 and the explicit Lone Star patrol event.
 ork ganger	4	3	actor-kind-4-palette-3	Ork ganger	Name read from the ROM actor template at +0x0A; capitalization normalized for display.
 rat shaman	11	2	actor-kind-11-palette-2	Rat shaman	Name read from the ROM actor template at +0x0A; capitalization normalized for display.
 indian warior	11	2	actor-kind-11-palette-2	Indian warrior	Display spelling corrects the ROM template typo; the exact source name remains in this row.
@@ -16,5 +16,5 @@ elven mage	6	3	actor-kind-6-palette-3	Elven mage	Name read from the ROM actor te
 gator shaman	9	3	actor-kind-9-palette-3	Gator shaman	Name read from the ROM actor template at +0x0A; capitalization normalized for display.
 Gargoyle	13	1	actor-kind-13-palette-1	Gargoyle	Name read from the ROM actor template at +0x0A; actor kind and palette match the extracted source sprite.
 guard1	5	2	corp-guard	Corporate guard 1	The extractor uses the named corp-guard sprite for this kind-5 ROM actor template.
-lone13	5	1	actor-kind-5-palette-1	Lone template 13	Display spelling preserves the ROM template prefix and number; affiliation is not expanded here.
+lone13	5	1	actor-kind-5-palette-1	Lone Star officer 13	The ROM template uses the lone prefix; group 13 pairs this actor with lonemage and the explicit Lone Star patrol event.
 ghoul1	7	0	actor-kind-7-palette-0	Ghoul 1	Name read from the ROM actor template at +0x0A; the numeric suffix distinguishes the source template.

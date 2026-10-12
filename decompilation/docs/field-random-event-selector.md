@@ -30,6 +30,39 @@ these candidate outcomes and the valid roll pairs for each sum. It does not
 claim to list the later choice-dependent branches, which can inspect live
 game state.
 
+The context byte is the current scene ID, not a free-standing event category:
+the field-scene loader copies `FFDDC4` to `FFFBF8` at `0x2F32`, `0x3074`, and
+`0x3084`; `0x59986` then maps that value through `0x3312`. Several scenes share
+one context group and therefore the same nine outcome cells. The viewer now
+shows the shared scene set and a cross-map source index so repeated encounters
+are not mistaken for fixed residents or for a complete roster of every
+stateful actor path.
+
+## Cross-map encounter evidence
+
+The following are independent source paths. “Scene coverage” means the ROM
+table/list has an entry for that scene; it does not mean the actor appears on
+every visit. `0x1E166` still applies its tick, random-threshold, active-effect,
+and activity guards before selecting an outcome.
+
+| Encounter evidence | Scene coverage and selector sum | Source meaning |
+|---|---|---|
+| Lone Star patrol dialogue | Scenes `0` (sum 3), `3` (sum 4), and `41–43` (sum 5) | Enabled handlers `0x20F12` and `0x2106A` contain the explicit Lone Star text. |
+| Lone Star actor templates | Scene `1` (sum 2) and scenes `41–43` (sum 8) | Dynamic sequences contain templates `lone11`, `lone13`, and/or `lonemage`. Group 13 pairs `lone13` and `lonemage` with the explicit Lone Star patrol outcome, supporting the display labels. |
+| Hell Hound actor templates | Scene `0` (sum 0); `6–9` (sum 3); `20` (sum 5); `26–29` (sum 3); `35–40` (sum 6); `41–43` (sum 0); `44–50` (sums 1 and 5) | Dynamic actor sequences contain one or more Hell Hound templates. This is 26 scene contexts, across seven distinct selector groups. |
+| Renraku Strike Team dialogue | Scenes `35–40` (sum 1) | Enabled handler `0x210CC` says “You stumble upon a Renraku Strike Team.” The opening prompt alone does not establish what actor list, if any, is spawned by later branches. |
+| Strike Team actor records | Scene `47`, pending lists `0x1E5C4` and `0x1E628` | Separate mode-`0x13`/world-activity actor lists contain Strike Team templates. They are not yet code-linked to handler `0x210CC`, so the viewer keeps these records separate from the Renraku dialogue row. |
+
+This evidence corrects two common misreadings. First, the Hound sequence is
+present in many maps and must be listed for every scene above, not summarized
+as one regional encounter. Second, the five Lone Star dialogue contexts here
+are only the explicit outcomes in this selector. They do not prove that Lone
+Star actors cannot be created by a different story or actor-service path on
+other maps. That broader runtime coverage remains open until those paths are
+traced. The same boundary applies to Renraku teams: scene-35–40 dialogue and
+scene-47 pending actor lists are known, but they are not assumed to be one
+global team-spawn rule.
+
 ## Dynamic actor sequence data
 
 Each disabled scene/sum cell still points to a ROM sequence list at
@@ -38,8 +71,9 @@ marker-2 byte overrides. The asset importer follows those records and writes
 `field/entities/dynamic-world-activity-actors.tsv`, including the template
 name, entity kind, palette line, override bytes, scene context, and random sum.
 The map viewer shows the matching actor art beside each dynamic outcome. This
-profiles the actor types for every map context instead of leaving all disabled
-cells under one generic label.
+profiles the actor types for every context in this selector. It does not
+replace the separate default-actor lists, gated pedestrian table, event-created
+actor lists, or choice-dependent event branches.
 
 ## Map-placement boundary
 

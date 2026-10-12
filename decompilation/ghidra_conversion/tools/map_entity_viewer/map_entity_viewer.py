@@ -4460,6 +4460,9 @@ class MapEntityViewer(QMainWindow):
         _, self.dynamic_world_actor_rows = read_tsv(
             assets / "field" / "entities" / "dynamic-world-activity-actors.tsv"
         )
+        _, self.world_activity_actor_rows = read_tsv(
+            assets / "field" / "entities" / "world-activity-actors.tsv"
+        )
         _, dynamic_template_labels = read_tsv(
             world / "actors" / "dynamic-template-labels.tsv"
         )
@@ -5331,6 +5334,112 @@ class MapEntityViewer(QMainWindow):
             key, row.get("actor_name", "ROM actor").strip() or "ROM actor"
         )
 
+    @staticmethod
+    def _format_scene_ids(scene_ids: set[int]) -> str:
+        values = sorted(scene_ids)
+        if not values:
+            return "none indexed"
+        ranges: list[str] = []
+        start = previous = values[0]
+        for value in values[1:]:
+            if value == previous + 1:
+                previous = value
+                continue
+            ranges.append((start, previous))
+            start = previous = value
+        ranges.append((start, previous))
+        return ", ".join(
+            f"Scene {start:02d}" if start == end
+            else f"Scenes {start:02d}\u2013{end:02d}"
+            for start, end in ranges
+        )
+
+    def _encounter_source_coverage_html(self) -> str:
+        event_rows = [
+            row for row in self.field_activity_rows
+            if row.get("outcome_kind", "") == "dialogue_event"
+        ]
+        lone_star_dialogue: set[int] = set()
+        renraku_dialogue: set[int] = set()
+        for row in event_rows:
+            name = row.get("event_name", "").casefold()
+            scene = as_int(row, "scene", -1)
+            if scene < 0:
+                continue
+            if "lone star" in name:
+                lone_star_dialogue.add(scene)
+            if "renraku strike team" in name:
+                renraku_dialogue.add(scene)
+
+        lone_star_templates: set[int] = set()
+        hell_hound_templates: set[int] = set()
+        for row in self.dynamic_world_actor_rows:
+            template_name = row.get("actor_name", "").strip().casefold()
+            scene = as_int(row, "scene", -1)
+            if scene < 0:
+                continue
+            if template_name in {"lone11", "lone13", "lonemage"}:
+                lone_star_templates.add(scene)
+            if template_name == "hell hound":
+                hell_hound_templates.add(scene)
+
+        renraku_team_lists = [
+            row for row in self.world_activity_actor_rows
+            if "strike team" in row.get("actor_name", "").casefold()
+        ]
+        renraku_team_scenes = {
+            as_int(row, "scene", -1) for row in renraku_team_lists
+            if as_int(row, "scene", -1) >= 0
+        }
+        list_ids = sorted({
+            row.get("list_id", "").strip()
+            for row in renraku_team_lists
+            if row.get("list_id", "").strip()
+        })
+
+        rows = [
+            (
+                "Lone Star patrol dialogue",
+                self._format_scene_ids(lone_star_dialogue),
+                "Enabled dialogue outcomes in the field-event selector.",
+            ),
+            (
+                "Lone Star actor templates",
+                self._format_scene_ids(lone_star_templates),
+                "Dynamic actor sequences containing ROM templates named lone11, lone13, or lonemage.",
+            ),
+            (
+                "Hell Hound actor templates",
+                self._format_scene_ids(hell_hound_templates),
+                "Dynamic actor sequences; placement is selected at runtime from open screen-edge positions.",
+            ),
+            (
+                "Renraku Strike Team dialogue",
+                self._format_scene_ids(renraku_dialogue),
+                "Enabled dialogue outcome; the initial prompt is not itself proof of a spawned team.",
+            ),
+            (
+                "Strike Team actor records",
+                self._format_scene_ids(renraku_team_scenes),
+                "Separate pending lists " + (", ".join(list_ids) if list_ids else "not indexed") + "; loaded through the world-activity transition path, not yet linked to the dialogue handler above.",
+            ),
+        ]
+        page = [
+            "<h3>Cross-map encounter source index</h3>",
+            "<p>This index keeps dialogue handlers, dynamic actor sequences, and "
+            "story-triggered actor lists separate. A listed context means the ROM "
+            "contains that source path there; its gates still decide whether it runs. "
+            "This selector index is not a claim that an actor cannot be created by "
+            "another stateful path on other maps.</p>",
+        ]
+        for name, scenes, evidence in rows:
+            page.append(
+                "<p><b>" + html.escape(name) + "</b><br><i>" +
+                html.escape(scenes) + "</i><br>" +
+                html.escape(evidence) + "</p>"
+            )
+        return "\n".join(page)
+
     def _update_scene_character_info(self) -> None:
         info = self.map_by_id[self.scene_id]
         populations = self.map_view.actor_positions
@@ -5344,10 +5453,11 @@ class MapEntityViewer(QMainWindow):
             "<p>Only characters listed by the game are shown here. Background artwork alone never adds a person.</p>",
         ]
         page.append(self._dynamic_actor_summary_html(
-            "Possible encounter characters",
-            "These are temporary event characters selected for this map. The ROM "
-            "chooses an open position at the visible screen edge and checks terrain, "
-            "so the source gives them no permanent map coordinate.",
+            "Possible conditional encounter actors",
+            "These templates belong to this scene's dynamic world-effect sequences. "
+            "The sequence is conditional; when it runs, the ROM chooses open "
+            "screen-edge positions and checks terrain, so these are not permanent "
+            "map residents or fixed-coordinate placements.",
         ))
 
         def actor_fact(actor: MapEvidenceRegion, pattern: str, fallback: str) -> str:
@@ -5434,6 +5544,12 @@ class MapEntityViewer(QMainWindow):
             return
 
         rows.sort(key=lambda row: int(row.get("random_sum", "0")))
+        context_group = as_int(rows[0], "context_group", -1)
+        shared_context_scenes = {
+            as_int(row, "scene", -1) for row in self.field_activity_rows
+            if as_int(row, "context_group", -2) == context_group and
+            as_int(row, "scene", -1) >= 0
+        }
         actors_by_sum: dict[str, list[dict[str, str]]] = {}
         for actor in self.dynamic_world_actor_rows:
             if actor.get("scene", "").strip() != str(self.scene_id):
@@ -5442,18 +5558,24 @@ class MapEntityViewer(QMainWindow):
 
         parts = [
             f"<h2>Possible field events for Scene {self.scene_id:02d}</h2>",
-            "<p>These are conditional outcomes, not permanent residents. The "
-            "game checks its field-event gates and random threshold, then uses "
-            "two random draws from 0 through 4. Their sum selects one row.</p>",
+            "<p>This is the ROM's field-effect selector at 0x59986, not a complete "
+            "roster of every actor that can appear. It checks its field-event "
+            "gates and random threshold, then uses two draws from 0 through 4. "
+            "Their sum selects one row.</p>",
+            f"<p><b>Scene context:</b> group {context_group}; shared by "
+            f"{html.escape(self._format_scene_ids(shared_context_scenes))}. "
+            "Each listed outcome is conditional, not guaranteed on entry.</p>",
             "<p>Dynamic sequences identify the actor templates. The game chooses "
             "open screen-edge positions at runtime, so the pictures below show the "
             "actor types without assigning them fixed map positions.</p>",
         ]
+        parts.append(self._encounter_source_coverage_html())
         parts.append(self._dynamic_actor_summary_html(
-            "Possible encounter characters on this map",
-            "This scene's ROM actor templates and their encounter roll sums are "
-            "listed here with the correct source sprite. Positions are chosen when "
-            "an encounter runs, so these are not fixed map placements.",
+            "Dynamic actor templates selected for this scene",
+            "These are the actor templates in this scene's zero-mask outcomes, "
+            "shown with their source sprites and roll sums. They are only one "
+            "encounter path; dialogue handlers and story-triggered actor lists "
+            "are indexed separately above.",
         ))
         for row in rows:
             total = row.get("random_sum", "?")
