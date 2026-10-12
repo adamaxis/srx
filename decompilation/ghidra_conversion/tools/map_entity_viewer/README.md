@@ -75,6 +75,11 @@ Camera setup remains a separate value and is not treated as a player spawn.
   its 13 ROM event records. The entity list includes the named storefronts,
   facility/perimeter, and southern shelters. Routes keep numeric destinations
   numeric when the ROM does not identify a place or interior.
+- Scene 0 now has a crosswalk for all 21 ROM event rectangles, including ten
+  guide-named sites, both labeled map edges, and four direct event-31 handlers.
+  A local event-table result of scene 0 is kept distinct from the guide's
+  Penumbra/Renraku connection labels. Downtown building silhouettes are still
+  pending source-geometry authoring.
 - Scene 1 has twelve named Puyallup site entities with their ROM doorway/event
   rectangles attached. The facades, priority overhangs, and cracked-concrete
   forecourts are separate named parts/entities; the unnamed west-central
