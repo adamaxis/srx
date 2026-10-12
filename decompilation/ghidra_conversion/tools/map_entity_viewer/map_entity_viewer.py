@@ -5132,7 +5132,8 @@ class MapEntityViewer(QMainWindow):
 
         if scene_id == 47:
             lines.append(
-                "  Separate scene-47 mode-0x13 actor lists are profiled in the "
+                "  Separate Cave 4 guide-cross-reference (scene 47) mode-0x13 "
+                "actor lists are profiled in the "
                 "Special actor lists view; they do not run as random-selector outcomes."
             )
         lines.append(
@@ -5659,7 +5660,7 @@ class MapEntityViewer(QMainWindow):
                 "The ROM prompt says a security guard spots you; its affiliation is unspecified. " + event_outcome_detail(security_guard_rows),
             ),
             (
-                "Scene 47 mode-0x13 Strike Team lists",
+                "Cave 4 guide cross-reference: scene-47 mode-0x13 Strike Team lists",
                 self._format_scene_ids(renraku_team_scenes),
                 "Separate story-event lists " + (", ".join(list_ids) if list_ids else "not indexed") + "; one contains a Strike Team, two bodyguards, and a pedestrian, and the other contains three Strike Teams and a corporate guard. These are distinct from the disturbance encounter and the scene-35-40 prompt.",
             ),
