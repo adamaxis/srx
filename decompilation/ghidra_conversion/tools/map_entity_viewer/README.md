@@ -93,6 +93,16 @@ Camera setup remains a separate value and is not treated as a player spawn.
   Selecting a doorway or building shows its known route, branch, and available
   Lua text keys; missing dialogue, menu, shop inventory, and interior links are
   identified as unresolved instead of being inferred from the guide map.
+- Scene 3 has all ten guide-numbered building sites (markers 2-11), three
+  separately named but still-unidentified structures visible at the south map
+  edge, eight separately outlined street corridors, and a crosswalk for all 20
+  ROM event rectangles. Building outlines follow the structure crops and leave
+  adjoining lot paving separate. The roadway classification describes the
+  visible street surface only; it does not claim a collision mode. The five
+  east-edge records stay distinct from the guide's Downtown label: the current
+  ROM table result is field scene 10. The four direct event-31 cells remain
+  unnamed, and guide-listed rest, contact, entry, and shop details are shown as
+  guide evidence until their ROM/Lua branches are connected to those points.
 - **Map audio** is present, but map-scoped music remains unresolved until the
   ROM's scene-entry and persistent-audio paths are traced. Menu music is shown
   separately and is not assigned to a map without evidence.

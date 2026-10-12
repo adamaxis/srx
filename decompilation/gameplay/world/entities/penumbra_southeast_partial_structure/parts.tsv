@@ -1,0 +1,3 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+visible_structure	map_composite	3	1056	1152	352	192	0	0	behind_actor	unlabeled_structure	ROM scene-3 composed map crop clipped to visible partial structure.	field/entities/penumbra_southeast_partial_structure/visible_structure.png	0,0;352,0;352,192;0,192
+priority_structure	priority_overlay	3	1056	1152	352	192	0	0	foreground	overhang	Sparse priority pixels from the same partial structure crop.	field/entities/penumbra_southeast_partial_structure/priority_structure.png	0,0;352,0;352,192;0,192

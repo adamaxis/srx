@@ -2656,9 +2656,13 @@ class FieldMapView(QGraphicsView):
         role_colors = {
             "unreviewed": QColor(255, 245, 90, 230),
             "body": QColor(80, 210, 255, 225),
+            "building": QColor(80, 210, 255, 225),
             "overhang": QColor(255, 135, 50, 235),
             "shadow": QColor(220, 220, 245, 245),
             "decal": QColor(240, 90, 255, 230),
+            "foliage": QColor(80, 220, 100, 230),
+            "roadway": QColor(190, 190, 205, 230),
+            "unlabeled_structure": QColor(255, 130, 60, 230),
             "foreground": QColor(255, 90, 90, 235),
             "background_attachment": QColor(90, 220, 130, 235),
         }

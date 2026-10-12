@@ -1,0 +1,9 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+north_lane	map_composite	3	352	224	1664	128	352	224	ground	roadway	North street corridor between the top and middle blocks.	field/entities/penumbra_street_lanes/north_lane.png	352,224;2016,224;2016,352;352,352
+middle_lane	map_composite	3	0	640	2016	64	0	640	ground	roadway	Street corridor between the middle and lower blocks.	field/entities/penumbra_street_lanes/middle_lane.png	0,640;2016,640;2016,704;0,704
+south_lane	map_composite	3	0	1024	1504	128	0	1024	ground	roadway	South street corridor; stops before the eastern landscaped ground.	field/entities/penumbra_street_lanes/south_lane.png	0,1024;1504,1024;1504,1152;0,1152
+west_connector	map_composite	3	448	352	64	288	448	352	ground	roadway	West connector between the Fuchi block and the Big Rhino block.	field/entities/penumbra_street_lanes/west_connector.png	448,352;512,352;512,640;448,640
+central_connector	map_composite	3	1024	352	160	288	1024	352	ground	roadway	Connector between the Big Rhino block and the next block.	field/entities/penumbra_street_lanes/central_connector.png	1024,352;1184,352;1184,640;1024,640
+east_connector	map_composite	3	1568	352	160	288	1568	352	ground	roadway	Connector between the center and east blocks.	field/entities/penumbra_street_lanes/east_connector.png	1568,352;1728,352;1728,640;1568,640
+inn_eye_connector	map_composite	3	912	704	144	320	912	704	ground	roadway	Street corridor between Wylie's Gala Inn and Eye-Fivers.	field/entities/penumbra_street_lanes/inn_eye_connector.png	912,704;1056,704;1056,1024;912,1024
+eye_club_connector	map_composite	3	1376	704	128	320	1376	704	ground	roadway	Street corridor between Eye-Fivers and Club Penumbra.	field/entities/penumbra_street_lanes/eye_club_connector.png	1376,704;1504,704;1504,1024;1376,1024

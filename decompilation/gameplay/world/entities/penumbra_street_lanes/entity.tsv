@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+penumbra_street_lanes	Street lanes	terrain_feature	The dark, pebbled corridors between Penumbra's building blocks are marked as street surface from the composed ROM map. This is a visual classification only; no movement or collision rule is inferred.	-	-	-

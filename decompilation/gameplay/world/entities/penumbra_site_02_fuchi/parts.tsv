@@ -1,0 +1,3 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+visible_structure	map_composite	3	0	0	192	384	0	0	behind_actor	building	ROM scene-3 composed map crop clipped to the visible structure polygons; adjacent paving is excluded.	field/entities/penumbra_site_02_fuchi/visible_structure.png	0,0;160,0;160,128;128,160;160,192;160,288;128,320;160,352;160,384;0,384
+priority_structure	priority_overlay	3	0	0	192	384	0	0	foreground	overhang	Matching sparse ROM priority pixels; kept as a separate draw part and clipped to the same site outline.	field/entities/penumbra_site_02_fuchi/priority_structure.png	0,0;160,0;160,128;128,160;160,192;160,288;128,320;160,352;160,384;0,384

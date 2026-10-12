@@ -1,0 +1,3 @@
+interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
+rom_event_DC	160	160	32	32	building.resolve_field_location_route	ROM record at 0x18ABDC	Exact ROM scene-3 32x32 event cell; see scene-03-site-routes.tsv for table/direct route result.
+rom_event_E6	192	160	32	32	building.resolve_field_location_route	ROM record at 0x18ABE6	Exact ROM scene-3 32x32 event cell; see scene-03-site-routes.tsv for table/direct route result.
