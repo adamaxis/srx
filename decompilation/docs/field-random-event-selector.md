@@ -298,6 +298,25 @@ and scene-41-to-43 Lone Star paths. Rows marked `partial` name a specific
 follow-up still open; a handler with some traced rows is not automatically
 treated as complete.
 
+**Arrowhead search (`0x21144`, scenes 6-9; sum 2).** The prompt at
+`0x121688` says the AmerIndian boys are looking for an arrowhead and offers
+Attack, Help them, or Walk away. Attack enters `0x24CF4`, which attempts the
+list at `0x1D70C0`: two Indian Warrior actors using template `0x1D6C22`. The
+returned text says the boys flee and nearby warriors notice the player. This
+routine does not check the sequence-start result, so whether the encounter
+actually starts remains conditional; its combat exit is also not traced.
+
+Help enters `0x24D0C`. It selects the highest `+0x7B` value among active
+runner records, then runs a four-roll threshold trial through `0x0DBA`.
+`FFF0DD=0` returns the failure text at `0x1216AC` and makes no direct nuyen
+change. A result of 1, or a result above 1 outside scene 9, adds 50 nuyen to
+`FFFBFE` and returns the arrowhead/reward text at `0x1216B4`. For a result
+above 1 when the current scene byte `FFFBF8` is 9, the ROM instead adds 100
+nuyen and returns the dragon-scale story at `0x1216BC`; its MORE link continues
+to the automatic sale text at `0x1216D0`. This branch does not call an item
+inventory service or write an item record. Walk away returns the text-only
+page `0x1216D8` (?You leave them behind.?) without a direct state change.
+
 **Phantasmal watcher (`0x20F2A`, scenes 0, 3, and 5; sums 1-2 and 8).** The
 opening prompt at `0x120F00` links the two responses directly to data nodes:
 refusing reaches `0x120F18`, where the player is rebuked and the watcher
