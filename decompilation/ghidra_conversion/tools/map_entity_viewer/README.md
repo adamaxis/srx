@@ -44,6 +44,8 @@ Scene-2 ROM event markers have map labels. The right dock's **What happens**
 tab shows each site's confidence, what contact does, where the route leads,
 the known dialogue/menu/shop text, and story conditions. Guide labels are explicitly
 marked as corroborated, candidate, or unresolved; they are not ROM names.
+Unlabeled triggers still show the ROM's numeric scene/activity target and say
+whether the route table or a special handler selects it.
 Selecting an entity shows its known interactions and imported dialogue text
 when that content exists. **Map profile** shows the selected ROM
 descriptor, camera setup, default three-member party placement, and the

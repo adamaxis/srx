@@ -1609,6 +1609,58 @@ def read_site_route_index(repo_root: Path, scene_id: int) -> dict[str, dict[str,
     }
 
 
+def describe_event_table_target(target_class: str) -> str:
+    """Turn the ROM route classification into a readable numeric destination."""
+    value = target_class.strip()
+    match = re.match(
+        r"^(field scene|resource activity scene|scripted activity scene)\s+"
+        r"(0x[0-9a-fA-F]+)(.*)$",
+        value,
+    )
+    if match:
+        route_kind = {
+            "field scene": "Field map",
+            "resource activity scene": "Resource activity",
+            "scripted activity scene": "Scripted activity",
+        }[match.group(1)]
+        scene_number = int(match.group(2), 16)
+        condition = match.group(3).strip()
+        condition = f" ({condition.lstrip('; ').strip()})" if condition else ""
+        return f"{route_kind} {scene_number}{condition}"
+    if "table byte is diagnostic only" in value:
+        return "Special story/service handler; the table byte does not select the destination"
+    if "direct event continuation" in value:
+        return "Direct ROM continuation; final destination is not established"
+    if "no event table" in value:
+        return "No event-table destination; generic field handler continues"
+    if "unresolved" in value:
+        return "Destination not established by the current ROM trace"
+    return value or "Destination not established by the current ROM trace"
+
+
+def describe_trigger_action(route: str) -> str:
+    """Describe how the ROM reaches a route-table row or direct handler."""
+    value = route.strip().lower()
+    row_match = re.search(r"table_index_0x([0-9a-f]+)", value)
+    row_number = int(row_match.group(1), 16) if row_match else None
+    if "conditional_maglock" in value and row_number is not None:
+        return (
+            "Try the electromagnetic lock; if it stays closed, use map "
+            f"route entry {row_number}"
+        )
+    if "bypass" in value:
+        return "Run the special story or service behavior"
+    if "event_table_index" in value and row_number is not None:
+        return f"Use this map's route-table entry {row_number}"
+    if "direct event continuation" in value:
+        return "Run a direct event handler; final destination is not established"
+    if "no event table" in value:
+        return "Continue through the generic map-event handler; this map has no route table"
+    if "unresolved generic route" in value:
+        return "Generic map interaction; destination is not established"
+    return re.sub(r"[_\s]+", " ", route.strip()).strip().capitalize() or "Route not established"
+
+
 def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceRegion]:
     path = repo_root / "decompilation" / "docs" / "field-map-trigger-records.tsv"
     _, rows = read_tsv(path)
@@ -1635,11 +1687,28 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
             site_name = site.get("site_name", "").strip()
             route_label = site.get("rom_route", "").strip() or route
             route_label = re.sub(r"[_\s]+", " ", route_label).strip().capitalize()
+            table_target = describe_event_table_target(
+                row.get("event_table_target_class", "")
+            )
+            destination = site.get("rom_destination", "").strip() or table_target
+            table_byte = row.get("event_table_byte_at_event_id", "").strip()
+            action = describe_trigger_action(route)
+            if table_byte:
+                row_match = re.search(r"table_index_0x([0-9a-f]+)", route, re.IGNORECASE)
+                if "bypass" in route.lower():
+                    table_detail = f"{table_byte} is diagnostic; the special handler bypasses the table"
+                elif row_match:
+                    table_detail = f"route row {int(row_match.group(1), 16)} -> {table_byte}"
+                else:
+                    table_detail = f"{table_byte} ({table_target})"
+            else:
+                table_detail = "No event-table byte is recorded for this route"
             details = [
                 "Map interaction",
                 f"Location: {site_name or 'Not identified'}",
-                f"Action on contact: {route_label}",
-                f"Destination or result: {site.get('rom_destination', row.get('event_table_target_class', '(not established)'))}",
+                f"Action on contact: {action if not site_name else route_label}",
+                f"Destination or result: {destination}",
+                f"Map route-table result: {table_detail}",
                 f"Trigger area: pixels {x0},{y0}, size {width}×{height}; "
                 f"map cells X {row.get('x_start_grid_cell', '?')}..{row.get('x_end_grid_cell', '?')}, "
                 f"Y {row.get('y_start_grid_cell', '?')}..{row.get('y_end_grid_cell', '?')}",
@@ -1711,6 +1780,19 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
                     "Destination: unresolved; this record bypasses the scene event table.",
                     f"Source record: {record_address}; handler {row.get('rom_handler_addresses', '(unrecorded)')}",
                 ))
+            if not route_lines:
+                route_lines.extend((
+                    "This ROM trigger does not have a confirmed building or doorway name yet.",
+                    f"On contact: {action}",
+                    f"Destination or result: {destination}",
+                    f"Map route-table result: {table_detail}",
+                    f"Source record: {record_address}; scene profile {row.get('profile_address', '(unknown)')}",
+                    f"ROM handler addresses: {row.get('rom_handler_addresses', '(not recorded)')}",
+                    f"Current implementation path: {row.get('converted_cpp_functions_or_runtime_owners', '(not recorded)')}",
+                    "Numeric scenes stay numeric until a ROM route or map reference identifies a place.",
+                ))
+                if not site_name:
+                    title = f"ROM event {event_id or '(unknown)'} - {destination}"
             result.append(MapEvidenceRegion(
                 kind="rom_event",
                 x=x0,
