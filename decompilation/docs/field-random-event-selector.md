@@ -53,6 +53,7 @@ Scene IDs below are ROM field-scene IDs. The tables cover the field random-event
 | Open security panel, handler `0x20FBA` | Scenes `21-25` sums `1, 7`; `26-29` sum `2`; `30-34` sum `0` | Re-wiring uses the active party's highest Electronics value. A zero result trips the building alarm and enters the map-effect path; a result above 1 disables the current world-effect service through `FFE170`. Walking away chains into the scientist prompt. |
 | Scientist, handler `0x20FD4` | Scenes `21-25` and `30-34`; sums `4` and `6` | Asking for information uses slot 0's source field `+0x7A` at threshold 5. Both result branches return refusal/suspicion text; walking away returns a leave-behind and floor-text sequence. Neither command directly queues an actor. |
 | Hidden-camera event, handler `0x21004` | Scene `20` sum `0`; scenes `26-29` sum `0`; scenes `35-40` sum `7`; scenes `41-43` sum `1` | MORE tests the party as a group: target 4 with one active runner, 5 with two, 6 with three. Zero successes start the map-effect path and show the alarm text; any success gives the nerves text. The handler names no police roster. |
+| Custodian / missing-pass check, handler `0x2101E` | Scene `20`; sum `1` | Asking for information uses a 0-99 roll, the ID-badge flag (`FFFC22` bit 10), and two story bits (`FFFC1E` bits 18/19) to select a clue, suspicion, or evasive response. Walking away gives a 25% “Where’s your pass?” branch only when the badge bit is clear; its MORE command enters the shared corporate-guard ID handler `0x242FA`. No direct Lone Star roster is queued. |
 | Alley grenade seller, handler `0x2112C` | Scenes `0`, `2`, `3`, and `5`; sums `5-7` | Attack rolls `0-59` try the one-bodyguard list at `0x1D7054`; a successful start leads to a gun battle. Rolls `60-99`, or failure to start that actor, reveal undercover Lone Star. Buying the grenades has its own 60/40 split: rolls `0-59` continue through funds/slot checks; `60-99` expose the undercover agent. |
 | Company Man confrontation, handler `0x20F5A` | Scenes `3` and `5`; sums `1` and `4` | One continuation says the man remains irate and a Lone Star patrol arrives. The response text then says the officers turn their attention to the player. |
 | Flustered-woman event, handler `0x20F8A` | Scenes `0-1`; sums `3-4` | The MORE continuation divides into suspected-harm and apparent-law-official versions. The law-official version can reveal an undercover Lone Star agent; its Attack/Comply/Run choices can end in a gun battle, questioning/release, fine, arrest/confiscation, escape, or being overtaken and shot. See the terminal branch table below. |
@@ -196,6 +197,38 @@ returns `0x121328`: nothing happens and the player suspects nerves. This event
 does not write the heat byte `FFFBFA` or name a Lone Star/corporate roster; the
 alarm's actor result comes from the current map-effect data and remains
 unresolved.
+
+**Custodian / missing-pass check (`0x2101E`, scene 20, sum 1).** The entry
+stub pairs prompt record `0x121330` with profile `0x121E5C`. That profile is a
+56x72 dialogue portrait; the ROM also selects the same profile for a separate
+scene-19 old-man conversation through `0x20990`/`0x20C78`. The shared profile
+does not establish that the two events are the same character or that either
+portrait is a map actor. The custodian prompt offers “I'm looking for some
+information” (`0xD5` -> `0x2451C`) and “Walk away” (`0xD6` -> `0x2457C`).
+
+Asking for information draws 0-99. `FFFC22` bit 10 is the ID-badge flag
+identified by the adjacent security dialogue. With the flag set, rolls 0-4
+return `0x121358` (“Why do you want to know?” followed by the suspicious
+walk-away text); rolls 5-24 check the story bits; rolls 25-99 return the
+evasive response at `0x121348`. With the flag clear, rolls 5-24 return the
+suspicious response, rolls 0-4 check the story bits, and rolls 25-99 return
+the evasive response. In the story-bit check, `FFFC1E` bit 18 must be set and
+bit 19 clear to return `0x121350`, which tells the player that Ilene Two Fists
+is in a northern cell. If that condition fails, the result is the evasive
+response at `0x121348`. These response records have no choice commands, and
+the two handlers do not directly change story flags, funds, or actor lists.
+
+Walking away returns the “He continues mopping as you walk on” response at
+`0x121368` whenever the ID-badge bit is set. With the bit clear, `0x2457C`
+draws 0-99: 0-74 returns the same mopping response; 75-99 returns
+`0x121370` (“Hey, where's your pass?”). Its MORE command (`0xCC`) reaches the
+shared ID handler `0x242FA`, already traced under the security-guard stop.
+That follow-up is corporate security: its Attack/Talk and ID/dispatch paths
+can attempt a corporate guard or continue to the security-mage prompt; they
+do not name Lone Star. The custodian commands themselves contain no direct
+story-flag, funds, or actor-list write. The adjacent concealed-plate prompt at `0x121384`
+is a separate selector entry; adjacency in the prompt data does not prove that
+the custodian event automatically continues into it.
 
 **Security-guard stop (`0x20FEC`, scenes 20, 26-34, and 41-43).** The opening
 record `0x121238` asks for an ID and dispatches command `0xCC` to `0x242FA`.
