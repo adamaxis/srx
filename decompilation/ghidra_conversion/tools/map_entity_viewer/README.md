@@ -73,6 +73,12 @@ every route's arrival position. Scene 2 slot 1 is the traced New Game lead
 position before the automatic Stoker walk. Camera setup remains a separate
 value and is not treated as a player spawn.
 
+The **Map profile** also lists known incoming routes from authored ROM route
+profiles, including the source map, site cross-reference, numeric destination,
+record addresses, and recorded conditions. This is a reverse index of profiled
+route rows; an empty list means incoming routes have not been profiled here,
+not that the ROM has no way into the map.
+
 ## Current evidence coverage
 
 - All 56 ROM field-map descriptors have an indexed default actor-list count;

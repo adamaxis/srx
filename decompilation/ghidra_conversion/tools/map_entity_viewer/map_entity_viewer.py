@@ -1905,6 +1905,44 @@ def read_site_route_rows(repo_root: Path, scene_id: int) -> list[dict[str, str]]
     return rows
 
 
+def read_incoming_site_route_groups(
+    repo_root: Path, destination_scene: int
+) -> list[tuple[int, dict[str, str], list[str]]]:
+    """Find authored ROM route rows whose numeric destination is this map."""
+    areas_root = repo_root / "decompilation" / "gameplay" / "world" / "areas"
+    destination_pattern = re.compile(
+        r"\b(?:field\s+)?(?:scene|map)\s*(\d+)\b", re.IGNORECASE
+    )
+    grouped: dict[tuple[object, ...], tuple[int, dict[str, str], list[str]]] = {}
+    for path in sorted(areas_root.glob("scene-*-site-routes.tsv")):
+        scene_match = re.fullmatch(r"scene-(\d+)-site-routes\.tsv", path.name)
+        if scene_match is None:
+            continue
+        source_scene = int(scene_match.group(1))
+        for row in read_tsv(path)[1]:
+            destination = row.get("rom_destination", "").strip()
+            targets = {
+                int(value) for value in destination_pattern.findall(destination)
+            }
+            if destination_scene not in targets:
+                continue
+            key = (
+                source_scene,
+                row.get("site_name", "").strip(),
+                row.get("rom_destination", "").strip(),
+                row.get("player_conditions", "").strip(),
+            )
+            if key not in grouped:
+                grouped[key] = (source_scene, row, [])
+            address = row.get("rom_record_address", "").strip()
+            if address:
+                grouped[key][2].append(address)
+    return sorted(
+        grouped.values(),
+        key=lambda value: (value[0], value[1].get("site_name", "").casefold()),
+    )
+
+
 def read_guide_map_labels(world_root: Path) -> dict[int, dict[str, str]]:
     _, rows = read_tsv(world_root / "areas" / "map-guide-labels.tsv")
     return {
@@ -4026,6 +4064,44 @@ class MapEntityViewer(QMainWindow):
                 conditions = route.get("player_conditions", "").strip()
                 if conditions:
                     lines.append(f"    Condition or unresolved branch: {conditions}")
+        incoming_routes = read_incoming_site_route_groups(
+            self.repo_root, self.scene_id
+        )
+        if incoming_routes:
+            lines.extend((
+                "",
+                "Known incoming routes from authored ROM route profiles:",
+            ))
+            for source_scene, route, addresses in incoming_routes:
+                source_area = self.contract_area_profiles.get(source_scene)
+                source_guide = self.guide_map_labels.get(source_scene, {})
+                source_name = (
+                    str(source_area.get("name", "")) if source_area else
+                    str(source_guide.get("display_name", ""))
+                )
+                source_label = (
+                    f"{source_name} (Scene {source_scene:02d})"
+                    if source_name else f"Scene {source_scene:02d}"
+                )
+                site_name = route.get("site_name", "").strip() or "Unidentified route"
+                marker = route.get("guide_marker", "").strip()
+                if marker and f"marker {marker}" not in site_name.casefold():
+                    site_name += f" (guide marker {marker})"
+                crosswalk = route.get("crosswalk_status", "").strip()
+                if crosswalk in {"guide_name_crosswalk", "nearby_candidate"}:
+                    site_name += " [guide cross-reference]"
+                elif crosswalk == "unresolved":
+                    site_name += " [place unresolved]"
+                address_text = ", ".join(addresses) or "record address unavailable"
+                count_text = f" ({len(addresses)} rectangles)" if len(addresses) > 1 else ""
+                lines.append(
+                    f"  From {source_label}: {site_name}{count_text}; "
+                    f"{route.get('rom_destination', '').strip() or 'numeric destination unresolved'}; "
+                    f"ROM records {address_text}."
+                )
+                conditions = route.get("player_conditions", "").strip()
+                if conditions:
+                    lines.append(f"    Conditions or unresolved branch: {conditions}")
         out_of_bounds_actors = read_out_of_bounds_actor_details(self.assets, info)
         if out_of_bounds_actors:
             lines.append(
