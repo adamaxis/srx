@@ -5361,6 +5361,9 @@ class MapEntityViewer(QMainWindow):
         ]
         lone_star_dialogue: set[int] = set()
         renraku_dialogue: set[int] = set()
+        security_mage_rows: list[dict[str, str]] = []
+        security_guard_rows: list[dict[str, str]] = []
+        renraku_security_rows: list[dict[str, str]] = []
         for row in event_rows:
             name = row.get("event_name", "").casefold()
             scene = as_int(row, "scene", -1)
@@ -5370,6 +5373,19 @@ class MapEntityViewer(QMainWindow):
                 lone_star_dialogue.add(scene)
             if "renraku strike team" in name:
                 renraku_dialogue.add(scene)
+            if "security mage spots you" in name:
+                security_mage_rows.append(row)
+            if "secuity guard spots you" in name or "security guard spots you" in name:
+                security_guard_rows.append(row)
+            if "renraku security spots you" in name:
+                renraku_security_rows.append(row)
+
+        def event_outcome_detail(matching_rows: list[dict[str, str]]) -> str:
+            sums = sorted({
+                as_int(row, "random_sum", -1) for row in matching_rows
+                if as_int(row, "random_sum", -1) >= 0
+            })
+            return "Selector sums " + (", ".join(map(str, sums)) if sums else "not indexed") + "."
 
         lone_star_templates: set[int] = set()
         hell_hound_templates: set[int] = set()
@@ -5417,6 +5433,21 @@ class MapEntityViewer(QMainWindow):
                 "Renraku Strike Team dialogue",
                 self._format_scene_ids(renraku_dialogue),
                 "Enabled dialogue outcome; the initial prompt is not itself proof of a spawned team.",
+            ),
+            (
+                "Security mage encounter text",
+                self._format_scene_ids({as_int(row, "scene", -1) for row in security_mage_rows}),
+                "The ROM calls this a security mage, but does not name a company. " + event_outcome_detail(security_mage_rows),
+            ),
+            (
+                "Security guard encounter text",
+                self._format_scene_ids({as_int(row, "scene", -1) for row in security_guard_rows}),
+                "The ROM prompt is ‘A secuity guard spots you.’ The affiliation is unspecified. " + event_outcome_detail(security_guard_rows),
+            ),
+            (
+                "Renraku Security encounter text",
+                self._format_scene_ids({as_int(row, "scene", -1) for row in renraku_security_rows}),
+                "Named Renraku security prompt. " + event_outcome_detail(renraku_security_rows),
             ),
             (
                 "Strike Team actor records",

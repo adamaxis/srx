@@ -50,6 +50,9 @@ and activity guards before selecting an outcome.
 | Lone Star patrol dialogue | Scenes `0` (sum 3), `3` (sum 4), and `41–43` (sum 5) | Enabled handlers `0x20F12` and `0x2106A` contain the explicit Lone Star text. |
 | Lone Star actor templates | Scene `1` (sum 2) and scenes `41–43` (sum 8) | Dynamic sequences contain templates `lone11`, `lone13`, and/or `lonemage`. Group 13 pairs `lone13` and `lonemage` with the explicit Lone Star patrol outcome, supporting the display labels. |
 | Hell Hound actor templates | Scene `0` (sum 0); `6–9` (sum 3); `20` (sum 5); `26–29` (sum 3); `35–40` (sum 6); `41–43` (sum 0); `44–50` (sums 1 and 5) | Dynamic actor sequences contain one or more Hell Hound templates. This is 26 scene contexts, across seven distinct selector groups. |
+| Security mage encounter text | Scenes `20–43` (sums 2, 3, 6, 7, and 8) | Handler `0x210FC` names a security mage but does not identify its employer. This broad later-game security encounter is not silently relabeled Renraku. |
+| Security guard encounter text | Scenes `20`, `26–34`, and `41–43` (sums 4, 5, and 7) | Handler `0x20FEC` says “A secuity guard spots you.” The ROM text does not name an affiliation. |
+| Renraku Security encounter text | Scenes `35–40` (sum 4) | Handler `0x210E4` explicitly names Renraku Security. Keep it separate from the strike-team encounter. |
 | Renraku Strike Team dialogue | Scenes `35–40` (sum 1) | Enabled handler `0x210CC` says “You stumble upon a Renraku Strike Team.” The opening prompt alone does not establish what actor list, if any, is spawned by later branches. |
 | Strike Team actor records | Scene `47`, pending lists `0x1E5C4` and `0x1E628` | Separate mode-`0x13`/world-activity actor lists contain Strike Team templates. They are not yet code-linked to handler `0x210CC`, so the viewer keeps these records separate from the Renraku dialogue row. |
 
