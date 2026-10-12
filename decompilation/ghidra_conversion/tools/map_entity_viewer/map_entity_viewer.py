@@ -2152,7 +2152,7 @@ def describe_trigger_action(route: str) -> str:
     if "event_table_index" in value and row_number is not None:
         return f"Use this map's route entry {row_number}"
     if "direct event continuation" in value:
-        return "Continue into a special game event; destination not established"
+        return "Run a context-dependent special interaction; its result is not identified yet"
     if "no event table" in value:
         return "Continue through the map interaction system; destination not established"
     if "unresolved generic route" in value:
@@ -2307,12 +2307,12 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
             if not site_name and is_direct_game_event:
                 # Keep the player/editor description separate from the raw
                 # handler and converted owner list shown in the Source tab.
-                title = "Game event handoff"
-                map_label = "Game flow"
+                title = "Special map interaction"
+                map_label = "Special interaction"
                 route_lines.extend((
-                    "What happens: the game continues into a special event handler.",
-                    "Where it goes: this record skips the map's normal route list, and the final screen or location is not established yet.",
-                    "Dialogue, choices, or shop: none is linked to this trigger in the current evidence.",
+                    "What happens: the game handles this as a special interaction. Its exact action at this map point is not traced yet.",
+                    "Next screen or result: not established for this trigger.",
+                    "Dialogue, choices, or shop: not identified for this trigger yet.",
                 ))
             if not route_lines:
                 route_lines.extend((
