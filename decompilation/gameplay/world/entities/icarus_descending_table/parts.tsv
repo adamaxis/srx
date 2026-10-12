@@ -1,0 +1,5 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+tabletop	map_composite	12	80	120	32	28	16	8	behind_actor	body	The grey tabletop surface is isolated from its shadow and the booth seating.	field/entities/icarus_descending_table/tabletop.png	0,0;32,0;32,20;27,28;5,28;0,20
+left_booth_seat	map_composite	12	64	112	16	48	0	0	behind_actor	body	The left red upholstered booth side follows the map pixels; it is not part of the tabletop.	field/entities/icarus_descending_table/left_booth_seat.png	2,0;16,0;16,48;0,48;0,6
+right_booth_seat	map_composite	12	112	112	16	48	48	0	behind_actor	body	The right red upholstered booth side is a separate repeated component.	field/entities/icarus_descending_table/right_booth_seat.png	0,0;14,0;16,6;16,48;0,48
+lamp_priority	priority_overlay	12	88	112	16	16	24	0	foreground	foreground	The small lamp pixels are sourced from the priority plane and kept above the table image.	field/entities/icarus_descending_table/lamp_priority.png	2,2;14,2;14,14;2,14

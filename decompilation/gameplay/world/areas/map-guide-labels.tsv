@@ -4,3 +4,4 @@ scene_id	display_name	evidence
 8	Wilderness Area 2	Mike's RPG Center map title and visual map cross-check: https://www.mikesrpgcenter.com/shadowrun/maps/wild2.html
 9	Wilderness Area 4	Mike's RPG Center map title and visual map cross-check: https://www.mikesrpgcenter.com/shadowrun/maps/wild4.html
 10	Friendship Restaurant route map	Mike's RPG Center labels Council Island marker 2 as The Friendship Restaurant and lists Walking Bear there; ROM scene-4 event 1 at 0x15BDC4 selects field scene 10. Scene 3's east-edge route also produces numeric scene 10, with its context unresolved, so this is a route-specific cross-reference rather than a universal scene identity.
+12	Icarus Descending	Crosswalk from Mike's RPG Center Downtown marker 8 and ROM scene-0 event record 53 at 0x0D57F0, whose event-table entry 1 selects field scene 12. The map name is linked to this scene by the route; the guide's reputation gate is kept separate from the scene-12 ROM flag checks.

@@ -665,22 +665,18 @@ def read_site_content_details(
 
 
 def read_map_audio_details(info: MapInfo) -> str:
-    """Show map-audio findings in plain language; source addresses stay elsewhere."""
+    """Show only established map-audio facts; unresolved behavior stays explicit."""
     return "\n".join((
         f"Scene {info.scene_id:02d} music and sound",
         "",
-        "Music on entry: the traced field-entry flow does not choose a song "
-        "based on this map.",
-        "What may still play: music already active when you arrive can continue, "
-        "and map events may request sounds during play.",
-        "Can the track be named from the map? Not yet. The map record does not "
-        "identify a song, and carry-over from the previous screen has not been "
-        "fully resolved.",
-        "Title and menu music are handled separately; they are not assigned to "
-        "this map.",
+        "Map-record music ID: none is present in the extracted scene descriptor.",
+        "Music on entry: unresolved. The current source profile has not established "
+        "whether this route starts a track or carries one over from the previous screen.",
+        "Map-event sounds: inspect the selected event's ROM/script profile; this "
+        "overview does not assign a sound based on the map artwork.",
         "",
-        "Status: no map-specific music assignment is confirmed. This does not "
-        "mean the map is silent.",
+        "Status: pending ROM audio trace. The missing descriptor field does not "
+        "prove that the scene is silent or that previous music continues.",
     ))
 
 
@@ -1756,11 +1752,19 @@ def describe_event_table_target(target_class: str) -> str:
 
 @lru_cache(maxsize=1)
 def field_scene_display_names() -> dict[int, str]:
-    return {
+    names = {
         scene_id: str(profile.get("name", ""))
         for scene_id, profile in read_rom_contract_area_profiles(ROOT).items()
         if profile.get("name")
     }
+    # A contract location table is the strongest map-name source. Some
+    # ordinary locations have no contract row, so expose the separately
+    # authored guide crosswalk with its evidence status in the displayed name.
+    for scene_id, label in read_guide_map_labels(DEFAULT_WORLD).items():
+        guide_name = label.get("display_name", "").strip()
+        if guide_name and scene_id not in names:
+            names[scene_id] = f"{guide_name} (guide map cross-reference)"
+    return names
 
 
 def describe_site_destination(value: str, current_scene: int) -> str:
@@ -1851,6 +1855,8 @@ def describe_site_destination(value: str, current_scene: int) -> str:
 def describe_site_behavior(value: str) -> str:
     """Translate route-profile labels into concise map-editor language."""
     descriptions = {
+        "enter_field_scene":
+            "Entering this point loads the linked field scene; that map's own events run after arrival.",
         "entry_description_then_field_route":
             "Shows the location's entry description, then follows its field route.",
         "generic_area_route":

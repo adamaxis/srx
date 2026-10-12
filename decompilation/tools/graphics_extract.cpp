@@ -601,7 +601,7 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         output << '"';
     };
 
-    const std::array<std::pair<const char*, std::size_t>, 96> records{{
+    const std::array<std::pair<const char*, std::size_t>, 112> records{{
         // Stoker prompt pointers consumed by the source event/profile path.
         {"stoker.motel.arrival.title", 0x1167EBU},
         {"stoker.motel.arrival.more", 0x0FE5BFU},
@@ -711,6 +711,25 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         {"big-rhino.related.package-approach", 0x11555CU},
         {"big-rhino.related.maitre-d-offer", 0x1155B5U},
         {"big-rhino.related.package-payment", 0x1155E1U},
+        // Scene 12 event 30 selects Caleb Brightmore after the access gate.
+        // These strings remain content records; dialogue.lua owns the menu
+        // profile and the scene route TSV records the ROM state branches.
+        {"icarus-descending.access.blocked", 0x108796U},
+        {"icarus-descending.caleb.first-meeting", 0x10863EU},
+        {"icarus-descending.caleb.first-meeting.continuation", 0x1086C6U},
+        {"icarus-descending.caleb.opening", 0x108886U},
+        {"icarus-descending.caleb.post-run-opening", 0x105C55U},
+        {"icarus-descending.caleb.information.contacts-offer", 0x1088F8U},
+        {"icarus-descending.caleb.work.opening", 0x109025U},
+        {"icarus-descending.caleb.work.renraku-introduction", 0x1090E9U},
+        {"icarus-descending.caleb.work.renraku-followup", 0x109174U},
+        {"icarus-descending.caleb.work.recommended-run", 0x1092D3U},
+        {"icarus-descending.caleb.work.matrix-requirement", 0x109222U},
+        {"icarus-descending.caleb.leave", 0x10963FU},
+        {"icarus-descending.caleb.transaction", 0x10959DU},
+        {"icarus-descending.caleb.option.information", 0x104051U},
+        {"icarus-descending.caleb.option.work", 0x103A3AU},
+        {"icarus-descending.caleb.option.leave", 0x104FEBU},
     }};
 
     output << "-- Generated from the US ROM dialogue and menu text records.\n"
@@ -2583,6 +2602,15 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         root, "dialogue/portraits/mortimer-reed.bmp",
         shadowrun::graphics::decode_genesis_field_dialogue_portrait(rom, 7U),
         "sprite", "0x12CC70/0x121FF4/0x20990", false, manifest, written,
+        missing, blank);
+    // Scene 12's mode-0 entry in the 0x12CC90 dialogue row points to Caleb
+    // Brightmore's profile at 0x121E98. It is dialogue portrait art, not a
+    // standing map actor.
+    write_catalog_asset(
+        root, "dialogue/portraits/caleb-brightmore.bmp",
+        shadowrun::graphics::decode_genesis_field_mode_profile_sprite(
+            rom, 0x121E98U),
+        "sprite", "0x12CC90/0x121E98/0x20990", false, manifest, written,
         missing, blank);
     // The scene-2/event-4 indexed title service uses a different profile for
     // the Jump House arrival description. Keep its face as separate host art;

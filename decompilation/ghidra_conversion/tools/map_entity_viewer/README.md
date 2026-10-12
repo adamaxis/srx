@@ -458,6 +458,25 @@ is available. Route destinations are kept distinct from guide labels and only
 marked as traced where the ROM transition caller supports them. Map music is
 still unresolved.
 
+Scene 12 now has its own area/entity records for Icarus Descending. The dark
+booth event links to the ROM's bodyguard gate and Caleb Brightmore profile,
+including the first-meeting, repeat, and conditional post-run text. The viewer
+imports Caleb's 56x72 portrait from profile `0x121E98`; it is dialogue art, not
+a standing field character. The north-west wall panel, booth frame, north-east
+display counter, five repeated dining booths, and five planters use separate
+named entities and source crops. Event 8 and event 9 at the south map edge
+remain unresolved. The guide's reputation-6 note stays separate from the ROM
+`FFFC1E` bit-10 booth gate.
+
+When inspecting a route, use **What happens** for the location name, player
+flow, destination, dialogue pages, menu labels, shop contents, and known state
+conditions. **Source** retains ROM records, Lua module paths, and low-level
+cross-references. **Map profile** lists ordinary scene actors and generic
+fallback arrival positions; **Field events** lists conditional actor/event
+alternatives without converting them into permanent map scenery. **Map audio**
+is present for every scene, but currently reports that no map-specific track
+has been confirmed rather than assigning a guessed song.
+
 Actor overlays cover all extracted default-list records and the 69 conditional
 pedestrian candidates in scenes 21-43, with named directional art for the
 profiled types. Scene 47 also exposes the three source lists selected through

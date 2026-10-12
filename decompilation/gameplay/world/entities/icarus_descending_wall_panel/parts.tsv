@@ -1,0 +1,2 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+wall_panel_face	map_composite	12	0	0	64	32	0	0	behind_actor	body	The outline follows the raised rectangular panel face at the north-west wall; no surrounding wall or floor is included.	field/entities/icarus_descending_wall_panel/wall_panel_face.png	0,0;58,0;64,6;64,26;58,32;6,32;0,26

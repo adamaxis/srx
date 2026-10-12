@@ -75,6 +75,65 @@ local speakers = {
             },
         },
     },
+    caleb_brightmore = {
+        name = "Caleb Brightmore",
+        text_profile = "icarus-descending.caleb_brightmore",
+        portrait_alias = "dialogue.portraits.caleb.brightmore",
+        events = {
+            access_blocked = {
+                title_key = "icarus-descending.access.blocked",
+                continuation_key = "",
+            },
+            first_meeting = {
+                title_key = "icarus-descending.caleb.first-meeting",
+                continuation_key = "shared.more",
+            },
+            first_meeting_continuation = {
+                title_key = "icarus-descending.caleb.first-meeting.continuation",
+                continuation_key = "",
+            },
+            opening = {
+                title_key = "icarus-descending.caleb.opening",
+                continuation_key = "",
+            },
+            post_run_opening = {
+                title_key = "icarus-descending.caleb.post-run-opening",
+                continuation_key = "",
+            },
+            information_contacts_offer = {
+                title_key = "icarus-descending.caleb.information.contacts-offer",
+                continuation_key = "",
+            },
+            work_opening = {
+                title_key = "icarus-descending.caleb.work.opening",
+                continuation_key = "",
+            },
+            work_renraku_introduction = {
+                title_key = "icarus-descending.caleb.work.renraku-introduction",
+                continuation_key = "",
+            },
+            work_renraku_followup = {
+                title_key = "icarus-descending.caleb.work.renraku-followup",
+                continuation_key = "",
+            },
+            work_recommended_run = {
+                title_key = "icarus-descending.caleb.work.recommended-run",
+                continuation_key = "",
+            },
+            work_matrix_requirement = {
+                title_key = "icarus-descending.caleb.work.matrix-requirement",
+                continuation_key = "",
+            },
+            leave = {
+                title_key = "icarus-descending.caleb.leave",
+                continuation_key = "",
+            },
+            transaction = {
+                title_key = "icarus-descending.caleb.transaction",
+                continuation_key = "",
+            },
+        },
+    },
     stoker = {
         name = "Stoker",
         text_profile = "stoker.motel",
@@ -250,6 +309,32 @@ local menu_profiles = {
                 information = "big-rhino.option.information",
                 work = "big-rhino.option.work",
                 leave = "big-rhino.option.leave",
+            },
+        },
+    },
+    ["icarus-descending.caleb_brightmore"] = {
+        opening = {
+            title_key = "icarus-descending.caleb.opening",
+            choice_label_keys = {
+                information = "icarus-descending.caleb.option.information",
+                work = "icarus-descending.caleb.option.work",
+                leave = "icarus-descending.caleb.option.leave",
+            },
+        },
+        first_meeting = {
+            title_key = "icarus-descending.caleb.first-meeting.continuation",
+            choice_label_keys = {
+                information = "icarus-descending.caleb.option.information",
+                work = "icarus-descending.caleb.option.work",
+                leave = "icarus-descending.caleb.option.leave",
+            },
+        },
+        post_run = {
+            title_key = "icarus-descending.caleb.post-run-opening",
+            choice_label_keys = {
+                information = "icarus-descending.caleb.option.information",
+                work = "icarus-descending.caleb.option.work",
+                leave = "icarus-descending.caleb.option.leave",
             },
         },
     },

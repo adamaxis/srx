@@ -1,0 +1,3 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+planter_foliage	priority_overlay	12	288	96	32	32	0	0	foreground	foliage	The leafy crown is traced from the priority plane so it remains a distinct foreground component.	field/entities/icarus_descending_planter/planter_foliage.png	8,0;22,0;29,8;32,21;26,30;5,30;0,20
+planter_pot	map_composite	12	288	112	32	32	0	16	behind_actor	body	The blue-grey pot body is outlined separately from its floor shadow and foliage.	field/entities/icarus_descending_planter/planter_pot.png	4,0;28,0;32,8;28,27;16,32;4,27;0,8

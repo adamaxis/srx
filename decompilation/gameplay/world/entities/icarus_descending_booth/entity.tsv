@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+icarus_descending_booth	Caleb's dark booth entrance	structure	Scene 12 map pixels show a framed dark booth opening. ROM event 30 at 0x1D605E occupies its threshold; text 0x108796 describes two bodyguards blocking the booth and the dialogue profile identifies Caleb Brightmore behind it.	icarus-descending.caleb_brightmore	caleb_brightmore	-

@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+icarus_descending_table	Icarus dining booth table	prop	Five repeated table-and-booth fixtures use the same ROM map art. The tabletop, side seating, and table lamp are separate parts so the source priority pixels do not become one rectangular object.	-	-	-

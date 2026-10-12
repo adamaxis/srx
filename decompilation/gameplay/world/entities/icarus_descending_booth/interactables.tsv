@@ -1,0 +1,2 @@
+interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
+rom_event_11	0	0	32	32	building.resolve_field_location_route	ROM record 11 at 0x1D605E	Exact event-30 cell at map pixel (0,32); ROM 0x20990 runs the Scene 12 access gate and Caleb dialogue dispatcher.
