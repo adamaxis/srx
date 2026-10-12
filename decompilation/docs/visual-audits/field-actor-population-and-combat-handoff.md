@@ -448,22 +448,68 @@ captures for these scene actors are not identified.
 
 ## Map-viewer actor population evidence
 
-The standalone map viewer consumes the profile-selected actor rows above and
-the gated pedestrian choices at `0x1EDB88`. The offline importer
-`decompilation/tools/extract_field_actor_candidates.py` follows the scene
-pointer table for `0x15..0x2B`, then each scene's three list pointers. It checks
-that all 69 entries are one root-tagged kind-11 pedestrian, each list has one
-position, the ordered overrides remain `+0x9E=0x20`, `+0x2E=<heading>`,
-`+0x9E=0x08`, and the source list terminates after that record. `--check`
-re-reads the US ROM and compares the result with
+The standalone map viewer now imports the profile-selected default actor list
+for all 56 scene descriptors. ROM `0x3084` copies the scene profile into RAM;
+the dword at descriptor offset `+0x2A` becomes `FFDDF0`, which `0x43B6`
+consumes as the default list. The offline graphics importer writes one row per
+scene to `decompilation/assets/field/entities/default-actor-lists.tsv`,
+including a zero count for empty lists, and expands every list into
+`default-actors.tsv` while preserving source order, named template, source
+kind/palette, position, and ordered overrides. Populated lists are in scenes
+0-5, 20-43, 54, and 55. The census finds pedestrians in scenes 0-5, corp guards
+and pedestrians in scene 20, corp guards in scenes 21-43, six Yakuza Weenr in
+scene 54, and Thon plus two Yakuza Weenr in scene 55. Those rows describe
+profile data; their actual activation still depends on the mode transition,
+world activity, and actor-slot allocation paths.
+
+The existing offline importer
+`decompilation/tools/extract_field_actor_candidates.py` follows the separate
+scene pointer table for `0x15..0x2B`, then each scene's three list pointers. It
+checks that all 69 entries are one root-tagged kind-11 pedestrian, each list
+has one position, the ordered overrides remain `+0x9E=0x20`,
+`+0x2E=<heading>`, `+0x9E=0x08`, and the source list terminates after that
+record. `--check` re-reads the US ROM and compares the result with
 `decompilation/assets/field/entities/conditional-actor-candidates.tsv`.
 
-The viewer keeps these candidates separate from default-list rows and
-authored spawn marks. It derives the eight-way pose using the `0xB36A`
-rotate/round direction operation and uses the corresponding source-extracted
-actor frame and origin. Candidate markers are faded and dashed because they
-are mutually exclusive, gated spawn inputs rather than proof of active NPCs.
-The viewer does not yet model the timed activity lists at `0x1E552`, `0x1E5C4`,
-and `0x1E628`, nor all event-created actor paths. Scenes without one of the
-currently profiled records must therefore not be interpreted as ROM-proven
-empty maps.
+The viewer keeps gated candidates separate from default-list rows and authored
+spawn marks. It derives the eight-way pose using the `0xB36A` rotate/round
+direction operation and uses the corresponding source-extracted actor frame
+and origin. Candidate markers are faded and dashed because they are mutually
+exclusive, gated spawn inputs rather than proof of active NPCs. Idle sprites
+for actor kinds 5, 8, and 11 are extracted from their kind/palette state tables.
+Kind 15 (Thon) resolves through a source state program at `0xA77A`, not the
+ordinary `0x8002` bitmap descriptor used by the actor-frame importer. Its
+source placement and name are included, but the map viewer currently shows a
+named unresolved marker for it. The three known world-activity lists are now
+indexed separately for scene 47; other timed activity data and event-created
+actor paths remain source-tracing work. None of these conditional rows are
+presented as ambient map NPCs.
+
+The offline importer now also expands each profile actor's complete ordered
+12.4 coordinate list into `default-actor-waypoints.tsv`. ROM `0x44BC` stores
+the list pointer on the active actor and initializes its cursor; `0x142AE`
+advances the cursor and wraps on a zero X word. The viewer's optional **ROM
+waypoint paths** layer draws those points in source order, while the actor
+sprite itself remains at the first point. These lines describe a ROM route,
+not an actor known to be alive or moving on every visit. The full import
+produced 379 points for 75 default-list actor records across 32 populated
+scene profiles; all 56 profile lists, including empty ones, remain indexed.
+One scene-35 guard coordinate is outside that map image and is therefore
+retained in the Map Profile census rather than drawn over the wrong map area.
+The Release importer completed with 1,659 assets, 21 blank descriptors, and
+zero missing assets. Viewer snapshots with route lines were inspected for
+scenes 2, 20, and 55; the Thon source program at `0xA77A` remains an explicit
+unresolved sprite boundary.
+
+The world-activity importer records all 13 actors from lists `0x1E552`,
+`0x1E5C4`, and `0x1E628` with their list group, template name and kind,
+palette, action code, position, heading, ordered overrides, and activation
+rule. `0x2CE0` queues `0x1E552` when entering mode `0x13` with the recorded
+`FFFC1E` bit clear; the other two remain separately labeled pending-list
+continuations at `0x43B6`. Kind-7/palette-2 directional frames are extracted
+from the source state table and shared by `eye5r 1` and `Strike Team`, whose
+templates both identify that render kind. The **Special actor lists** viewer
+layer is off by default, and its selector shows one source list at a time by
+default. The optional all-groups view is for comparing candidate positions;
+it does not imply that the ROM runs all three lists together. Scene 47's
+special-list overlay was reviewed in the standalone viewer.

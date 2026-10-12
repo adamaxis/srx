@@ -46,6 +46,7 @@ from PyQt6.QtWidgets import (
     QPlainTextEdit,
     QScrollArea,
     QSpinBox,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -108,6 +109,412 @@ def write_tsv(path: Path, headers: Iterable[str], rows: Iterable[dict[str, objec
     temp.replace(path)
 
 
+def read_lua_string_table(path: Path) -> dict[str, str]:
+    """Read the quoted key/value strings from the imported Lua text catalog."""
+    if not path.is_file():
+        return {}
+    source = path.read_text(encoding="utf-8")
+    pair_pattern = re.compile(
+        r'\[\s*"((?:\\.|[^"\\])*)"\s*\]\s*=\s*"((?:\\.|[^"\\])*)"',
+        re.DOTALL,
+    )
+
+    def unescape(value: str) -> str:
+        replacements = {"n": "\n", "r": "\r", "t": "\t", '"': '"', "\\": "\\"}
+        return re.sub(
+            r"\\([nrt\"\\])",
+            lambda match: replacements[match.group(1)],
+            value,
+        )
+
+    return {
+        unescape(match.group(1)): unescape(match.group(2))
+        for match in pair_pattern.finditer(source)
+    }
+
+
+def extract_lua_block(source: str, opening: int, left: str = "{", right: str = "}") -> str:
+    """Return a balanced Lua block, ignoring braces inside strings/comments."""
+    if opening < 0 or opening >= len(source) or source[opening] != left:
+        return ""
+    depth = 0
+    quote = ""
+    escaped = False
+    line_comment = False
+    for index in range(opening, len(source)):
+        char = source[index]
+        next_char = source[index + 1] if index + 1 < len(source) else ""
+        if line_comment:
+            if char == "\n":
+                line_comment = False
+            continue
+        if quote:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = ""
+            continue
+        if char == "-" and next_char == "-":
+            line_comment = True
+            continue
+        if char in ("'", '"'):
+            quote = char
+        elif char == left:
+            depth += 1
+        elif char == right:
+            depth -= 1
+            if depth == 0:
+                return source[opening + 1:index]
+    return ""
+
+
+def read_shop_profile_details(
+    repo_root: Path, profile: str, text_catalog: dict[str, str]
+) -> list[str]:
+    """Summarize the selected Lua shop profile without executing Lua code."""
+    shop_path = repo_root / "decompilation" / "gameplay" / "scripts" / "shop.lua"
+    items_path = repo_root / "decompilation" / "gameplay" / "scripts" / "items.lua"
+    try:
+        shop_source = shop_path.read_text(encoding="utf-8")
+    except OSError:
+        return [f"Shop source is unavailable: {shop_path}"]
+    catalog_match = re.search(r"\bShop\.catalog\s*=\s*\{", shop_source)
+    if not catalog_match:
+        return [f"Shop catalog declaration is unavailable in {shop_path}"]
+    entry_match = re.search(
+        rf"(?m)^\s{{4}}{re.escape(profile)}\s*=\s*\{{",
+        shop_source[catalog_match.end():],
+    )
+    if not entry_match:
+        return [f"Shop profile '{profile}' is not declared in {shop_path}"]
+    entry_start = catalog_match.end() + entry_match.start()
+    opening = shop_source.find("{", entry_start)
+    body = extract_lua_block(shop_source, opening)
+    if not body:
+        return [f"Shop profile '{profile}' could not be read as a balanced Lua table."]
+
+    lines = [f"Shop profile source: {shop_path}"]
+    title_key = f"shop.service.option.{profile}"
+    lines.append(f"Shop title: {text_catalog.get(title_key, title_key)} [{title_key}]")
+
+    item_names: dict[int, str] = {}
+    try:
+        item_source = items_path.read_text(encoding="utf-8")
+    except OSError:
+        item_source = ""
+    for match in re.finditer(
+        r'define_item\(\s*"([^"]+)"\s*,\s*(\d+)\s*,', item_source
+    ):
+        code = int(match.group(2))
+        item_names[code] = text_catalog.get(
+            f"items.name.{code}", match.group(1).replace("_", " ")
+        )
+
+    group_summaries: list[str] = []
+    cursor = 0
+    while True:
+        match = re.search(r"\bgroup\s*\(", body[cursor:])
+        if not match:
+            break
+        group_open = cursor + match.end() - 1
+        group_body = extract_lua_block(body, group_open, "(", ")")
+        if not group_body:
+            break
+        group_id_match = re.match(r'\s*"([^"]+)"', group_body)
+        group_id = group_id_match.group(1) if group_id_match else "unnamed group"
+        offer_ids = [
+            int(value, 0)
+            for value in re.findall(r"\boffer\s*\(\s*(0x[0-9A-Fa-f]+|\d+)", group_body)
+        ]
+        if offer_ids:
+            stocks = [
+                item_names.get(code, f"unresolved item type 0x{code:02X}")
+                for code in offer_ids
+            ]
+            group_summaries.append(f"{group_id}: {', '.join(stocks)}")
+        else:
+            group_summaries.append(f"{group_id}: no stock rows declared")
+        cursor = group_open + len(group_body) + 2
+    if group_summaries:
+        lines.append("Shop groups in Lua source order:")
+        lines.extend(f"  {summary}" for summary in group_summaries)
+
+    text_keys = sorted(set(re.findall(r'"(shop\.[^"]+)"', body)))
+    text_keys.extend(
+        f"shop.action_heading.option.{key}"
+        for key in re.findall(r'action_heading\("([^"]+)"\)', body)
+    )
+    text_keys.append(title_key)
+    resolved_keys = list(dict.fromkeys(text_keys))
+    if resolved_keys:
+        lines.append("Shop text and headings from the Lua profile:")
+        lines.extend(
+            f"  {key}: {text_catalog.get(key, '(text key is not imported)')}"
+            for key in resolved_keys
+        )
+    return lines
+
+
+def lua_named_table_body(source: str, declaration: str, name: str) -> str:
+    """Read one named entry from a declared Lua table without executing Lua."""
+    table_match = re.search(declaration, source)
+    if not table_match:
+        return ""
+    table_open = source.find("{", table_match.start())
+    table_body = extract_lua_block(source, table_open)
+    entry_match = re.search(
+        rf'(?m)^\s*\[\s*"{re.escape(name)}"\s*\]\s*=\s*\{{',
+        table_body,
+    )
+    if not entry_match:
+        entry_match = re.search(
+            rf"(?m)^\s*{re.escape(name)}\s*=\s*\{{", table_body
+        )
+    if not entry_match:
+        return ""
+    entry_open = table_body.find("{", entry_match.start())
+    return extract_lua_block(table_body, entry_open)
+
+
+def read_dialogue_profile_details(
+    repo_root: Path,
+    content_profile: str,
+    speaker_id: str,
+    text_catalog: dict[str, str],
+) -> list[str]:
+    """Resolve authored dialogue pages, portraits, menus, and choice labels."""
+    dialogue_path = repo_root / "decompilation" / "gameplay" / "scripts" / "dialogue.lua"
+    try:
+        source = dialogue_path.read_text(encoding="utf-8")
+    except OSError:
+        return [f"Dialogue source is unavailable: {dialogue_path}"]
+
+    lines: list[str] = []
+    if speaker_id:
+        speaker_body = lua_named_table_body(
+            source, r"\blocal\s+speakers\s*=\s*\{", speaker_id
+        )
+        if speaker_body:
+            name = re.search(r'\bname\s*=\s*"([^"]+)"', speaker_body)
+            profile = re.search(r'\btext_profile\s*=\s*"([^"]+)"', speaker_body)
+            portrait = re.search(r'\bportrait_alias\s*=\s*"([^"]+)"', speaker_body)
+            lines.append(
+                f"Speaker from dialogue.lua: {name.group(1) if name else speaker_id}; "
+                f"portrait resource alias: {portrait.group(1) if portrait else '(not declared)'}"
+            )
+            if profile:
+                lines.append(f"Speaker text profile: {profile.group(1)}")
+            events_match = re.search(r"\bevents\s*=\s*\{", speaker_body)
+            if events_match:
+                events_open = speaker_body.find("{", events_match.start())
+                events_body = extract_lua_block(speaker_body, events_open)
+                event_pattern = re.compile(
+                    r'(?m)^ {12}(?:\[\s*"([^"]+)"\s*\]|([A-Za-z_][A-Za-z0-9_-]*))\s*=\s*\{'
+                )
+                pages: list[str] = []
+                for match in event_pattern.finditer(events_body):
+                    event_name = match.group(1) or match.group(2)
+                    page_open = events_body.find("{", match.start())
+                    page_body = extract_lua_block(events_body, page_open)
+                    title = re.search(r'\btitle_key\s*=\s*"([^"]*)"', page_body)
+                    continuation = re.search(
+                        r'\bcontinuation_key\s*=\s*"([^"]*)"', page_body
+                    )
+                    if not title:
+                        continue
+                    title_key = title.group(1)
+                    text = text_catalog.get(title_key, "(text key is not imported)")
+                    page = f"{event_name}: {text} [{title_key}]"
+                    if continuation and continuation.group(1):
+                        key = continuation.group(1)
+                        page += f"; continuation: {text_catalog.get(key, key)} [{key}]"
+                    pages.append(page)
+                if pages:
+                    lines.append("Speaker dialogue pages in dialogue.lua:")
+                    lines.extend(f"  {page}" for page in pages)
+
+    if content_profile:
+        profile_body = lua_named_table_body(
+            source, r"\blocal\s+menu_profiles\s*=\s*\{", content_profile
+        )
+        if profile_body:
+            page_pattern = re.compile(
+                r"(?m)^ {8}([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\{"
+            )
+            menu_pages: list[str] = []
+            for match in page_pattern.finditer(profile_body):
+                page_id = match.group(1)
+                page_open = profile_body.find("{", match.start())
+                page_body = extract_lua_block(profile_body, page_open)
+                title = re.search(r'\btitle_key\s*=\s*"([^"]+)"', page_body)
+                title_text = (
+                    f"{text_catalog.get(title.group(1), '(text key is not imported)')} "
+                    f"[{title.group(1)}]"
+                    if title else "(no title key declared)"
+                )
+                choice_match = re.search(r"\bchoice_label_keys\s*=\s*\{", page_body)
+                choices: list[str] = []
+                if choice_match:
+                    choice_open = page_body.find("{", choice_match.start())
+                    choice_body = extract_lua_block(page_body, choice_open)
+                    for choice in re.finditer(
+                        r'(?:\[\s*"([^"]+)"\s*\]|([A-Za-z_][A-Za-z0-9_]*))\s*=\s*"([^"]+)"',
+                        choice_body,
+                    ):
+                        choice_id = choice.group(1) or choice.group(2)
+                        text_key = choice.group(3)
+                        label = text_catalog.get(text_key, "(text key is not imported)")
+                        choices.append(f"{choice_id}={label} [{text_key}]")
+                menu_pages.append(
+                    f"{page_id}: {title_text}; choices: " +
+                    (", ".join(choices) if choices else "none declared")
+                )
+            if menu_pages:
+                lines.append(f"Menu pages from Lua profile {content_profile}:")
+                lines.extend(f"  {page}" for page in menu_pages)
+        else:
+            lines.append(
+                f"Menu profile '{content_profile}' is not declared in dialogue.lua."
+            )
+    return lines
+
+
+def read_lua_quest_module_details(repo_root: Path, site: dict[str, str]) -> list[str]:
+    """Expose quest/script entry points and state facts linked to a map route."""
+    script_root = repo_root / "decompilation" / "gameplay" / "scripts"
+    module_names = [
+        name.strip() for name in site.get("lua_modules", "").split(";")
+        if name.strip().endswith(".lua")
+    ]
+    if not module_names:
+        return []
+    lines = ["Linked Lua modules and quest/state facts:"]
+    for module_name in module_names:
+        path = script_root / module_name
+        try:
+            source = path.read_text(encoding="utf-8")
+        except OSError:
+            lines.append(f"  {module_name}: source file is unavailable")
+            continue
+        functions = list(dict.fromkeys(re.findall(
+            r"(?m)^function\s+([A-Za-z_][A-Za-z0-9_.:]*)\s*\(", source
+        )))
+        state_keys = sorted(set(re.findall(
+            r"\bgame\.(?:state|quests|story)\.([A-Za-z_][A-Za-z0-9_]*)", source
+        )))
+        service_calls = sorted(set(re.findall(
+            r'game\.services\.call\(\s*"([^"]+)"\s*,\s*"([^"]+)"', source
+        )))
+        facts = []
+        if functions:
+            facts.append("functions " + ", ".join(functions[:12]))
+        if state_keys:
+            facts.append("state facts " + ", ".join(state_keys))
+        if service_calls:
+            facts.append("host actions " + ", ".join(
+                f"{module}.{action}" for module, action in service_calls
+            ))
+        lines.append(f"  {module_name}: " + ("; ".join(facts) or "no public facts found"))
+    return lines
+
+
+def read_site_content_details(
+    repo_root: Path, site: dict[str, str], text_catalog: dict[str, str]
+) -> list[str]:
+    lines: list[str] = []
+    text_keys = [
+        key.strip()
+        for key in site.get("text_keys", "").split(";")
+        if key.strip()
+    ]
+    if text_keys:
+        lines.append("Dialogue and menu text resolved from script-text.lua:")
+        lines.extend(
+            f"  {key}: {text_catalog.get(key, '(text key is not imported)')}"
+            for key in text_keys
+        )
+    menu_profiles = [
+        profile.strip()
+        for profile in site.get("menu_profiles", "").split(";")
+        if profile.strip()
+    ]
+    if menu_profiles:
+        lines.append(
+            "Lua menu states: " + ", ".join(menu_profiles) +
+            " (choice visibility and quest branches remain in the linked Lua modules)."
+        )
+    content_profile = site.get("content_profile", "").strip()
+    speaker_id = site.get("speaker_id", "").strip()
+    if content_profile or speaker_id:
+        lines.extend(read_dialogue_profile_details(
+            repo_root, content_profile, speaker_id, text_catalog
+        ))
+    lines.extend(read_lua_quest_module_details(repo_root, site))
+    shop_profile = site.get("shop_profile", "").strip()
+    if shop_profile:
+        lines.extend(read_shop_profile_details(repo_root, shop_profile, text_catalog))
+    return lines
+
+
+def read_map_audio_details(repo_root: Path, assets: Path, info: MapInfo) -> str:
+    """Report map-audio evidence without assigning menu audio to a map."""
+    lines = [
+        f"Scene {info.scene_id:02d} map audio",
+        "",
+        "Map-scoped background music: unresolved.",
+        "The extracted scene descriptor and the traced scene-profile loader "
+        "(ROM 0x03084) do not provide a music resource ID. The world-frame "
+        "service (0x02900) advances pending audio commands but does not select "
+        "a scene track. This does not establish that the map is silent; a "
+        "scene-entry or persistent audio path still needs to be traced.",
+        "",
+        "Separate menu-mode audio found in the ROM:",
+        "  0x173F2 enters prepare_menu_mode_resources, which calls 0x1745E. "
+        "That routine submits event 0x5B as a start/stop pair and event 0x03 "
+        "at 0x17652 under the FFFC08 audio gate. This path is menu-mode setup "
+        "and is not assigned to the selected map.",
+    ]
+    aliases_path = assets / "resources.tsv"
+    _, aliases = read_tsv(aliases_path)
+    alias_by_key = {row.get("alias", ""): row for row in aliases}
+    for event_id, description in (
+        (3, "menu-mode track request"),
+        (0x5B, "menu-mode start/stop request"),
+    ):
+        resource_id = event_id
+        alias = (
+            f"audio.music.resource.{resource_id:03d}"
+            if event_id == 3 else f"audio.effects.resource.{resource_id:03d}"
+        )
+        resource = alias_by_key.get(alias)
+        lines.append(
+            f"  Event 0x{event_id:02X} ({description}) -> {alias}: "
+            f"{resource.get('path', '(asset alias not found)') if resource else '(asset alias not found)'}"
+        )
+    _, loop_rows = read_tsv(assets / "audio" / "loop-points.tsv")
+    loop = next(
+        (row for row in loop_rows
+         if row.get("alias") == "audio.music.resource.003"),
+        None,
+    )
+    if loop:
+        lines.append(
+            "  Resource 003 loop metadata: decoded frames "
+            f"{loop.get('loop_start_frame')}..{loop.get('loop_end_frame')} at "
+            f"{loop.get('sample_rate')} Hz. This metadata describes that audio "
+            "asset; the menu-mode call path does not identify it as map music."
+        )
+    lines.extend((
+        "",
+        "No music is inferred from the map artwork, guide label, or nearby "
+        "audio filename. The map-level track remains open pending a complete "
+        "ROM entry/exit audio trace.",
+    ))
+    return "\n".join(lines)
+
+
 def as_int(row: dict[str, str], name: str, default: int = 0) -> int:
     value = row.get(name, "")
     try:
@@ -157,6 +564,18 @@ class MapInfo:
     metatile_encoding: str = "unknown"
     primary_tilemap: str = ""
     secondary_tilemap: str = ""
+    record_offset: str = ""
+    camera_x_fixed: int = 0
+    camera_y_fixed: int = 0
+    bound_x: int = 0
+    bound_y: int = 0
+    min_x: int = 0
+    min_y: int = 0
+    terrain_record: str = ""
+    event_table: str = ""
+    default_actor_list_offset: str = ""
+    default_actor_count: int = 0
+    default_actor_types: str = ""
 
 
 @dataclass
@@ -207,6 +626,9 @@ class EntityDefinition:
     name: str
     category: str = "unreviewed"
     evidence: str = ""
+    content_profile: str = ""
+    speaker_id: str = ""
+    shop_profile: str = ""
     parts: list[EntityPart] = field(default_factory=list)
     interactables: list[Interactable] = field(default_factory=list)
     collision_regions: list[EntityCollisionRegion] = field(default_factory=list)
@@ -288,6 +710,11 @@ class MapEvidenceRegion:
     sprite_origin_x: int = 0
     sprite_origin_y: int = 0
     conditional: bool = False
+    route_details: str = ""
+    map_label: str = ""
+    path_points: tuple[tuple[int, int], ...] = ()
+    population_class: str = "default"
+    activity_group: str = ""
 
 
 @dataclass
@@ -376,7 +803,10 @@ class MapBehaviorRecord:
 
 
 class WorldContent:
-    ENTITY_HEADER = ("entity_id", "name", "category", "evidence")
+    ENTITY_HEADER = (
+        "entity_id", "name", "category", "evidence",
+        "content_profile", "speaker_id", "shop_profile",
+    )
     PART_HEADER = (
         "part_id", "source_kind", "source_scene", "source_x", "source_y",
         "width", "height", "local_x", "local_y", "draw_layer", "role", "evidence", "asset_path", "outline_points",
@@ -426,6 +856,9 @@ class WorldContent:
             name=row.get("name", entity_id),
             category=row.get("category", "unreviewed"),
             evidence=row.get("evidence", ""),
+            content_profile=row.get("content_profile", ""),
+            speaker_id=row.get("speaker_id", ""),
+            shop_profile=row.get("shop_profile", ""),
         )
         _, part_rows = read_tsv(directory / "parts.tsv")
         entity.parts = [
@@ -485,6 +918,9 @@ class WorldContent:
             "name": entity.name,
             "category": entity.category,
             "evidence": entity.evidence,
+            "content_profile": entity.content_profile,
+            "speaker_id": entity.speaker_id,
+            "shop_profile": entity.shop_profile,
         }])
         write_tsv(directory / "parts.tsv", self.PART_HEADER, [part.__dict__ for part in entity.parts])
         write_tsv(
@@ -728,6 +1164,9 @@ class WorldContent:
                     "name": entity.name,
                     "category": entity.category,
                     "evidence": entity.evidence,
+                    "content_profile": entity.content_profile,
+                    "speaker_id": entity.speaker_id,
+                    "shop_profile": entity.shop_profile,
                     "parts": [
                         {
                             "id": part.part_id,
@@ -957,6 +1396,11 @@ class WorldContent:
 def read_map_catalog(asset_root: Path) -> list[MapInfo]:
     index_path = asset_root / "field" / "maps" / "index.tsv"
     _, rows = read_tsv(index_path)
+    _, actor_list_rows = read_tsv(
+        asset_root / "field" / "entities" / "default-actor-lists.tsv")
+    actor_lists = {
+        as_int(row, "scene", -1): row for row in actor_list_rows
+    }
     maps: list[MapInfo] = []
     for row in rows:
         scene_id = as_int(row, "mode_id", -1)
@@ -964,6 +1408,7 @@ def read_map_catalog(asset_root: Path) -> list[MapInfo]:
             continue
         asset = asset_root / row.get("asset", "")
         priority = asset_root / row.get("priority_overlay_asset", "")
+        actor_list = actor_lists.get(scene_id, {})
         if not asset.is_file():
             continue
         maps.append(MapInfo(
@@ -977,6 +1422,21 @@ def read_map_catalog(asset_root: Path) -> list[MapInfo]:
             metatile_encoding=row.get("metatile_encoding", "unknown"),
             primary_tilemap=row.get("primary_tilemap", ""),
             secondary_tilemap=row.get("secondary_tilemap", ""),
+            record_offset=row.get("record_offset", ""),
+            camera_x_fixed=as_int(row, "camera_x_fixed"),
+            camera_y_fixed=as_int(row, "camera_y_fixed"),
+            bound_x=as_int(row, "bound_x"),
+            bound_y=as_int(row, "bound_y"),
+            min_x=as_int(row, "min_x"),
+            min_y=as_int(row, "min_y"),
+            terrain_record=row.get("terrain_record", ""),
+            event_table=row.get("event_table", ""),
+            default_actor_list_offset=actor_list.get("list_offset", ""),
+            default_actor_count=as_int(actor_list, "actor_count"),
+            default_actor_types=(
+                "" if actor_list.get("actor_types", "-") == "-"
+                else actor_list.get("actor_types", "")
+            ),
         ))
     return maps
 
@@ -1037,6 +1497,69 @@ def read_map_cell_evidence(
     )
 
 
+def read_profile_entry_positions(
+    asset_root: Path, info: MapInfo
+) -> list[MapEvidenceRegion]:
+    """Expose the default three-member party placement from the scene profile.
+
+    ROM 0x2B34 copies these three profile coordinates into the three ordinary
+    actor records when there is no pending coordinate-list override. The
+    scene-entry loader can replace the points for a transition, so these are
+    the default party placement, not every route's arrival position.
+    """
+    descriptor = (
+        asset_root / "records" / "field" / "scenes" /
+        f"scene-{info.scene_id:02d}" / "descriptor.bin"
+    )
+    try:
+        data = descriptor.read_bytes()
+    except OSError:
+        return []
+    result: list[MapEvidenceRegion] = []
+    party_roles = (
+        "lead actor",
+        "party member 2",
+        "party member 3",
+    )
+    for slot, offset in enumerate((0x42, 0x46, 0x4A), start=1):
+        if len(data) < offset + 4:
+            break
+        raw_x = int.from_bytes(data[offset:offset + 2], "big")
+        raw_y = int.from_bytes(data[offset + 2:offset + 4], "big")
+        if raw_x == 0 and raw_y == 0:
+            continue
+        is_new_game_entry = info.scene_id == 2 and slot == 1
+        title = f"Default party entry {slot}: {party_roles[slot - 1]}"
+        details = [
+            title,
+            f"Scene: {info.scene_id:02d}; descriptor: {descriptor}",
+            f"Profile slot offset: +0x{offset:02X}",
+            f"Raw X/Y: 0x{raw_x:04X},0x{raw_y:04X} (12.4 fixed point)",
+            f"Map coordinate: ({raw_x >> 4},{raw_y >> 4}) pixels",
+            "ROM 0x03084 loads these three profile positions. If no incoming "
+            "coordinate list is pending, 0x02B34 copies them to the three "
+            "ordinary actor records.",
+            "A map transition can override these defaults with its own "
+            "coordinate list or transition position; this marker is the "
+            "profile's default party placement.",
+        ]
+        if is_new_game_entry:
+            details.append(
+                "The New Game route uses slot 1 as the scene-2 lead actor "
+                "position, then runs the automatic walk toward Stoker's event."
+            )
+        result.append(MapEvidenceRegion(
+            kind="rom_profile_entry",
+            x=(raw_x >> 4) - 6,
+            y=(raw_y >> 4) - 6,
+            width=13,
+            height=13,
+            title=title,
+            details="\n".join(details),
+        ))
+    return result
+
+
 def read_collision_rectangles(asset_root: Path, scene_id: int) -> list[MapEvidenceRegion]:
     path = asset_root / "records" / "field" / "scenes" / f"scene-{scene_id:02d}" / "terrain-collision-rectangles.bin"
     if not path.is_file():
@@ -1069,10 +1592,24 @@ def read_collision_rectangles(asset_root: Path, scene_id: int) -> list[MapEviden
     return result
 
 
+def read_site_route_index(repo_root: Path, scene_id: int) -> dict[str, dict[str, str]]:
+    path = repo_root / "decompilation" / "gameplay" / "world" / "areas" / f"scene-{scene_id:02d}-site-routes.tsv"
+    _, rows = read_tsv(path)
+    return {
+        row.get("rom_record_address", "").strip().upper(): row
+        for row in rows
+        if row.get("rom_record_address", "").strip()
+    }
+
+
 def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceRegion]:
     path = repo_root / "decompilation" / "docs" / "field-map-trigger-records.tsv"
     _, rows = read_tsv(path)
     result: list[MapEvidenceRegion] = []
+    site_routes = read_site_route_index(repo_root, scene_id)
+    text_catalog = read_lua_string_table(
+        repo_root / "decompilation" / "assets" / "dialogue" / "script-text.lua"
+    )
     for row in rows:
         if as_int(row, "scene_id", -1) != scene_id:
             continue
@@ -1087,6 +1624,7 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
             route = row.get("event_table_route_or_bypass", "") or "unresolved route"
             record_index = row.get("record_index_zero_based", "?")
             record_address = row.get("record_address", "?")
+            site = site_routes.get(str(record_address).strip().upper(), {})
             details = [
                 "ROM field trigger",
                 f"Scene: {scene_id:02d}; event: {event_id or '(unknown)'}",
@@ -1104,14 +1642,80 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
                 f"Physical QA: {row.get('known_physical_qa_route', '(unrecorded)')}",
                 f"Evidence table: {path}",
             ]
+            route_lines: list[str] = []
+            map_label = ""
+            if site:
+                site_name = site.get("site_name", "").strip()
+                marker = site.get("guide_marker", "").strip()
+                if site_name:
+                    match = site.get("crosswalk_status", "unresolved")
+                    crosswalk = f"Guide marker {marker}; {match}" if marker else match
+                    confidence_prefix = "" if match == "rom_guide_corroborated" else "? "
+                    map_label = f"{confidence_prefix}{marker + ': ' if marker else ''}{site_name}"
+                    details.extend((
+                        f"Site label: {site_name} ({crosswalk})",
+                        f"Interpreted route: {site.get('rom_route', '(not profiled)')}",
+                        f"ROM destination: {site.get('rom_destination', '(not established)')}",
+                        f"Lua modules: {site.get('lua_modules', '').strip() or '(not connected / not profiled)' }",
+                        f"Content profile: {site.get('content_profile', '').strip() or '(none linked)' }",
+                        f"Speaker: {site.get('speaker_id', '').strip() or '(none linked)' }",
+                        f"Menu profiles: {site.get('menu_profiles', '').strip() or '(not identified)' }",
+                        f"Shop profile: {site.get('shop_profile', '').strip() or '(none identified)' }",
+                        f"Text keys: {site.get('text_keys', '').strip() or '(not identified)' }",
+                        f"State branches: {site.get('state_or_branch_notes', '').strip() or '(not profiled)' }",
+                        f"Crosswalk evidence: {site.get('evidence', '').strip() or '(not recorded)' }",
+                    ))
+                    route_lines.extend((
+                        f"Location: {site_name}",
+                        f"Name confidence: {crosswalk}",
+                        f"ROM route: {site.get('rom_route', '(not profiled)')}",
+                        f"ROM destination: {site.get('rom_destination', '(not established)')}",
+                        f"Lua modules: {site.get('lua_modules', '').strip() or '(not connected / not profiled)' }",
+                        f"Content profile: {site.get('content_profile', '').strip() or '(none linked)' }",
+                        f"Speaker: {site.get('speaker_id', '').strip() or '(none linked)' }",
+                        f"Menu profiles: {site.get('menu_profiles', '').strip() or '(not identified)' }",
+                        f"Shop profile: {site.get('shop_profile', '').strip() or '(none identified)' }",
+                        f"Text keys: {site.get('text_keys', '').strip() or '(not identified)' }",
+                        f"State branches: {site.get('state_or_branch_notes', '').strip() or '(not profiled)' }",
+                        f"Evidence: {site.get('evidence', '').strip() or '(not recorded)' }",
+                    ))
+                    content_lines = read_site_content_details(
+                        repo_root, site, text_catalog
+                    )
+                    if content_lines:
+                        details.append("")
+                        details.extend(content_lines)
+                        route_lines.append("")
+                        route_lines.extend(content_lines)
+                    title = f"ROM event {event_id or '(unknown)'} — {site_name}"
+                else:
+                    title = f"ROM event {event_id or '(unknown)'} — {dispatcher}"
+            else:
+                title = f"ROM event {event_id or '(unknown)'} — {dispatcher}"
+            if (
+                not site and dispatcher == "world_activity_event31" and
+                route == "direct event continuation"
+            ):
+                # The low-five-bit value is an implementation detail. This
+                # source record bypasses the event table and continues into
+                # the field/world mode-transition service.
+                title = "Field/world mode-transition continuation"
+                map_label = "Field mode continuation"
+                route_lines.extend((
+                    "Interpreted route: direct ROM continuation into the field/world mode-transition service.",
+                    "Destination: unresolved; this record bypasses the scene event table.",
+                    f"Source record: {record_address}; handler {row.get('rom_handler_addresses', '(unrecorded)')}",
+                ))
             result.append(MapEvidenceRegion(
                 kind="rom_event",
                 x=x0,
                 y=y0,
                 width=width,
                 height=height,
-                title=f"ROM event {event_id or '(unknown)'} — {dispatcher}",
+                title=title,
                 details="\n".join(details),
+                route_details="\n".join(route_lines),
+                map_label=map_label,
             ))
     return result
 
@@ -1139,32 +1743,98 @@ def read_actor_sprite_catalog(asset_root: Path) -> dict[str, tuple[int, int, int
     return result
 
 
-def read_actor_positions(asset_root: Path, scene_id: int) -> list[MapEvidenceRegion]:
+def read_out_of_bounds_actor_details(
+    asset_root: Path, info: MapInfo
+) -> list[str]:
+    """Report source actor records outside the extracted map image bounds."""
+    scene_id = info.scene_id
+    result: list[str] = []
+    tables = (
+        ("default-actors.tsv", "default list order", "source_order"),
+        ("conditional-actor-candidates.tsv", "conditional candidate choice", "choice"),
+        ("world-activity-actors.tsv", "world activity list order", "source_order"),
+    )
+    for filename, label, ordinal_field in tables:
+        path = asset_root / "field" / "entities" / filename
+        _, rows = read_tsv(path)
+        for row in rows:
+            if as_int(row, "scene", -1) != scene_id:
+                continue
+            raw_x = as_int(row, "world_x", -1)
+            raw_y = as_int(row, "world_y", -1)
+            x, y = raw_x >> 4, raw_y >> 4
+            if raw_x < 0 or raw_y < 0 or (0 <= x < info.width and 0 <= y < info.height):
+                continue
+            result.append(
+                f"{label} {row.get(ordinal_field, '?')}: "
+                f"{row.get('actor_name', 'actor')} at ({x},{y}) pixels "
+                f"(0x{raw_x:04X},0x{raw_y:04X}); image bounds are "
+                f"0..{info.width - 1}, 0..{info.height - 1}. Source "
+                f"template/list/position: {row.get('template_offset', '?')}/"
+                f"{row.get('list_offset', '?')}/{row.get('position_offset', '?')}. "
+                "Kept in the ROM census, omitted from map overlay pending "
+                "coordinate/route interpretation."
+            )
+    return result
+
+
+def read_actor_positions(asset_root: Path, info: MapInfo) -> list[MapEvidenceRegion]:
     """Read exact ROM actor placements and draw their source kind/direction art.
 
     Default-list rows are listed separately from conditional candidates. The
     latter are three alternatives for one selected pedestrian, not three
     simultaneously active actors.
     """
+    scene_id = info.scene_id
     sprite_catalog = read_actor_sprite_catalog(asset_root)
     result: list[MapEvidenceRegion] = []
-    actor_names = {5: "Corp guard", 11: "Pedestrian"}
-    actor_stems = {5: "corp-guard", 11: "pedestrian"}
+    default_path = asset_root / "field" / "entities" / "default-actors.tsv"
+    _, default_rows = read_tsv(default_path)
+    waypoint_path = asset_root / "field" / "entities" / "default-actor-waypoints.tsv"
+    _, waypoint_rows = read_tsv(waypoint_path)
+    waypoint_lists: dict[tuple[int, int], list[tuple[int, int]]] = {}
+    for row in waypoint_rows:
+        waypoint_key = (
+            as_int(row, "scene", -1),
+            as_int(row, "source_order", -1),
+        )
+        waypoint_lists.setdefault(waypoint_key, []).append((
+            as_int(row, "world_x"), as_int(row, "world_y")
+        ))
+    actor_names: dict[tuple[int, int], str] = {}
+    actor_stems: dict[tuple[int, int], str] = {}
+    for row in default_rows:
+        kind = as_int(row, "entity_kind", -1)
+        palette = as_int(row, "palette_line", -1)
+        if kind >= 0 and palette >= 0:
+            actor_names[(kind, palette)] = row.get(
+                "actor_name", f"ROM actor kind {kind}")
+            stem = row.get("sprite_stem", "").strip()
+            if stem:
+                actor_stems[(kind, palette)] = stem
 
     def add_actor(
         *,
         actor_kind: int,
+        palette_line: int,
         raw_x: int,
         raw_y: int,
         heading: int,
         title: str,
         details: list[str],
         conditional: bool,
+        path_points: tuple[tuple[int, int], ...] = (),
+        position_list_address: str = "",
+        population_class: str = "default",
     ) -> None:
         x, y = raw_x >> 4, raw_y >> 4
+        if not (0 <= x < info.width and 0 <= y < info.height):
+            return
         direction = actor_direction_from_heading(heading)
-        stem = actor_stems.get(actor_kind)
-        actor_name = actor_names.get(actor_kind, f"ROM actor kind {actor_kind}")
+        visual_key = (actor_kind, palette_line)
+        stem = actor_stems.get(visual_key)
+        actor_name = actor_names.get(
+            visual_key, f"ROM actor kind {actor_kind}")
         filename = (
             f"{stem}-idle.bmp" if direction == 0
             else f"{stem}-idle-dir-{direction}.bmp"
@@ -1183,6 +1853,17 @@ def read_actor_positions(asset_root: Path, scene_id: int) -> list[MapEvidenceReg
             f"Map anchor: ({x}, {y}) pixels",
             f"Sprite asset: {sprite_relative or '(unsupported ROM kind)'}",
         ))
+        if path_points:
+            details.extend((
+                f"ROM waypoint list: {len(path_points)} ordered point(s); "
+                f"source list {position_list_address or '(unknown)' }.",
+                "These are source route coordinates. The actor service, action, "
+                "collision, and state gates decide whether and when an actor "
+                "follows them; the line overlay is not proof of current movement.",
+                "Waypoints (12.4 fixed point): " + " -> ".join(
+                    f"({x:04X},{y:04X})" for x, y in path_points
+                ),
+            ))
         result.append(MapEvidenceRegion(
             kind="rom_actor",
             x=x + offset_x,
@@ -1195,10 +1876,10 @@ def read_actor_positions(asset_root: Path, scene_id: int) -> list[MapEvidenceReg
             sprite_origin_x=offset_x,
             sprite_origin_y=offset_y,
             conditional=conditional,
+            path_points=path_points,
+            population_class=population_class,
         ))
 
-    default_path = asset_root / "field" / "entities" / "default-actors.tsv"
-    _, default_rows = read_tsv(default_path)
     for row in default_rows:
         if as_int(row, "scene", -1) != scene_id:
             continue
@@ -1208,10 +1889,14 @@ def read_actor_positions(asset_root: Path, scene_id: int) -> list[MapEvidenceReg
             continue
         source_order = as_int(row, "source_order", len(result))
         actor_kind = as_int(row, "entity_kind", -1)
+        palette_line = as_int(row, "palette_line", -1)
         heading = as_int(row, "initial_heading")
+        actor_name = row.get(
+            "actor_name", actor_names.get((actor_kind, palette_line), "Actor"))
         details = [
             "ROM profile-selected default actor record",
             f"Scene: {scene_id:02d}; source-list order: {source_order}",
+            f"Actor type: {actor_name}; kind {actor_kind}; palette line {palette_line}",
             f"Profile: {row.get('profile_id', '(unprofiled)')}",
             f"Initial action: {row.get('action_kind', 'unknown')} "
             f"{row.get('initial_action_code', '')}",
@@ -1222,19 +1907,23 @@ def read_actor_positions(asset_root: Path, scene_id: int) -> list[MapEvidenceReg
             "Activation: selected by the scene profile; this source row does not prove "
             "it is active on every transition or gameplay mode.",
         ]
+        route_points = tuple(waypoint_lists.get((scene_id, source_order), ()))
         add_actor(
             actor_kind=actor_kind,
+            palette_line=palette_line,
             raw_x=raw_x,
             raw_y=raw_y,
             heading=heading,
-            title=f"{actor_names.get(actor_kind, 'Actor')} — default record {source_order}",
+            title=f"{actor_name} - default list record {source_order}",
             details=details,
             conditional=False,
+            path_points=route_points,
+            position_list_address=row.get("position_offset", ""),
         )
 
     candidate_path = asset_root / "field" / "entities" / "conditional-actor-candidates.tsv"
     _, candidate_rows = read_tsv(candidate_path)
-    candidate_groups: dict[tuple[int, int, int, int], list[dict[str, str]]] = {}
+    candidate_groups: dict[tuple[int, int, int, int, int], list[dict[str, str]]] = {}
     for row in candidate_rows:
         if as_int(row, "scene", -1) != scene_id:
             continue
@@ -1245,11 +1934,12 @@ def read_actor_positions(asset_root: Path, scene_id: int) -> list[MapEvidenceReg
         key = (
             raw_x, raw_y,
             as_int(row, "entity_kind", -1),
+            as_int(row, "palette_line", -1),
             as_int(row, "heading_word"),
         )
         candidate_groups.setdefault(key, []).append(row)
 
-    for (raw_x, raw_y, actor_kind, heading), group_rows in candidate_groups.items():
+    for (raw_x, raw_y, actor_kind, palette_line, heading), group_rows in candidate_groups.items():
         choices = [as_int(row, "choice", 0) for row in group_rows]
         first = group_rows[0]
         details = [
@@ -1273,13 +1963,70 @@ def read_actor_positions(asset_root: Path, scene_id: int) -> list[MapEvidenceReg
             title += " (shared position)"
         add_actor(
             actor_kind=actor_kind,
+            palette_line=palette_line,
             raw_x=raw_x,
             raw_y=raw_y,
             heading=heading,
             title=title,
             details=details,
             conditional=True,
+            population_class="conditional",
         )
+
+    activity_path = asset_root / "field" / "entities" / "world-activity-actors.tsv"
+    _, activity_rows = read_tsv(activity_path)
+    for row in activity_rows:
+        if as_int(row, "scene", -1) != scene_id:
+            continue
+        raw_x = as_int(row, "world_x", -1)
+        raw_y = as_int(row, "world_y", -1)
+        if raw_x < 0 or raw_y < 0:
+            continue
+        group_id = row.get("list_id", "unknown")
+        source_order = as_int(row, "source_order", len(result))
+        actor_kind = as_int(row, "entity_kind", -1)
+        palette_line = as_int(row, "palette_line", -1)
+        heading = as_int(row, "initial_heading")
+        actor_name = row.get("actor_name", f"ROM actor kind {actor_kind}")
+        sprite_stem = row.get("sprite_stem", "").strip()
+        direction = actor_direction_from_heading(heading)
+        filename = (
+            f"{sprite_stem}-idle.bmp" if direction == 0
+            else f"{sprite_stem}-idle-dir-{direction}.bmp"
+        ) if sprite_stem else ""
+        sprite_relative = f"field/entities/actors/{filename}" if filename else ""
+        sprite_path = asset_root / sprite_relative if sprite_relative else None
+        offset_x, offset_y, width, height = sprite_catalog.get(
+            sprite_relative, (0, -16, 1, 1)
+        )
+        if sprite_path is not None and not sprite_path.is_file():
+            sprite_path = None
+        result.append(MapEvidenceRegion(
+            kind="rom_world_activity_actor",
+            x=(raw_x >> 4) + offset_x,
+            y=(raw_y >> 4) + offset_y,
+            width=max(1, width),
+            height=max(1, height),
+            title=f"{actor_name} - {group_id} row {source_order}",
+            details="\n".join((
+                "ROM world-activity actor candidate; separate from default map residents.",
+                f"Scene: {scene_id:02d}; list: {group_id} at {row.get('list_offset', '(unknown)')}; source row {source_order}",
+                f"Activation rule: {row.get('activation_rule', '(unresolved)')}",
+                f"Template: {actor_name}; ROM entity kind {actor_kind}; palette line {palette_line}",
+                f"Template record: {row.get('template_offset', '(unknown)')}; source row: {row.get('source_record_offset', '(unknown)')}",
+                f"Fixed-point map coordinate: (0x{raw_x:04X}, 0x{raw_y:04X}); pixels ({raw_x >> 4}, {raw_y >> 4})",
+                f"Direction word: 0x{heading:04X}; source direction: {direction}",
+                f"Initial action: {row.get('action_kind', 'unknown')} {row.get('action_code', '')}; ordered overrides: {row.get('ordered_overrides', '(none)')}",
+                f"Sprite asset: {sprite_relative or '(unsupported ROM kind)'}",
+                "The three list groups are displayed as candidates for inspection; do not read them as simultaneously active actors.",
+            )),
+            sprite_path=sprite_path,
+            sprite_origin_x=offset_x,
+            sprite_origin_y=offset_y,
+            conditional=True,
+            population_class="world_activity",
+            activity_group=group_id,
+        ))
     return result
 
 
@@ -1325,6 +2072,7 @@ class FieldMapView(QGraphicsView):
         self.collision_rectangles: list[MapEvidenceRegion] = []
         self.event_rectangles: list[MapEvidenceRegion] = []
         self.actor_positions: list[MapEvidenceRegion] = []
+        self.profile_entry_positions: list[MapEvidenceRegion] = []
         self.behaviors: list[MapBehaviorRecord] = []
         self.instances: list[EntityInstance] = []
         self.entities: dict[str, EntityDefinition] = {}
@@ -1332,6 +2080,10 @@ class FieldMapView(QGraphicsView):
         self.show_collision = False
         self.show_events = True
         self.show_actors = True
+        self.show_actor_routes = False
+        self.show_world_activity = False
+        self.world_activity_group = "mode_13_entry"
+        self.show_profile_entries = True
         self.show_behaviors = True
         self.show_priority = True
         self.assets_root = DEFAULT_ASSETS
@@ -1364,7 +2116,8 @@ class FieldMapView(QGraphicsView):
         self.behaviors = behaviors
         self.collision_rectangles = read_collision_rectangles(assets, info.scene_id)
         self.event_rectangles = read_event_rectangles(repo_root, info.scene_id)
-        self.actor_positions = read_actor_positions(assets, info.scene_id)
+        self.actor_positions = read_actor_positions(assets, info)
+        self.profile_entry_positions = read_profile_entry_positions(assets, info)
         self.scene().clear()
         # QGraphicsScene.clear() deletes its items; discard the Python wrappers
         # before a redraw tries to remove overlays from the previous scene.
@@ -1398,13 +2151,20 @@ class FieldMapView(QGraphicsView):
         self.resetTransform()
         self.fitInView(self.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
 
-    def set_layer_options(self, priority: bool, grid: bool, collision: bool, events: bool, actors: bool, behaviors: bool) -> None:
+    def set_layer_options(self, priority: bool, grid: bool, collision: bool,
+                          events: bool, actors: bool, actor_routes: bool,
+                          world_activity: bool, activity_group: str,
+                          profile_entries: bool, behaviors: bool) -> None:
         changed_priority = self.show_priority != priority
         self.show_priority = priority
         self.show_grid = grid
         self.show_collision = collision
         self.show_events = events
         self.show_actors = actors
+        self.show_actor_routes = actor_routes
+        self.show_world_activity = world_activity
+        self.world_activity_group = activity_group
+        self.show_profile_entries = profile_entries
         self.show_behaviors = behaviors
         if changed_priority and self.map_info is not None:
             info = self.map_info
@@ -1419,6 +2179,32 @@ class FieldMapView(QGraphicsView):
         for item in getattr(self, "evidence_items", []):
             self.scene().removeItem(item)
         self.evidence_items: list[QGraphicsItem] = []
+        for index, region in enumerate(self.profile_entry_positions):
+            if not self.show_profile_entries:
+                continue
+            color = QColor(93, 245, 218, 250)
+            marker = self.scene().addEllipse(
+                QRectF(region.x, region.y, region.width, region.height),
+                QPen(color, 2),
+                QColor(5, 16, 24, 90),
+            )
+            marker.setZValue(11)
+            marker.setData(0, "map_evidence")
+            marker.setData(1, "profile_entry")
+            marker.setData(2, index)
+            marker.setToolTip(region.title)
+            self.evidence_items.append(marker)
+            label_text = f"Party {index + 1}"
+            label = self.scene().addText(label_text)
+            label.setDefaultTextColor(color)
+            label.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
+            label.setPos(region.x + region.width + 3, region.y - 4)
+            label.setZValue(11)
+            label.setData(0, "map_evidence")
+            label.setData(1, "profile_entry")
+            label.setData(2, index)
+            label.setToolTip(region.title)
+            self.evidence_items.append(label)
         if self.show_collision:
             for index, region in enumerate(self.collision_rectangles):
                 rect = self.scene().addRect(
@@ -1445,8 +2231,44 @@ class FieldMapView(QGraphicsView):
                 rect.setData(2, index)
                 rect.setToolTip(region.title)
                 self.evidence_items.append(rect)
-        if self.show_actors:
+                if region.map_label:
+                    label = self.scene().addText(region.map_label)
+                    label.setDefaultTextColor(QColor(255, 224, 158, 255))
+                    label.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
+                    label.setTextWidth(184)
+                    label_rect = label.boundingRect().adjusted(-3, -2, 3, 2)
+                    label_x = min(
+                        max(2, region.x + region.width + 4),
+                        max(2, self.map_info.width - label_rect.width() - 2),
+                    )
+                    label_y = min(
+                        max(2, region.y),
+                        max(2, self.map_info.height - label_rect.height() - 2),
+                    )
+                    background = self.scene().addRect(
+                        QRectF(label_x, label_y, label_rect.width(), label_rect.height()),
+                        QPen(QColor(255, 190, 35, 150), 1),
+                        QColor(8, 13, 20, 210),
+                    )
+                    background.setZValue(9.5)
+                    label.setPos(label_x + 3, label_y + 2)
+                    label.setZValue(10)
+                    for marker in (background, label):
+                        marker.setData(0, "map_evidence")
+                        marker.setData(1, "event")
+                        marker.setData(2, index)
+                        marker.setToolTip(region.title)
+                        self.evidence_items.append(marker)
+        if self.show_actors or self.show_world_activity:
             for index, region in enumerate(self.actor_positions):
+                is_world_activity = region.population_class == "world_activity"
+                if is_world_activity and not self.show_world_activity:
+                    continue
+                if (is_world_activity and self.world_activity_group != "all" and
+                        region.activity_group != self.world_activity_group):
+                    continue
+                if not is_world_activity and not self.show_actors:
+                    continue
                 if region.sprite_path is not None:
                     marker = self.scene().addPixmap(QPixmap(str(region.sprite_path)))
                     marker.setPos(region.x, region.y)
@@ -1468,9 +2290,8 @@ class FieldMapView(QGraphicsView):
                 marker.setToolTip(region.title)
                 self.evidence_items.append(marker)
                 if region.conditional:
-                    # This outline marks an alternative ROM spawn input. Its
-                    # reduced-opacity source sprite is not a claim that this
-                    # NPC is currently alive in the gameplay world.
+                    # Gated lists and alternative candidates need a visible
+                    # marker even when the route-line layer is hidden.
                     outline = self.scene().addRect(
                         QRectF(region.x, region.y, region.width, region.height),
                         QPen(QColor(255, 198, 82, 230), 1.5, Qt.PenStyle.DashLine),
@@ -1491,6 +2312,53 @@ class FieldMapView(QGraphicsView):
                     label.setData(2, index)
                     label.setToolTip(region.title)
                     self.evidence_items.append(label)
+                if region.sprite_path is None and not region.conditional:
+                    actor_name = region.title.partition(" - ")[0]
+                    label = self.scene().addText(
+                        f"{actor_name} [sprite unresolved]")
+                    label.setDefaultTextColor(QColor(255, 177, 235, 255))
+                    label.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
+                    label.setPos(region.x + region.width + 3, region.y - 4)
+                    label.setZValue(10)
+                    label.setData(0, "map_evidence")
+                    label.setData(1, "actor")
+                    label.setData(2, index)
+                    label.setToolTip(region.title)
+                    self.evidence_items.append(label)
+        if self.show_actor_routes:
+            for index, region in enumerate(self.actor_positions):
+                if len(region.path_points) < 2:
+                    continue
+                route = QPainterPath()
+                previous: tuple[int, int] | None = None
+                has_segment = False
+                for raw_x, raw_y in region.path_points:
+                    x, y = raw_x >> 4, raw_y >> 4
+                    if not (0 <= x < self.map_info.width and
+                            0 <= y < self.map_info.height):
+                        previous = None
+                        continue
+                    if previous is None:
+                        route.moveTo(x, y)
+                    else:
+                        route.lineTo(x, y)
+                        has_segment = True
+                    previous = (x, y)
+                if not has_segment:
+                    continue
+                route_item = self.scene().addPath(
+                    route,
+                    QPen(QColor(45, 228, 242, 185), 2,
+                         Qt.PenStyle.DashLine),
+                )
+                route_item.setZValue(5.5)
+                route_item.setData(0, "map_evidence")
+                route_item.setData(1, "actor")
+                route_item.setData(2, index)
+                route_item.setToolTip(
+                    f"ROM waypoint list for {region.title}; click for source list and gates"
+                )
+                self.evidence_items.append(route_item)
 
     def redraw_annotations(self) -> None:
         for item in self.annotation_items:
@@ -1542,6 +2410,7 @@ class FieldMapView(QGraphicsView):
             label.setPos(instance.origin_x + x0 + 2, instance.origin_y + y0 - 18)
             label.setZValue(13)
             label.setData(0, instance.instance_id)
+            label.setData(1, "entity_label")
             group.addToGroup(label)
             for part in entity.parts:
                 part_color = role_colors.get(part.role, role_colors["unreviewed"])
@@ -1630,6 +2499,7 @@ class FieldMapView(QGraphicsView):
                 "event": self.event_rectangles,
                 "collision": self.collision_rectangles,
                 "actor": self.actor_positions,
+                "profile_entry": self.profile_entry_positions,
             }.get(item.data(1), [])
             if isinstance(index, int) and 0 <= index < len(regions):
                 return regions[index]
@@ -1828,6 +2698,7 @@ class MapEntityViewer(QMainWindow):
         if scene_index >= 0:
             self.scene_combo.setCurrentIndex(scene_index)
         self.load_scene(initial_scene)
+        self.info_tabs.setCurrentWidget(self.scene_info)
         self.statusBar().showMessage("No automatic object classifier is active. New annotations start unreviewed.")
 
     def _build_menus(self) -> None:
@@ -1868,6 +2739,36 @@ class MapEntityViewer(QMainWindow):
         self.scene_combo.currentIndexChanged.connect(self.scene_changed)
         layout.addWidget(QLabel("Preassembled map"))
         layout.addWidget(self.scene_combo)
+        self.info = QPlainTextEdit()
+        self.info.setReadOnly(True)
+        self.info.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+        self.info.setMaximumHeight(220)
+        self.info.setPlainText(
+            "Click a map cell for its ROM layer words. Click a yellow ROM trigger or red collision region for its source record. "
+            "Click a ROM actor sprite to inspect its type, source record, direction, and gate. Click a purple runtime-event or T/S/R marker to inspect its Lua data. "
+            "Drag entity outlines to move grouped annotations."
+        )
+        self.flow_info = QPlainTextEdit()
+        self.flow_info.setReadOnly(True)
+        self.flow_info.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+        self.flow_info.setPlainText(
+            "Select a building or ROM event to inspect its route, dialogue/menu "
+            "profiles, state branches, and source references."
+        )
+        self.scene_info = QPlainTextEdit()
+        self.scene_info.setReadOnly(True)
+        self.scene_info.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+        self.audio_info = QPlainTextEdit()
+        self.audio_info.setReadOnly(True)
+        self.audio_info.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+        self.info_tabs = QTabWidget()
+        self.info_tabs.addTab(self.info, "Source")
+        self.info_tabs.addTab(self.flow_info, "Game flow")
+        self.info_tabs.addTab(self.scene_info, "Map profile")
+        self.info_tabs.addTab(self.audio_info, "Map audio")
+        self.info_tabs.setMinimumHeight(230)
+        layout.addWidget(self.info_tabs)
+
         self.entity_list = QListWidget()
         self.entity_list.currentItemChanged.connect(self.list_selection_changed)
         layout.addWidget(QLabel("Entity instances on this scene"))
@@ -1940,22 +2841,24 @@ class MapEntityViewer(QMainWindow):
         self.evidence_edit = QLineEdit()
         self.evidence_edit.setPlaceholderText("Source or visual evidence; leave blank if unknown")
         self.evidence_edit.editingFinished.connect(self.properties_changed)
+        self.content_profile_edit = QLineEdit()
+        self.content_profile_edit.setPlaceholderText("Dialogue/menu profile ID from gameplay/scripts/dialogue.lua")
+        self.content_profile_edit.editingFinished.connect(self.properties_changed)
+        self.speaker_id_edit = QLineEdit()
+        self.speaker_id_edit.setPlaceholderText("Speaker ID from gameplay/scripts/dialogue.lua")
+        self.speaker_id_edit.editingFinished.connect(self.properties_changed)
+        self.shop_profile_edit = QLineEdit()
+        self.shop_profile_edit.setPlaceholderText("Shop catalog profile ID from gameplay/scripts/shop.lua")
+        self.shop_profile_edit.editingFinished.connect(self.properties_changed)
         form.addRow("Name", self.name_edit)
         form.addRow("Classification", self.category_combo)
         form.addRow("Origin X", self.x_spin)
         form.addRow("Origin Y", self.y_spin)
+        form.addRow("Dialogue/menu profile", self.content_profile_edit)
+        form.addRow("Speaker ID", self.speaker_id_edit)
+        form.addRow("Shop profile", self.shop_profile_edit)
         form.addRow("Evidence", self.evidence_edit)
         layout.addLayout(form)
-        self.info = QPlainTextEdit()
-        self.info.setReadOnly(True)
-        self.info.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
-        self.info.setMaximumHeight(220)
-        self.info.setPlainText(
-            "Click a map cell for its ROM layer words. Click a yellow ROM trigger or red collision region for its source record. "
-            "Click a ROM actor sprite to inspect its type, source record, direction, and gate. Click a purple runtime-event or T/S/R marker to inspect its Lua data. "
-            "Drag entity outlines to move grouped annotations."
-        )
-        layout.addWidget(self.info)
         self.save_button = QPushButton("Save scene and definitions")
         self.save_button.clicked.connect(self.save_all)
         self.delete_button = QPushButton("Remove selected instance")
@@ -1983,10 +2886,21 @@ class MapEntityViewer(QMainWindow):
         self.collision_toggle = self._add_toggle(bar, "ROM collision", False)
         self.event_toggle = self._add_toggle(bar, "ROM event triggers", True)
         self.actor_toggle = self._add_toggle(bar, "ROM actor populations", True)
+        self.actor_route_toggle = self._add_toggle(bar, "ROM waypoint paths", False)
+        self.world_activity_toggle = self._add_toggle(bar, "Special actor lists", False)
+        self.world_activity_group_combo = QComboBox()
+        self.world_activity_group_combo.addItem("All list groups", "all")
+        self.world_activity_group_combo.addItem("Entry list 0x1E552", "mode_13_entry")
+        self.world_activity_group_combo.addItem("Pending list 0x1E5C4", "pending_list_1e5c4")
+        self.world_activity_group_combo.addItem("Pending list 0x1E628", "pending_list_1e628")
+        self.world_activity_group_combo.setCurrentIndex(1)
+        self.world_activity_group_combo.currentIndexChanged.connect(self.layers_changed)
+        bar.addWidget(self.world_activity_group_combo)
+        self.profile_entry_toggle = self._add_toggle(bar, "Default party spawns", True)
         self.behavior_toggle = self._add_toggle(bar, "Map events / spawns", True)
         bar.addSeparator()
         legend = QLabel(
-            "ROM actor sprites: solid = default list; faded amber outline = gated candidate   "
+            "ROM actors: solid = default list; amber ? = conditional list/candidate; cyan dash = route   "
             "Unreviewed: yellow   Building: cyan   Entity collision: green dash-dot"
         )
         bar.addWidget(legend)
@@ -2044,7 +2958,11 @@ class MapEntityViewer(QMainWindow):
         self.map_view.set_layer_options(
             self.priority_toggle.isChecked(), self.grid_toggle.isChecked(),
             self.collision_toggle.isChecked(), self.event_toggle.isChecked(),
-            self.actor_toggle.isChecked(), self.behavior_toggle.isChecked(),
+            self.actor_toggle.isChecked(), self.actor_route_toggle.isChecked(),
+            self.world_activity_toggle.isChecked(),
+            str(self.world_activity_group_combo.currentData()),
+            self.profile_entry_toggle.isChecked(),
+            self.behavior_toggle.isChecked(),
         )
 
     def load_scene(self, scene_id: int) -> None:
@@ -2076,6 +2994,8 @@ class MapEntityViewer(QMainWindow):
         )
         self._show_properties(None)
         self._update_scene_summary()
+        self._update_scene_profile_info()
+        self._update_scene_audio_info()
 
     def scene_changed(self, index: int) -> None:
         if index >= 0:
@@ -2113,22 +3033,186 @@ class MapEntityViewer(QMainWindow):
     def _update_scene_summary(self) -> None:
         info = self.map_by_id[self.scene_id]
         unreviewed = sum(1 for instance in self.instances if self.entities.get(instance.entity_id, EntityDefinition("", "")).category == "unreviewed")
-        default_actors = sum(1 for actor in self.map_view.actor_positions if not actor.conditional)
-        conditional_actors = sum(1 for actor in self.map_view.actor_positions if actor.conditional)
+        default_actors = sum(
+            1 for actor in self.map_view.actor_positions
+            if actor.population_class == "default"
+        )
+        conditional_actors = sum(
+            1 for actor in self.map_view.actor_positions
+            if actor.population_class == "conditional"
+        )
+        activity_actors = sum(
+            1 for actor in self.map_view.actor_positions
+            if actor.population_class == "world_activity"
+        )
         self.statusBar().showMessage(
             f"Scene {self.scene_id:02d}: {info.width}×{info.height}; {len(self.instances)} annotations, {unreviewed} unreviewed. "
             f"Source encoding: {info.metatile_encoding}; collision regions: {len(self.map_view.collision_rectangles)}; "
             f"event regions: {len(self.map_view.event_rectangles)}; "
-            f"ROM actor markers: {default_actors} default-list, {conditional_actors} gated positions; "
+            f"ROM actor records: {default_actors} default-list, {conditional_actors} "
+            f"pedestrian candidates, {activity_actors} special-list candidates; "
             f"authored logic records: {len(self.behaviors)}."
         )
+
+    def _update_scene_profile_info(self) -> None:
+        info = self.map_by_id[self.scene_id]
+        descriptor_path = (
+            self.assets / "records" / "field" / "scenes" /
+            f"scene-{self.scene_id:02d}" / "descriptor.bin"
+        )
+        lines = [
+            f"Scene {self.scene_id:02d} ROM map profile",
+            f"Profile record: {info.record_offset or '(not indexed)' }",
+            f"Extracted descriptor: {descriptor_path}",
+            f"Map image: {info.width}x{info.height}; metatile grid "
+            f"{info.tilemap_width}x{info.tilemap_height} ({info.metatile_encoding})",
+            f"Camera coordinate from map index: 0x{info.camera_x_fixed:04X}, "
+            f"0x{info.camera_y_fixed:04X} in 12.4 fixed point "
+            f"({info.camera_x_fixed / 16:.2f}, {info.camera_y_fixed / 16:.2f} pixels). "
+            "This is camera setup, not a player spawn.",
+            f"Map extents: {info.min_x},{info.min_y} + {info.bound_x}x{info.bound_y}",
+            f"Terrain profile: {info.terrain_record or '(not indexed)'}; "
+            f"event table: {info.event_table or '(none indexed)' }",
+            f"ROM default actor list: {info.default_actor_list_offset or '(not indexed)'}; "
+            f"{info.default_actor_count} profile-selected record(s)"
+            + (f" ({info.default_actor_types})" if info.default_actor_types else "."),
+            "Default-list rows are source population records. Their allocation still "
+            "depends on the field transition and actor-slot gates; the list alone "
+            "does not prove that every row is active on every visit.",
+        ]
+        try:
+            descriptor = descriptor_path.read_bytes()
+        except OSError:
+            descriptor = b""
+        if len(descriptor) >= 0x4E:
+            lines.append("Default party entry positions (descriptor offsets +0x42/+0x46/+0x4A):")
+            party_roles = ("lead actor", "party member 2", "party member 3")
+            for slot, offset in enumerate((0x42, 0x46, 0x4A), start=1):
+                raw_x = int.from_bytes(descriptor[offset:offset + 2], "big")
+                raw_y = int.from_bytes(descriptor[offset + 2:offset + 4], "big")
+                if raw_x == 0 and raw_y == 0:
+                    continue
+                lines.append(
+                    f"  Party {slot} ({party_roles[slot - 1]}): "
+                    f"raw 12.4 X/Y 0x{raw_x:04X},0x{raw_y:04X}; "
+                    f"map pixels ({raw_x / 16:.2f},{raw_y / 16:.2f})"
+                )
+            lines.append(
+                "ROM 0x03084 loads the profile positions; 0x02B34 copies them "
+                "to the three ordinary actor records when no incoming "
+                "coordinate list is pending. Transitions can supply a different "
+                "party position, so these are the default entry points."
+            )
+            if self.scene_id == 2:
+                lines.append(
+                    "  New Game uses Party 1 at (0x3CE0,0x2D00), then starts "
+                    "the automatic walk toward Stoker's event."
+                )
+        else:
+            lines.append("ROM profile coordinate slots: descriptor is unavailable or truncated.")
+        default_actors = sum(
+            1 for actor in self.map_view.actor_positions
+            if actor.population_class == "default"
+        )
+        conditional_actors = sum(
+            1 for actor in self.map_view.actor_positions
+            if actor.population_class == "conditional"
+        )
+        world_activity_actors = sum(
+            1 for actor in self.map_view.actor_positions
+            if actor.population_class == "world_activity"
+        )
+        lines.extend((
+            f"Indexed ROM actor census: {default_actors} profile-selected records, "
+            f"{conditional_actors} conditional pedestrian positions, and "
+            f"{world_activity_actors} special world-activity records.",
+            "ROM actor-list positions and profile party entry points are shown in "
+            "separate evidence layers. The markers show the profile defaults; "
+            "a route may override them when it loads the map.",
+            "Scene 47's three special actor lists are separate event candidates; "
+            "turn on Special actor lists to inspect them. Other timed activity "
+            "tables and event-created actor paths remain unresolved; see the "
+            "actor-population audit.",
+        ))
+        out_of_bounds_actors = read_out_of_bounds_actor_details(self.assets, info)
+        if out_of_bounds_actors:
+            lines.append(
+                "ROM actor source records outside the extracted image are retained "
+                "in the census and omitted from map overlays:"
+            )
+            lines.extend(f"  {detail}" for detail in out_of_bounds_actors)
+        lines.append(
+            "Default party entry markers are visible by default. Turn off "
+            "Default party spawns to hide them."
+        )
+        self.scene_info.setPlainText("\n".join(lines))
+
+    def _update_scene_audio_info(self) -> None:
+        info = self.map_by_id[self.scene_id]
+        self.audio_info.setPlainText(
+            read_map_audio_details(self.repo_root, self.assets, info)
+        )
+
+    def _entity_game_flow(self, entity: EntityDefinition) -> str:
+        lines = [
+            f"{entity.name}",
+            f"Entity ID: {entity.entity_id}",
+            f"Dialogue/menu content profile: "
+            f"{entity.content_profile or '(not linked)' }",
+            f"Speaker ID: {entity.speaker_id or '(not linked)' }",
+            f"Shop profile: {entity.shop_profile or '(not linked)' }",
+            "",
+            "ROM interactions and Lua handlers:",
+        ]
+        if entity.interactables:
+            for interaction in entity.interactables:
+                lines.extend((
+                    f"  {interaction.source_event or interaction.interaction_id}: "
+                    f"{interaction.lua_handler or '(not connected)' }",
+                    f"  Evidence: {interaction.evidence or '(not recorded)' }",
+                ))
+        else:
+            lines.append("  No interaction routes are attached to this entity.")
+        route_index = read_site_route_index(self.repo_root, self.scene_id)
+        text_catalog = read_lua_string_table(
+            self.assets / "dialogue" / "script-text.lua"
+        )
+        route_sites: list[tuple[str, dict[str, str]]] = []
+        for interaction in entity.interactables:
+            address = re.search(r"0x[0-9A-Fa-f]+", interaction.source_event)
+            site = route_index.get(address.group(0).upper(), {}) if address else {}
+            if site:
+                route_sites.append((interaction.source_event, site))
+        if entity.content_profile and not any(
+            site.get("content_profile", "").strip() == entity.content_profile
+            for _event, site in route_sites
+        ):
+            lines.extend(("", *read_dialogue_profile_details(
+                self.repo_root, entity.content_profile, entity.speaker_id,
+                text_catalog,
+            )))
+        for event, site in route_sites:
+            lines.extend(("", f"Resolved route for {event}:"))
+            lines.extend(read_site_content_details(
+                self.repo_root, site, text_catalog
+            ))
+        if entity.shop_profile and not any(
+            site.get("shop_profile", "").strip() == entity.shop_profile
+            for _event, site in route_sites
+        ):
+            lines.extend(("", *read_shop_profile_details(
+                self.repo_root, entity.shop_profile, text_catalog
+            )))
+        return "\n".join(lines)
 
     def _show_properties(self, instance: EntityInstance | None) -> None:
         self._loading_fields = True
         enabled = instance is not None
         for widget in (
             self.name_edit, self.category_combo, self.x_spin, self.y_spin,
-            self.evidence_edit, self.delete_button, self.parts_list,
+            self.evidence_edit, self.content_profile_edit, self.speaker_id_edit,
+            self.shop_profile_edit,
+            self.delete_button, self.parts_list,
             self.interactions_list, self.edit_part_button,
             self.remove_part_button, self.edit_interaction_button,
             self.remove_interaction_button, self.collisions_list,
@@ -2140,6 +3224,8 @@ class MapEntityViewer(QMainWindow):
         self.delete_behavior_button.setEnabled(False)
         if not enabled:
             self.name_edit.clear(); self.evidence_edit.clear()
+            self.content_profile_edit.clear(); self.speaker_id_edit.clear()
+            self.shop_profile_edit.clear()
             self.x_spin.setValue(0); self.y_spin.setValue(0)
             self.category_combo.setCurrentText("unreviewed")
             self.parts_list.clear()
@@ -2151,6 +3237,10 @@ class MapEntityViewer(QMainWindow):
                 "Click a map cell for its ROM layer words. Click a yellow ROM trigger or red collision region for its source record. "
                 "Click a ROM actor sprite to inspect its type, source record, direction, and gate. Click an authored T/S/R mark to inspect its Lua data. "
                 "Drag entity outlines to move grouped annotations."
+            )
+            self.flow_info.setPlainText(
+                "Select a building or ROM event to inspect its route, dialogue/menu "
+                "profiles, state branches, and source references."
             )
             self._loading_fields = False
             return
@@ -2206,6 +3296,9 @@ class MapEntityViewer(QMainWindow):
         self.category_combo.setCurrentText(entity.category if entity.category in ENTITY_CATEGORIES else "unreviewed")
         self.x_spin.setValue(instance.origin_x); self.y_spin.setValue(instance.origin_y)
         self.evidence_edit.setText(entity.evidence)
+        self.content_profile_edit.setText(entity.content_profile)
+        self.speaker_id_edit.setText(entity.speaker_id)
+        self.shop_profile_edit.setText(entity.shop_profile)
         part_summary = "\n".join(
             f"- {part.part_id}: {part.role}, source scene {part.source_scene:02d} at "
             f"{part.source_x},{part.source_y} {part.width}x{part.height}; "
@@ -2234,6 +3327,7 @@ class MapEntityViewer(QMainWindow):
             "evidence; these entity records do not "
             "modify the preassembled map or live field collision."
         )
+        self.flow_info.setPlainText(self._entity_game_flow(entity))
         map_info = self.map_by_id[self.scene_id]
         bounds = QRectF(
             instance.origin_x + entity.bounds[0],
@@ -2531,7 +3625,20 @@ class MapEntityViewer(QMainWindow):
         self.edit_behavior_button.setEnabled(False)
         self.delete_behavior_button.setEnabled(False)
         self.info.setPlainText(evidence.details)
-        self.right_scroll.ensureWidgetVisible(self.info, 0, 0)
+        self.flow_info.setPlainText(
+            evidence.route_details or
+            (evidence.details if evidence.kind == "rom_actor" else
+             "No separate dialogue, menu, shop, or quest-flow profile is linked to this evidence row.")
+        )
+        selected_panel = self.info
+        if evidence.route_details or evidence.kind == "rom_actor":
+            selected_panel = self.flow_info
+        self.info_tabs.setCurrentWidget(selected_panel)
+        self.right_scroll.ensureWidgetVisible(
+            selected_panel,
+            0,
+            0,
+        )
         self.statusBar().showMessage(
             f"Inspecting {evidence.title}; source-derived evidence is read-only.",
             7000,
@@ -2594,6 +3701,8 @@ class MapEntityViewer(QMainWindow):
         self.edit_behavior_button.setEnabled(True)
         self.delete_behavior_button.setEnabled(True)
         self.info.setPlainText(record.describe(self.scene_id))
+        self.flow_info.setPlainText(record.describe(self.scene_id))
+        self.info_tabs.setCurrentWidget(self.flow_info)
         self.right_scroll.ensureWidgetVisible(self.info, 0, 0)
         origin = "source-profiled" if record.review_status == "source_verified" else "authored"
         self.statusBar().showMessage(f"Selected {origin} {record.kind} record.", 6000)
@@ -2940,6 +4049,9 @@ class MapEntityViewer(QMainWindow):
         entity.name = self.name_edit.text().strip() or entity.entity_id
         entity.category = self.category_combo.currentText()
         entity.evidence = self.evidence_edit.text().strip()
+        entity.content_profile = self.content_profile_edit.text().strip()
+        entity.speaker_id = self.speaker_id_edit.text().strip()
+        entity.shop_profile = self.shop_profile_edit.text().strip()
         if entity.parts and entity.parts[0].role == "unreviewed":
             entity.parts[0].role = {
                 "building": "body",
@@ -3006,6 +4118,40 @@ class MapEntityViewer(QMainWindow):
 def render_snapshot(viewer: MapEntityViewer, output: Path) -> None:
     viewer.show()
     QApplication.processEvents()
+    inspect_instance_id = getattr(viewer, "inspect_instance_id", "")
+    if inspect_instance_id:
+        # Close-up QA should expose the source pixels and the selected
+        # entity's contours without unrelated map evidence obscuring them.
+        if viewer.map_view.grid is not None:
+            viewer.map_view.grid.setVisible(False)
+        for evidence_item in viewer.map_view.evidence_items:
+            evidence_item.setVisible(False)
+        for instance_id, group in viewer.map_view.entity_groups.items():
+            group.setVisible(instance_id == inspect_instance_id)
+            if instance_id == inspect_instance_id:
+                for child in group.childItems():
+                    if child.data(1) == "entity_label":
+                        child.setVisible(False)
+        instance = next((
+            item for item in viewer.instances
+            if item.instance_id == inspect_instance_id
+        ), None)
+        if instance is not None:
+            entity = viewer.entities[instance.entity_id]
+            x, y, width, height = entity.bounds
+            view = viewer.map_view
+            view.resetTransform()
+            margin = 1.25
+            scale = min(
+                view.viewport().width() / max(1, width * margin),
+                view.viewport().height() / max(1, height * margin),
+            )
+            view.scale(scale, scale)
+            view.centerOn(
+                instance.origin_x + x + width / 2,
+                instance.origin_y + y + height / 2,
+            )
+            QApplication.processEvents()
     image = QImage(viewer.size(), QImage.Format.Format_ARGB32)
     image.fill(QColor(22, 23, 26))
     painter = QPainter(image)
@@ -3022,6 +4168,35 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--world", type=Path, default=DEFAULT_WORLD, help="gameplay/world authoring directory")
     parser.add_argument("--scene", type=int, default=2, help="scene/mode id to open")
     parser.add_argument("--snapshot", type=Path, help="render the viewer window to an image and exit (for headless inspection)")
+    parser.add_argument(
+        "--show-actor-routes",
+        action="store_true",
+        help="show ROM default-actor waypoint lines (useful with --snapshot)",
+    )
+    parser.add_argument(
+        "--show-world-activity",
+        action="store_true",
+        help="show a selected ROM special actor-list group (useful with --snapshot)",
+    )
+    parser.add_argument(
+        "--activity-list",
+        choices=("all", "mode_13_entry", "pending_list_1e5c4", "pending_list_1e628"),
+        default="mode_13_entry",
+        help="choose which scene-47 world-activity list to show",
+    )
+    parser.add_argument(
+        "--inspect-rom-event",
+        help="select a ROM event record address (for example 0x173138), useful with --snapshot",
+    )
+    parser.add_argument(
+        "--inspect-entity",
+        help="select an entity ID or scene instance ID and center the map on it",
+    )
+    parser.add_argument(
+        "--inspect-tab",
+        choices=("Source", "Game flow", "Map profile", "Map audio"),
+        help="select a right-dock evidence tab, useful with --snapshot",
+    )
     args = parser.parse_args(argv)
     maps = read_map_catalog(args.assets)
     if not maps:
@@ -3034,6 +4209,54 @@ def main(argv: list[str] | None = None) -> int:
         QFontDatabase.addApplicationFont(str(windows_font))
     app.setFont(QFont("Arial", 9))
     viewer = MapEntityViewer(args.assets, args.world, args.scene)
+    if args.show_actor_routes or args.show_world_activity:
+        viewer.map_view.show_actor_routes = args.show_actor_routes
+        viewer.map_view.show_world_activity = args.show_world_activity
+        viewer.map_view.world_activity_group = args.activity_list
+        viewer.map_view.draw_evidence_overlays()
+    if args.inspect_rom_event:
+        address = args.inspect_rom_event.strip().lower()
+        evidence = next((
+            event for event in viewer.map_view.event_rectangles
+            if address in event.details.lower()
+        ), None)
+        if evidence is None:
+            parser.error(
+                f"No event record containing {args.inspect_rom_event} in scene {args.scene:02d}"
+            )
+        viewer.show_evidence(evidence)
+    if args.inspect_entity:
+        entity_item = next((
+            viewer.entity_list.item(index)
+            for index in range(viewer.entity_list.count())
+            if viewer.entity_list.item(index).data(Qt.ItemDataRole.UserRole)
+            == args.inspect_entity
+            or any(
+                instance.instance_id == viewer.entity_list.item(index).data(
+                    Qt.ItemDataRole.UserRole
+                ) and instance.entity_id == args.inspect_entity
+                for instance in viewer.instances
+            )
+            or viewer.entity_list.item(index).text().split(" [", 1)[0]
+            == args.inspect_entity
+        ), None)
+        if entity_item is None:
+            parser.error(
+                f"No entity or instance '{args.inspect_entity}' in scene {args.scene:02d}"
+            )
+        viewer.entity_list.setCurrentItem(entity_item)
+        instance = next((
+            item for item in viewer.instances
+            if item.instance_id == entity_item.data(Qt.ItemDataRole.UserRole)
+        ), None)
+        if instance is not None:
+            viewer.inspect_instance_id = instance.instance_id
+    if args.inspect_tab:
+        tab_index = next(
+            index for index in range(viewer.info_tabs.count())
+            if viewer.info_tabs.tabText(index) == args.inspect_tab
+        )
+        viewer.info_tabs.setCurrentIndex(tab_index)
     if args.snapshot:
         render_snapshot(viewer, args.snapshot)
         return 0

@@ -1,0 +1,380 @@
+scene	source_order	waypoint_order	actor_name	position_list_address	world_x	world_y	terminator_rule
+0	0	0	pedestrian	0xD556C	2048	1536	zero_x_word
+0	0	1	pedestrian	0xD556C	4992	1536	zero_x_word
+0	0	2	pedestrian	0xD556C	4992	7168	zero_x_word
+0	0	3	pedestrian	0xD556C	1536	7168	zero_x_word
+0	0	4	pedestrian	0xD556C	1536	11008	zero_x_word
+0	0	5	pedestrian	0xD556C	3328	13312	zero_x_word
+0	0	6	pedestrian	0xD556C	6656	13312	zero_x_word
+0	0	7	pedestrian	0xD556C	6656	14592	zero_x_word
+0	0	8	pedestrian	0xD556C	10752	14592	zero_x_word
+0	0	9	pedestrian	0xD556C	11648	13824	zero_x_word
+0	0	10	pedestrian	0xD556C	15360	13824	zero_x_word
+0	0	11	pedestrian	0xD556C	15488	14592	zero_x_word
+0	0	12	pedestrian	0xD556C	19968	14592	zero_x_word
+0	0	13	pedestrian	0xD556C	20864	12800	zero_x_word
+0	0	14	pedestrian	0xD556C	25600	12800	zero_x_word
+0	0	15	pedestrian	0xD556C	25600	7296	zero_x_word
+0	0	16	pedestrian	0xD556C	20480	7296	zero_x_word
+0	0	17	pedestrian	0xD556C	20480	2176	zero_x_word
+0	0	18	pedestrian	0xD556C	5120	2176	zero_x_word
+0	0	19	pedestrian	0xD556C	5120	1536	zero_x_word
+0	1	0	pedestrian	0xD5584	6656	13312	zero_x_word
+0	1	1	pedestrian	0xD5584	6656	14592	zero_x_word
+0	1	2	pedestrian	0xD5584	10752	14592	zero_x_word
+0	1	3	pedestrian	0xD5584	11648	13824	zero_x_word
+0	1	4	pedestrian	0xD5584	15360	13824	zero_x_word
+0	1	5	pedestrian	0xD5584	15488	14592	zero_x_word
+0	1	6	pedestrian	0xD5584	19968	14592	zero_x_word
+0	1	7	pedestrian	0xD5584	20864	12800	zero_x_word
+0	1	8	pedestrian	0xD5584	25600	12800	zero_x_word
+0	1	9	pedestrian	0xD5584	25600	7296	zero_x_word
+0	1	10	pedestrian	0xD5584	20480	7296	zero_x_word
+0	1	11	pedestrian	0xD5584	20480	2176	zero_x_word
+0	1	12	pedestrian	0xD5584	5120	2176	zero_x_word
+0	1	13	pedestrian	0xD5584	5120	1536	zero_x_word
+0	2	0	pedestrian	0xD5594	15360	13824	zero_x_word
+0	2	1	pedestrian	0xD5594	15488	14592	zero_x_word
+0	2	2	pedestrian	0xD5594	19968	14592	zero_x_word
+0	2	3	pedestrian	0xD5594	20864	12800	zero_x_word
+0	2	4	pedestrian	0xD5594	25600	12800	zero_x_word
+0	2	5	pedestrian	0xD5594	25600	7296	zero_x_word
+0	2	6	pedestrian	0xD5594	20480	7296	zero_x_word
+0	2	7	pedestrian	0xD5594	20480	2176	zero_x_word
+0	2	8	pedestrian	0xD5594	5120	2176	zero_x_word
+0	2	9	pedestrian	0xD5594	5120	1536	zero_x_word
+1	0	0	pedestrian	0x17D6B6	12032	6400	zero_x_word
+1	0	1	pedestrian	0x17D6B6	12032	8832	zero_x_word
+1	0	2	pedestrian	0x17D6B6	13952	9728	zero_x_word
+1	0	3	pedestrian	0x17D6B6	19072	9728	zero_x_word
+1	0	4	pedestrian	0x17D6B6	19072	768	zero_x_word
+1	0	5	pedestrian	0x17D6B6	8064	6528	zero_x_word
+1	0	6	pedestrian	0x17D6B6	8064	18176	zero_x_word
+1	0	7	pedestrian	0x17D6B6	12032	20608	zero_x_word
+1	0	8	pedestrian	0x17D6B6	8448	21632	zero_x_word
+1	0	9	pedestrian	0x17D6B6	8064	16000	zero_x_word
+1	0	10	pedestrian	0x17D6B6	8064	6400	zero_x_word
+1	1	0	pedestrian	0x17D6CE	8064	18176	zero_x_word
+1	1	1	pedestrian	0x17D6CE	12032	20608	zero_x_word
+1	1	2	pedestrian	0x17D6CE	8448	21632	zero_x_word
+1	1	3	pedestrian	0x17D6CE	8064	16000	zero_x_word
+1	1	4	pedestrian	0x17D6CE	8064	6400	zero_x_word
+1	2	0	pedestrian	0x17D694	2816	3584	zero_x_word
+1	2	1	pedestrian	0x17D694	21888	3584	zero_x_word
+1	2	2	pedestrian	0x17D694	21888	6144	zero_x_word
+1	2	3	pedestrian	0x17D694	19200	6144	zero_x_word
+1	2	4	pedestrian	0x17D694	22528	12544	zero_x_word
+1	2	5	pedestrian	0x17D694	22528	15232	zero_x_word
+1	2	6	pedestrian	0x17D694	4992	15232	zero_x_word
+1	2	7	pedestrian	0x17D694	4992	6528	zero_x_word
+2	0	0	pedestrian	0x172D58	13440	8704	zero_x_word
+2	0	1	pedestrian	0x172D58	10240	8704	zero_x_word
+2	0	2	pedestrian	0x172D58	10240	15744	zero_x_word
+2	0	3	pedestrian	0x172D58	13440	14080	zero_x_word
+2	0	4	pedestrian	0x172D58	21248	14080	zero_x_word
+2	0	5	pedestrian	0x172D58	21248	9472	zero_x_word
+2	0	6	pedestrian	0x172D58	22016	9472	zero_x_word
+2	0	7	pedestrian	0x172D58	22016	6400	zero_x_word
+2	0	8	pedestrian	0x172D58	25216	6400	zero_x_word
+2	0	9	pedestrian	0x172D58	25216	2944	zero_x_word
+2	0	10	pedestrian	0x172D58	29440	4992	zero_x_word
+2	0	11	pedestrian	0x172D58	1792	4992	zero_x_word
+2	1	0	pedestrian	0x172D68	21248	14080	zero_x_word
+2	1	1	pedestrian	0x172D68	21248	9472	zero_x_word
+2	1	2	pedestrian	0x172D68	22016	9472	zero_x_word
+2	1	3	pedestrian	0x172D68	22016	6400	zero_x_word
+2	1	4	pedestrian	0x172D68	25216	6400	zero_x_word
+2	1	5	pedestrian	0x172D68	25216	2944	zero_x_word
+2	1	6	pedestrian	0x172D68	29440	4992	zero_x_word
+2	1	7	pedestrian	0x172D68	1792	4992	zero_x_word
+2	2	0	pedestrian	0x172D78	25216	6400	zero_x_word
+2	2	1	pedestrian	0x172D78	25216	2944	zero_x_word
+2	2	2	pedestrian	0x172D78	29440	4992	zero_x_word
+2	2	3	pedestrian	0x172D78	1792	4992	zero_x_word
+3	0	0	pedestrian	0x18A76E	31232	3584	zero_x_word
+3	0	1	pedestrian	0x18A76E	31232	6144	zero_x_word
+3	0	2	pedestrian	0x18A76E	27776	6528	zero_x_word
+3	0	3	pedestrian	0x18A76E	25216	6528	zero_x_word
+3	0	4	pedestrian	0x18A76E	25216	20608	zero_x_word
+3	0	5	pedestrian	0x18A76E	22528	20608	zero_x_word
+3	0	6	pedestrian	0x18A76E	22528	12544	zero_x_word
+3	0	7	pedestrian	0x18A76E	3584	12544	zero_x_word
+3	0	8	pedestrian	0x18A76E	5376	3584	zero_x_word
+3	1	0	pedestrian	0x18A786	22528	12544	zero_x_word
+3	1	1	pedestrian	0x18A786	3584	12544	zero_x_word
+3	1	2	pedestrian	0x18A786	5376	3584	zero_x_word
+3	2	0	pedestrian	0x18A794	5248	3584	zero_x_word
+3	2	1	pedestrian	0x18A794	19456	3584	zero_x_word
+3	2	2	pedestrian	0x18A794	19456	12416	zero_x_word
+3	2	3	pedestrian	0x18A794	13824	12416	zero_x_word
+3	2	4	pedestrian	0x18A794	13824	20480	zero_x_word
+3	2	5	pedestrian	0x18A794	16640	20480	zero_x_word
+3	2	6	pedestrian	0x18A794	16640	17024	zero_x_word
+3	2	7	pedestrian	0x18A794	3328	17024	zero_x_word
+4	0	0	pedestrian	0x15B9CC	384	13056	zero_x_word
+4	0	1	pedestrian	0x15B9CC	384	9216	zero_x_word
+4	0	2	pedestrian	0x15B9CC	5248	9216	zero_x_word
+4	0	3	pedestrian	0x15B9CC	5376	7168	zero_x_word
+4	0	4	pedestrian	0x15B9CC	9856	7168	zero_x_word
+4	0	5	pedestrian	0x15B9CC	9856	8448	zero_x_word
+4	0	6	pedestrian	0x15B9CC	14592	8448	zero_x_word
+4	0	7	pedestrian	0x15B9CC	15360	9984	zero_x_word
+4	0	8	pedestrian	0x15B9CC	15360	14592	zero_x_word
+4	0	9	pedestrian	0x15B9CC	11776	14592	zero_x_word
+4	0	10	pedestrian	0x15B9CC	15360	14592	zero_x_word
+4	0	11	pedestrian	0x15B9CC	15360	9984	zero_x_word
+4	0	12	pedestrian	0x15B9CC	14592	8448	zero_x_word
+4	0	13	pedestrian	0x15B9CC	9856	8448	zero_x_word
+4	0	14	pedestrian	0x15B9CC	9856	7168	zero_x_word
+4	0	15	pedestrian	0x15B9CC	5376	7168	zero_x_word
+4	0	16	pedestrian	0x15B9CC	5248	9216	zero_x_word
+4	0	17	pedestrian	0x15B9CC	384	9216	zero_x_word
+4	1	0	pedestrian	0x15B9E4	14592	8448	zero_x_word
+4	1	1	pedestrian	0x15B9E4	15360	9984	zero_x_word
+4	1	2	pedestrian	0x15B9E4	15360	14592	zero_x_word
+4	1	3	pedestrian	0x15B9E4	11776	14592	zero_x_word
+4	1	4	pedestrian	0x15B9E4	15360	14592	zero_x_word
+4	1	5	pedestrian	0x15B9E4	15360	9984	zero_x_word
+4	1	6	pedestrian	0x15B9E4	14592	8448	zero_x_word
+4	1	7	pedestrian	0x15B9E4	9856	8448	zero_x_word
+4	1	8	pedestrian	0x15B9E4	9856	7168	zero_x_word
+4	1	9	pedestrian	0x15B9E4	5376	7168	zero_x_word
+4	1	10	pedestrian	0x15B9E4	5248	9216	zero_x_word
+4	1	11	pedestrian	0x15B9E4	384	9216	zero_x_word
+4	2	0	pedestrian	0x15B9F4	15360	14592	zero_x_word
+4	2	1	pedestrian	0x15B9F4	15360	9984	zero_x_word
+4	2	2	pedestrian	0x15B9F4	14592	8448	zero_x_word
+4	2	3	pedestrian	0x15B9F4	9856	8448	zero_x_word
+4	2	4	pedestrian	0x15B9F4	9856	7168	zero_x_word
+4	2	5	pedestrian	0x15B9F4	5376	7168	zero_x_word
+4	2	6	pedestrian	0x15B9F4	5248	9216	zero_x_word
+4	2	7	pedestrian	0x15B9F4	384	9216	zero_x_word
+5	0	0	pedestrian	0x67A24	1536	4096	zero_x_word
+5	0	1	pedestrian	0x67A24	15616	4096	zero_x_word
+5	0	2	pedestrian	0x67A24	15616	8704	zero_x_word
+5	0	3	pedestrian	0x67A24	19328	8704	zero_x_word
+5	0	4	pedestrian	0x67A24	19328	14720	zero_x_word
+5	0	5	pedestrian	0x67A24	6656	14720	zero_x_word
+5	0	6	pedestrian	0x67A24	6656	8704	zero_x_word
+5	0	7	pedestrian	0x67A24	9984	8704	zero_x_word
+5	0	8	pedestrian	0x67A24	9984	4096	zero_x_word
+5	1	0	pedestrian	0x67A30	19328	8704	zero_x_word
+5	1	1	pedestrian	0x67A30	19328	14720	zero_x_word
+5	1	2	pedestrian	0x67A30	6656	14720	zero_x_word
+5	1	3	pedestrian	0x67A30	6656	8704	zero_x_word
+5	1	4	pedestrian	0x67A30	9984	8704	zero_x_word
+5	1	5	pedestrian	0x67A30	9984	4096	zero_x_word
+5	2	0	pedestrian	0x67A3C	6656	8704	zero_x_word
+5	2	1	pedestrian	0x67A3C	9984	8704	zero_x_word
+5	2	2	pedestrian	0x67A3C	9984	4096	zero_x_word
+20	0	0	corp guard	0x1D9248	1536	4352	zero_x_word
+20	0	1	corp guard	0x1D9248	20352	4352	zero_x_word
+20	1	0	corp guard	0x1D9252	1536	8960	zero_x_word
+20	1	1	corp guard	0x1D9252	20352	8960	zero_x_word
+20	2	0	corp guard	0x1D925C	2048	13568	zero_x_word
+20	2	1	corp guard	0x1D925C	20352	13568	zero_x_word
+20	3	0	corp guard	0x1D9266	21504	2560	zero_x_word
+20	4	0	corp guard	0x1D926C	24704	2560	zero_x_word
+20	5	0	pedestrian	0x1D922E	5632	1408	zero_x_word
+20	5	1	pedestrian	0x1D922E	5632	2688	zero_x_word
+20	6	0	pedestrian	0x1D9238	13952	6144	zero_x_word
+20	7	0	pedestrian	0x1D923E	2816	10880	zero_x_word
+20	7	1	pedestrian	0x1D923E	3840	10880	zero_x_word
+21	0	0	corp guard	0x1D7556	11264	12544	zero_x_word
+21	0	1	corp guard	0x1D7556	11392	11520	zero_x_word
+21	1	0	corp guard	0x1D7560	17664	1536	zero_x_word
+22	0	0	corp guard	0x1D7BE8	8960	3328	zero_x_word
+22	0	1	corp guard	0x1D7BE8	12544	3328	zero_x_word
+22	0	2	corp guard	0x1D7BE8	12544	15360	zero_x_word
+22	0	3	corp guard	0x1D7BE8	1024	15360	zero_x_word
+22	1	0	corp guard	0x1D7BE8	8960	3328	zero_x_word
+22	1	1	corp guard	0x1D7BE8	12544	3328	zero_x_word
+22	1	2	corp guard	0x1D7BE8	12544	15360	zero_x_word
+22	1	3	corp guard	0x1D7BE8	1024	15360	zero_x_word
+23	0	0	corp guard	0x1D8310	1024	4096	zero_x_word
+23	0	1	corp guard	0x1D8310	15616	4096	zero_x_word
+23	0	2	corp guard	0x1D8310	15616	9728	zero_x_word
+23	0	3	corp guard	0x1D8310	1024	9728	zero_x_word
+23	0	4	corp guard	0x1D8310	15616	9728	zero_x_word
+23	0	5	corp guard	0x1D8310	15616	4096	zero_x_word
+23	1	0	corp guard	0x1D8310	1024	4096	zero_x_word
+23	1	1	corp guard	0x1D8310	15616	4096	zero_x_word
+23	1	2	corp guard	0x1D8310	15616	9728	zero_x_word
+23	1	3	corp guard	0x1D8310	1024	9728	zero_x_word
+23	1	4	corp guard	0x1D8310	15616	9728	zero_x_word
+23	1	5	corp guard	0x1D8310	15616	4096	zero_x_word
+23	2	0	corp guard	0x1D8310	1024	4096	zero_x_word
+23	2	1	corp guard	0x1D8310	15616	4096	zero_x_word
+23	2	2	corp guard	0x1D8310	15616	9728	zero_x_word
+23	2	3	corp guard	0x1D8310	1024	9728	zero_x_word
+23	2	4	corp guard	0x1D8310	15616	9728	zero_x_word
+23	2	5	corp guard	0x1D8310	15616	4096	zero_x_word
+24	0	0	corp guard	0x1D7BE8	8960	3328	zero_x_word
+24	0	1	corp guard	0x1D7BE8	12544	3328	zero_x_word
+24	0	2	corp guard	0x1D7BE8	12544	15360	zero_x_word
+24	0	3	corp guard	0x1D7BE8	1024	15360	zero_x_word
+24	1	0	corp guard	0x1D7BE8	8960	3328	zero_x_word
+24	1	1	corp guard	0x1D7BE8	12544	3328	zero_x_word
+24	1	2	corp guard	0x1D7BE8	12544	15360	zero_x_word
+24	1	3	corp guard	0x1D7BE8	1024	15360	zero_x_word
+25	0	0	corp guard	0x1D8B84	4608	13056	zero_x_word
+25	0	1	corp guard	0x1D8B84	13824	13056	zero_x_word
+25	0	2	corp guard	0x1D8B84	13824	14336	zero_x_word
+25	0	3	corp guard	0x1D8B84	4608	14336	zero_x_word
+25	1	0	corp guard	0x1D8B84	4608	13056	zero_x_word
+25	1	1	corp guard	0x1D8B84	13824	13056	zero_x_word
+25	1	2	corp guard	0x1D8B84	13824	14336	zero_x_word
+25	1	3	corp guard	0x1D8B84	4608	14336	zero_x_word
+26	0	0	corp guard	0x1D9950	4864	4864	zero_x_word
+26	0	1	corp guard	0x1D9950	8192	4864	zero_x_word
+26	0	2	corp guard	0x1D9950	8192	7168	zero_x_word
+26	0	3	corp guard	0x1D9950	17408	7168	zero_x_word
+26	0	4	corp guard	0x1D9950	17408	14848	zero_x_word
+26	0	5	corp guard	0x1D9950	4864	14848	zero_x_word
+26	0	6	corp guard	0x1D9950	4864	4864	zero_x_word
+27	0	0	corp guard	0x1DA02A	3328	15744	zero_x_word
+27	0	1	corp guard	0x1DA02A	10496	15744	zero_x_word
+27	0	2	corp guard	0x1DA02A	10496	11648	zero_x_word
+27	0	3	corp guard	0x1DA02A	12928	11648	zero_x_word
+27	0	4	corp guard	0x1DA02A	12928	15744	zero_x_word
+27	0	5	corp guard	0x1DA02A	20224	15744	zero_x_word
+27	0	6	corp guard	0x1DA02A	12928	15744	zero_x_word
+27	0	7	corp guard	0x1DA02A	12928	11648	zero_x_word
+27	0	8	corp guard	0x1DA02A	10496	11648	zero_x_word
+27	0	9	corp guard	0x1DA02A	10496	15744	zero_x_word
+27	0	10	corp guard	0x1DA02A	3328	15744	zero_x_word
+27	1	0	corp guard	0x1DA02A	3328	15744	zero_x_word
+27	1	1	corp guard	0x1DA02A	10496	15744	zero_x_word
+27	1	2	corp guard	0x1DA02A	10496	11648	zero_x_word
+27	1	3	corp guard	0x1DA02A	12928	11648	zero_x_word
+27	1	4	corp guard	0x1DA02A	12928	15744	zero_x_word
+27	1	5	corp guard	0x1DA02A	20224	15744	zero_x_word
+27	1	6	corp guard	0x1DA02A	12928	15744	zero_x_word
+27	1	7	corp guard	0x1DA02A	12928	11648	zero_x_word
+27	1	8	corp guard	0x1DA02A	10496	11648	zero_x_word
+27	1	9	corp guard	0x1DA02A	10496	15744	zero_x_word
+27	1	10	corp guard	0x1DA02A	3328	15744	zero_x_word
+28	0	0	corp guard	0x1DA83A	10240	2816	zero_x_word
+28	0	1	corp guard	0x1DA83A	10240	9984	zero_x_word
+28	0	2	corp guard	0x1DA83A	5632	9984	zero_x_word
+28	0	3	corp guard	0x1DA83A	5632	2816	zero_x_word
+28	0	4	corp guard	0x1DA83A	10240	2816	zero_x_word
+29	0	0	corp guard	0x1DA83A	10240	2816	zero_x_word
+29	0	1	corp guard	0x1DA83A	10240	9984	zero_x_word
+29	0	2	corp guard	0x1DA83A	5632	9984	zero_x_word
+29	0	3	corp guard	0x1DA83A	5632	2816	zero_x_word
+29	0	4	corp guard	0x1DA83A	10240	2816	zero_x_word
+30	0	0	corp guard	0x1DB01C	14848	1280	zero_x_word
+30	0	1	corp guard	0x1DB01C	14848	17152	zero_x_word
+30	0	2	corp guard	0x1DB01C	5632	17152	zero_x_word
+30	0	3	corp guard	0x1DB01C	14848	17152	zero_x_word
+30	0	4	corp guard	0x1DB01C	14848	1280	zero_x_word
+31	0	0	corp guard	0x1DB5EA	7680	1280	zero_x_word
+31	0	1	corp guard	0x1DB5EA	7680	7168	zero_x_word
+31	0	2	corp guard	0x1DB5EA	7680	1280	zero_x_word
+32	0	0	corp guard	0x1DBBFC	1024	9984	zero_x_word
+32	0	1	corp guard	0x1DBBFC	1024	18688	zero_x_word
+32	0	2	corp guard	0x1DBBFC	14848	18688	zero_x_word
+32	0	3	corp guard	0x1DBBFC	14848	9984	zero_x_word
+32	0	4	corp guard	0x1DBBFC	1024	9984	zero_x_word
+32	1	0	corp guard	0x1DBBFC	1024	9984	zero_x_word
+32	1	1	corp guard	0x1DBBFC	1024	18688	zero_x_word
+32	1	2	corp guard	0x1DBBFC	14848	18688	zero_x_word
+32	1	3	corp guard	0x1DBBFC	14848	9984	zero_x_word
+32	1	4	corp guard	0x1DBBFC	1024	9984	zero_x_word
+33	0	0	corp guard	0x1DBBFC	1024	9984	zero_x_word
+33	0	1	corp guard	0x1DBBFC	1024	18688	zero_x_word
+33	0	2	corp guard	0x1DBBFC	14848	18688	zero_x_word
+33	0	3	corp guard	0x1DBBFC	14848	9984	zero_x_word
+33	0	4	corp guard	0x1DBBFC	1024	9984	zero_x_word
+33	1	0	corp guard	0x1DBBFC	1024	9984	zero_x_word
+33	1	1	corp guard	0x1DBBFC	1024	18688	zero_x_word
+33	1	2	corp guard	0x1DBBFC	14848	18688	zero_x_word
+33	1	3	corp guard	0x1DBBFC	14848	9984	zero_x_word
+33	1	4	corp guard	0x1DBBFC	1024	9984	zero_x_word
+34	0	0	corp guard	0x1DB5EA	7680	1280	zero_x_word
+34	0	1	corp guard	0x1DB5EA	7680	7168	zero_x_word
+34	0	2	corp guard	0x1DB5EA	7680	1280	zero_x_word
+35	0	0	corp guard	0x1DC3C0	5504	14208	zero_x_word
+35	0	1	corp guard	0x1DC3C0	5504	5248	zero_x_word
+35	0	2	corp guard	0x1DC3C0	17408	5248	zero_x_word
+35	0	3	corp guard	0x1DC3C0	5504	5248	zero_x_word
+35	0	4	corp guard	0x1DC3C0	5504	14208	zero_x_word
+35	1	0	corp guard	0x1DC3D6	24704	19584	zero_x_word
+35	1	1	corp guard	0x1DC3D6	19456	6784	zero_x_word
+35	1	2	corp guard	0x1DC3D6	19456	16128	zero_x_word
+35	1	3	corp guard	0x1DC3D6	21120	16128	zero_x_word
+35	1	4	corp guard	0x1DC3D6	19456	16128	zero_x_word
+35	1	5	corp guard	0x1DC3D6	19456	6784	zero_x_word
+35	1	6	corp guard	0x1DC3D6	24704	19584	zero_x_word
+35	2	0	corp guard	0x1DC3B4	16896	12032	zero_x_word
+35	3	0	corp guard	0x1DC3BA	12160	12032	zero_x_word
+36	0	0	corp guard	0x1DCB28	768	1152	zero_x_word
+36	0	1	corp guard	0x1DCB28	5632	1152	zero_x_word
+36	0	2	corp guard	0x1DCB28	5632	5376	zero_x_word
+36	0	3	corp guard	0x1DCB28	24576	5376	zero_x_word
+36	0	4	corp guard	0x1DCB28	24576	14592	zero_x_word
+36	0	5	corp guard	0x1DCB28	19200	14592	zero_x_word
+36	0	6	corp guard	0x1DCB28	24576	14592	zero_x_word
+36	0	7	corp guard	0x1DCB28	24576	5376	zero_x_word
+36	0	8	corp guard	0x1DCB28	5632	5376	zero_x_word
+36	0	9	corp guard	0x1DCB28	5632	1152	zero_x_word
+36	0	10	corp guard	0x1DCB28	768	1152	zero_x_word
+37	0	0	corp guard	0x1DCB28	768	1152	zero_x_word
+37	0	1	corp guard	0x1DCB28	5632	1152	zero_x_word
+37	0	2	corp guard	0x1DCB28	5632	5376	zero_x_word
+37	0	3	corp guard	0x1DCB28	24576	5376	zero_x_word
+37	0	4	corp guard	0x1DCB28	24576	14592	zero_x_word
+37	0	5	corp guard	0x1DCB28	19200	14592	zero_x_word
+37	0	6	corp guard	0x1DCB28	24576	14592	zero_x_word
+37	0	7	corp guard	0x1DCB28	24576	5376	zero_x_word
+37	0	8	corp guard	0x1DCB28	5632	5376	zero_x_word
+37	0	9	corp guard	0x1DCB28	5632	1152	zero_x_word
+37	0	10	corp guard	0x1DCB28	768	1152	zero_x_word
+38	0	0	corp guard	0x1DD23A	896	3328	zero_x_word
+38	0	1	corp guard	0x1DD23A	896	14464	zero_x_word
+38	0	2	corp guard	0x1DD23A	9600	14464	zero_x_word
+38	0	3	corp guard	0x1DD23A	9600	5376	zero_x_word
+38	0	4	corp guard	0x1DD23A	5888	5376	zero_x_word
+38	0	5	corp guard	0x1DD23A	5888	3328	zero_x_word
+38	0	6	corp guard	0x1DD23A	896	3328	zero_x_word
+38	1	0	corp guard	0x1DD258	17920	5632	zero_x_word
+38	1	1	corp guard	0x1DD258	24576	5632	zero_x_word
+38	1	2	corp guard	0x1DD258	24576	14464	zero_x_word
+38	1	3	corp guard	0x1DD258	18816	14464	zero_x_word
+38	1	4	corp guard	0x1DD258	24576	14464	zero_x_word
+38	1	5	corp guard	0x1DD258	24576	5632	zero_x_word
+38	1	6	corp guard	0x1DD258	17920	5632	zero_x_word
+39	0	0	corp guard	0x1DD9C0	1024	4352	zero_x_word
+39	0	1	corp guard	0x1DD9C0	1024	8192	zero_x_word
+39	0	2	corp guard	0x1DD9C0	1024	4352	zero_x_word
+39	1	0	corp guard	0x1DD9CE	8960	14336	zero_x_word
+39	1	1	corp guard	0x1DD9CE	8960	1280	zero_x_word
+39	1	2	corp guard	0x1DD9CE	8960	14336	zero_x_word
+40	0	0	corp guard	0x1DDE3A	768	3584	zero_x_word
+40	0	1	corp guard	0x1DDE3A	4096	3584	zero_x_word
+40	0	2	corp guard	0x1DDE3A	4096	3584	zero_x_word
+40	1	0	corp guard	0x1DDE48	8960	9600	zero_x_word
+40	1	1	corp guard	0x1DDE48	10880	9600	zero_x_word
+40	1	2	corp guard	0x1DDE48	10880	9600	zero_x_word
+41	0	0	corp guard	0x1DE398	13312	1280	zero_x_word
+41	0	1	corp guard	0x1DE398	13312	17152	zero_x_word
+42	0	0	corp guard	0x1DE9B4	768	11008	zero_x_word
+42	0	1	corp guard	0x1DE9B4	8704	11008	zero_x_word
+42	0	2	corp guard	0x1DE9B4	768	11008	zero_x_word
+42	1	0	corp guard	0x1DE9C2	2304	1280	zero_x_word
+42	1	1	corp guard	0x1DE9C2	13440	1280	zero_x_word
+42	1	2	corp guard	0x1DE9C2	2304	1280	zero_x_word
+42	2	0	corp guard	0x1DE9D0	5376	6400	zero_x_word
+42	2	1	corp guard	0x1DE9D0	12800	6400	zero_x_word
+43	0	0	corp guard	0x1DEF1E	12288	9088	zero_x_word
+43	0	1	corp guard	0x1DEF1E	12288	17408	zero_x_word
+54	0	0	yakuza weenr	0x1E99B0	1960	18176	zero_x_word
+54	1	0	yakuza weenr	0x1E99B6	3680	19200	zero_x_word
+54	2	0	yakuza weenr	0x1E99BC	3640	14592	zero_x_word
+54	3	0	yakuza weenr	0x1E99C2	1960	13056	zero_x_word
+54	4	0	yakuza weenr	0x1E99C8	2800	8576	zero_x_word
+54	5	0	yakuza weenr	0x1E99CE	880	9096	zero_x_word
+55	0	0	Thon	0x1EDAC8	2560	2048	zero_x_word
+55	1	0	yakuza weenr	0x1EDABC	1920	2304	zero_x_word
+55	2	0	yakuza weenr	0x1EDAC2	3328	2304	zero_x_word

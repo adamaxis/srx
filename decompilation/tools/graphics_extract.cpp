@@ -11,6 +11,7 @@
 #include <iomanip>
 #include <initializer_list>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -2230,6 +2231,12 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
     emit_generated_resource_row(
         "field.entities.default.actors",
         "field/entities/default-actors.tsv", "state");
+    emit_generated_resource_row(
+        "field.entities.default.actor.waypoints",
+        "field/entities/default-actor-waypoints.tsv", "state");
+    emit_generated_resource_row(
+        "field.entities.world.activity.actors",
+        "field/entities/world-activity-actors.tsv", "state");
     std::string line;
     std::getline(catalog, line);
     while (std::getline(catalog, line)) {
@@ -2907,19 +2914,24 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     }
     map_index.flush();
 
-    // These profile-selected lists are the only default actor populations
-    // currently traced end to end: scene 2 and scene 0x14. Read their template
-    // and position pointers offline, preserving source order and ordered byte
-    // overrides in a named host table. The game runtime never walks the ROM.
+    // ROM 0x3084 copies the selected scene descriptor into RAM. Its dword at
+    // byte offset 0x2A becomes FFDDF0, the profile-selected default actor-list
+    // pointer consumed by 0x43B6. Import every descriptor/list pair offline;
+    // the viewer can then distinguish empty lists from maps not yet profiled.
     struct DefaultActorSceneList {
         std::uint16_t scene_id;
+        std::uint32_t profile_offset;
+        std::uint32_t list_pointer_address;
         std::size_t list_offset;
-        std::size_t expected_count;
+        std::size_t actor_count = 0;
+        std::string actor_types;
     };
     struct DefaultActorRecord {
         std::uint16_t scene_id;
         std::uint16_t source_order;
         std::uint16_t entity_kind;
+        std::string actor_name;
+        std::string sprite_stem;
         std::string profile_id;
         std::string action_kind;
         std::uint8_t initial_action_code;
@@ -2932,10 +2944,22 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::size_t list_offset;
         std::string overrides;
     };
-    constexpr std::array<DefaultActorSceneList, 2> kDefaultActorLists{{
-        {2U, 0x172D1CU, 3U},
-        {0x14U, 0x1D91DAU, 8U},
-    }};
+    std::vector<DefaultActorSceneList> default_actor_lists;
+    default_actor_lists.reserve(shadowrun::rom::kFieldModeCount);
+    for (std::uint16_t scene_id = 0U;
+         scene_id < shadowrun::rom::kFieldModeCount; ++scene_id) {
+        const auto resources =
+            shadowrun::graphics::read_genesis_field_mode_resources(rom, scene_id);
+        const auto list_pointer_address =
+            static_cast<std::uint32_t>(resources.record_offset + 0x2AU);
+        const auto list_offset = read_big_endian_long(rom, list_pointer_address);
+        default_actor_lists.push_back(DefaultActorSceneList{
+            scene_id,
+            static_cast<std::uint32_t>(resources.record_offset),
+            list_pointer_address,
+            list_offset,
+        });
+    }
     const auto format_offset = [](const std::uint32_t value) {
         std::ostringstream text;
         text << "0x" << std::uppercase << std::hex << value;
@@ -2946,6 +2970,42 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         text << std::nouppercase << std::hex << std::setw(2)
              << std::setfill('0') << value;
         return text.str();
+    };
+    const auto read_actor_name = [&rom](const std::size_t template_offset) {
+        std::string name;
+        for (std::size_t index = 0U; index < 13U; ++index) {
+            const auto character = rom[template_offset + 0x0AU + index];
+            if (character == 0U) {
+                break;
+            }
+            if (character >= 0x20U && character <= 0x7EU) {
+                name.push_back(static_cast<char>(character));
+            }
+        }
+        while (!name.empty() && name.back() == ' ') {
+            name.pop_back();
+        }
+        return name;
+    };
+    const auto make_sprite_stem = [](const std::string_view name) {
+        std::string stem;
+        bool separator = false;
+        for (const auto character : name) {
+            const auto ascii = static_cast<unsigned char>(character);
+            if ((ascii >= 'a' && ascii <= 'z') ||
+                (ascii >= 'A' && ascii <= 'Z') ||
+                (ascii >= '0' && ascii <= '9')) {
+                if (separator && !stem.empty()) {
+                    stem.push_back('-');
+                }
+                stem.push_back(static_cast<char>(
+                    ascii >= 'A' && ascii <= 'Z' ? ascii - 'A' + 'a' : ascii));
+                separator = false;
+            } else {
+                separator = true;
+            }
+        }
+        return stem;
     };
     const auto make_actor_profile_id = [&format_byte](
         const std::vector<std::uint8_t>& source_rom,
@@ -2979,9 +3039,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                std::string(action_kind) + format_byte(action_code);
     };
     std::vector<DefaultActorRecord> default_actor_records;
-    for (const auto& source_list : kDefaultActorLists) {
+    for (auto& source_list : default_actor_lists) {
         auto cursor = source_list.list_offset;
         const auto first_record = default_actor_records.size();
+        std::map<std::string, std::size_t> type_counts;
         for (std::uint16_t source_order = 0U; source_order < 32U;
              ++source_order) {
             const auto tagged_template =
@@ -2998,6 +3059,12 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     "default field actor template pointer exceeds ROM");
             }
             const auto entity_kind = read_big_endian_word(rom, template_offset);
+            const auto actor_name = read_actor_name(template_offset);
+            const auto sprite_stem = make_sprite_stem(actor_name);
+            if (actor_name.empty() || sprite_stem.empty()) {
+                throw std::runtime_error(
+                    "default field actor template has no display name");
+            }
             const auto action_table_selector = rom[template_offset + 8U];
             // ROM 0x44BC copies template byte +9 into live entity +0x57.
             // This is the one-based active item/action code used by the
@@ -3018,6 +3085,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 source_list.scene_id,
                 source_order,
                 entity_kind,
+                actor_name,
+                sprite_stem,
                 profile_id,
                 action_kind,
                 initial_action_code,
@@ -3030,6 +3099,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 source_list.list_offset,
                 "-",
             };
+            ++type_counts[actor_name];
 
             auto next_record = cursor + 8U;
             if (read_big_endian_long(rom, next_record) == 2U) {
@@ -3070,17 +3140,21 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             default_actor_records.push_back(std::move(record));
             cursor = next_record;
         }
-        if (default_actor_records.size() - first_record !=
-            source_list.expected_count) {
-            throw std::runtime_error(
-                "profile-selected default actor list count changed at " +
-                format_offset(static_cast<std::uint32_t>(
-                    source_list.list_offset)));
-        }
         if (read_big_endian_long(rom, cursor) != 0U) {
             throw std::runtime_error(
                 "profile-selected default actor list has no null sentinel");
         }
+        source_list.actor_count = default_actor_records.size() - first_record;
+        std::ostringstream type_summary;
+        bool first_type = true;
+        for (const auto& [name, count] : type_counts) {
+            if (!first_type) {
+                type_summary << ", ";
+            }
+            type_summary << count << " x " << name;
+            first_type = false;
+        }
+        source_list.actor_types = type_summary.str();
     }
 
     {
@@ -3092,6 +3166,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 "cannot create profile-selected default actor table");
         }
         actor_table << "scene\tsource_order\tentity_kind\tprofile_id"
+                       "\tactor_name\tsprite_stem"
                        "\taction_kind\tinitial_action_code"
                        "\tworld_x\tworld_y"
                        "\tinitial_heading\tpalette_line\ttemplate_offset\tposition_offset"
@@ -3099,6 +3174,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         for (const auto& actor : default_actor_records) {
             actor_table << actor.scene_id << '\t' << actor.source_order << '\t'
                         << actor.entity_kind << '\t' << actor.profile_id
+                        << '\t' << actor.actor_name << '\t' << actor.sprite_stem
                         << '\t' << actor.action_kind << '\t'
                         << static_cast<unsigned>(actor.initial_action_code)
                         << '\t' << actor.world_x << '\t'
@@ -3117,24 +3193,300 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         }
     }
 
+    {
+        const auto list_table_path =
+            root / "field/entities/default-actor-lists.tsv";
+        std::filesystem::create_directories(list_table_path.parent_path());
+        std::ofstream list_table(list_table_path, std::ios::binary);
+        if (!list_table) {
+            throw std::runtime_error(
+                "cannot create profile-selected actor-list index");
+        }
+        list_table << "scene\tprofile_offset\tlist_pointer_address"
+                      "\tlist_offset\tactor_count\tactor_types\n";
+        for (const auto& list : default_actor_lists) {
+            list_table << list.scene_id << '\t'
+                       << format_offset(list.profile_offset) << '\t'
+                       << format_offset(list.list_pointer_address) << '\t'
+                       << format_offset(static_cast<std::uint32_t>(list.list_offset))
+                       << '\t' << list.actor_count << '\t'
+                       << (list.actor_types.empty() ? "-" : list.actor_types)
+                       << '\n';
+        }
+        if (!list_table) {
+            throw std::runtime_error(
+                "cannot write profile-selected actor-list index");
+        }
+    }
+
+    // Actor position pointers reference a zero-word-terminated sequence of
+    // 12.4 world coordinates. Preserve the complete ordered waypoint lists
+    // as named offline data; the runtime and map viewer never chase ROM
+    // pointers. A zero X word terminates one list, as in the source walker.
+    {
+        const auto waypoint_table_path =
+            root / "field/entities/default-actor-waypoints.tsv";
+        std::filesystem::create_directories(waypoint_table_path.parent_path());
+        std::ofstream waypoint_table(waypoint_table_path, std::ios::binary);
+        if (!waypoint_table) {
+            throw std::runtime_error(
+                "cannot create profile-selected actor waypoint table");
+        }
+        waypoint_table
+            << "scene\tsource_order\twaypoint_order\tactor_name"
+               "\tposition_list_address\tworld_x\tworld_y"
+               "\tterminator_rule\n";
+        for (const auto& actor : default_actor_records) {
+            bool found_terminator = false;
+            for (std::uint16_t waypoint_order = 0U; waypoint_order < 64U;
+                 ++waypoint_order) {
+                const auto point_offset =
+                    static_cast<std::size_t>(actor.position_offset) +
+                    static_cast<std::size_t>(waypoint_order) * 4U;
+                if (point_offset > rom.size() ||
+                    rom.size() - point_offset < 2U) {
+                    break;
+                }
+                const auto world_x = read_big_endian_word(rom, point_offset);
+                if (world_x == 0U) {
+                    found_terminator = true;
+                    break;
+                }
+                if (rom.size() - point_offset < 4U) {
+                    break;
+                }
+                const auto world_y =
+                    read_big_endian_word(rom, point_offset + 2U);
+                waypoint_table << actor.scene_id << '\t'
+                               << actor.source_order << '\t'
+                               << waypoint_order << '\t' << actor.actor_name
+                               << '\t' << format_offset(actor.position_offset)
+                               << '\t' << world_x << '\t' << world_y
+                               << "\tzero_x_word\n";
+            }
+            if (!found_terminator) {
+                throw std::runtime_error(
+                    "profile-selected actor waypoint list has no zero-X terminator");
+            }
+        }
+        if (!waypoint_table) {
+            throw std::runtime_error(
+                "cannot write profile-selected actor waypoint table");
+        }
+    }
+
+    struct WorldActivityActorList {
+        std::uint16_t scene_id;
+        std::uint32_t list_offset;
+        std::string list_id;
+        std::string activation_rule;
+    };
+    struct WorldActivityActorRecord {
+        std::uint16_t scene_id;
+        std::string list_id;
+        std::uint32_t list_offset;
+        std::uint16_t source_order;
+        std::uint32_t source_record_offset;
+        std::uint32_t tagged_template;
+        std::uint32_t template_offset;
+        std::uint32_t position_offset;
+        std::uint16_t entity_kind;
+        std::string actor_name;
+        std::string sprite_stem;
+        std::uint8_t action_code;
+        std::string action_kind;
+        std::uint8_t palette_line;
+        std::uint16_t world_x;
+        std::uint16_t world_y;
+        std::uint16_t heading;
+        std::string overrides;
+        std::string activation_rule;
+    };
+    const std::array<WorldActivityActorList, 3> kWorldActivityActorLists{{
+        {0x2FU, 0x1E552U, "mode_13_entry",
+         "0x2CE0 mode 0x13 transition, with FFFC1E bit 8 clear"},
+        {0x2FU, 0x1E5C4U, "pending_list_1e5c4",
+         "0x43B6 pending-list continuation for pointer 0x1E5C4"},
+        {0x2FU, 0x1E628U, "pending_list_1e628",
+         "0x43B6 pending-list continuation for pointer 0x1E628"},
+    }};
+    std::vector<WorldActivityActorRecord> world_activity_actor_records;
+    for (const auto& list : kWorldActivityActorLists) {
+        auto cursor = static_cast<std::size_t>(list.list_offset);
+        bool found_terminator = false;
+        for (std::uint16_t source_order = 0U; source_order < 32U;
+             ++source_order) {
+            const auto source_record_offset = cursor;
+            const auto tagged_template = read_big_endian_long(rom, cursor);
+            if (tagged_template == 0U) {
+                found_terminator = true;
+                break;
+            }
+            const auto template_offset = tagged_template & 0x7FFFFFFFU;
+            const auto position_offset = read_big_endian_long(rom, cursor + 4U);
+            if (template_offset > rom.size() ||
+                rom.size() - template_offset < 0x4AU ||
+                position_offset > rom.size() ||
+                rom.size() - position_offset < 4U) {
+                throw std::runtime_error(
+                    "world-activity actor record points outside ROM");
+            }
+            const auto actor_name = read_actor_name(template_offset);
+            const auto entity_kind = read_big_endian_word(rom, template_offset);
+            const auto palette_line = static_cast<std::uint8_t>(
+                (read_big_endian_word(rom, template_offset + 2U) >> 13U) &
+                0x03U);
+            const auto action_selector = rom[template_offset + 8U];
+            const auto action_code = rom[template_offset + 9U];
+            const auto action_kind = action_code == 0U
+                ? std::string("none")
+                : ((action_selector & 0x80U) != 0U
+                       ? std::string("spell")
+                       : std::string("item"));
+            auto heading = read_big_endian_word(rom, 0x7361AU + 0x2EU);
+            auto next_record = cursor + 8U;
+            std::ostringstream overrides;
+            bool first_override = true;
+            if (read_big_endian_long(rom, next_record) == 2U) {
+                auto pair_offset = next_record + 4U;
+                for (;;) {
+                    const auto pair = read_big_endian_word(rom, pair_offset);
+                    if (pair == 0U) {
+                        pair_offset += 2U;
+                        break;
+                    }
+                    const auto byte_offset =
+                        static_cast<std::uint8_t>(pair >> 8U);
+                    const auto byte_value =
+                        static_cast<std::uint8_t>(pair & 0x00FFU);
+                    if (!first_override) {
+                        overrides << ',';
+                    }
+                    overrides << format_offset(byte_offset) << '='
+                              << format_offset(byte_value);
+                    if (byte_offset == 0x2EU) {
+                        heading = static_cast<std::uint16_t>(
+                            (static_cast<std::uint16_t>(byte_value) << 8U) |
+                            (heading & 0x00FFU));
+                    } else if (byte_offset == 0x2FU) {
+                        heading = static_cast<std::uint16_t>(
+                            (heading & 0xFF00U) | byte_value);
+                    }
+                    first_override = false;
+                    pair_offset += 2U;
+                }
+                next_record = pair_offset;
+            }
+            const auto sprite_stem = entity_kind == 7U
+                ? "actor-kind-7-palette-" + std::to_string(palette_line)
+                : entity_kind == 5U
+                    ? std::string("corp-guard")
+                    : entity_kind == 11U
+                        ? std::string("pedestrian")
+                        : entity_kind == 8U
+                            ? std::string("yakuza-weenr")
+                            : make_sprite_stem(actor_name);
+            world_activity_actor_records.push_back(WorldActivityActorRecord{
+                list.scene_id,
+                list.list_id,
+                list.list_offset,
+                source_order,
+                static_cast<std::uint32_t>(source_record_offset),
+                tagged_template,
+                static_cast<std::uint32_t>(template_offset),
+                position_offset,
+                entity_kind,
+                actor_name,
+                sprite_stem,
+                action_code,
+                action_kind,
+                palette_line,
+                read_big_endian_word(rom, position_offset),
+                read_big_endian_word(rom, position_offset + 2U),
+                heading,
+                first_override ? "-" : overrides.str(),
+                list.activation_rule,
+            });
+            cursor = next_record;
+        }
+        if (!found_terminator) {
+            throw std::runtime_error(
+                "world-activity actor list has no null sentinel");
+        }
+    }
+    {
+        const auto table_path = root / "field/entities/world-activity-actors.tsv";
+        std::filesystem::create_directories(table_path.parent_path());
+        std::ofstream table(table_path, std::ios::binary);
+        if (!table) {
+            throw std::runtime_error(
+                "cannot create source world-activity actor table");
+        }
+        table << "scene\tlist_id\tlist_offset\tsource_order"
+                 "\tsource_record_offset\ttagged_template"
+                 "\ttemplate_offset\tposition_offset\tentity_kind"
+                 "\tactor_name\tsprite_stem\taction_kind\taction_code"
+                 "\tpalette_line\tworld_x\tworld_y\tinitial_heading"
+                 "\tordered_overrides\tactivation_rule\n";
+        for (const auto& actor : world_activity_actor_records) {
+            table << actor.scene_id << '\t' << actor.list_id << '\t'
+                  << format_offset(actor.list_offset) << '\t'
+                  << actor.source_order << '\t'
+                  << format_offset(actor.source_record_offset) << '\t'
+                  << format_offset(actor.tagged_template) << '\t'
+                  << format_offset(actor.template_offset) << '\t'
+                  << format_offset(actor.position_offset) << '\t'
+                  << actor.entity_kind << '\t' << actor.actor_name << '\t'
+                  << actor.sprite_stem << '\t' << actor.action_kind << '\t'
+                  << static_cast<unsigned>(actor.action_code) << '\t'
+                  << static_cast<unsigned>(actor.palette_line) << '\t'
+                  << actor.world_x << '\t' << actor.world_y << '\t'
+                  << actor.heading << '\t' << actor.overrides << '\t'
+                  << actor.activation_rule << '\n';
+        }
+        if (!table) {
+            throw std::runtime_error(
+                "cannot write source world-activity actor table");
+        }
+    }
+
     struct DefaultActorKindSource {
         std::uint16_t entity_kind;
         std::uint8_t palette_line;
-        const char* asset_stem;
-        const char* label;
+        std::string actor_name;
+        std::string sprite_stem;
+        std::uint32_t template_offset;
     };
-    constexpr std::array<DefaultActorKindSource, 2> kDefaultActorKinds{{
-        {5U, 2U, "field/entities/actors/corp-guard", "corp guard"},
-        {11U, 3U, "field/entities/actors/pedestrian", "pedestrian"},
-    }};
+    std::map<std::pair<std::uint16_t, std::uint8_t>, DefaultActorKindSource>
+        actor_visual_sources;
+    for (const auto& actor : default_actor_records) {
+        const auto key = std::make_pair(actor.entity_kind, actor.palette_line);
+        const auto [entry, inserted] = actor_visual_sources.try_emplace(
+            key, DefaultActorKindSource{
+                     actor.entity_kind, actor.palette_line, actor.actor_name,
+                     actor.sprite_stem, actor.template_offset});
+        if (!inserted && entry->second.actor_name != actor.actor_name) {
+            throw std::runtime_error(
+                "one ROM actor kind/palette resolves to multiple names");
+        }
+    }
+    for (const auto& actor : world_activity_actor_records) {
+        const auto key = std::make_pair(actor.entity_kind, actor.palette_line);
+        if (actor_visual_sources.find(key) != actor_visual_sources.end()) {
+            continue;
+        }
+        actor_visual_sources.emplace(
+            key, DefaultActorKindSource{
+                     actor.entity_kind, actor.palette_line,
+                     "ROM kind " + std::to_string(actor.entity_kind),
+                     actor.sprite_stem, actor.template_offset});
+    }
     constexpr std::size_t kIdleSelectorTableOffset = 0xC052U;
     constexpr std::size_t kEntrySelectorTableOffset = 0xC0B2U;
     // The map viewer overlays source-defined one-of-three pedestrian
     // candidates from the 0x1EDB88 table. Their heading overrides cover all
-    // eight C052 directions, even though the two profile-selected default
-    // lists above only use directions 0, 2, and 6. Import every directional
-    // pose so the viewer can show the actual ROM actor at each candidate
-    // position instead of a generic marker or a mismatched facing.
+    // eight C052 directions. Import each source kind/palette found in the
+    // profile-selected lists so every map actor uses its own ROM frame.
     std::array<bool, 8> used_actor_directions{};
     used_actor_directions.fill(true);
     for (const auto& actor : default_actor_records) {
@@ -3146,18 +3498,18 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         }
         used_actor_directions[rotated & 0x0007U] = true;
     }
-    for (const auto& kind_source : kDefaultActorKinds) {
-        const auto asset_stem = std::string(kind_source.asset_stem);
-        const auto template_record = std::find_if(
-            default_actor_records.begin(), default_actor_records.end(),
-            [&kind_source](const DefaultActorRecord& actor) {
-                return actor.entity_kind == kind_source.entity_kind &&
-                       actor.palette_line == kind_source.palette_line;
-            });
-        if (template_record == default_actor_records.end()) {
-            throw std::runtime_error(
-                "default actor state frame has no selected scene template");
+    for (const auto& [kind_palette, kind_source] : actor_visual_sources) {
+        (void)kind_palette;
+        // Kind 15 (Thon) uses a source state program at 0xA77A rather than the
+        // 0x8002 bitmap descriptor accepted by the ordinary frame importer.
+        // Keep its typed placement/name in the population table, but do not
+        // misdecode that program as a sprite frame.
+        if (kind_source.entity_kind != 5U && kind_source.entity_kind != 7U &&
+            kind_source.entity_kind != 8U && kind_source.entity_kind != 11U) {
+            continue;
         }
+        const auto asset_stem =
+            "field/entities/actors/" + kind_source.sprite_stem;
         for (std::size_t direction = 0; direction < used_actor_directions.size();
              ++direction) {
             if (!used_actor_directions[direction]) {
@@ -3177,9 +3529,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                                               ".bmp");
             write_catalog_asset(
                 root, idle_name, idle_frame.image, "sprite",
-                "0xB45C/0xC052/0x600E kind=" +
+                "0xB45C/0xC052/0x600E actor=" + kind_source.actor_name +
+                    " kind=" +
                     std::to_string(kind_source.entity_kind) + " template=" +
-                    format_offset(template_record->template_offset) +
+                    format_offset(kind_source.template_offset) +
                     " descriptor=" +
                     format_offset(static_cast<std::uint32_t>(
                         idle_frame.descriptor_offset)) +
@@ -3189,6 +3542,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 true, manifest, written, missing, blank,
                 idle_frame.origin_x, idle_frame.origin_y);
 
+            if (kind_source.entity_kind != 5U &&
+                kind_source.entity_kind != 11U) {
+                continue;
+            }
             const auto entry_selector = read_big_endian_word(
                 rom, kEntrySelectorTableOffset + direction * 2U);
             const auto kind_state_pointer = static_cast<std::size_t>(
@@ -3218,7 +3575,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     "0xB330/0xC0B2/0x5FDC/0x600E kind=" +
                         std::to_string(kind_source.entity_kind) +
                         " template=" +
-                        format_offset(template_record->template_offset) +
+                        format_offset(kind_source.template_offset) +
                         " descriptor=" +
                         format_offset(static_cast<std::uint32_t>(
                             frame.descriptor_offset)) +

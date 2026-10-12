@@ -20,12 +20,40 @@ primary/secondary ROM tilemap words, coordinates, dimensions, and extracted
 record paths. These are source metatile indices, not semantic object labels.
 Click a yellow trigger or a visible red collision rectangle to inspect its ROM
 record, decoded route, addresses, and recorded runtime/QA owners in the side
-panel. The **ROM actor populations** layer draws the source actor sprite and
-direction at each extracted map anchor. Click an icon to inspect its type,
-template/list/position addresses, fixed-point coordinates, ordered overrides,
-and activation rule. Default-list records and faded conditional alternatives
-have different styling; neither claims an actor is alive on every visit.
-These ROM overlays are read-only evidence.
+panel. The **ROM actor populations** layer draws the template-specific source
+sprite and direction at each extracted map anchor. Click an icon to inspect
+its name, kind, palette, template/list/position addresses, fixed-point
+coordinates, ordered overrides, and activation rule. The extractor profiles
+the default actor-list pointer in all 56 scene descriptors;
+`default-actor-lists.tsv` records empty as well as populated lists. Default-list
+records and faded conditional alternatives have different styling; neither
+claims an actor is alive on every visit. Kind 15 (Thon) uses a source state
+program rather than the ordinary frame descriptor, so its placement is kept by
+name while its map icon remains an unresolved marker. These ROM overlays are
+read-only evidence. `default-actor-waypoints.tsv` preserves each default
+actor's ordered source coordinate list. **ROM waypoint paths** draws those
+sequences as dashed cyan lines; the ROM actor service consumes the lists under
+its behavior and state gates, so a path line is route data rather than proof
+that an actor is currently moving. `world-activity-actors.tsv` separately
+indexes the three ROM-triggered scene-47 lists. **Special actor lists** shows
+their named actors with source-derived type and palette art as gated candidates;
+the adjacent selector shows one group at a time by default. Choose all groups
+only for comparison; that view does not claim the ROM runs them together.
+
+Scene-2 ROM event markers have map labels. The right dock's **Game flow** tab
+shows each site's confidence, event route/destination, known Lua modules,
+dialogue/menu/shop keys, and state branches. Guide labels are explicitly
+marked as corroborated, candidate, or unresolved; they are not ROM names.
+Selecting an entity shows linked interaction handlers and imported dialogue
+text when that content profile exists. **Map profile** shows the selected ROM
+descriptor, camera setup, default three-member party placement, and the
+profile-selected actor list. ROM `0x03084` loads the three profile positions;
+`0x02B34` copies them into the three ordinary actor records when the entry
+route has no pending coordinate-list override. The **Default party spawns**
+layer marks all three defaults. An incoming transition can replace them, so
+the profile points are not claimed as every route's arrival positions. Scene 2
+slot 1 is the traced New Game lead position before the automatic Stoker walk.
+Camera setup remains a separate value and is not treated as a player spawn.
 
 An authored entity is a grouped annotation: its visual-part regions and
 interaction regions share one area origin. The outline and hit area follow
@@ -75,27 +103,29 @@ Each entity has its own folder under `entities/<entity-id>/`:
   New regions remain `unreviewed` until supported by ROM evidence or an
   explicit new-content decision.
 
-Area-level ROM actor origins are not scenery entities. The viewer reads both
-`field/entities/default-actors.tsv` and the ROM-imported
-`field/entities/conditional-actor-candidates.tsv`. The first has the two
-profile-selected lists currently traced end to end (three scene-2 pedestrians
-and eight scene-20 records). The second contains the ROM's 69 one-of-three
-pedestrian candidates for scenes `0x15..0x2B`; it records the event/world-mode
-gate, retained selection, template, position, heading, and ordered overrides.
-Each marker uses the extracted pedestrian or corp-guard sprite in its ROM
-direction with the source frame origin. Solid sprites are default-list
-records; faded sprites with amber dashed outlines are conditional candidates.
-The three candidate icons describe alternatives and do not mean that three
-NPCs are simultaneously active. They are separate from the orange authored
-spawn marks, which remain unverified until their source behavior is traced.
+Area-level ROM actor origins are not scenery entities. The viewer reads
+`field/entities/default-actors.tsv`, the 56-row
+`field/entities/default-actor-lists.tsv` source census, and the ROM-imported
+`field/entities/conditional-actor-candidates.tsv`. Default profile records
+cover scenes 0-5, 20-43, 54, and 55. The conditional table contains the ROM's
+69 one-of-three pedestrian candidates for scenes `0x15..0x2B`; it records the
+event/world-mode gate, retained selection, template, position, heading, and
+ordered overrides. Pedestrians, corp guards, and Yakuza Weenr use their own
+extracted ROM kind, palette, and directional frame. Solid sprites are
+profile-list records; faded sprites with amber dashed outlines are conditional
+candidates. The three candidate icons describe alternatives and do not mean
+that three NPCs are simultaneously active. They are separate from the orange
+authored spawn marks, which remain unverified until their source behavior is
+traced.
 
 The conditional table can be regenerated and checked directly against the US
 ROM with `decompilation/tools/extract_field_actor_candidates.py`. The graphics
-importer exports all eight directional idle and entry poses for the actor
-kinds used by the source lists. Actor markers are drawn between the composed
-map and the independent priority-pixel layer so foreground pixels can occlude
-them; map selection and event/collision evidence remain separate overlays.
-Other timed activity lists and event-created actors are still open and are not
+importer exports all eight directional idle poses for the kinds present in the
+56 default lists, plus the already traced guard and pedestrian entry poses.
+Actor markers are drawn between the composed map and the independent
+priority-pixel layer so foreground pixels can occlude them; map selection and
+event/collision evidence remain separate overlays. Timed activity lists and
+event-created actors remain a separate source-tracing task and are not
 invented as ambient NPCs.
 
 The first row in each file is a header. Keep one record per line; tabs and
@@ -173,23 +203,40 @@ On save, the viewer refreshes
 The Lua package loader loads the module, and `game.modules.world_content`
 provides entity/placement lookups plus `triggers_in_scene`,
 `actor_spawns_in_scene`, `encounter_regions_in_scene`, and `collision_at`.
-Scene 2 currently has one source-backed Stoker's Coffin Motel definition. Its
-origin is ROM event 2 at `(960,640)`. The entity has separate outlines for the
-main facade, priority roof, left pipe-like attachment, three roof stripes,
-entry threshold, sign, and two shadow components. The preview crops are
-polygon-masked; the adjacent concrete is excluded. ROM collision records stay
-in the scene's ROM-collision evidence layer and are not claimed as motel-owned
-collision. The site's marker 6 corroborates the building name. The ROM route
-is same-map Stoker dialogue, not an interior transition.
+Scene 2 has a source-backed Stoker's Coffin Motel definition and 21 additional
+Redmond frontage, barrier, and shelter definitions. Stoker's origin is ROM
+event 2 at `(960,640)`. Its visual parts include the main facade, roof,
+pipe-like attachment, roof stripes, entry threshold, sign, and separate shadow
+components. The preview crops are polygon-masked; adjacent concrete is
+excluded. ROM collision records stay in the scene's ROM-collision evidence
+layer and are not claimed as motel-owned collision. The site's marker 6
+corroborates the building name. The ROM route is same-map Stoker dialogue, not
+an interior transition.
+The Ares frontage has separate facade, masonry/door, and narrow east cable
+parts; their source crops and outlines were checked against a 16-pixel map
+grid. Hollywood Correctional's main structure and perimeter are separate
+entities so the surrounding yard is not grouped into the building footprint.
 The same scene also exposes the source-profiled New Game entry event. Its exact
 scope is the scene-2 spawn `(0x3CE0,0x2D00)` and its marker appears in map cell
 `(30,22)`, two 32-pixel cells below the motel doorway cell. ROM-derived
 behavior is a one-time scene-entry rule at that exact spawn point, not a
 three-cell walking region. The runtime reads the rule from generated
 `world_content_data.lua` and calls the existing Lua heading-zero walk handler.
-The other Redmond structures still need a reviewed entity pass. Actor markers
-also remain incomplete: scene 2 and scene 20 have profile-selected default
-lists, scenes 21-43 have gated pedestrian candidates, and timed activity or
-event-created populations still require source profiling. Entity drawings and
-generated part assets are authoring data; the live field renderer does not yet
-consume these entity definitions.
+Clicking scene-2 site triggers opens the ROM route profile, with Lua dialogue,
+menu, shop, and state details resolved where the corresponding content module
+is available. Route destinations are kept distinct from guide labels and only
+marked as traced where the ROM transition caller supports them. Map music is
+still unresolved.
+
+Actor overlays cover all extracted default-list records and the 69 conditional
+pedestrian candidates in scenes 21-43, with named directional art for the
+profiled types. Scene 47 also exposes the three source lists selected through
+the `0x2CE0`/`0x43B6` activity paths, with a selector to isolate each list.
+Other timed activity lists and
+event-created populations still require source profiling. A record outside the
+extracted map image is retained in the profile census and omitted from the map
+overlay pending interpretation. Kind-15 Thon's sprite state program remains
+unresolved. The three default party positions are shown by default;
+route-specific overrides remain distinct. Entity drawings and generated part
+assets remain authoring data; the live field renderer does not yet consume
+these entity definitions.

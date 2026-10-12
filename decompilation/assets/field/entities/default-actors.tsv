@@ -1,12 +1,76 @@
-scene	source_order	entity_kind	profile_id	action_kind	initial_action_code	world_x	world_y	initial_heading	palette_line	template_offset	position_offset	list_offset	ordered_overrides
-2	0	11	pedestrian_k0b_none00	none	0	13440	8704	0	3	0x1D6988	0x172D58	0x172D1C	0x9E=0x20
-2	1	11	pedestrian_k0b_none00	none	0	21248	14080	0	3	0x1D6988	0x172D68	0x172D1C	0x9E=0x20
-2	2	11	pedestrian_k0b_none00	none	0	25216	6400	0	3	0x1D6988	0x172D78	0x172D1C	0x9E=0x20
-20	0	5	corp_guard_k05_item06	item	6	1536	4352	0	2	0x1D6A1C	0x1D9248	0x1D91DA	-
-20	1	5	corp_guard_k05_item06	item	6	1536	8960	0	2	0x1D6A1C	0x1D9252	0x1D91DA	-
-20	2	5	corp_guard_k05_item06	item	6	2048	13568	0	2	0x1D6A1C	0x1D925C	0x1D91DA	-
-20	3	5	corp_guard_k05_item06	item	6	21504	2560	16384	2	0x1D6A1C	0x1D9266	0x1D91DA	0x2E=0x40
-20	4	5	corp_guard_k05_item06	item	6	24704	2560	49152	2	0x1D6A1C	0x1D926C	0x1D91DA	0x2E=0xC0
-20	5	11	pedestrian_k0b_none00	none	0	5632	1408	0	3	0x1D6988	0x1D922E	0x1D91DA	-
-20	6	11	pedestrian_k0b_none00	none	0	13952	6144	0	3	0x1D6988	0x1D9238	0x1D91DA	-
-20	7	11	pedestrian_k0b_none00	none	0	2816	10880	0	3	0x1D6988	0x1D923E	0x1D91DA	-
+scene	source_order	entity_kind	profile_id	actor_name	sprite_stem	action_kind	initial_action_code	world_x	world_y	initial_heading	palette_line	template_offset	position_offset	list_offset	ordered_overrides
+0	0	11	pedestrian_k0b_none00	pedestrian	pedestrian	none	0	2048	1536	0	3	0x1D6988	0xD556C	0xD5538	0x9E=0x20
+0	1	11	pedestrian_k0b_none00	pedestrian	pedestrian	none	0	6656	13312	0	3	0x1D6988	0xD5584	0xD5538	0x9E=0x20
+0	2	11	pedestrian_k0b_none00	pedestrian	pedestrian	none	0	15360	13824	0	3	0x1D6988	0xD5594	0xD5538	0x9E=0x20
+1	0	11	pedestrian_k0b_none00	pedestrian	pedestrian	none	0	12032	6400	0	3	0x1D6988	0x17D6B6	0x17D660	0x9E=0x20
+1	1	11	pedestrian_k0b_none00	pedestrian	pedestrian	none	0	8064	18176	0	3	0x1D6988	0x17D6CE	0x17D660	0x9E=0x20
+1	2	11	pedestrian_k0b_none00	pedestrian	pedestrian	none	0	2816	3584	0	3	0x1D6988	0x17D694	0x17D660	0x9E=0x20
+2	0	11	pedestrian_k0b_none00	pedestrian	pedestrian	none	0	13440	8704	0	3	0x1D6988	0x172D58	0x172D1C	0x9E=0x20
+2	1	11	pedestrian_k0b_none00	pedestrian	pedestrian	none	0	21248	14080	0	3	0x1D6988	0x172D68	0x172D1C	0x9E=0x20
+2	2	11	pedestrian_k0b_none00	pedestrian	pedestrian	none	0	25216	6400	0	3	0x1D6988	0x172D78	0x172D1C	0x9E=0x20
+3	0	11	pedestrian_k0b_none00	pedestrian	pedestrian	none	0	31232	3584	0	3	0x1D6988	0x18A76E	0x18A73A	0x9E=0x20
+3	1	11	pedestrian_k0b_none00	pedestrian	pedestrian	none	0	22528	12544	0	3	0x1D6988	0x18A786	0x18A73A	0x9E=0x20
+3	2	11	pedestrian_k0b_none00	pedestrian	pedestrian	none	0	5248	3584	0	3	0x1D6988	0x18A794	0x18A73A	0x9E=0x20
+4	0	11	pedestrian_k0b_none00	pedestrian	pedestrian	none	0	384	13056	0	3	0x1D6988	0x15B9CC	0x15B998	0x9E=0x20
+4	1	11	pedestrian_k0b_none00	pedestrian	pedestrian	none	0	14592	8448	0	3	0x1D6988	0x15B9E4	0x15B998	0x9E=0x20
+4	2	11	pedestrian_k0b_none00	pedestrian	pedestrian	none	0	15360	14592	0	3	0x1D6988	0x15B9F4	0x15B998	0x9E=0x20
+5	0	11	pedestrian_k0b_none00	pedestrian	pedestrian	none	0	1536	4096	0	3	0x1D6988	0x67A24	0x679F0	0x9E=0x20
+5	1	11	pedestrian_k0b_none00	pedestrian	pedestrian	none	0	19328	8704	0	3	0x1D6988	0x67A30	0x679F0	0x9E=0x20
+5	2	11	pedestrian_k0b_none00	pedestrian	pedestrian	none	0	6656	8704	0	3	0x1D6988	0x67A3C	0x679F0	0x9E=0x20
+20	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	1536	4352	0	2	0x1D6A1C	0x1D9248	0x1D91DA	-
+20	1	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	1536	8960	0	2	0x1D6A1C	0x1D9252	0x1D91DA	-
+20	2	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	2048	13568	0	2	0x1D6A1C	0x1D925C	0x1D91DA	-
+20	3	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	21504	2560	16384	2	0x1D6A1C	0x1D9266	0x1D91DA	0x2E=0x40
+20	4	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	24704	2560	49152	2	0x1D6A1C	0x1D926C	0x1D91DA	0x2E=0xC0
+20	5	11	pedestrian_k0b_none00	pedestrian	pedestrian	none	0	5632	1408	0	3	0x1D6988	0x1D922E	0x1D91DA	-
+20	6	11	pedestrian_k0b_none00	pedestrian	pedestrian	none	0	13952	6144	0	3	0x1D6988	0x1D9238	0x1D91DA	-
+20	7	11	pedestrian_k0b_none00	pedestrian	pedestrian	none	0	2816	10880	0	3	0x1D6988	0x1D923E	0x1D91DA	-
+21	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	11264	12544	0	2	0x1D6A1C	0x1D7556	0x1D753A	-
+21	1	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	17664	1536	49152	2	0x1D6A1C	0x1D7560	0x1D753A	0x2E=0xC0
+22	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	8960	3328	0	2	0x1D6A1C	0x1D7BE8	0x1D7BD4	-
+22	1	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	8960	3328	0	2	0x1D6A1C	0x1D7BE8	0x1D7BD4	-
+23	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	1024	4096	0	2	0x1D6A1C	0x1D8310	0x1D82F4	-
+23	1	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	1024	4096	0	2	0x1D6A1C	0x1D8310	0x1D82F4	-
+23	2	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	1024	4096	0	2	0x1D6A1C	0x1D8310	0x1D82F4	-
+24	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	8960	3328	0	2	0x1D6A1C	0x1D7BE8	0x1D7BD4	-
+24	1	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	8960	3328	0	2	0x1D6A1C	0x1D7BE8	0x1D7BD4	-
+25	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	4608	13056	0	2	0x1D6A1C	0x1D8B84	0x1D8B70	-
+25	1	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	4608	13056	0	2	0x1D6A1C	0x1D8B84	0x1D8B70	-
+26	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	4864	4864	0	2	0x1D6A1C	0x1D9950	0x1D9944	-
+27	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	3328	15744	0	2	0x1D6A1C	0x1DA02A	0x1DA016	-
+27	1	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	3328	15744	0	2	0x1D6A1C	0x1DA02A	0x1DA016	-
+28	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	10240	2816	0	2	0x1D6A1C	0x1DA83A	0x1DA82E	-
+29	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	10240	2816	0	2	0x1D6A1C	0x1DA83A	0x1DA82E	-
+30	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	14848	1280	0	2	0x1D6A1C	0x1DB01C	0x1DB010	-
+31	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	7680	1280	0	2	0x1D6A1C	0x1DB5EA	0x1DB5DE	-
+32	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	1024	9984	0	2	0x1D6A1C	0x1DBBFC	0x1DBBE8	-
+32	1	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	1024	9984	0	2	0x1D6A1C	0x1DBBFC	0x1DBBE8	-
+33	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	1024	9984	0	2	0x1D6A1C	0x1DBBFC	0x1DBBE8	-
+33	1	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	1024	9984	0	2	0x1D6A1C	0x1DBBFC	0x1DBBE8	-
+34	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	7680	1280	0	2	0x1D6A1C	0x1DB5EA	0x1DB5DE	-
+35	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	5504	14208	0	2	0x1D6A1C	0x1DC3C0	0x1DC380	-
+35	1	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	24704	19584	0	2	0x1D6A1C	0x1DC3D6	0x1DC380	-
+35	2	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	16896	12032	32768	2	0x1D6A1C	0x1DC3B4	0x1DC380	0x2E=0x80
+35	3	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	12160	12032	32768	2	0x1D6A1C	0x1DC3BA	0x1DC380	0x2E=0x80
+36	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	768	1152	0	2	0x1D6A1C	0x1DCB28	0x1DCB1C	-
+37	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	768	1152	0	2	0x1D6A1C	0x1DCB28	0x1DCB1C	-
+38	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	896	3328	0	2	0x1D6A1C	0x1DD23A	0x1DD226	-
+38	1	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	17920	5632	0	2	0x1D6A1C	0x1DD258	0x1DD226	-
+39	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	1024	4352	0	2	0x1D6A1C	0x1DD9C0	0x1DD9AC	-
+39	1	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	8960	14336	0	2	0x1D6A1C	0x1DD9CE	0x1DD9AC	-
+40	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	768	3584	0	2	0x1D6A1C	0x1DDE3A	0x1DDE26	-
+40	1	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	8960	9600	0	2	0x1D6A1C	0x1DDE48	0x1DDE26	-
+41	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	13312	1280	0	2	0x1D6A1C	0x1DE398	0x1DE38C	-
+42	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	768	11008	0	2	0x1D6A1C	0x1DE9B4	0x1DE998	-
+42	1	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	2304	1280	0	2	0x1D6A1C	0x1DE9C2	0x1DE998	-
+42	2	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	5376	6400	0	2	0x1D6A1C	0x1DE9D0	0x1DE998	-
+43	0	5	corp_guard_k05_item06	corp guard	corp-guard	item	6	12288	9088	0	2	0x1D6A1C	0x1DEF1E	0x1DEF12	-
+54	0	8	yakuza_weenr_k08_item0a	yakuza weenr	yakuza-weenr	item	10	1960	18176	0	1	0x1D66EE	0x1E99B0	0x1E994C	0x9E=0x40
+54	1	8	yakuza_weenr_k08_item0a	yakuza weenr	yakuza-weenr	item	10	3680	19200	0	1	0x1D66EE	0x1E99B6	0x1E994C	0x9E=0x40
+54	2	8	yakuza_weenr_k08_item0a	yakuza weenr	yakuza-weenr	item	10	3640	14592	0	1	0x1D66EE	0x1E99BC	0x1E994C	0x9E=0x40
+54	3	8	yakuza_weenr_k08_item0a	yakuza weenr	yakuza-weenr	item	10	1960	13056	0	1	0x1D66EE	0x1E99C2	0x1E994C	0x9E=0x40
+54	4	8	yakuza_weenr_k08_item0a	yakuza weenr	yakuza-weenr	item	10	2800	8576	0	1	0x1D66EE	0x1E99C8	0x1E994C	0x9E=0x40
+54	5	8	yakuza_weenr_k08_item0a	yakuza weenr	yakuza-weenr	item	10	880	9096	0	1	0x1D66EE	0x1E99CE	0x1E994C	0x9E=0x40
+55	0	15	thon_k0f_spell01	Thon	thon	spell	1	2560	2048	0	1	0x1EDB00	0x1EDAC8	0x1EDA88	-
+55	1	8	yakuza_weenr_k08_item0a	yakuza weenr	yakuza-weenr	item	10	1920	2304	0	1	0x1D66EE	0x1EDABC	0x1EDA88	-
+55	2	8	yakuza_weenr_k08_item0a	yakuza weenr	yakuza-weenr	item	10	3328	2304	0	1	0x1D66EE	0x1EDAC2	0x1EDA88	-
