@@ -5056,11 +5056,11 @@ class MapEntityViewer(QMainWindow):
         law_path_notes = {
             "0x20f12": "Direct Lone Star patrol prompt; Talk, Attack, and Run Away choices.",
             "0x20f5a": "Company Man continuation can call a Lone Star patrol.",
-            "0x20f72": "Attacking the injured-person impostor can queue a Lone Star detective.",
+            "0x20f72": "On the ordinary injured-man branch, Attack can call one Lone Star detective; the alternate pale-figure branch can reveal a vampire.",
             "0x20f8a": "The flustered-woman continuation exposes an undercover Lone Star officer and possible backup.",
             "0x20fa2": "The haggard-man continuation has a doctor call a Lone Star patrol.",
             "0x2106a": "Direct Lone Star patrol prompt on the scene-41-to-43 route.",
-            "0x2112c": "The alley-seller Attack continuation has a 60% branch that queues two bodyguards; its text identifies an undercover Lone Star patrol.",
+            "0x2112c": "Alley seller: Attack has a 60% branch that queues one bodyguard; a 40% branch, or a failed bodyguard spawn, reveals undercover Lone Star. Buying grenades also has a 40% undercover branch.",
         }
         available_law_paths = {
             row.get("handler_offset", "").casefold()
@@ -5078,7 +5078,7 @@ class MapEntityViewer(QMainWindow):
             if handler in {key[0].casefold() for key in events}:
                 terminal_rows_by_handler.setdefault(handler, []).append(row)
         if terminal_rows_by_handler:
-            lines.append("  Traced event end conditions:")
+            lines.append("  Indexed event end conditions:")
             for handler, terminal_rows in sorted(terminal_rows_by_handler.items()):
                 for terminal in terminal_rows:
                     condition = terminal.get("condition", "").strip()
@@ -5097,15 +5097,32 @@ class MapEntityViewer(QMainWindow):
                     if effects:
                         detail += " Effects: " + "; ".join(effects)
                     lines.append("    " + detail)
-        indexed_terminal_handlers = set(terminal_rows_by_handler)
+        event_handlers = {key[0].casefold() for key in events}
+        partial_terminal_handlers = {
+            handler
+            for handler, rows in terminal_rows_by_handler.items()
+            if any(
+                row.get("trace_status", "").strip().casefold().startswith(
+                    ("partial", "pending")
+                )
+                for row in rows
+            )
+        }
         pending_terminal_handlers = sorted(
-            {key[0].casefold() for key in events} - indexed_terminal_handlers
+            (event_handlers - set(terminal_rows_by_handler))
+            | (event_handlers & partial_terminal_handlers)
         )
         for handler in pending_terminal_handlers:
-            lines.append(
-                f"  {handler}: opening choices and dispatch are indexed; "
-                "terminal state and actor outcomes still need ROM tracing."
-            )
+            if handler in terminal_rows_by_handler:
+                lines.append(
+                    f"  {handler}: terminal trace is partial; see rows marked "
+                    "partial for the specific unresolved follow-up."
+                )
+            else:
+                lines.append(
+                    f"  {handler}: opening choices and dispatch are indexed; "
+                    "terminal state and actor outcomes still need ROM tracing."
+                )
 
         dynamic_rows = [
             row for row in self.dynamic_world_actor_rows
@@ -5653,9 +5670,9 @@ class MapEntityViewer(QMainWindow):
         gargoyle_scenes = set(dynamic_actors.get("Gargoyle", {}).get("scenes", set()))
         rows = [
             (
-                "Known Lone Star selector and choice paths (partial)",
+                "Lone Star-linked selector paths across named urban maps",
                 self._format_scene_ids(lone_star_scenes),
-                "The traced dialogue selector and choice continuations reach Downtown Seattle (scene 0), Puyallup Barrens (1), Redmond Barrens (2), Penumbra District (3), and Renraku Arcology (5). This is only the known selector path, not a map coverage list: the player reports seeing Lone Star pursuit on most maps, so a broader route remains to trace. Council Island (4) has no Lone Star-named selector path, but that does not rule out the reported pursuit route. The direct patrol prompt is only one part of the traced path; other scenes expose patrols through the injured-person, flustered-woman, Company Man, haggard-man, and alley-seller choices. Lone Star templates also appear in scenes 1 and 41-43. ROM contact dialogue mentions deleting the Lone Star record and obtaining a Weapon Permit. Notebook tips 70-72 carry the wanted-for-questioning, armed-and-dangerous, and fugitive/hunting-party notices; tip 73 is a Lone Star Records prisoner-transfer notice. The code connecting player legal state to broad map-wide patrol pursuit remains untraced, so this summary cannot say which maps permit it or how often it happens.",
+                "Source-linked Lone Star random-event paths occur in five of the six named urban field maps (Downtown Seattle 0, Puyallup Barrens 1, Redmond Barrens 2, Penumbra District 3, Renraku Arcology 5); Council Island 4 has no Lone Star-named selector handler. These are conditional encounter branches: urban direct-patrol handler 0x20F12 is in scenes 0 and 3, and separate patrol handler 0x2106A is in contexts 41-43; injured-person, flustered-woman, Company Man, haggard-man, and alley-seller choices can reveal or summon police across the other named maps. Dynamic Lone Star templates also appear in scene 1 and contexts 41-43. The wanted-state route that would produce patrols beyond these indexed selector branches remains unresolved; scene 41-43 map names and the exact legal-state spawn conditions are not inferred here.",
             ),
             (
                 "Hell Hounds across 26 scene contexts",
@@ -5953,10 +5970,11 @@ class MapEntityViewer(QMainWindow):
                 terminal_rows = terminal_rows_by_handler.get(handler, [])
                 if terminal_rows:
                     parts.append(
-                        "<h4>Traced choice branches and end conditions</h4>"
+                        "<h4>Known choice branches and end conditions</h4>"
                         "<table><tr><th>Choice / path</th><th>Condition</th>"
                         "<th>Terminal result</th><th>State effect</th>"
-                        "<th>Actor effect</th><th>ROM trace</th></tr>"
+                        "<th>Actor effect</th><th>ROM trace</th>"
+                        "<th>Trace status</th></tr>"
                     )
                     for terminal in terminal_rows:
                         values = (
@@ -5966,6 +5984,7 @@ class MapEntityViewer(QMainWindow):
                             terminal.get("state_effect", ""),
                             terminal.get("actor_effect", ""),
                             terminal.get("source_rom", ""),
+                            terminal.get("trace_status", ""),
                         )
                         parts.append(
                             "<tr>" + "".join(
