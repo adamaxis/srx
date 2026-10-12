@@ -142,11 +142,17 @@ traced to its end. The encounter does not introduce Lone Star.
 
 **Company Man (`0x20F5A`, scenes 3 and 5).** Attack can make him flee or make
 him draw a gun; Talk and Walk Away each have state/roll branches that can bring
-in a patrol. The patrol follow-up at `0x120FE8` uses the shared Attack/Talk/Run
-dispatchers. Sequence `0x1D7074` starts one actor whose template label is
-`pedestrian`; the ROM text does not establish that this generic actor is the
-Company Man himself. The separate armed-patrol prompt at `0x120FE0` has
-string-address Talk/Run command results whose final handlers remain pending.
+in a patrol. The sequence `0x1D7074` starts one actor whose template label is
+`pedestrian`; the ROM does not explicitly identify that actor as the Company
+Man. Branches that start it return the text-only gun-draw node at `0x120FE0`.
+Its `0xFFFFFFFF` marker means the adjacent strings are not Attack/Talk/Run
+choices on that node. Separate branches go directly to the actual patrol menu
+at `0x120FE8`: Talk's threshold result below 1, or Walk Away's 80-99 roll.
+That menu visibly offers Attack, Talk, and Run with commands `0x95`, `0x96`,
+and `0x99`, which route into the shared police choice handlers already traced.
+Here Talk (`0x96`) uses the common comply branch, while Run (`0x99`) uses the
+common pursuit branch. The menu path is therefore resolved; the exact actor
+identity and combat exit after the gun-draw sequence remain partial.
 
 **Injured person (`0x20F72`, scenes 0, 1, and 3).** The ordinary branch offers
 Attack, First Aid, or Walk Away. Successful Attack starts the one-detective
