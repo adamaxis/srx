@@ -54,7 +54,9 @@ Scene IDs below are ROM field-scene IDs. The tables cover the field random-event
 | Company Man confrontation, handler `0x20F5A` | Scenes `3` and `5`; sums `1` and `4` | One continuation says the man remains irate and a Lone Star patrol arrives. The response text then says the officers turn their attention to the player. |
 | Flustered-woman event, handler `0x20F8A` | Scenes `0-1`; sums `3-4` | The MORE continuation divides into suspected-harm and apparent-law-official versions. The law-official version can reveal an undercover Lone Star agent; its Attack/Comply/Run choices can end in a gun battle, questioning/release, fine, arrest/confiscation, escape, or being overtaken and shot. See the terminal branch table below. |
 | Haggard-man event, handler `0x20FA2` | Scenes `2` and `5`; sums `1-2` | The doctor offers 50 nuyen to recapture his escaped patient. Help and Threaten resolve without combat; Attack or Threaten can call a patrol, and one alternate Attack branch starts a fight with the doctor's Gator Shaman/bodyguards. See the terminal branch table below. |
+| Security-guard stop, handler `0x20FEC` | Scenes `20`, `26-34`, and `41-43`; sums `4-5` and `7` | Without the badge flag, Attack starts a corporate-guard encounter and Talk branches on `FF017A`; the talk result can trigger a dispatch check or continue to a security-mage prompt. |
 | Lone Star patrol, handler `0x2106A` | Scenes `41-43`; sum `5` | The follow-up arrest prompt's Attack choice reaches `0x2466C`. The first three named entries at `0x1D6FEC` are `lone11`, `lone12`, and `lonemage`; the trailing control word is still unresolved. |
+| Concealed plate / laser to Lone Star | Plate handler `0x21036`: scenes `20-34`, `41-43`; sums `2`, `5-6`. Laser handler `0x21050`: scenes `35-40`; sum `8`. Direct patrol handler `0x2106A`: scenes `41-43`; sum `5`. | The plate response can continue to the laser check. Both laser outcomes contain patrol command `0xD9` -> `0x24622`, the same badge/dispatch/arrest decision used by the direct patrol event. See the source trace below. |
 | Lone Star dynamic templates | Scene `1` (sum `2`) and scenes `41-43` (sum `8`) | The zero-cell dynamic sequences include `lone11`, `lone13`, and `lonemage`. |
 | Disturbance Strike Team escalation | Scenes `0-3`, `5-9`, and `44-50` | The MORE continuations check `FFFBFB` and bit 8 of `FFFC22`. With the bit clear, stages `2-3` select two Strike Team templates (`0x1D6FD0`), `4-6` select four (`0x1D6FC8`), and `7-8` select five (`0x1D6FC4`). Successful starts return the explicit Renraku attack text; a failed start falls back to the holocam/photo text. Stages `0-1` or a set bit take each handler's separate low-stage route. |
 | Wilderness disturbance packs, handler `0x2115C` | Scenes `6-9` and `44-50` | At stages `0-1` or with bit 8 set, the ROM rolls 0-99: 30% three Hell Hounds, 30% two Wendigos, 20% two Bandersnatches, 5% a Gator Shaman plus two Indian warriors, 5% a Rat Shaman plus two Indian warriors, and 10% an Elven mage plus two Elven warriors. There is no no-list result in this branch. At stages `2-8` with the bit clear, it uses the Strike Team groups above. |
@@ -149,6 +151,58 @@ a Lone Star roster. This handler and its two random checks do not read the
 heat byte `FFFBFA`. Treat this as a secretary/building-security event, not as
 evidence of a general Lone Star spawn. The later shared floor-choice action
 and map-effect actor results are not yet joined.
+
+**Security-guard stop (`0x20FEC`, scenes 20, 26-34, and 41-43).** The opening
+record `0x121238` asks for an ID and dispatches command `0xCC` to `0x242FA`.
+With FFFC22 bit 10 clear, the record at `0x121278` offers Attack and Talk.
+Attack (`0xD2` -> `0x24402`) attempts one corporate guard from list
+`0x1D705C` (template `0x1D6A1C`) and returns the weapon-draw text at
+`0x121290`; the combat exit remains partial. Talk (`0xD0` -> `0x24432`) runs
+a threshold-6 trial on `FF017A`: result 0 attempts that guard and starts the
+world-effect transition before returning the “lame story” attack text at
+`0x121298`; result 1 returns `0x1212A0`, where the guard becomes suspicious and
+checks with dispatch; results above 1 return `0x1212B4`, where the guard
+accepts the story but the dialogue continues into a separate security-mage
+check (`0xCD` -> `0x24332`).
+
+With FFFC22 bit 10 set, `0x242FA` rolls 0-99: below 20 returns the
+ID-verification record `0x121254`, while 20-99 returns the show-ID/wave-by
+record `0x12124C`. The dispatch handler `0x24392` rolls 0-99; 0-39 attempts
+one corporate guard, starts the world-effect transition, and returns the
+negative-dispatch text at `0x121270`; 40-99 returns the verified/wave-by text
+at `0x121268`. These are corporate-security branches. The separate
+concealed-plate/laser entries below are what connect this wider scene group to
+the Lone Star patrol handler.
+
+**Concealed-plate / laser patrol chain (`0x21036`, `0x21050`, `0x2106A`).**
+These are sibling selector entries, not a direct branch from the preceding
+`0x20FEC` security-guard dialogue. The concealed-plate entry `0x21036` is
+enabled on scenes `20-34` and `41-43`, using scene-specific sums from `2`, `5`,
+and `6`. Its `0x245AA`
+check averages active runners' `+0x78` field and uses `0x0DBA` with four trials,
+adding one trial for each active second/third runner. Result zero calls
+`0x1E04A` and returns the alarm text at `0x121398`; a nonzero result returns
+the successful jump text at `0x1213A0`. Both response records carry the
+continuation to command `0xD8` / `0x245F4`.
+
+The low-level laser entry `0x21050` is enabled on scenes `35-40` at sum `8`
+and enters the same `0x245F4` check. That check uses eight thresholded trials
+on the active-runner `+0x78` average. Result zero calls `0x1E04A` and returns
+`0x1213BC`, where the player says a beam broke their leg; a nonzero result
+returns `0x1213C4`, where the player freezes and steps over the beams. Both
+continuations reach command `0xD9` / `0x24622`, which displays the Lone Star
+patrol encounter. This is a conditional patrol path enabled by the plate and
+laser event cells across scenes `20-40`, plus scenes `41-43`; the direct
+patrol entry `0x2106A` is separately enabled on scenes `41-43` at sum `5`.
+
+At `0x24622`, a clear badge bit 10 opens the arrest prompt. With the bit set,
+a 0-99 roll below 15 also arrests the player, 15-49 waves them past, and
+50-99 calls dispatch; dispatch rejects the ID below 40 and verifies it at
+40-99. Thus the text “Lone Star patrol spots you” does not mean combat always
+starts. Scene `20` is guide-cross-referenced to Hollywood Correctional
+Facility; this trace does not yet establish names for the remaining scene
+IDs. The three entries are present in the ROM event-cell tables, and the
+branch behavior comes from their linked handlers and dialogue records.
 
 **Urban disturbance / Renraku (`0x20EFA`, scenes 0-3 and 5).** MORE command
 `0x93` reaches `0x2333A`. If `FFFBFB <= 1` or bit 8 of `FFFC22` is set, the
@@ -321,7 +375,7 @@ a general wanted-state flag. The bit's save/story writers and any additional
 map-wide pursuit path remain open; the current trace does not use the Notebook
 wanted notices as proof of either.
 
-There is also a separate player legal-state path to resolve. The third 32-entry Tips pointer table at `0xC2816` maps global entries 65-96; entries 70-73 point to text starts `0xC4390`, `0xC4465`, `0xC451E`, and `0xC45E1`. Entry 70 contains the wanted-for-questioning notice (including `0xC442C`); entry 71 is addressed to detectives and describes the suspect as armed and dangerous; entry 72 is addressed to hunting parties and calls the player a fugitive; entry 73 is a Lone Star Records prisoner-transfer notice about Vigore. Since the selector tests each table's local zero-based entry index, these four entries correspond to `FFFC38` bits 5-8; the wanted/fugitive notices are bits 5-7. These are Notebook display-eligibility bits; the source trace has not shown them to be the wanted-state values consumed by field pursuit. ROM contact text at `0xC63CF` and `0xC651C` offers to delete the Lone Star record, while `0x10E3C1` and `0x10F009` describe a Weapon Permit and patrols flagging the player down. Those strings establish that the record/permit mechanics exist, but they do not establish the writer/checker for the first three tip bits or the map-wide patrol spawn condition. The general patrol pursuit route remains untraced; this known-selector profile therefore cannot say which other maps support it or how often it occurs.
+There is also a separate player legal-state path to resolve. The third 32-entry Tips pointer table at `0xC2816` maps global entries 65-96; entries 70-73 point to text starts `0xC4390`, `0xC4465`, `0xC451E`, and `0xC45E1`. Entry 70 contains the wanted-for-questioning notice (including `0xC442C`); entry 71 is addressed to detectives and describes the suspect as armed and dangerous; entry 72 is addressed to hunting parties and calls the player a fugitive; entry 73 is a Lone Star Records prisoner-transfer notice about Vigore. Since the selector tests each table's local zero-based entry index, these four entries correspond to `FFFC38` bits 5-8; the wanted/fugitive notices are bits 5-7. These are Notebook display-eligibility bits; the source trace has not shown them to be the wanted-state values consumed by field pursuit. ROM contact text at `0xC63CF` and `0xC651C` offers to delete the Lone Star record, while `0x10E3C1` and `0x10F009` describe a Weapon Permit and patrols flagging the player down. Those strings establish that the record/permit mechanics exist, but they do not establish the writer/checker for the first three tip bits or a global heat-based patrol spawn. The ROM does contain additional conditional patrol encounters through the scene-20-to-43 plate/laser and direct-patrol entries described above; their numeric scenes still need a complete map-name crosswalk. The separate wanted-state pursuit system remains untraced.
 
 A separate nearby-effect path runs through `0xAB02 -> 0x16B98`. It can place
 one of ten `FF164C` records near the transitioning actor with a weighted
