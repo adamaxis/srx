@@ -422,11 +422,11 @@ def read_lua_quest_module_details(repo_root: Path, site: dict[str, str]) -> list
 
 def read_site_content_details(
     repo_root: Path, site: dict[str, str], text_catalog: dict[str, str],
-    scene_id: int,
+    scene_id: int, include_source_details: bool = True,
 ) -> list[str]:
     lines: list[str] = []
     contract_location = site.get("rom_contract_location_index", "").strip()
-    if contract_location:
+    if contract_location and include_source_details:
         try:
             location_index = int(contract_location, 0)
         except ValueError:
@@ -473,7 +473,8 @@ def read_site_content_details(
         lines.extend(read_dialogue_profile_details(
             repo_root, content_profile, speaker_id, text_catalog
         ))
-    lines.extend(read_lua_quest_module_details(repo_root, site))
+    if include_source_details:
+        lines.extend(read_lua_quest_module_details(repo_root, site))
     shop_profile = site.get("shop_profile", "").strip()
     if shop_profile:
         lines.extend(read_shop_profile_details(repo_root, shop_profile, text_catalog))
@@ -1726,6 +1727,77 @@ def describe_event_table_target(target_class: str) -> str:
     return value or "Destination not established by the current ROM trace"
 
 
+def describe_site_destination(value: str, current_scene: int) -> str:
+    """Turn crosswalk scene IDs into readable map/activity destinations."""
+    value = value.strip()
+    if not value:
+        return "Destination not established"
+    if re.search(r"handler\s+0x[0-9a-f]+.*destination (?:is )?unresolved", value, re.I):
+        return "Special game event; final destination not established"
+    conditional = re.match(
+        r"^story handler may consume; otherwise (.+)$", value, re.I
+    )
+    if conditional:
+        return "Story event may take over; otherwise " + describe_site_destination(
+            conditional.group(1), current_scene
+        )
+
+    same_scene = re.match(r"^scene\s+(0x[0-9a-f]+|\d+)(.*)$", value, re.I)
+    if same_scene:
+        scene_token, suffix = same_scene.groups()
+        if int(scene_token, 0) == current_scene:
+            if "no separate" in suffix.lower():
+                return "Stay on this map; there is no separate interior"
+            if "opens shop" in suffix.lower():
+                return "Stay on this map; A opens the shop"
+            if "same-scene" in suffix.lower():
+                return "Stay on this map; the guide's external connection is not established by this route"
+
+    scene_match = re.match(
+        r"^(field|resource activity|scripted activity)?\s*scene\s+"
+        r"(0x[0-9a-f]+|\d+)(.*)$",
+        value,
+        re.I,
+    )
+    if scene_match:
+        kind, scene_token, suffix = scene_match.groups()
+        scene_number = int(scene_token, 0)
+        suffix_lower = suffix.lower()
+        if scene_number == current_scene and "same-scene" in suffix_lower:
+            return "Stay on this map; the guide's external connection is not established by this route"
+        if kind and kind.lower().startswith("resource"):
+            label = f"Resource activity {scene_number}"
+        elif kind and kind.lower().startswith("scripted"):
+            label = f"Scripted activity {scene_number}"
+        elif "resource activity" in suffix_lower:
+            label = f"Resource activity {scene_number}"
+        elif "scripted activity" in suffix_lower:
+            label = f"Scripted activity {scene_number}"
+        else:
+            label = f"Field map {scene_number}"
+        suffix = re.sub(
+            r"\s*\((?:field|resource activity|scripted activity)\)",
+            "",
+            suffix,
+            flags=re.I,
+        )
+        suffix = re.sub(
+            r"with source flag/timeout gate",
+            "when its story gate allows it",
+            suffix.strip(),
+            flags=re.I,
+        )
+        suffix = re.sub(
+            r"if generic route continues",
+            "if the standard route continues",
+            suffix,
+            flags=re.I,
+        )
+        return label + (f" {suffix}" if suffix else "")
+
+    return value
+
+
 def describe_trigger_action(route: str) -> str:
     """Describe how the ROM reaches a route-table row or direct handler."""
     value = route.strip().lower()
@@ -1737,15 +1809,15 @@ def describe_trigger_action(route: str) -> str:
             f"route entry {row_number}"
         )
     if "bypass" in value:
-        return "Run the special story or service behavior"
+        return "Run the special story or service action"
     if "event_table_index" in value and row_number is not None:
-        return f"Use this map's route-table entry {row_number}"
+        return f"Use this map's route entry {row_number}"
     if "direct event continuation" in value:
-        return "Run a direct event handler; final destination is not established"
+        return "Continue into a special game event; destination not established"
     if "no event table" in value:
-        return "Continue through the generic map-event handler; this map has no route table"
+        return "Continue through the map interaction system; destination not established"
     if "unresolved generic route" in value:
-        return "Generic map interaction; destination is not established"
+        return "Continue the map interaction; destination not established"
     return re.sub(r"[_\s]+", " ", route.strip()).strip().capitalize() or "Route not established"
 
 
@@ -1783,11 +1855,20 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
             site = site_routes.get(str(record_address).strip().upper(), {})
             site_name = site.get("site_name", "").strip()
             route_label = site.get("rom_route", "").strip() or route
+            route_label = re.sub(
+                r"event-table entry",
+                "map route entry",
+                route_label,
+                flags=re.IGNORECASE,
+            )
             route_label = re.sub(r"[_\s]+", " ", route_label).strip().capitalize()
             table_target = describe_event_table_target(
                 row.get("event_table_target_class", "")
             )
-            destination = site.get("rom_destination", "").strip() or table_target
+            destination = describe_site_destination(
+                site.get("rom_destination", "").strip() or table_target,
+                scene_id,
+            )
             table_byte = row.get("event_table_byte_at_event_id", "").strip()
             action = describe_trigger_action(route)
             if table_byte:
@@ -1840,58 +1921,69 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
                         f"Choice/menu pages: {site.get('menu_profiles', '').strip() or '(not identified)' }",
                         f"Shop catalog: {site.get('shop_profile', '').strip() or '(none identified)' }",
                     ))
+                    story_notes = site.get("state_or_branch_notes", "").strip()
+                    story_notes = re.sub(
+                        r"\s*Exact branch logic is in [^.;]+\.lua\.?\s*$",
+                        "",
+                        story_notes,
+                        flags=re.IGNORECASE,
+                    ).strip()
                     route_lines.extend((
                         f"Location: {site_name}",
-                        f"Name evidence: {crosswalk}",
-                        f"When used: {route_label}",
-                        f"Destination or result: {site.get('rom_destination', '(not established)')}",
-                        f"Speaker: {site.get('speaker_id', '').strip() or '(none identified)' }",
-                        f"Choice/menu pages: {site.get('menu_profiles', '').strip() or '(not identified)' }",
-                        f"Shop catalog: {site.get('shop_profile', '').strip() or '(none identified)' }",
-                        f"Story conditions: {site.get('state_or_branch_notes', '').strip() or '(not profiled)' }",
-                        f"Scripts involved: {site.get('lua_modules', '').strip() or '(not linked / not profiled)' }",
-                        f"ROM record and supporting evidence: {site.get('evidence', '').strip() or '(not recorded)' }",
+                        f"How this point is used: {route_label}",
+                        f"Destination or result: {destination}",
+                        f"Story conditions: {story_notes or '(not profiled)' }",
                     ))
-                    content_lines = read_site_content_details(
+                    display_content_lines = read_site_content_details(
+                        repo_root, site, text_catalog, scene_id,
+                        include_source_details=False,
+                    )
+                    source_content_lines = read_site_content_details(
                         repo_root, site, text_catalog, scene_id
                     )
-                    if content_lines:
+                    if source_content_lines:
                         details.append("")
-                        details.extend(content_lines)
+                        details.extend(source_content_lines)
+                    if display_content_lines:
                         route_lines.append("")
-                        route_lines.extend(content_lines)
-                    title = f"ROM event {event_id or '(unknown)'} — {site_name}"
+                        route_lines.extend(display_content_lines)
+                    if not display_content_lines:
+                        route_lines.append(
+                            "Dialogue, choices, or shop: not linked to this map point yet."
+                        )
+                    title = f"Interaction: {site_name}"
                 else:
-                    title = f"ROM event {event_id or '(unknown)'} — {dispatcher}"
+                    title = "Map interaction: place not identified"
             else:
-                title = f"ROM event {event_id or '(unknown)'} — {dispatcher}"
-            if (
-                not site and dispatcher == "world_activity_event31" and
-                route == "direct event continuation"
-            ):
-                # The low-five-bit value is an implementation detail. This
-                # source record bypasses the event table and continues into
-                # the field/world mode-transition service.
-                title = "Field/world mode-transition continuation"
-                map_label = "Field mode continuation"
+                title = "Map interaction: place not identified"
+            route_lower = route.lower()
+            is_direct_game_event = (
+                dispatcher == "world_activity_event31" and
+                (
+                    "direct event continuation" in route_lower or
+                    "direct_b7b8_continuation" in route_lower
+                )
+            )
+            if not site_name and is_direct_game_event:
+                # Keep the player/editor description separate from the raw
+                # handler and converted owner list shown in the Source tab.
+                title = "Game event handoff"
+                map_label = "Game flow"
                 route_lines.extend((
-                    "Interpreted route: direct ROM continuation into the field/world mode-transition service.",
-                    "Destination: unresolved; this record bypasses the scene event table.",
-                    f"Source record: {record_address}; handler {row.get('rom_handler_addresses', '(unrecorded)')}",
+                    "What happens: the game continues into a special event handler.",
+                    "Where it goes: this record skips the map's normal route list, and the final screen or location is not established yet.",
+                    "Dialogue, choices, or shop: none is linked to this trigger in the current evidence.",
                 ))
             if not route_lines:
                 route_lines.extend((
-                    "This ROM trigger does not have a confirmed building or doorway name yet.",
-                    f"On contact: {action}",
-                    f"Destination or result: {destination}",
-                    f"Map route-table result: {table_detail}",
-                    f"Source record: {record_address}; scene profile {row.get('profile_address', '(unknown)')}",
-                    f"ROM handler addresses: {row.get('rom_handler_addresses', '(not recorded)')}",
-                    f"Current implementation path: {row.get('converted_cpp_functions_or_runtime_owners', '(not recorded)')}",
-                    "Numeric scenes stay numeric until a ROM route or map reference identifies a place.",
+                    "Place: no building or doorway name is confirmed for this trigger yet.",
+                    f"What happens on contact: {action}",
+                    f"Next map or activity: {destination}",
+                    f"Text, choices, or shop: {site.get('text_keys', '').strip() or 'not linked to this trigger yet'}",
+                    "The ROM identifies a numeric destination here, but does not name the interior or its dialogue.",
                 ))
                 if not site_name:
-                    title = f"ROM event {event_id or '(unknown)'} - {destination}"
+                    title = f"Map interaction: {destination}"
             result.append(MapEvidenceRegion(
                 kind="rom_event",
                 x=x0,
@@ -2933,23 +3025,22 @@ class MapEntityViewer(QMainWindow):
         for info in self.maps:
             self.scene_combo.addItem(self._scene_display_name(info), info.scene_id)
         self.scene_combo.currentIndexChanged.connect(self.scene_changed)
-        layout.addWidget(QLabel("Preassembled map"))
+        layout.addWidget(QLabel("Map"))
         layout.addWidget(self.scene_combo)
         self.info = QPlainTextEdit()
         self.info.setReadOnly(True)
         self.info.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
         self.info.setMaximumHeight(220)
         self.info.setPlainText(
-            "Click a map cell for its ROM layer words. Click a yellow ROM trigger or red collision region for its source record. "
-            "Click a ROM actor sprite to inspect its type, source record, direction, and gate. Click a purple runtime-event or T/S/R marker to inspect its Lua data. "
+            "Click a map cell to inspect its source tile layers. Click a map interaction or collision box for its evidence. "
+            "Click a character marker to inspect its type, position, appearance conditions, and source art. Click a scripted event, spawn, or encounter marker to inspect its game data. "
             "Drag entity outlines to move grouped annotations."
         )
         self.flow_info = QPlainTextEdit()
         self.flow_info.setReadOnly(True)
         self.flow_info.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
         self.flow_info.setPlainText(
-            "Select a building or ROM event to inspect its route, dialogue/menu "
-            "profiles, state branches, and source references."
+            "Select a place, object, or map interaction to see what happens when the player reaches it, including any known destination, dialogue, menu, shop, or story condition."
         )
         self.scene_info = QPlainTextEdit()
         self.scene_info.setReadOnly(True)
@@ -2967,10 +3058,10 @@ class MapEntityViewer(QMainWindow):
 
         self.entity_list = QListWidget()
         self.entity_list.currentItemChanged.connect(self.list_selection_changed)
-        layout.addWidget(QLabel("Entity instances on this scene"))
+        layout.addWidget(QLabel("Places and objects on this map"))
         layout.addWidget(self.entity_list, 1)
 
-        layout.addWidget(QLabel("Owned visual parts"))
+        layout.addWidget(QLabel("Parts and attached graphics"))
         self.parts_list = QListWidget()
         self.parts_list.setMaximumHeight(95)
         self.parts_list.currentItemChanged.connect(self.part_selection_changed)
@@ -2989,7 +3080,7 @@ class MapEntityViewer(QMainWindow):
         part_buttons.addWidget(self.remove_part_button)
         layout.addLayout(part_buttons)
 
-        layout.addWidget(QLabel("Interaction regions"))
+        layout.addWidget(QLabel("Interaction points"))
         self.interactions_list = QListWidget()
         self.interactions_list.setMaximumHeight(80)
         layout.addWidget(self.interactions_list)
@@ -3002,7 +3093,7 @@ class MapEntityViewer(QMainWindow):
         interaction_buttons.addWidget(self.remove_interaction_button)
         layout.addLayout(interaction_buttons)
 
-        layout.addWidget(QLabel("Entity collision regions (green dash-dot)"))
+        layout.addWidget(QLabel("Blocked areas (green dash-dot)"))
         self.collisions_list = QListWidget()
         self.collisions_list.setMaximumHeight(72)
         self.collisions_list.currentItemChanged.connect(self.collision_selection_changed)
@@ -3016,7 +3107,7 @@ class MapEntityViewer(QMainWindow):
         collision_buttons.addWidget(self.remove_collision_button)
         layout.addLayout(collision_buttons)
 
-        layout.addWidget(QLabel("Map event logic (purple T / orange S / blue R)"))
+        layout.addWidget(QLabel("Scripted events (T), spawns (S), encounters (R)"))
         behavior_buttons = QHBoxLayout()
         self.edit_behavior_button = QPushButton("Edit map record")
         self.edit_behavior_button.clicked.connect(self.edit_selected_behavior)
@@ -3079,25 +3170,25 @@ class MapEntityViewer(QMainWindow):
         bar.addWidget(scene_label)
         self.priority_toggle = self._add_toggle(bar, "Priority pixels", True)
         self.grid_toggle = self._add_toggle(bar, "32 px grid", True)
-        self.collision_toggle = self._add_toggle(bar, "ROM collision", False)
-        self.event_toggle = self._add_toggle(bar, "ROM event triggers", True)
-        self.actor_toggle = self._add_toggle(bar, "ROM actor populations", True)
-        self.actor_route_toggle = self._add_toggle(bar, "ROM waypoint paths", False)
-        self.world_activity_toggle = self._add_toggle(bar, "Special actor lists", False)
+        self.collision_toggle = self._add_toggle(bar, "Collision boxes", False)
+        self.event_toggle = self._add_toggle(bar, "Map interactions", True)
+        self.actor_toggle = self._add_toggle(bar, "Source characters", True)
+        self.actor_route_toggle = self._add_toggle(bar, "Character routes", False)
+        self.world_activity_toggle = self._add_toggle(bar, "Conditional actor groups", False)
         self.world_activity_group_combo = QComboBox()
         self.world_activity_group_combo.addItem("All list groups", "all")
-        self.world_activity_group_combo.addItem("Entry list 0x1E552", "mode_13_entry")
-        self.world_activity_group_combo.addItem("Pending list 0x1E5C4", "pending_list_1e5c4")
-        self.world_activity_group_combo.addItem("Pending list 0x1E628", "pending_list_1e628")
+        self.world_activity_group_combo.addItem("Scene 47 entry group", "mode_13_entry")
+        self.world_activity_group_combo.addItem("Scene 47 actor group A", "pending_list_1e5c4")
+        self.world_activity_group_combo.addItem("Scene 47 actor group B", "pending_list_1e628")
         self.world_activity_group_combo.setCurrentIndex(1)
         self.world_activity_group_combo.currentIndexChanged.connect(self.layers_changed)
         bar.addWidget(self.world_activity_group_combo)
-        self.profile_entry_toggle = self._add_toggle(bar, "Default party spawns", True)
-        self.behavior_toggle = self._add_toggle(bar, "Map events / spawns", True)
+        self.profile_entry_toggle = self._add_toggle(bar, "Default starting positions", True)
+        self.behavior_toggle = self._add_toggle(bar, "Scripted events / spawns", True)
         bar.addSeparator()
         legend = QLabel(
-            "ROM actors: solid = default list; amber ? = conditional list/candidate; cyan dash = route   "
-            "Unreviewed: yellow   Building: cyan   Entity collision: green dash-dot"
+            "Characters: solid = default; amber ? = conditional candidate; cyan dash = source route   "
+            "Unreviewed: yellow   Building: cyan   Blocked area: green dash-dot"
         )
         bar.addWidget(legend)
         self.addToolBarBreak(Qt.ToolBarArea.TopToolBarArea)
@@ -3343,7 +3434,7 @@ class MapEntityViewer(QMainWindow):
             "separate evidence layers. The markers show the profile defaults; "
             "a route may override them when it loads the map.",
             "Scene 47's three special actor lists are separate event candidates; "
-            "turn on Special actor lists to inspect them. Other timed activity "
+            "turn on Conditional actor groups to inspect them. Other timed activity "
             "tables and event-created actor paths remain unresolved; see the "
             "actor-population audit.",
         ))
@@ -3356,7 +3447,7 @@ class MapEntityViewer(QMainWindow):
             lines.extend(f"  {detail}" for detail in out_of_bounds_actors)
         lines.append(
             "Default party entry markers are visible by default. Turn off "
-            "Default party spawns to hide them."
+            "Default starting positions to hide them."
         )
         self.scene_info.setPlainText("\n".join(lines))
 
@@ -3446,13 +3537,12 @@ class MapEntityViewer(QMainWindow):
             self.interactions_list.clear()
             self.collisions_list.clear()
             self.info.setPlainText(
-                "Click a map cell for its ROM layer words. Click a yellow ROM trigger or red collision region for its source record. "
-                "Click a ROM actor sprite to inspect its type, source record, direction, and gate. Click an authored T/S/R mark to inspect its Lua data. "
+                "Click a map cell to inspect its source tile layers. Click a map interaction or collision box for its evidence. "
+                "Click a character marker to inspect its type, position, appearance conditions, and source art. Click an authored event, spawn, or encounter marker to inspect its game data. "
                 "Drag entity outlines to move grouped annotations."
             )
             self.flow_info.setPlainText(
-                "Select a building or ROM event to inspect its route, dialogue/menu "
-                "profiles, state branches, and source references."
+                "Select a place, object, or map interaction to see what happens when the player reaches it, including any known destination, dialogue, menu, shop, or story condition."
             )
             self._loading_fields = False
             return
@@ -3559,7 +3649,7 @@ class MapEntityViewer(QMainWindow):
             f"\nMap evidence: {map_info.tilemap_width}×{map_info.tilemap_height} metatile cells, "
             f"{map_info.metatile_encoding}; primary {map_info.primary_tilemap}, "
             f"secondary {map_info.secondary_tilemap}. Region intersects {collision_hits} ROM collision rectangles "
-            f"and {event_hits} ROM event triggers. The base bitmap is precomposed; the priority toggle shows its sparse overlay."
+            f"and {event_hits} map interactions. The base bitmap is precomposed; the priority toggle shows its sparse overlay."
         )
         self.info.setPlainText(self.info.toPlainText() + evidence_summary)
         self._loading_fields = False
@@ -3851,10 +3941,12 @@ class MapEntityViewer(QMainWindow):
             0,
             0,
         )
-        self.statusBar().showMessage(
-            f"Inspecting {evidence.title}; source-derived evidence is read-only.",
-            7000,
-        )
+        if evidence.kind == "rom_event":
+            selected_name = evidence.map_label or evidence.title
+            status = f"Selected map interaction: {selected_name}. Evidence is read-only."
+        else:
+            status = f"Inspecting {evidence.title}; source-derived evidence is read-only."
+        self.statusBar().showMessage(status, 7000)
 
     def show_map_cell(self, point: QPointF) -> None:
         info = self.map_by_id.get(self.scene_id)

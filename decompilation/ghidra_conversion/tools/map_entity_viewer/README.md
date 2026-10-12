@@ -51,6 +51,9 @@ the known dialogue/menu/shop text, and story conditions. Guide labels are explic
 marked as corroborated, candidate, or unresolved; they are not ROM names.
 Unlabeled triggers still show the ROM's numeric scene/activity target and say
 whether the route table or a special handler selects it.
+The **What happens** pane uses player-facing descriptions and decimal map or
+activity numbers. Internal handler names, addresses, and converted runtime
+owners stay in **Source** so they are not presented as dialogue or menu text.
 Selecting an entity shows its known interactions and imported dialogue text
 when that content exists. **Map profile** shows the selected ROM
 descriptor, camera setup, default three-member party placement, and the
