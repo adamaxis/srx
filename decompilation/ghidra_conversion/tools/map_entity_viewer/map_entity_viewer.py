@@ -5016,6 +5016,132 @@ class MapEntityViewer(QMainWindow):
             f"{len(self.map_view.collision_rectangles)} movement regions."
         )
 
+    def _scene_encounter_profile_lines(self) -> list[str]:
+        scene_id = self.scene_id
+        outcome_rows = [
+            row for row in self.field_activity_rows
+            if as_int(row, "scene", -1) == scene_id
+        ]
+        dialogue_rows = [
+            row for row in outcome_rows
+            if row.get("outcome_kind", "") == "dialogue_event"
+        ]
+        lines = [
+            "",
+            "ROM random encounter paths (eligible outcomes; not guaranteed):",
+        ]
+        if not dialogue_rows:
+            lines.append("  No dialogue-event selector rows are indexed for this scene.")
+        else:
+            events: dict[tuple[str, str], set[int]] = {}
+            for row in dialogue_rows:
+                key = (
+                    row.get("handler_offset", "unresolved handler"),
+                    row.get("event_name", "ROM field event"),
+                )
+                events.setdefault(key, set()).add(
+                    as_int(row, "random_sum", -1)
+                )
+            for (handler, name), sums in sorted(
+                events.items(), key=lambda item: (item[0][1].casefold(), item[0][0])
+            ):
+                sum_text = ", ".join(
+                    str(value) for value in sorted(sums) if value >= 0
+                ) or "not indexed"
+                lines.append(f"  Sum {sum_text}: {name} [{handler}].")
+
+        law_path_notes = {
+            "0x20f12": "Direct Lone Star patrol prompt; Talk, Attack, and Run Away choices.",
+            "0x20f5a": "Company Man continuation can call a Lone Star patrol.",
+            "0x20f72": "Attacking the injured-person impostor can queue a Lone Star detective.",
+            "0x20f8a": "The flustered-woman continuation exposes an undercover Lone Star officer and possible backup.",
+            "0x20fa2": "The haggard-man continuation has a doctor call a Lone Star patrol.",
+            "0x2106a": "Direct Lone Star patrol prompt on the scene-41-to-43 route.",
+            "0x2112c": "The alley-seller Attack continuation has a 60% branch that queues two bodyguards; its text identifies an undercover Lone Star patrol.",
+        }
+        available_law_paths = {
+            row.get("handler_offset", "").casefold()
+            for row in dialogue_rows
+            if row.get("handler_offset", "").casefold() in law_path_notes
+        }
+        if available_law_paths:
+            lines.append("  Lone Star paths through this scene's selector events:")
+            for handler in sorted(available_law_paths):
+                lines.append(f"    {handler}: {law_path_notes[handler]}")
+
+        dynamic_rows = [
+            row for row in self.dynamic_world_actor_rows
+            if as_int(row, "scene", -1) == scene_id
+        ]
+        sequences: dict[tuple[int, str], list[dict[str, str]]] = {}
+        for row in dynamic_rows:
+            key = (
+                as_int(row, "random_sum", -1),
+                row.get("sequence_list_offset", ""),
+            )
+            sequences.setdefault(key, []).append(row)
+        if not sequences:
+            lines.append("  No dynamic actor/effect sequence rows are indexed for this scene.")
+        else:
+            lines.append("  Temporary actors in the dynamic sequences:")
+            for (random_sum, list_offset), members in sorted(sequences.items()):
+                members.sort(key=lambda row: as_int(row, "source_order", -1))
+                counts: dict[str, int] = {}
+                for member in members:
+                    name = self._dynamic_actor_display_name(member)
+                    counts[name] = counts.get(name, 0) + 1
+                member_text = ", ".join(
+                    name + (f" x{count}" if count > 1 else "")
+                    for name, count in counts.items()
+                )
+                lines.append(
+                    f"    Sum {random_sum}: {member_text} "
+                    f"[sequence {list_offset}]."
+                )
+            lines.append(
+                "    These sequence actors use terrain-checked screen-edge "
+                "placement; they are not fixed map residents."
+            )
+
+        disturbance_handlers = {
+            row.get("handler_offset", "").casefold()
+            for row in dialogue_rows
+            if row.get("handler_offset", "").casefold() in {
+                "0x20efa", "0x20f42", "0x2115c",
+            }
+        }
+        if disturbance_handlers:
+            lines.append(
+                "  Later-stage Renraku branch: choosing MORE with the shared "
+                "stage at 2-8 and FFFC22 bit 8 clear queues 2 Strike Teams "
+                "at stages 2-3, 4 at 4-6, or 5 at 7-8."
+            )
+            if "0x2115c" in disturbance_handlers:
+                lines.append(
+                    "  This scene also uses the wilderness low-stage table "
+                    "(stage 0-1 or bit 8 set): 30% three Hell Hounds, 30% two "
+                    "Wendigos, 20% two Bandersnatches, 5% Rat Shaman plus two "
+                    "Indian warriors, 10% Elven mage plus two Elven warriors, "
+                    "or 5% no actor list."
+                )
+            if disturbance_handlers & {"0x20efa", "0x20f42"}:
+                lines.append(
+                    "  The urban low-stage branch returns Renraku attack text; "
+                    "an actor list for that branch has not been traced."
+                )
+
+        if scene_id == 47:
+            lines.append(
+                "  Separate scene-47 mode-0x13 actor lists are profiled in the "
+                "Special actor lists view; they do not run as random-selector outcomes."
+            )
+        lines.append(
+            "  The player wanted-record/patrol response remains a separate ROM "
+            "path. Its map-wide spawn condition is unresolved, so this selector "
+            "census does not claim that other maps have no Lone Star pursuit."
+        )
+        return lines
+
     def _update_scene_profile_info(self) -> None:
         info = self.map_by_id[self.scene_id]
         descriptor_path = (
@@ -5121,6 +5247,7 @@ class MapEntityViewer(QMainWindow):
             "Some timed and event-created character behavior still needs source "
             "tracing. Use Event characters to inspect the separately recorded lists.",
         ))
+        lines.extend(self._scene_encounter_profile_lines())
         lines.extend(("", "People and character positions recorded for this map:"))
 
         def readable_actor_position(actor: MapEvidenceRegion) -> str:
@@ -5487,14 +5614,14 @@ class MapEntityViewer(QMainWindow):
         gargoyle_scenes = set(dynamic_actors.get("Gargoyle", {}).get("scenes", set()))
         rows = [
             (
-                "Lone Star on five of six city maps",
+                "Lone Star story encounters in five of six city areas",
                 self._format_scene_ids(lone_star_scenes),
-                "These traced paths reach five of the six ROM-named city-area maps: Downtown Seattle (scene 0), Puyallup Barrens (1), Redmond Barrens (2), Penumbra District (3), and Renraku Arcology (5). Scene 4, Council Island, has no Lone Star handler in this random selector. Direct patrol prompts occur on scenes 0, 3, and 41-43; the Company Man, undercover woman, injured-person, haggard-man, and alley-seller continuations broaden the area-map coverage. Dynamic Lone Star templates occur on scenes 1 and 41-43. ROM Notebook tips 71-73 progress from wanted for questioning to armed-and-dangerous and fugitive/hunting-party language; that separate wanted progression may broaden police coverage, and its map-wide spawn logic still needs tracing. Undercover branches use ROM templates named bodyguard.",
+                "The selector and its traced choice continuations reach Downtown Seattle (scene 0), Puyallup Barrens (1), Redmond Barrens (2), Penumbra District (3), and Renraku Arcology (5); Council Island (4) has no Lone Star-named selector path. The direct patrol prompt is only one part of that reach: other scenes expose patrols through the injured-person, flustered-woman, Company Man, haggard-man, and alley-seller choices. Lone Star templates also appear in scenes 1 and 41-43. ROM contact dialogue mentions deleting the Lone Star record and obtaining a Weapon Permit. Notebook tips 70-72 carry the wanted-for-questioning, armed-and-dangerous, and fugitive/hunting-party notices; tip 73 is a Lone Star Records prisoner-transfer notice. The code connecting the player legal state to a wider map-wide patrol spawn is still unresolved; do not read this selector census as evidence that other maps have no pursuit.",
             ),
             (
                 "Hell Hounds across 26 scene contexts",
                 self._format_scene_ids(hell_hound_scenes),
-                "The zero-cell dynamic actor table selects Hell Hounds in 26 scene contexts: Downtown Seattle (0), Wilderness Areas 1-4 (6-9), Hollywood Correctional Facility (20), and additional contexts 26-29 and 35-50. These are temporary, terrain-checked screen-edge event actors.",
+                "The zero-cell dynamic actor table selects Hell Hounds in 26 scene contexts: Downtown Seattle (0), Wilderness Areas 1-4 (6-9), Hollywood Correctional Facility (20), and contexts 26-29 and 35-50. That final 16-context span is part of the coverage and is not summarized as only the named surface maps. The per-scene Map overview now lists each selected sequence and its actor multiplicity. These are temporary, terrain-checked screen-edge event actors, not fixed residents.",
             ),
             (
                 "Creature templates across broad map sets",
@@ -5502,9 +5629,9 @@ class MapEntityViewer(QMainWindow):
                 "The dynamic table includes Wendigos and Bandersnatches on scenes 1, 4, 6-9, and 44-50, plus Gargoyles on scenes 4, 6-9, and 44-55. The complete per-template scene and random-sum list follows below.",
             ),
             (
-                "Later-stage Strike Teams across nine of ten area maps",
+                "Later-stage Renraku Strike Teams: 9 of 10 named areas plus scenes 44-50",
                 self._format_scene_ids(disturbance_scenes),
-                "Three disturbance handlers share the FFFBFB progression counter and FFFC22 bit-8 gate across scenes 0-3, 5-9, and 44-50. On the named area maps, these cells reach nine of ten: Downtown (0), Puyallup (1), Redmond (2), Penumbra (3), Renraku Arcology (5), and Wilderness Areas 1-4 (6-9); Council Island (4) has no disturbance handler. Contexts 44-50 are additional scene IDs whose map names are not established here. With the bit clear, stages 2-3 select 2 Strike Team actors, stages 4-6 select 4, and stages 7-8 select 5. This is a shared later-game route across area maps, separate from the scene-47 story lists.",
+                "Three disturbance handlers share the FFFBFB progression counter and FFFC22 bit-8 gate across scenes 0-3, 5-9, and 44-50. This is not limited to the explicit Renraku-building encounters: it reaches nine of the ten named city/wilderness areas (all except Council Island) and seven additional scripted-activity contexts, scenes 44-50. With bit 8 clear, stages 2-3 select 2 Strike Team actors, stages 4-6 select 4, and stages 7-8 select 5. The additional contexts' place names are not yet cross-referenced. This is separate from the scene-47 story lists.",
             ),
             (
                 "Creature packs after a wilderness disturbance",
@@ -5542,9 +5669,11 @@ class MapEntityViewer(QMainWindow):
             "<p>This index combines the field selector, its dynamic actor "
             "templates, and traced choice-created actor lists. Scene ranges are "
             "eligible contexts, not permanent residents or guaranteed encounters. "
-            "The state-driven wanted/fugitive path and every map-event spawn are "
-            "not fully traced yet; do not treat this as the complete encounter "
-            "roster.</p>",
+            "The selector and actor tables are not the complete encounter roster. "
+            "In particular, the player wanted-record/patrol response and every "
+            "map-event spawn are not fully traced. Each Map overview now reports "
+            "that map's own selector sums and ordered temporary actor sequences; "
+            "see also the separate story-list layer.</p>",
         ]
         for name, scenes, evidence in rows:
             page.append(
