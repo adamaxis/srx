@@ -174,6 +174,38 @@ at `0x121268`. These are corporate-security branches. The separate
 concealed-plate/laser entries below are what connect this wider scene group to
 the Lone Star patrol handler.
 
+**Security-mage check (`0x210FC`, scenes 20-43).** The exact selector cells
+are scene 20/sum 2; scenes 21-25/sum 6; 26-29/sum 7; 30-34/sum 8; 35-40/sum
+3; and 41-43/sums 3 and 7. Its prompt at `0x1212BC` says 'A security mage
+spots you. ID please.' and sends MORE (`0xCD`) to `0x24332`. The security
+guard Talk-success continuation at `0x20FEC` reaches this same command.
+
+`0x24332` reads `FFFC22` bit 10. Clear returns the no-badge page `0x1212D0`,
+with Attack and Talk choices. Set runs a five-trial check on `FF017C`: result
+2 or higher opens the ID/dispatch page at `0x12124C`; below 2 attempts the
+effect list at `0x1D7064`. Its first template is the ROM's corp mage at
+`0x1D6A66`. A failed sequence start returns to the ID page; a successful start
+calls `0x1E04A` and returns the 'deadlier spell' text at `0x1212E8`.
+
+Without a badge, Attack (`0xD3` -> `0x2441A`) attempts that corp-mage list and
+returns the weapon-draw text at `0x121290`; the routine does not check the
+sequence-start result. Talk (`0xD1` -> `0x24482`) trials `FF017A` six times.
+Only result 1 reaches the 'misplaced ID' dispatch page at `0x1212F0`; result 0
+and results above 1 attempt the corp-mage list, call `0x1E04A`, and return the
+attack text at `0x121298`. The unusual single-result success is what the ROM
+encodes.
+
+The ID page's MORE command (`0xCE` -> `0x24392`) rolls 0-99: 0-39 attempts
+one corp guard from `0x1D705C` (template `0x1D6A1C`), calls `0x1E04A`, and
+returns negative-dispatch/alert text at `0x121270`; 40-99 returns the verified
+ID/wave-by text at `0x121268`. The 'misplaced ID' page's MORE command
+(`0xCF` -> `0x243CA`) uses the same 40/60 split, but its 0-39 result attempts
+the corp-mage list at `0x1D7064` before returning the same `0x121270` text.
+That dispatch text is reused across the guard and mage paths. These routines
+do not read the heat byte `FFFBFA` or name a Lone Star roster; the alert and
+actor sequence are corporate-security outcomes. The mage's successful combat
+exit and the post-alert actor result remain partial.
+
 **Concealed-plate / laser patrol chain (`0x21036`, `0x21050`, `0x2106A`).**
 These are sibling selector entries, not a direct branch from the preceding
 `0x20FEC` security-guard dialogue. The concealed-plate entry `0x21036` is
@@ -497,7 +529,7 @@ sums identify the enabled cells that return that handler.
 | A Company Man walks up and flicks a toothpick at you. | `21-40` | `1-2`, `5`, `8` | `0x210B4` |
 | You stumble upon a Renraku Strike Team. | `35-40` | `1` | `0x210CC` |
 | Renraku Security spots you as they round a corner. | `35-40` | `4` | `0x210E4` |
-| A security mage spots you. | `20-43` | `2-3`, `6-8` | `0x210FC` |
+| A security mage spots you. | `20`; `21-25`; `26-29`; `30-34`; `35-40`; `41-43` | `2`; `6`; `7`; `8`; `3`; `3, 7` (paired by scene range) | `0x210FC` |
 | The hair on the back of your neck rises. | `6-9`, `44-50` | `2`, `4`, `6`, `8` | `0x21114` |
 | As you walk by, a man calls to you from a dark alleyway. | `0`, `2-3`, `5` | `5-7` | `0x2112C` |
 | A group of young AmerIndian boys are scouring the terrain. | `6-9` | `2` | `0x21144` |
