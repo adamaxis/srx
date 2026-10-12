@@ -1,0 +1,4 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+table_surface	map_composite	13	16	160	48	32	16	0	behind_actor	body	The grey surface follows the visible table top and excludes its shadow.	field/entities/shared_scene13_west_table/table_surface.png	0,0;44,0;48,5;48,27;44,32;4,32;0,27
+wall_side_lamp_priority	priority_overlay	13	0	144	16	16	0	-16	foreground	foreground	The small light pixels at the wall-side table head are sourced from the priority plane; no interaction is assigned.	field/entities/shared_scene13_west_table/wall_side_lamp_priority.png	2,2;14,2;14,14;2,14
+seat_and_wall_trim	map_composite	13	0	144	64	64	0	-16	behind_actor	body	The wall-side red seating/trim is outlined separately from the tabletop and adjacent open floor.	field/entities/shared_scene13_west_table/seat_and_wall_trim.png	0,0;16,0;16,48;64,48;64,64;0,64

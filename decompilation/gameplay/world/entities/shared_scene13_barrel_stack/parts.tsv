@@ -1,0 +1,2 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+barrel_cluster	map_composite	13	256	160	64	64	0	0	behind_actor	body	The stacked cylinder body is outlined as one stored fixture group; its shadow and nearby wall remain outside the contour.	field/entities/shared_scene13_barrel_stack/barrel_cluster.png	4,8;20,0;40,0;60,8;64,20;64,56;56,64;8,64;0,56;0,20

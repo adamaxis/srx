@@ -1,0 +1,4 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+left_frame	map_composite	13	0	32	16	48	0	0	behind_actor	body	The red and grey left frame is outlined without including the central dark opening.	field/entities/shared_scene13_booth/left_frame.png	0,0;12,0;16,6;16,40;8,48;0,42
+right_frame	map_composite	13	48	32	16	48	48	0	behind_actor	body	The right frame is separate from the empty booth interior and the nearby wall.	field/entities/shared_scene13_booth/right_frame.png	4,0;16,0;16,42;8,48;0,40;0,6
+booth_threshold	map_composite	13	0	80	64	16	0	48	behind_actor	threshold	The visible lower booth strip is separated from the floor shadow.	field/entities/shared_scene13_booth/booth_threshold.png	0,0;64,0;64,10;56,16;8,16;0,10

@@ -1,0 +1,5 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+tabletop	map_composite	13	144	184	32	28	16	8	behind_actor	body	Grey table surface, outlined without the floor shadow beneath it.	field/entities/shared_scene13_booth_table/tabletop.png	0,0;32,0;32,20;27,28;5,28;0,20
+left_seat	map_composite	13	128	176	16	48	0	0	behind_actor	body	Red booth seat on the left of the table; kept apart from the table surface.	field/entities/shared_scene13_booth_table/left_seat.png	2,0;16,0;16,48;0,48;0,6
+right_seat	map_composite	13	176	176	16	48	48	0	behind_actor	body	Matching red booth seat on the right of the table.	field/entities/shared_scene13_booth_table/right_seat.png	0,0;14,0;16,6;16,48;0,48
+table_lamp_priority	priority_overlay	13	152	176	16	16	24	0	foreground	foreground	Lamp pixels are in the map priority plane and remain a separate foreground part.	field/entities/shared_scene13_booth_table/table_lamp_priority.png	2,2;14,2;14,14;2,14

@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+shared_scene13_booth	Dark booth entrance	structure	Scene-13 event-30 cells at 0x1B3CF8 and 0x1B3D02 cover the two leftmost cells of this framed dark opening. The scene-specific ROM branch selects Gunderson dialogue; the guide cross-reference identifies the Jump House route. Other incoming scene-13 routes are kept separate.	gunderson.jump_house	gunderson	-

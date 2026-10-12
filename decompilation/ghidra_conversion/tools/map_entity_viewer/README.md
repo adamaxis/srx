@@ -468,6 +468,16 @@ named entities and source crops. Event 8 and event 9 at the south map edge
 remain unresolved. The guide's reputation-6 note stays separate from the ROM
 `FFFC1E` bit-10 booth gate.
 
+Scene 13 is cataloged as a shared interior map with a Jump House route
+cross-reference. Its source event-30 cells open Gunderson's dialogue and are
+attached to the north-west booth; the Lua profile exposes the information,
+conditional question, contact-purchase, and leave pages. The 1,000-nuyen
+contact purchase is sourced, while the work-contract branch remains partial.
+The scene has no default actor records. Its two event-0 cells lie below the
+visible map bounds and remain unresolved rather than being labeled as a return
+door. Other districts also route numerically to scene 13, so their incoming
+routes stay individually listed in **Map profile**.
+
 When inspecting a route, use **What happens** for the location name, player
 flow, destination, dialogue pages, menu labels, shop contents, and known state
 conditions. **Source** retains ROM records, Lua module paths, and low-level

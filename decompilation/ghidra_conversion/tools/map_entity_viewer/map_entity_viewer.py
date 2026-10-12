@@ -2553,7 +2553,7 @@ class FieldMapView(QGraphicsView):
         self.instances: list[EntityInstance] = []
         self.entities: dict[str, EntityDefinition] = {}
         self.selected_instance_id: str | None = None
-        self.show_grid = True
+        self.show_grid = False
         self.show_collision = False
         self.show_events = True
         self.show_actors = True
@@ -2763,8 +2763,55 @@ class FieldMapView(QGraphicsView):
                 for region in (*self.profile_entry_positions, *self.actor_positions)
             ]
             for index, region in enumerate(self.event_rectangles):
+                raw_marker = event_rects[index]
+                visible_marker = raw_marker.intersected(map_bounds)
+                if visible_marker.isEmpty():
+                    # Some ROM event cells sit beyond the rendered map extent.
+                    # Keep those records selectable without drawing a full
+                    # rectangle over the empty canvas or implying that the
+                    # pixels are part of the map image.
+                    center = raw_marker.center()
+                    distances = (
+                        (abs(center.x()), "left"),
+                        (abs(self.map_info.width - center.x()), "right"),
+                        (abs(center.y()), "top"),
+                        (abs(self.map_info.height - center.y()), "bottom"),
+                    )
+                    edge = min(distances, key=lambda item: item[0])[1]
+                    if edge == "left":
+                        marker_center = QPointF(
+                            -4, min(max(0, center.y()), self.map_info.height)
+                        )
+                    elif edge == "right":
+                        marker_center = QPointF(
+                            self.map_info.width + 4,
+                            min(max(0, center.y()), self.map_info.height),
+                        )
+                    elif edge == "top":
+                        marker_center = QPointF(
+                            min(max(0, center.x()), self.map_info.width), -4
+                        )
+                    else:
+                        marker_center = QPointF(
+                            min(max(0, center.x()), self.map_info.width),
+                            self.map_info.height + 4,
+                        )
+                    marker = self.scene().addEllipse(
+                        QRectF(marker_center.x() - 4, marker_center.y() - 4, 8, 8),
+                        QPen(QColor(255, 190, 35, 245), 1.5),
+                        QColor(255, 190, 35, 70),
+                    )
+                    marker.setZValue(9)
+                    marker.setData(0, "map_evidence")
+                    marker.setData(1, "event")
+                    marker.setData(2, index)
+                    marker.setToolTip(
+                        region.title + "\nOff-map ROM bounds; this small edge marker stands for the stored record."
+                    )
+                    self.evidence_items.append(marker)
+                    continue
                 rect = self.scene().addRect(
-                    QRectF(region.x, region.y, region.width, region.height),
+                    visible_marker,
                     QPen(QColor(255, 190, 35, 245), 2),
                     QColor(255, 190, 35, 24),
                 )
@@ -3510,7 +3557,7 @@ class MapEntityViewer(QMainWindow):
         scene_label = QLabel("  View layers: ")
         bar.addWidget(scene_label)
         self.priority_toggle = self._add_toggle(bar, "Priority pixels", True)
-        self.grid_toggle = self._add_toggle(bar, "32 px grid", True)
+        self.grid_toggle = self._add_toggle(bar, "32 px grid", False)
         self.collision_toggle = self._add_toggle(bar, "Terrain / event bounds", False)
         self.event_toggle = self._add_toggle(bar, "Map interactions", True)
         self.actor_toggle = self._add_toggle(bar, "Characters", True)

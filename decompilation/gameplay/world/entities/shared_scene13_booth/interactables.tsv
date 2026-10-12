@@ -1,0 +1,3 @@
+interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
+rom_event_11	0	0	32	32	johnson.interaction	ROM record 11 at 0x1B3CF8	First event-30 cell at map pixel (0,32); scene 13 selects Gunderson through ROM 0x20990.
+rom_event_12	32	0	32	32	johnson.interaction	ROM record 12 at 0x1B3D02	Second adjacent event-30 cell at map pixel (32,32); both cells resolve to the same Gunderson branch.

@@ -1,0 +1,61 @@
+# Scene 13 shared interior map
+
+Status: partial. The map viewer now has named visual entities for the room
+fixtures and source-linked Gunderson interaction. The work-contract branch and
+scene-13 event-0 return route are still unresolved.
+
+## Source profile
+
+- Scene 2 event record 85 at `0x1730FC` is event 4; its route-table byte at
+  `0x172CE0` selects numeric field scene 13. The separate indexed title
+  service may show the Jump House entry page before the map loads.
+- Scene 13 has no default map actors. The Gunderson portrait selected by event
+  30 is dialogue art, not a resident sprite.
+- Scene 13 records 11 and 12 (`0x1B3CF8`, `0x1B3D02`) are adjacent event-30
+  cells at map pixels `(0,32)` and `(32,32)`. ROM `0xB7B8` dispatches them to
+  `0x20990`, which selects dialogue row 0, profile `0x121E80`, and root
+  descriptor `0x105114`.
+- The root menu labels resolve to `0x104051` (information), `0x103A3A`
+  (work), and `0x104FEB` (leave). The Lua dialogue profile exposes the
+  information/question/contact branches, including the 1,000-nuyen Decker
+  contact check. The work contract is not connected yet.
+- Scene 13 records 9 and 10 (`0x1B3CE4`, `0x1B3CEE`) are event-0 cells at
+  `(64,224)` and `(96,224)`, outside the visible map's 224-pixel height. Their
+  exit/return behavior and destination are unresolved; the viewer retains their
+  source rows without naming a doorway or destination.
+- Other district maps also have ROM routes to numeric scene 13. The viewer
+  calls it a shared interior map and shows incoming routes individually; the
+  Jump House name is a route cross-reference, not a universal scene identity.
+
+## Visual verification questions
+
+1. **Does it look correct?** The map includes separately named regions for the
+   northwest booth, north counter, green wall displays, the two lower booths,
+   west wall-side table, east inset, and barrel stack. No overlay replaces the
+   extracted map pixels.
+2. **Does the look reflect behavior?** Event 30 is attached to the northwest
+   booth, where the source branch selects Gunderson. Scene 13 has no default
+   actor records, so no NPC body is placed in the room. The event-0 cells stay
+   unresolved.
+3. **Are the visuals correct?** The room composite and priority plane are
+   treated separately. Counter rail, table lamps, and the inset's bright edge
+   are priority parts; no single rectangle is used to label the whole floor.
+   The map art is the ROM extraction. No new actor or building art is invented.
+4. **Is anything animated?** The visible room fixtures are static. The
+   conversation uses the shared dialogue portrait and pages; its exact idle
+   animation/audio cadence remains a separate source trace.
+5. **Is there sound?** No Scene-13 map track or event-specific sound is
+   identified by this slice. The Map audio tab reports that as unresolved; it
+   does not call the scene silent.
+6. **Are other screen elements clean?** The map image, priority overlay,
+   default-spawn markers, actor candidates, ROM triggers, and authored objects
+   remain separate viewer layers. This slice adds no game UI over the room.
+7. **Do multiple frames support the interpretation?** The supplied longplay
+   contains multiple Jump House entry and Gunderson dialogue frames documented
+   in `jump-house-entry-and-gunderson.md`. Those frames support the dialogue
+   portrait/panel behavior, not the map's full object contours or every
+   incoming route into shared scene 13.
+
+The next pass should trace event-0's callers and return placement, complete the
+Gunderson work-contract state flow, and profile the remaining shared map
+destinations before assigning them building names.

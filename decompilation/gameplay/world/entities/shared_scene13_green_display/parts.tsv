@@ -1,0 +1,2 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+display_screen	map_composite	13	64	112	64	32	0	0	behind_actor	body	The chamfered screen frame and green face are outlined within the source crop.	field/entities/shared_scene13_green_display/display_screen.png	4,0;60,0;64,5;64,27;60,32;4,32;0,27

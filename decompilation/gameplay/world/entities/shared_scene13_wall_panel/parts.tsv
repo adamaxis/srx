@@ -1,0 +1,2 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+panel_face	map_composite	13	0	0	64	32	0	0	behind_actor	body	The outline follows the raised panel face and excludes the surrounding wall and booth frame.	field/entities/shared_scene13_wall_panel/panel_face.png	0,0;58,0;64,6;64,26;58,32;6,32;0,26

@@ -1,0 +1,3 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+inset_face	map_composite	13	288	112	32	48	0	0	behind_actor	body	The outline follows the orange inset face and excludes the adjacent east-wall border.	field/entities/shared_scene13_east_inset/inset_face.png	4,0;28,0;32,4;32,44;28,48;4,48;0,44
+inset_highlight	priority_overlay	13	288	128	32	32	0	16	foreground	foreground	The bright lower-edge pixels are separately sourced from the priority plane; this is not marked as an interaction.	field/entities/shared_scene13_east_inset/inset_highlight.png	0,16;24,16;32,24;32,32;0,32
