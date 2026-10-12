@@ -1080,6 +1080,7 @@ class MapEvidenceRegion:
     conditional: bool = False
     route_details: str = ""
     route_preview_html: str = ""
+    route_preview_first: bool = False
     map_label: str = ""
     source_record_address: str = ""
     event_id: str = ""
@@ -1949,16 +1950,97 @@ def terrain_collision_meaning(value: int) -> tuple[str, str]:
     )
 
 
+def read_menu_profile_preview_html(
+    repo_root: Path, profile_id: str, text_catalog: dict[str, str]
+) -> str:
+    """Render Lua-authored menu pages as a readable, non-interactive preview."""
+    dialogue_path = (
+        repo_root / "decompilation" / "gameplay" / "scripts" / "dialogue.lua"
+    )
+    try:
+        source = dialogue_path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    profile_body = lua_named_table_body(
+        source, r"\blocal\s+menu_profiles\s*=\s*\{", profile_id
+    )
+    if not profile_body:
+        return ""
+
+    pages: list[str] = []
+    page_pattern = re.compile(r"(?m)^ {8}([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\{")
+    for match in page_pattern.finditer(profile_body):
+        page_open = profile_body.find("{", match.start())
+        page_body = extract_lua_block(profile_body, page_open)
+        title_match = re.search(r'\btitle_key\s*=\s*"([^"]+)"', page_body)
+        title = format_dialogue_text(
+            text_catalog.get(
+                title_match.group(1) if title_match else "",
+                "(menu title text is not imported)",
+            )
+        )
+        rows: list[str] = []
+        choice_match = re.search(r"\bchoice_label_keys\s*=\s*\{", page_body)
+        if choice_match:
+            choice_open = page_body.find("{", choice_match.start())
+            choice_body = extract_lua_block(page_body, choice_open)
+            for choice in re.finditer(
+                r'(?:\[\s*"([^"]+)"\s*\]|([A-Za-z_][A-Za-z0-9_]*))\s*=\s*"([^"]+)"',
+                choice_body,
+            ):
+                label = format_dialogue_text(
+                    text_catalog.get(
+                        choice.group(3), "(menu choice text is not imported)"
+                    )
+                )
+                rows.append(
+                    '<tr><td style="padding:5px 8px; border-top:1px solid #A8AFB5;">'
+                    f"{html.escape(label)}</td></tr>"
+                )
+        if not rows:
+            rows.append(
+                '<tr><td style="padding:5px 8px;">No choice labels are declared.</td></tr>'
+            )
+        pages.append(
+            '<table border="1" cellspacing="0" cellpadding="0" width="100%" '
+            'style="border-collapse:collapse; background:#E8EAEC; margin:5px 0;">'
+            '<tr><td style="padding:6px 8px; background:#CFD4D8;">'
+            f"<b>{html.escape(title)}</b></td></tr>"
+            + "".join(rows)
+            + "</table>"
+        )
+
+    if not pages:
+        return ""
+    no_contacts = format_dialogue_text(
+        text_catalog.get("field.main_menu.vid_phone.no_contacts", "")
+    )
+    branch = (
+        "<p><b>Vid-Phone empty-contact branch:</b><br>"
+        f"{html.escape(no_contacts)}</p>"
+        if no_contacts else ""
+    )
+    return (
+        '<table border="1" cellspacing="0" cellpadding="5" width="100%" '
+        'bgcolor="#F3F4F5"><tr><td>'
+        '<b>Menu content preview</b>'
+        '<p><small>Text and choice order come from the Lua menu profile and ROM text catalog. '
+        'The Cyberspace page is a follow-up submenu. Selection state and pixel layout are not represented.</small></p>'
+        + "".join(pages)
+        + branch
+        + "</td></tr></table>"
+    )
+
+
 def field_main_menu_details() -> list[str]:
-    """Describe the ordinary field event-31 menu from its ROM handlers."""
+    """Summarize event-31 behavior; menu copy is shown in the preview card."""
     return [
-        "Main Menu in ordinary field gameplay:",
+        "Shared Main Menu in ordinary field gameplay:",
         "Call Taxi opens the cab destination selector.",
-        "Vid-Phone opens the contact list; if no contacts are available, the game says there are currently no contacts in Seattle.",
-        "Cyberspace requires a cyberdeck, working MPCP chips, and a datajack before opening its menu.",
-        "The Cyberspace menu offers Enter Passcode, System Search, and Exit.",
+        "Vid-Phone opens the contact list; the empty-contact message appears in the preview above.",
+        "Cyberspace requires a cyberdeck, working MPCP chips, and a datajack before opening its submenu.",
         "Exit closes the menu and returns to the current field map.",
-        "Some special gameplay modes use a separate map-specific interaction instead of this menu.",
+        "When a special gameplay mode is active, the event-31 handler follows a separate scene-specific path.",
     ]
 
 
@@ -1979,6 +2061,9 @@ def read_collision_rectangles(
         if as_int(row, "scene_id", -1) == scene_id
     }
     site_routes = read_site_route_index(repo_root, scene_id)
+    text_catalog = read_lua_string_table(
+        asset_root / "dialogue" / "script-text.lua"
+    )
     result: list[MapEvidenceRegion] = []
     for record_index, offset in enumerate(range(0, len(data), 10)):
         words = [int.from_bytes(data[offset + i:offset + i + 2], "big") for i in range(0, 10, 2)]
@@ -2089,6 +2174,13 @@ def read_collision_rectangles(
                     "\n".join(field_main_menu_details())
                     if is_field_main_menu else ""
                 ),
+                route_preview_html=(
+                    read_menu_profile_preview_html(
+                        repo_root, "field.main_menu", text_catalog
+                    )
+                    if is_field_main_menu else ""
+                ),
+                route_preview_first=is_field_main_menu,
                 map_label="Main Menu access" if is_field_main_menu else "",
             ))
     return result
@@ -2613,6 +2705,7 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
                     "direct_b7b8_continuation" in route_lower
                 )
             )
+            is_field_main_menu = is_direct_game_event and not site_name
             if not site_name and is_direct_game_event:
                 # Keep the player/editor description separate from the raw
                 # handler and converted owner list shown in the Source tab.
@@ -2725,9 +2818,16 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
                 title=title,
                 details="\n".join(details),
                 route_details="\n".join(route_lines),
-                route_preview_html=read_dialogue_panel_preview_html(
-                    repo_root, site, text_catalog
-                ) if site else "",
+                route_preview_html=(
+                    read_menu_profile_preview_html(
+                        repo_root, "field.main_menu", text_catalog
+                    )
+                    if is_field_main_menu else
+                    read_dialogue_panel_preview_html(
+                        repo_root, site, text_catalog
+                    ) if site else ""
+                ),
+                route_preview_first=is_field_main_menu,
                 map_label=map_label,
                 source_record_address=str(record_address),
                 event_id=str(event_id),
@@ -4502,7 +4602,7 @@ class MapEntityViewer(QMainWindow):
         self.info.setPlainText(
             "Click a map cell to inspect its source tile layers. Click a map interaction or collision box for its evidence. "
             "Click a character marker to inspect its type, position, appearance conditions, and source art. Click a scripted event, spawn, or encounter marker to inspect its game data. "
-            "Drag entity outlines to move grouped annotations."
+            "Object artwork moves only when every source part has an exact restorable underlay."
         )
         self.flow_info = QTextBrowser()
         self.flow_info.setReadOnly(True)
@@ -5565,10 +5665,21 @@ class MapEntityViewer(QMainWindow):
                 lines.extend(("", *shop_lines))
                 has_linked_profile = True
             lines.extend(("", "Route details:"))
-            lines.append(
-                "No map route has been linked to this place yet." if not has_linked_profile
-                else "The dialogue profile is known, but its map entry condition and destination are not linked yet."
-            )
+            if has_linked_profile:
+                lines.append(
+                    "The dialogue profile is known, but its map entry condition "
+                    "and destination are not linked yet."
+                )
+            elif entity.category in {
+                "prop", "decal", "terrain_feature", "foliage"
+            }:
+                lines.append(
+                    "This is a visual map object. No entrance, map event, "
+                    "dialogue, menu, or shop is linked to it in the current "
+                    "ROM-backed map profile."
+                )
+            else:
+                lines.append("No map route has been linked to this place yet.")
         return "\n".join(lines)
 
     def _show_properties(self, instance: EntityInstance | None) -> None:
@@ -5602,7 +5713,7 @@ class MapEntityViewer(QMainWindow):
             self.info.setPlainText(
                 "Click a map cell to inspect its source tile layers. Click a map interaction or collision box for its evidence. "
                 "Click a character marker to inspect its type, position, appearance conditions, and source art. Click an authored event, spawn, or encounter marker to inspect its game data. "
-                "Drag entity outlines to move grouped annotations."
+                "Object artwork moves only when every source part has an exact restorable underlay."
             )
             self.flow_info.setPlainText(
                 "Select a place, object, or map interaction to see what happens when the player reaches it, including any known destination, dialogue, menu, shop, or story condition."
@@ -6048,10 +6159,18 @@ class MapEntityViewer(QMainWindow):
         )
         if evidence.route_preview_html and evidence.route_details:
             preview_route_text = omit_previewed_dialogue_copy(route_text)
-            self.flow_info.setHtml(
+            route_html = (
                 "<div>" + html.escape(preview_route_text).replace("\n", "<br>") +
-                "</div><br>" + evidence.route_preview_html
+                "</div>"
             )
+            if evidence.route_preview_first:
+                self.flow_info.setHtml(
+                    evidence.route_preview_html + "<br>" + route_html
+                )
+            else:
+                self.flow_info.setHtml(
+                    route_html + "<br>" + evidence.route_preview_html
+                )
         else:
             self.flow_info.setPlainText(route_text)
         selected_panel = self.info

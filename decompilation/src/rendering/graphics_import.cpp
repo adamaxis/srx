@@ -456,6 +456,56 @@ native::NativeImage read_native_image(std::istream& input) {
 
 } // namespace
 
+GenesisFieldMainMenuText read_genesis_field_main_menu_text(
+    const std::vector<std::uint8_t>& rom) {
+    // ROM 0xDB26 draws the ordinary menu rows from C16A5/C16C0/C16CD/C16DA/
+    // C16E8. The activity Main Menu uses C16F6/C1710/C171E, and the nested
+    // Cyberspace page uses C172E/C174A/C175A/C1769. The no-contact message is
+    // two 0x80-separated rows beginning at C1678.
+    GenesisFieldMainMenuText result;
+    result.ordinary_title = read_genesis_menu_text(
+        rom, 0xC16A5U, 0x0BU,
+        "Genesis field Main Menu title is truncated");
+    result.ordinary_choices = {
+        read_genesis_menu_text(rom, 0xC16C0U, 0x0BU,
+                               "Genesis Call Taxi label is truncated"),
+        read_genesis_menu_text(rom, 0xC16CDU, 0x0BU,
+                               "Genesis Vid-Phone label is truncated"),
+        read_genesis_menu_text(rom, 0xC16DAU, 0x0CU,
+                               "Genesis Cyberspace label is truncated"),
+        read_genesis_menu_text(rom, 0xC16E8U, 0x06U,
+                               "Genesis field Exit label is truncated"),
+    };
+    result.activity_title = read_genesis_menu_text(
+        rom, 0xC16F6U, 0x0BU,
+        "Genesis activity Main Menu title is truncated");
+    result.activity_choices = {
+        read_genesis_menu_text(rom, 0xC1710U, 0x0CU,
+                               "Genesis activity Cyberspace label is truncated"),
+        read_genesis_menu_text(rom, 0xC171EU, 0x06U,
+                               "Genesis activity Exit label is truncated"),
+    };
+    result.cyberspace_title = read_genesis_menu_text(
+        rom, 0xC172EU, 0x0CU,
+        "Genesis Cyberspace title is truncated");
+    result.cyberspace_choices = {
+        read_genesis_menu_text(rom, 0xC174AU, 0x0EU,
+                               "Genesis Enter Passcode label is truncated"),
+        read_genesis_menu_text(rom, 0xC175AU, 0x0DU,
+                               "Genesis System Search label is truncated"),
+        read_genesis_menu_text(rom, 0xC1769U, 0x04U,
+                               "Genesis Cyberspace Exit label is truncated"),
+    };
+    const auto empty_message = read_genesis_dialogue_segments(rom, 0xC1678U);
+    if (empty_message.size() != result.empty_phone_message.size()) {
+        throw std::runtime_error(
+            "Genesis Vid-Phone empty-contact text does not contain two rows");
+    }
+    std::copy(empty_message.begin(), empty_message.end(),
+              result.empty_phone_message.begin());
+    return result;
+}
+
 std::array<std::string, 20> read_genesis_attribute_skill_labels(
     const std::vector<std::uint8_t>& rom) {
     // 0xD01C walks the 20-entry pointer table at 0xC1A2A: eight attribute

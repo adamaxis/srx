@@ -350,6 +350,22 @@ GenesisFieldMenuClipsText read_genesis_field_menu_clips_text(
 std::vector<std::string> read_genesis_dialogue_segments(
     const std::vector<std::uint8_t>& rom, std::size_t source_offset);
 
+// The ordinary event-31 field menu and its Cyberspace submenu use separate
+// ROM text rows. Preserve the pages and the conditional empty-phone message
+// for host-side inspection instead of embedding the copy in a runtime script.
+struct GenesisFieldMainMenuText {
+    std::string ordinary_title;
+    std::array<std::string, 4> ordinary_choices;
+    std::string activity_title;
+    std::array<std::string, 2> activity_choices;
+    std::string cyberspace_title;
+    std::array<std::string, 3> cyberspace_choices;
+    std::array<std::string, 2> empty_phone_message;
+};
+
+GenesisFieldMainMenuText read_genesis_field_main_menu_text(
+    const std::vector<std::uint8_t>& rom);
+
 // ROM 0x11950 indexes this pointer table with the active record's +0x90
 // bitfield. Convert the FF-terminated Genesis strings into host text so the
 // native cyberware view has no ROM dependency at runtime.

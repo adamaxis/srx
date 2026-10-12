@@ -329,8 +329,12 @@ when empty. Cyberspace checks cyberdeck availability, MPCP condition, and the
 datajack bit before showing Enter Passcode / System Search / Exit. When
 `FFDF40` is nonzero, `0x0DB26` follows a separate scene-specific branch; the
 ordinary four-choice menu is not a description of those mode-specific paths.
-The shared ordinary-mode path is now displayed in the map viewer for every
-event-31 rectangle. The normal-mode menu and its choice handlers are not yet
+The shared ordinary-mode path is displayed in the map viewer for every
+event-31 rectangle. **What happens** shows the separate Main Menu and
+Cyberspace submenu pages from the `field.main_menu` Lua content profile,
+including the no-contact Vid-Phone message. This is a readable content and
+ordering preview; it does not claim the original menu's exact pixel layout or
+current selection. The normal-mode menu and its choice handlers are not yet
 connected to the playable Qt runtime.
 The scene-6 default actor list is empty. The guide's named people therefore
 remain site cross-references until their actor service and gated placements

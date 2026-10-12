@@ -765,20 +765,39 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         write_lua_string(command_labels[index]);
         output << ",\n";
     }
-    // Preserve the resource-scene menu copy previously authored directly in
-    // script-text.lua. This menu is consumed by field.activity.lua and is not
-    // part of the dialogue-record pointer table above.
-    constexpr std::array<std::pair<std::string_view, std::string_view>, 3>
-        kResourceMainMenuText{{
-            {"field.activity.main_menu.title", "Main Menu"},
-            {"field.activity.main_menu.option.cyberspace", "Cyberspace"},
-            {"field.activity.main_menu.option.exit", "Exit"},
+    // The ordinary map menu and its gated branches are read from ROM text
+    // records. The resource-scene menu remains a separate two-choice screen.
+    const auto field_menu =
+        shadowrun::graphics::read_genesis_field_main_menu_text(rom);
+    std::string no_contacts_text;
+    for (std::size_t index = 0; index < field_menu.empty_phone_message.size();
+         ++index) {
+        if (index != 0U) {
+            no_contacts_text.push_back('|');
+        }
+        no_contacts_text += field_menu.empty_phone_message[index];
+    }
+    const std::array<std::pair<std::string_view, const std::string*>, 13>
+        kFieldMenuText{{
+            {"field.main_menu.title", &field_menu.ordinary_title},
+            {"field.main_menu.option.call_taxi", &field_menu.ordinary_choices[0]},
+            {"field.main_menu.option.vid_phone", &field_menu.ordinary_choices[1]},
+            {"field.main_menu.option.cyberspace", &field_menu.ordinary_choices[2]},
+            {"field.main_menu.option.exit", &field_menu.ordinary_choices[3]},
+            {"field.activity.main_menu.title", &field_menu.activity_title},
+            {"field.activity.main_menu.option.cyberspace", &field_menu.activity_choices[0]},
+            {"field.activity.main_menu.option.exit", &field_menu.activity_choices[1]},
+            {"field.main_menu.cyberspace.title", &field_menu.cyberspace_title},
+            {"field.main_menu.cyberspace.option.enter_passcode", &field_menu.cyberspace_choices[0]},
+            {"field.main_menu.cyberspace.option.system_search", &field_menu.cyberspace_choices[1]},
+            {"field.main_menu.cyberspace.option.exit", &field_menu.cyberspace_choices[2]},
+            {"field.main_menu.vid_phone.no_contacts", &no_contacts_text},
         }};
-    for (const auto& [key, value] : kResourceMainMenuText) {
+    for (const auto& [key, value] : kFieldMenuText) {
         output << "        [";
         write_lua_string(key);
         output << "] = ";
-        write_lua_string(value);
+        write_lua_string(*value);
         output << ",\n";
     }
     for (std::size_t record_index = 0; record_index < records.size();

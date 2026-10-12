@@ -212,6 +212,25 @@ local speakers = {
 -- Menu copy belongs to the location's content profile. A shared building
 -- menu can therefore be shown with or without a named speaker portrait.
 local menu_profiles = {
+    ["field.main_menu"] = {
+        ordinary = {
+            title_key = "field.main_menu.title",
+            choice_label_keys = {
+                call_taxi = "field.main_menu.option.call_taxi",
+                vid_phone = "field.main_menu.option.vid_phone",
+                cyberspace = "field.main_menu.option.cyberspace",
+                exit = "field.main_menu.option.exit",
+            },
+        },
+        cyberspace = {
+            title_key = "field.main_menu.cyberspace.title",
+            choice_label_keys = {
+                enter_passcode = "field.main_menu.cyberspace.option.enter_passcode",
+                system_search = "field.main_menu.cyberspace.option.system_search",
+                exit = "field.main_menu.cyberspace.option.exit",
+            },
+        },
+    },
     ["stoker.motel"] = {
         manager = {
             title_key = "stoker.motel.manager.title",

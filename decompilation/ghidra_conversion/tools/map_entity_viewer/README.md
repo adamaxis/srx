@@ -88,6 +88,11 @@ for inspecting route content; the game renderer remains responsible for the
 dialogue panel's exact screen placement. Internal handler names, addresses,
 and converted runtime owners stay in **Source** so they are not presented as
 dialogue or menu text.
+The shared event-31 Main Menu marker also shows separate Main Menu and
+Cyberspace submenu content cards, populated from the `field.main_menu` Lua
+profile and the extracted text catalog. Its empty-contact Vid-Phone message is
+shown as a conditional branch. The cards expose copy and choice order; they do
+not claim pixel-exact layout or a selected row.
 Selecting an entity shows its known interaction areas, destination, story
 conditions, linked dialogue and menu choices, and shop stock when those have
 been source-profiled. Shop prices are identified as base template prices;
