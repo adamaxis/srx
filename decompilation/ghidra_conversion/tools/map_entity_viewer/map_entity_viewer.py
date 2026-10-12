@@ -682,6 +682,67 @@ def read_map_audio_details(info: MapInfo) -> str:
     ))
 
 
+def read_shared_maglock_content(
+    repo_root: Path, text_catalog: dict[str, str]
+) -> list[str]:
+    """Resolve the generic lock prompt and choices from the Lua profile."""
+    source_path = repo_root / "decompilation" / "gameplay" / "scripts" / "field_interactions.lua"
+    try:
+        source = source_path.read_text(encoding="utf-8")
+    except OSError:
+        return ["Shared lock dialogue is unavailable because its Lua source was not found."]
+
+    def function_keys(name: str) -> list[str]:
+        match = re.search(
+            rf"function\s+FieldInteractions\.{re.escape(name)}\s*\(\s*\)(.*?)\nend\b",
+            source,
+            re.DOTALL,
+        )
+        return re.findall(r'"(field\.[A-Za-z0-9_.-]+)"', match.group(1)) if match else []
+
+    def copy(key: str) -> str:
+        return format_dialogue_text(text_catalog.get(key, "")).strip()
+
+    intro_keys = function_keys("maglock_intro")
+    action_keys = function_keys("maglock_actions")
+    text_keys_match = re.search(
+        r"function\s+FieldInteractions\.text_keys\s*\(\s*\)(.*?)\nend\b",
+        source,
+        re.DOTALL,
+    )
+    branch_keys = (
+        re.findall(r'=\s*"(field\.maglock\.[A-Za-z0-9_.-]+)"', text_keys_match.group(1))
+        if text_keys_match else []
+    )
+
+    lines = ["Shared generic lock dialogue and choices:"]
+    title = copy("field.maglock.door.title")
+    if title:
+        lines.append(f"Opening text: {title}")
+    intro = [text for key in intro_keys if (text := copy(key))]
+    if intro:
+        lines.append("Intro page: " + " ".join(intro))
+    actions = [text for key in action_keys if (text := copy(key))]
+    if actions:
+        lines.append("Choices: " + " / ".join(actions))
+    branch_lines = []
+    for key in branch_keys:
+        if key in {"field.maglock.door.title", "field.maglock.option.more"}:
+            continue
+        text = copy(key)
+        if text:
+            label = key.removeprefix("field.maglock.").replace(".", " ").replace("-", " ")
+            branch_lines.append(f"  {label}: {text}")
+    if branch_lines:
+        lines.append("Possible result text:")
+        lines.extend(branch_lines)
+    lines.append(
+        "These are shared lock prompts, not site-specific dialogue. This trigger "
+        "does not identify the building or room beyond the lock."
+    )
+    return lines
+
+
 def as_int(row: dict[str, str], name: str, default: int = 0) -> int:
     value = row.get(name, "")
     try:
@@ -2413,16 +2474,55 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
                     "Next screen or result: not established for this trigger.",
                     "Dialogue, choices, or shop: not identified for this trigger yet.",
                 ))
-            if not route_lines:
+            if dispatcher == "conditional_electromagnetic_lock":
+                if not site_name:
+                    title = "Electromagnetic lock"
+                    map_label = "Electromagnetic lock"
+                    route_lines.extend((
+                        "Location: Electromagnetic lock",
+                        "How this point is used: The ROM selects the shared lock interaction "
+                        "under its scene and interaction gates.",
+                        "Result: The choices attempt to disable or break the lock on this map; "
+                        "this trigger does not select another map.",
+                    ))
                 route_lines.extend((
-                    "Place: no building or doorway name is confirmed for this trigger yet.",
+                    "",
+                    *read_shared_maglock_content(repo_root, text_catalog),
+                ))
+            if not route_lines:
+                if table_target.startswith("No event-table destination"):
+                    destination_note = (
+                        "This route has no event-table destination; its later location "
+                        "and dialogue are not established here."
+                    )
+                elif re.match(
+                    r"^(Field map|Resource activity|Scripted activity) \d+",
+                    table_target,
+                    re.IGNORECASE,
+                ):
+                    destination_note = (
+                        "The ROM provides a numeric map or activity destination, but "
+                        "this trigger does not identify its place name or dialogue."
+                    )
+                elif table_target.startswith("Direct ROM continuation"):
+                    destination_note = (
+                        "The event continues through a direct game path; its final "
+                        "destination and dialogue are not established here."
+                    )
+                else:
+                    destination_note = (
+                        "The destination or dialogue is not established by this event record."
+                    )
+                route_lines.extend((
+                    "Place: no named location is linked to this trigger yet.",
                     f"What happens on contact: {action}",
                     f"Next map or activity: {destination}",
                     f"Text, choices, or shop: {site.get('text_keys', '').strip() or 'not linked to this trigger yet'}",
-                    "The ROM identifies a numeric destination here, but does not name the interior or its dialogue.",
+                    destination_note,
                 ))
                 if not site_name:
-                    title = f"Map interaction: {destination}"
+                    title = "Map interaction: location not identified"
+                    map_label = "Unidentified map interaction"
             if dispatcher == "floor_selector":
                 group = read_elevator_scene_group(
                     repo_root / "decompilation" / "assets", scene_id

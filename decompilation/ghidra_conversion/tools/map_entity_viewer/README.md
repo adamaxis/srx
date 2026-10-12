@@ -487,6 +487,13 @@ is available. Route destinations are kept distinct from guide labels and only
 marked as traced where the ROM transition caller supports them. Map music is
 still unresolved.
 
+Scene 20 is cross-referenced to Hollywood Correctional Facility only through
+the conditional scene-2 route records and Mike's RPG Center marker 5; the ROM
+scene descriptor does not name the map. Its event-2..5 interaction rectangles
+use the shared Lua maglock prompt and expose the ROM-backed choice and result
+text in **What happens**. That shared lock flow does not identify a site or
+interior route. The map's per-scene music assignment remains unresolved.
+
 Scene 12 now has its own area/entity records for Icarus Descending. The dark
 booth event links to the ROM's bodyguard gate and Caleb Brightmore profile,
 including the first-meeting, repeat, and conditional post-run text. The viewer
