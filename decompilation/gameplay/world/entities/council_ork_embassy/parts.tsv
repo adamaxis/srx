@@ -1,0 +1,4 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+embassy_roof	map_composite	4	512	736	176	176	0	0	behind_actor	building	Distinct peaked roof and side walls; adjacent rocks and path are clipped away.	field/entities/council_ork_embassy/embassy_roof.png	64,16;128,16;160,48;160,144;176,160;176,176;16,176;0,160;32,144;32,48
+embassy_front_wall	map_composite	4	512	912	192	48	0	176	behind_actor	building	Front wall below the roof; the lower map edge clips the source art.	field/entities/council_ork_embassy/embassy_front_wall.png	0,176;192,176;192,224;0,224
+priority_roof_and_eaves	priority_overlay	4	512	736	176	176	0	0	foreground	overhang	Sparse priority roof and eave pixels, clipped away from the eastern path.	field/entities/council_ork_embassy/priority_roof_and_eaves.png	64,16;128,16;160,48;160,144;176,160;176,176;16,176;0,160;32,144;32,48

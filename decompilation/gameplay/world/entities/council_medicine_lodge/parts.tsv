@@ -1,0 +1,4 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+lodge_roof_facade	map_composite	4	1216	0	256	96	32	0	behind_actor	building	Medicine Lodge roof and front structure; the paths and long eastern boardwalk are excluded.	field/entities/council_medicine_lodge/lodge_roof_facade.png	32,0;288,0;288,96;32,96
+priority_roof_facade	priority_overlay	4	1216	0	256	96	32	0	foreground	overhang	Sparse priority roof, entry supports, and facade pixels.	field/entities/council_medicine_lodge/priority_roof_facade.png	32,0;288,0;288,96;32,96
+round_emblem	priority_overlay	4	1184	16	32	32	0	16	foreground	decal	Round emblem beside the lodge; its game meaning is not established.	field/entities/council_medicine_lodge/round_emblem.png	0,16;32,16;32,48;0,48

@@ -1,0 +1,2 @@
+interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
+rom_event_D8	320	256	32	32	field_events.resolve_collision	ROM event 4 at 0x15BDD8	Exact 32x32 Scene-4 event cell from decompilation/docs/field-map-trigger-records.tsv; see scene-04-site-routes.tsv.

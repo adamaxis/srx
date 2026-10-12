@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+council_island_boardwalks	Council Island wooden paths and docks	terrain_feature	Separate wooden crossings and dock surfaces identified from the Scene 4 ROM map artwork. These annotations classify visible geometry only; the map collision records remain the authority for movement.	-	-	-

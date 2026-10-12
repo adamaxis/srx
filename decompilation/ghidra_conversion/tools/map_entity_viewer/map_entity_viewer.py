@@ -425,6 +425,12 @@ def read_site_content_details(
     scene_id: int, include_source_details: bool = True,
 ) -> list[str]:
     lines: list[str] = []
+
+    def readable_text(key: str) -> str:
+        return text_catalog.get(key, "(text key is not imported)").replace(
+            "\\n", "\n"
+        ).replace("\\t", "\t")
+
     contract_location = site.get("rom_contract_location_index", "").strip()
     if contract_location and include_source_details:
         try:
@@ -454,19 +460,42 @@ def read_site_content_details(
     if text_keys:
         lines.append("Dialogue, choices, and shop text shown by this route:")
         lines.extend(
-            f"  {key}: {text_catalog.get(key, '(text key is not imported)')}"
+            f"  {key}: {readable_text(key)}" if include_source_details
+            else f"  {readable_text(key)}"
             for key in text_keys
         )
+    reference_text_keys = [
+        key.strip()
+        for key in site.get("reference_text_keys", "").split(";")
+        if key.strip()
+    ]
+    if reference_text_keys:
+        lines.append("Related in-game text (not confirmed on this map route):")
+        lines.extend(
+            f"  {key}: {readable_text(key)}" if include_source_details
+            else f"  {readable_text(key)}"
+            for key in reference_text_keys
+        )
+    guide_reference = site.get("guide_reference", "").strip()
+    if guide_reference:
+        lines.append("Guide cross-check only (not ROM event text):")
+        lines.append(f"  {guide_reference}")
     menu_profiles = [
         profile.strip()
         for profile in site.get("menu_profiles", "").split(";")
         if profile.strip()
     ]
     if menu_profiles:
-        lines.append(
-            "Menu pages and choices: " + ", ".join(menu_profiles) +
-            " (the linked scripts determine which choices appear for each story state)."
-        )
+        if include_source_details:
+            lines.append(
+                "Menu pages and choices: " + ", ".join(menu_profiles) +
+                " (the linked scripts determine which choices appear for each story state)."
+            )
+        else:
+            lines.append(
+                "Menu choices are described in the game's linked script; "
+                "this map entry has no verified menu text yet."
+            )
     content_profile = site.get("content_profile", "").strip()
     speaker_id = site.get("speaker_id", "").strip()
     if content_profile or speaker_id:
@@ -1928,11 +1957,14 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
                         story_notes,
                         flags=re.IGNORECASE,
                     ).strip()
+                    player_summary = site.get("player_summary", "").strip()
+                    player_destination = site.get("player_destination", "").strip()
+                    player_conditions = site.get("player_conditions", "").strip()
                     route_lines.extend((
                         f"Location: {site_name}",
-                        f"How this point is used: {route_label}",
-                        f"Destination or result: {destination}",
-                        f"Story conditions: {story_notes or '(not profiled)' }",
+                        f"How this point is used: {player_summary or route_label}",
+                        f"Destination or result: {player_destination or destination}",
+                        f"Story conditions: {player_conditions or story_notes or '(not profiled)' }",
                     ))
                     display_content_lines = read_site_content_details(
                         repo_root, site, text_catalog, scene_id,
@@ -3168,6 +3200,7 @@ class MapEntityViewer(QMainWindow):
 
     def _build_toolbar(self) -> None:
         bar = self.addToolBar("Map evidence layers")
+        self.layer_toolbar = bar
         bar.setMovable(False)
         self.tool_buttons: dict[str, QPushButton] = {}
         scene_label = QLabel("  View layers: ")
@@ -3176,22 +3209,22 @@ class MapEntityViewer(QMainWindow):
         self.grid_toggle = self._add_toggle(bar, "32 px grid", True)
         self.collision_toggle = self._add_toggle(bar, "Collision boxes", False)
         self.event_toggle = self._add_toggle(bar, "Map interactions", True)
-        self.actor_toggle = self._add_toggle(bar, "Source characters", True)
-        self.actor_route_toggle = self._add_toggle(bar, "Character routes", False)
-        self.world_activity_toggle = self._add_toggle(bar, "Conditional actor groups", False)
+        self.actor_toggle = self._add_toggle(bar, "Characters", True)
+        self.actor_route_toggle = self._add_toggle(bar, "Character paths", False)
+        self.world_activity_toggle = self._add_toggle(bar, "Event characters", False)
         self.world_activity_group_combo = QComboBox()
-        self.world_activity_group_combo.addItem("All list groups", "all")
-        self.world_activity_group_combo.addItem("Scene 47 entry group", "mode_13_entry")
-        self.world_activity_group_combo.addItem("Scene 47 actor group A", "pending_list_1e5c4")
-        self.world_activity_group_combo.addItem("Scene 47 actor group B", "pending_list_1e628")
+        self.world_activity_group_combo.addItem("All event lists", "all")
+        self.world_activity_group_combo.addItem("Opening event: arrival", "mode_13_entry")
+        self.world_activity_group_combo.addItem("Opening event: group A", "pending_list_1e5c4")
+        self.world_activity_group_combo.addItem("Opening event: group B", "pending_list_1e628")
         self.world_activity_group_combo.setCurrentIndex(1)
         self.world_activity_group_combo.currentIndexChanged.connect(self.layers_changed)
         bar.addWidget(self.world_activity_group_combo)
-        self.profile_entry_toggle = self._add_toggle(bar, "Default starting positions", True)
+        self.profile_entry_toggle = self._add_toggle(bar, "Usual party arrival", True)
         self.behavior_toggle = self._add_toggle(bar, "Scripted events / spawns", True)
         bar.addSeparator()
         legend = QLabel(
-            "Characters: solid = default; amber ? = conditional candidate; cyan dash = source route   "
+            "Characters: solid = usual placement; amber ? = conditional option; cyan dash = recorded route   "
             "Unreviewed: yellow   Building: cyan   Blocked area: green dash-dot"
         )
         bar.addWidget(legend)
@@ -3217,6 +3250,14 @@ class MapEntityViewer(QMainWindow):
         button.toggled.connect(self.layers_changed)
         toolbar.addWidget(button)
         return button
+
+    @staticmethod
+    def _set_toolbar_widget_visible(toolbar, widget: QWidget, visible: bool) -> None:
+        for action in toolbar.actions():
+            if toolbar.widgetForAction(action) is widget:
+                action.setVisible(visible)
+                widget.setVisible(visible)
+                return
 
     def _add_tool(self, toolbar, label: str, mode: str) -> None:
         button = QPushButton(label)
@@ -3283,6 +3324,16 @@ class MapEntityViewer(QMainWindow):
             self.map_by_id[scene_id], self.assets, self.repo_root,
             self.instances, self.entities, self.behaviors,
         )
+        has_event_characters = any(
+            actor.population_class == "world_activity"
+            for actor in self.map_view.actor_positions
+        )
+        self._set_toolbar_widget_visible(
+            self.layer_toolbar, self.world_activity_toggle, has_event_characters
+        )
+        self._set_toolbar_widget_visible(
+            self.layer_toolbar, self.world_activity_group_combo, has_event_characters
+        )
         self._show_properties(None)
         self._update_scene_summary()
         self._update_scene_profile_info()
@@ -3338,11 +3389,10 @@ class MapEntityViewer(QMainWindow):
         )
         self.statusBar().showMessage(
             f"Scene {self.scene_id:02d}: {info.width}×{info.height}; {len(self.instances)} annotations, {unreviewed} unreviewed. "
-            f"Source encoding: {info.metatile_encoding}; collision regions: {len(self.map_view.collision_rectangles)}; "
-            f"event regions: {len(self.map_view.event_rectangles)}; "
-            f"ROM actor records: {default_actors} default-list, {conditional_actors} "
-            f"pedestrian candidates, {activity_actors} special-list candidates; "
-            f"authored logic records: {len(self.behaviors)}."
+            f"{len(self.map_view.event_rectangles)} map events; "
+            f"{default_actors} usual characters, {conditional_actors} conditional choices, "
+            f"{activity_actors} event-specific characters; "
+            f"{len(self.map_view.collision_rectangles)} movement regions."
         )
 
     def _update_scene_profile_info(self) -> None:
@@ -3351,49 +3401,51 @@ class MapEntityViewer(QMainWindow):
             self.assets / "records" / "field" / "scenes" /
             f"scene-{self.scene_id:02d}" / "descriptor.bin"
         )
+        actor_types = info.default_actor_types
+        actor_type_match = re.fullmatch(r"(\d+) x (.+)", actor_types.strip())
+        if actor_type_match:
+            actor_count = int(actor_type_match.group(1))
+            actor_label = actor_type_match.group(2).strip()
+            if actor_count != 1 and not actor_label.endswith("s"):
+                actor_label += "s"
+            actor_types = f"{actor_count} {actor_label}"
         lines = [
-            f"Scene {self.scene_id:02d} ROM map profile",
-            f"Profile record: {info.record_offset or '(not indexed)' }",
-            f"Extracted descriptor: {descriptor_path}",
-            f"Map image: {info.width}x{info.height}; metatile grid "
-            f"{info.tilemap_width}x{info.tilemap_height} ({info.metatile_encoding})",
-            f"Camera coordinate from map index: 0x{info.camera_x_fixed:04X}, "
-            f"0x{info.camera_y_fixed:04X} in 12.4 fixed point "
-            f"({info.camera_x_fixed / 16:.2f}, {info.camera_y_fixed / 16:.2f} pixels). "
-            "This is camera setup, not a player spawn.",
-            f"Map extents: {info.min_x},{info.min_y} + {info.bound_x}x{info.bound_y}",
-            f"Terrain profile: {info.terrain_record or '(not indexed)'}; "
-            f"event table: {info.event_table or '(none indexed)' }",
-            f"ROM default actor list: {info.default_actor_list_offset or '(not indexed)'}; "
-            f"{info.default_actor_count} profile-selected record(s)"
-            + (f" ({info.default_actor_types})" if info.default_actor_types else "."),
-            "Default-list rows are source population records. Their allocation still "
-            "depends on the field transition and actor-slot gates; the list alone "
-            "does not prove that every row is active on every visit.",
+            f"Scene {self.scene_id:02d} map overview",
+            f"Map size: {info.width}x{info.height} pixels; "
+            f"{info.tilemap_width}x{info.tilemap_height} map cells "
+            "(32 pixels per cell).",
+            f"Initial camera focus: map pixel "
+            f"({info.camera_x_fixed / 16:.2f}, {info.camera_y_fixed / 16:.2f}). "
+            "This is where the camera starts, not where the party arrives.",
+            "Characters listed for the usual scene setup: "
+            + (actor_types or "none") + ".",
+            "Each marked character uses its in-game sprite. Story and transition "
+            "checks can still change which characters appear.",
         ]
         area_profile = self.contract_area_profiles.get(self.scene_id)
         if area_profile:
             lines.extend((
                 "",
-                f"ROM district name: {area_profile['name']} "
-                "(from the ROM-backed contract location formatter).",
-                "Possible run destinations named by the ROM:",
+                f"District: {area_profile['name']}.",
+                "Other destinations named by the game:",
             ))
             for location_index, location_name in sorted(
                 area_profile["locations"].items()
             ):
-                lines.append(f"  {location_name} (run-location option {location_index})")
+                lines.append(f"  {location_name}")
             lines.append(
-                "These names identify contract destinations. They do not by "
-                "themselves establish which doorway, dialogue, or shop route "
-                "a map event selects."
+                "These are destination names, not proof that a particular door "
+                "on this map leads there."
             )
         try:
             descriptor = descriptor_path.read_bytes()
         except OSError:
             descriptor = b""
         if len(descriptor) >= 0x4E:
-            lines.append("Default party entry positions (descriptor offsets +0x42/+0x46/+0x4A):")
+            lines.append(
+                "Usual party arrival points (an incoming doorway or map "
+                "transition can set a different position):"
+            )
             party_roles = ("lead actor", "party member 2", "party member 3")
             for slot, offset in enumerate((0x42, 0x46, 0x4A), start=1):
                 raw_x = int.from_bytes(descriptor[offset:offset + 2], "big")
@@ -3401,23 +3453,20 @@ class MapEntityViewer(QMainWindow):
                 if raw_x == 0 and raw_y == 0:
                     continue
                 lines.append(
-                    f"  Party {slot} ({party_roles[slot - 1]}): "
-                    f"raw 12.4 X/Y 0x{raw_x:04X},0x{raw_y:04X}; "
-                    f"map pixels ({raw_x / 16:.2f},{raw_y / 16:.2f})"
+                    f"  {party_roles[slot - 1].capitalize()}: "
+                    f"map pixel ({raw_x / 16:.2f}, {raw_y / 16:.2f})"
                 )
             lines.append(
-                "ROM 0x03084 loads the profile positions; 0x02B34 copies them "
-                "to the three ordinary actor records when no incoming "
-                "coordinate list is pending. Transitions can supply a different "
-                "party position, so these are the default entry points."
+                "These are the usual entry positions when the route that "
+                "brought the party here does not set its own arrival point."
             )
             if self.scene_id == 2:
                 lines.append(
-                    "  New Game uses Party 1 at (0x3CE0,0x2D00), then starts "
-                    "the automatic walk toward Stoker's event."
+                    "  New Game starts the lead actor at map pixel (974, 720) "
+                    "and runs the opening walk toward Stoker's Coffin Motel."
                 )
         else:
-            lines.append("ROM profile coordinate slots: descriptor is unavailable or truncated.")
+            lines.append("Usual party arrival positions are unavailable for this map.")
         default_actors = sum(
             1 for actor in self.map_view.actor_positions
             if actor.population_class == "default"
@@ -3431,27 +3480,84 @@ class MapEntityViewer(QMainWindow):
             if actor.population_class == "world_activity"
         )
         lines.extend((
-            f"Indexed ROM actor census: {default_actors} profile-selected records, "
-            f"{conditional_actors} conditional pedestrian positions, and "
-            f"{world_activity_actors} special world-activity records.",
-            "ROM actor-list positions and profile party entry points are shown in "
-            "separate evidence layers. The markers show the profile defaults; "
-            "a route may override them when it loads the map.",
-            "Scene 47's three special actor lists are separate event candidates; "
-            "turn on Conditional actor groups to inspect them. Other timed activity "
-            "tables and event-created actor paths remain unresolved; see the "
-            "actor-population audit.",
+            f"People in the map records: {default_actors} usual scene characters, "
+            f"{conditional_actors} conditional choices, and "
+            f"{world_activity_actors} event-specific character records.",
+            "Character locations and usual party arrival points are shown as "
+            "separate layers. A door or map transition can use another arrival point.",
+            "Some timed and event-created character behavior still needs source "
+            "tracing. Use Event characters to inspect the separately recorded lists.",
         ))
+        lines.extend(("", "People and character positions recorded for this map:"))
+
+        def readable_actor_position(actor: MapEvidenceRegion) -> str:
+            name_match = re.search(r"^Actor: ([^(\n]+)", actor.details, re.MULTILINE)
+            position_match = re.search(
+                r"^Map anchor: \((\d+), (\d+)\) pixels$",
+                actor.details,
+                re.MULTILINE,
+            )
+            name = name_match.group(1).strip() if name_match else "Character"
+            position = (
+                f"({position_match.group(1)}, {position_match.group(2)})"
+                if position_match else "position not mapped"
+            )
+            route_note = (
+                f"; {len(actor.path_points)} recorded route points"
+                if actor.path_points else ""
+            )
+            return f"{name} at map pixel {position}{route_note}"
+
+        populations = self.map_view.actor_positions
+        default_population = [
+            actor for actor in populations
+            if actor.population_class == "default"
+        ]
+        conditional_population = [
+            actor for actor in populations
+            if actor.population_class == "conditional"
+        ]
+        activity_population = [
+            actor for actor in populations
+            if actor.population_class == "world_activity"
+        ]
+        if default_population:
+            lines.append(
+                "Characters in the scene setup: " + "; ".join(
+                    readable_actor_position(actor)
+                    for actor in default_population
+                ) + "."
+            )
+            lines.append(
+                "The map uses each character's extracted sprite art. The game "
+                "can still gate actor placement during a scene transition."
+            )
+        else:
+            lines.append("Characters in the scene setup: none are listed for this map.")
+        if conditional_population:
+            lines.append(
+                "Conditional character choices: " + "; ".join(
+                    readable_actor_position(actor)
+                    for actor in conditional_population
+                ) + ". These are alternatives; the game does not place all choices at once."
+            )
+        if activity_population:
+            lines.append(
+                "Event-specific character records: " + "; ".join(
+                    readable_actor_position(actor)
+                    for actor in activity_population
+                ) + ". These belong to separate event lists, not the ordinary scene population."
+            )
         out_of_bounds_actors = read_out_of_bounds_actor_details(self.assets, info)
         if out_of_bounds_actors:
             lines.append(
-                "ROM actor source records outside the extracted image are retained "
-                "in the census and omitted from map overlays:"
+                "Some listed character positions fall outside the extracted map "
+                "image, so the viewer keeps them in the record list but does not "
+                "draw them on the map."
             )
-            lines.extend(f"  {detail}" for detail in out_of_bounds_actors)
         lines.append(
-            "Default party entry markers are visible by default. Turn off "
-            "Default starting positions to hide them."
+            "Usual party arrival markers are visible by default. Turn off "
+            "Usual party arrival to hide them."
         )
         self.scene_info.setPlainText("\n".join(lines))
 

@@ -103,6 +103,30 @@ Camera setup remains a separate value and is not treated as a player spawn.
   ROM table result is field scene 10. The four direct event-31 cells remain
   unnamed, and guide-listed rest, contact, entry, and shop details are shown as
   guide evidence until their ROM/Lua branches are connected to those points.
+- Scene 4 has all six named buildings, the guide's Spirit Eyes site, and a
+  crosswalk for all nine ROM event rectangles. Contract-location names and
+  numeric event destinations remain separate; the additional Passport Lodge
+  and Medicine Lodge vicinity events keep their downstream behavior unresolved.
+  Related notebook, runner, service, and hotel text is shown as reference text
+  only when it is not verified on that map route. The static figure art at the
+  Spirit Eyes event cell is not added to the ROM actor population; Scene 4's
+  three default pedestrians and their waypoint lists remain sourced from the
+  extracted actor records. Route rows keep `player_summary`,
+  `player_destination`, and `player_conditions` separate from the technical ROM
+  trace shown under **Source**; `reference_text_keys` and `guide_reference` are
+  explicitly labeled as related evidence rather than trigger dialogue. The
+  route panel displays readable text without internal string keys; technical
+  identifiers stay in the source trace. A separate annotation marks the
+  restaurant connector, west lake dock, and narrow central bridge. These labels
+  describe visible art only and do not invent collision behavior. The
+  **Map profile** lists character types, map positions, recorded
+  waypoints, conditional alternatives, and the usual party arrival points.
+- The source actor layer is data-driven across the extracted map catalog: the
+  viewer uses each ROM record's actor type and sprite art, shows default scene
+  records separately from conditional choices, and keeps special event lists
+  separate from ordinary map populations. Event-character controls only appear
+  on scenes that contain those lists. It does not synthesize scenery NPCs.
+  Selecting a character shows its source list, position, facing, and route data.
 - **Map audio** is present, but map-scoped music remains unresolved until the
   ROM's scene-entry and persistent-audio paths are traced. Menu music is shown
   separately and is not assigned to a map without evidence.

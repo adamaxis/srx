@@ -1,0 +1,6 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+roof_and_eaves	map_composite	4	0	352	288	136	0	0	behind_actor	building	Wooden roof footprint; adjacent lodge approach is outside this region.	field/entities/council_passport_lodge/roof_and_eaves.png	0,0;288,0;288,136;0,136
+front_facade	map_composite	4	0	480	288	64	0	128	behind_actor	building	Wooden facade ends before the dirt entrance path.	field/entities/council_passport_lodge/front_facade.png	0,128;288,128;288,192;0,192
+priority_roof_edges	priority_overlay	4	0	352	288	136	0	0	foreground	overhang	Separate sparse priority roof and eave pixels.	field/entities/council_passport_lodge/priority_roof_edges.png	0,0;288,0;288,136;0,136
+priority_facade_trim	priority_overlay	4	0	480	288	64	0	128	foreground	overhang	Sparse priority trim on the facade; no surrounding ground included.	field/entities/council_passport_lodge/priority_facade_trim.png	0,128;288,128;288,192;0,192
+passport_pole_sign	priority_overlay	4	288	480	32	32	288	128	foreground	background_attachment	Separate P sign beside the lodge, clipped to the visible sign pixels.	field/entities/council_passport_lodge/passport_pole_sign.png	288,136;320,136;320,152;288,152
