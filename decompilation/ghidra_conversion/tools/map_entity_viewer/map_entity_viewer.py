@@ -390,7 +390,7 @@ def read_lua_quest_module_details(repo_root: Path, site: dict[str, str]) -> list
     ]
     if not module_names:
         return []
-    lines = ["Linked Lua modules and quest/state facts:"]
+    lines = ["Connected game scripts and story-state checks:"]
     for module_name in module_names:
         path = script_root / module_name
         try:
@@ -430,7 +430,7 @@ def read_site_content_details(
         if key.strip()
     ]
     if text_keys:
-        lines.append("Dialogue and menu text resolved from script-text.lua:")
+        lines.append("Dialogue, choices, and shop text shown by this route:")
         lines.extend(
             f"  {key}: {text_catalog.get(key, '(text key is not imported)')}"
             for key in text_keys
@@ -442,8 +442,8 @@ def read_site_content_details(
     ]
     if menu_profiles:
         lines.append(
-            "Lua menu states: " + ", ".join(menu_profiles) +
-            " (choice visibility and quest branches remain in the linked Lua modules)."
+            "Menu pages and choices: " + ", ".join(menu_profiles) +
+            " (the linked scripts determine which choices appear for each story state)."
         )
     content_profile = site.get("content_profile", "").strip()
     speaker_id = site.get("speaker_id", "").strip()
@@ -851,14 +851,18 @@ class WorldContent:
         if not rows:
             return None
         row = rows[0]
+        def optional_value(name: str) -> str:
+            value = row.get(name, "")
+            return "" if value in ("", "-") else value
+
         entity = EntityDefinition(
             entity_id=row.get("entity_id", entity_id),
             name=row.get("name", entity_id),
             category=row.get("category", "unreviewed"),
             evidence=row.get("evidence", ""),
-            content_profile=row.get("content_profile", ""),
-            speaker_id=row.get("speaker_id", ""),
-            shop_profile=row.get("shop_profile", ""),
+            content_profile=optional_value("content_profile"),
+            speaker_id=optional_value("speaker_id"),
+            shop_profile=optional_value("shop_profile"),
         )
         _, part_rows = read_tsv(directory / "parts.tsv")
         entity.parts = [
@@ -913,14 +917,17 @@ class WorldContent:
     def save_entity(self, entity: EntityDefinition) -> None:
         entity_id = safe_id(entity.entity_id)
         directory = self.root / "entities" / entity_id
+        optional_values = {
+            "content_profile": entity.content_profile or "-",
+            "speaker_id": entity.speaker_id or "-",
+            "shop_profile": entity.shop_profile or "-",
+        }
         write_tsv(directory / "entity.tsv", self.ENTITY_HEADER, [{
             "entity_id": entity_id,
             "name": entity.name,
             "category": entity.category,
             "evidence": entity.evidence,
-            "content_profile": entity.content_profile,
-            "speaker_id": entity.speaker_id,
-            "shop_profile": entity.shop_profile,
+            **optional_values,
         }])
         write_tsv(directory / "parts.tsv", self.PART_HEADER, [part.__dict__ for part in entity.parts])
         write_tsv(
@@ -1625,27 +1632,33 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
             record_index = row.get("record_index_zero_based", "?")
             record_address = row.get("record_address", "?")
             site = site_routes.get(str(record_address).strip().upper(), {})
+            site_name = site.get("site_name", "").strip()
+            route_label = site.get("rom_route", "").strip() or route
+            route_label = re.sub(r"[_\s]+", " ", route_label).strip().capitalize()
             details = [
-                "ROM field trigger",
-                f"Scene: {scene_id:02d}; event: {event_id or '(unknown)'}",
-                f"Rectangle: {x0},{y0} {width}×{height} pixels",
-                f"Grid cells: X {row.get('x_start_grid_cell', '?')}..{row.get('x_end_grid_cell', '?')}, "
+                "Map interaction",
+                f"Location: {site_name or 'Not identified'}",
+                f"Action on contact: {route_label}",
+                f"Destination or result: {site.get('rom_destination', row.get('event_table_target_class', '(not established)'))}",
+                f"Trigger area: pixels {x0},{y0}, size {width}×{height}; "
+                f"map cells X {row.get('x_start_grid_cell', '?')}..{row.get('x_end_grid_cell', '?')}, "
                 f"Y {row.get('y_start_grid_cell', '?')}..{row.get('y_end_grid_cell', '?')}",
-                f"Collision value: {row.get('raw_collision_value', '(unknown)')}",
-                f"ROM record: {record_index} at {record_address}",
-                f"Profile: {row.get('profile_address', '(unknown)')}; collision table: "
-                f"{row.get('collision_records_address', '(unknown)')}",
-                f"Route: {route}",
-                f"Dispatch: {dispatcher}; target: {row.get('event_table_target_class', '(unknown)')}",
-                f"ROM handlers: {row.get('rom_handler_addresses', '(unrecorded)')}",
-                f"Converted owners: {row.get('converted_cpp_functions_or_runtime_owners', '(unrecorded)')}",
-                f"Physical QA: {row.get('known_physical_qa_route', '(unrecorded)')}",
-                f"Evidence table: {path}",
+                f"Expected dialogue, choices, or shop: "
+                f"{site.get('text_keys', '').strip() or '(not identified for this trigger)' }",
+                f"Story conditions: {site.get('state_or_branch_notes', '').strip() or '(not profiled)' }",
+                "Source trail",
+                f"ROM event {event_id or '(unknown)'}; record {record_index} at {record_address}; "
+                f"collision value {row.get('raw_collision_value', '(unknown)')}",
+                f"ROM profile {row.get('profile_address', '(unknown)')}; collision list "
+                f"{row.get('collision_records_address', '(unknown)')}; handler addresses "
+                f"{row.get('rom_handler_addresses', '(unrecorded)')}",
+                f"Current implementation path: {row.get('converted_cpp_functions_or_runtime_owners', '(unrecorded)')}",
+                f"Physical route checked: {row.get('known_physical_qa_route', '(not recorded)')}",
+                f"Evidence index: {path}",
             ]
             route_lines: list[str] = []
             map_label = ""
             if site:
-                site_name = site.get("site_name", "").strip()
                 marker = site.get("guide_marker", "").strip()
                 if site_name:
                     match = site.get("crosswalk_status", "unresolved")
@@ -1653,31 +1666,23 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
                     confidence_prefix = "" if match == "rom_guide_corroborated" else "? "
                     map_label = f"{confidence_prefix}{marker + ': ' if marker else ''}{site_name}"
                     details.extend((
-                        f"Site label: {site_name} ({crosswalk})",
-                        f"Interpreted route: {site.get('rom_route', '(not profiled)')}",
-                        f"ROM destination: {site.get('rom_destination', '(not established)')}",
-                        f"Lua modules: {site.get('lua_modules', '').strip() or '(not connected / not profiled)' }",
-                        f"Content profile: {site.get('content_profile', '').strip() or '(none linked)' }",
-                        f"Speaker: {site.get('speaker_id', '').strip() or '(none linked)' }",
-                        f"Menu profiles: {site.get('menu_profiles', '').strip() or '(not identified)' }",
-                        f"Shop profile: {site.get('shop_profile', '').strip() or '(none identified)' }",
-                        f"Text keys: {site.get('text_keys', '').strip() or '(not identified)' }",
-                        f"State branches: {site.get('state_or_branch_notes', '').strip() or '(not profiled)' }",
-                        f"Crosswalk evidence: {site.get('evidence', '').strip() or '(not recorded)' }",
+                        f"Name evidence: {crosswalk}; {site.get('evidence', '').strip() or '(not recorded)' }",
+                        f"Scripts involved: {site.get('lua_modules', '').strip() or '(not linked / not profiled)' }",
+                        f"Speaker: {site.get('speaker_id', '').strip() or '(none identified)' }",
+                        f"Choice/menu pages: {site.get('menu_profiles', '').strip() or '(not identified)' }",
+                        f"Shop catalog: {site.get('shop_profile', '').strip() or '(none identified)' }",
                     ))
                     route_lines.extend((
                         f"Location: {site_name}",
-                        f"Name confidence: {crosswalk}",
-                        f"ROM route: {site.get('rom_route', '(not profiled)')}",
-                        f"ROM destination: {site.get('rom_destination', '(not established)')}",
-                        f"Lua modules: {site.get('lua_modules', '').strip() or '(not connected / not profiled)' }",
-                        f"Content profile: {site.get('content_profile', '').strip() or '(none linked)' }",
-                        f"Speaker: {site.get('speaker_id', '').strip() or '(none linked)' }",
-                        f"Menu profiles: {site.get('menu_profiles', '').strip() or '(not identified)' }",
-                        f"Shop profile: {site.get('shop_profile', '').strip() or '(none identified)' }",
-                        f"Text keys: {site.get('text_keys', '').strip() or '(not identified)' }",
-                        f"State branches: {site.get('state_or_branch_notes', '').strip() or '(not profiled)' }",
-                        f"Evidence: {site.get('evidence', '').strip() or '(not recorded)' }",
+                        f"Name evidence: {crosswalk}",
+                        f"When used: {route_label}",
+                        f"Destination or result: {site.get('rom_destination', '(not established)')}",
+                        f"Speaker: {site.get('speaker_id', '').strip() or '(none identified)' }",
+                        f"Choice/menu pages: {site.get('menu_profiles', '').strip() or '(not identified)' }",
+                        f"Shop catalog: {site.get('shop_profile', '').strip() or '(none identified)' }",
+                        f"Story conditions: {site.get('state_or_branch_notes', '').strip() or '(not profiled)' }",
+                        f"Scripts involved: {site.get('lua_modules', '').strip() or '(not linked / not profiled)' }",
+                        f"ROM record and supporting evidence: {site.get('evidence', '').strip() or '(not recorded)' }",
                     ))
                     content_lines = read_site_content_details(
                         repo_root, site, text_catalog
@@ -2763,7 +2768,7 @@ class MapEntityViewer(QMainWindow):
         self.audio_info.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
         self.info_tabs = QTabWidget()
         self.info_tabs.addTab(self.info, "Source")
-        self.info_tabs.addTab(self.flow_info, "Game flow")
+        self.info_tabs.addTab(self.flow_info, "What happens")
         self.info_tabs.addTab(self.scene_info, "Map profile")
         self.info_tabs.addTab(self.audio_info, "Map audio")
         self.info_tabs.setMinimumHeight(230)
@@ -3156,23 +3161,22 @@ class MapEntityViewer(QMainWindow):
     def _entity_game_flow(self, entity: EntityDefinition) -> str:
         lines = [
             f"{entity.name}",
-            f"Entity ID: {entity.entity_id}",
-            f"Dialogue/menu content profile: "
-            f"{entity.content_profile or '(not linked)' }",
+            f"Place type: {entity.category}",
+            f"Dialogue/menu content: {entity.content_profile or '(not linked)' }",
             f"Speaker ID: {entity.speaker_id or '(not linked)' }",
-            f"Shop profile: {entity.shop_profile or '(not linked)' }",
+            f"Shop catalog: {entity.shop_profile or '(not linked)' }",
             "",
-            "ROM interactions and Lua handlers:",
+            "Known interactions and results:",
         ]
         if entity.interactables:
             for interaction in entity.interactables:
                 lines.extend((
-                    f"  {interaction.source_event or interaction.interaction_id}: "
-                    f"{interaction.lua_handler or '(not connected)' }",
-                    f"  Evidence: {interaction.evidence or '(not recorded)' }",
+                    f"  Trigger: {interaction.source_event or interaction.interaction_id}",
+                    f"  Game action: {interaction.lua_handler or '(not connected)' }",
+                    f"  Source note: {interaction.evidence or '(not recorded)' }",
                 ))
         else:
-            lines.append("  No interaction routes are attached to this entity.")
+            lines.append("  No doorway, service, or dialogue route is attached to this entity yet.")
         route_index = read_site_route_index(self.repo_root, self.scene_id)
         text_catalog = read_lua_string_table(
             self.assets / "dialogue" / "script-text.lua"
@@ -4194,7 +4198,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--inspect-tab",
-        choices=("Source", "Game flow", "Map profile", "Map audio"),
+        choices=("Source", "What happens", "Map profile", "Map audio"),
         help="select a right-dock evidence tab, useful with --snapshot",
     )
     args = parser.parse_args(argv)

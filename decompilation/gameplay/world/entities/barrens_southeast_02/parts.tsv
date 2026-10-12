@@ -1,0 +1,2 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+roof_and_body	map_composite	2	1520	976	160	80	32	48	behind_actor	body	Follows the teal shelter silhouette and the attached row of yellow drums visible on its front; dark ground shadow and separate gray debris are excluded.	field/entities/barrens_southeast_02/roof_and_body.png	32,64;48,48;176,48;192,64;192,112;176,128;48,128;32,112

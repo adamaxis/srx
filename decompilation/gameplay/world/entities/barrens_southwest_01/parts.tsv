@@ -1,0 +1,2 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+roof_and_body	map_composite	2	176	1008	160	80	16	48	behind_actor	body	Follows the visible teal shelter shell and its two front supports. The crop excludes the surrounding ground shadow and the gray debris below the supports.	field/entities/barrens_southwest_01/roof_and_body.png	16,64;32,48;160,48;176,64;176,96;160,112;32,112;16,96|48,80;64,80;64,128;48,128|128,80;144,80;144,128;128,128

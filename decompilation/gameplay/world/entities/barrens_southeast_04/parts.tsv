@@ -1,0 +1,2 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+roof_and_body	map_composite	2	1584	1104	160	80	32	32	behind_actor	body	Follows the teal shelter shell and its attached front drums; the neighboring shelter and surrounding ground are excluded.	field/entities/barrens_southeast_04/roof_and_body.png	32,48;48,32;176,32;192,48;192,96;176,112;48,112;32,96

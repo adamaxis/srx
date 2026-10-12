@@ -1,0 +1,2 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+roof_and_body	map_composite	2	1408	1232	160	64	32	32	behind_actor	body	Follows the visible shelter shell and attached drums above the south map barrier; the black ground shadow and adjacent facility wall are excluded.	field/entities/barrens_southeast_05/roof_and_body.png	32,48;48,32;176,32;192,48;192,80;176,96;48,96;32,80

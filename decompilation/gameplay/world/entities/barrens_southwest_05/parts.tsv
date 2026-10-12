@@ -1,0 +1,2 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+roof_and_body	map_composite	2	48	1224	96	72	16	24	behind_actor	body	Follows the visible shelter shell above the south map barrier. It stops at the adjacent industrial facade; ground shadow is excluded.	field/entities/barrens_southwest_05/roof_and_body.png	16,40;32,24;96,24;112,40;112,80;96,96;32,96;16,80

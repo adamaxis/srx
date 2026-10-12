@@ -1,0 +1,2 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+roof_and_body	map_composite	2	688	1136	144	96	32	32	behind_actor	body	Follows the teal shell, entry curtains, and two visible supports. It stops at the shelter edge, excluding east-side concrete and detached debris below.	field/entities/barrens_southwest_03/roof_and_body.png	32,48;48,32;160,32;176,48;176,96;160,112;48,112;32,96|64,96;80,96;80,128;64,128|160,96;176,96;176,128;160,128|128,96;144,96;144,128;128,128

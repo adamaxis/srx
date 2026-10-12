@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+jump_house_frontage	The Jump House frontage	building	Mike's RPG Center Redmond marker 1 is the name crosswalk. Scene 2 ROM record 85 at 0x1730FC selects the Jump House route; the downstream entry description is linked from Lua.	gunderson.jump_house	jump_house_entry	-

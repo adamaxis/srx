@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+south_industrial_frontage	Southern industrial frontage (Shiawase marker candidate)	building	The visual source is the large south-center industrial facade. Mike's RPG Center marker 10 is nearby, not a ROM-stored building name. ROM record 95 at 0x173160 enters the event-3 conditional maglock path before its generic activity route.	-	-	-

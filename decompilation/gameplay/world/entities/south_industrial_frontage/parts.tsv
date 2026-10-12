@@ -1,0 +1,3 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+upper_steel_facade	map_composite	2	960	992	256	160	0	0	behind_actor	overhang	Scene 2 source composite; upper teal industrial structure.	field/entities/south_industrial_frontage/upper_steel_facade.png	0,0;256,0;256,160;0,160
+lower_masonry_and_terminal	map_composite	2	960	1152	256	96	0	160	behind_actor	body	Scene 2 composite; masonry base, console and entry face. The trigger remains separate.	field/entities/south_industrial_frontage/lower_masonry_and_terminal.png	0,160;256,160;256,256;0,256

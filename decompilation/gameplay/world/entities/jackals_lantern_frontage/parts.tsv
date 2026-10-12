@@ -1,0 +1,3 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+steel_roof	map_composite	2	576	0	256	96	0	0	behind_actor	overhang	Scene 2 composite; teal roof/fascia crop.	field/entities/jackals_lantern_frontage/steel_roof.png	0,0;256,0;256,96;0,96
+masonry_front	map_composite	2	576	96	256	64	0	96	behind_actor	body	Scene 2 composite; lower masonry facade, not the concrete apron.	field/entities/jackals_lantern_frontage/masonry_front.png	0,96;256,96;256,160;0,160

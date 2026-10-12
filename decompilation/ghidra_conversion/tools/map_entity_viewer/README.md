@@ -40,12 +40,12 @@ their named actors with source-derived type and palette art as gated candidates;
 the adjacent selector shows one group at a time by default. Choose all groups
 only for comparison; that view does not claim the ROM runs them together.
 
-Scene-2 ROM event markers have map labels. The right dock's **Game flow** tab
-shows each site's confidence, event route/destination, known Lua modules,
-dialogue/menu/shop keys, and state branches. Guide labels are explicitly
+Scene-2 ROM event markers have map labels. The right dock's **What happens**
+tab shows each site's confidence, what contact does, where the route leads,
+the known dialogue/menu/shop text, and story conditions. Guide labels are explicitly
 marked as corroborated, candidate, or unresolved; they are not ROM names.
-Selecting an entity shows linked interaction handlers and imported dialogue
-text when that content profile exists. **Map profile** shows the selected ROM
+Selecting an entity shows its known interactions and imported dialogue text
+when that content exists. **Map profile** shows the selected ROM
 descriptor, camera setup, default three-member party placement, and the
 profile-selected actor list. ROM `0x03084` loads the three profile positions;
 `0x02B34` copies them into the three ordinary actor records when the entry
@@ -54,6 +54,23 @@ layer marks all three defaults. An incoming transition can replace them, so
 the profile points are not claimed as every route's arrival positions. Scene 2
 slot 1 is the traced New Game lead position before the automatic Stoker walk.
 Camera setup remains a separate value and is not treated as a player spawn.
+
+## Current evidence coverage
+
+- All 56 ROM field-map descriptors have an indexed default actor-list count;
+  all source positions with supported frame art use that actor type's extracted
+  sprite. The 69 conditional pedestrian positions and the three separate
+  scene-47 activity lists are shown as gated candidates, not as a claim that
+  every candidate is alive at once. Thon's source art program is not yet
+  resolved to a viewer sprite, and other timed/event-created populations still
+  need ROM profiling.
+- Scene 2 currently has 22 authored visual entities and a route crosswalk for
+  its 13 ROM event records. The entity list includes the named storefronts,
+  facility/perimeter, and southern shelters. Routes keep numeric destinations
+  numeric when the ROM does not identify a place or interior.
+- **Map audio** is present, but map-scoped music remains unresolved until the
+  ROM's scene-entry and persistent-audio paths are traced. Menu music is shown
+  separately and is not assigned to a map without evidence.
 
 An authored entity is a grouped annotation: its visual-part regions and
 interaction regions share one area origin. The outline and hit area follow

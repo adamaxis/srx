@@ -1,0 +1,3 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+steel_roof	map_composite	2	256	0	288	96	0	0	behind_actor	overhang	Scene 2 composite; cropped to the teal roof/fascia and excludes the forecourt.	field/entities/jump_house_frontage/steel_roof.png	0,0;288,0;288,96;0,96
+masonry_front	map_composite	2	256	96	288	64	0	96	behind_actor	body	Scene 2 composite; lower facade ends above the cracked-concrete apron.	field/entities/jump_house_frontage/masonry_front.png	0,96;288,96;288,160;0,160

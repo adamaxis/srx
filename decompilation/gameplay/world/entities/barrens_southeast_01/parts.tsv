@@ -1,0 +1,2 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+roof_and_body	map_composite	2	1232	984	160	72	48	56	behind_actor	body	Follows the visible teal shelter shell and side panels; nearby concrete and the separate yellow structure west of this shelter are excluded.	field/entities/barrens_southeast_01/roof_and_body.png	48,64;64,56;192,56;208,64;208,112;192,128;64,128;48,112

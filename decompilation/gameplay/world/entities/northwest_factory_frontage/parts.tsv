@@ -1,0 +1,4 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+upper_steel_front	map_composite	2	0	0	256	160	0	0	behind_actor	body	Scene 2 source composite: upper teal steel frontage, bounded at the visible facade edge.	field/entities/northwest_factory_frontage/upper_steel_front.png	0,0;256,0;256,160;0,160
+masonry_return	map_composite	2	0	160	128	96	0	160	behind_actor	body	Only the visible lower masonry return is included; the adjoining gray apron is excluded.	field/entities/northwest_factory_frontage/masonry_return.png	0,160;128,160;128,256;0,256
+warning_edge	map_composite	2	240	0	16	192	240	0	foreground	decal	Yellow/black edge marking belongs to the frontage edge; visual source crop, not a collision claim.	field/entities/northwest_factory_frontage/warning_edge.png	240,0;256,0;256,192;240,192

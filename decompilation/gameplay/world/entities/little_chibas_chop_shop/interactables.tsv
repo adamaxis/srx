@@ -1,0 +1,2 @@
+interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
+chop_shop_route	160	224	32	32	building.resolve_field_location_route	ROM 0x17314C	Scene 2 ROM collision/event record 0x17314C; exact 32x32 trigger retained separately from the visual building outline.

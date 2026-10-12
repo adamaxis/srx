@@ -1,0 +1,2 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+roof_and_body	map_composite	2	416	1152	128	96	16	16	behind_actor	body	Follows the teal shell, the two visible front supports, and red entry curtains as separate components. The crop ends at the structure edge x544, before the separate orange-marked debris east of it.	field/entities/barrens_southwest_04/roof_and_body.png	16,32;32,16;128,16;144,32;144,80;32,80;16,80|32,64;48,64;48,112;32,112|120,64;128,64;128,112;120,112|80,64;112,64;112,112;80,112

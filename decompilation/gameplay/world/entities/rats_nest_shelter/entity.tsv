@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+rats_nest_shelter	Rat's Nest site shelter	structure	Guide marker 9 aligns with this south-west shelter; the name is a guide crosswalk, not a ROM string. ROM record 97 at 0x173174 is a conditional indexed story route that can return to scene 2; the generic table byte does not establish a separate interior. Roof outline follows the source pixels at x368..544,y1032..1088; front posts/door are separate, and the large shadow is excluded.	-	-	-
