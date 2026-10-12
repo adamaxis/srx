@@ -1,0 +1,2 @@
+interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
+wire_masters_entry	128	208	32	32	building.resolve_field_location_route	0x067C4A	ROM scene-5 record 48, event 2, cell (35,15); guide marker 4 and ROM contract-location option 2.

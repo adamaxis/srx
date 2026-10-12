@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+renraku_downtown_connector	Guide-labeled Downtown connection	map_connector	Mike's RPG Center marker 1 places a Downtown connection at the west map edge. ROM records 52 and 53 cover cells (0,28) and (0,29), but their event-table value 0x79 is rejected by the scene selector. The destination remains unresolved; this is not drawn as building art.	-	-	-

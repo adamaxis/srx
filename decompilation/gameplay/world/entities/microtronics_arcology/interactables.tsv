@@ -1,0 +1,2 @@
+interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
+microtronics_entry	352	256	32	32	building.resolve_field_location_route	0x067C5E	ROM scene-5 record 50, event 4, cell (25,26); guide marker 6 and ROM contract-location option 4.

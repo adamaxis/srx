@@ -1,0 +1,3 @@
+interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
+downtown_edge_north	0	896	32	32	building.resolve_field_location_route	0x067C72	ROM scene-5 record 52, event 16, cell (0,28); guide marker 1 says To/from Downtown, but the ROM scene selector rejects row 16 value 0x79.
+downtown_edge_south	0	928	32	32	building.resolve_field_location_route	0x067C7C	ROM scene-5 record 53, event 16, cell (0,29); guide marker 1 says To/from Downtown, but the ROM scene selector rejects row 16 value 0x79.

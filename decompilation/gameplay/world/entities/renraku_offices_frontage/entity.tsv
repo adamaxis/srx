@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+renraku_offices_frontage	Renraku Offices (Renraku Computer Systems)	building	Guide marker 2 aligns with ROM scene-5 interaction record 46 at cell (19,5). ROM contract-location option 6 calls this Renraku Offices; the guide calls it Renraku Computer Systems. The outlined part is the central frontage bay around that entrance, not a claim that the whole north wall is one building. The ROM event selects resource activity 35; no site-specific opening dialogue/shop branch is linked yet.	-	-	-

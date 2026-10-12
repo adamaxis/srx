@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+from functools import lru_cache
 import re
 import sys
 from dataclasses import dataclass, field
@@ -133,6 +134,22 @@ def read_lua_string_table(path: Path) -> dict[str, str]:
     }
 
 
+def format_dialogue_text(value: str) -> str:
+    """Render imported line/page markers as readable text in the viewer."""
+    text = value.replace("\\n", "\n").replace("\\t", "\t")
+    text = text.replace("||", "\n").replace("|", "\n")
+    text = re.sub(
+        r"<([^<>]*)>",
+        lambda match: (
+            "< MORE >"
+            if match.group(1).strip().upper() == "MORE"
+            else match.group(1)
+        ),
+        text,
+    )
+    return text.strip()
+
+
 def extract_lua_block(source: str, opening: int, left: str = "{", right: str = "}") -> str:
     """Return a balanced Lua block, ignoring braces inside strings/comments."""
     if opening < 0 or opening >= len(source) or source[opening] != left:
@@ -200,7 +217,7 @@ def read_shop_profile_details(
 
     lines = [f"Shop profile source: {shop_path}"] if include_source_details else []
     title_key = f"shop.service.option.{profile}"
-    title = text_catalog.get(title_key, title_key)
+    title = format_dialogue_text(text_catalog.get(title_key, title_key))
     lines.append(
         f"Shop title: {title} [{title_key}]" if include_source_details
         else f"Shop: {title}"
@@ -224,9 +241,9 @@ def read_shop_profile_details(
         item_names[code] = re.sub(
             r"\s+",
             " ",
-            text_catalog.get(
+            format_dialogue_text(text_catalog.get(
                 f"items.name.{code}", match.group(1).replace("_", " ")
-            ).replace("||", " "),
+            )).replace("\n", " "),
         ).strip()
     duplicate_names = {
         name for name in item_names.values()
@@ -239,9 +256,9 @@ def read_shop_profile_details(
     # The Ares offer type 0x45 is the special universal-clips purchase row,
     # named by the shop's own extracted title and description rather than an
     # ordinary item-template entry.
-    universal_clips_name = text_catalog.get(
+    universal_clips_name = format_dialogue_text(text_catalog.get(
         "shop.universal_clips.title", "Universal Gun Clips"
-    )
+    ))
     if universal_clips_name:
         item_names[0x45] = re.sub(
             r"\s+", " ", universal_clips_name.replace("||", " ")
@@ -264,9 +281,9 @@ def read_shop_profile_details(
         headings = [
             re.sub(
                 r"\s+", " ",
-                text_catalog.get(
+                format_dialogue_text(text_catalog.get(
                     f"shop.action_heading.option.{heading_id}", ""
-                ).replace("||", " "),
+                )),
             ).strip()
             for heading_id in heading_ids
         ]
@@ -328,12 +345,11 @@ def read_shop_profile_details(
             "Shop text and headings from the Lua profile:" if include_source_details
             else "Shop instructions and headings:"
         )
-        lines.extend(
-            f"  {key}: {text_catalog.get(key, '(text key is not imported)')}"
-            if include_source_details else
-            f"  {text_catalog.get(key, '(text not imported)')}"
-            for key in resolved_keys
-        )
+        for key in resolved_keys:
+            text = format_dialogue_text(
+                text_catalog.get(key, "(text key is not imported)")
+            )
+            lines.append(f"  {key}: {text}" if include_source_details else f"  {text}")
     return lines
 
 
@@ -417,14 +433,18 @@ def read_dialogue_profile_details(
                     if not title:
                         continue
                     title_key = title.group(1)
-                    text = text_catalog.get(title_key, "(text key is not imported)")
+                    text = format_dialogue_text(text_catalog.get(
+                        title_key, "(text key is not imported)"
+                    ))
                     page = (
                         f"{event_name}: {text} [{title_key}]" if include_source_details
                         else f"{friendly_identifier(event_name)}: {text}"
                     )
                     if continuation and continuation.group(1):
                         key = continuation.group(1)
-                        continuation_text = text_catalog.get(key, key)
+                        continuation_text = format_dialogue_text(
+                            text_catalog.get(key, key)
+                        )
                         page += (
                             f"; continuation: {continuation_text} [{key}]"
                             if include_source_details else
@@ -452,7 +472,7 @@ def read_dialogue_profile_details(
                 page_open = profile_body.find("{", match.start())
                 page_body = extract_lua_block(profile_body, page_open)
                 title = re.search(r'\btitle_key\s*=\s*"([^"]+)"', page_body)
-                title_text_value = (
+                title_text_value = format_dialogue_text(
                     text_catalog.get(title.group(1), '(text key is not imported)')
                     if title else "(no title key declared)"
                 )
@@ -471,7 +491,9 @@ def read_dialogue_profile_details(
                     ):
                         choice_id = choice.group(1) or choice.group(2)
                         text_key = choice.group(3)
-                        label = text_catalog.get(text_key, "(text key is not imported)")
+                        label = format_dialogue_text(
+                            text_catalog.get(text_key, "(text key is not imported)")
+                        )
                         choices.append(
                             f"{choice_id}={label} [{text_key}]"
                             if include_source_details else label
@@ -542,9 +564,9 @@ def read_site_content_details(
     lines: list[str] = []
 
     def readable_text(key: str) -> str:
-        return text_catalog.get(key, "(text key is not imported)").replace(
-            "\\n", "\n"
-        ).replace("\\t", "\t")
+        return format_dialogue_text(
+            text_catalog.get(key, "(text key is not imported)")
+        )
 
     contract_location = site.get("rom_contract_location_index", "").strip()
     if contract_location and include_source_details:
@@ -567,10 +589,23 @@ def read_site_content_details(
                 f"ROM run-location option {contract_location} has no named "
                 "entry in the current area table."
             )
+    content_profile = site.get("content_profile", "").strip()
+    speaker_id = site.get("speaker_id", "").strip()
+    profile_text_keys: set[str] = set()
+    if content_profile or speaker_id:
+        source_profile_lines = read_dialogue_profile_details(
+            repo_root, content_profile, speaker_id, text_catalog,
+            include_source_details=True,
+        )
+        profile_text_keys = {
+            key
+            for line in source_profile_lines
+            for key in re.findall(r"\[([^\]]+)\]", line)
+        }
     text_keys = [
         key.strip()
         for key in site.get("text_keys", "").split(";")
-        if key.strip()
+        if key.strip() and key.strip() not in profile_text_keys
     ]
     if text_keys:
         lines.append("Dialogue, choices, and shop text shown by this route:")
@@ -611,8 +646,6 @@ def read_site_content_details(
                 "A menu is linked to this place, but its page text and choices "
                 "are not available in the current content profile."
             )
-    content_profile = site.get("content_profile", "").strip()
-    speaker_id = site.get("speaker_id", "").strip()
     if content_profile or speaker_id:
         lines.extend(read_dialogue_profile_details(
             repo_root, content_profile, speaker_id, text_catalog,
@@ -629,69 +662,24 @@ def read_site_content_details(
     return lines
 
 
-def read_map_audio_details(repo_root: Path, assets: Path, info: MapInfo) -> str:
-    """Report map-audio evidence without assigning menu audio to a map."""
-    lines = [
-        f"Scene {info.scene_id:02d} map audio",
+def read_map_audio_details(info: MapInfo) -> str:
+    """Show map-audio findings in plain language; source addresses stay elsewhere."""
+    return "\n".join((
+        f"Scene {info.scene_id:02d} music and sound",
         "",
-        "Map-specific background music: no scene track is selected by the "
-        "field-entry path traced in the ROM.",
-        "The scene descriptor and profile loader (0x03084) contain no music "
-        "resource ID. New Game enters the field through 0x007F0 and 0x0281E; "
-        "ordinary field transitions are processed through 0x02BD2/0x02CE0. "
-        "In the entry and transition branches traced so far, no scene-ID-to-song "
-        "lookup or map-specific track request was found. The field loop's "
-        "audio service (0x02900) passes pending commands to the audio driver; "
-        "it does not map the current scene ID to a song.",
-        "The scene number alone therefore does not identify the track audible "
-        "after entry. Audio already active or queued by the previous mode can "
-        "carry over, and event-triggered sound requests can occur during play. "
-        "No per-map music assignment is inferred here, and this trace does not "
-        "prove the field is silent.",
+        "Music on entry: the traced field-entry flow does not choose a song "
+        "based on this map.",
+        "What may still play: music already active when you arrive can continue, "
+        "and map events may request sounds during play.",
+        "Can the track be named from the map? Not yet. The map record does not "
+        "identify a song, and carry-over from the previous screen has not been "
+        "fully resolved.",
+        "Title and menu music are handled separately; they are not assigned to "
+        "this map.",
         "",
-        "Separate menu-mode audio found in the ROM:",
-        "  The menu-mode HUD loop submits event 0x5B through conditional audio "
-        "wrappers around 0x1763A/0x1764C, and sends event 0x03 to the audio "
-        "command-frame service at 0x17652. These calls are in the menu loop "
-        "and are not assigned to the selected map.",
-    ]
-    aliases_path = assets / "resources.tsv"
-    _, aliases = read_tsv(aliases_path)
-    alias_by_key = {row.get("alias", ""): row for row in aliases}
-    for event_id, description in (
-        (3, "menu-mode track request"),
-        (0x5B, "menu-mode start/stop request"),
-    ):
-        resource_id = event_id
-        alias = (
-            f"audio.music.resource.{resource_id:03d}"
-            if event_id == 3 else f"audio.effects.resource.{resource_id:03d}"
-        )
-        resource = alias_by_key.get(alias)
-        lines.append(
-            f"  Event 0x{event_id:02X} ({description}) -> {alias}: "
-            f"{resource.get('path', '(asset alias not found)') if resource else '(asset alias not found)'}"
-        )
-    _, loop_rows = read_tsv(assets / "audio" / "loop-points.tsv")
-    loop = next(
-        (row for row in loop_rows
-         if row.get("alias") == "audio.music.resource.003"),
-        None,
-    )
-    if loop:
-        lines.append(
-            "  Resource 003 loop metadata: decoded frames "
-            f"{loop.get('loop_start_frame')}..{loop.get('loop_end_frame')} at "
-            f"{loop.get('sample_rate')} Hz. This metadata describes that audio "
-            "asset; the menu-mode call path does not identify it as map music."
-        )
-    lines.extend((
-        "",
-        "The viewer keeps menu and intro music separate from map audio. The "
-        "remaining audio question is the exact driver state carried into each "
-        "field route and its stop lifetime, not a scene-to-track table.",
+        "Status: no map-specific music assignment is confirmed. This does not "
+        "mean the map is silent.",
     ))
-    return "\n".join(lines)
 
 
 def as_int(row: dict[str, str], name: str, default: int = 0) -> int:
@@ -2010,11 +1998,52 @@ def describe_event_table_target(target_class: str) -> str:
     return value or "Destination not established by the current ROM trace"
 
 
+@lru_cache(maxsize=1)
+def field_scene_display_names() -> dict[int, str]:
+    return {
+        scene_id: str(profile.get("name", ""))
+        for scene_id, profile in read_rom_contract_area_profiles(ROOT).items()
+        if profile.get("name")
+    }
+
+
 def describe_site_destination(value: str, current_scene: int) -> str:
     """Turn crosswalk scene IDs into readable map/activity destinations."""
     value = value.strip()
     if not value:
         return "Destination not established"
+
+    def readable_target(kind: str, scene_number: int) -> str:
+        if kind == "resource activity":
+            return (
+                "A separate game activity; its exact screen and choices are "
+                "not identified for this entrance yet."
+            )
+        if kind == "scripted activity":
+            return (
+                "A separate scripted sequence; its exact text and result are "
+                "not linked to this entrance yet."
+            )
+        if scene_number == current_scene:
+            return "This map continues; no different destination is established."
+        area_name = field_scene_display_names().get(scene_number)
+        if area_name:
+            return area_name
+        return (
+            "A different field map; its in-game place name is not identified "
+            "by this entrance yet."
+        )
+
+    simple_target = re.match(
+        r"^(Resource activity|Scripted activity|Field map)\s+(\d+)\b",
+        value,
+        re.I,
+    )
+    if simple_target:
+        kind = simple_target.group(1).lower()
+        if kind == "field map":
+            kind = "field"
+        return readable_target(kind, int(simple_target.group(2)))
     if re.search(r"handler\s+0x[0-9a-f]+.*destination (?:is )?unresolved", value, re.I):
         return "Special game event; final destination not established"
     conditional = re.match(
@@ -2049,34 +2078,16 @@ def describe_site_destination(value: str, current_scene: int) -> str:
         if scene_number == current_scene and "same-scene" in suffix_lower:
             return "Stay on this map; the guide's external connection is not established by this route"
         if kind and kind.lower().startswith("resource"):
-            label = f"Resource activity {scene_number}"
+            kind = "resource activity"
         elif kind and kind.lower().startswith("scripted"):
-            label = f"Scripted activity {scene_number}"
+            kind = "scripted activity"
         elif "resource activity" in suffix_lower:
-            label = f"Resource activity {scene_number}"
+            kind = "resource activity"
         elif "scripted activity" in suffix_lower:
-            label = f"Scripted activity {scene_number}"
+            kind = "scripted activity"
         else:
-            label = f"Field map {scene_number}"
-        suffix = re.sub(
-            r"\s*\((?:field|resource activity|scripted activity)\)",
-            "",
-            suffix,
-            flags=re.I,
-        )
-        suffix = re.sub(
-            r"with source flag/timeout gate",
-            "when its story gate allows it",
-            suffix.strip(),
-            flags=re.I,
-        )
-        suffix = re.sub(
-            r"if generic route continues",
-            "if the standard route continues",
-            suffix,
-            flags=re.I,
-        )
-        return label + (f" {suffix}" if suffix else "")
+            kind = "field"
+        return readable_target(kind, scene_number)
 
     return value
 
@@ -2089,9 +2100,9 @@ def describe_site_behavior(value: str) -> str:
         "generic_area_route":
             "Uses the map's ordinary area route.",
         "resource_activity_route":
-            "Starts the resource activity selected by the game.",
+            "Starts a separate game activity; its exact screen and choices are not identified here yet.",
         "scripted_activity_route":
-            "Starts a scripted activity selected by the game.",
+            "Starts a separate scripted sequence; its exact text and result are not identified here yet.",
         "conditional_area_route":
             "Checks the story condition before choosing the destination.",
         "same_map_dialogue_and_motel_service":
@@ -2815,6 +2826,7 @@ class FieldMapView(QGraphicsView):
         for item in getattr(self, "evidence_items", []):
             self.scene().removeItem(item)
         self.evidence_items: list[QGraphicsItem] = []
+        spawn_label_rects: list[QRectF] = []
         for index, region in enumerate(self.profile_entry_positions):
             if not self.show_profile_entries:
                 continue
@@ -2830,11 +2842,47 @@ class FieldMapView(QGraphicsView):
             marker.setData(2, index)
             marker.setToolTip(region.title)
             self.evidence_items.append(marker)
-            label_text = f"Party {index + 1}"
+            # Keep the map marks legible when party positions are close. The
+            # Map profile tab names each slot's role; these compact numbers
+            # identify the corresponding position without long labels colliding.
+            label_text = str(index + 1)
             label = self.scene().addText(label_text)
             label.setDefaultTextColor(color)
             label.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
-            label.setPos(region.x + region.width + 3, region.y - 4)
+            label_bounds = label.boundingRect()
+            peer_markers = [
+                QRectF(other.x, other.y, other.width, other.height)
+                for other_index, other in enumerate(self.profile_entry_positions)
+                if other_index != index
+            ]
+            candidates = []
+            for distance in range(0, 5):
+                vertical = distance * (label_bounds.height() + 2)
+                candidates.extend((
+                    (region.x + region.width + 3, region.y - 4 - vertical),
+                    (region.x - label_bounds.width() - 3, region.y - 4 - vertical),
+                    (region.x + region.width + 3, region.y + region.height + 2 + vertical),
+                    (region.x - label_bounds.width() - 3, region.y + region.height + 2 + vertical),
+                ))
+            label_rect = None
+            for label_x, label_y in candidates:
+                candidate = QRectF(
+                    label_x, label_y, label_bounds.width(), label_bounds.height()
+                )
+                if any(candidate.intersects(obstacle.adjusted(-2, -2, 2, 2))
+                       for obstacle in (*spawn_label_rects, *peer_markers)):
+                    continue
+                label_rect = candidate
+                break
+            if label_rect is None:
+                label_rect = QRectF(
+                    region.x + region.width + 3,
+                    region.y - 4 - index * (label_bounds.height() + 2),
+                    label_bounds.width(),
+                    label_bounds.height(),
+                )
+            label.setPos(label_rect.topLeft())
+            spawn_label_rects.append(label_rect)
             label.setZValue(11)
             label.setData(0, "map_evidence")
             label.setData(1, "profile_entry")
@@ -2855,6 +2903,14 @@ class FieldMapView(QGraphicsView):
                 rect.setToolTip(region.title)
                 self.evidence_items.append(rect)
         if self.show_events:
+            attached_source_events = {
+                interaction.source_event.strip().lower()
+                for instance in self.instances
+                for entity in (self.entities.get(instance.entity_id),)
+                if entity is not None
+                for interaction in entity.interactables
+                if interaction.source_event.strip()
+            }
             for index, region in enumerate(self.event_rectangles):
                 rect = self.scene().addRect(
                     QRectF(region.x, region.y, region.width, region.height),
@@ -2867,7 +2923,18 @@ class FieldMapView(QGraphicsView):
                 rect.setData(2, index)
                 rect.setToolTip(region.title)
                 self.evidence_items.append(rect)
-                if region.map_label:
+                source_event_match = re.search(
+                    r"\b0x[0-9a-f]{6}\b", region.details, re.IGNORECASE
+                )
+                source_event = source_event_match.group(0).lower() if source_event_match else ""
+                # Named map entities carry the public-facing label for their
+                # entrance. Drawing the same site name on the ROM trigger too
+                # creates overlapping, noisy UI. Keep the trigger rectangle
+                # selectable and show its source details when selected.
+                show_event_label = (
+                    region.map_label and source_event not in attached_source_events
+                )
+                if show_event_label:
                     label = self.scene().addText(region.map_label)
                     label.setDefaultTextColor(QColor(255, 224, 158, 255))
                     label.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
@@ -3527,8 +3594,8 @@ class MapEntityViewer(QMainWindow):
         scroll.setWidget(panel)
         self.right_scroll = scroll
         dock.setWidget(scroll)
-        dock.setMinimumWidth(350)
-        dock.setMaximumWidth(460)
+        dock.setMinimumWidth(460)
+        dock.setMaximumWidth(560)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
 
     def _build_toolbar(self) -> None:
@@ -3903,7 +3970,7 @@ class MapEntityViewer(QMainWindow):
     def _update_scene_audio_info(self) -> None:
         info = self.map_by_id[self.scene_id]
         self.audio_info.setPlainText(
-            read_map_audio_details(self.repo_root, self.assets, info)
+            read_map_audio_details(info)
         )
 
     def _update_scene_field_activities_info(self) -> None:
@@ -4039,12 +4106,10 @@ class MapEntityViewer(QMainWindow):
         route_sites = unique_routes
 
         if entity.interactables:
-            lines.append("Access points:")
-            for interaction in entity.interactables:
-                lines.append(
-                    f"  {interaction.width}×{interaction.height} pixel interaction area "
-                    f"at entity position ({interaction.local_x}, {interaction.local_y})."
-                )
+            lines.extend((
+                f"Entry points marked on this place: {len(entity.interactables)}.",
+                "Select an entry point on the map to inspect its route.",
+            ))
         if route_sites:
             for site in route_sites:
                 site_name = site.get("site_name", "").strip() or entity.name
@@ -4061,14 +4126,6 @@ class MapEntityViewer(QMainWindow):
                     )
                 if destination:
                     lines.append(f"  Where it leads: {destination}")
-                conditions = describe_site_conditions(site)
-                if conditions:
-                    lines.append(f"  Story conditions: {conditions}")
-                name_evidence = describe_site_crosswalk(
-                    site.get("crosswalk_status", "unresolved")
-                )
-                if name_evidence != "name evidence not recorded":
-                    lines.append(f"  Name evidence: {name_evidence}.")
                 content_lines = read_site_content_details(
                     self.repo_root, site, text_catalog, self.scene_id,
                     include_source_details=False,
@@ -4080,6 +4137,14 @@ class MapEntityViewer(QMainWindow):
                         "  Dialogue, menu choices, shop stock, or quest text "
                         "has not been linked to this place yet."
                     )
+                conditions = describe_site_conditions(site)
+                if conditions:
+                    lines.append(f"  Story conditions: {conditions}")
+                name_evidence = describe_site_crosswalk(
+                    site.get("crosswalk_status", "unresolved")
+                )
+                if name_evidence != "name evidence not recorded":
+                    lines.append(f"  Name evidence: {name_evidence}.")
         else:
             has_linked_profile = False
             if present(entity.content_profile) or present(entity.speaker_id):

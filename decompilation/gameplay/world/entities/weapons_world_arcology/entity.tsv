@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+weapons_world_arcology	Weapon's World	building	Guide marker 3 and ROM scene-5 record 47 align at cell (14,14). The guide names Weapon's World and lists its stock; ROM contract-location option 5 uses the same name. In scene 5, field mode 1 takes the ordinary event-table row 5 to resource activity 35; guide stock is not asserted as a trigger-linked ROM menu.	-	-	-

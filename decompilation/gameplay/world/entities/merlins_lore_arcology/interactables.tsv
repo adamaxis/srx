@@ -1,0 +1,2 @@
+interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
+merlins_lore_entry	192	256	32	32	building.resolve_field_location_route	0x067C54	ROM scene-5 record 49, event 3, cell (6,26); guide marker 5 and ROM contract-location option 3.

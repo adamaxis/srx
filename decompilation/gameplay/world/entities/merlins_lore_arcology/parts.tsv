@@ -1,0 +1,4 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+roof_overhang	priority_overlay	5	40	576	311	64	40	0	foreground	overhang	Distinct priority-plane roof cap above the southwest storefront; no roadway is included.	field/entities/merlins_lore_arcology/roof_overhang.png	40,0;351,0;351,64;40,64
+southwest_storefront_body	map_composite	5	0	640	384	192	0	64	behind_actor	body	Scene-5 pixel outline follows the southwest storefront wall and its lower stepped edge; the blue walking lane is excluded.	field/entities/merlins_lore_arcology/southwest_storefront_body.png	40,64;351,64;351,192;384,192;384,256;0,256;0,192;40,192
+entry_crest	priority_overlay	5	192	800	32	32	192	224	foreground	signage	Separate priority-plane fixture directly above the event-3 entry cell.	field/entities/merlins_lore_arcology/entry_crest.png	192,224;224,224;224,256;192,256

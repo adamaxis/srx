@@ -1,0 +1,2 @@
+interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
+weapons_world_entry	448	176	32	32	building.resolve_field_location_route	0x067C40	ROM scene-5 record 47, event 5, cell (14,14); guide marker 3 and ROM contract-location option 5.

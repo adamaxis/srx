@@ -1,0 +1,4 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+north_overhang	priority_overlay	5	992	272	608	16	0	0	foreground	overhang	Priority-plane roof edge above the east storefront, separated from its wall and the plaza.	field/entities/wire_masters_arcology/north_overhang.png	0,0;608,0;608,16;0,16
+east_storefront_body	map_composite	5	1056	288	544	192	64	16	behind_actor	body	Scene-5 pixels of the east storefront body. The outline excludes the central walkway and follows the lower facade edge.	field/entities/wire_masters_arcology/east_storefront_body.png	64,16;608,16;608,176;592,192;64,192
+entry_lamp	priority_overlay	5	1120	448	32	32	128	176	foreground	signage	Small priority-plane fixture directly above the ROM event cell; its meaning is not inferred from the art.	field/entities/wire_masters_arcology/entry_lamp.png	128,176;160,176;160,208;128,208

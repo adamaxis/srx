@@ -1,0 +1,2 @@
+interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
+frag_grenade_entry	128	256	32	32	building.resolve_field_location_route	0x067C68	ROM scene-5 record 51, event 1, cell (43,26); guide marker 7 and ROM contract-location option 1.
