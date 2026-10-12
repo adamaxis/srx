@@ -252,10 +252,51 @@ warriors (`0x1D70BC`); or 90-99, an Elven mage plus two Elven warriors
 chance. The previous summary's 5% no-list branch was incorrect. Combat exit
 and post-fight outcomes remain partial.
 
-The outcome table includes those two encounter graphs plus the direct patrol,
-Company Man, injured-person, alley-seller, watcher, and scene-41-to-43 Lone
-Star paths. Rows marked `partial` name a specific follow-up still open; a
-handler with some traced rows is not automatically treated as complete.
+**Being stalked (`0x21114`, scenes 6-9 and 44-50).** The enabled sums are
+4 and 6 in scenes 6-9, and 2 and 8 in scenes 44-50. The prompt at `0x121588`
+offers Attack (`0xED`), Duck for cover (`0xEE`), and Wait (`0xEF`). This is a
+separate event graph from the wilderness disturbance above; it does not check
+the `FFFBFB` progression stage or bit 8 of `FFFC22`.
+
+Attack enters `0x24AA8` and rolls 0-99: 0-29 attempts three Hell Hounds from
+`0x1D6F50`; 30-59 attempts two Wendigos from `0x1D6F68`; 60-79 attempts two
+Bandersnatches from `0x1D707C`; 80-89 selects one of two hunting parties with
+a bound-2 roll (Gator Shaman plus two Indian warriors at `0x1D70AC`, or Rat
+Shaman plus two Indian warriors at `0x1D70BC`); 90-99 attempts an Elven mage
+and two Elven warriors from `0x1D70CC`. The text nodes are `0x1215DC` through
+`0x1215FC`. These starts hand off toward combat; the combat exits are not
+joined yet.
+
+Duck enters `0x24B5A`, makes a separate 0-99 roll, and chooses a thresholded
+party trial count of 8, 6, 6, 5, or 5 for the same five bands. The source trial
+uses the average `+0x78` value across active runner records (`0x23750`, then
+`0x0DBA`). A zero result in `FFF0DD` falls through to the Attack pack roller.
+A nonzero result returns the matching avoidance node: Hell Hounds lose the
+player's scent (`0x1215A4`), a Wendigo passes (`0x1215AC`), a Bandersnatch
+fails to notice the player (`0x1215B4`), the AmerIndian hunting party passes
+(`0x1215BC`), or the elves continue past (`0x1215C4`). The `80-89` band uses
+resource descriptor `0x121E08`; `90-99` uses `0x122024`.
+
+Wait enters `0x24BF0`: rolls 0-49 use the same Attack pack roller; 50-74 show
+the guide prompt at `0x1216E0`; 75-99 call `0x59BCC` and return the healer
+text at `0x1215CC`. The guide offers the AmerIndian Village for 75 nuyen and
+the Sinsearach for 200. The payment handlers subtract from `FFFBFE`; if funds
+are sufficient, the 75-nuyen route initializes scene 6 and the 200-nuyen route
+initializes scene 9. Insufficient funds and either decline route return the
+shaman's refusal text without changing destination. The healing helper clears
+status bits 6 and 4 on each of three runner records, calls the two source
+record services with value 10, then writes `0x0A` to each record's `+0x4C`
+and `+0x9C` timer fields. Their gameplay meanings are not inferred here.
+
+A neighboring text node at `0x1215D4` describes an AmerIndian hunting party
+signaling the player to stay quiet. The traced choices above do not explicitly
+branch to that node; its connection to the shared result consumer remains
+unresolved, so it is not counted as a confirmed outcome. The outcome table
+includes the urban and wilderness disturbance branches, this stalker event,
+and the direct patrol, Company Man, injured-person, alley-seller, watcher,
+and scene-41-to-43 Lone Star paths. Rows marked `partial` name a specific
+follow-up still open; a handler with some traced rows is not automatically
+treated as complete.
 
 **Phantasmal watcher (`0x20F2A`, scenes 0, 3, and 5; sums 1-2 and 8).** The
 opening prompt at `0x120F00` links the two responses directly to data nodes:
