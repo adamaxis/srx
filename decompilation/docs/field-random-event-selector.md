@@ -249,6 +249,12 @@ pursuit system or other map event. The general map-wide pursuit route and its
 wanted-state conditions remain untraced, so “only these maps” would be an
 unsupported conclusion.
 
+For the six named urban maps, “almost any map” is supported by the ROM's
+random-event table: five have at least one conditional route that can reach a
+Lone Star encounter. That statement is about those six map contexts and their
+event choices; it does not mean that an officer is spawned unconditionally or
+that the same patrol handler is enabled in every one of the 56 field scenes.
+
 ### Selector boundary for wanted-state pursuit
 
 The ROM field tick at `0x1E166` applies its actor/effect guards, checks the
@@ -261,6 +267,24 @@ police branches above are table and dialogue outcomes, not a global wanted
 flag that makes the same patrol event eligible in every scene. A separate
 map-trigger or timed actor path could still provide broader pursuit; its
 entry, state gate, and scene coverage have not been established yet.
+
+The separate heat byte `FFFBFA` is encounter state, not the selector's
+map-wide spawn gate. ROM cross-references show it is raised by the shared
+police Attack/Run branches and by an actor action path, read by encounter and
+legal-service handlers, reduced on qualifying compliance/payment, and cleared
+by the shared arrest settlement. The settlement at `0x235AA` removes the
+source-listed weapon item IDs from the three runner records, computes a first
+fine of 1,000 nuyen times `(heat + 2)`, repeatedly halves that amount until it
+fits the available funds, deducts it, and clears `FFFBFA`. This is the
+consequence of an arrest path after an encounter; the selector at `0x59986`
+and its field tick at `0x1E166` do not read the heat byte.
+
+The scene-41-to-43 patrol handler separately reads `FFFC22` bit 10 before its
+ID-check choices. Its failure text says the officer did not recognize the
+player's ID badge. The inspected selector and handler do not show that bit as
+a general wanted-state flag. The bit's save/story writers and any additional
+map-wide pursuit path remain open; the current trace does not use the Notebook
+wanted notices as proof of either.
 
 There is also a separate player legal-state path to resolve. The third 32-entry Tips pointer table at `0xC2816` maps global entries 65-96; entries 70-73 point to text starts `0xC4390`, `0xC4465`, `0xC451E`, and `0xC45E1`. Entry 70 contains the wanted-for-questioning notice (including `0xC442C`); entry 71 is addressed to detectives and describes the suspect as armed and dangerous; entry 72 is addressed to hunting parties and calls the player a fugitive; entry 73 is a Lone Star Records prisoner-transfer notice about Vigore. Since the selector tests each table's local zero-based entry index, these four entries correspond to `FFFC38` bits 5-8; the wanted/fugitive notices are bits 5-7. These are Notebook display-eligibility bits; the source trace has not shown them to be the wanted-state values consumed by field pursuit. ROM contact text at `0xC63CF` and `0xC651C` offers to delete the Lone Star record, while `0x10E3C1` and `0x10F009` describe a Weapon Permit and patrols flagging the player down. Those strings establish that the record/permit mechanics exist, but they do not establish the writer/checker for the first three tip bits or the map-wide patrol spawn condition. The general patrol pursuit route remains untraced; this known-selector profile therefore cannot say which other maps support it or how often it occurs.
 
