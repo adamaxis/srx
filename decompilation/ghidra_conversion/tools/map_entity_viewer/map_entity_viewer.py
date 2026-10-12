@@ -5615,14 +5615,14 @@ class MapEntityViewer(QMainWindow):
         gargoyle_scenes = set(dynamic_actors.get("Gargoyle", {}).get("scenes", set()))
         rows = [
             (
-                "Lone Star story encounters in five of six city areas",
+                "Known Lone Star selector and choice paths (partial)",
                 self._format_scene_ids(lone_star_scenes),
-                "The selector and its traced choice continuations reach Downtown Seattle (scene 0), Puyallup Barrens (1), Redmond Barrens (2), Penumbra District (3), and Renraku Arcology (5); Council Island (4) has no Lone Star-named selector path. The direct patrol prompt is only one part of that reach: other scenes expose patrols through the injured-person, flustered-woman, Company Man, haggard-man, and alley-seller choices. Lone Star templates also appear in scenes 1 and 41-43. ROM contact dialogue mentions deleting the Lone Star record and obtaining a Weapon Permit. Notebook tips 70-72 carry the wanted-for-questioning, armed-and-dangerous, and fugitive/hunting-party notices; tip 73 is a Lone Star Records prisoner-transfer notice. The code connecting the player legal state to a wider map-wide patrol spawn is still unresolved; do not read this selector census as evidence that other maps have no pursuit.",
+                "The traced dialogue selector and choice continuations reach Downtown Seattle (scene 0), Puyallup Barrens (1), Redmond Barrens (2), Penumbra District (3), and Renraku Arcology (5). This is only the known selector path, not a map coverage list: Council Island (4) has no Lone Star-named selector path, but a separate pursuit response could still occur there. The direct patrol prompt is only one part of the traced path; other scenes expose patrols through the injured-person, flustered-woman, Company Man, haggard-man, and alley-seller choices. Lone Star templates also appear in scenes 1 and 41-43. ROM contact dialogue mentions deleting the Lone Star record and obtaining a Weapon Permit. Notebook tips 70-72 carry the wanted-for-questioning, armed-and-dangerous, and fugitive/hunting-party notices; tip 73 is a Lone Star Records prisoner-transfer notice. The code connecting player legal state to broad map-wide patrol pursuit remains untraced, so this summary cannot say which maps permit it or how often it happens.",
             ),
             (
                 "Hell Hounds across 26 scene contexts",
                 self._format_scene_ids(hell_hound_scenes),
-                "The zero-cell dynamic actor table selects Hell Hounds in 26 scene contexts: Downtown Seattle (0), Wilderness Areas 1-4 (6-9), Hollywood Correctional Facility (20), and contexts 26-29 and 35-50. That final 16-context span is part of the coverage and is not summarized as only the named surface maps. The per-scene Map overview now lists each selected sequence and its actor multiplicity. These are temporary, terrain-checked screen-edge event actors, not fixed residents.",
+                "The zero-cell dynamic actor table selects Hell Hounds in 26 scene contexts: Downtown Seattle (0), Wilderness Areas 1-4 (6-9), Hollywood Correctional Facility (20), and contexts 26-29 and 35-50. Across the 33 scene/sum outcomes containing Hell Hounds, a sequence lists 1-4 actors. This generic dynamic sequence is separate from the wilderness disturbance's low-stage three-Hound pack. These are temporary, terrain-checked screen-edge event actors, not fixed residents.",
             ),
             (
                 "Creature templates across broad map sets",
@@ -5630,9 +5630,9 @@ class MapEntityViewer(QMainWindow):
                 "The dynamic table includes Wendigos and Bandersnatches on scenes 1, 4, 6-9, and 44-50, plus Gargoyles on scenes 4, 6-9, and 44-55. The complete per-template scene and random-sum list follows below.",
             ),
             (
-                "Later-stage Renraku Strike Teams: 9 of 10 named areas plus scenes 44-50",
+                "Later-stage Renraku Strike Teams: 16 field-map scene contexts",
                 self._format_scene_ids(disturbance_scenes),
-                "Three disturbance handlers share the FFFBFB progression counter and FFFC22 bit-8 gate across scenes 0-3, 5-9, and 44-50. This is not limited to the explicit Renraku-building encounters: it reaches nine of the ten named city/wilderness areas (all except Council Island) and seven additional scripted-activity contexts, scenes 44-50. With bit 8 clear, stages 2-3 select 2 Strike Team actors, stages 4-6 select 4, and stages 7-8 select 5. The additional contexts' place names are not yet cross-referenced. This is separate from the scene-47 story lists.",
+                "Three disturbance handlers share the FFFBFB progression counter and FFFC22 bit-8 gate across scenes 0-3, 5-9, and 44-50. Within the ROM field-area/exploration set 0-9 and 44-50 (17 scene IDs), this route is enabled on 16; Council Island (scene 4) is the exception. Scenes 44-50 are selectable field-map contexts, not merely scripted activities. With bit 8 clear, stages 2-3 select 2 Strike Team actors, stages 4-6 select 4, and stages 7-8 select 5. Scene 47 alone is cross-referenced to Cave 4 from the guide; the other scene names remain unresolved. This is separate from the scene-47 story lists and explicit Renraku-building encounters.",
             ),
             (
                 "Creature packs after a wilderness disturbance",
