@@ -4169,6 +4169,18 @@ class MapEntityViewer(QMainWindow):
         _, self.dynamic_world_actor_rows = read_tsv(
             assets / "field" / "entities" / "dynamic-world-activity-actors.tsv"
         )
+        _, dynamic_template_labels = read_tsv(
+            world / "actors" / "dynamic-template-labels.tsv"
+        )
+        self.dynamic_template_labels = {
+            (
+                row.get("rom_name", "").strip(),
+                row.get("entity_kind", "").strip(),
+                row.get("palette_line", "").strip(),
+                row.get("sprite_stem", "").strip(),
+            ): row.get("display_name", "").strip()
+            for row in dynamic_template_labels
+        }
         self.maps = read_map_catalog(assets)
         self.map_by_id = {item.scene_id: item for item in self.maps}
         self.scene_id = initial_scene
@@ -4963,6 +4975,67 @@ class MapEntityViewer(QMainWindow):
             read_map_audio_details(info)
         )
 
+    def _dynamic_actor_summary_html(self, heading: str, explanation: str) -> str:
+        rows = [
+            row for row in self.dynamic_world_actor_rows
+            if as_int(row, "scene", -1) == self.scene_id
+        ]
+        grouped: dict[tuple[str, str, str, str], set[str]] = {}
+        for row in rows:
+            display_name = self._dynamic_actor_display_name(row)
+            key = (
+                display_name,
+                row.get("sprite_stem", "").strip(),
+                row.get("entity_kind", "?").strip(),
+                row.get("palette_line", "?").strip(),
+            )
+            grouped.setdefault(key, set()).add(row.get("random_sum", "").strip())
+
+        page = [
+            f"<h3>{html.escape(heading)} ({len(grouped)} types)</h3>",
+            f"<p>{html.escape(explanation)}</p>",
+        ]
+        if not grouped:
+            page.append("<p>No dynamic actor templates are listed for this map.</p>")
+            return "\n".join(page)
+
+        page.append('<table border="0" cellspacing="6" cellpadding="3">')
+        for (name, sprite_stem, kind, palette), sums in sorted(grouped.items()):
+            sprite_path = (
+                self.assets / "field" / "entities" / "actors" /
+                f"{sprite_stem}-idle.bmp"
+            ) if sprite_stem else None
+            image = ""
+            if sprite_path is not None and sprite_path.is_file():
+                image = (
+                    f'<img src="{html.escape(sprite_path.as_uri(), quote=True)}" '
+                    f'width="48" height="48" alt="{html.escape(name, quote=True)}">'
+                )
+            ordered_sums = sorted(
+                (value for value in sums if value),
+                key=lambda value: int(value) if value.isdigit() else 1000,
+            )
+            page.append(
+                f"<tr><td width=56 valign=top>{image}</td><td>"
+                f"<b>{html.escape(name)}</b><br>"
+                f"Encounter roll sums: {html.escape(', '.join(ordered_sums) or 'see event list')}<br>"
+                f"<small>ROM entity kind {html.escape(kind)}; palette line {html.escape(palette)}</small>"
+                "</td></tr>"
+            )
+        page.append("</table>")
+        return "\n".join(page)
+
+    def _dynamic_actor_display_name(self, row: dict[str, str]) -> str:
+        key = (
+            row.get("actor_name", "").strip(),
+            row.get("entity_kind", "").strip(),
+            row.get("palette_line", "").strip(),
+            row.get("sprite_stem", "").strip(),
+        )
+        return self.dynamic_template_labels.get(
+            key, row.get("actor_name", "ROM actor").strip() or "ROM actor"
+        )
+
     def _update_scene_character_info(self) -> None:
         info = self.map_by_id[self.scene_id]
         populations = self.map_view.actor_positions
@@ -4975,6 +5048,12 @@ class MapEntityViewer(QMainWindow):
             f"<h2>Characters in {html.escape(self._scene_display_name(info))}</h2>",
             "<p>Only characters listed by the game are shown here. Background artwork alone never adds a person.</p>",
         ]
+        page.append(self._dynamic_actor_summary_html(
+            "Possible encounter characters",
+            "These are temporary event characters selected for this map. The ROM "
+            "chooses an open position at the visible screen edge and checks terrain, "
+            "so the source gives them no permanent map coordinate.",
+        ))
 
         def actor_fact(actor: MapEvidenceRegion, pattern: str, fallback: str) -> str:
             match = re.search(pattern, actor.details, re.MULTILINE)
@@ -5028,56 +5107,6 @@ class MapEntityViewer(QMainWindow):
                 )
             page.append("</table>")
 
-        dynamic_rows = [
-            row for row in self.dynamic_world_actor_rows
-            if as_int(row, "scene", -1) == self.scene_id
-        ]
-        dynamic_types: dict[tuple[str, str], set[str]] = {}
-        for row in dynamic_rows:
-            actor_name = row.get("actor_name", "ROM actor").strip()
-            sprite_stem = row.get("sprite_stem", "").strip()
-            dynamic_types.setdefault((actor_name, sprite_stem), set()).add(
-                row.get("random_sum", "")
-            )
-        page.append(
-            f"<h3>Possible encounter characters ({len(dynamic_types)} types)</h3>"
-        )
-        if not dynamic_types:
-            page.append(
-                "<p>No separate encounter character is listed for this map. "
-                "The Random events tab shows the outcomes recorded for it.</p>"
-            )
-        else:
-            page.append(
-                "<p>The ROM chooses an open screen-edge position and checks terrain "
-                "when the event starts. These candidates have no fixed map coordinate, "
-                "so they are listed here with their source sprites instead of being "
-                "drawn as permanent map residents.</p>"
-            )
-            page.append('<table border="0" cellspacing="6" cellpadding="3">')
-            for (actor_name, sprite_stem), roll_sums in sorted(dynamic_types.items()):
-                sprite_path = (
-                    self.assets / "field" / "entities" / "actors" /
-                    f"{sprite_stem}-idle.bmp"
-                ) if sprite_stem else None
-                sprite = ""
-                if sprite_path is not None and sprite_path.is_file():
-                    sprite = (
-                        f'<img src="{html.escape(sprite_path.as_uri(), quote=True)}" '
-                        'width="48" height="48" alt="">'
-                    )
-                sums = ", ".join(sorted(
-                    (value for value in roll_sums if value),
-                    key=lambda value: int(value) if value.isdigit() else 1000,
-                ))
-                page.append(
-                    "<tr><td width=56 valign=top>" + sprite + "</td><td>"
-                    f"<b>{html.escape(actor_name)}</b><br>"
-                    f"Possible encounter outcomes: {html.escape(sums or 'see Random events tab')}"
-                    "</td></tr>"
-                )
-            page.append("</table>")
-
         out_of_bounds = read_out_of_bounds_actor_details(self.assets, info)
         if out_of_bounds:
             page.append(f"<h3>Characters outside the visible map ({len(out_of_bounds)})</h3>")
@@ -5125,6 +5154,12 @@ class MapEntityViewer(QMainWindow):
             "open screen-edge positions at runtime, so the pictures below show the "
             "actor types without assigning them fixed map positions.</p>",
         ]
+        parts.append(self._dynamic_actor_summary_html(
+            "Possible encounter characters on this map",
+            "This scene's ROM actor templates and their encounter roll sums are "
+            "listed here with the correct source sprite. Positions are chosen when "
+            "an encounter runs, so these are not fixed map placements.",
+        ))
         for row in rows:
             total = row.get("random_sum", "?")
             pair_count = row.get("roll_pair_count", "0")
@@ -5177,7 +5212,7 @@ class MapEntityViewer(QMainWindow):
 
             parts.append("<p><b>Characters in this sequence:</b></p><table>")
             for actor in actors:
-                name = html.escape(actor.get("actor_name", "ROM actor"))
+                name = html.escape(self._dynamic_actor_display_name(actor))
                 kind = html.escape(actor.get("entity_kind", "?"))
                 palette = html.escape(actor.get("palette_line", "?"))
                 source_order = html.escape(actor.get("source_order", ""))
@@ -5194,8 +5229,8 @@ class MapEntityViewer(QMainWindow):
                     )
                 parts.append(
                     "<tr><td>" + image_cell + "</td><td><b>" + name +
-                    f"</b><br>Actor type {kind}; palette line {palette}; "
-                    f"sequence entry {source_order}</td></tr>"
+                    f"</b><br><small>ROM entity kind {kind}; palette line {palette}; "
+                    f"sequence position {source_order}</small></td></tr>"
                 )
             parts.extend((
                 "</table>",

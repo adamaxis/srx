@@ -61,6 +61,11 @@ indexes the three ROM-triggered scene-47 lists. **Special actor lists** shows
 their named actors with source-derived type and palette art as gated candidates;
 the adjacent selector shows one group at a time by default. Choose all groups
 only for comparison; that view does not claim the ROM runs them together.
+Dynamic encounter characters have a separate editable name table at
+`gameplay/world/actors/dynamic-template-labels.tsv`, keyed by the exact ROM
+template name, kind, palette, and extracted sprite. Both **Characters** and
+**Random events** put that map's temporary character roster and correct source
+sprites before the longer record-by-record event details.
 
 The scene selector uses the ROM-backed contract district names for scenes 0–5
 and labels scenes 6–9 with explicitly marked map-guide cross-references.
@@ -272,8 +277,9 @@ not that the ROM has no way into the map.
   their opening text and visible choices are decoded from the prompt records.
   Disabled cells enter separate dynamic actor sequences. The asset importer
   follows their tagged actor templates and marker-2 overrides for every map
-  context and roll sum. The panel shows the actor's source name and extracted
-  sprite beside the outcome. Those temporary actors appear at open edge points
+  context and roll sum. The per-map roster shows readable template labels and
+  the matching extracted sprite, while the data table preserves each exact ROM
+  template name. Those temporary actors appear at open edge points
   chosen from the current map state, so the source does not provide permanent
   map coordinates and they are not drawn as standing residents. Later choices
   may branch on live game state.
