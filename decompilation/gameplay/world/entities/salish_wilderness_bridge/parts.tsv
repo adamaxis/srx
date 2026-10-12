@@ -1,0 +1,3 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+timber_bridge_deck	map_composite	6	1024	864	304	96	0	0	background	bridge	The timber deck and supports are bounded as one crossing structure; adjacent banks and dirt approaches are excluded.	field/entities/salish_wilderness_bridge/bridge-deck.png	0,24;288,24;304,40;304,72;288,88;0,88;0,56
+priority_bridge_edge	priority_overlay	6	1024	864	304	96	0	0	foreground	overhang	Sparse priority-plane pixels from the bridge edge/supports, kept separate from the bridge body.	field/entities/salish_wilderness_bridge/priority-edge.png	0,24;288,24;304,40;304,72;288,88;0,88;0,56

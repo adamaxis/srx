@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+salish_wilderness_bridge	Timber river crossing	structure	Visible timber bridge crossing the river on the extracted Scene 6 map. The visual object is distinct from the water and approach paths; route and collision behavior remain governed by the ROM layers.	-	-	-

@@ -1,0 +1,2 @@
+interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
+rom_event_0	128	160	32	32	building.resolve_field_location_route	0x14C108	ROM event record 193 at 0x14C108; exact 32x32 event cell. The guide cross-reference is not a ROM speaker label.

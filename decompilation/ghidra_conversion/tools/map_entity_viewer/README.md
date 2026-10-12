@@ -143,6 +143,20 @@ value and is not treated as a player spawn.
   ROM table result, which currently selects no valid scene. The storefront
   bounds describe the visible structures; surrounding floor and entry cells
   remain separate annotations.
+- Scene 6 matches Mike's RPG Center's Wilderness Area 1 map. Eight visible
+  village structures are separate map entities: the two guide-marked lodges
+  and six unnamed structures. Their facade/platform and priority-roof parts
+  stay separate from the surrounding trails. The river and timber crossing
+  are separate visual features. Five ROM table events and the direct event-31
+  continuation are clickable: events 0, 1, 8, 9, and 10 select field map 13;
+  event 31's continuation remains unresolved. Scene 13 is shared with the
+  separate Jump House route, so the guide's David Owlfeather, Red Buffalo
+  Woman, and cave labels remain cross-references rather than ROM interior
+  names. Related Notebook text appears as related quest text, not as confirmed
+  entry dialogue. The source scene-6 default actor list is empty, so the
+  viewer does not place those named people as static map residents. Scene 13's
+  additional world-script gate, the named locations' actual dialogue/speaker
+  branches, return routes, and field audio remain unresolved.
 - The source actor layer is data-driven across the extracted map catalog: the
   viewer uses each ROM record's actor type and sprite art, shows default scene
   records separately from conditional choices, and keeps special event lists

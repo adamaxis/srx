@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+salish_red_buffalo_lodge	Village lodge (Red Buffalo Woman guide cross-reference)	building	Visible village dwelling in the extracted Scene 6 map; Mike's RPG Center marker 3 cross-references Red Buffalo Woman. ROM record 194 at 0x14C112 is the nearby event-1 cell; it routes to field map 13 but does not identify the speaker or the lodge name.	-	-	-

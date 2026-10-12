@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+salish_owlfeather_ranger_lodge	Ranger lodge (David Owlfeather guide cross-reference)	building	Visible central lodge in the extracted Scene 6 map; Mike's RPG Center marker 2 cross-references David Owlfeather. ROM record 193 at 0x14C108 is the nearby event-0 cell; it routes to field map 13 but does not identify the speaker or the lodge name.	-	-	-

@@ -299,6 +299,35 @@ Event indices `0x18..0x1F` have bytes in these tables too, but `0xB7B8`
 handles those IDs directly. They are retained in each per-trigger row as
 diagnostic bytes, marked as bypassed by the dispatcher.
 
+### Scene 6: Wilderness Area 1 crosswalk
+
+The ROM profile at `0x14B890` has six event-bearing collision records. Records
+193/194 (events 0/1) and 190/191/192 (events 8/9/10) use event-table rows
+0/1/8/9/10 at `0x14B8EC`; every one contains `0x0D`, selecting field map 13.
+The per-record bounds align with Mike's RPG Center Wilderness Area 1 markers 2
+through 6: David Owlfeather's lodge, Red Buffalo Woman's lodge, Cave 1, the
+unidentified cave, and Cave 2. Those names are a guide crosswalk; the ROM
+contains the numeric target and does not name any of those destinations.
+
+Field map 13 is reused by the separate Scene-2 Jump House route: Scene-2 event
+4 targets map 13 and map 13's event-30 records start the Gunderson interaction.
+That reuse means the Scene-6 table result alone does not establish a unique
+room, speaker, interior script, or return route. `0x167AE` checks
+`FFFC1E` bit 19 before selecting Scene 13's additional world script; the flag's
+quest meaning and that script's content are not linked to these five Scene-6
+triggers. Related Notebook entries for Owlfeather and Red Buffalo Woman remain
+quest references, not confirmed entry-dialogue text.
+
+Scene-6 record 189 at `0x14C0E0` is event `0x1F`; it bypasses the event table
+and sets the direct continuation at `0x0DB26`. The complete continuation is
+not independently traced, so its action and destination remain unresolved.
+The scene-6 default actor list is empty. The guide's named people therefore
+remain site cross-references until their actor service and gated placements
+are source-traced; they are not populated as scenery residents. See the
+[Wilderness Area 1 map](https://mikesrpgcenter.com/shadowrun/maps/wild1.html)
+for the secondary coordinate/name crosswalk and
+`gameplay/world/areas/scene-06-site-routes.tsv` for the clickable route rows.
+
 ## Converted code and runtime wiring
 
 | ROM/source operation | Converted C++ function or runtime owner |
