@@ -482,6 +482,7 @@ struct GameScriptRuntime::Impl {
     std::string location_id;
     std::string location_text_profile;
     std::string location_speaker_id;
+    std::string location_event_id;
     ScriptFieldModeContext field_mode_context{};
     const ScriptActorBehaviorContext* active_actor_context = nullptr;
     std::string bridge_failure;
@@ -575,6 +576,8 @@ struct GameScriptRuntime::Impl {
             value = self->location_text_profile;
         } else if (field == "speaker_id") {
             value = self->location_speaker_id;
+        } else if (field == "event_id") {
+            value = self->location_event_id;
         } else {
             lua_pushnil(lua);
             return 1;
@@ -2454,11 +2457,13 @@ StoryFacts GameScriptRuntime::story_state() const {
 void GameScriptRuntime::set_location_context(
     const std::string_view type, const std::string_view id,
     const std::string_view text_profile,
-    const std::string_view speaker_id) {
+    const std::string_view speaker_id,
+    const std::string_view event_id) {
     if (impl_->state == nullptr || !valid_identifier(type) ||
         !valid_identifier(id) ||
         (!text_profile.empty() && !valid_identifier(text_profile)) ||
-        (!speaker_id.empty() && !valid_identifier(speaker_id))) {
+        (!speaker_id.empty() && !valid_identifier(speaker_id)) ||
+        (!event_id.empty() && !valid_identifier(event_id))) {
         impl_->failure = "invalid gameplay location context";
         return;
     }
@@ -2466,6 +2471,7 @@ void GameScriptRuntime::set_location_context(
     impl_->location_id = std::string(id);
     impl_->location_text_profile = std::string(text_profile);
     impl_->location_speaker_id = std::string(speaker_id);
+    impl_->location_event_id = std::string(event_id);
 }
 
 void GameScriptRuntime::set_field_mode_context(

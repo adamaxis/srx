@@ -132,4 +132,20 @@ function Events.new_game_opening_walk()
     return game.actor.walk_heading("player", 0)
 end
 
+-- Location content is selected in Lua after the native field dispatcher has
+-- supplied a typed context. Shared presentation stays generic; the active
+-- location's speaker and dialogue profile own the text and choices.
+function Events.present_location_dialogue()
+    local location = game.location
+    if type(location.type) ~= "string" or location.type ~= "building" or
+       type(location.id) ~= "string" or
+       type(location.speaker_id) ~= "string" or
+       type(location.text_profile) ~= "string" or
+       type(location.event_id) ~= "string" then
+        return "skip"
+    end
+    game.ui.say(location.event_id)
+    return "shown"
+end
+
 return Events

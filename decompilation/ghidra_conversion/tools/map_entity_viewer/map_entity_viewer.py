@@ -522,6 +522,106 @@ def read_dialogue_profile_details(
     return lines
 
 
+def read_dialogue_panel_preview_html(
+    repo_root: Path, site: dict[str, str], text_catalog: dict[str, str]
+) -> str:
+    """Show linked source portrait and dialogue copy beside a map route."""
+    speaker_id = site.get("speaker_id", "").strip()
+    if not speaker_id:
+        return ""
+    dialogue_path = (
+        repo_root / "decompilation" / "gameplay" / "scripts" / "dialogue.lua"
+    )
+    try:
+        source = dialogue_path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    speaker_body = lua_named_table_body(
+        source, r"\blocal\s+speakers\s*=\s*\{", speaker_id
+    )
+    if not speaker_body:
+        return ""
+    name_match = re.search(r'\bname\s*=\s*"([^"]+)"', speaker_body)
+    portrait_match = re.search(
+        r'\bportrait_alias\s*=\s*"([^"]+)"', speaker_body
+    )
+    display_name = name_match.group(1) if name_match else friendly_identifier(speaker_id)
+    portrait_html = "<p>Portrait art is not linked for this speaker.</p>"
+    if portrait_match:
+        alias = portrait_match.group(1)
+        prefix = "dialogue.portraits."
+        if alias.startswith(prefix):
+            stem = alias[len(prefix):].replace(".", "-")
+            portrait = (
+                repo_root / "decompilation" / "assets" / "dialogue" /
+                "portraits" / f"{stem}.bmp"
+            )
+            if portrait.is_file():
+                portrait_html = (
+                    f'<img src="{html.escape(portrait.as_uri(), quote=True)}" '
+                    f'width="80" height="103" alt="{html.escape(display_name, quote=True)}">'
+                )
+
+    text_keys = [
+        key.strip()
+        for key in site.get("text_keys", "").split(";")
+        if key.strip()
+    ]
+    if not text_keys:
+        events_match = re.search(r"\bevents\s*=\s*\{", speaker_body)
+        if events_match:
+            events_open = speaker_body.find("{", events_match.start())
+            events_body = extract_lua_block(speaker_body, events_open)
+            text_keys = re.findall(
+                r'\btitle_key\s*=\s*"([^"]+)"', events_body
+            )
+    content: list[str] = []
+    for index, key in enumerate(text_keys):
+        text = format_dialogue_text(text_catalog.get(key, "")).strip()
+        if not text:
+            continue
+        label = "Opening text" if index == 0 else "Other linked text"
+        content.append(
+            f"<p><b>{label}</b><br>{html.escape(text).replace(chr(10), '<br>')}</p>"
+        )
+    if not content:
+        return ""
+    menu_profiles = [
+        value.strip()
+        for value in site.get("menu_profiles", "").split(";")
+        if value.strip()
+    ]
+    choices = (
+        "Menu pages: " + ", ".join(html.escape(value) for value in menu_profiles)
+        if menu_profiles else "No menu choices are linked to this prompt."
+    )
+    return (
+        '<table border="1" cellspacing="0" cellpadding="5" width="100%" '
+        'bgcolor="#EEF1F3"><tr><td colspan="2">'
+        '<b>Dialogue panel content preview</b></td></tr><tr>'
+        f'<td valign="top">{portrait_html}</td><td valign="top">'
+        f'<b>{html.escape(display_name)}</b>{"".join(content)}<p>{choices}</p>'
+        '</td></tr><tr><td colspan="2"><small>Copy and portrait are linked from the Lua speaker profile and ROM text catalog.</small>'
+        '</td></tr></table>'
+    )
+
+
+def omit_previewed_dialogue_copy(route_text: str) -> str:
+    """Avoid repeating speaker copy that is shown again in the linked preview."""
+    result: list[str] = []
+    skipping_dialogue = False
+    for line in route_text.splitlines():
+        if line.startswith("Speaker: ") or line == "Dialogue:":
+            skipping_dialogue = True
+            continue
+        if skipping_dialogue and line.startswith("Menu pages:"):
+            skipping_dialogue = False
+        if skipping_dialogue:
+            continue
+        result.append(line)
+    return "\n".join(result).rstrip()
+
+
 def read_lua_quest_module_details(repo_root: Path, site: dict[str, str]) -> list[str]:
     """Expose quest/script entry points and state facts linked to a map route."""
     script_root = repo_root / "decompilation" / "gameplay" / "scripts"
@@ -979,6 +1079,7 @@ class MapEvidenceRegion:
     sprite_origin_y: int = 0
     conditional: bool = False
     route_details: str = ""
+    route_preview_html: str = ""
     map_label: str = ""
     source_record_address: str = ""
     event_id: str = ""
@@ -2448,9 +2549,16 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
                         route_lines.append("")
                         route_lines.extend(display_content_lines)
                     if not display_content_lines:
-                        route_lines.append(
-                            "Dialogue, choices, or shop: not linked to this map point yet."
-                        )
+                        if dispatcher == "conditional_electromagnetic_lock":
+                            route_lines.append(
+                                "Site-specific dialogue, shop, or destination menu: "
+                                "not linked yet. The shared lock prompt and choices "
+                                "are shown below."
+                            )
+                        else:
+                            route_lines.append(
+                                "Dialogue, choices, or shop: not linked to this map point yet."
+                            )
                     title = f"Interaction: {site_name}"
                 else:
                     title = "Map interaction: place not identified"
@@ -2570,6 +2678,9 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
                 title=title,
                 details="\n".join(details),
                 route_details="\n".join(route_lines),
+                route_preview_html=read_dialogue_panel_preview_html(
+                    repo_root, site, text_catalog
+                ) if site else "",
                 map_label=map_label,
                 source_record_address=str(record_address),
                 event_id=str(event_id),
@@ -4313,9 +4424,11 @@ class MapEntityViewer(QMainWindow):
             "Click a character marker to inspect its type, position, appearance conditions, and source art. Click a scripted event, spawn, or encounter marker to inspect its game data. "
             "Drag entity outlines to move grouped annotations."
         )
-        self.flow_info = QPlainTextEdit()
+        self.flow_info = QTextBrowser()
         self.flow_info.setReadOnly(True)
-        self.flow_info.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+        self.flow_info.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
+        self.flow_info.setOpenLinks(False)
+        self.flow_info.setOpenExternalLinks(False)
         self.flow_info.setPlainText(
             "Select a place, object, or map interaction to see what happens when the player reaches it, including any known destination, dialogue, menu, shop, or story condition."
         )
@@ -5837,11 +5950,19 @@ class MapEntityViewer(QMainWindow):
         self.edit_behavior_button.setEnabled(False)
         self.delete_behavior_button.setEnabled(False)
         self.info.setPlainText(evidence.details)
-        self.flow_info.setPlainText(
+        route_text = (
             evidence.route_details or
             (evidence.details if evidence.kind == "rom_actor" else
              "No separate dialogue, menu, shop, or quest-flow profile is linked to this evidence row.")
         )
+        if evidence.route_preview_html and evidence.route_details:
+            preview_route_text = omit_previewed_dialogue_copy(route_text)
+            self.flow_info.setHtml(
+                "<div>" + html.escape(preview_route_text).replace("\n", "<br>") +
+                "</div><br>" + evidence.route_preview_html
+            )
+        else:
+            self.flow_info.setPlainText(route_text)
         selected_panel = self.info
         if evidence.route_details or evidence.kind == "rom_actor":
             selected_panel = self.flow_info

@@ -2785,6 +2785,21 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             MovementModeTransitionContinuation::event_30_world_activity) {
             const auto scene_reference =
                 state_.field_scene_buffers.scene_reference;
+            if (scene_reference == 19U) {
+                game_scripts_.set_location_context(
+                    "building", "jackals_lantern",
+                    "jackals_lantern.old_man",
+                    "jackals_lantern_old_man", "opening");
+                if (!field_dialogue_.open_gameplay_task(
+                        "field_events", "present_location_dialogue")) {
+                    source_boundary(
+                        "field.dialogue.jackals_lantern_event_failed");
+                } else {
+                    source_boundary(
+                        "field.dialogue.jackals_lantern_event_opened");
+                }
+                return integration::PendingFieldSceneHandlerResult::resumed_field;
+            }
             if (scene_reference != 13U && scene_reference != 14U) {
                 source_boundary(
                     "field.activity.event30_scene_route_unresolved");

@@ -80,8 +80,12 @@ marked as corroborated, candidate, or unresolved; they are not ROM names.
 Unlabeled triggers still show the ROM's numeric scene/activity target and say
 whether the route table or a special handler selects it.
 The **What happens** pane uses player-facing descriptions and decimal map or
-activity numbers. Internal handler names, addresses, and converted runtime
-owners stay in **Source** so they are not presented as dialogue or menu text.
+activity numbers. A linked dialogue route also shows a content preview with
+its Lua speaker portrait, imported text, and known menu pages. The preview is
+for inspecting route content; the game renderer remains responsible for the
+dialogue panel's exact screen placement. Internal handler names, addresses,
+and converted runtime owners stay in **Source** so they are not presented as
+dialogue or menu text.
 Selecting an entity shows its known interaction areas, destination, story
 conditions, linked dialogue and menu choices, and shop stock when those have
 been source-profiled. Shop prices are identified as base template prices;
@@ -128,7 +132,12 @@ not that the ROM has no way into the map.
 - Scene 19 is labeled as the Jackal's Lantern route destination because
   Redmond event record 86 at `0x173106` selects numeric field scene 19 and the
   guide names that incoming site. This is a route cross-reference, not a ROM
-  scene name; scene-19 entry dialogue and its return path remain unresolved.
+  scene name. Scene-19 event record 12 at `0x1D5F50` has a separate event-30
+  contact interaction. The ROM's shared default handler shows the unnamed
+  old-man narrative from `0xF3FBC` with portrait profile `0x121E5C`; the first
+  option is absent, so the prompt has no menu. The descriptor fallback spawn
+  `(208,204)` is outside that interaction area. Scene-entry dialogue,
+  route-specific arrival coordinates, and the return path remain unresolved.
 - Scene 0 has a crosswalk for all 21 ROM event rectangles, including ten
   guide-named sites, both labeled map edges, and four direct event-31 handlers.
   A local event-table result of scene 0 is kept distinct from the guide's

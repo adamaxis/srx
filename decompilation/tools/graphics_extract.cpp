@@ -601,7 +601,7 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         output << '"';
     };
 
-    const std::array<std::pair<const char*, std::size_t>, 118> records{{
+    const std::array<std::pair<const char*, std::size_t>, 119> records{{
         // Stoker prompt pointers consumed by the source event/profile path.
         {"stoker.motel.arrival.title", 0x1167EBU},
         {"stoker.motel.arrival.more", 0x0FE5BFU},
@@ -739,6 +739,10 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         {"icarus-descending.caleb.option.information", 0x104051U},
         {"icarus-descending.caleb.option.work", 0x103A3AU},
         {"icarus-descending.caleb.option.leave", 0x104FEBU},
+        // Scene 19's event-30 fallback prompt at 0x20C78 uses this first
+        // narrative pointer. The remaining pointer slots are not presented
+        // because the first choice pointer is the ROM's negative sentinel.
+        {"jackals-lantern.old-man.opening", 0x0F3FBCU},
     }};
 
     output << "-- Generated from the US ROM dialogue and menu text records.\n"
@@ -2630,6 +2634,15 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             rom, 0x121E98U),
         "sprite", "0x12CC90/0x121E98/0x20990", false, manifest, written,
         missing, blank);
+    // Scene 19's non-special event-30 path at 0x20990 loads this portrait
+    // profile with prompt record 0xF3FAC. The ROM narrative calls the person
+    // an old man but does not give him a name.
+    write_catalog_asset(
+        root, "dialogue/portraits/jackals-lantern-old-man.bmp",
+        shadowrun::graphics::decode_genesis_field_mode_profile_sprite(
+            rom, 0x121E5CU),
+        "sprite", "0x20990/0x20C78/0x121E5C/0xF3FAC", false, manifest,
+        written, missing, blank);
     // The scene-2/event-4 indexed title service uses a different profile for
     // the Jump House arrival description. Keep its face as separate host art;
     // it is not the later booth-conversation portrait.

@@ -261,6 +261,7 @@ dialogue/portraits/gunderson-jump-house.bmp	sprite	0	0	56	72	0x12CC50/0x121E80/0
 dialogue/portraits/vigore-jarl.bmp	sprite	0	0	56	72	0x12CC80/0x121F28/0x20990	extracted
 dialogue/portraits/mortimer-reed.bmp	sprite	0	0	56	72	0x12CC70/0x121FF4/0x20990	extracted
 dialogue/portraits/caleb-brightmore.bmp	sprite	0	0	56	72	0x12CC90/0x121E98/0x20990	extracted
+dialogue/portraits/jackals-lantern-old-man.bmp	sprite	0	0	56	72	0x20990/0x20C78/0x121E5C/0xF3FAC	extracted
 dialogue/portraits/jump-house-entry.bmp	sprite	0	0	56	72	0x20484/0x121EBC/0x110D1E	extracted
 dialogue/panel/frame.bmp	background	0	0	320	224	0x10984/0x10918/0xCAB0C/0xCECD8-0xCEFA4	extracted
 dialogue/panel/frame-alternate-left-panel.bmp	background	0	0	320	224	0x10984/0x10918/0xCAB0C/0xCEFF0 (FFF0AF)	extracted

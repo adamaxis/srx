@@ -473,7 +473,8 @@ public:
     StoryFacts story_state() const;
     void set_location_context(std::string_view type, std::string_view id,
                               std::string_view text_profile = {},
-                              std::string_view speaker_id = {});
+                              std::string_view speaker_id = {},
+                              std::string_view event_id = {});
     void set_field_mode_context(ScriptFieldModeContext context) noexcept;
     std::optional<ScriptActorBehaviorDecision> actor_heartbeat(
         const ScriptActorBehaviorContext& context);

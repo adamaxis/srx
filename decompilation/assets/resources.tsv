@@ -613,6 +613,7 @@ dialogue.portraits.gunderson.jump.house	dialogue/portraits/gunderson-jump-house.
 dialogue.portraits.vigore.jarl	dialogue/portraits/vigore-jarl.bmp	image	0	0
 dialogue.portraits.mortimer.reed	dialogue/portraits/mortimer-reed.bmp	image	0	0
 dialogue.portraits.caleb.brightmore	dialogue/portraits/caleb-brightmore.bmp	image	0	0
+dialogue.portraits.jackals.lantern.old.man	dialogue/portraits/jackals-lantern-old-man.bmp	image	0	0
 dialogue.portraits.jump.house.entry	dialogue/portraits/jump-house-entry.bmp	image	0	0
 dialogue.panel.frame	dialogue/panel/frame.bmp	image	0	0
 dialogue.panel.frame.alternate.left.panel	dialogue/panel/frame-alternate-left-panel.bmp	image	0	0

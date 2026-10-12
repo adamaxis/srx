@@ -157,6 +157,17 @@ local speakers = {
             },
         },
     },
+    jackals_lantern_old_man = {
+        name = "Unidentified old man",
+        text_profile = "jackals_lantern.old_man",
+        portrait_alias = "dialogue.portraits.jackals.lantern.old.man",
+        events = {
+            opening = {
+                title_key = "jackals-lantern.old-man.opening",
+                continuation_key = "",
+            },
+        },
+    },
     stoker = {
         name = "Stoker",
         text_profile = "stoker.motel",

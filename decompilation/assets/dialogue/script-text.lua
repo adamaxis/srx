@@ -131,6 +131,7 @@ return {
         ["icarus-descending.caleb.option.information"] = "I'm looking for some information.",
         ["icarus-descending.caleb.option.work"] = "I'm lookin' for some work.",
         ["icarus-descending.caleb.option.leave"] = "I'll talk to you later, chum.",
+        ["jackals-lantern.old-man.opening"] = "<An old man flashes his gums at you.||His foul breath is air freshener compared to the stench of his withered body.||You decide to find a booth on the far side of the room.>",
         ["runner.ricky.information.opening"] = "I've lived in Glow City all my life.|I was slummin' in the sewers, but it got me nowhere, because I had no purpose.|And because everyone was larger than me.",
         ["runner.ricky.information.continuation"] = "Then I heard my totem calling.  I have embraced that power, the power of Rat!|Rat has shown that force is not the only way to success.|When I find some companions to work with, I'll be able to use my talents to finally get outta this dump!",
         ["runner.winston_marrs.information.opening"] = "The name's Marrs.  Did you know he was the god of war?  I see things different than most.|The fastest way to solve a problem is to shove a gun in it and shoot!|Problem is, I can't do this all the time.  I run out of bullets too fast.",
