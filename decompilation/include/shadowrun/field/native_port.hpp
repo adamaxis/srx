@@ -352,6 +352,11 @@ struct NativeFieldArea {
     NativeImage map;
     // Sparse ROM high-priority tile pixels, drawn after low-priority actors.
     NativeImage priority_overlay;
+    // Extractor-only copies of the two authored field tilemap planes. They are
+    // emitted as named images for the map editor and are not serialized into
+    // native gameplay state or consumed by the runtime renderer.
+    NativeImage source_primary_plane;
+    NativeImage source_secondary_plane;
     terrain::Map terrain;
     std::uint16_t initial_camera_x_fixed = 0;
     std::uint16_t initial_camera_y_fixed = 0;

@@ -19,6 +19,20 @@ triggers over it; `--show-collision` includes the terrain bounds in a saved
 viewer snapshot. Click an otherwise unmarked map cell to inspect its row-major
 primary/secondary ROM tilemap words, coordinates, dimensions, and extracted
 record paths. These are source metatile indices, not semantic object labels.
+The **Map artwork** selector includes the full map, each source artwork plane,
+and **Editable objects**. The two planes are inspection views: ROM planes are
+not semantic object layers, and a building can use pixels from both planes and
+the priority overlay. Editable objects starts from the full image, removes the
+outlined pixels of placed entity parts from their source locations, and draws
+those named part images at their entity-local positions. Dragging an entity
+moves those pixels with its annotations; if the outline or part list is
+incomplete, unclassified pixels remain at their original location. A drag from
+the full-map view automatically switches to this editable view. This is an
+authoring preview, not a claim that every map object has already been classified.
+The area record keeps both the current placement and the original map position,
+so a saved move can still clear its old pixels after the viewer is reopened.
+Part images detach only when their visible source pixels match; mismatched parts
+are listed as needing review and stay in the map until their source is corrected.
 Click a yellow trigger or a visible red collision rectangle to inspect its ROM
 record, decoded route, addresses, and recorded runtime/QA owners in the side
 panel. The **ROM actor populations** layer draws the template-specific source
@@ -519,3 +533,11 @@ to VRAM `0x5920`. The importer resolves the source palette and offsets to
 route-specific overrides remain distinct. Entity drawings and generated part
 assets remain authoring data; the live field renderer does not yet consume
 these entity definitions.
+
+The **Map artwork** selector includes the extracted full image, source-plane
+inspection, and **Editable objects**. In editable mode, matched named art parts
+are cut out of the map image and move with their area instance. The original
+map position is retained when a placement is changed and saved. Parts whose
+source art does not match their recorded position stay in place and are marked
+for review. See the [movable-art visual audit](../../docs/visual-audits/map-viewer-movable-art.md)
+for the 56-scene image comparison and current coverage.

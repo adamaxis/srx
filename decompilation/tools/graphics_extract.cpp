@@ -3049,6 +3049,14 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                   "-priority-overlay.png",
               area.priority_overlay, "priority-overlay",
               "ROM field tile priority bits", false);
+        write("field/maps/mode-" + std::to_string(area.mode_id) +
+                  "-primary-plane.png",
+              area.source_primary_plane, "map-source-plane",
+              "ROM primary field tilemap plane", false);
+        write("field/maps/mode-" + std::to_string(area.mode_id) +
+                  "-secondary-plane.png",
+              area.source_secondary_plane, "map-source-plane",
+              "ROM secondary field tilemap plane", false);
     }
 
     // Keep each rendered map tied to the descriptor that selected it. This is
@@ -3066,7 +3074,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
            "\ttilemap_width\ttilemap_height\tmetatile_encoding"
            "\tevent_table\tobject_pattern\tobject_vram"
            "\tobject_pattern_bytes\tasset\timage_width\timage_height"
-           "\tpriority_overlay_asset\n";
+           "\tpriority_overlay_asset\tprimary_plane_asset"
+           "\tsecondary_plane_asset\n";
     const auto write_hex = [&map_index](std::size_t value) {
         map_index << "0x" << std::uppercase << std::hex << value << std::dec;
     };
@@ -3121,7 +3130,9 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                   << "\tfield/maps/mode-" << mode_id << ".bmp\t"
                   << area->map.width << '\t' << area->map.height
                   << "\tfield/maps/mode-" << mode_id
-                  << "-priority-overlay.png\n";
+                  << "-priority-overlay.png\tfield/maps/mode-" << mode_id
+                  << "-primary-plane.png\tfield/maps/mode-" << mode_id
+                  << "-secondary-plane.png\n";
     }
     map_index.flush();
 

@@ -22,7 +22,7 @@ from pathlib import Path
 import os
 from typing import Iterable
 
-from PyQt6.QtCore import QPointF, QRect, QRectF, Qt
+from PyQt6.QtCore import QPointF, QRect, QRectF, QSize, Qt
 from PyQt6.QtGui import QAction, QActionGroup, QBrush, QColor, QFont, QFontDatabase, QImage, QPainter, QPainterPath, QPen, QPixmap, QPolygonF
 from PyQt6.QtWidgets import (
     QApplication,
@@ -725,6 +725,8 @@ class MapInfo:
     width: int
     height: int
     priority_asset: Path
+    source_primary_plane_asset: Path | None = None
+    source_secondary_plane_asset: Path | None = None
     tilemap_width: int = 0
     tilemap_height: int = 0
     metatile_encoding: str = "unknown"
@@ -861,6 +863,14 @@ class EntityInstance:
     entity_id: str
     origin_x: int
     origin_y: int
+    source_origin_x: int | None = None
+    source_origin_y: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.source_origin_x is None:
+            self.source_origin_x = self.origin_x
+        if self.source_origin_y is None:
+            self.source_origin_y = self.origin_y
 
 
 @dataclass(frozen=True)
@@ -987,7 +997,10 @@ class WorldContent:
         "collision_id", "local_x", "local_y", "width", "height",
         "collision_mode", "evidence", "review_status",
     )
-    AREA_HEADER = ("instance_id", "entity_id", "origin_x", "origin_y")
+    AREA_HEADER = (
+        "instance_id", "entity_id", "origin_x", "origin_y",
+        "source_origin_x", "source_origin_y",
+    )
     TRIGGER_HEADER = (
         "trigger_id", "event_id", "trigger_type", "coordinate_space",
         "scope_min_x", "scope_max_x", "scope_min_y", "scope_max_y",
@@ -1171,6 +1184,8 @@ class WorldContent:
                 row.get("entity_id", ""),
                 as_int(row, "origin_x"),
                 as_int(row, "origin_y"),
+                as_int(row, "source_origin_x", as_int(row, "origin_x")),
+                as_int(row, "source_origin_y", as_int(row, "origin_y")),
             )
             for row in rows
         ]
@@ -1288,6 +1303,10 @@ def read_map_catalog(asset_root: Path) -> list[MapInfo]:
             continue
         asset = asset_root / row.get("asset", "")
         priority = asset_root / row.get("priority_overlay_asset", "")
+        primary_plane_path = row.get("primary_plane_asset", "").strip()
+        secondary_plane_path = row.get("secondary_plane_asset", "").strip()
+        primary_plane = asset_root / primary_plane_path if primary_plane_path else None
+        secondary_plane = asset_root / secondary_plane_path if secondary_plane_path else None
         actor_list = actor_lists.get(scene_id, {})
         if not asset.is_file():
             continue
@@ -1297,6 +1316,8 @@ def read_map_catalog(asset_root: Path) -> list[MapInfo]:
             width=as_int(row, "image_width"),
             height=as_int(row, "image_height"),
             priority_asset=priority,
+            source_primary_plane_asset=primary_plane,
+            source_secondary_plane_asset=secondary_plane,
             tilemap_width=as_int(row, "tilemap_width"),
             tilemap_height=as_int(row, "tilemap_height"),
             metatile_encoding=row.get("metatile_encoding", "unknown"),
@@ -2545,6 +2566,7 @@ class FieldMapView(QGraphicsView):
         self.mode = "select"
         self.map_info: MapInfo | None = None
         self.background_item: QGraphicsPixmapItem | None = None
+        self.priority_item: QGraphicsPixmapItem | None = None
         self.grid: GridOverlay | None = None
         self.collision_rectangles: list[MapEvidenceRegion] = []
         self.event_rectangles: list[MapEvidenceRegion] = []
@@ -2564,6 +2586,7 @@ class FieldMapView(QGraphicsView):
         self.show_profile_entries = True
         self.show_behaviors = True
         self.show_priority = True
+        self.map_art_layer = "composite"
         self.assets_root = DEFAULT_ASSETS
         self.repo_root = ROOT
         self.drag_start: QPointF | None = None
@@ -2575,6 +2598,7 @@ class FieldMapView(QGraphicsView):
         self.annotation_items: list[QGraphicsItem] = []
         self.behavior_items: list[QGraphicsItem] = []
         self.entity_groups: dict[str, QGraphicsItemGroup] = {}
+        self.detachable_parts: set[tuple[str, str]] = set()
         self.setBackgroundBrush(QColor(28, 29, 33))
 
     def load_scene(
@@ -2603,14 +2627,35 @@ class FieldMapView(QGraphicsView):
         # QGraphicsScene.clear() deletes its items; discard the Python wrappers
         # before a redraw tries to remove overlays from the previous scene.
         self.behavior_items = []
-        base = QImage(str(info.asset)).convertToFormat(QImage.Format.Format_ARGB32)
+        self.background_item = None
+        self.priority_item = None
+        base_path = info.asset
+        if (
+            self.map_art_layer == "primary"
+            and info.source_primary_plane_asset is not None
+            and info.source_primary_plane_asset.is_file()
+        ):
+            base_path = info.source_primary_plane_asset
+        elif (
+            self.map_art_layer == "secondary"
+            and info.source_secondary_plane_asset is not None
+            and info.source_secondary_plane_asset.is_file()
+        ):
+            base_path = info.source_secondary_plane_asset
+        elif self.map_art_layer not in {"composite", "editable"}:
+            self.map_art_layer = "composite"
+        base = QImage(str(base_path)).convertToFormat(QImage.Format.Format_ARGB32)
         self.background_item = self.scene().addPixmap(QPixmap.fromImage(base))
         self.background_item.setZValue(0)
         self.background_item.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
         # Keep ROM priority pixels as a real foreground layer. Compositing them
         # into the background made actor sprites appear over foreground art and
         # hid which image pixels belonged to the priority plane.
-        if self.show_priority and info.priority_asset.is_file():
+        if (
+            self.map_art_layer in {"composite", "editable"}
+            and self.show_priority
+            and info.priority_asset.is_file()
+        ):
             overlay = QImage(str(info.priority_asset)).convertToFormat(QImage.Format.Format_ARGB32)
             if overlay.size() == base.size():
                 self.priority_item = self.scene().addPixmap(QPixmap.fromImage(overlay))
@@ -2631,6 +2676,137 @@ class FieldMapView(QGraphicsView):
         self.redraw_behaviors()
         self.resetTransform()
         self.fitInView(self.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
+
+    def set_map_art_layer(self, layer: str) -> None:
+        if layer == self.map_art_layer or self.map_info is None:
+            return
+        self.map_art_layer = layer
+        self.load_scene(
+            self.map_info,
+            self.assets_root,
+            self.repo_root,
+            self.instances,
+            self.entities,
+            self.behaviors,
+        )
+
+    def _part_image(self, part: EntityPart) -> QImage:
+        if not part.asset_path:
+            return QImage()
+        return QImage(str(self.assets_root / Path(part.asset_path))).convertToFormat(
+            QImage.Format.Format_ARGB32
+        )
+
+    def _rebuild_editable_backdrop(self) -> None:
+        """Cut authored pixels out of the source image before showing movable parts."""
+        self.detachable_parts = set()
+        if self.map_info is None or self.map_art_layer != "editable":
+            return
+
+        base = QImage(str(self.map_info.asset)).convertToFormat(
+            QImage.Format.Format_ARGB32
+        )
+        overlay = QImage()
+        if self.show_priority and self.map_info.priority_asset.is_file():
+            overlay = QImage(str(self.map_info.priority_asset)).convertToFormat(
+                QImage.Format.Format_ARGB32
+            )
+            if overlay.size() != base.size():
+                overlay = QImage()
+
+        if not base.isNull():
+            base_reference = base.convertToFormat(QImage.Format.Format_RGBA8888)
+            overlay_reference = (
+                overlay.convertToFormat(QImage.Format.Format_RGBA8888)
+                if not overlay.isNull() else QImage()
+            )
+            base_reference_bytes = bytes(
+                base_reference.constBits().asstring(base_reference.sizeInBytes())
+            )
+            overlay_reference_bytes = (
+                bytes(overlay_reference.constBits().asstring(
+                    overlay_reference.sizeInBytes()
+                )) if not overlay_reference.isNull() else b""
+            )
+            base_painter = QPainter(base)
+            base_painter.setCompositionMode(
+                QPainter.CompositionMode.CompositionMode_DestinationOut
+            )
+            overlay_painter = QPainter(overlay) if not overlay.isNull() else None
+            if overlay_painter is not None:
+                overlay_painter.setCompositionMode(
+                    QPainter.CompositionMode.CompositionMode_DestinationOut
+                )
+            for instance in self.instances:
+                entity = self.entities.get(instance.entity_id)
+                if entity is None:
+                    continue
+                for part in entity.parts:
+                    if part.source_kind == "map_composite":
+                        target_painter = base_painter
+                        target_reference = base_reference_bytes
+                        target_stride = base_reference.bytesPerLine()
+                    elif part.source_kind == "priority_overlay":
+                        target_painter = overlay_painter
+                        target_reference = overlay_reference_bytes
+                        target_stride = overlay_reference.bytesPerLine() if not overlay_reference.isNull() else 0
+                    else:
+                        target_painter = None
+                    if target_painter is None:
+                        continue
+                    pixels = self._part_image(part)
+                    if pixels.isNull() or pixels.size() != QSize(part.width, part.height):
+                        continue
+                    source_origin_x = int(instance.source_origin_x or 0)
+                    source_origin_y = int(instance.source_origin_y or 0)
+                    source_x = source_origin_x + part.local_x
+                    source_y = source_origin_y + part.local_y
+                    if (
+                        source_x < 0 or source_y < 0
+                        or source_x + part.width > base.width()
+                        or source_y + part.height > base.height()
+                    ):
+                        continue
+                    pixels_rgba = pixels.convertToFormat(QImage.Format.Format_RGBA8888)
+                    pixels_bytes = bytes(
+                        pixels_rgba.constBits().asstring(pixels_rgba.sizeInBytes())
+                    )
+                    matches_source = True
+                    for row in range(part.height):
+                        source_row = row * pixels_rgba.bytesPerLine()
+                        target_row = (source_y + row) * target_stride + source_x * 4
+                        for column in range(part.width):
+                            source_offset = source_row + column * 4
+                            if pixels_bytes[source_offset + 3] == 0:
+                                continue
+                            target_offset = target_row + column * 4
+                            if (
+                                pixels_bytes[source_offset:source_offset + 3]
+                                != target_reference[target_offset:target_offset + 3]
+                            ):
+                                matches_source = False
+                                break
+                        if not matches_source:
+                            break
+                    if not matches_source:
+                        continue
+                    target_painter.drawImage(source_x, source_y, pixels)
+                    self.detachable_parts.add((instance.instance_id, part.part_id))
+            base_painter.end()
+            if overlay_painter is not None:
+                overlay_painter.end()
+            if self.background_item is not None:
+                self.background_item.setPixmap(QPixmap.fromImage(base))
+            if overlay.isNull():
+                if self.priority_item is not None:
+                    self.scene().removeItem(self.priority_item)
+                    self.priority_item = None
+            elif self.priority_item is None:
+                self.priority_item = self.scene().addPixmap(QPixmap.fromImage(overlay))
+                self.priority_item.setZValue(7)
+                self.priority_item.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+            else:
+                self.priority_item.setPixmap(QPixmap.fromImage(overlay))
 
     def set_layer_options(self, priority: bool, grid: bool, collision: bool,
                           events: bool, actors: bool, actor_routes: bool,
@@ -3009,6 +3185,7 @@ class FieldMapView(QGraphicsView):
         self.entity_groups = {}
         if self.map_info is None:
             return
+        self._rebuild_editable_backdrop()
         colors = {
             "unreviewed": QColor(255, 245, 90, 220),
             "building": QColor(80, 210, 255, 225),
@@ -3062,6 +3239,37 @@ class FieldMapView(QGraphicsView):
             label.setData(1, "entity_label")
             group.addToGroup(label)
             for part in entity.parts:
+                if (
+                    self.map_art_layer == "editable"
+                    and (instance.instance_id, part.part_id) in self.detachable_parts
+                ):
+                    if part.source_kind != "priority_overlay" or self.show_priority:
+                        part_image = self._part_image(part)
+                        if not part_image.isNull():
+                            artwork = self.scene().addPixmap(QPixmap.fromImage(part_image))
+                            artwork.setPos(
+                                instance.origin_x + part.local_x,
+                                instance.origin_y + part.local_y,
+                            )
+                            artwork.setTransformationMode(
+                                Qt.TransformationMode.FastTransformation
+                            )
+                            artwork.setData(1, "entity_art")
+                            if part.source_kind == "priority_overlay":
+                                artwork.setZValue(8)
+                            else:
+                                artwork.setZValue({
+                                    "ground": 1,
+                                    "behind_actor": 4,
+                                    "actor_depth": 6.5,
+                                    "foreground": 8,
+                                }.get(part.draw_layer, 1))
+                            artwork.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+                            artwork.setToolTip(
+                                f"{entity.name}: {part.part_id} ({part.role})\n"
+                                "Move this image with the selected object."
+                            )
+                            group.addToGroup(artwork)
                 part_color = role_colors.get(part.role, role_colors["unreviewed"])
                 paths = parse_outline_paths(part.outline_points)
                 if paths:
@@ -3425,6 +3633,26 @@ class MapEntityViewer(QMainWindow):
         self.scene_combo.currentIndexChanged.connect(self.scene_changed)
         layout.addWidget(QLabel("Map"))
         layout.addWidget(self.scene_combo)
+        layout.addWidget(QLabel("Map artwork"))
+        self.map_art_combo = QComboBox()
+        self.map_art_combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.map_art_combo.setMinimumContentsLength(22)
+        for label, layer, description in (
+            ("Full map", "composite", "The extracted map as it appears in the game."),
+            ("Editable objects", "editable", "Detach the annotated object pixels so dragging an object moves its artwork."),
+            ("Map layer A", "primary", "The first source artwork layer by itself."),
+            ("Map layer B", "secondary", "The second source artwork layer by itself."),
+        ):
+            self.map_art_combo.addItem(label, layer)
+            self.map_art_combo.setItemData(
+                self.map_art_combo.count() - 1,
+                description,
+                Qt.ItemDataRole.ToolTipRole,
+            )
+        self.map_art_combo.currentIndexChanged.connect(self.map_art_changed)
+        layout.addWidget(self.map_art_combo)
         self.info = QPlainTextEdit()
         self.info.setReadOnly(True)
         self.info.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
@@ -3678,6 +3906,8 @@ class MapEntityViewer(QMainWindow):
     def load_scene(self, scene_id: int) -> None:
         if scene_id not in self.map_by_id:
             return
+        info = self.map_by_id[scene_id]
+        self._configure_map_art_options(info)
         self.scene_id = scene_id
         if hasattr(self, "scene_combo"):
             index = self.scene_combo.findData(scene_id)
@@ -3708,7 +3938,7 @@ class MapEntityViewer(QMainWindow):
         self.selected_behavior = None
         self._refresh_list()
         self.map_view.load_scene(
-            self.map_by_id[scene_id], self.assets, self.repo_root,
+            info, self.assets, self.repo_root,
             self.instances, self.entities, self.behaviors,
         )
         has_event_characters = any(
@@ -3733,6 +3963,41 @@ class MapEntityViewer(QMainWindow):
             scene_id = self.scene_combo.itemData(index)
             if scene_id is not None and scene_id != self.scene_id:
                 self.select_scene(int(scene_id))
+
+    def map_art_changed(self, index: int) -> None:
+        if index < 0:
+            return
+        layer = self.map_art_combo.itemData(index)
+        if layer:
+            self.map_view.set_map_art_layer(str(layer))
+
+    def _configure_map_art_options(self, info: MapInfo) -> None:
+        available = {
+            "composite": info.asset.is_file(),
+            "editable": info.asset.is_file(),
+            "primary": (
+                info.source_primary_plane_asset is not None
+                and info.source_primary_plane_asset.is_file()
+            ),
+            "secondary": (
+                info.source_secondary_plane_asset is not None
+                and info.source_secondary_plane_asset.is_file()
+            ),
+        }
+        self.map_art_combo.blockSignals(True)
+        for index in range(self.map_art_combo.count()):
+            layer = str(self.map_art_combo.itemData(index))
+            model_item = self.map_art_combo.model().item(index)
+            if model_item is not None:
+                model_item.setEnabled(available.get(layer, False))
+        selected_layer = self.map_view.map_art_layer
+        if not available.get(selected_layer, False):
+            selected_layer = "composite"
+        self.map_art_combo.setCurrentIndex(
+            self.map_art_combo.findData(selected_layer)
+        )
+        self.map_view.map_art_layer = selected_layer
+        self.map_art_combo.blockSignals(False)
 
     def select_scene(self, scene_id: int) -> None:
         if scene_id not in self.map_by_id or scene_id == self.scene_id:
@@ -4516,14 +4781,23 @@ class MapEntityViewer(QMainWindow):
         self.content_profile_edit.setText(entity.content_profile)
         self.speaker_id_edit.setText(entity.speaker_id)
         self.shop_profile_edit.setText(entity.shop_profile)
-        part_summary = "\n".join(
-            f"- {part.part_id}: {part.role}, source scene {part.source_scene:02d} at "
-            f"{part.source_x},{part.source_y} {part.width}x{part.height}; "
-            f"{part.draw_layer}; "
-            f"{len(parse_outline_paths(part.outline_points))} polygon outline(s); "
-            f"asset {part.asset_path or '(created on save)'}"
-            for part in entity.parts
-        ) or "No visual parts"
+        part_lines = []
+        for part in entity.parts:
+            if self.map_view.map_art_layer == "editable":
+                movement = (
+                    "its picture moves with the object"
+                    if (instance.instance_id, part.part_id)
+                    in self.map_view.detachable_parts else
+                    "picture stays in place until the source match is reviewed"
+                )
+            else:
+                movement = "switch Map artwork to Editable objects to preview moving its picture"
+            part_lines.append(
+                f"- {part.part_id.replace('_', ' ')}: {part.role.replace('_', ' ')}; "
+                f"{part.width}x{part.height}; {movement}; "
+                f"{len(parse_outline_paths(part.outline_points))} outline shape(s)"
+            )
+        part_summary = "\n".join(part_lines) or "No visual parts"
         interaction_summary = "\n".join(
             f"• {item.interaction_id}: {item.local_x},{item.local_y} {item.width}×{item.height}; Lua: {item.lua_handler or '(unassigned)'}; event: {item.source_event or '(unmapped)'}"
             for item in entity.interactables
@@ -4535,7 +4809,10 @@ class MapEntityViewer(QMainWindow):
             for item in entity.collision_regions
         ) or "No authored collision regions"
         self.info.setPlainText(
-            f"ID: {entity.entity_id}\nVisual parts:\n{part_summary}"
+            f"ID: {entity.entity_id}\n"
+            f"Current position: {instance.origin_x},{instance.origin_y}\n"
+            f"Original map position: {instance.source_origin_x},{instance.source_origin_y}\n"
+            f"Visual parts:\n{part_summary}"
             f"\nInteractions:\n{interaction_summary}"
             f"\nAuthored collision:\n{collision_summary}\n\n"
             "Part outlines and selection follow each source object independently; "
@@ -4879,15 +5156,33 @@ class MapEntityViewer(QMainWindow):
         )
         if instance is None or (delta_x == 0 and delta_y == 0):
             return
+        switched_to_editable = self.map_view.map_art_layer != "editable"
+        if switched_to_editable:
+            index = self.map_art_combo.findData("editable")
+            self.map_art_combo.blockSignals(True)
+            self.map_art_combo.setCurrentIndex(index)
+            self.map_art_combo.blockSignals(False)
+            self.map_view.set_map_art_layer("editable")
         instance.origin_x += delta_x
         instance.origin_y += delta_y
         self.dirty = True
         self._refresh_list()
         self.select_instance(instance)
         self._update_scene_summary()
+        action = "Switched to Editable objects and moved" if switched_to_editable else "Moved"
+        entity = self.entities.get(instance.entity_id)
+        skipped_parts = sum(
+            (instance.instance_id, part.part_id) not in self.map_view.detachable_parts
+            for part in entity.parts
+        ) if entity else 0
+        skipped_note = (
+            f" {skipped_parts} part(s) remain in place because their source pixels did not match."
+            if skipped_parts else ""
+        )
         self.statusBar().showMessage(
-            f"Moved grouped annotation {instance_id} by {delta_x},{delta_y} pixels. "
-            "The extracted map bitmap itself is unchanged.",
+            f"{action} {instance_id} and its annotated artwork by {delta_x},{delta_y} pixels. "
+            "Unclassified pixels and any unoutlined parts remain in the map image."
+            + skipped_note,
             6000,
         )
 
@@ -5383,6 +5678,15 @@ def render_snapshot(viewer: MapEntityViewer, output: Path) -> None:
                 instance.origin_x + x + width / 2,
                 instance.origin_y + y + height / 2,
             )
+        if viewer.map_view.map_art_layer == "editable":
+            for instance_id, group in viewer.map_view.entity_groups.items():
+                group.setVisible(True)
+                for child in group.childItems():
+                    child.setVisible(
+                        (instance_id == inspect_instance_id
+                         and child.data(1) != "entity_label")
+                        or child.data(1) == "entity_art"
+                    )
             QApplication.processEvents()
     image = QImage(viewer.size(), QImage.Format.Format_ARGB32)
     image.fill(QColor(22, 23, 26))
@@ -5434,6 +5738,12 @@ def main(argv: list[str] | None = None) -> int:
         choices=("Source", "What happens", "Profile", "Characters", "Audio", "Events"),
         help="select a right-dock evidence tab, useful with --snapshot",
     )
+    parser.add_argument(
+        "--map-art",
+        choices=("composite", "editable", "primary", "secondary"),
+        default="composite",
+        help="show the full map, detached annotated artwork, or one extracted artwork layer",
+    )
     args = parser.parse_args(argv)
     maps = read_map_catalog(args.assets)
     if not maps:
@@ -5452,6 +5762,15 @@ def main(argv: list[str] | None = None) -> int:
         viewer.map_view.world_activity_group = args.activity_list
         viewer.map_view.show_collision = args.show_collision
         viewer.map_view.draw_evidence_overlays()
+    if args.map_art != "composite":
+        map_art_index = viewer.map_art_combo.findData(args.map_art)
+        if map_art_index < 0 or not viewer.map_art_combo.model().item(
+            map_art_index
+        ).isEnabled():
+            parser.error(
+                f"Scene {args.scene:02d} has no extracted {args.map_art} map layer"
+            )
+        viewer.map_art_combo.setCurrentIndex(map_art_index)
     if args.inspect_rom_event:
         address = args.inspect_rom_event.strip().lower()
         evidence = next((

@@ -23,12 +23,14 @@ struct RgbaImage {
     std::vector<native::Rgba8> pixels;
 };
 
-// A field map keeps its established flattened image for asset inspection and
-// background rendering, plus a sparse copy of the ROM's high-priority tile
-// pixels. Low-priority field sprites are drawn between those two passes.
+// The flattened image and priority pass remain the renderer-facing map art.
+// The two authored tilemap planes are retained for offline map inspection and
+// object extraction; the runtime does not replay the ROM tilemap operations.
 struct GenesisFieldMapLayers {
     RgbaImage map;
     RgbaImage priority_overlay;
+    RgbaImage source_primary_plane;
+    RgbaImage source_secondary_plane;
 };
 
 // A source sprite/map resource extracted from a ROM pointer table. The

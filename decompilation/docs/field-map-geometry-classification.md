@@ -38,3 +38,24 @@ routine addresses remain in the selected-region details for audit work. These
 labels make the collision behavior readable without treating a table index as
 an object name. They do not yet classify every decorative pixel or replace
 manual visual review of the 56 map images.
+
+## Source artwork planes and movable map objects
+
+The offline graphics import also exports each scene's primary and secondary
+artwork plane as separately named images for inspection in the map viewer.
+These are ROM drawing planes, not semantic entities: one building can combine
+pixels from the flattened map, the sparse priority overlay, and attachments
+from the other plane. The viewer's **Editable objects** mode therefore does not
+move a whole ROM plane. It uses each authored entity part's alpha-masked crop to
+clear matching pixels at each instance's original map position, then draws the
+named image at its editable entity-local position. A drag moves the part images
+with the entity group; pixels outside authored outlines remain in place and
+expose incomplete classification. Area records preserve both the current
+placement and the original source placement so a saved move continues clearing
+the old pixels after reopening. A part only detaches when its source pixels
+match the saved source location. The full-map view remains the unmodified
+extracted image.
+
+This editor behavior is only as complete as the reviewed part outlines and
+entity placements. It does not infer missing buildings, decals, shadows, or
+collision from a ROM tile index, and it is not an in-game rendering path.

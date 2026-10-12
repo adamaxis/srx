@@ -1854,6 +1854,14 @@ native::NativePortAssets decode_genesis_native_assets(
     mode2_area.mode_id = 2;
     mode2_area.map = assets.field_map;
     mode2_area.priority_overlay = assets.field_map_priority_overlay;
+    mode2_area.source_primary_plane = {
+        field_map.source_primary_plane.width,
+        field_map.source_primary_plane.height,
+        field_map.source_primary_plane.pixels};
+    mode2_area.source_secondary_plane = {
+        field_map.source_secondary_plane.width,
+        field_map.source_secondary_plane.height,
+        field_map.source_secondary_plane.pixels};
     mode2_area.terrain = assets.field_terrain;
     mode2_area.initial_camera_x_fixed = assets.initial_camera_x_fixed;
     mode2_area.initial_camera_y_fixed = assets.initial_camera_y_fixed;
@@ -1882,6 +1890,14 @@ native::NativePortAssets decode_genesis_native_assets(
                 area_map.priority_overlay.width,
                 area_map.priority_overlay.height,
                 area_map.priority_overlay.pixels};
+            area.source_primary_plane = {
+                area_map.source_primary_plane.width,
+                area_map.source_primary_plane.height,
+                area_map.source_primary_plane.pixels};
+            area.source_secondary_plane = {
+                area_map.source_secondary_plane.width,
+                area_map.source_secondary_plane.height,
+                area_map.source_secondary_plane.pixels};
             area.terrain = decode_genesis_field_mode_terrain_map(
                 rom, area_resources);
             area.initial_camera_x_fixed = area_resources.initial_camera_x_fixed;
@@ -5117,6 +5133,18 @@ GenesisFieldMapLayers decode_genesis_mode2_field_map_layers(
             std::vector<native::Rgba8>(
                 output_width * output_height, native::Rgba8{0, 0, 0, 0}),
         },
+        RgbaImage{
+            static_cast<std::uint16_t>(output_width),
+            static_cast<std::uint16_t>(output_height),
+            std::vector<native::Rgba8>(
+                output_width * output_height, native::Rgba8{0, 0, 0, 0}),
+        },
+        RgbaImage{
+            static_cast<std::uint16_t>(output_width),
+            static_cast<std::uint16_t>(output_height),
+            std::vector<native::Rgba8>(
+                output_width * output_height, native::Rgba8{0, 0, 0, 0}),
+        },
     };
     for (std::size_t index = 0; index < result.map.pixels.size(); ++index) {
         // Genesis resolves a high-priority tile ahead of a low-priority tile;
@@ -5136,6 +5164,14 @@ GenesisFieldMapLayers decode_genesis_mode2_field_map_layers(
                 : &primary;
         }
         result.map.pixels[index] = selected->color;
+        if (primary.visible) {
+            result.source_primary_plane.pixels[index] = primary.color;
+            result.source_primary_plane.pixels[index].alpha = 255;
+        }
+        if (secondary.visible) {
+            result.source_secondary_plane.pixels[index] = secondary.color;
+            result.source_secondary_plane.pixels[index].alpha = 255;
+        }
         if (selected->high_priority) {
             auto& overlay = result.priority_overlay.pixels[index];
             overlay = selected->color;
