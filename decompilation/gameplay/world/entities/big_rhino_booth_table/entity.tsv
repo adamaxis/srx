@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+big_rhino_booth_table	Restaurant booth table	furniture	Repeated table surfaces with side benches in Scene 11. The table and benches use the composed map art; the lamp and front edges are separately recorded from the ROM priority plane. No use action or collision mode is inferred from the furniture.	-	-	-

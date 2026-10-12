@@ -1,0 +1,5 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+raised_booth_canopy	map_composite	11	256	0	64	32	0	0	behind_actor	overhang	Raised grey canopy above the dark booth opening. Its outline follows the canopy rather than the whole source crop.	field/entities/big_rhino_dark_booth/raised_booth_canopy.png	5,0;59,0;64,8;64,26;0,26;0,8
+booth_left_jamb	map_composite	11	256	32	16	64	0	32	behind_actor	body	Left red-and-grey jamb framing the dark booth opening; the empty doorway is excluded.	field/entities/big_rhino_dark_booth/booth_left_jamb.png	0,0;13,0;16,16;16,45;8,54;0,48
+booth_right_jamb	map_composite	11	304	32	16	64	48	32	behind_actor	body	Right red-and-grey jamb framing the dark booth opening; the empty doorway is excluded.	field/entities/big_rhino_dark_booth/booth_right_jamb.png	3,0;16,0;16,48;8,54;0,45;0,16
+booth_threshold	map_composite	11	272	80	32	16	16	80	behind_actor	threshold	Low curved threshold at the booth opening; its outline stays within the visible sill.	field/entities/big_rhino_dark_booth/booth_threshold.png	0,8;8,0;24,0;32,8;28,16;4,16

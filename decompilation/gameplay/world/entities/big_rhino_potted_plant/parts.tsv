@@ -1,0 +1,3 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+pot_and_lower_foliage	map_composite	11	224	32	32	64	0	0	behind_actor	body	Representative Scene 11 planter crop, including the pot and lower foliage; the outline follows the visible plant silhouette.	field/entities/big_rhino_potted_plant/pot_and_lower_foliage.png	5,0;26,0;31,16;27,36;23,50;8,50;3,35;0,17|8,50;23,50;29,63;4,63
+foliage_priority	priority_overlay	11	224	32	32	48	0	0	foreground	foreground	ROM priority-plane pixels for the plant canopy, kept separate from the pot and lower body.	field/entities/big_rhino_potted_plant/foliage_priority.png	5,0;26,0;31,16;27,36;23,48;8,48;3,35;0,17

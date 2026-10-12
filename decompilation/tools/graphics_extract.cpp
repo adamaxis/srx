@@ -601,7 +601,7 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         output << '"';
     };
 
-    const std::array<std::pair<const char*, std::size_t>, 86> records{{
+    const std::array<std::pair<const char*, std::size_t>, 96> records{{
         // Stoker prompt pointers consumed by the source event/profile path.
         {"stoker.motel.arrival.title", 0x1167EBU},
         {"stoker.motel.arrival.more", 0x0FE5BFU},
@@ -697,6 +697,20 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         {"gunderson.question.option.errascoe", 0x103D24U},
         {"gunderson.question.vigore.response", 0x106CD2U},
         {"gunderson.question.errascoe.response", 0x106929U},
+        // Scene 11 event-30 selects Mortimer Reed's dialogue profile and
+        // opening descriptor through the mode-2 entry in 0x12CC50.
+        {"big-rhino.booth.entry", 0x107D56U},
+        {"big-rhino.mortimer.opening", 0x107DE0U},
+        {"big-rhino.mortimer.conditional-opening", 0x105B7AU},
+        {"big-rhino.option.information", 0x104051U},
+        {"big-rhino.option.work", 0x103A3AU},
+        {"big-rhino.option.leave", 0x104FEBU},
+        // Related restaurant and package text is imported for map inspection;
+        // it is not asserted as the event-30 dialogue without a route trace.
+        {"big-rhino.related.restaurant-description", 0x1154AEU},
+        {"big-rhino.related.package-approach", 0x11555CU},
+        {"big-rhino.related.maitre-d-offer", 0x1155B5U},
+        {"big-rhino.related.package-payment", 0x1155E1U},
     }};
 
     output << "-- Generated from the US ROM dialogue and menu text records.\n"
@@ -2562,6 +2576,13 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         shadowrun::graphics::decode_genesis_field_mode_profile_sprite(
             rom, 0x121E80U),
         "sprite", "0x12CC50/0x121E80/0x20990", false, manifest, written,
+        missing, blank);
+    // Scene 11's mode-2 entry uses profile 7 at 0x121FF4 for the Big Rhino
+    // booth dialogue. This is portrait art, not a field actor sprite.
+    write_catalog_asset(
+        root, "dialogue/portraits/mortimer-reed.bmp",
+        shadowrun::graphics::decode_genesis_field_dialogue_portrait(rom, 7U),
+        "sprite", "0x12CC70/0x121FF4/0x20990", false, manifest, written,
         missing, blank);
     // The scene-2/event-4 indexed title service uses a different profile for
     // the Jump House arrival description. Keep its face as separate host art;

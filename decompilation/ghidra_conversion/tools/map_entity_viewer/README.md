@@ -210,6 +210,18 @@ not that the ROM has no way into the map.
   empty; Walking Bear is guide-associated, but no static ROM actor placement
   or first-contact dialogue is added. The northwest event-30 continuation
   remains unresolved, as do the destinations of the two south-edge exits.
+- Scene 11 is identified as The Big Rhino from its Penumbra route and the ROM
+  contract-location table. Its map annotations separate the service counter,
+  booth alcove, potted plants, 17 lit dining booths, six lower-room table
+  fixtures, and two green wall panels. The adjacent event-30 cells at the dark
+  booth open a source-backed Mortimer Reed dialogue profile with a 56x72 ROM
+  portrait and information/work/leave choices. The ROM's conditional
+  descriptor adds an alternate opening about Mortimer owing Joshua credits;
+  the flag meaning and later choice effects remain unresolved. Nearby
+  restaurant and package strings are labeled as related text until their exact
+  trigger branches are traced. Scene 11 has no default map actors; the booth
+  portrait is not shown as a spawned NPC. Its two event-8/event-9 markers
+  remain unresolved.
 - ROM event-29 floor selectors show the child-scene list extracted from the
   scene profiles, the Up/Down highlight behavior, A-button confirmation, and
   the separate Start exit. The panel keeps the lift landing distinct from a

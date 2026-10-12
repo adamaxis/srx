@@ -56,6 +56,25 @@ local speakers = {
             },
         },
     },
+    mortimer_reed = {
+        name = "Mortimer Reed",
+        text_profile = "big-rhino.mortimer_reed",
+        portrait_alias = "dialogue.portraits.mortimer.reed",
+        events = {
+            booth_entry = {
+                title_key = "big-rhino.booth.entry",
+                continuation_key = "shared.more",
+            },
+            opening = {
+                title_key = "big-rhino.mortimer.opening",
+                continuation_key = "",
+            },
+            conditional_opening = {
+                title_key = "big-rhino.mortimer.conditional-opening",
+                continuation_key = "",
+            },
+        },
+    },
     stoker = {
         name = "Stoker",
         text_profile = "stoker.motel",
@@ -213,6 +232,24 @@ local menu_profiles = {
             choice_label_keys = {
                 another_question = "gunderson.question.option.local",
                 different_subject = "gunderson.information.option.back",
+            },
+        },
+    },
+    ["big-rhino.mortimer_reed"] = {
+        opening = {
+            title_key = "big-rhino.mortimer.opening",
+            choice_label_keys = {
+                information = "big-rhino.option.information",
+                work = "big-rhino.option.work",
+                leave = "big-rhino.option.leave",
+            },
+        },
+        conditional_opening = {
+            title_key = "big-rhino.mortimer.conditional-opening",
+            choice_label_keys = {
+                information = "big-rhino.option.information",
+                work = "big-rhino.option.work",
+                leave = "big-rhino.option.leave",
             },
         },
     },
