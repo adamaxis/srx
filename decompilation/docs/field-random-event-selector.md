@@ -50,9 +50,10 @@ Scene IDs below are ROM field-scene IDs. The tables cover the field random-event
 | Sudden disturbance, handler `0x2115C` | Scenes `6-9` and `44-50`; sum `0` | MORE checks `FFFBFB` and `FFFC22` bit 8. Stages `0-1` or a set bit choose a wilderness pack from six weighted outcomes; stages `2-8` with the bit clear attempt a 2/4/5-person Strike Team encounter. |
 | Lone Star patrol, handler `0x20F12` | Scenes `0` and `3`; sums `3` and `4` | Attack queues the list at `0x1D6FDC` (`lone11`, `lone12`, `lone detectiv`). Run away may queue `0x1D6FE4` or `0x1D6FE0`, according to the thresholded roll result. |
 | Injured-person event, handler `0x20F72` | Scenes `0`, `1`, and `3`; sums `5` and `7` | The ordinary injured-man Attack choice can queue one Lone Star detective at `0x1D6FE4`. A separate pale-figure variant can reveal a vampire; its sequence starts at `0x1D6D8A`, after the Hell Hound pointer in the shared list. |
-| Open security panel, handler `0x20FBA` | Scenes `21-25` sums `1, 7`; `26-29` sum `2`; `30-34` sum `0` | Re-wiring uses the active party's highest Electronics value. A zero result trips the building alarm and enters the map-effect path; a result above 1 disables the current world-effect service through `FFE170`. Walking away chains into the scientist prompt. |
+| Open security panel, handler `0x20FBA` | Scenes `21-25` sums `1, 7`; `26-29` sum `2`; `30-34` sum `0` | Re-wiring uses the active party's highest Electronics value. A zero result trips the alarm and processes the scene's map-effect list (2-5 corporate guards in these scenes); a result above 1 disables the current world-effect service through `FFE170`. Walking away chains into the scientist prompt. |
 | Scientist, handler `0x20FD4` | Scenes `21-25` and `30-34`; sums `4` and `6` | Asking for information uses slot 0's source field `+0x7A` at threshold 5. Both result branches return refusal/suspicion text; walking away returns a leave-behind and floor-text sequence. Neither command directly queues an actor. |
-| Hidden-camera event, handler `0x21004` | Scene `20` sum `0`; scenes `26-29` sum `0`; scenes `35-40` sum `7`; scenes `41-43` sum `1` | MORE tests the party as a group: target 4 with one active runner, 5 with two, 6 with three. Zero successes start the map-effect path and show the alarm text; any success gives the nerves text. The handler names no police roster. |
+| Hidden-camera event, handler `0x21004` | Scene `20` sum `0`; scenes `26-29` sum `0`; scenes `35-40` sum `7`; scenes `41-43` sum `1` | MORE tests the party as a group: target 4 with one active runner, 5 with two, 6 with three. Zero successes show the alarm text; scene 20 only schedules its special timeout, while scenes 26-43 process their map-specific corporate-guard lists. Any success gives the nerves text. |
+| Management terminal, handler `0x2109A` | Scenes `21-25` sum `5`; `26-29` sum `4`; `30-34` sum `3`; `35-40` sum `0` | Hack tests the Computer skill with five threshold trials: zero results sound the alarm and process the scene's corporate-guard list; one finds nothing; two or more compose a floor-labeled database clue. Walking away has no follow-up effect. |
 | Custodian / missing-pass check, handler `0x2101E` | Scene `20`; sum `1` | Asking for information uses a 0-99 roll, the ID-badge flag (`FFFC22` bit 10), and two story bits (`FFFC1E` bits 18/19) to select a clue, suspicion, or evasive response. Walking away gives a 25% “Where’s your pass?” branch only when the badge bit is clear; its MORE command enters the shared corporate-guard ID handler `0x242FA`. No direct Lone Star roster is queued. |
 | Alley grenade seller, handler `0x2112C` | Scenes `0`, `2`, `3`, and `5`; sums `5-7` | Attack rolls `0-59` try the one-bodyguard list at `0x1D7054`; a successful start leads to a gun battle. Rolls `60-99`, or failure to start that actor, reveal undercover Lone Star. Buying the grenades has its own 60/40 split: rolls `0-59` continue through funds/slot checks; `60-99` expose the undercover agent. |
 | Company Man confrontation, handler `0x20F5A` | Scenes `3` and `5`; sums `1` and `4` | One continuation says the man remains irate and a Lone Star patrol arrives. The response text then says the officers turn their attention to the player. |
@@ -83,6 +84,47 @@ extractor records each opening choice's command and target. The companion
 that have been followed through their terminal dialogue, funds changes, and
 actor-list handoffs. The map viewer shows these rows beside the per-scene event
 prompt. A dispatch target by itself is not treated as a terminal outcome.
+
+**Shared map-effect transition (`0x1E04A` / `0x1E0DC`).** In scene 20,
+`0x1E04A` only calls `0x1DBAA` to schedule the world-activity timeout. In
+other scenes it proceeds only in world mode 2 (`FFDF40 == 2`): it arms
+`FFE11E` with `0x960`, then checks the per-activity latch `FFE16F`. If the
+latch is clear, it sets it, requests audio event `0x30`, clears pending actor
+effect flags, and calls `0x1E0DC`. The audio event's human-readable sound name
+is not established by this trace. A later call while the latch is set does not
+spawn the list again.
+
+`0x3074` loads the current scene profile from the pointer table at `0x3232`
+into `FFDDC6`; the profile longword at offset `+0x58` is copied to `FFDE1E`.
+`0x1E0DC` follows that pointer to its `+0x10` effect-list pointer. Each
+nonzero 8-byte list entry supplies a tagged template pointer and a location
+record pointer. After removing the tag bit, every entry in scenes 21-43 uses
+the ROM template at `0x1D6A1C`, named `corp guard`. For a visible entity,
+`0x1E0DC` projects it and copies the location record's X/Y words into the
+entity. It creates an entity; it does not itself call the combat-start
+routine. If entity or effect-slot allocation fails, the list stops at that
+entry, so the following counts are the map list's maximum entries, not a
+guaranteed number on screen.
+
+| Scene IDs | Effect-list pointer | Corp-guard entries |
+|---|---:|---:|
+| `21` | `0x1D7460` | 2 |
+| `22`, `24` | `0x1D7AE6` | 3 |
+| `23` | `0x1D821A` | 2 |
+| `25` | `0x1D8AA0` | 2 |
+| `26` | `0x1D9868` | 3 |
+| `27` | `0x1D9F4E` | 3 |
+| `28-29` | `0x1DA71E` | 4 |
+| `30` | `0x1DAF34` | 5 |
+| `31`, `34` | `0x1DB518` | 3 |
+| `32-33` | `0x1DBB10` | 4 |
+| `35` | `0x1DC2C4` | 3 |
+| `36-37` | `0x1DCA24` | 4 |
+| `38` | `0x1DD17C` | 2 |
+| `39` | `0x1DD8E2` | 4 |
+| `40` | `0x1DDD96` | 2 |
+| `41` | `0x1DE2B0` | 4 |
+| `42-43` | `0x1DE8BA` | 4 |
 
 **Flustered woman (`0x20F8A`, scenes 0-1, sums 3-4).** MORE enters `0x23AA8`,
 which selects either a suspected-harm prompt or an apparent-law-official
@@ -164,9 +206,10 @@ difficulty 5. The resulting success count is in `FFF0DD`.
 
 A zero result returns the crossed-wires/building-alarm text at `0x1211D4` and
 calls `0x1E04A` to start the map's world-effect transition. The handler names
-no guard or police roster; the actual actor result is delegated to that map's
-effect data. Result 1 returns the 'tougher than it looked' response at
-`0x1211DC` without a direct state write. A result above 1 returns the camera
+no fixed guard list of its own. In scenes 21-34, the shared transition
+processes the scene-specific list above, which contains two to five corporate
+guards; the call does not itself start combat. Result 1 returns the 'tougher
+than it looked' response at `0x1211DC` without a direct state write. A result above 1 returns the camera
 feed-disconnected response at `0x1211E4` and sets `FFE170`. The active-effect
 service (`0x163DA`) and world-effect scheduler (`0x1DFC4`) both check this flag;
 the world-activity initializer (`0x167AE`) clears it. Thus the ROM records a
@@ -182,6 +225,26 @@ away returns `0x12121C`, beginning with the leave-behind text and the floor
 string sequence. These routines do not write funds or queue actors. The linked
 floor/security continuation after these returned text records remains partial.
 
+**Management terminal (`0x2109A`, scenes 21-40).** The selector chooses this
+event at sum 5 in scenes 21-25, sum 4 in scenes 26-29, sum 3 in scenes 30-34,
+and sum 0 in scenes 35-40. The prompt record at `0x1214AC` offers Hack the
+database (`0xDF` -> `0x247D0`) or returns the walk-away record at `0x1214D4`
+(`0x11D2A8`).
+
+`0x247D0` reads the runner's Computer skill byte at `FF0188` and performs five
+threshold trials. With `FFF0DD == 0`, it calls `0x1E04A` and returns the alarm
+message at `0x1214C4`. The shared transition therefore adds the current
+scene's corporate-guard map-effect list when its world-mode and latch checks
+allow it; the maximum list sizes are two to five across scenes 21-40. This is
+not a direct combat handoff, and the actor AI/response after insertion remains
+to be traced. With exactly one success, it returns the no-value message at
+`0x1214CC`. With more than one, it copies the database-search line and a
+first-through-sixth-floor text variant to `FFB740`, then returns shared text
+node `0x11CD92`. `FFE12C` indexes that floor-label table; this branch alone
+does not prove that the selected label is the runner's actual current floor.
+The terminal handler does not directly write funds or story flags. Walking
+away returns its text record without a state change.
+
 **Hidden-camera check (`0x21004`, scenes 20, 26-29, 35-43).** The MORE command
 (`0xD4` -> `0x244D2`) calls `0x23750`, which leaves the active-runner count in
 `D6` and the sum of runner `+0x78` bytes in `D0`. This handler uses the count:
@@ -194,9 +257,10 @@ party. The `+0x78` sum is not used by this handler. Its entry stub also clears
 If `FFF0DD` is zero, `0x244D2` calls `0x1E04A` and returns `0x121320`: the
 alarm sounds and the player recognizes the hidden camera. Any nonzero result
 returns `0x121328`: nothing happens and the player suspects nerves. This event
-does not write the heat byte `FFFBFA` or name a Lone Star/corporate roster; the
-alarm's actor result comes from the current map-effect data and remains
-unresolved.
+does not write the heat byte `FFFBFA` or name a Lone Star roster. On scene 20,
+the alarm follows the special timeout-only path. On scenes 26-43, the shared
+transition processes the scene-specific corporate-guard list above when its
+world-mode and latch checks pass. It does not itself start combat.
 
 **Custodian / missing-pass check (`0x2101E`, scene 20, sum 1).** The entry
 stub pairs prompt record `0x121330` with profile `0x121E5C`. That profile is a
