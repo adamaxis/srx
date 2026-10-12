@@ -54,10 +54,13 @@ whether the route table or a special handler selects it.
 The **What happens** pane uses player-facing descriptions and decimal map or
 activity numbers. Internal handler names, addresses, and converted runtime
 owners stay in **Source** so they are not presented as dialogue or menu text.
-Selecting an entity shows its known interactions and imported dialogue text
-when that content exists. **Map profile** shows the selected ROM
-descriptor, camera setup, default three-member party placement, and the
-profile-selected actor list. ROM `0x03084` loads the three profile positions;
+Selecting an entity shows its known interaction areas, destination, story
+conditions, linked dialogue and menu choices, and shop stock when those have
+been source-profiled. Shop prices are identified as base template prices;
+runner- and transaction-specific adjustments remain separate. **Map profile**
+shows the selected ROM descriptor, camera setup, default three-member party
+placement, and the profile-selected actor list. ROM `0x03084` loads the three
+profile positions;
 `0x02B34` copies them into the three ordinary actor records when the entry
 route has no pending coordinate-list override. The **Default party spawns**
 layer marks all three defaults. An incoming transition can replace them, so

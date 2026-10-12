@@ -171,7 +171,10 @@ def extract_lua_block(source: str, opening: int, left: str = "{", right: str = "
 
 
 def read_shop_profile_details(
-    repo_root: Path, profile: str, text_catalog: dict[str, str]
+    repo_root: Path,
+    profile: str,
+    text_catalog: dict[str, str],
+    include_source_details: bool = True,
 ) -> list[str]:
     """Summarize the selected Lua shop profile without executing Lua code."""
     shop_path = repo_root / "decompilation" / "gameplay" / "scripts" / "shop.lua"
@@ -195,24 +198,57 @@ def read_shop_profile_details(
     if not body:
         return [f"Shop profile '{profile}' could not be read as a balanced Lua table."]
 
-    lines = [f"Shop profile source: {shop_path}"]
+    lines = [f"Shop profile source: {shop_path}"] if include_source_details else []
     title_key = f"shop.service.option.{profile}"
-    lines.append(f"Shop title: {text_catalog.get(title_key, title_key)} [{title_key}]")
+    title = text_catalog.get(title_key, title_key)
+    lines.append(
+        f"Shop title: {title} [{title_key}]" if include_source_details
+        else f"Shop: {title}"
+    )
 
     item_names: dict[int, str] = {}
+    item_ids: dict[int, str] = {}
+    item_prices: dict[int, tuple[int, int]] = {}
     try:
         item_source = items_path.read_text(encoding="utf-8")
     except OSError:
         item_source = ""
     for match in re.finditer(
-        r'define_item\(\s*"([^"]+)"\s*,\s*(\d+)\s*,', item_source
+        r'define_item\(\s*"([^"]+)"\s*,\s*(\d+)\s*,\s*"[^"]+"\s*,\s*(\d+)\s*,',
+        item_source,
     ):
         code = int(match.group(2))
-        item_names[code] = text_catalog.get(
-            f"items.name.{code}", match.group(1).replace("_", " ")
-        )
+        purchase_base = int(match.group(3))
+        item_ids[code] = match.group(1)
+        item_prices[code] = (purchase_base, purchase_base // 2)
+        item_names[code] = re.sub(
+            r"\s+",
+            " ",
+            text_catalog.get(
+                f"items.name.{code}", match.group(1).replace("_", " ")
+            ).replace("||", " "),
+        ).strip()
+    duplicate_names = {
+        name for name in item_names.values()
+        if list(item_names.values()).count(name) > 1
+    }
+    for code, name in tuple(item_names.items()):
+        if name in duplicate_names and item_ids.get(code, "").startswith("armor_"):
+            subtype = item_ids[code][len("armor_"):]
+            item_names[code] = f"{name} ({friendly_identifier(subtype).lower()})"
+    # The Ares offer type 0x45 is the special universal-clips purchase row,
+    # named by the shop's own extracted title and description rather than an
+    # ordinary item-template entry.
+    universal_clips_name = text_catalog.get(
+        "shop.universal_clips.title", "Universal Gun Clips"
+    )
+    if universal_clips_name:
+        item_names[0x45] = re.sub(
+            r"\s+", " ", universal_clips_name.replace("||", " ")
+        ).strip()
 
     group_summaries: list[str] = []
+    shop_actions: list[str] = []
     cursor = 0
     while True:
         match = re.search(r"\bgroup\s*\(", body[cursor:])
@@ -224,22 +260,61 @@ def read_shop_profile_details(
             break
         group_id_match = re.match(r'\s*"([^"]+)"', group_body)
         group_id = group_id_match.group(1) if group_id_match else "unnamed group"
+        heading_ids = re.findall(r'action_heading\(\s*"([^"]+)"\s*\)', group_body)
+        headings = [
+            re.sub(
+                r"\s+", " ",
+                text_catalog.get(
+                    f"shop.action_heading.option.{heading_id}", ""
+                ).replace("||", " "),
+            ).strip()
+            for heading_id in heading_ids
+        ]
+        headings = [heading for heading in headings if heading]
         offer_ids = [
             int(value, 0)
             for value in re.findall(r"\boffer\s*\(\s*(0x[0-9A-Fa-f]+|\d+)", group_body)
         ]
         if offer_ids:
-            stocks = [
-                item_names.get(code, f"unresolved item type 0x{code:02X}")
-                for code in offer_ids
-            ]
-            group_summaries.append(f"{group_id}: {', '.join(stocks)}")
-        else:
-            group_summaries.append(f"{group_id}: no stock rows declared")
+            stocks = []
+            for code in offer_ids:
+                name = item_names.get(
+                    code,
+                    f"Unidentified item (source type 0x{code:02X})"
+                    if include_source_details else "Unidentified item",
+                )
+                price = item_prices.get(code)
+                if price is not None:
+                    purchase_base, resale_base = price
+                    name += (
+                        f" (base buy ${purchase_base}; base resale ${resale_base})"
+                    )
+                stocks.append(name)
+            group_name = {
+                "weapons": "Weapons",
+                "other_items": "Other items",
+                "armor": "Armor",
+                "sell": "Items you can sell",
+            }.get(group_id, friendly_identifier(group_id))
+            group_summaries.append(f"{group_name}: {', '.join(stocks)}")
+        elif group_id == "sell":
+            shop_actions.append("Sell items from your inventory")
+        elif headings:
+            shop_actions.extend(
+                " ".join(headings[index:index + 2])
+                for index in range(0, len(headings), 2)
+            )
         cursor = group_open + len(group_body) + 2
     if group_summaries:
-        lines.append("Shop groups in Lua source order:")
+        lines.append("Items offered:")
         lines.extend(f"  {summary}" for summary in group_summaries)
+        if item_prices:
+            lines.append(
+                "Base prices are before the runner- and transaction-specific adjustments shown by the shop."
+            )
+    if shop_actions:
+        lines.append("Other shop options:")
+        lines.extend(f"  {action}" for action in dict.fromkeys(shop_actions))
 
     text_keys = sorted(set(re.findall(r'"(shop\.[^"]+)"', body)))
     text_keys.extend(
@@ -249,12 +324,24 @@ def read_shop_profile_details(
     text_keys.append(title_key)
     resolved_keys = list(dict.fromkeys(text_keys))
     if resolved_keys:
-        lines.append("Shop text and headings from the Lua profile:")
+        lines.append(
+            "Shop text and headings from the Lua profile:" if include_source_details
+            else "Shop instructions and headings:"
+        )
         lines.extend(
             f"  {key}: {text_catalog.get(key, '(text key is not imported)')}"
+            if include_source_details else
+            f"  {text_catalog.get(key, '(text not imported)')}"
             for key in resolved_keys
         )
     return lines
+
+
+def friendly_identifier(value: str) -> str:
+    """Turn an internal content label into readable words for the viewer."""
+    words = re.sub(r"[_\-.]+", " ", value.strip())
+    words = re.sub(r"\s+", " ", words)
+    return words[:1].upper() + words[1:] if words else "Unspecified"
 
 
 def lua_named_table_body(source: str, declaration: str, name: str) -> str:
@@ -283,6 +370,7 @@ def read_dialogue_profile_details(
     content_profile: str,
     speaker_id: str,
     text_catalog: dict[str, str],
+    include_source_details: bool = True,
 ) -> list[str]:
     """Resolve authored dialogue pages, portraits, menus, and choice labels."""
     dialogue_path = repo_root / "decompilation" / "gameplay" / "scripts" / "dialogue.lua"
@@ -300,11 +388,15 @@ def read_dialogue_profile_details(
             name = re.search(r'\bname\s*=\s*"([^"]+)"', speaker_body)
             profile = re.search(r'\btext_profile\s*=\s*"([^"]+)"', speaker_body)
             portrait = re.search(r'\bportrait_alias\s*=\s*"([^"]+)"', speaker_body)
-            lines.append(
-                f"Speaker from dialogue.lua: {name.group(1) if name else speaker_id}; "
-                f"portrait resource alias: {portrait.group(1) if portrait else '(not declared)'}"
-            )
-            if profile:
+            speaker_name = name.group(1) if name else friendly_identifier(speaker_id)
+            if include_source_details:
+                lines.append(
+                    f"Speaker from dialogue.lua: {speaker_name}; "
+                    f"portrait resource alias: {portrait.group(1) if portrait else '(not declared)'}"
+                )
+            else:
+                lines.append(f"Speaker: {speaker_name}")
+            if profile and include_source_details:
                 lines.append(f"Speaker text profile: {profile.group(1)}")
             events_match = re.search(r"\bevents\s*=\s*\{", speaker_body)
             if events_match:
@@ -326,13 +418,24 @@ def read_dialogue_profile_details(
                         continue
                     title_key = title.group(1)
                     text = text_catalog.get(title_key, "(text key is not imported)")
-                    page = f"{event_name}: {text} [{title_key}]"
+                    page = (
+                        f"{event_name}: {text} [{title_key}]" if include_source_details
+                        else f"{friendly_identifier(event_name)}: {text}"
+                    )
                     if continuation and continuation.group(1):
                         key = continuation.group(1)
-                        page += f"; continuation: {text_catalog.get(key, key)} [{key}]"
+                        continuation_text = text_catalog.get(key, key)
+                        page += (
+                            f"; continuation: {continuation_text} [{key}]"
+                            if include_source_details else
+                            f"; then: {continuation_text}"
+                        )
                     pages.append(page)
                 if pages:
-                    lines.append("Speaker dialogue pages in dialogue.lua:")
+                    lines.append(
+                        "Speaker dialogue pages in dialogue.lua:" if include_source_details
+                        else "Dialogue:"
+                    )
                     lines.extend(f"  {page}" for page in pages)
 
     if content_profile:
@@ -349,10 +452,13 @@ def read_dialogue_profile_details(
                 page_open = profile_body.find("{", match.start())
                 page_body = extract_lua_block(profile_body, page_open)
                 title = re.search(r'\btitle_key\s*=\s*"([^"]+)"', page_body)
-                title_text = (
-                    f"{text_catalog.get(title.group(1), '(text key is not imported)')} "
-                    f"[{title.group(1)}]"
+                title_text_value = (
+                    text_catalog.get(title.group(1), '(text key is not imported)')
                     if title else "(no title key declared)"
+                )
+                title_text = (
+                    f"{title_text_value} [{title.group(1)}]"
+                    if title and include_source_details else title_text_value
                 )
                 choice_match = re.search(r"\bchoice_label_keys\s*=\s*\{", page_body)
                 choices: list[str] = []
@@ -366,15 +472,24 @@ def read_dialogue_profile_details(
                         choice_id = choice.group(1) or choice.group(2)
                         text_key = choice.group(3)
                         label = text_catalog.get(text_key, "(text key is not imported)")
-                        choices.append(f"{choice_id}={label} [{text_key}]")
+                        choices.append(
+                            f"{choice_id}={label} [{text_key}]"
+                            if include_source_details else label
+                        )
                 menu_pages.append(
                     f"{page_id}: {title_text}; choices: " +
                     (", ".join(choices) if choices else "none declared")
+                    if include_source_details else
+                    f"{friendly_identifier(page_id)}: {title_text}; choices: " +
+                    (", ".join(choices) if choices else "none declared")
                 )
             if menu_pages:
-                lines.append(f"Menu pages from Lua profile {content_profile}:")
+                lines.append(
+                    f"Menu pages from Lua profile {content_profile}:"
+                    if include_source_details else "Menu pages:"
+                )
                 lines.extend(f"  {page}" for page in menu_pages)
-        else:
+        elif include_source_details:
             lines.append(
                 f"Menu profile '{content_profile}' is not declared in dialogue.lua."
             )
@@ -491,22 +606,26 @@ def read_site_content_details(
                 "Menu pages and choices: " + ", ".join(menu_profiles) +
                 " (the linked scripts determine which choices appear for each story state)."
             )
-        else:
+        elif not site.get("content_profile", "").strip():
             lines.append(
-                "Menu choices are described in the game's linked script; "
-                "this map entry has no verified menu text yet."
+                "A menu is linked to this place, but its page text and choices "
+                "are not available in the current content profile."
             )
     content_profile = site.get("content_profile", "").strip()
     speaker_id = site.get("speaker_id", "").strip()
     if content_profile or speaker_id:
         lines.extend(read_dialogue_profile_details(
-            repo_root, content_profile, speaker_id, text_catalog
+            repo_root, content_profile, speaker_id, text_catalog,
+            include_source_details=include_source_details,
         ))
     if include_source_details:
         lines.extend(read_lua_quest_module_details(repo_root, site))
     shop_profile = site.get("shop_profile", "").strip()
     if shop_profile:
-        lines.extend(read_shop_profile_details(repo_root, shop_profile, text_catalog))
+        lines.extend(read_shop_profile_details(
+            repo_root, shop_profile, text_catalog,
+            include_source_details=include_source_details,
+        ))
     return lines
 
 
@@ -1652,13 +1771,17 @@ def read_collision_rectangles(asset_root: Path, scene_id: int) -> list[MapEviden
 
 
 def read_site_route_index(repo_root: Path, scene_id: int) -> dict[str, dict[str, str]]:
-    path = repo_root / "decompilation" / "gameplay" / "world" / "areas" / f"scene-{scene_id:02d}-site-routes.tsv"
-    _, rows = read_tsv(path)
     return {
         row.get("rom_record_address", "").strip().upper(): row
-        for row in rows
+        for row in read_site_route_rows(repo_root, scene_id)
         if row.get("rom_record_address", "").strip()
     }
+
+
+def read_site_route_rows(repo_root: Path, scene_id: int) -> list[dict[str, str]]:
+    path = repo_root / "decompilation" / "gameplay" / "world" / "areas" / f"scene-{scene_id:02d}-site-routes.tsv"
+    _, rows = read_tsv(path)
+    return rows
 
 
 def read_rom_contract_area_profiles(repo_root: Path) -> dict[int, dict[str, object]]:
@@ -1827,6 +1950,62 @@ def describe_site_destination(value: str, current_scene: int) -> str:
     return value
 
 
+def describe_site_behavior(value: str) -> str:
+    """Translate route-profile labels into concise map-editor language."""
+    descriptions = {
+        "entry_description_then_field_route":
+            "Shows the location's entry description, then follows its field route.",
+        "generic_area_route":
+            "Uses the map's ordinary area route.",
+        "resource_activity_route":
+            "Starts the resource activity selected by the game.",
+        "scripted_activity_route":
+            "Starts a scripted activity selected by the game.",
+        "conditional_area_route":
+            "Checks the story condition before choosing the destination.",
+        "same_map_dialogue_and_motel_service":
+            "Opens Stoker's dialogue and motel services here; there is no separate motel map.",
+        "service_prompt_then_shop":
+            "Shows the service prompt; choosing it opens the shop on this map.",
+        "indexed_story_or_generic_route":
+            "Checks for a story event first; otherwise it continues through the standard route.",
+        "conditional_maglock_then_activity":
+            "Checks the electromagnetic lock before continuing to the activity route.",
+        "unresolved":
+            "The location or route is not identified by the current evidence.",
+    }
+    return descriptions.get(
+        value.strip(), "The interaction behavior is not yet described in plain language."
+    )
+
+
+def describe_site_conditions(site: dict[str, str]) -> str:
+    """Return only player-readable conditions, never source implementation notes."""
+    player_conditions = site.get("player_conditions", "").strip()
+    if player_conditions:
+        return player_conditions
+    route = site.get("rom_route", "").strip()
+    notes = site.get("state_or_branch_notes", "").strip()
+    if route == "same_map_dialogue_and_motel_service" and notes:
+        return re.sub(
+            r"\s*Exact branch logic is in [^.;]+\.lua\.?\s*$",
+            "",
+            notes,
+            flags=re.IGNORECASE,
+        ).strip()
+    descriptions = {
+        "entry_description_then_field_route":
+            "A scene-entry condition selects the destination after the entry description.",
+        "conditional_area_route":
+            "The destination can change with the current story condition.",
+        "indexed_story_or_generic_route":
+            "A story event may run first; otherwise the game follows the standard activity route.",
+        "conditional_maglock_then_activity":
+            "The activity route continues only after the electromagnetic-lock check.",
+    }
+    return descriptions.get(route, "")
+
+
 def describe_trigger_action(route: str) -> str:
     """Describe how the ROM reaches a route-table row or direct handler."""
     value = route.strip().lower()
@@ -1950,22 +2129,20 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
                         f"Choice/menu pages: {site.get('menu_profiles', '').strip() or '(not identified)' }",
                         f"Shop catalog: {site.get('shop_profile', '').strip() or '(none identified)' }",
                     ))
-                    story_notes = site.get("state_or_branch_notes", "").strip()
-                    story_notes = re.sub(
-                        r"\s*Exact branch logic is in [^.;]+\.lua\.?\s*$",
-                        "",
-                        story_notes,
-                        flags=re.IGNORECASE,
-                    ).strip()
                     player_summary = site.get("player_summary", "").strip()
                     player_destination = site.get("player_destination", "").strip()
-                    player_conditions = site.get("player_conditions", "").strip()
+                    player_conditions = describe_site_conditions(site)
                     route_lines.extend((
                         f"Location: {site_name}",
-                        f"How this point is used: {player_summary or route_label}",
+                        "How this point is used: " + (
+                            player_summary or describe_site_behavior(
+                                site.get("rom_route", "")
+                            )
+                        ),
                         f"Destination or result: {player_destination or destination}",
-                        f"Story conditions: {player_conditions or story_notes or '(not profiled)' }",
                     ))
+                    if player_conditions:
+                        route_lines.append(f"Story conditions: {player_conditions}")
                     display_content_lines = read_site_content_details(
                         repo_root, site, text_catalog, scene_id,
                         include_source_details=False,
@@ -3568,54 +3745,135 @@ class MapEntityViewer(QMainWindow):
         )
 
     def _entity_game_flow(self, entity: EntityDefinition) -> str:
-        lines = [
-            f"{entity.name}",
-            f"Place type: {entity.category}",
-            f"Dialogue/menu content: {entity.content_profile or '(not linked)' }",
-            f"Speaker ID: {entity.speaker_id or '(not linked)' }",
-            f"Shop catalog: {entity.shop_profile or '(not linked)' }",
-            "",
-            "Known interactions and results:",
-        ]
-        if entity.interactables:
-            for interaction in entity.interactables:
-                lines.extend((
-                    f"  Trigger: {interaction.source_event or interaction.interaction_id}",
-                    f"  Game action: {interaction.lua_handler or '(not connected)' }",
-                    f"  Source note: {interaction.evidence or '(not recorded)' }",
-                ))
-        else:
-            lines.append("  No doorway, service, or dialogue route is attached to this entity yet.")
-        route_index = read_site_route_index(self.repo_root, self.scene_id)
+        lines = [entity.name, f"Type: {friendly_identifier(entity.category)}", ""]
+        route_rows = read_site_route_rows(self.repo_root, self.scene_id)
         text_catalog = read_lua_string_table(
             self.assets / "dialogue" / "script-text.lua"
         )
-        route_sites: list[tuple[str, dict[str, str]]] = []
-        for interaction in entity.interactables:
-            address = re.search(r"0x[0-9A-Fa-f]+", interaction.source_event)
-            site = route_index.get(address.group(0).upper(), {}) if address else {}
-            if site:
-                route_sites.append((interaction.source_event, site))
-        if entity.content_profile and not any(
-            site.get("content_profile", "").strip() == entity.content_profile
-            for _event, site in route_sites
-        ):
-            lines.extend(("", *read_dialogue_profile_details(
-                self.repo_root, entity.content_profile, entity.speaker_id,
-                text_catalog,
-            )))
-        for event, site in route_sites:
-            lines.extend(("", f"Resolved route for {event}:"))
-            lines.extend(read_site_content_details(
-                self.repo_root, site, text_catalog, self.scene_id
-            ))
-        if entity.shop_profile and not any(
-            site.get("shop_profile", "").strip() == entity.shop_profile
-            for _event, site in route_sites
-        ):
-            lines.extend(("", *read_shop_profile_details(
-                self.repo_root, entity.shop_profile, text_catalog
-            )))
+
+        def present(value: str) -> bool:
+            return value.strip() not in {"", "-"}
+
+        def place_key(value: str) -> str:
+            key = re.sub(r"[^a-z0-9]+", " ", value.casefold()).strip()
+            key = re.sub(r"^(?:the|a|an)\s+", "", key)
+            key = re.sub(
+                r"\s+(?:frontage|site shelter|perimeter barrier)$", "", key
+            )
+            return key
+
+        entity_name = place_key(entity.name)
+        route_sites: list[dict[str, str]] = []
+        interaction_addresses = {
+            address.group(0).upper()
+            for interaction in entity.interactables
+            if (address := re.search(r"0x[0-9A-Fa-f]+", interaction.source_event))
+        }
+        for site in route_rows:
+            same_record = (
+                site.get("rom_record_address", "").strip().upper()
+                in interaction_addresses
+            )
+            same_profile = (
+                present(entity.content_profile) and
+                site.get("content_profile", "").strip() == entity.content_profile
+            ) or (
+                present(entity.speaker_id) and
+                site.get("speaker_id", "").strip() == entity.speaker_id
+            ) or (
+                present(entity.shop_profile) and
+                site.get("shop_profile", "").strip() == entity.shop_profile
+            )
+            same_name = (
+                present(site.get("site_name", "")) and
+                place_key(site.get("site_name", "")) == entity_name
+            )
+            if same_record or same_profile or same_name:
+                route_sites.append(site)
+        # Entities can have several source rectangles for one site. Show one
+        # readable profile for repeated records while the Source tab retains
+        # each exact ROM address and rectangle.
+        unique_routes: list[dict[str, str]] = []
+        route_keys: set[tuple[str, str, str]] = set()
+        for site in route_sites:
+            route_key = (
+                site.get("site_name", ""),
+                site.get("rom_route", ""),
+                site.get("rom_destination", ""),
+            )
+            if route_key not in route_keys:
+                route_keys.add(route_key)
+                unique_routes.append(site)
+        route_sites = unique_routes
+
+        if entity.interactables:
+            lines.append("Access points:")
+            for interaction in entity.interactables:
+                lines.append(
+                    f"  {interaction.width}×{interaction.height} pixel interaction area "
+                    f"at entity position ({interaction.local_x}, {interaction.local_y})."
+                )
+        if route_sites:
+            for site in route_sites:
+                site_name = site.get("site_name", "").strip() or entity.name
+                behavior_summary = (
+                    site.get("player_summary", "").strip() or
+                    describe_site_behavior(site.get("rom_route", ""))
+                )
+                lines.extend(("", f"When you use {site_name}:",
+                              "  " + behavior_summary))
+                destination = site.get("player_destination", "").strip()
+                if not destination:
+                    destination = describe_site_destination(
+                        site.get("rom_destination", ""), self.scene_id
+                    )
+                if destination:
+                    lines.append(f"  Where it leads: {destination}")
+                conditions = describe_site_conditions(site)
+                if conditions:
+                    lines.append(f"  Story conditions: {conditions}")
+                name_evidence = describe_site_crosswalk(
+                    site.get("crosswalk_status", "unresolved")
+                )
+                if name_evidence != "name evidence not recorded":
+                    lines.append(f"  Name evidence: {name_evidence}.")
+                content_lines = read_site_content_details(
+                    self.repo_root, site, text_catalog, self.scene_id,
+                    include_source_details=False,
+                )
+                if content_lines:
+                    lines.extend(f"  {line}" for line in content_lines)
+                else:
+                    lines.append(
+                        "  Dialogue, menu choices, shop stock, or quest text "
+                        "has not been linked to this place yet."
+                    )
+        else:
+            has_linked_profile = False
+            if present(entity.content_profile) or present(entity.speaker_id):
+                content_lines = read_dialogue_profile_details(
+                    self.repo_root,
+                    entity.content_profile if present(entity.content_profile) else "",
+                    entity.speaker_id if present(entity.speaker_id) else "",
+                    text_catalog,
+                    include_source_details=False,
+                )
+                if content_lines:
+                    lines.extend(("", "Known dialogue and choices:"))
+                    lines.extend(content_lines)
+                    has_linked_profile = True
+            if present(entity.shop_profile):
+                shop_lines = read_shop_profile_details(
+                    self.repo_root, entity.shop_profile, text_catalog,
+                    include_source_details=False,
+                )
+                lines.extend(("", *shop_lines))
+                has_linked_profile = True
+            lines.extend(("", "Route details:"))
+            lines.append(
+                "No map route has been linked to this place yet." if not has_linked_profile
+                else "The dialogue profile is known, but its map entry condition and destination are not linked yet."
+            )
         return "\n".join(lines)
 
     def _show_properties(self, instance: EntityInstance | None) -> None:
