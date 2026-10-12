@@ -135,12 +135,14 @@ value and is not treated as a player spawn.
   spawn positions.
 - Scene 5's six ROM entrance events are cross-referenced to Renraku Arcology
   guide markers and the game's contract-location names. The **What happens**
-  pane shows each numeric field/resource destination, guide-listed services or
-  stock as reference text, and whether dialogue/shop content is actually linked
-  to the trigger. The guide's Downtown connector remains distinct from its ROM
-  table result, which currently selects no valid scene; unprofiled direct
-  interactions remain unnamed. This crosswalk does not classify the map's
-  building pixels yet.
+  pane describes each route in plain language; the **Source** pane keeps the
+  ROM record and table result. It lists guide-only store stock, fees, and named
+  encounters separately from dialogue or menus linked to the trigger. The six
+  storefronts have separate body/overhang/sign parts and their ROM entrance
+  cells are clickable. The guide's Downtown connector remains distinct from its
+  ROM table result, which currently selects no valid scene. The storefront
+  bounds describe the visible structures; surrounding floor and entry cells
+  remain separate annotations.
 - The source actor layer is data-driven across the extracted map catalog: the
   viewer uses each ROM record's actor type and sprite art, shows default scene
   records separately from conditional choices, and keeps special event lists
