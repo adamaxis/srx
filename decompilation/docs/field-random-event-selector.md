@@ -50,6 +50,8 @@ Scene IDs below are ROM field-scene IDs. The tables cover the field random-event
 | Sudden disturbance, handler `0x2115C` | Scenes `6-9` and `44-50`; sum `0` | MORE checks `FFFBFB` and `FFFC22` bit 8. Stages `0-1` or a set bit choose a wilderness pack from six weighted outcomes; stages `2-8` with the bit clear attempt a 2/4/5-person Strike Team encounter. |
 | Lone Star patrol, handler `0x20F12` | Scenes `0` and `3`; sums `3` and `4` | Attack queues the list at `0x1D6FDC` (`lone11`, `lone12`, `lone detectiv`). Run away may queue `0x1D6FE4` or `0x1D6FE0`, according to the thresholded roll result. |
 | Injured-person event, handler `0x20F72` | Scenes `0`, `1`, and `3`; sums `5` and `7` | The ordinary injured-man Attack choice can queue one Lone Star detective at `0x1D6FE4`. A separate pale-figure variant can reveal a vampire; its sequence starts at `0x1D6D8A`, after the Hell Hound pointer in the shared list. |
+| Open security panel, handler `0x20FBA` | Scenes `21-25` sums `1, 7`; `26-29` sum `2`; `30-34` sum `0` | Re-wiring uses the active party's highest Electronics value. A zero result trips the building alarm and enters the map-effect path; a result above 1 disables the current world-effect service through `FFE170`. Walking away chains into the scientist prompt. |
+| Scientist, handler `0x20FD4` | Scenes `21-25` and `30-34`; sums `4` and `6` | Asking for information uses slot 0's source field `+0x7A` at threshold 5. Both result branches return refusal/suspicion text; walking away returns a leave-behind and floor-text sequence. Neither command directly queues an actor. |
 | Alley grenade seller, handler `0x2112C` | Scenes `0`, `2`, `3`, and `5`; sums `5-7` | Attack rolls `0-59` try the one-bodyguard list at `0x1D7054`; a successful start leads to a gun battle. Rolls `60-99`, or failure to start that actor, reveal undercover Lone Star. Buying the grenades has its own 60/40 split: rolls `0-59` continue through funds/slot checks; `60-99` expose the undercover agent. |
 | Company Man confrontation, handler `0x20F5A` | Scenes `3` and `5`; sums `1` and `4` | One continuation says the man remains irate and a Lone Star patrol arrives. The response text then says the officers turn their attention to the player. |
 | Flustered-woman event, handler `0x20F8A` | Scenes `0-1`; sums `3-4` | The MORE continuation divides into suspected-harm and apparent-law-official versions. The law-official version can reveal an undercover Lone Star agent; its Attack/Comply/Run choices can end in a gun battle, questioning/release, fine, arrest/confiscation, escape, or being overtaken and shot. See the terminal branch table below. |
@@ -128,7 +130,7 @@ as the ID-badge condition. With that bit set, it returns the apology and
 choices at `0x121428`: ask for information (`0xDE` -> `0x24724`) or walk away
 (`0x121448`). The information action runs a threshold-6 trial using byte
 `FF017A` (the byte's stat name is not established here). Results above 1
-compose “You manage to make her laugh...” with the current floor string
+compose 'You manage to make her laugh...' with the current floor string
 selected by `FFE12C`, then return the shared dialogue data at `0x11CD92`;
 result 1 returns the follow-up chain beginning at `0x121440`; result 0 writes
 the failed-charm text and returns `0x11CD92`. On that last branch, a separate
@@ -152,6 +154,32 @@ heat byte `FFFBFA`. Treat this as a secretary/building-security event, not as
 evidence of a general Lone Star spawn. The later shared floor-choice action
 and map-effect actor results are not yet joined.
 
+**Open security panel (`0x20FBA`, scenes 21-34).** The prompt at `0x1211BC`
+offers Re-wire (`0xC9` -> `0x2416A`) or Walk away (`0x1211EC`). The re-wire
+service (`0x24252`) selects the highest Electronics value among active runner
+slots using their `+0x8A` fields, then calls the thresholded-roll helper with
+difficulty 5. The resulting success count is in `FFF0DD`.
+
+A zero result returns the crossed-wires/building-alarm text at `0x1211D4` and
+calls `0x1E04A` to start the map's world-effect transition. The handler names
+no guard or police roster; the actual actor result is delegated to that map's
+effect data. Result 1 returns the 'tougher than it looked' response at
+`0x1211DC` without a direct state write. A result above 1 returns the camera
+feed-disconnected response at `0x1211E4` and sets `FFE170`. The active-effect
+service (`0x163DA`) and world-effect scheduler (`0x1DFC4`) both check this flag;
+the world-activity initializer (`0x167AE`) clears it. Thus the ROM records a
+local security-system outcome, not a fixed Lone Star spawn.
+
+Walking away returns `0x1211EC`, whose first text is 'You leave them behind'
+and whose following prompt data is the scientist interaction at `0x20FD4`.
+That event's standalone prompt is `0x1211F4`; asking for information (`0xCB`
+-> `0x2429E`) runs threshold 5 on slot 0's `+0x7A` field. Result 0 returns
+`0x12120C` (the scientist looks concerned and disappears behind a secure door,
+then refuses); results 1 or higher return the refusal at `0x121214`. Walking
+away returns `0x12121C`, beginning with the leave-behind text and the floor
+string sequence. These routines do not write funds or queue actors. The linked
+floor/security continuation after these returned text records remains partial.
+
 **Security-guard stop (`0x20FEC`, scenes 20, 26-34, and 41-43).** The opening
 record `0x121238` asks for an ID and dispatches command `0xCC` to `0x242FA`.
 With FFFC22 bit 10 clear, the record at `0x121278` offers Attack and Talk.
@@ -159,7 +187,7 @@ Attack (`0xD2` -> `0x24402`) attempts one corporate guard from list
 `0x1D705C` (template `0x1D6A1C`) and returns the weapon-draw text at
 `0x121290`; the combat exit remains partial. Talk (`0xD0` -> `0x24432`) runs
 a threshold-6 trial on `FF017A`: result 0 attempts that guard and starts the
-world-effect transition before returning the “lame story” attack text at
+world-effect transition before returning the lame-story attack text at
 `0x121298`; result 1 returns `0x1212A0`, where the guard becomes suspicious and
 checks with dispatch; results above 1 return `0x1212B4`, where the guard
 accepts the story but the dialogue continues into a separate security-mage
@@ -516,9 +544,9 @@ sums identify the enabled cells that return that handler.
 | Ahead of you is a man lying on the street. | `0-1`, `3` | `5`, `7` | `0x20F72` |
 | A flustered woman passes by you. | `0-1` | `3-4` | `0x20F8A` |
 | A haggard man collapses at your feet. | `2`, `5` | `1-2` | `0x20FA2` |
-| You notice an open security panel. | `21-34` | `0-2`, `7` | `0x20FBA` |
+| You notice an open security panel. | `21-25`; `26-29`; `30-34` | `1, 7`; `2`; `0` (paired by scene range) | `0x20FBA` |
 | A scientist walks by, deep in thought. | `21-25`, `30-34` | `4`, `6` | `0x20FD4` |
-| A secuity guard spots you. | `20`, `26-34`, `41-43` | `4-5`, `7` | `0x20FEC` |
+| A security guard spots you. | `20`, `26-34`, `41-43` | `4-5`, `7` | `0x20FEC` |
 | A shiver runs down your spine. | `20`, `26-29`, `35-43` | `0-1`, `7` | `0x21004` |
 | An old custodian wiping the floor squints up at you. | `20` | `1` | `0x2101E` |
 | You look down and notice you are about to step on a concealed security plate. | `20-34`, `41-43` | `2`, `5-6` | `0x21036` |
