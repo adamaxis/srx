@@ -421,9 +421,31 @@ def read_lua_quest_module_details(repo_root: Path, site: dict[str, str]) -> list
 
 
 def read_site_content_details(
-    repo_root: Path, site: dict[str, str], text_catalog: dict[str, str]
+    repo_root: Path, site: dict[str, str], text_catalog: dict[str, str],
+    scene_id: int,
 ) -> list[str]:
     lines: list[str] = []
+    contract_location = site.get("rom_contract_location_index", "").strip()
+    if contract_location:
+        try:
+            location_index = int(contract_location, 0)
+        except ValueError:
+            location_index = -1
+        profiles = read_rom_contract_area_profiles(repo_root)
+        area = profiles.get(scene_id, {})
+        locations = area.get("locations", {})
+        if location_index >= 0 and location_index in locations:
+            lines.append(
+                "ROM run-location name: "
+                f"{locations[location_index]} (option {location_index} in "
+                f"gameplay/scripts/run_support.lua). This names a contract "
+                "destination; the field event route is shown separately."
+            )
+        else:
+            lines.append(
+                f"ROM run-location option {contract_location} has no named "
+                "entry in the current area table."
+            )
     text_keys = [
         key.strip()
         for key in site.get("text_keys", "").split(";")
@@ -1609,6 +1631,72 @@ def read_site_route_index(repo_root: Path, scene_id: int) -> dict[str, dict[str,
     }
 
 
+def read_rom_contract_area_profiles(repo_root: Path) -> dict[int, dict[str, object]]:
+    """Read the ROM-derived district and run-location names from Lua data."""
+    path = repo_root / "decompilation" / "gameplay" / "scripts" / "run_support.lua"
+    try:
+        source = path.read_text(encoding="utf-8")
+    except OSError:
+        return {}
+
+    area_match = re.search(r"\bSupport\.area_suffixes\s*=\s*\{", source)
+    location_match = re.search(r"\bSupport\.location_names\s*=\s*\{", source)
+    rolls_match = re.search(r"\bSupport\.location_rolls_by_area\s*=\s*\{", source)
+    if not area_match or not location_match or not rolls_match:
+        return {}
+    area_body = extract_lua_block(source, source.find("{", area_match.start()))
+    location_body = extract_lua_block(
+        source, source.find("{", location_match.start())
+    )
+    rolls_body = extract_lua_block(source, source.find("{", rolls_match.start()))
+    if not area_body or not location_body or not rolls_body:
+        return {}
+
+    area_names: dict[int, str] = {}
+    for match in re.finditer(r'\[(\d+)\]\s*=\s*"([^"]+)"', area_body):
+        phrase = match.group(2).strip().rstrip(".")
+        for prefix in ("in ", "on "):
+            if phrase.startswith(prefix):
+                phrase = phrase[len(prefix):]
+                break
+        if phrase.startswith("the "):
+            phrase = phrase[len("the "):]
+        area_names[int(match.group(1))] = phrase
+
+    locations: dict[int, dict[int, str]] = {}
+    for match in re.finditer(r"\[(\d+)\]\s*=\s*\{", location_body):
+        opening = location_body.find("{", match.start())
+        body = extract_lua_block(location_body, opening)
+        if not body:
+            continue
+        area_id = int(match.group(1))
+        locations[area_id] = {
+            int(row.group(1)): row.group(2)
+            for row in re.finditer(r'\[(\d+)\]\s*=\s*"([^"]+)"', body)
+        }
+
+    used_locations: dict[int, set[int]] = {}
+    for match in re.finditer(r"\[(\d+)\]\s*=\s*\{", rolls_body):
+        opening = rolls_body.find("{", match.start())
+        body = extract_lua_block(rolls_body, opening)
+        if body:
+            used_locations[int(match.group(1))] = {
+                int(value) for value in re.findall(r"\b(\d+)\b", body)
+            }
+
+    return {
+        area_id: {
+            "name": name,
+            "locations": {
+                index: location_name
+                for index, location_name in locations.get(area_id, {}).items()
+                if index in used_locations.get(area_id, set(locations.get(area_id, {})))
+            },
+        }
+        for area_id, name in area_names.items()
+    }
+
+
 def describe_event_table_target(target_class: str) -> str:
     """Turn the ROM route classification into a readable numeric destination."""
     value = target_class.strip()
@@ -1659,6 +1747,15 @@ def describe_trigger_action(route: str) -> str:
     if "unresolved generic route" in value:
         return "Generic map interaction; destination is not established"
     return re.sub(r"[_\s]+", " ", route.strip()).strip().capitalize() or "Route not established"
+
+
+def describe_site_crosswalk(status: str) -> str:
+    return {
+        "rom_guide_corroborated": "ROM text and the guide map support this name",
+        "guide_name_crosswalk": "name comes from the guide map; the ROM uses a numeric event",
+        "nearby_candidate": "nearby guide marker; exact match is tentative",
+        "unresolved": "place name not established",
+    }.get(status.strip(), "name evidence not recorded")
 
 
 def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceRegion]:
@@ -1730,8 +1827,10 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
             if site:
                 marker = site.get("guide_marker", "").strip()
                 if site_name:
-                    match = site.get("crosswalk_status", "unresolved")
-                    crosswalk = f"Guide marker {marker}; {match}" if marker else match
+                    match = describe_site_crosswalk(
+                        site.get("crosswalk_status", "unresolved")
+                    )
+                    crosswalk = f"Guide marker {marker}: {match}" if marker else match
                     confidence_prefix = "" if match == "rom_guide_corroborated" else "? "
                     map_label = f"{confidence_prefix}{marker + ': ' if marker else ''}{site_name}"
                     details.extend((
@@ -1754,7 +1853,7 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
                         f"ROM record and supporting evidence: {site.get('evidence', '').strip() or '(not recorded)' }",
                     ))
                     content_lines = read_site_content_details(
-                        repo_root, site, text_catalog
+                        repo_root, site, text_catalog, scene_id
                     )
                     if content_lines:
                         details.append("")
@@ -2752,6 +2851,7 @@ class MapEntityViewer(QMainWindow):
         self.assets = assets
         self.world = WorldContent(world)
         self.repo_root = ROOT
+        self.contract_area_profiles = read_rom_contract_area_profiles(self.repo_root)
         self.maps = read_map_catalog(assets)
         self.map_by_id = {item.scene_id: item for item in self.maps}
         self.scene_id = initial_scene
@@ -2788,6 +2888,15 @@ class MapEntityViewer(QMainWindow):
         self.info_tabs.setCurrentWidget(self.scene_info)
         self.statusBar().showMessage("No automatic object classifier is active. New annotations start unreviewed.")
 
+    def _scene_display_name(self, info: MapInfo) -> str:
+        area = self.contract_area_profiles.get(info.scene_id)
+        if area:
+            return (
+                f"{area['name']} — Scene {info.scene_id:02d} "
+                f"({info.width}×{info.height})"
+            )
+        return f"Scene {info.scene_id:02d} — {info.width}×{info.height}"
+
     def _build_menus(self) -> None:
         file_menu = self.menuBar().addMenu("&File")
         save_action = QAction("Save scene and definitions", self)
@@ -2805,7 +2914,7 @@ class MapEntityViewer(QMainWindow):
         self.scene_action_group.setExclusive(True)
         self.scene_actions: dict[int, QAction] = {}
         for info in self.maps:
-            action = QAction(f"Scene {info.scene_id:02d}  ({info.width} × {info.height})", self)
+            action = QAction(self._scene_display_name(info), self)
             action.setCheckable(True)
             action.setData(info.scene_id)
             action.triggered.connect(
@@ -2822,7 +2931,7 @@ class MapEntityViewer(QMainWindow):
         layout = QVBoxLayout(panel)
         self.scene_combo = QComboBox()
         for info in self.maps:
-            self.scene_combo.addItem(f"Scene {info.scene_id:02d} — {info.width}×{info.height}", info.scene_id)
+            self.scene_combo.addItem(self._scene_display_name(info), info.scene_id)
         self.scene_combo.currentIndexChanged.connect(self.scene_changed)
         layout.addWidget(QLabel("Preassembled map"))
         layout.addWidget(self.scene_combo)
@@ -3167,6 +3276,23 @@ class MapEntityViewer(QMainWindow):
             "depends on the field transition and actor-slot gates; the list alone "
             "does not prove that every row is active on every visit.",
         ]
+        area_profile = self.contract_area_profiles.get(self.scene_id)
+        if area_profile:
+            lines.extend((
+                "",
+                f"ROM district name: {area_profile['name']} "
+                "(from the ROM-backed contract location formatter).",
+                "Possible run destinations named by the ROM:",
+            ))
+            for location_index, location_name in sorted(
+                area_profile["locations"].items()
+            ):
+                lines.append(f"  {location_name} (run-location option {location_index})")
+            lines.append(
+                "These names identify contract destinations. They do not by "
+                "themselves establish which doorway, dialogue, or shop route "
+                "a map event selects."
+            )
         try:
             descriptor = descriptor_path.read_bytes()
         except OSError:
@@ -3280,7 +3406,7 @@ class MapEntityViewer(QMainWindow):
         for event, site in route_sites:
             lines.extend(("", f"Resolved route for {event}:"))
             lines.extend(read_site_content_details(
-                self.repo_root, site, text_catalog
+                self.repo_root, site, text_catalog, self.scene_id
             ))
         if entity.shop_profile and not any(
             site.get("shop_profile", "").strip() == entity.shop_profile

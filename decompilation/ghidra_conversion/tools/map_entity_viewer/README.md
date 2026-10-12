@@ -40,7 +40,12 @@ their named actors with source-derived type and palette art as gated candidates;
 the adjacent selector shows one group at a time by default. Choose all groups
 only for comparison; that view does not claim the ROM runs them together.
 
-Scene-2 ROM event markers have map labels. The right dock's **What happens**
+The scene selector uses the ROM-backed contract district names for scenes 0–5.
+**Map profile** lists the ROM-derived run-location names for those districts;
+these names describe contract destinations and are not treated as proof of a
+doorway route. Scene-1 (Puyallup) event markers have guide-marker crosswalks
+for all twelve listed sites and all seventeen event records. The right dock's
+**What happens**
 tab shows each site's confidence, what contact does, where the route leads,
 the known dialogue/menu/shop text, and story conditions. Guide labels are explicitly
 marked as corroborated, candidate, or unresolved; they are not ROM names.
@@ -70,6 +75,10 @@ Camera setup remains a separate value and is not treated as a player spawn.
   its 13 ROM event records. The entity list includes the named storefronts,
   facility/perimeter, and southern shelters. Routes keep numeric destinations
   numeric when the ROM does not identify a place or interior.
+- Scene 1 has a route crosswalk for the twelve Puyallup guide sites and all
+  seventeen ROM event rectangles, including the four event-31 records whose
+  destination is still unresolved. These are location and route labels; scene 1
+  does not yet have authored building silhouettes.
 - **Map audio** is present, but map-scoped music remains unresolved until the
   ROM's scene-entry and persistent-audio paths are traced. Menu music is shown
   separately and is not assigned to a map without evidence.
