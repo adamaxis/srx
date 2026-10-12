@@ -1,5 +1,6 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 #include "shadowrun_ghidra/world/world_activity_routine_conversion.hpp"
+#include "world_content_tsv_loader.hpp"
 
 extern "C" {
 #include "lauxlib.h"
@@ -1273,6 +1274,13 @@ bool GameScriptRuntime::load_package(
         return false;
     }
 
+    const auto world_directory = script_directory.parent_path() / "world";
+    if (!detail::load_world_content_tsv(
+            impl_->state, impl_->modules_reference, world_directory,
+            impl_->failure)) {
+        return false;
+    }
+
     std::vector<std::filesystem::path> files;
     for (std::filesystem::directory_iterator iterator(script_directory, error),
          end;
@@ -1301,6 +1309,11 @@ bool GameScriptRuntime::load_package(
         if (!valid_identifier(module)) {
             impl_->failure = "invalid gameplay script module name: " + module;
             return false;
+        }
+        // This data module is populated directly from gameplay/world TSV
+        // files above. Never let a stale or copied Lua snapshot replace it.
+        if (module == "world_content_data") {
+            continue;
         }
         ScopedInstructionBudget instruction_budget(state);
         if (luaL_loadfilex(state, file.string().c_str(), "t") != LUA_OK ||
@@ -1934,7 +1947,7 @@ std::optional<std::vector<FieldMapEventRule>>
 GameScriptRuntime::map_event_rules() {
     auto* state = impl_->state;
     if (!impl_->push_module("world_content_data")) {
-        impl_->failure = "world_content_data.lua module is missing";
+        impl_->failure = "world-content TSV data module is missing";
         return std::nullopt;
     }
     lua_getfield(state, -1, "map_events");

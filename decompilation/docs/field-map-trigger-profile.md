@@ -246,9 +246,9 @@ overrides still select their traced mode. The ROM event table remains named
 host data and C++ remains the scene/activity executor. Invalid or absent
 table routes remain explicit `no_route` results.
 
-The scene-entry registry consumes map-event records compiled from
-`gameplay/world/areas/scene-NN-triggers.tsv` into
-`gameplay/scripts/world_content_data.lua`. Each rule names a scene, trigger
+The scene-entry registry reads map-event records directly from
+`gameplay/world/areas/scene-NN-triggers.tsv`; the runtime loader places those
+records in Lua's in-memory world-content table. Each rule names a scene, trigger
 kind, optional inclusive coordinate scope, required typed state flags, an
 action, a Lua handler, and a repeat policy (`every_match`, once per scene
 visit, or once per session). Handler functions remain in `field_events.lua`.

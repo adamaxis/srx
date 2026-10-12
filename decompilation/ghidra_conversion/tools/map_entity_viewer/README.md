@@ -252,7 +252,7 @@ The viewer also separates ROM evidence from authored map logic. Purple **T**
 regions are Lua trigger areas, orange **S** marks are authored actor spawn
 points, and blue **R** regions are authored encounter areas. These records have
 condition/module/function fields and evidence/review status. They are saved as
-separate scene files and exported as Lua data; blank handlers stay unassigned.
+separate scene files and read by the runtime; blank handlers stay unassigned.
 Click a mark to inspect it, edit it in the side panel, or remove it. They do
 not overwrite or reinterpret the yellow ROM event rectangles.
 
@@ -376,8 +376,8 @@ Use **Add object** to mark a map region for review. Use **Add visual part**
 to add another source crop to the selected entity, **Add interactable** to
 add a local hit region, and **Add collision** to add an entity-local collision
 rectangle. **Add trigger**, **Add spawn**, and **Add encounter**
-create separate map-scoped Lua content records. A trigger with a nonzero
-runtime event ID is compiled into the typed field event registry; its trigger
+create separate map-scoped content records. A trigger with a nonzero
+runtime event ID is loaded into the typed field event registry; its trigger
 kind, exact scope, state flags, handler, and repeat policy are read from the
 same TSV record by the game. Display coordinates are map pixels, while
 `field_fixed_4` preserves exact actor coordinates from the source. The viewer
@@ -385,12 +385,16 @@ draws the containing 32-pixel cell for an exact point scope. Select a record on
 the map to inspect/edit it. Set an entity category only after checking the
 source layers and ROM evidence. Available categories include buildings,
 terrain features, foliage, decals, props, and structures. `Ctrl+S` saves the
-current scene and exports the records to Lua.
+current scene and its separate entity and area TSV files.
 
-On save, the viewer refreshes
-`decompilation/gameplay/scripts/world_content_data.lua` from these TSV files.
-The Lua package loader loads the module, and `game.modules.world_content`
-provides entity/placement lookups plus `triggers_in_scene`,
+The Lua package loader reads `gameplay/world/entities/<entity-id>/entity.tsv`,
+`parts.tsv`, `interactables.tsv`, `collisions.tsv`, and the area,
+trigger, spawn, and encounter TSV files under `gameplay/world/areas/` directly
+when it starts. It places the
+loaded records in an in-memory `game.modules.world_content_data` table;
+there is no generated `world_content_data.lua` snapshot to edit or maintain.
+The `game.modules.world_content` behavior module provides entity/placement
+lookups plus `triggers_in_scene`,
 `actor_spawns_in_scene`, `encounter_regions_in_scene`, and `collision_at`.
 Scene 2 has a source-backed Stoker's Coffin Motel definition and 21 additional
 Redmond frontage, barrier, and shelter definitions. Stoker's origin is ROM
@@ -409,8 +413,8 @@ The same scene also exposes the source-profiled New Game entry event. Its exact
 scope is the scene-2 spawn `(0x3CE0,0x2D00)` and its marker appears in map cell
 `(30,22)`, two 32-pixel cells below the motel doorway cell. ROM-derived
 behavior is a one-time scene-entry rule at that exact spawn point, not a
-three-cell walking region. The runtime reads the rule from generated
-`world_content_data.lua` and calls the existing Lua heading-zero walk handler.
+three-cell walking region. The runtime reads the rule from
+`scene-02-triggers.tsv` and calls the existing Lua heading-zero walk handler.
 Clicking scene-2 site triggers opens the ROM route profile, with Lua dialogue,
 menu, shop, and state details resolved where the corresponding content module
 is available. Route destinations are kept distinct from guide labels and only

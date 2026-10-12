@@ -1,5 +1,5 @@
 -- Map event placement, state gates, actions, and repeat policy are authored in
--- gameplay/world/areas/scene-NN-triggers.tsv and exported as
+-- gameplay/world/areas/scene-NN-triggers.tsv and loaded into
 -- world_content_data.map_events. This module supplies the handler functions.
 -- Event flow is ordinary sequential Lua and movement is a narrow host service.
 local Events = {}

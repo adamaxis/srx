@@ -1,2 +1,2 @@
 interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
-conditional_maglock	128	192	32	32	building.resolve_field_location_route	ROM 0x173160	Scene 2 ROM collision/event record 0x173160; exact 32x32 trigger retained separately from the visual building outline.
+conditional_maglock	126	249	32	32	building.resolve_field_location_route	ROM 0x173160	Scene 2 ROM collision/event record 0x173160; exact 32x32 trigger retained separately from the visual building outline.

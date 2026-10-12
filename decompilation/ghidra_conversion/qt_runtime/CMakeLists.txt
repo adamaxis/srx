@@ -90,6 +90,17 @@ target_compile_definitions(shadowrun_gameplay_script_runtime_test PRIVATE
 add_test(NAME shadowrun_gameplay_script_runtime_qa
          COMMAND shadowrun_gameplay_script_runtime_test)
 
+add_executable(shadowrun_world_content_tsv_loader_test
+    tests/scripting/world_content_tsv_loader_test.cpp)
+target_include_directories(shadowrun_world_content_tsv_loader_test
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../src/scripting")
+target_link_libraries(shadowrun_world_content_tsv_loader_test
+    PRIVATE shadowrun_gameplay_script_runtime)
+target_compile_definitions(shadowrun_world_content_tsv_loader_test PRIVATE
+    SHADOWRUN_GAMEPLAY_WORLD_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/world")
+add_test(NAME shadowrun_world_content_tsv_loader_qa
+         COMMAND shadowrun_world_content_tsv_loader_test)
+
 if(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     # Qt's bundled WinMain shim is built against a different MinGW runtime
     # than this MSYS2 UCRT64 build. Select the GUI subsystem directly while

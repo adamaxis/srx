@@ -58,7 +58,8 @@ if (UNIX)
 endif()
 
 add_library(shadowrun_gameplay_script_runtime STATIC
-    src/scripting/game_script_runtime.cpp)
+    src/scripting/game_script_runtime.cpp
+    src/scripting/world_content_tsv_loader.cpp)
 target_include_directories(shadowrun_gameplay_script_runtime PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(shadowrun_gameplay_script_runtime

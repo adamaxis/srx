@@ -1409,8 +1409,8 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
     constexpr std::string_view kActorTableAlias =
         "field.entities.default.actors";
     constexpr std::string_view kActorTableHeader =
-        "scene\tsource_order\tentity_kind\tprofile_id\taction_kind"
-        "\tinitial_action_code"
+        "scene\tsource_order\tentity_kind\tprofile_id\tactor_name"
+        "\tsprite_stem\taction_kind\tinitial_action_code"
         "\tworld_x\tworld_y\tinitial_heading\tpalette_line"
         "\ttemplate_offset\tposition_offset\tlist_offset"
         "\tordered_overrides";
@@ -1464,36 +1464,43 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
             while (std::getline(row, field, '\t')) {
                 fields.push_back(std::move(field));
             }
-            if (fields.size() != 14U) {
+            if (fields.size() != 16U) {
                 failure_ = "default field actor table row is malformed";
                 return false;
             }
             DefaultFieldActorPresentation actor;
             actor.scene_reference = parse_word(fields[0]);
             actor.source_order = parse_word(fields[1]);
+            actor.entity_kind = parse_word(fields[2]);
+            // The field runtime currently has Lua behavior and directional
+            // entry/idle art for pedestrians and corp guards. Other source
+            // populations remain visible in the map viewer, but are not
+            // instantiated with a substitute actor or sprite here.
+            if (actor.entity_kind != 5U && actor.entity_kind != 11U) {
+                continue;
+            }
             actor.actor_instance_id =
                 "field_scene_" + std::to_string(actor.scene_reference) +
                 "_actor_" + std::to_string(actor.source_order);
-            actor.entity_kind = parse_word(fields[2]);
             actor.script_profile_id = fields[3];
             if (actor.script_profile_id.empty()) {
                 failure_ = "default actor Lua profile identity is empty";
                 return false;
             }
-            if (fields[4] == "none") {
+            if (fields[6] == "none") {
                 actor.action_kind =
                     scripting::ScriptActorActionKind::none;
-            } else if (fields[4] == "item") {
+            } else if (fields[6] == "item") {
                 actor.action_kind =
                     scripting::ScriptActorActionKind::item;
-            } else if (fields[4] == "spell") {
+            } else if (fields[6] == "spell") {
                 actor.action_kind =
                     scripting::ScriptActorActionKind::spell;
             } else {
                 failure_ = "default actor action kind is not recognized";
                 return false;
             }
-            const auto initial_action_code = parse_word(fields[5]);
+            const auto initial_action_code = parse_word(fields[7]);
             if (initial_action_code > 0xFFU) {
                 failure_ = "default actor action code exceeds one byte";
                 return false;
@@ -1506,19 +1513,19 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
                 failure_ = "default actor action kind/code disagree";
                 return false;
             }
-            actor.world_position.x = parse_word(fields[6]);
-            actor.world_position.y = parse_word(fields[7]);
-            actor.initial_heading = parse_word(fields[8]);
-            const auto palette_line = parse_word(fields[9]);
+            actor.world_position.x = parse_word(fields[8]);
+            actor.world_position.y = parse_word(fields[9]);
+            actor.initial_heading = parse_word(fields[10]);
+            const auto palette_line = parse_word(fields[11]);
             if (palette_line > 0xFFU) {
                 failure_ = "default actor palette line exceeds one byte";
                 return false;
             }
             actor.palette_line = static_cast<std::uint8_t>(palette_line);
-            actor.template_offset = parse_number(fields[10], 0);
-            actor.position_offset = parse_number(fields[11], 0);
-            actor.list_offset = parse_number(fields[12], 0);
-            actor.ordered_overrides = fields[13];
+            actor.template_offset = parse_number(fields[12], 0);
+            actor.position_offset = parse_number(fields[13], 0);
+            actor.list_offset = parse_number(fields[14], 0);
+            actor.ordered_overrides = fields[15];
             if ((actor.entity_kind == 5U && actor.palette_line != 2U) ||
                 (actor.entity_kind == 11U && actor.palette_line != 3U) ||
                 (actor.entity_kind != 5U && actor.entity_kind != 11U)) {

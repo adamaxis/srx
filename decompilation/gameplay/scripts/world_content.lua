@@ -1,6 +1,6 @@
--- Generic access to editor-authored map entities. The viewer writes the
--- data-only world_content_data module from gameplay/world TSV records; this
--- module supplies the reusable lookup behavior used by map scripts.
+-- Generic access to editor-authored map entities. The native Lua package
+-- loader reads gameplay/world TSV files into game.modules.world_content_data;
+-- this module supplies the reusable lookup behavior used by map scripts.
 local World = {}
 
 local function content()
@@ -45,7 +45,7 @@ end
 
 -- Runtime map-event rules are also authored with the area's other map data.
 -- Their exact coordinate scope, trigger type, state gates, and repeat policy
--- are compiled into world_content_data.lua from the viewer TSV records.
+-- are read directly from the viewer TSV records into the runtime data table.
 function World.events_in_scene(scene_id)
     if type(scene_id) ~= "number" or scene_id % 1 ~= 0 then
         return {}
