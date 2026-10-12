@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+salish_unidentified_longhouse	Unidentified longhouse	building	Visible longhouse in the extracted Scene 7 map. No guide name is attached to it. ROM event record 206 at 0x1B4592 overlaps its entrance and selects field map 13; this does not identify the room, speaker, or dialogue.	-	-	-

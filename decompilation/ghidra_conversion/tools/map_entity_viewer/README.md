@@ -43,7 +43,8 @@ their named actors with source-derived type and palette art as gated candidates;
 the adjacent selector shows one group at a time by default. Choose all groups
 only for comparison; that view does not claim the ROM runs them together.
 
-The scene selector uses the ROM-backed contract district names for scenes 0–5.
+The scene selector uses the ROM-backed contract district names for scenes 0–5
+and labels scenes 6–7 with explicitly marked guide cross-references.
 **Map profile** lists the ROM-derived run-location names for those districts;
 these names describe contract destinations and are not treated as proof of a
 doorway route. Scene-1 (Puyallup) event markers have guide-marker crosswalks
@@ -157,6 +158,18 @@ value and is not treated as a player spawn.
   viewer does not place those named people as static map residents. Scene 13's
   additional world-script gate, the named locations' actual dialogue/speaker
   branches, return routes, and field audio remain unresolved.
+  Its selector label is a guide cross-reference, not a ROM scene name.
+- Scene 7 profiles all four event-table rectangles. The northwest, west, and
+  east edge triggers cross-reference Wilderness Area 2 guide markers 1, 3,
+  and 4; each ROM row selects shared field map 13. Marker 2 remains a
+  guide-only route because no matching event rectangle has been identified.
+  The visible building is a separate entity with an exact entrance event,
+  front facade, priority roof, and foreground window detail. Its room,
+  speaker, and entry text are not identified by the route. The Scene 7 actor
+  list is empty, so the viewer does not turn its static map art into NPCs.
+  **Map profile** now lists ROM-linked routes and unmatched guide references
+  together, while keeping numeric ROM destinations distinct from guide names.
+  Its selector label is a guide cross-reference, not a ROM scene name.
 - The source actor layer is data-driven across the extracted map catalog: the
   viewer uses each ROM record's actor type and sprite art, shows default scene
   records separately from conditional choices, and keeps special event lists

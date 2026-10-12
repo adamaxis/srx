@@ -1905,6 +1905,15 @@ def read_site_route_rows(repo_root: Path, scene_id: int) -> list[dict[str, str]]
     return rows
 
 
+def read_guide_map_labels(world_root: Path) -> dict[int, dict[str, str]]:
+    _, rows = read_tsv(world_root / "areas" / "map-guide-labels.tsv")
+    return {
+        as_int(row, "scene_id", -1): row
+        for row in rows
+        if as_int(row, "scene_id", -1) >= 0
+    }
+
+
 def read_rom_contract_area_profiles(repo_root: Path) -> dict[int, dict[str, object]]:
     """Read the ROM-derived district and run-location names from Lua data."""
     path = repo_root / "decompilation" / "gameplay" / "scripts" / "run_support.lua"
@@ -3374,6 +3383,7 @@ class MapEntityViewer(QMainWindow):
         self.assets = assets
         self.world = WorldContent(world)
         self.repo_root = ROOT
+        self.guide_map_labels = read_guide_map_labels(self.world.root)
         self.contract_area_profiles = read_rom_contract_area_profiles(self.repo_root)
         _, self.field_activity_rows = read_tsv(
             assets / "field" / "world-activity-outcomes.tsv"
@@ -3423,6 +3433,12 @@ class MapEntityViewer(QMainWindow):
             return (
                 f"{area['name']} — Scene {info.scene_id:02d} "
                 f"({info.width}×{info.height})"
+            )
+        guide_label = self.guide_map_labels.get(info.scene_id, {})
+        if guide_label.get("display_name"):
+            return (
+                f"{guide_label['display_name']} — Scene {info.scene_id:02d} "
+                f"(guide cross-reference; {info.width}×{info.height})"
             )
         return f"Scene {info.scene_id:02d} — {info.width}×{info.height}"
 
@@ -3722,6 +3738,15 @@ class MapEntityViewer(QMainWindow):
             entity = self.world.load_entity(instance.entity_id)
             if entity:
                 self.entities[entity.entity_id] = entity
+        entities_with_missing_crops = [
+            entity for entity in self.entities.values()
+            if any(
+                not (self.assets / part.asset_path).is_file()
+                for part in entity.parts
+            )
+        ]
+        if entities_with_missing_crops:
+            self.world.export_part_assets(self.assets, entities_with_missing_crops)
         self.selected_instance = None
         self.selected_behavior = None
         self._refresh_list()
@@ -3815,8 +3840,15 @@ class MapEntityViewer(QMainWindow):
             if actor_count != 1 and not actor_label.endswith("s"):
                 actor_label += "s"
             actor_types = f"{actor_count} {actor_label}"
+        guide_label = self.guide_map_labels.get(self.scene_id, {})
+        title = f"Scene {self.scene_id:02d} map overview"
+        if guide_label.get("display_name"):
+            title = (
+                f"{guide_label['display_name']} — Scene {self.scene_id:02d} "
+                "map overview (guide cross-reference)"
+            )
         lines = [
-            f"Scene {self.scene_id:02d} map overview",
+            title,
             f"Map size: {info.width}x{info.height} pixels; "
             f"{info.tilemap_width}x{info.tilemap_height} map cells "
             "(32 pixels per cell).",
@@ -3959,6 +3991,41 @@ class MapEntityViewer(QMainWindow):
                     for actor in activity_population
                 ) + ". These belong to separate event lists, not the ordinary scene population."
             )
+        route_rows = read_site_route_rows(self.repo_root, self.scene_id)
+        if route_rows:
+            lines.extend(("", "Building and map-edge routes recorded for this map:"))
+            def route_sort_key(route: dict[str, str]) -> tuple[int, int, str]:
+                marker = route.get("guide_marker", "").strip()
+                if marker.isdigit():
+                    return (0, int(marker), "")
+                return (1, 0, route.get("site_name", "").casefold())
+
+            for route in sorted(route_rows, key=route_sort_key):
+                name = route.get("site_name", "").strip() or "Unidentified route"
+                marker = route.get("guide_marker", "").strip()
+                prefix = f"Guide marker {marker} — " if marker else ""
+                summary = route.get("player_summary", "").strip()
+                destination = (
+                    route.get("player_destination", "").strip()
+                    or route.get("rom_destination", "").strip()
+                )
+                if not route.get("rom_record_address", "").strip():
+                    evidence = "Guide reference only; no matching ROM event is linked."
+                elif route.get("crosswalk_status", "").strip() in {
+                    "guide_name_crosswalk", "nearby_candidate",
+                }:
+                    evidence = "Guide label; the ROM route remains numeric."
+                else:
+                    evidence = "ROM event profile."
+                line = f"  {prefix}{name}: {summary or evidence}"
+                if destination:
+                    line += f" Where it leads: {destination}"
+                if summary:
+                    line += f" ({evidence})"
+                lines.append(line)
+                conditions = route.get("player_conditions", "").strip()
+                if conditions:
+                    lines.append(f"    Condition or unresolved branch: {conditions}")
         out_of_bounds_actors = read_out_of_bounds_actor_details(self.assets, info)
         if out_of_bounds_actors:
             lines.append(
