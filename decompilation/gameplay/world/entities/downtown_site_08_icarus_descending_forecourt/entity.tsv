@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+downtown_site_08_icarus_descending_forecourt	Icarus Descending approach pavement	terrain_feature	Separate paved approach visible in the extracted ROM scene-0 composite at (1600,672), footprint 320x32; it remains a ground entity rather than part of the facade. The event door is recorded separately.	-	-	-

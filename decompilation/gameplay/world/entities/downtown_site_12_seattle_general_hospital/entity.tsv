@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+downtown_site_12_seattle_general_hospital	Seattle General Hospital	building	Source visual contour is taken from the extracted US ROM scene-0 map at pixels (1600,736) with footprint 320x192; the upper structural layer is separately sourced from the priority overlay. Mike's RPG Center Downtown marker 12 supplies the displayed site name, not ROM route behavior. ROM interaction is record 52 at 0x0D57E6; the route crosswalk preserves its numeric target and any branch.	-	-	-

@@ -1,0 +1,2 @@
+interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
+rom_event_45	0	0	32	32	building.resolve_field_location_route	ROM record 45 at 0x0D57A0	Exact ROM scene-0 event cell from field-map-trigger-records.tsv; clicking it resolves areas/scene-00-site-routes.tsv and displays the route/known content evidence.

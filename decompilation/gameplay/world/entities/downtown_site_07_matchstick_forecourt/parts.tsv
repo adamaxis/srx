@@ -1,0 +1,2 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+approach_pavement	map_composite	0	896	672	288	32	0	0	ground	forecourt	Separate paved approach visible in the extracted ROM scene-0 composite at (896,672), footprint 288x32; it remains a ground entity rather than part of the facade. The event door is recorded separately.	field/entities/downtown_site_07_matchstick_forecourt/approach_pavement.png	0,0;288,0;288,32;0,32

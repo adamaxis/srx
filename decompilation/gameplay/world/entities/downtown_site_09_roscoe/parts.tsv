@@ -1,0 +1,3 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+priority_overhang	priority_overlay	0	0	768	128	64	-64	-96	foreground	overhang	ROM priority-overlay slice for the visible upper structure; clipped to the named site footprint.	field/entities/downtown_site_09_roscoe/priority_overhang.png	-64,-96;64,-96;64,-32;-64,-32
+building_body	map_composite	0	0	832	128	96	-64	-32	behind_actor	body	ROM scene-0 composed map pixels for the lower facade; the adjoining paved approach has a separate terrain entity where source boundaries are visible.	field/entities/downtown_site_09_roscoe/building_body.png	-64,-32;64,-32;64,64;-64,64

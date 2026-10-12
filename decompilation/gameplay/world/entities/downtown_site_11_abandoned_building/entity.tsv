@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+downtown_site_11_abandoned_building	Abandoned Building (Downtown marker 11)	building	Source visual contour is taken from the extracted US ROM scene-0 map at pixels (928,736) with footprint 288x192; the upper structural layer is separately sourced from the priority overlay. Mike's RPG Center Downtown marker 11 supplies the displayed site name, not ROM route behavior. ROM interaction is record 51 at 0x0D57DC; the route crosswalk preserves its numeric target and any branch.	-	-	-
