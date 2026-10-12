@@ -217,8 +217,12 @@ with the bit set, opens an arrest prompt. With the bit set, rolls `15-49`
 wave the player past and rolls `50-99` call dispatch to verify the ID. The
 arrest prompt has Attack and Comply, not Run. Its Attack outcome can end in a
 fatal warning or queue the first three named templates (`lone11`, `lone12`,
-`lonemage`) from `0x1D6FEC`. The list has a trailing control word not yet
-classified; the rejected-ID Talk choice and the post-arrest continuation at
+`lonemage`) from `0x1D6FEC`. The raw list then contains nonzero longwords
+`0x00000002` and `0x9D020000`, followed by the null at `0x1D7000`. The iterator
+in `0x1E1FC` treats each nonzero longword as a candidate template address and
+stops on a null entry or actor-allocation failure; it does not parse this tail
+as metadata. The tail's intended meaning and resulting actor state remain
+unresolved. The rejected-ID Talk choice and the post-arrest continuation at
 `0x12140C` also remain partial.
 
 The per-scene viewer now shows each indexed handler, roll sums, visible opening
