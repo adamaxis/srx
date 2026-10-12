@@ -3173,6 +3173,9 @@ class MapEntityViewer(QMainWindow):
         self.world = WorldContent(world)
         self.repo_root = ROOT
         self.contract_area_profiles = read_rom_contract_area_profiles(self.repo_root)
+        _, self.field_activity_rows = read_tsv(
+            assets / "field" / "world-activity-outcomes.tsv"
+        )
         self.maps = read_map_catalog(assets)
         self.map_by_id = {item.scene_id: item for item in self.maps}
         self.scene_id = initial_scene
@@ -3277,11 +3280,15 @@ class MapEntityViewer(QMainWindow):
         self.audio_info = QPlainTextEdit()
         self.audio_info.setReadOnly(True)
         self.audio_info.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+        self.activity_info = QPlainTextEdit()
+        self.activity_info.setReadOnly(True)
+        self.activity_info.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
         self.info_tabs = QTabWidget()
         self.info_tabs.addTab(self.info, "Source")
         self.info_tabs.addTab(self.flow_info, "What happens")
         self.info_tabs.addTab(self.scene_info, "Map profile")
         self.info_tabs.addTab(self.audio_info, "Map audio")
+        self.info_tabs.addTab(self.activity_info, "Field events")
         self.info_tabs.setMinimumHeight(230)
         layout.addWidget(self.info_tabs)
 
@@ -3531,6 +3538,7 @@ class MapEntityViewer(QMainWindow):
         self._update_scene_summary()
         self._update_scene_profile_info()
         self._update_scene_audio_info()
+        self._update_scene_field_activities_info()
 
     def scene_changed(self, index: int) -> None:
         if index >= 0:
@@ -3759,6 +3767,76 @@ class MapEntityViewer(QMainWindow):
         self.audio_info.setPlainText(
             read_map_audio_details(self.repo_root, self.assets, info)
         )
+
+    def _update_scene_field_activities_info(self) -> None:
+        rows = [
+            row for row in self.field_activity_rows
+            if row.get("scene", "").strip() == str(self.scene_id)
+        ]
+        if not rows:
+            self.activity_info.setPlainText(
+                "The ROM field-activity outcome table is unavailable. "
+                "Regenerate it with decompilation/tools/"
+                "extract_world_activity_outcomes.py."
+            )
+            return
+
+        rows.sort(key=lambda row: int(row.get("random_sum", "0")))
+        lines = [
+            f"Possible field events for Scene {self.scene_id:02d}",
+            "",
+            "These are conditional outcomes, not permanent residents. The game "
+            "first checks the field-event gates and its random threshold, then "
+            "uses two source random draws from 0 through 4. Their sum selects "
+            "one of these rows.",
+            "",
+            "The source does not assign these handlers a fixed map coordinate. "
+            "The viewer therefore lists their dialogue here instead of drawing "
+            "a character marker on the map.",
+        ]
+        for row in rows:
+            total = row.get("random_sum", "?")
+            pair_count = row.get("roll_pair_count", "0")
+            pairs = row.get("roll_pairs", "")
+            pair_text = f"{pairs} ({pair_count} combinations)" if pairs else "none"
+            if row.get("outcome_kind") == "dialogue_event":
+                lines.extend((
+                    "",
+                    f"Roll sum {total} — {row.get('event_name', 'ROM event')}",
+                    f"  Roll pairs: {pair_text}.",
+                    "  Opening text:",
+                ))
+                opening = row.get("opening_text", "").replace("|", "\n    ")
+                lines.append("    " + (opening or "No opening text decoded."))
+                choices = [
+                    (number, row.get(f"choice_{number}", "").strip())
+                    for number in (1, 2, 3)
+                ]
+                choices = [(number, value) for number, value in choices if value]
+                if choices:
+                    lines.append("  Choices shown on the opening panel:")
+                    lines.extend(f"    {number}. {value}" for number, value in choices)
+                else:
+                    lines.append(
+                        "  The opening panel has no labeled choices; its "
+                        "continuation and later branches are controlled by the ROM handler."
+                    )
+            else:
+                lines.extend((
+                    "",
+                    f"Roll sum {total} — dynamic world actor/effect sequence",
+                    f"  Roll pairs: {pair_text}.",
+                    "  This table cell falls through to runtime-generated "
+                    "world effects. It does not identify a fixed character "
+                    "or map position.",
+                ))
+        lines.extend((
+            "",
+            "The opening text and visible choices above are decoded from the "
+            "US ROM. Follow-up dialogue and effects can depend on the selected "
+            "choice and current game state.",
+        ))
+        self.activity_info.setPlainText("\n".join(lines))
 
     def _entity_game_flow(self, entity: EntityDefinition) -> str:
         lines = [entity.name, f"Type: {friendly_identifier(entity.category)}", ""]
@@ -4882,7 +4960,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--inspect-tab",
-        choices=("Source", "What happens", "Map profile", "Map audio"),
+        choices=("Source", "What happens", "Map profile", "Map audio", "Field events"),
         help="select a right-dock evidence tab, useful with --snapshot",
     )
     args = parser.parse_args(argv)
