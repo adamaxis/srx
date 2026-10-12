@@ -119,6 +119,37 @@ be caught and fired upon. This is distinct from the undercover-woman prompt:
 the doctor calls a uniformed patrol, while the woman branch reveals an agent
 already posing as a law official.
 
+**Secretary / building badge check (`0x21082`, scenes 21-29 and 41-43; sums
+2-3 and 8).** The opening dialogue at `0x121414` reaches command `0xDC` and
+handler `0x246AA`. It checks `FFFC22` bit 10, which this dialogue identifies
+as the ID-badge condition. With that bit set, it returns the apology and
+choices at `0x121428`: ask for information (`0xDE` -> `0x24724`) or walk away
+(`0x121448`). The information action runs a threshold-6 trial using byte
+`FF017A` (the byte's stat name is not established here). Results above 1
+compose “You manage to make her laugh...” with the current floor string
+selected by `FFE12C`, then return the shared dialogue data at `0x11CD92`;
+result 1 returns the follow-up chain beginning at `0x121440`; result 0 writes
+the failed-charm text and returns `0x11CD92`. On that last branch, a separate
+0-99 draw at `0x247A2` controls whether the same failure text is copied a
+second time (threshold `0x46`), not whether an alert is raised. The exact
+selection behavior beyond the shared `0x11CD92` node and the full linked
+follow-up from `0x121440` remain partial.
+
+When the badge bit is clear, `0x23750` averages field `+0x78` over active
+runner records and `0x246AA` runs a threshold-6 trial on that average. Result
+0 enters `0x1E04A` and returns the secretary-flees text at `0x121460`. Result
+1 returns the scream/subdue response at `0x121478`, whose command `0xDD`
+reaches `0x246FC`: a 0-99 draw below 40 enters `0x1E04A` and reports that the
+building goes on alert; 40-99 reports that no alert comes and the secretary
+flees. Results above 1 return `0x12148C`, where the text says she is subdued
+and locked in a closet, followed by floor-specific response data. In world
+mode 2, `0x1E04A` arms the `0x960` transition timer, latches the effect, and
+starts the map's world-effect processing; it does not directly name or queue
+a Lone Star roster. This handler and its two random checks do not read the
+heat byte `FFFBFA`. Treat this as a secretary/building-security event, not as
+evidence of a general Lone Star spawn. The later shared floor-choice action
+and map-effect actor results are not yet joined.
+
 **Urban disturbance / Renraku (`0x20EFA`, scenes 0-3 and 5).** MORE command
 `0x93` reaches `0x2333A`. If `FFFBFB <= 1` or bit 8 of `FFFC22` is set, the
 ROM chooses one resource bundle from the 20-entry table at `0x12D09C` and
