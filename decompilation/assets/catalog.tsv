@@ -258,6 +258,7 @@ intro/cab/cursor-bottom-middle.bmp	sprite	0	0	8	8	0xD4446/0x13726	extracted
 intro/cab/cursor-bottom-right.bmp	sprite	0	0	8	8	0xD4446/0x13726	extracted
 dialogue/portraits/stoker-motel.bmp	sprite	0	0	56	72	0x1F65A/0x121FA0/0x1287C6/0x122420	extracted
 dialogue/portraits/gunderson-jump-house.bmp	sprite	0	0	56	72	0x12CC50/0x121E80/0x20990	extracted
+dialogue/portraits/vigore-jarl.bmp	sprite	0	0	56	72	0x12CC80/0x121F28/0x20990	extracted
 dialogue/portraits/mortimer-reed.bmp	sprite	0	0	56	72	0x12CC70/0x121FF4/0x20990	extracted
 dialogue/portraits/caleb-brightmore.bmp	sprite	0	0	56	72	0x12CC90/0x121E98/0x20990	extracted
 dialogue/portraits/jump-house-entry.bmp	sprite	0	0	56	72	0x20484/0x121EBC/0x110D1E	extracted

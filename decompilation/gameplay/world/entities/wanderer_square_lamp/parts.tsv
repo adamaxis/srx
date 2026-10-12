@@ -1,0 +1,3 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+lamp_and_plate	map_composite	14	0	96	32	32	0	0	behind_actor	fixture	The grey square plate and central lamp read as one wall-side fixture.	field/entities/wanderer_square_lamp/lamp_and_plate.png	0,0;32,0;32,32;0,32
+lamp_glow	priority_overlay	14	0	96	32	32	0	0	foreground	fixture	The priority overlay restores the lamp pixels over the foreground actor plane.	field/entities/wanderer_square_lamp/lamp_glow.png	8,8;16,4;24,8;24,16;16,20;8,16

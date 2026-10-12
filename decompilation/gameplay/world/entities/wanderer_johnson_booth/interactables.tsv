@@ -1,0 +1,2 @@
+interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
+rom_event_9	32	32	32	32	johnson.interaction	ROM record 9 at 0x1D5C10	The event-30 collision cell is map pixels (256,32) through (287,63), over the booth. ROM 0x20990 selects dialogue slot 3 and the row-3 profile from 0x12CC50.

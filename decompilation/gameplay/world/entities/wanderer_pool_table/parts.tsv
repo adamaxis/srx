@@ -1,0 +1,3 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+felt_and_frame	map_composite	14	64	128	64	48	0	0	behind_actor	body	The green felt, cue, balls, and dark table frame are one map object.	field/entities/wanderer_pool_table/felt_and_frame.png	0,8;8,0;56,0;64,8;64,40;56,48;8,48;0,40
+raised_edge	priority_overlay	14	64	128	64	48	0	0	foreground	overhang	The priority layer draws the pool-table edge in front of actors.	field/entities/wanderer_pool_table/raised_edge.png	0,8;8,0;56,0;64,8;64,40;56,48;8,48;0,40

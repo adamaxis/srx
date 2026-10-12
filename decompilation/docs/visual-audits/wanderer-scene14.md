@@ -1,0 +1,89 @@
+# The Wanderer (field scene 14)
+
+Status: partial. The map viewer now models the room's named fixtures and the
+scene-14 event-30 dialogue profile. The first-visit intro is connected to the
+shared Lua Johnson interaction. The conditional credit menu, post-departure
+branch, work/quest choice effects, and event-0 exit remain incomplete.
+
+## ROM trace
+
+- Scene 1 event record 73 at `0x17D9DE` is event 0. Event-table row 0 at
+  `0x17D620` selects numeric field scene `0x0E`. ROM contract location
+  `[1][0]` names the Wanderer; Mike's Puyallup map labels marker 8. The display
+  name is a cross-reference, while the route byte itself is only scene 14.
+- Scene 14's default actor-list record is empty. The extracted source actor
+  census also has no conditional pedestrian candidates for scene 14. Event-30
+  dialogue uses portrait art and does not add a standing NPC to the room.
+- Scene 14 event record 9 at `0x1D5C10` is raw `0x019E`, event 30, at map
+  pixels `(256,32)` through `(287,63)`. ROM `0xB7B8` dispatches event 30 to
+  `0x20990`; the scene-14 branch sets dialogue slot 3 in `FFF0AE` and sets
+  `FFFC27` bit 3.
+- The normal dialogue row is row 3 at `0x12CC80`: portrait profile `0x121F28`,
+  first-visit descriptor `0x1052BC`, and ordinary menu descriptor `0x105300`.
+  When `FFFC27` bit 6 is clear, the handler sets it and selects the first-visit
+  path. Text `0x106D7C` describes the suited Johnson and bodyguard; `0x106E5E`
+  introduces Vigore and Jarl; `0x10702D` greets Joshua and opens the
+  information/work/leave menu. The shared Lua `johnson.interaction` now shows
+  the two first-visit pages once per known fresh-game state, then uses the
+  location's script-defined menu labels.
+- The shared conditional descriptor gate at `0x20AFC` selects descriptor
+  `0x105988` when `FFFBEC` is negative, `FFFC1C` bit 7 is set, and the low
+  byte of `FFFBEC` matches dialogue slot 3. Its opening text at `0x105BD9`
+  says Vigore owes credits. These source conditions are documented in the
+  route profile, but that conditional branch is not yet connected in Lua.
+- A separate scene-14 branch checks `FFFC1E` bit 16 and `FFFBEC == 3`, then
+  uses profile `0x121E20` and descriptor `0x105370`. Text `0x10760C` says the
+  booth Vigore and Jarl used is empty. The decoded `0x121E20` image is blank.
+  The branch's menu includes text `0x10742E`; the condition and choice effects
+  are not yet wired to a quest state.
+- Scene-14 event records 7 and 8 (`0x1D5BFC`, `0x1D5C06`) are adjacent
+  event-0 cells at the lower map edge, with no event table. Their leave action
+  and return destination remain unresolved; the Puyallup entry route is not
+  used to assume a reverse exit.
+
+## Map entities
+
+The authoring map groups the back-bar shelves, counter, attached wall display,
+and priority-plane rails into one bar entity. It separately names the raised
+Vigore/Jarl booth, both pool tables, three lamp-table/seat groups, two square
+lamp fixtures, and two east-wall metal fixtures. Composite and priority crops
+stay attached to the same object where appropriate. No collision is assigned
+from appearance alone. Floor texture remains part of the map background.
+
+## Seven-question visual review
+
+1. **Does it look correct?** The named parts follow the extracted Scene 14
+   composite and priority image. The green felt objects are called pool tables
+   because the map pixels show cues and scattered balls. The east-wall pieces
+   are called metal fixtures because their purpose is not identified by the
+   source text.
+2. **Does the look reflect behavior?** The event-30 cell overlaps the raised
+   booth, and the source dialogue names Vigore and Jarl. Their portrait is
+   dialogue art. The default actor list is empty, so this map gets no invented
+   resident sprite.
+3. **Are the visuals correct?** The entity parts use the ROM-extracted
+   composite and priority planes. They annotate the map; they do not replace
+   its pixels. The portrait `0x121F28` was decoded to a 56x72 image. The
+   conditional `0x121E20` branch decodes to a blank image area.
+4. **Is anything animated?** No fixed actors or animated map fixtures are
+   present in the scene's default record. Random world-event sequences are a
+   separate runtime system and are not placed as residents here.
+5. **Is there sound?** No scene track or event-specific sound request has
+   been traced for this route. The Map audio panel keeps that evidence
+   unresolved instead of calling the scene silent.
+6. **Are other screen elements clean?** Entry and exit records, event-30
+   interaction, default actors, dynamic world-event actor candidates, map
+   artwork, and authored entity annotations remain separate. The lower event-0
+   records are outside the visible map and are shown as small selectable edge
+   markers instead of large rectangles over empty canvas.
+7. **Do multiple frames support this interpretation?** A 1-fps scan of the
+   extracted longplay folders found no strong Scene-14 map match. The best
+   downsampled match scored `0.393`; a known Scene-13 frame matched its map at
+   `0.945`. No Scene-14 video frame is claimed as visual corroboration. The
+   room segmentation is therefore supported by ROM map pixels, not an
+   independent gameplay sequence; dialogue pages need their own capture if a
+   later recording includes the Wanderer.
+
+The next pass should resolve and connect the scene-14 `FFFC1E`/`FFFBEC`
+branches, trace the work offer's selected run records, and follow event 0
+through the map-transition handler before naming an exit.

@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+wanderer_johnson_booth	Vigore and Jarl's booth	structure	Scene-14 event 30 is placed over this raised booth. The ROM greeting names Vigore and Jarl, and its post-departure text says the booth they worked from is empty. No standing actor is present in the scene's default actor list.	wanderer.vigore_jarl	vigore_jarl	-

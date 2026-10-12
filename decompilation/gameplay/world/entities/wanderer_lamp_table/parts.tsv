@@ -1,0 +1,3 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+table_and_seat	map_composite	14	64	176	32	48	0	0	behind_actor	body	The table, red booth seat, and floor shadow stay grouped as one repeated furniture unit.	field/entities/wanderer_lamp_table/table_and_seat.png	0,0;24,0;32,8;32,40;24,48;0,48
+lamp	priority_overlay	14	64	176	32	48	0	0	foreground	fixture	The lamp is a priority-plane part attached to the repeated table, not a separate character or floor object.	field/entities/wanderer_lamp_table/lamp.png	8,8;16,4;24,8;24,16;16,20;8,16

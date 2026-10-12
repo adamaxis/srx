@@ -478,6 +478,18 @@ visible map bounds and remain unresolved rather than being labeled as a return
 door. Other districts also route numerically to scene 13, so their incoming
 routes stay individually listed in **Map profile**.
 
+Scene 14 is cross-referenced to The Wanderer from Puyallup's scene-1 event
+record 73 and ROM contract location `[1][0]`. Its event-30 cell selects the
+Vigore/Jarl dialogue slot, with a first-visit introduction and a separate
+state-gated booth-vacated branch. The shared Lua Johnson script owns the
+first-visit pages and root menu; the conditional credit/quest outcomes and
+event-0 exit remain partial. The source actor list is empty, so neither the
+Vigore portrait nor random world-event candidates are presented as a standing
+resident. The Map profile lists the entry and unresolved lower-edge events
+separately. The map entities distinguish the bar assembly, booth, pool tables,
+lamp tables, square lamps, and east-wall fixtures across the composite and
+priority layers.
+
 When inspecting a route, use **What happens** for the location name, player
 flow, destination, dialogue pages, menu labels, shop contents, and known state
 conditions. **Source** retains ROM records, Lua module paths, and low-level

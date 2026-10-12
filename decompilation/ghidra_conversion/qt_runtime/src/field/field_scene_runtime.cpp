@@ -2783,17 +2783,19 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             MovementModeTransitionContinuation::none;
         if (continuation ==
             MovementModeTransitionContinuation::event_30_world_activity) {
-            if (state_.field_scene_buffers.scene_reference != 13U) {
+            const auto scene_reference =
+                state_.field_scene_buffers.scene_reference;
+            if (scene_reference != 13U && scene_reference != 14U) {
                 source_boundary(
                     "field.activity.event30_scene_route_unresolved");
                 return integration::PendingFieldSceneHandlerResult::resumed_field;
             }
-            if (!open_gunderson_interaction()) {
+            if (!open_field_johnson_interaction()) {
                 source_boundary(
-                    "field.dialogue.gunderson_script_open_failed");
+                    "field.dialogue.johnson_script_open_failed");
             } else {
                 source_boundary(
-                    "field.dialogue.gunderson_interaction_opened");
+                    "field.dialogue.johnson_interaction_opened");
             }
             return integration::PendingFieldSceneHandlerResult::resumed_field;
         }
@@ -4514,6 +4516,9 @@ bool FieldSceneRuntime::bootstrap(
     field_exit_alternate_result_ = 0;
     field_exit_world_flags_ = 0U;
     field_mode_effect_flags_ = 0U;
+    field_dialogue_register_ = restored_field_state == nullptr
+        ? std::optional<std::uint8_t>{0U}
+        : std::nullopt;
     field_render_effect_flags_ = 0U;
     stoker_motel_story_state_ = StokerMotelStoryState{};
     game_scripts_.set_story_fact_accessors(
@@ -4526,6 +4531,14 @@ bool FieldSceneRuntime::bootstrap(
             }
             if (name == "michael_package_collected") {
                 return stoker_motel_story_state_.michael_package_collected;
+            }
+            if (name == "wanderer_vigore_jarl_intro_seen") {
+                if (!field_dialogue_register_.has_value()) {
+                    return std::nullopt;
+                }
+                return (*field_dialogue_register_ & field_flag_mask(
+                    FieldDialogueRegisterFlag::
+                        wanderer_vigore_jarl_intro_seen)) != 0U;
             }
             if (name == "errascoe_question_available") {
                 return (field_exit_world_flags_ & field_flag_mask(
@@ -4567,6 +4580,21 @@ bool FieldSceneRuntime::bootstrap(
             }
             if (name == "michael_package_collected") {
                 stoker_motel_story_state_.michael_package_collected = value;
+                return true;
+            }
+            if (name == "wanderer_vigore_jarl_intro_seen") {
+                if (!field_dialogue_register_.has_value()) {
+                    return false;
+                }
+                const auto mask = field_flag_mask(
+                    FieldDialogueRegisterFlag::
+                        wanderer_vigore_jarl_intro_seen);
+                *field_dialogue_register_ = value
+                    ? static_cast<std::uint8_t>(
+                          *field_dialogue_register_ | mask)
+                    : static_cast<std::uint8_t>(
+                          *field_dialogue_register_ &
+                          static_cast<std::uint8_t>(~mask));
                 return true;
             }
             if (name == "errascoe_question_available") {
@@ -7917,8 +7945,23 @@ bool FieldSceneRuntime::open_gunderson_interaction() {
     if (!ready_ || state_.field_scene_buffers.scene_reference != 13U) {
         return false;
     }
-    game_scripts_.set_location_context(
-        "building", "jump_house", "gunderson.jump_house", "gunderson");
+    return open_field_johnson_interaction();
+}
+
+bool FieldSceneRuntime::open_field_johnson_interaction() {
+    if (!ready_) {
+        return false;
+    }
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    if (scene_reference == 13U) {
+        game_scripts_.set_location_context(
+            "building", "jump_house", "gunderson.jump_house", "gunderson");
+    } else if (scene_reference == 14U) {
+        game_scripts_.set_location_context(
+            "building", "wanderer", "wanderer.vigore_jarl", "vigore_jarl");
+    } else {
+        return false;
+    }
     return field_dialogue_.open_gameplay_task("johnson", "interaction");
 }
 

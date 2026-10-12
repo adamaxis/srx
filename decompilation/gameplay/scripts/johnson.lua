@@ -3,6 +3,18 @@
 -- owns the reusable conversation flow.
 local Johnson = {}
 
+local function present_location_intro()
+    local profile = game.modules.dialogue.johnson_interaction_profiles[
+        game.location.text_profile]
+    if profile == nil or game.state[profile.first_visit_fact] ~= false then
+        return
+    end
+    for _, event_id in ipairs(profile.first_visit_events) do
+        game.ui.say(event_id)
+    end
+    game.state[profile.first_visit_fact] = true
+end
+
 local function present_work_offer()
     game.ui.say("work-opening")
     return game.runs.registry.present_new_game_offer()
@@ -108,6 +120,7 @@ local function present_information(root_menu)
 end
 
 function Johnson.interaction()
+    present_location_intro()
     local root_menu = "opening"
     while true do
         local choice = game.ui.menu(root_menu,

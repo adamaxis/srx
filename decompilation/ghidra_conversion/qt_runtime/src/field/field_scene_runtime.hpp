@@ -93,6 +93,10 @@ enum class FieldTitleServiceFlag : std::uint8_t {
     mode_command_e7_clear_21 = 21,
 };
 
+enum class FieldDialogueRegisterFlag : std::uint8_t {
+    wanderer_vigore_jarl_intro_seen = 6,
+};
+
 enum class FieldRenderEffectFlag : std::uint8_t {
     redmond_search_cleanup_09 = 9,
     redmond_search_cleanup_14 = 14,
@@ -112,6 +116,12 @@ constexpr std::uint32_t field_flag_mask(
 constexpr std::uint32_t field_flag_mask(
     const FieldTitleServiceFlag flag) noexcept {
     return std::uint32_t{1U} << static_cast<std::uint8_t>(flag);
+}
+
+constexpr std::uint8_t field_flag_mask(
+    const FieldDialogueRegisterFlag flag) noexcept {
+    return static_cast<std::uint8_t>(
+        std::uint8_t{1U} << static_cast<std::uint8_t>(flag));
 }
 
 constexpr std::uint32_t field_flag_mask(
@@ -922,6 +932,7 @@ private:
     bool run_field_exit_orchestrator(
         integration::FieldRuntimeCoordinatorState& runtime_state);
     bool open_gunderson_interaction();
+    bool open_field_johnson_interaction();
     bool project_field_world_interaction();
     void update_source_field_camera();
     void service_pending_field_viewports();
@@ -1430,6 +1441,8 @@ private:
     // Typed counterparts for the field story-service registers. These remain
     // session state until the save adapter restores their source facts.
     std::uint32_t field_mode_effect_flags_ = 0;
+    // FFFC27 bit 6 records the first Vigore/Jarl booth introduction.
+    std::optional<std::uint8_t> field_dialogue_register_{0U};
     std::uint32_t field_render_effect_flags_ = 0;
     std::optional<std::uint32_t> field_funds_{0x14U};
     // The fresh New Game runtime initializes these typed source globals to

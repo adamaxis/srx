@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+wanderer_bar	Bar counter, back shelves, and overhead rails	structure	The composite and priority planes show one connected bar assembly with attached wall display and elevated rails. The component crops keep the wall display and rail pixels linked to the bar instead of treating them as unrelated floor scenery.	-	-	-

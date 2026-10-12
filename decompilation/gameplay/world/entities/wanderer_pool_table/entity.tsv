@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+wanderer_pool_table	Green-felt pool table	prop	The map art shows a green felt surface, cue, and scattered balls. The priority plane supplies its raised edge; gameplay collision behavior is kept separate from this visual classification.	-	-	-

@@ -75,6 +75,29 @@ local speakers = {
             },
         },
     },
+    vigore_jarl = {
+        name = "Vigore and Jarl",
+        text_profile = "wanderer.vigore_jarl",
+        portrait_alias = "dialogue.portraits.vigore.jarl",
+        events = {
+            first_impression = {
+                title_key = "wanderer.vigore_jarl.first-impression",
+                continuation_key = "shared.more",
+            },
+            first_meeting = {
+                title_key = "wanderer.vigore_jarl.first-meeting",
+                continuation_key = "shared.more",
+            },
+            conditional_opening = {
+                title_key = "wanderer.vigore_jarl.conditional-opening",
+                continuation_key = "",
+            },
+            booth_vacated = {
+                title_key = "wanderer.vigore_jarl.booth-vacated",
+                continuation_key = "",
+            },
+        },
+    },
     caleb_brightmore = {
         name = "Caleb Brightmore",
         text_profile = "icarus-descending.caleb_brightmore",
@@ -309,6 +332,32 @@ local menu_profiles = {
                 information = "big-rhino.option.information",
                 work = "big-rhino.option.work",
                 leave = "big-rhino.option.leave",
+            },
+        },
+    },
+    ["wanderer.vigore_jarl"] = {
+        opening = {
+            title_key = "wanderer.vigore_jarl.opening",
+            choice_label_keys = {
+                information = "gunderson.option.information",
+                work = "gunderson.option.work",
+                leave = "gunderson.option.leave",
+            },
+        },
+        conditional_opening = {
+            title_key = "wanderer.vigore_jarl.conditional-opening",
+            choice_label_keys = {
+                information = "gunderson.option.information",
+                work = "gunderson.option.work",
+                leave = "gunderson.option.leave",
+            },
+        },
+        booth_vacated = {
+            title_key = "wanderer.vigore_jarl.booth-vacated",
+            choice_label_keys = {
+                fixer = "wanderer.vigore_jarl.booth-vacated.option.fixers",
+                pay = "stoker.motel.option.pay",
+                back = "gunderson.information.option.back",
             },
         },
     },
@@ -552,5 +601,15 @@ function Dialogue.menu_text_keys(speaker_id, text_profile, menu_id, choice_ids)
 end
 
 Dialogue.runner_text_keys = runner_text_keys
+
+-- The shared Johnson conversation module reads this policy by the active
+-- location's text profile. Building scripts remain generic; the ROM-backed
+-- content record supplies this first-visit introduction and source fact.
+Dialogue.johnson_interaction_profiles = {
+    ["wanderer.vigore_jarl"] = {
+        first_visit_fact = "wanderer_vigore_jarl_intro_seen",
+        first_visit_events = { "first_impression", "first_meeting" },
+    },
+}
 
 return Dialogue

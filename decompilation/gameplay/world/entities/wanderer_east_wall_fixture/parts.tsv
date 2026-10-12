@@ -1,0 +1,3 @@
+part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
+angled_metal_body	map_composite	14	288	112	32	48	0	0	behind_actor	body	The angled grey and brass object is separately named from the patterned wall behind it.	field/entities/wanderer_east_wall_fixture/angled_metal_body.png	0,8;20,0;32,16;32,40;20,48;8,40
+front_rim	priority_overlay	14	288	112	32	48	0	0	foreground	overhang	The foreground pixels and dark circular rim use the priority plane.	field/entities/wanderer_east_wall_fixture/front_rim.png	8,28;20,24;32,32;32,44;20,48;8,40

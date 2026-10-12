@@ -601,7 +601,7 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         output << '"';
     };
 
-    const std::array<std::pair<const char*, std::size_t>, 112> records{{
+    const std::array<std::pair<const char*, std::size_t>, 118> records{{
         // Stoker prompt pointers consumed by the source event/profile path.
         {"stoker.motel.arrival.title", 0x1167EBU},
         {"stoker.motel.arrival.more", 0x0FE5BFU},
@@ -711,6 +711,15 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         {"big-rhino.related.package-approach", 0x11555CU},
         {"big-rhino.related.maitre-d-offer", 0x1155B5U},
         {"big-rhino.related.package-payment", 0x1155E1U},
+        // Scene 14 event 30 selects the Wanderer dialogue slot. These ROM
+        // strings identify the first visit, the returning Johnson menu, the
+        // conditional credit page, and the post-departure booth message.
+        {"wanderer.vigore_jarl.first-impression", 0x106D7CU},
+        {"wanderer.vigore_jarl.first-meeting", 0x106E5EU},
+        {"wanderer.vigore_jarl.opening", 0x10702DU},
+        {"wanderer.vigore_jarl.conditional-opening", 0x105BD9U},
+        {"wanderer.vigore_jarl.booth-vacated", 0x10760CU},
+        {"wanderer.vigore_jarl.booth-vacated.option.fixers", 0x10742EU},
         // Scene 12 event 30 selects Caleb Brightmore after the access gate.
         // These strings remain content records; dialogue.lua owns the menu
         // profile and the scene route TSV records the ROM state branches.
@@ -2595,6 +2604,15 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         shadowrun::graphics::decode_genesis_field_mode_profile_sprite(
             rom, 0x121E80U),
         "sprite", "0x12CC50/0x121E80/0x20990", false, manifest, written,
+        missing, blank);
+    // Scene 14's row 3 in the 0x12CC50 table selects the portrait at
+    // 0x121F28 for the Wanderer conversation. The bodyguard and Vigore are
+    // dialogue portrait art; neither is a default field actor on map 14.
+    write_catalog_asset(
+        root, "dialogue/portraits/vigore-jarl.bmp",
+        shadowrun::graphics::decode_genesis_field_mode_profile_sprite(
+            rom, 0x121F28U),
+        "sprite", "0x12CC80/0x121F28/0x20990", false, manifest, written,
         missing, blank);
     // Scene 11's mode-2 entry uses profile 7 at 0x121FF4 for the Big Rhino
     // booth dialogue. This is portrait art, not a field actor sprite.
