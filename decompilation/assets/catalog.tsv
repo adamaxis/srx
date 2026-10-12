@@ -1412,6 +1412,38 @@ field/maps/mode-54.bmp	background	0	0	320	1344	mode resource catalog	extracted
 field/maps/mode-54-priority-overlay.png	priority-overlay	0	0	320	1344	ROM field tile priority bits	extracted
 field/maps/mode-55.bmp	background	0	0	512	288	mode resource catalog	extracted
 field/maps/mode-55-priority-overlay.png	priority-overlay	0	0	512	288	ROM field tile priority bits	extracted
+field/entities/actors/actor-kind-4-palette-3-idle.bmp	sprite	-14	-24	27	30	0xB45C/0xC052/0x600E actor=ROM kind 4 kind=4 template=0x1D6738 descriptor=0x9602 selector=0x0 palette-line=3	extracted
+field/entities/actors/actor-kind-4-palette-3-idle-dir-1.bmp	sprite	-9	-24	22	30	0xB45C/0xC052/0x600E actor=ROM kind 4 kind=4 template=0x1D6738 descriptor=0x964A selector=0x4 palette-line=3	extracted
+field/entities/actors/actor-kind-4-palette-3-idle-dir-2.bmp	sprite	-8	-24	16	30	0xB45C/0xC052/0x600E actor=ROM kind 4 kind=4 template=0x1D6738 descriptor=0x9692 selector=0x8 palette-line=3	extracted
+field/entities/actors/actor-kind-4-palette-3-idle-dir-3.bmp	sprite	-11	-25	20	32	0xB45C/0xC052/0x600E actor=ROM kind 4 kind=4 template=0x1D6738 descriptor=0x96DA selector=0xC palette-line=3	extracted
+field/entities/actors/actor-kind-4-palette-3-idle-dir-4.bmp	sprite	-14	-25	30	30	0xB45C/0xC052/0x600E actor=ROM kind 4 kind=4 template=0x1D6738 descriptor=0x9722 selector=0x10 palette-line=3	extracted
+field/entities/actors/actor-kind-4-palette-3-idle-dir-5.bmp	sprite	-13	-25	20	32	0xB45C/0xC052/0x600E actor=ROM kind 4 kind=4 template=0x1D6738 descriptor=0x97FA selector=0x14 palette-line=3	extracted
+field/entities/actors/actor-kind-4-palette-3-idle-dir-6.bmp	sprite	-8	-24	16	30	0xB45C/0xC052/0x600E actor=ROM kind 4 kind=4 template=0x1D6738 descriptor=0x97B2 selector=0x18 palette-line=3	extracted
+field/entities/actors/actor-kind-4-palette-3-idle-dir-7.bmp	sprite	-15	-24	22	30	0xB45C/0xC052/0x600E actor=ROM kind 4 kind=4 template=0x1D6738 descriptor=0x976A selector=0x1C palette-line=3	extracted
+field/entities/actors/actor-kind-5-palette-1-idle.bmp	sprite	-13	-26	24	30	0xB45C/0xC052/0x600E actor=ROM kind 5 kind=5 template=0x1D63C0 descriptor=0x86E0A selector=0x0 palette-line=1	extracted
+field/entities/actors/actor-kind-5-palette-1-entry-dir-0-frame-0.bmp	sprite	-21	-23	28	27	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D63C0 descriptor=0x8B1EA selector=0xE8 frame=0 palette-line=1	extracted
+field/entities/actors/actor-kind-5-palette-1-entry-dir-0-frame-1.bmp	sprite	-21	-23	31	31	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D63C0 descriptor=0x8B40E selector=0xE8 frame=1 palette-line=1	extracted
+field/entities/actors/actor-kind-5-palette-1-idle-dir-1.bmp	sprite	-9	-25	20	29	0xB45C/0xC052/0x600E actor=ROM kind 5 kind=5 template=0x1D63C0 descriptor=0x874F6 selector=0x4 palette-line=1	extracted
+field/entities/actors/actor-kind-5-palette-1-entry-dir-1-frame-0.bmp	sprite	-21	-23	28	27	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D63C0 descriptor=0x8B1EA selector=0xEC frame=0 palette-line=1	extracted
+field/entities/actors/actor-kind-5-palette-1-entry-dir-1-frame-1.bmp	sprite	-21	-23	31	31	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D63C0 descriptor=0x8B40E selector=0xEC frame=1 palette-line=1	extracted
+field/entities/actors/actor-kind-5-palette-1-idle-dir-2.bmp	sprite	-8	-22	18	27	0xB45C/0xC052/0x600E actor=ROM kind 5 kind=5 template=0x1D63C0 descriptor=0x87B06 selector=0x8 palette-line=1	extracted
+field/entities/actors/actor-kind-5-palette-1-entry-dir-2-frame-0.bmp	sprite	-21	-23	28	27	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D63C0 descriptor=0x8B1EA selector=0xF0 frame=0 palette-line=1	extracted
+field/entities/actors/actor-kind-5-palette-1-entry-dir-2-frame-1.bmp	sprite	-21	-23	31	31	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D63C0 descriptor=0x8B40E selector=0xF0 frame=1 palette-line=1	extracted
+field/entities/actors/actor-kind-5-palette-1-idle-dir-3.bmp	sprite	-10	-24	20	27	0xB45C/0xC052/0x600E actor=ROM kind 5 kind=5 template=0x1D63C0 descriptor=0x87FF2 selector=0xC palette-line=1	extracted
+field/entities/actors/actor-kind-5-palette-1-entry-dir-3-frame-0.bmp	sprite	-5	-18	29	31	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D63C0 descriptor=0x8ADB4 selector=0xF4 frame=0 palette-line=1	extracted
+field/entities/actors/actor-kind-5-palette-1-entry-dir-3-frame-1.bmp	sprite	-5	-15	31	28	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D63C0 descriptor=0x8AFD8 selector=0xF4 frame=1 palette-line=1	extracted
+field/entities/actors/actor-kind-5-palette-1-idle-dir-4.bmp	sprite	-11	-26	28	29	0xB45C/0xC052/0x600E actor=ROM kind 5 kind=5 template=0x1D63C0 descriptor=0x883CC selector=0x10 palette-line=1	extracted
+field/entities/actors/actor-kind-5-palette-1-entry-dir-4-frame-0.bmp	sprite	-5	-18	29	31	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D63C0 descriptor=0x8ADB4 selector=0xF8 frame=0 palette-line=1	extracted
+field/entities/actors/actor-kind-5-palette-1-entry-dir-4-frame-1.bmp	sprite	-5	-15	31	28	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D63C0 descriptor=0x8AFD8 selector=0xF8 frame=1 palette-line=1	extracted
+field/entities/actors/actor-kind-5-palette-1-idle-dir-5.bmp	sprite	-12	-24	20	27	0xB45C/0xC052/0x600E actor=ROM kind 5 kind=5 template=0x1D63C0 descriptor=0x88004 selector=0x14 palette-line=1	extracted
+field/entities/actors/actor-kind-5-palette-1-entry-dir-5-frame-0.bmp	sprite	-27	-18	29	31	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D63C0 descriptor=0x8ADA2 selector=0xFC frame=0 palette-line=1	extracted
+field/entities/actors/actor-kind-5-palette-1-entry-dir-5-frame-1.bmp	sprite	-27	-15	31	28	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D63C0 descriptor=0x8AFC6 selector=0xFC frame=1 palette-line=1	extracted
+field/entities/actors/actor-kind-5-palette-1-idle-dir-6.bmp	sprite	-4	-22	18	27	0xB45C/0xC052/0x600E actor=ROM kind 5 kind=5 template=0x1D63C0 descriptor=0x87B18 selector=0x18 palette-line=1	extracted
+field/entities/actors/actor-kind-5-palette-1-entry-dir-6-frame-0.bmp	sprite	-5	-23	28	27	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D63C0 descriptor=0x8B1FC selector=0x100 frame=0 palette-line=1	extracted
+field/entities/actors/actor-kind-5-palette-1-entry-dir-6-frame-1.bmp	sprite	-11	-23	31	31	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D63C0 descriptor=0x8B420 selector=0x100 frame=1 palette-line=1	extracted
+field/entities/actors/actor-kind-5-palette-1-idle-dir-7.bmp	sprite	-15	-25	20	29	0xB45C/0xC052/0x600E actor=ROM kind 5 kind=5 template=0x1D63C0 descriptor=0x87508 selector=0x1C palette-line=1	extracted
+field/entities/actors/actor-kind-5-palette-1-entry-dir-7-frame-0.bmp	sprite	-5	-23	28	27	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D63C0 descriptor=0x8B1FC selector=0x104 frame=0 palette-line=1	extracted
+field/entities/actors/actor-kind-5-palette-1-entry-dir-7-frame-1.bmp	sprite	-11	-23	31	31	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D63C0 descriptor=0x8B420 selector=0x104 frame=1 palette-line=1	extracted
 field/entities/actors/corp-guard-idle.bmp	sprite	-13	-26	24	30	0xB45C/0xC052/0x600E actor=corp guard kind=5 template=0x1D6A1C descriptor=0x86E0A selector=0x0 palette-line=2	extracted
 field/entities/actors/corp-guard-entry-dir-0-frame-0.bmp	sprite	-21	-23	28	27	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8B1EA selector=0xE8 frame=0 palette-line=2	extracted
 field/entities/actors/corp-guard-entry-dir-0-frame-1.bmp	sprite	-21	-23	31	31	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8B40E selector=0xE8 frame=1 palette-line=2	extracted
@@ -1436,6 +1468,22 @@ field/entities/actors/corp-guard-entry-dir-6-frame-1.bmp	sprite	-11	-23	31	31	0x
 field/entities/actors/corp-guard-idle-dir-7.bmp	sprite	-15	-25	20	29	0xB45C/0xC052/0x600E actor=corp guard kind=5 template=0x1D6A1C descriptor=0x87508 selector=0x1C palette-line=2	extracted
 field/entities/actors/corp-guard-entry-dir-7-frame-0.bmp	sprite	-5	-23	28	27	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8B1FC selector=0x104 frame=0 palette-line=2	extracted
 field/entities/actors/corp-guard-entry-dir-7-frame-1.bmp	sprite	-11	-23	31	31	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8B420 selector=0x104 frame=1 palette-line=2	extracted
+field/entities/actors/actor-kind-6-palette-3-idle.bmp	sprite	-9	-26	17	29	0xB45C/0xC052/0x600E actor=ROM kind 6 kind=6 template=0x1D6D00 descriptor=0x8C2E6 selector=0x0 palette-line=3	extracted
+field/entities/actors/actor-kind-6-palette-3-idle-dir-1.bmp	sprite	-8	-27	17	30	0xB45C/0xC052/0x600E actor=ROM kind 6 kind=6 template=0x1D6D00 descriptor=0x8C7C0 selector=0x4 palette-line=3	extracted
+field/entities/actors/actor-kind-6-palette-3-idle-dir-2.bmp	sprite	-9	-27	15	30	0xB45C/0xC052/0x600E actor=ROM kind 6 kind=6 template=0x1D6D00 descriptor=0x8CD50 selector=0x8 palette-line=3	extracted
+field/entities/actors/actor-kind-6-palette-3-idle-dir-3.bmp	sprite	-8	-27	16	29	0xB45C/0xC052/0x600E actor=ROM kind 6 kind=6 template=0x1D6D00 descriptor=0x8D360 selector=0xC palette-line=3	extracted
+field/entities/actors/actor-kind-6-palette-3-idle-dir-4.bmp	sprite	-9	-27	18	30	0xB45C/0xC052/0x600E actor=ROM kind 6 kind=6 template=0x1D6D00 descriptor=0x8D9CC selector=0x10 palette-line=3	extracted
+field/entities/actors/actor-kind-6-palette-3-idle-dir-5.bmp	sprite	-8	-27	16	29	0xB45C/0xC052/0x600E actor=ROM kind 6 kind=6 template=0x1D6D00 descriptor=0x8D372 selector=0x14 palette-line=3	extracted
+field/entities/actors/actor-kind-6-palette-3-idle-dir-6.bmp	sprite	-7	-27	15	30	0xB45C/0xC052/0x600E actor=ROM kind 6 kind=6 template=0x1D6D00 descriptor=0x8CD62 selector=0x18 palette-line=3	extracted
+field/entities/actors/actor-kind-6-palette-3-idle-dir-7.bmp	sprite	-16	-27	17	30	0xB45C/0xC052/0x600E actor=ROM kind 6 kind=6 template=0x1D6D00 descriptor=0x8C7D2 selector=0x1C palette-line=3	extracted
+field/entities/actors/actor-kind-7-palette-0-idle.bmp	sprite	-11	-25	21	30	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D68AA descriptor=0x91162 selector=0x0 palette-line=0	extracted
+field/entities/actors/actor-kind-7-palette-0-idle-dir-1.bmp	sprite	-11	-26	22	30	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D68AA descriptor=0x91B04 selector=0x4 palette-line=0	extracted
+field/entities/actors/actor-kind-7-palette-0-idle-dir-2.bmp	sprite	-12	-25	20	31	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D68AA descriptor=0x91ECC selector=0x8 palette-line=0	extracted
+field/entities/actors/actor-kind-7-palette-0-idle-dir-3.bmp	sprite	-10	-26	18	31	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D68AA descriptor=0x9265C selector=0xC palette-line=0	extracted
+field/entities/actors/actor-kind-7-palette-0-idle-dir-4.bmp	sprite	-13	-25	25	29	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D68AA descriptor=0x92EEC selector=0x10 palette-line=0	extracted
+field/entities/actors/actor-kind-7-palette-0-idle-dir-5.bmp	sprite	-14	-26	18	31	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D68AA descriptor=0x9266E selector=0x14 palette-line=0	extracted
+field/entities/actors/actor-kind-7-palette-0-idle-dir-6.bmp	sprite	-11	-25	20	31	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D68AA descriptor=0x922A6 selector=0x18 palette-line=0	extracted
+field/entities/actors/actor-kind-7-palette-0-idle-dir-7.bmp	sprite	-15	-26	19	30	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D68AA descriptor=0x9162A selector=0x1C palette-line=0	extracted
 field/entities/actors/actor-kind-7-palette-2-idle.bmp	sprite	-11	-25	21	30	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D657C descriptor=0x91162 selector=0x0 palette-line=2	extracted
 field/entities/actors/actor-kind-7-palette-2-idle-dir-1.bmp	sprite	-11	-26	22	30	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D657C descriptor=0x91B04 selector=0x4 palette-line=2	extracted
 field/entities/actors/actor-kind-7-palette-2-idle-dir-2.bmp	sprite	-12	-25	20	31	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D657C descriptor=0x91ECC selector=0x8 palette-line=2	extracted
@@ -1452,6 +1500,46 @@ field/entities/actors/yakuza-weenr-idle-dir-4.bmp	sprite	-15	-24	28	30	0xB45C/0x
 field/entities/actors/yakuza-weenr-idle-dir-5.bmp	sprite	-12	-21	21	27	0xB45C/0xC052/0x600E actor=yakuza weenr kind=8 template=0x1D66EE descriptor=0xAA2FA selector=0x14 palette-line=1	extracted
 field/entities/actors/yakuza-weenr-idle-dir-6.bmp	sprite	-8	-21	14	28	0xB45C/0xC052/0x600E actor=yakuza weenr kind=8 template=0x1D66EE descriptor=0xA9C6A selector=0x18 palette-line=1	extracted
 field/entities/actors/yakuza-weenr-idle-dir-7.bmp	sprite	-14	-24	22	29	0xB45C/0xC052/0x600E actor=yakuza weenr kind=8 template=0x1D66EE descriptor=0xA96DA selector=0x1C palette-line=1	extracted
+field/entities/actors/actor-kind-9-palette-3-idle.bmp	sprite	-11	-25	22	32	0xB45C/0xC052/0x600E actor=ROM kind 9 kind=9 template=0x1D6B44 descriptor=0x9A192 selector=0x0 palette-line=3	extracted
+field/entities/actors/actor-kind-9-palette-3-idle-dir-1.bmp	sprite	-14	-24	24	32	0xB45C/0xC052/0x600E actor=ROM kind 9 kind=9 template=0x1D6B44 descriptor=0x9B80C selector=0x4 palette-line=3	extracted
+field/entities/actors/actor-kind-9-palette-3-idle-dir-2.bmp	sprite	-10	-24	21	32	0xB45C/0xC052/0x600E actor=ROM kind 9 kind=9 template=0x1D6B44 descriptor=0x9AED8 selector=0x8 palette-line=3	extracted
+field/entities/actors/actor-kind-9-palette-3-idle-dir-3.bmp	sprite	-16	-25	27	32	0xB45C/0xC052/0x600E actor=ROM kind 9 kind=9 template=0x1D6B44 descriptor=0x9A8EC selector=0xC palette-line=3	extracted
+field/entities/actors/actor-kind-9-palette-3-idle-dir-4.bmp	sprite	-11	-23	22	31	0xB45C/0xC052/0x600E actor=ROM kind 9 kind=9 template=0x1D6B44 descriptor=0x9BE8A selector=0x10 palette-line=3	extracted
+field/entities/actors/actor-kind-9-palette-3-idle-dir-5.bmp	sprite	-16	-25	27	32	0xB45C/0xC052/0x600E actor=ROM kind 9 kind=9 template=0x1D6B44 descriptor=0x9A8FE selector=0x14 palette-line=3	extracted
+field/entities/actors/actor-kind-9-palette-3-idle-dir-6.bmp	sprite	-14	-24	21	32	0xB45C/0xC052/0x600E actor=ROM kind 9 kind=9 template=0x1D6B44 descriptor=0x9AEEA selector=0x18 palette-line=3	extracted
+field/entities/actors/actor-kind-9-palette-3-idle-dir-7.bmp	sprite	-10	-24	24	32	0xB45C/0xC052/0x600E actor=ROM kind 9 kind=9 template=0x1D6B44 descriptor=0x9B81E selector=0x1C palette-line=3	extracted
+field/entities/actors/actor-kind-10-palette-2-idle.bmp	sprite	-12	-28	26	32	0xB45C/0xC052/0x600E actor=ROM kind 10 kind=10 template=0x1D64E8 descriptor=0xA1AAA selector=0x0 palette-line=2	extracted
+field/entities/actors/actor-kind-10-palette-2-idle-dir-1.bmp	sprite	-9	-28	21	32	0xB45C/0xC052/0x600E actor=ROM kind 10 kind=10 template=0x1D64E8 descriptor=0xA132C selector=0x4 palette-line=2	extracted
+field/entities/actors/actor-kind-10-palette-2-idle-dir-2.bmp	sprite	-9	-27	19	31	0xB45C/0xC052/0x600E actor=ROM kind 10 kind=10 template=0x1D64E8 descriptor=0xA0BF8 selector=0x8 palette-line=2	extracted
+field/entities/actors/actor-kind-10-palette-2-idle-dir-3.bmp	sprite	-12	-28	22	32	0xB45C/0xC052/0x600E actor=ROM kind 10 kind=10 template=0x1D64E8 descriptor=0xA068C selector=0xC palette-line=2	extracted
+field/entities/actors/actor-kind-10-palette-2-idle-dir-4.bmp	sprite	-13	-28	25	32	0xB45C/0xC052/0x600E actor=ROM kind 10 kind=10 template=0x1D64E8 descriptor=0x9FF32 selector=0x10 palette-line=2	extracted
+field/entities/actors/actor-kind-10-palette-2-idle-dir-5.bmp	sprite	-12	-28	22	32	0xB45C/0xC052/0x600E actor=ROM kind 10 kind=10 template=0x1D64E8 descriptor=0xA069E selector=0x14 palette-line=2	extracted
+field/entities/actors/actor-kind-10-palette-2-idle-dir-6.bmp	sprite	-15	-27	19	31	0xB45C/0xC052/0x600E actor=ROM kind 10 kind=10 template=0x1D64E8 descriptor=0xA0C0A selector=0x18 palette-line=2	extracted
+field/entities/actors/actor-kind-10-palette-2-idle-dir-7.bmp	sprite	-15	-28	21	32	0xB45C/0xC052/0x600E actor=ROM kind 10 kind=10 template=0x1D64E8 descriptor=0xA133E selector=0x1C palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-idle.bmp	sprite	-14	-24	27	28	0xB45C/0xC052/0x600E actor=ROM kind 11 kind=11 template=0x1D6BD8 descriptor=0xA7684 selector=0x0 palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-entry-dir-0-frame-0.bmp	sprite	-20	-22	27	31	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6BD8 descriptor=0xA467E selector=0xE8 frame=0 palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-entry-dir-0-frame-1.bmp	sprite	-13	-24	29	29	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6BD8 descriptor=0xA445A selector=0xE8 frame=1 palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-idle-dir-1.bmp	sprite	-10	-26	22	30	0xB45C/0xC052/0x600E actor=ROM kind 11 kind=11 template=0x1D6BD8 descriptor=0xA6CF4 selector=0x4 palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-entry-dir-1-frame-0.bmp	sprite	-20	-22	27	31	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6BD8 descriptor=0xA467E selector=0xEC frame=0 palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-entry-dir-1-frame-1.bmp	sprite	-13	-24	29	29	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6BD8 descriptor=0xA445A selector=0xEC frame=1 palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-idle-dir-2.bmp	sprite	-9	-25	17	27	0xB45C/0xC052/0x600E actor=ROM kind 11 kind=11 template=0x1D6BD8 descriptor=0xA6440 selector=0x8 palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-entry-dir-2-frame-0.bmp	sprite	-20	-22	27	31	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6BD8 descriptor=0xA467E selector=0xF0 frame=0 palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-entry-dir-2-frame-1.bmp	sprite	-13	-24	29	29	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6BD8 descriptor=0xA445A selector=0xF0 frame=1 palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-idle-dir-3.bmp	sprite	-11	-24	23	28	0xB45C/0xC052/0x600E actor=ROM kind 11 kind=11 template=0x1D6BD8 descriptor=0xA6078 selector=0xC palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-entry-dir-3-frame-0.bmp	sprite	-14	-20	27	31	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6BD8 descriptor=0xA4236 selector=0xF4 frame=0 palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-entry-dir-3-frame-1.bmp	sprite	-11	-12	32	25	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6BD8 descriptor=0xA4012 selector=0xF4 frame=1 palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-idle-dir-4.bmp	sprite	-13	-23	30	28	0xB45C/0xC052/0x600E actor=ROM kind 11 kind=11 template=0x1D6BD8 descriptor=0xA7AA8 selector=0x10 palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-entry-dir-4-frame-0.bmp	sprite	-14	-20	27	31	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6BD8 descriptor=0xA4236 selector=0xF8 frame=0 palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-entry-dir-4-frame-1.bmp	sprite	-11	-12	32	25	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6BD8 descriptor=0xA4012 selector=0xF8 frame=1 palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-idle-dir-5.bmp	sprite	-13	-24	23	28	0xB45C/0xC052/0x600E actor=ROM kind 11 kind=11 template=0x1D6BD8 descriptor=0xA608A selector=0x14 palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-entry-dir-5-frame-0.bmp	sprite	-18	-20	27	31	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6BD8 descriptor=0xA4224 selector=0xFC frame=0 palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-entry-dir-5-frame-1.bmp	sprite	-21	-12	32	25	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6BD8 descriptor=0xA4000 selector=0xFC frame=1 palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-idle-dir-6.bmp	sprite	-15	-25	17	27	0xB45C/0xC052/0x600E actor=ROM kind 11 kind=11 template=0x1D6BD8 descriptor=0xA6452 selector=0x18 palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-entry-dir-6-frame-0.bmp	sprite	-12	-22	27	31	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6BD8 descriptor=0xA466C selector=0x100 frame=0 palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-entry-dir-6-frame-1.bmp	sprite	-19	-24	29	29	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6BD8 descriptor=0xA4448 selector=0x100 frame=1 palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-idle-dir-7.bmp	sprite	-14	-26	22	30	0xB45C/0xC052/0x600E actor=ROM kind 11 kind=11 template=0x1D6BD8 descriptor=0xA6D06 selector=0x1C palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-entry-dir-7-frame-0.bmp	sprite	-12	-22	27	31	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6BD8 descriptor=0xA466C selector=0x104 frame=0 palette-line=2	extracted
+field/entities/actors/actor-kind-11-palette-2-entry-dir-7-frame-1.bmp	sprite	-19	-24	29	29	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6BD8 descriptor=0xA4448 selector=0x104 frame=1 palette-line=2	extracted
 field/entities/actors/pedestrian-idle.bmp	sprite	-14	-24	27	28	0xB45C/0xC052/0x600E actor=pedestrian kind=11 template=0x1D6988 descriptor=0xA7684 selector=0x0 palette-line=3	extracted
 field/entities/actors/pedestrian-entry-dir-0-frame-0.bmp	sprite	-20	-22	27	31	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6988 descriptor=0xA467E selector=0xE8 frame=0 palette-line=3	extracted
 field/entities/actors/pedestrian-entry-dir-0-frame-1.bmp	sprite	-13	-24	29	29	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6988 descriptor=0xA445A selector=0xE8 frame=1 palette-line=3	extracted
@@ -1476,6 +1564,30 @@ field/entities/actors/pedestrian-entry-dir-6-frame-1.bmp	sprite	-19	-24	29	29	0x
 field/entities/actors/pedestrian-idle-dir-7.bmp	sprite	-14	-26	22	30	0xB45C/0xC052/0x600E actor=pedestrian kind=11 template=0x1D6988 descriptor=0xA6D06 selector=0x1C palette-line=3	extracted
 field/entities/actors/pedestrian-entry-dir-7-frame-0.bmp	sprite	-12	-22	27	31	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6988 descriptor=0xA466C selector=0x104 frame=0 palette-line=3	extracted
 field/entities/actors/pedestrian-entry-dir-7-frame-1.bmp	sprite	-19	-24	29	29	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6988 descriptor=0xA4448 selector=0x104 frame=1 palette-line=3	extracted
+field/entities/actors/actor-kind-12-palette-1-idle.bmp	sprite	-9	-13	19	32	0xB45C/0xC052/0x600E actor=ROM kind 12 kind=12 template=0x1D6816 descriptor=0xAE0B4 selector=0x0 palette-line=1	extracted
+field/entities/actors/actor-kind-12-palette-1-idle-dir-1.bmp	sprite	6	-25	14	27	0xB45C/0xC052/0x600E actor=ROM kind 12 kind=12 template=0x1D6816 descriptor=0xAE36E selector=0x4 palette-line=1	extracted
+field/entities/actors/actor-kind-12-palette-1-idle-dir-2.bmp	sprite	-28	-11	32	18	0xB45C/0xC052/0x600E actor=ROM kind 12 kind=12 template=0x1D6816 descriptor=0xB1388 selector=0x8 palette-line=1	extracted
+field/entities/actors/actor-kind-12-palette-1-idle-dir-3.bmp	sprite	-18	-26	8	24	0xB45C/0xC052/0x600E actor=ROM kind 12 kind=12 template=0x1D6816 descriptor=0xB10A4 selector=0xC palette-line=1	extracted
+field/entities/actors/actor-kind-12-palette-1-idle-dir-4.bmp	sprite	-9	-14	18	32	0xB45C/0xC052/0x600E actor=ROM kind 12 kind=12 template=0x1D6816 descriptor=0xAF222 selector=0x10 palette-line=1	extracted
+field/entities/actors/actor-kind-12-palette-1-idle-dir-5.bmp	sprite	10	-26	8	24	0xB45C/0xC052/0x600E actor=ROM kind 12 kind=12 template=0x1D6816 descriptor=0xB10C6 selector=0x14 palette-line=1	extracted
+field/entities/actors/actor-kind-12-palette-1-idle-dir-6.bmp	sprite	-4	-11	32	18	0xB45C/0xC052/0x600E actor=ROM kind 12 kind=12 template=0x1D6816 descriptor=0xB13A2 selector=0x18 palette-line=1	extracted
+field/entities/actors/actor-kind-12-palette-1-idle-dir-7.bmp	sprite	-22	-25	14	27	0xB45C/0xC052/0x600E actor=ROM kind 12 kind=12 template=0x1D6816 descriptor=0xAE3A0 selector=0x1C palette-line=1	extracted
+field/entities/actors/actor-kind-13-palette-1-idle.bmp	sprite	-13	-30	32	32	0xB45C/0xC052/0x600E actor=ROM kind 13 kind=13 template=0x1D6860 descriptor=0xB5796 selector=0x0 palette-line=1	extracted
+field/entities/actors/actor-kind-13-palette-1-idle-dir-1.bmp	sprite	-17	-30	32	32	0xB45C/0xC052/0x600E actor=ROM kind 13 kind=13 template=0x1D6860 descriptor=0xB5A78 selector=0x4 palette-line=1	extracted
+field/entities/actors/actor-kind-13-palette-1-idle-dir-2.bmp	sprite	-10	-28	28	32	0xB45C/0xC052/0x600E actor=ROM kind 13 kind=13 template=0x1D6860 descriptor=0xB5D1C selector=0x8 palette-line=1	extracted
+field/entities/actors/actor-kind-13-palette-1-idle-dir-3.bmp	sprite	-12	-32	28	32	0xB45C/0xC052/0x600E actor=ROM kind 13 kind=13 template=0x1D6860 descriptor=0xB5FC0 selector=0xC palette-line=1	extracted
+field/entities/actors/actor-kind-13-palette-1-idle-dir-4.bmp	sprite	-10	-28	29	32	0xB45C/0xC052/0x600E actor=ROM kind 13 kind=13 template=0x1D6860 descriptor=0xB6234 selector=0x10 palette-line=1	extracted
+field/entities/actors/actor-kind-13-palette-1-idle-dir-5.bmp	sprite	-20	-32	28	32	0xB45C/0xC052/0x600E actor=ROM kind 13 kind=13 template=0x1D6860 descriptor=0xB5FDA selector=0x14 palette-line=1	extracted
+field/entities/actors/actor-kind-13-palette-1-idle-dir-6.bmp	sprite	-22	-28	28	32	0xB45C/0xC052/0x600E actor=ROM kind 13 kind=13 template=0x1D6860 descriptor=0xB5D3E selector=0x18 palette-line=1	extracted
+field/entities/actors/actor-kind-13-palette-1-idle-dir-7.bmp	sprite	-15	-30	32	32	0xB45C/0xC052/0x600E actor=ROM kind 13 kind=13 template=0x1D6860 descriptor=0xB5A9A selector=0x1C palette-line=1	extracted
+field/entities/actors/actor-kind-14-palette-1-idle.bmp	sprite	-15	-28	32	32	0xB45C/0xC052/0x600E actor=ROM kind 14 kind=14 template=0x1D67CC descriptor=0xBFFF2 selector=0x0 palette-line=1	extracted
+field/entities/actors/actor-kind-14-palette-1-idle-dir-1.bmp	sprite	-15	-23	30	32	0xB45C/0xC052/0x600E actor=ROM kind 14 kind=14 template=0x1D67CC descriptor=0xBE1E4 selector=0x4 palette-line=1	extracted
+field/entities/actors/actor-kind-14-palette-1-idle-dir-2.bmp	sprite	-12	-26	29	32	0xB45C/0xC052/0x600E actor=ROM kind 14 kind=14 template=0x1D67CC descriptor=0xBEDA4 selector=0x8 palette-line=1	extracted
+field/entities/actors/actor-kind-14-palette-1-idle-dir-3.bmp	sprite	-14	-24	30	32	0xB45C/0xC052/0x600E actor=ROM kind 14 kind=14 template=0x1D67CC descriptor=0xBD584 selector=0xC palette-line=1	extracted
+field/entities/actors/actor-kind-14-palette-1-idle-dir-4.bmp	sprite	-4	-35	9	2	0xB45C/0xC052/0x600E actor=ROM kind 14 kind=14 template=0x1D67CC descriptor=0xC103A selector=0x10 palette-line=1	extracted
+field/entities/actors/actor-kind-14-palette-1-idle-dir-5.bmp	sprite	-18	-24	30	32	0xB45C/0xC052/0x600E actor=ROM kind 14 kind=14 template=0x1D67CC descriptor=0xBD5A6 selector=0x14 palette-line=1	extracted
+field/entities/actors/actor-kind-14-palette-1-idle-dir-6.bmp	sprite	-20	-26	29	32	0xB45C/0xC052/0x600E actor=ROM kind 14 kind=14 template=0x1D67CC descriptor=0xBEDC6 selector=0x18 palette-line=1	extracted
+field/entities/actors/actor-kind-14-palette-1-idle-dir-7.bmp	sprite	-17	-23	30	32	0xB45C/0xC052/0x600E actor=ROM kind 14 kind=14 template=0x1D67CC descriptor=0xBE1FE selector=0x1C palette-line=1	extracted
 field/entities/actors/thon-idle.bmp	sprite	-24	-55	48	57	ROM 0x62AC/0xC052/0x600E/0x622C/0x624C/0xA77A Thon seven-piece idle sprite list; 0x5BA4C/0x1530 loads 0x1EBDEE at VRAM 0x5920; template palette line 1	extracted
 field/entities/idle-0.bmp	sprite	0	0	24	31	0x5A62/0x5FDC	extracted
 field/entities/idle-1.bmp	sprite	0	0	22	30	0x5A62/0x5FDC	extracted

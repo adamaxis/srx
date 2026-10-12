@@ -3625,6 +3625,178 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                      "ROM kind " + std::to_string(actor.entity_kind),
                      actor.sprite_stem, actor.template_offset});
     }
+    struct DynamicWorldActorRecord {
+        std::uint16_t scene_id;
+        std::uint8_t context_group;
+        std::uint8_t random_sum;
+        std::uint16_t source_order;
+        std::uint32_t pointer_cell_offset;
+        std::uint32_t sequence_list_offset;
+        std::uint32_t tagged_template;
+        std::uint32_t template_offset;
+        std::uint16_t entity_kind;
+        std::uint8_t palette_line;
+        std::string actor_name;
+        std::string sprite_stem;
+        std::string ordered_overrides;
+    };
+    constexpr std::size_t kFieldContextGroupTableOffset = 0x3312U;
+    constexpr std::size_t kWorldActivityEnableTableOffset = 0x1D70E4U;
+    constexpr std::size_t kWorldActivitySequencePointerTableOffset = 0x1D7174U;
+    constexpr std::size_t kWorldActivityColumns = 9U;
+    constexpr std::size_t kWorldActivityGroups = 16U;
+    constexpr std::size_t kFieldSceneCount = 56U;
+    std::vector<DynamicWorldActorRecord> dynamic_world_actor_records;
+    for (std::size_t scene_id = 0U; scene_id < kFieldSceneCount; ++scene_id) {
+        const auto context_group = rom[kFieldContextGroupTableOffset + scene_id];
+        if (context_group >= kWorldActivityGroups) {
+            throw std::runtime_error(
+                "field context group exceeds the world activity table");
+        }
+        for (std::size_t random_sum = 0U;
+             random_sum < kWorldActivityColumns; ++random_sum) {
+            const auto cell_index =
+                static_cast<std::size_t>(context_group) *
+                    kWorldActivityColumns +
+                random_sum;
+            const auto enable_offset =
+                kWorldActivityEnableTableOffset + cell_index;
+            const auto enabled = rom[enable_offset];
+            if (enabled > 1U) {
+                throw std::runtime_error(
+                    "world activity enable table contains a non-boolean cell");
+            }
+            if (enabled != 0U) {
+                continue;
+            }
+
+            const auto pointer_cell_offset = static_cast<std::uint32_t>(
+                kWorldActivitySequencePointerTableOffset + cell_index * 4U);
+            const auto sequence_list_offset =
+                read_big_endian_long(rom, pointer_cell_offset);
+            auto cursor = static_cast<std::size_t>(sequence_list_offset);
+            bool found_terminator = false;
+            for (std::uint16_t source_order = 0U; source_order < 32U;
+                 ++source_order) {
+                const auto record_offset = cursor;
+                const auto tagged_template = read_big_endian_long(rom, cursor);
+                if (tagged_template == 0U) {
+                    found_terminator = true;
+                    break;
+                }
+                const auto template_offset = tagged_template & 0x7FFFFFFFU;
+                if (template_offset > rom.size() ||
+                    rom.size() - template_offset < 0x4AU) {
+                    throw std::runtime_error(
+                        "dynamic world actor template points outside the ROM");
+                }
+                const auto entity_kind =
+                    read_big_endian_word(rom, template_offset);
+                const auto palette_line = static_cast<std::uint8_t>(
+                    (read_big_endian_word(rom, template_offset + 2U) >> 13U) &
+                    0x03U);
+                const auto actor_name = read_actor_name(template_offset);
+                if (entity_kind > 15U || actor_name.empty()) {
+                    throw std::runtime_error(
+                        "dynamic world actor template has no readable type/name");
+                }
+
+                auto next_record = cursor + 4U;
+                std::ostringstream overrides;
+                bool first_override = true;
+                if (read_big_endian_long(rom, next_record) == 2U) {
+                    auto pair_offset = next_record + 4U;
+                    for (;;) {
+                        const auto pair =
+                            read_big_endian_word(rom, pair_offset);
+                        if (pair == 0U) {
+                            pair_offset += 2U;
+                            break;
+                        }
+                        if (!first_override) {
+                            overrides << ',';
+                        }
+                        overrides << format_offset(pair >> 8U) << '='
+                                  << format_offset(pair & 0x00FFU);
+                        first_override = false;
+                        pair_offset += 2U;
+                    }
+                    next_record = pair_offset;
+                }
+
+                const auto sprite_stem =
+                    "actor-kind-" + std::to_string(entity_kind) +
+                    "-palette-" + std::to_string(palette_line);
+                dynamic_world_actor_records.push_back(DynamicWorldActorRecord{
+                    static_cast<std::uint16_t>(scene_id), context_group,
+                    static_cast<std::uint8_t>(random_sum), source_order,
+                    static_cast<std::uint32_t>(pointer_cell_offset),
+                    sequence_list_offset, tagged_template,
+                    static_cast<std::uint32_t>(template_offset), entity_kind,
+                    palette_line, actor_name, sprite_stem,
+                    first_override ? "-" : overrides.str(),
+                });
+                const auto key = std::make_pair(entity_kind, palette_line);
+                if (actor_visual_sources.find(key) == actor_visual_sources.end()) {
+                    actor_visual_sources.emplace(
+                        key, DefaultActorKindSource{
+                                 entity_kind, palette_line,
+                                 "ROM kind " + std::to_string(entity_kind),
+                                 sprite_stem,
+                                 static_cast<std::uint32_t>(template_offset)});
+                }
+                cursor = next_record;
+                if (cursor <= record_offset) {
+                    throw std::runtime_error(
+                        "dynamic world actor list did not advance");
+                }
+            }
+            if (!found_terminator) {
+                throw std::runtime_error(
+                    "dynamic world actor list has no null sentinel");
+            }
+        }
+    }
+    {
+        const auto table_path =
+            root / "field/entities/dynamic-world-activity-actors.tsv";
+        std::filesystem::create_directories(table_path.parent_path());
+        std::ofstream table(table_path, std::ios::binary);
+        if (!table) {
+            throw std::runtime_error(
+                "cannot create dynamic world-activity actor table");
+        }
+        table << "scene\tcontext_group\trandom_sum\tselection_cell_offset"
+                 "\tsequence_list_offset\tsource_order\tactor_name"
+                 "\tentity_kind\tpalette_line\tsprite_stem"
+                 "\ttagged_template\ttemplate_offset\tordered_overrides"
+                 "\tplacement_rule\n";
+        for (const auto& actor : dynamic_world_actor_records) {
+            const auto key = std::make_pair(actor.entity_kind, actor.palette_line);
+            const auto visual = actor_visual_sources.find(key);
+            if (visual == actor_visual_sources.end()) {
+                throw std::runtime_error(
+                    "dynamic actor type has no extracted visual source");
+            }
+            table << actor.scene_id << '\t'
+                  << static_cast<unsigned>(actor.context_group) << '\t'
+                  << static_cast<unsigned>(actor.random_sum) << '\t'
+                  << format_offset(actor.pointer_cell_offset) << '\t'
+                  << format_offset(actor.sequence_list_offset) << '\t'
+                  << actor.source_order << '\t' << actor.actor_name << '\t'
+                  << actor.entity_kind << '\t'
+                  << static_cast<unsigned>(actor.palette_line) << '\t'
+                  << visual->second.sprite_stem << '\t'
+                  << format_offset(actor.tagged_template) << '\t'
+                  << format_offset(actor.template_offset) << '\t'
+                  << actor.ordered_overrides << '\t'
+                  << "open screen-edge candidates based on the current viewport and terrain\n";
+        }
+        if (!table) {
+            throw std::runtime_error(
+                "cannot write dynamic world-activity actor table");
+        }
+    }
     constexpr std::size_t kIdleSelectorTableOffset = 0xC052U;
     constexpr std::size_t kEntrySelectorTableOffset = 0xC0B2U;
     constexpr std::size_t kThonPatternStreamOffset = 0x1EBDEEU;
@@ -3726,10 +3898,11 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 thon_frame.origin_x, thon_frame.origin_y);
             continue;
         }
-        if (kind_source.entity_kind != 5U && kind_source.entity_kind != 7U &&
-            kind_source.entity_kind != 8U && kind_source.entity_kind != 11U) {
-            continue;
-        }
+        // Static map inhabitants use the ordinary human actor kinds. The
+        // conditional field-event sequence also references the remaining
+        // ROM actor kinds (gang members and creatures), which share the same
+        // source state-pointer/idle-selector path and need their own palette
+        // art in the map viewer's event evidence.
         for (std::size_t direction = 0; direction < used_actor_directions.size();
              ++direction) {
             if (!used_actor_directions[direction]) {

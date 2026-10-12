@@ -175,9 +175,13 @@ value and is not treated as a player spawn.
   table at `0x3312`, then uses two bound-five random draws to select one of
   nine sums. The 246 enabled scene/sum cells select 26 unique ROM handlers;
   their opening text and visible choices are decoded from the prompt records.
-  Disabled cells enter the separate dynamic world-effect path. These handlers
-  do not carry a fixed map coordinate, so they appear in the text panel and are
-  not drawn as standing NPCs. Later choices may branch on live game state.
+  Disabled cells enter separate dynamic actor sequences. The asset importer
+  follows their tagged actor templates and marker-2 overrides for every map
+  context and roll sum. The panel shows the actor's source name and extracted
+  sprite beside the outcome. Those temporary actors appear at open edge points
+  chosen from the current map state, so the source does not provide permanent
+  map coordinates and they are not drawn as standing residents. Later choices
+  may branch on live game state.
 
 An authored entity is a grouped annotation: its visual-part regions and
 interaction regions share one area origin. The outline and hit area follow

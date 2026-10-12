@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import csv
 from functools import lru_cache
+import html
 import re
 import sys
 from dataclasses import dataclass, field
@@ -48,6 +49,7 @@ from PyQt6.QtWidgets import (
     QScrollArea,
     QSpinBox,
     QTabWidget,
+    QTextBrowser,
     QVBoxLayout,
     QWidget,
 )
@@ -3376,6 +3378,9 @@ class MapEntityViewer(QMainWindow):
         _, self.field_activity_rows = read_tsv(
             assets / "field" / "world-activity-outcomes.tsv"
         )
+        _, self.dynamic_world_actor_rows = read_tsv(
+            assets / "field" / "entities" / "dynamic-world-activity-actors.tsv"
+        )
         self.maps = read_map_catalog(assets)
         self.map_by_id = {item.scene_id: item for item in self.maps}
         self.scene_id = initial_scene
@@ -3480,9 +3485,9 @@ class MapEntityViewer(QMainWindow):
         self.audio_info = QPlainTextEdit()
         self.audio_info.setReadOnly(True)
         self.audio_info.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
-        self.activity_info = QPlainTextEdit()
-        self.activity_info.setReadOnly(True)
-        self.activity_info.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+        self.activity_info = QTextBrowser()
+        self.activity_info.setOpenLinks(False)
+        self.activity_info.setOpenExternalLinks(False)
         self.info_tabs = QTabWidget()
         self.info_tabs.addTab(self.info, "Source")
         self.info_tabs.addTab(self.flow_info, "What happens")
@@ -3987,61 +3992,106 @@ class MapEntityViewer(QMainWindow):
             return
 
         rows.sort(key=lambda row: int(row.get("random_sum", "0")))
-        lines = [
-            f"Possible field events for Scene {self.scene_id:02d}",
-            "",
-            "These are conditional outcomes, not permanent residents. The game "
-            "first checks the field-event gates and its random threshold, then "
-            "uses two source random draws from 0 through 4. Their sum selects "
-            "one of these rows.",
-            "",
-            "The source does not assign these handlers a fixed map coordinate. "
-            "The viewer therefore lists their dialogue here instead of drawing "
-            "a character marker on the map.",
+        actors_by_sum: dict[str, list[dict[str, str]]] = {}
+        for actor in self.dynamic_world_actor_rows:
+            if actor.get("scene", "").strip() != str(self.scene_id):
+                continue
+            actors_by_sum.setdefault(actor.get("random_sum", ""), []).append(actor)
+
+        parts = [
+            f"<h2>Possible field events for Scene {self.scene_id:02d}</h2>",
+            "<p>These are conditional outcomes, not permanent residents. The "
+            "game checks its field-event gates and random threshold, then uses "
+            "two random draws from 0 through 4. Their sum selects one row.</p>",
+            "<p>Dynamic sequences identify the actor templates. The game chooses "
+            "open screen-edge positions at runtime, so the pictures below show the "
+            "actor types without assigning them fixed map positions.</p>",
         ]
         for row in rows:
             total = row.get("random_sum", "?")
             pair_count = row.get("roll_pair_count", "0")
             pairs = row.get("roll_pairs", "")
             pair_text = f"{pairs} ({pair_count} combinations)" if pairs else "none"
+            safe_total = html.escape(total)
             if row.get("outcome_kind") == "dialogue_event":
-                lines.extend((
-                    "",
-                    f"Roll sum {total} — {row.get('event_name', 'ROM event')}",
-                    f"  Roll pairs: {pair_text}.",
-                    "  Opening text:",
+                parts.extend((
+                    f"<h3>Roll sum {safe_total} &mdash; "
+                    f"{html.escape(row.get('event_name', 'ROM event'))}</h3>",
+                    f"<p><b>Roll pairs:</b> {html.escape(pair_text)}.</p>",
+                    "<p><b>Opening text:</b></p>",
                 ))
-                opening = row.get("opening_text", "").replace("|", "\n    ")
-                lines.append("    " + (opening or "No opening text decoded."))
+                opening = "<br>".join(
+                    html.escape(part.strip())
+                    for part in row.get("opening_text", "").split("|")
+                    if part.strip()
+                )
+                parts.append(
+                    "<blockquote>" + (opening or "No opening text decoded.") +
+                    "</blockquote>"
+                )
                 choices = [
-                    (number, row.get(f"choice_{number}", "").strip())
+                    row.get(f"choice_{number}", "").strip()
                     for number in (1, 2, 3)
                 ]
-                choices = [(number, value) for number, value in choices if value]
+                choices = [value for value in choices if value]
                 if choices:
-                    lines.append("  Choices shown on the opening panel:")
-                    lines.extend(f"    {number}. {value}" for number, value in choices)
+                    parts.append("<p><b>Choices shown on the opening panel:</b></p><ol>")
+                    parts.extend(f"<li>{html.escape(value)}</li>" for value in choices)
+                    parts.append("</ol>")
                 else:
-                    lines.append(
-                        "  The opening panel has no labeled choices; its "
-                        "continuation and later branches are controlled by the ROM handler."
+                    parts.append(
+                        "<p>The opening panel has no labeled choices; its "
+                        "continuation and later branches are controlled by the ROM handler.</p>"
                     )
-            else:
-                lines.extend((
-                    "",
-                    f"Roll sum {total} — dynamic world actor/effect sequence",
-                    f"  Roll pairs: {pair_text}.",
-                    "  This table cell falls through to runtime-generated "
-                    "world effects. It does not identify a fixed character "
-                    "or map position.",
-                ))
-        lines.extend((
-            "",
-            "The opening text and visible choices above are decoded from the "
-            "US ROM. Follow-up dialogue and effects can depend on the selected "
-            "choice and current game state.",
-        ))
-        self.activity_info.setPlainText("\n".join(lines))
+                continue
+
+            parts.extend((
+                f"<h3>Roll sum {safe_total} &mdash; dynamic actor sequence</h3>",
+                f"<p><b>Roll pairs:</b> {html.escape(pair_text)}.</p>",
+            ))
+            actors = actors_by_sum.get(total, [])
+            if not actors:
+                parts.append(
+                    "<p>This sequence has no decoded actor templates. It does "
+                    "not identify a fixed character or map position.</p>"
+                )
+                continue
+
+            parts.append("<p><b>Characters in this sequence:</b></p><table>")
+            for actor in actors:
+                name = html.escape(actor.get("actor_name", "ROM actor"))
+                kind = html.escape(actor.get("entity_kind", "?"))
+                palette = html.escape(actor.get("palette_line", "?"))
+                source_order = html.escape(actor.get("source_order", ""))
+                stem = actor.get("sprite_stem", "").strip()
+                image_path = (
+                    self.assets / "field" / "entities" / "actors" /
+                    f"{stem}-idle.bmp"
+                ) if stem else None
+                image_cell = ""
+                if image_path is not None and image_path.is_file():
+                    image_cell = (
+                        f'<img src="{html.escape(image_path.as_uri(), quote=True)}" '
+                        'width="40" height="40" alt="">'
+                    )
+                parts.append(
+                    "<tr><td>" + image_cell + "</td><td><b>" + name +
+                    f"</b><br>Actor type {kind}; palette line {palette}; "
+                    f"sequence entry {source_order}</td></tr>"
+                )
+            parts.extend((
+                "</table>",
+                "<p>The game places these characters at open screen-edge positions "
+                "selected from the current viewport and terrain. The ROM does not give "
+                "them permanent map coordinates.</p>",
+            ))
+
+        parts.append(
+            "<p>Opening text and visible choices are decoded from the US ROM. "
+            "Follow-up dialogue and effects can depend on the selected choice "
+            "and current game state.</p>"
+        )
+        self.activity_info.setHtml("\n".join(parts))
 
     def _entity_game_flow(self, entity: EntityDefinition) -> str:
         lines = [entity.name, f"Type: {friendly_identifier(entity.category)}", ""]
