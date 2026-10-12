@@ -37,6 +37,24 @@ one context group and therefore the same nine outcome cells. The viewer groups
 the repeated scene contexts and summarizes known choice-dependent actor paths
 beside the complete selector tables below.
 
+### Shared dice-pool check (`0x0DBA`)
+
+The ROM helper at `0x0DBA` takes a dice-pool count in `D6` and a target number
+in `D4`. It rolls that many six-sided dice; each 6 adds six and rerolls, then
+the first non-6 face is added. A die counts as a success when its total reaches
+the target. `FFF0DD` receives the number of successful dice. Thus a caller's
+constant such as 5 or 7 is a target, not the number of dice rolled.
+
+When `D6` starts at zero, the source loop still rolls one die: it clamps the
+decremented loop counter to zero before its `DBF` loop.
+
+The companion party helper at `0x23750` returns the number of active runner
+records in `D0` and the average active-runner `+0x78` value in `D6`. Some event
+handlers pass that average to `0x0DBA` as the dice pool; it is not a count of
+the active runners. Other handlers load a runner field or highest party value
+directly into `D6`. The individual traces below identify both inputs where
+they are recoverable.
+
 ## ROM encounter evidence (partial)
 
 Scene IDs below are ROM field-scene IDs. The tables cover the field random-event selector, its zero-cell dynamic actor templates, and the choice continuations traced so far. A listed actor is not a permanent resident or guaranteed on every visit. This is not yet a complete map-population or pursuit roster: direct map triggers, state-driven police response, timed actor spawning, and other scripted events are separate source paths.
@@ -50,10 +68,11 @@ Scene IDs below are ROM field-scene IDs. The tables cover the field random-event
 | Sudden disturbance, handler `0x2115C` | Scenes `6-9` and `44-50`; sum `0` | MORE checks `FFFBFB` and `FFFC22` bit 8. Stages `0-1` or a set bit choose a wilderness pack from six weighted outcomes; stages `2-8` with the bit clear attempt a 2/4/5-person Strike Team encounter. |
 | Lone Star patrol, handler `0x20F12` | Scenes `0` and `3`; sums `3` and `4` | Attack queues the list at `0x1D6FDC` (`lone11`, `lone12`, `lone detectiv`). Run away may queue `0x1D6FE4` or `0x1D6FE0`, according to the thresholded roll result. |
 | Injured-person event, handler `0x20F72` | Scenes `0`, `1`, and `3`; sums `5` and `7` | The ordinary injured-man Attack choice can queue one Lone Star detective at `0x1D6FE4`. A separate pale-figure variant can reveal a vampire; its sequence starts at `0x1D6D8A`, after the Hell Hound pointer in the shared list. |
-| Open security panel, handler `0x20FBA` | Scenes `21-25` sums `1, 7`; `26-29` sum `2`; `30-34` sum `0` | Re-wiring uses the active party's highest Electronics value. A zero result trips the alarm and processes the scene's map-effect list (2-5 corporate guards in these scenes); a result above 1 disables the current world-effect service through `FFE170`. Walking away chains into the scientist prompt. |
-| Scientist, handler `0x20FD4` | Scenes `21-25` and `30-34`; sums `4` and `6` | Asking for information uses slot 0's source field `+0x7A` at threshold 5. Both result branches return refusal/suspicion text; walking away returns a leave-behind and floor-text sequence. Neither command directly queues an actor. |
-| Hidden-camera event, handler `0x21004` | Scene `20` sum `0`; scenes `26-29` sum `0`; scenes `35-40` sum `7`; scenes `41-43` sum `1` | MORE tests the party as a group: target 4 with one active runner, 5 with two, 6 with three. Zero successes show the alarm text; scene 20 only schedules its special timeout, while scenes 26-43 process their map-specific corporate-guard lists. Any success gives the nerves text. |
-| Management terminal, handler `0x2109A` | Scenes `21-25` sum `5`; `26-29` sum `4`; `30-34` sum `3`; `35-40` sum `0` | Hack tests the Computer skill with five threshold trials: zero results sound the alarm and process the scene's corporate-guard list; one finds nothing; two or more compose a floor-labeled database clue. Walking away has no follow-up effect. |
+| Open security panel, handler `0x20FBA` | Scenes `21-25` sums `1, 7`; `26-29` sum `2`; `30-34` sum `0` | Re-wiring rolls the party's highest Electronics field (`+0x8A`) as the dice pool against target 5. Zero successes trip the alarm and process the scene's map-effect list (2-5 corporate guards in these scenes); more than one disables the current world-effect service through `FFE170`. Walking away chains into the scientist prompt. |
+| Scientist, handler `0x20FD4` | Scenes `21-25` and `30-34`; sums `4` and `6` | Asking for information rolls slot 0's source field `+0x7A` as the dice pool against target 5. Both result branches return refusal/suspicion text; walking away returns a leave-behind and floor-text sequence. Neither command directly queues an actor. |
+| Hidden-camera event, handler `0x21004` | Scene `20` sum `0`; scenes `26-29` sum `0`; scenes `35-40` sum `7`; scenes `41-43` sum `1` | MORE uses the active party's average `+0x78` as the dice pool; its target is 4, raised to 5 or 6 by the active support-slot flags. Zero successes show the alarm text; scene 20 only schedules its special timeout, while scenes 26-43 process their map-specific corporate-guard lists. Any success gives the nerves text. |
+| Management terminal, handler `0x2109A` | Scenes `21-25` sum `5`; `26-29` sum `4`; `30-34` sum `3`; `35-40` sum `0` | Hack rolls the Computer field (`+0x88`) as the dice pool against target 5: zero successes sound the alarm and process the scene's corporate-guard list; one finds nothing; two or more compose a floor-labeled database clue. Walking away has no follow-up effect. |
+| Company Man confrontation, handler `0x210B4` | Scenes `21-25` sum `8`; `26-29` sum `1`; `30-34` sum `2`; `35-40` sums `2` and `5` | Attack rolls the party's average `+0x78` as a dice pool against target 7; 0 or 1 successes raise the alarm, while more than 1 adds one Karma to each runner. Insult rolls slot 0's `+0x7A` against target 7: zero calls security, one makes him laugh, and more than one returns a floor-labeled clue. Walk away is text-only. |
 | Custodian / missing-pass check, handler `0x2101E` | Scene `20`; sum `1` | Asking for information uses a 0-99 roll, the ID-badge flag (`FFFC22` bit 10), and two story bits (`FFFC1E` bits 18/19) to select a clue, suspicion, or evasive response. Walking away gives a 25% “Where’s your pass?” branch only when the badge bit is clear; its MORE command enters the shared corporate-guard ID handler `0x242FA`. No direct Lone Star roster is queued. |
 | Alley grenade seller, handler `0x2112C` | Scenes `0`, `2`, `3`, and `5`; sums `5-7` | Attack rolls `0-59` try the one-bodyguard list at `0x1D7054`; a successful start leads to a gun battle. Rolls `60-99`, or failure to start that actor, reveal undercover Lone Star. Buying the grenades has its own 60/40 split: rolls `0-59` continue through funds/slot checks; `60-99` expose the undercover agent. |
 | Company Man confrontation, handler `0x20F5A` | Scenes `3` and `5`; sums `1` and `4` | One continuation says the man remains irate and a Lone Star patrol arrives. The response text then says the officers turn their attention to the player. |
@@ -172,8 +191,8 @@ already posing as a law official.
 handler `0x246AA`. It checks `FFFC22` bit 10, which this dialogue identifies
 as the ID-badge condition. With that bit set, it returns the apology and
 choices at `0x121428`: ask for information (`0xDE` -> `0x24724`) or walk away
-(`0x121448`). The information action runs a threshold-6 trial using byte
-`FF017A` (the byte's stat name is not established here). Results above 1
+(`0x121448`). The information action uses byte `FF017A` as dice-pool count
+against target 6 (the byte's stat name is not established here). Results above 1
 compose 'You manage to make her laugh...' with the current floor string
 selected by `FFE12C`, then return the shared dialogue data at `0x11CD92`;
 result 1 returns the follow-up chain beginning at `0x121440`; result 0 writes
@@ -184,7 +203,8 @@ selection behavior beyond the shared `0x11CD92` node and the full linked
 follow-up from `0x121440` remain partial.
 
 When the badge bit is clear, `0x23750` averages field `+0x78` over active
-runner records and `0x246AA` runs a threshold-6 trial on that average. Result
+runner records into dice-pool count `D6`; `0x246AA` checks that pool against
+target 6. Result
 0 enters `0x1E04A` and returns the secretary-flees text at `0x121460`. Result
 1 returns the scream/subdue response at `0x121478`, whose command `0xDD`
 reaches `0x246FC`: a 0-99 draw below 40 enters `0x1E04A` and reports that the
@@ -201,8 +221,8 @@ and map-effect actor results are not yet joined.
 **Open security panel (`0x20FBA`, scenes 21-34).** The prompt at `0x1211BC`
 offers Re-wire (`0xC9` -> `0x2416A`) or Walk away (`0x1211EC`). The re-wire
 service (`0x24252`) selects the highest Electronics value among active runner
-slots using their `+0x8A` fields, then calls the thresholded-roll helper with
-difficulty 5. The resulting success count is in `FFF0DD`.
+slots using their `+0x8A` fields, then calls `0x0DBA` with that value as the
+dice-pool count and target 5. The resulting success count is in `FFF0DD`.
 
 A zero result returns the crossed-wires/building-alarm text at `0x1211D4` and
 calls `0x1E04A` to start the map's world-effect transition. The handler names
@@ -218,7 +238,8 @@ local security-system outcome, not a fixed Lone Star spawn.
 Walking away returns `0x1211EC`, whose first text is 'You leave them behind'
 and whose following prompt data is the scientist interaction at `0x20FD4`.
 That event's standalone prompt is `0x1211F4`; asking for information (`0xCB`
--> `0x2429E`) runs threshold 5 on slot 0's `+0x7A` field. Result 0 returns
+-> `0x2429E`) uses slot 0's `+0x7A` field as the dice-pool count against target 5.
+Result 0 returns
 `0x12120C` (the scientist looks concerned and disappears behind a secure door,
 then refuses); results 1 or higher return the refusal at `0x121214`. Walking
 away returns `0x12121C`, beginning with the leave-behind text and the floor
@@ -231,9 +252,10 @@ and sum 0 in scenes 35-40. The prompt record at `0x1214AC` offers Hack the
 database (`0xDF` -> `0x247D0`) or returns the walk-away record at `0x1214D4`
 (`0x11D2A8`).
 
-`0x247D0` reads the runner's Computer skill byte at `FF0188` and performs five
-threshold trials. With `FFF0DD == 0`, it calls `0x1E04A` and returns the alarm
-message at `0x1214C4`. The shared transition therefore adds the current
+`0x247D0` reads the runner's Computer skill byte at `FF0188` as the dice-pool
+count and calls `0x0DBA` against target 5. With `FFF0DD == 0`, it calls
+`0x1E04A` and returns the alarm message at `0x1214C4`. The shared transition
+therefore adds the current
 scene's corporate-guard map-effect list when its world-mode and latch checks
 allow it; the maximum list sizes are two to five across scenes 21-40. This is
 not a direct combat handoff, and the actor AI/response after insertion remains
@@ -245,13 +267,37 @@ does not prove that the selected label is the runner's actual current floor.
 The terminal handler does not directly write funds or story flags. Walking
 away returns its text record without a state change.
 
+**Company Man confrontation (`0x210B4`, scenes 21-40).** The selector enables
+this handler at sum 8 in scenes 21-25, sum 1 in scenes 26-29, sum 2 in scenes
+30-34, and sums 2 and 5 in scenes 35-40. Prompt record `0x1214F4` uses
+profile/resource pointer `0x121E2C` and offers Attack (`0xE0` -> `0x24846`),
+Insult (`0xE1` -> `0x2489A`), or Walk away (`0x121538`).
+
+Attack calls `0x23750`, then uses the average active-runner `+0x78` value as
+the `0x0DBA` dice pool against target 7. Zero successes call `0x1E04A` and
+return `0x121510` (As you pull your guns, the Company Man flees and raises
+the alarm.); exactly one success also calls `0x1E04A` and returns `0x121518`
+(You wound him as he escapes down the hall. The alarm soon comes to life..).
+More than one success increments `+0x8D` on all three runner records (Karma)
+and returns the death text at `0x121520`/`0x11FF24`.
+
+Insult rolls slot 0's `+0x7A` field as the dice pool against target 7. Zero
+successes call `0x1E04A` and return the security-called text at `0x121528`;
+exactly one returns the laugh-and-leave text at `0x121530`; more than one
+stages the stares-you-down line plus a first-through-sixth-floor response
+selected from the table at `0x121540` using `FFE12C`, then returns shared text
+node `0x11CD92`. Walk away returns `0x121538`/`0x12013E` (He saunters away.)
+with no direct state write identified. For alarm branches in scenes 21-40,
+the shared map-effect service may process that scene's list of two to five
+corporate guards when its mode and latch checks pass; it does not start
+combat or name a Lone Star roster.
+
 **Hidden-camera check (`0x21004`, scenes 20, 26-29, 35-43).** The MORE command
-(`0xD4` -> `0x244D2`) calls `0x23750`, which leaves the active-runner count in
-`D6` and the sum of runner `+0x78` bytes in `D0`. This handler uses the count:
-it sets the threshold to 4, then adds 1 for each active support slot
-(`FF0210` and `FF0310`). The roll helper therefore makes one threshold trial
-per active runner, with targets 4, 5, or 6 for a one-, two-, or three-runner
-party. The `+0x78` sum is not used by this handler. Its entry stub also clears
+(`0xD4` -> `0x244D2`) calls `0x23750`, which returns active-runner count in
+`D0` and average active-runner `+0x78` in `D6`. That average is the
+`0x0DBA` dice-pool count. The handler sets target `D4` to 4, then adds 1 for
+each active support slot (`FF0210` and `FF0310`, bit 0), giving target 4, 5,
+or 6 for one, two, or three active runners. Its entry stub also clears
 `FFF10C` and writes `0xFF` to `FFF0B5`; their meanings are not established here.
 
 If `FFF0DD` is zero, `0x244D2` calls `0x1E04A` and returns `0x121320`: the
@@ -300,7 +346,7 @@ With FFFC22 bit 10 clear, the record at `0x121278` offers Attack and Talk.
 Attack (`0xD2` -> `0x24402`) attempts one corporate guard from list
 `0x1D705C` (template `0x1D6A1C`) and returns the weapon-draw text at
 `0x121290`; the combat exit remains partial. Talk (`0xD0` -> `0x24432`) runs
-a threshold-6 trial on `FF017A`: result 0 attempts that guard and starts the
+uses `FF017A` as the dice pool against target 6: result 0 attempts that guard and starts the
 world-effect transition before returning the lame-story attack text at
 `0x121298`; result 1 returns `0x1212A0`, where the guard becomes suspicious and
 checks with dispatch; results above 1 return `0x1212B4`, where the guard
@@ -323,7 +369,8 @@ spots you. ID please.' and sends MORE (`0xCD`) to `0x24332`. The security
 guard Talk-success continuation at `0x20FEC` reaches this same command.
 
 `0x24332` reads `FFFC22` bit 10. Clear returns the no-badge page `0x1212D0`,
-with Attack and Talk choices. Set runs a five-trial check on `FF017C`: result
+with Attack and Talk choices. Set rolls `FF017C` as the dice pool against
+target 5: result
 2 or higher opens the ID/dispatch page at `0x12124C`; below 2 attempts the
 effect list at `0x1D7064`. Its first template is the ROM's corp mage at
 `0x1D6A66`. A failed sequence start returns to the ID page; a successful start
@@ -331,7 +378,8 @@ calls `0x1E04A` and returns the 'deadlier spell' text at `0x1212E8`.
 
 Without a badge, Attack (`0xD3` -> `0x2441A`) attempts that corp-mage list and
 returns the weapon-draw text at `0x121290`; the routine does not check the
-sequence-start result. Talk (`0xD1` -> `0x24482`) trials `FF017A` six times.
+sequence-start result. Talk (`0xD1` -> `0x24482`) rolls `FF017A` as the
+dice pool against target 6.
 Only result 1 reaches the 'misplaced ID' dispatch page at `0x1212F0`; result 0
 and results above 1 attempt the corp-mage list, call `0x1E04A`, and return the
 attack text at `0x121298`. The unusual single-result success is what the ROM
@@ -352,16 +400,17 @@ exit and the post-alert actor result remain partial.
 These are sibling selector entries, not a direct branch from the preceding
 `0x20FEC` security-guard dialogue. The concealed-plate entry `0x21036` is
 enabled on scenes `20-34` and `41-43`, using scene-specific sums from `2`, `5`,
-and `6`. Its `0x245AA`
-check averages active runners' `+0x78` field and uses `0x0DBA` with four trials,
-adding one trial for each active second/third runner. Result zero calls
+and `6`. Its `0x245AA` check uses the average active-runner `+0x78` value
+from `0x23750` as the dice pool. The target starts at 4 and increases by one
+for each active support slot (`FF0210` and `FF0310`, bit 0). Result zero calls
 `0x1E04A` and returns the alarm text at `0x121398`; a nonzero result returns
 the successful jump text at `0x1213A0`. Both response records carry the
 continuation to command `0xD8` / `0x245F4`.
 
 The low-level laser entry `0x21050` is enabled on scenes `35-40` at sum `8`
-and enters the same `0x245F4` check. That check uses eight thresholded trials
-on the active-runner `+0x78` average. Result zero calls `0x1E04A` and returns
+and enters the same `0x245F4` check. It uses the average active-runner `+0x78`
+value from `0x23750` as the dice pool against target 8. Result zero calls
+`0x1E04A` and returns
 `0x1213BC`, where the player says a beam broke their leg; a nonzero result
 returns `0x1213C4`, where the player freezes and steps over the beams. Both
 continuations reach command `0xD9` / `0x24622`, which displays the Lone Star
@@ -441,10 +490,10 @@ and two Elven warriors from `0x1D70CC`. The text nodes are `0x1215DC` through
 `0x1215FC`. These starts hand off toward combat; the combat exits are not
 joined yet.
 
-Duck enters `0x24B5A`, makes a separate 0-99 roll, and chooses a thresholded
-party trial count of 8, 6, 6, 5, or 5 for the same five bands. The source trial
-uses the average `+0x78` value across active runner records (`0x23750`, then
-`0x0DBA`). A zero result in `FFF0DD` falls through to the Attack pack roller.
+Duck enters `0x24B5A`, makes a separate 0-99 roll, and chooses target 8, 6,
+6, 5, or 5 for the same five bands. The `0x0DBA` dice-pool count is the
+average `+0x78` value across active runner records (`0x23750`). A zero result
+in `FFF0DD` falls through to the Attack pack roller.
 A nonzero result returns the matching avoidance node: Hell Hounds lose the
 player's scent (`0x1215A4`), a Wendigo passes (`0x1215AC`), a Bandersnatch
 fails to notice the player (`0x1215B4`), the AmerIndian hunting party passes
@@ -481,7 +530,7 @@ routine does not check the sequence-start result, so whether the encounter
 actually starts remains conditional; its combat exit is also not traced.
 
 Help enters `0x24D0C`. It selects the highest `+0x7B` value among active
-runner records, then runs a four-roll threshold trial through `0x0DBA`.
+runner records as the dice-pool count and calls `0x0DBA` against target 4.
 `FFF0DD=0` returns the failure text at `0x1216AC` and makes no direct nuyen
 change. A result of 1, or a result above 1 outside scene 9, adds 50 nuyen to
 `FFFBFE` and returns the arrowhead/reward text at `0x1216B4`. For a result
@@ -496,7 +545,7 @@ opening prompt at `0x120F00` links the two responses directly to data nodes:
 refusing reaches `0x120F18`, where the player is rebuked and the watcher
 vanishes; accepting reaches `0x120F20`, where the watcher leads the player to
 an old man being beaten by Eye-Fivers. Dispatch `0x9A` (`0x23812`) loads the
-player field at `FF0177`, runs the threshold-6 trial counter, then branches on
+player field at `FF0177` as the dice-pool count against target 6, then branches on
 `FFF0DD`. Result 0 selects four attackers from `0x1D6DAE` (two Eye Fiver 2,
 two Eye Fiver 1); result 1 selects two Eye Fiver 1 from `0x1D6DB6`. Both
 successful sequence starts show the gangers turning on the player and link to
