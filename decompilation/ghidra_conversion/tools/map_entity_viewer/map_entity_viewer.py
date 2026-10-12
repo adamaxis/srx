@@ -1944,6 +1944,19 @@ def terrain_collision_meaning(value: int) -> tuple[str, str]:
     )
 
 
+def field_main_menu_details() -> list[str]:
+    """Describe the ordinary field event-31 menu from its ROM handlers."""
+    return [
+        "Main Menu in ordinary field gameplay:",
+        "Call Taxi opens the cab destination selector.",
+        "Vid-Phone opens the contact list; if no contacts are available, the game says there are currently no contacts in Seattle.",
+        "Cyberspace requires a cyberdeck, working MPCP chips, and a datajack before opening its menu.",
+        "The Cyberspace menu offers Enter Passcode, System Search, and Exit.",
+        "Exit closes the menu and returns to the current field map.",
+        "Some special gameplay modes use a separate map-specific interaction instead of this menu.",
+    ]
+
+
 def read_collision_rectangles(
     repo_root: Path, asset_root: Path, scene_id: int
 ) -> list[MapEvidenceRegion]:
@@ -1979,10 +1992,20 @@ def read_collision_rectangles(
             x0, y0 = cell_x, cell_y
             meaning, explanation = terrain_collision_meaning(code)
             trigger = triggers_by_record.get(record_index, {})
+            is_field_main_menu = (
+                trigger.get("dispatcher_family", "") ==
+                "world_activity_event31"
+            )
             record_address = trigger.get("record_address", "")
             site = site_routes.get(record_address.strip().upper(), {})
             site_name = site.get("site_name", "").strip()
             title = meaning
+            if is_field_main_menu:
+                title = "Main Menu access (mode-gated)"
+                explanation = (
+                    "In normal field mode, this event opens the shared Main Menu. "
+                    "Special field modes use a separate scene-specific path."
+                )
             if code & 0x80:
                 name_status = site.get("crosswalk_status", "unresolved")
                 if site_name and name_status == "rom_guide_corroborated":
@@ -2026,6 +2049,8 @@ def read_collision_rectangles(
                     explanation += f" Story conditions: {conditions}"
             if code == 0x7F:
                 record_address = "special event-31 continuation"
+            if is_field_main_menu:
+                explanation += " Menu source path: event 31 enters the shared field menu when the ordinary field-mode gate is active."
             result.append(MapEvidenceRegion(
                 kind="rom_collision",
                 x=x0,
@@ -2047,8 +2072,19 @@ def read_collision_rectangles(
                     f"ROM event record: {record_address or '(not an interaction record)'}\n"
                     "Source behavior: terrain probe 0xE7C8; object bounds "
                     "0xE9EE; directional edge 0xEAD2; map event dispatcher 0xB7B8.\n"
+                    + (
+                        "Menu source path: 0xB7B8 -> 0xDB26; ordinary-mode menu "
+                        "text 0xC16A5, choice table 0xC1668; handlers "
+                        "0x134D2, 0xE4C8, 0xDEE8, and 0xE65A.\n"
+                        if is_field_main_menu else ""
+                    ) +
                     f"Source: {path}"
                 ),
+                route_details=(
+                    "\n".join(field_main_menu_details())
+                    if is_field_main_menu else ""
+                ),
+                map_label="Main Menu access" if is_field_main_menu else "",
             ))
     return result
 
@@ -2575,13 +2611,19 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
             if not site_name and is_direct_game_event:
                 # Keep the player/editor description separate from the raw
                 # handler and converted owner list shown in the Source tab.
-                title = "Special map interaction"
-                map_label = "Special interaction"
+                title = "Main Menu access (mode-gated)"
+                map_label = "Main Menu access"
                 route_lines.extend((
-                    "What happens: the game handles this as a special interaction. Its exact action at this map point is not traced yet.",
-                    "Next screen or result: not established for this trigger.",
-                    "Dialogue, choices, or shop: not identified for this trigger yet.",
+                    "This is a shared map interaction, not a named building entrance.",
+                    *field_main_menu_details(),
                 ))
+                details.extend((
+                    "Normal field menu text begins at ROM 0xC16A5. The four choice handlers are selected through 0xC1668; event 31 reaches the menu routine at 0xDB26.",
+                    "This panel reports the ROM flow. The Qt game runtime has not yet connected this normal-mode menu to its choice handlers.",
+                ))
+                route_lines.append(
+                    "Qt runtime status: the ordinary-mode event-31 menu is not yet connected to the playable executable."
+                )
             if dispatcher == "conditional_electromagnetic_lock":
                 if not site_name:
                     title = "Electromagnetic lock"

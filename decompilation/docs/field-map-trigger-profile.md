@@ -320,8 +320,18 @@ triggers. Related Notebook entries for Owlfeather and Red Buffalo Woman remain
 quest references, not confirmed entry-dialogue text.
 
 Scene-6 record 189 at `0x14C0E0` is event `0x1F`; it bypasses the event table
-and sets the direct continuation at `0x0DB26`. The complete continuation is
-not independently traced, so its action and destination remain unresolved.
+and sets the direct continuation at `0x0DB26`. In ordinary field mode
+(`FFDF40 == 0`), this routine displays the shared Main Menu from text at
+`0xC16A5` and dispatches its four choices through `0xC1668`: Call Taxi
+(`0x134D2`), Vid-Phone (`0xE4C8`), Cyberspace (`0xDEE8`), and Exit (`0xE65A`).
+Vid-Phone checks the contact bitfield and shows the ROM's no-contacts message
+when empty. Cyberspace checks cyberdeck availability, MPCP condition, and the
+datajack bit before showing Enter Passcode / System Search / Exit. When
+`FFDF40` is nonzero, `0x0DB26` follows a separate scene-specific branch; the
+ordinary four-choice menu is not a description of those mode-specific paths.
+The shared ordinary-mode path is now displayed in the map viewer for every
+event-31 rectangle. The normal-mode menu and its choice handlers are not yet
+connected to the playable Qt runtime.
 The scene-6 default actor list is empty. The guide's named people therefore
 remain site cross-references until their actor service and gated placements
 are source-traced; they are not populated as scenery residents. See the
@@ -399,12 +409,14 @@ enums rather than ROM address interpretation.
   reachability is not thereby proven.
 - `FieldSceneRuntime::record_field_activity_start` connects maglock,
   Security Terminal, event 29, and the Scene-26 event-31 resource main menu.
-  Scene 26 record 126 (`0x1D9E5A`, x/y `0x0200..0x021F`, event `0x1F`) now has
-  a physical-input QA route: Up from the adjacent cell opens Lua's `Main
-  Menu`; Down selects `Exit`; A restores the captured Scene-2 field state.
-  This is partial coverage of one event-31 record only. Other event-31 map
-  records, events 26-28 and 30, context-dependent event 25, the Cyberspace
-  branch, and a source-derived cursor graphic remain unresolved.
+  Scene 26 record 126 (`0x1D9E5A`, x/y `0x0200..0x021F`, event `0x1F`) has a
+  physical-input QA route: Up from the adjacent cell opens Lua's resource
+  `Main Menu`; Down selects `Exit`; A restores the captured Scene-2 field
+  state. This verifies only the Scene-26 special-mode path. The ordinary
+  four-choice field menu is ROM-profiled and visible in the viewer, but its
+  normal-mode runtime dispatch, taxi/phone/Matrix choice handlers, other
+  scene-specific event-31 paths, events 26-28 and 30, context-dependent event
+  25, and source-derived cursor graphic remain unresolved.
 - Scene 2 event 0 and event 1 have numeric targets `0x14` and `0x1A` in the
   event table. `0x1A` is resource activity according to `0x167AE`; it is not a
   ROM place-name, so this profile does not label it “office.” The source route
