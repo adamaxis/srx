@@ -49,6 +49,7 @@ from PyQt6.QtWidgets import (
     QScrollArea,
     QSpinBox,
     QTabWidget,
+    QTextEdit,
     QTextBrowser,
     QVBoxLayout,
     QWidget,
@@ -3355,7 +3356,9 @@ class MapEntityViewer(QMainWindow):
             self.scene_combo.setCurrentIndex(scene_index)
         self.load_scene(initial_scene)
         self.info_tabs.setCurrentWidget(self.scene_info)
-        self.statusBar().showMessage("No automatic object classifier is active. New annotations start unreviewed.")
+        self.statusBar().showMessage(
+            "New map objects need manual review before they are treated as identified."
+        )
 
     def _scene_display_name(self, info: MapInfo) -> str:
         area = self.contract_area_profiles.get(info.scene_id)
@@ -3374,7 +3377,7 @@ class MapEntityViewer(QMainWindow):
 
     def _build_menus(self) -> None:
         file_menu = self.menuBar().addMenu("&File")
-        save_action = QAction("Save scene and definitions", self)
+        save_action = QAction("Save map changes", self)
         save_action.setShortcut("Ctrl+S")
         save_action.triggered.connect(self.save_all)
         file_menu.addAction(save_action)
@@ -3405,15 +3408,27 @@ class MapEntityViewer(QMainWindow):
         panel = QWidget()
         layout = QVBoxLayout(panel)
         self.scene_combo = QComboBox()
+        # Several guide cross-reference labels are intentionally long. They
+        # belong in the popup and tooltip, not in the dock's minimum width.
+        self.scene_combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.scene_combo.setMinimumContentsLength(25)
         for info in self.maps:
-            self.scene_combo.addItem(self._scene_display_name(info), info.scene_id)
+            label = self._scene_display_name(info)
+            self.scene_combo.addItem(label, info.scene_id)
+            self.scene_combo.setItemData(
+                self.scene_combo.count() - 1,
+                label,
+                Qt.ItemDataRole.ToolTipRole,
+            )
         self.scene_combo.currentIndexChanged.connect(self.scene_changed)
         layout.addWidget(QLabel("Map"))
         layout.addWidget(self.scene_combo)
         self.info = QPlainTextEdit()
         self.info.setReadOnly(True)
         self.info.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
-        self.info.setMaximumHeight(220)
+        self.info.setMinimumHeight(360)
         self.info.setPlainText(
             "Click a map cell to inspect its source tile layers. Click a map interaction or collision box for its evidence. "
             "Click a character marker to inspect its type, position, appearance conditions, and source art. Click a scripted event, spawn, or encounter marker to inspect its game data. "
@@ -3425,43 +3440,55 @@ class MapEntityViewer(QMainWindow):
         self.flow_info.setPlainText(
             "Select a place, object, or map interaction to see what happens when the player reaches it, including any known destination, dialogue, menu, shop, or story condition."
         )
+        self.flow_info.setMinimumHeight(360)
         self.scene_info = QPlainTextEdit()
         self.scene_info.setReadOnly(True)
         self.scene_info.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+        self.scene_info.setMinimumHeight(360)
         self.audio_info = QPlainTextEdit()
         self.audio_info.setReadOnly(True)
         self.audio_info.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+        self.audio_info.setMinimumHeight(360)
+        self.character_info = QTextBrowser()
+        self.character_info.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
+        self.character_info.setOpenLinks(False)
+        self.character_info.setOpenExternalLinks(False)
+        self.character_info.setMinimumHeight(360)
+        self.character_info.setMinimumWidth(0)
         self.activity_info = QTextBrowser()
         self.activity_info.setOpenLinks(False)
         self.activity_info.setOpenExternalLinks(False)
         self.info_tabs = QTabWidget()
         self.info_tabs.addTab(self.info, "Source")
         self.info_tabs.addTab(self.flow_info, "What happens")
-        self.info_tabs.addTab(self.scene_info, "Map profile")
-        self.info_tabs.addTab(self.audio_info, "Map audio")
-        self.info_tabs.addTab(self.activity_info, "Field events")
-        self.info_tabs.setMinimumHeight(230)
+        self.info_tabs.addTab(self.scene_info, "Profile")
+        self.info_tabs.addTab(self.character_info, "Characters")
+        self.info_tabs.addTab(self.audio_info, "Audio")
+        self.info_tabs.addTab(self.activity_info, "Events")
+        self.info_tabs.setMinimumWidth(0)
+        self.info_tabs.setMinimumHeight(400)
         layout.addWidget(self.info_tabs)
 
         self.entity_list = QListWidget()
         self.entity_list.currentItemChanged.connect(self.list_selection_changed)
-        layout.addWidget(QLabel("Places and objects on this map"))
+        layout.addWidget(QLabel("Places and objects"))
         layout.addWidget(self.entity_list, 1)
 
-        layout.addWidget(QLabel("Parts and attached graphics"))
+        layout.addWidget(QLabel("Object graphics"))
         self.parts_list = QListWidget()
         self.parts_list.setMaximumHeight(95)
         self.parts_list.currentItemChanged.connect(self.part_selection_changed)
         layout.addWidget(self.parts_list)
-        self.part_preview = QLabel("Select a visual part to preview its named asset.")
+        self.part_preview = QLabel("Select an object graphic to preview it.")
         self.part_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.part_preview.setWordWrap(True)
         self.part_preview.setMinimumHeight(78)
         self.part_preview.setMaximumHeight(112)
         layout.addWidget(self.part_preview)
         part_buttons = QHBoxLayout()
-        self.edit_part_button = QPushButton("Edit part")
+        self.edit_part_button = QPushButton("Edit object graphic")
         self.edit_part_button.clicked.connect(self.edit_selected_part)
-        self.remove_part_button = QPushButton("Remove part")
+        self.remove_part_button = QPushButton("Remove object graphic")
         self.remove_part_button.clicked.connect(self.remove_selected_part)
         part_buttons.addWidget(self.edit_part_button)
         part_buttons.addWidget(self.remove_part_button)
@@ -3480,7 +3507,7 @@ class MapEntityViewer(QMainWindow):
         interaction_buttons.addWidget(self.remove_interaction_button)
         layout.addLayout(interaction_buttons)
 
-        layout.addWidget(QLabel("Blocked areas (green dash-dot)"))
+        layout.addWidget(QLabel("Blocked areas"))
         self.collisions_list = QListWidget()
         self.collisions_list.setMaximumHeight(72)
         self.collisions_list.currentItemChanged.connect(self.collision_selection_changed)
@@ -3494,11 +3521,11 @@ class MapEntityViewer(QMainWindow):
         collision_buttons.addWidget(self.remove_collision_button)
         layout.addLayout(collision_buttons)
 
-        layout.addWidget(QLabel("Scripted events (T), spawns (S), encounters (R)"))
+        layout.addWidget(QLabel("Map events and arrival points"))
         behavior_buttons = QHBoxLayout()
-        self.edit_behavior_button = QPushButton("Edit map record")
+        self.edit_behavior_button = QPushButton("Edit event or arrival point")
         self.edit_behavior_button.clicked.connect(self.edit_selected_behavior)
-        self.delete_behavior_button = QPushButton("Remove map record")
+        self.delete_behavior_button = QPushButton("Remove event or arrival point")
         self.delete_behavior_button.clicked.connect(self.remove_selected_behavior)
         behavior_buttons.addWidget(self.edit_behavior_button)
         behavior_buttons.addWidget(self.delete_behavior_button)
@@ -3513,29 +3540,29 @@ class MapEntityViewer(QMainWindow):
         self.x_spin = QSpinBox(); self.x_spin.setRange(-32768, 32767); self.x_spin.valueChanged.connect(self.properties_changed)
         self.y_spin = QSpinBox(); self.y_spin.setRange(-32768, 32767); self.y_spin.valueChanged.connect(self.properties_changed)
         self.evidence_edit = QLineEdit()
-        self.evidence_edit.setPlaceholderText("Source or visual evidence; leave blank if unknown")
+        self.evidence_edit.setPlaceholderText("What supports this name or outline?")
         self.evidence_edit.editingFinished.connect(self.properties_changed)
         self.content_profile_edit = QLineEdit()
-        self.content_profile_edit.setPlaceholderText("Dialogue/menu profile ID from gameplay/scripts/dialogue.lua")
+        self.content_profile_edit.setPlaceholderText("Conversation profile key, if linked")
         self.content_profile_edit.editingFinished.connect(self.properties_changed)
         self.speaker_id_edit = QLineEdit()
-        self.speaker_id_edit.setPlaceholderText("Speaker ID from gameplay/scripts/dialogue.lua")
+        self.speaker_id_edit.setPlaceholderText("Character who speaks")
         self.speaker_id_edit.editingFinished.connect(self.properties_changed)
         self.shop_profile_edit = QLineEdit()
-        self.shop_profile_edit.setPlaceholderText("Shop catalog profile ID from gameplay/scripts/shop.lua")
+        self.shop_profile_edit.setPlaceholderText("Shop inventory key, if linked")
         self.shop_profile_edit.editingFinished.connect(self.properties_changed)
         form.addRow("Name", self.name_edit)
-        form.addRow("Classification", self.category_combo)
-        form.addRow("Origin X", self.x_spin)
-        form.addRow("Origin Y", self.y_spin)
-        form.addRow("Dialogue/menu profile", self.content_profile_edit)
-        form.addRow("Speaker ID", self.speaker_id_edit)
-        form.addRow("Shop profile", self.shop_profile_edit)
-        form.addRow("Evidence", self.evidence_edit)
+        form.addRow("Object type", self.category_combo)
+        form.addRow("Map position X", self.x_spin)
+        form.addRow("Map position Y", self.y_spin)
+        form.addRow("Conversation", self.content_profile_edit)
+        form.addRow("Speaker", self.speaker_id_edit)
+        form.addRow("Shop inventory", self.shop_profile_edit)
+        form.addRow("Evidence or notes", self.evidence_edit)
         layout.addLayout(form)
-        self.save_button = QPushButton("Save scene and definitions")
+        self.save_button = QPushButton("Save map changes")
         self.save_button.clicked.connect(self.save_all)
-        self.delete_button = QPushButton("Remove selected instance")
+        self.delete_button = QPushButton("Remove selected object")
         self.delete_button.clicked.connect(self.remove_selected)
         layout.addWidget(self.save_button)
         layout.addWidget(self.delete_button)
@@ -3697,6 +3724,7 @@ class MapEntityViewer(QMainWindow):
         self._show_properties(None)
         self._update_scene_summary()
         self._update_scene_profile_info()
+        self._update_scene_character_info()
         self._update_scene_audio_info()
         self._update_scene_field_activities_info()
 
@@ -3726,7 +3754,12 @@ class MapEntityViewer(QMainWindow):
             entity = self.entities.get(instance.entity_id)
             if not entity:
                 continue
-            item = QListWidgetItem(f"{entity.name} [{entity.category}]   @ {instance.origin_x},{instance.origin_y}")
+            item = QListWidgetItem(
+                f"{entity.name} [{friendly_identifier(entity.category)}]"
+            )
+            item.setToolTip(
+                f"{entity.name}\nMap position: {instance.origin_x}, {instance.origin_y}"
+            )
             item.setData(Qt.ItemDataRole.UserRole, instance.instance_id)
             self.entity_list.addItem(item)
         self.entity_list.blockSignals(False)
@@ -4013,6 +4046,138 @@ class MapEntityViewer(QMainWindow):
             read_map_audio_details(info)
         )
 
+    def _update_scene_character_info(self) -> None:
+        info = self.map_by_id[self.scene_id]
+        populations = self.map_view.actor_positions
+        groups = (
+            ("default", "Regular characters", "Listed in this map's usual character group. Entry rules can still change who appears."),
+            ("conditional", "Possible alternatives", "One option is chosen for a marked spot; the alternatives do not appear together."),
+            ("world_activity", "Event characters", "Temporary characters tied to a separate map event."),
+        )
+        page = [
+            f"<h2>Characters in {html.escape(self._scene_display_name(info))}</h2>",
+            "<p>Only characters listed by the game are shown here. Background artwork alone never adds a person.</p>",
+        ]
+
+        def actor_fact(actor: MapEvidenceRegion, pattern: str, fallback: str) -> str:
+            match = re.search(pattern, actor.details, re.MULTILINE)
+            return match.group(1).strip() if match else fallback
+
+        for population_class, heading, explanation in groups:
+            actors = [
+                actor for actor in populations
+                if actor.population_class == population_class
+            ]
+            page.append(f"<h3>{html.escape(heading)} ({len(actors)})</h3>")
+            page.append(f"<p>{html.escape(explanation)}</p>")
+            if not actors:
+                page.append("<p>None are listed for this scene.</p>")
+                continue
+            page.append('<table border="0" cellspacing="6" cellpadding="3">')
+            for actor in actors:
+                actor_name = actor_fact(
+                    actor, r"^Actor: ([^(\n]+)", actor.title
+                ).strip().capitalize()
+                position = actor_fact(
+                    actor, r"^Map anchor: \((\d+, \d+)\) pixels$",
+                    "position is supplied at event time",
+                )
+                route = (
+                    f"walk route: {len(actor.path_points)} points"
+                    if actor.path_points else "no fixed walk route listed"
+                )
+                if population_class == "conditional":
+                    category = "Possible pedestrian"
+                    route = actor_fact(
+                        actor, r"^Scene: \d+; candidate choice\(s\): ([^\n]+)",
+                        "one of the possible choices",
+                    )
+                elif population_class == "world_activity":
+                    category = "Temporary event character"
+                else:
+                    category = "Usual map character"
+                sprite = ""
+                if actor.sprite_path is not None and actor.sprite_path.is_file():
+                    sprite = (
+                        f'<img src="{html.escape(actor.sprite_path.as_uri(), quote=True)}" '
+                        'width="48" height="48" alt="">'
+                    )
+                page.append(
+                    "<tr><td width=56 valign=top>" + sprite + "</td><td>"
+                    f"<b>{html.escape(actor_name)}</b><br>"
+                    f"{html.escape(category)}; map position ({html.escape(position)})<br>"
+                    f"{html.escape(route)}"
+                    "</td></tr>"
+                )
+            page.append("</table>")
+
+        dynamic_rows = [
+            row for row in self.dynamic_world_actor_rows
+            if as_int(row, "scene", -1) == self.scene_id
+        ]
+        dynamic_types: dict[tuple[str, str], set[str]] = {}
+        for row in dynamic_rows:
+            actor_name = row.get("actor_name", "ROM actor").strip()
+            sprite_stem = row.get("sprite_stem", "").strip()
+            dynamic_types.setdefault((actor_name, sprite_stem), set()).add(
+                row.get("random_sum", "")
+            )
+        page.append(
+            f"<h3>Possible encounter characters ({len(dynamic_types)} types)</h3>"
+        )
+        if not dynamic_types:
+            page.append(
+                "<p>No separate encounter character is listed for this map. "
+                "The Events tab shows the outcomes recorded for it.</p>"
+            )
+        else:
+            page.append(
+                "<p>The game can choose these characters during a map encounter. "
+                "Their position is chosen when the encounter starts, so no fixed map "
+                "position is shown.</p>"
+            )
+            page.append('<table border="0" cellspacing="6" cellpadding="3">')
+            for (actor_name, sprite_stem), roll_sums in sorted(dynamic_types.items()):
+                sprite_path = (
+                    self.assets / "field" / "entities" / "actors" /
+                    f"{sprite_stem}-idle.bmp"
+                ) if sprite_stem else None
+                sprite = ""
+                if sprite_path is not None and sprite_path.is_file():
+                    sprite = (
+                        f'<img src="{html.escape(sprite_path.as_uri(), quote=True)}" '
+                        'width="48" height="48" alt="">'
+                    )
+                sums = ", ".join(sorted(
+                    (value for value in roll_sums if value),
+                    key=lambda value: int(value) if value.isdigit() else 1000,
+                ))
+                page.append(
+                    "<tr><td width=56 valign=top>" + sprite + "</td><td>"
+                    f"<b>{html.escape(actor_name)}</b><br>"
+                    f"Possible encounter outcomes: {html.escape(sums or 'see Events tab')}"
+                    "</td></tr>"
+                )
+            page.append("</table>")
+
+        out_of_bounds = read_out_of_bounds_actor_details(self.assets, info)
+        if out_of_bounds:
+            page.append(f"<h3>Characters outside the visible map ({len(out_of_bounds)})</h3>")
+            page.append(
+                "<p>The game lists these characters, but their coordinates fall "
+                "outside the extracted picture. They are not drawn on the map.</p><ul>"
+            )
+            for line in out_of_bounds:
+                first_sentence = line.split(". Source template", 1)[0]
+                page.append(f"<li>{html.escape(first_sentence)}</li>")
+            page.append("</ul>")
+
+        page.append(
+            "<p>The numbered start markers show where the party begins when no "
+            "incoming route supplies a different arrival point.</p>"
+        )
+        self.character_info.setHtml("\n".join(page))
+
     def _update_scene_field_activities_info(self) -> None:
         rows = [
             row for row in self.field_activity_rows
@@ -4283,7 +4448,7 @@ class MapEntityViewer(QMainWindow):
             self.category_combo.setCurrentText("unreviewed")
             self.parts_list.clear()
             self.part_preview.setPixmap(QPixmap())
-            self.part_preview.setText("Select a visual part to preview its named asset.")
+            self.part_preview.setText("Select an object graphic to preview it.")
             self.interactions_list.clear()
             self.collisions_list.clear()
             self.info.setPlainText(
@@ -4781,7 +4946,7 @@ class MapEntityViewer(QMainWindow):
     def part_selection_changed(self, current, _previous) -> None:
         self.part_preview.setPixmap(QPixmap())
         if current is None or self.selected_instance is None:
-            self.part_preview.setText("Select a visual part to preview its named asset.")
+            self.part_preview.setText("Select an object graphic to preview it.")
             return
         entity = self.entities.get(self.selected_instance.entity_id)
         if entity is None:
@@ -5266,7 +5431,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--inspect-tab",
-        choices=("Source", "What happens", "Map profile", "Map audio", "Field events"),
+        choices=("Source", "What happens", "Profile", "Characters", "Audio", "Events"),
         help="select a right-dock evidence tab, useful with --snapshot",
     )
     args = parser.parse_args(argv)

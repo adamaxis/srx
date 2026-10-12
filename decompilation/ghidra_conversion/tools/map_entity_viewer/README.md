@@ -45,7 +45,7 @@ only for comparison; that view does not claim the ROM runs them together.
 
 The scene selector uses the ROM-backed contract district names for scenes 0–5
 and labels scenes 6–9 with explicitly marked map-guide cross-references.
-**Map profile** lists the ROM-derived run-location names for those districts;
+**Profile** lists the ROM-derived run-location names for those districts;
 these names describe contract destinations and are not treated as proof of a
 doorway route. Scene-1 (Puyallup) event markers have guide-marker crosswalks
 for all twelve listed sites and all seventeen event records. The right dock's
@@ -61,7 +61,7 @@ owners stay in **Source** so they are not presented as dialogue or menu text.
 Selecting an entity shows its known interaction areas, destination, story
 conditions, linked dialogue and menu choices, and shop stock when those have
 been source-profiled. Shop prices are identified as base template prices;
-runner- and transaction-specific adjustments remain separate. **Map profile**
+runner- and transaction-specific adjustments remain separate. **Profile**
 shows the selected ROM descriptor, camera setup, default three-member party
 placement, and the profile-selected actor list. ROM `0x03084` loads the three
 profile positions;
@@ -73,7 +73,7 @@ every route's arrival position. Scene 2 slot 1 is the traced New Game lead
 position before the automatic Stoker walk. Camera setup remains a separate
 value and is not treated as a player spawn.
 
-The **Map profile** also lists known incoming routes from authored ROM route
+The **Profile** also lists known incoming routes from authored ROM route
 profiles, including the source map, site cross-reference, numeric destination,
 record addresses, and recorded conditions. This is a reverse index of profiled
 route rows; an empty list means incoming routes have not been profiled here,
@@ -142,7 +142,7 @@ not that the ROM has no way into the map.
   identifiers stay in the source trace. A separate annotation marks the
   restaurant connector, west lake dock, and narrow central bridge. These labels
   describe visible art only and do not invent collision behavior. The
-  **Map profile** lists character types, map positions, recorded
+  **Profile** lists character types, map positions, recorded
   waypoints, conditional alternatives, and the descriptor's default fallback
   spawn positions.
 - Scene 5's six ROM entrance events are cross-referenced to Renraku Arcology
@@ -187,7 +187,7 @@ not that the ROM has no way into the map.
   list is empty. Its fixed carved posts are annotated from isolated priority
   plane sprites, and its timber bridge reuses the Scene 6 entity definition
   after a pixel comparison. These are scenery entities, not spawned actors;
-  the route and collision layers remain independent. **Map profile** presents
+  the route and collision layers remain independent. **Profile** presents
   route records in marker order and keeps guide descriptions distinct from
   numeric ROM destinations.
 - Scene 9 is Wilderness Area 4 by full-map visual cross-check. Its guide
@@ -233,14 +233,20 @@ not that the ROM has no way into the map.
   separate from ordinary map populations. Event-character controls only appear
   on scenes that contain those lists. It does not synthesize scenery NPCs.
   Selecting a character shows its source list, position, facing, and route data.
-- **Map audio** reports the field-entry trace. The traced New Game and ordinary
+- **Characters** gives a per-scene census with the matching extracted sprite,
+  map position, and a plain-language category for ordinary actors, conditional
+  alternatives, and event-only actors. The separate **Events** tab lists
+  the source event outcomes that can select temporary actors. A scene with no
+  ordinary actor records stays explicitly empty; map artwork is never used to
+  invent a person.
+- **Audio** reports the field-entry trace. The traced New Game and ordinary
   scene-entry branches expose no scene-ID-to-track selection, and the scene
   descriptor has no music resource ID. This does not prove field silence:
   audio already active or queued by the previous mode may carry over, and
   field events can request sounds. Menu-mode music and effects are shown
   separately rather than assigned to maps without evidence. See
   `decompilation/docs/field-map-audio-profile.md` for the trace and limits.
-- **Field events** lists the ROM's conditional random field-event outcomes for
+- **Events** lists the ROM's conditional random field-event outcomes for
   every extracted map context. The source maps 56 scenes through the 16-group
   table at `0x3312`, then uses two bound-five random draws to select one of
   nine sums. The 246 enabled scene/sum cells select 26 unique ROM handlers;
@@ -476,7 +482,7 @@ contact purchase is sourced, while the work-contract branch remains partial.
 The scene has no default actor records. Its two event-0 cells lie below the
 visible map bounds and remain unresolved rather than being labeled as a return
 door. Other districts also route numerically to scene 13, so their incoming
-routes stay individually listed in **Map profile**.
+routes stay individually listed in **Profile**.
 
 Scene 14 is cross-referenced to The Wanderer from Puyallup's scene-1 event
 record 73 and ROM contract location `[1][0]`. Its event-30 cell selects the
@@ -485,7 +491,7 @@ state-gated booth-vacated branch. The shared Lua Johnson script owns the
 first-visit pages and root menu; the conditional credit/quest outcomes and
 event-0 exit remain partial. The source actor list is empty, so neither the
 Vigore portrait nor random world-event candidates are presented as a standing
-resident. The Map profile lists the entry and unresolved lower-edge events
+resident. The Profile tab lists the entry and unresolved lower-edge events
 separately. The map entities distinguish the bar assembly, booth, pool tables,
 lamp tables, square lamps, and east-wall fixtures across the composite and
 priority layers.
@@ -493,9 +499,9 @@ priority layers.
 When inspecting a route, use **What happens** for the location name, player
 flow, destination, dialogue pages, menu labels, shop contents, and known state
 conditions. **Source** retains ROM records, Lua module paths, and low-level
-cross-references. **Map profile** lists ordinary scene actors and generic
-fallback arrival positions; **Field events** lists conditional actor/event
-alternatives without converting them into permanent map scenery. **Map audio**
+cross-references. **Profile** lists ordinary scene actors and generic fallback
+arrival positions; **Events** lists conditional actor/event alternatives
+without converting them into permanent map scenery. **Audio**
 is present for every scene, but currently reports that no map-specific track
 has been confirmed rather than assigning a guessed song.
 
