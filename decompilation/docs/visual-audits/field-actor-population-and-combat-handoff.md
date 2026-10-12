@@ -478,12 +478,19 @@ and origin. Candidate markers are faded and dashed because they are mutually
 exclusive, gated spawn inputs rather than proof of active NPCs. Idle sprites
 for actor kinds 5, 8, and 11 are extracted from their kind/palette state tables.
 Kind 15 (Thon) resolves through a source state program at `0xA77A`, not the
-ordinary `0x8002` bitmap descriptor used by the actor-frame importer. Its
-source placement and name are included, but the map viewer currently shows a
-named unresolved marker for it. The three known world-activity lists are now
-indexed separately for scene 47; other timed activity data and event-created
-actor paths remain source-tracing work. None of these conditional rows are
-presented as ambient map NPCs.
+ordinary `0x8002` bitmap descriptor used by the actor-frame importer. The
+eight `0xC052` selectors all reach the same one-frame state at `0x7884`, which
+points at the seven-record sprite list `0xA77A`. `0x622C`/`0x624C` expand this
+as raw VDP sprite records; the actor template supplies palette line 1. On the
+distinct marker-2 route to scene 55, the mode transition sets `FFE186=2`;
+`0x43B6` then calls `0x5BA4C`, which uploads stream `0x1EBDEE` to VRAM
+`0x5920`. That upload covers Thon's referenced pattern tiles `0x429..0x45E`.
+The Release graphics importer combines the seven pieces with the ROM palette
+and source offsets into `field/entities/actors/thon-idle.bmp`; the scene-55
+viewer now uses that named sprite instead of an unresolved marker. The three
+known world-activity lists are indexed separately for scene 47; other timed
+activity data and event-created actor paths remain source-tracing work. None
+of these conditional rows are presented as ambient map NPCs.
 
 The offline importer now also expands each profile actor's complete ordered
 12.4 coordinate list into `default-actor-waypoints.tsv`. ROM `0x44BC` stores
@@ -496,10 +503,11 @@ produced 379 points for 75 default-list actor records across 32 populated
 scene profiles; all 56 profile lists, including empty ones, remain indexed.
 One scene-35 guard coordinate is outside that map image and is therefore
 retained in the Map Profile census rather than drawn over the wrong map area.
-The Release importer completed with 1,659 assets, 21 blank descriptors, and
+The Release importer completed with 1,668 assets, 21 blank descriptors, and
 zero missing assets. Viewer snapshots with route lines were inspected for
-scenes 2, 20, and 55; the Thon source program at `0xA77A` remains an explicit
-unresolved sprite boundary.
+scenes 2, 20, and 55. A 56-map viewer census now finds 155 actor marks across
+33 scenes with zero missing sprite files; the other 23 maps have no in-bounds
+actor rows in the indexed source profiles.
 
 The world-activity importer records all 13 actors from lists `0x1E552`,
 `0x1E5C4`, and `0x1E628` with their list group, template name and kind,

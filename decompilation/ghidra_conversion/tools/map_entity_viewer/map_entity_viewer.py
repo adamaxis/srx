@@ -2328,18 +2328,34 @@ def read_actor_positions(asset_root: Path, info: MapInfo) -> list[MapEvidenceReg
         ) if stem else ""
         sprite_relative = f"field/entities/actors/{filename}" if filename else ""
         sprite_path = asset_root / sprite_relative if sprite_relative else None
+        if sprite_path is not None and not sprite_path.is_file():
+            sprite_path = None
+        if actor_kind == 15 and direction != 0 and stem:
+            # ROM 0x62AC/0xC052 resolves all eight kind-15 idle selectors to
+            # the same seven-piece sprite list. Its named asset is therefore
+            # direction-independent, not a missing directional extraction.
+            shared_relative = f"field/entities/actors/{stem}-idle.bmp"
+            shared_path = asset_root / shared_relative
+            if shared_relative in sprite_catalog and shared_path.is_file():
+                sprite_relative = shared_relative
+                sprite_path = shared_path
         offset_x, offset_y, width, height = sprite_catalog.get(
             sprite_relative, (0, -16, 1, 1)
         )
-        if sprite_path is not None and not sprite_path.is_file():
-            sprite_path = None
         details.extend((
             f"Actor: {actor_name} (ROM entity kind {actor_kind})",
             f"Heading: 0x{heading:04X}; source direction: {direction}",
             f"World coordinate: (0x{raw_x:04X}, 0x{raw_y:04X}) 12.4 fixed point",
             f"Map anchor: ({x}, {y}) pixels",
-            f"Sprite asset: {sprite_relative or '(unsupported ROM kind)'}",
         ))
+        details.append(
+            f"Sprite asset: {sprite_relative or '(unsupported ROM kind)'}"
+        )
+        if actor_kind == 15:
+            details.append(
+                "ROM state table uses the same seven-piece sprite list for all "
+                "eight directional selectors."
+            )
         if path_points:
             details.extend((
                 f"ROM waypoint list: {len(path_points)} ordered point(s); "

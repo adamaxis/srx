@@ -11,6 +11,7 @@
 #include <iomanip>
 #include <initializer_list>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <sstream>
 #include <stdexcept>
@@ -1948,6 +1949,149 @@ void write_catalog_asset(const std::filesystem::path& root,
     ++written;
 }
 
+struct ExtractedSpriteListFrame {
+    shadowrun::graphics::RgbaImage image;
+    std::int32_t origin_x = 0;
+    std::int32_t origin_y = 0;
+};
+
+ExtractedSpriteListFrame decode_field_entity_sprite_list(
+    const std::vector<std::uint8_t>& rom,
+    const std::vector<std::uint8_t>& vram,
+    const std::size_t sprite_list_offset,
+    const std::array<shadowrun::native::Rgba8, 64>& palette,
+    const std::uint16_t palette_attributes) {
+    constexpr std::size_t kVramSize = 0x10000U;
+    constexpr std::uint16_t kEndSpriteList = 0x8000U;
+    if (vram.size() != kVramSize) {
+        throw std::invalid_argument("field actor sprite VRAM has invalid size");
+    }
+
+    struct PositionedSprite {
+        std::int32_t x = 0;
+        std::int32_t y = 0;
+        std::uint8_t size = 0;
+        std::uint16_t attributes = 0;
+    };
+    std::vector<PositionedSprite> sprites;
+    auto source = sprite_list_offset;
+    auto terminated = false;
+    for (;;) {
+        const auto x_word = read_big_endian_word(rom, source);
+        source += 2U;
+        if (x_word == kEndSpriteList) {
+            terminated = true;
+            break;
+        }
+        if (source > rom.size() || rom.size() - source < 6U) {
+            throw std::out_of_range(
+                "field actor sprite-list record is truncated");
+        }
+        const auto y_word = read_big_endian_word(rom, source);
+        const auto size_word = read_big_endian_word(rom, source + 2U);
+        const auto attributes = read_big_endian_word(rom, source + 4U);
+        source += 6U;
+        if ((size_word & 0xFF00U) != 0U) {
+            throw std::runtime_error(
+                "field actor sprite size exceeds the source byte field");
+        }
+        sprites.push_back({
+            static_cast<std::int16_t>(x_word),
+            static_cast<std::int16_t>(y_word),
+            static_cast<std::uint8_t>(size_word),
+            static_cast<std::uint16_t>(attributes | palette_attributes),
+        });
+        if (sprites.size() > 80U) {
+            throw std::runtime_error(
+                "field actor sprite list exceeds the supported source bound");
+        }
+    }
+    if (!terminated || sprites.empty()) {
+        throw std::runtime_error(
+            "field actor sprite list is empty or lacks its sentinel");
+    }
+
+    std::int32_t min_x = std::numeric_limits<std::int32_t>::max();
+    std::int32_t min_y = std::numeric_limits<std::int32_t>::max();
+    std::int32_t max_x = std::numeric_limits<std::int32_t>::min();
+    std::int32_t max_y = std::numeric_limits<std::int32_t>::min();
+    for (const auto& sprite : sprites) {
+        const auto width = static_cast<std::int32_t>(
+            ((sprite.size >> 2U) & 0x03U) + 1U) * 8;
+        const auto height = static_cast<std::int32_t>(
+            (sprite.size & 0x03U) + 1U) * 8;
+        min_x = std::min(min_x, sprite.x);
+        min_y = std::min(min_y, sprite.y);
+        max_x = std::max(max_x, sprite.x + width);
+        max_y = std::max(max_y, sprite.y + height);
+    }
+    if (max_x <= min_x || max_y <= min_y ||
+        max_x - min_x > std::numeric_limits<std::uint16_t>::max() ||
+        max_y - min_y > std::numeric_limits<std::uint16_t>::max()) {
+        throw std::runtime_error("field actor sprite-list bounds are invalid");
+    }
+
+    shadowrun::graphics::RgbaImage image{
+        static_cast<std::uint16_t>(max_x - min_x),
+        static_cast<std::uint16_t>(max_y - min_y),
+        std::vector<shadowrun::native::Rgba8>(
+            static_cast<std::size_t>(max_x - min_x) *
+                static_cast<std::size_t>(max_y - min_y),
+            shadowrun::native::Rgba8{0U, 0U, 0U, 0U}),
+    };
+    for (const auto& sprite : sprites) {
+        const auto hflip = (sprite.attributes & 0x0800U) != 0U;
+        const auto vflip = (sprite.attributes & 0x1000U) != 0U;
+        const auto palette_line = static_cast<std::size_t>(
+            (sprite.attributes >> 13U) & 0x03U);
+        const auto tile_base = static_cast<std::size_t>(
+            sprite.attributes & 0x07FFU);
+        const auto width_tiles = static_cast<std::size_t>(
+            ((sprite.size >> 2U) & 0x03U) + 1U);
+        const auto height_tiles = static_cast<std::size_t>(
+            (sprite.size & 0x03U) + 1U);
+        for (std::size_t tile_x = 0; tile_x < width_tiles; ++tile_x) {
+            for (std::size_t tile_y = 0; tile_y < height_tiles; ++tile_y) {
+                const auto source_tile_x =
+                    hflip ? width_tiles - 1U - tile_x : tile_x;
+                const auto source_tile_y =
+                    vflip ? height_tiles - 1U - tile_y : tile_y;
+                // Genesis sprite patterns advance down a column before the
+                // next column. The source sprite-list renderer does the same.
+                const auto tile_index = tile_base +
+                    source_tile_x * height_tiles + source_tile_y;
+                const auto tile_offset = tile_index * 32U;
+                if (tile_offset > vram.size() ||
+                    vram.size() - tile_offset < 32U) {
+                    throw std::out_of_range(
+                        "field actor sprite pattern lies outside VRAM");
+                }
+                const auto tile = shadowrun::graphics::decode_genesis_tile(
+                    vram.data() + tile_offset, 32U);
+                for (std::size_t pixel_y = 0; pixel_y < 8U; ++pixel_y) {
+                    for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
+                        const auto color_index = tile.pixels[
+                            (vflip ? 7U - pixel_y : pixel_y) * 8U +
+                            (hflip ? 7U - pixel_x : pixel_x)];
+                        if (color_index == 0U) {
+                            continue;
+                        }
+                        const auto target_x = sprite.x - min_x +
+                            static_cast<std::int32_t>(tile_x * 8U + pixel_x);
+                        const auto target_y = sprite.y - min_y +
+                            static_cast<std::int32_t>(tile_y * 8U + pixel_y);
+                        image.pixels[
+                            static_cast<std::size_t>(target_y) * image.width +
+                            static_cast<std::size_t>(target_x)] =
+                            palette[palette_line * 16U + color_index];
+                    }
+                }
+            }
+        }
+    }
+    return {std::move(image), min_x, min_y};
+}
+
 void append_title_boot_catalog(const std::filesystem::path& root,
                                std::ofstream& manifest) {
     std::ifstream source(root / "manifest.tsv", std::ios::binary);
@@ -3483,6 +3627,9 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     }
     constexpr std::size_t kIdleSelectorTableOffset = 0xC052U;
     constexpr std::size_t kEntrySelectorTableOffset = 0xC0B2U;
+    constexpr std::size_t kThonPatternStreamOffset = 0x1EBDEEU;
+    constexpr std::size_t kThonPatternVramOffset = 0x5920U;
+    constexpr std::size_t kActorStatePointerTableOffset = 0x62ACU;
     // The map viewer overlays source-defined one-of-three pedestrian
     // candidates from the 0x1EDB88 table. Their heading overrides cover all
     // eight C052 directions. Import each source kind/palette found in the
@@ -3500,16 +3647,89 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     }
     for (const auto& [kind_palette, kind_source] : actor_visual_sources) {
         (void)kind_palette;
-        // Kind 15 (Thon) uses a source state program at 0xA77A rather than the
-        // 0x8002 bitmap descriptor accepted by the ordinary frame importer.
-        // Keep its typed placement/name in the population table, but do not
-        // misdecode that program as a sprite frame.
+        const auto asset_stem =
+            "field/entities/actors/" + kind_source.sprite_stem;
+        if (kind_source.entity_kind == 15U) {
+            // This is a distinct ROM format: 0x600E resolves a one-frame
+            // state list whose entry is a seven-record VDP sprite list, not
+            // an 0x8002 bitmap descriptor. The mode-55 marker-2 path loads
+            // the matching tile data via 0x5BA4C/0x1530 at VRAM 0x5920.
+            if (kind_source.actor_name != "Thon" ||
+                kind_source.palette_line != 1U) {
+                throw std::runtime_error(
+                    "ROM kind 15 no longer matches the profiled Thon template");
+            }
+            const auto template_kind = read_big_endian_word(
+                rom, kind_source.template_offset);
+            const auto template_palette_attributes = read_big_endian_word(
+                rom, kind_source.template_offset + 2U);
+            if (template_kind != kind_source.entity_kind ||
+                ((template_palette_attributes >> 13U) & 0x03U) !=
+                    kind_source.palette_line) {
+                throw std::runtime_error(
+                    "Thon template kind/palette disagrees with the actor census");
+            }
+
+            const auto state_table = static_cast<std::size_t>(
+                read_big_endian_long(
+                    rom, kActorStatePointerTableOffset +
+                        static_cast<std::size_t>(kind_source.entity_kind) * 4U));
+            std::size_t thon_sprite_list = 0U;
+            for (std::size_t direction = 0; direction < 8U; ++direction) {
+                const auto selector = read_big_endian_word(
+                    rom, kIdleSelectorTableOffset + direction * 2U);
+                const auto state_list = static_cast<std::size_t>(
+                    read_big_endian_long(
+                        rom, state_table + (selector & 0x7FFFU)));
+                if (read_big_endian_word(rom, state_list) != 0x8001U) {
+                    throw std::runtime_error(
+                        "Thon idle selector no longer selects one source frame");
+                }
+                const auto sprite_list = static_cast<std::size_t>(
+                    read_big_endian_long(rom, state_list + 4U));
+                if (direction == 0U) {
+                    thon_sprite_list = sprite_list;
+                } else if (sprite_list != thon_sprite_list) {
+                    throw std::runtime_error(
+                        "Thon directional selectors no longer share one source sprite list");
+                }
+            }
+            if (thon_sprite_list == 0U) {
+                throw std::runtime_error("Thon source sprite list is null");
+            }
+
+            const auto resources =
+                shadowrun::graphics::read_genesis_field_mode_resources(
+                    rom, 55U);
+            auto palette = shadowrun::graphics::read_genesis_palette_set(
+                rom, resources.palette_offset);
+            // 0x566C2 replaces the descriptor's remaining CRAM words with
+            // the shared field palette. Preserve that source line selection.
+            for (std::size_t index = 16U; index < palette.size(); ++index) {
+                palette[index] = shadowrun::graphics::decode_genesis_cram_word(
+                    read_big_endian_word(
+                        rom, 0x18AC56U + (index - 16U) * 2U),
+                    index % 16U == 0U);
+            }
+            const auto thon_vram =
+                shadowrun::graphics::decode_genesis_1530_vram(
+                    rom, kThonPatternStreamOffset, kThonPatternVramOffset);
+            const auto thon_frame = decode_field_entity_sprite_list(
+                rom, thon_vram, thon_sprite_list, palette,
+                template_palette_attributes);
+            write_catalog_asset(
+                root, asset_stem + "-idle.bmp", thon_frame.image, "sprite",
+                "ROM 0x62AC/0xC052/0x600E/0x622C/0x624C/0xA77A Thon "
+                "seven-piece idle sprite list; 0x5BA4C/0x1530 loads "
+                "0x1EBDEE at VRAM 0x5920; template palette line 1",
+                true, manifest, written, missing, blank,
+                thon_frame.origin_x, thon_frame.origin_y);
+            continue;
+        }
         if (kind_source.entity_kind != 5U && kind_source.entity_kind != 7U &&
             kind_source.entity_kind != 8U && kind_source.entity_kind != 11U) {
             continue;
         }
-        const auto asset_stem =
-            "field/entities/actors/" + kind_source.sprite_stem;
         for (std::size_t direction = 0; direction < used_actor_directions.size();
              ++direction) {
             if (!used_actor_directions[direction]) {

@@ -28,9 +28,11 @@ the default actor-list pointer in all 56 scene descriptors;
 `default-actor-lists.tsv` records empty as well as populated lists. Default-list
 records and faded conditional alternatives have different styling; neither
 claims an actor is alive on every visit. Kind 15 (Thon) uses a source state
-program rather than the ordinary frame descriptor, so its placement is kept by
-name while its map icon remains an unresolved marker. These ROM overlays are
-read-only evidence. `default-actor-waypoints.tsv` preserves each default
+program rather than the ordinary frame descriptor. The importer resolves its
+seven-piece sprite list and the scene-55 pattern upload into the named
+`thon-idle.bmp` asset; the ROM points all eight directional selectors at that
+same art. These ROM overlays are read-only evidence.
+`default-actor-waypoints.tsv` preserves each default
 actor's ordered source coordinate list. **ROM waypoint paths** draws those
 sequences as dashed cyan lines; the ROM actor service consumes the lists under
 its behavior and state gates, so a path line is route data rather than proof
@@ -71,12 +73,14 @@ Camera setup remains a separate value and is not treated as a player spawn.
 ## Current evidence coverage
 
 - All 56 ROM field-map descriptors have an indexed default actor-list count;
-  all source positions with supported frame art use that actor type's extracted
-  sprite. The 69 conditional pedestrian positions and the three separate
-  scene-47 activity lists are shown as gated candidates, not as a claim that
-  every candidate is alive at once. Thon's source art program is not yet
-  resolved to a viewer sprite, and other timed/event-created populations still
-  need ROM profiling.
+  the viewer shows the 155 in-bounds default, conditional, and special-list
+  actor marks across 33 populated scenes, each with its source actor art. The
+  other 23 descriptors have no in-bounds actor rows in these profiles and
+  remain empty rather than receiving invented NPCs. The 69 conditional
+  pedestrian positions and the three separate scene-47 activity lists are
+  shown as gated candidates, not as a claim that every candidate is alive at
+  once. Thon's seven-piece source sprite is extracted from the scene-55 upload;
+  other timed and event-created populations still need ROM profiling.
 - Scene 2 currently has 22 authored visual entities and a route crosswalk for
   its 13 ROM event records. The entity list includes the named storefronts,
   facility/perimeter, and southern shelters. Routes keep numeric destinations
@@ -314,8 +318,10 @@ the `0x2CE0`/`0x43B6` activity paths, with a selector to isolate each list.
 Other timed activity lists and
 event-created populations still require source profiling. A record outside the
 extracted map image is retained in the profile census and omitted from the map
-overlay pending interpretation. Kind-15 Thon's sprite state program remains
-unresolved. The three default party positions are shown by default;
+overlay pending interpretation. Kind-15 Thon's sprite uses seven records at
+`0xA77A`; marker-2 entry to scene 55 loads their pattern tiles from `0x1EBDEE`
+to VRAM `0x5920`. The importer resolves the source palette and offsets to
+`field/entities/actors/thon-idle.bmp`. The three default party positions are shown by default;
 route-specific overrides remain distinct. Entity drawings and generated part
 assets remain authoring data; the live field renderer does not yet consume
 these entity definitions.

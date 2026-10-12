@@ -1436,6 +1436,14 @@ field/entities/actors/corp-guard-entry-dir-6-frame-1.bmp	sprite	-11	-23	31	31	0x
 field/entities/actors/corp-guard-idle-dir-7.bmp	sprite	-15	-25	20	29	0xB45C/0xC052/0x600E actor=corp guard kind=5 template=0x1D6A1C descriptor=0x87508 selector=0x1C palette-line=2	extracted
 field/entities/actors/corp-guard-entry-dir-7-frame-0.bmp	sprite	-5	-23	28	27	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8B1FC selector=0x104 frame=0 palette-line=2	extracted
 field/entities/actors/corp-guard-entry-dir-7-frame-1.bmp	sprite	-11	-23	31	31	0xB330/0xC0B2/0x5FDC/0x600E kind=5 template=0x1D6A1C descriptor=0x8B420 selector=0x104 frame=1 palette-line=2	extracted
+field/entities/actors/actor-kind-7-palette-2-idle.bmp	sprite	-11	-25	21	30	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D657C descriptor=0x91162 selector=0x0 palette-line=2	extracted
+field/entities/actors/actor-kind-7-palette-2-idle-dir-1.bmp	sprite	-11	-26	22	30	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D657C descriptor=0x91B04 selector=0x4 palette-line=2	extracted
+field/entities/actors/actor-kind-7-palette-2-idle-dir-2.bmp	sprite	-12	-25	20	31	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D657C descriptor=0x91ECC selector=0x8 palette-line=2	extracted
+field/entities/actors/actor-kind-7-palette-2-idle-dir-3.bmp	sprite	-10	-26	18	31	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D657C descriptor=0x9265C selector=0xC palette-line=2	extracted
+field/entities/actors/actor-kind-7-palette-2-idle-dir-4.bmp	sprite	-13	-25	25	29	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D657C descriptor=0x92EEC selector=0x10 palette-line=2	extracted
+field/entities/actors/actor-kind-7-palette-2-idle-dir-5.bmp	sprite	-14	-26	18	31	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D657C descriptor=0x9266E selector=0x14 palette-line=2	extracted
+field/entities/actors/actor-kind-7-palette-2-idle-dir-6.bmp	sprite	-11	-25	20	31	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D657C descriptor=0x922A6 selector=0x18 palette-line=2	extracted
+field/entities/actors/actor-kind-7-palette-2-idle-dir-7.bmp	sprite	-15	-26	19	30	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D657C descriptor=0x9162A selector=0x1C palette-line=2	extracted
 field/entities/actors/yakuza-weenr-idle.bmp	sprite	-13	-24	25	31	0xB45C/0xC052/0x600E actor=yakuza weenr kind=8 template=0x1D66EE descriptor=0xA8714 selector=0x0 palette-line=1	extracted
 field/entities/actors/yakuza-weenr-idle-dir-1.bmp	sprite	-10	-24	22	29	0xB45C/0xC052/0x600E actor=yakuza weenr kind=8 template=0x1D66EE descriptor=0xA96C8 selector=0x4 palette-line=1	extracted
 field/entities/actors/yakuza-weenr-idle-dir-2.bmp	sprite	-8	-21	14	28	0xB45C/0xC052/0x600E actor=yakuza weenr kind=8 template=0x1D66EE descriptor=0xA9C58 selector=0x8 palette-line=1	extracted
@@ -1468,6 +1476,7 @@ field/entities/actors/pedestrian-entry-dir-6-frame-1.bmp	sprite	-19	-24	29	29	0x
 field/entities/actors/pedestrian-idle-dir-7.bmp	sprite	-14	-26	22	30	0xB45C/0xC052/0x600E actor=pedestrian kind=11 template=0x1D6988 descriptor=0xA6D06 selector=0x1C palette-line=3	extracted
 field/entities/actors/pedestrian-entry-dir-7-frame-0.bmp	sprite	-12	-22	27	31	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6988 descriptor=0xA466C selector=0x104 frame=0 palette-line=3	extracted
 field/entities/actors/pedestrian-entry-dir-7-frame-1.bmp	sprite	-19	-24	29	29	0xB330/0xC0B2/0x5FDC/0x600E kind=11 template=0x1D6988 descriptor=0xA4448 selector=0x104 frame=1 palette-line=3	extracted
+field/entities/actors/thon-idle.bmp	sprite	-24	-55	48	57	ROM 0x62AC/0xC052/0x600E/0x622C/0x624C/0xA77A Thon seven-piece idle sprite list; 0x5BA4C/0x1530 loads 0x1EBDEE at VRAM 0x5920; template palette line 1	extracted
 field/entities/idle-0.bmp	sprite	0	0	24	31	0x5A62/0x5FDC	extracted
 field/entities/idle-1.bmp	sprite	0	0	22	30	0x5A62/0x5FDC	extracted
 field/entities/idle-2.bmp	sprite	0	2	15	30	0x5A62/0x5FDC	extracted
@@ -1692,11 +1701,3 @@ field/weapons/projectile-60-7.bmp	sprite	0	0	1	1	0x1514E/0x62EC/0x62FC/0x630C/0x
 field/weapons/projectile-60-8.bmp	sprite	-4	-4	5	5	0x1514E/0x62EC/0x62FC/0x630C/0x600E/0x622C	extracted
 field/weapons/projectile-60-9.bmp	sprite	-14	-13	16	15	0x1514E/0x62EC/0x62FC/0x630C/0x600E/0x622C	extracted
 field/weapons/projectile-60-10.bmp	sprite	-4	-4	5	5	0x1514E/0x62EC/0x62FC/0x630C/0x600E/0x622C	extracted
-field/entities/actors/actor-kind-7-palette-2-idle.bmp	sprite	-11	-25	21	30	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D657C descriptor=0x91162 selector=0x0 palette-line=2	extracted
-field/entities/actors/actor-kind-7-palette-2-idle-dir-1.bmp	sprite	-11	-26	22	30	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D657C descriptor=0x91B04 selector=0x4 palette-line=2	extracted
-field/entities/actors/actor-kind-7-palette-2-idle-dir-2.bmp	sprite	-12	-25	20	31	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D657C descriptor=0x91ECC selector=0x8 palette-line=2	extracted
-field/entities/actors/actor-kind-7-palette-2-idle-dir-3.bmp	sprite	-10	-26	18	31	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D657C descriptor=0x9265C selector=0xC palette-line=2	extracted
-field/entities/actors/actor-kind-7-palette-2-idle-dir-4.bmp	sprite	-13	-25	25	29	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D657C descriptor=0x92EEC selector=0x10 palette-line=2	extracted
-field/entities/actors/actor-kind-7-palette-2-idle-dir-5.bmp	sprite	-14	-26	18	31	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D657C descriptor=0x9266E selector=0x14 palette-line=2	extracted
-field/entities/actors/actor-kind-7-palette-2-idle-dir-6.bmp	sprite	-11	-25	20	31	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D657C descriptor=0x922A6 selector=0x18 palette-line=2	extracted
-field/entities/actors/actor-kind-7-palette-2-idle-dir-7.bmp	sprite	-15	-26	19	30	0xB45C/0xC052/0x600E actor=ROM kind 7 kind=7 template=0x1D657C descriptor=0x9162A selector=0x1C palette-line=2	extracted

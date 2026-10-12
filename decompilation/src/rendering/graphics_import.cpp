@@ -2443,13 +2443,6 @@ std::vector<std::uint8_t> decode_genesis_resource_stream(
                                                      state);
 }
 
-// Declared here because the profile sprite importer is kept beside the source
-// stream it consumes, while the general 0x1530 upload helper remains with the
-// other VRAM writers below.
-std::vector<std::uint8_t> decode_genesis_1530_vram(
-    const std::vector<std::uint8_t>& rom, std::size_t source_offset,
-    std::size_t target_offset);
-
 RgbaImage decode_genesis_field_mode_profile_sprite(
     const std::vector<std::uint8_t>& rom, const std::size_t profile) {
     // ROM 0x1F292 uses this three-pointer shape for field-mode entry

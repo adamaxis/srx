@@ -498,6 +498,13 @@ IndexedTile decode_genesis_tile(const std::uint8_t* source,
 std::vector<std::uint8_t> decode_genesis_resource_stream(
     const std::vector<std::uint8_t>& rom, std::size_t source_offset);
 
+// Apply one source 0x1530 graphics upload into a 64 KiB host buffer during
+// offline extraction. The game runtime consumes the named images produced
+// from these patterns, not this VRAM-shaped buffer.
+std::vector<std::uint8_t> decode_genesis_1530_vram(
+    const std::vector<std::uint8_t>& rom, std::size_t source_offset,
+    std::size_t target_offset);
+
 // ROM 0x1F65A / 0x1F292: decode one field-dialogue resource profile's
 // portrait stream into a host image. The resource stream and the 7x9
 // portrait writer are offline extraction inputs; no VDP/name-table state is
