@@ -28,16 +28,18 @@ original Plane-A floor tiles, then draws named Plane-A parts, independent
 Plane-B art, and priority art in source order. This preserves a separate
 Plane-B object over a moved Plane-A shadow. Restoring a sparse Plane-B tile
 replaces transparent pixels too, so a moved sprite cannot remain as a ghost at
-its source position. Scenes with composite-source parts
-use the full image and can only detach parts whose source pixels match. Dragging
-an entity moves matched artwork with its annotations; incomplete outlines leave
-unclassified pixels in place. A drag from the full-map view automatically
-switches to this editable view. This is an authoring preview, not a claim that
-every map object has been classified.
+its source position. Scenes with composite-source parts use the full image;
+source-pixel matching alone does not prove that the hidden background can be
+restored. A drag from the full-map view switches to this editable view and
+moves a group only after every part has a verified underlay. This is an
+authoring preview, not a claim that every map object has been classified.
 The area record keeps both the current placement and the original map position,
 so a saved move can still clear its old pixels after the viewer is reopened.
-Part images detach only when their visible source pixels match; mismatched parts
-are listed as needing review and stay in the map until their source is corrected.
+An image moves only when the viewer can also restore its exact underlay. An
+entity moves as a unit only when every part attached to that placement is
+detachable; otherwise its position controls are disabled and drag attempts are
+rejected, leaving its ROM art anchored. A partial source match is not enough to
+move a building outline away from artwork that would stay behind.
 Click a yellow trigger or a visible red collision rectangle to inspect its ROM
 record, decoded route, addresses, and recorded runtime/QA owners in the side
 panel. The **ROM actor populations** layer draws the template-specific source
@@ -138,6 +140,14 @@ not that the ROM has no way into the map.
   option is absent, so the prompt has no menu. The descriptor fallback spawn
   `(208,204)` is outside that interaction area. Scene-entry dialogue,
   route-specific arrival coordinates, and the return path remain unresolved.
+  The two green-felt pool tables and two orange wall strips are separate visual
+  entities; collision records 8 and 9 mark only the table footprints as blocked.
+  Longplay section 09 frames `006990` and `007035` show the repeated table art
+  in a later player position. The source metatiles combine table pixels with
+  map texture and contain no removable hidden floor, so these parts remain
+  source-anchored until an exact underlay can be derived. No table interaction,
+  animation, or dedicated sound is established. See the [Scene-19 table visual
+  audit](../../../docs/visual-audits/scene19-pool-table-entities.md).
 - Scene 0 has a crosswalk for all 21 ROM event rectangles, including ten
   guide-named sites, both labeled map edges, and four direct event-31 handlers.
   A local event-table result of scene 0 is kept distinct from the guide's

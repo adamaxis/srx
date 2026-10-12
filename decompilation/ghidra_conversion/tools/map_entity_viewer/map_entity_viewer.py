@@ -1404,11 +1404,16 @@ class WorldContent:
                     crop = make_source_tile_difference_mask(
                         crop, part, entity, assets_root
                     )
+                    # Tile-difference crops can contain multiple visual
+                    # objects that share one ROM metatile.  An explicit art
+                    # mask keeps those objects separate after restoring the
+                    # source cell to its background tile.
+                    outline_paths = parse_outline_paths(part.art_mask_points)
                 else:
                     outline_paths = parse_outline_paths(
                         part.art_mask_points or part.outline_points
                     )
-                if part.art_mask_mode != "tile_difference" and outline_paths:
+                if outline_paths:
                     clip_path = QPainterPath()
                     for outline in outline_paths:
                         crop_points = [
@@ -2825,6 +2830,7 @@ def read_actor_positions(asset_root: Path, info: MapInfo) -> list[MapEvidenceReg
 
     def add_actor(
         *,
+        actor_name: str,
         actor_kind: int,
         palette_line: int,
         raw_x: int,
@@ -2843,7 +2849,7 @@ def read_actor_positions(asset_root: Path, info: MapInfo) -> list[MapEvidenceReg
         direction = actor_direction_from_heading(heading)
         visual_key = (actor_kind, palette_line)
         stem = actor_stems.get(visual_key)
-        actor_name = actor_names.get(
+        actor_name = actor_name or actor_names.get(
             visual_key, f"ROM actor kind {actor_kind}")
         filename = (
             f"{stem}-idle.bmp" if direction == 0
@@ -2935,6 +2941,7 @@ def read_actor_positions(asset_root: Path, info: MapInfo) -> list[MapEvidenceReg
         ]
         route_points = tuple(waypoint_lists.get((scene_id, source_order), ()))
         add_actor(
+            actor_name=actor_name,
             actor_kind=actor_kind,
             palette_line=palette_line,
             raw_x=raw_x,
@@ -2988,6 +2995,7 @@ def read_actor_positions(asset_root: Path, info: MapInfo) -> list[MapEvidenceReg
         if len(group_rows) > 1:
             title += " (shared position)"
         add_actor(
+            actor_name="Pedestrian",
             actor_kind=actor_kind,
             palette_line=palette_line,
             raw_x=raw_x,
@@ -3274,6 +3282,30 @@ class FieldMapView(QGraphicsView):
             return QImage()
         return QImage(str(self.assets_root / Path(part.asset_path))).convertToFormat(
             QImage.Format.Format_ARGB32
+        )
+
+    def instance_art_is_movable(self, instance_id: str) -> bool:
+        """Only move an object when every placed art part has a proven underlay."""
+        instance = next(
+            (item for item in self.instances if item.instance_id == instance_id),
+            None,
+        )
+        if instance is None:
+            return False
+        entity = self.entities.get(instance.entity_id)
+        if entity is None:
+            return False
+        if not entity.parts:
+            return True
+        applicable_parts = [
+            part for part in entity.parts
+            if not part.source_instance_id or part.source_instance_id == instance_id
+        ]
+        if not applicable_parts or self.map_art_layer != "editable":
+            return False
+        return all(
+            (instance_id, part.part_id) in self.detachable_parts
+            for part in applicable_parts
         )
 
     def _rebuild_editable_backdrop(self) -> None:
@@ -4251,6 +4283,12 @@ class FieldMapView(QGraphicsView):
             selected = self.on_select(point)
             entity_group = self.entity_group_at(point)
             if selected is not None and entity_group is not None and entity_group[0] == selected.instance_id:
+                if (
+                    self.map_art_layer == "editable"
+                    and not self.instance_art_is_movable(selected.instance_id)
+                ):
+                    event.accept()
+                    return
                 self.move_start = point
                 self.move_origin = entity_group[1].pos()
                 self.move_instance_id = selected.instance_id
@@ -4776,6 +4814,8 @@ class MapEntityViewer(QMainWindow):
         layer = self.map_art_combo.itemData(index)
         if layer:
             self.map_view.set_map_art_layer(str(layer))
+            if self.selected_instance is not None:
+                self._show_properties(self.selected_instance)
 
     def _configure_map_art_options(self, info: MapInfo) -> None:
         available = {
@@ -5623,6 +5663,16 @@ class MapEntityViewer(QMainWindow):
         self.name_edit.setText(entity.name)
         self.category_combo.setCurrentText(entity.category if entity.category in ENTITY_CATEGORIES else "unreviewed")
         self.x_spin.setValue(instance.origin_x); self.y_spin.setValue(instance.origin_y)
+        position_editable = self.map_view.instance_art_is_movable(instance.instance_id)
+        self.x_spin.setEnabled(position_editable)
+        self.y_spin.setEnabled(position_editable)
+        position_tip = (
+            "Every visible source part has a verified underlay, so the object and its art can move together."
+            if position_editable else
+            "Position editing is disabled until every source part can be detached without leaving a gap or changing the map pixels."
+        )
+        self.x_spin.setToolTip(position_tip)
+        self.y_spin.setToolTip(position_tip)
         self.evidence_edit.setText(entity.evidence)
         self.content_profile_edit.setText(entity.content_profile)
         self.speaker_id_edit.setText(entity.speaker_id)
@@ -5633,13 +5683,12 @@ class MapEntityViewer(QMainWindow):
                 continue
             if self.map_view.map_art_layer == "editable":
                 movement = (
-                    "its picture moves with the object"
-                    if (instance.instance_id, part.part_id)
-                    in self.map_view.detachable_parts else
-                    "picture stays in place until the source match is reviewed"
+                    "art moves with the object"
+                    if self.map_view.instance_art_is_movable(instance.instance_id) else
+                    "source-anchored; exact underlay is not established"
                 )
             else:
-                movement = "switch Map artwork to Editable objects to preview moving its picture"
+                movement = "switch to Editable objects; movement requires a verified underlay"
             part_lines.append(
                 f"- {part.part_id.replace('_', ' ')}: {part.role.replace('_', ' ')}; "
                 f"{part.width}x{part.height}; {movement}; "
@@ -6044,6 +6093,13 @@ class MapEntityViewer(QMainWindow):
             self.map_art_combo.setCurrentIndex(index)
             self.map_art_combo.blockSignals(False)
             self.map_view.set_map_art_layer("editable")
+        if not self.map_view.instance_art_is_movable(instance_id):
+            self.select_instance(instance)
+            self.statusBar().showMessage(
+                f"{instance_id} stays at its ROM source position: the viewer cannot restore the exact background under every part yet.",
+                8000,
+            )
+            return
         instance.origin_x += delta_x
         instance.origin_y += delta_y
         self.dirty = True
@@ -6051,19 +6107,8 @@ class MapEntityViewer(QMainWindow):
         self.select_instance(instance)
         self._update_scene_summary()
         action = "Switched to Editable objects and moved" if switched_to_editable else "Moved"
-        entity = self.entities.get(instance.entity_id)
-        skipped_parts = sum(
-            (instance.instance_id, part.part_id) not in self.map_view.detachable_parts
-            for part in entity.parts
-        ) if entity else 0
-        skipped_note = (
-            f" {skipped_parts} part(s) remain in place because their source pixels did not match."
-            if skipped_parts else ""
-        )
         self.statusBar().showMessage(
-            f"{action} {instance_id} and its annotated artwork by {delta_x},{delta_y} pixels. "
-            "Unclassified pixels and any unoutlined parts remain in the map image."
-            + skipped_note,
+            f"{action} {instance_id} and all of its verified artwork by {delta_x},{delta_y} pixels.",
             6000,
         )
 
@@ -6094,6 +6139,14 @@ class MapEntityViewer(QMainWindow):
             # the user on an unrelated map or source tab.
             self.info_tabs.setCurrentWidget(self.flow_info)
             self.right_scroll.ensureWidgetVisible(self.flow_info, 0, 0)
+            if (
+                self.map_view.map_art_layer == "editable"
+                and not self.map_view.instance_art_is_movable(instance.instance_id)
+            ):
+                self.statusBar().showMessage(
+                    "This object's source art is anchored until its exact underlay is known; the viewer will not move only its outline.",
+                    7000,
+                )
 
     def show_behavior(self, record: MapBehaviorRecord) -> None:
         self.selected_evidence = None
@@ -6467,8 +6520,9 @@ class MapEntityViewer(QMainWindow):
             "terrain_feature": "body",
             "foliage": "decal",
             }.get(entity.category, "unreviewed")
-        instance.origin_x = self.x_spin.value()
-        instance.origin_y = self.y_spin.value()
+        if self.map_view.instance_art_is_movable(instance.instance_id):
+            instance.origin_x = self.x_spin.value()
+            instance.origin_y = self.y_spin.value()
         self.dirty = True
         self._refresh_list()
         self.select_instance(instance)

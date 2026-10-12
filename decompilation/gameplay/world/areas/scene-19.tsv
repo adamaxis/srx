@@ -1,0 +1,5 @@
+instance_id	entity_id	origin_x	origin_y	source_origin_x	source_origin_y
+scene19_pool_table_01	jackals_lantern_pool_table	64	96	64	96
+scene19_pool_table_02	jackals_lantern_pool_table	160	96	160	96
+scene19_wall_strips_01	jackals_lantern_wall_strips	96	96	96	96
+scene19_wall_strips_02	jackals_lantern_wall_strips	192	96	192	96

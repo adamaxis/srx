@@ -1,0 +1,3 @@
+collision_id	local_x	local_y	width	height	collision_mode	evidence	review_status
+table_footprint_01	0	32	64	32	blocking	Scene 19 ROM collision record 8 at 0x1D5F28: X=0x0040..0x007F, Y=0x0080..0x009F, raw 0x007E. Source terrain probe classifies 0x7E as blocked.	source_verified
+table_footprint_02	0	32	64	32	blocking	Scene 19 ROM collision record 9 at 0x1D5F32: X=0x00A0..0x00DF, Y=0x0080..0x009F, raw 0x007E. Source terrain probe classifies 0x7E as blocked.	source_verified
