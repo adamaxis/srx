@@ -1,0 +1,31 @@
+cell_dx	cell_dy	source_primary	source_secondary	background_primary	background_secondary	evidence	instance_id
+0	1	0x0057	0x0085	0x0006	0x0085	Scene 26 layer-A table body cell.	-
+1	1	0x0058	0x0085	0x0006	0x0085	Scene 26 layer-A table body cell.	-
+2	1	0x0059	0x0085	0x0006	0x0085	Scene 26 layer-A table body cell.	-
+0	2	0x002A	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_01
+1	2	0x0024	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_01
+2	2	0x0024	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_01
+3	2	0x0025	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_01
+0	2	0x002A	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_02
+1	2	0x0024	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_02
+2	2	0x0024	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_02
+3	2	0x0025	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_02
+0	2	0x0023	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_03
+1	2	0x0024	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_03
+2	2	0x0024	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_03
+3	2	0x0025	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_03
+0	2	0x002A	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_04
+1	2	0x0024	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_04
+2	2	0x0024	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_04
+0	2	0x002A	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_05
+1	2	0x0024	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_05
+2	2	0x0024	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_05
+3	2	0x0025	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_05
+0	2	0x002A	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_06
+1	2	0x0024	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_06
+2	2	0x0024	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_06
+3	2	0x0025	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_06
+0	2	0x0023	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_07
+1	2	0x0024	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_07
+2	2	0x0024	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_07
+3	2	0x0025	-1	0x0006	-1	Scene 26 table shadow metatile at the source instance; retain its original secondary-layer floor decoration.	scene26_console_07

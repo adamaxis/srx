@@ -26,6 +26,7 @@ from PyQt6.QtCore import QPointF, QRect, QRectF, QSize, Qt
 from PyQt6.QtGui import QAction, QActionGroup, QBrush, QColor, QFont, QFontDatabase, QImage, QPainter, QPainterPath, QPen, QPixmap, QPolygonF
 from PyQt6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
@@ -689,6 +690,14 @@ def as_int(row: dict[str, str], name: str, default: int = 0) -> int:
         return default
 
 
+def as_source_index(row: dict[str, str], name: str, default: int = 0) -> int:
+    value = row.get(name, "").strip()
+    try:
+        return int(value, 0) if value else default
+    except ValueError:
+        return default
+
+
 def safe_id(value: str) -> str:
     result = re.sub(r"[^a-zA-Z0-9_-]+", "_", value.strip()).strip("_").lower()
     if not result or result in {".", ".."}:
@@ -762,6 +771,23 @@ class EntityPart:
     evidence: str = ""
     asset_path: str = ""
     outline_points: str = ""
+    art_mask_points: str = ""
+    outline_visible: bool = True
+    art_mask_mode: str = "polygon"
+    source_instance_id: str = ""
+
+
+@dataclass
+class SourceTileReplacement:
+    """ROM map cells an authored entity replaces in the editable preview."""
+    cell_dx: int
+    cell_dy: int
+    source_primary: int
+    source_secondary: int
+    background_primary: int
+    background_secondary: int
+    evidence: str = ""
+    instance_id: str = ""
 
 
 @dataclass
@@ -800,6 +826,7 @@ class EntityDefinition:
     parts: list[EntityPart] = field(default_factory=list)
     interactables: list[Interactable] = field(default_factory=list)
     collision_regions: list[EntityCollisionRegion] = field(default_factory=list)
+    tile_replacements: list[SourceTileReplacement] = field(default_factory=list)
 
     @property
     def bounds(self) -> tuple[int, int, int, int]:
@@ -831,9 +858,13 @@ class EntityDefinition:
         y1 = max(rect[1] + rect[3] for rect in rectangles)
         return (x0, y0, max(1, x1 - x0), max(1, y1 - y0))
 
-    def contains_local_point(self, x: float, y: float) -> bool:
+    def contains_local_point(
+        self, x: float, y: float, instance_id: str = ""
+    ) -> bool:
         if self.parts:
             for part in self.parts:
+                if part.source_instance_id and part.source_instance_id != instance_id:
+                    continue
                 paths = parse_outline_paths(part.outline_points)
                 if paths:
                     if any(
@@ -987,7 +1018,14 @@ class WorldContent:
     )
     PART_HEADER = (
         "part_id", "source_kind", "source_scene", "source_x", "source_y",
-        "width", "height", "local_x", "local_y", "draw_layer", "role", "evidence", "asset_path", "outline_points",
+        "width", "height", "local_x", "local_y", "draw_layer", "role",
+        "evidence", "asset_path", "outline_points", "art_mask_points",
+        "outline_visible", "art_mask_mode", "source_instance_id",
+    )
+    TILE_HEADER = (
+        "cell_dx", "cell_dy", "source_primary", "source_secondary",
+        "background_primary", "background_secondary", "evidence",
+        "instance_id",
     )
     INTERACTION_HEADER = (
         "interaction_id", "local_x", "local_y", "width", "height",
@@ -1062,8 +1100,37 @@ class WorldContent:
                 evidence=row.get("evidence", ""),
                 asset_path=row.get("asset_path", ""),
                 outline_points=row.get("outline_points", ""),
+                art_mask_points=row.get("art_mask_points", ""),
+                outline_visible=(
+                    row.get("outline_visible", "").strip().lower()
+                    not in {"0", "false", "no", "off"}
+                ),
+                art_mask_mode=row.get("art_mask_mode", "polygon") or "polygon",
+                source_instance_id=(
+                    str(row.get("source_instance_id") or "").strip()
+                    if str(row.get("source_instance_id") or "").strip() not in {"", "-"}
+                    else ""
+                ),
             )
             for row in part_rows
+        ]
+        _, tile_rows = read_tsv(directory / "tile_replacements.tsv")
+        entity.tile_replacements = [
+            SourceTileReplacement(
+                cell_dx=as_int(row, "cell_dx"),
+                cell_dy=as_int(row, "cell_dy"),
+                source_primary=as_source_index(row, "source_primary"),
+                source_secondary=as_source_index(row, "source_secondary"),
+                background_primary=as_source_index(row, "background_primary"),
+                background_secondary=as_source_index(row, "background_secondary"),
+                evidence=row.get("evidence", ""),
+                instance_id=(
+                    str(row.get("instance_id") or "").strip()
+                    if str(row.get("instance_id") or "").strip() not in {"", "-"}
+                    else ""
+                ),
+            )
+            for row in tile_rows
         ]
         _, interaction_rows = read_tsv(directory / "interactables.tsv")
         entity.interactables = [
@@ -1110,7 +1177,21 @@ class WorldContent:
             "evidence": entity.evidence,
             **optional_values,
         }])
-        write_tsv(directory / "parts.tsv", self.PART_HEADER, [part.__dict__ for part in entity.parts])
+        part_rows = [
+            {
+                **part.__dict__,
+                "source_instance_id": part.source_instance_id or "-",
+            }
+            for part in entity.parts
+        ]
+        write_tsv(directory / "parts.tsv", self.PART_HEADER, part_rows)
+        write_tsv(
+            directory / "tile_replacements.tsv", self.TILE_HEADER,
+            [
+                {**tile.__dict__, "instance_id": tile.instance_id or "-"}
+                for tile in entity.tile_replacements
+            ],
+        )
         write_tsv(
             directory / "interactables.tsv",
             self.INTERACTION_HEADER,
@@ -1131,6 +1212,10 @@ class WorldContent:
             for part in entity.parts:
                 if part.source_kind == "map_composite":
                     source_path = assets_root / "field" / "maps" / f"mode-{part.source_scene}.bmp"
+                elif part.source_kind == "primary_plane":
+                    source_path = assets_root / "field" / "maps" / f"mode-{part.source_scene}-primary-plane.png"
+                elif part.source_kind == "secondary_plane":
+                    source_path = assets_root / "field" / "maps" / f"mode-{part.source_scene}-secondary-plane.png"
                 elif part.source_kind == "priority_overlay":
                     source_path = assets_root / "field" / "maps" / f"mode-{part.source_scene}-priority-overlay.png"
                 else:
@@ -1153,8 +1238,15 @@ class WorldContent:
                 crop = source.copy(QRect(
                     part.source_x, part.source_y, part.width, part.height
                 ))
-                outline_paths = parse_outline_paths(part.outline_points)
-                if outline_paths:
+                if part.art_mask_mode == "tile_difference":
+                    crop = make_source_tile_difference_mask(
+                        crop, part, entity, assets_root
+                    )
+                else:
+                    outline_paths = parse_outline_paths(
+                        part.art_mask_points or part.outline_points
+                    )
+                if part.art_mask_mode != "tile_difference" and outline_paths:
                     clip_path = QPainterPath()
                     for outline in outline_paths:
                         crop_points = [
@@ -1396,6 +1488,145 @@ def read_map_cell_evidence(
             f"ROM map index: {map_index}",
         )),
     )
+
+
+@lru_cache(maxsize=56)
+def read_source_tile_grid(
+    assets_root: Path, scene_id: int
+) -> tuple[int, int, tuple[tuple[int, int], ...]]:
+    """Read ROM-decoded Plane A/B metatile words for the offline map editor."""
+    _, index_rows = read_tsv(assets_root / "field" / "maps" / "index.tsv")
+    index = next(
+        (row for row in index_rows if as_int(row, "mode_id", -1) == scene_id),
+        None,
+    )
+    if index is None:
+        return 0, 0, ()
+    width = as_int(index, "tilemap_width")
+    height = as_int(index, "tilemap_height")
+    scene_root = assets_root / "records" / "field" / "scenes" / f"scene-{scene_id:02d}"
+    try:
+        primary = (scene_root / "terrain-layer-a.bin").read_bytes()
+        secondary = (scene_root / "terrain-layer-b.bin").read_bytes()
+    except OSError:
+        return width, height, ()
+    if width <= 0 or height <= 0 or len(primary) < width * height * 2 or len(secondary) < width * height * 2:
+        return width, height, ()
+    words = []
+    for index in range(width * height):
+        offset = index * 2
+        words.append((
+            int.from_bytes(primary[offset:offset + 2], "big"),
+            int.from_bytes(secondary[offset:offset + 2], "big"),
+        ))
+    return width, height, tuple(words)
+
+
+def matching_source_tile_cells(
+    assets_root: Path,
+    scene_id: int,
+    primary_id: int,
+    secondary_id: int,
+) -> list[tuple[int, int]]:
+    width, height, words = read_source_tile_grid(assets_root, scene_id)
+    if not words:
+        return []
+    return [
+        (index % width, index // width)
+        for index, pair in enumerate(words)
+        if pair == (primary_id, secondary_id)
+    ]
+
+
+def part_source_path(assets_root: Path, source_kind: str, scene_id: int) -> Path:
+    maps = assets_root / "field" / "maps"
+    if source_kind == "map_composite":
+        return maps / f"mode-{scene_id}.bmp"
+    if source_kind == "primary_plane":
+        return maps / f"mode-{scene_id}-primary-plane.png"
+    if source_kind == "secondary_plane":
+        return maps / f"mode-{scene_id}-secondary-plane.png"
+    if source_kind == "priority_overlay":
+        return maps / f"mode-{scene_id}-priority-overlay.png"
+    return Path()
+
+
+def make_source_tile_difference_mask(
+    crop: QImage,
+    part: EntityPart,
+    entity: EntityDefinition,
+    assets_root: Path,
+) -> QImage:
+    """Keep only pixels that differ from the authored replacement floor tiles."""
+    if not entity.tile_replacements:
+        raise ValueError(
+            f"{entity.entity_id}/{part.part_id} uses tile_difference without "
+            "tile_replacements.tsv"
+        )
+    source_path = part_source_path(assets_root, part.source_kind, part.source_scene)
+    source = QImage(str(source_path)).convertToFormat(QImage.Format.Format_RGBA8888)
+    if source.isNull():
+        raise ValueError(f"Could not read source plane for {entity.entity_id}/{part.part_id}")
+    width, height, words = read_source_tile_grid(assets_root, part.source_scene)
+    if not words:
+        raise ValueError(f"Source tilemap is unavailable for scene {part.source_scene}")
+    origin_x = part.source_x - part.local_x
+    origin_y = part.source_y - part.local_y
+    origin_cell_x, origin_cell_y = origin_x // 32, origin_y // 32
+    replacements = {
+        (tile.cell_dx, tile.cell_dy): tile
+        for tile in entity.tile_replacements
+        if not tile.instance_id or tile.instance_id == part.source_instance_id
+    }
+    donor_cache: dict[tuple[int, int], QImage] = {}
+    output = QImage(crop.size(), QImage.Format.Format_ARGB32)
+    output.fill(Qt.GlobalColor.transparent)
+    source_bits = source.constBits().asstring(source.sizeInBytes())
+    source_stride = source.bytesPerLine()
+    out_painter = QPainter(output)
+    for y in range(crop.height()):
+        for x in range(crop.width()):
+            map_x, map_y = part.source_x + x, part.source_y + y
+            cell_x, cell_y = map_x // 32, map_y // 32
+            replacement = replacements.get((cell_x - origin_cell_x, cell_y - origin_cell_y))
+            if replacement is None:
+                continue
+            if not (0 <= cell_x < width and 0 <= cell_y < height):
+                continue
+            pair = words[cell_y * width + cell_x]
+            if (
+                pair[0] != replacement.source_primary
+                or (replacement.source_secondary >= 0
+                    and pair[1] != replacement.source_secondary)
+            ):
+                continue
+            background_pair = (
+                replacement.background_primary,
+                (replacement.background_secondary
+                 if replacement.background_secondary >= 0 else pair[1]),
+            )
+            donor = donor_cache.get(background_pair)
+            if donor is None:
+                candidates = matching_source_tile_cells(
+                    assets_root, part.source_scene, *background_pair
+                )
+                if not candidates:
+                    raise ValueError(
+                        f"No source cell has background tile pair "
+                        f"{background_pair[0]:#06x}/{background_pair[1]:#06x} "
+                        f"in scene {part.source_scene}"
+                    )
+                donor = source.copy(QRect(
+                    candidates[0][0] * 32, candidates[0][1] * 32, 32, 32
+                )).convertToFormat(QImage.Format.Format_RGBA8888)
+                donor_cache[background_pair] = donor
+            donor_color = donor.pixelColor(map_x % 32, map_y % 32)
+            source_offset = map_y * source_stride + map_x * 4
+            src = source_bits[source_offset:source_offset + 4]
+            if src[:3] != bytes((donor_color.red(), donor_color.green(), donor_color.blue())):
+                output.setPixelColor(x, y, QColor(src[0], src[1], src[2], src[3]))
+    out_painter.end()
+    return output
 
 
 def read_profile_entry_positions(
@@ -2698,7 +2929,7 @@ class FieldMapView(QGraphicsView):
         )
 
     def _rebuild_editable_backdrop(self) -> None:
-        """Cut authored pixels out of the source image before showing movable parts."""
+        """Restore authored source cells before detaching their named art."""
         self.detachable_parts = set()
         if self.map_info is None or self.map_art_layer != "editable":
             return
@@ -2706,65 +2937,139 @@ class FieldMapView(QGraphicsView):
         base = QImage(str(self.map_info.asset)).convertToFormat(
             QImage.Format.Format_ARGB32
         )
-        overlay = QImage()
-        if self.show_priority and self.map_info.priority_asset.is_file():
-            overlay = QImage(str(self.map_info.priority_asset)).convertToFormat(
+        overlay_source = QImage()
+        if self.map_info.priority_asset.is_file():
+            overlay_source = QImage(str(self.map_info.priority_asset)).convertToFormat(
                 QImage.Format.Format_ARGB32
             )
-            if overlay.size() != base.size():
-                overlay = QImage()
+            if overlay_source.size() != base.size():
+                overlay_source = QImage()
+        overlay = overlay_source.copy() if self.show_priority else QImage()
+        primary_plane = QImage()
+        if self.map_info.source_primary_plane_asset is not None:
+            primary_plane = QImage(
+                str(self.map_info.source_primary_plane_asset)
+            ).convertToFormat(QImage.Format.Format_ARGB32)
+            if primary_plane.size() != base.size():
+                primary_plane = QImage()
 
-        if not base.isNull():
-            base_reference = base.convertToFormat(QImage.Format.Format_RGBA8888)
-            overlay_reference = (
-                overlay.convertToFormat(QImage.Format.Format_RGBA8888)
-                if not overlay.isNull() else QImage()
+        if base.isNull():
+            return
+
+        source_width, source_height, source_words = read_source_tile_grid(
+            self.assets_root, self.map_info.scene_id
+        )
+        original_base = base.copy()
+        donor_cache: dict[tuple[int, int], tuple[int, int, QImage]] = {}
+        restored_by_instance: dict[str, set[tuple[int, int]]] = {}
+
+        def donor_cell(pair: tuple[int, int]) -> tuple[int, int, QImage] | None:
+            if pair in donor_cache:
+                return donor_cache[pair]
+            candidates = matching_source_tile_cells(
+                self.assets_root, self.map_info.scene_id, pair[0], pair[1]
             )
-            base_reference_bytes = bytes(
-                base_reference.constBits().asstring(base_reference.sizeInBytes())
+            if not candidates:
+                return None
+            first_x, first_y = candidates[0]
+            patch = original_base.copy(QRect(first_x * 32, first_y * 32, 32, 32))
+            # A metatile pair has one stable visual. Refuse to choose arbitrarily
+            # if this extraction's same-ID cells do not render identically.
+            for candidate_x, candidate_y in candidates[1:]:
+                candidate = original_base.copy(QRect(
+                    candidate_x * 32, candidate_y * 32, 32, 32
+                ))
+                if candidate != patch:
+                    return None
+            result = (first_x, first_y, patch)
+            donor_cache[pair] = result
+            return result
+
+        base_painter = QPainter(base)
+        for instance in self.instances:
+            entity = self.entities.get(instance.entity_id)
+            applicable_tiles = (
+                [tile for tile in entity.tile_replacements
+                 if not tile.instance_id or tile.instance_id == instance.instance_id]
+                if entity is not None else []
             )
-            overlay_reference_bytes = (
-                bytes(overlay_reference.constBits().asstring(
-                    overlay_reference.sizeInBytes()
-                )) if not overlay_reference.isNull() else b""
-            )
-            base_painter = QPainter(base)
-            base_painter.setCompositionMode(
+            if entity is None or not applicable_tiles or not source_words:
+                continue
+            origin_cell_x = int(instance.source_origin_x or 0) // 32
+            origin_cell_y = int(instance.source_origin_y or 0) // 32
+            resolved: list[tuple[int, int, QImage]] = []
+            valid = True
+            for replacement in applicable_tiles:
+                cell_x = origin_cell_x + replacement.cell_dx
+                cell_y = origin_cell_y + replacement.cell_dy
+                if not (0 <= cell_x < source_width and 0 <= cell_y < source_height):
+                    valid = False
+                    break
+                source_pair = source_words[cell_y * source_width + cell_x]
+                if (
+                    source_pair[0] != replacement.source_primary
+                    or (replacement.source_secondary >= 0
+                        and source_pair[1] != replacement.source_secondary)
+                ):
+                    valid = False
+                    break
+                background_secondary = (
+                    replacement.background_secondary
+                    if replacement.background_secondary >= 0
+                    else source_pair[1]
+                )
+                donor = donor_cell((
+                    replacement.background_primary,
+                    background_secondary,
+                ))
+                if donor is None:
+                    valid = False
+                    break
+                resolved.append((cell_x, cell_y, donor[2]))
+            if not valid:
+                continue
+            restored_cells: set[tuple[int, int]] = set()
+            for cell_x, cell_y, patch in resolved:
+                base_painter.drawImage(cell_x * 32, cell_y * 32, patch)
+                restored_cells.add((cell_x, cell_y))
+            restored_by_instance[instance.instance_id] = restored_cells
+        base_painter.end()
+
+        overlay_reference = (
+            overlay_source.convertToFormat(QImage.Format.Format_RGBA8888)
+            if not overlay_source.isNull() else QImage()
+        )
+        overlay_reference_bytes = (
+            bytes(overlay_reference.constBits().asstring(
+                overlay_reference.sizeInBytes()
+            )) if not overlay_reference.isNull() else b""
+        )
+        overlay_painter = QPainter(overlay) if not overlay.isNull() else None
+        if overlay_painter is not None:
+            overlay_painter.setCompositionMode(
                 QPainter.CompositionMode.CompositionMode_DestinationOut
             )
-            overlay_painter = QPainter(overlay) if not overlay.isNull() else None
-            if overlay_painter is not None:
-                overlay_painter.setCompositionMode(
-                    QPainter.CompositionMode.CompositionMode_DestinationOut
-                )
-            for instance in self.instances:
-                entity = self.entities.get(instance.entity_id)
-                if entity is None:
+        for instance in self.instances:
+            entity = self.entities.get(instance.entity_id)
+            if entity is None:
+                continue
+            restored_cells = restored_by_instance.get(instance.instance_id, set())
+            for part in entity.parts:
+                if part.source_instance_id and part.source_instance_id != instance.instance_id:
                     continue
-                for part in entity.parts:
-                    if part.source_kind == "map_composite":
-                        target_painter = base_painter
-                        target_reference = base_reference_bytes
-                        target_stride = base_reference.bytesPerLine()
-                    elif part.source_kind == "priority_overlay":
-                        target_painter = overlay_painter
-                        target_reference = overlay_reference_bytes
-                        target_stride = overlay_reference.bytesPerLine() if not overlay_reference.isNull() else 0
-                    else:
-                        target_painter = None
-                    if target_painter is None:
-                        continue
-                    pixels = self._part_image(part)
-                    if pixels.isNull() or pixels.size() != QSize(part.width, part.height):
-                        continue
-                    source_origin_x = int(instance.source_origin_x or 0)
-                    source_origin_y = int(instance.source_origin_y or 0)
-                    source_x = source_origin_x + part.local_x
-                    source_y = source_origin_y + part.local_y
-                    if (
+                pixels = self._part_image(part)
+                if pixels.isNull() or pixels.size() != QSize(part.width, part.height):
+                    continue
+                source_origin_x = int(instance.source_origin_x or 0)
+                source_origin_y = int(instance.source_origin_y or 0)
+                source_x = source_origin_x + part.local_x
+                source_y = source_origin_y + part.local_y
+
+                if part.source_kind == "priority_overlay":
+                    if overlay_reference.isNull() or primary_plane.isNull() or (
                         source_x < 0 or source_y < 0
-                        or source_x + part.width > base.width()
-                        or source_y + part.height > base.height()
+                        or source_x + part.width > overlay_source.width()
+                        or source_y + part.height > overlay_source.height()
                     ):
                         continue
                     pixels_rgba = pixels.convertToFormat(QImage.Format.Format_RGBA8888)
@@ -2772,6 +3077,7 @@ class FieldMapView(QGraphicsView):
                         pixels_rgba.constBits().asstring(pixels_rgba.sizeInBytes())
                     )
                     matches_source = True
+                    target_stride = overlay_reference.bytesPerLine()
                     for row in range(part.height):
                         source_row = row * pixels_rgba.bytesPerLine()
                         target_row = (source_y + row) * target_stride + source_x * 4
@@ -2780,33 +3086,67 @@ class FieldMapView(QGraphicsView):
                             if pixels_bytes[source_offset + 3] == 0:
                                 continue
                             target_offset = target_row + column * 4
-                            if (
-                                pixels_bytes[source_offset:source_offset + 3]
-                                != target_reference[target_offset:target_offset + 3]
-                            ):
+                            if pixels_bytes[source_offset:source_offset + 3] != overlay_reference_bytes[target_offset:target_offset + 3]:
                                 matches_source = False
                                 break
                         if not matches_source:
                             break
-                    if not matches_source:
-                        continue
-                    target_painter.drawImage(source_x, source_y, pixels)
+                    if matches_source:
+                        if overlay_painter is not None:
+                            overlay_painter.drawImage(source_x, source_y, pixels)
+                        underlay = primary_plane.copy(QRect(
+                            source_x, source_y, part.width, part.height
+                        )).convertToFormat(QImage.Format.Format_ARGB32)
+                        underlay_painter = QPainter(underlay)
+                        underlay_painter.setCompositionMode(
+                            QPainter.CompositionMode.CompositionMode_DestinationIn
+                        )
+                        underlay_painter.drawImage(0, 0, pixels)
+                        underlay_painter.end()
+                        base_painter = QPainter(base)
+                        base_painter.drawImage(source_x, source_y, underlay)
+                        base_painter.end()
+                        self.detachable_parts.add((instance.instance_id, part.part_id))
+                    continue
+
+                if part.art_mask_mode != "tile_difference" or not restored_cells:
+                    continue
+                # Source art is movable only when every nontransparent pixel
+                # sits in a cell that this entity's source profile restored.
+                pixels_rgba = pixels.convertToFormat(QImage.Format.Format_RGBA8888)
+                pixels_bytes = bytes(
+                    pixels_rgba.constBits().asstring(pixels_rgba.sizeInBytes())
+                )
+                stride = pixels_rgba.bytesPerLine()
+                complete = True
+                for row in range(part.height):
+                    for column in range(part.width):
+                        offset = row * stride + column * 4
+                        if pixels_bytes[offset + 3] == 0:
+                            continue
+                        cell = ((source_x + column) // 32, (source_y + row) // 32)
+                        if cell not in restored_cells:
+                            complete = False
+                            break
+                    if not complete:
+                        break
+                if complete:
                     self.detachable_parts.add((instance.instance_id, part.part_id))
-            base_painter.end()
-            if overlay_painter is not None:
-                overlay_painter.end()
-            if self.background_item is not None:
-                self.background_item.setPixmap(QPixmap.fromImage(base))
-            if overlay.isNull():
-                if self.priority_item is not None:
-                    self.scene().removeItem(self.priority_item)
-                    self.priority_item = None
-            elif self.priority_item is None:
-                self.priority_item = self.scene().addPixmap(QPixmap.fromImage(overlay))
-                self.priority_item.setZValue(7)
-                self.priority_item.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
-            else:
-                self.priority_item.setPixmap(QPixmap.fromImage(overlay))
+
+        if overlay_painter is not None:
+            overlay_painter.end()
+        if self.background_item is not None:
+            self.background_item.setPixmap(QPixmap.fromImage(base))
+        if overlay.isNull():
+            if self.priority_item is not None:
+                self.scene().removeItem(self.priority_item)
+                self.priority_item = None
+        elif self.priority_item is None:
+            self.priority_item = self.scene().addPixmap(QPixmap.fromImage(overlay))
+            self.priority_item.setZValue(7)
+            self.priority_item.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+        else:
+            self.priority_item.setPixmap(QPixmap.fromImage(overlay))
 
     def set_layer_options(self, priority: bool, grid: bool, collision: bool,
                           events: bool, actors: bool, actor_routes: bool,
@@ -3239,6 +3579,8 @@ class FieldMapView(QGraphicsView):
             label.setData(1, "entity_label")
             group.addToGroup(label)
             for part in entity.parts:
+                if part.source_instance_id and part.source_instance_id != instance.instance_id:
+                    continue
                 if (
                     self.map_art_layer == "editable"
                     and (instance.instance_id, part.part_id) in self.detachable_parts
@@ -3270,6 +3612,8 @@ class FieldMapView(QGraphicsView):
                                 "Move this image with the selected object."
                             )
                             group.addToGroup(artwork)
+                if not part.outline_visible:
+                    continue
                 part_color = role_colors.get(part.role, role_colors["unreviewed"])
                 paths = parse_outline_paths(part.outline_points)
                 if paths:
@@ -4732,8 +5076,11 @@ class MapEntityViewer(QMainWindow):
         self.parts_list.blockSignals(True)
         self.parts_list.clear()
         for part in entity.parts:
+            if part.source_instance_id and part.source_instance_id != instance.instance_id:
+                continue
+            outline_note = " [outline hidden]" if not part.outline_visible else ""
             item = QListWidgetItem(
-                f"{part.part_id} @ {part.local_x},{part.local_y}"
+                f"{part.part_id} @ {part.local_x},{part.local_y}{outline_note}"
             )
             item.setData(Qt.ItemDataRole.UserRole, part.part_id)
             self.parts_list.addItem(item)
@@ -4783,6 +5130,8 @@ class MapEntityViewer(QMainWindow):
         self.shop_profile_edit.setText(entity.shop_profile)
         part_lines = []
         for part in entity.parts:
+            if part.source_instance_id and part.source_instance_id != instance.instance_id:
+                continue
             if self.map_view.map_art_layer == "editable":
                 movement = (
                     "its picture moves with the object"
@@ -4859,7 +5208,13 @@ class MapEntityViewer(QMainWindow):
         dialog.setWindowTitle(f"Edit visual part: {part.part_id}")
         form = QFormLayout(dialog)
         part_id = QLineEdit(part.part_id)
-        source_kind = QComboBox(); source_kind.addItems(["map_composite", "priority_overlay"]); source_kind.setCurrentText(part.source_kind)
+        source_instance_id = QLineEdit(part.source_instance_id)
+        source_kind = QComboBox()
+        source_kind.addItems([
+            "map_composite", "primary_plane", "secondary_plane",
+            "priority_overlay",
+        ])
+        source_kind.setCurrentText(part.source_kind)
         fields: dict[str, QSpinBox] = {}
         for key, label, value, minimum, maximum in (
             ("source_scene", "Source scene", part.source_scene, 0, 55),
@@ -4878,10 +5233,23 @@ class MapEntityViewer(QMainWindow):
         evidence = QLineEdit(part.evidence)
         outline_points = QLineEdit(part.outline_points)
         outline_points.setPlaceholderText("x,y;x,y;x,y | another polygon")
+        art_mask_points = QLineEdit(part.art_mask_points)
+        art_mask_points.setPlaceholderText(
+            "Optional crop mask; blank uses the selection outline"
+        )
+        outline_visible = QCheckBox("Draw selection outline for this part")
+        outline_visible.setChecked(part.outline_visible)
+        mask_mode = QComboBox()
+        mask_mode.addItems(["polygon", "tile_difference"])
+        mask_mode.setCurrentText(part.art_mask_mode)
         form.insertRow(0, "Part ID", part_id)
         form.insertRow(1, "Source kind", source_kind)
+        form.insertRow(2, "Source map instance (optional)", source_instance_id)
         form.addRow("Role", role); form.addRow("Draw depth", depth)
         form.addRow("Entity-local outline polygons", outline_points)
+        form.addRow("Artwork crop mask polygons", art_mask_points)
+        form.addRow("Artwork mask source", mask_mode)
+        form.addRow("Selection outline", outline_visible)
         form.addRow("Evidence", evidence)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(dialog.accept); buttons.rejected.connect(dialog.reject)
@@ -4889,9 +5257,11 @@ class MapEntityViewer(QMainWindow):
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
         part.part_id = safe_id(part_id.text())
+        part.source_instance_id = source_instance_id.text().strip()
         part.source_kind = source_kind.currentText()
         try:
             parse_outline_paths(outline_points.text())
+            parse_outline_paths(art_mask_points.text())
         except ValueError as error:
             QMessageBox.warning(self, "Invalid visual outline", str(error))
             return
@@ -4899,6 +5269,9 @@ class MapEntityViewer(QMainWindow):
             setattr(part, key, spin.value())
         part.role = role.currentText(); part.draw_layer = depth.currentText(); part.evidence = evidence.text().strip()
         part.outline_points = outline_points.text().strip()
+        part.art_mask_points = art_mask_points.text().strip()
+        part.outline_visible = outline_visible.isChecked()
+        part.art_mask_mode = mask_mode.currentText()
         self.dirty = True
         self._show_properties(instance)
         self.map_view.redraw_annotations()
@@ -5104,6 +5477,7 @@ class MapEntityViewer(QMainWindow):
             if entity.contains_local_point(
                 point.x() - instance.origin_x,
                 point.y() - instance.origin_y,
+                instance.instance_id,
             ):
                 matches.append(instance)
         if matches:
