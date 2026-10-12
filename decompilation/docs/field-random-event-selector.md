@@ -52,8 +52,8 @@ Scene IDs below are ROM field-scene IDs. The tables cover the field random-event
 | Injured-person event, handler `0x20F72` | Scenes `0`, `1`, and `3`; sums `5` and `7` | The follow-up Attack choice reaches `0x23A3A` and queues the one-template Lone Star detective list at `0x1D6FE4`; the accompanying ROM text says Lone Star rounds the corner. |
 | Alley grenade seller, handler `0x2112C` | Scenes `0`, `2`, `3`, and `5`; sums `5-7` | The Attack choice reaches `0x24C4C`. Its 60-percent branch queues two templates from `0x1D7054`, both named `bodyguard`; the follow-up text identifies the encounter as an undercover Lone Star patrol. Preserve the source template identity when showing these actors. |
 | Company Man confrontation, handler `0x20F5A` | Scenes `3` and `5`; sums `1` and `4` | One continuation says the man remains irate and a Lone Star patrol arrives. The response text then says the officers turn their attention to the player. |
-| Flustered-woman event, handler `0x20F8A` | Scenes `0-1`; sums `3-4` | Its continuation exposes a Lone Star undercover officer and can bring in backup. |
-| Haggard-man event, handler `0x20FA2` | Scenes `2` and `5`; sums `1-2` | A doctor calls a Lone Star patrol; a follow-up says the officers take interest in the player. |
+| Flustered-woman event, handler `0x20F8A` | Scenes `0-1`; sums `3-4` | The MORE continuation divides into suspected-harm and apparent-law-official versions. The law-official version can reveal an undercover Lone Star agent; its Attack/Comply/Run choices can end in a gun battle, questioning/release, fine, arrest/confiscation, escape, or being overtaken and shot. See the terminal branch table below. |
+| Haggard-man event, handler `0x20FA2` | Scenes `2` and `5`; sums `1-2` | The doctor offers 50 nuyen to recapture his escaped patient. Help and Threaten resolve without combat; Attack or Threaten can call a patrol, and one alternate Attack branch starts a fight with the doctor's Gator Shaman/bodyguards. See the terminal branch table below. |
 | Lone Star patrol, handler `0x2106A` | Scenes `41-43`; sum `5` | The follow-up arrest prompt's Attack choice reaches `0x2466C` and queues the list at `0x1D6FEC`, containing `lone11`, `lone12`, and `lonemage`. |
 | Lone Star dynamic templates | Scene `1` (sum `2`) and scenes `41-43` (sum `8`) | The zero-cell dynamic sequences include `lone11`, `lone13`, and `lonemage`. |
 | Disturbance Strike Team escalation | Scenes `0-3`, `5-9`, and `44-50` | The MORE continuations check `FFFBFB` and bit 8 of `FFFC22`. With the bit clear, stages `2-3` select two Strike Team templates (`0x1D6FD0`), `4-6` select four (`0x1D6FC8`), and `7-8` select five (`0x1D6FC4`). Stages `0-1` or a set bit take the low-stage branches described in the next rows; the urban route still returns explicit Renraku attack text. |
@@ -68,6 +68,61 @@ That handler increments the byte at `FFFBFB`, caps it at `8` through
 prompt text names Mako Sochou. This is a story-driven source for the same
 counter used by later disturbance choices; the containing map context is not
 yet joined to a scene ID in the event index.
+
+### Terminal branches traced: flustered woman and escaped patient
+
+The prompt command values dispatch through the ROM table at `0x12CCB4`. The
+extractor records each opening choice's command and target. The companion
+`assets/field/world-activity-terminal-outcomes.tsv` records the continuations
+that have been followed through their terminal dialogue, funds changes, and
+actor-list handoffs. The map viewer shows these rows beside the per-scene event
+prompt. A dispatch target by itself is not treated as a terminal outcome.
+
+**Flustered woman (`0x20F8A`, scenes 0-1, sums 3-4).** MORE enters `0x23AA8`,
+which selects either a suspected-harm prompt or an apparent-law-official
+prompt. In the suspected-harm route, Attack/intervention reaches `0x23B0C`:
+when the FFF0DD check is below 2 and the actor sequence starts, Eye Fiver 2
+and two Eye Fiver 1 actors are queued and the text hands off to a fight. If
+that condition fails, the thug runs and the player gets 100 nuyen. Walking
+away ends with three men abducting the woman. In the apparent-official route,
+Attack reveals the undercover agent when FFF0DD is below 10; otherwise the man
+runs and the woman thanks the player. Questioning reveals the undercover
+prompt only when FFF0DD is zero; otherwise the man exposes himself as Lone Star
+undercover, abducts the woman, and leaves. Walking away also ends in the
+abduction.
+
+At the undercover prompt, Attack dispatches to `0x23412` and queues the
+undercover officer plus two Lone Star actors from `0x1D6FDC`, starting combat.
+Comply enters stateful suspect-ID and weapon-permit checks. Their traced ends
+include release, accepted permit, a 500-nuyen on-sight fine, or arrest with
+weapon confiscation. Run can outrun the patrol, be overtaken and fired on, or
+outrun some officers while others catch up and open fire. Those outcomes are
+selected by the source's state and random branches, not by the map selector.
+
+**Escaped patient (`0x20FA2`, scenes 2 and 5, sums 1-2).** MORE enters
+`0x23BB4`, whose state/random branches select the doctor's response and expose
+Attack, Threaten, and Help choices. Help restrains the patient and pays 50
+nuyen. Threaten can make asylum staff show credentials, take their patient,
+and pay 50 nuyen. Attack has a 50/50 source roll: one half reaches the same
+paid asylum resolution; the other half calls Lone Star and shows a patrol
+choice prompt after identifying the doctor as a ward director and the patient
+as his escapee. Threaten can also call the patrol; its other roll branch pays
+50 nuyen and sends the doctor and assistants away. In the alternate Attack
+prompt, source results below 1 queue a Gator Shaman and two bodyguards, a
+result of 1 queues two bodyguards, and results above 1 pay 100 nuyen and end
+the encounter without combat.
+
+The doctor event's patrol prompt uses the shared Lone Star Attack/Comply/Run
+dispatchers. Attack starts the patrol fight; Comply can resolve through the
+same permit, identity, fine, release, and warrant checks; Run can escape or
+be caught and fired upon. This is distinct from the undercover-woman prompt:
+the doctor calls a uniformed patrol, while the woman branch reveals an agent
+already posing as a law official.
+
+These two encounter graphs are the first terminal-outcome rows in the field
+index. Other handlers still have ROM-decoded opening choices and dispatch
+locations, but their end conditions are not implied by those pointers; the
+viewer labels those branches as pending until their ROM paths are traced.
 
 ### Known Lone Star selector paths (partial map coverage)
 

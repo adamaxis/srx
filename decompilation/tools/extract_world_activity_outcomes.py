@@ -28,6 +28,8 @@ OUTCOME_MASK_TABLE = 0x1D70E4
 OUTCOME_POINTER_TABLE = 0x1D7174
 OUTCOMES_PER_GROUP = 9
 RANDOM_BOUND = 5
+MODE_COMMAND_TABLE = 0x12CCB4
+MODE_COMMAND_COUNT = 250
 GENERIC_OUTCOME = "dynamic_world_effect_sequence"
 ACTIVATION = (
     "Eligible field-loop pass at tick counter modulo 1024 == 10, after the "
@@ -50,11 +52,17 @@ FIELDS = (
     "choice_1",
     "choice_2",
     "choice_3",
-    "map_position",
+    "choice_1_command",
+    "choice_1_dispatch_target",
+    "choice_2_command",
+    "choice_2_dispatch_target",
+    "choice_3_command",
+    "choice_3_dispatch_target",
     "activation",
     "selection_cell_offset",
     "selection_pointer_offset",
     "selected_target_offset",
+    "map_position",
 )
 
 
@@ -84,7 +92,9 @@ def decode_dialogue(rom: bytes, offset: int) -> str:
     raise ValueError(f"dialogue at 0x{offset:X} has no ROM terminator")
 
 
-def prompt_fields(rom: bytes, handler: int) -> tuple[int, int, list[str]]:
+def prompt_fields(
+    rom: bytes, handler: int
+) -> tuple[int, int, list[str], list[int]]:
     """Read the absolute prompt/resource operands used by a handler stub."""
     if rom[handler : handler + 2] != b"\x41\xF9":
         raise ValueError(f"handler 0x{handler:X} does not begin with LEA A0")
@@ -101,7 +111,19 @@ def prompt_fields(rom: bytes, handler: int) -> tuple[int, int, list[str]]:
             text_fields.append("")
         else:
             text_fields.append(decode_dialogue(rom, pointer))
-    return prompt, resource_bundle, text_fields
+    commands = [read_u32(rom, prompt + 16 + index * 4) for index in range(3)]
+    return prompt, resource_bundle, text_fields, commands
+
+
+def command_dispatch_target(rom: bytes, command: int) -> str:
+    """Resolve a prompt's small mode-command index to its ROM handler."""
+    if command < MODE_COMMAND_COUNT:
+        return f"0x{read_u32(rom, MODE_COMMAND_TABLE + command * 4):X}"
+    if command < len(rom):
+        # Commands at or above 0xFA return from the prompt loop. Some menus
+        # use that return value as the next prompt-record pointer.
+        return f"return:0x{command:X}"
+    return ""
 
 
 def rolls_for_sum(total: int) -> list[str]:
@@ -117,7 +139,7 @@ def extract(rom: bytes) -> list[dict[str, str]]:
     if len(rom) < OUTCOME_POINTER_TABLE + 16 * OUTCOMES_PER_GROUP * 4:
         raise ValueError("ROM is too short for the world activity tables")
     rows: list[dict[str, str]] = []
-    handler_cache: dict[int, tuple[int, int, list[str]]] = {}
+    handler_cache: dict[int, tuple[int, int, list[str], list[int]]] = {}
     handler_names: Counter[int] = Counter()
     enabled_cells = 0
     for scene in range(CONTEXT_COUNT):
@@ -140,7 +162,7 @@ def extract(rom: bytes) -> list[dict[str, str]]:
                 handler = read_u32(rom, selected_pointer)
                 if handler not in handler_cache:
                     handler_cache[handler] = prompt_fields(rom, handler)
-                prompt, resource_bundle, text_fields = handler_cache[handler]
+                prompt, resource_bundle, text_fields, commands = handler_cache[handler]
                 first_text = text_fields[0]
                 event_name = first_text.split("|", 1)[0].strip(" <>\t")
                 if not event_name:
@@ -153,6 +175,17 @@ def extract(rom: bytes) -> list[dict[str, str]]:
                 )
                 target_offset = handler_offset
                 opening, choice_a, choice_b, choice_c = text_fields
+                choice_values = (choice_a, choice_b, choice_c)
+                choice_routes = []
+                for choice_index, choice_text in enumerate(choice_values):
+                    command = commands[choice_index]
+                    if not choice_text.strip():
+                        choice_routes.append(("", ""))
+                    else:
+                        choice_routes.append((
+                            f"0x{command:X}",
+                            command_dispatch_target(rom, command),
+                        ))
                 handler_names[handler] += 1
             else:
                 outcome_kind = GENERIC_OUTCOME
@@ -162,6 +195,7 @@ def extract(rom: bytes) -> list[dict[str, str]]:
                 resource_offset = ""
                 target_offset = ""
                 opening = choice_a = choice_b = choice_c = ""
+                choice_routes = [("", ""), ("", ""), ("", "")]
 
             pairs = rolls_for_sum(total)
             rows.append({
@@ -179,6 +213,12 @@ def extract(rom: bytes) -> list[dict[str, str]]:
                 "choice_1": choice_a,
                 "choice_2": choice_b,
                 "choice_3": choice_c,
+                "choice_1_command": choice_routes[0][0],
+                "choice_1_dispatch_target": choice_routes[0][1],
+                "choice_2_command": choice_routes[1][0],
+                "choice_2_dispatch_target": choice_routes[1][1],
+                "choice_3_command": choice_routes[2][0],
+                "choice_3_dispatch_target": choice_routes[2][1],
                 "map_position": "not fixed by this selector",
                 "activation": ACTIVATION,
                 "selection_cell_offset": f"0x{cell_offset:X}",

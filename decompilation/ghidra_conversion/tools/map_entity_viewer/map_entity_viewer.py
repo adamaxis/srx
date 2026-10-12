@@ -4457,6 +4457,9 @@ class MapEntityViewer(QMainWindow):
         _, self.field_activity_rows = read_tsv(
             assets / "field" / "world-activity-outcomes.tsv"
         )
+        _, self.field_activity_terminal_rows = read_tsv(
+            assets / "field" / "world-activity-terminal-outcomes.tsv"
+        )
         _, self.dynamic_world_actor_rows = read_tsv(
             assets / "field" / "entities" / "dynamic-world-activity-actors.tsv"
         )
@@ -5030,10 +5033,10 @@ class MapEntityViewer(QMainWindow):
             "",
             "ROM random encounter paths (eligible outcomes; not guaranteed):",
         ]
+        events: dict[tuple[str, str], set[int]] = {}
         if not dialogue_rows:
             lines.append("  No dialogue-event selector rows are indexed for this scene.")
         else:
-            events: dict[tuple[str, str], set[int]] = {}
             for row in dialogue_rows:
                 key = (
                     row.get("handler_offset", "unresolved handler"),
@@ -5068,6 +5071,41 @@ class MapEntityViewer(QMainWindow):
             lines.append("  Lone Star paths through this scene's selector events:")
             for handler in sorted(available_law_paths):
                 lines.append(f"    {handler}: {law_path_notes[handler]}")
+
+        terminal_rows_by_handler: dict[str, list[dict[str, str]]] = {}
+        for row in self.field_activity_terminal_rows:
+            handler = row.get("handler_offset", "").casefold()
+            if handler in {key[0].casefold() for key in events}:
+                terminal_rows_by_handler.setdefault(handler, []).append(row)
+        if terminal_rows_by_handler:
+            lines.append("  Traced event end conditions:")
+            for handler, terminal_rows in sorted(terminal_rows_by_handler.items()):
+                for terminal in terminal_rows:
+                    condition = terminal.get("condition", "").strip()
+                    path = terminal.get("path", "").strip()
+                    result = terminal.get("terminal_outcome", "").strip()
+                    state_effect = terminal.get("state_effect", "").strip()
+                    actor_effect = terminal.get("actor_effect", "").strip()
+                    detail = f"{handler} {path}"
+                    if condition:
+                        detail += f" [{condition}]"
+                    detail += f" -> {result}"
+                    effects = [
+                        effect for effect in (state_effect, actor_effect)
+                        if effect and effect != "No direct change"
+                    ]
+                    if effects:
+                        detail += " Effects: " + "; ".join(effects)
+                    lines.append("    " + detail)
+        indexed_terminal_handlers = set(terminal_rows_by_handler)
+        pending_terminal_handlers = sorted(
+            {key[0].casefold() for key in events} - indexed_terminal_handlers
+        )
+        for handler in pending_terminal_handlers:
+            lines.append(
+                f"  {handler}: opening choices and dispatch are indexed; "
+                "terminal state and actor outcomes still need ROM tracing."
+            )
 
         dynamic_rows = [
             row for row in self.dynamic_world_actor_rows
@@ -5823,6 +5861,11 @@ class MapEntityViewer(QMainWindow):
             return
 
         rows.sort(key=lambda row: int(row.get("random_sum", "0")))
+        terminal_rows_by_handler: dict[str, list[dict[str, str]]] = {}
+        for terminal in self.field_activity_terminal_rows:
+            terminal_rows_by_handler.setdefault(
+                terminal.get("handler_offset", "").casefold(), []
+            ).append(terminal)
         context_group = as_int(rows[0], "context_group", -1)
         shared_context_scenes = {
             as_int(row, "scene", -1) for row in self.field_activity_rows
@@ -5879,18 +5922,63 @@ class MapEntityViewer(QMainWindow):
                     "</blockquote>"
                 )
                 choices = [
-                    row.get(f"choice_{number}", "").strip()
+                    (
+                        row.get(f"choice_{number}", "").strip(),
+                        row.get(f"choice_{number}_command", "").strip(),
+                        row.get(f"choice_{number}_dispatch_target", "").strip(),
+                    )
                     for number in (1, 2, 3)
                 ]
-                choices = [value for value in choices if value]
+                choices = [choice for choice in choices if choice[0]]
                 if choices:
                     parts.append("<p><b>Choices shown on the opening panel:</b></p><ol>")
-                    parts.extend(f"<li>{html.escape(value)}</li>" for value in choices)
+                    for value, command, target in choices:
+                        dispatch = ""
+                        if command or target:
+                            dispatch = (
+                                " <small>(ROM dispatch "
+                                f"{html.escape(command or 'unresolved')} &rarr; "
+                                f"{html.escape(target or 'unresolved')})</small>"
+                            )
+                        parts.append(
+                            f"<li>{html.escape(value)}{dispatch}</li>"
+                        )
                     parts.append("</ol>")
                 else:
                     parts.append(
                         "<p>The opening panel has no labeled choices; its "
                         "continuation and later branches are controlled by the ROM handler.</p>"
+                    )
+                handler = row.get("handler_offset", "").casefold()
+                terminal_rows = terminal_rows_by_handler.get(handler, [])
+                if terminal_rows:
+                    parts.append(
+                        "<h4>Traced choice branches and end conditions</h4>"
+                        "<table><tr><th>Choice / path</th><th>Condition</th>"
+                        "<th>Terminal result</th><th>State effect</th>"
+                        "<th>Actor effect</th><th>ROM trace</th></tr>"
+                    )
+                    for terminal in terminal_rows:
+                        values = (
+                            terminal.get("path", ""),
+                            terminal.get("condition", ""),
+                            terminal.get("terminal_outcome", ""),
+                            terminal.get("state_effect", ""),
+                            terminal.get("actor_effect", ""),
+                            terminal.get("source_rom", ""),
+                        )
+                        parts.append(
+                            "<tr>" + "".join(
+                                f"<td>{html.escape(value)}</td>" for value in values
+                            ) + "</tr>"
+                        )
+                    parts.append("</table>")
+                else:
+                    parts.append(
+                        "<p><b>End-condition status:</b> The ROM opening choices "
+                        "and dispatch locations are indexed, but this handler's "
+                        "terminal state changes and actor outcomes have not yet "
+                        "been traced into this table.</p>"
                     )
                 continue
 
@@ -5936,9 +6024,11 @@ class MapEntityViewer(QMainWindow):
             ))
 
         parts.append(
-            "<p>Opening text and visible choices are decoded from the US ROM. "
-            "Follow-up dialogue and effects can depend on the selected choice "
-            "and current game state.</p>"
+            "<p>Opening text, visible choices, and their dispatch locations are "
+            "decoded from the US ROM. A terminal-branch table is shown only for "
+            "handlers whose conditions and end effects have been traced. Other "
+            "handlers are marked pending; missing terminal rows do not mean the "
+            "event has no further effects.</p>"
         )
         self.activity_info.setHtml("\n".join(parts))
 
