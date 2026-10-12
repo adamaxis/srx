@@ -45,9 +45,9 @@ Scene IDs below are ROM field-scene IDs. The tables cover the field random-event
 
 | Event path | Eligible scenes and selector sums | What the choice does |
 |---|---|---|
-| Sudden disturbance, handler `0x20EFA` | Scenes `0-3` and `5`; sums `0-3` and `7` | The MORE choice reaches the shared stage gate. Below stage 2, this route returns explicit Renraku attack text through a 20-entry resource selection; above that gate it selects the Strike Team group size. |
-| Sudden disturbance, handler `0x20F42` | Scenes `0-1` and `3`; sums `0`, `3`, and `5` | Shares the same urban follow-up as handler `0x20EFA`. |
-| Sudden disturbance, handler `0x2115C` | Scenes `6-9` and `44-50`; sum `0` | The MORE choice reaches the shared stage gate. At stages `0-1` or with the event-state bit set, it selects from the wilderness pack table below; at stages `2-8` with the gate clear, it selects Strike Team groups. |
+| Sudden disturbance, handler `0x20EFA` | Scenes `0-3` and `5`; sums `0-3` and `7` | MORE checks `FFFBFB` and `FFFC22` bit 8. With stage `0-1` or the bit set, it selects one of 20 resource bundles but returns the holocam/photo text, with no Renraku attack. With stage `2-8` and the bit clear, it attempts a 2/4/5-person Strike Team encounter; a failed sequence start falls back to the photo text. |
+| Sudden disturbance, handler `0x20F42` | Scenes `0-1` and `3`; sums `0`, `3`, and `5` | MORE checks `FF018F` bits 1 and 2. The first set bit takes priority: bit 1 attempts four Mafia Eye-Fivers, bit 2 attempts four `weenr2` actors; neither bit gives only the generic gang-color text. A failed actor sequence falls back to the photo text. This handler does not use the Renraku or Lone Star follow-up. |
+| Sudden disturbance, handler `0x2115C` | Scenes `6-9` and `44-50`; sum `0` | MORE checks `FFFBFB` and `FFFC22` bit 8. Stages `0-1` or a set bit choose a wilderness pack from six weighted outcomes; stages `2-8` with the bit clear attempt a 2/4/5-person Strike Team encounter. |
 | Lone Star patrol, handler `0x20F12` | Scenes `0` and `3`; sums `3` and `4` | Attack queues the list at `0x1D6FDC` (`lone11`, `lone12`, `lone detectiv`). Run away may queue `0x1D6FE4` or `0x1D6FE0`, according to the thresholded roll result. |
 | Injured-person event, handler `0x20F72` | Scenes `0`, `1`, and `3`; sums `5` and `7` | The ordinary injured-man Attack choice can queue one Lone Star detective at `0x1D6FE4`. A separate pale-figure variant can reveal a vampire; its sequence starts at `0x1D6D8A`, after the Hell Hound pointer in the shared list. |
 | Alley grenade seller, handler `0x2112C` | Scenes `0`, `2`, `3`, and `5`; sums `5-7` | Attack rolls `0-59` try the one-bodyguard list at `0x1D7054`; a successful start leads to a gun battle. Rolls `60-99`, or failure to start that actor, reveal undercover Lone Star. Buying the grenades has its own 60/40 split: rolls `0-59` continue through funds/slot checks; `60-99` expose the undercover agent. |
@@ -56,8 +56,8 @@ Scene IDs below are ROM field-scene IDs. The tables cover the field random-event
 | Haggard-man event, handler `0x20FA2` | Scenes `2` and `5`; sums `1-2` | The doctor offers 50 nuyen to recapture his escaped patient. Help and Threaten resolve without combat; Attack or Threaten can call a patrol, and one alternate Attack branch starts a fight with the doctor's Gator Shaman/bodyguards. See the terminal branch table below. |
 | Lone Star patrol, handler `0x2106A` | Scenes `41-43`; sum `5` | The follow-up arrest prompt's Attack choice reaches `0x2466C`. The first three named entries at `0x1D6FEC` are `lone11`, `lone12`, and `lonemage`; the trailing control word is still unresolved. |
 | Lone Star dynamic templates | Scene `1` (sum `2`) and scenes `41-43` (sum `8`) | The zero-cell dynamic sequences include `lone11`, `lone13`, and `lonemage`. |
-| Disturbance Strike Team escalation | Scenes `0-3`, `5-9`, and `44-50` | The MORE continuations check `FFFBFB` and bit 8 of `FFFC22`. With the bit clear, stages `2-3` select two Strike Team templates (`0x1D6FD0`), `4-6` select four (`0x1D6FC8`), and `7-8` select five (`0x1D6FC4`). Stages `0-1` or a set bit take the low-stage branches described in the next rows; the urban route still returns explicit Renraku attack text. |
-| Wilderness disturbance packs, handler `0x2115C` | Scenes `6-9` and `44-50` | At stages `0-1` or with bit 8 set, the ROM rolls 0-99: 30% queues three Hell Hounds, 30% two Wendigos, 20% two Bandersnatches, 5% a Rat Shaman and two Indian warriors, 10% an Elven mage and two Elven warriors, and 5% takes the no-list branch. At stages `2-8` with the bit clear, it uses the Strike Team groups above. |
+| Disturbance Strike Team escalation | Scenes `0-3`, `5-9`, and `44-50` | The MORE continuations check `FFFBFB` and bit 8 of `FFFC22`. With the bit clear, stages `2-3` select two Strike Team templates (`0x1D6FD0`), `4-6` select four (`0x1D6FC8`), and `7-8` select five (`0x1D6FC4`). Successful starts return the explicit Renraku attack text; a failed start falls back to the holocam/photo text. Stages `0-1` or a set bit take each handler's separate low-stage route. |
+| Wilderness disturbance packs, handler `0x2115C` | Scenes `6-9` and `44-50` | At stages `0-1` or with bit 8 set, the ROM rolls 0-99: 30% three Hell Hounds, 30% two Wendigos, 20% two Bandersnatches, 5% a Gator Shaman plus two Indian warriors, 5% a Rat Shaman plus two Indian warriors, and 10% an Elven mage plus two Elven warriors. There is no no-list result in this branch. At stages `2-8` with the bit clear, it uses the Strike Team groups above. |
 | Explicit Renraku Strike Team prompt, handler `0x210CC` | Scenes `35-40`; sum `1` | The MORE choice dispatches to `0x24918`, which queues two Strike Team templates from `0x1D6FD0`. This is the selector path whose text explicitly names Renraku. |
 | Renraku Security prompt, handler `0x210E4` | Scenes `35-40`; sum `4` | Its follow-up dispatches to `0x24936` and queues one corporate-guard template from `0x1D705C`. Keep it separate from the Strike Team event. |
 | Scene-47 mode-`0x13` lists (Cave 4 guide cross-reference) | Scene `47`; lists `0x1E5C4` and `0x1E628` | One list has one Strike Team, two bodyguards, and a pedestrian; the other has three Strike Teams and a corporate guard. These ROM lists match Mike's Cave 4 map note about a Renraku strike team; the cave name is guide cross-reference evidence, not a ROM label. They are separate from the random disturbance and the scene-35-40 selector outcomes. |
@@ -118,6 +118,43 @@ same permit, identity, fine, release, and warrant checks; Run can escape or
 be caught and fired upon. This is distinct from the undercover-woman prompt:
 the doctor calls a uniformed patrol, while the woman branch reveals an agent
 already posing as a law official.
+
+**Urban disturbance / Renraku (`0x20EFA`, scenes 0-3 and 5).** MORE command
+`0x93` reaches `0x2333A`. If `FFFBFB <= 1` or bit 8 of `FFFC22` is set, the
+ROM chooses one resource bundle from the 20-entry table at `0x12D09C` and
+returns the holocam text at `0x11CF74`: someone takes the player's picture and
+disappears. This branch does not start a Renraku fight. With `FFFBFB` at 2-8
+and the bit clear, stages 2-3 attempt two Strike Team actors (`0x1D6FD0`),
+stages 4-6 attempt four (`0x1D6FC8`), and stages 7-8 attempt five
+(`0x1D6FC4`). A successful start returns the explicit attack text at
+`0x11CFDD`; if the sequence cannot start, control falls back to the holocam
+text. The post-combat exit is still partial.
+
+**Faction disturbance (`0x20F42`, scenes 0-1 and 3).** MORE command `0x9B`
+reaches `0x23876`. If `FF018F` bit 1 is set, the ROM attempts four Mafia
+Eye-Fivers from `0x1D7010` and selects the Eye-Fiver text at `0x11D098`. Only
+if bit 1 is clear does it test bit 2; when set, it attempts four `weenr2`
+actors from `0x1D7038` and selects the Halloweeners text at `0x11D019`. If
+neither bit is set, it returns the generic veteran-runners/gang-colors text at
+`0x11D128` without queuing attackers. If either selected sequence cannot
+start, it falls back to the same randomized-resource holocam event used by
+`0x20EFA`. This is a separate faction encounter, not the Renraku branch and
+not a Lone Star encounter. The source test uses the player-record byte at
+`FF018F`; the meaning and writers for bits 1-2 are still untraced. The combat
+exit remains partial.
+
+**Wilderness disturbance (`0x2115C`, scenes 6-9 and 44-50).** MORE command
+`0x94` reaches `0x233A6`. With `FFFBFB` at 2-8 and bit 8 of `FFFC22` clear, it
+uses the same 2/4/5 Strike Team escalation as `0x20EFA`; a failed start
+returns to the holocam text. At stages 0-1 or with the bit set, `0x24AA8`
+rolls 0-99 and chooses: 0-29, three Hell Hounds (`0x1D6F50`); 30-59, two
+Wendigos (`0x1D6F68`); 60-79, two Bandersnatches (`0x1D707C`); 80-89, the
+AmerIndian hunting-party text followed by a bound-2 split between a Gator
+Shaman plus two Indian warriors (`0x1D70AC`) and a Rat Shaman plus two Indian
+warriors (`0x1D70BC`); or 90-99, an Elven mage plus two Elven warriors
+(`0x1D70CC`). Each of the two hunting-party actor lists therefore has a 5%
+chance. The previous summary's 5% no-list branch was incorrect. Combat exit
+and post-fight outcomes remain partial.
 
 The outcome table includes those two encounter graphs plus the direct patrol,
 Company Man, injured-person, alley-seller, watcher, and scene-41-to-43 Lone
@@ -202,11 +239,15 @@ partial rather than appearing complete.
 
 This confirms Lone Star-linked random-event paths in five of the six named
 urban field maps (scenes 0-5, excluding Council Island). Most are conditional
-branches inside other encounters, not an unconditional patrol spawn. It
-supports the reported broad urban coverage; it does not establish that wanted
-pursuit can spawn on every one of the 56 scene contexts. Dynamic Lone Star
-templates are separately listed for scene 1 and scenes 41-43. The general
-map-wide pursuit route and its wanted-state conditions remain untraced.
+branches inside other encounters, not an unconditional patrol spawn. Across
+all 56 field contexts, the extracted zero-cell dynamic actor table separately
+contains `lone11` and `lonemage` at scene 1/sum 2, and `lonemage` plus `lone13`
+at scenes 41-43/sum 8. Its other dynamic actor lists do not contain a
+`lone*` template. That accounts for the selector and zero-cell dynamic
+sequence data only; it does not establish the limits of any wanted-state
+pursuit system or other map event. The general map-wide pursuit route and its
+wanted-state conditions remain untraced, so “only these maps” would be an
+unsupported conclusion.
 
 There is also a separate player legal-state path to resolve. The third 32-entry Tips pointer table at `0xC2816` maps global entries 65-96; entries 70-73 point to text starts `0xC4390`, `0xC4465`, `0xC451E`, and `0xC45E1`. Entry 70 contains the wanted-for-questioning notice (including `0xC442C`); entry 71 is addressed to detectives and describes the suspect as armed and dangerous; entry 72 is addressed to hunting parties and calls the player a fugitive; entry 73 is a Lone Star Records prisoner-transfer notice about Vigore. Since the selector tests each table's local zero-based entry index, these four entries correspond to `FFFC38` bits 5-8; the wanted/fugitive notices are bits 5-7. These are Notebook display-eligibility bits; the source trace has not shown them to be the wanted-state values consumed by field pursuit. ROM contact text at `0xC63CF` and `0xC651C` offers to delete the Lone Star record, while `0x10E3C1` and `0x10F009` describe a Weapon Permit and patrols flagging the player down. Those strings establish that the record/permit mechanics exist, but they do not establish the writer/checker for the first three tip bits or the map-wide patrol spawn condition. The general patrol pursuit route remains untraced; this known-selector profile therefore cannot say which other maps support it or how often it occurs.
 
